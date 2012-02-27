@@ -1365,7 +1365,7 @@ class dataset(dict):
                 dict.__setitem__(self, name, item)
     
     def __str__(self):
-        txt = str(self.as_table(cases=10, fmt='%.5g'))
+        txt = str(self.as_table(cases=10, fmt='%.5g', midrule=True))
         if self.N > 10:
             note = "(use .as_table() method to see the whole dataset)"
             txt = ' '.join((txt, note))
@@ -1682,7 +1682,7 @@ class interaction(_regressor_):
     def as_codes(self):
         out = []
         for i in xrange(self.N):
-            code = tuple(f[i] for f in self.factors)
+            code = tuple(f.x[i] for f in self.factors)
             out.append(code)
         return out
     
