@@ -426,9 +426,7 @@ class pca(mpl_canvas.CanvasFrame):
         btn = wx.Button(tb, ID.PCA_REMOVE, "Remove Selected Components")
         tb.AddControl(btn)
         self.Bind(wx.EVT_BUTTON, self.OnRemove, id=ID.PCA_REMOVE)
-        
-        tb.AddSeparator()
-                
+                        
         mpl_canvas.CanvasFrame._init_FillToolBar(self, tb)
     
     def OnClick(self, event):
