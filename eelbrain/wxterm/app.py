@@ -28,7 +28,10 @@ class MainApp(wx.App):
     
     def OnInit(self):
         self.shell = shell.ShellFrame(None, self.global_namespace)
-        self.shell.ShowWithEffect(wx.SHOW_EFFECT_ROLL_TO_BOTTOM)
+        if wx.__version__ >= '2.9':
+            self.shell.ShowWithEffect(wx.SHOW_EFFECT_ROLL_TO_BOTTOM)
+        else:
+            self.shell.Show()
         return True
     
     def MacOpenFile(self, filename):

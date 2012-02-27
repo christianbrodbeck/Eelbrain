@@ -457,7 +457,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnAbout(self, event):
         """Display an About window."""
         about = about_dialog.AboutFrame(self)
-        about.ShowWithEffect(wx.SHOW_EFFECT_BLEND)
+        if wx.__version__ >= '2.9':
+            about.ShowWithEffect(wx.SHOW_EFFECT_BLEND)
+        else:
+            about.Show()
         about.SetFocus()
         return about
 
