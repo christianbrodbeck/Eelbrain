@@ -1,8 +1,6 @@
 
 import numpy as np
-#import scipy as sp
-#import matplotlib as mpl
-import matplotlib.pyplot as P
+import matplotlib.pyplot as plt
 try:
     from mpl_toolkits.mplot3d import Axes3D as _Axes3D
 except:
@@ -10,14 +8,8 @@ except:
 
 
 
-
-__all__ = ['map', 'map3d']
-
-
-
-# MARK: ###  Sensor-layout plots  ###
-
-mapmono_all = dict(mc='k',
+# some useful kwarg dictionaries for different plot layouts
+kwargs_mono = dict(mc='k',
                    lc='.5',
                    hllc='k',
                    hlmc='k',
@@ -31,7 +23,7 @@ def _ax_map2d_fast(ax, sensor_net, proj='default',
         sensor_net = sensor_net.sensors
     
     locs = sensor_net.getLocs2d(proj=proj)
-    h = P.plot(locs[:,0], locs[:,1], m, color=mc, ms=ms, markeredgewidth=mew)
+    h = plt.plot(locs[:,0], locs[:,1], m, color=mc, ms=ms, markeredgewidth=mew)
     
     return h
 
@@ -85,7 +77,7 @@ def _ax_map2d(ax, sensor_net, proj='default', hl=[],
 #    # markers
 #    markers = np.array([marker] * sensor_net.n, dtype='S2')
 #    markers[highlight] = highlightMarker
-    #transOffset = P.offset_copy(P.gca().transData, fig=fig, x = 0.05, y=0.10, units='inches')
+    #transOffset = plt.offset_copy(plt.gca().transData, fig=fig, x = 0.05, y=0.10, units='inches')
     for i in range(sensor_net.n):
         x = locs[i,0]
         y = locs[i,1]
@@ -107,9 +99,9 @@ def _ax_map2d(ax, sensor_net, proj='default', hl=[],
             marker, marker_c, marker_s, label_c, label_s = m, mc, ms, lc, ls
         else:
             marker, marker_c, marker_s, label_c, label_s = strm, strmc, strms, strlc, ls
-        P.plot([x],[y], marker, color=marker_c, ms=marker_s, markeredgewidth=mew)#,label=label)
+        plt.plot([x],[y], marker, color=marker_c, ms=marker_s, markeredgewidth=mew)#,label=label)
         if label != None:
-            P.text(x, y+l_dist, label, fontsize=label_s,# style='oblique', 
+            plt.text(x, y+l_dist, label, fontsize=label_s,# style='oblique', 
                    horizontalalignment='center', verticalalignment='bottom', 
                    color=label_c)
 
@@ -146,8 +138,8 @@ def map2d(sensor_net, figsize=(5,5), frame=.01, **kwargs):
     
     """    
     # figure
-    fig = P.figure(figsize=figsize, facecolor='w')
-    ax = P.axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
+    fig = plt.figure(figsize=figsize, facecolor='w')
+    ax = plt.axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
         # the following does not make the plot
 #        fig = mpl.figure.Figure(figsize=figsize, facecolor='w')
 #        ax = fig.add_axes([0,0,1,1])
@@ -166,7 +158,7 @@ def map3d(sensor_net, marker='c*', labels=False, headBall=0):
     if hasattr(sensor_net, 'sensors'):
         sensor_net = sensor_net.sensors
     locs = sensor_net.locs3d
-    fig = P.gcf()
+    fig = plt.gcf()
     ax = _Axes3D(fig)
     ax.scatter(locs[:,0], locs[:,1], locs[:,2])
     # plot head ball
