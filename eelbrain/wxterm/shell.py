@@ -29,6 +29,7 @@ _extension = 'jkldfsa'
 
 #import eelbrain.wxgui.viewers as viewers
 
+import eelbrain.utils.print_funcs as print_funcs
 from eelbrain import wxutils
 from eelbrain.wxutils import Icon
 from eelbrain.wxutils import droptarget
@@ -188,7 +189,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         
         app = wx.GetApp()
         
-    # set up PREFERENCES 
+    # --- set up PREFERENCES ---
         # http://wiki.wxpython.org/FileHistory
         self.wx_config = wx.Config("eelbrain", style=wx.CONFIG_USE_LOCAL_FILE)
         """
@@ -208,7 +209,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
     # SHELL initialization
         # put my Shell into wx.py.shell and init
         wx.py.shell.Shell = Shell
-        kwargs.update(locals = namespace, title = 'Eelbrain Shell')
+        kwargs.update(locals=namespace, title='Eelbrain Shell')
 #        if "wxMac" not in wx.PlatformInfo:
 #            del self.bufferClose
         
@@ -237,16 +238,14 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.tables = []
         self.experiments = [] # keep track of ExperimentFrames
         self._attached_items = {}
-        self.global_namespace['attach'] = self.attach
-        self.global_namespace['detach'] = self.detach
-        # {item: {name: item, ...}, ...}
         self.help_viewer = None
+        
         
     # child windows
         x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
         self.P_mgr = mpl_tools.PyplotManager(self, pos=(x_max-100, y_min+22+4))
         
-    # MENUS---
+    # --- MENUS ---
         # menus first defined in wx.py.frame.Frame.__createMenus() 
         menus = dict((self.menuBar.GetMenuLabel(i), i) for i in 
                      xrange(self.menuBar.GetMenuCount()))
@@ -366,7 +365,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_MDP)
         
         
-    # TOOLBAR---
+    # --- TOOLBAR ---
         tb = self.CreateToolBar(wx.TB_HORIZONTAL)
         tb.SetToolBitmapSize(size=wx.Size(32,32))
         
@@ -435,7 +434,15 @@ class ShellFrame(wx.py.shell.ShellFrame):
         tb.Realize()
         
     
-    # Finalize---
+    # --- Finalize ---
+        
+        # add commands to the shell
+        self.global_namespace['attach'] = self.attach
+        self.global_namespace['detach'] = self.detach
+        self.global_namespace['help'] = self.help_lookup        
+        self.global_namespace['printdict'] = print_funcs.printdict
+        self.global_namespace['printlist'] = print_funcs.printlist
+        
         # other Bindings
         self.Bind(wx.EVT_MAXIMIZE, self.OnMaximize)
         self.Bind(wx.EVT_ACTIVATE, self.OnActivate)
