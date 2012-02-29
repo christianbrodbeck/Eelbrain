@@ -1385,7 +1385,7 @@ class dataset(dict):
 #        "returns an epoch of the default dependent variable (default_DV)"
 #        return self[self.default_DV].as_epoch(*args, **kwargs)
 #    
-    def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, 
+    def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, sort=True,
                  midrule=False):
         r"""
         returns a fmtxt.Table containing all vars and factors in the dataset 
@@ -1407,6 +1407,8 @@ class dataset(dict):
             create repeated-measurement table
         midrule : bool
             print a midrule after table header
+        sort : bool
+            Sort the columns alphabetically 
         
         """
         if cases < 1:
@@ -1417,6 +1419,8 @@ class dataset(dict):
             cases = min(cases, self.N)
         
         keys = [k for k, v in self.iteritems() if not isndvar(v)]
+        if sort:
+            keys = sorted(keys)
         values = [self[key] for key in keys]
         
         table = fmtxt.Table('l'*len(keys))
