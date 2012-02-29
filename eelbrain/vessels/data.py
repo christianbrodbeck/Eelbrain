@@ -1636,6 +1636,10 @@ class interaction(_regressor_):
         self.base = []
         vars_ = 0
         for b in base:
+            # check item is valid
+            if not hasattr(b, 'factors'):
+                raise ValueError('Invalid base item for interaction: %r'%b)
+            
             for f in b.factors:
                 if f not in self:
                     self.factors.append(f)
@@ -1699,6 +1703,11 @@ class interaction(_regressor_):
             code = tuple(f.x[i] for f in self.factors)
             out.append(code)
         return out
+    
+    def as_factor(self):
+        name = self.name.replace(' ', '')
+        x = self.as_labels()
+        return factor(x, name)
     
     def as_labels(self):
         out = [self.cells[code] for code in self.as_codes()]
