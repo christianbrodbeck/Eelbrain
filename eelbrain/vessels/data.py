@@ -1388,18 +1388,25 @@ class dataset(dict):
     def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, 
                  midrule=False):
         r"""
-        :returns: All vars and factors in a table (ndvars are skipped). Can be 
-            used for exporting in different formats such as csv.
-        :return type: :class:`fmtxt.Table`
+        returns a fmtxt.Table containing all vars and factors in the dataset 
+        (ndvars are skipped). Can be used for exporting in different formats
+        such as csv.
         
-        :arg int cases: number of cases to include
-        :arg fmt: format string for numerical variables
-        :type fmt: `valid format string, including % 
+        Arguments
+        ---------
+        
+        cases : int
+            number of cases to include
+        fmt : str
+            format string for numerical variables. Hast to be a valid 
+            `format string,
             <http://docs.python.org/library/stdtypes.html#string-formatting>`
-        :arg f_fmt: format string for factors (None -> code; e.g. '"%s"')
-        :arg match: create repeated-measurement table
-        :type match: :class:`psystats.factor`
-        :arg bool midrule: print a midrule after table header
+        f_fmt : str
+            format string for factors (None -> code; e.g. `'%s'`)
+        match : factor
+            create repeated-measurement table
+        midrule : bool
+            print a midrule after table header
         
         """
         if cases < 1:
@@ -1490,8 +1497,8 @@ class dataset(dict):
 
     def get_conditions(self, factor, default_DV=None, exclude=[], name='{name}[{case}]'):
         """
-        convenience function; splits the dataset by condition (in `factor`) and 
-        returns as dictionary of subsets
+        convenience function; splits the dataset by the cells of a factor and 
+        returns as dictionary of subsets.
         
         """
         if isinstance(factor, basestring):
@@ -1589,6 +1596,11 @@ class dataset(dict):
                     target[ID] = below
     
     def subset(self, index, name='{name}', default_DV=None):
+        """
+        Returns a dataset containing only the subset of cases selected by 
+        `index`.
+        
+        """
         items = dict((k, v[index]) for k, v in self.iteritems())
         name = name.format(name=self.name)
         
