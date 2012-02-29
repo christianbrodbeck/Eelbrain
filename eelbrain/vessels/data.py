@@ -1498,8 +1498,11 @@ class dataset(dict):
 #                index = factor == case
 #                out[case] = ConditionPointer(self, dep_var, index, setname)
 #        return out
-
-    def get_conditions(self, factor, default_DV=None, exclude=[], name='{name}[{case}]'):
+    
+    def get_case(self, i):
+        return dict((k, v[i]) for k, v in self.iteritems())
+    
+    def get_subsets_by(self, factor, default_DV=None, exclude=[], name='{name}[{case}]'):
         """
         convenience function; splits the dataset by the cells of a factor and 
         returns as dictionary of subsets.
@@ -1518,19 +1521,6 @@ class dataset(dict):
                 out[case] = self.subset(index, setname, default_DV=default_DV)
         return out
     
-    def get_data(self, key='default_DV'):
-        if key == 'default_DV':
-            key = self.default_DV
-        return self[key].data
-    
-    def get_epoch(self, ID=0):
-        """
-        returns a dataset with a single case
-        
-        """
-        raise NotImplementedError
-#        new_variables = {'caseID': ID}
-    
     def get_summary(self, func=None, name='{func}({name})'):
         """
         -> self[self.default_DV].get_summary(func=func, name=name) 
@@ -1538,6 +1528,10 @@ class dataset(dict):
         
         """
         return self[self.default_DV].get_summary(func=func, name=name)
+    
+    def itercases(self):
+        for i in xrange(self.N):
+            yield self.get_case(i)
     
     def mark_by_threshold(self, DV=None, threshold=2e-12, above=True, below=False, 
                           target='reject'):
@@ -1598,6 +1592,10 @@ class dataset(dict):
                         target[ID] = above
                 elif below is not None:
                     target[ID] = below
+    
+    @property
+    def shape(self):
+        return (self.N, len(self))
     
     def subset(self, index, name='{name}', default_DV=None):
         """
