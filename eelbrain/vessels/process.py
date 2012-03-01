@@ -52,7 +52,5 @@ def rm_pca(ds, rm=[], source='MEG', target='MEG'):
     # create the output new ndvar 
     dims = source.dims
     properties = source.properties
-    ds.add(_data.ndvar(dims, data, properties, name=target))
-
-
+    ds[target] = _data.ndvar(dims, data, properties, name=target)
 

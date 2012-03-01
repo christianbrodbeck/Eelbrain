@@ -1378,8 +1378,18 @@ class dataset(dict):
         return self.as_epoch() - other.as_epoch()
     
     def add(self, item):
-        "= dataset[item.name] = item"
-        self[item.name] = item
+        """
+        = dataset[item.name] = item 
+        
+        unless the dataset already contains a variable named item.name, in 
+        which case a KeyError is raised. In order to replace existing 
+        variables, use dataset[name] = item 
+        
+        """
+        if item.name in self:
+            raise KeyError("Dataset already contains variable named %r" % item.name)
+        else:
+            self[item.name] = item
     
 #    def as_epoch(self, *args, **kwargs):
 #        "returns an epoch of the default dependent variable (default_DV)"
