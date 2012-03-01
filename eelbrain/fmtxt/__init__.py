@@ -753,8 +753,9 @@ class Table:
             path = ui.ask_saveas(title = "Save Tab Separated Table",
                                  message = "Please Pick a File Name",
                                  ext = [("txt", "txt (tsv) file")])
-        if path:
-            if path[-4:] != '.txt':
+        if ui.test_targetpath(path):
+            ext = os.path.splitext(path)[1]
+            if ext not in ['.tsv', '.txt']:
                 path += '.txt'
             with open(path, 'w') as f:
                 f.write(self.get_tsv(delimiter=delimiter, linesep=linesep, 

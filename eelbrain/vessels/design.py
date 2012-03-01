@@ -47,6 +47,7 @@ Created on Feb 27, 2012
 @author: Christian Brodbeck
 '''
 import os
+import cPickle as _pickle
 
 import numpy as np
 import scipy.io
@@ -318,3 +319,37 @@ def export_mat(dataset, values=None, destination=None):
     scipy.io.savemat(destination, mat, do_compression=True, oned_as='row')
 
 
+def save(dataset, destination=None, values=None):
+    """
+    Saves the dataset with the same name simultaneously in 3 different formats:
+    
+     - mat: matlab file
+     - pickled dataset
+     - TSV: tab-separated values
+     
+    """
+    if destination is None:
+        msg = ("Pick a name to save the dataset (without extension; '.mat', "
+               "'.pickled' and '.tsv' will be appended")
+        destination = ui.ask_saveas("Save Dataset", msg, [])
+    
+    if not destination:
+        return
+    
+    destination = str(destination)
+    if ui.test_targetpath(destination):
+        msg_temp = "Writing: %r"
+        dest = os.path.extsep.join((destination, 'pickled'))
+        print msg_temp % dest
+        pickle_data = {'design': dataset, 'values': values}
+        with open(dest, 'w') as f:
+            _pickle.dump(pickle_data, f)
+        
+        dest = os.path.extsep.join((destination, 'mat'))
+        print msg_temp % dest
+        export_mat(dataset, values, dest)
+        
+        dest = os.path.extsep.join((destination, 'tsv'))
+        print msg_temp % dest
+        dataset.export(dest)
+    

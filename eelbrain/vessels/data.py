@@ -1466,7 +1466,7 @@ class dataset(dict):
         :kwarg str fn: target filename 
             with None (default) a system file dialog will be displayed
             otherwise, the extesion is used to determine the format:
-             - 'txt':  tsv
+             - 'txt' or 'tsv':  tsv
              - 'tex':  as TeX table
              - 'pickle':  use pickle.dump (defunct)
         
@@ -1475,12 +1475,12 @@ class dataset(dict):
             fn = ui.ask_saveas(ext = [('txt', "Tab-separated values"),
                                       ('tex', "Tex table"),
                                       ('pickle', "Pickle")])
-        ext = fn.split(os.extsep)[-1]
+        ext = os.path.splitext(fn)[1][1:]
         if ext == 'pickle':
             pickle.dump(self, open(fn, 'w'))
         else:
-            table = self.AsTable(fmt=fmt)
-            if ext == 'txt':
+            table = self.as_table(fmt=fmt)
+            if ext in ['txt', 'tsv']:
                 table.save_tsv(fn)
             elif ext =='tex':
                 table.save_tex(fn)

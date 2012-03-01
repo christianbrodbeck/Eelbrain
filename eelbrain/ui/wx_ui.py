@@ -22,6 +22,9 @@ def ask_saveas(title = "Save File",
          or None
     
     """
+    if not ext: # allow for []
+        ext = None
+    
     dialog = wx.FileDialog(GetWxParent(), message,
                            wildcard = _wildcard_from_ext(ext),
                            style=wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
