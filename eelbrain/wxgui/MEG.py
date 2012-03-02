@@ -446,7 +446,7 @@ class pca(mpl_canvas.CanvasFrame):
         rm_comp = sorted(self._rm_comp)
         while not name:
             dlg = wx.TextEntryDialog(self, "What name should the new ndvar be assigned in the dataset?",
-                                     "Choose Name for New Variable", "%spca"%self._data.name)
+                                     "Choose Name for New Variable", "%spca"%self._Y.name)
             if dlg.ShowModal() == wx.ID_OK:
                 newname = dlg.GetValue()
                 if newname in self._dataset:
