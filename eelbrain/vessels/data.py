@@ -2045,7 +2045,7 @@ class model(object):
     def get_table(self, cases='all'):
         """
         :returns: the full model as a table.
-        :rtype: :class:`psystats.fmtxt.Table`
+        :rtype: :class:`fmtxt.Table`
         
         :arg cases: maximum number of cases (lines) to display.
          

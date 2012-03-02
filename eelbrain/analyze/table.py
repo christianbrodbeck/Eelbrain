@@ -1,5 +1,5 @@
 '''
-Creating tables for psystats objects.
+Creating tables for data objects.
 
 '''
 from __future__ import division

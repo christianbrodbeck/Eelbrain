@@ -16,8 +16,9 @@ from eelbrain import fmtxt as textab
 
 import test
 
-from data import isfactor, asfactor, isvar, asvar, ismodel, asmodel
-from data import _split_Y, celltable, multifactor
+from eelbrain.vessels.data import isfactor, asfactor, isvar, asvar, ismodel, asmodel
+from eelbrain.vessels.data import _split_Y, multifactor
+from eelbrain.vessels.structure import celltable
 
 
 __hide__ = ['division', 'scipy',
@@ -119,7 +120,7 @@ def _mark_plot_1sample(ax, data, within, par, y_min, y_unit, x0=0,
     ps = []
     if par:
         for d in data:
-            t, p = sp.stats.ttest_1samp(d, popmean)
+            t, p = scipy.stats.ttest_1samp(d, popmean)
             ps.append(p)
     else:
         raise NotImplementedError("nonparametric 1-sample test") 
@@ -296,7 +297,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             ):
     """
     
-    :arg psystats.var Y:
+    :arg var Y:
     :arg X:
     
     :arg test: True (default): perform pairwise tests;  False/None: no tests;
@@ -443,7 +444,7 @@ def barplot(Y, X=None, match=None, sub=None,
               
     err: "[x][type]"
          'std' : standard deviation
-         '.95ci' : 95% confidence interval (see :func:`psystats.stats.CI`)
+         '.95ci' : 95% confidence interval (see :func:`stats.CI`)
          '2sem' : 2 standard error of the mean
          
     ylabel formatting:
@@ -859,7 +860,7 @@ class multitimeplot:
                  ):
         """
         Create an empty template figure for a plot subsuming several 
-        :func:`psystats.timeplot`s. Add timeplots using the plot method.
+        :func:`timeplot`s. Add timeplots using the plot method.
         
         :arg ylim: (bottom, top) tuple of scalars; if left at default (None),
             ylim depend on the data plotted.

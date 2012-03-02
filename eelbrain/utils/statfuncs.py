@@ -1,7 +1,7 @@
 '''
 Created on Apr 17, 2011
 
-statistical functions that could not be in module :mod:`psystats.test` because
+statistical functions that could not be in module :mod:`analyze.test` because
 of a circular import 
 
 @author: christianmbrodbeck

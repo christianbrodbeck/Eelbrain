@@ -1,5 +1,5 @@
 """
-statistical tests for psystats objects
+statistical tests for data objects
 
 """
 from __future__ import division
@@ -12,8 +12,9 @@ from matplotlib import pyplot as P
 
 import eelbrain.fmtxt as textab
 
-from eelbrain.vessels.data import var, isvar, asvar, isfactor, asfactor, ismodel, celltable
+from eelbrain.vessels.data import var, isvar, asvar, isfactor, asfactor, ismodel
 from eelbrain.vessels.data import _split_Y, multifactor
+from eelbrain.vessels.structure import celltable
 
 
 __hide__ = ['division', 'random', 'itertools', 'scipy',

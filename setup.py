@@ -94,7 +94,7 @@ else: #####  py2exe & normal  #####  #####  #####  #####  #####  #####  #####  #
     kwargs.update( # FIXME:
                   packages = ['eelbrain',
                               'eelbrain.plot', 
-                              'eelbrain.psystats', 
+                              'eelbrain.fmtxt', 
                               'eelbrain.signal_processing', 
                               'eelbrain.signal_processing.fileio', 
                               'eelbrain.ui',

@@ -25,8 +25,8 @@ import scipy as sp
 #import matplotlib as mpl
 import matplotlib.pyplot as P
 
-from psystats import textab
-from psystats.plot import _simple_fig
+import eelbrain.fmtxt as fmtxt
+from eelbrain.analyze.plot import _simple_fig
 
 from eelbrain.utils import _basic_ops_
 from eelbrain.vessels import colorspaces as _cs
@@ -139,7 +139,7 @@ def corr(stats, var, p=[.05],
     for c in corr:
         R = c.param
         handle = P.plot(T, R, label=c.name)
-        legend_names.append(textab.texify(c.name))
+        legend_names.append(fmtxt.texify(c.name))
         legend_handles.append(handle)
     # thresholds
     P.axhline(0, c='k')
@@ -149,7 +149,7 @@ def corr(stats, var, p=[.05],
     # Figure stuff
     P.ylabel('r')
     P.xlabel('time')
-    P.suptitle("Correlation with {v}".format(v=textab.texify(var.name)), fontsize=16)
+    P.suptitle("Correlation with {v}".format(v=fmtxt.texify(var.name)), fontsize=16)
     P.figlegend(legend_handles, legend_names, 'lower center', ncol=legend_ncol)
 
 
