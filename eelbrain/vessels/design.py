@@ -162,11 +162,13 @@ def get_permutated_dataset(*variables):
 
 
 
-def random_factor(name, values, ds, rand=True, balance=[], urn=[]):
+def random_factor(name, values, ds, rand=True, balance=[], urn=[], 
+                  require_exact_balance=True):
     i = 0
     while i < _max_iter:
         try:
-            f = _try_make_random_factor(name, values, ds, rand, balance, urn)
+            f = _try_make_random_factor(name, values, ds, rand, balance, urn, 
+                                        require_exact_balance)
         except RandomizationError:
             i += 1
         except:
@@ -177,7 +179,8 @@ def random_factor(name, values, ds, rand=True, balance=[], urn=[]):
 
 
 
-def _try_make_random_factor(name, values, ds, rand, balance, urn):
+def _try_make_random_factor(name, values, ds, rand, balance, urn, 
+                            require_exact_balance):
     N_values = len(values)
     x = np.empty(ds.N, dtype=np.uint8)
     cells = dict(enumerate(values))
@@ -199,13 +202,20 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn):
         region_len = ds.N
     
     # generate random values with equal number of each value
-    _len = (1 + region_len // N_values) * N_values
-    values = np.arange(_len, dtype=np.uint8) % N_values
+    exact_balance = not bool(region_len % N_values)
+    if exact_balance:
+        values = np.arange(region_len, dtype=np.uint8) % N_values
+    else:
+        if require_exact_balance:
+            raise ValueError("No exact balancing possible")
+        _len = (region_len // N_values + 1) * N_values
+        values = np.arange(_len, dtype=np.uint8) % N_values
+        
+        # drop trailing values randomly
+        if rand and _randomize:
+            np.random.shuffle(values[-N_values:])
+        values = values[:ds.N]
     
-    # if this sequence is too long, drop trailing values randomly
-    if rand and _randomize:
-        np.random.shuffle(values[-N_values:])
-    values = values[:ds.N]
     
     # cycle through values of the balance containers
     for c in regions.cells:
@@ -242,7 +252,7 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn):
 #                        b = values[si_switch] not in out[ti, urn_indexes]
                         a = any(values[si] == u.x[ti_switch] for u in urn) 
                         b = any(values[si_switch] == u.x[ti] for u in urn)
-                        if not (a and b):
+                        if not (a or b):
                             values[[si, si_switch]] = values[[si_switch, si]]
                             switched = True
                             break
