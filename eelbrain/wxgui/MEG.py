@@ -213,7 +213,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
 #            ax.set_axis_off()
             h = plot.uts._ax_butterfly(ax, case, color=color, antialiased=False,
                                        title=False, xlabel=None, ylabel=None,
-                                       **self._bfly_kwargs)
+                                       **self._bfly_kwargs)[0]
             ax.ID = i
             ax.segID = ID
             self._case_handles.append(h)
