@@ -703,7 +703,7 @@ class factor(_regressor_):
     Container for categorial data. 
     
     """
-    repr_temp = 'factor({v}, name="{n}", random={r}, labels={l})'
+    _repr_temp = 'factor({v}, name="{n}", random={r}, labels={l})'
     _stype_ = "factor"
     def __init__(self, x, name="Factor", random=False, 
                  labels={}, colors={}, retain_label_codes=False,
@@ -821,12 +821,12 @@ class factor(_regressor_):
                 fmt['l'] = l_repr
             else:
                 fmt['l'] = str(self.cells)
-        return self.repr_temp.format(**fmt)
+        return self._repr_temp.format(**fmt)
     
     def __str__(self):
         fmt = dict(v=str(self.x.tolist()), n=self.name,
                    r=str(self.random), l=str(self.cells))
-        return self.repr_temp.format(**fmt)
+        return self._repr_temp.format(**fmt)
     
     def __getitem__(self, sub):
         """
