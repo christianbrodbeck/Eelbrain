@@ -33,7 +33,9 @@ def printdict(dictionary):
         if len(v) >= v_len:
             for i in xrange(v_len, len(v)+v_len-1, v_len):
                 lines.append(empty_k + v[i : i+v_len])
-    print '\n'.join(lines)
+    lines[0] = '{' + lines[0]
+    lines[-1] = lines[-1] + '}'
+    print ',\n '.join(lines)
 
 
 def printlist(list_obj, rep=True):
