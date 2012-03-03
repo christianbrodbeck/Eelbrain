@@ -265,6 +265,26 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
     return _data.factor(x, name, labels=cells, retain_label_codes=True)
 
 
+def shuffle_cases(dataset, inplace=False):
+    """
+    Shuffles the cases in a dataset. 
+    
+    inplace : bool
+        If True, the input dataset itself is modified, and the function does 
+        not return anything; if False, a new dataset containing the shuffled 
+        variables is returned and the original dataset is left unmodified. 
+     
+    """
+    index = np.arange(dataset.N)
+    np.random.shuffle(index)
+    
+    if inplace:
+        for k in dataset:
+            dataset[k] = dataset[k][index]
+    else:
+        return _data.dataset(name='shuffled', *(dataset[k][index] for k in dataset))
+
+
 
 def export_mat(dataset, values=None, destination=None):
     """
