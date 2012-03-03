@@ -511,8 +511,6 @@ class var(_regressor_):
         self.mu = x.mean()
         self.centered = self.x - self.mu
         self.SS = np.sum(self.centered**2)     
-        
-        self.__truediv__ = self.__div__ # to support future division
     
     def __eq__(self, y):
         if isstr(y):
