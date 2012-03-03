@@ -37,7 +37,7 @@ def fiff_events(path, labels={}):
     istart = _data.var(events[:,0], name='i_start')
     istop = _data.var(events[:,3], name='i_stop')
     event = _data.var(events[:,2], name='eventID')
-    dataset = _data.dataset(name, event, istart, istop)
+    dataset = _data.dataset(event, istart, istop, name=name)
     if labels:
         dataset.add(_data.factor(events[:,2], name='event', labels=labels))
     return dataset
@@ -157,5 +157,5 @@ def fiff(raw, events, conditions, varname='condition', dataname='MEG',
     
     Y = _data.ndvar(dims, data, properties=props, name=dataname)
     
-    dataset = _data.dataset(name, Y, c_factor, default_DV=dataname)
+    dataset = _data.dataset(Y, c_factor, name=name, default_DV=dataname)
     return dataset

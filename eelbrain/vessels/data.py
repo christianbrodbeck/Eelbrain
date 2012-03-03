@@ -1275,7 +1275,7 @@ class ndvar(object):
 
 
 class dataset(dict):
-    def __init__(self, name, *items, **named_items):
+    def __init__(self, *items, **named_items):
         """
         stores input items, does not make a copy
         
@@ -1284,8 +1284,11 @@ class dataset(dict):
             dataset's `default_DV` attribute, which can be modified safely 
             later.
         
+        name : str
+            name describing the dataset
+        
         """ 
-        self.name = name
+        self.name = named_items.pop('name', '???')
         self.default_DV = named_items.pop('default_DV', None)
         dict.__init__(self)
         for item in items:
@@ -1620,7 +1623,7 @@ class dataset(dict):
             default_DV = self.default_DV
         items['default_DV'] = default_DV
         
-        return dataset(name, **items)
+        return dataset(name=name, **items)
 
 
 

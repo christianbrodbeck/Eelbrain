@@ -93,7 +93,7 @@ class ttest(_vsl.data.dataset):
         T = _vsl.data.ndvar(dims, T, properties=properties, name='T', info=test_name)
         
         items = data + [diff, T, P]
-        _vsl.data.dataset.__init__(self, test_name, *items)
+        _vsl.data.dataset.__init__(self, name=test_name, *items)
         
         self.data = data
         self.diff = [[diff, P]]

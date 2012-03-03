@@ -152,7 +152,7 @@ def get_permutated_dataset(*variables):
             np.random.shuffle(out[i:i+rand_bin_len])
     
     # create dataset
-    ds = _data.dataset('Design')
+    ds = _data.dataset(name='Design')
     for v in variables:
         x = out[:,v.ID]
         f = _data.factor(x, v.name, labels=v.cells, retain_label_codes=True)
