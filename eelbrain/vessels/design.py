@@ -265,10 +265,12 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
     return _data.factor(x, name, labels=cells, retain_label_codes=True)
 
 
-def shuffle_cases(dataset, inplace=False):
+def shuffle_cases(dataset, inplace=False, blocks=None):
     """
     Shuffles the cases in a dataset. 
     
+    blocks : categorial variable (factor or interaction)
+        defines blocks between which cases are not exchanged
     inplace : bool
         If True, the input dataset itself is modified, and the function does 
         not return anything; if False, a new dataset containing the shuffled 
@@ -276,13 +278,20 @@ def shuffle_cases(dataset, inplace=False):
      
     """
     index = np.arange(dataset.N)
-    np.random.shuffle(index)
+    if blocks is None:
+        np.random.shuffle(index)
+    else:
+        for cell in blocks.cells:
+            i = blocks == cell
+            subindex = index[i]
+            np.random.shuffle(subindex)
+            index[i] = subindex
     
     if inplace:
         for k in dataset:
             dataset[k] = dataset[k][index]
     else:
-        return _data.dataset(name='shuffled', *(dataset[k][index] for k in dataset))
+        return dataset.subset(index)
 
 
 
