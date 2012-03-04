@@ -897,7 +897,7 @@ class factor(_regressor_):
         
         """
         if np.iterable(y):
-            rd = dict((v, k) for k, v in self.cells.iteritems())
+            rd = {v: k for k, v in self.cells.iteritems()}
             # TODO: implement reversable_dict type
             if isstr(y):
                 try:
