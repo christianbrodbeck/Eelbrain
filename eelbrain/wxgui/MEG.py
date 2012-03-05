@@ -146,7 +146,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
     
     def _update_mean(self):
         mseg = self._get_page_mean_seg()
-        data = mseg.data
+        data = mseg.data[0]
         T = mseg.time
         T_len = len(T)
         Ylen = T_len * 2 + 1
@@ -159,7 +159,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         Y[2*T_len:T_len:-1, 0] = T
         # border regions
         Y[T_len,:] = Y[T_len+1,:]
-        self._mean_handle.set_paths([Y])
+        self._mean_handle[0].set_paths([Y])
         
         # update figure
         self.canvas.redraw_ax(self._mean_ax)
