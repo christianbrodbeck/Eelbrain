@@ -1213,14 +1213,7 @@ class ndvar(object):
         return self.data[index]
     
     def mean(self, name="mean({name})"):
-        data = self.data.mean(axis=0)[None,...]
-        name = name.format(name=self.name)
-        # properties
-        properties = self.properties.copy()
-        for prop in ['ylim', 'colorspace']:
-            if '%s_mean'%prop in properties:
-                properties[prop] = properties.pop('%s_mean'%prop)
-        return ndvar(self.dims, data, properties=properties, name=name)
+        return self.get_summary(np.mean, name=name)
     
     def subdata(self, time=None):
         """
