@@ -1287,6 +1287,7 @@ class dataset(dict):
         
         """ 
         self.name = named_items.pop('name', '???')
+        self.info = named_items.pop('info', {})
         self.default_DV = named_items.pop('default_DV', None)
         dict.__init__(self)
         for item in items:
@@ -1616,12 +1617,13 @@ class dataset(dict):
         """
         items = dict((k, v[index]) for k, v in self.iteritems())
         name = name.format(name=self.name)
+        info = self.info.copy()
         
         if default_DV is None:
             default_DV = self.default_DV
         items['default_DV'] = default_DV
         
-        return dataset(name=name, **items)
+        return dataset(name=name, info=info, **items)
 
 
 
