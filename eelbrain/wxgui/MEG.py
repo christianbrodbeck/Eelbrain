@@ -487,7 +487,7 @@ class pca(mpl_canvas.CanvasFrame):
         # create the output new ndvar 
         dims = self._Y.dims
         properties = self._Y.properties
-        self._dataset.add(_data.ndvar(dims, data, properties, name=name))
+        self._dataset[name] = _data.ndvar(dims, data, properties, name=name)
         self.Close()
 
 
