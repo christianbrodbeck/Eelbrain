@@ -446,13 +446,14 @@ class pca(mpl_canvas.CanvasFrame):
         rm_comp = sorted(self._rm_comp)
         while not name:
             dlg = wx.TextEntryDialog(self, "What name should the new ndvar be assigned in the dataset?",
-                                     "Choose Name for New Variable", "%spca"%self._Y.name)
+                                     "Choose Name for New Variable", "%s"%self._Y.name)
             if dlg.ShowModal() == wx.ID_OK:
-                newname = dlg.GetValue()
+                newname = str(dlg.GetValue())
                 if newname in self._dataset:
-                    answer = ui.ask("Replace?", "An item with name %r already "
-                                    "exists in the dataset. Should it be "
-                                    "replaced?\n%r" % (newname, self._dataset[newname]))
+                    msg = ("The dataset already contains an item named %r. "
+                           "Should it be replaced? The item is:\n\n%r" %
+                            (newname, self._dataset[newname]))
+                    answer = ui.ask("Replace %r?"%newname, msg)
                     if answer is True:
                         name = newname
                     elif answer is None:
