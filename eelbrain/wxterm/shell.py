@@ -102,7 +102,7 @@ class Shell(wx.py.shell.Shell):
                             source = source[name].__dict__
                     if '__all__' in options:
                         options = source['__all__']
-                        options.sort()
+                        options.sort(cmp=lambda x,y: cmp(x.lower(), y.lower()))
                     elif '__hide__' in options:
                         for item in source['__hide__']:
                             if item in options:
