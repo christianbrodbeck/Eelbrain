@@ -429,6 +429,8 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
     """
     handles = []
     
+    xmin = []
+    xmax = []
     for l in layers:
         if color is None:
             plot_kwargs['color'] = l.properties.get('color', 'k')
@@ -442,6 +444,8 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
             h = _plt_uts(ax, l, sensors=sensors, **plot_kwargs)
         
         handles.append(h)
+        xmin.append(l.time[0])
+        xmax.append(l.time[-1])
     
     # axes decoration
     l = layers[0]
@@ -451,6 +455,8 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
         ylabel = l.properties.get('unit', None)
     if ylim is None:
         ylim = l.properties.get('ylim', None)
+    
+    ax.set_xlim(min(xmin), max(xmax))
     
     if ylim:
         if np.isscalar(ylim):
