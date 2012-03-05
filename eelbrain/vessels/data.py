@@ -1808,13 +1808,13 @@ def factor_from_comp(comp, name=None):
     return out
 
 
-def factor_from_dict(name, key_factor, values_dict):
+def factor_from_dict(name, base, values_dict):
     """
-    Creates a factor containing a value defined in values_dict for each 
-    category in key_factor.
+    Returns a factor containing a value defined in values_dict for each 
+    category in base.
     
     """
-    x = [values_dict[label] for label in key_factor.as_labels()]
+    x = [values_dict[value] for value in base]
     return factor(x, name=name)
 
 
