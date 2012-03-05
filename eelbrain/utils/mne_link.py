@@ -19,6 +19,8 @@ Created on Mar 4, 2012
 
 import os
 import subprocess
+import tempfile
+import re
 
 from eelbrain import ui
 
@@ -36,6 +38,28 @@ if 'PATH' in os.environ:
     os.environ['PATH'] += ':%s' % _mne_bin
 else:
     os.environ['PATH'] = _mne_bin
+
+
+class marker_avg_file:
+    def __init__(self, path):
+        # Parse marker file, based on Tal's pipeline:
+        regexp = re.compile(r'Marker \d:   MEG:x= *([\.\-0-9]+), y= *([\.\-0-9]+), z= *([\.\-0-9]+)')
+        output_lines = []
+        for line in open(path):
+            match = regexp.search(line)
+            if match:
+                output_lines.append('\t'.join(match.groups()))
+        txt = '\n'.join(output_lines)
+        
+        fd, self.path = tempfile.mkstemp(suffix='hpi', text=True)
+        f = os.fdopen(fd, 'w')
+        f.write(txt)
+        f.close()
+    
+    def __del__(self):
+        os.remove(self.path)
+
+
 
 
 def kit2fiff(meg_sdir=None, sfreq=250, aligntol=25, **more_kwargs):
@@ -64,9 +88,12 @@ def kit2fiff(meg_sdir=None, sfreq=250, aligntol=25, **more_kwargs):
     assert os.path.exists(param_dir)
     subject = os.path.basename(meg_sdir)
     
+    mapath = os.path.join(param_dir, '%s_eref3_markers_average.txt' % subject)
+    mafile = marker_avg_file(mapath)
+    
     elp_file = os.path.join(param_dir, '%s_eref3_electrodes.elp' % subject)
     hsp_file = os.path.join(param_dir, '%s_eref3_headshape.hsp' % subject)
-    hpi_file = os.path.join(param_dir, '%s_eref3_markers.hpi' % subject)
+    hpi_file = mafile.path
     sns_file = '~/Documents/Eclipse/Eelbrain\ Reloaded/aux_files/sns.txt'
     data_file = '~/Documents/Data/eref/meg/R0368/data/%s_eref3_exported.txt' %  subject
     out_file = os.path.join(meg_sdir, 'myfif', '%s_raw.fif' % subject)
