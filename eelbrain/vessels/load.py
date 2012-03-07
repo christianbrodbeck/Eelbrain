@@ -11,10 +11,18 @@ Created on Feb 21, 2012
 @author: christian
 '''
 
+__all__ = ['unavailable']
+unavailable = []
+
 import os
 
 import numpy as np
-import mne
+
+try:
+    import mne
+    __all__.extend(('fiff_events', 'fiff_epochs'))
+except ImportError:
+    unavailable.append('mne import failed')
 
 import data as _data
 import colorspaces as _cs
@@ -22,7 +30,6 @@ import sensors
 from eelbrain import ui
 
 
-__all__ = ['fiff_events', 'fiff_epochs']
 
 
 
