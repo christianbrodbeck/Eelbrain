@@ -33,5 +33,6 @@ Properties
 
 """
 
-import load
+import design
 import process
+import load
