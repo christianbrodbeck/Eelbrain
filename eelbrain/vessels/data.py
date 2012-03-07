@@ -1423,7 +1423,7 @@ class dataset(dict):
 #        return self[self.default_DV].as_epoch(*args, **kwargs)
 #    
     def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, sort=True,
-                 midrule=False):
+                 midrule=False, count=False):
         r"""
         returns a fmtxt.Table containing all vars and factors in the dataset 
         (ndvars are skipped). Can be used for exporting in different formats
@@ -1434,6 +1434,8 @@ class dataset(dict):
         
         cases : int
             number of cases to include
+        count : bool
+            Add an initial column containing the case number
         fmt : str
             format string for numerical variables. Hast to be a valid 
             `format string,
@@ -1460,8 +1462,10 @@ class dataset(dict):
             keys = sorted(keys)
         values = [self[key] for key in keys]
         
-        table = fmtxt.Table('l'*len(keys))
+        table = fmtxt.Table('l' * (len(keys) + count))
         
+        if count:
+            table.cell('#')
         for name in keys:
             table.cell(name)
         
@@ -1469,6 +1473,9 @@ class dataset(dict):
             table.midrule()
         
         for i in range(cases):
+            if count:
+                table.cell(i)
+            
             for v in values:
                 if isfactor(v):
                     if f_fmt is None:
