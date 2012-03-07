@@ -673,10 +673,11 @@ class var(_regressor_):
             return var(x, self.name)
         else:
             x = self.x[values]
-            if np.iterable(values):
+            if np.iterable(x):
                 return var(x, self.name)
             else:
                 return x
+    
     def diff(self, X, i1, i2, match):
         """
         subtracts X==i2 from X==i1; sorts values in ascending order according 
