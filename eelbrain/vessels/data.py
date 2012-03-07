@@ -1267,6 +1267,39 @@ class ndvar(object):
 
 
 class dataset(dict):
+    """
+    A dataset is a dictionary that stores a collection of variables (``var``, 
+    ``factor``, and ``ndvar`` objects) that describe the same underlying cases. 
+    Keys are inforced to be ``str`` objects and should preferably correspond 
+    to the variable names.
+    
+
+    Accessing Data:    
+    
+    Standard indexing with *strings* is used to access the contained var and
+    factor objects:
+            
+    - ``ds['var1']`` --> ``var1``. 
+    - ``ds['var1',]`` --> ``[var1]``.
+    - ``ds['var1', 'var2']`` --> ``[var1, var2]``
+    
+    Standard indexing with *integers* can be used to retrieve a subset of cases 
+    (rows):
+    
+    - ``ds[1]``
+    - ``ds[1:5]`` == ``ds[1,2,3,4]``
+    - ``ds[1, 5, 6, 9]`` == ``ds[[1, 5, 6, 9]]``
+    
+    Case indexing is primarily useful to display only certain rows of the 
+    table::
+    
+        >>> print ds[3:5]
+    
+    Case indexing is implemented by a call to the .subset() method, which 
+    should probably be used preferably for anything but interactive table
+    inspection.  
+    
+    """
     def __init__(self, *items, **named_items):
         """
         stores input items, does not make a copy
@@ -1296,33 +1329,31 @@ class dataset(dict):
         
             >>> ds[9]        (int) -> case
             >>> ds[9:12]     (slice) -> subset with those cases
+            >>> ds[[9, 10, 11]]     (list) -> subset with those cases
             >>> ds['MEG1']  (strings) -> var
             >>> ds['MEG1', 'MEG2']  (list of strings) -> list of vars; can be nested!
         
         """
-#        if index in self:
         if isinstance(name, int):
             name = slice(name, name+1)
         
         if isinstance(name, slice):
-            index = np.zeros(self.N, dtype=bool)
-            index[name] = True
-#            if name.start is None:
-#                slbl = 
-#            i_numbers = 
-#            name = self.name + '[%s]'
-            return self.subset(index)
-#        if isstr(index):
-        elif isinstance(name, (list, tuple)):
-            out = []
-            for item in name:
-                out.append(self[item])
-            return out
+            return self.subset(name)
+        
+        is_str = isinstance(name, basestring)
+        is_sequence = np.iterable(name) and not is_str
+        
+        if is_sequence:
+            all_str = all(isinstance(item, basestring) for item in name)
+            if all_str:
+                return [self[item] for item in name]
+            else:
+                if isinstance(name, tuple):
+                    name = list(name)
+                return self.subset(name)
+        
         else:
             return dict.__getitem__(self, name)
-#        else:
-#            items = dict((k, v[index]) for k, v in self.iteritems())
-#            return dataset(**items)
     
     def __repr__(self):
         rep_tmp = "<dataset %(name)r N=%(N)i: %(items)s"
@@ -1606,10 +1637,12 @@ class dataset(dict):
     def subset(self, index, name='{name}', default_DV=None):
         """
         Returns a dataset containing only the subset of cases selected by 
-        `index`.
+        `index`. Keep in mind that index is passed on to numpy objects, which 
+        means that advanced indexing always returns a copy of the data, whereas
+        basic slicing (using slices) returns a view.
         
         """
-        items = dict((k, v[index]) for k, v in self.iteritems())
+        items = {k: v[index] for k, v in self.iteritems()}
         name = name.format(name=self.name)
         info = self.info.copy()
         
