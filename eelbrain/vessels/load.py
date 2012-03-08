@@ -75,17 +75,16 @@ def fiff_events(source_path=None, name=None, bin_invert=True):
         # offsets, but not in the raw file created by kit2fiff. For handling
         # see :func:`fiff_event_file`
     
-    eventIDs = events[:,2]
     # kit2fif reads trigger channels in the reverse sequence from PTB, 
     # so we need to fix that in order to retrieve the original 
     # trigger values.
     if bin_invert:
         getbin8 = lambda x: bin(i)[2:].rjust(8, '0')
         revbin = lambda x: int(''.join(reversed(getbin8(x))), 2)
-        eventIDs = np.array([revbin(i) for i in eventIDs])
+        events[:,2] = [revbin(i) for i in events[:,2]]
     
     istart = _data.var(events[:,0], name='i_start')
-    event = _data.var(eventIDs, name='eventID')
+    event = _data.var(events[:,2], name='eventID')
     info = {'source': source_path}
     return _data.dataset(event, istart, name=name, info=info)
 
