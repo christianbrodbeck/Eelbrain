@@ -41,7 +41,7 @@ _default_fiff_properties = {'proj': 'ideal',
                             }
 
 
-def fiff_events(source_path=None, name=None, bin_invert=True):
+def fiff_events(source_path=None, name=None, bin_invert=True, merge=-1):
     """
     Returns a dataset containing events from a raw fiff file. Use
     :func:`fiff_epochs` to load MEG data corresponding to those events.
@@ -49,6 +49,12 @@ def fiff_events(source_path=None, name=None, bin_invert=True):
     source_path : str (path)
         the location of the raw file (if ``None``, a file dialog will be 
         displayed).
+    
+    merge : int
+        use to merge events lying in neighboring samples. The integer value 
+        indicates over how many samples events should be merged, and the sign
+        indicates in which direction they should be merged (negative means 
+        towards the earlier event, positive towards the later event) 
     
     name : str
         A name for the dataset.
@@ -82,6 +88,23 @@ def fiff_events(source_path=None, name=None, bin_invert=True):
         getbin8 = lambda x: bin(i)[2:].rjust(8, '0')
         revbin = lambda x: int(''.join(reversed(getbin8(x))), 2)
         events[:,2] = [revbin(i) for i in events[:,2]]
+    
+    if merge:
+        index = np.ones(len(events), dtype=bool)
+        diff = np.diff(events[:,0])
+        where = np.where(diff < abs(merge))[0]
+        
+        if merge > 0:
+            # drop the earlier event
+            index[where] = False
+        else:
+            # drop the later event
+            index[where + 1] = False
+            # move the trigger value to the earlier event
+            for w in reversed(where):
+                i1 = w
+                i2 = w + 1
+                events[i1,2] = events[i2,2]            
     
     istart = _data.var(events[:,0], name='i_start')
     event = _data.var(events[:,2], name='eventID')
