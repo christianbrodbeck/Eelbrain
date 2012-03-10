@@ -18,6 +18,8 @@ Contents:
    
    About
    Interface
+   psyphys
+   psyphys-tutorial
    MNE
 
 
