@@ -6,9 +6,9 @@ copy all the relevant commands to a script that can be executed again to reprodu
 the same result. In the following I will add at the end of each section
 the script that would be retained for later reproduction. 
 
-The complete scripts can be downloaded from here (not yet):
+The complete scripts can be downloaded from here:
 
-* `Import`<http://dl.dropbox.com/u/659990/eelbrain_dist/tutorial_scr.py>`_
+* `Import <http://dl.dropbox.com/u/659990/eelbrain_dist/tutorial_scr.py>`_
 
 .. 
     * `Analysis`

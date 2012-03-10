@@ -9,3 +9,4 @@ that make use of:
  * `NumPy <http://numpy.scipy.org>`_
  * `Matplotlib <http://matplotlib.sourceforge.net/>`_
  * `SciPy <http://www.scipy.org/>`_
+ * `MDP <http://mdp-toolkit.sourceforge.net/>`_

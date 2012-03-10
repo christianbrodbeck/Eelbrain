@@ -84,7 +84,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         self.canvas.mpl_connect('axes_leave_event', self.OnLeaveAxes)
         # figure
         self.figure.subplots_adjust(left=.01, right=.99, bottom=.05, top=.95, 
-                                 hspace=.5)
+                                    hspace=.5)
                 
     # compile plot kwargs:
         self._bfly_kwargs = {'extrema': True}

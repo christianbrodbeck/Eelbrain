@@ -707,22 +707,41 @@ class factor(_regressor_):
     def __init__(self, x, name="Factor", random=False, 
                  labels={}, colors={}, retain_label_codes=False,
                  rep=1, chain=1, sort=False):
-        """
-        :arg x: Value array (uses ravel to create 1-d array). If all conditions 
-            are coded with a single character, x can be a string, e.g. 
-            ``factor('io'*8, name='InOut')``
-        :arg name:  name of the factor
-        :arg bool random:  treat factor as random factor (important for ANOVA; 
-            default = False)
-        :arg dict labels:  if provided, these labels are used to replace values 
-            in x when constructing the labels dictionary. All labels for values of 
+        """        
+        x : array-like 
+            Sequence of values (initialization uses ravel(x) to create 1-d 
+            array). If all conditions are coded with a single character, x can 
+            be a string, e.g. ``factor('io'*8, name='InOut')``
+        
+        name : str
+            name of the factor
+            
+        random : bool
+            treat factor as random factor (important for ANOVA; default = False)
+            
+        labels : dict or None
+            if provided, these labels are used to replace values in x when
+            constructing the labels dictionary. All labels for values of 
             x not in `labels` are constructed using ``str(value)``.
-        :arg dict colors:  similar to labels, provide a color for each value. 
+            
+        colors : dict
+            similar to labels, provide a color for each value. 
             Colors should be matplotlib-readable.
-        :arg int rep:  repeat values in x rep times e.g. ``factor(['in', 'out'], rep=3)``
+        
+        rep : int
+            repeat values in x rep times e.g. ``factor(['in', 'out'], rep=3)``
             --> ``factor(['in', 'in', 'in', 'out', 'out', 'out'])``
-        :arg int chain: chain x; e.g. ``factor(['in', 'out'], chain=3)``
+        
+        chain : int
+            chain x; e.g. ``factor(['in', 'out'], chain=3)``
             --> ``factor(['in', 'out', 'in', 'out', 'in', 'out'])``
+        
+        
+        Example - different ways to initialize the same factor::
+        
+            >>> factor(['in', 'in', 'in', 'out', 'out', 'out'])
+            >>> factor([1, 1, 1, 0, 0, 0], labels={1: 'in', 2: 'out'})
+        
         
         """
         _regressor_.__init__(self, name, random)
@@ -1274,7 +1293,14 @@ class dataset(dict):
     to the variable names.
     
 
-    Accessing Data:    
+    Accessing Data
+    -------------- 
+    
+    - Use the get_case method or iteration over the dataset to 
+      retrieve individual cases/rows as {name: value} dictionaries.  
+    - Use standard indexing (``dataset[x]``) for retrieving 
+      variables (``str`` keys) and printing certain rows (``>>> print 
+      dataset[1:4]``). 
     
     Standard indexing with *strings* is used to access the contained var and
     factor objects:
@@ -1852,16 +1878,16 @@ def factor_from_dict(name, base, values_dict):
     return factor(x, name=name)
 
 
-def var_from_dict(name, key_factor, values_dict, default=0):
+def var_from_dict(name, base, values_dict, default=0):
     """
     Creates a variable containing a value defined in values_dict for each 
     category in key_factor.
     
     """
-    x = np.empty(len(key_factor))
-    x[:] = default
-    for k in key_factor.as_labels():
-        x[key_factor==k] = values_dict[k]
+    x = np.empty(len(base))
+    x.fill(default)
+    for k,v in values_dict.iteritems():
+        x[base==k] = v
     return var(x, name=name)
 
 
