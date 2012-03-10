@@ -5,10 +5,12 @@ TODO: use wx.html2
 
 """
 
+import logging
 import types
+import os
+
 import wx
 import wx.html
-import logging
 
 import ID
 from eelbrain.wxutils import Icon
@@ -25,7 +27,18 @@ try:
     import docutils.core
     
     def rst2html(rst):
-#        html = docutils.core.publish_parts(rst, writer_name='html')['body']
+        # count leading whitespaces
+        lines = rst.splitlines()
+        ws_lead = []
+        for line in lines:
+            len_stripped = len(line.lstrip(' '))
+            if len_stripped:
+                ws_lead.append(len(line) - len_stripped)
+        
+        # remove leading whitespaces
+        rm = min(ws_lead)
+        rst = os.linesep.join(line[rm:] for line in lines)
+        
         try:
             html = docutils.core.publish_parts(rst, writer_name='html')['body']
             logging.debug("rst success on: %s" % len(rst))
