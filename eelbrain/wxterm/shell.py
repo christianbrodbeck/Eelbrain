@@ -9,7 +9,11 @@ experiment management
 
 """
 
-import sys, logging, os, string
+import sys 
+import logging
+import os
+import string
+import re
 import cPickle as pickle
 import webbrowser
 
@@ -157,8 +161,8 @@ class Shell(wx.py.shell.Shell):
     def writeErr(self, message):
         # TODO: color=(0.93359375, 0.85546875, 0.3515625)
         ls = os.linesep
-        if message != ls:
-            message = message.replace(ls, ls+'!   ')
+#        if message != ls:
+#            message = message.replace(ls, ls+'!   ')
         message = message.replace('"""', '"') # some deprecation errors contain """ messing up shell coloration
         self.writeOut(message)#, sep=True)
     def start_exec(self):
@@ -491,9 +495,14 @@ class ShellFrame(wx.py.shell.ShellFrame):
         # self._attached_items = {id(dict_like) -> {key -> value}}
         present = []
         for k in dictionary:
-            if k in self.global_namespace:
+            if not isinstance(k, basestring):
+                raise ValueError("Dictionary contains non-strong key: %r" % k)
+            elif not re.match('^[a-zA-Z_]', k) and re.match('[a-zA-Z0-9_]', k):
+                raise ValueError("Dictionary contains invalid name: %r" % k)
+            elif k in self.global_namespace:
                 if id(self.global_namespace[k]) != id(dictionary[k]):
                     present.append(k)
+        
         if present:
             title = "Overwrite Items?"
             message = ("The following items are associated with different "
