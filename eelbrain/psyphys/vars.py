@@ -944,7 +944,6 @@ class VarMothership(object):
                            'Rate': float,
                            }
     def __init__(self):
-#        self.colonies = []
         self.commanders = []
         self.parasites = []
     
@@ -959,7 +958,29 @@ class VarMothership(object):
     
     def __iter__(self):
         for var in self.commanders + self.parasites:
-            yield var
+            yield var.name
+    
+    def __getitem__(self, name):
+        return self.asdict()[name]
+    
+    def _create_property_var(self, name):
+        "creates the var; only call when you are sure it does not yet exist"
+        if name in self.property_var_dtypes:
+            dtype = self.property_var_dtypes[name]
+        else:
+            raise KeyError("No property var with name '%s'; see "
+                           "variables.property_var_dtypes for list" % name)
+        if name == 'subject':
+            random = True
+        else:
+            random = False
+        new_var = VarCommander(name, self, dtype, random=random)
+        self.commanders.append(new_var)
+        return new_var
+    
+    @property
+    def all_vars(self):
+        return self.commanders + self.parasites
     
     def as_table(self):
         table = fmtxt.Table('lll', title='Variables')
@@ -977,22 +998,6 @@ class VarMothership(object):
                 table.cell(p.dtype.__name__)
                 table.cell()
         return table
-    
-    def parasites_as_table(self):
-        table = fmtxt.Table('lll', title='Parasites')
-#        name_temp = '%s (%s)'
-        source_temp = '<- [%s]'
-        for p in self.parasites:
-            table.cell(p.name)
-            if p.dict_enabled:
-                table.cell("'dict'")
-            else:
-                table.cell(p.dtype.__name__)
-            table.cell(source_temp % ', '.join([h.name for h in p.hosts]))
-        return table
-    
-    def __getitem__(self, name):
-        return self.asdict()[name]
     
     def asdict(self):
         return {com.name: com for com in self.commanders+self.parasites}
@@ -1014,6 +1019,20 @@ class VarMothership(object):
 #            for k, v in copy.iteritems():
 #                newColony[k] = v
         return newColony
+    
+    def get(self, name):
+        for var in self.commanders + self.parasites:
+            if var.name == name:
+                return var
+        if name in self.property_var_dtypes:
+            return self._create_property_var(name)
+        raise KeyError("No Variable called '%s'"%var)
+    
+    def get_var_with_name(self, name):#, dtype='dict', **kwargs):
+        return self.get(name)
+    
+    def get_property_var(self, name):
+        self.get(name)
     
     def new(self, name, dtype, random=False):
         "Create a new VarCommander"
@@ -1053,39 +1072,21 @@ class VarMothership(object):
             p = self.new_parasite(hosts, name, dtype=dtype, mapping=mapping)
             self.ratings.append(p)
 
-    def get(self, name):
-        for var in self.commanders + self.parasites:
-            if var.name == name:
-                return var
-        if name in self.property_var_dtypes:
-            return self._create_property_var(name)
-        raise KeyError("No Variable called '%s'"%var)
+    def keys(self):
+        return [var.name for var in self.commanders + self.parasites]
     
-    def get_var_with_name(self, name):#, dtype='dict', **kwargs):
-        return self.get(name)
-    
-    def get_property_var(self, name):
-        self.get(name)
-    
-    def _create_property_var(self, name):
-        "creates the var; only call when you are sure it does not yet exist"
-        if name in self.property_var_dtypes:
-            dtype = self.property_var_dtypes[name]
-        else:
-            raise KeyError("No property var with name '%s'; see "
-                           "variables.property_var_dtypes for list" % name)
-        if name == 'subject':
-            random = True
-        else:
-            random = False
-        new_var = VarCommander(name, self, dtype, random=random)
-        self.commanders.append(new_var)
-        return new_var
-    
-    ## displaying variable properties---
-    @property
-    def all_vars(self):
-        return self.commanders + self.parasites
+    def parasites_as_table(self):
+        table = fmtxt.Table('lll', title='Parasites')
+#        name_temp = '%s (%s)'
+        source_temp = '<- [%s]'
+        for p in self.parasites:
+            table.cell(p.name)
+            if p.dict_enabled:
+                table.cell("'dict'")
+            else:
+                table.cell(p.dtype.__name__)
+            table.cell(source_temp % ', '.join([h.name for h in p.hosts]))
+        return table
     
     @property
     def var_names(self):

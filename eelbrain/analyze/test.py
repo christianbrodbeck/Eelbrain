@@ -7,18 +7,17 @@ from __future__ import division
 import random, itertools
 
 import numpy as np
-import scipy as sp
+import scipy.stats
 from matplotlib import pyplot as P
 
-import eelbrain.fmtxt as textab
-
+from eelbrain import fmtxt
 from eelbrain.vessels.data import var, isvar, asvar, isfactor, asfactor, ismodel
 from eelbrain.vessels.data import _split_Y, multifactor
 from eelbrain.vessels.structure import celltable
 
 
 __hide__ = ['division', 'random', 'itertools', 'scipy',
-            'textab', 'texstr',
+            'fmtxt', 'texstr',
             'var', 'isvar', 'asvar', 'isfactor', 'asfactor', 'ismodel', 'celltable',
             'multifactor', 
             ]
@@ -64,7 +63,7 @@ def lilliefors(data, formatted=False, **kwargs):
     # perform Kolmogorov-Smirnov with estimated mean and std
     m = np.mean(data)#, axis=axis)
     s = np.std(data, ddof=1)#, axis=axis)
-    D, ks_p = sp.stats.kstest(data, 'norm', args=(m,s), **kwargs)
+    D, ks_p = scipy.stats.kstest(data, 'norm', args=(m,s), **kwargs)
     # approximate p (Dallal)
     if N > 100:
         D *= (N/100)**.49
@@ -175,7 +174,7 @@ def star(p_list, out=str, levels=True, trend=False, corr='Hochberg',
                   .001: '***'}
         if trend is True:
             levels[.1] = "'" # "`"
-        elif textab.isstr(trend):
+        elif fmtxt.isstr(trend):
             levels[.1] = trend
     elif trend:
         raise AssertionError("'trend' kwarg only meaningful when levels==True")
@@ -253,15 +252,15 @@ def _oneway(data, parametric=True, within=False):
         else:
             test = {'test': "One-Way ANOVA",
                     'statistic': 'F'}
-            test['F'], test['p'] = sp.stats.f_oneway(*args)
+            test['F'], test['p'] = scipy.stats.f_oneway(*args)
     elif within:
         test = {'test': "Friedman Chi-Square",
                 'statistic': 'Q'}
-        test['Q'], test['p'] = sp.stats.friedmanchisquare(*args)
+        test['Q'], test['p'] = scipy.stats.friedmanchisquare(*args)
     else:
         test = {'test': "Kruskal Wallis",
                 'statistic': 'H'}
-        test['H'], test['p'] = sp.stats.kruskal(*args)
+        test['H'], test['p'] = scipy.stats.kruskal(*args)
     test['value'] = test[test['statistic']]
     test['stars'] = test.star(test['p'])
     return test
@@ -306,11 +305,11 @@ def test(Y, X=None, against=0, match=None, sub=None,
                 continue
             names.append(ct.cells[id])
             if (ct.within is not False) and ct.within[id, baseline_id]:
-                t, p = sp.stats.ttest_rel(baseline, ct.data[id])
+                t, p = scipy.stats.ttest_rel(baseline, ct.data[id])
                 df = len(baseline)-1
             else:
                 data = ct.data[id]
-                t, p = sp.stats.ttest_ind(baseline, data)
+                t, p = scipy.stats.ttest_ind(baseline, data)
                 df = len(baseline) + len(data) - 2
             ts.append(t)
             dfs.append(df)
@@ -322,7 +321,7 @@ def test(Y, X=None, against=0, match=None, sub=None,
         for id in ct.indexes:
             label = ct.cells[id]
             data = ct.data[id]
-            t, p = sp.stats.ttest_1samp(data, against)
+            t, p = scipy.stats.ttest_1samp(data, against)
             df = len(data) - 1
             names.append(label); ts.append(t); dfs.append(df); ps.append(p)        
     
@@ -336,7 +335,7 @@ def test(Y, X=None, against=0, match=None, sub=None,
     else:
         df_in_header = False
     
-    table = textab.Table('l' + 'r'*(3-df_in_header+bool(corr)))
+    table = fmtxt.Table('l' + 'r'*(3-df_in_header+bool(corr)))
     table.title(title.format(desc=title_desc))
     if corr:
         table.caption(_get_correction_caption(corr, k))
@@ -345,28 +344,28 @@ def test(Y, X=None, against=0, match=None, sub=None,
     table.cell("Effect")
     if df_in_header:
         table.cell([statistic_name,
-                    textab.texstr(dfs[0], property='_'),
+                    fmtxt.texstr(dfs[0], property='_'),
                     ], mat=True)
     else:
         table.cell(statistic_name, mat=True)
         table.cell('df', mat=True)
     table.cell('p', mat=True)
     if corr:
-        table.cell(textab.symbol('p', df=corr))
+        table.cell(fmtxt.symbol('p', df=corr))
     table.midrule()
     
     # body
     for name, t, mark, df, p, p_adj in zip(names, ts, stars, dfs, ps, ps_adjusted):
         table.cell(name)
-        tex_stars = textab.Stars(mark, of=3)
-        tex_t = textab.texstr(t, fmt='%.2f')
+        tex_stars = fmtxt.Stars(mark, of=3)
+        tex_t = fmtxt.texstr(t, fmt='%.2f')
         table.cell([tex_t, tex_stars])
         if not df_in_header:
             table.cell(df)
         
-        table.cell(textab.p(p))
+        table.cell(fmtxt.p(p))
         if corr:
-            table.cell(textab.p(p_adj))
+            table.cell(fmtxt.p(p_adj))
     return table
 
 
@@ -383,6 +382,7 @@ def pairwise(Y, X, match=None, sub=None,            # data in
     data, datalabels, names, within = _split_Y(Y, X, match=match, sub=sub)
     test = _pairwise(data, within=within, parametric=par, corr=corr, #levels=levels, 
                      trend=trend)
+    
     # extract test results
     k = len(data)
     indexes = test['pw_indexes']
@@ -396,7 +396,7 @@ def pairwise(Y, X, match=None, sub=None,            # data in
     symbols = test['symbols']
     
     # create TABLE
-    table = textab.Table('l'+'l'*(k-1+mirror))
+    table = fmtxt.Table('l'+'l'*(k-1+mirror))
     title_desc = "Pairwise {0}".format(test['test'])
     table.title(title.format(desc=title_desc))
     table.caption(test['caption'])
@@ -407,8 +407,8 @@ def pairwise(Y, X, match=None, sub=None,            # data in
         table.cell(name)
     table.midrule()
     
-    tex_peq = textab.texstr("p=")
-    #tex_df = textab.Element(df, "_", digits=0)
+    tex_peq = fmtxt.texstr("p=")
+    #tex_df = fmtxt.Element(df, "_", digits=0)
     if corr and not mirror:
         subrows = range(3)
     else:
@@ -433,14 +433,14 @@ def pairwise(Y, X, match=None, sub=None,            # data in
                     df = _df[index]
 #                    nstars = _NStars[index]
                     if subrow is 0:
-                        tex_cell = textab.eq(statistic, K, df=df, 
+                        tex_cell = fmtxt.eq(statistic, K, df=df, 
                                              stars=symbols[index],   
                                              of=3+trend)
                     elif subrow is 1:
-                        tex_cell = textab.texstr([tex_peq, texstr(p, fmt='%.3f')], 
+                        tex_cell = fmtxt.texstr([tex_peq, fmtxt.texstr(p, fmt='%.3f')], 
                                                  mat=True)
                     elif subrow is 2:
-                        tex_cell = textab.eq('p', _Pc[index], df='c', 
+                        tex_cell = fmtxt.eq('p', _Pc[index], df='c', 
                                              fmt='%.3f', drop0=True)
                     table.cell(tex_cell)
                 else:
@@ -487,19 +487,19 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
         test_name = "t-Tests ({0} samples)" 
         statistic = "t"
         if within:
-            test_func = sp.stats.ttest_rel
+            test_func = scipy.stats.ttest_rel
             test_name = test_name.format('paired')
         else:
-            test_func = sp.stats.ttest_ind
+            test_func = scipy.stats.ttest_ind
             test_name = test_name.format('independent')            
     elif within:
         test_name = "Wilcoxon Signed-Rank Test"
-        test_func = sp.stats.wilcoxon
+        test_func = scipy.stats.wilcoxon
         statistic = "z"
     else:
         test_name = "Mann-Whitney U Test"
         raise NotImplementedError("mannwhitneyu returns one-sided p")
-        test_func = sp.stats.mannwhitneyu
+        test_func = scipy.stats.mannwhitneyu
         statistic = "u"
     # perform test
     _K = [] # kennwerte
@@ -574,12 +574,12 @@ def correlations(Y, Xs, cat=None, levels=[.05, .01, .001], diff=None, sub=None,
         raise NotImplementedError
     
     if ismodel(cat) or isfactor(cat):
-        table = textab.Table('l'*5)
+        table = fmtxt.Table('l'*5)
         table.cells('Variable', 'Category', 'r', 'p', 'n')
         if ismodel(cat):
             cat = multifactor(cat.factors)
     else:
-        table = textab.Table('l'*4)
+        table = fmtxt.Table('l'*4)
         table.cells('Variable', 'r', 'p', 'n')
     
     table.midrule()
@@ -632,7 +632,7 @@ def _corr(Y, X, index):
     df = n - 2
     r = np.corrcoef(Y.x, X.x)[0,1]
     t = r / np.sqrt((1-r**2) / df)
-    p = sp.stats.t.sf(np.abs(t), df) * 2
+    p = scipy.stats.t.sf(np.abs(t), df) * 2
     return r, p, n
 
 
@@ -648,7 +648,7 @@ def _corr_to_table(table, Y, X, categories, levels, printXname=True, label=False
                 table.cell()
             if label:
                 table.cell(label)
-            table.cells(textab.texstr(r) + textab.Stars(nstars, of=len(levels)), p, n)
+            table.cells(fmtxt.texstr(r) + fmtxt.Stars(nstars, of=len(levels)), p, n)
         else:
             table._my_nan_count += 1
 
@@ -744,14 +744,14 @@ class bootstrap_pairwise(object):
     def __str__(self):
         return str(self.table())
     def table(self):
-        table = textab.Table('lrrrr')
+        table = fmtxt.Table('lrrrr')
         table.title(self.title)
         table.caption("Results based on %i samples"%self._n_samples)
         table.cell('Comparison')
-        table.cell(textab.symbol('t', df=self._df))
-        table.cell(textab.symbol('p', df='param'))
-        table.cell(textab.symbol('p', df='corr'))
-        table.cell(textab.symbol('p', df='boot'))
+        table.cell(fmtxt.symbol('t', df=self._df))
+        table.cell(fmtxt.symbol('p', df='param'))
+        table.cell(fmtxt.symbol('p', df='corr'))
+        table.cell(fmtxt.symbol('p', df='boot'))
         table.midrule()
         
         p_corr = mcp_adjust(self._p_parametric)
@@ -764,9 +764,9 @@ class bootstrap_pairwise(object):
                                            self._p_boot, stars_boot):
             table.cell(name)
             table.cell(t, fmt='%.2f')
-            table.cell(textab.p(p1))
-            table.cell(textab.p(pc, stars=s1))
-            table.cell(textab.p(p2, stars=s2))
+            table.cell(fmtxt.p(p1))
+            table.cell(fmtxt.p(pc, stars=s1))
+            table.cell(fmtxt.p(p2, stars=s2))
         return table
     def plot_t_dist(self, ax=None):
         """
@@ -777,7 +777,7 @@ class bootstrap_pairwise(object):
             fig = P.figure()
             ax = P.axes()
         t = self.t_resampled
-        density = sp.stats.gaussian_kde(t)
+        density = scipy.stats.gaussian_kde(t)
 #        density.covariance_factor = lambda : .25
 #        density._compute_covariance()
         xs = np.linspace(0, max(t), 200)
@@ -789,11 +789,11 @@ class bootstrap_pairwise(object):
         
         xs = np.linspace(np.min(self._group_data), np.max(self._group_data), 200)
         for i, name in enumerate(self._group_names):
-            density = sp.stats.gaussian_kde(self._group_data[i])
+            density = scipy.stats.gaussian_kde(self._group_data[i])
             P.plot(xs, density(xs), label=name)
         P.legend()
     def test_param(self, t):
-        p = sp.stats.t.sf(np.abs(t), self._group_size-1) * 2
+        p = scipy.stats.t.sf(np.abs(t), self._group_size-1) * 2
         return p
     def test_boot(self, t):
         "t: scalar or array; returns p for each t"

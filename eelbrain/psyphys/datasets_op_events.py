@@ -10,6 +10,8 @@ from vars import isvar
 from datasets_base import Derived_Event_Dataset
 import param
 
+__hide__ = ['logging', 'deepcopy', 'np', 'mlab', 'intervals', 'isvar', 
+            'Derived_Event_Dataset', 'param']
 
 
 # MARK: functions
@@ -260,13 +262,17 @@ class Conflate(_Event_to_Event):
 
 class Append(_Event_to_Event):
     """
-    self.p.add[VarCommander] = LIST
-    LIST can be:
-     - array-like (list added to each segments)
-     - [VarCommander, {val1: LIST, ...}]
-        VarCommander: source segment-variable
-        val1: value of VarCommander
-        LIST: array-like to be added for this subject
+    Append a variable with a fixed list of values to each segment.
+    Setup with::
+    
+        >>> self.p.add[VarCommander] = LIST
+    
+    where LIST can be:
+     - array-like (the same list is added to each segment)
+     - [VarCommander, {val_x: LIST_x, ...}]
+       VarCommander: determines a variable in the source segment-variable, the 
+       segment's value on which (val_x) determines which list is appended 
+       (LIST_x)
     
     """
     def _addparams_(self, p):
@@ -411,12 +417,13 @@ class Enum(_Event_to_Event):
     
     """
     def _addparams_(self, p):
-        self.p.count = param.Address(desc="Each unique index of address will "
-                                     "be assigned one value")
+        self.p.count = param.Address(desc="An address; each unique index of "
+                                     "this address will be assigned one value")
         self.p.seq = param.Param(default=None, dtype=list, can_be_None=True,
-                                 desc="used instead of counting if not None")
+                                 desc="A sequence can be assigned that will be "
+                                 "used in place of counting")
         self.p.var = param.Variable(vartype=[int, float], can_be_None=False,
-                                    desc="Variable for enumeration")
+                                    desc="target variable")
     def _new_vars(self):
         return [self.compiled['var']]
     def _derive_segment_data_(self, segment, preview=False):

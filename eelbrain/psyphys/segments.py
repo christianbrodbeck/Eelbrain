@@ -103,6 +103,39 @@ class Segment(object):
         else:
             self.attach_to_dataset(dataset, varsource=varsource, id=id)
     
+    def __len__(self):
+        return self.shape[0]
+    
+    def __repr__(self):
+        fmt = dict(c = self.__class__.__name__,
+                   n = '',
+                   dt = self['data_type'])
+        if self.name:
+            fmt['n'] = '"%s", '%str(self.name)
+        return self.repr_temp.format(**fmt)
+    
+    def __getitem__(self, name):
+        "accepts: VarCommanders, str(->properties), indices(->data)"
+        if isvar(name):
+            return self.variables[name]
+        elif isinstance(name, basestring):
+            if name in self.properties:
+                return self.properties[name]
+            elif hasattr(self, 'dataset'): 
+                return self.dataset[name]
+            else:
+                raise KeyError("%r not in properties"%name)
+        else:
+            return self.data[name]
+    
+    def __setitem__(self, name, value):
+        if isvar(name):
+            self.variables[name]=value
+        elif isinstance(name, basestring):
+            self.properties[name] = value
+        else:
+            raise KeyError("Key must be VarCommander or String (for setting properties)")
+
     def attach_to_dataset(self, dataset, varsource=None, id=None):
         """
         Delete Segment._data, and set Segment.dataset, which will cause calls
@@ -137,12 +170,14 @@ class Segment(object):
             return self._data
         else:
             return self.dataset._get_data(self.id)
+    
     @property
     def properties(self):
         "returns properties; can not be modified directly"
         if not hasattr(self, '_properties'):
             self._properties = self.dataset._derive_segment_properties_(self)
         return deepcopy(self._properties)
+    
     def get_full_properties(self):
         if hasattr(self, 'dataset'):
             properties = self.properties
@@ -154,17 +189,12 @@ class Segment(object):
             return properties
         else:
             return deepcopy(self.properties)
-    def __repr__(self):
-        fmt = dict(c = self.__class__.__name__,
-                   n = '',
-                   dt = self['data_type'])
-        if self.name:
-            fmt['n'] = '"%s", '%str(self.name)
-        return self.repr_temp.format(**fmt)
+    
     # some important properties:
     @property
     def ndim(self):
         return self['ndim']
+    
     @property
     def shape(self):
         try:
@@ -173,17 +203,19 @@ class Segment(object):
             shape = self.data.shape
             self.properties['shape'] = shape
             return shape
-    def __len__(self):
-        return self.shape[0]
+    
     @property
     def t0(self):
         return self['t0']
+    
     @property
     def tstart(self):
         return -self.t0
+    
     @property
     def tend(self):
         return self.duration - self.t0
+    
     @property
     def color(self):
         if hasattr(self, 'dataset'):
@@ -193,6 +225,7 @@ class Segment(object):
                 return self['color']
             except:
                 return None
+    
     def set_color(self, *color_args):
         """
         matplotlib color, e.g.
@@ -206,28 +239,6 @@ class Segment(object):
             color = color_args
         if color != self['color']:
             self._properties['color'] = color
-    ## ACCESSING data/variables
-    def __getitem__(self, name):
-        "accepts: VarCommanders, str(->properties), indices(->data)"
-        if isvar(name):
-            return self.variables[name]
-        elif isinstance(name, basestring):
-            if name in self.properties:
-                return self.properties[name]
-            elif hasattr(self, 'dataset'): 
-                return self.dataset[name]
-            else:
-                raise KeyError("%r not in properties"%name)
-        else:
-            return self.data[name]
-    def __setitem__(self, name, value):
-        if isvar(name):
-            self.variables[name]=value
-        elif isinstance(name, basestring):
-            self.properties[name] = value
-        else:
-            raise KeyError("Key must be VarCommander or String (for setting properties)")
-
 
 
 
@@ -258,8 +269,18 @@ class Event_Segment(Segment):
 #
 #        self.properties['shape'] = data.shape
 #        self.data = data
+    
     def __str__(self):
         return str(self.astable())
+    
+    def __iter__(self):
+        for evt in self.sub_iter(None):
+            yield evt
+    
+    def __reversed__(self):
+        for evt in self.sub_iter(None, rev=True):
+            yield evt
+    
     def __getitem__(self, name):
         """
         returns, for the following inputs:
@@ -297,6 +318,18 @@ class Event_Segment(Segment):
             return Event_Segment(properties, self.varlist[:], 
                                  varsource=self.variables, data=data,
                                  name=self.name)
+    
+    def _get_static_vars(self):
+#        varlist = [(var, val) for var, val in self.variables.asdict()
+#        return dict([(var, val) for var, val in self.variables.variables.iteritems() if var not in self.varlist])
+        return self.variables.copy()
+        out = {}
+        var_ids = [id(v) for v in self.varlist]
+        for var, val in self.variables:
+            if id(var) not in var_ids:
+                out[var] = val
+        return out
+    
     def astable (self):
         data = self.data
         varlist = self.varlist
@@ -324,62 +357,11 @@ class Event_Segment(Segment):
                     v = par[asdict]
                     table.cell(par.repr(v))
         return table
+    
     @property
     def duration(self):
         return self['duration']
-    @property
-    def t(self):
-        return self.subdata(var=self.timevar)
-    @property
-    def timevar(self):
-        if hasattr(self, 'dataset'):
-            return self.dataset.experiment.variables.get('time')
-        else:
-            return 'time'
-    @property
-    def varlist(self):
-        if hasattr(self, 'dataset'):
-            return self.dataset.varlist
-        else:
-            return self._varlist
-    def _get_static_vars(self):
-#        varlist = [(var, val) for var, val in self.variables.asdict()
-#        return dict([(var, val) for var, val in self.variables.variables.iteritems() if var not in self.varlist])
-        return self.variables.copy()
-        out = {}
-        var_ids = [id(v) for v in self.varlist]
-        for var, val in self.variables:
-            if id(var) not in var_ids:
-                out[var] = val
-        return out
-    def __iter__(self):
-        for evt in self.sub_iter(None):
-            yield evt
-    def __reversed__(self):
-        for evt in self.sub_iter(None, rev=True):
-            yield evt
-    # subdata stuff
-    def sub_iter(self, var, min=None, max=None, rev=False):
-        """
-        generator function that iterates over a subset of events
-         
-        """
-        if var is None:
-            data = self.data
-        else:
-            data = self.range(var, min, max, out='data')
-        
-        if rev:
-            data = reversed(data)
-        
-        static = self._get_static_vars()
-        for values in data:
-            new = dict([(var, val) for var, val in zip(self.varlist, values)])
-            static.update(new)
-            # parasotes will work automatically
-#            for par in self.variables.mothership.parasites:
-#                static[par] = par[static]
-            yield static
+    
     def range(self, var, min=None, max=None, out='seg'):
         d = self.subdata(var=var, out='data')
         # get indexes
@@ -401,6 +383,29 @@ class Event_Segment(Segment):
                                  varlist=self.varlist, name=self.name)
         else:
             raise NotImplementedError("only out in ['seg', 'data']")
+    
+    def sub_iter(self, var, min=None, max=None, rev=False):
+        """
+        generator function that iterates over a subset of events
+         
+        """
+        if var is None:
+            data = self.data
+        else:
+            data = self.range(var, min, max, out='data')
+        
+        if rev:
+            data = reversed(data)
+        
+        static = self._get_static_vars()
+        for values in data:
+            new = dict([(var, val) for var, val in zip(self.varlist, values)])
+            static.update(new)
+            # parasotes will work automatically
+#            for par in self.variables.mothership.parasites:
+#                static[par] = par[static]
+            yield static
+            
     def subdata(self, 
                 tstart=None, tend=None, t0=None,
                 var=None, 
@@ -486,6 +491,18 @@ class Event_Segment(Segment):
             return new_seg
         else:
             raise ValueError("out: 'data' or 'segment'")
+    
+    @property
+    def t(self):
+        return self.subdata(var=self.timevar)
+    
+    @property
+    def timevar(self):
+        if hasattr(self, 'dataset'):
+            return self.dataset.experiment.variables.get('time')
+        else:
+            return 'time'
+    
     def uts(self, var='magnitude',
             tstart=None, tend=None, dur=None,
             samplingrate = 10,
@@ -539,11 +556,15 @@ class Event_Segment(Segment):
             return Y
         else:
             raise NotImplementedError
-                
-                
-            
+    
+    @property
+    def varlist(self):
+        if hasattr(self, 'dataset'):
+            return self.dataset.varlist
+        else:
+            return self._varlist
         
-    ## Plotting
+    ## Plotting---
     def asdata(self):
         samplingrate = self['samplingrate']
         n = self.duration * samplingrate
@@ -564,6 +585,7 @@ class Event_Segment(Segment):
                 y = 1
             out[start:end] = y
         return out[:, None]
+    
     def toax(self, start=None, end=None, ax=None, mag=True, dur=False, 
              labels=None, colors=None, **kwargs):
         """
