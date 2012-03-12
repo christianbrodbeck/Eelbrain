@@ -464,10 +464,6 @@ model. Collect the statistics in a dataset::
 
     >>> ds = pp.collect.timewindow(subject * magnitude, e.SCRs, e.event, tstart=.1, tend=.6)
 
-
-Analyzing Statistics
-^^^^^^^^^^^^^^^^^^^^
-
 A :py:class:`~vessels.data.dataset` stores a data table containing multiple 
 variables, and works like a dictionary::
 
@@ -496,10 +492,26 @@ categorical variables. The table can be shown with ``print``::
     0          5           005    
     0          4           005    
          (use .as_table() method to see the whole dataset)
+
+A dataset can be retrieved as table object, and any table object can be 
+exported as tab-separated values (tsv) file::
+
+    >>> t = ds.as_table()
+    >>> t.save_tsv() # saving without path argument opens save-dialog
+
+That way, the data can be analyzed in any statistics package. Eelbrain also 
+contains some functions for statistical analysis and plotting, which is
+illustrated in the next section. 
+
+
+Analyzing Statistics
+^^^^^^^^^^^^^^^^^^^^
+
     
 The :py:mod:`eelbrain.analyze` module contains functions for analyzing the 
 resulting dataset::
 
+    >>> import eelbrain.analyze as A
     >>> attach(ds)
     >>> fig = A.plot.boxplot(Y, magnitude, match=subject)
     >>> print A.test.pairwise(Y, magnitude, match=subject)
