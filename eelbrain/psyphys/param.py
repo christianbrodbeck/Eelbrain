@@ -1238,6 +1238,9 @@ class Address(Param):
         This parameter stores a biovars.Address object.
          
         """
+        if isinstance(address, basestring):
+            address = self._p._dataset.experiment.variables.get(address)
+        
         if address is None or isaddress(address):
             Param.set(self, address)
         else:
