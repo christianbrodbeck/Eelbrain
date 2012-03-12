@@ -939,7 +939,7 @@ class factor(_regressor_):
         elif y in self.cells:
             return y
         else:
-            raise ValueError("unknown cell code: %r" % v)
+            raise ValueError("unknown cell code: %r" % y)
     
     @property
     def as_dummy_complete(self):

@@ -130,9 +130,9 @@ class celltable:
     def __repr__(self):
         args = [self.Y.name, self.X.name]
         rpr = "celltable(%s)"
-        if self.match != None:
+        if self.match is not None:
             args.append("match=%s"%self.match.name)
-        if self.sub != None:
+        if self.sub is not None:
             indexes = ' '.join(str(i) for i in self.sub[:4])
             args.append("match=[%s...]"  % indexes)
         return rpr % (', '.join(args))

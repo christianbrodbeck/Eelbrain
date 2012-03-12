@@ -677,10 +677,13 @@ class Table:
                 txtlines.append(row.get_str(c_width, self.columns, fmt=fmt, 
                                             delimiter=row_delimiter))
         out = txtlines
+        
         if self._title != None:
             out = ['', self._title.get_str(), ''] + out
+        
         if self._caption:
-            out += str(self._caption)
+            out.append(str(self._caption))
+        
         return '\n'.join(out)
     
     def get_tex(self, fmt=None):
