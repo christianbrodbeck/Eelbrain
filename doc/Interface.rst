@@ -112,16 +112,36 @@ Editor
 * ``alt`` - ``arrow (up/down)``:  Move current line up or down (!!! uses copy-paste)
 
 
-Shell Commands
---------------
+Shell
+-----
+
+Functions
+^^^^^^^^^
 
 The following commands are available in the shell in addition to normal Python
 commands. For more information, use help(command):
 
-.. py:function:: attach(object)
+.. py:function:: attach(dictionary)
 
-	brings properties of object into the global namespace (for example variables 
-	from an Experiment object)
+    Updates the global namespace with ``dictionary``, as can be shown with
+    a locally defined dictionary::
+    
+        >>> a
+        Traceback (most recent call last):
+             File "<input>", line 1, in <module>
+           NameError: name 'a' is not defined
+           
+        >>> attach({'a': 'something'})
+        attached: ['a']
+        >>> a
+        'something'
+
+    Many dictionary-like Eelbrain objects can be attached like that for 
+    convenient access, for example: experiment.variables, datasets. The wxterm
+    shell will keep track of any attached variables and
+    :py:func:`detach` will remove any variables that were attached using 
+    this function from the global namespace.  
+	 
 
 .. py:function:: clear()
 
@@ -130,6 +150,11 @@ commands. For more information, use help(command):
 .. py:function:: copy(object)
 
 	copy str(object) to the clipboard
+
+.. py:function:: detach()
+
+    remove from the global namespace any variables that were added to it 
+    using the :py:func:`attach` function.
 
 .. py:function:: help([object])
 
@@ -141,35 +166,18 @@ commands. For more information, use help(command):
 
 .. py:function:: printdict(dictionary)
 
-	prints a more readable representation for complex dictionaries
-
+	prints a more readable representation for complex dictionaries.
 
 .. py:function:: table([list])
 
 	open a simple table editor. Can create a table from a 2 dimensional list as argument
 
 
-Modules
--------
+Startup Script
+^^^^^^^^^^^^^^
 
-The following Python modules are imported by default:
+Through the menu Eelbrain->Preferences..., a ``dataDir`` can be set. If this 
+dataDir contains a Python script named ``'startup'`` (note: no extension), this
+script is executed every time the shell starts up (this is a feature of the
+:py:class:`wx.py.shell.ShellFrame <http://www.wxpython.org/docs/api/wx.py.shell.ShellFrame-class.html>`). 
 
-External Modules
-^^^^^^^^^^^^^^^^
-
-*	``np``: `NumPy <http://numpy.scipy.org/>`_ (foundation for numerical computing in Python)
-*	``sp``: `SciPy <http://www.scipy.org/>`_ (builds on numpy, providing many scientific functions)
-*	``P``: `matplotlib <http://matplotlib.sourceforge.net/>`_.pylab  (quick plotting with matplotlib)
-*	``mpl``: `Matplotlib <http://matplotlib.sourceforge.net/>`_  (object-oriented plotting)
-*	``wx``: `wxPython <http://www.wxpython.org/>`_  (user interface components)
-
-
-Eelbrain Modules
-^^^^^^^^^^^^^^^^
-
-*	``S``:  :mod:`psystats` basic statistics such as ANOVAs and pairwise tests
-*	``importer``:  import datasets
-*	``op``:  perform operations of datasets
-*	``plot``:  different plotting functions
-*	``vw``:  interactive psychophysiology viewers (currently disabled if wxmpl is not installed) 
-*	``sensors``:  create sensor nets (for EEG)

@@ -31,6 +31,14 @@ Workflow:
 Converting KIT data to a fiff file
 ----------------------------------
 
+.. Expects the following files
+   experiment/
+               meg/
+                   subject/
+                   		   
+
+	
+
 .. autofunction:: eelbrain.utils.mne_link.kit2fiff
 
 

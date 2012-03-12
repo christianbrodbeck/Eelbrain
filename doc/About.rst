@@ -10,3 +10,11 @@ that make use of:
  * `Matplotlib <http://matplotlib.sourceforge.net/>`_
  * `SciPy <http://www.scipy.org/>`_
  * `MDP <http://mdp-toolkit.sourceforge.net/>`_
+ 
+
+Eelbrain Modules
+^^^^^^^^^^^^^^^^
+
+*   :py:mod:`fmtxt`: text formatting, most importantly tables
+*   :py:mod:`analyze`: basic statistics such as ANOVAs and pairwise tests
+ 

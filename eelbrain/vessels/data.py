@@ -1382,7 +1382,7 @@ class dataset(dict):
             return dict.__getitem__(self, name)
     
     def __repr__(self):
-        rep_tmp = "<dataset %(name)r N=%(N)i: %(items)s"
+        rep_tmp = "<dataset %(name)r N=%(N)i: %(items)s>"
         items = []
         for key in sorted(self):
             v = self[key]

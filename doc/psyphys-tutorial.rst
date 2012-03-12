@@ -1,20 +1,12 @@
 Psychophysiology Tutorial: Skin Conductance Responses
 =====================================================
 
-One possible workflow in Eelbrain is to work exploratively with the shell and, once finished,
-copy all the relevant commands to a script that can be executed again to reproduce
-the same result. In the following I will add at the end of each section
-the script that would be retained for later reproduction. 
-
+The tutorial is based on some simulated data which can be downloaded `here 
+<http://dl.dropbox.com/u/659990/eelbrain_dist/simulated_scr.zip>`_. 
 The complete scripts can be downloaded from here:
 
-* `Import <http://dl.dropbox.com/u/659990/eelbrain_dist/tutorial_scr.py>`_
-
-.. 
-    * `Analysis`
-
-The tutorial is based on some simulated data which can be downloaded `here 
-<http://dl.dropbox.com/u/659990/eelbrain_dist/simulated_scr.zip>`_.
+* `Import <http://dl.dropbox.com/u/659990/eelbrain_dist/tutorial_import.py>`_
+* `Analysis <http://dl.dropbox.com/u/659990/eelbrain_dist/tutorial_analyze.py>`_
 
 
 Overview
@@ -168,7 +160,10 @@ Next, we will specify which channels the importer should import::
 
 This parameter works like a Python dictionary. The keys (``0`` and ``1``)
 specify the channel number, and the values (``'events', 'evt'`` and
-``'skin_conductance', 'uts'``) the extraction parameters.
+``'skin_conductance', 'uts'``) the extraction parameters. ``uts`` stands for
+uniform time-series, i.e., a signal that is sampled at regular intervals in 
+time. ``evt`` stands for events, i.e., samples occurred at arbitrary points
+in time and time has to be listed for each sample.   
 
 .. Note:: The names that you assign to the extracted channels (the first 
 	argument, i.e. ``'events'`` and ``'skin_conductance'`` are going to be used as
@@ -219,26 +214,11 @@ store the imported data)::
 
 	>>> e.saveas('/Users/christian/Data/tutorial_scr')
 
-Now we can import the data; this might take a while::
+Now we can import the data::
 
 	>>> i.get()
 
-When this is done, the resulting experiment structure can be seen in the 
-Experiment GUI (which at the moment does not do much apart from displaying the 
-experiment structure ). The Experiment GUI can be opened by::
-
-    >>> import eelbrain.wxgui.psyphys as ppgui
-    >>> ppgui.frame_experiment(e)
-
-As you can see, the ``txt`` importer has two children with the names you 
-specified earier (``events`` and ``skin_conductance``). 
-The GUI does provide a convenient button to save the experiment in the
-Toolbar.
-
-..	
-    Note:: 
-	hover the mouse pointer over any toolbar buttons to get information
-	about its function)
+(this might take a while).
 
 
 Saving the Procedure as Python Script
@@ -256,30 +236,133 @@ script can incorporate the new data.
 	select a large section in the shell, since only the actual commands are 
 	copied.
 
-Generally you will want to copy all commands that affect the ``e`` (your ``Experiment`` 
-instance), but discard any commands that did not, such as exploratory plotting
-``i.plot()``. The script that you might want to keep from this section is::
-
-    import eelbrain.psyphys as pp
-    
-    e = pp.Experiment()
-    
-    # define import settings
-    i = pp.importer.txt(e)
-    i.p.source.set(u'/Users/christian/Data/simulated_scr')
-    i.p.samplingrate = 200
-    i.p.channels[0] = 'event', 'evt'
-    i.p.channels[1] = 'skin_conductance', 'uts'
-    
-    # import the data
-    e.saveas(u'/Users/christian/Data/tutorial_scr')
-    i.get()
-
-
 ..	Note:: In script files you can also use relative paths (e.g., 
     ``"../data"``). This only works after the script has been saved, 
     since then the system path is set to the directory containing the script 
     when the script is executed.
+
+
+Inspecting Data
+---------------
+
+In the Shell
+^^^^^^^^^^^^
+
+The experiment instance contains as attributes references to each dataset. 
+These can be seen using the print command::
+
+    >>> print e
+    |importer
+    | |event
+    | 
+    |skin_conductance
+
+Each dataset contains its segments in the segment attribute, which acts like a 
+list of segments::
+    
+    >>> len(e.skin_conductance.segments)
+    20
+    >>> e.skin_conductance.segments[0]
+    UTS_Segment("001.txt", uts)
+
+There are two types of segments: 
+For uts-data segments, the data itself can be retrieved as the data attribute:
+
+    >>> segment = e.skin_conductance.segments[0]
+    >>> segment.data
+    memmap([[ 1.      ],
+           [ 0.99    ],
+           [ 0.9851  ],
+           ..., 
+           [ 0.070447],
+           [ 0.073286],
+           [ 0.076122]])
+    >>> segment.data.shape
+    (28000, 1)
+    >>> type(segment.data)
+    <class 'numpy.core.memmap.memmap'>
+
+For event-segments, the data actual can also be accessed through the data 
+attribute, but the string representation (retrieved by the print function)
+is more readable::
+
+    >>> e.event[0]  # (a short-cut for e.event.segments[0])
+    Event_Segment("001.txt", event)
+    >>> e.event[0].data
+    memmap([[  10.,    6.,    4.],
+           [  25.,    6.,    5.],
+           [  40.,    6.,    4.],
+           [  55.,    6.,    5.],
+           [  70.,    6.,    4.],
+           [  85.,    6.,    5.],
+           [ 110.,    6.,    4.],
+           [ 125.,    6.,    5.]])
+    >>> print e.event[0]
+        time   duration   magnitude
+    -------------------------------
+    0   10     6          4        
+    1   25     6          5        
+    2   40     6          4        
+    3   55     6          5        
+    4   70     6          4        
+    5   85     6          5        
+    6   110    6          4        
+    7   125    6          5        
+
+
+GUIs
+^^^^
+
+There are also GUI elements based on wxpython. The dataset hierarchy of an 
+experiment can be seen in an experiment frame (which at the moment does not
+do much apart from that)::
+
+    >>> import eelbrain.wxgui.psyphys as ppgui
+    >>> ppgui.frame_experiment(e)
+
+As you can see, the ``txt`` importer has two children with the names you 
+specified earlier (``events`` and ``skin_conductance``). Their icons reflect 
+the data type. The GUI does provide a convenient button to save the experiment 
+in the Toolbar.
+
+..  
+    Note:: 
+    hover the mouse pointer over any toolbar buttons to get information
+    about its function)
+
+Data can be visualized with a :ref:`figure-list-viewer`::
+
+    >>> v = ppgui.list(e.skin_conductance, e.event)
+    
+.. _figure-list-viewer:
+
+.. figure:: _static/Tutorial_list-viewer1.png
+    :alt: experiment outline
+    :align: center
+    :figwidth: 100%
+    
+    List Viewer
+    
+    A list viewer displaying the tutorial data. The viewer only displays 2 
+    plots per page, which is achieved through the keyword-argument ``y=2``
+    (using ``>>> v = ppgui.list(e.skin_conductance, e.event, y=2)``).
+
+While the viewer that opens has a toolbar with a few controls, more controls 
+are available through the shell. That is why we assigned the viewer to a short 
+variable (``v``). For example, use the following command to restrict the view
+to a certain time range::
+
+    >>> v.set_window(20, 60)
+
+You can also change the source data parameters while the viewer is open::
+
+    >>> e.event.p.color((1, 0, 0))
+
+In order to see the changes, however, you need to refresh |view-refresh| the 
+viewer.
+
+.. |VIEW-REFRESH| image:: ../../icons/tango/actions/view-refresh.png
+
 
 
 Signal Processing
@@ -303,49 +386,55 @@ Just as the importer, the new dataset has parameters that can
 be adjusted in its ``p`` attribute (``e.SCRs.p``). 
 We can leave them at the default settings for the present purpose.
 
+Now you can inspect the result in the list viewer::
 
-The List Viewer
-^^^^^^^^^^^^^^^
-
-At this point is is useful to visualize the data again. The list viewer can
-visualize several data files per page::
-
-	>>> v = ppgui.list(e.skin_conductance, e.SCRs, e.event)
-
-Here we created a :ref:`figure-list-viewer` and submitted all three channels to be displayed 
-(you can, of course, only submit a subset of channels).
-    
-.. _figure-list-viewer:
-
-.. figure:: _static/Tutorial_list-viewer.png
-    :alt: experiment outline
-    :align: center
-    :figwidth: 100%
-    
-    List Viewer
-    
-    A list viewer displaying the tutorial data. The viewer only displays 2 
-    plots per page, which is achieved through the keyword-argument ``y=2``.
-
-While the viewer that opens has a toolbar with a few controls, more controls 
-are available through the shell. That is why we assigned the viewer to a short 
-variable (``v``). For example, use the following command to restrict the view
-to a certain time range::
-
-	>>> v.set_window(20, 60)
-
-You can also change the source data parameters while the viewer is open::
-
-	>>> e.event.p.color((0.73, 0.996, 0.0))
-
-In order to see the changes, however, you need to refresh |view-refresh| the 
-viewer.
-
-.. |VIEW-REFRESH| image:: ../../icons/tango/actions/view-refresh.png
+    >>> v = ppgui.list(e.skin_conductance, e.SCRs, e.event)
 
 
 Event Processing
 ----------------
+
+Similar to data segments, event segments can be elaborated. In order to 
+examine sequence effects, we want to add a trial counter to the event-
+segments::
+
+    >>> d = pp.op.evt.Enum(e.event, 'event2_enum') 
+    >>> d.p.var = 'trial'
+
+The result can be seen by looking at one of the segments::
+
+    >>> print e.event2_enum[0]
+        time   duration   magnitude   trial
+    ---------------------------------------
+    0   10     6          4           0    
+    1   25     6          5           1    
+    2   40     6          4           2    
+    3   55     6          5           3    
+    4   70     6          4           4    
+    5   85     6          5           5    
+    6   110    6          4           6    
+    7   125    6          5           7    
+
+This counts each single event. However, it might be more useful to count 
+events of each condition (coded in ``magnitude``) separately. This can be 
+achieved through the ``count`` parameter, which specifies which 
+events should be counted:: 
+
+    >>> d.p.count = 'magnitude'
+    >>> print e.event2_enum[0]
+        time   duration   magnitude   trial
+    ---------------------------------------
+    0   10     6          4           0    
+    1   25     6          5           0    
+    2   40     6          4           1    
+    3   55     6          5           1    
+    4   70     6          4           2    
+    5   85     6          5           2    
+    6   110    6          4           3    
+    7   125    6          5           3    
+    
+..  Note:: to learn more about the parameters you could use ``d.p.HELP()`` or
+    ``help(d)``.
 
 ..
     Note:: The dataset hierarchy in eelbrain is structured in such a way that when
@@ -353,6 +442,79 @@ Event Processing
     which are lower in the hierarchy.
 
 
-Analysis
---------
+Statistics
+----------
 
+Collecting Statistics
+^^^^^^^^^^^^^^^^^^^^^
+
+The :py:func:`!psyphys.collect.timewindow` can be used to collect statistics 
+from the experiment that we built up in the earlier part of the tutorial. 
+Using the variables contained in the experiment, we can construct a 
+model for which we want to collect statistics
+(using the :py:func:`attach` function for convenience)::
+
+    >>> attach(e.variables)
+    attached: ['subject', 'time', 'duration', 'magnitude', 'trial']
+    >>> subject + magnitude
+    Address(subject + magnitude)
+
+Crossing subjects and magnitude will collect a statistic for each cell in this 
+model. Collect the statistics in a dataset::
+
+    >>> ds = pp.collect.timewindow(subject * magnitude, e.SCRs, e.event, tstart=.1, tend=.6)
+
+
+Analyzing Statistics
+^^^^^^^^^^^^^^^^^^^^
+
+A :py:class:`~vessels.data.dataset` stores a data table containing multiple 
+variables, and works like a dictionary::
+
+    >>> ds
+    <dataset '???' N=40: 'Y'(V), 'magnitude'(V), 'subject'(F)
+    >>> ds['Y']
+    var([0.27, 0.00, 0.00, 0.07, 0.06, ... n=40], name='Y')
+    >>> ds['subject']
+    factor([0, 0, 1, 1, 2, ...n=40], name="subject", random=True, labels={0: u'001', 1: u'002', 2: u'003', 3: u'004', 4: u'005', ...})
+
+The dataset contains :py:class:`~vessels.data.var` and 
+:py:class:`~vessels.data.factor` objects, which correspond to scalar and 
+categorical variables. The table can be shown with ``print``::
+
+    >>> print ds
+    Y          magnitude   subject
+    ------------------------------
+    0.27063    5           001    
+    0          4           001    
+    0          4           002    
+    0.069958   5           002    
+    0.05791    5           003    
+    0          4           003    
+    0.16843    4           004    
+    0          5           004    
+    0          5           005    
+    0          4           005    
+         (use .as_table() method to see the whole dataset)
+    
+The :py:mod:`eelbrain.analyze` module contains functions for analyzing the 
+resulting dataset::
+
+    >>> attach(ds)
+    >>> fig = A.plot.boxplot(Y, magnitude, match=subject)
+    >>> print A.test.pairwise(Y, magnitude, match=subject)
+    
+    Pairwise t-Tests (paired samples)
+    
+        5              
+    -------------------
+    4   t(19)=-2.95**  
+        p=0.008        
+        p(c)=.008      
+    (* Uncorrected)
+
+..  Note:: These functions are called with 2 arguments: the dependent variable,
+    and the model (which in this case is only ``magnitude``). The ``match``
+    keyword argument specifies the variable on which the data is related (for 
+    the related samples t-test).
+    
