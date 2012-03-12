@@ -124,6 +124,7 @@ importer can import several
 
 import importer
 import operations as op
+import collect
 import visualizers
 #import segments
 import mat
