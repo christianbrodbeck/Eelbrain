@@ -408,6 +408,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     ax.set_xlim(.5, k+.5)
     # adjust axes rect
     fig.finish()
+    return fig
         
 
 
@@ -508,6 +509,7 @@ def barplot(Y, X=None, match=None, sub=None,
     P.xticks(np.arange(len(names)), names)
         
     fig.finish()
+    return fig
 
 
 
