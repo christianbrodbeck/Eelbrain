@@ -18,6 +18,7 @@ import cPickle as pickle
 import webbrowser
 
 #import wx
+import wx.stc
 import wx.py.shell
 import wx.lib.colourselect
 
@@ -214,12 +215,14 @@ class ShellFrame(wx.py.shell.ShellFrame):
         # put my Shell into wx.py.shell and init
         wx.py.shell.Shell = Shell
         kwargs.update(locals=namespace, title='Eelbrain Shell')
-#        if "wxMac" not in wx.PlatformInfo:
-#            del self.bufferClose
-        
-        dataDir = self.wx_config.Read("dataDir") #os.path.expanduser('~/Documents/eelbrain')
+        dataDir = self.wx_config.Read("dataDir")
         if os.path.exists(dataDir):
             kwargs['dataDir'] = dataDir
+        else:
+            title = "warning: dataDir does not exist"
+            msg = ("dataDir at %r does not exist and will not be set. See "
+                   "preferences to change the dataDir." % dataDir)
+            ui.message(title, msg, '!')
         
         wx.py.shell.ShellFrame.__init__(self, parent, *args, **kwargs)
         self.SetStatusText('Eelbrain %s' % __version__)
@@ -250,9 +253,19 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.P_mgr = mpl_tools.PyplotManager(self, pos=(x_max-100, y_min+22+4))
         
     # --- MENUS ---
-        # menus first defined in wx.py.frame.Frame.__createMenus() 
-        menus = dict((self.menuBar.GetMenuLabel(i), i) for i in 
-                     xrange(self.menuBar.GetMenuCount()))
+        # wx 2.8 somehow does not manage to access the 'window' and 'help' 
+        # menus; this works in 2.9
+        
+        def get_menu_Id(name):
+            for Id in xrange(self.menuBar.GetMenuCount()):
+                if self.menuBar.GetMenuLabel(Id) == name:
+                    return Id
+        
+        # for debugging:
+        # create a name->Id dict for the current menus
+        # (created by wx.py.frame.Frame.__createMenus() )
+#        self.menu_names = {self.menuBar.GetMenuLabel(i): i for i in 
+#                           xrange(self.menuBar.GetMenuCount())}
         
     # recent menu
         recent_menu = self.recent_menu = wx.Menu()
@@ -265,13 +278,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         # add menu item (can only add it to one menu apparently)
         help_txt = "Load an experiment or Python script from a list of recently used items"
-        self.fileMenu.InsertMenu(0, wx.ID_ANY, 'Recent Files', recent_menu, help_txt)
+        self.fileMenu.InsertMenu(0, wx.ID_ANY, 'Recent Files', recent_menu, help_txt)        
         
-#        self.menuBar.Insert(menus['&Edit'], recent_menu, 'Recent')
-        # NOTE this messes up other menu insertion points (-> line 377)
-#        menus['&Help'] += 1
-        
-                
     # preferences menu
         if wx.Platform == '__WXMAC__':
             ID_PREFERENCES = app.GetMacPreferencesMenuItemId()
@@ -281,9 +289,15 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.Bind(wx.EVT_MENU, self.OnPreferences, id=wx.ID_PREFERENCES)
         
     # WINDOW MENU
+        Id = get_menu_Id("&Window")
+        if Id is None:
+            m = self.windowMenu = wx.Menu()#title="&Window")
+            m.SetTitle("&Window")
+            Id_help = get_menu_Id('&Help')
+            self.menuBar.Insert(Id_help, m, 'Window')
+        else:
+            m = self.windowMenu
         
-        m = self.windowMenu = wx.Menu()#"&Window")
-        m.SetTitle("&Window")
         # name is used below in OnOpenWindowMenu to recognize Window menu
         self.Bind(wx.EVT_MENU_OPEN, self.OnOpenWindowMenu)
         
@@ -320,15 +334,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.windowMenuWindows = {self.GetId(): self}
         self.windowMenuMenuItems = {}
         
-        # this can be done with edit->empty buffer
-#        m.AppendSeparator()
-#        m.Append(ID.SHELL_Clear, 'Clear Shell',
-#                          "Clear all the Text in the Shell")
-#        self.Bind(wx.EVT_MENU, self.OnClear, id=ID.SHELL_Clear)
-        
-        logging.debug(str(menus))
-        self.menuBar.Insert(menus['&Help'], m, 'Window')
-        
+        # clear shell: this can be done with edit->empty buffer
+                
         
     # INSERT MENU
         m = self.insertMenu = wx.Menu()
@@ -348,7 +355,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
                  "Insert path to a non-existing object.")
         self.insertMenu.AppendSubMenu(m, "Path", "Insert a path as string.")
         
-        self.menuBar.Insert(menus['&View'], self.insertMenu, "Insert")
+        Id_view = get_menu_Id('&View')
+        self.menuBar.Insert(Id_view, self.insertMenu, "Insert")
         self.Bind(wx.EVT_MENU, self.OnInsertPath_File, id=ID.INSERT_Path_file)
         self.Bind(wx.EVT_MENU, self.OnInsertPath_Dir, id=ID.INSERT_Path_dir)
         self.Bind(wx.EVT_MENU, self.OnInsertPath_New, id=ID.INSERT_Path_new)
