@@ -124,6 +124,8 @@ defaults=dict(fullrepr = False, # whether to display full arrays/dicts in __repr
               )
 
 
+import plot1d
+
 #####   #####   #####   #####   #####   #####   #####   #####   #####   #####
 # imports from submodules 
 # and provide defaults to submodules
