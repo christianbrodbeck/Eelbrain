@@ -473,7 +473,7 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
     return handles
 
 
-def butterfly(segment, sensors=None, title=True, ylim=None, 
+def butterfly(epochs, sensors=None, ylim=None, size=(4, 2), dpi=90,
               # tax=False,  
               xlabel=True, ylabel=True, color=None, **plot_kwargs):
     """
@@ -494,9 +494,12 @@ def butterfly(segment, sensors=None, title=True, ylim=None,
         ``None`` leaves mpl's default limits unaffected)
     
     """
-    if title is True:
-        title = segment.name
+    epochs = _base.unpack_epochs_arg(epochs)
     
+    n_plots = len(epochs)
+    figsize = (size[0], n_plots * size[1])
+    fig = P.figure(figsize=figsize, dpi=dpi)
+    P.subplots_adjust(.1, .1, .95, .95, .1, .4)
     # create axes
 #    if tax:
 #        fig = P.figure()
@@ -508,13 +511,22 @@ def butterfly(segment, sensors=None, title=True, ylim=None,
 #        ax = _t_axes(axrect, xmin=segment.tstart, xmax=segment.tend, 
 #                     ticks=True, vmax=segment.data.max())
 #    else:
-    fig = _simple_fig(title, xlabel, ylabel)#, titlekwargs, **simple_kwargs)
-    ax = fig.ax
     
-    _ax_butterfly(ax, segment, sensors=sensors, ylim=ylim, title=title, 
-                  xlabel=xlabel, ylabel=ylabel, color=color, **plot_kwargs)
+    for i, layers in enumerate(epochs):
+        ax = fig.add_subplot(n_plots, 1, i+1)
+        
+        if i == n_plots-1:
+            _xlabel = xlabel
+        else:
+            _xlabel = None
+        
+        _ax_butterfly(ax, layers, sensors=sensors, ylim=ylim,
+                      xlabel=_xlabel, ylabel=ylabel, color=color)
     
-    
+    fig.show()
+    return fig
+
+
 
 
         
