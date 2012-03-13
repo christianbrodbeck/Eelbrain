@@ -2,11 +2,12 @@ Psychophysiology Tutorial: Skin Conductance Responses
 =====================================================
 
 The tutorial is based on some simulated data which can be downloaded `here 
-<http://dl.dropbox.com/u/659990/eelbrain_dist/simulated_scr.zip>`_. 
+<http://dl.dropbox.com/u/659990/eelbrain_doc/files/simulated_scr.zip>`_. 
 The complete scripts can be downloaded from here:
 
-* `Import <http://dl.dropbox.com/u/659990/eelbrain_dist/tutorial_import.py>`_
-* `Analysis <http://dl.dropbox.com/u/659990/eelbrain_dist/tutorial_analyze.py>`_
+* `Import <http://dl.dropbox.com/u/659990/eelbrain_doc/files/tutorial_import.py>`_
+* `Analysis <http://dl.dropbox.com/u/659990/eelbrain_doc/files/tutorial_analyze.py>`_
+* `Plot timeseries comparison <http://dl.dropbox.com/u/659990/eelbrain_doc/files/tutorial_analyze_ts.py>`_
 
 
 Overview
@@ -105,7 +106,7 @@ prints out the settings::
 We can now use the source parameter to tell the importer where to look for 
 data files. We do this through the parameter ``source`` (the tutorial data 
 files can be downloaded from `here 
-<http://dl.dropbox.com/u/659990/eelbrain_dist/simulated_scr.zip>`_)::
+<http://dl.dropbox.com/u/659990/eelbrain_doc/files/simulated_scr.zip>`_)::
 
 	>>> i.p.source.set('/Users/christian/Data/simulated_scr')
 
@@ -394,26 +395,66 @@ Now you can inspect the result in the list viewer::
 Event Processing
 ----------------
 
-Similar to data segments, event segments can be elaborated. In order to 
-examine sequence effects, we want to add a trial counter to the event-
+Similar to data segments, event segments can be elaborated. First, when 
+inspcting the data the first time, we saw that the event magnitude in the 
+source files is represented as a scalar variable::
+
+    >>> print e.event[0]
+        time   duration   magnitude
+    -------------------------------
+    0   10     6          4        
+    1   25     6          5        
+    2   40     6          4        
+    3   55     6          5        
+    4   70     6          4        
+    5   85     6          5        
+    6   110    6          4        
+    7   125    6          5        
+
+It is convenient to have a categorial variable reflecting the event condition.
+Any variable transformation where values in the source variable(s) map to 
+values in the target variable can be implemented using a parasite variable::
+
+    >>> attach(e.variables)
+    attached: ['subject', 'time', 'duration', 'magnitude']
+    >>> e.variables.new_parasite(magnitude, 'condition', 'dict', {4:'control', 5:'test'})
+    <Parasite:  'condition' <- magnitude, 'dict', labels={0: 'control', 1: 'test'}>
+    >>> detach()
+    >>> print e.event[0]
+        time   duration   magnitude   condition
+    -------------------------------------------
+    0   10     6          4           control  
+    1   25     6          5           test     
+    2   40     6          4           control  
+    3   55     6          5           test     
+    4   70     6          4           control  
+    5   85     6          5           test     
+    6   110    6          4           control  
+    7   125    6          5           test     
+
+.. Note:: Parasite variables are automatically included in data tables when
+    all the variables  they are based on are present. 
+
+In order to 
+examine sequence effects, we might want to add a trial counter to the event-
 segments::
 
     >>> d = pp.op.evt.Enum(e.event, 'event2_enum') 
     >>> d.p.var = 'trial'
 
-The result can be seen by looking at one of the segments::
+The result can be seen by looking at one of the segments again::
 
-    >>> print e.event2_enum[0]
-        time   duration   magnitude   trial
-    ---------------------------------------
-    0   10     6          4           0    
-    1   25     6          5           1    
-    2   40     6          4           2    
-    3   55     6          5           3    
-    4   70     6          4           4    
-    5   85     6          5           5    
-    6   110    6          4           6    
-    7   125    6          5           7    
+    >>> print d[0]
+        time   duration   magnitude   trial   condition
+    ---------------------------------------------------
+    0   10     6          4           0       control  
+    1   25     6          5           1       test     
+    2   40     6          4           2       control  
+    3   55     6          5           3       test     
+    4   70     6          4           4       control  
+    5   85     6          5           5       test     
+    6   110    6          4           6       control  
+    7   125    6          5           7       test     
 
 This counts each single event. However, it might be more useful to count 
 events of each condition (coded in ``magnitude``) separately. This can be 
@@ -421,17 +462,17 @@ achieved through the ``count`` parameter, which specifies which
 events should be counted:: 
 
     >>> d.p.count = 'magnitude'
-    >>> print e.event2_enum[0]
-        time   duration   magnitude   trial
-    ---------------------------------------
-    0   10     6          4           0    
-    1   25     6          5           0    
-    2   40     6          4           1    
-    3   55     6          5           1    
-    4   70     6          4           2    
-    5   85     6          5           2    
-    6   110    6          4           3    
-    7   125    6          5           3    
+    >>> print d[0]
+        time   duration   magnitude   trial   condition
+    ---------------------------------------------------
+    0   10     6          4           0       control  
+    1   25     6          5           0       test     
+    2   40     6          4           1       control  
+    3   55     6          5           1       test     
+    4   70     6          4           2       control  
+    5   85     6          5           2       test     
+    6   110    6          4           3       control  
+    7   125    6          5           3       test     
     
 ..  Note:: to learn more about the parameters you could use ``d.p.HELP()`` or
     ``help(d)``.
@@ -448,8 +489,19 @@ Statistics
 Collecting Statistics
 ^^^^^^^^^^^^^^^^^^^^^
 
-The :py:func:`!psyphys.collect.timewindow` can be used to collect statistics 
-from the experiment that we built up in the earlier part of the tutorial. 
+The :py:mod:`!psyphys.collect` module contains tools to  collect statistics 
+from the datasets. There are two main functions:
+
+ - :py:func:`!psyphys.collect.timeseries` to collect timeseries data (e.g., 
+   the temporal evolution of heart-rate or skin-conductance responses around
+   different events.
+ - :py:func:`!psyphys.collect.timewindow` to collect scalar dependent
+   variables, e.g. the maximum SCR in the time window .05 to .45 seconds
+   after different events.
+
+In a first step, :py:func:`!psyphys.collect.timeseries` can be used to explore
+the data.
+
 Using the variables contained in the experiment, we can construct a 
 model for which we want to collect statistics
 (using the :py:func:`attach` function for convenience)::
@@ -460,15 +512,34 @@ model for which we want to collect statistics
     Address(subject + magnitude)
 
 Crossing subjects and magnitude will collect a statistic for each cell in this 
-model. Collect the statistics in a dataset::
+model::
 
-    >>> ds = pp.collect.timewindow(subject * magnitude, e.SCRs, e.event, tstart=.1, tend=.6)
+    >>> ds = pp.collect.timeseries(subject * condition, e.SCRs, e.event, 
+    ...                            tstart=-.2, tend=1.5, sr=20, 
+    ...                            mode='mw', windur=.5)
 
+We will extract a time-series from -.2 seconds before the cue (``tstart``) 
+until 1.5 seconds after it (``tend``), at a samplingrate (``sr``) of 20 Hz.
+The ``mode`` kwarg ``'mw'`` indicates moving window which is appropriate for
+discrete events like SCRs (for a continuous rate, e.g., heart rate, we would 
+choose ``'lin'`` for 'linear'). Finally, ``windur`` specifies the length of 
+the window used, which will determine the smoothness of the final time series.
+The result can be plotted with::
+
+    >>> attach(ds)
+    >>> A.plot1d.uts(Y, condition)
+
+This plot can suggest good time-windows for further analysis with
+:py:func:`!psyphys.collect.timewindow`::
+
+    >>> ds = pp.collect.timewindow(subject * condition, e.SCRs, e.event, tstart=.1, tend=.6)
+
+Collectors return their result in the form of a :py:class:`~vessels.data.dataset`. 
 A :py:class:`~vessels.data.dataset` stores a data table containing multiple 
 variables, and works like a dictionary::
 
     >>> ds
-    <dataset '???' N=40: 'Y'(V), 'magnitude'(V), 'subject'(F)
+    <dataset '???' N=40: 'Y'(V), 'condition'(F), 'subject'(F)>
     >>> ds['Y']
     var([0.27, 0.00, 0.00, 0.07, 0.06, ... n=40], name='Y')
     >>> ds['subject']
@@ -479,18 +550,18 @@ The dataset contains :py:class:`~vessels.data.var` and
 categorical variables. The table can be shown with ``print``::
 
     >>> print ds
-    Y          magnitude   subject
+    Y          condition   subject
     ------------------------------
-    0.27063    5           001    
-    0          4           001    
-    0          4           002    
-    0.069958   5           002    
-    0.05791    5           003    
-    0          4           003    
-    0.16843    4           004    
-    0          5           004    
-    0          5           005    
-    0          4           005    
+    0.010823   control     019    
+    0.84226    test        013    
+    0.54688    test        010    
+    0.16843    control     004    
+    0          control     009    
+    0.05791    test        003    
+    0.20071    test        016    
+    0.069872   control     015    
+    0          control     020    
+    0.086678   test        006    
          (use .as_table() method to see the whole dataset)
 
 A dataset can be retrieved as table object, and any table object can be 
@@ -513,16 +584,17 @@ resulting dataset::
 
     >>> import eelbrain.analyze as A
     >>> attach(ds)
-    >>> fig = A.plot.boxplot(Y, magnitude, match=subject)
-    >>> print A.test.pairwise(Y, magnitude, match=subject)
+    attached: ['Y', 'condition', 'subject']
+    >>> fig = A.plot.boxplot(Y, condition, match=subject)
+    >>> print A.test.pairwise(Y, condition, match=subject)
     
     Pairwise t-Tests (paired samples)
     
-        5              
-    -------------------
-    4   t(19)=-2.95**  
-        p=0.008        
-        p(c)=.008      
+              test           
+    -------------------------
+    control   t(19)=-2.95**  
+              p=0.008        
+              p(c)=.008      
     (* Uncorrected)
 
 ..  Note:: These functions are called with 2 arguments: the dependent variable,

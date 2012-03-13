@@ -1,14 +1,17 @@
 About Eelbrain
 ==============
 
-Eelbrain contains data analysis scripts and a Python shell bsed on ``wx.py``.
+Eelbrain contains data analysis scripts and a Python shell bsed on wxPython.
 
 
 Installing Eelbrain
 ===================
 
 Eelbrain is a collection of pure Python scripts and does not require 
-compilation. 
+compilation. If all the dependencies are installed, it can be started
+with::
+
+    $ python eelbrain.py
 
 
 Dependencies
@@ -24,32 +27,21 @@ functions.
 	* scipy
 	* matplotlib
 
-* For the wxterm interface 
+* for the wxterm interface (optional)
 
 	* wxPython
 
-* optional:
+* for optional features:
 	
 	* tex (plus working latex distribution) for exporting tables as pdf
 	* bioread
 
-* for OS X Integration (create .app file)
 
-	* setuptools
-	* py2app
+Creating an OS X Application
+============================
 
-* for Windows Integration (create .exe.file)
-
-	* py2exe
-
-
-Installing
-==========
-
-OS X
-----
-
-Create Eelbrain.app using::
+An OS X application can be created using py2app. An alias application 
+can be created using::
 
 	$ python setup.py py2app -A
 
@@ -60,9 +52,3 @@ containing the ``setup.py`` file and its subfolders have to be left in place
 because ``Eelbrain.app`` uses them. In addition, any changes to the source code
 will be reflected in ``Eelbrain.app``.
 
-
-Windows
--------
-
-Blahblah
- 

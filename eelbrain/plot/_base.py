@@ -40,6 +40,9 @@ figs = [] # store callback figures (they need to be preserved)
 
 
 def unpack_epochs_arg(ndvars, dataset=None, levels=1):
+    """
+    Returns a nested list of epochs (through the get_summary method)
+    """
     if not isinstance(ndvars, (tuple, list)):
         ndvars = [ndvars]
 

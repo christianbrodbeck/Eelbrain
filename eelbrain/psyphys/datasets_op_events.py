@@ -119,8 +119,8 @@ def _evts_from_data(data, samplingrate=None, t0=0, forcelength=None,
 class Extract(Derived_Event_Dataset):
     """
     Extracts events from one-dimensional data array. Assumes that the value for
-    no event is 0 or below a certain threshold, and increases to one of a 
-    number fixed values to indicate a certain event. 
+    no event is 0 or below a certain threshold, and that an increase to one of a 
+    number of fixed values indicates a certain event. 
      
     
     Parameters:
