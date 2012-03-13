@@ -4,6 +4,7 @@ Collector objects scan datasets to extract statistics from them. They return
 statistics as dataframes through the :meth:`get_dataframe` method.
 
 """
+from __future__ import division
 
 import logging
 
@@ -213,7 +214,7 @@ class _collector(object):
         bldelay :
             like delay, but for baseline
         cfunc : callable
-            function for aggregating data over segments (wheneer 
+            function for aggregating data over segments (whenever 
             several segments fall into the same a category). Default is 
             np.mean.
         
@@ -228,7 +229,7 @@ class _collector(object):
             self._var = var
         else:
             raise ValueError("{v} not in segments".format(v=var.__repr__()))
-            # todo: implement for uts-segments 
+            # TODO: implement for uts-segments 
 
         # store primary attributes
         self._info = dict(
@@ -236,6 +237,7 @@ class _collector(object):
                           events_skipped = {},
                           segments_skipped = [],
                           )
+        
         self._warnings = []
         self._experiment = segments.experiment
         
@@ -258,7 +260,7 @@ class _collector(object):
         if np.iterable(bl) and len(bl)==2:
             blstart, blend = bl
         self.set_bl(blstart, blend, bldur, bldelay)
-
+        
         self._sensor = sensors
     
     def update(self, **kwargs):
@@ -305,13 +307,11 @@ class _collector(object):
         if hasattr(segments, 'segments'):
             segments = segments.segments
         self._segments = segments 
-        self.invalidate_cache()
     
     def set_evts(self, evts):
         if hasattr(evts, 'segments'):
             evts = evts.segments
         self._evts = evts
-        self.invalidate_cache()
     
     def set_address(self, address):
         if isinstance(address, basestring):
@@ -323,32 +323,27 @@ class _collector(object):
             except ValueError:
                 raise ValueError("Need to provide valid address argument")    
         self._address = address
-        self.invalidate_cache(True, True)
     
-    def set_cov(self, cov):
-        if (cov is None) or _vars.isaddress(cov):
-            self._cov = cov
+    def set_cov(self, covs):
+        "list of variables"
+        if covs:
+            self._covs = _vars.asaddress(covs).keys()
         else:
-            self._cov = _vars.Address(cov)
-        self.invalidate_cache(True, True)
+            self._covs = []
     
     def set_mask(self, mask):
         self._mask = mask
-        self.invalidate_cache()
     
     def set_segmask(self, segmask):
         self._segmask = segmask
-        self.invalidate_cache()
     
     def set_name(self, name):
         if name is None:
             name = 'Y'
         self._name = name
-        self.invalidate_cache()
     
     def set_tw(self, tstart, tend=None, dur=None, delay=None):
         self._tw = _timewindow(tstart=tstart, tend=tend, dur=dur, delay=delay)
-        self.invalidate_cache()
     
     def set_bl(self, blstart=None, blend=None, bldur=None, bldelay=None):
         if np.isscalar(blstart):
@@ -356,14 +351,12 @@ class _collector(object):
                                   delay=bldelay)
         else:
             self._bl = None
-        self.invalidate_cache()
     
     def set_tw_func(self, twfunc):
         if not np.isscalar(twfunc([1,2,3])):
             raise ValueError("twfunc %r does not return scalar"%twfunc)
         else:
             self._twfunc = twfunc
-        self.invalidate_cache()
     
     def set_bl_func(self, blfunc):
         if blfunc == None:
@@ -371,26 +364,12 @@ class _collector(object):
         elif not np.isscalar(blfunc([1,2,3])):
             raise ValueError("blfunc %r does not return scalar"%blfunc)
         self._blfunc = blfunc
-        self.invalidate_cache()
     
     def set_collection_func(self, cfunc):
         if not np.isscalar(cfunc([1,2,3])):
             raise ValueError("cfunc %r does not return scalar"%cfunc)
         self._cfunc = cfunc
-        self.invalidate_cache()
-    
-    @property
-    def data_indexaddress(self):
-        if not hasattr(self, '_data_indexaddress'):
-            self._data_indexaddress = self._address + self._cov
-        return self._data_indexaddress
-    
-    def invalidate_cache(self, main=True, indexaddress=False):
-        if indexaddress and hasattr(self, '_data_indexaddress'):
-            del self._data_indexaddress
-        if main and hasattr(self, '_data'):
-            del self._data
-
+        
 #    Description functions---
     def __repr__(self):
         lead = self.__class__.__name__ + '('
@@ -422,7 +401,7 @@ class _collector(object):
                    segments = '...')
         return out
     
-    def info(self):
+    def print_info(self):
         print "INFO\n----"
         for k, m in self._info.iteritems():
             print "{k}: {m}".format(k=k, m=m)
@@ -431,54 +410,76 @@ class _collector(object):
             for i, msg in enumerate(self._warnings):
                 print "{msg}".format(i=i, msg=msg)
     
-    def _selfattach(self):
-        self.COVARIATES = [self._factors[f] for f in self._cov]
-        self.INDEXVARS = []
-        for v, f in self._factors.iteritems():
-            name = f.name
-            if hasattr(self, name):
-                print "warning: could not set self.%s"%name
-            else:
-                setattr(self, name, f)
-            if v in self._cov:
-                pass
-            else:
-                self.INDEXVARS.append(f)
-        
-        # stats
-        if hasattr(self, '_stats'):
-            self.STATS_ALL = self._stats.values()
-            self.STATS = self._stats
-    
-    def _attach(self, auto_overwrite=False):
-        raise NotImplementedError()
-        """
-        self._factors contains variables as keys; names must be derived
-        (simply using variable names would overwrite all variables in 
-        global name space 
-        """
-        if hasattr(ui, 'attach'):
-            seg_legend = []
-            if hasattr(self, '_stats'):
-                ui.attach(self._stats, auto_overwrite=auto_overwrite)
-                for name, obj in self._stats.iteritems():
-                    seg_legend.append((name, obj.name))
-            ui.attach(self._factors, auto_overwrite=auto_overwrite)
-            temp = " {alias} = {name}"
-            msg = []
-            for var, name in self.data_indexaddress.short_key_labels().iteritems():
-                msg.append(temp.format(alias=name, name=var.name))
-            if len(seg_legend) > 0:
-                msg.append("SEGMENTS:")
-                for lbl, name in seg_legend:
-                    msg.append(temp.format(alias=lbl, name=name))
-            ui.message('\n'.join(msg))
-        else:
-            logging.error(" ui has no attach function")
     """
     collection helper functions
     ---------------------------
+    
+    convoluted method structure that allows subclassing at several stages:
+    
+    self.get_dataframe
+     -> self._collect_data
+         -> self._iter_events
+         -> self._data_for_seg_evt
+     -> self._get_vessel_for_Y
+    
+    
     """
+    def get_dataset(self):
+        "get a dataframe containing Y and covariates"
+        Y, covs = self._collect_data()
+        
+        indexes = Y.keys()
+        Ydata = [Y[index] for index in indexes]
+        Y = self._get_vessel_for_Y(Ydata)
+        ds = _vsl.dataset(Y)
+
+        # create _data objects
+        for var, valdict in covs.iteritems():
+            X = [valdict[index] for index in indexes]
+            
+            if var.dict_enabled:
+                Y = _vsl.factor(X, name=var.name, random=var.random,
+                                labels=var.dictionary, colors=var._color_dict)
+            else:
+                Y = _vsl.var(X, name=var.name)
+            
+            ds.add(Y)
+        
+        return ds
+    
+    def _collect_data(self):
+        """
+        returns the collected statistics as (Y, covYs) tuple, where:
+        Y = {index: [list of data]}
+        covYs = {cov: {index: value}} 
+        
+        iterate through self._iter_events_(). Calls subfunction to collect the
+        dependent variable: self._data_for_seg_evt
+        """
+        # calls: y = self._data_for_seg_evt(seg, evt): to get data for each event
+        
+        # collect Y data
+        # data = {index: [y1, y2, ...], ...}
+        Y = {}
+        covs = self._address.keys() + self._covs
+        covYs = {c: {} for c in covs}
+        
+        for seg, evt in self._iter_events_():
+            index = self._address.index(evt)
+            if index:
+                # Y
+                y = self._data_for_seg_evt(seg, evt)
+                Y.setdefault(index, []).append(y)
+                # covs
+                for cov in covs:
+                    value = evt[cov]
+                    if covYs[cov].setdefault(index, value) != value:
+                        msg = ("Covariate %r has different values in events "
+                               "from the same cell" % cov.name)
+                        raise NotImplementedError(msg)
+        
+        return Y, covYs
+    
     def _iter_events_(self):
         segments = self._segments
         evts = self._evts
@@ -506,85 +507,17 @@ class _collector(object):
                     # info
                 else:
                     info_segs_skip.append(evt_seg.name)
-#            t1 = time.time()
-#            if prog:
-#                prog.advance()
-#            t2 = time.time()
-#            logging.debug("coll: %.4g;  prog: %.4g"%(t1-t0, t2-t1))
-#        if prog:
-#            prog.terminate()
-#####   SUBCLASS   #####   SUBCLASS   #####   SUBCLASS   #####   SUBCLASS   #####
-    def _data_for_seg_evt(self, seg, evt):
-        raise NotImplementedError
-#####   SUBCLASS   #####   SUBCLASS   #####   SUBCLASS   #####   SUBCLASS   #####
 
 
 
 
 
 class TimewindowCollector(_collector):
-    @ property
-    def data(self):
-        """
-        dictionary with
-        
-        'Y' -> dependent variable
-        fac ->
-        """
-        if not hasattr(self, '_data'):
-            self._data = self._get_data()
-        return self._data
+    """
+    Collector that extracts a summary statistic resulting in one value per 
+    event.
     
-    def _get_data(self):
-        """
-        
-        calls: y = self._data_for_seg_evt(seg, evt): to get data for each event
-                              
-        """
-        # collect Y data
-        # data = {index: [y1, y2, ...], ...}
-        Y = {}
-        covs = {}
-        collect_covs = bool(self._cov)
-        for seg, evt in self._iter_events_():
-            index = self._address.index(evt)
-            if index:
-                y = self._data_for_seg_evt(seg, evt)
-                if collect_covs: cov_index = self._cov.index(evt)
-                # store data
-                if index in Y:
-                    Y[index].append(y)
-                    if collect_covs: covs[index].append(cov_index)
-                else:
-                    Y[index] = [y]
-                    if collect_covs: covs[index] = [cov_index]
-        self._data_primary_Y = Y.copy()
-        
-        # aggregate Y and cov into {index: values ...} dicts
-        # Y = {index: value, ...}
-        # covs = {index: [cov1, cov2, ...], ...}
-        for index in Y.keys():
-            # Y
-            Y[index] = self._cfunc(Y[index])
-            # covariates
-            if collect_covs:
-                all_values = np.array(covs[index])
-                if len(all_values) == 1:
-                    single_values = all_values[0]
-                else:
-                    single_values = []
-                    for i in range(all_values.shape[1]):
-                        unique = np.unique(all_values[:,i])
-                        if len(unique) == 1:
-                            single_values.append(unique[0])
-                        else:
-                            single_values.append(np.nan)
-                covs[index] = single_values
-                    
-        data = {'Y': Y,
-                'covs': covs}
-        return data
-    
+    """
     def _data_for_seg_evt(self, seg, evt):
         # get data
         t1, t2 = self._tw.evt(evt)
@@ -615,86 +548,10 @@ class TimewindowCollector(_collector):
             y -= y_bl
         return y
     
-    def get_as_lists(self):
-        """
-        {address_factor -> [v1, v2, v3, ...], ...,
-         covariate -> [v1, v2, v3, ...], ..., 
-         'Y': [v1, v2, v3, ...]}
-        """
-        # aggregate data
-        f_vars = self._address.keys()
-        if self._cov is None:
-            cov_vars = []
-        else:
-            cov_vars = self._cov.keys()
-        vars = f_vars + cov_vars
-        f_vals = dict((f, []) for f in vars) # list of values on each of the factors 
-        Y_vals = [] # list of values on the dependent variable
-        
-        Y = self.data['Y']
-        covs = self.data['covs']
-        
-        for index in Y.keys():
-            for f, v in zip(f_vars, index):
-                f_vals[f].append(v)
-
-            if len(cov_vars) > 0:
-                for cov, v in zip(cov_vars, covs[index]):
-                    f_vals[cov].append(v)
-            
-            Y_vals.append(Y[index])
-        
-        # convert to arrays
-        for var in vars:
-            f_vals[var] = np.array(f_vals[var])
-        Y = np.array(Y_vals)
-        
-        # sort
-        for var in vars:
-            if var.dict_enabled:
-                argsort = np.argsort(f_vals[var])
-#                logging.debug(" argsort: %s" % argsort)
-                for f_ in vars:
-                    f_vals[f_] = f_vals[f_][argsort]
-                Y = Y[argsort]
-        
-        # return data dictionary
-        f_vals['Y'] = Y
-        return f_vals
-    
-    def get_dataset(self):
-        "get a dataframe containing all variables"
-        f_vals = self.get_as_lists()
-        
-        # create _data objects
-        Y = _vsl.var(f_vals['Y'], name=self._name)
-        ds = _vsl.dataset(Y)
-        
-        for var in self.data_indexaddress.keys():
-            X = f_vals[var]
-            if len(np.unique(X)) > 1:
-                # determine groups
-                groups = []
-                if var in self._address.keys():
-                    groups.append("INDEXVARS")
-                if var in self._cov.keys():
-                    groups.append("COVARIATES")
-                
-                # factor or var
-                if var.dict_enabled:
-                    ps_obj = _vsl.factor(X, name=var.name, random=var.random,
-                                             labels=var.dictionary, 
-                                             colors=var._color_dict)
-                else:
-                    ps_obj = _vsl.var(X, name=var.name)
-                
-                ds.add(ps_obj)#, groups=groups)
-                
-            else:
-                self._warnings.append("Factor '{n}' dropped because it contained"
-                                      " only one level.")
-        return ds
-
+    def _get_vessel_for_Y(self, Ydata):
+        Ydata = [self._cfunc(data) for data in Ydata]
+        Y = _vsl.var(Ydata, name=self._name)
+        return Y
 
 
 #class CollectorParasite(_vars.Parasite):
@@ -727,7 +584,7 @@ class TimeseriesCollector(_collector):
             or with a moving window ('mw'). The ``winfunc`` and ``windur`` 
             arguments are relevant only for 'mw'.
         winfunc : callable
-            window function (numpy window function; default np.blackman)
+            window function (numpy window function; default is ``np.blackman``)
         windur : scalar
             Window duration (in seconds)
         
@@ -739,117 +596,10 @@ class TimeseriesCollector(_collector):
         self._windur = windur
         
         _collector.__init__(self, address, segments, evts=evts, **kwargs)
-        self._get()
         
-        raise NotImplementedError
         # !!! removed "over" arg bc that should be = address now
         # TODO: adapt rest
-    
-    def _get(self):
-        # address
-        # prepare containers
-        data = self._data = {} # -> data[index][over]=[...]
-        # collect
-        for seg, evt in self._iter_events_():
-            index = self.data_indexaddress.address(evt)
-            over_i = self._over.address(evt)
-            if len(over_i) == 1:
-                over_i = over_i[0]
-            else:
-                raise NotImplementedError("over >1 variables")
-            if (index is not None) and (over_i is not None):
-                y = self._data_for_seg_evt(seg, evt)
-                # store data
-                if index not in data:
-                    data[index] = {}
-                if over_i not in data[index]:
-                    data[index][over_i] = []
-                data[index][over_i].append(y)
         
-        
-        # prepare factors [unchanged]
-        f_names = self.data_indexaddress.short_key_labels() 
-        f_ids = []
-        f_vals = {}
-        f_vars = {}
-        for fac in self.data_indexaddress.keys():
-            id = f_names[fac]
-            f_ids.append(id)
-            f_vals[id] = []
-            f_vars[id] = fac
-        
-        # aggregate data
-        reduced = self._reduced = []
-        old_slist = None
-        for index, stats in data.iteritems():
-            # get factors form index [unchanged]
-            for id, v in zip(f_ids, index):
-                f_vals[id].append(v)
-            # work with data 
-            slist = np.sort(stats.keys())
-            if old_slist and (old_slist != slist):
-                raise ValueError("over-variable values do not match")
-            new = []
-            for s in slist:
-#                print len(stats[s])
-#                for i in stats[s]:
-#                    print len(i)
-                data_list = np.array(stats[s])
-#                print data_list.shape
-                new.append(self._cfunc(data_list, axis=0)[:, None])
-            stat_data = np.hstack(new)[:, None, :]
-            reduced.append((index, stat_data)) # time x sensor x subject
-        
-        # convert to arrays
-        for id in f_ids:
-            f_vals[id] = np.array(f_vals[id])
-
-        # sort
-        for id in f_ids:
-            if f_vars[id].dict_enabled:
-                argsort = np.argsort(f_vals[id])
-                #print argsort
-                for id in f_ids:
-                    f_vals[id] = f_vals[id][argsort]
-                reduced = [reduced[i] for i in argsort]
-        
-        # create _data objs
-        N = len(slist)
-        self._factors = {}
-        for id in f_ids:
-            var = f_vars[id]
-            vals = f_vals[id].repeat(N)
-            if len(np.unique(vals)) > 1:
-                # factor or var
-                if f_vars[id].dict_enabled:
-                    if hasattr(var, 'random'):
-                        r = var.random
-                    else:
-                        r = False
-                    self._factors[id] = _vsl.factor(vals, name=var.name, random=r,
-                                                    labels=var.dictionary)
-                else:
-                    self._factors[id] = _vsl.var(vals, name=var.name)
-        
-        # create segments from Y 
-        stats = self._stats = {}
-#        print "SVAR NAME: ", self._over.name
-        props = dict(
-                     data_type = 'uts',
-                     ndim = 1,
-                     samplingrate = self._samplingrate,
-                     slist = slist,
-                     svar = self._over.keys()[0].name,
-                     avars = [var.name for var in self.data_indexaddress.keys()],
-                     t0 = -self._tw.tstart,
-                     )
-        for i, (index, data) in enumerate(reduced):
-            props['address'] = index
-            props['color'] = self.data_indexaddress.color(index)
-            name = self.data_indexaddress.label(index)
-            stats_seg = _seg.StatsSegment(props, data=data, name=name)
-            stats['s%s'%i] = stats_seg
-    
     def _data_for_seg_evt(self, seg, evt):
         # get data
         tstart = self._tw.t1(evt)
@@ -860,7 +610,7 @@ class TimeseriesCollector(_collector):
                     tstart = tstart,
                     dur = dur,
                     samplingrate = self._samplingrate,
-                    uts = self._uts,
+                    uts = self._mode,
                     winfunc = self._winfunc,
                     windur = self._windur,
                     out = 'data')
@@ -869,12 +619,22 @@ class TimeseriesCollector(_collector):
                         tstart = self._bl.t1(evt),
                         dur = self._bl.dt(),
                         samplingrate = self._samplingrate,
-                        uts = self._uts,
+                        uts = self._mode,
                         winfunc = self._winfunc,
                         windur = self._windur,
                         out = 'data')
             y -= self._blfunc(b)
         return y
+    
+    def _get_vessel_for_Y(self, Ydata):
+        Ydata = np.array([self._cfunc(data, axis=0) for data in Ydata])
+        T = np.arange(self._tw.tstart, self._tw.tend, 1 / self._samplingrate)
+        time = _vsl.var(T, name='time')
+        dims = (time,)
+        properties = {'samplingrate': self._samplingrate}
+        Y = _vsl.ndvar(dims, Ydata, properties=properties, name=self._name)
+        return Y
+
 
 
 
@@ -890,4 +650,14 @@ def timewindow(address, segments, evts=None, var='magnitude', **kwargs):
 timewindow.__doc__ += TimewindowCollector.__init__.__doc__
 
 
+def timeseries(address, segments, evts=None, var='magnitude', **kwargs):
+    """
+    Collect time-series statistics from segments, either directly or 
+    through events associated with the data segments.
+    
+    """
+    c = TimeseriesCollector(address, segments, evts=evts, var=var, **kwargs)
+    return c.get_dataset()
+
+timeseries.__doc__ += TimeseriesCollector.__init__.__doc__
 
