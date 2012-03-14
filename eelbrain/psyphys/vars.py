@@ -584,7 +584,6 @@ class VarCommander(object):
         dictionary)
         
     """
-    nan = np.nan
     def __init__(self, name, mothership, dtype='dict', dtype_enforce=True, random=False):
         """
         kwargs:
@@ -599,7 +598,7 @@ class VarCommander(object):
 
         """
         self.name = name
-        self.shortcut=name[0]
+#        self.shortcut=name[0]
         self.dtype_enforce = dtype_enforce
         if dtype == 'dict':
             self.dtype  = int
@@ -607,8 +606,9 @@ class VarCommander(object):
             self.dict_enabled = True
         else:
             self.dtype = dtype  # int, float, string
+            self.dictionary = None
             self.dict_enabled = False
-        self.default_value = self.nan
+        self.default_value = np.nan
         self.mothership = mothership
         self.random = random
         self.parasites=[]
@@ -766,6 +766,7 @@ class VarCommander(object):
             value = self.dictionary_reversed[value]
         # TODO: other dtypes call
         return value
+    
     def repr(self, value):
         "returns label string for <dict> vars, and value for others"
         if isinstance(value, dict):
@@ -774,6 +775,7 @@ class VarCommander(object):
             return self.label(value)
         else:
             return value
+    
     def label(self, value):
         "always returns string (label or str(value))"
         if isinstance(value, dict):
@@ -786,18 +788,22 @@ class VarCommander(object):
             else:
                 out = str(value)
         return out
+    
     def reprs(self, values):
         if isinstance(values, basestring) or np.isscalar(values):
             values = [values]
         return [self.repr(e) for e in values]
+    
     def values(self, values):
         if isinstance(values, basestring) or np.isscalar(values):
             values = [values]
         return [self.value(e) for e in values]
+    
     def labels(self, values):
         if isinstance(values, basestring) or np.isscalar(values):
             values = [values]
         return [self.label(e) for e in values]
+    
     def val_for_label(self, labels):
         """
         in: label or list of labels
@@ -810,8 +816,10 @@ class VarCommander(object):
             return [revDict[l] for l in labels]
         else:
             return revDict[labels]
+    
     def get_color_for_colony(self, colony):
         return self.get_color_for_value(colony[self])
+    
     def get_color_for_value(self, value):
         """
         uses:
@@ -830,20 +838,29 @@ class VarCommander(object):
         else:
             v = (value - self._cm_min) * (self._cm_max / float(self._cmap._i_under))
             return self._cmap(v)
+    
     def set_color_for_value(self, value, color):
         if isinstance(value, basestring):
             value = self.val_for_label(value)
         self._color_dict[value] = color
+    
+#    def set_dict_enabled(self, v=True):
+#        self.dict_enabled = bool(v)
+#        if self.dict_enabled and not self.dictionary:
+#            self.dictionary = {}
+     
     def __setitem__(self, name, value):
         if isinstance(name, basestring):
             key = self.dictionary_reversed[name]
             self[key] = value
-        elif type(name) is int:
-            self.dictionary[name]=value
-#        elif type(name) is VarColony:
-#            self._registerValue_forColony_(value, name)      #name[self]=value
+        elif isinstance(name, int):
+            if self.dict_enabled:
+                self.dictionary[name] = value
+            else:
+                raise ValueError("dict is not enabled for %r" % self)
         else:
             raise KeyError("%s"%name)
+    
     ## handling value assignment
     def _registerValue_forColony_(self, value, colony):
         "OLD"
@@ -862,7 +879,7 @@ class VarCommander(object):
         if self.dtype:
             try: # np.isnan raises an error for certain dtypes
                 if (value is None) or np.isnan(value):
-                    return self.nan
+                    return np.nan
             except:
                 pass
             
