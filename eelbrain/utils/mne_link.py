@@ -62,13 +62,27 @@ class marker_avg_file:
 
 
 
-def kit2fiff(meg_sdir=None, sfreq=250, aligntol=25, **more_kwargs):
+def kit2fiff(meg_sdir=None, ename='eref3', sfreq=250, aligntol=25, **more_kwargs):
     """
     Reads multiple input files and combines them into a fiff file that can be
-    used with mne. Implemented after Gwyneth's Manual
+    used with mne. Implemented after Gwyneth's Manual. Requires th following 
+    files to be in the subject's meg-directory::
+    
+        data/
+             <subject>_<experiment>_export.txt
+        parameters/
+                   <subject>_<experiment>_electrodes.elp
+                   <subject>_<experiment>_headshape.hsp
+                   <subject>_<experiment>_markers_average.txt
+        
+        + [sns.txt]
+    
     
     Arguments:
     
+    ename : str
+        The experiment name as it appears in file names.
+        
     sfreq : scalar
         samplingrate of the data
     
@@ -87,16 +101,25 @@ def kit2fiff(meg_sdir=None, sfreq=250, aligntol=25, **more_kwargs):
     param_dir = os.path.join(meg_sdir, 'parameters')
     assert os.path.exists(param_dir)
     subject = os.path.basename(meg_sdir)
-    
-    mapath = os.path.join(param_dir, '%s_eref3_markers_average.txt' % subject)
+    fmt = (subject, ename)
+    mapath = os.path.join(param_dir, '%s_%s_markers_average.txt' % fmt)
     mafile = marker_avg_file(mapath)
     
-    elp_file = os.path.join(param_dir, '%s_eref3_electrodes.elp' % subject)
-    hsp_file = os.path.join(param_dir, '%s_eref3_headshape.hsp' % subject)
+    elp_file = os.path.join(param_dir, '%s_%s_electrodes.elp' % fmt)
+    hsp_file = os.path.join(param_dir, '%s_%s_headshape.hsp' % fmt)
     hpi_file = mafile.path
     sns_file = '~/Documents/Eclipse/Eelbrain\ Reloaded/aux_files/sns.txt'
-    data_file = '~/Documents/Data/eref/meg/R0368/data/%s_eref3_exported.txt' %  subject
-    out_file = os.path.join(meg_sdir, 'myfif', '%s_raw.fif' % subject)
+    data_file = os.path.join(meg_sdir, 'data', '%s_%s_export.txt' % fmt)
+    
+    # out file path
+    out_dir = os.path.join(meg_sdir, 'myfif')
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+    out_file = os.path.join(out_dir, '%s_raw.fif' % subject)
+    if os.path.exists(out_file):
+        if not ui.ask("Overwrite?", "Target File Already Exists at: %r. Should "
+                      "it be replaced?" % out_file):
+            return
     
     kwargs = {'elp': elp_file,
               'hsp': hsp_file,
