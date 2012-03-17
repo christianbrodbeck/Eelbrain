@@ -92,7 +92,7 @@ def fiff_events(source_path=None, name=None, bin_invert=True, merge=-1):
     if merge:
         index = np.ones(len(events), dtype=bool)
         diff = np.diff(events[:,0])
-        where = np.where(diff < abs(merge))[0]
+        where = np.where(diff <= abs(merge))[0]
         
         if merge > 0:
             # drop the earlier event
@@ -104,11 +104,14 @@ def fiff_events(source_path=None, name=None, bin_invert=True, merge=-1):
             for w in reversed(where):
                 i1 = w
                 i2 = w + 1
-                events[i1,2] = events[i2,2]            
+                events[i1,2] = events[i2,2]
+        
+        events = events[index]
     
     istart = _data.var(events[:,0], name='i_start')
     event = _data.var(events[:,2], name='eventID')
-    info = {'source': source_path}
+    info = {'source': source_path,
+            'samplingrate': raw.info['sfreq'][0]}
     return _data.dataset(event, istart, name=name, info=info)
 
 
