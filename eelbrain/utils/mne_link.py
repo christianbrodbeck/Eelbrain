@@ -62,7 +62,10 @@ class marker_avg_file:
 
 
 
-def kit2fiff(meg_sdir=None, ename='eref3', sfreq=250, aligntol=25, **more_kwargs):
+
+def kit2fiff(meg_sdir=None, ename='eref3', sfreq=250, aligntol=25, 
+             stim=xrange(168, 160, -1),
+             **more_kwargs):
     """
     Reads multiple input files and combines them into a fiff file that can be
     used with mne. Implemented after Gwyneth's Manual. Requires th following 
@@ -85,6 +88,11 @@ def kit2fiff(meg_sdir=None, ename='eref3', sfreq=250, aligntol=25, **more_kwargs
         
     sfreq : scalar
         samplingrate of the data
+    
+    stim : iterable over ints
+        trigger channels that are used to reconstruct the event cue value from 
+        the separate trigger channels. The default ``xrange(168, 160, -1)`` 
+        reconstructs the values sent through psychtoolbox.
     
     meg_sdir : path(str)
         Path to the subjects's meg directory. If ``None``, a file dialog is 
@@ -115,7 +123,7 @@ def kit2fiff(meg_sdir=None, ename='eref3', sfreq=250, aligntol=25, **more_kwargs
     out_dir = os.path.join(meg_sdir, 'myfif')
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
-    out_file = os.path.join(out_dir, '%s_raw.fif' % subject)
+    out_file = os.path.join(out_dir, '%s_%s_raw.fif' % fmt)
     if os.path.exists(out_file):
         if not ui.ask("Overwrite?", "Target File Already Exists at: %r. Should "
                       "it be replaced?" % out_file):
@@ -127,7 +135,7 @@ def kit2fiff(meg_sdir=None, ename='eref3', sfreq=250, aligntol=25, **more_kwargs
               'hpi': hpi_file,
               'raw': data_file,
               'out': out_file,
-              'stim': '161:162:163:164:165:166:167:168',
+              'stim': ':'.join('%i' % s for s in stim), # '161:162:163:164:165:166:167:168'
               'sfreq': sfreq,
               'aligntol': aligntol}
     
@@ -152,7 +160,7 @@ def _run(cmd, kwargs=None):
         cmd = ' '.join((cmd, args))
 #    source ~/unix_apps/mne-2.7.3/bin/mne_setup_sh
     sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                           shell=True)
+                          shell=True)
     
     stdout, stderr = sp.communicate()
     print ">COMMAND:"

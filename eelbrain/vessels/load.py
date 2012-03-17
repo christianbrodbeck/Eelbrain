@@ -41,7 +41,7 @@ _default_fiff_properties = {'proj': 'ideal',
                             }
 
 
-def fiff_events(source_path=None, name=None, bin_invert=True, merge=-1):
+def fiff_events(source_path=None, name=None, merge=-1):
     """
     Returns a dataset containing events from a raw fiff file. Use
     :func:`fiff_epochs` to load MEG data corresponding to those events.
@@ -58,13 +58,7 @@ def fiff_events(source_path=None, name=None, bin_invert=True, merge=-1):
     
     name : str
         A name for the dataset.
-    
-    bin_invert : bool
-        Use True if you want event trigger values to equal those sent through 
-        psychtoolbox. This fixes the fact that mne's kit2fif and psychtoolbox
-        interpret the binary coding in opposite ways.
-          
-    
+
     """
     if source_path is None:
         source_path = ui.ask_file("Pick a Fiff File", "Pick a Fiff File",
@@ -80,14 +74,6 @@ def fiff_events(source_path=None, name=None, bin_invert=True, merge=-1):
         # this was the case in the raw-eve file, which contained all event 
         # offsets, but not in the raw file created by kit2fiff. For handling
         # see :func:`fiff_event_file`
-    
-    # kit2fif reads trigger channels in the reverse sequence from PTB, 
-    # so we need to fix that in order to retrieve the original 
-    # trigger values.
-    if bin_invert:
-        getbin8 = lambda x: bin(i)[2:].rjust(8, '0')
-        revbin = lambda x: int(''.join(reversed(getbin8(x))), 2)
-        events[:,2] = [revbin(i) for i in events[:,2]]
     
     if merge:
         index = np.ones(len(events), dtype=bool)
