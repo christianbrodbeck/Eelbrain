@@ -55,8 +55,8 @@ The first step is to import the psychophysiology module. Then, you can
 define an Experiment and add a data importer (for txt files in this case)::
 
     >>> import eelbrain.psyphys as pp
-	>>> e = Experiment()
-	>>> i = importer.txt(e)
+	>>> e = pp.Experiment()
+	>>> i = pp.importer.txt(e)
 
 When defining the txt importer, submitting ``e`` as the first argument assigns the 
 importer as a direct child of the experiment. All datasets that manipulate 

@@ -1,3 +1,6 @@
+Version: 0.0.4dev
+
+
 About Eelbrain
 ==============
 
