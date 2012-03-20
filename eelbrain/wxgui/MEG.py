@@ -442,9 +442,9 @@ class pca(mpl_canvas.CanvasFrame):
             self.canvas.redraw_ax(ax)
     
     def OnRemove(self, event):
-        name = None
-        rm_comp = sorted(self._rm_comp)
-        while not name:
+        target = None
+        rm = sorted(self._rm_comp)
+        while not target:
             dlg = wx.TextEntryDialog(self, "What name should the new ndvar be assigned in the dataset?",
                                      "Choose Name for New Variable", "%s"%self._Y.name)
             if dlg.ShowModal() == wx.ID_OK:
@@ -455,40 +455,42 @@ class pca(mpl_canvas.CanvasFrame):
                             (newname, self._dataset[newname]))
                     answer = ui.ask("Replace %r?"%newname, msg)
                     if answer is True:
-                        name = newname
+                        target = newname
                     elif answer is None:
                         pass
                     else:
                         return
                 else:
-                    name = newname
+                    target = newname
             else:
                 return
         
-        # if we made it down here, remove the component
-        n_epochs, n_t, n_sensors = self._Y.data.shape
-        data = self._Y.data.copy() # output data
+        # if we made it down here, remove the component:
+        source = self._Y
+        pca = self.pca
+        ds = self._dataset
         
-        # take serialized data views for working with the PCANode
-        new_data = data.view()
-        old_data = self._Y.data.view()
+        ### start: identical to vessels.process.pca
+        # project into the pca space
+        n_epochs, n_t, n_sensors = source.data.shape
+        old_data = source.data.reshape((n_epochs * n_t, n_sensors))
+        proj = pca.execute(old_data)
         
-        # reshape the views
-        new_data.shape = (n_epochs * n_t, n_sensors)
-        old_data.shape = (n_epochs * n_t, n_sensors)
-        
-        # project the components and remove
-        proj = self.pca.execute(old_data)
+        # flatten retained components
         for i in xrange(proj.shape[1]):
-            if i not in rm_comp:
+            if i not in rm:
                 proj[:,i] = 0 
-        rm_comp_data = self.pca.inverse(proj)
-        new_data -= rm_comp_data
+        
+        # remove the components
+        rm_comp_data = pca.inverse(proj)
+        new_data = source.data - rm_comp_data.reshape(source.data.shape)
         
         # create the output new ndvar 
-        dims = self._Y.dims
-        properties = self._Y.properties
-        self._dataset[name] = _data.ndvar(dims, data, properties, name=name)
+        dims = source.dims
+        properties = source.properties
+        ds[target] = _data.ndvar(dims, new_data, properties, name=target)
+        ### end: identical to vessels.process.pca
+        
         self.Close()
 
 

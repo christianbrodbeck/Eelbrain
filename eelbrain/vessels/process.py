@@ -29,28 +29,22 @@ def rm_pca(ds, rm=[], source='MEG', target='MEG'):
         pca.train(epoch)
     pca.stop_training()
     
-    # remove the components
+    # project into the pca space
     n_epochs, n_t, n_sensors = source.data.shape
-    data = source.data.copy() # output data
-    
-    # take serialized data views for working with the PCANode
-    new_data = data.view()
-    old_data = source.data.view()
-    
-    # reshape the views
-    new_data.shape = (n_epochs * n_t, n_sensors)
-    old_data.shape = (n_epochs * n_t, n_sensors)
-    
-    # project the components and remove
+    old_data = source.data.reshape((n_epochs * n_t, n_sensors))
     proj = pca.execute(old_data)
+    
+    # flatten retained components
     for i in xrange(proj.shape[1]):
         if i not in rm:
             proj[:,i] = 0 
+    
+    # remove the components
     rm_comp_data = pca.inverse(proj)
-    new_data -= rm_comp_data
+    new_data = source.data - rm_comp_data.reshape(source.data.shape)
     
     # create the output new ndvar 
     dims = source.dims
     properties = source.properties
-    ds[target] = _data.ndvar(dims, data, properties, name=target)
+    ds[target] = _data.ndvar(dims, new_data, properties, name=target)
 
