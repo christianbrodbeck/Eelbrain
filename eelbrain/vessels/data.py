@@ -1033,6 +1033,15 @@ class factor(_regressor_):
                 raise ValueError(msg % (self, v))
         return np.array(index)
     
+    def is_in(self, *values):
+        """"
+        Returns a boolean array that is True where the factor is any of the 
+        *values
+        
+        """
+        x = np.sum([self==v for v in values], axis=0, dtype=bool) 
+        return x
+    
     def print_categories(self):
         ":returns: a table containing information about categories"
         table = fmtxt.Table('rll')
