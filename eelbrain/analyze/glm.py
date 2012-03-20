@@ -491,7 +491,7 @@ class lm_fitter(object):
                 # MS res
                 if self.df_res > 0:
                     Yp = values.sum(2)
-                    SS_res = (Y - Yp)**2
+                    SS_res = ((Y - Yp)**2).sum(1)
                     MS_res = SS_res / self.df_res
                 # collect SS, df, MS
                 i = 0
