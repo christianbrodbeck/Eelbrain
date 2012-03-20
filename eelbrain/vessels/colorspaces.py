@@ -185,7 +185,8 @@ def phaseCmap():
 
 
 # black, red-yellow for significant
-def get_sig(p=.05, vmax='unused', **kwargs): #intercept vmin/vmax aras
+def get_sig(p=.05, contours={.01: '.5', .001: '0'}, 
+            vmax='unused', **kwargs): #intercept vmin/vmax aras
         pstr = str(p)[1:]
         kwargs['ticks'] = [0, p]
         kwargs['ticklabels'] = ['0', pstr]
@@ -203,9 +204,9 @@ def get_sig(p=.05, vmax='unused', **kwargs): #intercept vmin/vmax aras
                         (1.0,   0.,     0.)]}
         cmap = mpl.colors.LinearSegmentedColormap("sigCmap", cdict, N=1000)
         cmap.set_bad('w', alpha=0.)
-        return cmap
-                        
-        return Colorspace(vmax=1, vim=0, unit='p', **kwargs)
+        
+        return Colorspace(vmax=1, vmin=0, unit='p', cmap=cmap, contours=contours, 
+                          **kwargs)
 
 
 # white, red-yellow for significant
@@ -231,7 +232,8 @@ def get_sig_white(p=.05, vmax='unused', **kwargs):
                       **kwargs)
 
 
-def get_symsig(p=.05, contours=[], vmax='unused', **kwargs):
+def get_symsig(p=.05, contours={.99: '.5', -.99: '.5', .999: '1', -.999: '1'}, 
+               vmax='unused', **kwargs):
     pstr = str(p)[1:]
     cs_kwargs = {'ticks': [-1, -1+p, 1-p, 1],
                  'ticklabels': ['0', pstr, pstr, '0'],
@@ -240,23 +242,18 @@ def get_symsig(p=.05, contours=[], vmax='unused', **kwargs):
                  }
     cs_kwargs.update(kwargs)
     if contours:
-        if np.isscalar(contours):
-            contours = [contours]
-        cont = []
-        for c in contours:
-            cont += [1-c, -1+c]
-        cs_kwargs['contours'] = cont
+        cs_kwargs['contours'] = contours
 
     cdict = {'red':   [(0.,     1.,     1.),
-                   (p/2,   .25,    0.),
-                   (1.-p/2,   0.,     1.),
-                   (1.,     1.,     1.)],
-         'green': [(0.0,    0.,     0.),
-                   (1.-p/2,   0.,     0.),
-                   (1.,     1.,     1.)],
-         'blue':  [(.0,     1.,     1.),
-                   (p/2,   1.,     0.),
-                   (1.0,    0.,     0.)]}
+                       (p/2,   .25,    0.),
+                       (1.-p/2,   0.,     1.),
+                       (1.,     1.,     1.)],
+             'green': [(0.0,    0.,     0.),
+                       (1.-p/2,   0.,     0.),
+                       (1.,     1.,     1.)],
+             'blue':  [(.0,     1.,     1.),
+                       (p/2,   1.,     0.),
+                       (1.0,    0.,     0.)]}
     cmap = mpl.colors.LinearSegmentedColormap("sigCmapSym", cdict, N=2000)
     cmap.set_bad('w', alpha=0.)
     
