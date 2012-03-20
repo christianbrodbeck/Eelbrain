@@ -162,7 +162,7 @@ def _plt_im_array(ax, epoch, colorspace=None, **kwargs):
     if colorspace.cmap:
         im_kwargs = kwargs.copy()
         im_kwargs.update(colorspace.get_imkwargs())
-        h = ax.imshow(data, **im_kwargs)
+        h = ax.imshow(data, origin='lower', **im_kwargs)
         handles.append(h)
     
     if colorspace.contours:
