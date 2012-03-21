@@ -473,27 +473,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         text = wx.py.shell.HELP_TEXT
         self.__doc__ = text
     
-    def OnAbout(self, event):
-        """Display an About window."""
-        about = about_dialog.AboutFrame(self)
-        if wx.__version__ >= '2.9':
-            about.ShowWithEffect(wx.SHOW_EFFECT_BLEND)
-        else:
-            about.Show()
-        about.SetFocus()
-        return about
-
-    def OnActivate(self, event=None):
-        #logging.debug(" Shell Activate Event: {0}".format(event.Active))
-        if hasattr(self.shell, 'Destroy'): # if alive
-            if event.Active:
-                self.shell.SetCaretForeground(wx.Colour(255,0,0))
-                self.shell.SetCaretPeriod(500)
-            else:
-                self.shell.SetCaretForeground(wx.Colour(200,200,200))
-                self.shell.SetCaretPeriod(0)
-    
-    # ATTACHING---
     def attach(self, dictionary):
         """
         Adds a dictionary to the globals and keeps track of the items so that 
@@ -535,32 +514,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         msg = "attached: %s" % str(attach.keys())
         print msg
     
-    def detach(self, dictionary=None):
-        """
-        Removes the contents of `dictionary` from the global namespace. Neither
-        the item itself is removed, nor are any references that were not 
-        created through the :func:`attach` function.
-        
-        `dictionary`: dict-like
-            Dictionary which to detach; `None`: detach everything
-         
-        """
-        if dictionary is None:
-            dIDs = self._attached_items.keys()
-        else:
-            dIDs = [id(dictionary)]
-        
-        detach = {}
-        for dID in dIDs:
-            detach.update(self._attached_items.pop(dID))
-        
-        for k,v in detach.iteritems():
-            if id(self.global_namespace[k]) == id(v):
-                del self.global_namespace[k]
-    
-    def hasBuffer(self):
-        return True
-    
     def bufferClose(self):
         "to catch an distribute menu command 'close' in Os-X"
         win = self.get_active_window()
@@ -585,30 +538,53 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 if e.IsActive():
                     e.bufferSaveAs()
     
-    def OnClearTerminal(self, event=None):
-        self.shell.clear()
-        self.shell.prompt()
-    
-    def OnDestroyIcon(self, evt):
-        logging.debug("DESTROY ICON CALLED")
-        self.eelbrain_icon.Destroy()
-        evt.Skip()
-    
-    def OnExecFile(self, event=None):
+    def create_py_editor(self, pyfile=None):
         """
-        Execute a file in the shell.
+        Creates and returns a new py_editor object.
         
-        filename: if None, will ask
-        isolate: execute with separate globals, do not touch the shell's 
-                 globals
+        :arg pyfile: filename as string, or True in order to display an "open
+            file" dialog (None creates an empty editor)
+        :arg openfile: True if an 'open file' dialog should be shown after the
+            editor is cerated
         
         """
-        dialog = wx.FileDialog(self, style=wx.FD_OPEN)
-        dialog.SetMessage("Select Python File")
-        dialog.SetWildcard("Python files (*.py)|*.py")
-        if dialog.ShowModal():
-            filename = dialog.GetPath()
-        self.ExecFile(filename)
+        editor = py_editor.Editor(self, self, pos=self.pos_for_new_window(),
+                                  pyfile=pyfile)
+        
+        editor.Show()
+        self.editors.append(editor)
+        
+        # add to window menu
+        ID = editor.GetId()
+        m = self.windowMenu.Append(ID, "a", "Bring window to the front.")
+        self.Bind(wx.EVT_MENU, self.OnWindowMenuActivateWindow, m)
+        self.windowMenuWindows[ID] = editor
+        self.windowMenuMenuItems[ID] = m
+        
+        return editor
+    
+    def detach(self, dictionary=None):
+        """
+        Removes the contents of `dictionary` from the global namespace. Neither
+        the item itself is removed, nor are any references that were not 
+        created through the :func:`attach` function.
+        
+        `dictionary`: dict-like
+            Dictionary which to detach; `None`: detach everything
+         
+        """
+        if dictionary is None:
+            dIDs = self._attached_items.keys()
+        else:
+            dIDs = [id(dictionary)]
+        
+        detach = {}
+        for dID in dIDs:
+            detach.update(self._attached_items.pop(dID))
+        
+        for k,v in detach.iteritems():
+            if id(self.global_namespace[k]) == id(v):
+                del self.global_namespace[k]
     
     def ExecFile(self, filename, shell_globals=True):
         """
@@ -719,12 +695,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         
         self.pyplot_draw()
     
-    def OnFileNew(self, event=None):
-        self.OnPyEd_New(event)
-    
-    def OnFileOpen(self, event=None):
-        self.FileOpen(internal_call=True)
-    
     def FileOpen_shellcommand(self, path=None):
         """
         Open a file (Experiment or Python script). If path is None, the 
@@ -754,14 +724,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
             msg = "No valid file path: %r" % path
             self.shell_message(msg, internal_call=internal_call)
     
-    def OnFindPath(self, event=None):
-        filenames = ui.ask_file(wildcard='', mult=True)
-        if filenames:
-            if len(filenames) == 1:
-                filenames = '"'+filenames[0]+'"'
-            else:
-                filenames = str(filenames)
-            self.shell.ReplaceSelection(filenames)
+    def FrameTable(self, table=None):
+        pos = self.pos_for_new_window()
+        t = TableFrame(self, table, pos=pos)
+        self.tables.append(t)
     
     def get_active_window(self):
         "returns the active window (self, editor, help viewer, ...)"
@@ -771,9 +737,91 @@ class ShellFrame(wx.py.shell.ShellFrame):
             if hasattr(c, 'IsActive') and c.IsActive():
                 return c
         return None
+    
     def GetCurLine(self):
         return self.shell.GetCurLine()
-    # HELP
+    
+    def hasBuffer(self):
+        return True
+    
+    def help_lookup(self, what=None):
+        """
+        what = object whose docstring should be displayed
+        
+        """
+        # this is the function that is pulled into the shell as help()
+        self.OnHelpViewer(topic=what)
+    
+    def InsertStr(self, text):
+        """
+        Inserts the text in the active window (can be the shell or an editor)
+        """
+        for editor in self.editors:
+            if hasattr(editor, 'IsActive') and editor.IsActive():
+                editor.editor.window.ReplaceSelection(text)
+                return
+        self.shell.ReplaceSelection(text)
+    
+    def OnAbout(self, event):
+        """Display an About window."""
+        about = about_dialog.AboutFrame(self)
+        if wx.__version__ >= '2.9':
+            about.ShowWithEffect(wx.SHOW_EFFECT_BLEND)
+        else:
+            about.Show()
+        about.SetFocus()
+        return about
+
+    def OnActivate(self, event=None):
+        #logging.debug(" Shell Activate Event: {0}".format(event.Active))
+        if hasattr(self.shell, 'Destroy'): # if alive
+            if event.Active:
+                self.shell.SetCaretForeground(wx.Colour(255,0,0))
+                self.shell.SetCaretPeriod(500)
+            else:
+                self.shell.SetCaretForeground(wx.Colour(200,200,200))
+                self.shell.SetCaretPeriod(0)
+    
+    def OnClearTerminal(self, event=None):
+        self.shell.clear()
+        self.shell.prompt()
+    
+    def OnDestroyIcon(self, evt):
+        logging.debug("DESTROY ICON CALLED")
+        self.eelbrain_icon.Destroy()
+        evt.Skip()
+    
+    def OnExecFile(self, event=None):
+        """
+        Execute a file in the shell.
+        
+        filename: if None, will ask
+        isolate: execute with separate globals, do not touch the shell's 
+                 globals
+        
+        """
+        dialog = wx.FileDialog(self, style=wx.FD_OPEN)
+        dialog.SetMessage("Select Python File")
+        dialog.SetWildcard("Python files (*.py)|*.py")
+        if dialog.ShowModal():
+            filename = dialog.GetPath()
+        self.ExecFile(filename)
+    
+    def OnFileNew(self, event=None):
+        self.OnPyEd_New(event)
+    
+    def OnFileOpen(self, event=None):
+        self.FileOpen(internal_call=True)
+    
+    def OnFindPath(self, event=None):
+        filenames = ui.ask_file(wildcard='', mult=True)
+        if filenames:
+            if len(filenames) == 1:
+                filenames = '"'+filenames[0]+'"'
+            else:
+                filenames = str(filenames)
+            self.shell.ReplaceSelection(filenames)
+    
     def OnHelp(self, event):
         "Help invoked through the Shell Menu"
         win = self.get_active_window()
@@ -845,14 +893,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         else:
             self.help_viewer.Help_Lookup(topic)
     
-    def help_lookup(self, what=None):
-        """
-        what = object whose docstring should be displayed
-        
-        """
-        # this is the function that is pulled into the shell as help()
-        self.OnHelpViewer(topic=what)
-    
     def OnInsertColor(self, event=None):
         ctup = event.GetValue()
         mplc = tuple([round(c/256., 3) for c in ctup[:3]])
@@ -890,16 +930,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 filenames = 'r'+filenames
             
             self.InsertStr(filenames)
-    
-    def InsertStr(self, text):
-        """
-        Inserts the text in the active window (can be the shell or an editor)
-        """
-        for editor in self.editors:
-            if hasattr(editor, 'IsActive') and editor.IsActive():
-                editor.editor.window.ReplaceSelection(text)
-                return
-        self.shell.ReplaceSelection(text)
     
     def OnKeyDown(self, event):
         key = event.GetKeyCode()
@@ -945,6 +975,19 @@ class ShellFrame(wx.py.shell.ShellFrame):
         logging.debug("SHELLFRAME Maximize received")
         self.OnResize_Max(event)
     
+    def OnOpenWindowMenu(self, event):
+        "Updates open windows to the menu"
+        menu = event.GetMenu()
+#        ID = event.GetMenuId() (is always 0)
+        name = menu.GetTitle()
+        if name == "&Window":
+            logging.debug("Window Menu Open")
+            # update names
+            for ID, m in self.windowMenuMenuItems.iteritems():
+                window = self.windowMenuWindows[ID]
+                title = window.GetTitle()
+                m.SetText(title)
+        
     def OnPreferences(self, event=None):
         dlg = preferences_dialog.PreferencesDialog(self)
 #        dlg = wx.MessageDialog(self, "Test", 'test', wx.OK)
@@ -954,12 +997,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnP_CloseAll(self, event=None):
         plt.close('all')
     
-    def pyplot_draw(self):
-        # update plots if mpl Backend does not do that automatically
-        if mpl.get_backend() in ['WXAgg']:
-            if len(plt._pylab_helpers.Gcf.get_all_fig_managers()) > 0:
-                plt.draw()
-                plt.show()
+    def OnPyEd_New(self, event=None):
+        self.create_py_editor()
     
     def OnQuit(self, event=None):
         logging.debug(" QUIT")
@@ -992,12 +1031,78 @@ class ShellFrame(wx.py.shell.ShellFrame):
                         ed.Destroy()
         self.OnP_CloseAll()
         self.Close()
+    
     def OnRecentItemLoad(self, event):
         fileNum = event.GetId() - wx.ID_FILE1
         logging.debug("History Load: %s"%fileNum)
         path = self.filehistory.GetHistoryFile(fileNum)
         logging.debug("History Load: %s"%path)
         self.FileOpen(path=path, internal_call=True)
+    
+    def OnResize_Max(self, event):
+        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
+        x_size = min(x_max-x_min, 800) + x_min
+        self.SetPosition((x_min, y_min))
+        self.SetSize((x_size, y_max))
+    
+    def OnResize_HalfScreen(self, event):
+        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
+        self.SetPosition((x_min, y_min))
+        x_size = min(x_max//2, 800) - x_min
+        y_size = y_max - y_min
+        self.SetSize((x_size, y_size))
+    
+    def OnResize_Win(self, event):
+        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
+        self.SetPosition((x_min, y_min+50))
+        x_size = 800 + x_min
+        y_size = y_max - y_min - 100
+        self.SetSize((x_size, y_size))
+    
+    def OnResize_Min(self, event):
+        self.SetPosition((50, 200))
+        self.SetSize((350, 600))   
+         
+    def OnSelectColourAlt(self, event=None):
+        if hasattr(self, 'c_dlg'):
+            if hasattr(self.c_dlg, 'GetColourData'):
+                c = self.c_dlg.GetColourData()
+                c = c.GetColour()
+                self.shell.ReplaceSelection(str(c))
+            else:
+                del self.c_dlg
+        if not hasattr(self, 'c_dlg'):
+            self.c_dlg = wx.ColourDialog(self)
+    
+    def OnTableNew(self, event=None):
+        self.FrameTable(None)
+    
+    def OnTogglePyplotMgr(self, event=None):
+        if self.P_mgr.IsShown():
+            self.P_mgr.Show(False)
+        else:
+            self.P_mgr.Show()
+    
+    def OnWindowMenuActivateWindow(self, event):
+        ID = event.GetId()
+        window = self.windowMenuWindows[ID]
+        window.SetFocus()
+        
+    def pos_for_new_window(self, size=(200, 400)):
+        x, y, w, h = self.GetRect().Get()
+        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
+        e_x = x + w
+        if e_x + size[0] > x_max:
+            e_x = x_max - size[0]
+        return (e_x, y_min + 26)
+    
+    def pyplot_draw(self):
+        # update plots if mpl Backend does not do that automatically
+        if mpl.get_backend() in ['WXAgg']:
+            if len(plt._pylab_helpers.Gcf.get_all_fig_managers()) > 0:
+                plt.draw()
+                plt.show()
+    
     def recent_item_add(self, path, t):
         "t is 'e' or 'pydoc'"
         self.filehistory.AddFileToHistory(path)
@@ -1054,102 +1159,47 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.windowMenuMenuItems.pop(ID)
         self.windowMenu.Remove(ID)
         
-    def OnResize_Max(self, event):
-        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
-        x_size = min(x_max-x_min, 800) + x_min
-        self.SetPosition((x_min, y_min))
-        self.SetSize((x_size, y_max))
-    def OnResize_HalfScreen(self, event):
-        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
-        self.SetPosition((x_min, y_min))
-        x_size = min(x_max//2, 800) - x_min
-        y_size = y_max - y_min
-        self.SetSize((x_size, y_size))
-    def OnResize_Win(self, event):
-        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
-        self.SetPosition((x_min, y_min+50))
-        x_size = 800 + x_min
-        y_size = y_max - y_min - 100
-        self.SetSize((x_size, y_size))
-    def OnResize_Min(self, event):
-        self.SetPosition((50, 200))
-        self.SetSize((350, 600))        
-    def pos_for_new_window(self, size=(200, 400)):
-        x, y, w, h = self.GetRect().Get()
-        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
-        e_x = x + w
-        if e_x + size[0] > x_max:
-            e_x = x_max - size[0]
-        return (e_x, y_min + 26)
-    def OnTogglePyplotMgr(self, event=None):
-        if self.P_mgr.IsShown():
-            self.P_mgr.Show(False)
-        else:
-            self.P_mgr.Show()
-    def OnSelectColourAlt(self, event=None):
-        if hasattr(self, 'c_dlg'):
-            if hasattr(self.c_dlg, 'GetColourData'):
-                c = self.c_dlg.GetColourData()
-                c = c.GetColour()
-                self.shell.ReplaceSelection(str(c))
-            else:
-                del self.c_dlg
-        if not hasattr(self, 'c_dlg'):
-            self.c_dlg = wx.ColourDialog(self)
+    def SetColours(self, obj):
+        obj.SetCaretWidth(2)
+        if 'wxMac' in wx.PlatformInfo:
+            # --> wx.py.shell.editwindow.EditWindow.__config()
+            FACES = { 'times'     : 'Lucida Grande',
+                      'mono'      : 'Courier New',#'Monaco',
+                      'helv'      : 'Geneva',
+                      'other'     : 'new century schoolbook',
+                      'size'      : 12,
+                      'lnsize'    : 16,
+                      'backcol'   : '#F0F0F0',#'#000010',
+                      'calltipbg' : '#101010',
+                      'calltipfg' : '#F09090',
+                    }
+            obj.StyleClearAll()
+            obj.setStyles(FACES)
+            obj.CallTipSetBackground(FACES['calltipbg'])
+            obj.CallTipSetForeground(FACES['calltipfg'])
+        if True:
+            obj.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT,
+                          "fore:#FFFF00")#,back:#666666")
+            obj.StyleSetSpec(wx.stc.STC_P_DEFAULT,  # '\'
+                          "fore:#000000")
+            obj.StyleSetSpec(wx.stc.STC_P_NUMBER,
+                          "fore:#0000FF")
+            obj.StyleSetSpec(wx.stc.STC_STYLE_CONTROLCHAR,
+                          "fore:#FF0000")
+            obj.StyleSetSpec(wx.stc.STC_P_STRING,
+                          "fore:#FF0000")
+            obj.StyleSetSpec(wx.stc.STC_P_CHARACTER,
+                          "fore:#0000FF")
+            obj.StyleSetSpec(wx.stc.STC_P_OPERATOR,
+                          "fore:#000010")
+            obj.StyleSetSpec(wx.stc.STC_P_DECORATOR,
+                          "fore:#FF00FF")
+            obj.StyleSetSpec(wx.stc.STC_P_WORD,
+                          "fore:#FF00FF")
+            obj.StyleSetSpec(wx.stc.STC_STYLE_MAX,
+                          "fore:#0000FF")
+            #obj.SetSelForeground(True, wx.Colour(255,255,255))
     
-    def OnPyEd_New(self, event=None):
-        self.create_py_editor()
-    
-    def create_py_editor(self, pyfile=None):
-        """
-        Creates and returns a new py_editor object.
-        
-        :arg pyfile: filename as string, or True in order to display an "open
-            file" dialog (None creates an empty editor)
-        :arg openfile: True if an 'open file' dialog should be shown after the
-            editor is cerated
-        
-        """
-        editor = py_editor.Editor(self, self, pos=self.pos_for_new_window(),
-                                  pyfile=pyfile)
-        
-        editor.Show()
-        self.editors.append(editor)
-        
-        # add to window menu
-        ID = editor.GetId()
-        m = self.windowMenu.Append(ID, "a", "Bring window to the front.")
-        self.Bind(wx.EVT_MENU, self.OnWindowMenuActivateWindow, m)
-        self.windowMenuWindows[ID] = editor
-        self.windowMenuMenuItems[ID] = m
-        
-        return editor
-    
-    def OnTableNew(self, event=None):
-        self.FrameTable(None)
-    
-    def OnOpenWindowMenu(self, event):
-        "Updates open windows to the menu"
-        menu = event.GetMenu()
-#        ID = event.GetMenuId() (is always 0)
-        name = menu.GetTitle()
-        if name == "&Window":
-            logging.debug("Window Menu Open")
-            # update names
-            for ID, m in self.windowMenuMenuItems.iteritems():
-                window = self.windowMenuWindows[ID]
-                title = window.GetTitle()
-                m.SetText(title)
-        
-    def OnWindowMenuActivateWindow(self, event):
-        ID = event.GetId()
-        window = self.windowMenuWindows[ID]
-        window.SetFocus()
-        
-    def FrameTable(self, table=None):
-        pos = self.pos_for_new_window()
-        t = TableFrame(self, table, pos=pos)
-        self.tables.append(t)
     def shell_message(self, message, sep=False, ascommand=False, endline=True,
                       internal_call=False):
         """
@@ -1193,45 +1243,4 @@ class ShellFrame(wx.py.shell.ShellFrame):
         else:
             logging.debug("external shell_msg: %r" % message)
             print message
-    def SetColours(self, obj):
-        obj.SetCaretWidth(2)
-        if 'wxMac' in wx.PlatformInfo:
-            # --> wx.py.shell.editwindow.EditWindow.__config()
-            FACES = { 'times'     : 'Lucida Grande',
-                      'mono'      : 'Courier New',#'Monaco',
-                      'helv'      : 'Geneva',
-                      'other'     : 'new century schoolbook',
-                      'size'      : 12,
-                      'lnsize'    : 16,
-                      'backcol'   : '#F0F0F0',#'#000010',
-                      'calltipbg' : '#101010',
-                      'calltipfg' : '#F09090',
-                    }
-            obj.StyleClearAll()
-            obj.setStyles(FACES)
-            obj.CallTipSetBackground(FACES['calltipbg'])
-            obj.CallTipSetForeground(FACES['calltipfg'])
-        if True:
-            obj.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT,
-                          "fore:#FFFF00")#,back:#666666")
-            obj.StyleSetSpec(wx.stc.STC_P_DEFAULT,  # '\'
-                          "fore:#000000")
-            obj.StyleSetSpec(wx.stc.STC_P_NUMBER,
-                          "fore:#0000FF")
-            obj.StyleSetSpec(wx.stc.STC_STYLE_CONTROLCHAR,
-                          "fore:#FF0000")
-            obj.StyleSetSpec(wx.stc.STC_P_STRING,
-                          "fore:#FF0000")
-            obj.StyleSetSpec(wx.stc.STC_P_CHARACTER,
-                          "fore:#0000FF")
-            obj.StyleSetSpec(wx.stc.STC_P_OPERATOR,
-                          "fore:#000010")
-            obj.StyleSetSpec(wx.stc.STC_P_DECORATOR,
-                          "fore:#FF00FF")
-            obj.StyleSetSpec(wx.stc.STC_P_WORD,
-                          "fore:#FF00FF")
-            obj.StyleSetSpec(wx.stc.STC_STYLE_MAX,
-                          "fore:#0000FF")
-            #obj.SetSelForeground(True, wx.Colour(255,255,255))
-
 
