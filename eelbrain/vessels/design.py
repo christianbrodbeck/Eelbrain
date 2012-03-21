@@ -58,7 +58,6 @@ from eelbrain import ui
 
 
 _max_iter = 1e3
-_randomize = True
 
 class RandomizationError(Exception):
     "custom error for failures in randomization"
@@ -108,7 +107,7 @@ class Variable(object):
 
 
 
-def get_permutated_dataset(*variables):
+def get_permutated_dataset(variables, count='caseID', randomize=False):
     # sort variables
     perm_rand = []    # permutated and randomized
     perm_nonrand = [] # permutated and not randomized
@@ -144,7 +143,7 @@ def get_permutated_dataset(*variables):
             
             out[:,i] = np.repeat(base, r)
     
-    if _randomize:
+    if randomize:
         # shuffle those perm factors that should be shuffled
         n_rand_bins = np.prod([v.Ndraw for v in perm_nonrand])
         rand_bin_len = int(n_trials / n_rand_bins)
@@ -157,6 +156,9 @@ def get_permutated_dataset(*variables):
         x = out[:,v.ID]
         f = _data.factor(x, v.name, labels=v.cells, retain_label_codes=True)
         ds.add(f)
+    
+    if count:
+        ds.add(_data.var(np.arange(ds.N), count)) 
     
     return ds
 
@@ -212,14 +214,14 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
         values = np.arange(_len, dtype=np.uint8) % N_values
         
         # drop trailing values randomly
-        if rand and _randomize:
+        if rand:# and _randomize:
             np.random.shuffle(values[-N_values:])
         values = values[:ds.N]
     
     
     # cycle through values of the balance containers
     for c in regions.cells:
-        if rand and _randomize:
+        if rand:# and _randomize:
             np.random.shuffle(values)
         
         # indexes into the current out array rows
