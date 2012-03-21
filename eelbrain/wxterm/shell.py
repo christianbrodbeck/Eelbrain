@@ -188,8 +188,8 @@ class Shell(wx.py.shell.Shell):
 
 class ShellFrame(wx.py.shell.ShellFrame):
     bufferOpen = 1 # Dummy attr so that py.frame enables Open menu 
-    bufferNew = 1  # same for New menu
-#    bufferClose = 1
+    bufferNew = 1  # same for New menu command
+    bufferClose = 1  # same for Close menu command (handled by OnFileClose)
     def __init__(self, parent, namespace, *args, **kwargs):
         
         app = wx.GetApp()
@@ -514,12 +514,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         msg = "attached: %s" % str(attach.keys())
         print msg
     
-    def bufferClose(self):
-        "to catch an distribute menu command 'close' in Os-X"
-        win = self.get_active_window()
-        if win and win is not self:
-            win.Close()
-    
     def bufferSave(self):
         "to catch an distribute menu command 'save' in Os-X"
         if self.IsActive():
@@ -807,8 +801,23 @@ class ShellFrame(wx.py.shell.ShellFrame):
             filename = dialog.GetPath()
         self.ExecFile(filename)
     
+    def OnFileClose(self, event):
+        """
+        Handler to catch and distribute 'close' command  in Os-X 
+        (see wx.py.frame.Frame)
+        
+        """
+        win = self.get_active_window()
+        if win:
+            if win is self:
+                pass
+            else:
+                win.Close()
+        else:
+            event.Skip()
+    
     def OnFileNew(self, event=None):
-        self.OnPyEd_New(event)
+        self.create_py_editor()
     
     def OnFileOpen(self, event=None):
         self.FileOpen(internal_call=True)
@@ -951,7 +960,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
             elif key==68: # 'd'
                 # make sure we have a target editor
                 if not hasattr(self.active_editor, 'InsertLine'):
-                    self.OnPyEd_New(event)
+                    self.OnFileNew(event)
                     self.active_editor = self.editors[-1]
                 editor = self.active_editor
                 # prepare text for transfer
@@ -996,9 +1005,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
     
     def OnP_CloseAll(self, event=None):
         plt.close('all')
-    
-    def OnPyEd_New(self, event=None):
-        self.create_py_editor()
     
     def OnQuit(self, event=None):
         logging.debug(" QUIT")
