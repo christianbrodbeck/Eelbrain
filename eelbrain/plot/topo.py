@@ -329,10 +329,10 @@ class _Window_Topo:
                 #print 't =', t
                 self.pointer.set_axes(parent_ax)
                 self.pointer.xy=(t,1)
-                self.pointer.set_text("t = %.3g"%t)
+                self.pointer.set_text("t=%.3g"%t)
                 self.pointer.set_visible(True)
             else:
-                self.pointer = parent_ax.annotate("t = %.4g"%t, (t,1), 
+                self.pointer = parent_ax.annotate("t=%.3g"%t, (t,1), 
                                     xycoords='data',
                                     xytext=self.pointer_xy, 
                                     textcoords='figure fraction',
@@ -436,6 +436,7 @@ class array(mpl_canvas.CanvasFrame):
         
         # save important properties
         self.epochs = epochs
+        self._ntopo = ntopo
         
         # if t argument is provided, set topo-pol time points
         if t:
@@ -451,14 +452,15 @@ class array(mpl_canvas.CanvasFrame):
         self.Show()
     
     def __repr__(self):
-        seg_repr = [('<%r>' % e.name) for e in self.epochs]
-        seg_names = ', '.join(seg_repr)
-        kwargs = dict(s = seg_names)
-        if self.title:
-            kwargs['t'] = ' %r' % self.title
-        else:
-            kwargs['t'] = ''
-        txt = "<plot.xbyx{t} ({s})>".format(**kwargs)
+        e_repr = []
+        for e in self.epochs:
+            if hasattr(e, 'name'):
+                e_repr.append(e.name)
+            else:
+                e_repr.append([ie.name for ie in e])
+        kwargs = {'s': repr(e_repr),
+                  't': ' %r' % self.title if self.title else ''}
+        txt = "<plot.topo.array{t} ({s})>".format(**kwargs)
         return txt
     
     def set_topo_single(self, topo, t, parent_im_id='auto'):
@@ -515,7 +517,13 @@ class array(mpl_canvas.CanvasFrame):
                 pass
         elif (ax.type == 'main') and (self._selected_window != None):
             self._selected_window.clear() # to side track pdf export transparency issue
-            self._window_update(mouseevent, ax)
+#            self._window_update(mouseevent, ax)
+            
+            # update corresponding windows
+            t = mouseevent.xdata
+            Id = self._selected_window.ax.ID % self._ntopo
+            self.set_topowin(Id, t)
+            
             self._selected_window = None
             self.canvas.draw()
     
