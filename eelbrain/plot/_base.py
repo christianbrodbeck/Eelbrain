@@ -156,8 +156,7 @@ def _loc(name, size=(0,0), title_space=0, frame=.01):
 def _plt_im_array(ax, epoch, colorspace=None, **kwargs):
     handles = []
     colorspace = read_cs_arg(epoch, colorspace)
-    epoch.assert_dims(('time', 'sensor'))
-    data = epoch.get_epoch_data().T
+    data = epoch.get_data(('sensor', 'time'), 0)
     
     if colorspace.cmap:
         im_kwargs = kwargs.copy()

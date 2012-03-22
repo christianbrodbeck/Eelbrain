@@ -22,16 +22,17 @@ def rm_pca(ds, rm=[], source='MEG', target='MEG'):
     
     rm = sorted(rm)
     n_comp = max(rm) + 1
+    data = source.get_data(('time', 'sensor'))
     
     # do the pca
     pca = _mdp.nodes.PCANode(output_dim=n_comp)
-    for epoch in source.data:
+    for epoch in data:
         pca.train(epoch)
     pca.stop_training()
     
     # project into the pca space
-    n_epochs, n_t, n_sensors = source.data.shape
-    old_data = source.data.reshape((n_epochs * n_t, n_sensors))
+    n_epochs, n_t, n_sensors = data.shape
+    old_data = data.reshape((n_epochs * n_t, n_sensors))
     proj = pca.execute(old_data)
     
     # flatten retained components
@@ -41,10 +42,10 @@ def rm_pca(ds, rm=[], source='MEG', target='MEG'):
     
     # remove the components
     rm_comp_data = pca.inverse(proj)
-    new_data = source.data - rm_comp_data.reshape(source.data.shape)
+    new_data = data - rm_comp_data.reshape(data.shape)
     
     # create the output new ndvar 
-    dims = source.dims
+    dims = source.get_dims(('time', 'sensor'))
     properties = source.properties
     ds[target] = _data.ndvar(dims, new_data, properties, name=target)
 

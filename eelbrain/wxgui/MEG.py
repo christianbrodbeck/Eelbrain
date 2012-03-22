@@ -146,7 +146,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
     
     def _update_mean(self):
         mseg = self._get_page_mean_seg()
-        data = mseg.data[0]
+        data = mseg.get_data(('time', 'sensor'))[0]
         T = mseg.time
         T_len = len(T)
         Ylen = T_len * 2 + 1
@@ -379,7 +379,8 @@ class pca(mpl_canvas.CanvasFrame):
         
     # do the PCA
         pca = self.pca = mdp.nodes.PCANode(output_dim=self._ncomp)
-        for epoch in Y.data:
+        data = self._Ydata = Y.get_data(('time', 'sensor'))
+        for epoch in data:
             pca.train(epoch)
         pca.stop_training()
         
@@ -391,10 +392,10 @@ class pca(mpl_canvas.CanvasFrame):
         self.canvas.mpl_connect('button_press_event', self.OnClick)
         # figure
         self.figure.subplots_adjust(left=.01, right=.99, bottom=.05, top=.95, 
-                                 hspace=.2)
+                                    hspace=.2)
         
     # plot the components
-        cdims = (Y.sensor,)
+        cdims = Y.get_dims(('sensor',))
         self._components = []
         self._rm_comp = []
         npy, npx = self._nplots
@@ -467,13 +468,14 @@ class pca(mpl_canvas.CanvasFrame):
         
         # if we made it down here, remove the component:
         source = self._Y
+        data = self._Ydata
         pca = self.pca
         ds = self._dataset
         
         ### start: identical to vessels.process.pca
         # project into the pca space
-        n_epochs, n_t, n_sensors = source.data.shape
-        old_data = source.data.reshape((n_epochs * n_t, n_sensors))
+        n_epochs, n_t, n_sensors = data.shape
+        old_data = data.reshape((n_epochs * n_t, n_sensors))
         proj = pca.execute(old_data)
         
         # flatten retained components
@@ -483,10 +485,10 @@ class pca(mpl_canvas.CanvasFrame):
         
         # remove the components
         rm_comp_data = pca.inverse(proj)
-        new_data = source.data - rm_comp_data.reshape(source.data.shape)
+        new_data = data - rm_comp_data.reshape(data.shape)
         
         # create the output new ndvar 
-        dims = source.dims
+        dims = source.get_dims(('time', 'sensor'))
         properties = source.properties
         ds[target] = _data.ndvar(dims, new_data, properties, name=target)
         ### end: identical to vessels.process.pca

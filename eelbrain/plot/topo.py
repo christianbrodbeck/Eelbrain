@@ -253,7 +253,7 @@ def _plt_topomap(ax, epoch, proj='default', res=100,
     colorspace = _base.read_cs_arg(epoch, colorspace)
     handles = {}
     
-    Y = epoch.get_epoch_data()
+    Y = epoch.get_data(('sensor',), 0)
     Ymap = epoch.sensor.get_im_for_topo(Y, proj=proj, res=res, frame=im_frame)
     
     emin = -im_frame

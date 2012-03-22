@@ -385,10 +385,7 @@ def _plt_uts(ax, epoch,
     NOT IMPLEMENTED epochs: submit mean epochs
     
     """
-    epoch.assert_dims(('time', 'sensor'))
-    # prepare args
-    
-    Y = epoch.get_epoch_data()
+    Y = epoch.get_data(('time', 'sensor'), 0)
     if sensors:
         Y = Y[:,sensors]
     T = epoch.time#.x[...,None]
@@ -404,8 +401,7 @@ def _plt_uts(ax, epoch,
 
 
 def _plt_extrema(ax, epoch, **plot_kwargs):
-    epoch.assert_dims(('time', 'sensor'))
-    data = epoch.get_epoch_data()
+    data = epoch.get_data(('time', 'sensor'), 0)
     Ymin = data.min(1)
     Ymax = data.max(1)
     T = epoch.time

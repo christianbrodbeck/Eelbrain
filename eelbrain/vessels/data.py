@@ -1083,7 +1083,6 @@ class factor(_regressor_):
 
 class ndvar(object):
     _stype_ = "ndvar"
-    _dim_order = ('time', 'sensor', 'freq')
     def __init__(self, dims, data, properties=None, name="???", info=""):
         """
         Arguments
@@ -1110,19 +1109,12 @@ class ndvar(object):
             copy of ``properties`` is stored. Make sure the relevant objects 
             are not modified externally later.
         
-        """
-        try:
-            dim_is = tuple(self._dim_order.index(dim.name) for dim in dims)
-        except ValueError:
-            raise ValueError("%r contains invalid dimension. Use %r" % (dims, self._dim_order))
-        
-        if len(dims) > 1:
-            assert np.diff(dim_is).min() > 0
-        
+        """        
         # check data shape
         self.ndim = ndim = len(dims)
         if ndim != data.ndim - 1:
-            raise ValueError("Dimension mismatch (data: %i, dims: %i)" % (data.ndim - 1, self.ndim))
+            raise ValueError("Dimension mismatch (data: %i, dims: %i)" % 
+                             (data.ndim - 1, self.ndim))
         
         # interpret dims
         for dim in dims:
@@ -1204,6 +1196,43 @@ class ndvar(object):
 #        dims = tuple(dim.copy() for dim in self.dims)
         return self.__class__(self.dims, data, self.properties, self.name[:])
     
+    def get_data(self, dims, epoch=None):
+        """
+        returns the data with a specific ordering of dimension as indicated in 
+        ``dims``.
+        
+        """
+        dimnames = [d.name for d in self.dims]
+        
+        if epoch is None:
+            data = self.data
+            dim1 = 1
+        else:
+            data = self.data[epoch]
+            dim1 = 0
+            
+        for i_tgt, dim in enumerate(dims):
+            if dim in dimnames:
+                i_src = dimnames.index(dim)
+                if i_tgt != i_src:
+                    data = data.swapaxes(dim1 + i_src, dim1 + i_tgt)
+                    dimnames[i_src], dimnames[i_tgt] = dimnames[i_tgt], dimnames[i_src]
+            else:
+                raise DimensionMismatchError("No dimension named %r" % dim)
+        
+        return data
+    
+    def get_dim(self, name):
+        "Returns the dimension var named ``name``"
+        for dim in self.dims:
+            if dim.name == name:
+                return dim
+        raise DimensionMismatchError("No dimension named %r" % name)
+    
+    def get_dims(self, names):
+        "Returns a tuple with the requested dimension vars"
+        return tuple(self.get_dim(name) for name in names)
+    
     def get_summary(self, func=None, name='{func}({name})'):
         """
         Returns a new ndvar with a single case summarizing all the cases in 
@@ -1236,10 +1265,6 @@ class ndvar(object):
         epoch = ndvar(self.dims, data, properties=self.properties, name=name, 
                       info=self.info + ".get_epoch(%i)"%Id)
         return epoch
-    
-    def get_epoch_data(self, index=0):
-        "returns the data for a single epoch (removing the 'case' dimension)"
-        return self.data[index]
     
     def mean(self, name="mean({name})"):
         return self.get_summary(np.mean, name=name)
@@ -1654,7 +1679,7 @@ class dataset(dict):
         # do the thresholding
         if isndvar(DV):
             for ID in xrange(self.N):
-                data = DV.get_epoch_data(ID)
+                data = DV.get_data(('time', 'sensor'), ID)
                 v = np.max(np.abs(data))
                 
                 if v > threshold:

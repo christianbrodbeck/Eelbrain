@@ -139,24 +139,7 @@ def fiff_epochs(dataset, i_start='i_start',
     epochs = mne.Epochs(raw, events, 1, tstart, tstop, picks=picks, 
                         baseline=baseline)
     
-    data = epochs.get_data().swapaxes(1,2)
-    
-    # this alternative loads the array in the target shape:
-#    # determine data container properties
-#    epoch_shape = (len(picks), len(epochs.times))
-#    data_shape = (len(events), len(epochs.times), len(picks))
-#    # mne.fiff.raw.read_raw_segment uses float32
-#    data = np.empty(data_shape, dtype='float32') 
-#
-#    # read the data
-#    for i, epoch in enumerate(epochs):
-#        if epoch.shape == epoch_shape:
-#            data[i] = epoch.T
-#        else:
-#            msg = ("Epoch %i shape mismatch: does your epoch definition "
-#                   "result in an epoch that overlaps the end of your data "
-#                   "file?" % i)
-#            raise IOError(msg)
+    data = epochs.get_data()
     
     # read data properties
     props = {'samplingrate': epochs.info['sfreq'][0]}
@@ -166,7 +149,7 @@ def fiff_epochs(dataset, i_start='i_start',
     
     T = epochs.times
     timevar = _data.var(T, 'time')
-    dims = (timevar, sensor_net)
+    dims = (sensor_net, timevar)
     
     dataset.add(_data.ndvar(dims, data, properties=props, name=name))
     dataset.default_DV = name
