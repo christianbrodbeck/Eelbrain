@@ -14,13 +14,18 @@ import shell
         
 class MainApp(wx.App):
     """
-    The main application. Creates the shell instance.
+    The main application (:py:class:`wx.App` subclass). Creates the shell 
+    instance.
     
     """
     def __init__(self, global_namespace, redirect=False, filename=None):
         """
         redirect : bool
-            Shows the output of internal ``print`` commands in a window
+            Redirect sys.stdout and sys.stderr; Redirects the output of 
+            internal ``print`` commands
+        
+        filename : 
+            Target for redirected 
         
         """
         self.global_namespace = global_namespace
@@ -28,6 +33,7 @@ class MainApp(wx.App):
     
     def OnInit(self):
         self.shell = shell.ShellFrame(None, self.global_namespace)
+        self.SetTopWindow(self.shell)
         if wx.__version__ >= '2.9':
             self.shell.ShowWithEffect(wx.SHOW_EFFECT_ROLL_TO_BOTTOM)
         else:
@@ -42,6 +48,6 @@ class MainApp(wx.App):
         """
         logging.debug("MAC Open File: %s"%filename)
         if os.path.isfile(filename):
-            self.shell.FileOpen(filename)
+            self.shell.OnFileOpen(path=filename)
 
 

@@ -66,6 +66,10 @@ _punctuation = string.punctuation.replace('.', '')
 def is_py_char(char):
     return (char.isalnum() or char == '_')
 
+def is_py_varname(name):
+    a = re.match('^[a-zA-Z_]', name) 
+    b = re.match('[a-zA-Z0-9_]', name)
+    return a and b
 
 # subclass Shell in order to set some custom properties
 class Shell(wx.py.shell.Shell):
@@ -473,7 +477,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         text = wx.py.shell.HELP_TEXT
         self.__doc__ = text
     
-    def attach(self, dictionary):
+    def attach(self, dictionary, _internal_call=False):
         """
         Adds a dictionary to the globals and keeps track of the items so that 
         they can be removed safely with the detach function.
@@ -484,7 +488,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         for k in dictionary:
             if not isinstance(k, basestring):
                 raise ValueError("Dictionary contains non-strong key: %r" % k)
-            elif not re.match('^[a-zA-Z_]', k) and re.match('[a-zA-Z0-9_]', k):
+            elif not is_py_varname(k):
                 raise ValueError("Dictionary contains invalid name: %r" % k)
             elif k in self.global_namespace:
                 if id(self.global_namespace[k]) != id(dictionary[k]):
@@ -512,7 +516,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         items.update(attach)
         
         msg = "attached: %s" % str(attach.keys())
-        print msg
+        self.shell_message(msg, internal_call=_internal_call)
     
     def bufferSave(self):
         "to catch an distribute menu command 'save' in Os-X"
@@ -689,35 +693,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         
         self.pyplot_draw()
     
-    def FileOpen_shellcommand(self, path=None):
-        """
-        Open a file (Experiment or Python script). If path is None, the 
-        function will ask for a filename.
-        
-        TODO: fix shell interaction. At current, the function does not return 
-            the experiment.
-        """
-        self.FileOpen(path=path)
-    
-    def FileOpen(self, path=None, internal_call=False):
-        if path is None:
-            path = ui.ask_file(title="Open File",
-                               message="Open a Python script in an editor", 
-                               ext=[('py', 'Python script')])
-            if not path:
-                return
-        
-        if isinstance(path, basestring) and os.path.isfile(path):
-            ext = path.split(os.extsep)[-1].lower()
-            if ext == 'py':
-                self.create_py_editor(pyfile=path)
-            else:
-                msg = "Error: %r is no known file extension." % ext
-                self.shell_message(msg, internal_call=internal_call)
-        else:
-            msg = "No valid file path: %r" % path
-            self.shell_message(msg, internal_call=internal_call)
-    
     def FrameTable(self, table=None):
         pos = self.pos_for_new_window()
         t = TableFrame(self, table, pos=pos)
@@ -819,8 +794,56 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnFileNew(self, event=None):
         self.create_py_editor()
     
-    def OnFileOpen(self, event=None):
-        self.FileOpen(internal_call=True)
+    def OnFileOpen(self, event=None, path=None):
+        if path is None:
+            path = ui.ask_file(title="Open File",
+                               message="Open a Python script in an editor, or attach pickled data", 
+                               ext=[('py', 'Python script'), 
+                                    ('pickled', 'Pickled data')])
+            if not path:
+                return
+        
+        if isinstance(path, basestring) and os.path.isfile(path):
+            _, ext = os.path.splitext(path.lower())
+            if ext == '.py':
+                self.create_py_editor(pyfile=path)
+            elif ext == '.pickled':
+                with open(path) as FILE:
+                    dinnerplate = pickle.load(FILE)
+                
+                msg = ("What name should the unpickled data be assigned "
+                       "to? (Leave empty to attach it.)")
+                dlg = wx.TextEntryDialog(self, msg, "Name?", "")
+                while True:
+                    if dlg.ShowModal() == wx.ID_OK:
+                        name = str(dlg.GetValue()).strip()
+                        if name:
+                            if is_py_varname(name):
+                                msg = ">>> %s = pickle.load(open(%r))" % (name, path)
+                                self.shell_message(msg, internal_call=True)
+                                self.global_namespace[name] = dinnerplate
+                                return
+                            else:
+                                msg = "%r is not a valid python variable name" % name
+                                edlg = wx.MessageDialog(self, msg, "Invalid name", 
+                                                        wx.OK | wx.ICON_ERROR)
+                                edlg.ShowModal()
+                        else:
+                            self.shell_message(">>> attach(pickle.load(open(%r)))" % path,
+                                               internal_call=True)
+                            self.attach(dinnerplate, _internal_call=True)
+                            return
+                    else:
+                        return
+                
+            else:
+                msg = "Error: %r is no known file extension." % ext
+                dlg = wx.MessageDialog(self, msg, "Error", wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+        else:
+            msg = "No valid file path: %r" % path
+            dlg = wx.MessageDialog(self, msg, "Error", wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
     
     def OnFindPath(self, event=None):
         filenames = ui.ask_file(wildcard='', mult=True)
@@ -1043,7 +1066,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         logging.debug("History Load: %s"%fileNum)
         path = self.filehistory.GetHistoryFile(fileNum)
         logging.debug("History Load: %s"%path)
-        self.FileOpen(path=path, internal_call=True)
+        self.OnFileOpen(path=path)
     
     def OnResize_Max(self, event):
         x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
