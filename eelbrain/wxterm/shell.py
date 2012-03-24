@@ -368,6 +368,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
     # HELP menu
         self.helpMenu.AppendSeparator()
         
+        self.helpMenu.Append(ID.HELP_PYTHON, "Eelbrain (web)",
+                             "Open the Eelbrain documentation pages in an external browser.")
+        self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_EELBRAIN)
+        
         self.helpMenu.Append(ID.HELP_PYTHON, "Python (web)",
                              "Open the official Python documentation page in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_PYTHON)
@@ -874,7 +878,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnHelpExternal(self, event):
         "Called from the Help menu to open external resources"
         Id = event.GetId()
-        if Id == ID.HELP_MPL:
+        if Id == ID.HELP_EELBRAIN:
+            webbrowser.open("http://christianmbrodbeck.github.com/Eelbrain/")
+        elif Id == ID.HELP_MPL:
             webbrowser.open("http://matplotlib.sourceforge.net/")
         elif Id == ID.HELP_MDP:
             webbrowser.open("http://mdp-toolkit.sourceforge.net/documentation.html")

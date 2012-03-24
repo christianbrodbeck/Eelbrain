@@ -10,6 +10,12 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
+#
+# -- My Notes -----------------------------------------------------------------
+# publishing on github:
+# http://lucasbardella.com/report/hosting-your-sphinx-docs-in-github/
+#
+
 
 import sys, os
 

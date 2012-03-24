@@ -1,5 +1,4 @@
-Version: 0.0.4dev
-
+The documentation is located at: http://christianmbrodbeck.github.com/Eelbrain/
 
 About Eelbrain
 ==============
