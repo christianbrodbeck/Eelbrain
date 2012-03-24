@@ -1306,10 +1306,8 @@ class ndvar(object):
         except KeyError:
             raise KeyError("Segment does not contain 'time' dimension.")
         
-        has_cases = self._stype_ == 'ndvar'
         data = self.data
         properties = self.properties.copy()
-#        dims = list(self.dims)
         rm_dims = []
         
         if np.isscalar(time):
@@ -1327,20 +1325,16 @@ class ndvar(object):
                     i = i_prev
                     time = t_prev
             
-            if has_cases:
-                data = data[:,i]
-            else:
-                data = data[i]
+            index = tuple([slice(None)] * (t_dim + 1) + [i])
+            data = data[index]
             rm_dims.append(t_dim)
             properties['t'] = time
+            dims = tuple([dim for i,dim in enumerate(self.dims) if i not in rm_dims])
+        else:
+            raise NotImplementedError()
         
-        # cerate subdata object
-        dims = tuple([dim for i,dim in enumerate(self.dims) if i not in rm_dims])
-        out = self.__class__(dims, data, properties, self.name)
-        
-        # copy special overlay attribute that statictics functions add to certain epochs
-        if hasattr(self, 'overlay'):
-            out.overlay = self.overlay.subdata(time=time)
+        # create subdata object
+        out = ndvar(dims, data, properties, name=self.name)
         
         return out
 
