@@ -2,7 +2,6 @@
 PLAN
 ====
 
-
 Simple Tests
 ------------
 
@@ -24,6 +23,7 @@ it could have special attributes `all`= c1, c2, difference
 difference? 
 
     # allow nesting: `plot([v1, [v2, v2overlay]])`
+
 
 
 Models
@@ -55,12 +55,10 @@ I would need to fit the model to get the results:
 
 
 
-
-
-
 RESULTS are also datasets except there is only one case
 -> why do I need epoch vs. ndvar? Plots need flat data. 
 -> use a `ndvar.get_flattened_data(func=np.mean)` method?
+
 
 
 Consequences for Plotting
@@ -92,6 +90,28 @@ Consequences for Plotting
         - ndvar.get_epoch_data()     (in the immediate plotting function)
     
     - helper object: dataset['V1', V2'] could simply return a dataset instance
+
+
+
+Open Questions
+--------------
+
+- ?? can I make dataset[name1, name2] export a dataset rather than a list of 
+  factors? 
+  
+  - --> repercussions on: plotting libs: has to be ordered & nested
+  - is probably not a frequent use case (i.e. can be implemented with a method) 
+  - make datasets ordered? (collections.OrderedDict subclass)
+  
+- plotting with datastes (using ds.get_subsets_by()) requires that the 
+  dataset offer a get_summary method which uses the default_DV attribute.
+  Do I want to support that?? Alternatives?
+  
+   - at least relegate the default_DV to the dataset's info dict
+     (or should it be a properties dict???)
+   - get_var_by(Y='MEG', X='conditions', categories=None) whose retirn value 
+     can be submitted to plotting functions !!!
+
 
 
 Data Representation
@@ -418,7 +438,7 @@ class _regressor_(object):
     def isany(self, *values):
         """
         Returns an index array that is True in all those locations that match 
-        one of the provided `values`::
+        one of the provided ``values``::
         
             >>> a = factor('aabbcc')
             >>> b.isany('b', 'c')
@@ -573,6 +593,21 @@ class var(_regressor_):
         else:
             return _regressor_.__mul__(self, other)
     
+    def __getitem__(self, values):
+        "if factor: return new variable with mean values per factor category"
+        if isfactor(values):
+            f = values
+            x = []
+            for v in np.unique(f.x):
+                x.append(np.mean(self.x[f==v]))
+            return var(x, self.name)
+        else:
+            x = self.x[values]
+            if np.iterable(x):
+                return var(x, self.name)
+            else:
+                return x
+    
     def __setitem__(self, index, value):
         self.x[index] = value
     
@@ -611,6 +646,32 @@ class var(_regressor_):
                                   beta_labels=labels)
             return out
     
+    @property
+    def as_effects(self):
+        "for effect initialization"
+        return self.centered[:,None]
+    
+    def as_factor(self, name=None, labels='%g'):
+        """
+        convert the var into a factor
+        
+        :arg name: if None, it will copy the var name
+        :arg labels: dictionary maping values->labels, or format string for 
+            converting values into labels
+        
+        """
+        if name is None:
+            name = self.name
+        
+        if type(labels) is not dict:
+            fmt = labels
+            labels = {}
+            for value in np.unique(self.x):
+                labels[value] = fmt % value 
+        
+        f = factor(self.x, name=name, labels=labels)
+        return f
+    
     def copy(self, suffix=''):
         return var(self.x.copy(), name=self.name + suffix)
     
@@ -633,50 +694,9 @@ class var(_regressor_):
         out = var(x, name=name)
         return out
     
-    def as_factor(self, name=None, labels='%g'):
-        """
-        convert the var into a factor
-        
-        :arg name: if None, it will copy the var name
-        :arg labels: dictionary maping values->labels, or format string for 
-            converting values into labels
-        
-        """
-        if name is None:
-            name = self.name
-        
-        if type(labels) is not dict:
-            fmt = labels
-            labels = {}
-            for value in np.unique(self.x):
-                labels[value] = fmt % value 
-        
-        f = factor(self.x, name=name, labels=labels)
-        return f
-    @property
-    def as_effects(self):
-        "for effect initialization"
-        return self.centered[:,None]
-    @property
-    def factors(self):
-        return [self]
     @property
     def beta_labels(self):
         return [self.name]
-    def __getitem__(self, values):
-        "if factor: return new variable with mean values per factor category"
-        if isfactor(values):
-            f = values
-            x = []
-            for v in np.unique(f.x):
-                x.append(np.mean(self.x[f==v]))
-            return var(x, self.name)
-        else:
-            x = self.x[values]
-            if np.iterable(x):
-                return var(x, self.name)
-            else:
-                return x
     
     def diff(self, X, i1, i2, match):
         """
@@ -694,6 +714,14 @@ class var(_regressor_):
                                        x1=X.cells[i1],
                                        x2=X.cells[i2])
         return var(y, name)
+
+    @property
+    def factors(self):
+        return [self]
+    
+    def repeat(self, repeats, name='{name}'):
+        "Like :py:func:`numpy.repeat`"
+        return var(self.x.repeat(repeats), name=name.format(name=self.name))
 
 
 
@@ -898,6 +926,13 @@ class factor(_regressor_):
         out = nonbasic_effect(effect_codes, [self], name, nestedin=other.factors)
         return out
     
+    def _child_kwargs(self, name):
+        kwargs = dict(labels = self.cells,
+                      name = name.format(name=self.name), 
+                      random = self.random,
+                      retain_label_codes = True)
+        return kwargs
+            
     def _get_ID_for_new_cell(self, name):
         "adds a new name to the cells dictionary"
         if self.x.dtype is np.uint8:
@@ -1032,15 +1067,6 @@ class factor(_regressor_):
                 msg = "%r contains several cases of %r"
                 raise ValueError(msg % (self, v))
         return np.array(index)
-    
-    def is_in(self, *values):
-        """"
-        Returns a boolean array that is True where the factor is any of the 
-        *values
-        
-        """
-        x = np.sum([self==v for v in values], axis=0, dtype=bool) 
-        return x
     
     def print_categories(self):
         ":returns: a table containing information about categories"
@@ -1224,10 +1250,11 @@ class ndvar(object):
     
     def get_dim(self, name):
         "Returns the dimension var named ``name``"
-        for dim in self.dims:
-            if dim.name == name:
-                return dim
-        raise DimensionMismatchError("No dimension named %r" % name)
+        if name in self._dim_dict:
+            i = self._dim_dict[name]
+            return self.dims[i]
+        else:
+            raise DimensionMismatchError("No dimension named %r" % name)
     
     def get_dims(self, names):
         "Returns a tuple with the requested dimension vars"
@@ -1572,15 +1599,19 @@ class dataset(dict):
             otherwise, the extesion is used to determine the format:
              - 'txt' or 'tsv':  tsv
              - 'tex':  as TeX table
-             - 'pickle':  use pickle.dump (defunct)
+             - 'pickled':  use pickle.dump
         
         """
         if not isinstance(fn, basestring):
             fn = ui.ask_saveas(ext = [('txt', "Tab-separated values"),
                                       ('tex', "Tex table"),
-                                      ('pickle', "Pickle")])
+                                      ('pickled', "Pickle")])
+            if fn:
+                print 'saving %r' % fn
+            else:
+                return
         ext = os.path.splitext(fn)[1][1:]
-        if ext == 'pickle':
+        if ext == 'pickled':
             pickle.dump(self, open(fn, 'w'))
         else:
             table = self.as_table(fmt=fmt)
@@ -1589,7 +1620,7 @@ class dataset(dict):
             elif ext =='tex':
                 table.save_tex(fn)
             else:
-                raise IOError("can only export .pickle, .txt and .tex")
+                raise IOError("can only export .pickled, .txt and .tex")
     
 #    def get_condition_pointers(self, factor, dep_var='MEG', exclude=[], name='{name}[{case}]'):
 #        if isinstance(factor, basestring):
