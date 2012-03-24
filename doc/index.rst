@@ -21,6 +21,7 @@ Contents:
    psyphys
    psyphys-tutorial
    MNE
+   Various
 
 
 .. .. seealso:: `Eelbrain on Launchpad <https://launchpad.net/eelbrain>`_
