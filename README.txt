@@ -1,16 +1,11 @@
 The documentation is located at: http://christianmbrodbeck.github.com/Eelbrain/
 
-About Eelbrain
-==============
-
-Eelbrain contains data analysis scripts and a Python shell bsed on wxPython.
-
 
 Installing Eelbrain
 ===================
 
 Eelbrain is a collection of pure Python scripts and does not require 
-compilation. If all the dependencies are installed, it can be started
+compilation. If all the dependencies are installed, the shell can be started
 with::
 
     $ python eelbrain.py

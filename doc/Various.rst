@@ -10,8 +10,8 @@ Managing Archives
 
 The Python standard library provides modules for several compression formats:
 
- * bz2: :py:mod:`bz2`
+ * bzip2: :py:mod:`bz2`
  * gnu-zip: :py:mod:`gzip`
- * tar: :py:mod:`tarfile`
+ * tar, gzip, bzip2: :py:mod:`tarfile`
  * zip: :py:mod:`zipfile`
 
