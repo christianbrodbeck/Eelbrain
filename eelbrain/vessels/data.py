@@ -984,7 +984,7 @@ class factor(_regressor_):
         return codes.astype(np.int8)
         
     def as_labels(self):
-        return np.array([self.cells[v] for v in self.x])
+        return [self.cells[v] for v in self.x]
         
     @property
     def beta_labels(self):
@@ -1080,6 +1080,27 @@ class factor(_regressor_):
             table.cell(name)
             table.cell(np.sum(self.x==v))
         return table
+    
+    def project(self, target, name='{name}'):
+        """
+        Project the factor onto an index array ``target``:
+        
+            >>> f = V.data.factor('abc')
+            >>> f.as_labels()
+            ['a', 'b', 'c']
+            >>> fp = f.project([1,2,1,2,0,0])
+            >>> fp.as_labels()
+            ['b', 'c', 'b', 'c', 'a', 'a']
+        
+        """
+        if isvar(target):
+            target = target.x
+        x = self.x[target]
+        return factor(x, **self._child_kwargs(name))
+    
+    def repeat(self, repeats, name='{name}'):
+        "Repeat elements of a factor (like :py:func:`numpy.repeat`)"
+        return factor(self.x.repeat(repeats), **self._child_kwargs(name))
     
     def set_color(self, name, color):
         """
@@ -1658,8 +1679,17 @@ class dataset(dict):
         """
         return self[self.default_DV].get_summary(func=func, name=name)
     
-    def itercases(self):
-        for i in xrange(self.N):
+    def itercases(self, start=None, stop=None):
+        "iterate through cases (each case represented as a dict)"
+        if start is None:
+            start = 0
+        
+        if stop is None:
+            stop = self.N
+        elif stop < 0:
+            stop = self.N - stop
+        
+        for i in xrange(start, stop):
             yield self.get_case(i)
     
     def mark_by_threshold(self, DV=None, threshold=2e-12, above=True, below=False, 
