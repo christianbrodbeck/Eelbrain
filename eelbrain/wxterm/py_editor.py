@@ -314,10 +314,9 @@ class Editor(wx.py.editor.EditorFrame):
         # these ought to be handles in stc.StyledTextCtrl
         # src/osx_cocoa/stc.py ?
         key = event.GetKeyCode()
-#        logging.debug(dir(event))
         mod = wxutils.key_mod(event)
-        logging.debug("Editor OnKeyDown: {0} {1}".format(mod, key))
-        #print dir(event)
+        if any(mod):
+            logging.warning("Editor OnKeyDown: {0} {1}".format(mod, key))
         
         if mod == [1, 0, 0]: # [ctrl]
             if key == 47: # [/] --> comment
@@ -352,12 +351,10 @@ class Editor(wx.py.editor.EditorFrame):
                 end = w.PositionFromLine(end+1)-1
                 w.SetSelection(start, end)
                 return
-            elif key == 82: # r -> run the script
+            elif key == 82: # r -> execute the script
                 self.OnExecFromDrive(event)
-#            elif key == 83: # 's'
-#                # FIXME: OnKeyDown is not called by command-s 
-#                self.OnFileSave()
-#                return
+            elif key == 69: # e -> execute excerpt
+                self.OnExecSelected(event)
         elif mod == [0, 0, 1]: # alt down
             if key in [315, 317]: # arrow
                 # FIXME: when last line without endline is selected, someting 

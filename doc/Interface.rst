@@ -110,6 +110,7 @@ Editor
 * ``ctrl`` - ``/``:  Comment or uncomment selected lines
 * ``ctrl`` - ``s``:  Save current document
 * ``alt`` - ``arrow (up/down)``:  Move current line up or down (!!! uses copy-paste)
+	* ``Ctrl``-``e``: Execute the selection. 
 
 
 Shell
