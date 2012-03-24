@@ -124,6 +124,7 @@ defaults=dict(fullrepr = False, # whether to display full arrays/dicts in __repr
               )
 
 
+import table
 import plot1d
 
 #####   #####   #####   #####   #####   #####   #####   #####   #####   #####
