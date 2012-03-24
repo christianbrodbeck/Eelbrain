@@ -344,9 +344,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
     # INSERT MENU
         m = self.insertMenu = wx.Menu()
         m.Append(ID.INSERT_Color, "Color",
-                    "Insert color as (r, g, b)-tuple.")
+                 "Insert color as (r, g, b)-tuple.")
 #        self.Bind(wx.EVT_MENU, self.OnInsertColor, id=ID.INSERT_Color)
 #        this function only works for the colorpicker linked to the button 
+        
         # path submenu
         m = self.pathMenu = wx.Menu()
         m.Append(ID.INSERT_Path_file, "File",
@@ -366,22 +367,29 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.Bind(wx.EVT_MENU, self.OnInsertPath_New, id=ID.INSERT_Path_new)
         
     # HELP menu
-        self.helpMenu.AppendSeparator()
+        if wx.__version__ >= '2.9':
+            m = self.helpMenu
+            m.AppendSeparator()
+        else:
+            m = wx.Menu()
+            Id = self.menuBar.GetMenuCount()
+            self.menuBar.Insert(Id, m, "Online Help")
+            
         
-        self.helpMenu.Append(ID.HELP_PYTHON, "Eelbrain (web)",
-                             "Open the Eelbrain documentation pages in an external browser.")
+        m.Append(ID.HELP_EELBRAIN, "Eelbrain (web)",
+                 "Open the Eelbrain documentation pages in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_EELBRAIN)
         
-        self.helpMenu.Append(ID.HELP_PYTHON, "Python (web)",
-                             "Open the official Python documentation page in an external browser.")
+        m.Append(ID.HELP_PYTHON, "Python (web)",
+                 "Open the official Python documentation page in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_PYTHON)
         
-        self.helpMenu.Append(ID.HELP_MPL, "Matplotlib (web)", 
-                             "Open the Matplotlib homepage in an external browser.")
+        m.Append(ID.HELP_MPL, "Matplotlib (web)", 
+                 "Open the Matplotlib homepage in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_MPL)
         
-        self.helpMenu.Append(ID.HELP_MDP, "mdp (web)", 
-                             "Open the mdp Documentation page in an external browser.")
+        m.Append(ID.HELP_MDP, "mdp (web)", 
+                 "Open the mdp Documentation page in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_MDP)
         
         
