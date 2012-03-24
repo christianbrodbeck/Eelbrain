@@ -32,7 +32,9 @@ autoclass_content = 'both'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.pngmath']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.pngmath', # default
+              'sphinx.ext.intersphinx' # added: http://sphinx.pocoo.org/ext/intersphinx.html  
+              ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -95,6 +97,12 @@ pygments_style = 'sphinx'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
+
+
+# -- Custom Options -----------------------------------------------------------
+
+intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None)}
+# http://sphinx.pocoo.org/ext/intersphinx.html
 
 
 # -- Options for HTML output ---------------------------------------------------
