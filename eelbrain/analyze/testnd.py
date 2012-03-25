@@ -71,7 +71,7 @@ class ttest(_vsl.data.dataset):
             if c2:
                 diff = c1_mean - c2
             else:
-                diff = c1_mean.copy()
+                diff = None
         else:
             raise ValueError('invalid c2: %r' % c2)
         
@@ -92,15 +92,17 @@ class ttest(_vsl.data.dataset):
         properties['colorspace'] = _vsl.colorspaces.get_default()
         T = _vsl.data.ndvar(dims, T, properties=properties, name='T', info=test_name)
         
-        items = data + [diff, T, P]
+        self.data = data
+        if diff is None:
+            self.diff = self.all = [data + [P]]
+            items = data + [T, P]
+        else:
+            self.diff = [[diff, P]]
+            self.all = data + self.diff
+            items = data + [diff, T, P]
+        
         _vsl.data.dataset.__init__(self, name=test_name, *items)
         
-        self.data = data
-        self.diff = [[diff, P]]
-        if np.isscalar(c2) and c2==0:
-            self.all = self.diff
-        else:
-            self.all = data + self.diff
 
 
 
