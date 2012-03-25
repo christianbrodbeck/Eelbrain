@@ -310,9 +310,8 @@ def _ax_topomap(ax, layers, sensors=None, proj='default', **im_kwargs):
 
 class _Window_Topo:
     """Helper class for array"""
-    def __init__(self, ax, pointer_xy, layers):
+    def __init__(self, ax, layers):
         self.ax = ax
-        self.pointer_xy = pointer_xy
         #initial plot state
         self.t_line = None
         self.pointer = None
@@ -334,10 +333,10 @@ class _Window_Topo:
             else:
                 self.pointer = parent_ax.annotate("t=%.3g"%t, (t,1), 
                                     xycoords='data',
-                                    xytext=self.pointer_xy, 
-                                    textcoords='figure fraction',
+                                    xytext=self.ax.transAxes.transform((.5,1)), 
+                                    textcoords='figure pixels',
                                     horizontalalignment='center',
-                                    verticalalignment='top',
+                                    verticalalignment='center',
                                     arrowprops={'width':1, 'frac':0, 
                                                 'headwidth':0, 'color':'r', 
                                                 'shrink':.05},
@@ -431,8 +430,7 @@ class array(mpl_canvas.CanvasFrame):
                                      picker=True, xticks=[], yticks=[])
                 ax.ID = ID
                 ax.type = 'window'
-                pointer_xy = (.1 + (.85 / n_topo_total) * (.5 + ID), .3)
-                self.windows.append(_Window_Topo(ax, pointer_xy, layers))
+                self.windows.append(_Window_Topo(ax, layers))
         
         # save important properties
         self.epochs = epochs
@@ -498,7 +496,6 @@ class array(mpl_canvas.CanvasFrame):
     def _window_update(self, mouseevent, parent_ax):
         "update a window (used for mouse-over and for pick)"
         t = mouseevent.xdata
-        # FIXME: does not refresh properly
         self._selected_window.update(parent_ax=parent_ax, t=t)
         self.canvas.redraw_ax(self._selected_window.ax)
     
