@@ -48,7 +48,7 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
     Butterfly plot with corresponding topomap
     
     """
-    def __init__(self, epochs, size=2.5, bflywidth=2, dpi=90, 
+    def __init__(self, epochs, size=2.5, bflywidth=2.5, dpi=90, 
                  res=50, interpolation='nearest', 
                  title=True, xlabel=True, ylabel=True,
                  color=None, sensors=None, ylim=None):
@@ -67,13 +67,10 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
         n_plots = len(epochs)
         x_size = size * (1 + bflywidth)
         y_size = size * n_plots
-        # old
-#        figsize = (x_size, y_size)
-#        fig = self.create_figure(figsize=figsize, facecolor='w', dpi=dpi)
-        # new
+        figsize = (x_size, y_size)
         parent = wx.GetApp().shell
         title = "plot.topo.butterfly"
-        mpl_canvas.CanvasFrame.__init__(self, parent, title, dpi=dpi)
+        mpl_canvas.CanvasFrame.__init__(self, parent, title, figsize=figsize, dpi=dpi)
         fig = self.figure
         
         # plot epochs (x/y are in figure coordinates)
@@ -380,6 +377,7 @@ class array(mpl_canvas.CanvasFrame):
         n_epochs = len(epochs)
         n_topo_total = ntopo * n_epochs
         fig_width, fig_height = n_epochs * width, height
+        figsize=(fig_width, fig_height)
         
         # fig coordinates
         x_frame_l = .1 / n_epochs
@@ -392,8 +390,7 @@ class array(mpl_canvas.CanvasFrame):
             frame_title = title
         else:
             frame_title = "plot.topo.array"
-#        figsize=(fig_width, fig_height)
-        mpl_canvas.CanvasFrame.__init__(self, parent, frame_title, dpi=dpi)
+        mpl_canvas.CanvasFrame.__init__(self, parent, frame_title, dpi=dpi, figsize=figsize)
         fig = self.figure
         
         fig.subplots_adjust(left = x_frame_l, 

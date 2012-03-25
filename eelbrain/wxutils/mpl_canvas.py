@@ -29,8 +29,15 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
     
     """
     _copy_as_pdf = True
-    def __init__(self, parent, dpi=100):
-        self.figure = Figure(dpi=dpi)
+    def __init__(self, parent, figsize=(8, 6), dpi=100):
+        """
+        figsize : (w, h)
+            size in inches
+        dpi : int
+            dits per inch
+        
+        """
+        self.figure = Figure(figsize=figsize, dpi=dpi)
         FigureCanvasWxAgg.__init__(self, parent, -1, self.figure)
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
         self.Bind(wx.EVT_MENU, self.OnFileSave, id=wx.ID_SAVE)
@@ -130,8 +137,9 @@ class CanvasFrame(wx.Frame):
     
     """
     def __init__(self, parent, title="Matplotlib Frame", 
-                 size=(800,600), dpi=50, 
+                 figsize=(8, 6), dpi=50, 
                  statusbar=True, toolbar=True, mpl_toolbar=False):
+        size = (figsize[0] * dpi, figsize[1] * dpi + 45)
         wx.Frame.__init__(self, parent, -1, title=title, size=size)
 #        self.SetBackgroundColour(wx.NamedColour("WHITE"))
         
@@ -139,7 +147,7 @@ class CanvasFrame(wx.Frame):
         # prepare the plot panel
         sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(sizer)
-        self.canvas = FigureCanvasPanel(self, dpi=dpi)
+        self.canvas = FigureCanvasPanel(self, figsize=figsize, dpi=dpi)
         sizer.Add(self.canvas, 1, flag=wx.EXPAND)
 #        sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
         sizer.Layout()

@@ -26,8 +26,8 @@ __all__ = ['select_cases_butterfly', 'pca']
 
 
 class select_cases_butterfly(mpl_canvas.CanvasFrame):
-    def __init__(self, dataset, data='MEG', target='reject', nplots=(5,5), plotsize=(1,3),
-                 mean=True, topo=True, ylim=None, aa=False, dpi=50, size=(800,600)):
+    def __init__(self, dataset, data='MEG', target='reject', nplots=(6,6), plotsize=(3,1.5),
+                 mean=True, topo=True, ylim=None, aa=False, dpi=50):
         """
         Plots all cases in the collection segment and allows visual selection
         of cases. The selection can be retrieved through the get_selection 
@@ -78,7 +78,9 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
     # init wx frame
         parent = wx.GetApp().shell
         title = "select_cases_butterfly -> %r" % target.name
-        mpl_canvas.CanvasFrame.__init__(self, parent, title, size, dpi)
+        figsize = (plotsize[0] * nplots[0], plotsize[1] * nplots[1])
+        mpl_canvas.CanvasFrame.__init__(self, parent, title, figsize=figsize, 
+                                        dpi=dpi)
         # connect
         self.canvas.mpl_connect('button_press_event', self.OnClick)
         self.canvas.mpl_connect('axes_leave_event', self.OnLeaveAxes)
@@ -365,7 +367,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
 
 
 class pca(mpl_canvas.CanvasFrame):
-    def __init__(self, dataset, Y='MEG', nplots=(5,7), dpi=50, size=(800,600)):
+    def __init__(self, dataset, Y='MEG', nplots=(7,10), dpi=50, figsize=(20,12)):
         if isinstance(Y, basestring):
             Y = dataset[Y]
         
@@ -387,7 +389,8 @@ class pca(mpl_canvas.CanvasFrame):
     # wx stuff
         parent = wx.GetApp().shell
         title = "PCA of %r" % Y.name
-        mpl_canvas.CanvasFrame.__init__(self, parent, title, size, dpi, statusbar=False)
+        mpl_canvas.CanvasFrame.__init__(self, parent, title, statusbar=False,
+                                        figsize=figsize, dpi=dpi)
         # connect
         self.canvas.mpl_connect('button_press_event', self.OnClick)
         # figure
