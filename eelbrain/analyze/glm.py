@@ -31,14 +31,12 @@ def _leastsq(Y, X):
     return np.ravel(B)
     
 def _leastsq_2(Y, X):
+    # same calculations
     Xsinv = np.dot(np.matrix(np.dot(X.T, X)).I.A,
                    X.T)
     beta = np.dot(Xsinv, Y)
     return beta
 
-def _leastsq_np(Y, X):
-    beta, res, rank, s = np.linalg.lstsq(X, Y)
-    return beta
 
 def _hopkins_ems(regression_model, v=False):
     """
@@ -165,14 +163,19 @@ class lm:
     """
     def __init__(self, Y, X, sub=None, v=False, lsq=0, title=None):
         """
-        Y: dependent variable
-        X: model
-        v: print some intermediate results for inspection
+        Y: 
+            dependent variable
+        X: 
+            model
+        v: 
+            print some intermediate results for inspection
         
-        lsq: 0 = numpy lsq
-             1 = my least sq (Fox)
+        lsq : int
+            0 = numpy lsq
+            1 = my least sq (Fox)
         
         performs an anova/ancova based on residuals. Fixed effects only
+        
         """
         self.title = title
         self.results = {} # will store results
@@ -421,8 +424,8 @@ class lm_fitter(object):
     """
     ANOVA model class. E(MS) for F statistic after Hopkins (1976)
     
-    Each metyhod takes the kwarg v=False (verbose); displays more information 
-    if True.
+    Each method takes the kwarg v ("verbose", default ``False``); displays more
+    information if True.
     
     use .aov method for single anova, .map method for list.
     
@@ -433,7 +436,7 @@ class lm_fitter(object):
         Experimental Education, 45(2), 13--18.
 
     """
-    def __init__(self, X, v=False, title=False):
+    def __init__(self, X, title=False):
         self.title = title
         self.results = {} # will store results
         # prepare input
@@ -447,21 +450,23 @@ class lm_fitter(object):
         # E MS
         self.E_ms = _hopkins_ems(X)
         self.df_res = X.df_error
+    
     def map(self, Y, v=False, sender=None, new=False):
         """
-        Returns results for multiple sets of dependents.
+        Returns results for multiple sets of dependents. Returns a list with 
+        (name, F-field, P-field) tuples for all effects that can be estimated 
+        with the current method.
         
-        Input: np.array; Assumes that the last dimension of Y provides cases. 
-        Other than that, shape is free to vary and output shape will match input
-        shape.
+        Y: np.array
+            Assumes that the last dimension of Y provides cases. 
+            Other than that, shape is free to vary and output shape will match 
+            input shape.
         
-        Returns list with (name, F-field, P-field) tuples for all effects that 
-        can be estimated with the current method.
         
         """
         original_shape = Y.shape
-        assert original_shape[-1] == self.N, "last dimension must contain cases"
-        Y = Y.reshape((-1, self.N))
+        assert original_shape[-1] == self.X.N, "last dimension must contain cases"
+        Y = Y.reshape((-1, self.X.N))
         if v:
             print Y.shape, self.Xinv.shape
         # Split Y that are too long
@@ -476,9 +481,9 @@ class lm_fitter(object):
             for i in range(len(out_maps[0])):
                 e = out_maps[0][i][0]
                 if v:
-                    print str([map[i][1].shape for map in out_maps])
-                F = np.hstack([map[i][1] for map in out_maps]).reshape(original_shape[:-1])
-                P = np.hstack([map[i][2] for map in out_maps]).reshape(original_shape[:-1])
+                    print str([m[i][1].shape for m in out_maps])
+                F = np.hstack([m[i][1] for m in out_maps]).reshape(original_shape[:-1])
+                P = np.hstack([m[i][2] for m in out_maps]).reshape(original_shape[:-1])
                 out_map.append((e, F, P))
             return out_map
         # do the actual estimation
@@ -486,8 +491,8 @@ class lm_fitter(object):
             if new:
                 raise NotImplementedError
             else:
-                params = (Y[:,None,:] * self.Xinv).sum(2)
-                values = params[:,None,:] * self.X.full # c x param x effect-cd
+                params = (Y[:,None,:] * self.Xinv).sum(2) # c * effect-code
+                values = params[:,None,:] * self.X.full # c x param x effect-code
                 # MS res
                 if self.df_res > 0:
                     Yp = values.sum(2)
@@ -525,6 +530,7 @@ class lm_fitter(object):
                 #if self.df_res > 0:
                 #    out_map.append
                 return out_map
+    
     def __repr__(self):
         txt = ''.join(['lm_fitter(', self.X.__repr__(), ')'])
         return txt
@@ -534,9 +540,7 @@ class lm_fitter(object):
 #        E_MS = ['  '.join([e.name.rjust(space)] + [str(int(i)) for i in line]) \
 #                for e, line in zip(self.model.effects, self.E_MS_table)]
 #        return '\n'.join([eq, str(self.MS_denominators), "E(MS):"] + E_MS)
-    @property
-    def N(self):
-        return self.X.N
+
 
 '''   
     # deriving params for 1 set of measurements
@@ -923,7 +927,7 @@ class anova(object):
         self._test_table = test_table
         self._results_table = results_table
     def __repr__(self):
-        return "anova(%s ~ %s)" % (self.Y.name, self.X.name)
+        return "anova(%s, %s)" % (self.Y.name, self.X.name)
     def __str__(self):
         return str(self.anova())
     def log(self):

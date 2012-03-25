@@ -22,15 +22,26 @@ import scipy.stats
 
 from eelbrain import vessels as _vsl
 
+import glm as _glm
+
 
 
 class TestResults(_vsl.data.dataset):
     def __repr__(self):
-        tmp = "<TestResult: %s>"
+        tmp = "<TestResults: %s>"
         return tmp % self.__class__.__name__
 
 
 class ttest(_vsl.data.dataset):
+    """
+    Attributes:
+    
+    all:
+        c1, c2, [c2 - c1, P]
+    diff:
+        [c2 - c1, P]
+    
+    """
     def __init__(self, dataset, Y='MEG', X='condition', c1='c1', c2=0, match=None, contours=None):
         """
         c1 and c2 : ndvars (or dataset with default_DV)
@@ -105,61 +116,73 @@ class ttest(_vsl.data.dataset):
         
 
 
+class f_oneway(_vsl.data.dataset):
+    """
+    Attributes:
+    
+    p:
+        p-map
+    
+    """
+    def __init__(self, Y='MEG', X='condition', dataset=None):
+        """
+        uses scipy.stats.f_oneway
+        
+        """
+        if isinstance(Y, basestring):
+            Y = dataset[Y]
+        if isinstance(X, basestring):
+            X = dataset[X]
+        
+        Ys = [Y[X==c] for c in X.cells.values()]
+        Ys = [y.data.reshape((y.data.shape[0], -1)) for y in Ys]
+        N = Ys[0].shape[1]
+        
+        Ps = []
+        for i in xrange(N):
+            groups = (y[:,i] for y in Ys)
+            F, p = scipy.stats.f_oneway(*groups)
+            Ps.append(p)
+        test_name = 'One-way ANOVA'
+        
+        dims = Y.dims
+        Ps = np.reshape(Ps, (1,) + tuple(len(dim) for dim in dims))
+        
+        properties = Y.properties.copy()
+        properties['colorspace'] = _vsl.colorspaces.get_sig()
+        P = _vsl.data.ndvar(dims, Ps, properties=properties, name=X.name, info=test_name)
+        _vsl.data.dataset.__init__(self, P, name="anova")
+        self.p = [P]
 
 
-class old_ttest(TestResults):
-    def __init__(self, c1, c2=0, match=None, contours=None):
-        """
-        c1 and c2 : ndvars (or dataset with default_DV)
-            segments between which to perform the test
+
+class anova(_vsl.data.dataset):
+    """
+    Attributes:
+    
+    allps:
+        p-map for each effect
+    
+    """
+    def __init__(self, Y='MEG', X='condition', dataset=None, v=False):
+        if isinstance(Y, basestring):
+            Y = dataset[Y]
+        if isinstance(X, basestring):
+            X = dataset[X]
         
-        """
-        if not contours:
-            contours = {.05: '.5', .01: '.75', .001:'1.'}
+        _vsl.data.dataset.__init__(self, name="anova")
+
+        fitter = _glm.lm_fitter(X)
         
-        c1DV = c1[c1.default_DV]
-        c1_mean = c1DV.as_epoch()
-        if np.isscalar(c2):
-            data = [c1_mean]
-            T, P = scipy.stats.ttest_1samp(c1DV.data, popmean=c2, axis=0)
-            test_name = '1-Sample $t$-Test'
-            if c2:
-                diff = c1_mean - c2
-            else:
-                diff = c1_mean.copy()
-        else:
-            c2DV = c2[c2.default_DV]
-            c2_mean = c2DV.as_epoch()
-            data = [c1_mean, c2_mean]
-            diff = c1_mean - c2_mean
-            if match:
-                match1 = c1[match]
-                match2 = c2[match]
-                index = match2.get_index_to_match(match1)
-                data2 = c2DV.data[index]            
-                T, P = scipy.stats.ttest_rel(c1DV.data, data2, axis=0)
-                test_name = 'Related Samples $t$-Test'
-            else:
-                T, P = scipy.stats.ttest_ind(c1DV.data, c2DV.data, axis=0)
-                test_name = 'Independent Samples $t$-Test'
-            
-#        direction = np.sign(( - c2_mean).data)
-#        Pdir = (1 - P) * direction
-        
-        dims = c1DV.dims
-        properties = c1DV.properties.copy()
-        properties['colorspace'] = _vsl.colorspaces.Colorspace(contours=contours)
-        P = _vsl.data.epoch(dims, P, properties=properties, name='p', info=test_name)
-#        Tepoch = _vsl.data.epoch(dims, T, properties=None, name="???", variables={}, info="")
-        
-        diff.overlay = P
-        
-        self.data = data
-        self.diff = diff
-        if np.isscalar(c2) and c2==0:
-            self.all = [diff]
-        else:
-            self.all = data + [diff]
+        self.allps = []
+        properties = Y.properties.copy()
+        properties['colorspace'] = _vsl.colorspaces.get_sig()
+        # Y.data:  epoch X [time X sensor X freq]
+        for name, Fs, Ps in fitter.map(Y.data.T, v=v):
+            P = _vsl.data.ndvar(Y.dims, Ps.T[None], properties=properties, name=name, info=name)
+            self.add(P)
+            self.allps.append(P)
+
 
 
 
