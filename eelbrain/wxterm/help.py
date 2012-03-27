@@ -35,9 +35,13 @@ try:
             if len_stripped:
                 ws_lead.append(len(line) - len_stripped)
         
-        # remove leading whitespaces
-        rm = min(ws_lead)
-        rst = os.linesep.join(line[rm:] for line in lines)
+        # remove leading whitespaces; make an exception for the first line, 
+        # since several functions start their docstring on the first line
+        if len(ws_lead) > 1:
+            rm = min(ws_lead[1:])
+            if rm:  
+                lines[0] = ' '*rm + lines[0].lstrip()
+                rst = os.linesep.join(line[rm:] for line in lines)
         
         try:
             html = docutils.core.publish_parts(rst, writer_name='html')['body']
