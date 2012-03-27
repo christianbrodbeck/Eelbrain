@@ -311,6 +311,11 @@ def iscategorial(Y):
     "factors as well as interactions are categorial"
     return hasattr(Y, '_stype_') and Y._stype_ in ["factor", "interaction"]
 
+def isdataobject(Y):
+    if hasattr(Y, '_stype_'):
+        if  Y._stype_ in ["model", "var", "ndvar", "factor", "interaction"]:
+            return True
+    return False
 
 
 def asmodel(X, sub=None):
@@ -790,7 +795,12 @@ class factor(_regressor_):
 
         # prepare data containers
         if retain_label_codes:
-            if min(labels.keys()) >= 0 and max(labels.keys()) < 256:
+            if not issubclass(x.dtype, np.integer):
+                msg = ("When retaining_label_codes is True, x must contain "
+                       "valied codes (i.e., integers)")
+                raise ValueError(msg)
+            
+            if min(categories) >= 0 and max(categories) < 256:
                 dtype = np.uint8
             else:
                 dtype = np.int32
@@ -1486,13 +1496,33 @@ class dataset(dict):
         except TypeError:
             raise TypeError("dataset indexes need to be strings")
         else:
+            # test if name already exists
             if (not overwrite) and (name in self):
                 raise KeyError("dataset already contains variable of name %r"%name)
+            
+            # coerce item to data-object
+            if not isdataobject(item):
+                try:
+                    if all(np.isreal(item)):
+                        item = var(item, name=name)
+                    else:
+                        item = factor(item, name=name)
+                except:
+                    msg = "%r could not be converted to a valid data object" % item
+                    raise ValueError(msg)
+            
+            # make sure the item has the right length
+            if len(self) == 0:
+                self.N = len(item)
             else:
-                if len(self) == 0:
-                    self.N = len(item)
-                dict.__setitem__(self, name, item)
-    
+                if self.N != len(item):
+                    msg = ("The item`s length (%i) is different from the "
+                           "number of cases in the datase (%i)." % (len(item), self.N))
+                    raise ValueError(msg)
+            
+            # finally, 
+            dict.__setitem__(self, name, item)
+        
     def __str__(self):
         txt = str(self.as_table(cases=10, fmt='%.5g', midrule=True))
         if self.N > 10:
@@ -1515,7 +1545,9 @@ class dataset(dict):
         variables, use dataset[name] = item 
         
         """
-        if item.name in self:
+        if not isdataobject(item):
+            raise ValueError("Not a valid data-object: %r" % item)
+        elif item.name in self:
             raise KeyError("Dataset already contains variable named %r" % item.name)
         else:
             self[item.name] = item
