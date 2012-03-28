@@ -1975,19 +1975,6 @@ class diff(object):
 
 
 
-""" #####     #####     #####     #####     #####     #####     #####     #####
-Factors
--------
-
-"""
-
-
-def factor_from_comp(comp, name=None):
-    if not isstr(name):
-        name = 'comp'
-    out = factor(comp, name=name, labels={0:'False', 1:'True'})
-    return out
-
 
 def factor_from_dict(name, base, values_dict):
     """
