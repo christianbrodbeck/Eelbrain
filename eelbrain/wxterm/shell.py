@@ -9,12 +9,13 @@ experiment management
 
 """
 
-import sys 
 import logging
 import os
-import string
-import re
 import cPickle as pickle
+import re
+import string
+import sys 
+import types
 import webbrowser
 
 #import wx
@@ -492,9 +493,15 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def attach(self, dictionary, _internal_call=False):
         """
         Adds a dictionary to the globals and keeps track of the items so that 
-        they can be removed safely with the detach function.
+        they can be removed safely with the detach function. Also works for 
+        modules (in which case any private attributes are ignored).
         
         """
+        # detect and convert special types
+        if isinstance(dictionary, types.ModuleType):
+            mod = vars(dictionary)
+            dictionary = {k:mod[k] for k in mod if not k.startswith('_')}
+        
         # self._attached_items = {id(dict_like) -> {key -> value}}
         present = []
         for k in dictionary:
