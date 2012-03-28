@@ -795,7 +795,7 @@ class factor(_regressor_):
 
         # prepare data containers
         if retain_label_codes:
-            if not issubclass(x.dtype, np.integer):
+            if not issubclass(x.dtype.type, np.integer):
                 msg = ("When retaining_label_codes is True, x must contain "
                        "valied codes (i.e., integers)")
                 raise ValueError(msg)
@@ -820,11 +820,10 @@ class factor(_regressor_):
         self.colors = {}
 #        logging.debug("init FACTOR '{n}' with x={x}, categories->{c}".format(n=name, x=x, c=categories))
         if retain_label_codes:
-            assert all(cat in labels for cat in categories)
             # retain codes provided in labels
             for i, cat in enumerate(categories):
                 self.x[x==cat] = cat
-                self.cells[cat] = labels[cat]
+                self.cells[cat] = labels.get(cat, str(cat))
                 if cat in colors:
                     self.colors[cat] = colors[cat]
         else:
