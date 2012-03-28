@@ -1379,10 +1379,9 @@ class dataset(dict):
     to the variable names.
     
 
-    Accessing Data
-    -------------- 
+    Accessing Data:
     
-    - Use the get_case method or iteration over the dataset to 
+    - Use the :meth:`.get_case` method or iteration over the dataset to 
       retrieve individual cases/rows as {name: value} dictionaries.  
     - Use standard indexing (``dataset[x]``) for retrieving 
       variables (``str`` keys) and printing certain rows (``>>> print 

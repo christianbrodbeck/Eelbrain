@@ -18,6 +18,7 @@ Contents:
    
    About
    Interface
+   data-objects
    psyphys
    psyphys-tutorial
    MNE
