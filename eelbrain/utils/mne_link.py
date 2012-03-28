@@ -25,19 +25,35 @@ import re
 from eelbrain import ui
 
 
-__all__ = ['kit2fiff']
+__all__ = ['kit2fiff', 'set_mne_dir']
+
+# keep track of whether the mne dir has been successfully set
+_mne_dir = None
 
 
-_mne_dir = '~/unix_apps/mne-2.7.3'
+def set_mne_dir(path):
+    """
+    Set the directory where mne is installed. E.g. ::
+    
+        >>> set_mne_dir('~/unix_apps/mne-2.7.3')
+    
+    """
+    path = os.path.expanduser(os.path.expandvars(path))
+    if not os.path.exists(path):
+        raise IOError("%r does not exist" % path)
+    
+    # set environment variables for MNE
+    os.environ['MNE_ROOT'] = path
+    
+    if 'PATH' in os.environ:
+        os.environ['PATH'] += ':%s' % path
+    else:
+        os.environ['PATH'] = path
+    
+    global _mne_dir
+    _mne_dir = path
+    
 
-# set environment variables for MNE
-os.environ['MNE_ROOT'] = _mne_dir
-
-_mne_bin = os.path.join(_mne_dir, 'bin')
-if 'PATH' in os.environ:
-    os.environ['PATH'] += ':%s' % _mne_bin
-else:
-    os.environ['PATH'] = _mne_bin
 
 
 class marker_avg_file:
@@ -61,113 +77,162 @@ class marker_avg_file:
 
 
 
+def _format_path(path, fmt, is_new=False):
+    "helper function to format the path to mne files"
+    if not isinstance(path, basestring):
+        path = os.path.join(*path)
+    
+    if fmt:
+        path = path.format(**fmt)
+    
+    # test the path
+    path = os.path.expanduser(path)
+    if is_new or os.path.exists(path):
+        return path
+    else:
+        raise IOError("%r does not exist" % path)
+    
 
 
-def kit2fiff(meg_sdir=None, ename='eref3', sfreq=250, aligntol=25, 
-             stim=xrange(168, 160, -1),
-             **more_kwargs):
+def kit2fiff(meg_sdir=None, experiment='eref3', sfreq=500, aligntol=25,
+             mrk = ('{meg_sdir}', 'parameters', '{subject}_{experiment}_markers.txt'),
+             elp = ('{meg_sdir}', 'parameters', '{subject}_{experiment}.elp'),
+             hsp = ('{meg_sdir}', 'parameters', '{subject}_{experiment}.hsp'),
+             sns = ('~/Documents/Eclipse/Eelbrain Reloaded/aux_files/sns.txt',),
+             raw = ('{meg_sdir}', 'data', '{subject}_{experiment}_export.txt'),
+             out = ('{meg_sdir}', 'myfif', '{subject}_{experiment}_raw.fif'),
+             stim=xrange(168, 160, -1), lowpass=100, highpass=0, stimthresh=1):
     """
-    Reads multiple input files and combines them into a fiff file that can be
-    used with mne. Implemented after Gwyneth's Manual. Requires th following 
-    files to be in the subject's meg-directory::
+    Calls the mne2fiff mne binary which reads multiple input files and combines
+    them into a fiff file. Implemented after Gwyneth's Manual; for more 
+    information see the mne manual (p. 222). 
     
-        data/
-             <subject>_<experiment>_export.txt
-        parameters/
-                   <subject>_<experiment>_electrodes.elp
-                   <subject>_<experiment>_headshape.hsp
-                   <subject>_<experiment>_markers_average.txt
+    All filenames can be specified either as string, or as tuple of strings.
+    Tuples are converted to paths with::
+    
+        >>> os.path.join(*arg).format(**fmt)
+    
+    where ``fmt`` contains the following entries:
+    
+    ``meg_sdir``
+        input argument
+    ``experiment``
+        input argument
+    ``subject``
+        last directory name in ``meg_sdir``
+    
+    Directories can contain the user home shortcut (``~``). Other Arguments are:
+    
+    mrk, elp, hsp, raw, out, sns : str or tuple (see above)
+        input files
         
-        + [sns.txt]
-    
-    
-    Arguments:
-    
-    ename : str
+    experiment : str
         The experiment name as it appears in file names.
-        
+    
+    highpass : scalar
+        The highpass filter corner frequency (only for file info, does not
+        filter the data). 0 Hz for DC recording.
+    
+    lowpass : scalar
+        like highpass
+    
+    meg_sdir : str or tuple (see above)
+        Path to the subjects's meg directory. If ``None``, a file dialog is 
+        displayed to ask for the directory.
+    
     sfreq : scalar
         samplingrate of the data
+    
+    stimthresh : scalar
+        The threshold value used when synthesizing the digital trigger channel
     
     stim : iterable over ints
         trigger channels that are used to reconstruct the event cue value from 
         the separate trigger channels. The default ``xrange(168, 160, -1)`` 
         reconstructs the values sent through psychtoolbox.
     
-    meg_sdir : path(str)
-        Path to the subjects's meg directory. If ``None``, a file dialog is 
-        displayed to ask for the directory.
-    
-    more_kwargs :
-        more keyword arguments (see MNE manual p. 224) e.g., ``lowpass``
-    
     """
+    if not _mne_dir:
+        raise IOError("mne-dir not set. See mne_link.set_mne_dir.")
+    
     if meg_sdir is None:
         msg = "Select Subject's Meg Directory"
         meg_sdir = ui.ask_dir(msg, msg, True)
+    else:
+        meg_sdir = os.path.expanduser(meg_sdir)
+        
+    fmt = {'subject': os.path.basename(meg_sdir),
+           'experiment': experiment,
+           'meg_sdir': meg_sdir,
+           }
     
-    param_dir = os.path.join(meg_sdir, 'parameters')
-    assert os.path.exists(param_dir)
-    subject = os.path.basename(meg_sdir)
-    fmt = (subject, ename)
-    mapath = os.path.join(param_dir, '%s_%s_markers_average.txt' % fmt)
-    mafile = marker_avg_file(mapath)
+    # expand all the path arguments
+    mrk_path = _format_path(mrk, fmt)
+    elp_file = _format_path(elp, fmt)
+    hsp_file = _format_path(hsp, fmt)
+    sns_file = _format_path(sns, fmt)
+    raw_file = _format_path(raw, fmt)
+    out_file = _format_path(out, fmt, is_new=True)
     
-    elp_file = os.path.join(param_dir, '%s_%s_electrodes.elp' % fmt)
-    hsp_file = os.path.join(param_dir, '%s_%s_headshape.hsp' % fmt)
-    hpi_file = mafile.path
-    sns_file = '~/Documents/Eclipse/Eelbrain\ Reloaded/aux_files/sns.txt'
-    data_file = os.path.join(meg_sdir, 'data', '%s_%s_export.txt' % fmt)
-    
-    # out file path
-    out_dir = os.path.join(meg_sdir, 'myfif')
+    mrk_file = marker_avg_file(mrk_path)
+    hpi_file = mrk_file.path
+
+    # make sure target path exists
+    out_dir = os.path.dirname(out_file)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
-    out_file = os.path.join(out_dir, '%s_%s_raw.fif' % fmt)
-    if os.path.exists(out_file):
+    elif os.path.exists(out_file):
         if not ui.ask("Overwrite?", "Target File Already Exists at: %r. Should "
                       "it be replaced?" % out_file):
             return
+        
+    cmd = [os.path.join(_mne_dir, 'bin', 'mne_kit2fiff'),
+           '--elp', elp_file,
+           '--hsp', hsp_file,
+           '--sns', sns_file,
+           '--hpi', hpi_file,
+           '--raw', raw_file,
+           '--out', out_file,
+           '--stim', ':'.join('%i' % s for s in stim), # '161:162:163:164:165:166:167:168'
+           '--sfreq', sfreq,
+           '--aligntol', aligntol,
+           '--lowpass', lowpass,
+           '--highpass', highpass,
+           '--stimthresh', stimthresh,
+           ]
     
-    kwargs = {'elp': elp_file,
-              'hsp': hsp_file,
-              'sns': sns_file,
-              'hpi': hpi_file,
-              'raw': data_file,
-              'out': out_file,
-              'stim': ':'.join('%i' % s for s in stim), # '161:162:163:164:165:166:167:168'
-              'sfreq': sfreq,
-              'aligntol': aligntol}
-    
-    kwargs.update(more_kwargs)
-    
-    _run('mne_kit2fiff', kwargs)
-#    print_funcs.printlist(cmd)
+    _run(cmd)
 
 
-def _run(cmd, kwargs=None):
+
+def _run(cmd, v=True):
     """
-    cmd:
-        string command
-    
-    kwargs : (optional)
-        dictionary of arguments that are formatted with:
-        ``"--%s %s" % (key, value)"``
+    cmd: list of strings
+        command that is submitted to subprocess.Popen.
+    v : bool
+        verbose mode
     
     """
-    if kwargs:
-        args = ' '.join('--%s %s' % item for item in kwargs.iteritems())
-        cmd = ' '.join((cmd, args))
-#    source ~/unix_apps/mne-2.7.3/bin/mne_setup_sh
-    sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          shell=True)
+    if v:
+        print "> COMMAND:"
+        for line in cmd:
+            print repr(line)
     
+    cmd = [str(c) for c in cmd]
+    sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = sp.communicate()
-    print ">COMMAND:"
-    print cmd
-    print ">OUT:"
-    print stdout
-    print '>ERROR:'
-    print stderr
+    
+    if v:
+        print "\n> OUT:"
+        print stdout
+        print '\n> ERROR:'
+        print stderr
+
+
+
+    """
+    
+    """
+    
 
 
