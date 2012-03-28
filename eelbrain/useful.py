@@ -17,8 +17,6 @@ Created on Mar 27, 2012
 '''
 
 from vessels.data import (factor, 
-                          factor_from_dict,
-                          
                           var,
                           var_from_dict,
                           var_from_apply,

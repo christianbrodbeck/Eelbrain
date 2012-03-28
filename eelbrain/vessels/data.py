@@ -1973,19 +1973,6 @@ class diff(object):
         return np.sum(self.I1)
 
 
-
-
-
-def factor_from_dict(name, base, values_dict):
-    """
-    Returns a factor containing a value defined in values_dict for each 
-    category in base.
-    
-    """
-    x = [values_dict[value] for value in base]
-    return factor(x, name=name)
-
-
 def var_from_dict(name, base, values_dict, default=0):
     """
     Creates a variable containing a value defined in values_dict for each 
