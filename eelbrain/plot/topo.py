@@ -349,11 +349,9 @@ class _Window_Topo:
         if self.t_line:
             self.t_line.remove()
             self.t_line = None
-        #self.pointer.set_text(None)
-        #print dir(self.pointer)
         if self.pointer:
-            self.pointer.set_visible(False)
-        #self.pointer.remove()  NOT IMPLEMENTED IN MPL
+            self.pointer.remove()
+            self.pointer = None
 
 
 
