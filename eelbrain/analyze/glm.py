@@ -22,6 +22,8 @@ defaults = dict(show_ems=False, #True or False; show E(MS) in Anova tables
                 p_fmt='%.4f',
                 )
 
+_max_array_size = 25 # constant for max array size in lm_fitter
+
 
 
 def _leastsq(Y, X):
@@ -471,8 +473,8 @@ class lm_fitter(object):
             print Y.shape, self.Xinv.shape
         # Split Y that are too long
         df = self.Xinv.shape[0]
-        if np.log2(Y.shape[0] * df**2) > 26:
-            max_len = int(2**26 // df**2)
+        if np.log2(Y.shape[0] * df**2) > _max_array_size:
+            max_len = int(2**_max_array_size // df**2)
             n_parts = Y.shape[0] // max_len + 1
             logging.debug(" S.lm_fitter: Splitting Y in {0} parts".format(n_parts))
             Y_list = [Y[i*max_len:(i+1)*max_len,:] for i in range(n_parts)]
