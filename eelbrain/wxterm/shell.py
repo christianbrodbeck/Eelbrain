@@ -668,10 +668,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
         
         """
         if comment is None:
-            msg = 'exec <%r>' % title
+            msg = '<exec %r>' % title
         else:
-            msg = 'exec <%r, %s>' % (title, comment)
-        self.shell_message(msg, ascommand=True, internal_call=internal_call)
+            msg = '<exec %r, %s>' % (title, comment)
+        self.shell_message(msg, ascommand=False, internal_call=internal_call)
         
         if filedir:
             os.chdir(filedir)
@@ -687,6 +687,20 @@ class ShellFrame(wx.py.shell.ShellFrame):
             # prepare txt
             txt = self.shell.fixLineEndings(txt)
             txt += os.linesep
+            
+            # remove leading whitespaces
+            lines = txt.splitlines()
+            ws_lead = []
+            for line in lines:
+                len_stripped = len(line.lstrip(' '))
+                if len_stripped:
+                    ws_lead.append(len(line) - len_stripped)
+            rm = min(ws_lead)
+            if rm:
+                new_lines = []
+                for line in lines:
+                    new_lines.append(line[rm:] if len(line) > rm else line)
+                txt = os.linesep.join(new_lines)
             
             # 1
             cmd = "exec(compile(r'''{txt}''', '{title}', 'exec'), {globals})"
