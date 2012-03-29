@@ -1722,66 +1722,6 @@ class dataset(dict):
         for i in xrange(start, stop):
             yield self.get_case(i)
     
-    def mark_by_threshold(self, DV=None, threshold=2e-12, above=True, below=False, 
-                          target='reject'):
-        """
-        Marks epochs based on a threshold criterion (any sensor exceeding the 
-        threshold at any time) 
-        
-        above: True, False, None
-            How to mark segments that exceed the threshold: True->good; 
-            False->bad; None->don't change
-        below:
-            Same as ``above`` but for segments that do not exceed the threshold
-        threshold : float
-            The threshold value.
-        target : factor or str
-            Factor (or its name) in which the result is stored. If ``var`` is 
-            a string and the dataset does not contain that factor, it is 
-            created.
-        
-        """
-        if DV is None:
-            DV = self.default_DV
-            if DV is None:
-                raise ValueError("No valid DV")
-        if isinstance(DV, basestring):
-            DV = self[DV]
-        
-        # get the factor on which to store results
-        if isfactor(target) or isvar(target):
-            assert len(target) == self.N
-        elif isinstance(target, basestring):
-            if target in self:
-                target = self[target]
-            else:
-                x = np.zeros(self.N, dtype=bool)
-                target = var(x, name=target)
-                self.add(target)
-        else:
-            raise ValueError("target needs to be a factor")
-        
-        # do the thresholding
-        if isndvar(DV):
-            for ID in xrange(self.N):
-                data = DV.get_data(('time', 'sensor'), ID)
-                v = np.max(np.abs(data))
-                
-                if v > threshold:
-                    if above is not None:
-                        target[ID] = above
-                elif below is not None:
-                    target[ID] = below
-        else:
-            for ID in xrange(self.N):
-                v = DV[ID]
-                
-                if v > threshold:
-                    if above is not None:
-                        target[ID] = above
-                elif below is not None:
-                    target[ID] = below
-    
     @property
     def shape(self):
         return (self.N, len(self))

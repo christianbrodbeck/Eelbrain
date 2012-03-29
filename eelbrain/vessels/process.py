@@ -4,6 +4,7 @@ Created on Feb 24, 2012
 @author: christian
 '''
 
+import numpy as _np
 import mdp as _mdp
 
 import data as _data
@@ -48,4 +49,68 @@ def rm_pca(ds, rm=[], source='MEG', target='MEG'):
     dims = source.get_dims(('time', 'sensor'))
     properties = source.properties
     ds[target] = _data.ndvar(dims, new_data, properties, name=target)
+
+
+def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=True, below=False, 
+                      target='reject'):
+    """
+    Marks epochs based on a threshold criterion (any sensor exceeding the 
+    threshold at any time) 
+    
+    above: True, False, None
+        How to mark segments that exceed the threshold: True->good; 
+        False->bad; None->don't change
+    below:
+        Same as ``above`` but for segments that do not exceed the threshold
+    threshold : float
+        The threshold value.
+    target : factor or str
+        Factor (or its name) in which the result is stored. If ``var`` is 
+        a string and the dataset does not contain that factor, it is 
+        created.
+    
+    """
+    if DV is None:
+        DV = dataset.default_DV
+        if DV is None:
+            raise ValueError("No valid DV")
+    if isinstance(DV, basestring):
+        DV = dataset[DV]
+    
+    # get the factor on which to store results
+    if _data.isfactor(target) or _data.isvar(target):
+        assert len(target) == dataset.N
+    elif isinstance(target, basestring):
+        if target in dataset:
+            target = dataset[target]
+        else:
+            x = _np.zeros(dataset.N, dtype=bool)
+            target = _data.var(x, name=target)
+            dataset.add(target)
+    else:
+        raise ValueError("target needs to be a factor")
+    
+    # do the thresholding
+    if _data.isndvar(DV):
+        for ID in xrange(dataset.N):
+            data = DV.get_data(('time', 'sensor'), ID)
+            v = _np.max(_np.abs(data))
+            
+            if v > threshold:
+                if above is not None:
+                    target[ID] = above
+            elif below is not None:
+                target[ID] = below
+    else:
+        for ID in xrange(dataset.N):
+            v = DV[ID]
+            
+            if v > threshold:
+                if above is not None:
+                    target[ID] = above
+            elif below is not None:
+                target[ID] = below
+
+
+
 
