@@ -152,6 +152,10 @@ class CanvasFrame(wx.Frame):
 #        sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
         sizer.Layout()
         
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI)#, id=ID_SAVEAS)
+        self.Bind(wx.EVT_MENU, self.OnFileSave, id=wx.ID_SAVE)
+        self.Bind(wx.EVT_MENU, self.OnFileSaveAs, id=wx.ID_SAVEAS)
+        
         # get figure
         self.figure = self.canvas.figure
         
@@ -200,6 +204,9 @@ class CanvasFrame(wx.Frame):
         self.toolbar.update()
     
     def OnFileSave(self, event):
+        self.OnFileSaveAs(event)
+    
+    def OnFileSaveAs(self, event):
         """
         FIXME: maybe start search at wx.py.frame.Frame.OnUpdateMenu() 
         
@@ -225,6 +232,16 @@ class CanvasFrame(wx.Frame):
     
     def OnShowFullScreen(self, event):
         self.ShowFullScreen(not self.IsFullScreen())
+    
+    def OnUpdateUI(self, event):
+        Id = event.GetId()
+#        logging.warning("CanvasFrame.OnUpdateUI")
+        if Id == wx.ID_SAVE:
+            event.Enable(True)
+        elif Id == wx.ID_SAVEAS:
+            event.Enable(True)
+        else:
+            pass
 
 
 

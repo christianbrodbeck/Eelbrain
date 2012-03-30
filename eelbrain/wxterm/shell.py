@@ -878,6 +878,23 @@ class ShellFrame(wx.py.shell.ShellFrame):
             dlg = wx.MessageDialog(self, msg, "Error", wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
     
+    def OnFileSave(self, event):
+        logging.warning("shell.OnFileSave()")
+        win = self.get_active_window()
+        if win is self:
+            self.bufferSave()
+        else:
+            event.Skip()
+    
+    def OnFileSaveAs(self, event):
+        logging.warning("shell.OnFileSaveAs()")
+        win = self.get_active_window()
+        if win is self:
+            self.bufferSaveAs()
+        else:
+            event.skip()
+            
+    
     def OnFindPath(self, event=None):
         filenames = ui.ask_file(wildcard='', mult=True)
         if filenames:
