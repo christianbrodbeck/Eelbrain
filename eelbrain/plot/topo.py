@@ -328,10 +328,13 @@ class _Window_Topo:
                 self.pointer.set_text("t=%.3g"%t)
                 self.pointer.set_visible(True)
             else:
+                xytext = self.ax.transAxes.transform((.5,1)) # in 'figure pixels'
+                inv = self.ax.figure.transFigure.inverted()
+                xytext = inv.transform(xytext)
                 self.pointer = parent_ax.annotate("t=%.3g"%t, (t,1), 
                                     xycoords='data',
-                                    xytext=self.ax.transAxes.transform((.5,1)), 
-                                    textcoords='figure pixels',
+                                    xytext=xytext, 
+                                    textcoords='figure fraction',
                                     horizontalalignment='center',
                                     verticalalignment='center',
                                     arrowprops={'width':1, 'frac':0, 
