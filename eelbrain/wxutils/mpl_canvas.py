@@ -179,7 +179,7 @@ class CanvasFrame(wx.Frame):
         self.Bind(wx.EVT_TOOL, self.OnShowFullScreen, id=ID.FULLSCREEN)
     
     def add_mpl_toolbar(self):
-        self.toolbar = backend_wx.NavigationToolbar2Wx(self.canvas_panel)
+        self.toolbar = backend_wx.NavigationToolbar2Wx(self.canvas)
         self.toolbar.Realize()
         if 0:#wx.Platform == '__WXMAC__':
             # Mac platform (OSX 10.3, MacPython) does not seem to cope with
@@ -190,7 +190,7 @@ class CanvasFrame(wx.Frame):
             # On Windows platform, default window size is incorrect, so set
             # toolbar width to figure width.
             tw, th = self.toolbar.GetSizeTuple()
-            fw, fh = self.canvas_panel.GetSizeTuple()
+            fw, fh = self.canvas.GetSizeTuple()
             # By adding toolbar in sizer, we are able to put it at the bottom
             # of the frame - so appearance is closer to GTK version.
             # As noted above, doesn't work for Mac.
@@ -234,7 +234,7 @@ class TestCanvas(CanvasFrame):
         CanvasFrame.__init__(self, parent, title="Test MPL Frame", 
                              mpl_toolbar=mpl_toolbar)
         self.plot()
-        self.ShowWithEffect(effect)
+        self.Show(effect)
     def plot(self):
         self.axes = self.figure.add_subplot(111)
         t = np.arange(0.0, 3.0, 0.01)
