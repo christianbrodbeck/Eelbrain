@@ -1207,7 +1207,7 @@ class ndvar(object):
         return ndvar(self.dims, data, properties=self.properties, name=name)
 
     def __getitem__(self, index):
-        if np.iterable(index):
+        if np.iterable(index) or isinstance(index, slice):
             data = self.data[index]
             if data.shape[1:] != self.data.shape[1:]:
                 raise NotImplementedError("Use subdata method")
