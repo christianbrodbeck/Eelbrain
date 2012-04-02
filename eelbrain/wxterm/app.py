@@ -5,6 +5,7 @@ the main application for Eelbrain's wx-terminal
 
 import logging 
 import os
+import sys
 
 import wx
 
@@ -38,6 +39,11 @@ class MainApp(wx.App):
             self.shell.ShowWithEffect(wx.SHOW_EFFECT_ROLL_TO_BOTTOM)
         else:
             self.shell.Show()
+        
+        if len(sys.argv) > 1:
+            for arg in sys.argv[1:]:
+                self.shell.OnFileOpen(None, path=arg)
+        
         return True
     
     def MacOpenFile(self, filename):
