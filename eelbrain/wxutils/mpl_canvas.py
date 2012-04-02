@@ -174,6 +174,11 @@ class CanvasFrame(wx.Frame):
             self.add_mpl_toolbar()  # comment this out for no toolbar
     
     def _init_FillToolBar(self, tb):
+        "subclasses should call this after adding their own items"
+        tb.InsertLabelTool(0, wx.ID_SAVE, "Save", Icon("tango/actions/document-save"),
+                        shortHelp="Save Document")
+        self.Bind(wx.EVT_TOOL, self.OnFileSave, id=wx.ID_SAVE)
+        
         if wx.__version__ >= '2.9':
             tb.AddStretchableSpace()
         else:
