@@ -361,7 +361,7 @@ class _Window_Topo:
 
 class array(mpl_canvas.CanvasFrame):
     def __init__(self, epochs, title=None, height=3, width=2.5, ntopo=3, dpi=90,
-                 ylim=None, t=[], **kwargs):
+                 ylim=None, t=[]):
         """
         Interface for exploring channel by sample plots by extracting topo-plots
         

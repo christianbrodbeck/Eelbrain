@@ -19,6 +19,7 @@ Example
 
 This example illustrates the use of those objects::
 
+    >>> import numpy as np
     >>> from eelbrain.useful import *
     >>> y = np.empty(21)
     >>> y[:14] = np.random.normal(0, 1, 14)
