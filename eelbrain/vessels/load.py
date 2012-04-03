@@ -1,23 +1,20 @@
 '''
-Functions for loading datasets from different types of files. The most recent 
-workflow is based on loading events and data from a single file, and employs 
-:func:`fiff_events` and :func:`fiff_epochs` as in the following example::
+Functions for loading datasets from mne's fiff files. 
 
-    >>> 
 
 
 Created on Feb 21, 2012
 
 @author: christian
 '''
-
-__all__ = []
-unavailable = []
+from __future__ import division
 
 import os
 
 import numpy as np
 
+__all__ = []
+unavailable = []
 try:
     import mne
     __all__.extend(('fiff_events', 'fiff_epochs'))
@@ -104,16 +101,30 @@ def fiff_events(source_path=None, name=None, merge=-1):
     return _data.dataset(event, istart, name=name, info=info)
 
 
-def fiff_epochs(dataset, i_start='i_start', 
-                tstart=-.2, tstop=.6, baseline=(None,  0),
-                properties=None, name="MEG", sensorsname='fiff-sensors'):
+def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
+                tstart=-.2, tstop=.6, baseline=(None,  0), downsample=1,
+                properties=None, sensorsname='fiff-sensors'):
     """
     Uses the events in ``dataset[i_start]`` to extract epochs from the raw 
-    file
+    file associated with ``dataset``; returns ndvar or nothing (see ``add`` 
+    argument).
     
+    dataset : dataset
+        Dataset containing a variable (i_start) which defines epoch cues
+    add : bool
+        Add the variable to the dataset. If ``True`` (default), the data is 
+        added to the dataset and the function returns nothing; if ``False``,
+        the function returns the ndvar object.
+    downsample : int
+        Downsample the data by this factor when importing. ``1`` means no 
+        downsampling. Note that this function does not low-pass filter 
+        the data. The data is downsampled by picking out every
+        n-th sample (see `Wikipedia <http://en.wikipedia.org/wiki/Downsampling>`_).
     i_start : str
         name of the variable containing the index of the events to be
         imported
+    target : str
+        name for the new ndvar containing the epoch data  
          
     """
     events = np.empty((dataset.N, 3), dtype=np.int32)
@@ -133,25 +144,44 @@ def fiff_epochs(dataset, i_start='i_start',
             sensor_list.append([x, y, z, ch_name])
     sensor_net = sensors.sensor_net(sensor_list, name=sensorsname)
     
+    # source
     picks = mne.fiff.pick_types(raw.info, meg=True, eeg=False, stim=False, 
                                 eog=False, include=[], exclude=[])
-    
     epochs = mne.Epochs(raw, events, 1, tstart, tstop, picks=picks, 
                         baseline=baseline)
     
-    data = epochs.get_data()
+    # transformation
+    index = slice(None, None, downsample)
+    
+    # target container
+    T = epochs.times[index]
+    time = _data.var(T, 'time')
+    dims = (sensor_net, time)
+    epoch_shape = (len(picks), len(time))
+    data_shape = (len(events), len(picks), len(time))
+    data = np.empty(data_shape, dtype='float32') 
+    
+    # read the data
+#    data = epochs.get_data() # this call iterates through epochs as well
+    for i, epoch in enumerate(epochs):
+        epoch_data = epoch[:,index]
+        if epoch_data.shape == epoch_shape:
+            data[i] = epoch_data
+        else:
+            msg = ("Epoch %i shape mismatch: does your epoch definition "
+                   "result in an epoch that overlaps the end of your data "
+                   "file?" % i)
+            raise IOError(msg)
     
     # read data properties
-    props = {'samplingrate': epochs.info['sfreq'][0]}
-    props.update(_default_fiff_properties)
+    props = _default_fiff_properties.copy()
+    props['samplingrate'] = epochs.info['sfreq'][0] / downsample
     if properties:
         props.update(properties)
     
-    T = epochs.times
-    timevar = _data.var(T, 'time')
-    dims = (sensor_net, timevar)
-    
-    dataset.add(_data.ndvar(dims, data, properties=props, name=name))
-    dataset.default_DV = name
-
-        
+    ndvar = _data.ndvar(dims, data, properties=props, name=target)
+    if add:
+        dataset.add(ndvar)
+        dataset.default_DV = target
+    else:
+        return ndvar
