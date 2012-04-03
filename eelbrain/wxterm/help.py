@@ -46,14 +46,12 @@ try:
         
         try:
             html = docutils.core.publish_parts(rst, writer_name='html')['body']
-            logging.debug("rst success on: %s" % len(rst))
-            html = '<span style="color: rgb(0, 0, 255);">RST2HTML:</span><br>' + html
-#            delim = '<br><br>RST <hr style="width: 100%; height: 2px;"><br>HTML <br>'
-#            html = delim.join([rst, html])
+            logging.debug("rst2html success")
+#            html = '<span style="color: rgb(0, 0, 255);">RST2HTML:</span><br>' + html
         except:
-            logging.debug("rst fail on: %s" % len(rst))
-            html = '<span style="color: rgb(255, 0, 0);">RST2HTML FAILED:</span><br>' \
-                 + HtmlTemplate % rst
+            html = HtmlTemplate % rst
+            logging.debug("rst2html failed")
+#            html = '<span style="color: rgb(255, 0, 0);">RST2HTML FAILED:</span><br>' + html
         return html
 except:
     def rst2html(text):
