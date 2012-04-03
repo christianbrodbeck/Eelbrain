@@ -8,6 +8,7 @@ TODO: use wx.html2
 import logging
 import types
 import os
+import webbrowser
 
 import wx
 import wx.html
@@ -379,6 +380,8 @@ class HtmlHelpPanel(HelpPanel):
         HelpPanel.__init__(self, parent)
         self.HtmlCtrl = html = wx.html.HtmlWindow(parent, -1, 
                                            style=wx.NO_FULL_REPAINT_ON_RESIZE)
+        html.Bind(wx.html.EVT_HTML_LINK_CLICKED, self.OnLinkClicked)
+        
 #        html.SetRelatedFrame(parent)
         # after wxPython Demo
         if "gtk2" in wx.PlatformInfo:
@@ -386,6 +389,14 @@ class HtmlHelpPanel(HelpPanel):
         
     def GetCurLine(self):
         return '', 0
+    
+    def OnLinkClicked(self, event):
+        URL = event.GetLinkInfo().GetHref()
+        # is there a better way to distinguish external from internal links?
+        if URL.startswith('http://') or URL.startswith('www.'):
+            webbrowser.open(URL)
+        else:
+            event.Skip()
     
     def parse_object(self, obj):
         """
