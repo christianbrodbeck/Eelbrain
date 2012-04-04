@@ -23,32 +23,66 @@ def rm_pca(ds, rm=[], source='MEG', target='MEG'):
     
     rm = sorted(rm)
     n_comp = max(rm) + 1
-    data = source.get_data(('time', 'sensor'))
     
-    # do the pca
-    pca = _mdp.nodes.PCANode(output_dim=n_comp)
-    for epoch in data:
-        pca.train(epoch)
-    pca.stop_training()
+    node = PCA(source, n_comp=n_comp)
+    ds[target] = node.subtract(rm, name=target)
+
+
+
+class PCA:
+    "so that function and gui can share the same algorithm"
+    def __init__(self, source, n_comp=None):
+        """
+        n_comp : None | int
+            number of components to compute (None = all)
+        
+        """
+        self.source = source
+        data = self._source_data = source.get_data(('time', 'sensor'))
+        
+        # do the pca
+        node = self.node = _mdp.nodes.PCANode(output_dim=n_comp)
+        for epoch in data:
+            node.train(epoch)
+        node.stop_training()
+        
+    def get_component(self, i):
+        dims = self.source.get_dims(('sensor',))
+        data = self.node.v.T[None,i,]
+        name = 'component %i' % i
+        ndvar = _data.ndvar(dims, data, name=name)
+        return ndvar
     
-    # project into the pca space
-    n_epochs, n_t, n_sensors = data.shape
-    old_data = data.reshape((n_epochs * n_t, n_sensors))
-    proj = pca.execute(old_data)
+    def subtract(self, components, name='{name}'):
+        """
+        components : list of ints
+            list of components to remove
+        returns: ndvar
+            a copy of the source ndvar with the principal components specified
+            in ``components`` removed. 
+        
+        """
+        # project into the pca space
+        data = self._source_data
+        n_epochs, n_t, n_sensors = data.shape
+        old_data = data.reshape((n_epochs * n_t, n_sensors))
+        proj = self.node.execute(old_data)
     
-    # flatten retained components
-    for i in xrange(proj.shape[1]):
-        if i not in rm:
-            proj[:,i] = 0 
-    
-    # remove the components
-    rm_comp_data = pca.inverse(proj)
-    new_data = data - rm_comp_data.reshape(data.shape)
-    
-    # create the output new ndvar 
-    dims = source.get_dims(('time', 'sensor'))
-    properties = source.properties
-    ds[target] = _data.ndvar(dims, new_data, properties, name=target)
+        # flatten retained components
+        for i in xrange(proj.shape[1]):
+            if i not in components:
+                proj[:,i] = 0 
+        
+        # remove the components
+        rm_comp_data = self.node.inverse(proj)
+        new_data = data - rm_comp_data.reshape(data.shape)
+        
+        # create the output new ndvar 
+        dims = self.source.get_dims(('time', 'sensor'))
+        properties = self.source.properties
+        name = name.format(name=self.source.name)
+        return _data.ndvar(dims, new_data, properties, name=name)
+
 
 
 def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=True, below=False, 

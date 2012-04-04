@@ -14,6 +14,7 @@ import mdp
 
 from eelbrain import plot
 from eelbrain.vessels import data as _data
+from eelbrain.vessels import process
 
 import ID
 from eelbrain import ui
@@ -102,10 +103,6 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         self.Show()
     
     def _init_FillToolBar(self, tb):
-        # --> save fig
-        tb.AddLabelTool(wx.ID_SAVE, "Save", 
-                        Icon("tango/actions/document-save"))
-        self.Bind(wx.EVT_TOOL, self.OnFileSave, id=wx.ID_SAVE)
         tb.AddSeparator()
         
         # --> select page
@@ -358,9 +355,9 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
             else:
                 return
         
-        self._dataset.mark_by_threshold(self._data, threshold=threshold, 
-                                        above=above, below=below,
-                                        target=self._target)
+        process.mark_by_threshold(self._dataset, DV=self._data, 
+                                  threshold=threshold, above=above, 
+                                  below=below, target=self._target)
         
         self.OnRefresh(event)
     
@@ -379,13 +376,6 @@ class pca(mpl_canvas.CanvasFrame):
         self._ncomp = np.prod(nplots)
         self._topo_kwargs = {}
         
-    # do the PCA
-        pca = self.pca = mdp.nodes.PCANode(output_dim=self._ncomp)
-        data = self._Ydata = Y.get_data(('time', 'sensor'))
-        for epoch in data:
-            pca.train(epoch)
-        pca.stop_training()
-        
     # wx stuff
         parent = wx.GetApp().shell
         title = "PCA of %r" % Y.name
@@ -397,33 +387,30 @@ class pca(mpl_canvas.CanvasFrame):
         self.figure.subplots_adjust(left=.01, right=.99, bottom=.05, top=.95, 
                                     hspace=.2)
         
+    # do the PCA
+        pca = self.pca = process.PCA(Y)
+        
     # plot the components
-        cdims = Y.get_dims(('sensor',))
         self._components = []
         self._rm_comp = []
         npy, npx = self._nplots
         title_temp = '%i'
         for i in xrange(self._ncomp):
             name = title_temp % i
-            cdata = pca.v.T[None,i,]
-            cseg = _data.ndvar(cdims, cdata, name=name)
+            comp = pca.get_component(i)
             ax = self.figure.add_subplot(npy, npx, i+1, xticks=[], yticks=[])
             ax.Id = i
-            plot.topo._ax_topomap(ax, [cseg])
+            plot.topo._ax_topomap(ax, [comp])
             ax.set_title(name)
             ax.set_frame_on(1)
             ax.set_axis_on()
-            self._components.append(cseg)
+            self._components.append(comp)
         
     # finalize
         self.canvas.store_canvas()
         self.Show()
     
     def _init_FillToolBar(self, tb):
-        # --> save fig
-        tb.AddLabelTool(wx.ID_SAVE, "Save", 
-                        Icon("tango/actions/document-save"))
-        self.Bind(wx.EVT_TOOL, self.OnFileSave, id=wx.ID_SAVE)
         tb.AddSeparator()
         
         # remove
@@ -470,31 +457,7 @@ class pca(mpl_canvas.CanvasFrame):
                 return
         
         # if we made it down here, remove the component:
-        source = self._Y
-        data = self._Ydata
-        pca = self.pca
-        ds = self._dataset
-        
-        ### start: identical to vessels.process.pca
-        # project into the pca space
-        n_epochs, n_t, n_sensors = data.shape
-        old_data = data.reshape((n_epochs * n_t, n_sensors))
-        proj = pca.execute(old_data)
-        
-        # flatten retained components
-        for i in xrange(proj.shape[1]):
-            if i not in rm:
-                proj[:,i] = 0 
-        
-        # remove the components
-        rm_comp_data = pca.inverse(proj)
-        new_data = data - rm_comp_data.reshape(data.shape)
-        
-        # create the output new ndvar 
-        dims = source.get_dims(('time', 'sensor'))
-        properties = source.properties
-        ds[target] = _data.ndvar(dims, new_data, properties, name=target)
-        ### end: identical to vessels.process.pca
+        self._dataset[target] = self.pca.subtract(rm, name=target)
         
         self.Close()
 
