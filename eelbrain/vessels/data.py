@@ -730,6 +730,24 @@ class var(_regressor_):
 
 
 
+def find_time_point(timevar, time):
+    if time in timevar.x:
+        i = np.where(timevar==time)[0][0]
+    else:
+        i_next = np.where(timevar > time)[0][0]
+        t_next = timevar[i_next]
+        i_prev = np.where(timevar < time)[0][-1]
+        t_prev = timevar[i_prev]
+        if (t_next - time) < (time - t_prev):
+            i = i_next
+            time = t_next
+        else:
+            i = i_prev
+            time = t_prev
+    return i, time
+
+
+
 class factor(_regressor_):
     """
     Container for categorial data. 
@@ -1252,6 +1270,17 @@ class ndvar(object):
 #        dims = tuple(dim.copy() for dim in self.dims)
         return self.__class__(self.dims, data, self.properties, self.name[:])
     
+    def get_axis(self, dim_name):
+        """
+        returns the .data axis in which dim_name is represented; raises KeyError if 
+        axis is not present in the ndvar.
+        
+        """
+        if dim_name == 'epoch':
+            return 0
+        else:
+            return self._dim_dict[dim_name] + 1
+    
     def get_data(self, dims, epoch=None):
         """
         returns the data with a specific ordering of dimension as indicated in 
@@ -1290,20 +1319,31 @@ class ndvar(object):
         "Returns a tuple with the requested dimension vars"
         return tuple(self.get_dim(name) for name in names)
     
-    def get_summary(self, func=None, name='{func}({name})'):
+    def get_summary(self, dim='epoch', func=None, name='{func}({name})'):
         """
-        Returns a new ndvar with a single case summarizing all the cases in 
-        the present ndvar. Normallt the styatistics used is the mean, but it
-        can be customized through the `func` argument or the `'summary_func'`
+        Returns a new ndvar with dimension ``dim`` collapsed using ``func``. 
+        Normally the statistic used is :func:`numpy.mean`, but it
+        can be customized through the ``func`` argument or the ``'summary_func'``
         property.
         
+        dim : int | str
+            dimension over which to average
+        
         """
+        axis = self.get_axis(dim)
+        
         if func is None:
             func = self.properties.get('summary_func', None)
         if func is None:
             func = np.mean
         
-        data = func(self.data, axis=0)[None,...]
+        data = func(self.data, axis=axis)
+        if axis == 0:
+            data = data[None,...]
+            dims = self.dims
+        else:
+            dims = self.dims[:axis-1] + self.dims[axis:]
+        
         name = name.format(func=func.__name__, name=self.name)
         info = os.linesep.join((self.info, 'summary: %s' % func.__name__))
         
@@ -1313,7 +1353,7 @@ class ndvar(object):
             if key.startswith('summary_') and (key != 'summary_func'):
                 properties[key[8:]] = properties.pop(key)
         
-        return ndvar(self.dims, data, properties=properties, name=name, info=info)
+        return ndvar(dims, data, properties=properties, name=name, info=info)
     
     def get_epoch(self, Id, name="{name}[{Id}]"):
         "returns a single epoch (case) as ndvar"
@@ -1324,7 +1364,7 @@ class ndvar(object):
         return epoch
     
     def mean(self, name="mean({name})"):
-        return self.get_summary(np.mean, name=name)
+        return self.get_summary(func=np.mean, name=name)
     
     def subdata(self, time=None):
         """
@@ -1341,31 +1381,35 @@ class ndvar(object):
         rm_dims = []
         
         if np.isscalar(time):
-            if time in t_var.x:
-                i = np.where(t_var==time)[0][0]
-            else:
-                i_next = np.where(t_var > time)[0][0]
-                t_next = t_var[i_next]
-                i_prev = np.where(t_var < time)[0][-1]
-                t_prev = t_var[i_prev]
-                if (t_next - time) < (time - t_prev):
-                    i = i_next
-                    time = t_next
-                else:
-                    i = i_prev
-                    time = t_prev
+            i, time = find_time_point(t_var, time)
             
             index = tuple([slice(None)] * (t_dim + 1) + [i])
             data = data[index]
             rm_dims.append(t_dim)
             properties['t'] = time
             dims = tuple([dim for i,dim in enumerate(self.dims) if i not in rm_dims])
+        elif len(time) == 2:
+            tstart, tend = time
+            if tstart is None:
+                i0 = 0
+            else:
+                i0, _ = find_time_point(t_var, tstart)
+            
+            if tend is None:
+                i1 = len(t_var)
+            else:
+                i1, _ = find_time_point(t_var, tend)
+            
+            t_ax = self.get_axis('time')
+            new_time = self.get_dim('time')[i0:i1]
+            dims = self.dims[:t_ax-1] + (new_time,) + self.dims[t_ax:]
+            index = (slice(None),) * (t_ax) + (slice(i0, i1),)
+            data = self.data[index]
         else:
             raise NotImplementedError()
         
         # create subdata object
         out = ndvar(dims, data, properties, name=self.name)
-        
         return out
 
 
