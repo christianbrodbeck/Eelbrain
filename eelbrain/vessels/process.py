@@ -10,10 +10,15 @@ import mdp as _mdp
 import data as _data
 
 
-def rm_pca(ds, rm=[], source='MEG', target='MEG'):
+def rm_pca(ds, rm=[], source='MEG', target='MEG', baseline=(None, 0)):
     """
     Perform PCA and remove certain components. Use gui.pca to find components
-    initially. Algorithm from the gui!
+    initially.
+    
+    baseline : None | tuple(tstart, tend)
+        Baseline correction after subtracting the PCA components. The baseline
+        is specified as a (tstart, tend) tuple. None includes all values until the
+        start/end of the epoch (see :func:`.rm_baseline`).
     
     """
     if not rm:
@@ -25,7 +30,7 @@ def rm_pca(ds, rm=[], source='MEG', target='MEG'):
     n_comp = max(rm) + 1
     
     node = PCA(source, n_comp=n_comp)
-    ds[target] = node.subtract(rm, name=target)
+    ds[target] = node.subtract(rm, name=target, baseline=baseline)
 
 
 
@@ -53,13 +58,20 @@ class PCA:
         ndvar = _data.ndvar(dims, data, name=name)
         return ndvar
     
-    def subtract(self, components, name='{name}'):
+    def subtract(self, components, baseline=(None, 0), name='{name}'):
         """
+        returns a copy of the source ndvar with the principal 
+        components specified in ``components`` removed. 
+        
+        Arguments:
+        
         components : list of ints
             list of components to remove
-        returns: ndvar
-            a copy of the source ndvar with the principal components specified
-            in ``components`` removed. 
+        baseline : True | False | (int|None, int|None)
+            Baseline correction after subtracting the components. True -> use the
+            settings stored in the ndvar.properties; False -> do not apply any 
+            baseline correction; a new baseline can be specified with a tuple of 
+            two time values or None (use all values until the end of the epoch).
         
         """
         # project into the pca space
@@ -81,7 +93,11 @@ class PCA:
         dims = self.source.get_dims(('time', 'sensor'))
         properties = self.source.properties
         name = name.format(name=self.source.name)
-        return _data.ndvar(dims, new_data, properties, name=name)
+        out = _data.ndvar(dims, new_data, properties, name=name)
+        if baseline:
+            tstart, tend = baseline
+            out = rm_baseline(out, tstart, tend)
+        return out
 
 
 
@@ -146,5 +162,32 @@ def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=True, below=Fals
                 target[ID] = below
 
 
+
+def rm_baseline(ndvar, tstart=None, tend=0, name='{name}'):
+    """
+    returns an ndvar object with baseline correction applied.
+    
+    ndvar : ndvar
+        the source data
+    tstart : scalar | None
+        the beginning of the baseline period (None -> the start of the epoch)
+    tend : scalar | None
+        the end of the baseline  period (None -> the end of the epoch)
+    name : str
+        name for the new ndvar
+    
+    """
+    subdata = ndvar.subdata((tstart, tend))
+    baseline = subdata.get_summary('time')
+    
+    t_ax = subdata.get_axis('time')
+    index = (slice(None),) * t_ax + (None,)
+    bl_data = baseline.data[index]
+    
+    dims = ndvar.dims
+    data = ndvar.data - bl_data
+    name = name.format(name=ndvar.name)
+    info = ndvar.info
+    return _data.ndvar(dims, data, ndvar.properties, name=name, info=info)
 
 
