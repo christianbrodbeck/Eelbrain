@@ -937,9 +937,12 @@ class ShellFrame(wx.py.shell.ShellFrame):
     
     def OnHelpViewer(self, event=None, topic=None, topic_str=None, pos=None):
         """
-        topic: object
-        topic_str: string that can be evaluated to get topic object
-        pos: With topic_str, the pos argument can be used to search for a
+        topic : 
+            object
+        topic_str : 
+            string that can be evaluated to get topic object
+        pos : 
+            With topic_str, the pos argument can be used to search for a
             Python object name within topic_str. When the user asks for help 
             in the shell or editor, the topic_str is the current line and pos 
             is the caret position. 
@@ -953,12 +956,14 @@ class ShellFrame(wx.py.shell.ShellFrame):
         else:
 #            x, y, w, h = self.GetRect().Get()
             x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
-            hx = x_max-650 #min(x + w, x_max-600)
-            hw = 650
-            hh = y_max-y_min-22 # min(800, y_max-y_min-21)
-            hy = 22
-            logging.debug("help viewer: size=(%s,%s), pos=(%s,%s)"%(hw,hh,hx,hy))
-            self.help_viewer = HelpViewer(self, size=(hw,hh), pos=(hx,hy))
+            width = 650
+            x_pos = x_max - width #min(x + w, x_max-600)
+            y_pos = 22
+            height = y_max - y_min - y_pos - 55 # min(800, y_max-y_min-21)
+            pos = (x_pos, y_pos)
+            size = (width, height)
+            logging.debug("help viewer: size=%s, pos=%s" % (size, pos))
+            self.help_viewer = HelpViewer(self, size=size, pos=pos)
             self.help_viewer.Show()
         
         if topic_str:

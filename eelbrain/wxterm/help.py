@@ -414,8 +414,7 @@ class HtmlHelpPanel(HelpPanel):
                 subtitle = "Method of %s" % str(type(obj.__self__))[1:-1]
             intro = doc2html(obj) + '<br>'
         else: ### OLD default parsing
-            is_function = isinstance(obj, (types.FunctionType, types.BuiltinFunctionType,
-                                           types.MethodType, types.BuiltinMethodType))
+            is_function = isinstance(obj, (types.FunctionType, types.BuiltinFunctionType))
             
             # doc-string for the object itself
             obj_type = str(type(obj))[1:-1]
@@ -439,18 +438,19 @@ class HtmlHelpPanel(HelpPanel):
                         except:
                             pass
                         else:
-                            attrs[attr] = doc2html(a)
+                            typename = str(type(a))[6:-1]
+                            attrs[attr] = typename, doc2html(a)
         
         # add text for attrs
         TOC = []
         chapters = []
         if len(attrs) > 0:
-            items = sorted(attrs.keys())
-            for name in items:
-                if attrs[name]:
-                    TOC.append('<a href="#%s">%s</a><br>' % (name, name))
+            for name in sorted(attrs):
+                typename, doc = attrs[name]
+                if doc:
+                    TOC.append('<a href="#%s">%s</a> %s<br>' % (name, name, typename))
                     chapters.append('<h2><a href="#TOC">&uarr;</a><a name="%s"></a>%s</h2><br>%s' \
-                                    % (name, name, attrs[name]))
+                                    % (name, name, doc))
                 else:
                     TOC.append('<span style="color: rgb(102, 102, 102);">'
                                '%s (no __doc__)</span><br>' % name)
