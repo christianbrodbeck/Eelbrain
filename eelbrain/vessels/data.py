@@ -1366,49 +1366,47 @@ class ndvar(object):
     def mean(self, name="mean({name})"):
         return self.get_summary(func=np.mean, name=name)
     
-    def subdata(self, time=None):
+    def subdata(self, **kwargs):
         """
         
         """
-        try:
-            t_dim = self._dim_dict['time']
-            t_var = self.dims[t_dim]
-        except KeyError:
-            raise KeyError("Segment does not contain 'time' dimension.")
-        
-        data = self.data
         properties = self.properties.copy()
-        rm_dims = []
+        dims = ['epoch'] + list(self.dims)
+        index = [slice(None)] * len(dims)
         
-        if np.isscalar(time):
-            i, time = find_time_point(t_var, time)
-            
-            index = tuple([slice(None)] * (t_dim + 1) + [i])
-            data = data[index]
-            rm_dims.append(t_dim)
-            properties['t'] = time
-            dims = tuple([dim for i,dim in enumerate(self.dims) if i not in rm_dims])
-        elif len(time) == 2:
-            tstart, tend = time
-            if tstart is None:
-                i0 = 0
+        for name, args in kwargs.iteritems():
+            try:
+                dimax = self.get_axis(name)
+                dimvar = self.get_dim(name)
+            except KeyError:
+                raise KeyError("Segment does not contain 'time' dimension.")
+        
+            if np.isscalar(args):
+                i, value = find_time_point(dimvar, args)
+                index[dimax] = i
+                dims[dimax] = None
+                properties[name] = value
+            elif isinstance(args, tuple) and len(args) == 2:
+                start, end = args
+                if start is None:
+                    i0 = None
+                else:
+                    i0, _ = find_time_point(dimvar, start)
+                
+                if end is None:
+                    i1 = None
+                else:
+                    i1, _ = find_time_point(dimvar, end)
+                
+                s = slice(i0, i1)
+                dims[dimax] = dimvar[s]
+                index[dimax] = s
             else:
-                i0, _ = find_time_point(t_var, tstart)
-            
-            if tend is None:
-                i1 = len(t_var)
-            else:
-                i1, _ = find_time_point(t_var, tend)
-            
-            t_ax = self.get_axis('time')
-            new_time = self.get_dim('time')[i0:i1]
-            dims = self.dims[:t_ax-1] + (new_time,) + self.dims[t_ax:]
-            index = (slice(None),) * (t_ax) + (slice(i0, i1),)
-            data = self.data[index]
-        else:
-            raise NotImplementedError()
+                raise NotImplementedError()
         
         # create subdata object
+        data = self.data[index]
+        dims = tuple(dim for dim in dims[1:] if dim is not None)
         out = ndvar(dims, data, properties, name=self.name)
         return out
 

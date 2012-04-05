@@ -177,7 +177,7 @@ def rm_baseline(ndvar, tstart=None, tend=0, name='{name}'):
         name for the new ndvar
     
     """
-    subdata = ndvar.subdata((tstart, tend))
+    subdata = ndvar.subdata(time=(tstart, tend))
     baseline = subdata.get_summary('time')
     
     t_ax = subdata.get_axis('time')
