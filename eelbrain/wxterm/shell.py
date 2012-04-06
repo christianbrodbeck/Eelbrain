@@ -960,10 +960,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
             x_pos = x_max - width #min(x + w, x_max-600)
             y_pos = 22
             height = y_max - y_min - y_pos - 55 # min(800, y_max-y_min-21)
-            pos = (x_pos, y_pos)
-            size = (width, height)
-            logging.debug("help viewer: size=%s, pos=%s" % (size, pos))
-            self.help_viewer = HelpViewer(self, size=size, pos=pos)
+            wpos = (x_pos, y_pos)
+            wsize = (width, height)
+            logging.debug("help viewer: size=%s, pos=%s" % (wsize, wpos))
+            self.help_viewer = HelpViewer(self, size=wsize, pos=wpos)
             self.help_viewer.Show()
         
         if topic_str:
@@ -975,7 +975,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 end = min(pos, n_max)
                 while (end < n_max) and is_py_char(topic_scan[end]):
                     end += 1
-                while is_py_char(topic_scan[start-1]) and start > 0:
+                while is_py_char(topic_scan[start - 1]) and start > 0:
                     start -= 1
                 topic_str = topic_str[start:end]
             self.help_viewer.text_lookup(topic_str)
