@@ -32,15 +32,6 @@ from eelbrain import ui
 
 
 
-
-_default_fiff_properties = {'proj': 'ideal',
-                            'ylim': 2e-12,
-                            'summary_ylim': 3.5e-13,
-                            'colorspace': _cs.get_MEG(2e-12),
-                            'summary_colorspace': _cs.get_MEG(3.5e-13),
-                            }
-
-
 def fiff_events(source_path=None, name=None, merge=-1):
     """
     Returns a dataset containing events from a raw fiff file. Use
@@ -102,7 +93,8 @@ def fiff_events(source_path=None, name=None, merge=-1):
 
 
 def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
-                tstart=-.2, tstop=.6, baseline=(None,  0), downsample=1,
+                tstart=-.2, tstop=.6, baseline=(None,  0), 
+                downsample=1, mult=1, unit='T',
                 properties=None, sensorsname='fiff-sensors'):
     """
     Uses the events in ``dataset[i_start]`` to extract epochs from the raw 
@@ -123,6 +115,11 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
     i_start : str
         name of the variable containing the index of the events to be
         imported
+    mult : scalar
+        multiply all data by a constant. If used, the ``unit`` kwarg should
+        specify the target unit, not the source unit.
+    unit : str
+        Unit of the data (default is 'T').
     target : str
         name for the new ndvar containing the epoch data  
          
@@ -166,6 +163,8 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
     for i, epoch in enumerate(epochs):
         epoch_data = epoch[:,index]
         if epoch_data.shape == epoch_shape:
+            if mult != 1:
+                epoch_data = epoch_data * mult
             data[i] = epoch_data
         else:
             msg = ("Epoch %i shape mismatch: does your epoch definition "
@@ -174,7 +173,14 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
             raise IOError(msg)
     
     # read data properties
-    props = _default_fiff_properties.copy()
+    props = {'proj': 'ideal',
+             'unit': unit,
+             'ylim': 2e-12 * mult,
+             'summary_ylim': 3.5e-13 * mult,
+             'colorspace': _cs.get_MEG(2e-12 * mult),
+             'summary_colorspace': _cs.get_MEG(3.5e-13 * mult),
+             }
+
     props['samplingrate'] = epochs.info['sfreq'][0] / downsample
     if properties:
         props.update(properties)
