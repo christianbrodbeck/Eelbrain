@@ -25,7 +25,7 @@ import re
 from eelbrain import ui
 
 
-__all__ = ['kit2fiff', 'set_mne_dir']
+__all__ = ['set_mne_dir', 'kit2fiff', 'process_raw']
 
 # keep track of whether the mne dir has been successfully set
 _mne_dir = None
@@ -200,6 +200,49 @@ def kit2fiff(meg_sdir=None, experiment='eref3', sfreq=500, aligntol=25,
            '--highpass', highpass,
            '--stimthresh', stimthresh,
            ]
+    
+    _run(cmd)
+
+
+
+def process_raw(raw, save='{raw}_filt', args=[], **kwargs):
+    """
+    Calls ``mne_process_raw`` to process raw fiff files. All 
+    options can be submitted in ``args`` or as kwargs (for a description of
+    the options, see mne manual 2.7.3, ch. 4 / p. 41)
+    
+    raw : str(path)
+        Source file. 
+    save : str(path)
+        Destination file. ``'{raw}'`` will be replaced with the raw file path
+        without the extension.
+    args : list of str
+        Options that do not require a value (e.g., to specify ``--filteroff``,
+        use ``args=['filteroff']``). 
+    kwargs : 
+        Options that require values.
+    
+    Example::
+    
+        >>> process_raw('/some/file_raw.fif', highpass=8, lowpass=12)
+    
+    """
+    raw_name, _ = os.path.splitext(raw)
+    if raw_name.endswith('_raw'):
+        raw_name = raw_name[:-4]
+    
+    save = save.format(raw=raw_name)
+    
+    cmd = [os.path.join(_mne_dir, 'bin', 'mne_process_raw'),
+           '--raw', raw,
+           '--save', save]
+    
+    for arg in args:
+        cmd.append('--%s' % arg)
+    
+    for key, value in kwargs.iteritems():
+        cmd.append('--%s' % key)
+        cmd.append(value)
     
     _run(cmd)
 
