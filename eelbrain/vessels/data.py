@@ -256,8 +256,11 @@ from eelbrain import ui
 
 defaults = dict(fullrepr = False,  # whether to display full arrays/dicts in __repr__ methods
                 repr_len = 5,      # length of repr
-                v_fmt = '%.2f',    # standard value formatting
-                p_fmt = '%.3f',    # p value formatting
+                dataset_str_n_cases = 500,
+                var_repr_n_cases = 100,
+                factor_repr_n_cases = 100,
+                var_repr_fmt = '%.3g',
+                factor_repr_use_labels = True,
                )
 
 
@@ -544,27 +547,30 @@ class var(_regressor_):
         else:
             return _regressor_.__eq__(self, y)
     
-    def __repr__(self):
-        temp = "var({x}, name='{n}')"
+    def __repr__(self, full=False):
+        n_cases = defaults['var_repr_n_cases']
         
         if self.x.dtype == bool:
             fmt = '%r'
         else:
-            fmt = defaults['v_fmt']
+            fmt = defaults['var_repr_fmt']
         
-        if defaults['fullrepr']:
-            x = [fmt % y for y in self.x]
+        if full or len(self.x) <= n_cases:
+            x = [fmt % v for v in self.x]
         else:
-            x = [fmt % y for y in self.x[:5]]
-            if len(self.x) > 5:
-                x.append('... n=%s' % len(self.x))
-            x_str = '[' + ', '.join(x) + ']'
-        return temp.format(n=self.name, x=x_str)
+            x = [fmt % v for v in self.x[:n_cases]]
+            x.append('<... N=%s>' % len(self.x))
+        
+        x = '[' + ', '.join(x) + ']'
+        args = [x, 'name=%r' % self.name]
+        
+        return "var(%s)" % ', '.join(args)
     
     def __str__(self):
-        temp = "var({x}, name='{n}')"
-        fmt = dict(n=self.name, x=self.x)
-        return temp.format(**fmt)
+        return self.__repr__(True)
+    
+    def __contains__(self, value):
+        return value in self.x
     
     def __add__(self, other):
         if np.isscalar(other):
@@ -753,7 +759,6 @@ class factor(_regressor_):
     Container for categorial data. 
     
     """
-    _repr_temp = 'factor({v}, name="{n}", random={r}, labels={l})'
     _stype_ = "factor"
     def __init__(self, x, name="Factor", random=False, 
                  labels={}, colors={}, retain_label_codes=False,
@@ -877,29 +882,41 @@ class factor(_regressor_):
             codes[:,i] = x==cat
         self.x_dummy_coded = self.as_dummy = codes
     
-    def __repr__(self):
-        fmt = dict(n=self.name, r=str(self.random))
-        repr_len = defaults['repr_len']
-        if defaults['fullrepr'] or len(self.x)<=repr_len:
-            fmt['v'] = self.x
-            fmt['l'] = str(self.cells)
+    def __repr__(self, full=False):
+        use_labels = defaults['factor_repr_use_labels']
+        n_cases = defaults['factor_repr_n_cases']
+        
+        if use_labels:
+            values = self.as_labels()        
         else:
-            fmt['v'] = ''.join(['[',
-                                ', '.join([str(x) for x in self.x.tolist()[:repr_len]] + \
-                                          ['...']),
-                                'n=%s]'%len(self.x)])
-            if len(self.cells) > repr_len:
-                l_repr = str(dict(self.cells.items()[:repr_len]))
-                l_repr = l_repr[:-1] + ', ...}'
-                fmt['l'] = l_repr
-            else:
-                fmt['l'] = str(self.cells)
-        return self._repr_temp.format(**fmt)
+            values = self.x.tolist()
+        
+        if full or len(self.x) <= n_cases:
+            x = str(values)
+        else:
+            x = [repr(v) for v in values[:n_cases]]
+            x.append('<... N=%s>' % len(self.x))
+            x = '[' + ', '.join(x) + ']'
+        
+        args = [x, 'name=%r' % self.name]
+        
+        if self.random:
+            args.append('random=True')
+        
+        if not use_labels:
+            args.append('labels=%s' % self.cells)
+        
+        return 'factor(%s)' % ', '.join(args)
     
     def __str__(self):
-        fmt = dict(v=str(self.x.tolist()), n=self.name,
-                   r=str(self.random), l=str(self.cells))
-        return self._repr_temp.format(**fmt)
+        return self.__repr__(True)
+    
+    def __contains__(self, value):
+        try:
+            value = self.code_for_label(value)
+        except KeyError:
+            return False
+        return value in self.x
     
     def __getitem__(self, sub):
         """
@@ -1564,8 +1581,9 @@ class dataset(dict):
             dict.__setitem__(self, name, item)
         
     def __str__(self):
-        txt = str(self.as_table(cases=10, fmt='%.5g', midrule=True))
-        if self.N > 10:
+        maxn = defaults['dataset_str_n_cases']
+        txt = str(self.as_table(cases=maxn, fmt='%.5g', midrule=True))
+        if self.N > maxn:
             note = "(use .as_table() method to see the whole dataset)"
             txt = ' '.join((txt, note))
         return txt
