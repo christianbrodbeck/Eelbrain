@@ -14,7 +14,7 @@ import scipy as sp
 import eelbrain.fmtxt as textab
 
 import test
-from eelbrain.vessels.data import model, var, ismodel, asmodel, isvar, asvar
+from eelbrain.vessels.data import model, var, asmodel, isvar, asvar
 
 
 
@@ -47,7 +47,7 @@ def _hopkins_ems(regression_model, v=False):
     v=True prints E(MS) components (False by default)
     
     """
-    assert ismodel(regression_model)
+    regression_model = asmodel(regression_model)
     # check that no var is in model
     if any([type(f) == var for f in regression_model.factors]):
         return [None] * len(regression_model.effects)
@@ -56,8 +56,8 @@ def _hopkins_ems(regression_model, v=False):
     for e in regression_model.effects:
         E_MS_row = []
         for e2 in regression_model.effects:
-            if np.all([(f in e or f.random) for f in e2.factors]) \
-               and np.all([(f in e2 or e2.nestedin(f)) for f in e.factors]):
+            if np.all([(f.random or e.contains_factor(f)) for f in e2.factors]) \
+               and np.all([(e2.contains_factor(f) or e2.nestedin(f)) for f in e.factors]):
                 E_MS_row.append(True)
             else:
                 E_MS_row.append(False)
@@ -827,7 +827,7 @@ class anova(object):
             fx_desc = 'Fixed'
         else:
             raise ValueError("Model Overdetermined")
-        self._log.append("%s effects model"%fx_desc)
+        self._log.append("%s effects model" % fx_desc)
         
         if lsq == 1:
             self._log.append("(my lsq)")
@@ -898,8 +898,8 @@ class anova(object):
                         for e in X.effects:
                             if e is e_test:
                                 pass
-                            elif all([(f in e_test or f.random) for f in e.factors]):
-                                if all([(f in e or e.nestedin(f)) for f in e_test.factors]):
+                            elif all([(e_test.contains_factor(f) or f.random) for f in e.factors]):
+                                if all([(e.contains_factor(f) or e.nestedin(f)) for f in e_test.factors]):
                                     EMS_effects.append(e)
                         if len(EMS_effects) > 0:
                             lm_EMS = lm(Y, model(*EMS_effects), lsq=lsq)

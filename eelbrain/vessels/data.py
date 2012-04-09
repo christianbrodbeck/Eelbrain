@@ -316,7 +316,8 @@ def iscategorial(Y):
 
 def isdataobject(Y):
     if hasattr(Y, '_stype_'):
-        if  Y._stype_ in ["model", "var", "ndvar", "factor", "interaction"]:
+        if  Y._stype_ in ["model", "var", "ndvar", "factor", "interaction",
+                          "nonbasic"]:
             return True
     return False
 
@@ -391,7 +392,7 @@ class _regressor_(object):
         return model(self) + other
     
     def __mul__(self, other):
-        return model(self, other, self%other)
+        return model(self, other, self % other)
     
     def __mod__(self, other):
 #        if any([type(e)==nonbasic_effect for e in [self, other]]):
@@ -407,7 +408,7 @@ class _regressor_(object):
         else:
             return interaction([self, other])
     
-    def __contains__(self, item):
+    def contains_factor(self, item):
         item_id = id(item)
         if any([item_id == id(f) for f in self.factors]): 
             return True
@@ -941,7 +942,7 @@ class factor(_regressor_):
     
     def __call__(self, other):
         "create a nested effect"
-        assert type(other) in [factor, nonbasic_effect, model, interaction]
+        assert other._stype_ in ["factor", "nonbasic", "model", "interaction"]
         name = self.name + '(' +  other.name + ')'
         nesting_base = other.as_effects
         # create effect codes
@@ -1833,14 +1834,16 @@ class interaction(_regressor_):
                 raise ValueError('Invalid base item for interaction: %r'%b)
             
             for f in b.factors:
-                if f not in self:
+                if not self.contains_factor(f):
                     self.factors.append(f)
+            
             if b._stype_ == "nonbasic":
                 self.base.append(b)
             elif b._stype_ == "interaction":
                 self.base += b.base
             else:
                 self.base += b.factors
+            
             if b._stype_ == "var":
                 if vars_ == 0:
                     vars_ = 1
