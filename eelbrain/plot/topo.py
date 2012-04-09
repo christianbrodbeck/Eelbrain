@@ -460,7 +460,15 @@ class array(mpl_canvas.CanvasFrame):
         return txt
     
     def set_topo_single(self, topo, t, parent_im_id='auto'):
-        "Set the time of a single topomap (numbered throughout the figure)"
+        """
+        Set the time for a single topomap
+        
+        topo : int
+            Id of the topomap (numbered throughout the figure).
+        t : scalar or ``None``
+            time point; ``None`` clears the topomap
+        
+        """
         # get parent ax
         if parent_im_id == 'auto':
             parent_im_id = int(topo / self._ntopo)
@@ -468,8 +476,10 @@ class array(mpl_canvas.CanvasFrame):
         # get window ax
         w = self.windows[topo]
         w.clear()
-        # get data
-        w.update(parent_ax=parent_ax, t=t)
+        
+        if t is not None:
+            w.update(parent_ax=parent_ax, t=t)
+        
         self.canvas.draw()
     
     def set_topowin(self, topo_id, t):
@@ -506,8 +516,8 @@ class array(mpl_canvas.CanvasFrame):
             if button == 'l':
                 self._selected_window = window
             elif button == 'r':
-                window.clear()
-                self.canvas.draw()
+                Id = window.ax.ID % self._ntopo
+                self.set_topowin(Id, None)
             else:
                 pass
         elif (ax.type == 'main') and (self._selected_window != None):
