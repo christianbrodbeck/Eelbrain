@@ -265,9 +265,7 @@ defaults = dict(fullrepr = False,  # whether to display full arrays/dicts in __r
 
 
 class DimensionMismatchError(Exception):
-    def __init__(self, data, dims):
-        msg = "Dimensions of %r do not match %r"%(data, dims)
-        Exception.__init__(self, msg)
+    pass
 
 
 
@@ -1275,7 +1273,8 @@ class ndvar(object):
     def assert_dims(self, dims):
         dim_names = tuple(dim.name for dim in self.dims)
         if dim_names != dims:
-            raise DimensionMismatchError(self, dims)
+            msg = "Dimensions of %r do not match %r" % (self, dims)
+            raise DimensionMismatchError(msg)
     
     def copy(self):
         "returns a copy with a view on the object's data"
@@ -1321,7 +1320,8 @@ class ndvar(object):
                     data = data.swapaxes(dim1 + i_src, dim1 + i_tgt)
                     dimnames[i_src], dimnames[i_tgt] = dimnames[i_tgt], dimnames[i_src]
             else:
-                raise DimensionMismatchError("No dimension named %r" % dim)
+                msg = "%r has no dimension named %r" % (self, dim)
+                raise DimensionMismatchError(msg)
         
         return data
     
@@ -1331,7 +1331,8 @@ class ndvar(object):
             i = self._dim_dict[name]
             return self.dims[i]
         else:
-            raise DimensionMismatchError("No dimension named %r" % name)
+            msg = "%r has no dimension named %r" % (self, name)
+            raise DimensionMismatchError(msg)
     
     def get_dims(self, names):
         "Returns a tuple with the requested dimension vars"
