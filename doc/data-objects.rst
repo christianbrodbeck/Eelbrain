@@ -2,8 +2,8 @@
 Data-Objects
 ************
 
-Vars and Factors
-================
+Vars, Factors, Datasets
+=======================
 
 There are two primary data-objects: 
 
@@ -15,7 +15,7 @@ Multiple variables belonging to the same dataset can be grouped in a
 
 
 Example
-=======
+-------
 
 This example illustrates the use of those objects::
 
@@ -56,6 +56,16 @@ This example illustrates the use of those objects::
     Residuals   15.43   18   0.86                 
     ----------------------------------------------
     Total       28.33   20
+
+
+Exporting Data
+--------------
+
+:class:`~eelbrain.vessels.data.dataset`, :class:`~eelbrain.vessels.data.var` and 
+:class:`~eelbrain.vessels.data.factor` objects have an ``export()`` method for
+saving in various formats. In addition, the dataset's
+:py:meth:`~eelbrain.vessels.data.dataset.as_table` method can create tables with 
+more flexibility.
 
 
 Class Documentation

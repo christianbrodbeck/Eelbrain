@@ -1,7 +1,7 @@
 Various Applications for Python
 ===============================
 
-This site points out various (potentially unexpected) useful applications
+This site points out various applications
 for Python where the interactive shell of Eelbrain is useful.
 
 

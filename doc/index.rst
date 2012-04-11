@@ -16,7 +16,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
    
-   About
+   Installing
    Interface
    data-objects
    psyphys

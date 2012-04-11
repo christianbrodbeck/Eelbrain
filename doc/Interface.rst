@@ -42,21 +42,19 @@ depending on the type of the active window. On Os-X, for many system commands
 such as saving and opening files, replace ``ctrl`` with ``command``
 
 
-General
-^^^^^^^
-
-* ``ctrl`` - ``w``: close top-most editor or help window 
-
-
 Display
 ^^^^^^^
 
 * ``cmd`` - ``shift`` - ``L``: Show/hide line numbers. 
 * Font:
 
-	* ``Ctrl`` - ``]``: Increase font size.
-	* ``Ctrl`` - ``[``: Decrease font size.
-	* ``Ctrl`` - ``=``: Default font size.
+	* ``ctrl`` - ``]``: Increase font size.
+	* ``ctrl`` - ``[``: Decrease font size.
+	* ``ctrl`` - ``=``: Default font size.
+
+* Plotting
+
+    * ``ctrl`` - ``p``: Draw plots (``pyplot.draw()``)
 
 
 Entering Text
@@ -69,34 +67,34 @@ These shortcuts are relevant when entering text (in the shell or an editor)
 
 * Moving the caret (cursor):
 
-	* ``Home``:  Go to the beginning of the command or line.
-	* ``Shift`` - ``Home``:  Select to the beginning of the command or line.
-	* ``Shift`` - ``End``:  Select to the end of the line.
-	* ``End``:  Go to the end of the line.
-	* ``Ctrl`` - ``F``:  Search 
+	* ``home``:  Go to the beginning of the command or line.
+	* ``shift`` - ``Home``:  Select to the beginning of the command or line.
+	* ``shift`` - ``End``:  Select to the end of the line.
+	* ``end``:  Go to the end of the line.
+	* ``ctrl`` - ``F``:  Search 
 	* ``F3``:  Search next
-	* ``Ctrl`` - ``H``:  "Hide" lines containing selection / "unhide"
+	* ``ctrl`` - ``H``:  "Hide" lines containing selection / "unhide"
 
 These work only in the Shell:
 
 * History:
 
-	* ``Ctrl`` - ``Up Arrow``:  Retrieve previous history item.
-	* ``Ctrl`` - ``Down Arrow``:  Retrieve next history item.
-	* ``Shift`` - ``Up Arrow``:  Insert previous history item.
-	* ``Shift`` - ``Down Arrow``:  Insert next history item.
+	* ``ctrl`` - ``Up Arrow``:  Retrieve previous history item.
+	* ``ctrl`` - ``Down Arrow``:  Retrieve next history item.
+	* ``shift`` - ``Up Arrow``:  Insert previous history item.
+	* ``shift`` - ``Down Arrow``:  Insert next history item.
 	* ``F8``:  Command-completion of history item. (Type a few characters of a previous 
 	  command and press F8.)
 
 * Auto Completion:
 
-	* ``Ctrl``-``Space``: Show auto completion.
-	* ``Ctrl``-``Alt``-``Space``: Show call tip.
-	* ``Shift`` - ``Enter``: Complete Text from history.
+	* ``ctrl``-``Space``: Show auto completion.
+	* ``ctrl``-``Alt``-``Space``: Show call tip.
+	* ``shift`` - ``Enter``: Complete Text from history.
 
 * Multi-Line Editing:
 
-	* ``Ctrl`` - ``Enter``: Insert new line into multiline command.
+	* ``ctrl`` - ``Enter``: Insert new line into multiline command.
 	* ``F12``: Turn "free-edit" mode on/off.
 
 
@@ -106,12 +104,11 @@ Shell
 * Copying Text:
 
 	* ``ctrl`` - ``d``:  Copy the selected commands to the topmost editor window
-	* ``Ctrl`` - ``C``:  Copy selected text, removing prompts.
-	* ``Ctrl`` - ``Shift`` - ``C``:  Copy selected text, retaining prompts.
-	* ``Alt`` - ``C``:  Copy to the clipboard, including prefixed prompts.
-	* ``Ctrl`` - ``X``:  Cut selected text.
-	* ``Ctrl`` - ``V``:  Paste from clipboard.
-	* ``Ctrl`` - ``Shift`` - ``V``:  Paste and run multiple commands from clipboard.
+	* ``ctrl`` - ``c``:  Copy selected text without prompts.
+	* ``ctrl`` - ``Shift`` - ``C``:  Copy selected text, retaining prompts.
+	* ``ctrl`` - ``X``:  Cut selected text.
+	* ``ctrl`` - ``V``:  Paste from clipboard.
+	* ``ctrl`` - ``Shift`` - ``V``:  Paste and run multiple commands from clipboard.
 
 
 Editor
@@ -122,8 +119,8 @@ Editor
 * ``alt`` - ``arrow (up/down)``:  Move current line up or down (!!! uses copy-paste)
 * Executing Code:
 
-	* ``Ctrl`` - ``r``: Save the script and execute the whole script from disk. 
-	* ``Ctrl`` - ``e``: Execute the selection. 
+	* ``ctrl`` - ``r``: Save the script and execute the whole script from disk. 
+	* ``ctrl`` - ``e``: Execute the selection. 
 
 
 Shell
