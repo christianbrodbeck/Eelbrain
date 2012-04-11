@@ -984,7 +984,7 @@ class factor(_regressor_):
                     self.cells[i] = str(name)
                     return i
             self.x = np.array(self.x, dtype=np.uint16)
-        i = np.max(self.x) + 1
+        i = max(self.cells) + 1
         self.cells[i] = str(name)
         return i
         
@@ -1006,13 +1006,12 @@ class factor(_regressor_):
                 out = []
                 for v in y:
                     if isstr(v):
-                        try:
-                            v = rd[v]
-                        except KeyError:
-                            v = self._get_ID_for_new_cell(v)
-                    elif v not in self.cells:
+                        code = rd.setdefault(v, self._get_ID_for_new_cell(v))
+                    elif v in self.cells:
+                        code = v
+                    else:
                         raise ValueError("unknown cell code: %r" % v)
-                    out.append(v)
+                    out.append(code)
                 return out
         elif y in self.cells:
             return y
