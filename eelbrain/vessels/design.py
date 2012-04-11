@@ -232,14 +232,9 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
             if not rand:
                 raise NotImplementedError
             
-            for u in urn:
-                if u.cells != cells:
-                    msg = "factors in urn have to share the same cells"
-                    raise NotImplementedError(msg)
-            
             # source and target indexes
             for si, ti in zip(range(region_len), c_indexes):
-                if any(values[si] == u.x[ti] for u in urn):
+                if any(cells[values[si]] == u[ti] for u in urn):
                     
                     # randomized order in which to test other 
                     # values for switching
@@ -252,8 +247,8 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
                         ti_switch = c_indexes[si_switch]
 #                        a = values[si] not in out[ti_switch, urn_indexes] 
 #                        b = values[si_switch] not in out[ti, urn_indexes]
-                        a = any(values[si] == u.x[ti_switch] for u in urn) 
-                        b = any(values[si_switch] == u.x[ti] for u in urn)
+                        a = any(cells[values[si]] == u[ti_switch] for u in urn) 
+                        b = any(cells[values[si_switch]] == u[ti] for u in urn)
                         if not (a or b):
                             values[[si, si_switch]] = values[[si_switch, si]]
                             switched = True
