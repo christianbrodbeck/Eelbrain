@@ -442,6 +442,15 @@ class _regressor_(object):
         y = self._interpret_y(y)
         return self.x < y        
     
+    def export(self, fn=None, fmt='%s', delim=os.linesep):
+        "write all values to a plain text file"
+        if fn is None:
+            msg = "Save var %s" % self.name
+            fn = ui.ask_saveas(msg, msg, None)
+        
+        with open(fn, 'w') as FILE:
+            FILE.write(delim.join(fmt % v for v in self))
+    
     def isany(self, *values):
         """
         Returns an index array that is True in all those locations that match 
@@ -724,7 +733,11 @@ class var(_regressor_):
                                        x1=X.cells[i1],
                                        x2=X.cells[i2])
         return var(y, name)
-
+    
+    def export(self, fn=None, fmt='%.10g', delim=os.linesep):
+        "Write all values to a plain text file"
+        _regressor_.export(self, fn, fmt=fmt, delim=delim)
+    
     @property
     def factors(self):
         return [self]
@@ -1616,7 +1629,7 @@ class dataset(dict):
 #        return self[self.default_DV].as_epoch(*args, **kwargs)
 #    
     def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, sort=True,
-                 midrule=False, count=False):
+                 header=True, midrule=False, count=False):
         r"""
         returns a fmtxt.Table containing all vars and factors in the dataset 
         (ndvars are skipped). Can be used for exporting in different formats
@@ -1626,7 +1639,8 @@ class dataset(dict):
         ---------
         
         cases : int
-            number of cases to include
+            number of cases to include (0 includes all; negative number works 
+            like negative indexing)
         count : bool
             Add an initial column containing the case number
         fmt : str
@@ -1637,6 +1651,8 @@ class dataset(dict):
             format string for factors (None -> code; e.g. `'%s'`)
         match : factor
             create repeated-measurement table
+        header : bool
+            Include the varibale names as a header row
         midrule : bool
             print a midrule after table header
         sort : bool
@@ -1657,13 +1673,14 @@ class dataset(dict):
         
         table = fmtxt.Table('l' * (len(keys) + count))
         
-        if count:
-            table.cell('#')
-        for name in keys:
-            table.cell(name)
-        
-        if midrule:
-            table.midrule()
+        if header:
+            if count:
+                table.cell('#')
+            for name in keys:
+                table.cell(name)
+            
+            if midrule:
+                table.midrule()
         
         for i in range(cases):
             if count:
@@ -1696,16 +1713,29 @@ class dataset(dict):
 #            items = dict((k, v[index]) for k, v in self.iteritems())
 #            return dataset(**items)
     
-    def export(self, fn=None, fmt='%.10g'):
+    def export(self, fn=None, fmt='%.10g', header=True):
         """
-        Allows saving dataframes in different formats. 
+        Writes the dataset to a file. The file extesion is used to determine 
+        the format:
         
-        :kwarg str fn: target filename 
-            with None (default) a system file dialog will be displayed
-            otherwise, the extesion is used to determine the format:
-             - 'txt' or 'tsv':  tsv
-             - 'tex':  as TeX table
-             - 'pickled':  use pickle.dump
+         - '.txt' or '.tsv':  tsv
+         - '.tex':  as TeX table
+         - '.pickled':  use pickle.dump
+         
+        Text and tex export use :py:meth:`.as_table`. You can use 
+        :py:meth:`.as_table` directly for more control over the output. 
+         
+        Arguments
+        ---------
+        
+        fn : str(path) | None
+            target file name (if ``None`` is supplied, a save file dialog is 
+            displayed). the extesion is used to determine the format (see 
+            above)
+        fmt : format str
+            format for scalar values
+        header : bool
+            write the variables' names in the first line
         
         """
         if not isinstance(fn, basestring):
@@ -1716,11 +1746,12 @@ class dataset(dict):
                 print 'saving %r' % fn
             else:
                 return
+        
         ext = os.path.splitext(fn)[1][1:]
         if ext == 'pickled':
             pickle.dump(self, open(fn, 'w'))
         else:
-            table = self.as_table(fmt=fmt)
+            table = self.as_table(fmt=fmt, header=header)
             if ext in ['txt', 'tsv']:
                 table.save_tsv(fn)
             elif ext =='tex':
