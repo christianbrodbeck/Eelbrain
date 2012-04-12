@@ -1,20 +1,20 @@
 
-About Eelbrain
-==============
+About
+=====
 
-Eelbrain is a collection of pure `Python <http://www.python.org>`_ scripts
-that make use of:
+Eelbrain is a collection of pure Python scripts, with two
+main components
 
- * `WxPython <http://www.wxpython.org/>`_
- * `NumPy <http://numpy.scipy.org>`_
- * `Matplotlib <http://matplotlib.sourceforge.net/>`_
- * `SciPy <http://www.scipy.org/>`_
- * `MDP <http://mdp-toolkit.sourceforge.net/>`_
- 
+*   a terminal and Python editor based on `WxPython <http://www.wxpython.org/>`_
+*   tools for data analysis and plotting, based on the 
+    `SciPy <http://www.scipy.org/>`_ libraries.
+    For an example see :ref:`here <statistics-example>`.
 
-Eelbrain Modules
-^^^^^^^^^^^^^^^^
+Modules:
 
-*   :py:mod:`fmtxt`: text formatting, most importantly tables
-*   :py:mod:`analyze`: basic statistics such as ANOVAs and pairwise tests
+*   :py:mod:`fmtxt`: text formatting, most importantly tables that can be 
+    exported in TeX
+*   :py:mod:`vessels`: classes for representing data (containers for 
+    :py:mod:`numpy` objects)
+*   :py:mod:`analyze`: basic statistics such as pairwise tests and ANOVAs
  

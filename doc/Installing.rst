@@ -42,7 +42,8 @@ The following modules are not included in EPD and provide additional
 functionality:
     
 * `mne <https://github.com/mne-tools/mne-python>`_
-* `tex <http://pypi.python.org/pypi/tex>`_ Enables exporting tables as pdf
+* `tex <http://pypi.python.org/pypi/tex>`_ Enables exporting tables as pdf 
+  (also requires a working tex distribution)
   (also requires a working Latex installation)
 * `bioread <http://pypi.python.org/pypi/bioread>`_ Enables an importer for 
   ``.acq`` files.
