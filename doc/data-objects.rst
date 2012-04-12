@@ -31,46 +31,46 @@ This example illustrates the use of those objects::
     >>> print dataset(Y, A)
     A   Y        
     -------------
-    a   -1.3564  
-    a   -0.74355 
-    a   1.0533   
-    a   -1.1824  
-    a   -0.49033 
-    a   0.24881  
-    a   0.088035 
-    b   2.0232   
-    b   1.5045   
-    b   0.13688  
-    b   -0.53848 
-    b   -0.34026 
-    b   -0.36607 
-    b   1.9893   
-    c   2.2071   
-    c   1.1281   
-    c   1.9894   
-    c   -0.062099
-    c   1.7671   
-    c   0.75025  
-    c   0.6192   
+    a   -0.41676 
+    a   -0.056267
+    a   -2.1362  
+    a   1.6403   
+    a   -1.7934  
+    a   -0.84175 
+    a   0.50288  
+    b   -1.2453  
+    b   -1.058   
+    b   -0.90901 
+    b   0.55145  
+    b   2.2922   
+    b   0.041539 
+    b   -1.1179  
+    c   2.0391   
+    c   0.90384  
+    c   1.4809   
+    c   2.675    
+    c   0.75213  
+    c   1.509    
+    c   0.62189  
     >>> print anova(Y, A)
                 SS      df   MS       F        p  
     ----------------------------------------------
-    A            8.49    2   4.24   4.61*     .024
-    Residuals   16.59   18   0.92                 
+    A           14.50    2   7.25   5.54*     .013
+    Residuals   23.56   18   1.31                 
     ----------------------------------------------
-    Total       25.08   20
+    Total       38.06   20
     >>> test.pairwise(Y, A, corr='Hochberg')
     
     Pairwise t-Tests (independent samples)
     
         b                 c              
     -------------------------------------
-    a   t(12)=-1.78       t(12)=-3.42*   
-        p=0.101           p=0.005        
-        p(c)=.201         p(c)=.015      
-    b                     t(12)=-1.06    
-                          p=0.311        
-                          p(c)=.311      
+    a   t(12)=-0.34       t(12)=-3.29*   
+        p=0.739           p=0.006        
+        p(c)=.739         p(c)=.019      
+    b                     t(12)=-2.90*   
+                          p=0.013        
+                          p(c)=.027      
     (* Corrected after Hochberg, 1988)
     >>> t = test.pairwise(Y, A, corr='Hochberg')
     >>> print t.get_tex()
@@ -79,16 +79,18 @@ This example illustrates the use of those objects::
     \toprule
      & b & c \\
     \midrule
-    \textbf{a} & $t_{12}=-1.78^{    \ \ \ \ }$ & $t_{12}=-3.42^{*   \ \ \ }$ \\
-     & $p=0.101$ & $p=0.005$ \\
-     & $p_{c}=.201$ & $p_{c}=.015$ \\
-    \textbf{b} &  & $t_{12}=-1.06^{    \ \ \ \ }$ \\
-     &  & $p=0.311$ \\
-     &  & $p_{c}=.311$ \\
+    \textbf{a} & $t_{12}=-0.34^{    \ \ \ \ }$ & $t_{12}=-3.29^{*   \ \ \ }$ \\
+     & $p=0.739$ & $p=0.006$ \\
+     & $p_{c}=.739$ & $p_{c}=.019$ \\
+    \textbf{b} &  & $t_{12}=-2.90^{*   \ \ \ }$ \\
+     &  & $p=0.013$ \\
+     &  & $p_{c}=.027$ \\
     \bottomrule
     \end{tabular}
     \end{center}
+    >>> plot.boxplot(Y, A, title="My Boxplot", ylabel="value", corr='Hochberg')
 
+.. image:: _static/statistics-example.png
 
 
 Exporting Data
