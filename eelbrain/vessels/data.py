@@ -691,8 +691,9 @@ class var(_regressor_):
         f = factor(self.x, name=name, labels=labels)
         return f
     
-    def copy(self, suffix=''):
-        return var(self.x.copy(), name=self.name + suffix)
+    def copy(self, name='{name}'):
+        "returns a deep copy of itself"
+        return var(self.x.copy(), name=name.format(name=self.name))
     
     def compress(self, X, name=None, func=np.mean):
         """
@@ -1081,6 +1082,17 @@ class factor(_regressor_):
         out =  factor(x, name=name, labels=self.cells,
                       random=self.random)
         return out
+    
+    def copy(self, name='{name}', rep=1, chain=1):
+        "returns a deep copy of itself"
+        f = factor(np.copy(self.x), 
+                   name = name.format(name=self.name), 
+                   random = self.random, 
+                   labels = self.cells, 
+                   colors = self.colors, 
+                   retain_label_codes = True, 
+                   rep=rep, chain=chain)
+        return f
     
     @property
     def dummy_complete_labels(self):
