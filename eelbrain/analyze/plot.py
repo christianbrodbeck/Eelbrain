@@ -58,7 +58,7 @@ defaults = dict(title_kwargs = {'size': 14,
 
 
 def _mark_plot_pairwise(ax, data, within, par, y_min, y_unit, x0=0,
-                        levels=True, trend=".", pwcolors=None,
+                        corr='Hochberg', levels=True, trend=".", pwcolors=None,
                         font_size=P.rcParams['font.size'] * 1.5
                         ):
     "returns y_max"
@@ -72,7 +72,7 @@ def _mark_plot_pairwise(ax, data, within, par, y_min, y_unit, x0=0,
             pwcolors = defaults['c']['pw'][1-bool(trend):]
     k = len(data)
     tests = test._pairwise(data, within=within, parametric=par, trend=trend,
-                            levels=levels)
+                            levels=levels, corr=corr)
     reservation = np.zeros((k, k-1))
     y_top = y_min # track top of plot
     y_start = y_min + 2 * y_unit
@@ -291,21 +291,28 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             titlekwargs=defaults['title_kwargs'],
             baseline=None, # category for plot of difference values
             ## pairwise kwargs
-            test=True, par=True, trend=".", pwcolors=None,
-            hatch = False, colors=False, 
+            test=True, par=True, trend=".", corr='Hochberg',
+            pwcolors=None, hatch = False, colors=False, 
             **simple_kwargs
             ):
     """
+    Arguments
+    ---------
     
-    :arg var Y:
-    :arg X:
-    
-    :arg test: True (default): perform pairwise tests;  False/None: no tests;
+    Y : var
+        dependent variable
+    X : factor or model
+        category definition
+    test : bool | scalar
+        True (default): perform pairwise tests;  False/None: no tests;
         scalar: 1-sample tests against this value 
-
-    :arg float datalabels: threshold for labeling outliers (in std)
-    :arg baseline: Use one condition in X as baseline for plotting and test other conditions
+    datalabels : float
+        threshold for labeling outliers (in standard-deviation)
+    baseline : str
+        Use one condition in X as baseline for plotting and test other conditions
         against this baseline (instead of pairwise)
+    corr : str
+        method for multiple comparison correction
     
     """
     # kwargs
@@ -386,14 +393,14 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     
     # tests    
     if (test is True) and (not baseline):
-        y_top = _mark_plot_pairwise(ax, data, within, par, y_min, y_unit, 
+        y_top = _mark_plot_pairwise(ax, data, within, par, y_min, y_unit, corr=corr,
                                     x0=1, trend=trend)
     elif baseline or (test is False) or (test is None):
         y_top = y_min + y_unit
     else:
         P.axhline(test, color='black')
         y_top = _mark_plot_1sample(ax, data, within, par, y_min, y_unit, 
-                                   x0=1, popmean=test, trend=trend)
+                                   x0=1, popmean=test, trend=trend, corr=corr)
 
         
     # data labels
@@ -416,7 +423,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
         
 
 def barplot(Y, X=None, match=None, sub=None, 
-            test=True, par=True,
+            test=True, par=True, corr='Hochberg',
             title=None, trend=".",
             # bar settings:
             ylabel='{err}', err='2sem', ec='k', xlabel=True,
@@ -494,7 +501,7 @@ def barplot(Y, X=None, match=None, sub=None,
     ct = celltable(Y, X, match=match, sub=sub)
     
     x0,x1,y0,y1 = _barplot(ax, ct,
-                           test=test, par=par, trend=trend,
+                           test=test, par=par, trend=trend, corr=corr,
                            # bar settings:
                            err=err, ec=ec,
                            hatch=hatch, colors=colors, 
@@ -514,7 +521,7 @@ def barplot(Y, X=None, match=None, sub=None,
 
 
 def _barplot(ax, ct, 
-             test=True, par=True, trend=".",
+             test=True, par=True, trend=".", corr='Hochberg',
              # bar settings:
              err='2sem', ec='k',
              hatch = False, colors=False, 
@@ -572,13 +579,13 @@ def _barplot(ax, ct,
     data = [ct.data[i] for i in ct.indexes]
     if test is True:
         y_top = _mark_plot_pairwise(ax, data, ct.all_within, par, y_min, y_unit, 
-                                    trend=trend)
+                                    corr=corr, trend=trend)
     elif (test is False) or (test is None):
         y_top = y_min + y_unit
     else:
         P.axhline(test, color='black')
         y_top = _mark_plot_1sample(ax, data, ct.all_within, par, y_min, y_unit, 
-                                   popmean=test, trend=trend)
+                                   popmean=test, corr=corr, trend=trend)
     
     #      x0,                 x1,                  y0,       y1
     if return_lim:
