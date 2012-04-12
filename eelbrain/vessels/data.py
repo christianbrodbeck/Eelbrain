@@ -1192,6 +1192,15 @@ class factor(_regressor_):
             else:
                 out.append(str(v))
         return out
+    
+    def values(self):
+        """
+        returns a list of all values that occur in the factor. Unlike the
+        ``.cells`` attribute, ``.values()`` guarantees to only return values 
+        that actually occur in the data.
+        
+        """
+        return [self.cells[i] for i in np.unique(self.x)]
 
 
 
