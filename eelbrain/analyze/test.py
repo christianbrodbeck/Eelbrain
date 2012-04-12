@@ -112,7 +112,7 @@ def mcp_adjust(ps, method='Hochberg'):
     """
     n = len(ps)
     if method == 'Bonferroni':
-        return ps / n
+        return [p * n for p in ps]
     elif method in ['Hochberg', 'Holm']:
         ascsort = np.argsort(ps)
         ps_asc = np.array(ps)[ascsort]
@@ -133,7 +133,8 @@ def mcp_adjust(ps, method='Hochberg'):
                 ps_adjusted[iout_asc[-i]] = p_buffer
         return ps_adjusted
     else:
-        raise NotImplementedError
+        msg = '%r multiple comparison correction not available' % method
+        raise NotImplementedError(msg)
 
 
 def _get_correction_caption(corr, n):
