@@ -88,9 +88,9 @@ These work only in the Shell:
 
 * Auto Completion:
 
-	* ``ctrl``-``Space``: Show auto completion.
-	* ``ctrl``-``Alt``-``Space``: Show call tip.
-	* ``shift`` - ``Enter``: Complete Text from history.
+	* ``ctrl``-``space``: Auto completion of attribute.
+	* ``shift``-``ctrl``-``space``: Auto completion inside call.
+	* ``shift`` - ``enter``: Choose command form history to add to the prompt.
 
 * Multi-Line Editing:
 

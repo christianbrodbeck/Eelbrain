@@ -526,7 +526,9 @@ choose ``'lin'`` for 'linear'). Finally, ``windur`` specifies the length of
 the window used, which will determine the smoothness of the final time series.
 The result can be plotted with::
 
+    >>> detach()
     >>> attach(ds)
+    >>> import eelbrain.analyze as A
     >>> A.plot1d.uts(Y, condition)
 
 This plot can suggest good time-windows for further analysis with

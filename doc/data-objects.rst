@@ -17,7 +17,7 @@ Multiple variables belonging to the same dataset can be grouped in a
 .. _statistics-example:
 
 Example
--------
+^^^^^^^
 
 This example illustrates the use of those objects::
 
@@ -94,7 +94,7 @@ This example illustrates the use of those objects::
 
 
 Exporting Data
---------------
+^^^^^^^^^^^^^^
 
 :class:`~eelbrain.vessels.data.dataset`, :class:`~eelbrain.vessels.data.var` and 
 :class:`~eelbrain.vessels.data.factor` objects have an ``export()`` method for
