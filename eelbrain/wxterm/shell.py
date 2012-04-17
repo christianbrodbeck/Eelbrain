@@ -831,8 +831,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
         if path is None:
             path = ui.ask_file(title="Open File",
                                message="Open a Python script in an editor, or attach pickled data", 
-                               ext=[('py', 'Python script'), 
-                                    ('pickled', 'Pickled data')])
+                               ext=[('py;*.pickled', 'Readable Files')])
+#                               ext=[('py', 'Python script'), 
+#                                    ('pickled', 'Pickled data')])
             if not path:
                 return
         
