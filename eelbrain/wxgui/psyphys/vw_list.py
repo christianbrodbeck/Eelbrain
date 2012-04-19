@@ -23,7 +23,7 @@ class ListViewerFrame(mpl_canvas.CanvasFrame):
     def __init__(self, visualizers, id=-1,
                  x=1, y=5, texsave=True, 
                  zi=None, za=None, zp=10, # zoom (index, address, pad
-                 size=(800,600), dpi=50,
+                 size=(16,8), dpi=50,
                  ):
         visualizers = self.visualizers = toList(visualizers)
 #        self.visualizers.reverse()
