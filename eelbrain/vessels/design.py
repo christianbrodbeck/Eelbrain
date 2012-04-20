@@ -71,8 +71,9 @@ class Variable(object):
         name : str
             name for the Variable
             
-        values : list of str
-            list of values that the Variable can assume
+        values : iterable of str
+            list of values that the Variable can assume (iterable, i.e. can be 
+            dict with keys)
         
         rand : bool
             randomize the sequence of values
@@ -96,7 +97,7 @@ class Variable(object):
         # validate values:
         assert all(isinstance(v, str) for v in values)
         assert len(values) < 256, "not implemented"
-        self.values = values
+#        self.values = values
         self.cells = dict(enumerate(values))
         self.N = len(values) # theN of categories
         self.Ndraw = self.N - len(self.urn) # the N of possible values for each trial
@@ -186,21 +187,19 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
     N_values = len(values)
     x = np.empty(ds.N, dtype=np.uint8)
     cells = dict(enumerate(values))
-    
+        
     if balance:
         groups = _data.interaction(balance)
         regions = groups.as_factor()
-        n_regions = len(regions.cells)
         
         # for now, they have to be of equal length
-        region_lens = [np.sum(regions==i) for i in xrange(n_regions)]
+        region_lens = [np.sum(regions==v) for v in regions.values()]
         if len(np.unique(region_lens)) > 1:
             raise NotImplementedError
         
         region_len = region_lens[0]
     else:
-        n_regions = 1
-        regions = _data.factor(np.zeros(ds.N), "regions")
+        regions = _data.factor('?'*ds.N, "regions")
         region_len = ds.N
     
     # generate random values with equal number of each value
@@ -220,12 +219,12 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
     
     
     # cycle through values of the balance containers
-    for c in regions.cells:
+    for region in regions.values():
         if rand:# and _randomize:
             np.random.shuffle(values)
         
         # indexes into the current out array rows
-        c_index = regions.x == c
+        c_index = (regions == region)
         c_indexes = np.where(c_index)[0] # location 
         
         if urn: # the Urn has been drawn from already

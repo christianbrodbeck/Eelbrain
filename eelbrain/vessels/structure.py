@@ -16,8 +16,36 @@ import eelbrain.utils.statfuncs as _statfuncs
 
 class celltable:
     """
-    Attributes
-    ----------
+    **Attributes:**
+    
+    .X, .Y, .sub, .match:
+        input arguments
+    
+    .cells : list of str
+        list of all cells in X
+    
+    .data : dict(cell -> data)
+        data in each cell
+    
+    .data_indexes : dict(cell -> index-array)
+        for each cell, a boolean-array specifying the index for that cell in ``X``
+    
+    **If ``match`` is specified**:
+    
+    .within : dict(cell1, cell2 -> bool)
+        dictionary that specifies for each cell pair whether the corresponding
+        comparison is a repeated-measures or an independent measures 
+        comparison (only available when the input argument ``match`` is 
+        specified.
+    
+    .all_within : bool
+        whether all comparison are repeated-measures comparisons or not
+    
+    .group : dict(cell -> group)
+        group for each cell as ???
+    
+    
+    **Old Attributes:**
     
     indexes
         list of indexes
@@ -81,17 +109,19 @@ class celltable:
         self.match = match
 
         # extract cells and cell data
+        self.cells = X.values()
         self.data = {}
         self.data_indexes = {}
-        self.cells = X.cells
-        self.indexes = sorted(X.cells.keys())
-        for cell in self.indexes:
-            sub = X==cell
-            self.data_indexes[cell] = sub
-            newdata = Y.x[sub]
+        if match:
+            # the labels in match
+            self.matchlabels = {}
+        
+        for cell in self.cells:
+            self.data_indexes[cell] = cell_index = (X == cell)
+            newdata = Y[cell_index]
             if match:
                 # get match ids
-                group = match.x[sub]
+                group = match.x[cell_index]
                 occurring_ids = np.unique(group)
                 
                 # sort
@@ -99,12 +129,16 @@ class celltable:
                     newdata = np.array([match_func(newdata[group==ID]) 
                                         for ID in occurring_ids])
                     group = occurring_ids
+                    labels = [match[group==ID][0] for ID in occurring_ids]
                 else:
                     sort_arg = np.argsort(group)
                     group = group[sort_arg]
                     newdata = newdata[sort_arg]
+                    labels = match[cell_index][sort_arg]
                 
                 self.groups[cell] = group
+                self.matchlabels[cell] = labels
+                                
             self.data[cell] = newdata
         
         if match:
@@ -113,8 +147,8 @@ class celltable:
 #            n_cells = len(self.indexes)
 #            self.within = np.empty((n_cells, n_cells), dtype=bool)
             self.within = {}
-            for cell1 in self.indexes:
-                for cell2 in self.indexes:
+            for cell1 in self.cells:
+                for cell2 in self.cells:
                     if cell1==cell2:
                         self.within[cell1,cell2] = True
                     else:
@@ -125,7 +159,7 @@ class celltable:
                         self.within[cell2,cell1] = v
             self.all_within = np.all(self.within.values())
         else:
-            self.within = self.all_within = False
+            self.all_within = False
     
     def __repr__(self):
         args = [self.Y.name, self.X.name]
@@ -141,8 +175,8 @@ class celltable:
         if out is dict:
             return self.data
         elif out is list:
-            return [self.data[i] for i in self.indexes]
-    
+            return [self.data[cell] for cell in self.cells]
+        
     def get_statistic(self, function=np.mean, out=dict, a=1, **kwargs):
         """
         :returns: function applied to all data cells.
@@ -176,12 +210,13 @@ class celltable:
                 raise ValueError('unrecognized statistic: %s'%function)
         
         if out in [list, np.array]:
-            as_list = [a * function(self.data[i], **kwargs) for i in self.indexes]
+            as_list = [a * function(self.data[cell], **kwargs) for cell in self.cells]
             if out is list:
                 return as_list
             else:
                 return np.array(as_list)
         elif out is dict:
-            return dict((i, a * function(self.data[i], **kwargs)) for i in self.indexes)
+            return dict((cell, a * function(self.data[cell], **kwargs)) 
+                        for cell in self.cells)
         else:
             raise ValueError("out not in [list, dict]")

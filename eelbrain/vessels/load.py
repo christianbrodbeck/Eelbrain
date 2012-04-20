@@ -275,7 +275,7 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None):
                     types[i] = 1
             data[i].append(v)
     
-    factors = []
+    ds = _data.dataset(name=os.path.basename(path))
     
     for name, values, force_type in zip(names, data, types):
         v = np.array(values)
@@ -287,6 +287,6 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None):
                 f = _data.factor(v, name=name)
         else:
             f = _data.factor(v, name=name)
-        factors.append(f)
+        ds.add(f)
         
-    return _data.dataset(*factors)
+    return ds

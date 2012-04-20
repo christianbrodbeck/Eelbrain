@@ -244,6 +244,7 @@ import cPickle as pickle
 import logging
 import operator
 import os
+import collections
 
 import numpy as np
 import scipy.stats
@@ -376,12 +377,7 @@ class _regressor_(object):
     """
     baseclass for factors, variables, and interactions
     
-    """
-    def __init__(self, name, random):
-        self.name = name
-        self.visible = True
-        self.random = random
-    
+    """    
     def __len__(self):
         return self.N
     
@@ -392,7 +388,7 @@ class _regressor_(object):
     def __mul__(self, other):
         return model(self, other, self % other)
     
-    def __mod__(self, other):
+    def __mod__(self, other, name='{name}%{other}'):
 #        if any([type(e)==nonbasic_effect for e in [self, other]]):
 #            multcodes = _inter
 #            name = ':'.join([self.name, other.name])
@@ -400,11 +396,18 @@ class _regressor_(object):
 #            nestedin = self._nestedin + other._nestedin
 #            return nonbasic_effect(multcodes, factors, name, nestedin=nestedin)
 #        else:
-        logging.debug(" __mod__({0}, {1})".format(self.name, other.name))
-        if ismodel(other):
+        if isvar(other):
+            other = other.x
+            other_name = other.name
+        elif  ismodel(other):
             return model(self) % other
-        else:
+        elif isdataobject(other):
             return interaction([self, other])
+        else:
+            other_name = str(other)[:15]
+        
+        name = name.format(name=self.name, other=other_name)
+        return var(self.x % other, name=name)
     
     def contains_factor(self, item):
         item_id = id(item)
@@ -429,18 +432,7 @@ class _regressor_(object):
     
     def __ne__(self, y):
         y = self._interpret_y(y)
-        if np.iterable(y):
-            return np.all([self.x != v for v in y], axis=0)
-        else:
-            return self.x != y
-    
-    def __gt__(self, y):
-        y = self._interpret_y(y)
-        return self.x > y  
-          
-    def __lt__(self, y):
-        y = self._interpret_y(y)
-        return self.x < y        
+        return self.x != y
     
     def export(self, fn=None, fmt='%s', delim=os.linesep):
         "write all values to a plain text file"
@@ -471,15 +463,16 @@ class _regressor_(object):
     def get_dict_for_keys(self, key_factor, key_labels=True, value_labels=True, 
                           conflict='raise'):
         """
+        Returns a dictionary mapping categories of key -> values on self
+        
         :arg factor key_factor: factor which provides the keys
         :arg bool key_labels: whether to use labels as keys (if available)
         :arg bool value_labels: whether to use labels as values (if available)
         :arg conflict: value to substitute in case more than one values on 
             self map to the same key. Default behavior is to raise an error. 
         
-        Returns a dictionary mapping categories of key -> values on self
-        
         """
+        raise NotImplementedError
         assert key_factor.N == self.N, "Unequal number of values"
         if not iscategorial(key_factor):
             key_labels = False
@@ -519,7 +512,7 @@ class var(_regressor_):
     
     """
     _stype_ = "var"
-    def __init__(self, x, name="Covariate"):
+    def __init__(self, x, name=None):
         """
         Initialization:
         
@@ -537,23 +530,29 @@ class var(_regressor_):
             * ``var / scalar`` 
         
         """
-        _regressor_.__init__(self, name, True)
-        self.x = x = np.array(x)
+        _regressor_.__init__(self)
+        x = np.asarray(x)
         if x.ndim > 1:
             raise ValueError("Use ndvar class for data with more than one dimension")
+        self.__setstate__((x, name))
+    
+    def __setstate__(self, state):
+        x, name = state
+        # raw
+        self.name = name
+        self.x = x
+        # derived
         self.N = len(x)
-        "Number of data points"
-        self.df = 1
         self.mu = x.mean()
         self.centered = self.x - self.mu
         self.SS = np.sum(self.centered**2)     
+        # constants
+        self.df = 1
+        self.visible = True
+        self.random = False
     
-    def __eq__(self, y):
-        if isstr(y):
-            raise ValueError("Variables can only be compared with floats, not "
-                             "with strings")
-        else:
-            return _regressor_.__eq__(self, y)
+    def __getstate__(self):
+        return (self.x, self.name)
     
     def __repr__(self, full=False):
         n_cases = defaults['var_repr_n_cases']
@@ -611,6 +610,14 @@ class var(_regressor_):
                        name='*'.join((self.name, other.name)))            
         else:
             return _regressor_.__mul__(self, other)
+    
+    def __gt__(self, y):
+        y = self._interpret_y(y)
+        return self.x > y  
+          
+    def __lt__(self, y):
+        y = self._interpret_y(y)
+        return self.x < y        
     
     def __getitem__(self, values):
         "if factor: return new variable with mean values per factor category"
@@ -773,9 +780,9 @@ class factor(_regressor_):
     
     """
     _stype_ = "factor"
-    def __init__(self, x, name="Factor", random=False, 
+    def __init__(self, x, name=None, random=False, 
                  labels={}, colors={}, retain_label_codes=False,
-                 rep=1, chain=1, sort=False):
+                 rep=1, chain=1):
         """        
         x : array-like 
             Sequence of values (initialization uses ravel(x) to create 1-d 
@@ -793,9 +800,9 @@ class factor(_regressor_):
             constructing the labels dictionary. All labels for values of 
             x not in `labels` are constructed using ``str(value)``.
             
-        colors : dict
-            similar to labels, provide a color for each value. 
-            Colors should be matplotlib-readable.
+        colors : dict {label: color, ...}
+            Provide a color for each value, hich can be used by some plotting 
+            functions. Colors should be matplotlib-readable.
         
         rep : int
             repeat values in x rep times e.g. ``factor(['in', 'out'], rep=3)``
@@ -813,87 +820,97 @@ class factor(_regressor_):
         
         
         """
-        _regressor_.__init__(self, name, random)
+        _regressor_.__init__(self)
         # prepare arguments
         if isstr(x):
             x = list(x)
+        
         x = np.ravel(x)
         if rep > 1: x = x.repeat(rep)
-        if chain > 1: x = np.ravel([x]*chain)
-        self.N = len(x)
-        "Number of data points"
-
-        # get unique categories and sort them in order of first occurrence
-        categories, c_sort = np.unique(x, return_index=True)
-        self.df = len(categories) - 1
-        if sort==True:
-            categories = categories[np.argsort(c_sort)]
-
-        # prepare data containers
-        if retain_label_codes:
+        if chain > 1: x = np.tile(x, chain)
+        
+        # prepare data containers: _x are internal versions
+        state = {'name': name, 'random': random, 'colors': {}}
+        N = len(x)
+        _x = state['x'] = np.empty(N, dtype=np.uint16)
+        _labels = state['labels'] = {}
+        categories = np.unique(x)
+        if retain_label_codes and N > 0:
             if not issubclass(x.dtype.type, np.integer):
                 msg = ("When retaining_label_codes is True, x must contain "
-                       "valied codes (i.e., integers)")
+                       "integers")
                 raise ValueError(msg)
-            
-            if min(categories) >= 0 and max(categories) < 256:
-                dtype = np.uint8
-            else:
-                dtype = np.int32
-        else:
-            if len(np.unique(x)) < 256:
-                dtype = np.uint8
-            else:
-                dtype = np.int32
-        
-        self.x = np.empty(self.N, dtype=dtype)
-        self.cells = {}
-        """
-        {value -> label} dictionary, mapping ``int`` values in x to ``str`` 
-        category labels
-        """
-        
-        self.colors = {}
-#        logging.debug("init FACTOR '{n}' with x={x}, categories->{c}".format(n=name, x=x, c=categories))
-        if retain_label_codes:
-            # retain codes provided in labels
+            elif min(x) < 0 or max(x) > 65534:
+                msg =  ("When retaining_label_codes is True, x must contain "
+                       "unsigned 16-bit integers (0 <= x < 65534)")
+                raise ValueError(msg)
             for i, cat in enumerate(categories):
-                self.x[x==cat] = cat
-                self.cells[cat] = labels.get(cat, str(cat))
-                if cat in colors:
-                    self.colors[cat] = colors[cat]
-        else:
-            # reassign codes
+                _x[x==cat] = cat
+                _labels[cat] = labels.get(cat, str(cat))
+        else: # reassign codes
             for i, cat in enumerate(categories):
-                self.x[x==cat] = i
-                if cat in labels:
-                    self.cells[i] = labels[cat]
+                _x[x==cat] = i
+                _labels[i] = labels.get(cat, str(cat))
+        
+        if colors: # convert color keys from values to codes
+            codes = {lbl: code for code, lbl in _labels.iteritems()}
+            for label in colors:
+                try:
+                    code = codes[label]
+                except KeyError:
+                    msg = "Label %r in colors, but not in values" % label
+                    raise KeyError(msg)
                 else:
-                    self.cells[i] = str(cat)
-                
-                if cat in colors:
-                    self.colors[i] = colors[cat]
+                    state['colors'][code] = colors[label]
         
-        # convenience arg
-        self.indexes = sorted(self.cells.keys())
-        
-        # x_deviation_coded
-        x = self.x
-        categories = np.unique(x)
-        cats = categories[:-1]
-        contrast = categories[-1]
-        shape = (self.N, self.df)
-        codes = np.empty(shape, dtype=np.int8)
-        for i, cat in enumerate(cats):
-            codes[:,i] = x==cat
-        codes -= (x==contrast)[:,None]
-        self.x_deviation_coded = self.as_effects = codes
+        self.__setstate__(state)
     
-        # x_dummy_coded
-        codes = np.empty(shape, dtype=np.int8)
-        for i, cat in enumerate(cats):
-            codes[:,i] = x==cat
-        self.x_dummy_coded = self.as_dummy = codes
+    def __setstate__(self, state):
+        self.x = x = state['x']
+        self.name = state['name']
+        self.random = state['random']
+        self._labels = labels = state['labels']
+        self._codes = {lbl: code for code, lbl in labels.iteritems()}
+        self._colors = state['colors']
+        # constants
+        self.visible = True
+        # derived
+        self.N = N = len(x)
+        
+        # get unique categories and sort them in order of first occurrence
+        categories = np.unique(x)
+        self.df = df = max(0, len(categories) - 1)
+        
+        if N: 
+            # x_deviation_coded
+            categories = np.unique(x)
+            cats = categories[:-1]
+            contrast = categories[-1]
+            shape = (N, df)
+            codes = np.empty(shape, dtype=np.int8)
+            for i, cat in enumerate(cats):
+                codes[:,i] = x==cat
+            codes -= (x==contrast)[:,None]
+            self.x_deviation_coded = self.as_effects = codes
+            
+            # x_dummy_coded
+            codes = np.empty(shape, dtype=np.int8)
+            for i, cat in enumerate(cats):
+                codes[:,i] = x==cat
+            self.x_dummy_coded = self.as_dummy = codes
+        else:
+            self.x_deviation_coded = np.array([])
+            self.as_effects = np.array([])
+            self.x_dummy_coded = np.array([])
+            self.as_dummy = np.array([])
+    
+    def __getstate__(self):
+        state = {'x': self.x,
+                 'name': self.name,
+                 'random': self.random,
+                 'labels': self._labels,
+                 'colors': self._colors}
+        return state
     
     def __repr__(self, full=False):
         use_labels = defaults['factor_repr_use_labels']
@@ -926,10 +943,10 @@ class factor(_regressor_):
     
     def __contains__(self, value):
         try:
-            value = self.code_for_label(value)
+            code = self._codes(value)
         except KeyError:
             return False
-        return value in self.x
+        return code in self.x
     
     def __getitem__(self, sub):
         """
@@ -937,19 +954,17 @@ class factor(_regressor_):
         this method is valid for factors and nonbasic effects
         
         """
-        out = self.x[sub]
-        if np.iterable(out):
-            out = factor(out, name=self.name, random=self.random, 
-                         labels=self.cells)
-            return out
+        x = self.x[sub]
+        if np.iterable(x):
+            return factor(x, **self._child_kwargs())
         else:
-            return self.cells[out]
+            return self._labels[x]
     
     def __iter__(self):
-        return (self.cells[i] for i in self.x)
+        return (self._labels[i] for i in self.x)
     
     def __setitem__(self, index, values):
-        values = self._interpret_y(values)
+        values = self._interpret_y(values, create=True)
         self.x[index] = values
     
     def __call__(self, other):
@@ -983,54 +998,43 @@ class factor(_regressor_):
         out = nonbasic_effect(effect_codes, [self], name, nestedin=other.factors)
         return out
     
-    def _child_kwargs(self, name):
-        kwargs = dict(labels = self.cells,
+    def _child_kwargs(self, name='{name}'):
+        kwargs = dict(labels = self._labels,
                       name = name.format(name=self.name), 
                       random = self.random,
+                      colors = self._colors,
                       retain_label_codes = True)
         return kwargs
             
-    def _get_ID_for_new_cell(self, name):
-        "adds a new name to the cells dictionary"
-        if self.x.dtype is np.uint8:
-            for i in range(256):
-                if i not in self.cells:
-                    self.cells[i] = str(name)
-                    return i
-            self.x = np.array(self.x, dtype=np.uint16)
-        i = max(self.cells) + 1
-        self.cells[i] = str(name)
-        return i
-        
-    def _interpret_y(self, y):
+    def _interpret_y(self, Y, create=False):
         """
         in: string or list of strings
         returns: list of values (codes) corresponding to the categories
         
         """
-        if np.iterable(y):
-            rd = {v: k for k, v in self.cells.iteritems()}
-            # TODO: implement reversable_dict type
-            if isstr(y):
-                try:
-                    return rd[y]
-                except KeyError:
-                    return self._get_ID_for_new_cell(y)
+        if isinstance(Y, basestring):
+            if Y in self._codes:
+                return self._codes[Y]
+            elif create:
+                code = 0
+                while code in self._labels:
+                    code += 1
+                if code >= 65535:
+                    raise ValueError("Too many categories in this factor.")
+                self._labels[code] = Y
+                self._codes[Y] = code
+                return code
             else:
-                out = []
-                for v in y:
-                    if isstr(v):
-                        code = rd.setdefault(v, self._get_ID_for_new_cell(v))
-                    elif v in self.cells:
-                        code = v
-                    else:
-                        raise ValueError("unknown cell code: %r" % v)
-                    out.append(code)
-                return out
-        elif y in self.cells:
-            return y
+                return 65535 # code for values not present in the factor 
+        elif np.iterable(Y):
+            out = np.empty(len(Y), dtype=np.uint16)
+            for i, y in enumerate(Y):
+                out[i] = self._interpret_y(y, create=create)
+            return out
+        elif Y in self._labels:
+            return Y
         else:
-            raise ValueError("unknown cell code: %r" % y)
+            raise ValueError("unknown cell: %r" % Y)
     
     @property
     def as_dummy_complete(self):
@@ -1040,21 +1044,22 @@ class factor(_regressor_):
         return codes.astype(np.int8)
         
     def as_labels(self):
-        return [self.cells[v] for v in self.x]
-        
+        return [self._labels[v] for v in self.x]
+    
     @property
     def beta_labels(self):
         labels = self.dummy_complete_labels
         txt = '{0}=={1}'
         return [txt.format(labels[i], labels[-1]) for i in range(len(labels)-1)]
     
-    def code_for_label(self, label):
-        for c, l in self.cells.iteritems():
-            if label == l:
-                return c
-        raise KeyError("Label'%s' not in factor %s"%(label, self.name))
+    @property
+    def cells(self):
+        return self._labels.copy()
     
-    def compress(self, X, name=None):
+    def codes(self):
+        return np.unique(self.x)
+    
+    def compress(self, X, name='{name}'):
         """
         :returns: a compressed :class:`factor` with one value for each cell in X
         :rtype: :class:`factor`
@@ -1067,37 +1072,29 @@ class factor(_regressor_):
         """
         # find new x
         x = []
-        for i in sorted(X.cells.keys()):
-            x_i = np.unique(self.x[X==i])
+        for i in sorted(X._labels.keys()):
+            x_i = np.unique(self.x[X.x == i])
             if len(x_i) > 1:
-#                x.append(np.nan)
                 raise ValueError("non-unique cell")
             else:
                 x.append(x_i[0])
-        x = np.array(x)
         
-        # package and ship
-        if name is None:
-            name = self.name
-        out =  factor(x, name=name, labels=self.cells,
-                      random=self.random)
+        out =  factor(x, 
+                      name = name.format(name=self.name), 
+                      labels = self._labels,
+                      random = self.random)
         return out
     
     def copy(self, name='{name}', rep=1, chain=1):
         "returns a deep copy of itself"
-        f = factor(np.copy(self.x), 
-                   name = name.format(name=self.name), 
-                   random = self.random, 
-                   labels = self.cells, 
-                   colors = self.colors, 
-                   retain_label_codes = True, 
-                   rep=rep, chain=chain)
+        f = factor(np.copy(self.x), rep=rep, chain=chain, 
+                   **self._child_kwargs(name))
         return f
     
     @property
     def dummy_complete_labels(self):
         categories = np.unique(self.x)
-        return [self.cells[cat] for cat in categories]
+        return [self._labels[cat] for cat in categories]
 
     @property
     def factors(self):
@@ -1106,46 +1103,49 @@ class factor(_regressor_):
     def get_color(self, name):
         ":arg name: can be label or code"
         if isstr(name):
-            code = self.code_for_label(name)
+            code = self._codes[name]
         else:
             code = name
         
-        if code in self.colors:
-            return self.colors[code]
+        if code in self._colors:
+            return self._colors[code]
         else:
             raise KeyError("No color for %r"%name)
     
     def get_index_to_match(self, other):
         """
-        returns `index` so that::
+        Assuming that ``other`` is a shuffled version of self, this method
+        returns ``index`` to transform from the order of self to the order of
+        ``other``. To guarantee exact matching, wach value can only occur once
+        in self. Example::
         
             >>> index = factor1.get_index_to_match(factor2)
             >>> all(factor1[index] == factor2)
             True
         
         """
-        assert self.cells == other.cells
+        assert self._labels == other._labels
         index = []
         for v in other.x:
             where = np.where(self.x == v)[0]
             if len(where) == 1:
                 index.append(where[0])
             else:
-                msg = "%r contains several cases of %r"
-                raise ValueError(msg % (self, v))
+                msg = "%r contains several cases of %r" % (self, v)
+                raise ValueError(msg)
         return np.array(index)
     
-    def print_categories(self):
-        ":returns: a table containing information about categories"
+    def table_categories(self):
+        "returns a table containing information about categories"
         table = fmtxt.Table('rll')
         table.title(self.name)
         for title in ['i', 'Label', 'n']:
             table.cell(title)
         table.midrule()
-        for v, name in self.cells.iteritems():
-            table.cell(v)
-            table.cell(name)
-            table.cell(np.sum(self.x==v))
+        for code, label in self._labels.iteritems():
+            table.cell(code)
+            table.cell(label)
+            table.cell(np.sum(self.x == code))
         return table
     
     def project(self, target, name='{name}'):
@@ -1176,37 +1176,25 @@ class factor(_regressor_):
         
         """
         if isstr(name):
-            code = self.code_for_label(name)
+            code = self._codes[name]
         else:
             code = name
         
-        self.colors[code] = color
-    
-    def tolabels(self, values):
-        out = []
-        for v in values:
-            if isstr(v):
-                out.append(v)
-            elif v in self.cells:
-                out.append(self.cells[v])
-            else:
-                out.append(str(v))
-        return out
+        self._colors[code] = color
     
     def values(self):
         """
-        returns a list of all values that occur in the factor. Unlike the
-        ``.cells`` attribute, ``.values()`` guarantees to only return values 
-        that actually occur in the data.
+        returns a list of all values that occur in the factor. ``.values()`` 
+        guarantees to only return values that actually occur in the data.
         
         """
-        return [self.cells[i] for i in np.unique(self.x)]
+        return [self._labels[i] for i in np.unique(self.x)]
 
 
 
 class ndvar(object):
     _stype_ = "ndvar"
-    def __init__(self, dims, data, properties=None, name="???", info=""):
+    def __init__(self, dims, x, properties=None, name=None, info=""):
         """
         Arguments
         ---------
@@ -1234,51 +1222,71 @@ class ndvar(object):
         
         """        
         # check data shape
-        self.ndim = ndim = len(dims)
-        if ndim != data.ndim - 1:
-            raise ValueError("Dimension mismatch (data: %i, dims: %i)" % 
-                             (data.ndim - 1, self.ndim))
-        
-        # interpret dims
-        for dim in dims:
-            if dim.name == 'time':
-                self.time = dim
-            elif dim.name == 'sensor':
-                self.sensor = dim
-        
-        self._dim_dict = dict((dim.name, i) for i, dim in enumerate(dims))
-        
-        # store attributes
-        self.dims = dims
-        self.data = data
-        self._len = len(data)
-        if properties is None:
-            self.properties = {}
-        else:
-            self.properties = properties.copy()
-        self.name = name
-        self.info = info
+        ndim = len(dims)
+        if ndim != x.ndim - 1:
+            err = ("Dimension mismatch (data: %i, dims: %i)" % (x.ndim - 1, 
+                                                                ndim))
+            raise DimensionMismatchError(err)
         
         # check dimensions
-        for i in xrange(-1, -ndim, -1):
-            n_data = data.shape[i]
-            dim = dims[i]
+        for i,dim in enumerate(dims):
+            n_data = x.shape[i + 1]
             n_dim = len(dim)
             if n_data != n_dim:
-                raise ValueError("Dimension %r length mismatch: %i in data, "
-                                 "%i in dimension" % (dim, n_data, n_dim))
+                err = ("Dimension %r length mismatch: %i in data, "
+                       "%i in dimension" % (dim.name, n_data, n_dim))
+                raise DimensionMismatchError(err)
+        
+        state = {'dims': dims,
+                 'x': x,
+                 'name': name,
+                 'info': info}
+        
+        # store attributes
+        if properties is None:
+            state['properties'] = {}
+        else:
+            state['properties'] = properties.copy()
+        
+        self.__setstate__(state)
+    
+    def __setstate__(self, state):
+        self.dims = dims = state['dims']
+        self.x = x = state['x']
+        self.name = state['name']
+        self.info = state['info']
+        self.properties = state['properties']
+        # derived
+        self.ndim = len(dims)
+        self._len = len(x)
+        self._dim_dict = {dim.name: i for i, dim in enumerate(dims)}
+        # attr
+        i = self._dim_dict.get('time', None)
+        if i is not None:
+            self.time = dims[i]
+        i = self._dim_dict.get('sensor', None)
+        if i is not None:
+            self.sensor = dims[i]
+    
+    def __getstate__(self):
+        state = {'dims': self.dims,
+                 'x': self.x,
+                 'name': self.name,
+                 'info': self.info,
+                 'properties': self.properties}
+        return state
     
     def __add__(self, other):
-        data = self.data + other.data
+        x = self.x + other.x
         name = '+'.join((self.name, other.name))
-        return ndvar(self.dims, data, properties=self.properties, name=name)
+        return ndvar(self.dims, x, properties=self.properties, name=name)
 
     def __getitem__(self, index):
         if np.iterable(index) or isinstance(index, slice):
-            data = self.data[index]
-            if data.shape[1:] != self.data.shape[1:]:
-                raise NotImplementedError("Use subdata method")
-            return ndvar(self.dims, data, properties=self.properties, name=self.name)
+            x = self.x[index]
+            if x.shape[1:] != self.x.shape[1:]:
+                raise NotImplementedError("Use subdata method when dims are affected")
+            return ndvar(self.dims, x, properties=self.properties, name=self.name)
         else:
             index = int(index)
             return self.get_epoch(index)
@@ -1293,15 +1301,15 @@ class ndvar(object):
         return rep % args
     
     def __sub__(self, other):
-        if hasattr(other, 'data'):
-            data = self.data - other.data
+        if hasattr(other, 'x'):
+            x = self.x - other.x
             name = '-'.join((self.name, other.name))
         elif np.isscalar(other):
-            data = self.data - other
+            x = self.x - other
             name = '%s-%r' % (self.name, other)
         else:
             raise ValueError("can't subtract %r" % other)
-        return ndvar(self.dims, data, properties=self.properties, name=name)
+        return ndvar(self.dims, x, properties=self.properties, name=name)
     
     def assert_dims(self, dims):
         dim_names = tuple(dim.name for dim in self.dims)
@@ -1311,14 +1319,14 @@ class ndvar(object):
     
     def copy(self):
         "returns a copy with a view on the object's data"
-        data = self.data
-        return self.__class__(self.dims, data, self.properties, self.name)
+        x = self.x
+        return self.__class__(self.dims, x, self.properties, self.name)
     
     def deepcopy(self):
         "returns a copy with a deep copy of the object's data"
-        data = self.data.copy()
+        x = self.x.copy()
 #        dims = tuple(dim.copy() for dim in self.dims)
-        return self.__class__(self.dims, data, self.properties, self.name[:])
+        return self.__class__(self.dims, x, self.properties, self.name[:])
     
     def get_axis(self, dim_name):
         """
@@ -1340,23 +1348,23 @@ class ndvar(object):
         dimnames = [d.name for d in self.dims]
         
         if epoch is None:
-            data = self.data
+            x = self.x
             dim1 = 1
         else:
-            data = self.data[epoch]
+            x = self.x[epoch]
             dim1 = 0
             
         for i_tgt, dim in enumerate(dims):
             if dim in dimnames:
                 i_src = dimnames.index(dim)
                 if i_tgt != i_src:
-                    data = data.swapaxes(dim1 + i_src, dim1 + i_tgt)
+                    x = x.swapaxes(dim1 + i_src, dim1 + i_tgt)
                     dimnames[i_src], dimnames[i_tgt] = dimnames[i_tgt], dimnames[i_src]
             else:
                 msg = "%r has no dimension named %r" % (self, dim)
                 raise DimensionMismatchError(msg)
         
-        return data
+        return x
     
     def get_dim(self, name):
         "Returns the dimension var named ``name``"
@@ -1385,13 +1393,11 @@ class ndvar(object):
         axis = self.get_axis(dim)
         
         if func is None:
-            func = self.properties.get('summary_func', None)
-        if func is None:
-            func = np.mean
+            func = self.properties.get('summary_func', np.mean)
         
-        data = func(self.data, axis=axis)
+        x = func(self.x, axis=axis)
         if axis == 0:
-            data = data[None,...]
+            x = x[None,...]
             dims = self.dims
         else:
             dims = self.dims[:axis-1] + self.dims[axis:]
@@ -1405,13 +1411,13 @@ class ndvar(object):
             if key.startswith('summary_') and (key != 'summary_func'):
                 properties[key[8:]] = properties.pop(key)
         
-        return ndvar(dims, data, properties=properties, name=name, info=info)
+        return ndvar(dims, x, properties=properties, name=name, info=info)
     
     def get_epoch(self, Id, name="{name}[{Id}]"):
         "returns a single epoch (case) as ndvar"
-        data = self.data[[Id]]
+        x = self.x[[Id]]
         name = name.format(name=self.name, Id=Id)
-        epoch = ndvar(self.dims, data, properties=self.properties, name=name, 
+        epoch = ndvar(self.dims, x, properties=self.properties, name=name, 
                       info=self.info + ".get_epoch(%i)"%Id)
         return epoch
     
@@ -1419,7 +1425,18 @@ class ndvar(object):
         return self.get_summary(func=np.mean, name=name)
     
     def subdata(self, **kwargs):
-        """
+        """returns an ndvar object with a subset of the current ndvar's data.
+        The slice is specified using kwargs, with dimensions as keywords and
+        indexes as values, e.g.::
+        
+            >>> Y.subdata(time = 1)
+        
+        returns a slice for time point 1 (second).
+        
+            >>> Y.subdata(time = (.2, .6))
+            
+        returns a slice containing all values for times .2 seconds to .6 
+        seconds.
         
         """
         properties = self.properties.copy()
@@ -1431,8 +1448,9 @@ class ndvar(object):
                 dimax = self.get_axis(name)
                 dimvar = self.get_dim(name)
             except KeyError:
-                raise KeyError("Segment does not contain 'time' dimension.")
-        
+                err = ("Segment does not contain %r dimension." % name)
+                raise DimensionMismatchError(err)
+            
             if np.isscalar(args):
                 i, value = find_time_point(dimvar, args)
                 index[dimax] = i
@@ -1457,14 +1475,14 @@ class ndvar(object):
                 raise NotImplementedError()
         
         # create subdata object
-        data = self.data[index]
+        x = self.x[index]
         dims = tuple(dim for dim in dims[1:] if dim is not None)
-        out = ndvar(dims, data, properties, name=self.name)
+        out = ndvar(dims, x, properties, name=self.name)
         return out
 
 
 
-class dataset(dict):
+class dataset(collections.OrderedDict):
     """
     A dataset is a dictionary that stores a collection of variables (``var``, 
     ``factor``, and ``ndvar`` objects) that describe the same underlying cases. 
@@ -1472,9 +1490,9 @@ class dataset(dict):
     to the variable names.
     
 
-    Accessing Data:
+    **Accessing Data:**
     
-    - Use the :meth:`.get_case` method or iteration over the dataset to 
+    - Use the the ``.get_case()`` method or iteration over the dataset to 
       retrieve individual cases/rows as {name: value} dictionaries.  
     - Use standard indexing (``dataset[x]``) for retrieving 
       variables (``str`` keys) and printing certain rows (``>>> print 
@@ -1504,9 +1522,36 @@ class dataset(dict):
     inspection.  
     
     """
-    def __init__(self, *items, **named_items):
+    def __init__(self, *items, **kwargs):
         """
-        stores input items, does not make a copy
+        Datasets can be initialize with data-objects, or with 
+        ('name', data-object) tuples.::
+
+            >>> dataset(var1, var2)
+            >>> dataset(('v1', var1), ('v2', var2))
+
+        The dataset stores the input items themselves, without making a copy().
+        The dataset class is a :class:`collections.OrderedDict` subclass, with
+        different initialization and representation.
+        
+        
+        **Naming:**
+        
+        While var and factor objects themselves need not be named, they need 
+        to be named when added to a dataset. This can be done by a) adding a 
+        name when initializing the dataset::
+        
+            >>> ds = dataset(('v1', var1), ('v2', var2))
+        
+        or b) by adding the var or factor witha key::
+        
+            >>> ds['v3'] = var3
+        
+        If a var/factor that is added to a dataset does not have a name, the new 
+        key is automatically added as name to the var/factor. 
+        
+        
+        **optional kwargs:**
         
         default_DV : str
             name of the default dependent variable (DV). It is stored in the
@@ -1515,18 +1560,38 @@ class dataset(dict):
         
         name : str
             name describing the dataset
-        
+                
         """ 
-        self.name = named_items.pop('name', '???')
-        self.info = named_items.pop('info', {})
-        self.default_DV = named_items.pop('default_DV', None)
-        dict.__init__(self)
+        args = []
         for item in items:
-            name = item.name
-            self.__setitem__(name, item, overwrite=False)
-        for name, item in named_items.iteritems():
-            self.__setitem__(name, item, overwrite=False)
+            if isdataobject(item):
+                if item.name:
+                    args.append((item.name, item))
+                else:
+                    err = ("items need to be named in a dataset; use "
+                            "dataset(('name', item), ...), or ds = dataset(); "
+                            "ds['name'] = item")
+                    raise ValueError(err)
+            else:
+                name, v = item
+                if not v.name:
+                    v.name = name
+                args.append(item)
+        
+        super(dataset, self).__init__(args)
+        self.__setstate__(kwargs)
     
+    def __setstate__(self, kwargs):
+        self.name = kwargs.get('name', None)
+        self.info = kwargs.get('info', {})
+        self.default_DV = kwargs.get('default_DV', None)
+        
+    def __reduce__(self):
+        args = tuple(self.items())
+        kwargs = {'name': self.name, 'info': self.info, 
+                  'default_DV': self.default_DV}
+        return self.__class__, args, kwargs
+        
     def __getitem__(self, name):
         """
         possible::
@@ -1557,12 +1622,12 @@ class dataset(dict):
                 return self.subset(name)
         
         else:
-            return dict.__getitem__(self, name)
+            return super(dataset, self).__getitem__(name)
     
     def __repr__(self):
         rep_tmp = "<dataset %(name)r N=%(N)i: %(items)s>"
         items = []
-        for key in sorted(self):
+        for key in self:
             v = self[key]
             if isinstance(v, var):
                 lbl = 'V'
@@ -1593,7 +1658,9 @@ class dataset(dict):
                 raise KeyError("dataset already contains variable of name %r"%name)
             
             # coerce item to data-object
-            if not isdataobject(item):
+            if isdataobject(item):
+                item.name = name
+            else:
                 try:
                     if all(np.isreal(item)):
                         item = var(item, name=name)
@@ -1612,44 +1679,35 @@ class dataset(dict):
                            "number of cases in the datase (%i)." % (len(item), self.N))
                     raise ValueError(msg)
             
-            # finally, 
-            dict.__setitem__(self, name, item)
-        
+            super(dataset, self).__setitem__(name, item)
+    
     def __str__(self):
         maxn = defaults['dataset_str_n_cases']
         txt = str(self.as_table(cases=maxn, fmt='%.5g', midrule=True))
         if self.N > maxn:
-            note = "(use .as_table() method to see the whole dataset)"
-            txt = ' '.join((txt, note))
+            note = "... (use .as_table() method to see the whole dataset)"
+            txt = os.linesep.join((txt, note))
         return txt
     
-    def __add__(self, other):
-        return self.as_epoch() + other.as_epoch()
-    
-    def __sub__(self, other):
-        return self.as_epoch() - other.as_epoch()
-    
-    def add(self, item):
+    def add(self, item, replace=False):
         """
-        = dataset[item.name] = item 
+        ``ds.add(item)`` -> ``ds[item.name] = item`` 
         
         unless the dataset already contains a variable named item.name, in 
         which case a KeyError is raised. In order to replace existing 
-        variables, use dataset[name] = item 
+        variables, set ``replace`` to True::
+        
+            >>> ds.add(item, True)
         
         """
         if not isdataobject(item):
             raise ValueError("Not a valid data-object: %r" % item)
-        elif item.name in self:
+        elif (item.name in self) and not replace:
             raise KeyError("Dataset already contains variable named %r" % item.name)
         else:
             self[item.name] = item
     
-#    def as_epoch(self, *args, **kwargs):
-#        "returns an epoch of the default dependent variable (default_DV)"
-#        return self[self.default_DV].as_epoch(*args, **kwargs)
-#    
-    def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, sort=True,
+    def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, sort=False,
                  header=True, midrule=False, count=False):
         r"""
         returns a fmtxt.Table containing all vars and factors in the dataset 
@@ -1690,6 +1748,7 @@ class dataset(dict):
         keys = [k for k, v in self.iteritems() if not isndvar(v)]
         if sort:
             keys = sorted(keys)
+        
         values = [self[key] for key in keys]
         
         table = fmtxt.Table('l' * (len(keys) + count))
@@ -1717,24 +1776,9 @@ class dataset(dict):
                 elif isvar:
                     table.cell(v.x[i], fmt=fmt)
         
-        if cases < self.N:
-            table.cell('...')
         return table
     
-#    def deepcopy(self, index):
-#        """
-#        Like __getitem__, but makes a deep copy (i.e., all the data is 
-#        duplicated, and the data in both copies can be manipulated without 
-#        affecting the data in the other copy)
-#        
-#        """
-#        if index in self:
-#            return dict.__getitem__(self, index).copy()
-#        elif len(index) == self.N:
-#            items = dict((k, v[index]) for k, v in self.iteritems())
-#            return dataset(**items)
-    
-    def export(self, fn=None, fmt='%.10g', header=True):
+    def export(self, fn=None, fmt='%.10g', header=True, sort=False):
         """
         Writes the dataset to a file. The file extesion is used to determine 
         the format:
@@ -1757,6 +1801,8 @@ class dataset(dict):
             format for scalar values
         header : bool
             write the variables' names in the first line
+        sort : bool
+            Sort variables alphabetically according to their name 
         
         """
         if not isinstance(fn, basestring):
@@ -1772,7 +1818,7 @@ class dataset(dict):
         if ext == 'pickled':
             pickle.dump(self, open(fn, 'w'))
         else:
-            table = self.as_table(fmt=fmt, header=header)
+            table = self.as_table(fmt=fmt, header=header, sort=sort)
             if ext in ['txt', 'tsv']:
                 table.save_tsv(fn)
             elif ext =='tex':
@@ -1780,24 +1826,13 @@ class dataset(dict):
             else:
                 raise IOError("can only export .pickled, .txt and .tex")
     
-#    def get_condition_pointers(self, factor, dep_var='MEG', exclude=[], name='{name}[{case}]'):
-#        if isinstance(factor, basestring):
-#            factor = self[factor]
-#        
-#        out = {}
-#        for case in factor.cells.values():
-#            if case not in exclude:
-#                setname = name.format(name=self.name, case=case)
-#                index = factor == case
-#                out[case] = ConditionPointer(self, dep_var, index, setname)
-#        return out
-    
     def get_case(self, i):
+        "returns the i'th case as a dictionary"
         return dict((k, v[i]) for k, v in self.iteritems())
     
     def get_subsets_by(self, factor, default_DV=None, exclude=[], name='{name}[{case}]'):
         """
-        convenience function; splits the dataset by the cells of a factor and 
+        splits the dataset by the cells of a factor and 
         returns as dictionary of subsets.
         
         """
@@ -1807,7 +1842,7 @@ class dataset(dict):
             default_DV = self.default_DV
         
         out = {}
-        for case in factor.cells.values():
+        for case in factor.values():
             if case not in exclude:
                 setname = name.format(name=self.name, case=case)
                 index = factor == case
@@ -1847,15 +1882,16 @@ class dataset(dict):
         basic slicing (using slices) returns a view.
         
         """
-        items = {k: v[index] for k, v in self.iteritems()}
         name = name.format(name=self.name)
         info = self.info.copy()
-        
         if default_DV is None:
             default_DV = self.default_DV
-        items['default_DV'] = default_DV
         
-        return dataset(name=name, info=info, **items)
+        ds = dataset(name=name, info=info, default_DV=default_DV)
+        for k, v in self.iteritems():
+            ds[k] = v[index]
+        
+        return ds 
 
 
 
@@ -1904,7 +1940,10 @@ class interaction(_regressor_):
         
         N = self.N = self.base[0].N; assert all([f.N == N for f in self.base[1:]])
         name = ' x '.join([f.name for f in self.base])
-        _regressor_.__init__(self, name, False)
+        _regressor_.__init__(self)
+        self.name = name
+        self.visible = True
+        self.random = False
         self.beta_labels = beta_labels
         
         self.df =  reduce(operator.mul, [f.df for f in self.base])
@@ -1913,7 +1952,7 @@ class interaction(_regressor_):
         label_dicts = [f.cells for f in self.factors if f._stype_=='factor']
         self.cells = _permutate_address_dicts(label_dicts)
         self.indexes = sorted(self.cells.keys())
-        self.colors = {}
+        self._colors = {}
         
         # effect coding
         codelist = [f.as_effects for f in self.base]
@@ -1922,8 +1961,11 @@ class interaction(_regressor_):
     
     def __repr__(self):
         names = [f.name for f in self.base]
-#        txt = "interaction({n})"
-#        return txt.format(n=', '.join(names))        
+        txt = "interaction({n})"
+        return txt.format(n=', '.join(names))        
+        
+    def __str__(self):
+        names = [f.name for f in self.base]
         return ' % '.join(names)
     
     @property
@@ -1959,6 +2001,9 @@ class interaction(_regressor_):
     def as_labels(self):
         out = [self.cells[code] for code in self.as_codes()]
         return out
+    
+    def values(self):
+        return self.cells.values()
 
 
 
@@ -2105,7 +2150,10 @@ class nonbasic_effect(_regressor_):
     def __init__(self, effect_codes, factors, name, nestedin=[], 
                  beta_labels=None):
         self._nestedin = nestedin
-        _regressor_.__init__(self, name, False)
+        _regressor_.__init__(self)
+        self.name = name
+        self.visible = True
+        self.random = False
         self.as_effects = effect_codes
         self.N, self.df = effect_codes.shape
         self.factors = factors
@@ -2119,28 +2167,14 @@ class nonbasic_effect(_regressor_):
 class multifactor(factor):
     "For getting categories from the combination of a list of factors"
     def __init__(self, factors, v=False):
-        # convert vars to factors
-        clean_factors = []
-        for f in factors:
-            if isvar(f):
-                ux = np.unique(f.x)
-                if all([int(y)==y for y in ux]):
-                    ux = ux.astype(int)
-                labels = dict(zip(ux, ux.astype('S10')))
-                f = factor(f.x, labels=labels, random=f.random)
-            if isfactor(f):
-                clean_factors.append(f)
-            else:
-                raise ValueError("Can only create multifactor from categorial factors")
-        factors = clean_factors
+        factors = [asfactor(f) for f in factors]
         
         self.N = factors[0].N
         
-        #
         if len(factors) == 1:
             f = factors[0]
-            self.x = f.x
-            self.cells = f.cells.copy()
+            self.x = np.copy(f.x)
+            self._labels = f._labels.copy()
             self.name = f.name
         else:
             x_full = np.hstack([f.x[:,None] for f in factors])
@@ -2171,12 +2205,14 @@ class multifactor(factor):
             if v:
                 print x
             self.x = x
-            self.cells = labels
+            self._labels = labels
             self.name = ':'.join([f.name for f in factors])
+    
     def __repr__(self):
         factors = ', '.join(f.name for f in self.factors)
         out = "multifactor(%s)" % factors
         return out
+    
     def iter_n_i(self):
         for i, n in self.cells.iteritems():
             yield n, self.x==i
@@ -2470,110 +2506,6 @@ class model(object):
 #        i = 1
 #        for e in self.effects:
 #            pass # FIXME: dshyg5erjbhaegr
-
-
-def _split_Y(Y, X, match=None, sub=None, datalabels=None):
-    """
-    returns 2  (factor, model of factors)
-    Y       dependent measurement
-    X       factor model
-    match   factor on which cases are matched for repeated measures comparisons
-    sub     Bool Array of len==N specifying which cases to include
-    
-    
-    out
-    ---
-    data:   lists with those values in Y (ndarray, factorm var) which lie in 
-            each cell defined by X
-    data_labels: 
-    names: 
-    within: (bool)
-    """
-    # prepare input
-    if type(Y) == nonbasic_effect:
-        raise ValueError("Y cannot be nonbasic_effect")
-    elif not isfactor(Y):
-        Y = asvar(Y)
-        
-    if X is None:
-        X = model(factor([0]*Y.N))
-    else:
-        X = asmodel(X) # make sure X is list of factors
-    
-    assert Y.N == X.N
-    
-    # sub
-    if sub is not None:
-        Y = Y[sub]
-        X = X[sub]
-        if match:
-            match = match[sub]
-        if datalabels:
-            datalabels = datalabels[sub]
-    X = X.factors
-    Y = Y.x
-    mf = multifactor(X)
-    
-    # prepare data labels
-    if datalabels:
-        datalabels = datalabels.as_labels()
-        do_dlbls = True
-    elif match:
-        datalabels = match.as_labels()
-        do_dlbls = True
-    else:
-        datalabels = None
-        do_dlbls = False
-    data = []
-    data_labels = []
-    names = []
-    sorted_indexes = [] # for repeated measures
-    
-    ## Collect Data ######
-    for n, i in mf.iter_n_i(): # cells
-        cell_data = Y[i]
-        if do_dlbls: cell_labels = datalabels[i]
-        if match:
-            indexes = match.x[i] # vp ids in cell
-            i_sorted = sorted(np.unique(indexes))
-            sorted_indexes.append(i_sorted)
-            if len(i_sorted) == len(indexes):
-                indexes_argsort = np.argsort(indexes)
-                cell_data = cell_data[indexes_argsort]
-                if do_dlbls: cell_labels = cell_labels[indexes_argsort]
-            else:
-                d_list = []
-                l_list = []
-                for j in i_sorted:
-                    j_indexes = np.where(indexes==j)[0]
-                    d_list.append(np.mean(cell_data[j_indexes]))
-                    if do_dlbls: # get label
-                        label = cell_labels[j_indexes[0]]
-                        if len(j_indexes) > 1:
-                            if any([label != cell_labels[li] for li in j_indexes[1:]]):
-                                raise ValueError("cell label mismatch -- combining cells of different grouping blargh")
-                        l_list.append(label) # will not notice if labels differ between cases!
-                cell_data = np.array(d_list)
-                if do_dlbls: cell_labels = np.array(l_list)
-        if len(cell_data) > 0: # drop empty cells (in case of empty dict entries in factors)
-            data.append(cell_data)
-            names.append(n)
-            if do_dlbls: data_labels.append(cell_labels)
-    # determine repeated measures status
-    within = False
-    if match:
-        icomp = sorted_indexes.pop(0)
-        if all([i==icomp for i in sorted_indexes]):
-            within = True
-            logging.debug("SPLIT Y: repeated measures")
-        else:
-            logging.debug("SPLIT Y: independent measures")
-#    out = {'data': data,
-#           'data_labels': data_labels,
-#           'names': names,
-#           'within': within}
-#    return out
-    return data, data_labels, names, within
 
 
 

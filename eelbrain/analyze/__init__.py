@@ -144,7 +144,6 @@ import plot1d
 #
 #from model import factor, factor_from_comp
 #from model import var, var_from_dict, var_from_apply, box_cox_transform
-#from model import celltable, _split_Y
 #from model import ismodel, asmodel
 #
 #

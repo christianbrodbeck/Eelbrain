@@ -26,12 +26,6 @@ import glm as _glm
 
 
 
-class TestResults(_vsl.data.dataset):
-    def __repr__(self):
-        tmp = "<TestResults: %s>"
-        return tmp % self.__class__.__name__
-
-
 class ttest(_vsl.data.dataset):
     """
     Attributes:
@@ -69,15 +63,15 @@ class ttest(_vsl.data.dataset):
                 match1 = match[X==c1]
                 match2 = match[X==c2]
                 index = match2.get_index_to_match(match1)
-                data2 = c2DV.data[index]            
-                T, P = scipy.stats.ttest_rel(c1DV.data, data2, axis=0)
+                data2 = c2DV.x[index]            
+                T, P = scipy.stats.ttest_rel(c1DV.x, data2, axis=0)
                 test_name = 'Related Samples $t$-Test'
             else:
-                T, P = scipy.stats.ttest_ind(c1DV.data, c2DV.data, axis=0)
+                T, P = scipy.stats.ttest_ind(c1DV.x, c2DV.x, axis=0)
                 test_name = 'Independent Samples $t$-Test'
         elif np.isscalar(c2):
             data = [c1_mean]
-            T, P = scipy.stats.ttest_1samp(c1DV.data, popmean=c2, axis=0)
+            T, P = scipy.stats.ttest_1samp(c1DV.x, popmean=c2, axis=0)
             test_name = '1-Sample $t$-Test'
             if c2:
                 diff = c1_mean - c2
@@ -89,7 +83,7 @@ class ttest(_vsl.data.dataset):
         T = T[None]
         P = P[None]
         
-#        direction = np.sign(diff.data)
+#        direction = np.sign(diff.x)
 #        P = P * direction# + 1 # (1 - P)
 #        for k in contours.copy():
 #            contours[k+1] = contours.pop(k)
@@ -112,7 +106,7 @@ class ttest(_vsl.data.dataset):
             self.all = data + self.diff
             items = data + [diff, T, P]
         
-        _vsl.data.dataset.__init__(self, name=test_name, *items)
+        super(ttest, self).__init__(*items, name=test_name)
         
 
 
@@ -135,7 +129,7 @@ class f_oneway(_vsl.data.dataset):
             X = dataset[X]
         
         Ys = [Y[X==c] for c in X.cells.values()]
-        Ys = [y.data.reshape((y.data.shape[0], -1)) for y in Ys]
+        Ys = [y.x.reshape((y.x.shape[0], -1)) for y in Ys]
         N = Ys[0].shape[1]
         
         Ps = []
@@ -151,7 +145,7 @@ class f_oneway(_vsl.data.dataset):
         properties = Y.properties.copy()
         properties['colorspace'] = _vsl.colorspaces.get_sig()
         P = _vsl.data.ndvar(dims, Ps, properties=properties, name=X.name, info=test_name)
-        _vsl.data.dataset.__init__(self, P, name="anova")
+        super(f_oneway, self).__init__(P, name="anova")
         self.p = [P]
 
 
@@ -170,7 +164,7 @@ class anova(_vsl.data.dataset):
         if isinstance(X, basestring):
             X = dataset[X]
         
-        _vsl.data.dataset.__init__(self, name="anova")
+        super(anova, self).__init__(name="anova")
 
         fitter = _glm.lm_fitter(X)
         
@@ -178,7 +172,7 @@ class anova(_vsl.data.dataset):
         properties = Y.properties.copy()
         properties['colorspace'] = _vsl.colorspaces.get_sig()
         # Y.data:  epoch X [time X sensor X freq]
-        for name, Fs, Ps in fitter.map(Y.data.T, v=v):
+        for name, Fs, Ps in fitter.map(Y.x.T, v=v):
             P = _vsl.data.ndvar(Y.dims, Ps.T[None], properties=properties, name=name, info=name)
             self.add(P)
             self.allps.append(P)
@@ -193,6 +187,7 @@ def test(ndvars, parametric=True, match=None, func=None, attr='data',
     (func=abs for )
     
     """
+    raise NotImplementedError
     if match is None:
         related = False
     else:

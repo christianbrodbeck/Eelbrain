@@ -17,7 +17,7 @@ from eelbrain import fmtxt as textab
 import test
 
 from eelbrain.vessels.data import isfactor, asfactor, isvar, asvar, ismodel, asmodel
-from eelbrain.vessels.data import _split_Y, multifactor
+from eelbrain.vessels.data import multifactor
 from eelbrain.vessels.structure import celltable
 
 
@@ -57,7 +57,7 @@ defaults = dict(title_kwargs = {'size': 14,
 
 
 
-def _mark_plot_pairwise(ax, data, within, par, y_min, y_unit, x0=0,
+def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, x0=0,
                         corr='Hochberg', levels=True, trend=".", pwcolors=None,
                         font_size=P.rcParams['font.size'] * 1.5
                         ):
@@ -70,8 +70,8 @@ def _mark_plot_pairwise(ax, data, within, par, y_min, y_unit, x0=0,
             pwcolors = defaults['cm']['pw'][1-bool(trend):]            
         else:
             pwcolors = defaults['c']['pw'][1-bool(trend):]
-    k = len(data)
-    tests = test._pairwise(data, within=within, parametric=par, trend=trend,
+    k = len(ct.cells)
+    tests = test._pairwise(ct.get_data(), within=ct.all_within, parametric=par, trend=trend,
                             levels=levels, corr=corr)
     reservation = np.zeros((k, k-1))
     y_top = y_min # track top of plot
@@ -102,7 +102,7 @@ def _mark_plot_pairwise(ax, data, within, par, y_min, y_unit, x0=0,
     y_top = y_top + 2 * y_unit
     return y_top
 
-def _mark_plot_1sample(ax, data, within, par, y_min, y_unit, x0=0, 
+def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, 
                         levels=True, trend=".", pwcolors=None,
                         popmean=0, #<- mod
                         font_size=P.rcParams['font.size'] * 1.5
@@ -119,7 +119,7 @@ def _mark_plot_1sample(ax, data, within, par, y_min, y_unit, x0=0,
     # mod
     ps = []
     if par:
-        for d in data:
+        for d in ct.get_data():
             t, p = scipy.stats.ttest_1samp(d, popmean)
             ps.append(p)
     else:
@@ -323,8 +323,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             colors = defaults['cm']['colors']
         else:
             colors = defaults['c']['colors']
-    # get data
-    data, _datalabels, names, within = _split_Y(Y, X, match=match, sub=sub)
+    
     # ylabel
     if ylabel is True:
         if hasattr(Y, 'name'):
@@ -341,29 +340,35 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     fig = _simple_fig(title, xlabel, ylabel, titlekwargs, **simple_kwargs)
     ax = fig.ax
 
+    # get data
+    ct = celltable(Y, X, match=match, sub=sub)
+    
     # diff (plot difference values instead of abs)
     if baseline is not None:
-        if not match:
+        raise NotImplementedError
+        if not ct.all_within:
             raise NotImplementedError("baseline for between-design")
-        if not isinstance(baseline, basestring):
-            baseline = X.cells[baseline]
-        diff_i = names.index(baseline)   
-        diff_d = data.pop(diff_i)
-        data = [d-diff_d for d in data]
-        names.pop(diff_i)
+        elif baseline not in ct.cells:
+            raise KeyError("baseline %r not in X" % baseline)
+        
+        diff_data = ct.data[baseline]
+        data = {k: d - diff_data for k, d in ct.data.iteritems()}
+    
     # determine ax lim
     if bottom == None:
-        asarray = np.hstack(data)
-        if np.min(asarray) >= 0:
+        if np.min(ct.Y.x) >= 0:
             bottom = 0
         else:
-            d_min = np.min(asarray)
-            d_max = np.max(asarray)
+            d_min = np.min(ct.Y.x)
+            d_max = np.max(ct.Y.x)
             d_range = d_max - d_min
             bottom = d_min - .05 * d_range
+    
     # boxplot
-    k = len(data)
-    bp = ax.boxplot(data)
+    k = len(ct.cells)
+    all_data = ct.get_data()
+    bp = ax.boxplot(all_data)
+    
     # Now fill the boxes with desired colors
     if hatch or colors:
         numBoxes = len(bp['boxes'])
@@ -386,37 +391,41 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     if defaults['mono']:
         for itemname in bp:
             P.setp(bp[itemname], color='black')
+    
     #labelling
-    P.xticks(np.arange(len(names))+1, names)
-    y_min = np.max([np.max(d) for d in data])
+    P.xticks(np.arange(len(ct.cells))+1, ct.cells)
+    y_min = np.max(all_data)
     y_unit = (y_min - bottom) / 15
     
     # tests    
     if (test is True) and (not baseline):
-        y_top = _mark_plot_pairwise(ax, data, within, par, y_min, y_unit, corr=corr,
+        y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr=corr,
                                     x0=1, trend=trend)
     elif baseline or (test is False) or (test is None):
         y_top = y_min + y_unit
     else:
         P.axhline(test, color='black')
-        y_top = _mark_plot_1sample(ax, data, within, par, y_min, y_unit, 
+        y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, 
                                    x0=1, popmean=test, trend=trend, corr=corr)
 
         
     # data labels
     if datalabels:
-        for i,d in enumerate(data, start=1):
-            indexes = np.where(np.abs(d)/d.std() >= datalabels)[0]
+        for i,cell in enumerate(ct.cells):
+            d = ct.data[cell]
+            indexes = np.where(np.abs(d) / d.std() >= datalabels)[0]
             for index in indexes:
-                label = _datalabels[i-1][index]
-                ax.annotate(label, (i, d[index]))                
+                label = ct.matchlabels[cell][index]
+                ax.annotate(label, (i+1, d[index]))
+                    
     # set ax limits
     ax.set_ylim(bottom, y_top)
     ax.set_xlim(.5, k+.5)
+    
     # adjust axes rect
     fig.finish()
     return fig
-        
+
 
 
 
@@ -512,8 +521,7 @@ def barplot(Y, X=None, match=None, sub=None,
     ax.set_ylim(y0, y1)
     
     # figure decoration
-    names = [ct.cells[i] for i in ct.indexes]
-    P.xticks(np.arange(len(names)), names)
+    P.xticks(np.arange(len(ct.cells)), ct.cells)
         
     fig.finish()
     return fig
@@ -576,15 +584,15 @@ def _barplot(ax, ct,
     else:
         y_min = np.max(height + y_error)
     y_unit = (y_min - y_bottom) / 15
-    data = [ct.data[i] for i in ct.indexes]
+    data = ct.get_data()
     if test is True:
-        y_top = _mark_plot_pairwise(ax, data, ct.all_within, par, y_min, y_unit, 
+        y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, 
                                     corr=corr, trend=trend)
     elif (test is False) or (test is None):
         y_top = y_min + y_unit
     else:
         P.axhline(test, color='black')
-        y_top = _mark_plot_1sample(ax, data, ct.all_within, par, y_min, y_unit, 
+        y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, 
                                    popmean=test, corr=corr, trend=trend)
     
     #      x0,                 x1,                  y0,       y1
@@ -1323,7 +1331,7 @@ def regplot(Y, regressor, categories=None, match=None, sub=None,
     if sub != None:
         Y = Y[sub]
         regressor = regressor[sub]
-        if categories != None:
+        if categories is not None:
             categories = categories[sub]
         if match != None:
             match = match[sub]
@@ -1355,7 +1363,7 @@ def regplot(Y, regressor, categories=None, match=None, sub=None,
                       'alpha': alpha,
                        'marker': 'o',
                        'label': '_nolegend_'}
-    if categories == None:
+    if categories is None:
         if type(c) in [list, tuple]:
             color = c[0]
         else:
@@ -1469,14 +1477,17 @@ def histogram(Y, X=None, match=None, sub=None,
     ct = celltable(Y, X, match=match, sub=sub)
     
     if ct.all_within:
-        # TODO: use celltable
-        data, _datalabels, names, within = _split_Y(Y, X, match=match, sub=sub)
-    
+        # TODO: use celltable properly
+        ct = celltable(Y, X, match=match, sub=sub)
+        # temporary:
+        data = ct.get_data()
+        names = ct.cells
+        
         P.figure(figsize=(7, 7))
         P.subplots_adjust(hspace=.5)
         
         P.suptitle("Tests for Normality of the Differences", **titlekwargs)
-        nPlots = len(data) - 1
+        nPlots = len(ct.cells) - 1
         pooled = []
         # i: row
         # j: -column
@@ -1540,35 +1551,54 @@ def histogram(Y, X=None, match=None, sub=None,
 #        P.savefig(save+'normality_test.'+figformat)
 
 
-def boxcox_explore(x, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=True):
+def boxcox_explore(Y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=True):
     """
-    crange: correct range of transformed data
-    ax: ax to plot to
-    box: use Box-Cox family
+    
+    **Arguments:**
+    
+    Y : array-like
+        array containing data whose distribution is to be examined
+     
+    crange : 
+        correct range of transformed data
+    
+    ax : 
+        ax to plot to (``None`` creates a new figure)
+    
+    box : 
+        use Box-Cox family
+    
     """
-    if hasattr(x, 'x'):
-        x = x.x
-    x = np.ravel(x)
+    if hasattr(Y, 'x'):
+        Y = Y.x
+    else:
+        Y = np.ravel(Y)
+    
+    if np.any(Y == 0):
+        raise ValueError("data contains 0")
+    
     y = []
     for p in params:
         if p == 0:
             if box:
-                xi = np.log(x)
+                xi = np.log(Y)
             else:
-                xi = np.log10(x)
+                xi = np.log10(Y)
                 #xi = np.log1p(x)
         else:
             if box:
-                xi = (x**p - 1) / p
+                xi = (Y**p - 1) / p
             else:
-                xi = x**p
+                xi = Y**p
         if crange:
             xi -= min(xi)
             xi /= max(xi)
         y.append(xi)
+    
     if not ax:
         P.figure()
         ax = P.subplot(111)
+    
     ax.boxplot(y)
     ax.set_xticks(range(1, 1+len(params)))
     ax.set_xticklabels(params)

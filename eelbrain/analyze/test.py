@@ -12,7 +12,7 @@ from matplotlib import pyplot as P
 
 from eelbrain import fmtxt
 from eelbrain.vessels.data import var, isvar, asvar, isfactor, asfactor, ismodel
-from eelbrain.vessels.data import _split_Y, multifactor
+from eelbrain.vessels.data import multifactor
 from eelbrain.vessels.structure import celltable
 
 
@@ -217,14 +217,14 @@ def star(p_list, out=str, levels=True, trend=False, corr='Hochberg',
 
 def oneway(Y, X, match=None, sub=None, par=True, title=None):
     "data: for should iter over groups/treatments"
-    data, datalabels, names, within = _split_Y(Y, X, match=match, sub=sub)
-    test = _oneway(data, parametric=par, within=within)
+    ct = celltable(Y, X, match=match, sub=sub)
+    test = _oneway(ct, parametric=par)
     template = "{test}: {statistic}={value}{stars}, p={p}"
     out = template.format(**test)
     return out
 
 
-def _oneway(data, parametric=True, within=False):
+def _oneway(ct, parametric=True):
     """
     Parameters
     ----------
@@ -244,9 +244,9 @@ def _oneway(data, parametric=True, within=False):
     'stars':     stars as str
     
     """
-    args = list(data)
+    args = ct.get_data()
     if parametric:
-        if within:
+        if ct.all_within:
             test = {'test': "NOTIMPLMENTED",
                     'statistic': 'NONE',
                     'NONE':0, 'p':0}
@@ -254,7 +254,7 @@ def _oneway(data, parametric=True, within=False):
             test = {'test': "One-Way ANOVA",
                     'statistic': 'F'}
             test['F'], test['p'] = scipy.stats.f_oneway(*args)
-    elif within:
+    elif ct.all_within:
         test = {'test': "Friedman Chi-Square",
                 'statistic': 'Q'}
         test['Q'], test['p'] = scipy.stats.friedmanchisquare(*args)
@@ -262,8 +262,9 @@ def _oneway(data, parametric=True, within=False):
         test = {'test': "Kruskal Wallis",
                 'statistic': 'H'}
         test['H'], test['p'] = scipy.stats.kruskal(*args)
+    
     test['value'] = test[test['statistic']]
-    test['stars'] = test.star(test['p'])
+    test['stars'] = star(test['p'])
     return test
 
 
@@ -378,14 +379,12 @@ def pairwise(Y, X, match=None, sub=None,            # data in
     pairwise comparison according to factor structure
     
     """
-#    ct = celltable(Y, X, match=match, sub=sub)
-    # test
-    data, datalabels, names, within = _split_Y(Y, X, match=match, sub=sub)
-    test = _pairwise(data, within=within, parametric=par, corr=corr, #levels=levels, 
+    ct = celltable(Y, X, match=match, sub=sub)
+    test = _pairwise(ct.get_data(), within=ct.all_within, parametric=par, corr=corr, #levels=levels, 
                      trend=trend)
     
     # extract test results
-    k = len(data)
+    k = len(ct.cells)
     indexes = test['pw_indexes']
     statistic = test['statistic']
     _K = test[statistic]
@@ -404,7 +403,7 @@ def pairwise(Y, X, match=None, sub=None,            # data in
     
     # headings
     table.cell()
-    for name in names[1-mirror:]:
+    for name in ct.cells[1-mirror:]:
         table.cell(name)
     table.midrule()
     
@@ -419,7 +418,7 @@ def pairwise(Y, X, match=None, sub=None,            # data in
         for subrow in subrows: # contains t/p
             # names column
             if subrow is 0:
-                table.cell(names[row], r"\textbf")
+                table.cell(ct.cells[row], r"\textbf")
             else:
                 table.cell()
             # rows
@@ -502,6 +501,7 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
         raise NotImplementedError("mannwhitneyu returns one-sided p")
         test_func = scipy.stats.mannwhitneyu
         statistic = "u"
+    
     # perform test
     _K = [] # kennwerte
     _P = []

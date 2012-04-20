@@ -182,10 +182,10 @@ def rm_baseline(ndvar, tstart=None, tend=0, name='{name}'):
     
     t_ax = subdata.get_axis('time')
     index = (slice(None),) * t_ax + (None,)
-    bl_data = baseline.data[index]
+    bl_data = baseline.x[index]
     
     dims = ndvar.dims
-    data = ndvar.data - bl_data
+    data = ndvar.x - bl_data
     name = name.format(name=ndvar.name)
     info = ndvar.info
     return _data.ndvar(dims, data, ndvar.properties, name=name, info=info)

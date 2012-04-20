@@ -80,17 +80,17 @@ def _plt_uts(ax, ndvar, ct, dev, label=None, **kwargs):
         ct_kwargs['label'] = label
     
     if ct == 'all':
-        h['ct'] = ax.plot(x, ndvar.data.T, **ct_kwargs)
+        h['ct'] = ax.plot(x, ndvar.x.T, **ct_kwargs)
         dev = None
     elif hasattr(ct, '__call__'):
-        y = ct(ndvar.data, axis=0)
+        y = ct(ndvar.x, axis=0)
         h['ct'] = ax.plot(x, y, **ct_kwargs)
     else:
         raise ValueError("Invalid argument: ct=%r" % ct)
     
     kwargs['alpha'] = .2
     if hasattr(dev, '__call__'):
-        ydev = dev(ndvar.data, axis=0)
+        ydev = dev(ndvar.x, axis=0)
         h['dev'] = ax.fill_between(x, y-ydev, y+ydev, **kwargs)
     else:
         pass

@@ -184,8 +184,10 @@ def _ax_im_array(ax, layers, title=None, tick_spacing=.5):
     """
     handles = []
     epoch = layers[0]
+    time = epoch.get_dim('time')
+    sensor = epoch.get_dim('sensor')
     
-    map_kwargs = {'extent': [epoch.time[0], epoch.time[-1], 0, len(epoch.sensor)],
+    map_kwargs = {'extent': [time[0], time[-1], 0, len(sensor)],
                   'aspect': 'auto'}
     
     # plot
@@ -197,9 +199,9 @@ def _ax_im_array(ax, layers, title=None, tick_spacing=.5):
     ax.set_xlabel("Time [s]")
     
     #ticks
-    tickstart = int((-epoch.time[0] - 1e-3) / tick_spacing)
+    tickstart = int((-time[0] - 1e-3) / tick_spacing)
     ticklabels = np.r_[-tickstart * tick_spacing :  \
-                       epoch.time[-1] + 1e-3 : tick_spacing]
+                       time[-1] + 1e-3 : tick_spacing]
     ax.xaxis.set_ticks(ticklabels)
     
     #title
