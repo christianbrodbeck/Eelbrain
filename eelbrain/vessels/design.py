@@ -261,6 +261,35 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
     return _data.factor(x, name, labels=cells, retain_label_codes=True)
 
 
+def add_missing(base, name='missing', values=None):
+    """
+    returns a factor that contains the values that are not contained in a group 
+    of other factors. 
+    
+    base : list of factors
+        factors that together, on each case, contain all the values spare one.
+    values : list of str | None
+        values for the factor. If None, the first factor's values are used.
+    
+    """
+    N = len(base[0])
+    if values is None:
+        values = base[0].values()
+    
+    cells = dict(enumerate(values))
+    
+    grid = np.empty((N, len(values)), dtype=bool)
+    for i, v in cells.iteritems():
+        grid[:,i] = np.all([f!=v for f in base], axis=0)
+    
+    out = _data.factor('?'*N, name=name)
+    for i in cells:
+        out[grid[:,i]] = cells[i]
+    
+    return out
+        
+
+
 def shuffle_cases(dataset, inplace=False, blocks=None):
     """
     Shuffles the cases in a dataset. 
@@ -354,7 +383,7 @@ def export_mat(dataset, values=None, destination=None):
     scipy.io.savemat(destination, mat, do_compression=True, oned_as='row')
 
 
-def save(dataset, destination=None, values=None):
+def save(dataset, destination=None, values=None, pickle_values=False):
     """
     Saves the dataset with the same name simultaneously in 3 different formats:
     
@@ -374,12 +403,18 @@ def save(dataset, destination=None, values=None):
     destination = str(destination)
     if ui.test_targetpath(destination):
         msg_temp = "Writing: %r"
+        
         dest = os.path.extsep.join((destination, 'pickled'))
         print msg_temp % dest
-        pickle_data = {'design': dataset, 'values': values}
         with open(dest, 'w') as f:
-            _pickle.dump(pickle_data, f)
+            _pickle.dump(dataset, f)
         
+        if pickle_values:
+            dest = os.path.extsep.join((destination+'_values', 'pickled'))
+            print msg_temp % dest
+            with open(dest, 'w') as f:
+                _pickle.dump(values, f)
+                
         dest = os.path.extsep.join((destination, 'mat'))
         print msg_temp % dest
         export_mat(dataset, values, dest)
