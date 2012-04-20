@@ -20,7 +20,7 @@ from vessels.data import (factor,
                           var,
                           var_from_dict,
                           var_from_apply,
-                          
+                          ndvar,
                           dataset,
                           )
 

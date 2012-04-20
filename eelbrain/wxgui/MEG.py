@@ -42,11 +42,11 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         
         Example::
         
-            >>> p = select_cases_butterfly(my_dataset)
+            >>> select_cases_butterfly(my_dataset)
             [... visual selection of cases ...]
-            >>> cases = p.get_selection()
-            >>> pruned_egment = my_segment.subdata(cases)
-            
+            >>> cases = my_dataset['reject'] == False
+            >>> pruned_dataset = my_dataset[cases]
+        
         """
     # interpret plotting args
         # variable keeping track of selection
@@ -365,6 +365,16 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
 
 class pca(mpl_canvas.CanvasFrame):
     def __init__(self, dataset, Y='MEG', nplots=(7,10), dpi=50, figsize=(20,12)):
+        """
+        Performs PCA and opens a GUI for removing individual components.
+        
+        Y : ndvar | str
+            dependent variable
+        timecourse : int
+            number of (randomly picked) segments for whichthe time-course is 
+            displayed
+         
+        """
         if isinstance(Y, basestring):
             Y = dataset[Y]
         
@@ -372,8 +382,6 @@ class pca(mpl_canvas.CanvasFrame):
         self._Y = Y
         
     # prepare plots:
-        self._nplots = nplots
-        self._ncomp = np.prod(nplots)
         self._topo_kwargs = {}
         
     # wx stuff
@@ -393,9 +401,9 @@ class pca(mpl_canvas.CanvasFrame):
     # plot the components
         self._components = []
         self._rm_comp = []
-        npy, npx = self._nplots
+        npy, npx = nplots
         title_temp = '%i'
-        for i in xrange(self._ncomp):
+        for i in xrange(np.prod(nplots)):
             name = title_temp % i
             comp = pca.get_component(i)
             ax = self.figure.add_subplot(npy, npx, i+1, xticks=[], yticks=[])

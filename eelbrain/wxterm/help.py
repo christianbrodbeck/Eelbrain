@@ -47,6 +47,8 @@ try:
         try:
             html = docutils.core.publish_parts(rst, writer_name='html')['body']
             logging.debug("rst2html success")
+#            html = os.linesep.join((html['stylesheet'], html['body']))
+#            html = html['whole']  
 #            html = '<span style="color: rgb(0, 0, 255);">RST2HTML:</span><br>' + html
         except:
             html = HtmlTemplate % rst

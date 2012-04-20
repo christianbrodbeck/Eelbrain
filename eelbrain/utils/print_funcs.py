@@ -29,7 +29,7 @@ def printdict(dictionary):
     empty_k = k_len*' ' + '  '
     lines = []
     for k, v in items:
-        lines.append(': '.join((k.rjust(k_len), v[:v_len])))
+        lines.append(': '.join((k.ljust(k_len), v[:v_len])))
         if len(v) >= v_len:
             for i in xrange(v_len, len(v)+v_len-1, v_len):
                 lines.append(empty_k + v[i : i+v_len])

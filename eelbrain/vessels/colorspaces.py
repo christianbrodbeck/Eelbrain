@@ -20,22 +20,24 @@ class Colorspace:
     - Stores information for mapping segment data to colors
     - can plot a colorbar for the legend with toax(ax) method
     """
-    def __init__(self, vmax=None, vmin=None, cmap=None, 
+    def __init__(self, cmap=None, vmax=None, vmin=None, 
                  # contours: {v -> color} 
                  contours={},
                  # decoration
                  sensor_color='k', sensor_marker='x', cbar_data='vrange',
                  unit=None, ticks=None, ticklabels=None):
         """
-        cmap:
-            matplotlib colormap (default is ``mpl.cm.jet``)
+        cmap: matplotlib colormap 
+            colormap for image plot, default is ``mpl.cm.jet``. See `mpl 
+            colormap documentation <http://matplotlib.sourceforge.net/api/cm_api.html>`_
+        contours : {value: color} dict
+            contours are drawn as lines on top of the im
         unit: str
-            the unit of measurement (used for labels)
+            the unit of measurement (only used for labels)
         vmax, vmin:
             max and min values that the colormap should be mapped to. If 
             vmin is not specified, it defaults to -vmax.
-            
-         
+        
         """
         # sort out arguments
         self.cmap = cmap
@@ -158,11 +160,11 @@ def get_default():
 
 def get_EEG(vmax=1.5, unit=r'$\mu V$', p='unused', **kwargs):
     kwargs['cmap'] = _get_polar_cmap()
-    return Colorspace(vmax, unit=unit, **kwargs)
+    return Colorspace(vmax=vmax, unit=unit, **kwargs)
 
 def get_MEG(vmax=2e-12, unit='Tesla', p='unused', **kwargs):
     kwargs['cmap'] = _get_polar_cmap()
-    return Colorspace(vmax, unit=unit, **kwargs)
+    return Colorspace(vmax=vmax, unit=unit, **kwargs)
 
 
 '''
