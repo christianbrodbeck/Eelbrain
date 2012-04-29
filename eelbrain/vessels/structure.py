@@ -68,38 +68,57 @@ class celltable:
         True if np.all(self.within)
         
     """
-    def __init__(self, Y, X, match=None, sub=None, match_func=np.mean):
+    def __init__(self, Y, X, match=None, sub=None, match_func=np.mean, ds=None):
         """
         divides Y into cells defined by X
         
-        Y       dependent measurement
-        X       factor or interaction
-        match   factor on which cases are matched (i.e. subject for a repeated 
-                measures comparisons). If several data points with the same 
-                case fall into one cell of X, they are combined using 
-                match_func. If match is not None, celltable.groups contains the
-                {Xcell -> [match values of data points], ...} mapping corres-
-                ponding to self.data
-        sub     Bool Array of length N specifying which cases to include
-        match_func:  see match
+        Y : var, ndvar
+            dependent measurement
+        X : categorial
+            factor or interaction
+        match : 
+            factor on which cases are matched (i.e. subject for a repeated 
+            measures comparisons). If several data points with the same 
+            case fall into one cell of X, they are combined using 
+            match_func. If match is not None, celltable.groups contains the
+            {Xcell -> [match values of data points], ...} mapping corres-
+            ponding to self.data
+        sub : bool array
+            Bool array of length N specifying which cases to include
+        match_func : callable
+            see match
+        ds : dataset
+            If a dataset is specified, input items (Y / X / match / sub) can 
+            be str instead of data-objects, in which case they will be 
+            retrieved from the dataset.
         
         
-        e.g.
-        >>> c = S.celltable(Y, A%B, match=subject)
+        e.g.::
+        
+            >>> c = S.celltable(Y, A%B, match=subject)
         
         """
-        if _data.isfactor(Y):
+        if isinstance(Y, basestring):
+            Y = ds[Y]
+        if isinstance(X, basestring):
+            X = ds[X]
+        if isinstance(match, basestring):
+            match = ds[match]
+        if isinstance(sub, basestring):
+            sub = ds[sub]        
+        
+        if _data.isfactor(Y) or _data.isndvar(Y):
             if sub is not None:
                 Y = Y[sub]
         else:
             Y = _data.asvar(Y, sub)
         
         X = _data.ascategorial(X, sub)
-        assert X.N == Y.N
+        assert len(X) == len(Y)
         
         if match:
             match = _data.asfactor(match, sub)
-            assert match.N == Y.N
+            assert len(match) == len(Y)
             self.groups = {}
         
         # save args
@@ -126,7 +145,7 @@ class celltable:
                 
                 # sort
                 if len(occurring_ids) < len(group):
-                    newdata = np.array([match_func(newdata[group==ID]) 
+                    newdata = np.array([match_func(newdata[group==ID], axis=0)
                                         for ID in occurring_ids])
                     group = occurring_ids
                     labels = [match[group==ID][0] for ID in occurring_ids]
