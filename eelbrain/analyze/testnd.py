@@ -36,42 +36,30 @@ class ttest(_vsl.data.dataset):
         [c2 - c1, P]
     
     """
-    def __init__(self, dataset, Y='MEG', X='condition', c1='c1', c2=0, match=None, contours=None):
+    def __init__(self, Y='MEG', X='condition', c1='c1', c2=0, 
+                 match=None, sub=None, ds=None, contours=None):
         """
         c1 and c2 : ndvars (or dataset with default_DV)
             segments between which to perform the test
         
         """
-        if isinstance(Y, basestring):
-            Y = dataset[Y]
-        if isinstance(X, basestring):
-            X = dataset[X]
         if not contours:
             contours = { .05: (.8, .2, .0),  .01: (1., .6, .0),  .001: (1., 1., .0),
                         -.05: (0., .2, 1.), -.01: (.4, .8, 1.), -.001: (.5, 1., 1.),
                         }
         
-        c1DV = Y[X==c1]
-        c1_mean = c1DV.get_summary(name=c1)
+        ct = _vsl.structure.celltable(Y, X, match, sub, ds=ds)
+        
+        c1_mean = ct.data[c1].get_summary(name=c1)
         if isinstance(c2, basestring):
-            c2DV = Y[X==c2]
-            c2DV.name = c2
-            c2_mean = c2DV.get_summary(name=c2)
+            c2_mean = ct.data[c2].get_summary(name=c2)
             data = [c1_mean, c2_mean]
             diff = c1_mean - c2_mean
-            if match:
-                match1 = match[X==c1]
-                match2 = match[X==c2]
-                index = match2.get_index_to_match(match1)
-                data2 = c2DV.x[index]            
-                T, P = scipy.stats.ttest_rel(c1DV.x, data2, axis=0)
-                test_name = 'Related Samples $t$-Test'
-            else:
-                T, P = scipy.stats.ttest_ind(c1DV.x, c2DV.x, axis=0)
-                test_name = 'Independent Samples $t$-Test'
+            T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c2].x, axis=0)
+            test_name = 'Independent Samples $t$-Test'
         elif np.isscalar(c2):
             data = [c1_mean]
-            T, P = scipy.stats.ttest_1samp(c1DV.x, popmean=c2, axis=0)
+            T, P = scipy.stats.ttest_1samp(ct.data[c1].x, popmean=c2, axis=0)
             test_name = '1-Sample $t$-Test'
             if c2:
                 diff = c1_mean - c2
@@ -88,8 +76,8 @@ class ttest(_vsl.data.dataset):
 #        for k in contours.copy():
 #            contours[k+1] = contours.pop(k)
         
-        dims = c1DV.dims
-        properties = c1DV.properties.copy()
+        dims = ct.Y.dims
+        properties = ct.Y.properties.copy()
         
         properties['colorspace'] = _vsl.colorspaces.Colorspace(contours=contours)
         P = _vsl.data.ndvar(dims, P, properties=properties, name='p', info=test_name)
