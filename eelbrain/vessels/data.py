@@ -320,6 +320,9 @@ def isdataobject(Y):
             return True
     return False
 
+def isdataset(Y):
+    return hasattr(Y, '_stype_') and Y._stype_ == 'dataset'
+
 
 def asmodel(X, sub=None):
     if ismodel(X):
@@ -369,6 +372,39 @@ def ascategorial(Y, sub=None):
     else:
         return Y
     
+
+def combine(items):
+    """
+    combine a list of items of the same type into one item (dataset, var, 
+    factor or ndvar)
+    
+    """
+    item0 = items[0]
+    if isdataset(item0):
+        out = dataset()
+        for name in item0:
+            out[name] = combine([ds[name] for ds in items])
+        return out
+    elif isvar(item0):
+        x = np.hstack(i.x for i in items)
+        return var(x, name=item0.name)
+    elif isfactor(item0):
+        if all(f._labels == item0._labels for f in items[1:]):
+            x = np.hstack(f.x for f in items)
+            kwargs = item0._child_kwargs()
+        else:
+            x = sum((i.as_labels() for i in items), [])
+            kwargs = dict(name = item0.name, 
+                          random = item0.random)
+    #                      colors = item0._colors, # FIXME: inherit colors
+        return factor(x, **kwargs)
+    elif isndvar(item0):
+        dims = item0.dims
+        x = np.concatenate([v.x for v in items], axis=0)
+        return ndvar(dims, x, name=item0.name, properties=item0.properties)
+    else:
+        raise ValueError("Unknown data-object: %r" % item0)
+
 
 
 #   Primary Data Containers ---
@@ -611,6 +647,18 @@ class var(_regressor_):
         else:
             return _regressor_.__mul__(self, other)
     
+    def __floordiv__(self, other):
+        if isvar(other):
+            x = self.x // other.x
+            name = '//'.join((self.name, other.name))
+        elif np.isscalar(other):
+            x = self.x // other
+            name = '//'.join((self.name, str(other)))
+        else:
+            x = self.x // other
+            name = '//'.join((self.name, '?'))
+        return var(x, name=name)
+    
     def __gt__(self, y):
         y = self._interpret_y(y)
         return self.x > y  
@@ -702,22 +750,23 @@ class var(_regressor_):
         "returns a deep copy of itself"
         return var(self.x.copy(), name=name.format(name=self.name))
     
-    def compress(self, X, name=None, func=np.mean):
+    def compress(self, X, func=np.mean, name='{name}'):
         """
         X: factor or interaction; returns a compressed factor with one value
         for each cell in X.
         
         """
-        # find new x
-        x = []
-        for i in sorted(X.cells.keys()):
-            x_i = self.x[X==i]
-            x.append(func(x_i))
-        x = np.array(x)
+        if len(X) != len(self):
+            err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
+            raise ValueError(err)
         
-        # package and ship
-        if name is None:
-            name = self.name
+        x = []
+        for i in X.values():
+            x_i = self.x[X == i]
+            x.append(func(x_i))
+        
+        x = np.array(x)
+        name = name.format(name=self.name)
         out = var(x, name=name)
         return out
     
@@ -1070,19 +1119,21 @@ class factor(_regressor_):
         Raises an error if there are cells that contain more than one value.
         
         """
-        # find new x
+        if len(X) != len(self):
+            err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
+            raise ValueError(err)
+        
         x = []
-        for i in sorted(X._labels.keys()):
-            x_i = np.unique(self.x[X.x == i])
+        for i in X.values():
+            x_i = np.unique(self.x[X == i])
             if len(x_i) > 1:
                 raise ValueError("non-unique cell")
             else:
                 x.append(x_i[0])
         
-        out =  factor(x, 
-                      name = name.format(name=self.name), 
-                      labels = self._labels,
-                      random = self.random)
+        x = np.array(x)
+        name = name.format(name=self.name)
+        out = factor(x, name=name, labels=self.cells, random=self.random)
         return out
     
     def copy(self, name='{name}', rep=1, chain=1):
@@ -1252,6 +1303,7 @@ class ndvar(object):
     
     def __setstate__(self, state):
         self.dims = dims = state['dims']
+        self.dimnames = tuple(dim.name for dim in dims)
         self.x = x = state['x']
         self.name = state['name']
         self.info = state['info']
@@ -1317,6 +1369,28 @@ class ndvar(object):
             msg = "Dimensions of %r do not match %r" % (self, dims)
             raise DimensionMismatchError(msg)
     
+    def compress(self, X, func=np.mean, name='{name}'):
+        if len(X) != len(self):
+            err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
+            raise ValueError(err)
+        
+        x = []
+        for i in X.values():
+            x_i = self.x[X == i]
+            x.append(func(x_i, axis=0))
+        
+        # update properties for summary
+        properties = self.properties.copy()
+        for key in self.properties:
+            if key.startswith('summary_') and (key != 'summary_func'):
+                properties[key[8:]] = properties.pop(key)        
+        
+        x = np.array(x)
+        name = name.format(name=self.name)
+        info = os.linesep.join((self.info, "compressed by %r" % X)) 
+        out = ndvar(self.dims, x, properties=properties, info=info, name=name)
+        return out
+    
     def copy(self):
         "returns a copy with a view on the object's data"
         x = self.x
@@ -1342,23 +1416,25 @@ class ndvar(object):
     def get_data(self, dims, epoch=None):
         """
         returns the data with a specific ordering of dimension as indicated in 
-        ``dims``.
+        ``dims``. If 'epoch' is not specified, it is assumed to be in the first 
+        place.
         
         """
-        dimnames = [d.name for d in self.dims]
+        dimnames = list(self.dimnames)
         
         if epoch is None:
             x = self.x
-            dim1 = 1
+            dimnames = ['epoch'] + dimnames
+            if 'epoch' not in dims:
+                dims = ('epoch',) + dims
         else:
             x = self.x[epoch]
-            dim1 = 0
             
         for i_tgt, dim in enumerate(dims):
             if dim in dimnames:
                 i_src = dimnames.index(dim)
                 if i_tgt != i_src:
-                    x = x.swapaxes(dim1 + i_src, dim1 + i_tgt)
+                    x = x.swapaxes(i_src, i_tgt)
                     dimnames[i_src], dimnames[i_tgt] = dimnames[i_tgt], dimnames[i_src]
             else:
                 msg = "%r has no dimension named %r" % (self, dim)
@@ -1371,6 +1447,8 @@ class ndvar(object):
         if name in self._dim_dict:
             i = self._dim_dict[name]
             return self.dims[i]
+        elif name == 'epoch':
+            return var(np.arange(len(self)), 'epoch')
         else:
             msg = "%r has no dimension named %r" % (self, name)
             raise DimensionMismatchError(msg)
@@ -1522,6 +1600,7 @@ class dataset(collections.OrderedDict):
     inspection.  
     
     """
+    _stype_ = "dataset"
     def __init__(self, *items, **kwargs):
         """
         Datasets can be initialize with data-objects, or with 
@@ -1849,6 +1928,18 @@ class dataset(collections.OrderedDict):
                 out[case] = self.subset(index, setname, default_DV=default_DV)
         return out
     
+    def compress(self, X, func=None, name='{func}({name})', n=True):
+        ds = dataset()
+        for k in self:
+            ds[k] = self[k].compress(X)
+        
+        x = []
+        for i in X.values():
+            x.append(np.sum(X == i))
+        ds['n_epochs'] = var(x)
+        
+        return ds
+    
     def get_summary(self, func=None, name='{func}({name})'):
         """
         -> self[self.default_DV].get_summary(func=func, name=name) 
@@ -1949,8 +2040,9 @@ class interaction(_regressor_):
         self.df =  reduce(operator.mul, [f.df for f in self.base])
         
         # determine cells:
-        label_dicts = [f.cells for f in self.factors if f._stype_=='factor']
+        label_dicts = [f.cells for f in self.factors if isfactor(f)]
         self.cells = _permutate_address_dicts(label_dicts)
+        self._cells = _permutate_address_dicts(label_dicts, link=False)
         self.indexes = sorted(self.cells.keys())
         self._colors = {}
         
@@ -2003,7 +2095,7 @@ class interaction(_regressor_):
         return out
     
     def values(self):
-        return self.cells.values()
+        return self._cells.values()
 
 
 
@@ -2549,7 +2641,12 @@ def _permutate_address_dicts(label_dicts, link=' ', short=False):
         label_components = []
         for k, ld in zip(index, label_dicts):
             label_components.append(ld[k])
-        label = link.join(label_components)
+        
+        if isinstance(link, str):
+            label = link.join(label_components)
+        else:
+            label = tuple(label_components)
+        
         label_dic[index] = label
     
     return label_dic
