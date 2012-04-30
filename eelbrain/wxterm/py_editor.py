@@ -370,7 +370,9 @@ class Editor(wx.py.editor.EditorFrame):
                 return
         elif mod == [0, 1, 0]: # command (Os-X)
             pass
-        event.Skip()
+        else:
+            event.Skip()
+    
     def InsertLine(self, line):
         w = self.editor.window
         
