@@ -125,7 +125,8 @@ defaults=dict(fullrepr = False, # whether to display full arrays/dicts in __repr
 
 
 import table
-import plot1d
+from eelbrain.plot import uv as plot
+
 
 #####   #####   #####   #####   #####   #####   #####   #####   #####   #####
 # imports from submodules 
