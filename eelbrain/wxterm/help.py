@@ -465,7 +465,7 @@ class HtmlHelpPanel(HelpPanel):
         
         if len(TOC) > 0:
             txt += '<h1><a name="TOC"></a>Attributes</h1><br>'
-            txt += '<br>'.join(TOC)
+            txt += ''.join(TOC)
             txt += '<br>'.join(chapters)
         
         if txt == '':
