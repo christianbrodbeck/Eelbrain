@@ -184,6 +184,9 @@ class CanvasFrame(wx.Frame):
         else:
             tb.AddSeparator()
         
+        tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
+        self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
+        
         tb.AddLabelTool(ID.FULLSCREEN, "Fullscreen", Icon("tango/actions/view-fullscreen"))
         self.Bind(wx.EVT_TOOL, self.OnShowFullScreen, id=ID.FULLSCREEN)
     
@@ -207,6 +210,10 @@ class CanvasFrame(wx.Frame):
             self.Sizer.Add(self.toolbar, 0, wx.LEFT | wx.EXPAND)
         # update the axes menu on the toolbar
         self.toolbar.update()
+    
+    def OnAttach(self, event):
+        items = {'p': self}
+        self.Parent.attach(items, _internal_call=True)
     
     def OnFileSave(self, event):
         self.OnFileSaveAs(event)

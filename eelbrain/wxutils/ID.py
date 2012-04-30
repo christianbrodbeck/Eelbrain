@@ -6,4 +6,5 @@ Created on Feb 26, 2012
 
 import wx
 
+ATTACH = wx.NewId()
 FULLSCREEN = wx.NewId()
