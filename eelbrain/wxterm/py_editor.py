@@ -351,10 +351,12 @@ class Editor(wx.py.editor.EditorFrame):
                 end = w.PositionFromLine(end+1)-1
                 w.SetSelection(start, end)
                 return
-            elif key == 82: # r -> execute the script
-                self.OnExecFromDrive(event)
+            elif key == 68: # d
+                self.OnCopySelectionToShell(event)
             elif key == 69: # e -> execute excerpt
                 self.OnExecSelected(event)
+            elif key == 82: # r -> execute the script
+                self.OnExecFromDrive(event)
         elif mod == [0, 0, 1]: # alt down
             if key in [315, 317]: # arrow
                 # FIXME: when last line without endline is selected, someting 
@@ -389,7 +391,24 @@ class Editor(wx.py.editor.EditorFrame):
             pos = w.GetCurrentPos() + 1
             w.SetSelection(pos, pos)
             w.InsertText(pos, line)
+    
+    def OnCopySelectionToShell(self, event):
+        if not self.editor:
+            return
         
+        txt = self.editor.window.GetSelectedText()
+        lines = [line.strip('\r') for line in txt.split(os.linesep) if line]
+        n = len(lines)
+        if n == 0:
+            return
+        elif n > 1:
+            for i in xrange(1, n):
+                lines[i] = '... ' + lines[i]
+        
+        txt = os.linesep.join(lines)
+        self.shell.shell.write(txt)
+        self.shell.Raise()
+    
     def OnUpdateNamespace(self, event=None):
         self.buffer.updateNamespace()
     
