@@ -105,7 +105,7 @@ class celltable:
         if isinstance(match, basestring):
             match = ds[match]
         if isinstance(sub, basestring):
-            sub = ds[sub]        
+            sub = ds[sub]
         
         if _data.isfactor(Y) or _data.isndvar(Y):
             if sub is not None:

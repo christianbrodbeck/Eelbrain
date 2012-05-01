@@ -121,7 +121,6 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
         self.canvas.store_canvas()
         self.set_topo_t(0, draw=False)
         self.Show()
-        
     
     def _on_mouse_motion(self, event):
         ax = event.inaxes

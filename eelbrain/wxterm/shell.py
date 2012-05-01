@@ -774,7 +774,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         about.SetFocus()
         return about
 
-    def OnActivate(self, event=None):
+    def OnActivate(self, event):
         #logging.debug(" Shell Activate Event: {0}".format(event.Active))
         if hasattr(self.shell, 'Destroy'): # if alive
             if event.Active:

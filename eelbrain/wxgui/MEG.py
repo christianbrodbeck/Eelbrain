@@ -10,7 +10,6 @@ import os
 
 import numpy as np
 import wx
-import mdp
 
 from eelbrain import plot
 from eelbrain.vessels import data as _data
@@ -210,9 +209,9 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
             ax = self.figure.add_subplot(nx, ny, i+1, xticks=[0], yticks=[])#, 'axis_off')
             ax._epoch_state = state
 #            ax.set_axis_off()
-            h = plot.uts._ax_butterfly(ax, case, color=color, antialiased=False,
-                                       title=False, xlabel=None, ylabel=None,
-                                       **self._bfly_kwargs)[0]
+            h = plot.utsnd._ax_butterfly(ax, case, color=color, antialiased=False,
+                                         title=False, xlabel=None, ylabel=None,
+                                         **self._bfly_kwargs)[0]
             ax.ID = i
             ax.segID = ID
             self._case_handles.append(h)
@@ -225,7 +224,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         ax.ID = -1
         
         mseg = self._mean_seg = self._get_page_mean_seg()
-        self._mean_handle = plot.uts._ax_butterfly(ax, mseg, color='k', **self._bfly_kwargs)
+        self._mean_handle = plot.utsnd._ax_butterfly(ax, mseg, color='k', **self._bfly_kwargs)
         
         # topomap
         ax = self._topo_ax = self.figure.add_subplot(nx, ny, nx*ny - 1)

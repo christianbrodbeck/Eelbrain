@@ -93,7 +93,7 @@ def fiff_events(source_path=None, name=None, merge=-1):
 
 
 def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
-                tstart=-.2, tstop=.6, baseline=(None,  0), 
+                tstart=-.2, tstop=.6, baseline=None, 
                 downsample=1, mult=1, unit='T',
                 properties=None, sensorsname='fiff-sensors'):
     """
@@ -101,12 +101,15 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
     file associated with ``dataset``; returns ndvar or nothing (see ``add`` 
     argument).
     
-    dataset : dataset
-        Dataset containing a variable (i_start) which defines epoch cues
     add : bool
         Add the variable to the dataset. If ``True`` (default), the data is 
         added to the dataset and the function returns nothing; if ``False``,
         the function returns the ndvar object.
+    baseline : tuple(start, stop) or ``None``
+        Time interval in seconds for baseline correction; ``None`` omits 
+        baseline correction (default).
+    dataset : dataset
+        Dataset containing a variable (i_start) which defines epoch cues
     downsample : int
         Downsample the data by this factor when importing. ``1`` means no 
         downsampling. Note that this function does not low-pass filter 
@@ -118,6 +121,10 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
     mult : scalar
         multiply all data by a constant. If used, the ``unit`` kwarg should
         specify the target unit, not the source unit.
+    tstart : scalar
+        start of the epoch relative to the cue
+    tstop : scalar
+        end of the epoch relative to the cue
     unit : str
         Unit of the data (default is 'T').
     target : str

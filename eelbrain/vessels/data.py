@@ -1347,9 +1347,9 @@ class ndvar(object):
         return self._len
     
     def __repr__(self):
-        rep = '<ndvar %(name)r: %(info)r -- %(n_cases)i cases, %(dims)s>'
+        rep = '<ndvar %(name)r: %(n_cases)i cases, %(dims)s>'
         dims = ' X '.join('%r(%i)' % (dim.name, len(dim)) for dim in self.dims)
-        args = dict(name=self.name, info=self.info, n_cases=self._len, dims=dims)
+        args = dict(name=self.name, n_cases=self._len, dims=dims)
         return rep % args
     
     def __sub__(self, other):

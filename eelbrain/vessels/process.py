@@ -35,9 +35,11 @@ def rm_pca(ds, rm=[], source='MEG', target='MEG', baseline=(None, 0)):
 
 
 class PCA:
-    "so that function and gui can share the same algorithm"
+    "Object that performs PCA for the local function and the gui"
     def __init__(self, source, n_comp=None):
         """
+        source : ndvar
+            source data
         n_comp : None | int
             number of components to compute (None = all)
         

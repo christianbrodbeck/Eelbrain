@@ -284,7 +284,7 @@ def test(Y, X=None, against=0, match=None, sub=None,
     
     """
     ct = celltable(Y, X, match, sub)
-     
+    
     if par:
         title_desc = "t-tests against %s"%against
         statistic_name = 't'
