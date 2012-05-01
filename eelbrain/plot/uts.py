@@ -28,18 +28,33 @@ def stat(var='Y', X=None, main=np.mean, dev=scipy.stats.sem, ds=None,
     Plots statistics for a one-dimensional ndvar
     
     var : ndvar
-        dpendent variable (one-dimensiona ndvar)
+        dependent variable (one-dimensional ndvar)
     X : categorial or None
         conditions which should be plotted separately
     main : func | 'all' | float
-        central tendency (function that takes an ``axis`` argument)
-    dev : str
-        Measure for deviation: 
-        ``None``: no statistics
-        ``'all'``: plot all individual traces
+        central tendency (function that takes an ``axis`` argument). For float
+        or 'all', ``dev = None``
+    dev : func | ``None``
+        Measure for spread / deviation from the central tendency (function 
+        that takes an ``axis`` argument)
+    ds : dataset
+        if ``var`` or ``X`` is submitted as string, the ``ds`` argument 
+        must provide a dataset containing those variables.
     
-    if ``var`` or ``conditions`` is submitted as string, the ``ds`` argument 
-    must provide a dataset containing those variables.
+    **plotting parameters:**
+    
+    xdim : str
+        dimension for the x-axis (default is 'time') 
+    cm : matplotlib colormap
+        colormap from which colors for different categories in ``X`` are 
+        derived
+    
+    **figure parameters:**
+    
+    legend : str | None
+        matplotlib figure legend location argument
+    title : str | True | False
+        axes title; if ``True``, use ``var.name``
     
     """
     if isinstance(var, basestring):
