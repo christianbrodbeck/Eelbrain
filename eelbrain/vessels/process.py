@@ -53,10 +53,25 @@ class PCA:
             node.train(epoch)
         node.stop_training()
         
+        # project into the pca space
+        n_epochs, n_t, n_sensors = data.shape
+        old_data = data.reshape((n_epochs * n_t, n_sensors))
+        self._proj = self.node.execute(old_data)
+        
+        
     def get_component(self, i):
         dims = self.source.get_dims(('sensor',))
         data = self.node.v.T[None,i,]
-        name = 'component %i' % i
+        name = 'comp_%i' % i
+        ndvar = _data.ndvar(dims, data, name=name)
+        return ndvar
+    
+    def get_load(self, i):
+        time = self.source.get_dim('time')
+        dims = (time, )
+        shape = (len(self.source), len(time))
+        data = self._proj[:,i].reshape(shape)
+        name = 'comp_%i_load' % i
         ndvar = _data.ndvar(dims, data, name=name)
         return ndvar
     
@@ -76,12 +91,9 @@ class PCA:
             two time values or None (use all values until the end of the epoch).
         
         """
-        # project into the pca space
         data = self._source_data
-        n_epochs, n_t, n_sensors = data.shape
-        old_data = data.reshape((n_epochs * n_t, n_sensors))
-        proj = self.node.execute(old_data)
-    
+        proj = self._proj
+        
         # flatten retained components
         for i in xrange(proj.shape[1]):
             if i not in components:
