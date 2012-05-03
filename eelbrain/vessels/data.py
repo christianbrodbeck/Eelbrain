@@ -667,20 +667,22 @@ class var(_regressor_):
         y = self._interpret_y(y)
         return self.x < y        
     
-    def __getitem__(self, values):
+    def __getitem__(self, index):
         "if factor: return new variable with mean values per factor category"
-        if isfactor(values):
-            f = values
+        if isfactor(index):
+            f = index
             x = []
             for v in np.unique(f.x):
                 x.append(np.mean(self.x[f==v]))
             return var(x, self.name)
+        elif isvar(index):
+            index = index.x
+        
+        x = self.x[index]
+        if np.iterable(x):
+            return var(x, self.name)
         else:
-            x = self.x[values]
-            if np.iterable(x):
-                return var(x, self.name)
-            else:
-                return x
+            return x
     
     def __setitem__(self, index, value):
         self.x[index] = value
@@ -997,13 +999,16 @@ class factor(_regressor_):
             return False
         return code in self.x
     
-    def __getitem__(self, sub):
+    def __getitem__(self, index):
         """
         sub needs to be int or an array of bools of shape(self.x)
         this method is valid for factors and nonbasic effects
         
         """
-        x = self.x[sub]
+        if isvar(index):
+            index = index.x
+        
+        x = self.x[index]
         if np.iterable(x):
             return factor(x, **self._child_kwargs())
         else:
@@ -1334,6 +1339,9 @@ class ndvar(object):
         return ndvar(self.dims, x, properties=self.properties, name=name)
 
     def __getitem__(self, index):
+        if isvar(index):
+            index = index.x
+        
         if np.iterable(index) or isinstance(index, slice):
             x = self.x[index]
             if x.shape[1:] != self.x.shape[1:]:
@@ -1978,6 +1986,9 @@ class dataset(collections.OrderedDict):
         if default_DV is None:
             default_DV = self.default_DV
         
+        if isvar(index):
+            index = index.x
+        
         ds = dataset(name=name, info=info, default_DV=default_DV)
         for k, v in self.iteritems():
             ds[k] = v[index]
@@ -2064,9 +2075,12 @@ class interaction(_regressor_):
     def _nestedin(self):
         return set.union([set(f.nestedin) for f in self.factors])
     
-    def __getitem__(self, sub):
-        out = [f[sub] for f in self.base]
-        if np.iterable(sub):
+    def __getitem__(self, index):
+        if isvar(index):
+            index = index.x
+        
+        out = [f[index] for f in self.base]
+        if np.iterable(index):
             return interaction(out)
         else:
             return out
