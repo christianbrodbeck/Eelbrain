@@ -497,6 +497,15 @@ class _regressor_(object):
         values = self._interpret_y(values)
         return np.any([self.x == v for v in values], axis=0)
     
+    def isnot(self, *values):
+        """
+        returns a boolean array that is True where the data does not equal any 
+        of the values
+        
+        """
+        values = self._interpret_y(values)
+        return np.all([self.x != v for v in values], axis=0)
+    
     def iter_beta(self):
         for i, name in enumerate(self.beta_labels):
             yield i, name
