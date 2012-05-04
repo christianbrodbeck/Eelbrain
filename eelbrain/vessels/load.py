@@ -60,6 +60,10 @@ def fiff_events(source_path=None, name=None, merge=-1):
     
     raw = mne.fiff.Raw(source_path)
     events = mne.find_events(raw)
+    
+    if len(events) == 0:
+        raise ValueError("No events found!")
+    
     if any(events[:,1] != 0):
         raise NotImplementedError("Events starting with ID other than 0")
         # this was the case in the raw-eve file, which contained all event 
