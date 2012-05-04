@@ -741,7 +741,7 @@ class Table:
         "saves table as tex; if path == non ask with system dialog"
         save_tex(self, path=path)
     
-    def save_tsv(self, path=None, delimiter='\t', linesep='\r\n', fmt='%.15e'):
+    def save_tsv(self, path=None, delimiter='\t', linesep='\r\n', fmt='%.15g'):
         """
         Saves the table as tab-separated values file. 
         

@@ -1911,7 +1911,7 @@ class dataset(collections.OrderedDict):
         else:
             table = self.as_table(fmt=fmt, header=header, sort=sort)
             if ext in ['txt', 'tsv']:
-                table.save_tsv(fn)
+                table.save_tsv(fn, fmt=fmt)
             elif ext =='tex':
                 table.save_tex(fn)
             else:
