@@ -63,13 +63,16 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs)
         
+        if title is True:
+            title = "plot.topo.butterfly"
+        
         # create figure
         n_plots = len(epochs)
         x_size = size * (1 + bflywidth)
         y_size = size * n_plots
         figsize = (x_size, y_size)
         parent = wx.GetApp().shell
-        title = "plot.topo.butterfly"
+        
         mpl_canvas.CanvasFrame.__init__(self, parent, title, figsize=figsize, dpi=dpi)
         fig = self.figure
         
@@ -110,7 +113,7 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
             self.t_markers.append(t_marker)
             self.topos.append((t_marker, ax2, layers))
             
-            uts._ax_butterfly(ax1, layers, sensors=sensors, ylim=ylim, title=title, 
+            utsnd._ax_butterfly(ax1, layers, sensors=sensors, ylim=ylim, 
                               xlabel=xlabel, ylabel=ylabel, color=color)
             
         
@@ -165,6 +168,24 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
         ax = event.inaxes
         if ax and hasattr(ax, 'ID'):
             super(self.__class__, self).OnMotionStatusBarUpdate(event)
+    
+    def set_ylim(self, *ylim):
+        """
+        Change the range of values displayed in butterfly-plots.
+        
+        """
+        if len(ylim) == 1:
+            ymin, ymax = -ylim[0], ylim[0]
+        elif len(ylim) == 2:
+            ymin, ymax = ylim
+        else:
+            raise ValueError("Wrong number of values for ylim (need 1 or 2)")
+        
+        for i, ax in enumerate(self.figure.axes):
+            if i % 2 == 0:
+                ax.set_ylim(ymin, ymax)
+        self.canvas.draw()
+
 
 
 

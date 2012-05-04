@@ -335,6 +335,9 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
         handles.append(h)
         xmin.append(l.time[0])
         xmax.append(l.time[-1])
+        
+        if title is True:
+            title = getattr(l, 'name', True)
     
     # axes decoration
     l = layers[0]
@@ -358,6 +361,9 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
         ax.set_xlabel(xlabel)
     if ylabel not in [False, None]:
         ax.set_ylabel(ylabel)
+    
+    if isinstance(title, str):
+        ax.set_title(title)
     
     return handles
 
