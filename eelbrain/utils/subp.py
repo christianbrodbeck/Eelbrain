@@ -18,6 +18,7 @@ Created on Mar 4, 2012
 '''
 
 import os
+import shutil
 import subprocess
 import tempfile
 import re
@@ -26,23 +27,31 @@ import fnmatch
 from eelbrain import ui
 
 
-__all__ = [
-#           'forward',
-           'kit2fiff', 
-           'process_raw', 
-           'set_mne_dir',
-           'mne_experiment'
-           ] 
+__hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch',
+            'np',
+            'ui']
+#__all__ = [
+##           'forward',
+#           'kit2fiff', 
+#           'process_raw', 
+#           'set_bin_dirs',
+#           'mne_experiment'
+#           ] 
 
 # keep track of whether the mne dir has been successfully set
-_mne_dir = None
+_bin_dirs = {'mne': None,
+             'freesurfer': None,
+             'edfapi': None}
 
 
-def set_mne_dir(mne=None, freesurfer=None):
+_verbose = False
+
+
+def set_bin_dirs(mne=None, freesurfer=None, edf=None):
     """
-    Set the directory where mne is installed. E.g. ::
+    Set the directories where binaries are installed. E.g. ::
     
-        >>> set_mne_dir('~/unix_apps/mne-2.7.3')
+        >>> set_bin_dirs(mne='~/unix_apps/mne-2.7.3')
     
     """
     if mne:
@@ -56,6 +65,7 @@ def set_mne_dir(mne=None, freesurfer=None):
                 os.environ['PATH'] += ':%s' % mne_bin
             else:
                 os.environ['PATH'] = mne_bin
+            _bin_dirs['mne'] = mne
         else:
             raise IOError("%r does not exist" % mne)
     
@@ -65,11 +75,14 @@ def set_mne_dir(mne=None, freesurfer=None):
             os.environ['FREESURFER_HOME'] = freesurfer
         else:
             raise IOError("%r does not exist" % freesurfer)
+    
+    if edf:
+        edf = os.path.expanduser(edf)
+        if os.path.exists(edf):
+            _bin_dirs['edfapi'] = edf
 
 
     
-    global _mne_dir
-    _mne_dir = mne
     
 
 
@@ -257,8 +270,9 @@ def kit2fiff(paths=dict(mrk = None,
         reconstructs the values sent through psychtoolbox.
     
     """
-    if not _mne_dir:
-        raise IOError("mne-dir not set. See mne_link.set_mne_dir.")
+    mne_dir = _bin_dirs['mne']
+    if not mne_dir:
+        raise IOError("mne-dir not set. See mne_link.set_bin_dirs.")
     
     # get all the paths
     mrk_path = paths.get('mrk')
@@ -281,7 +295,7 @@ def kit2fiff(paths=dict(mrk = None,
                       "it be replaced?" % out_file):
             return
         
-    cmd = [os.path.join(_mne_dir, 'bin', 'mne_kit2fiff'),
+    cmd = [os.path.join(mne_dir, 'bin', 'mne_kit2fiff'),
            '--elp', elp_file,
            '--hsp', hsp_file,
            '--sns', sns_file,
@@ -328,7 +342,7 @@ def process_raw(raw, save='{raw}_filt', args=[], **kwargs):
     
     save = save.format(raw=raw_name)
     
-    cmd = [os.path.join(_mne_dir, 'bin', 'mne_process_raw'),
+    cmd = [os.path.join(_bin_dirs['mne'], 'bin', 'mne_process_raw'),
            '--raw', raw,
            '--save', save]
     
@@ -343,7 +357,7 @@ def process_raw(raw, save='{raw}_filt', args=[], **kwargs):
 
 
 
-def _run(cmd, v=True):
+def _run(cmd, v=False, verr=True):
     """
     cmd: list of strings
         command that is submitted to subprocess.Popen.
@@ -351,6 +365,7 @@ def _run(cmd, v=True):
         verbose mode
     
     """
+    v = v or _verbose
     if v:
         print "> COMMAND:"
         for line in cmd:
@@ -363,6 +378,8 @@ def _run(cmd, v=True):
     if v:
         print "\n> OUT:"
         print stdout
+    
+    if verr and stderr:
         print '\n> ERROR:'
         print stderr
 
@@ -431,7 +448,7 @@ def forward(mri_dir, fif_file, subject, coreg=True):
 ## SUBJECTS_DIR is MRI directory according to MNE 17
     
     
-    cmd = [os.path.join(_mne_dir, 'bin', "mne_setup_forward_model"),
+    cmd = [os.path.join(_bin_dirs['mne'], 'bin', "mne_setup_forward_model"),
            '--subject', subject,
            '--surf',
            '--ico', 4,
@@ -441,7 +458,7 @@ def forward(mri_dir, fif_file, subject, coreg=True):
     # -> /Users/christian/Data/eref/mri/R0368/bem/R0368-5120-bem-sol.fif
     
     
-    cmd = [os.path.join(_mne_dir, 'bin', "mne_do_forward_solution"),
+    cmd = [os.path.join(_bin_dirs['mne'], 'bin', "mne_do_forward_solution"),
            '--subject', subject,
            '--src', os.path.join(bemdir, '%s-ico-4-src.fif' % subject),
            '--bem', os.path.join(bemdir, '%s-5120-bem-sol.fif' % subject), 
