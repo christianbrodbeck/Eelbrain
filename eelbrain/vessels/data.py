@@ -1994,6 +1994,9 @@ class dataset(collections.OrderedDict):
             default_DV for the new dataset
         
         """
+        if isinstance(index, str):
+            index = self[index]
+        
         name = name.format(name=self.name)
         info = self.info.copy()
         if default_DV is None:
