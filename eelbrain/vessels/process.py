@@ -134,10 +134,6 @@ def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=True, below=Fals
         created.
     
     """
-    if DV is None:
-        DV = dataset.default_DV
-        if DV is None:
-            raise ValueError("No valid DV")
     if isinstance(DV, basestring):
         DV = dataset[DV]
     

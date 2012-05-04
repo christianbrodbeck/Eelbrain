@@ -241,7 +241,6 @@ Memory required in mb::
 from __future__ import division
 
 import cPickle as pickle
-import logging
 import operator
 import os
 import collections
@@ -271,14 +270,20 @@ class DimensionMismatchError(Exception):
 
 
 def _effect_eye(n):
-    """Returns effect coding for n categories.
-    e.g. _effect_eye(4) = 1  0  0
-                          0  1  0
-                          0  0  1
-                         -1 -1 -1
+    """
+    Returns effect coding for n categories. E.g.:: 
+    
+        >>> _effect_eye(4)
+        array([[ 1,  0,  0],
+               [ 0,  1,  0],
+               [ 0,  0,  1],
+               [-1, -1, -1]])
+    
     """ 
-    return np.vstack((np.eye(n-1, dtype=int), 
-                      np.ones(n-1, dtype=int)*-1))
+    X = np.empty((n, n-1), dtype=np.int8)
+    X[:n-1] = np.eye(n-1, dtype=np.int8)
+    X[n-1] = -1
+    return X
 
 
 def rank(A, tol=1e-8):
@@ -1849,7 +1854,7 @@ class dataset(collections.OrderedDict):
             if midrule:
                 table.midrule()
         
-        for i in range(cases):
+        for i in xrange(cases):
             if count:
                 table.cell(i)
             
@@ -1858,10 +1863,9 @@ class dataset(collections.OrderedDict):
                     if f_fmt is None:
                         table.cell(v.x[i], fmt='%i')
                     else:
-                        label = v.cells[v.x[i]]
-                        table.cell(f_fmt % label)
+                        table.cell(f_fmt % v[i])
                 elif isvar:
-                    table.cell(v.x[i], fmt=fmt)
+                    table.cell(v[i], fmt=fmt)
         
         return table
     
@@ -1936,16 +1940,16 @@ class dataset(collections.OrderedDict):
                 out[case] = self.subset(index, setname, default_DV=default_DV)
         return out
     
-    def compress(self, X, func=None, name='{func}({name})', n=True):
-        ds = dataset()
+    def compress(self, X, name='{name}', count='n'):
+        ds = dataset(name=name.format(name=self.name))
+        
+        if count:
+            x = [np.sum(X == cell) for cell in X.values()]
+            ds[count] = var(x)
+        
         for k in self:
             ds[k] = self[k].compress(X)
-        
-        x = []
-        for i in X.values():
-            x.append(np.sum(X == i))
-        ds['n_epochs'] = var(x)
-        
+                
         return ds
     
     def get_summary(self, func=None, name='{func}({name})'):
@@ -1976,9 +1980,18 @@ class dataset(collections.OrderedDict):
     def subset(self, index, name='{name}', default_DV=None):
         """
         Returns a dataset containing only the subset of cases selected by 
-        `index`. Keep in mind that index is passed on to numpy objects, which 
-        means that advanced indexing always returns a copy of the data, whereas
-        basic slicing (using slices) returns a view.
+        `index`. 
+        
+        index : array | str
+            index selecting a subset of epochs. Can be an valid numpy index or
+            the name of a variable in dataset.
+            Keep in mind that index is passed on to numpy objects, which means
+            that advanced indexing always returns a copy of the data, whereas
+            basic slicing (using slices) returns a view.
+        name : str
+            name for the new dataset
+        default_DV : str
+            default_DV for the new dataset
         
         """
         name = name.format(name=self.name)

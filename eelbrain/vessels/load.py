@@ -45,7 +45,7 @@ def fiff_events(source_path=None, name=None, merge=-1):
         use to merge events lying in neighboring samples. The integer value 
         indicates over how many samples events should be merged, and the sign
         indicates in which direction they should be merged (negative means 
-        towards the earlier event, positive towards the later event) 
+        towards the earlier event, positive towards the later event).
     
     name : str
         A name for the dataset.
