@@ -944,13 +944,13 @@ class UTS_Segment(Segment):
             channels = [data[:,ROI_sensors].mean(1)[:,None] for ROI_sensors in ROIs]
             data = np.concatenate(channels, 1)
             sensornet = self['sensors']
-            mod_props['sensors'] = sensornet.subnet_ROIs(ROIs)
+            mod_props['sensors'] = sensornet.get_subnet_ROIs(ROIs)
         elif sensors != None:
             data = data[:,sensors]
             if len(sensors) < 2:
                 rm_props.append('sensors')
             else:
-                mod_props['sensors'] = self.sensors.subnet(sensors)
+                mod_props['sensors'] = self.sensors.get_subnet(sensors)
         
         if ref:
             data = data - data_ref

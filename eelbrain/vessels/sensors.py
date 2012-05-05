@@ -200,8 +200,8 @@ class sensor_net(object):
     
     def get_tri(self, proj, resolution, frame):
         """
-        Returns the farest generalizable object for projecting sensor maps
-        to ims 
+        Returns delaunay triangulation and meshgrid objects
+        (for projecting sensor maps to ims) 
         
         Based on matplotlib.mlab.griddata function
         """
@@ -262,6 +262,46 @@ class sensor_net(object):
         out = ROI_dic.values()
         return out
     
+    def get_subnet(self, sensors):
+        """
+        returns a new Sensor Net with a subset of sensors (specified as indexes)
+        
+        """
+        if len(sensors) > 1:
+            new_sensors = []
+            for i in sensors:
+                new_sensors.append(tuple(self.locs3d[i]) + (self.names[i],))
+            return sensor_net(sensors)
+        else:
+            return None
+    
+    def get_subnet_ROIs(self, ROIs, loc='first'):
+        """
+        returns new sensor_net object based on sensors in ROIs
+        
+        **parameters:**
+        
+        ROIs : list of lists of sensor ids
+            each ROI defines one sensor in the new net 
+        loc : str
+            'first': use the location of the first sensor of each ROI (default);
+            'mean': use the mean location
+        
+        """
+        sensors = []
+        for ROI in ROIs:
+            i = ROI[0]
+            name = self.names[i]
+            if loc == 'first':
+                l = self.locs3d[i]
+            elif loc == 'mean':
+                locs = self.locs3d[ROI]
+                l = locs.mean(0)
+            else:
+                raise ValueError("invalid value for loc (%s)"%loc)
+            sensors.append(tuple(l) + (name,))
+        return sensor_net(sensors)
+    
     def id2label(self, Id):
         return self.names[Id] 
     
@@ -283,44 +323,6 @@ class sensor_net(object):
             P.scatter(locs[:,0], locs[:,1])
         return fig
     
-    def subnet(self, sensors):
-        """
-        returns a new Sensor Net with a subset of sensors (specified as indexes)
-        
-        """
-        if len(sensors) > 1:
-            new_sensors = []
-            for i in sensors:
-                new_sensors.append(tuple(self.locs3d[i]) + (self.names[i],))
-            return sensor_net(sensors)
-        else:
-            return None
-    def subnet_ROIs(self, ROIs, loc='first'):
-        """
-        returns new sensor_net object based on senros in ROIs
-        
-        parameters
-        ---------
-        ROIs: list of lists of sensor ids
-        
-        loc: 'first': use the location of the first sensor of each ROI
-             'mean': use the mean location
-        
-        """
-        sensors = []
-        for ROI in ROIs:
-            i = ROI[0]
-            name = self.names[i]
-            if loc == 'first':
-                l = self.locs3d[i]
-            elif loc == 'mean':
-                locs = self.locs3d[ROI]
-                l = locs.mean(0)
-            else:
-                raise ValueError("invalid value for loc (%s)"%loc)
-            sensors.append(tuple(l) + (name,))
-        return sensor_net(sensors)
-
 
 
 # MARK: constructors
