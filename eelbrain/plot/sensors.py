@@ -6,6 +6,16 @@ try:
 except:
     _Axes3d = None
 
+import wx
+from eelbrain.wxutils import mpl_canvas
+
+
+
+__hide__ = ['mpl_canvas']
+
+_ID_label_Ids = wx.NewId()
+_ID_label_names = wx.NewId()
+_ID_label_None = wx.NewId()
 
 
 # some useful kwarg dictionaries for different plot layouts
@@ -19,133 +29,155 @@ kwargs_mono = dict(mc='k',
 
 def _ax_map2d_fast(ax, sensor_net, proj='default', 
                    m='x', mew=.5, mc='b', ms=3,):
-    if hasattr(sensor_net, 'sensors'):
-        sensor_net = sensor_net.sensors
-    
     locs = sensor_net.getLocs2d(proj=proj)
     h = plt.plot(locs[:,0], locs[:,1], m, color=mc, ms=ms, markeredgewidth=mew)
     
     return h
 
     
-def _ax_map2d(ax, sensor_net, proj='default', hl=[], 
-              labels='name', lc='k', ls=8, l_dist=.01, # labels, l colors, l size
-              m='x', mew=.5, mc='b', ms=3, # marker, m edge width, m color, m size,
-              strm=None, strc=None, strms=None, strlc='r', # ...same for string labels; None -> same as digits
-              hlm='*', hlmc='r', hlms=5, hllc='r'): # ...same for highlight
-    # in case sensor_net parent is submitted
-    if hasattr(sensor_net, 'sensors'):
-        sensor_net = sensor_net.sensors
-    
-    if strm == None:
-        strm = m
-    if strc == None:
-        strmc = mc
-    if strms == None:
-        strms = ms
-    if strlc == None:
-        strlc = lc
-    
+def _ax_map2d(ax, sensor_net, proj='default', 
+              frame = .02,
+              kwargs=dict(
+                          marker='x', # symbol
+                          color='b', # mpl plot kwargs ...
+                          ms=3, # marker size
+                          markeredgewidth=.5,
+                          ls='',
+                          ),
+              ):
     ax.set_aspect('equal')
     ax.set_frame_on(False)
     ax.set_axis_off()
     
+    _plt_map2d(ax, sensor_net, proj=proj, kwargs=kwargs)
+    
+    ax.set_xlim(-frame, 1+frame)
+    
+
+
+def _plt_map2d(ax, sensor_net, proj='default',
+               kwargs=dict(
+                           marker='x', # symbol
+                           color='b', # mpl plot kwargs ...
+                           ms=3, # marker size
+                           markeredgewidth=.5,
+                           ls='',
+                           ),
+               ):
     locs = sensor_net.getLocs2d(proj=proj)
-    # labels
-#    if labels == 'name':
-#        labels = []
-#        markers
-#        colorList = []
-#        for s in sensor_net:
-#            label = s.name
-#            if label.isdigit():
-#                label = r'$'+label+'$'
-#                colorList.append([])
-#            else:
-#                colorList.append('r')
-#            labels.append(label)
-#    elif labels == 'id':
-#        labels = range(sensor_net.n)
-#        colorList = ['k'] * len(labels)
-#    elif labels== 'legend':
-#        separator=':'
-#        labels = [r"$%s$%s%s"%(i, separator, s.name) for i, s \
-#                  in enumerate(sensor_net) ]
-#        colorList = ['k']*len(labels)
-#    else:
-#        colorList = labels = [None]*sensor_net.n
-#    # markers
-#    markers = np.array([marker] * sensor_net.n, dtype='S2')
-#    markers[highlight] = highlightMarker
-    #transOffset = plt.offset_copy(plt.gca().transData, fig=fig, x = 0.05, y=0.10, units='inches')
-    for i in range(sensor_net.n):
-        x = locs[i,0]
-        y = locs[i,1]
-        # label
-        if labels is None:
-            label = None
-        elif labels == 'id':
-            label = label_for_c = str(i)
-        elif labels == 'legend':
-            separator=':'
-            label_for_c = sensor_net.names[i]
-            label = r"$%s$%s%s"%(i, separator, label_for_c)
+    ax.plot(locs[:,0], locs[:,1], **kwargs)
+
+
+
+def _plt_map2d_labels(ax, sensor_net, proj='default',
+                      text='id', # 'id', 'name'
+                      xpos=0, # horizontal distance from marker
+                      ypos=.01, # vertical distance from marker
+                      kwargs=dict( # mpl text kwargs ...
+                                  color='k',
+                                  fontsize=8,
+                                  horizontalalignment='center', 
+                                  verticalalignment='bottom',
+                                  ),
+                      ):
+    if text == 'id':
+        labels = [str(i) for i in xrange(len(sensor_net))]
+    elif text == 'name':
+        labels = sensor_net.names
+    else:
+        err = "text has to be 'id' or 'name', can't be %r" % text
+        raise NotImplementedError(err)
+    
+    locs = sensor_net.getLocs2d(proj=proj)
+    
+    handles = []
+    for i in xrange(len(labels)):
+        x = locs[i,0] + xpos
+        y = locs[i,1] + ypos
+        lbl = labels[i]
+        h = ax.text(x, y, lbl, **kwargs)
+        handles.append(h)
+    
+    return handles
+
+
+
+
+class map2d(mpl_canvas.CanvasFrame):
+    def __init__(self, sensor_net, labels='id', proj='default',
+                 figsize=(8,8), dpi=100, frame=.05, **kwargs):
+        """
+        **Parameters:**
+        
+        sensor_net : 
+            sensor-net object or object containing sensor-net
+        
+        labels : 'id' | 'name' 
+            how the sensors should be labelled
+        
+        proj:
+            Transform to apply to 3 dimensional sensor coordinates for plotting 
+            locations in a plane
+        
+        """
+        parent = wx.GetApp().shell
+        title = "Sensor Net: %s" % getattr(sensor_net, 'name', '')
+        super(map2d, self).__init__(parent, title=title, 
+                                    figsize=figsize, dpi=dpi)
+        
+        # in case sensor_net parent is submitted
+        if hasattr(sensor_net, 'sensors'):
+            sensor_net = sensor_net.sensors
+        elif hasattr(sensor_net, 'sensor'):
+            sensor_net = sensor_net.sensor
+        
+        # store args
+        self._sensor_net = sensor_net
+        self._proj = proj
+        
+        self.figure.set_facecolor('w')
+        ax = self.figure.add_axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
+        _ax_map2d(ax, sensor_net, proj=proj, **kwargs)
+        self._ax = ax
+        
+        self._label_h = None
+        if labels:
+            self.plot_labels(labels=labels)
+        
+        self.Show()
+    
+    def _init_FillToolBar(self, tb):
+        tb.AddSeparator()
+        
+        # plot labels
+        for Id, name in [(_ID_label_None, "No Labels"),
+                         (_ID_label_Ids, "Ids"),
+                         (_ID_label_names, "Names"),]:
+            btn = wx.Button(tb, Id, name)
+            tb.AddControl(btn)
+            self.Bind(wx.EVT_BUTTON, self.OnPlotLabels, btn)
+        
+        super(map2d, self)._init_FillToolBar(tb)
+    
+    def OnPlotLabels(self, event):
+        Id = event.GetId()
+        labels = {_ID_label_None: None,
+                  _ID_label_Ids: "id",
+                  _ID_label_names: "name"}[Id]
+        self.plot_labels(labels)
+    
+    def plot_labels(self, labels='id'):
+        if self._label_h:
+            for h in self._label_h:
+                h.remove()
+        
+        if labels:
+            h = _plt_map2d_labels(self._ax, self._sensor_net, proj=self._proj,
+                                  text=labels)
         else:
-            label = label_for_c = sensor_net.names[i]
-        # properties
-        if i in hl:
-            marker, marker_c, marker_s, label_c, label_s = hlm, hlmc, hlms, hllc, ls
-        elif (label!=None) and label_for_c.isdigit():
-            marker, marker_c, marker_s, label_c, label_s = m, mc, ms, lc, ls
-        else:
-            marker, marker_c, marker_s, label_c, label_s = strm, strmc, strms, strlc, ls
-        plt.plot([x],[y], marker, color=marker_c, ms=marker_s, markeredgewidth=mew)#,label=label)
-        if label != None:
-            plt.text(x, y+l_dist, label, fontsize=label_s,# style='oblique', 
-                   horizontalalignment='center', verticalalignment='bottom', 
-                   color=label_c)
-
-
-
-def map2d(sensor_net, figsize=(5,5), frame=.01, **kwargs):
-    """
-    Arguments
-    ---------
-    
-    ax: mpl.axes or ``None``
-        target axes; a new fiigure is created if ``None``
-    
-    figsize:
-        mpl figsize
-    
-    highlight: = []
-        sensors which should be highlighted    
-    
-    labels: 
-        how the sensors should be labelled: ``'name'``, ``'id'``, ``'legend'`` 
-        (names and id), ``None``. Labels can be custmized with the following 
-        additional arguments: ``lc='k'`` (label color), ``ls=8`` (label 
-        font size), and ``ldist`` (distance from the marker).
-    
-    markers: 
-        markers can be customized with the following arguments: ``m='x'`` 
-        (marker symbol), ``mc='b'`` (color), ``ms=3`` (size) and ``mew=0.5`` 
-        (marker edge width).
-    
-    proj:
-        Transform to apply to 3 dimensional sensor coordinates for plotting 
-        locations in a plane
-    
-    """    
-    # figure
-    fig = plt.figure(figsize=figsize, facecolor='w')
-    ax = plt.axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
-        # the following does not make the plot
-#        fig = mpl.figure.Figure(figsize=figsize, facecolor='w')
-#        ax = fig.add_axes([0,0,1,1])
-    _ax_map2d(ax, sensor_net, **kwargs)
-    
-    return fig
+            h = None
+        self._label_h = h
+        self.canvas.draw()
 
 
 
