@@ -31,8 +31,7 @@ from eelbrain import ui
 
 
 
-
-def fiff_events(source_path=None, name=None, merge=-1):
+def fiff_events(source_path=None, name=None, merge=-1, baseline=0):
     """
     Returns a dataset containing events from a raw fiff file. Use
     :func:`fiff_epochs` to load MEG data corresponding to those events.
@@ -49,17 +48,44 @@ def fiff_events(source_path=None, name=None, merge=-1):
     
     name : str
         A name for the dataset.
-
+    
+    baseline : int
+        After kit2fiff conversion of sqd files with unused trigger channels, 
+        the resulting fiff file's event channel can contain a baseline other 
+        than 0. This interferes with normal event extraction. If the baseline
+        value is provided as parameter, the events can still be extracted.
+     
     """
     if source_path is None:
         source_path = ui.ask_file("Pick a Fiff File", "Pick a Fiff File",
                                   ext=[('fif', 'Fiff')])
+        if not source_path:
+            return
+    elif not os.path.isfile(source_path):
+        raise ValueError("Invalid source_path: %r" % source_path)
     
     if name is None:
         name = os.path.basename(source_path)
     
     raw = mne.fiff.Raw(source_path)
-    events = mne.find_events(raw)
+    if baseline:
+        pick = mne.event.pick_channels(raw.info['ch_names'], include='STI 014')
+        data, times = raw[pick, :]
+        idx = np.where(np.abs(np.diff(data[0])) > 0)[0]
+        
+        # find baseline NULL-events
+        values = data[0, idx + 1]
+        valid_events = np.where(values != baseline)[0]
+        idx = idx[valid_events]
+        values = values[valid_events]
+        
+        N = len(values)
+        events = np.empty((N, 3), dtype=np.int32)
+        events[:,0] = idx
+        events[:,1] = np.zeros_like(idx)
+        events[:,2] = values
+    else:
+        events = mne.find_events(raw)
     
     if len(events) == 0:
         raise ValueError("No events found!")
