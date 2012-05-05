@@ -17,7 +17,7 @@ __hide__ = ['division', 'fmtxt', 'scipy',
 
 
 
-def frequencies(Y, X, sub=None, title="{Yname} Frequencies"):
+def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies"):
     """
     Display frequency of occurrence of all categories in Y in the cells 
     defined by X.
@@ -27,6 +27,20 @@ def frequencies(Y, X, sub=None, title="{Yname} Frequencies"):
     
     """
     Y = _data.asfactor(Y)
+    
+    if X is None:
+        table = fmtxt.Table('ll')
+        if hasattr(Y, 'name'):
+            table.title("Frequencies of %s" % Y.name)
+        table.cell()
+        table.cell('n')
+        table.midrule()
+        for cat in Y.values():
+            table.cell(cat)
+            table.cell(np.sum(Y == cat))
+        return table
+    
+    
     X = _data.asfactor(X)
     
     ct = _structure.celltable(Y, X, sub=sub)
