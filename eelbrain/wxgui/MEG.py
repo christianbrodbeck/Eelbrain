@@ -26,7 +26,7 @@ __all__ = ['select_cases_butterfly', 'pca']
 
 
 class select_cases_butterfly(mpl_canvas.CanvasFrame):
-    def __init__(self, dataset, data='MEG', target='reject', nplots=(6,6), plotsize=(3,1.5),
+    def __init__(self, dataset, data='MEG', target='accept', nplots=(6,6), plotsize=(3,1.5),
                  mean=True, topo=True, ylim=None, aa=False, dpi=50):
         """
         Plots all cases in the collection segment and allows visual selection
@@ -57,7 +57,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
             try:
                 target = dataset[target]
             except KeyError:
-                x = np.zeros(dataset.N, dtype=bool)
+                x = np.ones(dataset.N, dtype=bool)
                 target = _data.var(x, name=target)
                 dataset.add(target)
         self._target = target
@@ -138,7 +138,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         seg_IDs = self._segs_by_page[self._current_page_i]
         index = np.zeros(self._dataset.N, dtype=bool)
         index[seg_IDs] = True
-        index *= (self._target == False)
+        index *= self._target
         mseg = self._data[index].mean()
         return mseg 
     
@@ -166,9 +166,9 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         ax = self._case_axes[axID]
         h = self._case_handles[axID]
         if state:
-            h.set_facecolors('r')
-        else:
             h.set_facecolors('k')
+        else:
+            h.set_facecolors('r')
         ax._epoch_state = state
         
         self.canvas.redraw_ax(ax)
@@ -203,9 +203,9 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
             case = self._data.get_epoch(ID)
             state = self._target[ID]
             if state:
-                color = 'r'
-            else:
                 color = 'k'
+            else:
+                color = 'r'
             ax = self.figure.add_subplot(nx, ny, i+1, xticks=[0], yticks=[])#, 'axis_off')
             ax._epoch_state = state
 #            ax.set_axis_off()
@@ -338,8 +338,8 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         
         """
         threshold = None
-        above = True
-        below = False
+        above = False
+        below = True
         
         msg = "What value should be used to threshold the data?"
         while threshold is None:

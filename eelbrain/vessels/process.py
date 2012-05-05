@@ -115,8 +115,8 @@ class PCA:
 
 
 
-def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=True, below=False, 
-                      target='reject'):
+def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=False, below=None, 
+                      target='accept'):
     """
     Marks epochs based on a threshold criterion (any sensor exceeding the 
     threshold at any time) 
@@ -124,10 +124,13 @@ def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=True, below=Fals
     above: True, False, None
         How to mark segments that exceed the threshold: True->good; 
         False->bad; None->don't change
+    
     below:
         Same as ``above`` but for segments that do not exceed the threshold
+    
     threshold : float
-        The threshold value.
+        The threshold value. 
+    
     target : factor or str
         Factor (or its name) in which the result is stored. If ``var`` is 
         a string and the dataset does not contain that factor, it is 
@@ -144,7 +147,7 @@ def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=True, below=Fals
         if target in dataset:
             target = dataset[target]
         else:
-            x = _np.zeros(dataset.N, dtype=bool)
+            x = _np.ones(dataset.N, dtype=bool)
             target = _data.var(x, name=target)
             dataset.add(target)
     else:
