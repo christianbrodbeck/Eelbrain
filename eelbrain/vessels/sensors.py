@@ -262,16 +262,19 @@ class sensor_net(object):
         out = ROI_dic.values()
         return out
     
-    def get_subnet(self, sensors):
+    def get_subnet(self, indexes, name='{name}{index}'):
         """
         returns a new Sensor Net with a subset of sensors (specified as indexes)
         
         """
-        if len(sensors) > 1:
+        if len(indexes) > 1:
             new_sensors = []
-            for i in sensors:
-                new_sensors.append(tuple(self.locs3d[i]) + (self.names[i],))
-            return sensor_net(sensors)
+            for i in indexes:
+                sensor = tuple(self.locs3d[i]) + (self.names[i],)
+                new_sensors.append(sensor)
+            
+            name = name.format(name=self.net_name, index=list(indexes))
+            return sensor_net(new_sensors, name=name)
         else:
             return None
     
