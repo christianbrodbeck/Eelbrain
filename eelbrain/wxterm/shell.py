@@ -493,13 +493,19 @@ class ShellFrame(wx.py.shell.ShellFrame):
         text = wx.py.shell.HELP_TEXT
         self.__doc__ = text
     
-    def attach(self, dictionary, _internal_call=False):
+    def attach(self, dictionary, detach=True, _internal_call=False):
         """
         Adds a dictionary to the globals and keeps track of the items so that 
         they can be removed safely with the detach function. Also works for 
         modules (in which case any private attributes are ignored).
         
+        detach : bool
+            Detach anything else before attaching the current dictionary.
+        
         """
+        if detach:
+            self.detach()
+        
         # detect and convert special types
         if isinstance(dictionary, types.ModuleType):
             mod = vars(dictionary)
