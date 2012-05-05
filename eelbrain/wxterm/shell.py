@@ -125,6 +125,7 @@ class Shell(wx.py.shell.Shell):
             ###### MY end
             options = ' '.join(options)
             self.AutoCompShow(offset, options)
+    
     def writeOut(self, message):
         """
         
@@ -161,18 +162,20 @@ class Shell(wx.py.shell.Shell):
 #            self.SetCurrentPos(new_end)
 #            self.SetAnchor(new_end)
         else:
-#            wx.py.shell.Shell.writeOut(self, message)
-#            logging.debug("NORMAL-WRITEOUT: '%s'"%message)
-            self.write(message)
+            # same as done by:  wx.py.shell.Shell.writeOut(self, message)
+            self.write(message) 
+        
     def writeErr(self, message):
         # TODO: color=(0.93359375, 0.85546875, 0.3515625)
-        ls = os.linesep
+#        ls = os.linesep
 #        if message != ls:
 #            message = message.replace(ls, ls+'!   ')
-        message = message.replace('"""', '"') # some deprecation errors contain """ messing up shell coloration
-        self.writeOut(message)#, sep=True)
+        message = message.replace('"""', '"') # some deprecation errors contain """ messing up shell colors
+        self.writeOut(message)
+    
     def start_exec(self):
         self.exec_mode += 1
+    
     def end_exec(self):
         self.exec_mode -= 1
         if self.exec_mode == 0 and self.has_moved:
