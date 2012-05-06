@@ -25,18 +25,48 @@ from eelbrain import vessels as _vsl
 import glm as _glm
 
 
+__hide__ = ['test_result', 'test',
+            'test_result_subdata_helper']
 
-class ttest(_vsl.data.dataset):
+
+class test_result(_vsl.data.dataset):
     """
-    Attributes:
+    Subclass of dataset that holds results of a statistical test. Its special 
+    property is that all entries describe the same dimensional space. That 
+    property makes a .subdata() method possible.
     
-    all:
+    """
+    def subdata(self, **kwargs):
+        "see ndvar.subdata() documentation"
+        # create a subclass that inherits test-specific properties while
+        # bypassing the test's __init__ method:
+        class test_result_subdata(test_result_subdata_helper, self.__class__):
+            pass
+        
+        out = test_result_subdata(self.name, self.info)
+        for k,v in self.iteritems():
+            out[k] = v.subdata(**kwargs)
+        
+        return out
+
+
+class test_result_subdata_helper(test_result):
+    def __init__(self, name, info):
+        super(test_result, self).__init__(name=name, info=info)
+
+
+
+class ttest(test_result):
+    """
+    **Attributes:**
+    
+    all :
         c1, c2, [c2 - c1, P]
-    diff:
+    diff :
         [c2 - c1, P]
     
     """
-    def __init__(self, Y='MEG', X='condition', c1='c1', c2=0, 
+    def __init__(self, Y='MEG', X=None, c1=None, c2=0, 
                  match=None, sub=None, ds=None, contours=None):
         """
         c1 and c2 : ndvars (or dataset with default_DV)
@@ -48,6 +78,16 @@ class ttest(_vsl.data.dataset):
                         -.05: (0., .2, 1.), -.01: (.4, .8, 1.), -.001: (.5, 1., 1.),
                         }
         
+        if X is None:
+            pass
+        elif c1 is None:
+            v = X.values()
+            if len(v) == 2:
+                c1, c2 = v
+            else:
+                err = "If X has more than 2 categories, 2 must be chosen"
+                raise ValueError(err)
+        
         ct = _vsl.structure.celltable(Y, X, match, sub, ds=ds)
         
         c1_mean = ct.data[c1].get_summary(name=c1)
@@ -58,6 +98,7 @@ class ttest(_vsl.data.dataset):
             T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c2].x, axis=0)
             test_name = 'Independent Samples $t$-Test'
         elif np.isscalar(c2):
+            c2_mean = None
             data = [c1_mean]
             T, P = scipy.stats.ttest_1samp(ct.data[c1].x, popmean=c2, axis=0)
             test_name = '1-Sample $t$-Test'
@@ -68,6 +109,7 @@ class ttest(_vsl.data.dataset):
         else:
             raise ValueError('invalid c2: %r' % c2)
         
+        # fix dimensionality
         T = T[None]
         P = P[None]
         
@@ -85,20 +127,36 @@ class ttest(_vsl.data.dataset):
         properties['colorspace'] = _vsl.colorspaces.get_default()
         T = _vsl.data.ndvar(dims, T, properties=properties, name='T', info=test_name)
         
-        self.data = data
-        if diff is None:
-            self.diff = self.all = [data + [P]]
-            items = data + [T, P]
+        # create dataset
+        super(ttest, self).__init__(T, P, name=test_name)
+        self['c1_m'] = c1_mean
+        if c2_mean: 
+            self['c2_m'] = c2_mean
+        if diff:
+            self['diff'] = diff
+        
+    @property
+    def all(self):
+        if 'c2_m' in self:
+            return [self['c1_m'], self['c2_m']] + self.diff
+        elif 'diff' in self:
+            return [self['c1_m']] + self.diff
         else:
-            self.diff = [[diff, P]]
-            self.all = data + self.diff
-            items = data + [diff, T, P]
-        
-        super(ttest, self).__init__(*items, name=test_name)
-        
+            return self.diff
+    
+    @property
+    def diff(self):
+        if 'diff' in self:
+            layers = [self['diff']]
+        else:
+            layers = [self['c1_m']]
+          
+        layers.append(self['p'])
+        return [layers]
 
 
-class f_oneway(_vsl.data.dataset):
+
+class f_oneway(test_result):
     """
     Attributes:
     
@@ -132,13 +190,19 @@ class f_oneway(_vsl.data.dataset):
         
         properties = Y.properties.copy()
         properties['colorspace'] = _vsl.colorspaces.get_sig()
-        P = _vsl.data.ndvar(dims, Ps, properties=properties, name=X.name, info=test_name)
-        super(f_oneway, self).__init__(P, name="anova")
-        self.p = [P]
+        p = _vsl.data.ndvar(dims, Ps, properties=properties, name=X.name, info=test_name)
+
+        # create dataset
+        super(f_oneway, self).__init__(name="anova")
+        self['p'] = p
+    
+    @property
+    def all(self):
+        return self['p']
 
 
 
-class anova(_vsl.data.dataset):
+class anova(test_result):
     """
     Attributes:
     
@@ -146,24 +210,33 @@ class anova(_vsl.data.dataset):
         p-map for each effect
     
     """
-    def __init__(self, Y='MEG', X='condition', dataset=None, v=False):
+    def __init__(self, Y='MEG', X='condition', ds=None, info={}, v=False):
         if isinstance(Y, basestring):
-            Y = dataset[Y]
+            Y = ds[Y]
         if isinstance(X, basestring):
-            X = dataset[X]
+            X = ds[X]
         
-        super(anova, self).__init__(name="anova")
-
         fitter = _glm.lm_fitter(X)
         
-        self.allps = []
+        info['effect_names'] = effect_names = []
+        super(anova, self).__init__(name="anova", info=info)
         properties = Y.properties.copy()
         properties['colorspace'] = _vsl.colorspaces.get_sig()
         # Y.data:  epoch X [time X sensor X freq]
         for name, Fs, Ps in fitter.map(Y.x.T, v=v):
+            effect_names.append(name)
             P = _vsl.data.ndvar(Y.dims, Ps.T[None], properties=properties, name=name, info=name)
-            self.add(P)
-            self.allps.append(P)
+            self[name+'_p'] = P
+    
+    @property
+    def all(self):
+        epochs = []
+        for name in self.info['effect_names']:
+            epochs.append(self[name+'_p'])
+        
+        return epochs
+
+
 
 
 
