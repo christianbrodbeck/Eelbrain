@@ -99,8 +99,16 @@ class ttest(test_result):
             c2_mean = ct.data[c2].summary(name=c2)
             data = [c1_mean, c2_mean]
             diff = c1_mean - c2_mean
-            T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c2].x, axis=0)
-            test_name = 'Independent Samples $t$-Test'
+            if match:
+                if not ct.within[(c1, c2)]:
+                    err = ("match kwarg: Conditions have different values on"
+                           " <%r>" % match.name)
+                    raise ValueError(err)
+                T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c2].x, axis=0)
+                test_name = 'Related Samples $t$-Test'
+            else:
+                T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c2].x, axis=0)
+                test_name = 'Independent Samples $t$-Test'
         elif np.isscalar(c2):
             c2_mean = None
             data = [c1_mean]
