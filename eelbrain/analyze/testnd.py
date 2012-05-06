@@ -48,6 +48,10 @@ class test_result(_vsl.data.dataset):
             out[k] = v.subdata(**kwargs)
         
         return out
+    
+    @property
+    def _default_plot_obj(self):
+        return self.all
 
 
 class test_result_subdata_helper(test_result):
