@@ -86,7 +86,7 @@ Consequences for Plotting
     - in case a submitted ndvar contains more than one case, the plotting 
       function calls 
       
-        - ndvar.get_summary()        (in _base.unpack_epochs_arg)
+        - ndvar.summary()        (in _base.unpack_epochs_arg)
         - ndvar.get_epoch_data()     (in the immediate plotting function)
     
     - helper object: dataset['V1', V2'] could simply return a dataset instance
@@ -1479,7 +1479,7 @@ class ndvar(object):
         "Returns a tuple with the requested dimension vars"
         return tuple(self.get_dim(name) for name in names)
     
-    def get_summary(self, dim='epoch', func=None, name='{func}({name})'):
+    def summary(self, dim='epoch', func=None, name='{func}({name})'):
         """
         Returns a new ndvar with dimension ``dim`` collapsed using ``func``. 
         Normally the statistic used is :func:`numpy.mean`, but it
@@ -1522,7 +1522,7 @@ class ndvar(object):
         return epoch
     
     def mean(self, name="mean({name})"):
-        return self.get_summary(func=np.mean, name=name)
+        return self.summary(func=np.mean, name=name)
     
     def subdata(self, **kwargs):
         """returns an ndvar object with a subset of the current ndvar's data.
@@ -1962,13 +1962,13 @@ class dataset(collections.OrderedDict):
                 
         return ds
     
-    def get_summary(self, func=None, name='{func}({name})'):
+    def summary(self, func=None, name='{func}({name})'):
         """
-        -> self[self.default_DV].get_summary(func=func, name=name) 
+        -> self[self.default_DV].summary(func=func, name=name) 
         (convenience function for submitting conditon datasets to plotting)
         
         """
-        return self[self.default_DV].get_summary(func=func, name=name)
+        return self[self.default_DV].summary(func=func, name=name)
     
     def itercases(self, start=None, stop=None):
         "iterate through cases (each case represented as a dict)"

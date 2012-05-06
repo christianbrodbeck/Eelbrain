@@ -41,7 +41,7 @@ figs = [] # store callback figures (they need to be preserved)
 
 def unpack_epochs_arg(ndvars, dataset=None, levels=1):
     """
-    Returns a nested list of epochs (through the get_summary method)
+    Returns a nested list of epochs (through the summary method)
     """
     ndvars = getattr(ndvars, '_default_plot_obj', ndvars)
     if not isinstance(ndvars, (tuple, list)):
@@ -55,7 +55,7 @@ def unpack_epochs_arg(ndvars, dataset=None, levels=1):
             if isinstance(ndvar, basestring):
                 ndvar = dataset[ndvar]
             if len(ndvar) > 1:
-                ndvar = ndvar.get_summary()
+                ndvar = ndvar.summary()
             out.append(ndvar)
         return out
 

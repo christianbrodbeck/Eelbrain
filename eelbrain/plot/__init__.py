@@ -42,7 +42,7 @@ Plot function argument names show the kind of requires input:
     a single epoch/list of layers
 
 if an ndvar is provided for an ``epoch`` argument, it is converted through 
-the ndvar.get_summary() method
+the ndvar.summary() method
 
 
 Plotting with Datasets

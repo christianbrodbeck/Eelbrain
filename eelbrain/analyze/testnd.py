@@ -94,9 +94,9 @@ class ttest(test_result):
         
         ct = _vsl.structure.celltable(Y, X, match, sub, ds=ds)
         
-        c1_mean = ct.data[c1].get_summary(name=c1)
+        c1_mean = ct.data[c1].summary(name=c1)
         if isinstance(c2, basestring):
-            c2_mean = ct.data[c2].get_summary(name=c2)
+            c2_mean = ct.data[c2].summary(name=c2)
             data = [c1_mean, c2_mean]
             diff = c1_mean - c2_mean
             T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c2].x, axis=0)
