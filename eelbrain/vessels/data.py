@@ -1760,7 +1760,8 @@ class dataset(collections.OrderedDict):
             
             # coerce item to data-object
             if isdataobject(item):
-                item.name = name
+                if not item.name:
+                    item.name = name
             else:
                 try:
                     if all(np.isreal(item)):
