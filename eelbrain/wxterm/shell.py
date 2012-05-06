@@ -889,7 +889,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
             dlg.ShowModal()
     
     def OnFileSave(self, event):
-        logging.warning("shell.OnFileSave()")
+        logging.debug("shell.OnFileSave()")
         win = self.get_active_window()
         if win is self:
             self.bufferSave()
@@ -897,13 +897,12 @@ class ShellFrame(wx.py.shell.ShellFrame):
             event.Skip()
     
     def OnFileSaveAs(self, event):
-        logging.warning("shell.OnFileSaveAs()")
+        logging.debug("shell.OnFileSaveAs()")
         win = self.get_active_window()
         if win is self:
             self.bufferSaveAs()
         else:
             event.skip()
-            
     
     def OnFindPath(self, event=None):
         filenames = ui.ask_file(wildcard='', mult=True)

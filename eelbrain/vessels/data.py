@@ -104,7 +104,7 @@ Open Questions
   - make datasets ordered? (collections.OrderedDict subclass)
   
 - plotting with datastes (using ds.get_subsets_by()) requires that the 
-  dataset offer a get_summary method which uses the default_DV attribute.
+  dataset offer a summary method which uses the default_DV attribute.
   Do I want to support that?? Alternatives?
   
    - at least relegate the default_DV to the dataset's info dict
@@ -1525,7 +1525,8 @@ class ndvar(object):
         return self.summary(func=np.mean, name=name)
     
     def subdata(self, **kwargs):
-        """returns an ndvar object with a subset of the current ndvar's data.
+        """
+        returns an ndvar object with a subset of the current ndvar's data.
         The slice is specified using kwargs, with dimensions as keywords and
         indexes as values, e.g.::
         
