@@ -21,7 +21,8 @@ import eelbrain.vessels.data as _data
 __hide__ = ['plt', 'division']
 
 
-def stat(var='Y', X=None, main=np.mean, dev=scipy.stats.sem, ds=None,
+def stat(Y='Y', X=None, main=np.mean, dev=scipy.stats.sem, 
+         sub=None, ds=None,
          figsize=(6,3), dpi=90, legend='upper right', title=True,
          xdim='time', cm=_cm.jet):
     """
@@ -57,14 +58,18 @@ def stat(var='Y', X=None, main=np.mean, dev=scipy.stats.sem, ds=None,
         axes title; if ``True``, use ``var.name``
     
     """
-    if isinstance(var, basestring):
-        var = ds[var]
+    if isinstance(Y, basestring):
+        Y = ds[Y]
     if title is True:
-        title = var.name
+        title = Y.name
     if isinstance(X, basestring):
         X = ds[X]
-        
+    if isinstance(sub, str):
+        sub = ds[sub]
     
+    if sub is not None:
+        Y = Y[sub]
+        X = X[sub]
     
     fig = plt.figure(figsize=figsize, dpi=dpi)
     top = .9 # - bool(title) * .1
@@ -75,10 +80,10 @@ def stat(var='Y', X=None, main=np.mean, dev=scipy.stats.sem, ds=None,
     if X:
         X = _data.ascategorial(X)
         values = X.values()
-        groups = [var[X==v] for v in values]
+        groups = [Y[X==v] for v in values]
     else:
         values = [None]
-        groups = [var]
+        groups = [Y]
     
     h = []
     legend_h = []
@@ -92,7 +97,7 @@ def stat(var='Y', X=None, main=np.mean, dev=scipy.stats.sem, ds=None,
         legend_h.append(_h['main'][0])
         legend_lbl.append(lbl)
     
-    dim = var.get_dim(xdim)
+    dim = Y.get_dim(xdim)
     if title:
         ax.set_title(title)
     ax.set_xlabel(dim.name)
@@ -118,7 +123,7 @@ def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwarg
         main_kwargs['color'] = color
         kwargs['alpha'] = .3
         kwargs['color'] = color
-    if isinstance(main, float):
+    if np.isscalar(main) and (main <= 1):
         main_kwargs['alpha'] = main
         main = 'all'
     
