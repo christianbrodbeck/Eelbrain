@@ -213,7 +213,7 @@ class CanvasFrame(wx.Frame):
     
     def OnAttach(self, event):
         items = {'p': self}
-        self.Parent.attach(items, _internal_call=True)
+        self.Parent.attach(items, detach=False, _internal_call=True)
         self.Parent.Raise()
     
     def OnFileSave(self, event):
