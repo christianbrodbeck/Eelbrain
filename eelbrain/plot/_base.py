@@ -28,6 +28,7 @@ import matplotlib.pyplot as _plt
 
 from eelbrain import fmtxt
 from eelbrain import vessels as _vsl
+from eelbrain.vessels import data as _dt
 
 
 
@@ -39,7 +40,7 @@ title_kwargs = {'size': 18,
 figs = [] # store callback figures (they need to be preserved)
 
 
-def unpack_epochs_arg(ndvars, dataset=None, levels=1):
+def unpack_epochs_arg(ndvars, ndim, dataset=None, levels=1):
     """
     Returns a nested list of epochs (through the summary method)
     """
@@ -48,14 +49,23 @@ def unpack_epochs_arg(ndvars, dataset=None, levels=1):
         ndvars = [ndvars]
 
     if levels > 0:
-        return [unpack_epochs_arg(v, dataset, levels-1) for v in ndvars]
+        return [unpack_epochs_arg(v, ndim, dataset, levels-1) for v in ndvars]
     else:
         out = []
         for ndvar in ndvars:
             if isinstance(ndvar, basestring):
                 ndvar = dataset[ndvar]
-            if len(ndvar) > 1:
-                ndvar = ndvar.summary()
+            
+            if ndvar.ndim == ndim:
+                if len(ndvar) > 1:
+                    ndvar = ndvar.summary()
+                    
+#                pass
+#            elif ndvar.ndim == ndim + 1:
+            else:
+                err = ("Plot requires ndim=%i; ndvar.ndim==%i" % 
+                       (ndim, ndvar.ndim))
+                raise _dt.DimensionMismatchError(err)
             out.append(ndvar)
         return out
 

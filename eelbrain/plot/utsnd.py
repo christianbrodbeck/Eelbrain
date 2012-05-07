@@ -17,92 +17,146 @@ uts:
 from __future__ import division
 
 import logging
-import os
-from copy import deepcopy
 
 import numpy as np
 import scipy as sp
 #import matplotlib as mpl
-import matplotlib.pyplot as P
+import matplotlib.pyplot as plt
 
 import eelbrain.fmtxt as fmtxt
-from eelbrain.analyze.plot import _simple_fig
+import eelbrain.vessels.data as _dta
 
 from eelbrain.utils import _basic_ops_
 from eelbrain.vessels import colorspaces as _cs
-#from eelbrain.signal_processing import segment_ops
-from eelbrain.analyze.testnd import test as _test
 
 import _base
 
 
+__hide__ = ['plt']
 
 
-def array(segments, sensors=None, plotAllSubjects=False, plotCbar=True, test='nonparametric', p=.05, **kwargs):
+# MARK: im arrays
+def _plt_im_array(ax, epoch, dims=('time', 'sensor'), colorspace=None, 
+                  **kwargs):
+    handles = []
+    colorspace = _base.read_cs_arg(epoch, colorspace)
+    data = epoch.get_data(dims)
+    if data.ndim > 2:
+#        print data.shape
+        assert data.shape[0] == 1
+        data = data[0]
+    
+    if colorspace.cmap:
+        im_kwargs = kwargs.copy()
+        im_kwargs.update(colorspace.get_imkwargs())
+        h = ax.imshow(data, origin='lower', **im_kwargs)
+        handles.append(h)
+    
+    if colorspace.contours:
+        c_kwargs = kwargs.copy()
+        c_kwargs.update(colorspace.get_contour_kwargs())
+        h = ax.contour(data, **c_kwargs)
+        handles.append(h)
+    
+    return handles
+    
+    
+
+def _ax_im_array(ax, layers, x='time', #vmax=None,
+                 xlabel=True, ylabel=True, title=None, tick_spacing=.5):
     """
-    NOT MAINTAINED
-    plots tv plots to a rectangular grid instead of topographic spacing
-     
-    kwargs:
-    sensors: List of sensor IDs
-    test='nonparametric', None if len(segments) > 2
+    plots segment data as im
+    
+    define a colorspace by supplying one of those kwargs: ``colorspace`` OR 
+    ``p`` OR ``vmax``
     
     """
-    P.clf()
-    # prepare args
-    segments = _basic_ops_.toTuple(segments)
-    kwargs['test']=test
-    if sensors==None:
-        sensors = range(len(segments[0].sensors))
+    handles = []
+    epoch = layers[0]
+    
+    xdim = epoch.get_dim(x)
+    if epoch.ndim == 1: # epoch as dim
+        y = 'epoch'
+    elif epoch.ndim == 2:
+        xdim_i = epoch.dimnames.index(x)
+        ydim_i = {1:0, 0:1}[xdim_i]
+        y = epoch.dimnames[ydim_i]
     else:
-        sensors = _basic_ops_.toTuple(sensors)
-    statsColorspace = _cs.get_sig(p)
-    # determine plotting grid
-    nPlots = len(sensors) * (1+plotAllSubjects) + plotCbar
-    nColumnsEst = np.sqrt( nPlots ) 
-    nColumns    = int(nColumnsEst)
-    if nColumns != nColumnsEst:
-        nColumns += 1
-    if nColumns % (1+plotAllSubjects) != 0:
-        nColumns += 1
-    nRows = int( nPlots / nColumns ) + (1- ( nPlots % nColumns == 0 ))
-    logging.debug("plotting electrodes %s, fig shape (%s, %s)"%(str(sensors), nRows, nColumns))
-#    fig = P.gcf()
-    P.subplots_adjust(left=.05, bottom=.075, right=.99, top=.94, wspace=.25, hspace=.3)
-    #grid = AxesGrid(    fig, 111,
-    #                    nrows_ncols = (nRows, nColumns),
-    #                    axes_pad = .01 )
+        raise ValueError("Too many dimensions in input")
+    
+    ydim = epoch.get_dim(y)
+    if y == 'sensor':
+        ydim = _dta.var(np.arange(len(ydim)), y)
+    
+    map_kwargs = {'extent': [xdim[0], xdim[-1], ydim[0], ydim[-1]],
+                  'aspect': 'auto'}
+    
     # plot
-    kwargs['labelNames']=True
-    for i,sensor in enumerate(sensors):
-        kwargs['lastRow'] = ( i > (nRows-1) * nColumns)
-        if plotAllSubjects:
-            #axes = grid[ (i+1)*2 ] # 
-            axes = P.subplot(nRows, nColumns, (i+1) * 2 -1 )
-            kwargs["plotType"]='mean'
-            _ax_utsStats(segments, sensor, statsColorspace=statsColorspace, **kwargs)
-            axes.set_title( segments[0].sensors[sensor].name )
-            #axes = grid[ (i+1)*2+1 ] #
-            axes = P.subplot(nRows, nColumns, (i+1) * (1+plotAllSubjects) )
-            kwargs["plotType"]='all'
-            _ax_utsStats(segments, sensor, statsColorspace=statsColorspace, **kwargs)
-            axes.set_title( ', '.join(( segments[0].sensors[sensor].name, "All Subjects")) )
+    for l in layers:
+        h = _plt_im_array(ax, l, dims=(y, x), **map_kwargs)
+        handles.append(h)
+    
+    if xlabel:
+        if xlabel is True:
+            xlabel = xdim.name
+        ax.set_xlabel(xlabel)
+    
+    if ylabel:
+        if ylabel is True:
+            ylabel = ydim.name
+        ax.set_ylabel(ylabel)
+    
+    #ticks
+    tickstart = int((-xdim[0] - 1e-3) / tick_spacing)
+    ticklabels = np.r_[-tickstart * tick_spacing :  \
+                       xdim[-1] + 1e-3 : tick_spacing]
+    ax.xaxis.set_ticks(ticklabels)
+    ax.x_fmt = "t = %.3f s"
+    
+    #title
+    if title is None:
+        if plt.rcParams['text.usetex']:
+            title = fmtxt.texify(epoch.name)
         else:
-            #axes = grid[i] #
-            axes = P.subplot(nRows, nColumns, (i+1) )
-            kwargs["plotType"]='mean'
-            _ax_utsStats(segments, sensor, statsColorspace=statsColorspace, 
-                            firstColumn=( i%nColumns==0 ),
-                            **kwargs)
-            axes.set_title( segments[0].sensors[sensor].name )
-        kwargs['labelNames']=False
-    if test!=None and plotCbar:
-        #axes = grid[-1] #
-        axes = P.subplot(nRows, nColumns, nRows*nColumns)
-        pos = axes.get_position()
-        newPos = [pos.xmin, pos.ymin+pos.width*.3, pos.width, pos.width*.15]
-        axes.set_position(newPos)
-        statsColorspace.toAxes_(axes)
+            title = epoch.name
+    ax.set_title(title)
+    
+    return handles
+
+
+def array(epochs, xlabel=True, ylabel=True, 
+          w=4, h=3, dpi=50):
+    """
+    plots uts data to a rectangular grid. I data has only 1 dimension, the
+    x-axis defines epochs.
+     
+    **Arguments:**
+    
+    h : scalar
+        plot height in inches
+    w : scalar
+        plot width in inches
+    
+    """
+    epochs = _base.unpack_epochs_arg(epochs, 2)
+    
+    n_plots = len(epochs)
+    n = round(np.sqrt(n_plots))
+    figsize = (n*w, n*h)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
+    plt.subplots_adjust(.1, .1, .95, .95, .1, .4)
+    
+    for i, layers in enumerate(epochs):
+        ax = fig.add_subplot(n, n, i+1)
+        
+        _ylabel = ylabel if i==1 else None
+        _xlabel = xlabel if i==n_plots-1 else None
+        
+        _ax_im_array(ax, layers, xlabel=_xlabel, ylabel=ylabel)
+    
+    fig.show()
+    return fig
+
 
 
 def corr(stats, var, p=[.05],
@@ -130,27 +184,27 @@ def corr(stats, var, p=[.05],
     Ts = sp.stats.t.isf(Ps, df)
     R_thresholds = Ts / np.sqrt(df + Ts**2)
     
-    P.figure(figsize=figsize)
-    ax = P.axes(axrect)
+    plt.figure(figsize=figsize)
+    ax = plt.axes(axrect)
     legend_names = []
     legend_handles = []
     # corr
     T = stats[0].t
     for c in corr:
         R = c.param
-        handle = P.plot(T, R, label=c.name)
+        handle = plt.plot(T, R, label=c.name)
         legend_names.append(fmtxt.texify(c.name))
         legend_handles.append(handle)
     # thresholds
-    P.axhline(0, c='k')
+    plt.axhline(0, c='k')
     for p in R_thresholds:
-        P.axhline(p)
-        P.axhline(-p)
+        plt.axhline(p)
+        plt.axhline(-p)
     # Figure stuff
-    P.ylabel('r')
-    P.xlabel('time')
-    P.suptitle("Correlation with {v}".format(v=fmtxt.texify(var.name)), fontsize=16)
-    P.figlegend(legend_handles, legend_names, 'lower center', ncol=legend_ncol)
+    plt.ylabel('r')
+    plt.xlabel('time')
+    plt.suptitle("Correlation with {v}".format(v=fmtxt.texify(var.name)), fontsize=16)
+    plt.figlegend(legend_handles, legend_names, 'lower center', ncol=legend_ncol)
 
 
 
@@ -158,7 +212,7 @@ def corr(stats, var, p=[.05],
 def mark_tw(tstart, tend, y=0, c='r', ax=None):
     "mark a time window in an existing axes object"
     if ax == None:
-        ax = P.gca()
+        ax = plt.gca()
     ylim = ax.get_ylim()
     xlim = ax.get_xlim()
     
@@ -176,17 +230,17 @@ def _t_axes(rect, xmin=-.5, xmax=1., vmax=1.5, vbar=1., markevery=.5, ticks=Fals
     vbar: extent of the vertical bar at the origin (+vbar to -vbar)
     
     """
-    ax = P.axes(rect, frameon=False)
+    ax = plt.axes(rect, frameon=False)
     ax.set_axis_off()
     
     # vertical bar
-    P.plot([0,0], [-vbar,vbar], 'k', 
+    plt.plot([0,0], [-vbar,vbar], 'k', 
            marker='_', mec='k', mew=1, mfc='k')
     
     # horizontal bar
     xdata = np.arange(-markevery, xmax + 1e-5, markevery)
     xdata[0] = xmin
-    P.plot(xdata, xdata*0, 'k', marker='|', mec='k', mew=1, mfc='k')
+    plt.plot(xdata, xdata*0, 'k', marker='|', mec='k', mew=1, mfc='k')
     logging.debug("xdata: %s"%str(xdata))
     
     # labels
@@ -225,7 +279,7 @@ def _axgrid_sensors(sensorLocs2d, figsize=_base.defaults['figsize'],
     relative_footer = footer / float(y_size)
     relative_header = header / float(y_size)
     logging.debug(" _axgrid_sensors determined figsize %s x %s"%(x_size, y_size))
-    fig = P.figure(figsize=(x_size, y_size))
+    fig = plt.figure(figsize=(x_size, y_size))
     # determine axes locations
     locs = sensorLocs2d
     # normalize range to 0--1
@@ -390,15 +444,15 @@ def butterfly(epochs, sensors=None, ylim=None, size=(4, 2), dpi=90,
         ``None`` leaves mpl's default limits unaffected)
     
     """
-    epochs = _base.unpack_epochs_arg(epochs)
+    epochs = _base.unpack_epochs_arg(epochs, 2)
     
     n_plots = len(epochs)
     figsize = (size[0], n_plots * size[1])
-    fig = P.figure(figsize=figsize, dpi=dpi)
-    P.subplots_adjust(.1, .1, .95, .95, .1, .4)
+    fig = plt.figure(figsize=figsize, dpi=dpi)
+    plt.subplots_adjust(.1, .1, .95, .95, .1, .4)
     # create axes
 #    if tax:
-#        fig = P.figure()
+#        fig = plt.figure()
 #        x0 = .07 + bool(ylabel)*.05
 #        x1 = .97 - x0
 #        y0 = .15 + bool(xlabel)*.05
@@ -448,7 +502,7 @@ def _ax_sensor(segments, sensor, labelVar=None, **kwargs):
             except:
                 label = "no name"
             print "plotting segment", s
-            plots.append( P.plot(s[:,sensor], label=label, **kwargs) )
+            plots.append(plt.plot(s[:,sensor], label=label, **kwargs))
         return plots
     elif segments[0].ndim == 2:
         raise NotImplementedError( "ndim 2 not implemented" )

@@ -35,11 +35,61 @@ import wx
 
 from eelbrain.vessels import colorspaces as cs
 from eelbrain.wxutils import mpl_canvas
+
 import _base
-import uts
+import utsnd
+import sensors as _plt_sensors
 
 
-__hide__ = ['cs', 'test', 'uts']
+__hide__ = ['cs', 'test', 'utsnd']
+
+
+
+class topomap(mpl_canvas.CanvasFrame):
+    def __init__(self, epochs, sensors=True, proj='default',
+                 size=5, dpi=100, title="plot.topomap", 
+                 res=100, interpolation='nearest'):
+        """
+        Plots a single topogeraphy.
+        
+        **parameters:**
+        
+        sensors : bool | 'id' | 'name'
+        
+        """
+        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
+        
+        # create figure
+        n_plots = len(epochs)
+        x_size = size * n_plots
+        y_size = size
+        figsize = (x_size, y_size)
+        parent = wx.GetApp().shell
+        
+        super(topomap, self).__init__(parent, title, figsize=figsize, dpi=dpi)
+        
+        # plot epochs (x/y are in figure coordinates)
+        frame = .05
+        
+        self.topo_kwargs = {'res': res,
+                            'interpolation': interpolation}
+        
+        self.axes = []
+        for i, layers in enumerate(epochs):
+            # axes coordinates
+            left = (i + frame) / n_plots
+            bottom = frame
+            width = (1 - 2 * frame) / n_plots
+            height = 1 - 3 * frame
+            
+            ax_rect = [left, bottom, width, height]
+            ax = self.figure.add_axes(ax_rect)
+            ax.ID = i
+            self.axes.append(ax)
+            
+            _ax_topomap(ax, layers, title=True, sensors=sensors, proj=proj)
+        
+        self.Show()
 
 
 
@@ -61,7 +111,7 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
             multiplier for the width of butterfly plots based on their height
         
         """
-        epochs = self.epochs = _base.unpack_epochs_arg(epochs)
+        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 2)
         
         if title is True:
             title = "plot.topo.butterfly"
@@ -294,27 +344,41 @@ def _plt_topomap(ax, epoch, proj='default', res=100,
 
 
 
-def _ax_topomap(ax, layers, sensors=None, proj='default', **im_kwargs):
+def _ax_topomap(ax, layers, title=True, sensors=None, proj='default', **im_kwargs):
     """
     sensors : 
         sensors to plot: list of IDs, or True/'all'
     """
     ax.set_axis_off()
     handles = {}
-    for l in layers:
-        handles[l.name] = _plt_topomap(ax, l, **im_kwargs)
+    for layer in layers:
+        handles[layer.name] = _plt_topomap(ax, layer, **im_kwargs)
+        if title is True:
+            title = getattr(layer, 'name', True)
     
     # plot sensors
     if sensors:
-        epoch = layers[0]
-        loc2d = epoch.sensor.getLocs2d(proj=proj)
-        cs = epoch.properties['colorspace']
-        if np.iterable(sensors):
-            loc2d = loc2d[sensors]
-        h = ax.scatter(loc2d[:,0], loc2d[:,1], 
-                       color=cs.sensorColor,
-                       marker=cs.sensorMarker, s=6, linewidth=.25)
-        handles['sensors'] = h
+        sensor_net = layers[0].sensor
+        _plt_sensors._plt_map2d(ax, sensor_net, proj=proj)
+        
+        if isinstance(sensors, str):
+            _plt_sensors._plt_map2d_labels(ax, sensor_net, proj=proj, text=sensors)        
+        
+        
+#        loc2d = epoch.sensor.getLocs2d(proj=proj)
+#        if np.iterable(sensors):
+#            loc2d = loc2d[sensors]
+#
+#        epoch = layers[0]
+#        cs = epoch.properties['colorspace']
+#        
+#        h = ax.scatter(loc2d[:,0], loc2d[:,1], 
+#                       color=cs.sensorColor,
+#                       marker=cs.sensorMarker, s=6, linewidth=.25)
+#        handles['sensors'] = h
+    
+    if isinstance(title, str):
+        handles['title'] = ax.set_title(title)
     
     return handles
 
@@ -364,7 +428,7 @@ class _Window_Topo:
             
             self.ax.cla()
             layers = [l.subdata(time=t) for l in self.layers]
-            _ax_topomap(self.ax, layers)
+            _ax_topomap(self.ax, layers, title=False)
     
     def clear(self):
         self.ax.cla()
@@ -380,7 +444,7 @@ class _Window_Topo:
 
 
 class array(mpl_canvas.CanvasFrame):
-    def __init__(self, epochs, title=None, height=3, width=2.5, ntopo=3, dpi=90,
+    def __init__(self, epochs, title=None, height=3, width=2.5, ntopo=3, dpi=100,
                  ylim=None, t=[]):
         """
         Interface for exploring channel by sample plots by extracting topo-plots
@@ -391,8 +455,13 @@ class array(mpl_canvas.CanvasFrame):
         ntopo=None  number of topoplots per segment (None -> 6 / nplots)
         
         """
+        if isinstance(title, basestring):
+            dataname = title
+        else: 
+            dataname = getattr(epochs, 'name', '')
+        
         # convenience for single segment
-        epochs = _base.unpack_epochs_arg(epochs)
+        epochs = _base.unpack_epochs_arg(epochs, 2)
         
         # figure properties
         n_epochs = len(epochs)
@@ -410,7 +479,7 @@ class array(mpl_canvas.CanvasFrame):
         if isinstance(title, basestring):
             frame_title = title
         else:
-            frame_title = "plot.topo.array"
+            frame_title = "plot.topo.array: %r" % dataname
         mpl_canvas.CanvasFrame.__init__(self, parent, frame_title, dpi=dpi, figsize=figsize)
         fig = self.figure
         
@@ -435,7 +504,7 @@ class array(mpl_canvas.CanvasFrame):
             self.main_axes.append(ax)
             ax.ID = i
             ax.type = 'main'
-            _base._ax_im_array(ax, layers)
+            utsnd._ax_im_array(ax, layers)
             if i > 0:
                 ax.yaxis.set_visible(False)
         
