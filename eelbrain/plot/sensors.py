@@ -49,13 +49,14 @@ def _ax_map2d(ax, sensor_net, proj='default',
     ax.set_frame_on(False)
     ax.set_axis_off()
     
-    _plt_map2d(ax, sensor_net, proj=proj, kwargs=kwargs)
+    h = _plt_map2d(ax, sensor_net, proj=proj, kwargs=kwargs)
     
     ax.set_xlim(-frame, 1+frame)
+    return h
     
 
 
-def _plt_map2d(ax, sensor_net, proj='default',
+def _plt_map2d(ax, sensor_net, proj='default', ROI=None,
                kwargs=dict(
                            marker='x', # symbol
                            color='b', # mpl plot kwargs ...
@@ -65,7 +66,11 @@ def _plt_map2d(ax, sensor_net, proj='default',
                            ),
                ):
     locs = sensor_net.getLocs2d(proj=proj)
-    ax.plot(locs[:,0], locs[:,1], **kwargs)
+    if ROI is not None:
+        locs = locs[ROI]
+    
+    h = ax.plot(locs[:,0], locs[:,1], **kwargs)
+    return h
 
 
 
@@ -104,8 +109,8 @@ def _plt_map2d_labels(ax, sensor_net, proj='default',
 
 
 class map2d(mpl_canvas.CanvasFrame):
-    def __init__(self, sensor_net, labels='id', proj='default',
-                 figsize=(8,8), dpi=100, frame=.05, **kwargs):
+    def __init__(self, sensor_net, labels='id', proj='default', ROI=None,
+                 size=6, dpi=100, frame=.05, **kwargs):
         """
         **Parameters:**
         
@@ -123,7 +128,7 @@ class map2d(mpl_canvas.CanvasFrame):
         parent = wx.GetApp().shell
         title = "Sensor Net: %s" % getattr(sensor_net, 'name', '')
         super(map2d, self).__init__(parent, title=title, 
-                                    figsize=figsize, dpi=dpi)
+                                    figsize=(size, size), dpi=dpi)
         
         # in case sensor_net parent is submitted
         if hasattr(sensor_net, 'sensors'):
@@ -134,11 +139,14 @@ class map2d(mpl_canvas.CanvasFrame):
         # store args
         self._sensor_net = sensor_net
         self._proj = proj
+        self._ROIs = []
         
         self.figure.set_facecolor('w')
         ax = self.figure.add_axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
-        _ax_map2d(ax, sensor_net, proj=proj, **kwargs)
-        self._ax = ax
+        self.axes = ax
+        self._marker_h = _ax_map2d(ax, sensor_net, proj=proj, **kwargs)
+        if ROI is not None:
+            self.plot_ROI(ROI)
         
         self._label_h = None
         if labels:
@@ -172,12 +180,29 @@ class map2d(mpl_canvas.CanvasFrame):
                 h.remove()
         
         if labels:
-            h = _plt_map2d_labels(self._ax, self._sensor_net, proj=self._proj,
+            h = _plt_map2d_labels(self.axes, self._sensor_net, proj=self._proj,
                                   text=labels)
         else:
             h = None
         self._label_h = h
         self.canvas.draw()
+    
+    def plot_ROI(self, ROI, kwargs=dict(marker='o', # symbol
+                                        color='r', # mpl plot kwargs ...
+                                        ms=5, # marker size
+                                        markeredgewidth=.9,
+                                        ls='',
+                                        )):
+        h = _plt_map2d(self.axes, self._sensor_net, proj=self._proj, ROI=ROI, kwargs=kwargs)
+        self._ROIs.extend(h)
+        self.canvas.draw()
+    
+    def remove_ROIs(self):
+        while len(self._ROIs) > 0:
+            h = self._ROIs.pop(0)
+            h.remove()
+        self.canvas.draw()
+        
 
 
 
