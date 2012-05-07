@@ -70,6 +70,7 @@ def stat(var='Y', X=None, main=np.mean, dev=scipy.stats.sem, ds=None,
     top = .9 # - bool(title) * .1
     plt.subplots_adjust(.1, .1, .95, top, .1, .4)
     ax = plt.axes()
+    ax.x_fmt = "t = %.3f s"
     
     if X:
         X = _data.ascategorial(X)

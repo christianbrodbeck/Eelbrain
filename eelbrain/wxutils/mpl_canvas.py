@@ -238,9 +238,13 @@ class CanvasFrame(wx.Frame):
         "update the status bar for mouse movement"
         ax = event.inaxes
         if ax:
+            y_fmt = getattr(ax, 'y_fmt', 'y = %.3g')
+            x_fmt = getattr(ax, 'x_fmt', 'x = %.3g')
             # update status bar
             sb = self.GetStatusBar()
-            txt = "t = %.3f s" % event.xdata
+            y_txt = y_fmt % event.ydata
+            x_txt = x_fmt % event.xdata
+            txt = ',  '.join((x_txt, y_txt))
             sb.SetStatusText(txt, 0)
     
     def OnShowFullScreen(self, event):
