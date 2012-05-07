@@ -13,7 +13,7 @@ import os
 
 import numpy as np
 
-__all__ = ['tsv']
+__all__ = ['tsv', 'var', 'fiff_add_eyetracker']
 unavailable = []
 try:
     import mne
@@ -28,6 +28,7 @@ import data as _data
 import colorspaces as _cs
 import sensors
 from eelbrain import ui
+from eelbrain.utils import subp as _subp
 
 
 
@@ -120,6 +121,62 @@ def fiff_events(source_path=None, name=None, merge=-1, baseline=0):
     info = {'source': source_path,
             'samplingrate': raw.info['sfreq'][0]}
     return _data.dataset(event, istart, name=name, info=info)
+
+
+def fiff_add_eyetracker(ds, tstart=0, tstop=.6, edf=None, ID='eventID',
+                        target='accept', reject=False, accept=None):
+    """
+    Load eye-tracker data from an edf file and mark epochs based on overlap 
+    with blinks and saccades. 
+    
+    dataset : dataset
+        dataset that contains the data to work with.
+    start : scalar
+        start of the time window relevant for rejection. 
+    stop : scalar
+        stop of the time window relevant for rejection.
+    edf : str(path) | None
+        path to the edf file; if None, a file-open dialogue will be displayed.
+    reject : 
+        value that is assigned to epochs that should be rejected based on 
+        the eye-tracker data.
+    accept :
+        value that is assigned to epochs that can be accepted based on 
+        the eye-tracker data.
+    
+    """
+    if edf is None:
+        edf = ui.ask_file("Pick the corresponding edf file", "Pick the edf file",
+                          ext=[('edf', 'eyelink data format')])
+    
+    if isinstance(target, str):
+        if target not in ds:
+            ds[target] = _data.var(np.ones(ds.N, dtype=np.bool_))
+        target = ds[target]
+    
+    edf = _subp.edf_file(edf)
+    
+    # test whether events match up
+    ID_ds = ds[ID]
+    ID_edf = edf.triggers['ID']
+    if len(ID_ds) != len(ID_edf):
+        lens = (len(ID_ds), len(ID_edf))
+        mm = min(lens)
+        for i in xrange(mm):
+            if ID_ds[i] != ID_edf[i]:
+                mm = i
+                break
+        
+        args = lens + (mm,)
+        err = ("dataset containes different number of events from edf file "
+               "(%i vs %i); first mismatch at %i." % args)
+        raise ValueError(err)
+    check = (ID_ds == ID_edf)
+    if not all(check):
+        err = "Event ID mismatch: %s" % np.where(check==False)[0]
+        raise ValueError(err)
+    
+    target.x *= edf.get_acceptable(tstart, tstop)
 
 
 def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
@@ -327,3 +384,23 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None):
         ds.add(f)
         
     return ds
+
+
+def var(path=None, name=None, isbool=None):
+    if path is None:
+        path = ui.ask_file("Select var File", "()")
+    
+    if isbool is None:
+        FILE = open(path)
+        line = FILE.readline()
+        FILE.close()
+        is_bool = any(line.startswith(v) for v in ['True', 'False'])
+    
+    if is_bool:
+        x = np.genfromtxt(path, dtype=bool)
+    else:
+        x = np.loadtxt(path)
+    
+    return _data.var(x, name=None)
+    
+        
