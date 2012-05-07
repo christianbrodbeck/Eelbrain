@@ -102,6 +102,8 @@ class celltable:
             Y = ds[Y]
         if isinstance(X, basestring):
             X = ds[X]
+        elif X is None:
+            X = _data.factor([None]*len(Y), name='X')
         if isinstance(match, basestring):
             match = ds[match]
         if isinstance(sub, basestring):
@@ -131,33 +133,26 @@ class celltable:
         self.cells = X.values()
         self.data = {}
         self.data_indexes = {}
-        if match:
-            # the labels in match
-            self.matchlabels = {}
         
         for cell in self.cells:
             self.data_indexes[cell] = cell_index = (X == cell)
             newdata = Y[cell_index]
             if match:
-                # get match ids
-                group = match.x[cell_index]
-                occurring_ids = np.unique(group)
+                group = match[cell_index]
+                values = group.values()
                 
                 # sort
-                if len(occurring_ids) < len(group):
-                    newdata = np.array([match_func(newdata[group==ID], axis=0)
-                                        for ID in occurring_ids])
-                    group = occurring_ids
-                    labels = [match[group==ID][0] for ID in occurring_ids]
+                if len(values) < len(group):
+                    newdata = newdata.compress(group, func=match_func)
+                    group = _data.factor(values, name=group.name)
                 else:
-                    sort_arg = np.argsort(group)
-                    group = group[sort_arg]
+                    group_ids = [group == v for v in values]
+                    sort_arg = np.sum(group_ids * np.arange(len(values)), axis=0)
                     newdata = newdata[sort_arg]
-                    labels = match[cell_index][sort_arg]
+                    group = group[sort_arg]
                 
                 self.groups[cell] = group
-                self.matchlabels[cell] = labels
-                                
+            
             self.data[cell] = newdata
         
         if match:
@@ -168,8 +163,8 @@ class celltable:
             self.within = {}
             for cell1 in self.cells:
                 for cell2 in self.cells:
-                    if cell1==cell2:
-                        self.within[cell1,cell2] = True
+                    if cell1 == cell2:
+                        pass
                     else:
                         v = self.groups[cell1] == self.groups[cell2]
                         if v is not False:
