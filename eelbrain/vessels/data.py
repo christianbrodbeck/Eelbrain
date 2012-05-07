@@ -652,14 +652,17 @@ class var(_regressor_):
             return var(x, name)
     
     def __mul__(self, other):
-        if np.isscalar(other):
-            return var(self.x * other,
-                       name='*'.join((self.name, str(other))))
+        if iscategorial(other):
+            return _regressor_.__mul__(self, other)
         elif isvar(other):
             return var(self.x * other.x,
                        name='*'.join((self.name, other.name)))            
-        else:
-            return _regressor_.__mul__(self, other)
+        else: #  np.isscalar(other)
+            if len(str(other)) < 10:
+                name = '*'.join((self.name, str(other)))
+            else:
+                name = self.name
+            return var(self.x * other, name=name)
     
     def __floordiv__(self, other):
         if isvar(other):
