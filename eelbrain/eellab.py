@@ -1,12 +1,31 @@
 '''
-This module simply imports entities that are used often, so for interactive 
-usage you could::
+The eelbrain.eellab module contains a collection of Eelbrain components that 
+are useful for 
+interactive data analysis, so for interactive usage you could::
 
-    >>> import eelbrain.vessels.useful as V
+    >>> from eelbrain.eellab import *
+    # or
+    >>> import eelbrain.eellab as EL
 
-or::
 
-    >>> from eelbrain.vessels.useful import *
+**classes and constructors:**
+
+factor
+    standard class for categorial data
+var
+    standard class for univariate scalar data
+var_from_dict
+    construct a var from a dictionary
+
+...
+
+
+**Modules:**
+
+load
+    functions for loading various types of data
+
+...
 
 
 
@@ -25,9 +44,12 @@ from vessels.data import (factor,
                           )
 
 from vessels import load
-from vessels import process as proc
+from vessels import process
 
 from analyze.glm import anova, ancova
 from analyze import (test,
-                     plot,
+                     testnd,
                      table) 
+
+import plot
+import utils.statfuncs as statf

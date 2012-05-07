@@ -124,9 +124,6 @@ defaults=dict(fullrepr = False, # whether to display full arrays/dicts in __repr
               )
 
 
-import table
-from eelbrain.plot import uv as plot
-
 
 #####   #####   #####   #####   #####   #####   #####   #####   #####   #####
 # imports from submodules 
