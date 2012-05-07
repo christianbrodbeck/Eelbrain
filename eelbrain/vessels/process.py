@@ -46,6 +46,8 @@ class PCA:
         """
         self.source = source
         data = self._source_data = source.get_data(('time', 'sensor'))
+        self._source_dtype = data.dtype
+        data = data.astype(_np.float64)
         
         # do the pca
         node = self.node = _mdp.nodes.PCANode(output_dim=n_comp)
@@ -102,6 +104,7 @@ class PCA:
         # remove the components
         rm_comp_data = self.node.inverse(proj)
         new_data = data - rm_comp_data.reshape(data.shape)
+        new_data = new_data.astype(self._source_dtype)
         
         # create the output new ndvar 
         dims = self.source.get_dims(('time', 'sensor'))
