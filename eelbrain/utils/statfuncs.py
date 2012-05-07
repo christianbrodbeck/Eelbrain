@@ -41,3 +41,34 @@ def CIhw(x, p=.95):
     c = (np.std(x, ddof=1) * t) / np.sqrt(N)
     return c
 
+
+def RMSSD(Y):
+    """
+    root mean square of successive differences. Used for heart rate variance
+    analysis.
+    
+    """
+    assert np.ndim(Y) == 1
+    N = len(Y)
+    assert N > 1
+    dY = np.diff(Y)
+    X = N/(N-1) * np.sum(dY**2)
+    return np.sqrt(X)
+
+
+def RMS(Y, axis=-1, rm_mean=False):
+    """
+    Root mean square. Used as 'Global Field Power' (Murray et al., 2008).
+    
+    Murray, M. M., Brunet, D., and Michel, C. M. (2008). Topographic ERP 
+            analyses: a step-by-step tutorial review. Brain Topogr, 20(4), 
+            249-64.
+    """
+    if rm_mean: # avg reference
+        shape = list(Y.shape)
+        shape[axis] = 1
+        Y = Y - Y.mean(axis).reshape(shape)
+    
+    # root mean square
+    rms = np.sqrt(np.mean(Y**2, axis))
+    return rms
