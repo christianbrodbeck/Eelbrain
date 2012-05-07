@@ -358,7 +358,7 @@ def kit2fiff(paths=dict(mrk = None,
                         rawtxt = None,
                         rawfif = None),
              sfreq=1000, lowpass=100, highpass=0,
-             stim=xrange(168, 160, -1),  stimthresh=1,
+             stim=xrange(168, 160, -1),  stimthresh=2.5,
              aligntol=25):
     """
     Calls the ``mne_kit2fiff`` binary which reads multiple input files and 

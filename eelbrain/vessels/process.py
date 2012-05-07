@@ -10,7 +10,7 @@ import mdp as _mdp
 import data as _data
 
 
-def rm_pca(ds, rm=[], source='MEG', target='MEG', baseline=(None, 0)):
+def rm_pca(ds, rm=[], source='MEG', target='MEG', baseline=None):
     """
     Perform PCA and remove certain components. Use gui.pca to find components
     initially.
@@ -133,6 +133,8 @@ def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=False, below=Non
     
     threshold : float
         The threshold value. 
+        1.25e-11: detect saturated channels
+        2e-12: conservative final rejection 
     
     target : factor or str
         Factor (or its name) in which the result is stored. If ``var`` is 

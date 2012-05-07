@@ -272,7 +272,7 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
              'ylim': 2e-12 * mult,
              'summary_ylim': 3.5e-13 * mult,
              'colorspace': _cs.get_MEG(2e-12 * mult),
-             'summary_colorspace': _cs.get_MEG(3.5e-13 * mult),
+             'summary_colorspace': _cs.get_MEG(2e-13 * mult), # was 2.5
              }
 
     props['samplingrate'] = epochs.info['sfreq'][0] / downsample
