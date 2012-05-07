@@ -1479,39 +1479,58 @@ class ndvar(object):
         "Returns a tuple with the requested dimension vars"
         return tuple(self.get_dim(name) for name in names)
     
-    def summary(self, dim='epoch', func=None, name='{func}({name})'):
+    def summary(self, *dims, **regions):
+        r"""
+        Returns a new ndvar with specified dimensions collapsed.
+        
+        \*dims : int | str
+            dimensions specified are collapsed over their whole range
+        \*\*regions : 
+            If regions are specified through keyword-arguments, then only the 
+            data over the specified range is included. Use like .subdata()
+            kwargs.
+        
+        
+        **additional kwargs:**
+        
+        func : callable
+            Function used to collapse the data. Needs to accept an "axis" 
+            kwarg (default: np.mean)
+        name : str
+            default: "{func}({name})"
+        
         """
-        Returns a new ndvar with dimension ``dim`` collapsed using ``func``. 
-        Normally the statistic used is :func:`numpy.mean`, but it
-        can be customized through the ``func`` argument or the ``'summary_func'``
-        property.
-        
-        dim : int | str
-            dimension over which to average
-        
-        """
-        axis = self.get_axis(dim)
-        
-        if func is None:
-            func = self.properties.get('summary_func', np.mean)
-        
-        x = func(self.x, axis=axis)
-        if axis == 0:
-            x = x[None,...]
-            dims = self.dims
-        else:
-            dims = self.dims[:axis-1] + self.dims[axis:]
-        
+        name = regions.pop('name', '{func}({name})')
+        func = regions.pop('func', self.properties.get('summary_func', np.mean))
+        if len(dims) + len(regions) == 0:
+            dims = ('epoch',)
         name = name.format(func=func.__name__, name=self.name)
-        info = os.linesep.join((self.info, 'summary: %s' % func.__name__))
         
-        # update properties for summary
-        properties = self.properties.copy()
-        for key in self.properties:
-            if key.startswith('summary_') and (key != 'summary_func'):
-                properties[key[8:]] = properties.pop(key)
+        if regions:
+            dims = list(dims)
+            dims.extend(dim for dim in regions if not np.isscalar(regions[dim]))
+            data = self.subdata(**regions)
+            return data.summary(*dims, func=func, name=name)
+        else:
+            x = self.x
+            axes = [self.get_axis(dim) for dim in np.unique(dims)]
+            dims = self.dims
+            for axis in sorted(axes, reverse=True):
+                x = func(x, axis=axis)
+                if axis == 0:
+                    x = x[None,...]
+                else:
+                    dims = dims[:axis-1] + dims[axis:]
         
-        return ndvar(dims, x, properties=properties, name=name, info=info)
+            info = os.linesep.join((self.info, 'summary: %s' % func.__name__))
+            
+            # update properties for summary
+            properties = self.properties.copy()
+            for key in self.properties:
+                if key.startswith('summary_') and (key != 'summary_func'):
+                    properties[key[8:]] = properties.pop(key)
+            
+            return ndvar(dims, x, properties=properties, name=name, info=info)
     
     def get_epoch(self, Id, name="{name}[{Id}]"):
         "returns a single epoch (case) as ndvar"
@@ -1553,7 +1572,10 @@ class ndvar(object):
                 raise DimensionMismatchError(err)
             
             if np.isscalar(args):
-                i, value = find_time_point(dimvar, args)
+                if name == 'sensor':
+                    i, value = args, args
+                else:
+                    i, value = find_time_point(dimvar, args)
                 index[dimax] = i
                 dims[dimax] = None
                 properties[name] = value
@@ -1573,7 +1595,12 @@ class ndvar(object):
                 dims[dimax] = dimvar[s]
                 index[dimax] = s
             else:
-                raise NotImplementedError()
+                index[dimax] = args
+                if name == 'sensor':
+                    dims[dimax] = dimvar.get_subnet(args)
+                else:
+                    dims[dimax] = dimvar[index]
+                properties[name] = args
         
         # create subdata object
         x = self.x[index]
