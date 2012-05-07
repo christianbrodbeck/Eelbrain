@@ -97,7 +97,6 @@ class ttest(test_result):
         c1_mean = ct.data[c1].summary(name=c1)
         if isinstance(c2, basestring):
             c2_mean = ct.data[c2].summary(name=c2)
-            data = [c1_mean, c2_mean]
             diff = c1_mean - c2_mean
             if match:
                 if not ct.within[(c1, c2)]:
@@ -105,15 +104,14 @@ class ttest(test_result):
                            " <%r>" % match.name)
                     raise ValueError(err)
                 T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c2].x, axis=0)
-                test_name = 'Related Samples $t$-Test'
+                test_name = 'Related Samples t-Test'
             else:
                 T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c2].x, axis=0)
-                test_name = 'Independent Samples $t$-Test'
+                test_name = 'Independent Samples t-Test'
         elif np.isscalar(c2):
             c2_mean = None
-            data = [c1_mean]
             T, P = scipy.stats.ttest_1samp(ct.data[c1].x, popmean=c2, axis=0)
-            test_name = '1-Sample $t$-Test'
+            test_name = '1-Sample t-Test'
             if c2:
                 diff = c1_mean - c2
             else:
@@ -138,6 +136,11 @@ class ttest(test_result):
         
         properties['colorspace'] = _vsl.colorspaces.get_default()
         T = _vsl.data.ndvar(dims, T, properties=properties, name='T', info=test_name)
+        
+        # add Y.name to dataset name
+        Yname = getattr(Y, 'name', None)
+        if Yname: 
+            test_name = ' of '.join((test_name, Yname))
         
         # create dataset
         super(ttest, self).__init__(T, P, name=test_name)
@@ -222,11 +225,16 @@ class anova(test_result):
         p-map for each effect
     
     """
-    def __init__(self, Y='MEG', X='condition', ds=None, info={}, v=False):
+    def __init__(self, Y='MEG', X='condition', sub=None, ds=None, info={}, v=False):
         if isinstance(Y, basestring):
             Y = ds[Y]
         if isinstance(X, basestring):
             X = ds[X]
+        if sub is not None:
+            if isinstance(sub, basestring):
+                sub = ds[sub]
+            Y = Y[sub]
+            X = X[sub]
         
         fitter = _glm.lm_fitter(X)
         
