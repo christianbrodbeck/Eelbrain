@@ -27,6 +27,7 @@ import fnmatch
 import numpy as np
 
 from eelbrain import ui
+from eelbrain.vessels import data as _dt
 
 
 __hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch',
@@ -181,7 +182,15 @@ class edf_file:
     def __repr__(self):
         return 'edf_file(%r)' % self.source_path
     
-    def get_acceptable(self, tstart=0, tstop=.6):
+    def asdataset(self, accept=True, tstart=-0.1, tstop=0.6):
+        ds = _dt.dataset(name=self.source_path)
+        ds['eventID'] = _dt.var(self.triggers['ID'])
+        ds['time'] = _dt.var(self.triggers['time'])
+        if accept:
+            ds['accept'] = _dt.var(self.get_acceptable(tstart, tstop))
+        return ds
+    
+    def get_acceptable(self, tstart=-0.1, tstop=0.6):
         # conert to ms
         start = int(tstart * 1000)
         stop = int(tstop * 1000)
