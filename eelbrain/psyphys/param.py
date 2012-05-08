@@ -96,8 +96,7 @@ from copy import deepcopy
 import numpy as np
 
 from eelbrain.utils._basic_ops_ import test_attr_name
-
-from eelbrain import ui
+from eelbrain import ui, fmtxt
 from vars import isvar, isaddress, asaddress
 
 
@@ -865,24 +864,27 @@ class VarsFromNames(Dict):
             
         # create text output
         if sample_names:
+            keys = self._value.keys()
+            
+            table = fmtxt.Table('l'*(1 + len(self._value)))
             max_n = 5
             fn_len = max(len(name) for name in sample_names[:max_n]) + 2
-            var_len = 10
-            count = '0123456789' * (1 + fn_len//10)
-            count = '  ' + count[:fn_len-2]
-            txt = count.ljust(fn_len)
-            for index, name in self._value.iteritems():
-                varname = name.name
-                txt += varname.rjust(var_len)
-            out.append(txt)
-    
+            count = ('0123456789' * (1 + fn_len//10))[:fn_len]
+            table.cell(count)
+            for k in keys:
+                table.cell(self._value[k].name)
+            
             # fn/variable list 
             vars = self.get_vars()  
-            for f in sample_names[:max_n]:
-                txt = '  ' + f.ljust(fn_len)
-                txt += ''.join([v.rjust(var_len) for v in self.split(f).values()])
-                out.append(txt)
-            out.append("  ...")
+            for fname in sample_names[:max_n]:
+                table.cell(fname)
+                values = self.split(fname)
+                for k in keys:
+                    var = self._value[k]
+                    table.cell(values[var])
+            
+            out.append(str(table))
+            out.append("...")
         else:
             out.append('(No example filenames available)')
         
