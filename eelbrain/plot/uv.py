@@ -14,7 +14,7 @@ import matplotlib as mpl
 
 from eelbrain import fmtxt as textab 
 
-import test
+from eelbrain.analyze import test
 
 from eelbrain.vessels.data import isfactor, asfactor, isvar, asvar, ismodel, asmodel
 from eelbrain.vessels.data import multifactor
