@@ -15,6 +15,9 @@ from eelbrain.vessels.data import var, isvar, asvar, isfactor, asfactor, ismodel
 from eelbrain.vessels.data import multifactor
 from eelbrain.vessels.structure import celltable
 
+# these should be available here
+from glm import anova, ancova
+
 
 __hide__ = ['division', 'random', 'itertools', 'scipy',
             'fmtxt', 'texstr',

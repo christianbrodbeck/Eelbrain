@@ -41,12 +41,13 @@ from vessels.data import (factor,
                           var_from_apply,
                           ndvar,
                           dataset,
+                          combine,
                           )
 
 from vessels import load
 from vessels import process
 
-from analyze.glm import anova, ancova
+#from analyze.glm import anova, ancova
 from analyze import (test,
                      testnd,
                      table) 
