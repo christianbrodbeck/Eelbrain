@@ -56,9 +56,6 @@ class ListViewerFrame(mpl_canvas.CanvasFrame):
         title = "List Viewer"
         mpl_canvas.CanvasFrame.__init__(self, parent, title, size, dpi, 
                                         statusbar=True)
-        # connect
-        self.canvas.mpl_connect('motion_notify_event', self.OnMotion)
-        self.canvas.mpl_connect('axes_leave_event', self.OnAxesLeave)
         # figure
         self.figure.subplots_adjust(left=.01, right=.99, bottom=.05, top=.95, 
                                  hspace=.5)
@@ -70,11 +67,6 @@ class ListViewerFrame(mpl_canvas.CanvasFrame):
         self.Show()
     
     def _init_FillToolBar(self, tb):
-        # --> save fig
-        tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
-        self.Bind(wx.EVT_TOOL, self.OnFileSave, id=wx.ID_SAVE)
-        tb.AddSeparator()
-        
         # --> select page
         txt = wx.StaticText(tb, -1, "Page:")
         tb.AddControl(txt)
@@ -117,20 +109,6 @@ class ListViewerFrame(mpl_canvas.CanvasFrame):
         temp = "ListViewerFrame({Vs})"
         Vs = ', '.join(v.__repr__() for v in self.visualizers)
         return temp.format(Vs=Vs)
-    def OnMotion(self, event):
-        "http://matplotlib.sourceforge.net/examples/user_interfaces/wxcursor_demo.html"
-        if event.inaxes:
-#            logging.debug(dir(event)) #-> [... 'button', 'canvas', 'guiEvent', 
-#            'inaxes', 'key', 'lastevent', 'name', 'step', 'x', 'xdata', 'y', 'ydata']
-#            ax = event.inaxes
-            
-            # status bar
-            t = event.xdata
-            sb = self.GetStatusBar()
-            sb.SetStatusText("t = %.3f s" % t, 0)
-    def OnAxesLeave(self, event):
-        sb = self.GetStatusBar()
-        sb.SetStatusText("", 0)
     
     def set_window(self, tstart, tend):
         """
@@ -181,6 +159,7 @@ class ListViewerFrame(mpl_canvas.CanvasFrame):
                 n_row = i % self.n_per_page / x
                 i_plot = n_row*x + n_col + 1
                 ax = self.figure.add_subplot(y, x, i_plot)
+                ax.x_fmt = 't = %.3g s'
                 
                 name = None
                 for v in self.visualizers:
