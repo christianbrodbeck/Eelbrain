@@ -22,7 +22,7 @@ def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies"):
     Display frequency of occurrence of all categories in Y in the cells 
     defined by X.
     
-    Y: vactor whose ferquencies are of interest
+    Y: factor whose frequencies are of interest
     X: model defining cells for which frequencies are displayed
     
     """

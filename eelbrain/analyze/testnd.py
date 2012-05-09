@@ -1,14 +1,5 @@
 '''
-
-desired qualities:
-
- * .subdata method
- * contain overlay specification (data & contours (colorspace))
-
- * when subdata(timewindow=(.1,.3)), the test should be newly executed for the
-   new data
-
--> ??? do make new subclass to ensure that 
+tests for varnd objects
 
 
 Created on Feb 22, 2012

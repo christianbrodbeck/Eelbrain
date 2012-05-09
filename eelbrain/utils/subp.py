@@ -374,24 +374,12 @@ def kit2fiff(paths=dict(mrk = None,
     combines them into a fiff file. Implemented after Gwyneth's Manual; for 
     more information see the mne manual (p. 222). 
     
-    All filenames can be specified either as string, or as tuple of strings.
-    Tuples are converted to paths with::
+    **Arguments:**
     
-        >>> os.path.join(*arg).format(**fmt)
-    
-    where ``fmt`` contains the following entries:
-    
-    ``meg_sdir``
-        input argument
-    ``experiment``
-        input argument
-    ``subject``
-        last directory name in ``meg_sdir``
-    
-    Directories can contain the user home shortcut (``~``). Other Arguments are:
-    
-    mrk, elp, hsp, raw, out, sns : str or tuple (see above)
-        input files
+    paths : dict
+        Dictionary containing paths to input and output files. 
+        Needs the folowing keys:
+        'mrk', 'elp', 'hsp', 'sns', 'rawtxt', 'outfif' 
         
     experiment : str
         The experiment name as it appears in file names.
@@ -417,6 +405,9 @@ def kit2fiff(paths=dict(mrk = None,
         trigger channels that are used to reconstruct the event cue value from 
         the separate trigger channels. The default ``xrange(168, 160, -1)`` 
         reconstructs the values sent through psychtoolbox.
+        
+    aligntol : scalar
+        Alignment tolerance for coregistration
     
     """
     mne_dir = _bin_dirs['mne']

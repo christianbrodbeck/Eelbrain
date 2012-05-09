@@ -5,12 +5,10 @@ plots for universal time series
 Plot types
 ----------
 
-topo:
-    show a tv plot for different sensors, arranged according to a topographical
-    sensor layout.
 corr:
     plots the correlation between a timeseries and a variable over time
-uts:
+...
+    
     
 """
 

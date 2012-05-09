@@ -1,119 +1,4 @@
 '''
-PLAN
-====
-
-Simple Tests
-------------
-
-A test:: 
-
-    >>> m = ttest(ds, Y='MEG', X='condition', c1='X__', c2='__X', match=)
-
-returns a dataset with vars
-    
-    - 'c1': data
-    - 'c2': data (or constant)
-    - 't': t-map
-    - 'p': p-map
-    - 'c1-c2': difference
-
-it could have special attributes `all`= c1, c2, difference
-
-??? how does the plot know that the p-map should produce contours over the 
-difference? 
-
-    # allow nesting: `plot([v1, [v2, v2overlay]])`
-
-
-
-Models
-------
-
-ANOVA need a model as an intermediated step. MODELS should be datasets (or a
-sister-class)::
-
-    >>> m = model(ds, Y='MEG', X='condition*subject')
-
-would return a model-dataset with:
-
-    - cases averaged to one case per cell
-    - Y
-    - factors
-    - factors for interaction effects
-
-I would need to fit the model to get the results:
-
-    - var 'effect'
-    - var 'F'
-    - var 'p'
-    
-    
-??? should results be organized with cases? (vs items)
-    
-    YES: anova effects are all the same data type, and need 'F' and 'p' variables
-    NO: ttest wants to store source data 
-
-
-
-RESULTS are also datasets except there is only one case
--> why do I need epoch vs. ndvar? Plots need flat data. 
--> use a `ndvar.get_flattened_data(func=np.mean)` method?
-
-
-
-Consequences for Plotting
--------------------------
-
-- usage:
- 
-    - ndvars, or dataset and names of ndvars 
-      
-        - plotting *args to catch plot(ds, namelist) as well as plot(varlist) as 
-          well as plot(ds) where ds has a default_DV
-        - use `plot(epochs, ... ds=None) where ds can be None if epochs 
-          contains ndvars   
-       
-- interpretation (by plotting functions):
- 
-    - ttest.all can be submitted, which should make the plots for 
-      ['c1', 'c2', ['diff', 'p']], where each name is expanded to ['c1']
-    
-        - plot functions are called with `epochs` (nested list)
-        - _ax_XXX functions are called with `layers` (lists), since they
-          modify the axes
-        - _plt_XXX functions only draw a single `layer`
-     
-    - in case a submitted ndvar contains more than one case, the plotting 
-      function calls 
-      
-        - ndvar.summary()        (in _base.unpack_epochs_arg)
-        - ndvar.get_epoch_data()     (in the immediate plotting function)
-    
-    - helper object: dataset['V1', V2'] could simply return a dataset instance
-
-
-
-Open Questions
---------------
-
-- ?? can I make dataset[name1, name2] export a dataset rather than a list of 
-  factors? 
-  
-  - --> repercussions on: plotting libs: has to be ordered & nested
-  - is probably not a frequent use case (i.e. can be implemented with a method) 
-  - make datasets ordered? (collections.OrderedDict subclass)
-  
-- plotting with datastes (using ds.get_subsets_by()) requires that the 
-  dataset offer a summary method which uses the default_DV attribute.
-  Do I want to support that?? Alternatives?
-  
-   - at least relegate the default_DV to the dataset's info dict
-     (or should it be a properties dict???)
-   - get_var_by(Y='MEG', X='conditions', categories=None) whose retirn value 
-     can be submitted to plotting functions !!!
-
-
-
 Data Representation
 ===================
 
@@ -127,114 +12,12 @@ Data is stored in three main vessels:
     stores numerical data where each cell contains an array if data (e.g., EEG
     or MEG data)
 
-Additional classes are generated internally:
-
-:class:`epoch`:
-    stores a single epoch of n-dimensional data
-:class:`ConditionPointer`:
-    Convenience access to datasets. Provides a single Stores a subset of a dataset as well as 
-    a single dependent variable
-
-ndvar Plan
-==========
-
-basic data types:
-
-    * var
-    * factor
-    * ndvar
 
 managed by
 
     * dataset
 
 
-Interface for plotting
-----------------------
-
- *  requesting dimensions through attributes (`data.sensor`) implicitly
-    checks for the presence of those dimensions
-    
-    - problem: presence of unwanted dimensions - plots should ``data.assert
-    
- - dimensions: need to be fulfilled, use `data.assert_dims(('time', 'sensor'))`
- - ndvar vs epoch: automatic transform (mean) could be customized, use 
-   `data.as_epoch(func='default')
-
-
-
-ndvar
-----
-
-difference btw var and ndvar: an nd-dataset is large, but with a guaranteed 
-regularity (e.g. time coordinate and topography in MEG), i.e., I
-don't want to have the var 'time' replicated over and over
-
- ..note::
-     I could virtualize it?? ]]]
-
-on the other hand, 'trial' is not guaranteed to be the same across subjects, 
-so I should store it as factor or var.
-
-
-
-other than that I would want a similar interface like for a :class:`var`.
-
-
-
-the dataset class should be like a dataframe ??
-vs
-a dataframe should hold datasets along with 
-dataframe -> dataset
-
-
-Idea
-----
-
-Construct as spanning: 
-dataframend(space=(subject, t, trial)
-
-
-or define space for each variable::
-
-    >>> dataframend.add(gender, space=(subject,))
-    >>> dataframend.add(MEG, space=(subject, t, sensor))
-
-&& have a special 'map' property, e.g.
-
-    >>> d.add(sensors, topo_obj)
-    
-Or better construct them as objects::
-
-    >>> subject = S.factor(['s1', ..., 's22'])
-    >>> gender = S.factor('mff...', space=(subject,))
-    >>> ...
-    >>> MEG = S.var(MEG_data, space=(subject, t, sensor))
-
-topo_obj needs map object with ``getLoc2d`` method:
-
-    >>> sensors = S.map(sensor_net)
-
-
-Implementation
---------------
-
-Problem: array for a full experiment would be way too big
-
- - 20 subjects
- - 200 sampling time points
- - 160 sensors
- - 6 conditions
- - 49 trials
-
-np.prod([20, 200, 160, 6, 49]) = 188`160`000
-
-Memory required in mb::
-
-    >>> np.prod([20, 200, 160, 6, 49]) / (8 * 1024 * 1024) * 64  # 64 bit
-    1408
-    >>> np.prod([20, 200, 160, 6, 49]) / (8 * 1024 * 1024) * 32  # 32 bit
-    704
 
 '''
 
@@ -1486,8 +1269,14 @@ class ndvar(object):
         r"""
         Returns a new ndvar with specified dimensions collapsed.
         
+        .. warning::
+            Data is collapsed over the different dimensions in turn using the 
+            provided function with an axis argument. For certain functions 
+            this is not equivalent to collapsing over several axes concurrently
+            (e.g., np.var)
+        
         \*dims : int | str
-            dimensions specified are collapsed over their whole range
+            dimensions specified are collapsed over their whole range.  
         \*\*regions : 
             If regions are specified through keyword-arguments, then only the 
             data over the specified range is included. Use like .subdata()

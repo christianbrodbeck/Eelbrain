@@ -24,6 +24,8 @@ var_from_dict
 
 load
     functions for loading various types of data
+process
+    functions for processing varnd objects (such as baseline correction, pca)
 
 ...
 
