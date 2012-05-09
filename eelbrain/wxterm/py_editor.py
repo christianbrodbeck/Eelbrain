@@ -369,6 +369,9 @@ class Editor(wx.py.editor.EditorFrame):
                 self.OnExecSelected(event)
             elif key == 82: # r -> execute the script
                 self.OnExecFromDrive(event)
+            else:
+                event.Skip()
+        
         elif mod == [0, 0, 1]: # alt down
             if key in [315, 317]: # arrow
                 # FIXME: when last line without endline is selected, someting 
@@ -382,8 +385,10 @@ class Editor(wx.py.editor.EditorFrame):
                 w.Paste()
                 w.LineUp()
                 return
-        elif mod == [0, 1, 0]: # command (Os-X)
-            pass
+            else:
+                event.Skip()
+#        elif mod == [0, 1, 0]: # command (Os-X)
+#            pass
         else:
             event.Skip()
     
