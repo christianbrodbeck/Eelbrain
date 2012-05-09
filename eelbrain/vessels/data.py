@@ -1322,7 +1322,10 @@ class ndvar(object):
                 if key.startswith('summary_') and (key != 'summary_func'):
                     properties[key[8:]] = properties.pop(key)
             
-            return ndvar(dims, x, properties=properties, name=name, info=info)
+            if len(dims):
+                return ndvar(dims, x, properties=properties, name=name, info=info)
+            else:
+                return var(x, name=name)
     
     def get_epoch(self, Id, name="{name}[{Id}]"):
         "returns a single epoch (case) as ndvar"
