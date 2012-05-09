@@ -102,8 +102,6 @@ class celltable:
             Y = ds[Y]
         if isinstance(X, basestring):
             X = ds[X]
-        elif X is None:
-            X = _data.factor([None]*len(Y), name='X')
         if isinstance(match, basestring):
             match = ds[match]
         if isinstance(sub, basestring):
@@ -115,8 +113,10 @@ class celltable:
         else:
             Y = _data.asvar(Y, sub)
         
-        X = _data.ascategorial(X, sub)
-        assert len(X) == len(Y)
+        if X is None:
+            X = _data.factor([str(Y.name)] * len(Y), name='all')
+        else:
+            X = _data.ascategorial(X, sub)
         
         if match:
             match = _data.asfactor(match, sub)

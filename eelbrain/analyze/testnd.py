@@ -85,8 +85,8 @@ class ttest(test_result):
         
         ct = _vsl.structure.celltable(Y, X, match, sub, ds=ds)
         
-        c1_mean = ct.data[c1].summary(name=c1)
         if isinstance(c2, basestring):
+            c1_mean = ct.data[c1].summary(name=c1)
             c2_mean = ct.data[c2].summary(name=c2)
             diff = c1_mean - c2_mean
             if match:
@@ -100,8 +100,10 @@ class ttest(test_result):
                 T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c2].x, axis=0)
                 test_name = 'Independent Samples t-Test'
         elif np.isscalar(c2):
+            c1_data = ct.data[str(Y.name)]
+            c1_mean = c1_data.summary()
             c2_mean = None
-            T, P = scipy.stats.ttest_1samp(ct.data[c1].x, popmean=c2, axis=0)
+            T, P = scipy.stats.ttest_1samp(c1_data.x, popmean=c2, axis=0)
             test_name = '1-Sample t-Test'
             if c2:
                 diff = c1_mean - c2
