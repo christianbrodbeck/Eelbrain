@@ -272,6 +272,18 @@ class Editor(wx.py.editor.EditorFrame):
     def OnExecSelected(self, event=None):
         "Execute the selection in the shell."
         if self.editor:
+            # if nothing is selscted select the current line:
+            start, stop = self.editor.window.GetSelection()
+            if start == stop:
+                pos = self.editor.window.GetCurrentLine()
+                if pos == 0:
+                    start = 0
+                else:
+                    start = self.editor.window.GetLineEndPosition(pos-1) + 2
+                stop = self.editor.window.GetLineEndPosition(pos)
+                self.editor.window.SetSelection(start, stop)
+            
+            # execute the selection
             txt = self.editor.window.GetSelectedText()
             if txt:
                 # find line numbers
