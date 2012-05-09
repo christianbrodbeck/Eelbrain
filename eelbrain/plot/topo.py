@@ -111,10 +111,13 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
             multiplier for the width of butterfly plots based on their height
         
         """
-        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 2)
+        frame_title = "plot.topo.butterfly: %r"
+        if isinstance(title, basestring):
+            frame_title = frame_title % title
+        else:
+            frame_title = frame_title % getattr(epochs, 'name', '')
         
-        if title is True:
-            title = "plot.topo.butterfly"
+        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 2)
         
         # create figure
         n_plots = len(epochs)
@@ -123,7 +126,7 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
         figsize = (x_size, y_size)
         parent = wx.GetApp().shell
         
-        mpl_canvas.CanvasFrame.__init__(self, parent, title, figsize=figsize, dpi=dpi)
+        mpl_canvas.CanvasFrame.__init__(self, parent, frame_title, figsize=figsize, dpi=dpi)
         fig = self.figure
         
         # plot epochs (x/y are in figure coordinates)
@@ -455,10 +458,11 @@ class array(mpl_canvas.CanvasFrame):
         ntopo=None  number of topoplots per segment (None -> 6 / nplots)
         
         """
+        frame_title = "plot.topo.array: %r"
         if isinstance(title, basestring):
-            dataname = title
-        else: 
-            dataname = getattr(epochs, 'name', '')
+            frame_title = frame_title % title
+        else:
+            frame_title = frame_title % getattr(epochs, 'name', '')
         
         # convenience for single segment
         epochs = _base.unpack_epochs_arg(epochs, 2)
