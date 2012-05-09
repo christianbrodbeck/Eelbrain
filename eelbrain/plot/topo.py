@@ -480,10 +480,6 @@ class array(mpl_canvas.CanvasFrame):
         
         # create figure
         parent = wx.GetApp().shell
-        if isinstance(title, basestring):
-            frame_title = title
-        else:
-            frame_title = "plot.topo.array: %r" % dataname
         mpl_canvas.CanvasFrame.__init__(self, parent, frame_title, dpi=dpi, figsize=figsize)
         fig = self.figure
         
