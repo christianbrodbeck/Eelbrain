@@ -62,16 +62,17 @@ class ttest(test_result):
     
     """
     def __init__(self, Y='MEG', X=None, c1=None, c2=0, 
-                 match=None, sub=None, ds=None, contours=None):
+                 match=None, sub=None, ds=None, 
+                 contours={.05: (.8, .2, .0),  .01: (1., .6, .0),  .001: (1., 1., .0)}):
         """
         c1 and c2 : ndvars (or dataset with default_DV)
             segments between which to perform the test
         
         """
-        if not contours:
-            contours = { .05: (.8, .2, .0),  .01: (1., .6, .0),  .001: (1., 1., .0),
-                        -.05: (0., .2, 1.), -.01: (.4, .8, 1.), -.001: (.5, 1., 1.),
-                        }
+#        contours = { .05: (.8, .2, .0),  .01: (1., .6, .0),  .001: (1., 1., .0),
+#                    -.05: (0., .2, 1.), -.01: (.4, .8, 1.), -.001: (.5, 1., 1.),
+#                    (currently, p values are treated disreagrding direction)
+#                    }
         
         if X is None:
             pass
@@ -165,14 +166,8 @@ class ttest(test_result):
 
 
 class f_oneway(test_result):
-    """
-    Attributes:
-    
-    p:
-        p-map
-    
-    """
-    def __init__(self, Y='MEG', X='condition', dataset=None):
+    def __init__(self, Y='MEG', X='condition', sub=None, dataset=None,
+                 p=.05, contours={.01: '.5', .001: '0'}):
         """
         uses scipy.stats.f_oneway
         
@@ -181,6 +176,10 @@ class f_oneway(test_result):
             Y = dataset[Y]
         if isinstance(X, basestring):
             X = dataset[X]
+        
+        if sub is not None:
+            Y = Y[sub]
+            X = X[sub]
         
         Ys = [Y[X==c] for c in X.cells.values()]
         Ys = [y.x.reshape((y.x.shape[0], -1)) for y in Ys]
@@ -197,7 +196,7 @@ class f_oneway(test_result):
         Ps = np.reshape(Ps, (1,) + tuple(len(dim) for dim in dims))
         
         properties = Y.properties.copy()
-        properties['colorspace'] = _vsl.colorspaces.get_sig()
+        properties['colorspace'] = _vsl.colorspaces.get_sig(p=p, contours=contours)
         p = _vsl.data.ndvar(dims, Ps, properties=properties, name=X.name, info=test_name)
 
         # create dataset
@@ -218,7 +217,8 @@ class anova(test_result):
         p-map for each effect
     
     """
-    def __init__(self, Y='MEG', X='condition', sub=None, ds=None, info={}, v=False):
+    def __init__(self, Y='MEG', X='condition', sub=None, ds=None, info={}, v=False,
+                 p=.05, contours={.01: '.5', .001: '0'}):
         if isinstance(Y, basestring):
             Y = ds[Y]
         if isinstance(X, basestring):
@@ -234,7 +234,7 @@ class anova(test_result):
         info['effect_names'] = effect_names = []
         super(anova, self).__init__(name="anova", info=info)
         properties = Y.properties.copy()
-        properties['colorspace'] = _vsl.colorspaces.get_sig()
+        properties['colorspace'] = _vsl.colorspaces.get_sig(p=p, contours=contours)
         # Y.data:  epoch X [time X sensor X freq]
         for name, Fs, Ps in fitter.map(Y.x.T, v=v):
             effect_names.append(name)
