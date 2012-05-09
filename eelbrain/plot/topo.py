@@ -347,7 +347,8 @@ def _plt_topomap(ax, epoch, proj='default', res=100,
 
 
 
-def _ax_topomap(ax, layers, title=True, sensors=None, proj='default', **im_kwargs):
+def _ax_topomap(ax, layers, title=True, sensors=None, proj='default', 
+                im_frame=0.02, **im_kwargs):
     """
     sensors : 
         sensors to plot: list of IDs, or True/'all'
@@ -355,7 +356,7 @@ def _ax_topomap(ax, layers, title=True, sensors=None, proj='default', **im_kwarg
     ax.set_axis_off()
     handles = {}
     for layer in layers:
-        handles[layer.name] = _plt_topomap(ax, layer, **im_kwargs)
+        handles[layer.name] = _plt_topomap(ax, layer, im_frame=im_frame, **im_kwargs)
         if title is True:
             title = getattr(layer, 'name', True)
     
@@ -379,6 +380,9 @@ def _ax_topomap(ax, layers, title=True, sensors=None, proj='default', **im_kwarg
 #                       color=cs.sensorColor,
 #                       marker=cs.sensorMarker, s=6, linewidth=.25)
 #        handles['sensors'] = h
+    
+    ax.set_xlim(-im_frame, 1+im_frame)
+    ax.set_ylim(-im_frame, 1+im_frame)
     
     if isinstance(title, str):
         handles['title'] = ax.set_title(title)
