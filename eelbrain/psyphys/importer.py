@@ -777,19 +777,39 @@ try:
            
         """
         _default_ext = 'acq'
+        def __init__(self, experiment, source=None, name='importer', samplingrate=250):
+            """
+            Currently the acq importer can only handle channels of a single
+            samplingrate. The samplingrate argument specifies which 
+            channels are available.
+            
+            """
+            self._samplingrate = samplingrate
+            super(uts_importer, self).__init__(experiment, source=source, name=name)
+        
         def get_file(self, path):
-            file = bioread.read_file(path)
+            ACQ = bioread.read_file(str(path)) # can't handle unicode
+            
+            # filter channels to those of matching samplingrate
+            channels = [c for c in ACQ.channels if c.samples_per_second == self._samplingrate]
+            
             # read data
-            n_channels = len(file.channels)
-            c0 = file.channels[0]
+            n_channels = len(channels)
+            if n_channels == 0:
+                srs = np.unique([c.samples_per_second for c in ACQ.channels])
+                err  =("No channels found. Change self._samplingrate to one of "
+                       "%s?" % srs)
+                raise ValueError(err)
+            
+            c0 = channels[0]
             length = c0.point_count
             if n_channels > 1:
-                assert all(c.point_count==length for c in file.channels[1:])
+                assert all(c.point_count == length for c in channels[1:])
             data = np.empty((length, n_channels))
-            for i,c in enumerate(file.channels):
+            for i,c in enumerate(channels):
                 data[:,i] = c.data
             # properties
-            properties = dict(samplingrate=file.samples_per_second,
+            properties = dict(samplingrate = self._samplingrate,
                               )
             return data, properties
 except:
