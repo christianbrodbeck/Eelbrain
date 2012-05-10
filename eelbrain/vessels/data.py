@@ -1044,7 +1044,8 @@ class factor(_regressor_):
         guarantees to only return values that actually occur in the data.
         
         """
-        return [self._labels[i] for i in np.unique(self.x)]
+        values = [self._labels[i] for i in np.unique(self.x)]
+        return sorted(values)
 
 
 
@@ -1958,7 +1959,8 @@ class interaction(_regressor_):
         return out
     
     def values(self):
-        return self._cells.values()
+        values = self._cells.values()
+        return sorted(values)
 
 
 
