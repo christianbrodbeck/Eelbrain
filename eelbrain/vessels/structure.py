@@ -45,7 +45,7 @@ class celltable:
         group for each cell as ???
     
     
-    **Old Attributes:**
+    **Previous Attributes:**
     
     indexes
         list of indexes

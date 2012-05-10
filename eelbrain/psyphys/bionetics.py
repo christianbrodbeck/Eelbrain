@@ -188,7 +188,7 @@ class Experiment(object):
             self.path = path
             self.save()
         else:
-            ui.msg("Saving aborted")
+            print "Saving aborted"
     @property
     def _cache_path(self):
         return self.path + '.cache'

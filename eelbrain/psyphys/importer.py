@@ -109,20 +109,12 @@ class Importer(ExperimentItem):
     
     i = importer.Importer(experiment)
     
-    i.p.source():  to specify source folder or files
+    i.p.source.set():  to specify source folder or files
     
     print i.p
     i.p... (modify parameters)
     
     i.get()
-    
-    
-    
-    relevant for subclassing:
-    
-    _get_class_properties
-    
-    
     
     """
     properties = {'data_type': "import",
@@ -131,12 +123,16 @@ class Importer(ExperimentItem):
     store = None
     def __init__(self, experiment, source=None, name='importer'):
         """
+        **Arguments**
         
+        experiment : 
+            parent experiment instance
         
-        when subclassing
-        ----------------
-        Use folder=False to prevent from asking. In order to preserve functiona-
-        lity, set self.files = ['filename1', ...]
+        source : str | None
+            optional, path to source folder (sets self.p.source)
+        
+        name : str
+            name for the importer
         
         """
         ExperimentItem.__init__(self, experiment, name)
@@ -150,7 +146,8 @@ class Importer(ExperimentItem):
         
         # add source path
         if source is not None:
-            self.p.source(source)
+            self.p.source.set(source)
+    
     def _addparams_(self, p):
         
         self.p._section_("File Source")
@@ -770,6 +767,8 @@ class txt(uts_importer):
 
 try:
     import bioread
+    
+    
     class acq(uts_importer):
         """
     Biopac Acq Importer
