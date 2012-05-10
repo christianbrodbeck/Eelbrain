@@ -110,9 +110,9 @@ class Shell(wx.py.shell.Shell):
                     for name in command.split('.'):
                         if name:
                             source = source[name].__dict__
+                    
                     if '__all__' in options:
-                        options = source['__all__']
-                        options.sort(cmp=lambda x,y: cmp(x.lower(), y.lower()))
+                        options = sorted(source['__all__'], key=str.lower)
                     elif '__hide__' in options:
                         for item in source['__hide__']:
                             if item in options:
