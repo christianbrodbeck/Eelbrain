@@ -697,8 +697,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
             txt = self.shell.fixLineEndings(txt)
             txt += os.linesep
             
-            # remove leading whitespaces
-            lines = txt.splitlines()
+            # remove leading whitespaces (and comment lines)
+            lines = [line for line in txt.splitlines() if not line.startswith('#')]
             ws_lead = []
             for line in lines:
                 len_stripped = len(line.lstrip(' '))
