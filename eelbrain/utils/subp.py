@@ -451,6 +451,9 @@ def kit2fiff(paths=dict(mrk = None,
            ]
     
     _run(cmd)
+    
+    if not os.path.exists(out_file):
+        raise RuntimeError("kit2fiff failed (see above)")
 
 
 
