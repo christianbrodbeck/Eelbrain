@@ -665,15 +665,20 @@ class ShellFrame(wx.py.shell.ShellFrame):
         """
         Compile txt and Execute it in the shell.
         
-        kwargs
-        ------ 
-        out: shell.Execute
-        title: is displayed in the shell and should identify the source of the 
+        **kwargs**
+
+        out: 
+            shell.Execute
+        title: 
+            is displayed in the shell and should identify the source of the 
             code. 
-        comment: displayed after title
-        shell_globals: determines wheter the shell's globals are submitted to
+        comment: 
+            displayed after title
+        shell_globals: 
+            determines wheter the shell's globals are submitted to
             the call to execfile or not.
-        filedir: perform os.chdir before executing
+        filedir: 
+            perform os.chdir before executing
         
         """
         if comment is None:

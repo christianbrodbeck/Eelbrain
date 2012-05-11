@@ -154,6 +154,7 @@ class SCR(Derived_Event_Dataset, mixins.Reject):
                    e.variables.get('magnitude')]
         return varlist
     def _derive_segment_data_(self, segment, preview=False):
+        # collect processing parameters
         source = segment._p_attr['source']
         sm1 = self.compiled['smooth1']
         sm2 = self.compiled['smooth2']

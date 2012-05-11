@@ -6,14 +6,12 @@ statistics as dataframes through the :meth:`get_dataframe` method.
 """
 from __future__ import division
 
-import logging
+import os
 
 import numpy as np
 
-from eelbrain import ui
 import vars as _vars
 import eelbrain.vessels.data as _vsl 
-import segments as _seg
 
 __hide__ = ['ui', 'np', 'logging']
 
@@ -154,21 +152,25 @@ class _collector(object):
                  cfunc = np.mean, # collection functions
                  ):
         """
-        Main Parameters
-        ---------------
+        **Main Parameters**
         
         address : Address 
-            address for data collection (must be applicalble to ``evts``; can
-            be used for exclusion)
-        segments : dataset or list of segments
+            address defining cells for data collection 
+            (all elements of the address must be provided by the segments in
+            ``evts``)
+        segments : dataset | list of segments
             segments container providing the source data
-        evts : dataset or list of segments, aligned with data ``segments`` 
-            statistics are collected relative to events. if ``evts==None`` 
+        evts : None | dataset | list of event segments 
+            If the ``evts`` argument is provided, statistics are collected 
+            relative to events in ``evts``. the segments in ``evts`` must be 
+            aligned with the data segments in ``segments``, i.e. evts[i] must
+            pertain to segments[i]. If evts is ``None``
             (default), data is collected relative to the ``segments``
             directly
-        var : variable / str
+        var : variable | str
             variable that is collected (Y); default is magnitude. Can 
-            be str (e.variables.get(var) is called. (TODO: unify with sensor)
+            be str (in which case e.variables.get(var) is called. (TODO: unify 
+            with sensor))
         mask : Address 
             can be used to restrict the collector to a subset of events
         segmask : Address
@@ -177,23 +179,22 @@ class _collector(object):
         name : str
             name that is supplied for the collected variable; 
             default is 'Y' 
-        cov : 
+        cov : variable | list of variables
             variable or list of variables which should be collected as 
             factors/covariates along with the var
         
         
-        time window and baseline parameters
-        -----------------------------------
+        **time window and baseline parameters**
         
         any time point argument can be a scalar, or a variable ``<var>`` 
         containe in the events, in which case 
         ``t = event['time'] + evt[<var>]``
         
-        tstart : 
+        tstart : scalar
             start of the extraction time window
-        tend : 
+        tend : scalar
             end of the extraction time window
-        tw : 
+        tw : tuple(tstart, tend)
             as an alternative to tstart and tend, tw can be supplied as 
             (tstart, tend) tuple
         twfunc : callable
@@ -574,8 +575,7 @@ class TimeseriesCollector(_collector):
                  mask = None,
                  **kwargs):
         """
-        Timeseries-Specific Arguments
-        -----------------------------
+        **Timeseries-Specific Arguments:**
         
         sr : scalar
             samplingrate
@@ -659,5 +659,6 @@ def timeseries(address, segments, evts=None, var='magnitude', **kwargs):
     c = TimeseriesCollector(address, segments, evts=evts, var=var, **kwargs)
     return c.get_dataset()
 
-timeseries.__doc__ += TimeseriesCollector.__init__.__doc__
+timeseries.__doc__ += os.linesep.join((TimeseriesCollector.__init__.__doc__,
+                                       TimewindowCollector.__init__.__doc__))
 
