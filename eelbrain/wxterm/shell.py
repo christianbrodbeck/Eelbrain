@@ -1020,19 +1020,13 @@ class ShellFrame(wx.py.shell.ShellFrame):
             filenames = ui.ask_dir()
         elif t == 2: # New
             filenames = ui.ask_saveas(title = "Get New File Name",
-                                      message = "Please Pick a File Name", 
-                                      ext = None)
-        # put to terminal
-        if filenames:
-            if len(filenames) == 1:
-                filenames = '"'+filenames[0]+'"'
-            else:
-                filenames = '"'+str(filenames)+'"'
-            
-            if 'wxMSW' in wx.PlatformInfo:
-                filenames = 'r'+filenames
-            
-            self.InsertStr(filenames)
+                                       message = "Please Pick a File Name", 
+                                       ext = None)
+        
+        string = droptarget.filename_repr(filenames)
+        
+        if string: # insert into terminal
+            self.InsertStr(string)
     
     def OnKeyDown(self, event):
         key = event.GetKeyCode()

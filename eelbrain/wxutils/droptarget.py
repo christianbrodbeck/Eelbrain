@@ -3,6 +3,44 @@ import logging
 import wx
 
 
+def filename_repr(filenames):
+    if filenames:
+        if isinstance(filenames, basestring):
+            filenames = [filenames]
+        
+#        if 'wxMSW' in wx.PlatformInfo:
+            # does windows require separate handling for to backslash?
+            # on os-x, if the path contains a backslash, it is inserted as '\\'
+#            conv = []
+#            for name in filenames:
+#                try:
+#                    conv.append('r%r' % str(name))
+#                except:
+#                    conv.append(repr(name))
+#            
+#            if len(filenames) == 1:
+#                string = filenames[0]
+#            else:
+#                string = '[' + ', '.join(filenames) + ']'
+#        
+#        else:
+        try:
+            filenames = map(str, filenames)
+        except:
+            pass
+        
+        logging.debug(filenames)
+        
+        if len(filenames) == 1:
+            string = repr(filenames[0])
+        else:
+            string = repr(filenames)
+        
+        return string
+    else:
+        return ''
+
+
 
 class FilenameDropTarget(wx.FileDropTarget):
     """
@@ -61,16 +99,14 @@ class StringDropTarget(wx.DropTarget):
 #            data = self.GetData()
             
             if df in [wx.DF_UNICODETEXT, wx.DF_TEXT]:
-                text = self.textdo.GetText()
+                string = self.textdo.GetText()
             elif df == wx.DF_FILENAME:
                 filenames = self.filedo.GetFilenames()
-                if len(filenames) == 1:
-                    filenames = '%r' % filenames[0]
-                text = str(filenames)
+                string = filename_repr(filenames)
             
-            msg = "OnData! %r" % text   
+            msg = "OnData! %r" % string   
             logging.info(msg)
-            self.target.ReplaceSelection(text)
+            self.target.ReplaceSelection(string)
         return d
     
 
