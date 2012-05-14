@@ -163,13 +163,13 @@ class ExperimentItem(object):
     def rename(self, name):
         self.experiment.rename_item(self, name)
     def delete(self):
-        for c in self.children:
+        for c in getattr(self, 'children', []):
             c.delete()
         self.p._delete()
         self.experiment._del_item(self)
         if hasattr(self, 'memmap_mgr'):
             self.memmap_mgr.delete()
-        if hasattr(self, 'parent'):
+        if hasattr(self.parent, 'children'):
             self.parent.children.remove(self)
     def close(self):
         for c in self.children:

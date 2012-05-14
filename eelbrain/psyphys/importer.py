@@ -790,6 +790,7 @@ try:
             """
             self._samplingrate = samplingrate
             super(uts_importer, self).__init__(experiment, source=source, name=name)
+            self.p.samplingrate.set(samplingrate)
         
         def get_file(self, path):
             ACQ = bioread.read_file(str(path)) # can't handle unicode
