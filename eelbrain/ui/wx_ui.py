@@ -126,7 +126,7 @@ def ask_color(parent=None, default=(0,0,0)):
     return out
 
 
-def message(title, message=None, icon='i'):
+def message(title, message="", icon='i'):
     """
     icon : str
         can be one of the following: '?', '!', 'i', 'error', None

@@ -104,6 +104,8 @@ class Experiment(object):
         return ID, name
     def _del_item(self, item):
         if len(item.children) > 0:
+            # this should not happen because items delete their children 
+            # before removing themselves from the experiment
             raise ValueError("Can only delete items at the bottom of the "
                              "hierarchy")
         ID = item.id

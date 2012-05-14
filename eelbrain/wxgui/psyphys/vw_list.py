@@ -133,7 +133,7 @@ class ListViewerFrame(mpl_canvas.CanvasFrame):
             v = self.visualizers[events_ds]
             ds = v.dataset
             if ds.properties['data_type'] != 'event':
-                ui.message("'%s' is not en event dataset!"%ds.name)
+                ui.message("'%s' is not an event dataset!"%ds.name, "", '!')
                 return
         self._zoom_events = events_ds
         self._zoom_address = address

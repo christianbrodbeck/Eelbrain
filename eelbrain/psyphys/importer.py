@@ -470,7 +470,9 @@ class uts_importer(Importer):
                 old_sr = self.p.samplingrate.get()
                 if old_sr != new_sr and bool(new_sr):
                     self.p.samplingrate(new_sr)
-                    ui.message("Samplingrate updated %s Hz -> %s Hz"%(old_sr, new_sr))
+                    ui.message("Samplingrate updated %s Hz -> %s Hz"%(old_sr, new_sr),
+                               "The importer's samplingrate parameter has been "
+                               "updated based on the file's properties.")
 
     def _datasets(self):
         # get common properties (epoch)
@@ -649,7 +651,9 @@ class uts_importer(Importer):
     
     def plot(self, fig_num=None):#, tmax=1000):
         if self._example_path == None:
-            ui.message("No files specified")
+            ui.message("No files specified", "Before an import preview can be "
+                       "plotted, at least one source file has "
+                       "to be specified through the p.source parameter.", '!')
             return
         
         data = self._example_data#[:tmax]
