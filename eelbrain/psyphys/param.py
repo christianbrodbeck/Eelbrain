@@ -584,16 +584,24 @@ class FileList(Param):
         self._ext = ext
     
     def __repr__(self):
-        files = self._value['f']
-        dirs = self._value['d']
+        dirs  = ['- %r' % d for d in self._value['d']]
+        files = ['- %r' % f for f in self._value['f']]
         
-        out = ["Extension: %s  (use set_ext() to change)"%self._ext,
-               "%s directories and %s separate files:"%(len(dirs), len(files))]
+        out = ["Extension: %r  (use set_ext() to change)"%self._ext]
         
-        for path in dirs:
-            out.append('d: %s' % path)
-        for path in files:
-            out.append('f: %s' % path)
+        if dirs:
+            if len(dirs) == 1:
+                out.append("1 directory:")
+            else:
+                out.append("%s directories:" % len(dirs))
+            out.extend(dirs)
+        
+        if files:
+            if len(files) == 1:
+                out.apend("1 separate file:")
+            else:
+                out.append("%s separate files:" % len(files))
+            out.exptend(files)
         
         return os.linesep.join(out)
     
