@@ -758,8 +758,9 @@ class Table:
                                  ext = [("txt", "txt (tsv) file")])
         if ui.test_targetpath(path):
             ext = os.path.splitext(path)[1]
-            if ext not in ['.tsv', '.txt']:
+            if ext == '':
                 path += '.txt'
+            
             with open(path, 'w') as f:
                 f.write(self.get_tsv(delimiter=delimiter, linesep=linesep, 
                                      fmt=fmt))
