@@ -1711,10 +1711,12 @@ class dataset(collections.OrderedDict):
          - '.txt' or '.tsv':  tsv
          - '.tex':  as TeX table
          - '.pickled':  use pickle.dump
-         
+         - a filename with any other extension is exported as tsv
+        
         Text and tex export use :py:meth:`.as_table`. You can use 
         :py:meth:`.as_table` directly for more control over the output. 
-         
+        
+        
         Arguments
         ---------
         
@@ -1749,7 +1751,7 @@ class dataset(collections.OrderedDict):
             elif ext =='tex':
                 table.save_tex(fn)
             else:
-                raise IOError("can only export .pickled, .txt and .tex")
+                table.save_tsv(fn, fmt=fmt)
     
     def get_case(self, i):
         "returns the i'th case as a dictionary"
