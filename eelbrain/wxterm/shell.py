@@ -717,7 +717,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 txt = os.linesep.join(new_lines)
             
             # 1
-            cmd = "exec(compile(r'''{txt}''', '{title}', 'exec'), {globals})"
+            cmd = "exec(compile(r'''{txt}\n''', '{title}', 'exec'), {globals})"
             if shell_globals:
                 exec_globals = "globals()"
             else:
