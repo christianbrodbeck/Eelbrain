@@ -12,12 +12,9 @@ e = pickle.load(open(u'/Users/christian/Data/tutorial_scr.eelbrain'))
 
 # collect the statistics
 attach(e.variables)
-ds = pp.collect.timeseries(subject * magnitude, e.SCRs, e.event, sr=20, 
+ds = pp.collect.timeseries(subject * condition, e.SCRs, e.event, sr=20, 
                            mode='mw', windur=.5, tstart=-.2, tend=1.5)
 
 attach(ds)
-p = plot.uts.stat(Y, magnitude)
-p = plot.uts.stat(Y, magnitude, 'all')
-
-
-
+p = plot.uts.stat(Y, condition)
+p = plot.uts.stat(Y, condition, 'all')
