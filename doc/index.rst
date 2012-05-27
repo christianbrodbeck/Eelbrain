@@ -22,7 +22,6 @@ Contents:
    data-objects
    psyphys
    psyphys-tutorial
-   MNE
    Various
 
 

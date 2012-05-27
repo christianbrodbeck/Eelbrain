@@ -528,8 +528,8 @@ The result can be plotted with::
 
     >>> detach()
     >>> attach(ds)
-    >>> import eelbrain.analyze as A
-    >>> A.plot1d.uts(Y, condition)
+    >>> from eelbrain.eellab import *
+    >>> plot.uts.stat(Y, condition)
 
 This plot can suggest good time-windows for further analysis with
 :py:func:`!psyphys.collect.timewindow`::
@@ -552,25 +552,55 @@ The dataset contains :py:class:`~vessels.data.var` and
 categorical variables. The table can be shown with ``print``::
 
     >>> print ds
-    Y          condition   subject
-    ------------------------------
-    0.010823   control     019    
-    0.84226    test        013    
-    0.54688    test        010    
-    0.16843    control     004    
-    0          control     009    
-    0.05791    test        003    
-    0.20071    test        016    
-    0.069872   control     015    
-    0          control     020    
-    0.086678   test        006    
-         (use .as_table() method to see the whole dataset)
+    Y           subject   condition
+    -------------------------------
+    0.010823    019       control  
+    0.84226     013       test     
+    0.54688     010       test     
+    0.16843     004       control  
+    0           009       control  
+    0.05791     003       test     
+    0.20071     016       test     
+    0.069872    015       control  
+    0           020       control  
+    0.086678    006       test     
+    0.084659    019       test     
+    0           005       control  
+    0           010       control  
+    0           009       test     
+    0           016       control  
+    0.027371    015       test     
+    0           012       test     
+    0.012217    006       control  
+    0           011       control  
+    0           005       test     
+    0.069958    002       test     
+    0           001       control  
+    0.0040346   008       test     
+    0.007754    007       control  
+    1.0231      018       test     
+    0           012       control  
+    0.14718     017       control  
+    0.12535     011       test     
+    0           002       control  
+    0.27063     001       test     
+    0.32829     014       test     
+    0.20724     008       control  
+    0.15325     013       control  
+    0.4314      007       test     
+    0           004       test     
+    0.35768     017       test     
+    0           003       control  
+    0.048485    020       test     
+    0.24732     018       control  
+    0           014       control  
+
 
 A dataset can be retrieved as table object, and any table object can be 
 exported as tab-separated values (tsv) file::
 
     >>> t = ds.as_table()
-    >>> t.save_tsv() # saving without path argument opens save-dialog
+    >>> t.save_tsv() # saving without path argument opens a system file dialog
 
 That way, the data can be analyzed in any statistics package. Eelbrain also 
 contains some functions for statistical analysis and plotting, which is
@@ -581,14 +611,14 @@ Analyzing Statistics
 ^^^^^^^^^^^^^^^^^^^^
 
     
-The :py:mod:`eelbrain.analyze` module contains functions for analyzing the 
+The :py:mod:`eelbrain.eellab` module contains functions for analyzing the 
 resulting dataset::
 
-    >>> import eelbrain.analyze as A
+    >>> from eelbrain.eellab import *
     >>> attach(ds)
     attached: ['Y', 'condition', 'subject']
-    >>> fig = A.plot.boxplot(Y, condition, match=subject)
-    >>> print A.test.pairwise(Y, condition, match=subject)
+    >>> fig = plot.uv.boxplot(Y, condition, match=subject)
+    >>> print test.pairwise(Y, condition, match=subject)
     
     Pairwise t-Tests (paired samples)
     
