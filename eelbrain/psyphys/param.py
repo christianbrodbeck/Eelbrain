@@ -242,7 +242,7 @@ class Host(object):
                             line_r += ' '+word
                         else:
                             value.append(line_r)
-                            line_r = ''
+                            line_r = ' '+word
                     if len(line_r) > 0:
                         value.append(line_r)
 
