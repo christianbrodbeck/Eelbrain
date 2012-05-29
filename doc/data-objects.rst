@@ -66,10 +66,10 @@ This example illustrates the use of those objects::
         b                 c              
     -------------------------------------
     a   t(12)=-0.34       t(12)=-3.29*   
-        p=0.739           p=0.006        
+        p=.739            p=.006         
         p(c)=.739         p(c)=.019      
     b                     t(12)=-2.90*   
-                          p=0.013        
+                          p=.013         
                           p(c)=.027      
     (* Corrected after Hochberg, 1988)
     >>> t = test.pairwise(Y, A, corr='Hochberg')
@@ -80,10 +80,10 @@ This example illustrates the use of those objects::
      & b & c \\
     \midrule
     \textbf{a} & $t_{12}=-0.34^{    \ \ \ \ }$ & $t_{12}=-3.29^{*   \ \ \ }$ \\
-     & $p=0.739$ & $p=0.006$ \\
+     & $p=.739$ & $p=.006$ \\
      & $p_{c}=.739$ & $p_{c}=.019$ \\
     \textbf{b} &  & $t_{12}=-2.90^{*   \ \ \ }$ \\
-     &  & $p=0.013$ \\
+     &  & $p=.013$ \\
      &  & $p_{c}=.027$ \\
     \bottomrule
     \end{tabular}
