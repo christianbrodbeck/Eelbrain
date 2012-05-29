@@ -420,17 +420,19 @@ class _Window_Topo:
                 self.pointer.set_visible(True)
             else:
                 xytext = self.ax.transAxes.transform((.5,1)) # in 'figure pixels'
-                inv = self.ax.figure.transFigure.inverted()
-                xytext = inv.transform(xytext)
-                self.pointer = parent_ax.annotate("t=%.3g"%t, (t,1), 
+                self.pointer = parent_ax.annotate("t=%.3g" % t, (t,1), 
                                     xycoords='data',
                                     xytext=xytext, 
-                                    textcoords='figure fraction',
+                                    textcoords='figure pixels',
                                     horizontalalignment='center',
                                     verticalalignment='center',
-                                    arrowprops={'width':1, 'frac':0, 
-                                                'headwidth':0, 'color':'r', 
-                                                'shrink':.05},
+                                    arrowprops={'arrowstyle': '-',
+                                                'shrinkB': 0,
+                                                'connectionstyle': "angle3,angleA=90,angleB=0",
+                                                'color': 'r'},
+#                                    arrowprops={'width':1, 'frac':0, 
+#                                                'headwidth':0, 'color':'r', 
+#                                                'shrink':.05},
                                     zorder=99)
             
             self.ax.cla()
@@ -478,8 +480,10 @@ class array(mpl_canvas.CanvasFrame):
         figsize=(fig_width, fig_height)
         
         # fig coordinates
-        x_frame_l = .1 / n_epochs
+        x_frame_l = .25 / n_epochs
         x_frame_r = .025 / n_epochs
+        x_sep = .01 / n_epochs
+        
         x_per_ax = (1 - x_frame_l - x_frame_r) / n_epochs
         
         # create figure
@@ -497,14 +501,15 @@ class array(mpl_canvas.CanvasFrame):
         self.title = title
         
         # im_array plots
-        self.main_axes=[]
-        ax_height = .4 + .075 * (not title)
+        self.main_axes = []
+        ax_height = .4 + .07 * (not title)
         ax_bottom = .45# + .05*(not title)
-        ax_width = .9 * x_per_ax
         for i,layers in enumerate(epochs):
-            ax_left = x_frame_l + i * x_per_ax
+            ax_left = x_frame_l + i * (x_per_ax + x_sep)
+            ax_right = 1 - x_frame_r - (n_epochs - i - 1) * (x_per_ax + x_sep)
+            ax_width = ax_right - ax_left
             ax = fig.add_axes((ax_left, ax_bottom, ax_width, ax_height),
-                              picker=True)  # rect = [left, bottom, width, height]
+                              picker=True)
             self.main_axes.append(ax)
             ax.ID = i
             ax.type = 'main'
