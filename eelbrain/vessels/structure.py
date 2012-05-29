@@ -185,6 +185,25 @@ class celltable:
             args.append("match=[%s...]"  % indexes)
         return rpr % (', '.join(args))
     
+    def __len__(self):
+        return len(self.cells)
+    
+    def cell_labels(self, delim=' '):
+        """
+        returns a list of all cell names as strings.
+        
+        delim : str
+            delimiter to join cell names with multiple components
+         
+        """
+        labels = []
+        for cell in self.cells:
+            if isinstance(cell, tuple):
+                labels.append(delim.join(cell))
+            else:
+                labels.append(cell)
+        return labels
+    
     def get_data(self, out=list):
         if out is dict:
             return self.data

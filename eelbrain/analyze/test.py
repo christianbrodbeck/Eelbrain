@@ -387,7 +387,7 @@ def pairwise(Y, X, match=None, sub=None,            # data in
                      trend=trend)
     
     # extract test results
-    k = len(ct.cells)
+    k = len(ct)
     indexes = test['pw_indexes']
     statistic = test['statistic']
     _K = test[statistic]
@@ -406,7 +406,8 @@ def pairwise(Y, X, match=None, sub=None,            # data in
     
     # headings
     table.cell()
-    for name in ct.cells[1-mirror:]:
+    cell_labels = ct.cell_labels()
+    for name in cell_labels[1-mirror:]:
         table.cell(name)
     table.midrule()
     
@@ -421,7 +422,7 @@ def pairwise(Y, X, match=None, sub=None,            # data in
         for subrow in subrows: # contains t/p
             # names column
             if subrow is 0:
-                table.cell(ct.cells[row], r"\textbf")
+                table.cell(cell_labels[row], r"\textbf")
             else:
                 table.cell()
             # rows

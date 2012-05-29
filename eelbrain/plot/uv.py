@@ -287,7 +287,7 @@ class _simple_fig():
 
 def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             bottom=None, 
-            title=None, ylabel=True, xlabel=True,
+            title=None, ylabel=True, xlabel=True, xtick_delim='\n',
             titlekwargs=defaults['title_kwargs'],
             baseline=None, # category for plot of difference values
             ## pairwise kwargs
@@ -393,7 +393,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             P.setp(bp[itemname], color='black')
     
     #labelling
-    P.xticks(np.arange(len(ct.cells))+1, ct.cells)
+    P.xticks(np.arange(len(ct.cells))+1, ct.cell_labels(xtick_delim))
     y_min = np.max(all_data)
     y_unit = (y_min - bottom) / 15
     
@@ -435,7 +435,7 @@ def barplot(Y, X=None, match=None, sub=None,
             test=True, par=True, corr='Hochberg',
             title=None, trend=".",
             # bar settings:
-            ylabel='{err}', err='2sem', ec='k', xlabel=True,
+            ylabel='{err}', err='2sem', ec='k', xlabel=True,  xtick_delim='\n',
             hatch = False, colors=False, 
             bottom=0, c='#0099FF', edgec=None,
             **simple_kwargs
@@ -521,7 +521,7 @@ def barplot(Y, X=None, match=None, sub=None,
     ax.set_ylim(y0, y1)
     
     # figure decoration
-    P.xticks(np.arange(len(ct.cells)), ct.cells)
+    P.xticks(np.arange(len(ct.cells)), ct.cell_labels(xtick_delim))
         
     fig.finish()
     return fig
