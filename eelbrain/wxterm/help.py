@@ -15,6 +15,7 @@ import wx.html
 
 import ID
 from eelbrain.wxutils import Icon
+from eelbrain import fmtxt
 
 
 
@@ -28,21 +29,9 @@ try:
     import docutils.core
     
     def rst2html(rst):
-        # count leading whitespaces
-        lines = rst.splitlines()
-        ws_lead = []
-        for line in lines:
-            len_stripped = len(line.lstrip(' '))
-            if len_stripped:
-                ws_lead.append(len(line) - len_stripped)
-        
         # remove leading whitespaces; make an exception for the first line, 
         # since several functions start their docstring on the first line
-        if len(ws_lead) > 1:
-            rm = min(ws_lead[1:])
-            if rm:  
-                lines[0] = ' '*rm + lines[0].lstrip()
-                rst = os.linesep.join(line[rm:] for line in lines)
+        rst = fmtxt.unindent(rst, True)
         
         try:
             html = docutils.core.publish_parts(rst, writer_name='html')['body']

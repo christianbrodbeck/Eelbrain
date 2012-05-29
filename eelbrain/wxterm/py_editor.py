@@ -6,6 +6,7 @@ import wx.py
 #import wx.lib.mixins.listctrl
 
 import ID
+from eelbrain import fmtxt
 from eelbrain import wxutils
 from eelbrain.wxutils import Icon
 
@@ -414,7 +415,10 @@ class Editor(wx.py.editor.EditorFrame):
             return
         
         txt = self.editor.window.GetSelectedText()
-        lines = [line.strip('\r') for line in txt.split(os.linesep) if line]
+        txt = ''.join(txt.split('\r')) # remove carriage returns
+        txt = fmtxt.unindent(txt) # remove leading whitespaces
+        
+        lines = txt.splitlines()
         n = len(lines)
         if n == 0:
             return

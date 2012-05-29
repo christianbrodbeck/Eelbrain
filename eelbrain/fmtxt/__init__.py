@@ -764,3 +764,31 @@ class Table:
             with open(path, 'w') as f:
                 f.write(self.get_tsv(delimiter=delimiter, linesep=linesep, 
                                      fmt=fmt))
+
+
+
+def unindent(text, skip1=False):
+    """
+    removes leading whitespaces present in all lines
+    
+    skip1 : bool
+        skip the first
+    
+    """
+    # count leading whitespaces
+    lines = text.splitlines()
+    ws_lead = []
+    for line in lines[skip1:]:
+        len_stripped = len(line.lstrip(' '))
+        if len_stripped:
+            ws_lead.append(len(line) - len_stripped)
+    
+    if len(ws_lead) > 1:
+        rm = min(ws_lead)
+        if rm:
+            if skip1:
+                lines[0] = ' '*rm + lines[0].lstrip()
+            
+            text = os.linesep.join(line[rm:] for line in lines)
+    
+    return text
