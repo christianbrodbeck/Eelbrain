@@ -281,7 +281,10 @@ class symbol(texstr):
     
     def get_str(self, fmt=None):
         symbol = texstr.get_str(self, fmt=fmt)
-        return '%s(%s)'%(symbol, self.get_df_str())
+        if self._df is None:
+            return symbol
+        else:
+            return '%s(%s)'%(symbol, self.get_df_str())
     
     def get_df_str(self):
         if np.isscalar(self._df):
@@ -293,7 +296,9 @@ class symbol(texstr):
     
     def get_tex(self, mat=False, fmt=None):
         out = texstr.get_tex(self, mat, fmt)
-        out += '_{%s}' % self.get_df_str()
+        if self._df is not None:
+            out += '_{%s}' % self.get_df_str()
+        
         if mat:
             return out
         else:
