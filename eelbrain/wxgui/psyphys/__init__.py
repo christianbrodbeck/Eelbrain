@@ -16,7 +16,8 @@ import vw_guis as _vw_guis
 import experiment_frame as _eframe
 
 
-#__all__ = ['gui', 'list', 'meg', 'physio']
+__all__ = ['gui', 'list', 'physio']
+
 
 
 def frame_experiment(e):
