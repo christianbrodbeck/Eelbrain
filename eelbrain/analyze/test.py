@@ -411,7 +411,6 @@ def pairwise(Y, X, match=None, sub=None,            # data in
         table.cell(name)
     table.midrule()
     
-    tex_peq = fmtxt.texstr("p=")
     #tex_df = fmtxt.Element(df, "_", digits=0)
     if corr and not mirror:
         subrows = range(3)
@@ -431,18 +430,12 @@ def pairwise(Y, X, match=None, sub=None,            # data in
                     table.cell()
                 elif col > row:
                     index = indexes[(row, col)]
-                    #(col-1) + ((k-2)*row) sum(range(k-1, k-1-row, -1))
-                    K = _K[index]
-                    p = _P[index]
-                    df = _df[index]
-#                    nstars = _NStars[index]
                     if subrow is 0:
-                        tex_cell = fmtxt.eq(statistic, K, df=df, 
+                        tex_cell = fmtxt.eq(statistic, _K[index], df=_df[index], 
                                              stars=symbols[index],   
                                              of=3+trend)
                     elif subrow is 1:
-                        tex_cell = fmtxt.texstr([tex_peq, fmtxt.texstr(p, fmt='%.3f')], 
-                                                 mat=True)
+                        tex_cell = fmtxt.eq('p', _P[index], fmt='%.3f', drop0=True) 
                     elif subrow is 2:
                         tex_cell = fmtxt.eq('p', _Pc[index], df='c', 
                                              fmt='%.3f', drop0=True)
