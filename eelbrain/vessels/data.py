@@ -607,6 +607,286 @@ class var(_regressor_):
 
 
 
+# New avar ---
+
+_debug = 1
+
+class avar(np.ndarray):
+    """
+    http://www.scipy.org/Subclasses
+    """
+    def __new__(cls, x, dims=('case',), dtype=None, name=None, info={}, copy=False):
+        if _debug:
+            print "__new__(%r, ..., name=%r)" % (x, name)
+        
+        subarr = np.array(x, dtype=dtype, copy=copy)
+        
+        if subarr.ndim != len(dims):
+            err = "x.ndim (%i) != len(dims) (%i)" % (subarr.ndim, len(dims))
+            raise DimensionMismatchError(err)
+        
+        dims = list(dims)
+        for i, dim in enumerate(dims):
+            if isinstance(dim, str):
+                pass
+#                if dim == 'case':
+#                    x.shape[u]
+#                else:
+#                    raise ValueError("Unknown dimension: %r" % dim)
+            else:
+                n_data = subarr.shape[i]
+                n_dim = len(dim)
+                if n_data != n_dim:
+                    err = ("Dimension %r length mismatch: %i in data, "
+                           "%i in dimension" % (dim.name, n_data, n_dim))
+                    raise DimensionMismatchError(err)
+        
+        if name is None and hasattr(x, 'name'):
+            name = x.name
+        
+#        subarr.name = name # -> AttributeError: 'numpy.ndarray' object has no attribute 'name'
+#        subarr.dims = dims
+        subarr = subarr.view(cls) # -> __array_finalize__
+        subarr._set_avar_attr_(name, dims)
+        
+#        print "__new__, subarr: %r" % subarr
+        return subarr
+    
+    def __array_finalize__(self, obj):
+        # ``self`` is a new object resulting from
+        # ndarray.__new__(InfoArray, ...), therefore it only has
+        # attributes that the ndarray.__new__ constructor gave it -
+        # i.e. those of a standard ndarray.
+        #
+        # We could have got to the ndarray.__new__ call in 3 ways:
+        if obj is None: 
+            # From an explicit constructor
+            if _debug:
+                print ("__finalize__(self, None)")
+            return
+        elif not hasattr(obj, 'dims'):
+            # view casting in __new__
+            if _debug:
+                print ("__finalize__(obj without dims)")
+            return
+        
+        # else: from view casting
+        # (http://docs.scipy.org/doc/numpy/user/basics.subclassing.html)
+        if _debug:
+            print ("__finalize__(%r, %r)" % (self.__class__.__name__, obj.__class__.__name__))
+        
+        
+#        self._set_avar_attr_()
+        name = getattr(obj, 'name', None)
+        dims = getattr(obj, 'dims', None)
+        self._set_avar_attr_(name, dims)
+        
+        # from __new__: self is the new avar / obj is base of view (ndarray)
+#               :  self.shape=%r;  obj.name=%r, .shape=%r" % 
+#               (self.shape, getattr(obj, 'name', '/'), obj.shape))
+        
+    def __array_wrap__(self, out_arr, context=None):
+        if _debug:
+            print ("__array_wrap__(<%r, %r>, <%r, %r>, context=%r)" % (self.name, 
+                   self.shape, out_arr.name, out_arr.shape, context))
+
+#        if context:
+#            func, a, b = context
+#            if func in [np.less, np.less_equal]
+
+#        print ("__array_wrap__(%r, %r, context=%r)" % (self, out_arr, context))
+#        self.name = getattr(obj, 'name', None)
+#        self.info = getattr(obj, 'info', None)
+    
+    def __getitem__(self, index):
+        if _debug:
+            print '__getitem__(%s)' % repr(index)
+        
+        if isinstance(index, int):
+            out = super(avar, self).__getitem__(index)
+            if len(self.dims) > 1:
+                dims = self.dims[1:]
+                setattr(out, 'dims', dims)
+            
+            return out#.view(avar)
+        elif isinstance(index, slice):
+            if index.step in [1, None]:
+                return self.__getslice__(index.start, index.stop)
+            else:
+                index = (index,)
+        elif not isinstance(index, tuple):
+            index = (index,)
+        
+        if isinstance(index, tuple):
+            # sort out known dimensions
+            new_index = [slice(None)] * len(index)
+            for i,idx in enumerate(index):
+                if hasattr(idx, 'name') and (idx.name in self.dim2axis):
+                    i = self.dim2axis[idx.name]
+                    idx = idx.view(np.ndarray)
+                    while i >= len(new_index):
+                        new_index.append(slice(None))
+                new_index[i] = idx
+            
+            index = tuple(new_index)
+            if _debug:
+                print "new_index: %s" % repr(index)
+
+            # new data
+            out = super(avar, self).__getitem__(index)
+            
+            # modify dims
+            dims = list(self.dims)
+            for i, idx in enumerate(index):
+                dim = dims[i]
+                if isinstance(idx, int):
+                    dims[i] = None
+                elif isinstance(dim, str):
+                    pass
+                else:
+                    dims[i] = dim[idx]
+            
+            if not np.isscalar(out):
+                out.dims = tuple(dim for dim in dims if dim is not None)
+            return out
+        else:
+            return self[int(index)]
+        
+    def __getslice__(self, i, j):
+        if _debug:
+            print '__getslice__(%s)' % repr((i, j))
+        
+        if i is None: 
+            i = 0
+        if j is None:
+            j = len(self) + 1
+        out = super(avar, self).__getslice__(i, j)
+        # -> call to __array_finalize__ with 2 avar objs
+        # i.e., self does not have dim/name attrs yet
+        dim0 = self.dims[0]
+        if isinstance(dim0, str):
+            out.dims = self.dims
+        else:
+            dims = list(self.dims)
+            dims[0] = dim0[i:j]
+            out.dims = tuple(dims)
+        return out
+    
+    def __repr__(self):
+        args = []
+        kwargs = []
+        
+        if len(self.dims) == 1:
+            temp = "avar(%s)"
+            args.append('[%s]' % ', '.join(str(i) for i in self))
+        else:
+            arr = super(avar, self).__repr__()[:-1]
+            arr = os.linesep.join((line[1:] for line in arr.splitlines()))
+            temp = 'a' + arr + ',\n    %s)'
+#            args.append('x...')
+            
+        if self.dims != ('case',):
+            dims = []
+            for dim, n in zip(self.dims, self.shape):
+                if not isinstance(dim, str):
+                    dim = dim.name
+                dims.append("%s(%i)" % (dim, n))
+            args.append('<%s>' % ':'.join(dims))
+#            kwargs.append(("dims", repr(self.dims)))
+        if self.name:
+            kwargs.append(("name", repr(self.name)))
+        
+        args.extend('='.join(pair) for pair in kwargs)
+#        a = super(avar, self).__repr__()
+        return temp % (', '.join(args))
+    
+    def _set_avar_attr_(self, name=None, dims=None):
+        if name is not None:
+            self.name = name
+        if dims is not None:
+            self.dims = tuple(dims)
+        
+        for dim in self.dims:
+            if isinstance(dim, str):
+                pass
+            elif hasattr(self, dim.name):
+                pass
+            else:
+                setattr(self, dim.name, dim)
+        
+        self.dim2axis = {}
+        for i, dim in enumerate(self.dims):
+            if not isinstance(dim, str):
+                dim = dim.name
+            self.dim2axis[dim] = i
+    
+    # wrappers for methods with axis argument ---
+    def _read_axis(self, axis):
+        if isinstance(axis, str):
+            return self.dim2axis[axis]
+        else:
+            return int(axis)
+    
+    def _package(self, array, rm_axis=None):
+        if np.isscalar(array):
+            return array
+        
+        dims = tuple(dim for i,dim in enumerate(self.dims) if i != rm_axis)
+        out = array.view(avar)
+        out._set_avar_attr_(self.name, dims)
+        return out
+    
+    def argmax(self, axis=None, out=None):
+        axis = self._read_axis(axis)
+        out = super(avar, self).argmax(axis, out=out)
+        return self._package(out, axis)
+        
+    def argmin(self, axis=None, out=None):
+        axis = self._read_axis(axis)
+        out = super(avar, self).argmin(axis, out=out)
+        return self._package(out, axis)
+    
+    def argsort(self, axis=-1, kind='quicksort', order=None):
+        axis = self._read_axis(axis)
+        out = super(avar, self).argsort(axis, kind=kind, order=order)
+        return self._package(out)
+    
+    def compress(self, condition, axis='case', out=None):
+        "Warning: not the same functionality as numpy.compress"
+        raise NotImplementedError()
+    
+    def cumprod(self, axis=None, dtype=None, out=None):
+        axis = self._read_axis(axis)
+        out = super(avar, self).cumprod(axis, dtype=dtype, out=out)
+        return self._package(out)
+    
+    def cumsum(self, axis=None, dtype=None, out=None):
+        axis = self._read_axis(axis)
+        out = super(avar, self).cumsum(axis, dtype=dtype, out=out)
+        return self._package(out)
+    
+    def max(self, axis=None, out=None):
+        axis = self._read_axis(axis)
+        out = super(avar, self).max(axis, out=out)
+        return self._package(out, axis)
+        
+    def mean(self, axis=None, dtype=None, out=None):
+        axis = self._read_axis(axis)       
+        out = super(avar, self).mean(axis=axis, out=out)
+        return self._package(out, axis)
+    
+    def min(self, axis=None, out=None):
+        axis = self._read_axis(axis)
+        out = super(avar, self).min(axis=axis, out=out)
+        return self._package(out, axis)
+    
+    def reshape(self, shape, order='C'):
+        "return numpy.array"
+        return self.view(np.ndarray).reshape(shape, order='C')
+        
+
+
+
 def find_time_point(timevar, time):
     if time in timevar.x:
         i = np.where(timevar==time)[0][0]
