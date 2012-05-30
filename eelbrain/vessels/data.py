@@ -101,6 +101,10 @@ def iscategorial(Y):
     "factors as well as interactions are categorial"
     return hasattr(Y, '_stype_') and Y._stype_ in ["factor", "interaction"]
 
+def isuv(Y):
+    "univariate (var, factor)"
+    return hasattr(Y, '_stype_') and Y._stype_ in ["factor", "var"]
+
 def isdataobject(Y):
     if hasattr(Y, '_stype_'):
         if  Y._stype_ in ["model", "var", "ndvar", "factor", "interaction",
@@ -1673,7 +1677,7 @@ class dataset(collections.OrderedDict):
         else:
             cases = min(cases, self.N)
         
-        keys = [k for k, v in self.iteritems() if not isndvar(v)]
+        keys = [k for k, v in self.iteritems() if isuv(v)]
         if sort:
             keys = sorted(keys)
         
