@@ -1586,6 +1586,8 @@ class dataset(collections.OrderedDict):
             if isdataobject(item):
                 if not item.name:
                     item.name = name
+            elif isinstance(item, list):
+                pass # list of something
             else:
                 try:
                     if all(np.isreal(item)):
