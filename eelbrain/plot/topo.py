@@ -419,11 +419,16 @@ class _Window_Topo:
                 self.pointer.set_text("t=%.3g"%t)
                 self.pointer.set_visible(True)
             else:
-                xytext = self.ax.transAxes.transform((.5,1)) # in 'figure pixels'
+                xytext = self.ax.transAxes.transform((.5,1))
+                # These coordinates are in 'figure pixels'. They do not scale 
+                # when the figure is rescaled, so we need to transform them 
+                # into 'figure fraction' coordinates
+                inv = self.ax.figure.transFigure.inverted()
+                xytext = inv.transform(xytext)                
                 self.pointer = parent_ax.annotate("t=%.3g" % t, (t,1), 
                                     xycoords='data',
                                     xytext=xytext, 
-                                    textcoords='figure pixels',
+                                    textcoords='figure fraction',
                                     horizontalalignment='center',
                                     verticalalignment='center',
                                     arrowprops={'arrowstyle': '-',
