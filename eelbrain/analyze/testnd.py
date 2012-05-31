@@ -71,20 +71,19 @@ class ttest(test_result):
         """
 #        contours = { .05: (.8, .2, .0),  .01: (1., .6, .0),  .001: (1., 1., .0),
 #                    -.05: (0., .2, 1.), -.01: (.4, .8, 1.), -.001: (.5, 1., 1.),
-#                    (currently, p values are treated disreagrding direction)
 #                    }
+#                    (currently, p values are not directional)
+        ct = _vsl.structure.celltable(Y, X, match, sub, ds=ds)
         
-        if X is None:
+        if ct.X is None:
             pass
         elif c1 is None:
-            v = X.values()
-            if len(v) == 2:
-                c1, c2 = v
+            if len(ct) == 2:
+                c1, c2 = ct.cell_labels()
             else:
                 err = "If X has more than 2 categories, 2 must be chosen"
                 raise ValueError(err)
         
-        ct = _vsl.structure.celltable(Y, X, match, sub, ds=ds)
         
         if isinstance(c2, basestring):
             c1_mean = ct.data[c1].summary(name=c1)
