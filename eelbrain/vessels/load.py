@@ -10,6 +10,7 @@ Created on Feb 21, 2012
 from __future__ import division
 
 import os
+import fnmatch
 
 import numpy as np
 
@@ -17,6 +18,7 @@ __all__ = ['tsv', 'var', 'fiff_add_eyetracker']
 unavailable = []
 try:
     import mne
+    import mne.minimum_norm as _mn
     __all__.extend(('fiff_events', 'fiff_epochs'))
 except ImportError:
     unavailable.append('mne import failed')
@@ -29,6 +31,9 @@ import colorspaces as _cs
 import sensors
 from eelbrain import ui
 from eelbrain.utils import subp as _subp
+
+
+__all__.extend(['fiff_evoked', 'evoked2stc']) # dev
 
 
 
@@ -119,7 +124,8 @@ def fiff_events(source_path=None, name=None, merge=-1, baseline=0):
     istart = _data.var(events[:,0], name='i_start')
     event = _data.var(events[:,2], name='eventID')
     info = {'source': source_path,
-            'samplingrate': raw.info['sfreq'][0]}
+            'samplingrate': raw.info['sfreq'][0],
+            'info': raw.info}
     return _data.dataset(event, istart, name=name, info=info)
 
 
@@ -179,11 +185,13 @@ def fiff_add_eyetracker(ds, tstart=0, tstop=.6, edf=None, ID='eventID',
     target.x *= edf.get_acceptable(tstart, tstop)
 
 
+
 def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
                 tstart=-.2, tstop=.6, baseline=None, 
                 downsample=1, mult=1, unit='T',
                 properties=None, sensorsname='fiff-sensors'):
     """
+    Adds data from individual epochs as a ndvar to a dataset.
     Uses the events in ``dataset[i_start]`` to extract epochs from the raw 
     file associated with ``dataset``; returns ndvar or nothing (see ``add`` 
     argument).
@@ -218,10 +226,7 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
         name for the new ndvar containing the epoch data  
          
     """
-    events = np.empty((dataset.N, 3), dtype=np.int32)
-    events[:,0] = dataset[i_start].x
-    events[:,1] = 0
-    events[:,2] = 1
+    events = mne_events(i_start, ds=dataset)
     
     source_path = dataset.info['source']
     raw = mne.fiff.Raw(source_path)
@@ -285,6 +290,194 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
         dataset.default_DV = target
     else:
         return ndvar
+
+
+
+def fiff_evoked(ds, X, tstart=-0.1, tstop=0.6, baseline=(None, 0), 
+                target='evoked', i_start='i_start', eventID='eventID', count='n',
+                reject=None, 
+                ):
+    """
+    Takes as input a single-trial dataset ``ds``, and returns a dataset 
+    compressed to the model ``X``, adding a list variable named ``target`` (by 
+    default ``"evoked"``) containing an ``mne.Evoked`` object for each cell.
+    
+    """
+    evoked = []
+    for cell in X.values():
+        ds_cell = ds.subset(X == cell)
+        epochs = mne_Epochs(ds_cell, tstart=tstart, tstop=tstop, 
+                            baseline=baseline, reject=reject)
+        evoked.append(epochs.average())
+    
+    
+    dsc = ds.compress(X, count=count)
+    if isinstance(count, str):
+        count = dsc[count]
+    
+    dsc[target] = evoked
+    
+    # update n cases per average
+    for i,ev in enumerate(evoked):
+        count[i] = ev.nave
+    
+    return dsc
+
+
+
+def evoked2stc(ds, fwd, cov, evoked='evoked', target='stc', 
+                loose=0.2, depth=0.8,
+                lambda2 = 1.0 / 3**2, dSPM=True, pick_normal=False):
+    """
+    Takes a dataset with an evoked list and adds a corresponding stc list
+    
+    
+    *mne inverse operator:*
+    
+    loose: float in [0, 1]
+        Value that weights the source variances of the dipole components
+        defining the tangent space of the cortical surfaces.
+    depth: None | float in [0, 1]
+        Depth weighting coefficients. If None, no depth weighting is performed.
+    
+    **mne apply inverse:**
+    
+    lambda2, dSPM, pick_normal
+    """
+    stcs = []
+    for case in ds.itercases():
+        fwd_file= fwd.format(**case)
+        cov_file= cov.format(**case)
+        
+        fwd_obj = mne.read_forward_solution(fwd_file, force_fixed=False, surf_ori=True)
+        cov_obj = mne.Covariance(cov_file)
+        
+        evoked = case['evoked']
+        inv = _mn.make_inverse_operator(evoked.info, fwd_obj, cov_obj, loose=loose, depth=depth)
+        
+        stc = _mn.apply_inverse(evoked, inv, lambda2=lambda2, dSPM=dSPM, pick_normal=pick_normal)
+        stc.src = inv['src'] # add the source space so I don't have to retrieve it independently 
+        stcs.append(stc)
+    
+    if target:
+        ds[target] = stcs
+    else:
+        return stcs
+
+
+def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None,
+             tstart=-0.1, tstop=0.6, baseline=(None, 0)):
+    """
+    adds data from one label as
+    
+    """
+    if name is None:
+        if label:
+            _, lbl = os.path.split(label)
+            lbl, _ = os.path.splitext(lbl)
+            name = lbl.replace('-', '_')
+        else:
+            name = 'stc'
+    
+    info = ds.info['info']
+    
+    fif_name = ds.info['source']
+    fif_name, _ = os.path.splitext(fif_name)
+    if fif_name.endswith('raw'):
+        fif_name = fif_name[:-3]
+    
+    fwd = fwd.format(fif=fif_name)
+    if '*' in fwd:
+        d, n = os.path.split(fwd)
+        names = fnmatch.filter(os.listdir(d), n)
+        if len(names) == 1:
+            fwd = os.path.join(d, names[0])
+        else:
+            raise IOError("No unique fwd file matching %r" % fwd)
+    
+    cov = cov.format(fif=fif_name)
+    if '*' in cov:
+        d, n = os.path.split(cov)
+        names = fnmatch.filter(os.listdir(d), n)
+        if len(names) == 1:
+            cov = os.path.join(d, names[0])
+        else:
+            raise IOError("No unique cov file matching %r" % cov)
+    
+    fwd = mne.read_forward_solution(fwd, force_fixed=False, surf_ori=True)
+    cov = mne.Covariance(cov)
+    inv = _mn.make_inverse_operator(info, fwd, cov, loose=0.2, depth=0.8)
+    epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline)
+    
+    # mne example:
+    snr = 3.0
+    lambda2 = 1.0 / snr ** 2
+    
+    if label is not None:
+        label = mne.read_label(label)
+    stcs = _mn.apply_inverse_epochs(epochs, inv, lambda2, dSPM=False, label=label)
+    
+    x = np.vstack(s.data.mean(0) for s in stcs)
+    s = stcs[0]
+    dims = (_data.var(s.times, 'time'),)
+    ds[name] = _data.ndvar(dims, x, properties=None, info='')
+    
+    return stcs
+    
+    
+    
+#    data = sum(stc.data for stc in stcs) / len(stcs)
+#    
+#    # compute sign flip to avoid signal cancelation when averaging signed values
+#    flip = mne.label_sign_flip(label, inverse_operator['src'])
+#    
+#    label_mean = np.mean(data, axis=0)
+#    label_mean_flip = np.mean(flip[:, np.newaxis] * data, axis=0)
+
+
+
+def mne_events(i_start='i_start', ds=None):
+    if isinstance(i_start, basestring):
+        i_start = ds[i_start]
+    
+    events = np.empty((ds.N, 3), dtype=np.int32)
+    events[:,0] = i_start.x
+    events[:,1] = 0
+    events[:,2] = 1
+    return events
+
+
+def mne_write_cov(ds, tstart=-.1, tstop=0, baseline=(None, 0), dest='{source}-cov.fif'):
+    events = mne_events(ds=ds)
+    source_path = ds.info['source']
+    raw = mne.fiff.Raw(source_path)
+    epochs = mne.Epochs(raw, events, 1, tstart, tstop, baseline=baseline)
+    cov = mne.compute_covariance(epochs, keep_sample_mean=True)
+    
+    source, _ = os.path.splitext(source_path)
+    dest = dest.format(source=source)
+    cov.save(dest)
+
+
+def mne_Raw(ds):
+    source_path = ds.info['source']
+    raw = mne.fiff.Raw(source_path)
+    return raw
+
+def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None):
+    """
+    reject : 
+        e.g., {'mag': 2e-12}
+    """
+    source_path = ds.info['source']
+    raw = mne.fiff.Raw(source_path)
+    
+    events = mne_events(ds=ds)
+    
+    epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, 
+                        baseline=baseline, reject=reject)
+    return epochs
+
 
 
 def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None):

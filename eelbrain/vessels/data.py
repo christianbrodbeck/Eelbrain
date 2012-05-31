@@ -101,6 +101,10 @@ def iscategorial(Y):
     "factors as well as interactions are categorial"
     return hasattr(Y, '_stype_') and Y._stype_ in ["factor", "interaction"]
 
+def isuv(Y):
+    "univariate (var, factor)"
+    return hasattr(Y, '_stype_') and Y._stype_ in ["factor", "var"]
+
 def isdataobject(Y):
     if hasattr(Y, '_stype_'):
         if  Y._stype_ in ["model", "var", "ndvar", "factor", "interaction",
@@ -595,6 +599,9 @@ class var(_regressor_):
     
     def export(self, fn=None, fmt='%.10g', delim=os.linesep):
         "Write all values to a plain text file"
+        if self.x.dtype == np.bool_:
+            fmt = '%r'
+        
         _regressor_.export(self, fn, fmt=fmt, delim=delim)
     
     @property
@@ -1586,6 +1593,8 @@ class dataset(collections.OrderedDict):
             if isdataobject(item):
                 if not item.name:
                     item.name = name
+            elif isinstance(item, list):
+                pass # list of something
             else:
                 try:
                     if all(np.isreal(item)):
@@ -1671,7 +1680,7 @@ class dataset(collections.OrderedDict):
         else:
             cases = min(cases, self.N)
         
-        keys = [k for k, v in self.iteritems() if not isndvar(v)]
+        keys = [k for k, v in self.iteritems() if isuv(v)]
         if sort:
             keys = sorted(keys)
         
