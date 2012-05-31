@@ -599,6 +599,9 @@ class var(_regressor_):
     
     def export(self, fn=None, fmt='%.10g', delim=os.linesep):
         "Write all values to a plain text file"
+        if self.x.dtype == np.bool_:
+            fmt = '%r'
+        
         _regressor_.export(self, fn, fmt=fmt, delim=delim)
     
     @property
