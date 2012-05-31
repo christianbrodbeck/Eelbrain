@@ -17,12 +17,13 @@ Created on Mar 4, 2012
 @author: christian
 '''
 
+import fnmatch
+import logging
 import os
+import re
 import shutil
 import subprocess
 import tempfile
-import re
-import fnmatch
 
 import numpy as np
 
@@ -47,7 +48,7 @@ _bin_dirs = {'mne': None,
              'edfapi': None}
 
 
-_verbose = False
+_verbose = 1
 
 
 def set_bin_dirs(mne=None, freesurfer=None, edf=None):
@@ -88,7 +89,7 @@ def set_bin_dirs(mne=None, freesurfer=None, edf=None):
 
 class edf_file:
     """
-    Converts and "eyelink data format" (.edf) file to a temporary directory
+    Converts an "eyelink data format" (.edf) file to a temporary directory
     and parses its content.
     
     """
@@ -256,92 +257,6 @@ class marker_avg_file:
         os.remove(self.path)
 
 
-class mne_experiment:
-    def __init__(self, megdir=None, subject=None, experiment=None):
-        """
-        directory : str
-            the base directory for the experiment
-        
-        ename : str
-            the name of the experiment as it appears in file names
-        
-        """
-        if megdir:
-            megdir = os.path.expanduser(megdir)
-        else:
-            msg = "Please select the meg directory of your experiment"
-            megdir = ui.ask_dir("Select Directory", msg, True)
-        
-        self._megdir = megdir
-        self._subject = subject
-        self._experiment = experiment
-        
-        self._subjects = [p for p in os.listdir(megdir) if not p.startswith('.')]
-        
-        # path elements
-        sub = '{subject}'
-        exp = '{experiment}'
-        rawdir = os.path.join(megdir, sub, 'raw')
-        
-        # kit2fiff
-        self.temp_mrk = os.path.join(rawdir, '_'.join((sub, exp, 'marker.txt')))
-        self.temp_elp = os.path.join(rawdir, '*.elp')
-        self.temp_hsp = os.path.join(rawdir, '*.hsp')
-        self.temp_sns = '~/Documents/Eclipse/Eelbrain Reloaded/aux_files/sns.txt'
-        self.temp_rawtxt = os.path.join(rawdir, '_'.join((sub, exp, 'raw.txt')))
-        self.temp_rawfif = os.path.join(rawdir, '_'.join((sub, exp, 'raw.fif')))
-    
-    def __repr__(self):
-        args = [('megdir', repr(self._megdir))]
-        if self._subject is not None:
-            args.append(('subject', repr(self._subject)))
-        if self._experiment is not None:
-            args.append(('experiment', repr(self._experiment)))
-        
-        args = ', '.join(['='.join(pair) for pair in args])
-        return "mne_experiment(%s)" % args
-    
-    def get(self, name):
-        fmt = dict(subject = self._subject,
-                   experiment = self._experiment)
-        
-        if name == 'mrk':
-            path = self.temp_mrk.format(**fmt)
-        elif name == 'elp':
-            path = self.temp_elp.format(**fmt)
-        elif name == 'hsp':
-            path = self.temp_hsp.format(**fmt)
-        elif name == 'sns':
-            path = self.temp_sns.format(**fmt)
-        elif name == 'rawtxt':
-            path = self.temp_rawtxt.format(**fmt)
-        elif name == 'rawfif':
-            path = self.temp_rawfif.format(**fmt)
-        else:
-            raise KeyError("No path for %r" % name)
-        
-        # assert the presence of the file
-        directory, name = os.path.split(path)
-        if '*' in name:
-            match = [n for n in os.listdir(directory) if fnmatch.fnmatch(n, name)]
-            if len(match) == 1:
-                path = os.path.join(directory, match[0])
-            elif len(match) > 1:
-                err = "More than one files match %r: %r" % (path, match)
-                raise IOError(err)
-            else:
-                raise IOError("no file found for %r" % path)
-        
-        path = os.path.expanduser(path)
-        return path
-    
-    def set(self, subject=None, experiment=None):
-        if subject is not None:
-            self._subject = subject
-        if experiment is not None:
-            self._experiment = experiment
-
-
 
 def _format_path(path, fmt, is_new=False):
     "helper function to format the path to mne files"
@@ -500,50 +415,96 @@ def process_raw(raw, save='{raw}_filt', args=[], **kwargs):
 
 
 
-def _run(cmd, v=False, verr=True):
+def _run(cmd, v=None):
     """
     cmd: list of strings
         command that is submitted to subprocess.Popen.
-    v : bool
-        verbose mode
+    v : 0 | 1 | 2 | None
+        verbosity level (0: nothing;  1: stderr;  2: stdout;  None: use 
+        _verbose module attribute)
     
     """
-    v = v or _verbose
-    if v:
+    if v is None:
+        v = _verbose
+    
+    if v > 1:
         print "> COMMAND:"
         for line in cmd:
             print repr(line)
     
-    cmd = [str(c) for c in cmd]
+    cmd = [unicode(c) for c in cmd]
     sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = sp.communicate()
     
-    if v:
+    if v > 1:
         print "\n> OUT:"
         print stdout
     
-    if verr and stderr:
+    if v > 0 and stderr:
         print '\n> ERROR:'
         print stderr
+    
+    return stdout, stderr
 
 
-
-def forward(mri_dir, fif_file, subject, coreg=True):
+def setup_mri(mri_sdir, ico=4):
     """
-    . Short instructions 
-    below, for more information see section XI of Gwyneth's manual. 
+    runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
     
-    Arguments:
+    """
+    mri_dir, subject = os.path.split(mri_sdir)
+    bemdir = os.path.join(mri_sdir, 'bem')
     
-    mri_sdir : str(path)
-        the subjects's mri dir
-    meg : str(path)
-        the subject's meg dir
-    coreg : bool
-        Opens ``mne_analyze`` to setup the meg/mri coregistration (for 
-        instructions see below)
+    # symlinks (MNE-manual 3.6, p. 24 / Gwyneth's Manual X) 
+    for name in ['inner_skull', 'outer_skull', 'outer_skin']:
+        # can I make path relative by omitting initial bemdir,  ?
+        src = os.path.join('watershed', '%s_%s_surface' % (subject, name)) 
+        dest = os.path.join(bemdir, '%s.surf' % name)
+        if os.path.exists(dest):
+            if os.path.islink(dest):
+                if os.path.realpath(dest) == src:
+                    pass
+                else:
+                    logging.debug("replacing symlink: %r" % dest)
+                    os.remove(dest)
+                    os.symlink(src, dest)
+                    # can raise an OSError: [Errno 13] Permission denied
+            else:
+                raise IOError("%r exists and is no symlink" % dest)
+        else:
+            os.symlink(src, dest)    
     
-    Procedure:
+    # mne_setup_forward_model
+    os.environ['SUBJECTS_DIR'] = mri_dir    
+    cmd = [os.path.join(_bin_dirs['mne'], 'bin', "mne_setup_forward_model"),
+           '--subject', subject,
+           '--surf',
+           '--ico', ico,
+           '--homog']
+    
+    _run(cmd)
+    # -> creates a number of files in <mri_sdir>/bem
+
+
+
+def run_mne_analyze(mri_dir, fif_dir, modal=True):
+    """
+    invokes mne_analyze (e.g., for manual coregistration)
+    
+    **Arguments:**
+    
+    mri_dir : str(path)
+        the directory containing the mri data (subjects's mri directory, or 
+        fsaverage)
+    fif_file : str(path)
+        the target fiff file
+    modal : bool
+        causes the shell to be unresponsive until mne_analyze is closed
+    
+    
+    **Coregistration Procedure:**
+    
+    (For more information see  MNE-manual 3.10 & 12.11, or section XI of Gwyneth's manual.)
     
     #. File > Load Surface: select the subject`s directory and "Inflated"
     #. File > Load digitizer data: select the fiff file
@@ -560,26 +521,13 @@ def forward(mri_dir, fif_file, subject, coreg=True):
     
     This will create:
      - mri/<subject>/mri/T1-neuromag/sets/COR-<username>-<date created>-<arbitrary number>.
- 
+      --> move it! and: befor running, take a list of files already in the folder to exclude
+      --> then use --mri option of do_forward_solution
     """
-    mri_sdir = os.path.join(mri_dir, subject)
-    bemdir = os.path.join(mri_sdir, 'bem')
-    
-    # Gwyneth XXX
-    for name in ['inner_skull', 'outer_skull', 'outer_skin']:
-        src = os.path.join(bemdir, 'watershed', '%s_%s_surface' % (subject, name))
-        dest = os.path.join(bemdir, '%s.surf' % name)
-        if os.path.islink(dest):
-#            print "replacing symlink: %r" % dest
-            os.remove(dest)
-        os.symlink(src, dest)
-        # can raise an OSError: [Errno 13] Permission denied
-    
     os.environ['SUBJECTS_DIR'] = mri_dir
-    fif_dir, _ = os.path.split(fif_file)
-    if coreg:
-        os.chdir(fif_dir)
-        p = subprocess.Popen('. $MNE_ROOT/bin/mne_setup_sh; mne_analyze', shell=True)
+    os.chdir(fif_dir)
+    p = subprocess.Popen('. $MNE_ROOT/bin/mne_setup_sh; mne_analyze', shell=True)
+    if modal:
         print "Waiting for mne_analyze to be closed..."
         p.wait() # causes the shell to be unresponsive until mne_analyze is closed
 #    p = subprocess.Popen(['%s/bin/mne_setup' % _mne_dir],
@@ -589,27 +537,103 @@ def forward(mri_dir, fif_file, subject, coreg=True):
 #    p = subprocess.Popen('mne_analyze')
 # Gwyneth's Manual, XII
 ## SUBJECTS_DIR is MRI directory according to MNE 17
+
+
+def do_forward_solution(paths=dict(rawfif=None, 
+                                   mri_sdir=None, 
+                                   fwd='{fif}-fwd.fif',
+                                   bem=None,
+                                   src=None,
+                                   trans=None,
+                                   cor=None), 
+                        overwrite=False, v=1):
+    """
+    MNE-manual, 3.13, p. 36 ff.
     
+    fixed : bool
+        "Use fixed source orientations normal to the cortical mantle. By 
+        default, the source orientations are not constrained. If --fixed is 
+        specified, the --loose flag is ignored." (MNE-manual, 36)
+    loose | scalar <amount>
+        "Use a 'loose' orientation constraint. This means that the source 
+        covariance matrix entries corresponding to the current component normal
+        to the cortex are set equal to one and the transverse components are 
+        set to <amount>. Recommended value of amount is 0.1...0.6." 
+        (MNE-manual, 37)
     
-    cmd = [os.path.join(_bin_dirs['mne'], 'bin', "mne_setup_forward_model"),
-           '--subject', subject,
-           '--surf',
-           '--ico', 4,
-           '--homog']
+    """
+    fif_file = paths.get('rawfif')
+    mri_sdir = paths.get('mri_sdir')
+    fwd_file = paths.get('fwd')
+    bem_file = paths.get('bem')
+    src_file = paths.get('src')
+    trans_file = paths.get('trans')
+    mri_cor_file = paths.get('cor')
     
-    _run(cmd)
-    # -> /Users/christian/Data/eref/mri/R0368/bem/R0368-5120-bem-sol.fif
+    mri_dir, mri_subject = os.path.split(mri_sdir)
     
+    fif_name, _ = os.path.splitext(fif_file)
+    fwd_file = fwd_file.format(fif = fif_name)
     
-    cmd = [os.path.join(_bin_dirs['mne'], 'bin', "mne_do_forward_solution"),
-           '--subject', subject,
-           '--src', os.path.join(bemdir, '%s-ico-4-src.fif' % subject),
-           '--bem', os.path.join(bemdir, '%s-5120-bem-sol.fif' % subject), 
-           '--meas', fif_file,
-            ##'<subj>/<experiment_folder>/RawGrandAve.fif',
+    mne_dir = _bin_dirs['mne']
+    # could I use that??
+#    os.path.join(mne_dir, 'share', 'mne', 'mne_analyze', 'fsaverage')
+    os.environ['SUBJECTS_DIR'] = mri_dir
+    cmd = [os.path.join(mne_dir, 'bin', "mne_do_forward_solution"),
+           '--subject', mri_subject,
+           '--src', src_file,
+           '--bem', bem_file, 
+#           '--mri', mri_cor_file, # MRI description file containing the MEG/MRI coordinate transformation.
+           '--mri', trans_file, # MRI description file containing the MEG/MRI coordinate transformation.
+#           '--trans', trans_file, #  head->MRI coordinate transformation (obviates --mri). 
+           '--meas', fif_file, # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
+           '--fwd', fwd_file, #'--destdir', target_file_dir, # optional 
            '--megonly']
     
-    _run(cmd)
+    if overwrite:
+        cmd.append('--overwrite')
+    elif os.path.exists(fwd_file):
+        raise IOError("fwd file at %r already exists" % fwd_file)
+    
+    out, err = _run(cmd, v=v)
+    if os.path.exists(fwd_file):
+        return fwd_file
+    else:
+        err = "fwd-file not created"
+        if v < 1:
+            err = os.linesep.join([err, "command out:", out])
+        raise RuntimeError(err)
+
+
+def do_inverse_operator(fwd_file, cov_file, inv_file='{cov}inv.fif', 
+                        loose=False, fixed=False):
+    cov, _ = os.path.splitext(cov_file)
+    if cov.endswith('cov'):
+        cov = cov[:-3]
+    
+    inv_file = inv_file.format(cov=cov)
+    
+    cmd = [os.path.join(_bin_dirs['mne'], 'bin', "mne_do_inverse_operator"),
+           '--fwd', fwd_file,
+           '--meg', # Employ MEG data in the inverse calculation. If neither --meg nor --eeg is set only MEG channels are included.
+           '--depth', 
+           '--megreg', 0.1, 
+           '--noisecov', cov_file,
+           '--inv', inv_file, # Save the inverse operator decomposition here. 
+           ]
+    
+    if loose:
+        cmd.extend(['--loose', loose])
+    elif fixed:
+        cmd.append('--fixed')
+    
+    out, err = _run(cmd)
+    if not os.path.exists(inv_file):
+        raise RuntimeError(os.linesep.join(["inv-file not created", err]))
+    
+        
+#           (creates RawGrandAve-7-fwd-inv.fif).
+
     # -> /Users/christian/Data/eref/meg/R0368/myfif/R0368_eref3_raw-R0368-ico-4-src-fwd.fif...done
 #    fwd_file ='-fwd' 
 #    cov_file = ''
@@ -621,6 +645,14 @@ def forward(mri_dir, fif_file, subject, coreg=True):
 #           '--megreg', '0.1',
 #           '--senscov', cov_file]
     # -> (creates RawGrandAve-7-fwd-inv.fif). 
+
+
+"""
+    #. invokes mne_analyze (if coreg == True) for manual coregistration 
+       (see below)
+    #. runs mne_do_forward_solution
+
+"""
 
 
 
