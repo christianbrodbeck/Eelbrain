@@ -302,7 +302,6 @@ def _axgrid_sensors(sensorLocs2d, figsize=_base.defaults['figsize'],
 def _plt_uts(ax, epoch, 
              sensors=None, # sensors (ID) to plot
              lp=None, # line-properties
-             color=None,
              test_epoch=False, p=.05, softStats=False, #testWindowFreq='max',
              sem=None,        # 'sem' (float multiplier)
              plotLabel=False,
@@ -379,7 +378,9 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
         
         if color is None:
             plot_kwargs['color'] = l.properties.get('color', 'k')
-        elif color is not True:
+        elif color is True:
+            pass # no color kwarg to use mpl's color_cycle 
+        else:
             plot_kwargs['color'] = color
         
         # plot
