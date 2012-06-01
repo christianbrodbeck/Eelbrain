@@ -1,5 +1,6 @@
 
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 try:
     from mpl_toolkits.mplot3d import Axes3D as _Axes3D
@@ -69,7 +70,16 @@ def _plt_map2d(ax, sensor_net, proj='default', ROI=None,
     if ROI is not None:
         locs = locs[ROI]
     
-    h = ax.plot(locs[:,0], locs[:,1], **kwargs)
+    if 'color' in kwargs:
+        h = ax.plot(locs[:,0], locs[:,1], **kwargs)
+    else:
+        h = []
+        colors = mpl.rcParams['axes.color_cycle']
+        nc = len(colors)
+        for i in xrange(len(locs)):
+            kwargs['color'] = kwargs['mec'] = colors[i % nc]
+            hi = ax.plot(locs[i,0], locs[i,1], **kwargs)
+            h.append(hi)
     return h
 
 

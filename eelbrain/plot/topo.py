@@ -99,16 +99,28 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
     
     """
     def __init__(self, epochs, size=2, bflywidth=3, dpi=90, 
-                 res=50, interpolation='nearest', 
+                 res=100, interpolation='nearest', 
                  title=True, xlabel=True, ylabel=True,
-                 color=None, sensors=None, ylim=None):
+                 color=True, sensors=True, ROI=None, ylim=None):
         """
+        **Plot atributes:**
         
-        size : float
-            in inches: height of the butterfly axes and side length of the 
-            topomap axes
-        bflywidth : float
+        ROI : list of indices
+            plot a subset of sensors
+        sensors : bool
+            determines whether all sensors are marked in the topo-maps
+        
+        **Figure Layout:**
+        
+        size : scalar
+            in inches: height of the butterfly axes as well as side length of 
+            the topomap axes
+        bflywidth : scalar
             multiplier for the width of butterfly plots based on their height
+        res : int
+            resolution of the topomap plots (res x res pixels)
+        interpolation : 'nearest' | ...
+            matplotlib imshow kwargs
         
         """
         frame_title = "plot.topo.butterfly: %r"
@@ -116,7 +128,7 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
             frame_title = frame_title % title
         else:
             frame_title = frame_title % getattr(epochs, 'name', '')
-        
+                
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 2)
         n_plots = len(epochs)
         
@@ -148,6 +160,9 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
         
         self.topo_kwargs = {'res': res,
                             'interpolation': interpolation,
+                            'sensors': sensors,
+                            'ROI': ROI,
+                            'ROIcolor': color,
                             'title': False}
         
         t = 0
@@ -179,7 +194,7 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
             
             show_x_axis = (i==n_plots-1)
             
-            utsnd._ax_butterfly(ax1, layers, sensors=sensors, ylim=ylim, 
+            utsnd._ax_butterfly(ax1, layers, sensors=ROI, ylim=ylim, 
                                 title=False, xlabel=show_x_axis, ylabel=ylabel, 
                                 color=color)
             ax1.yaxis.set_offset_position('right')
@@ -396,11 +411,16 @@ def _plt_topomap(ax, epoch, proj='default', res=100,
 
 
 
-def _ax_topomap(ax, layers, title=True, sensors=None, proj='default', xlabel=None,
+def _ax_topomap(ax, layers, title=True, 
+                sensors=None, ROI=None, ROIcolor=True,
+                proj='default', xlabel=None,
                 im_frame=0.02, **im_kwargs):
     """
-    sensors : 
-        sensors to plot: list of IDs, or True/'all'
+    sensors : bool | str
+        plot sensor markers (str to add label: 
+    ROI : list of IDs
+        highlight a subset of the sensors
+        
     """
     ax.set_axis_off()
     handles = {}
@@ -417,19 +437,19 @@ def _ax_topomap(ax, layers, title=True, sensors=None, proj='default', xlabel=Non
         if isinstance(sensors, str):
             _plt_sensors._plt_map2d_labels(ax, sensor_net, proj=proj, text=sensors)        
         
+    if ROI is not None:
+        sensor_net = layers[0].sensor
+        kw=dict(marker='.', # symbol
+                ms=3, # marker size
+                markeredgewidth=1,
+                ls='')
         
-#        loc2d = epoch.sensor.getLocs2d(proj=proj)
-#        if np.iterable(sensors):
-#            loc2d = loc2d[sensors]
-#
-#        epoch = layers[0]
-#        cs = epoch.properties['colorspace']
-#        
-#        h = ax.scatter(loc2d[:,0], loc2d[:,1], 
-#                       color=cs.sensorColor,
-#                       marker=cs.sensorMarker, s=6, linewidth=.25)
-#        handles['sensors'] = h
-    
+        if ROIcolor is not True:
+            kw['color'] = ROIcolor
+        
+        _plt_sensors._plt_map2d(ax, sensor_net, proj=proj, ROI=ROI, kwargs=kw)
+        
+        
     ax.set_xlim(-im_frame, 1+im_frame)
     ax.set_ylim(-im_frame, 1+im_frame)
     

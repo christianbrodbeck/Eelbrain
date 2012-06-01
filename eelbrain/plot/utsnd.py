@@ -330,7 +330,7 @@ def _plt_uts(ax, epoch,
     
     """
     Y = epoch.get_data(('time', 'sensor'), 0)
-    if sensors:
+    if sensors is not None:
         Y = Y[:,sensors]
     T = epoch.time#.x[...,None]
     
