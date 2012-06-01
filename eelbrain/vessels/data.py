@@ -531,7 +531,7 @@ class var(_regressor_):
         "for effect initialization"
         return self.centered[:,None]
     
-    def as_factor(self, name=None, labels='%g'):
+    def as_factor(self, name=None, labels='%r'):
         """
         convert the var into a factor
         
