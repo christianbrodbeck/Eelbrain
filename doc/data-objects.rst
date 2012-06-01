@@ -27,7 +27,14 @@ This example illustrates the use of those objects::
     >>> y[:14] = np.random.normal(0, 1, 14)
     >>> y[14:] = np.random.normal(1.5, 1, 7)
     >>> Y = var(y, 'Y')
+    >>> Y
+    var([-0.417, -0.0563, -2.14, 1.64, -1.79, -0.842, 0.503, -1.25, -1.06,
+    -0.909, 0.551, 2.29, 0.0415, -1.12, 2.04, 0.904, 1.48, 2.68, 0.752, 1.51, 
+    0.622], name='Y')
     >>> A = factor('abc', 'A', rep=7)
+    >>> A
+    factor(['a', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b',
+    'b', 'c', 'c', 'c', 'c', 'c', 'c', 'c'], name='A')
     >>> print dataset(Y, A)
     Y           A
     -------------
