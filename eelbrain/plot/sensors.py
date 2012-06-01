@@ -58,9 +58,9 @@ def _ax_map2d(ax, sensor_net, proj='default',
 
 def _plt_map2d(ax, sensor_net, proj='default', ROI=None,
                kwargs=dict(
-                           marker='x', # symbol
-                           color='b', # mpl plot kwargs ...
-                           ms=3, # marker size
+                           marker='.', # symbol
+                           color='k', # mpl plot kwargs ...
+                           ms=1, # marker size
                            markeredgewidth=.5,
                            ls='',
                            ),
