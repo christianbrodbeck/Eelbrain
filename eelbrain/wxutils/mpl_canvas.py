@@ -43,7 +43,7 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         self.Bind(wx.EVT_MENU, self.OnFileSave, id=wx.ID_SAVE)
     
     def CanCopy(self):
-        "pretend to be wx.py.frame.Frame "
+        "pretend to be wx.py.frame.Frame to enable 'copy' menu command"
         return True
     
     def bufferHasChanged(self):

@@ -98,7 +98,7 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
     Butterfly plot with corresponding topomap
     
     """
-    def __init__(self, epochs, size=2.5, bflywidth=2.5, dpi=90, 
+    def __init__(self, epochs, size=2, bflywidth=3, dpi=90, 
                  res=50, interpolation='nearest', 
                  title=True, xlabel=True, ylabel=True,
                  color=None, sensors=None, ylim=None):
@@ -118,57 +118,86 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
             frame_title = frame_title % getattr(epochs, 'name', '')
         
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 2)
+        n_plots = len(epochs)
         
         # create figure
-        n_plots = len(epochs)
         x_size = size * (1 + bflywidth)
         y_size = size * n_plots
         figsize = (x_size, y_size)
         parent = wx.GetApp().shell
         
         mpl_canvas.CanvasFrame.__init__(self, parent, frame_title, figsize=figsize, dpi=dpi)
-        fig = self.figure
         
-        # plot epochs (x/y are in figure coordinates)
-        x_axsep = 1 - (size / x_size)
-        y_axsep = 1 / n_plots
-        frame = .05
-        frame_lbl = frame * 2
+        # axes sizes 
+        frame = .05 # in inches; .4
+        
+        xframe = frame / x_size
+        x_left_ylabel = 0.5 / x_size if ylabel else 0
+        x_left_title = 0.5 / x_size
+        x_text = x_left_title / 3
+        ax1_left = xframe + x_left_title + x_left_ylabel
+        ax1_width = bflywidth / (bflywidth + 1) - ax1_left - xframe/2
+        ax2_left = bflywidth / (bflywidth + 1) + xframe/2
+        ax2_width = 1 / (bflywidth + 1) - 1.5*xframe
+        
+        yframe = frame / y_size
+        y_bottomframe = 0.5 / y_size
+#        y_bottom = yframe
+        y_sep = (1 - y_bottomframe) / n_plots
+        height = y_sep - yframe
         
         self.topo_kwargs = {'res': res,
-                            'interpolation': interpolation}
+                            'interpolation': interpolation,
+                            'title': False}
         
         t = 0
         self.topo_axes = []
-        self.t_markers = []
+        self.bfly_axes = []
         self.topos = []
+        
+        # plot epochs (x/y are in figure coordinates)
         for i, layers in enumerate(epochs):
-            y_bottom = 1 - y_axsep * (1 + i) 
-            ax1_rect = [frame, 
-                        y_bottom + frame_lbl, 
-                        x_axsep - 2 * frame, 
-                        y_axsep - frame_lbl - frame]
-            ax2_rect = [x_axsep + frame, 
-                        y_bottom + frame, 
-                        1 - x_axsep - 2 * frame, 
-                        y_axsep - 2 * frame]
-            ax1 = fig.add_axes(ax1_rect)
+            bottom = 1 - y_sep * (1 + i)
+            
+            ax1_rect = [ax1_left, bottom, ax1_width, height]
+            ax2_rect = [ax2_left, bottom, ax2_width, height]
+            ax1 = self.figure.add_axes(ax1_rect)
             ax1.ID = i
-            t_marker = ax1.axvline(t, color='k')
             
-            ax2 = fig.add_axes(ax2_rect, frameon=False)
+            ax2 = self.figure.add_axes(ax2_rect, frameon=False)
             ax2.set_axis_off()
-            if len(self.topo_axes) == 0:
-                ax2.set_title('t = %.3f' % t)
-                self._t_title = ax2.title
             
+            # t - label
+            if len(self.topo_axes) == n_plots-1:
+#                ax2.set_title('t = %.3f' % t)
+#                self._t_title = ax2.title
+                self._t_title = ax2.text(.0, 0, 't = %.3f' % t, ha='center')
+            
+            self.bfly_axes.append(ax1)
             self.topo_axes.append(ax2)
-            self.t_markers.append(t_marker)
-            self.topos.append((t_marker, ax2, layers))
+            self.topos.append((ax2, layers))
+            
+            show_x_axis = (i==n_plots-1)
             
             utsnd._ax_butterfly(ax1, layers, sensors=sensors, ylim=ylim, 
-                              xlabel=xlabel, ylabel=ylabel, color=color)
+                                title=False, xlabel=show_x_axis, ylabel=ylabel, 
+                                color=color)
+            ax1.yaxis.set_offset_position('right')
+            if not show_x_axis:
+#                ax1.xaxis.set_visible(False)
+                ax1.xaxis.set_ticklabels([])
             
+            # ax1.yaxis.get_offset_text().get_text()
+            
+            # find and print epoch title
+            title = True
+            for l in layers:
+                if title is True:
+                    title = getattr(l, 'name', True)
+            if isinstance(title, str):
+                y_text = bottom + y_sep / 2
+                ax1.text(x_text, y_text, title, transform=self.figure.transFigure, 
+                         ha='center', va='center', rotation='vertical')
         
         # setup callback
         self.canvas.mpl_connect('button_press_event', self._on_click)
@@ -186,29 +215,49 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
     def set_topo_t(self, t, draw=True):
         "set the time point of the topo-maps"
         self._current_t = t
-        self._t_title.set_text("t = %.3f" % t)
-        for t_marker, topo_ax, layers in self.topos:
-            t_marker.set_xdata([t, t])
+        t_str = "t = %.3f" % t
+#        self._t_title.set_text(t_str)
+        for topo_ax, layers in self.topos:
+#            t_marker.set_xdata([t, t])
             
             topo_ax.cla()
             layers = [l.subdata(time=t) for l in layers]
             _ax_topomap(topo_ax, layers, **self.topo_kwargs)
         
+        ax = self.topo_axes[-1]
+        
         if draw:
-            if self._realtime_topo:
-                self.canvas.redraw_ax(*self.topo_axes)
+            if draw == 'full':
+                if not self._realtime_topo:
+                    self._t_label = ax.text(.5, -0.1, t_str, ha='center', va='top')
+                
+                self.canvas.draw() # otherwise time label does not get redrawn
+            elif self._realtime_topo:
+                self.canvas.redraw(axes=self.topo_axes)#, artists=self.t_markers)
+                # redrawing t-markers is slow
             else:
-                self.canvas.redraw(axes=self.topo_axes, artists=self.t_markers)
+                pass
     
     def _on_click(self, event):
         ax = event.inaxes
         if ax and hasattr(ax, 'ID'):
+            t = event.xdata
             button = {1:'l', 2:'r', 3:'r'}[event.button]
+            if hasattr(self, 't_markers'):
+                for m in self.t_markers:
+                    m.remove()
+                del self.t_markers
+
             if button == 'l':
                 self._realtime_topo = False
-            elif button == 'r':
-                self._realtime_topo = not self._realtime_topo
-            self.set_topo_t(event.xdata)
+                self.t_markers = []
+                for ax in self.bfly_axes:
+                    t_marker = ax.axvline(t, color='k')
+                    self.t_markers.append(t_marker)
+            elif (button == 'r') and (self._realtime_topo == False):
+                self._realtime_topo = True
+            
+            self.set_topo_t(t, draw='full')
     
     def OnLeaveAxesStatusBarUpdate(self, event):
         "update the status bar when the cursor leaves axes"
@@ -347,7 +396,7 @@ def _plt_topomap(ax, epoch, proj='default', res=100,
 
 
 
-def _ax_topomap(ax, layers, title=True, sensors=None, proj='default', 
+def _ax_topomap(ax, layers, title=True, sensors=None, proj='default', xlabel=None,
                 im_frame=0.02, **im_kwargs):
     """
     sensors : 
@@ -383,6 +432,9 @@ def _ax_topomap(ax, layers, title=True, sensors=None, proj='default',
     
     ax.set_xlim(-im_frame, 1+im_frame)
     ax.set_ylim(-im_frame, 1+im_frame)
+    
+    if isinstance(xlabel, str):
+        ax.set_xlabel(xlabel)
     
     if isinstance(title, str):
         handles['title'] = ax.set_title(title)
