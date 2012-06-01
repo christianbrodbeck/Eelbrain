@@ -1,5 +1,5 @@
 '''
-plottind functions for 1-dimensional uniform time-series.
+plotting functions for univariate uniform time-series.
 
 
 

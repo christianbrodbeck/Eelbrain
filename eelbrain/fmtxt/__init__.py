@@ -516,10 +516,6 @@ class Table:
         return len(self._table)
     
     def __getitem__(self, item):
-    
-    """
-    adding texstrs
-    --------------
         if isinstance(item, int):
             return self._table[item]
         else:
@@ -527,7 +523,7 @@ class Table:
             return Table(self.columns, rules=self.rules, title=self._title,
                          caption=self._caption, rows=rows)
     
-    """
+    # adding texstrs ---
     def cell(self, *args, **kwargs):
         """
         args:   text, *properties

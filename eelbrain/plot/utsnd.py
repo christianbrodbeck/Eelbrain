@@ -1,14 +1,11 @@
 """
-plots for universal time series
+plots for multivariate uniform time series
 
 
 Plot types
 ----------
 
-corr:
-    plots the correlation between a timeseries and a variable over time
-...
-    
+...    
     
 """
 
@@ -154,70 +151,6 @@ def array(epochs, xlabel=True, ylabel=True,
     
     fig.show()
     return fig
-
-
-
-def corr(stats, var, p=[.05],
-         figsize=(6.,4.),
-         axrect=[.08,.15,.9,.75],
-         legend_ncol=4,
-         ):
-    """
-    plots the correlation between a timeseries and a variable over time
-    
-    """
-#    if iscollection(stats):
-#        stats = [stats]
-#    assert all(iscollection(s) for s in stats)
-    corr = [segment_ops.corr(s, var) for s in stats] 
-    
-    if np.isscalar(p):
-        p = [p]
-    # P (http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference)
-    n = len(corr[0]['slist'])
-    if not all([len(corr[i]['slist']) == n for i in range(1, len(corr))]):
-        raise ValueError("StatsSegments have different N --> p threshold cannot be drawn correctly")
-    Ps = np.array(p) / 2 # 2 tailed
-    df = n-2
-    Ts = sp.stats.t.isf(Ps, df)
-    R_thresholds = Ts / np.sqrt(df + Ts**2)
-    
-    plt.figure(figsize=figsize)
-    ax = plt.axes(axrect)
-    legend_names = []
-    legend_handles = []
-    # corr
-    T = stats[0].t
-    for c in corr:
-        R = c.param
-        handle = plt.plot(T, R, label=c.name)
-        legend_names.append(fmtxt.texify(c.name))
-        legend_handles.append(handle)
-    # thresholds
-    plt.axhline(0, c='k')
-    for p in R_thresholds:
-        plt.axhline(p)
-        plt.axhline(-p)
-    # Figure stuff
-    plt.ylabel('r')
-    plt.xlabel('time')
-    plt.suptitle("Correlation with {v}".format(v=fmtxt.texify(var.name)), fontsize=16)
-    plt.figlegend(legend_handles, legend_names, 'lower center', ncol=legend_ncol)
-
-
-
-
-def mark_tw(tstart, tend, y=0, c='r', ax=None):
-    "mark a time window in an existing axes object"
-    if ax == None:
-        ax = plt.gca()
-    ylim = ax.get_ylim()
-    xlim = ax.get_xlim()
-    
-    ax.plot((tstart, tend), (y,y), color=c, marker='|')
-    
-    ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
 
 
 
