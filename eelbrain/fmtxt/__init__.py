@@ -516,13 +516,16 @@ class Table:
         return len(self._table)
     
     def __getitem__(self, item):
-        rows = self._table[item]
-        return Table(self.columns, rules=self.rules, title=self._title,
-                     caption=self._caption, rows=rows)
     
     """
     adding texstrs
     --------------
+        if isinstance(item, int):
+            return self._table[item]
+        else:
+            rows = self._table[item]
+            return Table(self.columns, rules=self.rules, title=self._title,
+                         caption=self._caption, rows=rows)
     
     """
     def cell(self, *args, **kwargs):
