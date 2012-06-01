@@ -241,7 +241,7 @@ class texstr(object):
             return ''
         elif np.isnan(self.text):
             return 'NaN'
-        elif isinstance(self.text, bool):
+        elif isinstance(self.text, (bool, np.bool_, np.bool8)):
             return '%s' % self.text
         elif np.isscalar(self.text):
             if int(self.text) == self.text:
