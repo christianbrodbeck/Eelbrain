@@ -17,7 +17,7 @@ __hide__ = ['division', 'fmtxt', 'scipy',
 
 
 
-def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies"):
+def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies", ds=None):
     """
     Display frequency of occurrence of all categories in Y in the cells 
     defined by X.
@@ -26,6 +26,13 @@ def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies"):
     X: model defining cells for which frequencies are displayed
     
     """
+    if isinstance(X, str):
+        X = ds[X]
+    if isinstance(Y, str):
+        Y = ds[Y]
+    if isinstance(sub, str):
+        sub = ds[sub]
+    
     Y = _data.asfactor(Y)
     
     if X is None:
