@@ -373,6 +373,10 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
     xmin = []
     xmax = []
     for l in layers:
+        colorspace = _base.read_cs_arg(l)
+        if not colorspace.cmap:
+            continue
+        
         if color is None:
             plot_kwargs['color'] = l.properties.get('color', 'k')
         elif color is not True:

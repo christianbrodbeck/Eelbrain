@@ -70,7 +70,7 @@ def unpack_epochs_arg(ndvars, ndim, dataset=None, levels=1):
         return out
 
 
-def read_cs_arg(epoch, colorspace):
+def read_cs_arg(epoch, colorspace=None):
     if (colorspace is None):# and ('colorspace' in epoch.properties):
 #        colorspace = epoch.properties['colorspace']
         colorspace = epoch.properties.get('colorspace', 
