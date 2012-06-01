@@ -36,6 +36,7 @@ class ListViewerFrame(mpl_canvas.CanvasFrame):
             raise ValueError("visualizers do not provide the same N of segments")
         
         # distribute segments into pages:
+        y = min((y, N))
         self.shape = x, y
         n_per_page = self.n_per_page = x * y
         i_lists = []
@@ -113,7 +114,9 @@ class ListViewerFrame(mpl_canvas.CanvasFrame):
     def set_window(self, tstart, tend):
         """
         Set the zoom based on time points
-         
+        
+        **See also:** .set_zoom()
+        
         """
         self._zoom_window = (tstart, tend)
         self._zoom_events = None
@@ -121,12 +124,18 @@ class ListViewerFrame(mpl_canvas.CanvasFrame):
     
     def set_zoom(self, events_ds=None, address=None, pad=10):
         """
-        events_ds: index of vizualizer/dataset containing events (None to 
-                   reset zoom and show all data)
+        Set the time range of the data that is displayed based on events.
         
-        address: event-address of events to display
+        events_ds : 
+            index of vizualizer/dataset containing events (None to 
+            reset zoom and show all data)
+        address : 
+            event-address of events to display
+        pad: scalar
+            time to display outside of events
         
-        pad: time to display outside of events
+        
+        **See also:** .set_window()
         
         """
         if events_ds is not None:
