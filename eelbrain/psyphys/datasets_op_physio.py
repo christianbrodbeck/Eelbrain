@@ -146,8 +146,13 @@ class SCR(Derived_Event_Dataset, mixins.Reject):
         p.smooth3 = param.Window(default=(4, 150), #del_segs=True,
                                  desc="Smoothing of the second deri"
                                  "vative before finding 0-crossings.")
-        p.threshold = param.Param(default=.005, #del_segs=True,
-                                  desc="Threshold for SCRs (p-p)")
+        
+        desc = "Threshold for scoring SCRs (p-p)"
+        p.threshold = param.Param(default=.005, desc=desc)
+        
+        desc=("Threshold for splitting a SCR into two SCRs (in the second "
+              "derivative)")
+        p.split_threshold = param.Param(default=0, desc=desc)
     def _create_varlist_(self):
         e = self.experiment
         varlist = [e.variables.get('time'),
@@ -159,6 +164,7 @@ class SCR(Derived_Event_Dataset, mixins.Reject):
         sm1 = self.compiled['smooth1']
         sm2 = self.compiled['smooth2']
         sm3 = self.compiled['smooth3']
+        split_threshold = self.compiled['split_threshold']
         threshold = self.compiled['threshold']
         t = source.t
         
@@ -213,6 +219,16 @@ class SCR(Derived_Event_Dataset, mixins.Reject):
             if self.reject_has_segment(segment):
                 i = self.reject_check(segment, sep, sr=sr, tstart=start/sr)
                 sep = sep[i]
+            
+            # remove separations that do not reach threshold
+            if split_threshold:
+                sep = list(sep)
+                idxs = [start] + sep + [end]
+                for i in xrange(len(idxs) - 2, 0, -1):
+                    i0 = idxs[i]
+                    i1 = idxs[i+1]
+                    if np.max(d2[i0:i1]) < split_threshold:
+                        sep.pop(i-1)
             
             i = start
             for j in np.hstack((sep, [end])):
