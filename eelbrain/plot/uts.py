@@ -21,23 +21,23 @@ import eelbrain.vessels.data as _data
 __hide__ = ['plt', 'division']
 
 
-def stat(Y='Y', X=None, main=np.mean, dev=scipy.stats.sem, 
+def stat(Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
          sub=None, ds=None,
-         figsize=(6,3), dpi=90, legend='upper right', title=True,
+         figsize=(6,3), dpi=90, legend='upper right', title=True, ylabel=True,
          xdim='time', cm=_cm.jet):
     """
     Plots statistics for a one-dimensional ndvar
     
-    var : ndvar
+    Y : 1d-ndvar
         dependent variable (one-dimensional ndvar)
     X : categorial or None
         conditions which should be plotted separately
-    main : func | 'all' | float
-        central tendency (function that takes an ``axis`` argument). For float
-        or 'all', ``dev = None``
-    dev : func | ``None``
-        Measure for spread / deviation from the central tendency (function 
-        that takes an ``axis`` argument)
+    main : func | None
+        central tendency (function that takes an ``axis`` argument).
+    dev : func | 'all' | float
+        Measure for spread / deviation from the central tendency. Either a 
+        function that takes an ``axis`` argument, 'all' to plot all traces, or
+        a float to plot all traces with a certain alpha value
     ds : dataset
         if ``var`` or ``X`` is submitted as string, the ``ds`` argument 
         must provide a dataset containing those variables.
@@ -105,6 +105,14 @@ def stat(Y='Y', X=None, main=np.mean, dev=scipy.stats.sem,
     if legend and any(values):
         fig.legend(legend_h, legend_lbl, loc=legend)
     
+    if ylabel is True:
+        ylabel = Y.properties.get('unit', None)
+    
+    if ylabel:
+        ax.set_ylabel(ylabel)
+
+
+    fig.tight_layout()
     fig.show()
     return fig
 
@@ -116,31 +124,37 @@ def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwarg
     x = dim.x
     y = ndvar.get_data(('epoch', 'time'))
     
+    if color:
+        kwargs['color'] = color
+    
     main_kwargs = kwargs.copy()
+    dev_kwargs = kwargs.copy()
     if label:
         main_kwargs['label'] = label
-    if color:
-        main_kwargs['color'] = color
-        kwargs['alpha'] = .3
-        kwargs['color'] = color
-    if np.isscalar(main) and (main <= 1):
-        main_kwargs['alpha'] = main
-        main = 'all'
     
-    if main == 'all':
-        h['main'] = ax.plot(x, y.T, **main_kwargs)
-        dev = None
-    elif hasattr(main, '__call__'):
+    if np.isscalar(dev):
+        dev_kwargs['alpha'] = dev
+        dev = 'all'
+    else:
+        kwargs['alpha'] = .3
+    
+    # plot main
+    if hasattr(main, '__call__'):
         y_ct = main(y, axis=0)
-        h['main'] = ax.plot(x, y_ct, **main_kwargs)
+        h['main'] = ax.plot(x, y_ct, zorder=5, **main_kwargs)
+    elif dev == 'all':
+        pass
     else:
         raise ValueError("Invalid argument: main=%r" % main)
     
+    # plot dev
     if hasattr(dev, '__call__'):
         ydev = dev(y, axis=0)
-        h['dev'] = ax.fill_between(x, y_ct-ydev, y_ct+ydev, **kwargs)
+        h['dev'] = ax.fill_between(x, y_ct-ydev, y_ct+ydev, zorder=0, **dev_kwargs)
+    elif dev == 'all':
+        h['dev'] = ax.plot(x, y.T, **dev_kwargs)
+        dev = None
     else:
         pass
     
     return h
-        
