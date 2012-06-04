@@ -544,6 +544,14 @@ class mne_experiment(object):
         
         subp.run_mne_analyze(mri_dir, fif_dir, modal)
     
+    def run_mne_browse_raw(self, subject=None, modal=False):
+        if (subject is None) and (self._subject is None):
+            fif_dir = self.get('meg_dir')
+        else:
+            fif_dir = self.get('raw_sdir', subject=subject)
+        
+        subp.run_mne_browse_raw(fif_dir, modal)
+        
     def rm_cov(self, experiment, cov_name):
         index = (experiment, cov_name)
         del self._cfg_cov[index]

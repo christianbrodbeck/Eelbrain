@@ -538,6 +538,14 @@ def run_mne_analyze(mri_dir, fif_dir, modal=True):
 # Gwyneth's Manual, XII
 ## SUBJECTS_DIR is MRI directory according to MNE 17
 
+def run_mne_browse_raw(fif_dir, modal=False):
+    os.chdir(fif_dir)
+    p = subprocess.Popen('. $MNE_ROOT/bin/mne_setup_sh; mne_browse_raw', shell=True)
+    if modal:
+        print "Waiting for mne_browse_raw to be closed..."
+        p.wait() # causes the shell to be unresponsive until mne_analyze is closed
+
+
 
 def do_forward_solution(paths=dict(rawfif=None, 
                                    mri_sdir=None, 
