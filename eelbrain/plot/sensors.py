@@ -224,7 +224,7 @@ def map3d(sensor_net, marker='c*', labels=False, headBall=0):
     
     if hasattr(sensor_net, 'sensors'):
         sensor_net = sensor_net.sensors
-    locs = sensor_net.locs3d
+    locs = sensor_net.locs
     fig = plt.gcf()
     ax = _Axes3D(fig)
     ax.scatter(locs[:,0], locs[:,1], locs[:,2])

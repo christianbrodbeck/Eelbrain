@@ -44,17 +44,19 @@ class sensor_net(object):
         only use cone for sensors with z < 0
 
     """
-    def __init__(self, sensors, name=None, groups=None, mirror_map=None,
+    def __init__(self, locs, names=None, name=None, groups=None,# mirror_map=None,
                  transform_2d='ideal'):
         """
         Arguments
         ---------
         
-        sensors: 
-            expects list of (x, y, z [, name]) tuples (name is optional)
+        locs : array-like
+            list of (x, y, z) coordinates; 
             ``x``: anterior - posterior, 
             ``y``: left - right, 
             ``z``: top - bottom
+        names : list of str | None
+            sensor names, same order as locs (optional)
         
         transform_2d:
             default transform that is applied when the getLocs2d method is 
@@ -63,9 +65,9 @@ class sensor_net(object):
         
         Example::
 
-            >>> sensors = [(0,  0,   0, "Cz"),
-                           (0, -.25, -.45, "Pz")]
-            >>> net = snesor_net(sensors, ...
+            >>> sensors = [(0,  0,   0),
+                           (0, -.25, -.45)]
+            >>> net = snesor_net(sensors, names=["Cz", "Pz"], ...)
         
         
         """
@@ -73,18 +75,13 @@ class sensor_net(object):
         self.net_name = name
         self.default_transform_2d = transform_2d
         
-        self.n = n = len(sensors)
-        self.locs3d = locs3d = np.empty((n,3))
-        self.names = names = []
-        for i, sensor in enumerate(sensors):
-            if len(sensor) == 3:
-                x, y, z = sensor
-                label = str(i)
-            elif len(sensor) == 4:
-                x, y, z, label = sensor
-            
-            locs3d[i] = x, y, z
-            names.append(label)
+        self.locs = locs = np.array(locs, dtype=np.float64)
+        # 'ideal' transformation fails with 32-bit floats
+        self.n = n = len(locs)
+
+        if names is None:
+            names = [str(i) for i in xrange(n)]
+        self.names = np.array(names)
         
         # transformed locations
         self._transformed = {}
@@ -95,12 +92,13 @@ class sensor_net(object):
             self.groups = groups
         else:
             self.groups = {}
+        
         # mirror-map
-        if mirror_map:
-            self.mirror_map = mirror_map
-        else:
-            # TODO: construct
-            self.mirror_map = {}
+#        if mirror_map:
+#            self.mirror_map = mirror_map
+#        else:
+#            # TODO: construct
+#            self.mirror_map = {}
     
     def __repr__(self):
         return "sensor_net([<n=%i>], name=%r)" % (self.n, self.net_name)
@@ -143,7 +141,7 @@ class sensor_net(object):
             return self._transformed[index]
         
         
-        if proj in ['cone', 'lowerCone', 'ideal']:
+        if proj in ['cone', 'lower cone', 'ideal']:
             
             # fit the 3d sensor locations to a sphere with center (cx, cy, cz)
             # and radius r
@@ -151,20 +149,20 @@ class sensor_net(object):
             # error function
             def err(params):
                 r, cx, cy, cz = params
-                return   (self.locs3d[:, 0] - cx) ** 2 \
-                       + (self.locs3d[:, 1] - cy) ** 2 \
-                       + (self.locs3d[:, 2] - cz) ** 2 \
+                return   (self.locs[:, 0] - cx) ** 2 \
+                       + (self.locs[:, 1] - cy) ** 2 \
+                       + (self.locs[:, 2] - cz) ** 2 \
                        -  r ** 2
     
             # initial guess of sphere parameters (radius and center)
             params = (1, 0, 0, 0)
             # do fit
-            (r, cx, cy, cz), stuff = leastsq(err, params)
+            (r, cx, cy, cz), _ = leastsq(err, params)
             
             # center the sensor locations based on the sphere and scale to
             # radius 1
             sphere_center = np.array((cx, cy, cz))
-            locs3d = self.locs3d - sphere_center
+            locs3d = self.locs - sphere_center
             locs3d /= r
             
             # implement projection
@@ -173,9 +171,8 @@ class sensor_net(object):
                 locs2d[:,0] *= (1 - locs3d[:,2]) 
                 locs2d[:,1] *= (1 - locs3d[:,2])
             elif proj=='lower cone':
-                for i in range(locs2d.shape[0]):
-                    if locs3d[i,2] < 0:
-                        locs2d[i,:2] *= (1 - locs3d[i,2]) 
+                lower_half = locs3d[:,2] < 0
+                locs2d[lower_half,:2] *= (1 - locs3d[lower_half,2]) 
             elif proj == 'ideal':
                 r_sq = max(locs3d[:,2]) - locs3d[:,2]
                 r = np.sqrt(r_sq)  # get radius dependent on z
@@ -184,10 +181,10 @@ class sensor_net(object):
                 locs2d[:,0] *= F
                 locs2d[:,1] *= F
         
-        elif proj == None:
-            locs2d = np.copy(self.locs3d[:,:2])
+        elif proj is None:
+            locs2d = np.copy(self.locs[:,:2])
         else:
-            raise ValueError("invalid proj kwarg")
+            raise ValueError("invalid proj kwarg: %r" % proj)
                 
         # correct extent
         if extent:
@@ -250,7 +247,7 @@ class sensor_net(object):
         spatial proximity to elements of base (=list of sensor ids)"
         
         """
-        locs3d = self.locs3d
+        locs3d = self.locs
         #print loc3d
         base_locs = locs3d[base]
         ROI_dic = dict((i, [Id]) for i,Id in enumerate(base))
@@ -262,25 +259,28 @@ class sensor_net(object):
         out = ROI_dic.values()
         return out
     
-    def get_subnet(self, indexes, name='{name}{index}'):
+    def get_subnet(self, index, name='{name}_ROI'):
         """
         returns a new Sensor Net with a subset of sensors (specified as indexes)
         
         """
-        if len(indexes) > 1:
-            new_sensors = []
-            for i in indexes:
-                sensor = tuple(self.locs3d[i]) + (self.names[i],)
-                new_sensors.append(sensor)
-            
-            name = name.format(name=self.net_name, index=list(indexes))
-            return sensor_net(new_sensors, name=name)
+        if np.isscalar(index):
+            return None
+        elif len(index) > 1:
+            locs = self.locs[index]
+            names = self.names[index]
+            name = name.format(name=self.net_name, index=list(index))
+            return sensor_net(locs, names, name=name)
         else:
             return None
     
     def get_subnet_ROIs(self, ROIs, loc='first'):
         """
-        returns new sensor_net object based on sensors in ROIs
+        returns new sensor_net, combining groups of sensors in the old 
+        sensor_net into single sensors in the new sensor_net. All sensors for 
+        each element in ROIs are the basis for one new sensor.
+        
+        ! Only implemented for numeric indexes, not for boolean indexes !
         
         **parameters:**
         
@@ -292,30 +292,31 @@ class sensor_net(object):
         
         """
         sensors = []
+        names = []
         for ROI in ROIs:
             i = ROI[0]
-            name = self.names[i]
+            names.append(self.names[i])
+            
             if loc == 'first':
-                l = self.locs3d[i]
+                l = self.locs[i]
             elif loc == 'mean':
-                locs = self.locs3d[ROI]
+                locs = self.locs[ROI]
                 l = locs.mean(0)
             else:
                 raise ValueError("invalid value for loc (%s)"%loc)
-            sensors.append(tuple(l) + (name,))
-        return sensor_net(sensors)
-    
-    def id2label(self, Id):
-        return self.names[Id] 
-    
-    def ids2labels(self, *ids):
-        return [self.names[Id] for Id in ids]
+        
+        name = self.name
+        
+        return sensor_net(locs, names, name=name)
     
     def label2id(self, label):
-        return self.names.index(label)
-    
-    def labels2ids(self, *labels):
-        return [self.names.index(label) for label in labels]
+        idxs = np.where(self.names == label)[0]
+        if len(idxs) == 0:
+            raise KeyError("No sensor named %r" % label)
+        elif len(idxs) == 1:
+            return idxs[0]
+        else:
+            raise KeyError("More than one index named %r" % label)
     
     def plot_ROIs(self, ROIs, colors=['r','c','y','m','b', '.5']):
         colors = colors * (int(len(ROIs)/len(colors))+1)
@@ -325,35 +326,19 @@ class sensor_net(object):
             locs = locs2d[ROI]
             P.scatter(locs[:,0], locs[:,1])
         return fig
-    
 
 
-# MARK: constructors
-# ==================
 
-def from_list(sensorlist):
-    """
-    other list order than sensor_net.__init__
-    
-    expects list in format [ ["name",loc x, y, z], ...]
-    
-    e.g.:
-    sensorlist = [("Cz", 0,  0,   0),
-                  ("Pz", 0, -.25, -.45)]
-    
-    >>> net = SensorList(sensors)
-    """
-    sensors = []
-    for name, x, y, z in sensorlist:
-        sensors.append((x, y, z, name))
-    return sensor_net(sensors)
-
+# ================
+# constructors ---
+# ================
 
 
 def from_xyz(path=None, **kwargs):
 #    if path == None:
 #        path = ui.askfile()
-    sensors = []
+    locs = []
+    names = []
     with open(path) as f:
         l1 = f.readline()
         n = int(l1.split()[0])
@@ -364,13 +349,15 @@ def from_xyz(path=None, **kwargs):
                 x = float(x)
                 y = float(y)
                 z = float(z)
-                sensors.append((x, y, z, name))
-    assert len(sensors) == n
-    return sensor_net(sensors, **kwargs)
+                locs.append((x, y, z))
+                names.append(name)
+    assert len(names) == n
+    return sensor_net(locs, names, **kwargs)
 
 
 def from_sfp(path=None, **kwargs):
-    sensors = []
+    locs = []
+    names = []
     for line in open(path):
         elements = line.split()
         if len(elements) == 4:
@@ -378,21 +365,24 @@ def from_sfp(path=None, **kwargs):
             x = float(x)
             y = float(y)
             z = float(z)
-            sensors.append((x, y, z, name))
-    return sensor_net(sensors, **kwargs)
+            locs.append((x, y, z))
+            names.append(name)
+    return sensor_net(locs, names, **kwargs)
 
 
 def from_lout(path=None, transform_2d=None, **kwargs):
     kwargs['transform_2d'] = transform_2d
-    sensors = []
+    locs = []
+    names = []
     with open(path) as fileobj:
         fileobj.readline()
         for line in fileobj:
             w, x, y, t, f, name = line.split('\t')
             x = float(x)
             y = float(y)
-            sensors.append((x, y, 0, name))
-    return sensor_net(sensors, **kwargs)
+            locs.append((x, y, 0))
+            names.append(name)
+    return sensor_net(locs, names, **kwargs)
 
 
 
