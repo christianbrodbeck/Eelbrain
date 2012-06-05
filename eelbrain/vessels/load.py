@@ -289,7 +289,6 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
     ndvar = _data.ndvar(dims, data, properties=props, name=target)
     if add:
         dataset.add(ndvar)
-        dataset.default_DV = target
     else:
         return ndvar
 

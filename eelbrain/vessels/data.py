@@ -1485,11 +1485,6 @@ class dataset(collections.OrderedDict):
         
         **optional kwargs:**
         
-        default_DV : str
-            name of the default dependent variable (DV). It is stored in the
-            dataset's `default_DV` attribute, which can be modified safely 
-            later.
-        
         name : str
             name describing the dataset
                 
@@ -1516,12 +1511,10 @@ class dataset(collections.OrderedDict):
     def __setstate__(self, kwargs):
         self.name = kwargs.get('name', None)
         self.info = kwargs.get('info', {})
-        self.default_DV = kwargs.get('default_DV', None)
         
     def __reduce__(self):
         args = tuple(self.items())
-        kwargs = {'name': self.name, 'info': self.info, 
-                  'default_DV': self.default_DV}
+        kwargs = {'name': self.name, 'info': self.info}
         return self.__class__, args, kwargs
         
     def __getitem__(self, name):
@@ -1570,10 +1563,7 @@ class dataset(collections.OrderedDict):
             else:
                 lbl = '?'
             
-            if key == self.default_DV:
-                name = '>%r<' % key
-            else:
-                name = repr(key)
+            name = repr(key)
             items.append((name, lbl))
         items = ', '.join('%s(%s)'%(k, v) for k, v in items)
         args = dict(name=self.name, N=self.N, items=items)
@@ -1766,7 +1756,7 @@ class dataset(collections.OrderedDict):
         "returns the i'th case as a dictionary"
         return dict((k, v[i]) for k, v in self.iteritems())
     
-    def get_subsets_by(self, factor, default_DV=None, exclude=[], name='{name}[{case}]'):
+    def get_subsets_by(self, factor, exclude=[], name='{name}[{case}]'):
         """
         splits the dataset by the cells of a factor and 
         returns as dictionary of subsets.
@@ -1774,15 +1764,13 @@ class dataset(collections.OrderedDict):
         """
         if isinstance(factor, basestring):
             factor = self[factor]
-        if default_DV is None:
-            default_DV = self.default_DV
         
         out = {}
         for case in factor.values():
             if case not in exclude:
                 setname = name.format(name=self.name, case=case)
                 index = factor == case
-                out[case] = self.subset(index, setname, default_DV=default_DV)
+                out[case] = self.subset(index, setname)
         return out
     
     def compress(self, X, name='{name}', count='n'):
@@ -1796,14 +1784,6 @@ class dataset(collections.OrderedDict):
             ds[k] = self[k].compress(X)
                 
         return ds
-    
-    def summary(self, func=None, name='{func}({name})'):
-        """
-        -> self[self.default_DV].summary(func=func, name=name) 
-        (convenience function for submitting conditon datasets to plotting)
-        
-        """
-        return self[self.default_DV].summary(func=func, name=name)
     
     def itercases(self, start=None, stop=None):
         "iterate through cases (each case represented as a dict)"
@@ -1822,7 +1802,7 @@ class dataset(collections.OrderedDict):
     def shape(self):
         return (self.N, len(self))
     
-    def subset(self, index, name='{name}', default_DV=None):
+    def subset(self, index, name='{name}'):
         """
         Returns a dataset containing only the subset of cases selected by 
         `index`. 
@@ -1835,8 +1815,6 @@ class dataset(collections.OrderedDict):
             basic slicing (using slices) returns a view.
         name : str
             name for the new dataset
-        default_DV : str
-            default_DV for the new dataset
         
         """
         if isinstance(index, str):
@@ -1844,13 +1822,11 @@ class dataset(collections.OrderedDict):
         
         name = name.format(name=self.name)
         info = self.info.copy()
-        if default_DV is None:
-            default_DV = self.default_DV
         
         if isvar(index):
             index = index.x
         
-        ds = dataset(name=name, info=info, default_DV=default_DV)
+        ds = dataset(name=name, info=info)
         for k, v in self.iteritems():
             ds[k] = v[index]
         
