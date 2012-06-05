@@ -553,7 +553,8 @@ class array(mpl_canvas.CanvasFrame):
         # figure properties
         n_epochs = len(epochs)
         n_topo_total = ntopo * n_epochs
-        fig_width, fig_height = n_epochs * width, height
+        left_rim = width / 4
+        fig_width, fig_height = n_epochs * width + left_rim, height
         figsize=(fig_width, fig_height)
         
         # fig coordinates
