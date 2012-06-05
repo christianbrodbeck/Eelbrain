@@ -65,8 +65,8 @@ class ttest(test_result):
                  match=None, sub=None, ds=None, 
                  contours={.05: (.8, .2, .0),  .01: (1., .6, .0),  .001: (1., 1., .0)}):
         """
-        c1 and c2 : ndvars (or dataset with default_DV)
-            segments between which to perform the test
+        c1 and c2 : str
+            categories in X between which to perform the test
         
         """
 #        contours = { .05: (.8, .2, .0),  .01: (1., .6, .0),  .001: (1., 1., .0),
@@ -81,7 +81,8 @@ class ttest(test_result):
             if len(ct) == 2:
                 c1, c2 = ct.cell_labels()
             else:
-                err = "If X has more than 2 categories, 2 must be chosen"
+                err = ("If X does not have exactly 2 categories (has %s), c1 and c0 "
+                       "must be explicitly specified." % len(ct))
                 raise ValueError(err)
         
         
