@@ -24,7 +24,7 @@ from eelbrain.vessels.structure import celltable
 __hide__ = ['division', 'scipy',
             'textab', 'test',
             'isfactor', 'asfactor', 'isvar', 'asvar', 'ismodel', 'asmodel',
-             'celltable', 'multifactor', 
+            'celltable', 'multifactor', 
             ]
 
 
@@ -287,7 +287,7 @@ class _simple_fig():
 
 def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             bottom=None, 
-            title=None, ylabel=True, xlabel=True, xtick_delim='\n',
+            title=True, ylabel=True, xlabel=True, xtick_delim='\n',
             titlekwargs=defaults['title_kwargs'],
             baseline=None, # category for plot of difference values
             ## pairwise kwargs
@@ -324,12 +324,16 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
         else:
             colors = defaults['c']['colors']
     
+    if title is True:
+        title = getattr(Y, 'name', None)#textab.texify(Y.name)
+    
     # ylabel
     if ylabel is True:
-        if hasattr(Y, 'name'):
-            ylabel = textab.texify(Y.name)
+        if hasattr(Y, 'properties'):
+            ylabel = Y.properties.get('unit', None)
         else:
-            ylabel = False
+            ylabel = None
+    
     # xlabel
     if xlabel is True:
         if hasattr(X, 'factor_names'):
@@ -394,7 +398,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     
     #labelling
     P.xticks(np.arange(len(ct.cells))+1, ct.cell_labels(xtick_delim))
-    y_min = np.max(all_data)
+    y_min = np.max(np.hstack(all_data))
     y_unit = (y_min - bottom) / 15
     
     # tests    
@@ -433,9 +437,9 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
 
 def barplot(Y, X=None, match=None, sub=None, 
             test=True, par=True, corr='Hochberg',
-            title=None, trend=".",
+            title=True, trend=".",
             # bar settings:
-            ylabel='{err}', err='2sem', ec='k', xlabel=True,  xtick_delim='\n',
+            ylabel='{unit}{err}', err='2sem', ec='k', xlabel=True,  xtick_delim='\n',
             hatch = False, colors=False, 
             bottom=0, c='#0099FF', edgec=None,
             **simple_kwargs
@@ -467,36 +471,45 @@ def barplot(Y, X=None, match=None, sub=None,
     ylabel formatting:
         {err} = error bar description
     """
-    # prepare labels:
-    # find label error
-    ylabel_app = ''
+    if title is True:
+        title = getattr(Y, 'name', None)
+    
+    err_desc = ''
     if isinstance(err, basestring):
         if err.endswith('ci'):
             if len(err) > 2:
                 a = float(err[:-2])
             else:
                 a = .95
-            ylabel_app = '$\pm %g ci$'%a
+            err_desc = '$\pm %g ci$'%a
         elif err.endswith('sem'):
             if len(err) > 3:
                 a = float(err[:-3])
             else:
                 a = 1
-            ylabel_app = '$\pm %g sem$'%a
+            err_desc = '$\pm %g sem$'%a
         elif err.endswith('std'):
             if len(err) > 3:
                 a = float(err[:-3])
             else:
                 a = 1
-            ylabel_app = '$\pm %g std$'%a
+            err_desc = '$\pm %g std$'%a
+    
     # ylabel
-    if ylabel is True:
-        if hasattr(Y, 'name'):
-            ylabel = Y.name.replace('_', ' ')
+    if ylabel:
+        if hasattr(Y, 'properties'):
+            unit = Y.properties.get('unit', '')
         else:
-            ylabel = False
-    if '{err}' in ylabel:
-        ylabel = ylabel.format(err=ylabel_app) 
+            unit = ''
+        
+        if ylabel is True:
+            if unit:
+                ylabel = unit
+            else:
+                ylabel = False
+        elif isinstance(ylabel, str):
+            ylabel = ylabel.format(unit=unit, err=err_desc) 
+    
     # xlabel
     if xlabel is True:
         if hasattr(X, 'name'):
