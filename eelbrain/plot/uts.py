@@ -136,7 +136,15 @@ def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwarg
         dev_kwargs['alpha'] = dev
         dev = 'all'
     else:
-        kwargs['alpha'] = .3
+        dev_kwargs['alpha'] = .3
+    
+    if dev =='all':
+        if 'linewidth' in kwargs:
+            main_kwargs['linewidth'] = kwargs['linewidth'] * 2
+        elif 'lw' in kwargs:
+            main_kwargs['lw'] = kwargs['lw'] * 2
+        else:
+            main_kwargs['lw'] = 2
     
     # plot main
     if hasattr(main, '__call__'):
