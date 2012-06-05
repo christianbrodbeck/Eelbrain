@@ -119,6 +119,17 @@ def _plt_map2d_labels(ax, sensor_net, proj='default',
 
 
 class map2d(mpl_canvas.CanvasFrame):
+    """
+    2d Sensor Map, Methods:
+    
+    plot_ROI:
+        mark sensors in a ROI
+    plot_labels:
+        add labels to the sensors
+    remove_ROIs:
+        remove all marked ROIs
+    
+    """
     def __init__(self, sensor_net, labels='id', proj='default', ROI=None,
                  size=6, dpi=100, frame=.05, **kwargs):
         """
@@ -185,6 +196,15 @@ class map2d(mpl_canvas.CanvasFrame):
         self.plot_labels(labels)
     
     def plot_labels(self, labels='id'):
+        """
+        Add labels to all sensors. Possible values:
+        
+        'id':
+            sensor indexes
+        'name':
+            sensor names
+        
+        """
         if self._label_h:
             for h in self._label_h:
                 h.remove()
