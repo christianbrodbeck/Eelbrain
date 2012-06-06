@@ -47,6 +47,15 @@ _bin_dirs = {'mne': None,
              'freesurfer': None,
              'edfapi': None}
 
+# create dictionary of available sns files
+_sns_files = {}
+_sns_dir = __file__
+for i in xrange(2):
+    _sns_dir = os.path.dirname(_sns_dir)
+_sns_dir = os.path.join(_sns_dir, 'Resources', 'sns')
+for name in ['NYU-nellab']:
+    _sns_files[name] = os.path.join(_sns_dir, name+'.txt')
+
 
 _verbose = 1
 
@@ -278,9 +287,9 @@ def _format_path(path, fmt, is_new=False):
 def kit2fiff(paths=dict(mrk = None,
                         elp = None,
                         hsp = None,
-                        sns = None,
                         rawtxt = None,
                         rawfif = None),
+             sns='NYU-nellab',
              sfreq=1000, lowpass=100, highpass=0,
              stim=xrange(168, 160, -1),  stimthresh=2.5,
              aligntol=25):
@@ -333,9 +342,17 @@ def kit2fiff(paths=dict(mrk = None,
     mrk_path = paths.get('mrk')
     elp_file = paths.get('elp')
     hsp_file = paths.get('hsp')
-    sns_file = paths.get('sns')
     raw_file = paths.get('rawtxt')
     out_file = paths.get('rawfif')
+    
+    if sns in _sns_files:
+        sns_file = _sns_files[sns]
+    elif os.path.exists(sns):
+        sns_file = sns
+    else:
+        err = ("sns needs to the be name of a provided sns file (%s) ro a valid"
+               "path to an sns file" % ', '.join(map(repr, _sns_files)))
+        raise IOError(err)
     
     # convert the marker file
     mrk_file = marker_avg_file(mrk_path)

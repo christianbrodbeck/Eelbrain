@@ -95,7 +95,6 @@ class mne_experiment(object):
                  mrk = os.path.join(raw_dir, '_'.join((sub, exp, 'marker.txt'))),
                  elp = os.path.join(raw_dir, '*.elp'),
                  hsp = os.path.join(raw_dir, '*.hsp'),
-                 sns = '~/Documents/Eclipse/Eelbrain Reloaded/aux_files/sns.txt',
                  rawtxt = os.path.join(raw_dir, '_'.join((sub, exp, '*raw.txt'))),
                  rawfif = os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
         
