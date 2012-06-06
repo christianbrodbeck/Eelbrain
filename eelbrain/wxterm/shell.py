@@ -296,6 +296,12 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.optionsMenu.Append(ID_PREFERENCES, "&Preferences...\tCtrl+,")
         self.Bind(wx.EVT_MENU, self.OnPreferences, id=wx.ID_PREFERENCES)
         
+    # Options > History > Open As Script
+        self.historyMenu.Prepend(ID.SHELL_History2PyDoc, "Open As Script", "Open"
+                                 "the terminal's history as a new Python "
+                                 "document")
+        self.Bind(wx.EVT_MENU, self.OnHistory2PyDoc, id=ID.SHELL_History2PyDoc)
+    
     # WINDOW MENU
         Id = get_menu_Id("&Window")
         if Id is None:
@@ -995,6 +1001,11 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.help_viewer.text_lookup(topic_str)
         else:
             self.help_viewer.Help_Lookup(topic)
+    
+    def OnHistory2PyDoc(self, event=None):
+        txt = os.linesep.join(reversed(self.shell.history))
+        editor = self.create_py_editor()
+        editor.editor.window.ReplaceSelection(txt)
     
     def OnInsertColor(self, event=None):
         ctup = event.GetValue()
