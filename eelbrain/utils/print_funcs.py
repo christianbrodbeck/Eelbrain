@@ -8,7 +8,7 @@ Created on Feb 28, 2012
 '''
 
 
-def printdict(dictionary):
+def printdict(dictionary, w=80):
     """
     Prints only one key-value pair per line, hopefully a more readable
     representation for complex dictionaries. 
@@ -23,9 +23,9 @@ def printdict(dictionary):
         v = repr(v)
         k_len = max(k_len, len(k))
         items.append((k, v))
-    if k_len > 75:
+    if k_len > w - 5:
         raise ValueError("Key representation exceeds max len")
-    v_len = 78 - k_len
+    v_len = w - 2 - k_len
     empty_k = k_len*' ' + '  '
     lines = []
     for k, v in items:
