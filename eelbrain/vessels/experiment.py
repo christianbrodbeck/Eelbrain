@@ -123,6 +123,7 @@ class mne_experiment(object):
                  mri_dir = mri_dir, # contains subject-name folders for MEG data
                  mri_sdir = os.path.join(mri_dir, sub),
                  raw_sdir = raw_dir,
+                 log_sdir = os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp))),
                  
                  # kit2fiff
                  mrk = os.path.join(raw_dir, '_'.join((sub, exp, 'marker.txt'))),
@@ -554,6 +555,50 @@ class mne_experiment(object):
             fnames.extend(fnmatch.filter(all_fnames, txtname))
             for fname in fnames:
                 experiments.add(fname.split('_')[1])
+    
+    def pull(self, src_root, names=['rawfif', 'log_sdir'], overwrite=False):
+        """
+        Copies all items matching a template from another root to the current
+        root.
+        
+        src_root : str(path)
+            root of the source experiment
+        names : list of str
+            list of template names to copy.
+            tested for 'rawfif' and 'log_sdir'. 
+            Should work for any template with an exact match; '*' is not 
+            implemented and will raise an error. 
+        overwrite : bool
+            if the item already exists in the current experiment, replace it 
+         
+        """
+        if isinstance(names, basestring):
+            names = [names]
+        
+        e = self.__class__(src_root)
+        for name in names:
+            if '{experiment}' in self.templates[name]:
+                exp = None
+            else:
+                exp = 'NULL'
+            
+            for sub, exp in e.iter_se(experiment=exp):
+                src = e.get(name)
+                if '*' in src:
+                    raise NotImplementedError("Can't fnmatch here yet")
+                
+                dst = self.get(name, subject=sub, experiment=exp, match=False, mkdir=True)
+                if os.path.isdir(src):
+                    if os.path.exists(dst):
+                        if overwrite:
+                            shutil.rmtree(dst)
+                            shutil.copytree(src, dst)
+                        else:
+                            pass
+                    else:
+                        shutil.copytree(src, dst)
+                elif overwrite or not os.path.exists(dst):
+                    shutil.copy(src, dst)
     
     def run_mne_analyze(self, subject=None, modal=False):
         mri_dir = self.get('mri_dir')
