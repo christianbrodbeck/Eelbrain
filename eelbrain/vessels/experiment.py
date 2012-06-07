@@ -1,4 +1,8 @@
 '''
+mne_experiment is a base class for managing an mne experiment.
+
+
+
 Created on May 2, 2012
 
 @author: christian
@@ -72,13 +76,13 @@ class mne_experiment(object):
         self._log_path = os.path.join(directory, 'mne-experiment.pickle')
         
         # make sure base directories exist 
-        path = mri_dir.format(root=directory)
+        path = meg_dir.format(root=directory)
         if not os.path.exists(path):
             raise IOError("MEG-dir not found: %r" % path)
         
-        path = meg_dir.format(root=directory)
-        if not os.path.exists(path):
-            raise IOError("MRI-dir not found: %r" % path)
+#        path = mri_dir.format(root=directory)
+#        if not os.path.exists(path):
+#            raise IOError("MRI-dir not found: %r" % path)
         
         
         # kit2fiff
@@ -143,7 +147,8 @@ class mne_experiment(object):
         
         mri_dir = self.get('mri_dir')
         lbl_dir = os.path.join(mri_dir, 'fsaverage', 'label', 'aparc')
-        self.lbl = Labels(lbl_dir)
+        if os.path.exists(lbl_dir):
+            self.lbl = Labels(lbl_dir)
         
         # store current values
         self._subject = None
@@ -426,6 +431,10 @@ class mne_experiment(object):
         return path
     
     def iter_se(self, subject=None, experiment=None, analysis=None):
+        """
+        iterate through subject and experiment names
+        
+        """
         subjects = self._subjects if subject is None else [subject]
         experiments = self._experiments if experiment is None else [experiment] 
         for subject in subjects:
@@ -520,16 +529,16 @@ class mne_experiment(object):
         # find MRIs
         mri_dir = self.get('mri_dir')
         self._mri_subjects = mri_subjects = {}
-        mris = os.listdir(mri_dir)
-        for s in subjects:
-            if s in mris:
-                mri_subjects[s] = s
-            else:
-                if 'fsaverage' in mris:
+        if os.path.exists(mri_dir):
+            mris = os.listdir(mri_dir)
+            for s in subjects:
+                if s in mris:
+                    mri_subjects[s] = s
+                elif 'fsaverage' in mris:
                     mri_subjects[s] = 'fsaverage'
-                else:
-                    err = "If subject has no mri, fsaverage must be provided"
-                    raise IOError(err)
+#                else:
+#                    err = "If subject has no mri, fsaverage must be provided"
+#                    raise IOError(err)
         
         # find experiments
         experiments = self._experiments
@@ -636,7 +645,7 @@ class mne_experiment(object):
         
         for subject in sorted(results):
             table.cell(subject)
-            mri_subject = self._mri_subjects[subject]
+            mri_subject = self._mri_subjects.get('subject', '*missing*')
             if mri_subject == subject:
                 table.cell('own')
             else:

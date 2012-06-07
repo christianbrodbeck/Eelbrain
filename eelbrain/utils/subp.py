@@ -291,7 +291,7 @@ def kit2fiff(paths=dict(mrk = None,
                         rawfif = None),
              sns='NYU-nellab',
              sfreq=1000, lowpass=100, highpass=0,
-             stim=xrange(168, 160, -1),  stimthresh=2.5,
+             stim=xrange(168, 160, -1),  stimthresh=2.5, add=None,#(188, 190), #xrange()
              aligntol=25):
     """
     Calls the ``mne_kit2fiff`` binary which reads multiple input files and 
@@ -324,6 +324,11 @@ def kit2fiff(paths=dict(mrk = None,
     
     stimthresh : scalar
         The threshold value used when synthesizing the digital trigger channel
+    
+    add : sequence of int | None
+        channels to include in addition to the 157 default MEG channels and the
+        digital trigger channel. These numbers refer to the scanning order 
+        channels as listed in the sns file, starting from one.
     
     stim : iterable over ints
         trigger channels that are used to reconstruct the event cue value from 
@@ -374,7 +379,7 @@ def kit2fiff(paths=dict(mrk = None,
            '--hpi', hpi_file,
            '--raw', raw_file,
            '--out', out_file,
-           '--stim', ':'.join('%i' % s for s in stim), # '161:162:163:164:165:166:167:168'
+           '--stim', ':'.join(map(str, stim)), # '161:162:163:164:165:166:167:168'
            '--sfreq', sfreq,
            '--aligntol', aligntol,
            '--lowpass', lowpass,
@@ -382,7 +387,17 @@ def kit2fiff(paths=dict(mrk = None,
            '--stimthresh', stimthresh,
            ]
     
+    if add:
+        cmd.extend(('--add', ':'.join(map(str, add))))
+    
     _run(cmd)
+    
+    # TODO: rename additional channels
+    # how do I know their names?? ~/Desktop/test/EOG  has MISC 28 and MISC 30
+#    if add:
+#        cmd = [os.path.join(mne_dir, 'bin', 'mne_rename_channels'),
+#               '--fif', out_file,
+#               ]
     
     if not os.path.exists(out_file):
         raise RuntimeError("kit2fiff failed (see above)")
