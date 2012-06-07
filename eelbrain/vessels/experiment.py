@@ -39,7 +39,8 @@ class Labels(object):
 
 
 class mne_experiment(object):
-    def __init__(self, directory=None,
+    def __init__(self, directory=None, 
+                 subject=None, experiment=None, analysis=None,
                  kit2fiff_args=_kit2fiff_args):
         """
         directory : str
@@ -126,9 +127,6 @@ class mne_experiment(object):
         
         self._subjects = set()
         self._experiments = set()
-        self._subject = None
-        self._experiment = None
-        self._analysis = None
         
         # load config
         for cfg in ['cov', 'epochs']:
@@ -146,15 +144,23 @@ class mne_experiment(object):
         mri_dir = self.get('mri_dir')
         lbl_dir = os.path.join(mri_dir, 'fsaverage', 'label', 'aparc')
         self.lbl = Labels(lbl_dir)
+        
+        # store current values
+        self._subject = None
+        self._experiment = None
+        self._analysis = None
+        self.set(subject=subject, experiment=experiment, analysis=analysis)
     
     def __repr__(self):
         args = [repr(self._edir)]
         kwargs = []
 #        kwargs = [('megdir', repr(self._megdir))]
-#        if self._subject is not None:
-#            args.append(('subject', repr(self._subject)))
-#        if self._experiment is not None:
-#            args.append(('experiment', repr(self._experiment)))
+        if self._subject is not None:
+            kwargs.append(('subject', repr(self._subject)))
+        if self._experiment is not None:
+            kwargs.append(('experiment', repr(self._experiment)))
+        if self._analysis is not None:
+            kwargs.append(('analysis', repr(self._analysis)))
         args.extend('='.join(pair) for pair in kwargs)
         args = ', '.join(args)
         return "mne_experiment(%s)" % args
@@ -352,21 +358,23 @@ class mne_experiment(object):
         analysis : str
             ... (currently unused)
         match : bool
-            if the path cotains '*', try to find the actual file and raise an 
-            IOError if no file is found.
+            require that the file exists. If the path cotains '*', the path is
+            extended to the actual file. If not file is found, an IOError is 
+            raised.
         mkdir : bool
             if the directory containing the file does not exist, create it
                     
         """
         temp = self.templates[name]
         fmt = {}
+        self.set(subject=subject, experiment=experiment, analysis=analysis, 
+                 match=match)
         
         if '{subject}' in temp:
-            if subject is None:
-                if self._subject is None:
-                    raise RuntimeError("No subject specified")
-                else:
-                    subject = self._subject
+            if self._subject is None:
+                raise RuntimeError("No subject specified")
+            else:
+                subject = self._subject
             
             if name in ['bem', 'cor', 'src', 'mri_sdir']:
                 subject = self._mri_subjects[subject]
@@ -374,20 +382,18 @@ class mne_experiment(object):
             fmt['subject'] = subject
         
         if '{experiment}' in temp:
-            if experiment is None: 
-                if self._experiment is None:
-                    raise RuntimeError("No experiment specified")
-                else:
-                    experiment = self._experiment
+            if self._experiment is None:
+                raise RuntimeError("No experiment specified")
+            else:
+                experiment = self._experiment
             
             fmt['experiment'] = experiment
         
         if '{analysis}' in temp:
-            if analysis is None:
-                if self._analysis is None:
-                    raise RuntimeError("No experiment specified")
-                else:
-                    analysis = self._analysis
+            if self._analysis is None:
+                raise RuntimeError("No experiment specified")
+            else:
+                analysis = self._analysis
             
             fmt['analysis'] = analysis
         
@@ -567,12 +573,26 @@ class mne_experiment(object):
         del self._cfg_epochs[index]
         self._save_cfg('cov')
     
-    def set(self, subject=None, experiment=None, analysis=None):
+    def set(self, subject=None, experiment=None, analysis=None, match=False):
+        """
+        match : bool
+            require existence
+        
+        """
         if subject is not None:
-            self._subject = subject
+            if match and not (subject in self._subjects) and not ('*' in subject):
+                raise ValueError("No subject named %r" % subject)
+            else:
+                self._subject = subject
+        
         if experiment is not None:
-            self._experiment = experiment
-        self._analysis = analysis
+            if match and not (experiment in self._experiments) and not ('*' in experiment):
+                raise ValueError("No experiment named %r" % experiment)
+            else:
+                self._experiment = experiment
+        
+        if analysis is not None:
+            self._analysis = analysis
     
     def summary(self, templates=['rawtxt', 'rawfif', 'fwd'], missing='#', link='>',
                 analysis=None):
