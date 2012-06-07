@@ -29,7 +29,7 @@ dependencies, so the easiest way to get started is to install EPD.
     
         $ easy_install modulename
 
-The following modules are included in the EPD:
+The following modules are included in the EPD and are required:
 
 * `WxPython <http://www.wxpython.org/>`_
 * `NumPy <http://numpy.scipy.org>`_
@@ -38,13 +38,18 @@ The following modules are included in the EPD:
 * `MDP <http://mdp-toolkit.sourceforge.net/>`_
 
 
-The following modules are not included in EPD and provide additional 
+In EPD and optional:
+
+* `docutils <http://docutils.sourceforge.net/>`_: nicer formatting in the wxterm help viewer 
+
+
+The following modules are not included in the EPD and provide optional 
 functionality:
     
 * `mne <https://github.com/mne-tools/mne-python>`_
 * `tex <http://pypi.python.org/pypi/tex>`_ Enables exporting tables as pdf 
   (also requires a working tex distribution)
-  (also requires a working Latex installation)
+  (also requires a working `LaTeX <http://www.latex-project.org/>`_ installation)
 * `bioread <http://pypi.python.org/pypi/bioread>`_ Enables an importer for 
   ``.acq`` files.
 

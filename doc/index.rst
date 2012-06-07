@@ -18,6 +18,7 @@ Contents:
    
    About
    Installing
+   Changes
    Interface
    data-objects
    psyphys
