@@ -608,7 +608,7 @@ def do_forward_solution(paths=dict(rawfif=None,
     bem_file = paths.get('bem')
     src_file = paths.get('src')
     trans_file = paths.get('trans')
-    mri_cor_file = paths.get('cor')
+#    mri_cor_file = paths.get('cor')
     
     mri_dir, mri_subject = os.path.split(mri_sdir)
     

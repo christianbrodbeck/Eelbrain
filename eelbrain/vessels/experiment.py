@@ -64,73 +64,19 @@ class mne_experiment(object):
         self._kit2fiff_args = kit2fiff_args
         
         self._edir = directory
-        
-        # path elements
-        sub = '{subject}'
-        exp = '{experiment}'
-        an = '{analysis}'
-        meg_dir = os.path.join('{root}', 'meg')
-        mri_dir = os.path.join('{root}', 'mri')
-        raw_dir = os.path.join(meg_dir, sub, 'raw')
-        log_dir = os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp)))
         self._log_path = os.path.join(directory, 'mne-experiment.pickle')
         
         # make sure base directories exist 
-        path = meg_dir.format(root=directory)
-        if not os.path.exists(path):
-            raise IOError("MEG-dir not found: %r" % path)
+        self.templates = self.get_templates()
+#        path = self.get('meg_dir', root=directory)
+#        if not os.path.exists(path):
+#            raise IOError("MEG-dir not found: %r" % path)
         
 #        path = mri_dir.format(root=directory)
 #        if not os.path.exists(path):
 #            raise IOError("MRI-dir not found: %r" % path)
         
         
-        # kit2fiff
-        t = dict(
-                 # config
-                 config = os.path.join(directory, 'cfg_%s.pickled' % an),
-                 
-                 # basic dir
-                 meg_dir = meg_dir,
-                 mri_dir = mri_dir,
-                 mri_sdir = os.path.join(mri_dir, sub),
-                 raw_sdir = raw_dir,
-                 
-                 # kit2fiff
-                 mrk = os.path.join(raw_dir, '_'.join((sub, exp, 'marker.txt'))),
-                 elp = os.path.join(raw_dir, '*.elp'),
-                 hsp = os.path.join(raw_dir, '*.hsp'),
-                 rawtxt = os.path.join(raw_dir, '_'.join((sub, exp, '*raw.txt'))),
-                 rawfif = os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
-        
-                 # eye-tracker
-                 edf = os.path.join(log_dir, '*.edf'),
-                 
-                # fwd model
-                 fwd = os.path.join(raw_dir, '_'.join((sub, exp)) + '_fwd.fif'),
-                 bem = os.path.join(mri_dir, sub, 'bem', sub+'-5120-bem-sol.fif'),
-                 src = os.path.join(mri_dir, sub, 'bem', sub+'-ico-4-src.fif'),
-                 
-                 # these might not be necessary after doing coordinate alignment in mne_analyze!
-#                 trans = os.path.join(mri_dir, sub, sub+'-trans.fif'), # mne p. 203
-                 trans = os.path.join(raw_dir, '_'.join((sub, exp, 'raw-trans.fif'))), # mne p. 196
-                 cor = os.path.join(mri_dir, sub, 'mri', 'T1-neuromag', 'sets', 'COR.fif'),
-                 
-                # !! these would invalidate the s_e_* pattern with a third _
-                 cov = os.path.join(raw_dir, '_'.join((sub, exp, an)) + '-cov.fif'),
-#                inv = os.path.join(raw_dir, '_'.join((sub, exp, an)) + '-inv.fif'),
-                
-                # BESA
-                besa_triggers = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an, 'triggers.txt'))),
-                besa_edt = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an + '.edt'))),
-
-                )
-        
-        self.templates = t
-        
-        
-        self._subjects = set()
-        self._experiments = set()
         
         # load config
         for cfg in ['cov', 'epochs']:
@@ -154,8 +100,61 @@ class mne_experiment(object):
         self._subject = None
         self._experiment = None
         self._analysis = None
+        self._root = directory
         self.set(subject=subject, experiment=experiment, analysis=analysis)
     
+    def get_templates(self):
+        # path elements
+        root = '{root}'
+        sub = '{subject}'
+        exp = '{experiment}'
+        an = '{analysis}'
+        meg_dir = os.path.join(root, 'meg')
+        mri_dir = os.path.join(root, 'mri')
+        raw_dir = os.path.join(meg_dir, sub, 'raw')
+        log_dir = os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp)))
+        
+        t = dict(
+                 # config
+                 config = os.path.join(root, 'cfg_%s.pickled' % an),
+                 
+                 # basic dir
+                 meg_dir = meg_dir, # contains subject-name folders for MEG data
+                 mri_dir = mri_dir, # contains subject-name folders for MEG data
+                 mri_sdir = os.path.join(mri_dir, sub),
+                 raw_sdir = raw_dir,
+                 
+                 # kit2fiff
+                 mrk = os.path.join(raw_dir, '_'.join((sub, exp, 'marker.txt'))),
+                 elp = os.path.join(raw_dir, '*.elp'),
+                 hsp = os.path.join(raw_dir, '*.hsp'),
+                 rawtxt = os.path.join(raw_dir, '_'.join((sub, exp, '*raw.txt'))),
+                 rawfif = os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
+        
+                 # eye-tracker
+                 edf = os.path.join(log_dir, '*.edf'),
+                 
+                # fwd model
+                 fwd = os.path.join(raw_dir, '_'.join((sub, exp)) + '_fwd.fif'),
+                 bem = os.path.join(mri_dir, sub, 'bem', sub+'-5120-bem-sol.fif'),
+                 src = os.path.join(mri_dir, sub, 'bem', sub+'-ico-4-src.fif'),
+                 
+                 # these might not be necessary after doing coordinate alignment in mne_analyze!
+#                 trans = os.path.join(mri_dir, sub, sub+'-trans.fif'), # mne p. 203
+                 trans = os.path.join(raw_dir, '_'.join((sub, exp, 'raw-trans.fif'))), # mne p. 196
+#                 cor = os.path.join(mri_dir, sub, 'mri', 'T1-neuromag', 'sets', 'COR.fif'),
+                 
+                # !! these would invalidate the s_e_* pattern with a third _
+                 cov = os.path.join(raw_dir, '_'.join((sub, exp, an)) + '-cov.fif'),
+#                inv = os.path.join(raw_dir, '_'.join((sub, exp, an)) + '-inv.fif'),
+                
+                # BESA
+                besa_triggers = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an, 'triggers.txt'))),
+                besa_edt = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an + '.edt'))),
+                )
+        
+        return t
+        
     def __repr__(self):
         args = [repr(self._edir)]
         kwargs = []
@@ -331,7 +330,7 @@ class mne_experiment(object):
                 self.set(subject=subject, experiment=experiment)
                 for at in aligntol:
                     try:
-                        subp.kit2fiff(self, sligntol=at, **self._kit2fiff_args)
+                        subp.kit2fiff(self, aligntol=at, **self._kit2fiff_args)
                     except RuntimeError:
                         if at < max(aligntol):
                             pass
@@ -348,7 +347,7 @@ class mne_experiment(object):
             return raw_txt
     
     def get(self, name, subject=None, experiment=None, analysis=None, root=None,
-            match=True, mkdir=True):
+            match=True, mkdir=False):
         """
         retrieve a path
         
@@ -425,7 +424,7 @@ class mne_experiment(object):
             else:
                 raise IOError("no file found for %r" % path)
         elif mkdir and not os.path.exists(directory):
-            os.mkdir(directory)
+            os.makedirs(directory)
         
         path = os.path.expanduser(path)
         return path
@@ -517,14 +516,16 @@ class mne_experiment(object):
         
         """
         subjects = self._subjects = set()
-        meg_dir = self.get('meg_dir')
         
-        for fname in os.listdir(meg_dir):
-            isdir = os.path.isdir(os.path.join(meg_dir, fname))
-            isname = not fname.startswith('.')
-            hasraw = os.path.exists(os.path.join(meg_dir, fname, 'raw'))
-            if isdir and isname and hasraw:
-                subjects.add(fname)
+        meg_dir = self.get('meg_dir')
+        if os.path.exists(meg_dir):
+            for fname in os.listdir(meg_dir):
+                isdir = os.path.isdir(os.path.join(meg_dir, fname))
+                isname = not fname.startswith('.')
+                raw_sdir = self.get('raw_sdir', subject=fname, match=False)
+                hasraw = os.path.exists(raw_sdir)
+                if isdir and isname and hasraw:
+                    subjects.add(fname)
         
         # find MRIs
         mri_dir = self.get('mri_dir')
@@ -541,7 +542,7 @@ class mne_experiment(object):
 #                    raise IOError(err)
         
         # find experiments
-        experiments = self._experiments
+        experiments = self._experiments = set()
         for s in subjects:
             temp_fif = self.get('rawfif', subject=s, experiment='*', match=False)
             temp_txt = self.get('rawtxt', subject=s, experiment='*', match=False)
@@ -608,7 +609,7 @@ class mne_experiment(object):
         if analysis is not None:
             self._analysis = analysis
     
-    def summary(self, templates=['rawtxt', 'rawfif', 'fwd'], missing='#', link='>',
+    def summary(self, templates=['rawtxt', 'rawfif', 'fwd'], missing='-', link='>',
                 analysis=None):
         if not isinstance(templates, (list, tuple)):
             templates = [templates]
