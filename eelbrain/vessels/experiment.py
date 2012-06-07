@@ -433,6 +433,9 @@ class mne_experiment(object):
                 self.set(subject, experiment, analysis)
                 yield subject, experiment
     
+    def label_events(self, ds, experiment, subject):
+        return ds
+    
     def load_data(self, subject, experiment, 
                   edf=True, bad=False,
                   tstart=-0.1, tstop=0.6, baseline=(None, 0), downsample=4,
@@ -494,8 +497,10 @@ class mne_experiment(object):
         
         return ds
     
-    def label_events(self, ds, experiment, subject):
-        return ds
+    def load_mne_raw(self, subject=None, experiment=None):
+        src = self.get('rawfif', subject=subject, experiment=experiment)
+        raw = mne.fiff.Raw(src)
+        return raw
     
     def parse_dirs(self):
         """
