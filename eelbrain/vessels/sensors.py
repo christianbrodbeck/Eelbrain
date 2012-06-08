@@ -11,9 +11,10 @@ different file types.
 import os
 
 import numpy as np
-import matplotlib.pyplot as P
+#import matplotlib.pyplot as P
+import matplotlib as mpl
+print mpl.__version__
 import matplotlib.delaunay as delaunay
-#from matplotlib import mlab
 from scipy.optimize import leastsq
 
 
@@ -105,16 +106,6 @@ class sensor_net(object):
         
     def __len__(self):
         return self.n
-    
-#    def get_improj(self, Y, proj='default', resolution=100, im_frame=0.02):
-#        loc2d = self.getLocs2d(proj=proj)
-#        emin = -im_frame
-#        emax = 1 + im_frame
-#        x = np.linspace(emin, emax, resolution)
-#        x, y = np.meshgrid(x, x)
-#        im = mlab.griddata(loc2d[:,0], loc2d[:,1], np.ravel(Y), 
-#                           x, y, interp='linear') # linear about 6 times faster
-#        return im
     
     def getLocs2d(self, proj='default', extent=1):
         """
@@ -318,14 +309,14 @@ class sensor_net(object):
         else:
             raise KeyError("More than one index named %r" % label)
     
-    def plot_ROIs(self, ROIs, colors=['r','c','y','m','b', '.5']):
-        colors = colors * (int(len(ROIs)/len(colors))+1)
-        fig = P.figure(figsize=(4,4))
-        locs2d = self.getLocs2d()
-        for ROI in ROIs:
-            locs = locs2d[ROI]
-            P.scatter(locs[:,0], locs[:,1])
-        return fig
+#    def plot_ROIs(self, ROIs, colors=['r','c','y','m','b', '.5']):
+#        colors = colors * (int(len(ROIs)/len(colors))+1)
+#        fig = P.figure(figsize=(4,4))
+#        locs2d = self.getLocs2d()
+#        for ROI in ROIs:
+#            locs = locs2d[ROI]
+#            P.scatter(locs[:,0], locs[:,1])
+#        return fig
 
 
 

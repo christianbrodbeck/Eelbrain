@@ -27,8 +27,6 @@ plotSensors:
 from __future__ import division
 
 
-#import time
-
 import numpy as np
 import matplotlib.pyplot as _plt
 import wx
@@ -93,7 +91,7 @@ class topomap(mpl_canvas.CanvasFrame):
 
 
 
-class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
+class butterfly(mpl_canvas.CanvasFrame):
     """
     Butterfly plot with corresponding topomap
     
@@ -302,28 +300,6 @@ class butterfly(mpl_canvas.CanvasFrame): #_base.CallbackFigure
             if i % 2 == 0:
                 ax.set_ylim(ymin, ymax)
         self.canvas.draw()
-
-
-
-
-#def topomap(epochs, time=0, size=2.5, labels=True, dpi=50):
-#    """ 
-#    displays a topographic map
-#    
-#    """
-#    epochs = _base.read_epochs_arg(epochs)
-#    epochs = [e.subdata(time=time) for e in epochs]
-#    
-#    n_plots = len(epochs)
-#    fig = _plt.figure(figsize=(n_plots * size, size), dpi=dpi)
-#    
-#    for i, epoch in enumerate(epochs):
-#        ax = _plt.subplot(1, n_plots, i+1)
-##        ax.set_axis_off()
-#        _ax_topomap(ax, epoch)
-#        
-#    return fig
-
 
 
 

@@ -23,10 +23,8 @@ Create general superclass for figures which has
 
 """
 
-import numpy as np
 import matplotlib.pyplot as _plt
 
-from eelbrain import fmtxt
 from eelbrain import vessels as _vsl
 from eelbrain.vessels import data as _dt
 
@@ -100,31 +98,6 @@ class CallbackFigure:
     
     def store_canvas(self):
         self._background = self.canvas.copy_from_bbox(self.fig.bbox)
-
-
-
-
-def _get_attributes(statsSegments, sensor=None):
-    ""
-    raise DeprecationWarning
-    if sensor:
-        try:
-            sensor_name = statsSegments[0].sensors[sensor].name
-        except Exception, exc:
-            print Exception, exc
-            sensor_name = None
-    else:
-        sensor_name = None
-    seg_t_start = statsSegments[0].tstart
-    seg_t_end = statsSegments[0].tend
-    
-    if P.rcParams['text.usetex']:
-        names = [fmtxt.texify(s.name) for s in statsSegments]
-    else:
-        names = [s.name for s in statsSegments]
-    
-    return names, sensor_name, seg_t_start, seg_t_end
-
 
 
 # MARK: figure composition
