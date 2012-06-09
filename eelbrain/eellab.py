@@ -25,7 +25,7 @@ var_from_dict
 load
     functions for loading various types of data
 process
-    functions for processing varnd objects (such as baseline correction, pca)
+    functions for processing ndvar objects (such as baseline correction, pca)
 
 ...
 
@@ -36,7 +36,6 @@ Created on Mar 27, 2012
 
 @author: christian
 '''
-
 from vessels.data import (factor, 
                           var,
                           var_from_dict,

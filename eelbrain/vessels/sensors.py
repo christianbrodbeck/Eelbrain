@@ -13,7 +13,6 @@ import os
 import numpy as np
 #import matplotlib.pyplot as P
 import matplotlib as mpl
-print mpl.__version__
 import matplotlib.delaunay as delaunay
 from scipy.optimize import leastsq
 
