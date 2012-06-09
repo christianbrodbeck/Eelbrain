@@ -101,12 +101,22 @@ def _ax_im_array(ax, layers, x='time', #vmax=None,
             ylabel = ydim.name
         ax.set_ylabel(ylabel)
     
-    #ticks
+    # x-ticks
     tickstart = int((-xdim[0] - 1e-3) / tick_spacing)
     ticklabels = np.r_[-tickstart * tick_spacing :  \
                        xdim[-1] + 1e-3 : tick_spacing]
     ax.xaxis.set_ticks(ticklabels)
     ax.x_fmt = "t = %.3f s"
+    
+    # y-ticks
+    if y == 'sensor': # make sure y-ticklabels are all integers
+        locs = ax.yaxis.get_ticklocs()
+        if any(locs != locs.round()):
+            idx = np.where(locs == locs.round())[0]
+            locs = locs[idx]
+            labels = map(lambda x: str(int(x)), locs)
+            ax.yaxis.set_ticks(locs)
+            ax.yaxis.set_ticklabels(labels)
     
     #title
     if title is None:
