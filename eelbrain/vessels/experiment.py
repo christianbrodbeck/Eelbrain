@@ -20,7 +20,7 @@ from eelbrain import ui
 from eelbrain import fmtxt
 from eelbrain.utils import subp
 import data
-import load
+from eelbrain import load
 import process
 
 __all__ = ['mne_experiment']
@@ -255,7 +255,7 @@ class mne_experiment(object):
             
             ds = self.load_evts(subject, experiment, bad=False, **evt_kwargs)
             ds = ds.subset(ds[stimvar] == stim)
-            epochs = load.mne_Epochs(ds, **epoch_kwargs)
+            epochs = load.fiff.mne_Epochs(ds, **epoch_kwargs)
             cov = mne.cov.compute_covariance(epochs)
             cov.save(dest)
     
@@ -461,7 +461,7 @@ class mne_experiment(object):
                             edf=edf, bad=bad, tstart=tstart, tstop=tstop)
         ds = ds.subset(ds[stimvar] == stim)
         
-        load.fiff_epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline, 
+        load.fiff.add_epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline, 
                          downsample=downsample)
         
         # threshold rejection
@@ -494,10 +494,10 @@ class mne_experiment(object):
         
         """
         fifraw = self.get('rawfif', subject, experiment)
-        ds = load.fiff_events(fifraw)
+        ds = load.fiff.events(fifraw)
         if edf:
             edf_file = self.get('edf', subject, experiment)
-            load.fiff_add_eyetracker(ds, tstart, tstop, edf=edf_file)
+            load.fiff.add_eyelink(ds, tstart, tstop, edf=edf_file)
         
         self.label_events(ds, experiment, subject)
         

@@ -46,7 +46,6 @@ from vessels.data import (factor,
                           combine,
                           )
 
-from vessels import load
 from vessels import process
 
 #from analyze.glm import anova, ancova
@@ -55,4 +54,11 @@ from analyze import (test,
                      table) 
 
 import plot
+
+import load.txt
+try:
+    import load.fiff
+except:
+    globals().setdefault('err', []).append('load.fiff (mne)')
+
 import utils.statfuncs as statf

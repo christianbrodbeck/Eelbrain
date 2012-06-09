@@ -14,30 +14,23 @@ import fnmatch
 
 import numpy as np
 
-__all__ = ['tsv', 'var', 'fiff_add_eyetracker']
-unavailable = []
-try:
-    import mne
-    import mne.minimum_norm as _mn
-    __all__.extend(('fiff_events', 'fiff_epochs'))
-except ImportError:
-    unavailable.append('mne import failed')
+import mne
+import mne.minimum_norm as _mn
 
-if unavailable:
-    __all__.append('unavailable')
-
-import data as _data
-import colorspaces as _cs
-import sensors
+import eelbrain.vessels.data as _data
+import eelbrain.vessels.colorspaces as _cs
+import eelbrain.vessels.sensors as sensors
 from eelbrain import ui
 from eelbrain.utils import subp as _subp
 
+__all__ = ['events', 'add_eyelink', 'add_epochs', # basic pipeline
+           'ds_2_evoked', 'evoked_2_stc', # get lists of mne objects
+           'mne_events', 'mne_write_cov', 'mne_Raw', 'mne_Epochs' # get mne objects
+           ]
 
-__all__.extend(['fiff_evoked', 'evoked2stc']) # dev
 
 
-
-def fiff_events(source_path=None, name=None, merge=-1, baseline=0):
+def events(source_path=None, name=None, merge=-1, baseline=0):
     """
     Returns a dataset containing events from a raw fiff file. Use
     :func:`fiff_epochs` to load MEG data corresponding to those events.
@@ -129,7 +122,7 @@ def fiff_events(source_path=None, name=None, merge=-1, baseline=0):
     return _data.dataset(event, istart, name=name, info=info)
 
 
-def fiff_add_eyetracker(ds, tstart=0, tstop=.6, edf=None, ID='eventID',
+def add_eyelink(ds, tstart=0, tstop=.6, edf=None, ID='eventID',
                         target='accept', reject=False, accept=None):
     """
     Load eye-tracker data from an edf file and mark epochs based on overlap 
@@ -186,10 +179,10 @@ def fiff_add_eyetracker(ds, tstart=0, tstop=.6, edf=None, ID='eventID',
 
 
 
-def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
-                tstart=-.2, tstop=.6, baseline=None, 
-                downsample=1, mult=1, unit='T',
-                properties=None, sensorsname='fiff-sensors'):
+def add_epochs(dataset, i_start='i_start', target="MEG", add=True,
+              tstart=-.2, tstop=.6, baseline=None, 
+              downsample=1, mult=1, unit='T',
+              properties=None, sensorsname='fiff-sensors'):
     """
     Adds data from individual epochs as a ndvar to a dataset.
     Uses the events in ``dataset[i_start]`` to extract epochs from the raw 
@@ -226,7 +219,7 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
         name for the new ndvar containing the epoch data  
          
     """
-    events = mne_events(i_start, ds=dataset)
+    events = mne_events(ds=dataset, i_start=i_start)
     
     source_path = dataset.info['source']
     raw = mne.fiff.Raw(source_path)
@@ -294,7 +287,7 @@ def fiff_epochs(dataset, i_start='i_start', target="MEG", add=True,
 
 
 
-def fiff_evoked(ds, X, tstart=-0.1, tstop=0.6, baseline=(None, 0), 
+def ds_2_evoked(ds, X, tstart=-0.1, tstop=0.6, baseline=(None, 0), 
                 target='evoked', i_start='i_start', eventID='eventID', count='n',
                 reject=None, 
                 ):
@@ -326,9 +319,9 @@ def fiff_evoked(ds, X, tstart=-0.1, tstop=0.6, baseline=(None, 0),
 
 
 
-def evoked2stc(ds, fwd, cov, evoked='evoked', target='stc', 
-                loose=0.2, depth=0.8,
-                lambda2 = 1.0 / 3**2, dSPM=True, pick_normal=False):
+def evoked_2_stc(ds, fwd, cov, evoked='evoked', target='stc', 
+                 loose=0.2, depth=0.8,
+                 lambda2 = 1.0 / 3**2, dSPM=True, pick_normal=False):
     """
     Takes a dataset with an evoked list and adds a corresponding stc list
     
@@ -347,8 +340,8 @@ def evoked2stc(ds, fwd, cov, evoked='evoked', target='stc',
     """
     stcs = []
     for case in ds.itercases():
-        fwd_file= fwd.format(**case)
-        cov_file= cov.format(**case)
+        fwd_file = fwd.format(**case)
+        cov_file = cov.format(**case)
         
         fwd_obj = mne.read_forward_solution(fwd_file, force_fixed=False, surf_ori=True)
         cov_obj = mne.Covariance(cov_file)
@@ -437,7 +430,7 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
 
 
 
-def mne_events(i_start='i_start', ds=None):
+def mne_events(ds=None, i_start='i_start'):
     if isinstance(i_start, basestring):
         i_start = ds[i_start]
     
@@ -465,6 +458,7 @@ def mne_Raw(ds):
     raw = mne.fiff.Raw(source_path)
     return raw
 
+
 def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None):
     """
     reject : 
@@ -478,123 +472,3 @@ def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None):
     epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, 
                         baseline=baseline, reject=reject)
     return epochs
-
-
-
-def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None):
-    """
-    returns a ``dataset`` with data from a tab-separated values file. 
-    
-     
-    Arguments
-    ---------
-    
-    names :
-    
-    * ``True``: look for names on the first line if the file
-    * ``[name1, ...]`` use these names
-    * ``False``: use "v1", "v2", ...
-        
-    types :
-    
-    * ``'auto'`` -> import as var if all values can be converted float, 
-      otherwise as factor
-    * list of 0=auto, 1=factor, 2=var. e.g. ``[0,1,1,0]``
-    
-    empty :
-        value to substitute for empty cells
-    delimiter : str
-        value delimiting cells in the input file (None = any whitespace; 
-        e.g., ``'\\t'``)
-    
-    """
-    if path is None:
-        path = ui.ask_file("Select file to import as dataframe", 
-                           "Select file to import as dataframe")
-        if not path:
-            return
-    
-    with open(path) as f:
-        # read / create names
-        if names == True:
-            names = f.readline().split(delimiter)
-            names = [n.strip('"') for n in names]
-        
-        lines = []
-        for line in f:
-            values = []
-            for v in line.split(delimiter):
-                v = v.strip()
-                if not v:
-                    v = empty
-                values.append(v)
-            lines.append(values)
-    
-    n_vars = len(lines[0])
-    
-    if not names:
-        names = ['v%i'%i for i in xrange(n_vars)]
-    
-    n = len(names)
-    # decide whether to drop first column 
-    if n_vars == n:
-        start = 0
-    elif n_vars == n + 1:
-        start = 1
-    else:
-        raise ValueError("number of header different from number of data")
-    
-    if types in ['auto', None, False, True]:
-        types = [0]*n
-    else:
-        assert len(types) == n
-    
-    # prepare for reading data
-    data = []
-    for _ in xrange(n):
-        data.append([])
-    
-    # read rest of the data
-    for line in lines:
-        for i, v in enumerate(line[start:]):
-            for str_del in ["'", '"']:
-                if v[0] == str_del:
-                    v = v.strip(str_del)
-                    types[i] = 1
-            data[i].append(v)
-    
-    ds = _data.dataset(name=os.path.basename(path))
-    
-    for name, values, force_type in zip(names, data, types):
-        v = np.array(values)
-        if force_type in [0,2]:
-            try:
-                v = v.astype(float)
-                f = _data.var(v, name=name)
-            except:
-                f = _data.factor(v, name=name)
-        else:
-            f = _data.factor(v, name=name)
-        ds.add(f)
-        
-    return ds
-
-
-def var(path=None, name=None, isbool=None):
-    if path is None:
-        path = ui.ask_file("Select var File", "()")
-    
-    if isbool is None:
-        FILE = open(path)
-        line = FILE.readline()
-        FILE.close()
-        is_bool = any(line.startswith(v) for v in ['True', 'False'])
-    
-    if is_bool:
-        x = np.genfromtxt(path, dtype=bool)
-    else:
-        x = np.loadtxt(path)
-    
-    return _data.var(x, name=None)
-    
-        
