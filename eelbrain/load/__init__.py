@@ -1,9 +1,5 @@
 """
-Modules for loading data. Submodules are not preloaded and need be imported
-like::
-
-    >>> import load.
-
+Modules for loading data.
 The following submodules are available:
 
 eyelink:

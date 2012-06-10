@@ -497,7 +497,8 @@ class mne_experiment(object):
         ds = load.fiff.events(fifraw)
         if edf:
             edf_file = self.get('edf', subject, experiment)
-            load.fiff.add_eyelink(ds, tstart, tstop, edf=edf_file)
+            edf = load.eyelink.Edf(edf_file)
+            edf.add_by_Id(ds, tstart=tstart, tstop=tstop)
         
         self.label_events(ds, experiment, subject)
         

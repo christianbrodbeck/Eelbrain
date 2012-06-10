@@ -55,6 +55,7 @@ from analyze import (test,
 import plot
 
 import load.txt
+import load.eyelink
 try:
     import load.fiff
 except:

@@ -123,126 +123,24 @@ class edf_file:
         name, _ = os.path.splitext(os.path.basename(path))
         ascname = os.path.extsep.join((name, 'asc'))
         self.asc_path = os.path.join(self.temp_dir, ascname)
+        self.asc_file = open(self.asc_path)
+        self.asc_str = self.asc_file.read()
         
-        # data containers
-        self.raw = [] # all lines
-        self.preamble = []
-        self.lines = []
-        self.positions = positions = []
-        self.events = events = []
+        # find trigger events
+        #                           MSG   time    msg...      ID  
+        re_trigger = re.compile(r'\bMSG\t(\d+)\tMEG Trigger: (\d+)')
+        self.triggers = re_trigger.findall(self.asc_str)
         
-        self.MSGs = MSGs = [] # all MSG lines
-        triggers = [] # MSGs which are MEG triggers
-        
-        artifact_names = ['ESACC', 'EBLINK']
-        artifacts = []
-        a_dtype = np.dtype([('event', np.str_, 5), 
-                            ('start', np.uint32), 
-                            ('stop', np.uint32)])
-#        a_dtype = np.dtype({'names': ['event', 'start', 'stop'], 
-##                            'titles': ['a', 'b', 'c'],  
-#                            'formats': [(np.str_, 5), np.uint32, np.uint32]})
-        
-        # parse asc file
-        comment_chars = ('#', '/', ';')
-        is_recording = False # keep track of whether we are in a BEGIN -> END block
-        for line in open(self.asc_path):
-            line = line.strip()
-            if line:
-                items = line.split()
-                i0 = items[0]
-                self.raw.append(line)
-            else:
-                continue
+        # find artifacts
+        #                            type                    start   end
+        re_artifact = re.compile(r'\b(ESACC|EBLINK)\t[LR]\t(\d+)\t(\d+)')
+        self.artifacts = re_artifact.findall(self.asc_str)
             
-            if line.startswith('*'):
-                self.preamble.append(line)
-            elif any(line.startswith(c) for c in comment_chars):
-                pass
-            elif is_recording:
-                if i0.isdigit(): # data line
-#                    pos = tuple(int(p) for p in items[1:4]) # (t, x, y)
-                    pos = items
-                    positions.append(pos)
-                elif i0 == 'MSG':
-                    MSGs.append(items)
-                    if items[2] == 'MEG':
-                        t = np.uint32(items[1])
-                        v = np.uint8(items[4])
-                        triggers.append((t, v))
-                elif i0 in artifact_names:
-                    start = np.int32(items[2])
-                    stop = np.int32(items[3])
-                    evt = np.array((i0[1:6], start, stop), a_dtype)
-                    artifacts.append(evt)
-                elif i0 == 'END':
-                    is_recording = False
-                else:
-                    self.lines.append(items)
-            else:
-                if i0 == 'START':
-                    is_recording = True
-        
-        self.artifacts = np.array(artifacts, a_dtype)
-        self.triggers = np.array(triggers, dtype=[('time', np.uint32), ('ID', np.uint8)])
-    
     def __del__(self):
         shutil.rmtree(self.temp_dir)
     
     def __repr__(self):
         return 'edf_file(%r)' % self.source_path
-    
-    def asdataset(self, accept=True, tstart=-0.1, tstop=0.6):
-        ds = _dt.dataset(name=self.source_path)
-        ds['eventID'] = _dt.var(self.triggers['ID'])
-        ds['time'] = _dt.var(self.triggers['time'])
-        if accept:
-            ds['accept'] = _dt.var(self.get_acceptable(tstart, tstop))
-        return ds
-    
-    def get_acceptable(self, tstart=-0.1, tstop=0.6):
-        # conert to ms
-        start = int(tstart * 1000)
-        stop = int(tstop * 1000)
-        
-        self._debug = []
-        
-        # get data for triggers
-        N = len(self.triggers)
-        accept = np.empty(N, np.bool_)
-        for i, (t, _) in enumerate(self.triggers):
-            starts_before_tstop = self.artifacts['start'] < t + stop
-            stops_after_tstart = self.artifacts['stop'] > t + start
-            overlap = np.all((starts_before_tstop, stops_after_tstart), axis=0)
-            accept[i] = not np.any(overlap)
-            self._debug.append(overlap)
-        
-        return accept
-    
-    def print_lines(self, *lines):
-        n = len(lines)
-        if n == 0:
-            start, stop = 0, None
-        elif n == 1:
-            start, stop = 0, lines[0]
-        else:
-            start, stop = lines
-        
-        for line in self.lines[start:stop]:
-            print line
-    
-    def print_raw(self, *lines):
-        n = len(lines)
-        if n == 0:
-            start, stop = 0, None
-        elif n == 1:
-            start, stop = 0, lines[0]
-        else:
-            start, stop = lines
-        
-        for line in self.raw[start:stop]:
-            print line
-
 
 
 
