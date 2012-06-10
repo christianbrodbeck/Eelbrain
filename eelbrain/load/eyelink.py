@@ -57,7 +57,7 @@ class Edf(object):
                        "directory." % path)
                 raise ValueError(err)
             
-            fnames = fnmatch.filter(os.listdir(head), tail)
+            fnames = sorted(fnmatch.filter(os.listdir(head), tail))
             self.paths = [os.path.join(head, fname) for fname in fnames]
         else:
             self.paths = [path]
