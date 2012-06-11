@@ -210,7 +210,7 @@ def add_epochs(dataset, i_start='i_start', target="MEG", add=True,
             raise IOError(msg)
     
     # read data properties
-    props = {'proj': 'ideal',
+    props = {'proj': 'z root',
              'unit': unit,
              'ylim': 2e-12 * mult,
              'summary_ylim': 3.5e-13 * mult,

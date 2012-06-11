@@ -34,8 +34,9 @@ class sensor_net(object):
     ``None``:
         Just use horizontal coordinates
     
-    ``'ideal'``:
-        use xxx
+    ``'z root'``:
+        the radius of each sensor is set to equal the root of the vertical
+        distance from the top of the net.
         
     ``'cone'``:
         derive x/y coordinate from height based on a cone transformation 
@@ -45,7 +46,7 @@ class sensor_net(object):
 
     """
     def __init__(self, locs, names=None, name=None, groups=None,# mirror_map=None,
-                 transform_2d='ideal'):
+                 transform_2d='z root'):
         """
         Arguments
         ---------
@@ -76,7 +77,7 @@ class sensor_net(object):
         self.default_transform_2d = transform_2d
         
         self.locs = locs = np.array(locs, dtype=np.float64)
-        # 'ideal' transformation fails with 32-bit floats
+        # 'z root' transformation fails with 32-bit floats
         self.n = n = len(locs)
 
         if names is None:
@@ -131,7 +132,7 @@ class sensor_net(object):
             return self._transformed[index]
         
         
-        if proj in ['cone', 'lower cone', 'ideal']:
+        if proj in ['cone', 'lower cone', 'z root']:
             
             # fit the 3d sensor locations to a sphere with center (cx, cy, cz)
             # and radius r
@@ -164,7 +165,7 @@ class sensor_net(object):
                 lower_half = locs3d[:,2] < 0
                 if sum(lower_half):
                     locs2d[lower_half,:2] *= (1 - locs3d[lower_half,2]) 
-            elif proj == 'ideal':
+            elif proj == 'z root':
                 z = max(locs3d[:,2]) - locs3d[:,[2]] # distance form top
                 r = np.sqrt(z)  # desired 2d radius
                 r_xy = np.sqrt(locs3d[:,[0]]**2 + locs3d[:,[1]]**2) # current radius in xy
