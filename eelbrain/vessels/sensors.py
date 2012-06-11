@@ -163,8 +163,8 @@ class sensor_net(object):
                 locs2d[:,1] *= (1 - locs3d[:,2])
             elif proj=='lower cone':
                 lower_half = locs3d[:,2] < 0
-                if sum(lower_half):
-                    locs2d[lower_half,:2] *= (1 - locs3d[lower_half,2]) 
+                if any(lower_half):
+                    locs2d[lower_half] *= (1 - locs3d[lower_half,[2]]) 
             elif proj == 'z root':
                 z = max(locs3d[:,2]) - locs3d[:,[2]] # distance form top
                 r = np.sqrt(z)  # desired 2d radius
