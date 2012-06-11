@@ -244,8 +244,14 @@ class CanvasFrame(wx.Frame):
             sb = self.GetStatusBar()
             y_txt = y_fmt % event.ydata
             x_txt = x_fmt % event.xdata
-            txt = ',  '.join((x_txt, y_txt))
-            sb.SetStatusText(txt, 0)
+            pos_txt = ',  '.join((x_txt, y_txt))
+            
+            txt = self._get_statusbar_text(event)
+            sb.SetStatusText(txt % pos_txt, 0)
+    
+    def _get_statusbar_text(self, event):
+        "subclass to add figure-specific content"
+        return '%s'
     
     def OnShowFullScreen(self, event):
         self.ShowFullScreen(not self.IsFullScreen())

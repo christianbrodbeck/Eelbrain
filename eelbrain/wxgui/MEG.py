@@ -258,31 +258,25 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         sb = self.GetStatusBar()
         sb.SetStatusText("", 0)
     
-    def OnMotionStatusBarUpdate(self, event):
-        """
-        called for mouse motion
-        http://matplotlib.sourceforge.net/examples/user_interfaces/wxcursor_demo.html
-        
-        """
+    def _get_statusbar_text(self, event):
+        "called by parent class to get figure-specific status bar text"
         ax = event.inaxes
-        if ax:
+        if ax and (ax.ID > -2): # topomap ID is -2
             t = event.xdata
             if ax.ID >= 0:
                 seg = self._case_segs[ax.ID]
                 tseg = seg.subdata(time=t)
-                name = 'Segment %i' % ax.segID
+                txt = 'Segment %i,   ' % ax.segID + '%s'
             elif  ax.ID == -1:
                 tseg = self._mean_seg.subdata(time=t)
-                name = "Page average"
-            elif ax.ID == -2:
-                return
-            # update status bar
-            sb = self.GetStatusBar()
-            txt = "%s, t = %.3f s" % (name, t)
-            sb.SetStatusText(txt, 0)
-            # update plot
+                txt = "Page average,   %s"
+            # update topomap plot
             plot.topo._ax_topomap(self._topo_ax, tseg)
             self.canvas.redraw_ax(self._topo_ax)
+            return txt
+        else:
+            return '%s'
+            
     
     def OnPageChoice(self, event):
         "called by the page Choice control"
