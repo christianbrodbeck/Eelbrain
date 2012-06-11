@@ -29,14 +29,14 @@ __all__ = ['events', 'add_epochs', # basic pipeline
 
 
 
-def events(source_path=None, name=None, merge=-1, baseline=0):
+def events(raw=None, name=None, merge=-1, baseline=0):
     """
     Returns a dataset containing events from a raw fiff file. Use
     :func:`fiff_epochs` to load MEG data corresponding to those events.
     
-    source_path : str (path)
-        the location of the raw file (if ``None``, a file dialog will be 
-        displayed).
+    raw : str(path) | None | mne.fiff.Raw
+        The raw fiff file from which to extract events (if ``None``, a file 
+        dialog will be displayed).
     
     merge : int
         use to merge events lying in neighboring samples. The integer value 
@@ -54,18 +54,22 @@ def events(source_path=None, name=None, merge=-1, baseline=0):
         value is provided as parameter, the events can still be extracted.
      
     """
-    if source_path is None:
-        source_path = ui.ask_file("Pick a Fiff File", "Pick a Fiff File",
-                                  ext=[('fif', 'Fiff')])
-        if not source_path:
+    if raw is None:
+        raw = ui.ask_file("Pick a Fiff File", "Pick a Fiff File",
+                          ext=[('fif', 'Fiff')])
+        if not raw:
             return
-    elif not os.path.isfile(source_path):
-        raise ValueError("Invalid source_path: %r" % source_path)
+    
+    if isinstance(raw, basestring):
+        if os.path.isfile(raw):
+            raw = mne.fiff.Raw(raw)
+        else:
+            raise IOError("%r is not a file" % raw)
     
     if name is None:
-        name = os.path.basename(source_path)
+        fname = raw.info['filename']
+        name = os.path.basename(fname)
     
-    raw = mne.fiff.Raw(source_path)
     if baseline:
         pick = mne.event.pick_channels(raw.info['ch_names'], include='STI 014')
         data, times = raw[pick, :]
@@ -115,7 +119,7 @@ def events(source_path=None, name=None, merge=-1, baseline=0):
     
     istart = _data.var(events[:,0], name='i_start')
     event = _data.var(events[:,2], name='eventID')
-    info = {'source': source_path,
+    info = {'source': raw.info['filename'],
             'samplingrate': raw.info['sfreq'][0],
             'info': raw.info}
     return _data.dataset(event, istart, name=name, info=info)
