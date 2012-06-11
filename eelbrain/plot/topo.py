@@ -473,7 +473,7 @@ class _Window_Topo:
                 # into 'figure fraction' coordinates
                 inv = self.ax.figure.transFigure.inverted()
                 xytext = inv.transform(xytext)                
-                self.pointer = parent_ax.annotate("t=%.3g" % t, (t,1), 
+                self.pointer = parent_ax.annotate("t=%.3g" % t, (t,0), 
                                     xycoords='data',
                                     xytext=xytext, 
                                     textcoords='figure fraction',
