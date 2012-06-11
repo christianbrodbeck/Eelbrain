@@ -165,12 +165,12 @@ class sensor_net(object):
                 if sum(lower_half):
                     locs2d[lower_half,:2] *= (1 - locs3d[lower_half,2]) 
             elif proj == 'ideal':
-                r_sq = max(locs3d[:,2]) - locs3d[:,2]
-                r = np.sqrt(r_sq)  # get radius dependent on z
-                r_c = np.sqrt(locs3d[:,0]**2 + locs3d[:,1]**2) # current r
-                F = r / r_c # stretching factor accounting for current r 
-                locs2d[:,0] *= F
-                locs2d[:,1] *= F
+                z = max(locs3d[:,2]) - locs3d[:,[2]] # distance form top
+                r = np.sqrt(z)  # desired 2d radius
+                r_xy = np.sqrt(locs3d[:,[0]]**2 + locs3d[:,[1]]**2) # current radius in xy
+                idx = (r_xy != 0) # avoid zero division
+                F = r[idx] / r_xy[idx] # stretching factor accounting for current r
+                locs2d[idx] *= F
         
         elif proj is None:
             locs2d = np.copy(self.locs[:,:2])
