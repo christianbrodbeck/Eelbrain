@@ -630,9 +630,9 @@ class TimeseriesCollector(_collector):
         Ydata = np.array([self._cfunc(data, axis=0) for data in Ydata])
         T = np.arange(self._tw.tstart, self._tw.tend, 1 / self._samplingrate)
         time = _vsl.var(T, name='time')
-        dims = (time,)
+        dims = ('case', time)
         properties = {'samplingrate': self._samplingrate}
-        Y = _vsl.ndvar(dims, Ydata, properties=properties, name=self._name)
+        Y = _vsl.ndvar(Ydata, dims, properties=properties, name=self._name)
         return Y
 
 
