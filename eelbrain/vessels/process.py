@@ -162,7 +162,7 @@ def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=False, below=Non
     if _data.isndvar(DV):
         for ID in xrange(dataset.N):
             data = DV.get_case(ID)
-            v = _np.max(_np.abs(data))
+            v = _np.max(_np.abs(data.x))
             
             if v > threshold:
                 if above is not None:
