@@ -61,4 +61,6 @@ try:
 except:
     globals().setdefault('err', []).append('load.fiff (mne)')
 
+import save
+
 import utils.statfuncs as statf
