@@ -119,7 +119,7 @@ def events(raw=None, name=None, merge=-1, baseline=0):
     
     istart = _data.var(events[:,0], name='i_start')
     event = _data.var(events[:,2], name='eventID')
-    info = {'source': raw.info['filename'],
+    info = {'raw': raw,
             'samplingrate': raw.info['sfreq'][0],
             'info': raw.info}
     return _data.dataset(event, istart, name=name, info=info)
@@ -128,7 +128,7 @@ def events(raw=None, name=None, merge=-1, baseline=0):
 
 def add_epochs(dataset, i_start='i_start', target="MEG", add=True,
               tstart=-.2, tstop=.6, baseline=None, 
-              downsample=1, mult=1, unit='T',
+              downsample=1, mult=1, unit='T', proj=True,
               properties=None, sensorsname='fiff-sensors'):
     """
     Adds data from individual epochs as a ndvar to a dataset.
@@ -168,8 +168,7 @@ def add_epochs(dataset, i_start='i_start', target="MEG", add=True,
     """
     events = mne_events(ds=dataset, i_start=i_start)
     
-    source_path = dataset.info['source']
-    raw = mne.fiff.Raw(source_path)
+    raw = dataset.info['raw']
     
     # parse sensor net
     sensor_net = sensors.from_mne(raw.info, name=sensorsname)
@@ -178,7 +177,7 @@ def add_epochs(dataset, i_start='i_start', target="MEG", add=True,
     picks = mne.fiff.pick_types(raw.info, meg=True, eeg=False, stim=False, 
                                 eog=False, include=[], exclude=[])
     epochs = mne.Epochs(raw, events, 1, tstart, tstop, picks=picks, 
-                        baseline=baseline)
+                        baseline=baseline, proj=proj)
     
     # transformation
     index = slice(None, None, downsample)
@@ -314,7 +313,8 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
     
     info = ds.info['info']
     
-    fif_name = ds.info['source']
+    raw = ds.info['raw']
+    fif_name = raw.info['filename']
     fif_name, _ = os.path.splitext(fif_name)
     if fif_name.endswith('raw'):
         fif_name = fif_name[:-3]
@@ -382,8 +382,8 @@ def mne_events(ds=None, i_start='i_start'):
 
 def mne_write_cov(ds, tstart=-.1, tstop=0, baseline=(None, 0), dest='{source}-cov.fif'):
     events = mne_events(ds=ds)
-    source_path = ds.info['source']
-    raw = mne.fiff.Raw(source_path)
+    raw = ds.info['raw']
+    source_path = raw.info['filename']
     epochs = mne.Epochs(raw, events, 1, tstart, tstop, baseline=baseline)
     cov = mne.compute_covariance(epochs, keep_sample_mean=True)
     
@@ -393,21 +393,16 @@ def mne_write_cov(ds, tstart=-.1, tstop=0, baseline=(None, 0), dest='{source}-co
 
 
 def mne_Raw(ds):
-    source_path = ds.info['source']
-    raw = mne.fiff.Raw(source_path)
-    return raw
+    return ds.info['raw']
 
 
-def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None):
+def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None, proj=True):
     """
     reject : 
         e.g., {'mag': 2e-12}
     """
-    source_path = ds.info['source']
-    raw = mne.fiff.Raw(source_path)
-    
+    raw = ds.info['raw']
     events = mne_events(ds=ds)
-    
     epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, 
-                        baseline=baseline, reject=reject)
+                        baseline=baseline, reject=reject, proj=proj)
     return epochs
