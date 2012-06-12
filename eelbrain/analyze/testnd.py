@@ -253,8 +253,8 @@ class anova(test_result):
 
 
 
-
-def test(ndvars, parametric=True, match=None, func=None, attr='data',
+# - not functional - ------
+def _test(ndvars, parametric=True, match=None, func=None, attr='data',
          name="{test}"):
     """
     use func (func) or attr (str) to customize data

@@ -96,7 +96,7 @@ def _plt_map2d_labels(ax, sensor_net, proj='default',
                                   ),
                       ):
     if text == 'id':
-        labels = [str(i) for i in xrange(len(sensor_net))]
+        labels = map(str, xrange(len(sensor_net)))
     elif text == 'name':
         labels = sensor_net.names
     else:
