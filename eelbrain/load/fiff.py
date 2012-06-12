@@ -172,15 +172,7 @@ def add_epochs(dataset, i_start='i_start', target="MEG", add=True,
     raw = mne.fiff.Raw(source_path)
     
     # parse sensor net
-    ch_locs = []
-    ch_names = []
-    for ch in raw.info['chs']:
-        ch_name = ch['ch_name']
-        if ch_name.startswith('MEG'):
-            x, y, z = ch['loc'][:3]
-            ch_locs.append((x, y, z))
-            ch_names.append(ch_name)
-    sensor_net = sensors.sensor_net(ch_locs, ch_names, name=sensorsname)
+    sensor_net = sensors.from_mne(raw.info, name=sensorsname)
     
     # source
     picks = mne.fiff.pick_types(raw.info, meg=True, eeg=False, stim=False, 

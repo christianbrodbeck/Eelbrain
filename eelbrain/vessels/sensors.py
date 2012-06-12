@@ -377,6 +377,17 @@ def from_lout(path=None, transform_2d=None, **kwargs):
     return sensor_net(locs, names, **kwargs)
 
 
+def from_mne(info, name='fiff-sensors'):
+    ch_locs = []
+    ch_names = []
+    for ch in info['chs']:
+        ch_name = ch['ch_name']
+        if ch_name.startswith('MEG'):
+            x, y, z = ch['loc'][:3]
+            ch_locs.append((x, y, z))
+            ch_names.append(ch_name)
+    return sensor_net(ch_locs, ch_names, name=name)
+
 
 def hcgsn129():
     path = os.path.join(sfp_path, "GSN-HydroCel-129Eclassic.sfp")
