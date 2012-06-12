@@ -122,7 +122,7 @@ def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwarg
     h = {}
     dim = ndvar.get_dim(xdim)
     x = dim.x
-    y = ndvar.get_data(('epoch', 'time'))
+    y = ndvar.get_data(('case', 'time'))
     
     if color:
         kwargs['color'] = color

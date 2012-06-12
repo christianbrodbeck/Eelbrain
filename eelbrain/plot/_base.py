@@ -54,18 +54,19 @@ def unpack_epochs_arg(ndvars, ndim, dataset=None, levels=1):
             if isinstance(ndvar, basestring):
                 ndvar = dataset[ndvar]
             
-            if ndvar.ndim == ndim:
-                if len(ndvar) > 1:
+            if ndvar.ndim == ndim + 1:
+                if ndvar.dims[0] is 'case':
                     ndvar = ndvar.summary()
-                    
-#                pass
-#            elif ndvar.ndim == ndim + 1:
+            
+            if ndvar.ndim == ndim:
+                pass
             else:
-                err = ("Plot requires ndim=%i; ndvar.ndim==%i" % 
-                       (ndim, ndvar.ndim))
+                err = ("Plot requires ndim=%i; %r ndim==%i" % 
+                       (ndim, ndvar, ndvar.ndim))
                 raise _dt.DimensionMismatchError(err)
             out.append(ndvar)
         return out
+
 
 
 def read_cs_arg(epoch, colorspace=None):

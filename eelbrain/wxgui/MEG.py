@@ -144,7 +144,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
     
     def _update_mean(self):
         mseg = self._get_page_mean_seg()
-        data = mseg.get_data(('time', 'sensor'))[0]
+        data = mseg.get_data(('time', 'sensor'))
         T = mseg.time
         T_len = len(T)
         Ylen = T_len * 2 + 1
@@ -200,7 +200,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         self._case_axes = []
         self._case_segs = []
         for i, ID in enumerate(seg_IDs):
-            case = self._data.get_epoch(ID)
+            case = self._data.get_case(ID)
             state = self._target[ID]
             if state:
                 color = 'k'
@@ -209,7 +209,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
             ax = self.figure.add_subplot(nx, ny, i+1, xticks=[0], yticks=[])#, 'axis_off')
             ax._epoch_state = state
 #            ax.set_axis_off()
-            h = plot.utsnd._ax_butterfly(ax, case, color=color, antialiased=False,
+            h = plot.utsnd._ax_butterfly(ax, [case], color=color, antialiased=False,
                                          title=False, xlabel=None, ylabel=None,
                                          **self._bfly_kwargs)[0]
             ax.ID = i
@@ -224,7 +224,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         ax.ID = -1
         
         mseg = self._mean_seg = self._get_page_mean_seg()
-        self._mean_handle = plot.utsnd._ax_butterfly(ax, mseg, color='k', **self._bfly_kwargs)
+        self._mean_handle = plot.utsnd._ax_butterfly(ax, [mseg], color='k', **self._bfly_kwargs)
         
         # topomap
         ax = self._topo_ax = self.figure.add_subplot(nx, ny, nx*ny - 1)
@@ -263,15 +263,15 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         ax = event.inaxes
         if ax and (ax.ID > -2): # topomap ID is -2
             t = event.xdata
-            if ax.ID >= 0:
+            if ax.ID >= 0: # single trial plot
                 seg = self._case_segs[ax.ID]
                 tseg = seg.subdata(time=t)
                 txt = 'Segment %i,   ' % ax.segID + '%s'
-            elif  ax.ID == -1:
+            elif  ax.ID == -1: # mean plot
                 tseg = self._mean_seg.subdata(time=t)
                 txt = "Page average,   %s"
             # update topomap plot
-            plot.topo._ax_topomap(self._topo_ax, tseg)
+            plot.topo._ax_topomap(self._topo_ax, [tseg])
             self.canvas.redraw_ax(self._topo_ax)
             return txt
         else:

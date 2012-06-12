@@ -45,7 +45,7 @@ class PCA:
         
         """
         self.source = source
-        data = self._source_data = source.get_data(('time', 'sensor'))
+        data = self._source_data = source.get_data(('case', 'time', 'sensor'))
         self._source_dtype = data.dtype
         data = data.astype(_np.float64)
         
@@ -63,18 +63,18 @@ class PCA:
         
     def get_component(self, i):
         dims = self.source.get_dims(('sensor',))
-        data = self.node.v.T[None,i,]
+        data = self.node.v.T[i,]
         name = 'comp_%i' % i
-        ndvar = _data.ndvar(dims, data, name=name)
+        ndvar = _data.ndvar(data, dims, name=name)
         return ndvar
     
     def get_load(self, i):
         time = self.source.get_dim('time')
-        dims = (time, )
+        dims = ('case', time, )
         shape = (len(self.source), len(time))
         data = self._proj[:,i].reshape(shape)
         name = 'comp_%i_load' % i
-        ndvar = _data.ndvar(dims, data, name=name)
+        ndvar = _data.ndvar(data, dims=dims, name=name)
         return ndvar
     
     def subtract(self, components, baseline=(None, 0), name='{name}'):
@@ -107,10 +107,10 @@ class PCA:
         new_data = new_data.astype(self._source_dtype)
         
         # create the output new ndvar 
-        dims = self.source.get_dims(('time', 'sensor'))
+        dims = ('case',) + self.source.get_dims(('time', 'sensor'))
         properties = self.source.properties
         name = name.format(name=self.source.name)
-        out = _data.ndvar(dims, new_data, properties, name=name)
+        out = _data.ndvar(new_data, dims=dims, properties=properties, name=name)
         if baseline:
             tstart, tend = baseline
             out = rm_baseline(out, tstart, tend)
@@ -161,7 +161,7 @@ def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=False, below=Non
     # do the thresholding
     if _data.isndvar(DV):
         for ID in xrange(dataset.N):
-            data = DV.get_data(('time', 'sensor'), ID)
+            data = DV.get_case(ID)
             v = _np.max(_np.abs(data))
             
             if v > threshold:
@@ -206,6 +206,6 @@ def rm_baseline(ndvar, tstart=None, tend=0, name='{name}'):
     data = ndvar.x - bl_data
     name = name.format(name=ndvar.name)
     info = ndvar.info
-    return _data.ndvar(dims, data, ndvar.properties, name=name, info=info)
+    return _data.ndvar(data, dims=dims, properties=ndvar.properties, name=name, info=info)
 
 

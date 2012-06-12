@@ -70,14 +70,13 @@ def _ax_im_array(ax, layers, x='time', #vmax=None,
     epoch = layers[0]
     
     xdim = epoch.get_dim(x)
-    if epoch.ndim == 1: # epoch as dim
-        y = 'epoch'
-    elif epoch.ndim == 2:
+    if epoch.ndim == 2:
         xdim_i = epoch.dimnames.index(x)
         ydim_i = {1:0, 0:1}[xdim_i]
         y = epoch.dimnames[ydim_i]
     else:
-        raise ValueError("Too many dimensions in input")
+        err = ("Need 2 dimensions, got %i" % epoch.ndim)
+        raise ValueError(err)
     
     ydim = epoch.get_dim(y)
     if y == 'sensor':
@@ -272,7 +271,7 @@ def _plt_uts(ax, epoch,
     NOT IMPLEMENTED epochs: submit mean epochs
     
     """
-    Y = epoch.get_data(('time', 'sensor'), 0)
+    Y = epoch.get_data(('time', 'sensor'))
     if sensors is not None:
         Y = Y[:,sensors]
     T = epoch.time#.x[...,None]
@@ -288,7 +287,7 @@ def _plt_uts(ax, epoch,
 
 
 def _plt_extrema(ax, epoch, **plot_kwargs):
-    data = epoch.get_data(('time', 'sensor'), 0)
+    data = epoch.get_data(('time', 'sensor'))
     Ymin = data.min(1)
     Ymax = data.max(1)
     T = epoch.time

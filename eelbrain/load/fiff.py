@@ -186,7 +186,7 @@ def add_epochs(dataset, i_start='i_start', target="MEG", add=True,
     # target container
     T = epochs.times[index]
     time = _data.var(T, 'time')
-    dims = (sensor_net, time)
+    dims = ('case', sensor_net, time)
     epoch_shape = (len(picks), len(time))
     data_shape = (len(events), len(picks), len(time))
     data = np.empty(data_shape, dtype='float32') 
@@ -218,7 +218,7 @@ def add_epochs(dataset, i_start='i_start', target="MEG", add=True,
     if properties:
         props.update(properties)
     
-    ndvar = _data.ndvar(dims, data, properties=props, name=target)
+    ndvar = _data.ndvar(data, dims=dims, properties=props, name=target)
     if add:
         dataset.add(ndvar)
     else:
@@ -352,8 +352,8 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
     
     x = np.vstack(s.data.mean(0) for s in stcs)
     s = stcs[0]
-    dims = (_data.var(s.times, 'time'),)
-    ds[name] = _data.ndvar(dims, x, properties=None, info='')
+    dims = ('case', _data.var(s.times, 'time'),)
+    ds[name] = _data.ndvar(x, dims, properties=None, info='')
     
     return stcs
     

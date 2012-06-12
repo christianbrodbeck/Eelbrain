@@ -113,23 +113,19 @@ class ttest(test_result):
         else:
             raise ValueError('invalid c2: %r' % c2)
         
-        # fix dimensionality
-        T = T[None]
-        P = P[None]
-        
 #        direction = np.sign(diff.x)
 #        P = P * direction# + 1 # (1 - P)
 #        for k in contours.copy():
 #            contours[k+1] = contours.pop(k)
         
-        dims = ct.Y.dims
+        dims = ct.Y.dims[1:]
         properties = ct.Y.properties.copy()
         
         properties['colorspace'] = _vsl.colorspaces.Colorspace(contours=contours)
-        P = _vsl.data.ndvar(dims, P, properties=properties, name='p', info=test_name)
+        P = _vsl.data.ndvar(P, dims, properties=properties, name='p', info=test_name)
         
         properties['colorspace'] = _vsl.colorspaces.get_default()
-        T = _vsl.data.ndvar(dims, T, properties=properties, name='T', info=test_name)
+        T = _vsl.data.ndvar(T, dims, properties=properties, name='T', info=test_name)
         
         # add Y.name to dataset name
         Yname = getattr(Y, 'name', None)
@@ -192,12 +188,12 @@ class f_oneway(test_result):
             Ps.append(p)
         test_name = 'One-way ANOVA'
         
-        dims = Y.dims
-        Ps = np.reshape(Ps, (1,) + tuple(len(dim) for dim in dims))
+        dims = Y.dims[1:]
+        Ps = np.reshape(Ps, tuple(len(dim) for dim in dims))
         
         properties = Y.properties.copy()
         properties['colorspace'] = _vsl.colorspaces.get_sig(p=p, contours=contours)
-        p = _vsl.data.ndvar(dims, Ps, properties=properties, name=X.name, info=test_name)
+        p = _vsl.data.ndvar(Ps, dims, properties=properties, name=X.name, info=test_name)
 
         # create dataset
         super(f_oneway, self).__init__(name="anova")
@@ -235,11 +231,13 @@ class anova(test_result):
         super(anova, self).__init__(name="anova", info=info)
         properties = Y.properties.copy()
         properties['colorspace'] = _vsl.colorspaces.get_sig(p=p, contours=contours)
-        # Y.data:  epoch X [time X sensor X freq]
+        kwargs = dict(dims = Y.dims[1:],
+                      properties = properties)
+        
         for name, Fs, Ps in fitter.map(Y.x.T, v=v):
             effect_names.append(name)
-            P = _vsl.data.ndvar(Y.dims, Ps.T[None], properties=properties, name=name, info=name)
-            self[name+'_p'] = P
+            P = _vsl.data.ndvar(Ps.T, name=name, **kwargs)
+            self[name + '_p'] = P
     
     @property
     def all(self):

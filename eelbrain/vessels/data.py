@@ -1058,7 +1058,7 @@ class factor(_regressor_):
 
 class ndvar(object):
     _stype_ = "ndvar"
-    def __init__(self, dims, x, properties=None, name=None, info=""):
+    def __init__(self, x, dims=('case',), properties=None, name=None, info=""):
         """
         Arguments
         ---------
@@ -1066,14 +1066,14 @@ class ndvar(object):
         For each agument, the example assumes you are importing 600 epochs of 
         EEG data for 80 time points from 32 sensors.
         
-        data : array
-            the first dimension should contain cases, and the subsequent 
-            dimensions should correspond to the ``dims`` argument. E.g., 
-            ``data.shape = (600, 80, 32).
-        
         dims : tuple
             the dimensions characterizing the shape of each case. E.g., 
             ``(var('time', range(-.2, .6, .01)), sensor_net)``.
+        
+        x : array
+            the first dimension should contain cases, and the subsequent 
+            dimensions should correspond to the ``dims`` argument. E.g., 
+            ``data.shape = (600, 80, 32).
         
         properties : dict
             data properties dictionary
@@ -1087,18 +1087,32 @@ class ndvar(object):
         """        
         # check data shape
         ndim = len(dims)
-        if ndim != x.ndim - 1:
-            err = ("Dimension mismatch (data: %i, dims: %i)" % (x.ndim - 1, 
-                                                                ndim))
+        if ndim != x.ndim:
+            err = ("Unequal number of dimensions (data: %i, dims: %i)" %
+                   (x.ndim, ndim))
             raise DimensionMismatchError(err)
         
         # check dimensions
-        for i,dim in enumerate(dims):
-            n_data = x.shape[i + 1]
+        d0 = dims[0]
+        if isinstance(d0, basestring):
+            if d0 == 'case':
+                has_case = True
+            else:
+                err = ("String dimension needs to be 'case' (got %r)" % d0)
+                raise ValueError(err)
+        else:
+            has_case = False
+        
+        for dim, n in zip(dims, x.shape)[has_case:]:
+            if isinstance(dim, basestring):
+                err = ("Invalid dimension: %r in %r. First dimension can be "
+                       "'case', other dimensions need to be array-like" % 
+                       (dim, dims))
+                raise TypeError(err)
             n_dim = len(dim)
-            if n_data != n_dim:
+            if n_dim != n:
                 err = ("Dimension %r length mismatch: %i in data, "
-                       "%i in dimension" % (dim.name, n_data, n_dim))
+                       "%i in dimension" % (dim.name, n, n_dim))
                 raise DimensionMismatchError(err)
         
         state = {'dims': dims,
@@ -1116,7 +1130,14 @@ class ndvar(object):
     
     def __setstate__(self, state):
         self.dims = dims = state['dims']
-        self.dimnames = tuple(dim.name for dim in dims)
+        self._case = (dims[0] == 'case')
+        self._truedims = truedims = dims[self._case:]
+        
+        # dimnames
+        self.dimnames = tuple(dim.name for dim in truedims)
+        if self._case:
+            self.dimnames = ('case',) + self.dimnames
+        
         self.x = x = state['x']
         self.name = state['name']
         self.info = state['info']
@@ -1124,14 +1145,15 @@ class ndvar(object):
         # derived
         self.ndim = len(dims)
         self._len = len(x)
-        self._dim_dict = {dim.name: i for i, dim in enumerate(dims)}
+        self._dim_2_ax = dict(zip(self.dimnames, xrange(self.ndim)))
         # attr
-        i = self._dim_dict.get('time', None)
-        if i is not None:
-            self.time = dims[i]
-        i = self._dim_dict.get('sensor', None)
-        if i is not None:
-            self.sensor = dims[i]
+        for dim in truedims:
+            if hasattr(self, dim.name):
+                err = ("invalid dimension name: %r (already present as ndvar"
+                       " attr)" % dim.name)
+                raise ValueError(err)
+            else:
+                setattr(self, dim.name, dim)
     
     def __getstate__(self):
         state = {'dims': self.dims,
@@ -1142,9 +1164,26 @@ class ndvar(object):
         return state
     
     def __add__(self, other):
-        x = self.x + other.x
-        name = '+'.join((self.name, other.name))
-        return ndvar(self.dims, x, properties=self.properties, name=name)
+        if hasattr(other, 'x'):
+            x = self.x + other.x
+            name = '+'.join((self.name, other.name))
+        elif np.isscalar(other):
+            x = self.x + other
+            name = '%s+%r' % (self.name, other)
+        else:
+            raise ValueError("can't add %r" % other)
+        return ndvar(x, self.dims, properties=self.properties, name=name)
+    
+    def __sub__(self, other): # TODO: use dims
+        if hasattr(other, 'x'):
+            x = self.x - other.x
+            name = '-'.join((self.name, other.name))
+        elif np.isscalar(other):
+            x = self.x - other
+            name = '%s-%r' % (self.name, other)
+        else:
+            raise ValueError("can't subtract %r" % other)
+        return ndvar(x, self.dims, properties=self.properties, name=name)    
 
     def __getitem__(self, index):
         if isvar(index):
@@ -1154,38 +1193,37 @@ class ndvar(object):
             x = self.x[index]
             if x.shape[1:] != self.x.shape[1:]:
                 raise NotImplementedError("Use subdata method when dims are affected")
-            return ndvar(self.dims, x, properties=self.properties, name=self.name)
+            return ndvar(x, dims=self.dims, name=self.name, properties=self.properties)
         else:
             index = int(index)
-            return self.get_epoch(index)
+            x = self.x[index]
+            dims = self.dims[1:]
+            name = '%s_%i' % (self.name, index)
+            return ndvar(x, dims=dims, name=name, properties=self.properties)
     
     def __len__(self):
         return self._len
     
     def __repr__(self):
-        rep = '<ndvar %(name)r: %(n_cases)i cases, %(dims)s>'
-        dims = ' X '.join('%r(%i)' % (dim.name, len(dim)) for dim in self.dims)
-        args = dict(name=self.name, n_cases=self._len, dims=dims)
+        rep = '<ndvar %(name)r: %(dims)s>'
+        if self._case:
+            dims = [(self._len, 'case')]
+        else:
+            dims = []
+        dims.extend([(len(dim), dim.name) for dim in self._truedims])
+        
+        dims = ' X '.join('%i (%r)' % fmt for fmt in dims)
+        args = dict(name=self.name, dims=dims)
         return rep % args
     
-    def __sub__(self, other):
-        if hasattr(other, 'x'):
-            x = self.x - other.x
-            name = '-'.join((self.name, other.name))
-        elif np.isscalar(other):
-            x = self.x - other
-            name = '%s-%r' % (self.name, other)
-        else:
-            raise ValueError("can't subtract %r" % other)
-        return ndvar(self.dims, x, properties=self.properties, name=name)
-    
     def assert_dims(self, dims):
-        dim_names = tuple(dim.name for dim in self.dims)
-        if dim_names != dims:
-            msg = "Dimensions of %r do not match %r" % (self, dims)
-            raise DimensionMismatchError(msg)
+        if self.dimnames != dims:
+            err = "Dimensions of %r do not match %r" % (self, dims)
+            raise DimensionMismatchError(err)
     
     def compress(self, X, func=np.mean, name='{name}'):
+        if not self._case:
+            raise DimensionMismatchError("%r has no case dimension" % self)
         if len(X) != len(self):
             err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
             raise ValueError(err)
@@ -1204,64 +1242,65 @@ class ndvar(object):
         x = np.array(x)
         name = name.format(name=self.name)
         info = os.linesep.join((self.info, "compressed by %r" % X)) 
-        out = ndvar(self.dims, x, properties=properties, info=info, name=name)
+        out = ndvar(x, self.dims, properties=properties, info=info, name=name)
         return out
     
     def copy(self):
         "returns a copy with a view on the object's data"
         x = self.x
-        return self.__class__(self.dims, x, self.properties, self.name)
+        return self.__class__(x, dims=self.dims, name=self.name, 
+                              properties=self.properties)
     
     def deepcopy(self):
         "returns a copy with a deep copy of the object's data"
         x = self.x.copy()
 #        dims = tuple(dim.copy() for dim in self.dims)
-        return self.__class__(self.dims, x, self.properties, self.name[:])
+        return self.__class__(x, dims=self.dims, name=self.name, 
+                              properties=self.properties)
     
-    def get_axis(self, dim_name):
-        """
-        returns the .data axis in which dim_name is represented; raises KeyError if 
-        axis is not present in the ndvar.
+    def get_axis(self, dim):
+        return self._dim_2_ax[dim]
+    
+    def get_case(self, index, name="{name}[{index}]"):
+        "returns a single case (epoch) as ndvar"
+        if not self._case:
+            raise DimensionMismatchError("%r does not have cases" % self)
         
-        """
-        if dim_name == 'epoch':
-            return 0
-        else:
-            return self._dim_dict[dim_name] + 1
+        x = self.x[index]
+        name = name.format(name=self.name, index=index)
+        case = ndvar(x, dims=self.dims[1:], properties=self.properties, name=name, 
+                     info=self.info + ".get_case(%i)" % index)
+        return case
     
-    def get_data(self, dims, epoch=None):
+    def get_data(self, dims):
         """
         returns the data with a specific ordering of dimension as indicated in 
-        ``dims``. If 'epoch' is not specified, it is assumed to be in the first 
-        place.
+        ``dims``.
+        
+        dims : sequence of str
+            List of dimension names. The array that is returned will have axes 
+            in this order. 
         
         """
-        dimnames = list(self.dimnames)
+        if set(dims) != set(self.dimnames):
+            err = "Requested dimensions %r from %r" % (dims, self)
+            raise DimensionMismatchError(err)
         
-        if epoch is None:
-            x = self.x
-            dimnames = ['epoch'] + dimnames
-            if 'epoch' not in dims:
-                dims = ('epoch',) + dims
-        else:
-            x = self.x[epoch]
-            
+        dimnames = list(self.dimnames)
+        x = self.x
+        
         for i_tgt, dim in enumerate(dims):
-            if dim in dimnames:
-                i_src = dimnames.index(dim)
-                if i_tgt != i_src:
-                    x = x.swapaxes(i_src, i_tgt)
-                    dimnames[i_src], dimnames[i_tgt] = dimnames[i_tgt], dimnames[i_src]
-            else:
-                msg = "%r has no dimension named %r" % (self, dim)
-                raise DimensionMismatchError(msg)
+            i_src = dimnames.index(dim)
+            if i_tgt != i_src:
+                x = x.swapaxes(i_src, i_tgt)
+                dimnames[i_src], dimnames[i_tgt] = dimnames[i_tgt], dimnames[i_src]
         
         return x
     
     def get_dim(self, name):
         "Returns the dimension var named ``name``"
-        if name in self._dim_dict:
-            i = self._dim_dict[name]
+        if name in self._dim_2_ax:
+            i = self._dim_2_ax[name]
             return self.dims[i]
         elif name == 'epoch':
             return var(np.arange(len(self)), 'epoch')
@@ -1300,11 +1339,11 @@ class ndvar(object):
             default: "{func}({name})"
         
         """
-        name = regions.pop('name', '{func}({name})')
         func = regions.pop('func', self.properties.get('summary_func', np.mean))
-        if len(dims) + len(regions) == 0:
-            dims = ('epoch',)
+        name = regions.pop('name', '{func}({name})')
         name = name.format(func=func.__name__, name=self.name)
+        if len(dims) + len(regions) == 0:
+            dims = ('case',)
         
         if regions:
             dims = list(dims)
@@ -1313,15 +1352,12 @@ class ndvar(object):
             return data.summary(*dims, func=func, name=name)
         else:
             x = self.x
-            axes = [self.get_axis(dim) for dim in np.unique(dims)]
-            dims = self.dims
+            axes = [self._dim_2_ax[dim] for dim in np.unique(dims)]
+            dims = list(self.dims)
             for axis in sorted(axes, reverse=True):
                 x = func(x, axis=axis)
-                if axis == 0:
-                    x = x[None,...]
-                else:
-                    dims = dims[:axis-1] + dims[axis:]
-        
+                dims.pop(axis)
+            
             info = os.linesep.join((self.info, 'summary: %s' % func.__name__))
             
             # update properties for summary
@@ -1330,21 +1366,16 @@ class ndvar(object):
                 if key.startswith('summary_') and (key != 'summary_func'):
                     properties[key[8:]] = properties.pop(key)
             
-            if len(dims):
-                return ndvar(dims, x, properties=properties, name=name, info=info)
+            if dims:
+                return ndvar(x, dims=dims, name=name, properties=properties, info=info)
             else:
                 return var(x, name=name)
     
-    def get_epoch(self, Id, name="{name}[{Id}]"):
-        "returns a single epoch (case) as ndvar"
-        x = self.x[[Id]]
-        name = name.format(name=self.name, Id=Id)
-        epoch = ndvar(self.dims, x, properties=self.properties, name=name, 
-                      info=self.info + ".get_epoch(%i)"%Id)
-        return epoch
-    
-    def mean(self, name="mean({name})"):
-        return self.summary(func=np.mean, name=name)
+    def mean(self, name="mean({name})"): # FIXME: Do I need this?
+        if self._case:
+            return self.summary(func=np.mean, name=name)
+        else:
+            return self
     
     def subdata(self, **kwargs):
         """
@@ -1354,7 +1385,8 @@ class ndvar(object):
         
             >>> Y.subdata(time = 1)
         
-        returns a slice for time point 1 (second).
+        returns a slice for time point 1 (second). For dimensions whose values
+        change monotonically, a tuple can be used to specify a window:: 
         
             >>> Y.subdata(time = (.2, .6))
             
@@ -1363,13 +1395,13 @@ class ndvar(object):
         
         """
         properties = self.properties.copy()
-        dims = ['epoch'] + list(self.dims)
+        dims = list(self.dims)
         index = [slice(None)] * len(dims)
         
         for name, args in kwargs.iteritems():
             try:
-                dimax = self.get_axis(name)
-                dimvar = self.get_dim(name)
+                dimax = self._dim_2_ax[name]
+                dimvar = self.dims[dimax]
             except KeyError:
                 err = ("Segment does not contain %r dimension." % name)
                 raise DimensionMismatchError(err)
@@ -1407,9 +1439,8 @@ class ndvar(object):
         
         # create subdata object
         x = self.x[index]
-        dims = tuple(dim for dim in dims[1:] if dim is not None)
-        out = ndvar(dims, x, properties, name=self.name)
-        return out
+        dims = tuple(dim for dim in dims if dim is not None)
+        return ndvar(x, dims=dims, name=self.name, properties=properties)
 
 
 
