@@ -77,12 +77,33 @@ class Edf(object):
     def __repr__(self):
         return "Edf(%r)" % self.path
     
+    def _assert_Id_match(self, Id):
+        ID_edf = self.triggers['Id']
+        if len(Id) != len(ID_edf):
+            lens = (len(Id), len(ID_edf))
+            mm = min(lens)
+            for i in xrange(mm):
+                if Id[i] != ID_edf[i]:
+                    mm = i
+                    break
+            
+            args = lens + (mm,)
+            err = ("dataset containes different number of events from edf file "
+                   "(%i vs %i); first mismatch at %i." % args)
+            raise ValueError(err)
+        
+        check = (Id == ID_edf)
+        if not all(check):
+            err = "Event ID mismatch: %s" % np.where(check==False)[0]
+            raise ValueError(err)
+    
     def add_by_Id(self, ds, tstart=-0.1, tstop=0.6, Id='eventID',
                target='accept', reject=False, accept=None):
         """
-        Adds acceptability to a dataset based on matching event Ids.
-        Mark each epoch in the ds for acceptability based on overlap 
-        with blinks and saccades. 
+        Mark each epoch in the ds for acceptability based on overlap with 
+        blinks and saccades. ds needs to contain exactly the same triggers
+        as the edf file. For adding acceptability to a decimated ds, use 
+        Edf.add_T_by_Id() and then Edf.add_by_T().
         
         dataset : dataset
             dataset that contains the data to work with.
@@ -98,36 +119,28 @@ class Edf(object):
             the eye-tracker data.
         
         """        
+        self._assert_Id_match(ds[Id])
+
         if isinstance(target, str):
             if target not in ds:
                 ds[target] = var(np.ones(ds.N, dtype=np.bool_))
             target = ds[target]
-                
-        # test whether events match up
-        ID_ds = ds[Id]
-        ID_edf = self.triggers['Id']
-        if len(ID_ds) != len(ID_edf):
-            lens = (len(ID_ds), len(ID_edf))
-            mm = min(lens)
-            for i in xrange(mm):
-                if ID_ds[i] != ID_edf[i]:
-                    mm = i
-                    break
-            
-            args = lens + (mm,)
-            err = ("dataset containes different number of events from edf file "
-                   "(%i vs %i); first mismatch at %i." % args)
-            raise ValueError(err)
-        check = (ID_ds == ID_edf)
-        if not all(check):
-            err = "Event ID mismatch: %s" % np.where(check==False)[0]
-            raise ValueError(err)
         
         target.x *= self.get_accept(tstart=tstart, tstop=tstop)
     
     def add_by_T(self, ds, tstart=-0.1, tstop=0.6, T='t_edf', accept='accept'):
         "adds acceptability to a dataset based on edf-time values"
         ds[accept] = self.get_accept(T=ds[T], tstart=tstart, tstop=tstop)
+    
+    def add_T_by_Id(self, ds, Id='eventID', t_edf='t_edf'):
+        """
+        Asserts that trigger events in the dataset match trigger events in the 
+        edf file, and adds edf trigger time to the ds. This can be used for
+        Edf.add_by_T(ds) after ds hads been decimated.
+         
+        """
+        self._assert_Id_match(ds[Id])
+        ds[t_edf] = var(self.triggers['T'])
     
     def get_accept(self, T=None, tstart=-0.1, tstop=0.6):
         """
