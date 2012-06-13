@@ -126,10 +126,10 @@ def events(raw=None, name=None, merge=-1, baseline=0):
 
 
 
-def add_epochs(dataset, i_start='i_start', target="MEG", add=True,
-              tstart=-.2, tstop=.6, baseline=None, 
-              downsample=1, mult=1, unit='T', proj=True,
-              properties=None, sensorsname='fiff-sensors'):
+def add_epochs(dataset, tstart=-0.1, tstop=0.6, baseline=None,
+               downsample=1, mult=1, unit='T', proj=True,
+               add=True, target="MEG", i_start='i_start', 
+               properties=None, sensorsname='fiff-sensors'):
     """
     Adds data from individual epochs as a ndvar to a dataset.
     Uses the events in ``dataset[i_start]`` to extract epochs from the raw 
