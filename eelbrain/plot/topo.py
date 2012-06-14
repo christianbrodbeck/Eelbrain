@@ -69,8 +69,11 @@ class topomap(mpl_canvas.CanvasFrame):
         # plot epochs (x/y are in figure coordinates)
         frame = .05
         
-        self.topo_kwargs = {'res': res,
-                            'interpolation': interpolation}
+        topo_kwargs = dict(res = res,
+                           interpolation = interpolation,
+                           proj = proj,
+                           sensors = sensors,
+                           )
         
         self.axes = []
         for i, layers in enumerate(epochs):
@@ -85,7 +88,7 @@ class topomap(mpl_canvas.CanvasFrame):
             ax.ID = i
             self.axes.append(ax)
             
-            _ax_topomap(ax, layers, title=True, sensors=sensors, proj=proj)
+            _ax_topomap(ax, layers, title=True, **topo_kwargs)
         
         self.Show()
 
