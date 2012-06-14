@@ -434,7 +434,7 @@ def run_mne_analyze(mri_dir, fif_dir, modal=True):
     
     **Coregistration Procedure:**
     
-    (For more information see  MNE-manual 3.10 & 12.11, or section XI of Gwyneth's manual.)
+    (For more information see  MNE-manual 3.10 & 12.11)
     
     #. File > Load Surface: select the subject`s directory and "Inflated"
     #. File > Load digitizer data: select the fiff file
@@ -443,16 +443,15 @@ def run_mne_analyze(mri_dir, fif_dir, modal=True):
        a. ``Options``: Switch cortical surface display off, make 
           scalp transparent. ``Done``
        
-    #. Adjust > Coordinate Alignment: set LAP, Nasion and RAP. ``Align using 
-       fiducials``. 
+    #. Adjust > Coordinate Alignment: 
     
-       a. Run ``ICP alignment`` with 20 steps
-       b. ``Save MRI set``, ``Save default``
+       a. set LAP, Nasion and RAP. 
+       b. ``Align using fiducials``. 
+       c. Run ``ICP alignment`` with 20 steps
+       d. ``Save default``
     
-    This will create:
-     - mri/<subject>/mri/T1-neuromag/sets/COR-<username>-<date created>-<arbitrary number>.
-      --> move it! and: befor running, take a list of files already in the folder to exclude
-      --> then use --mri option of do_forward_solution
+    this creates a file next to the raw file with the '-trans.fif' extension.
+    
     """
     os.environ['SUBJECTS_DIR'] = mri_dir
     os.chdir(fif_dir)
