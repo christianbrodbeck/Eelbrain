@@ -10,7 +10,7 @@ from eelbrain.vessels.data import var, dataset
 
 
 
-__all__ = ['meg160_triggers', 'besa_edt']
+__all__ = ['meg160_triggers', 'besa_evt']
 
 
 def meg160_triggers(ds, dest=None):
