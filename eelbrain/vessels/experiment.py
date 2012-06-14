@@ -350,7 +350,10 @@ class mne_experiment(object):
     def get(self, name, subject=None, experiment=None, analysis=None, root=None,
             match=True, mkdir=False):
         """
-        retrieve a path
+        Retrieve a path. With match=True, '*' are expanded to match a file, 
+        and if there is not a unique match, an error is raised. With 
+        mkdir=True, the directory containing the file is created if it does not
+        exist.
         
         name : str
             name (code) of the requested file
@@ -396,7 +399,7 @@ class mne_experiment(object):
         
         if '{analysis}' in temp:
             if self._analysis is None:
-                raise RuntimeError("No experiment specified")
+                raise RuntimeError("No analysis specified")
             else:
                 analysis = self._analysis
             
@@ -414,16 +417,20 @@ class mne_experiment(object):
         path = temp.format(**fmt)
         
         # assert the presence of the file
-        directory, name = os.path.split(path)
-        if match and ('*' in name):
-            match = [n for n in os.listdir(directory) if fnmatch.fnmatch(n, name)]
+        directory, fname = os.path.split(path)
+        if match and ('*' in fname):
+            if not os.path.exists(directory):
+                err = ("Directory does not exist: %r" % directory)
+                raise IOError(err)
+            
+            match = fnmatch.filter(os.listdir(directory), fname)
             if len(match) == 1:
                 path = os.path.join(directory, match[0])
             elif len(match) > 1:
                 err = "More than one files match %r: %r" % (path, match)
                 raise IOError(err)
             else:
-                raise IOError("no file found for %r" % path)
+                raise IOError("No file found for %r" % path)
         elif mkdir and not os.path.exists(directory):
             os.makedirs(directory)
         
