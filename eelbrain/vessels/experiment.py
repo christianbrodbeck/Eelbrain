@@ -628,6 +628,36 @@ class mne_experiment(object):
                 elif overwrite or not os.path.exists(dst):
                     shutil.copy(src, dst)
     
+    def push(self, dst_root, names=[], overwrite=False):
+        "See .pull()"
+        if isinstance(names, basestring):
+            names = [names]
+        
+        e = self.__class__(dst_root)
+        for name in names:
+            if '{experiment}' in self.templates[name]:
+                exp = None
+            else:
+                exp = 'NULL'
+            
+            for sub, exp in self.iter_se(experiment=exp):
+                src = self.get(name)
+                if '*' in src:
+                    raise NotImplementedError("Can't fnmatch here yet")
+                
+                dst = e.get(name, subject=sub, experiment=exp, match=False, mkdir=True)
+                if os.path.isdir(src):
+                    if os.path.exists(dst):
+                        if overwrite:
+                            shutil.rmtree(dst)
+                            shutil.copytree(src, dst)
+                        else:
+                            pass
+                    else:
+                        shutil.copytree(src, dst)
+                elif overwrite or not os.path.exists(dst):
+                    shutil.copy(src, dst)
+    
     def run_mne_analyze(self, subject=None, modal=False):
         mri_dir = self.get('mri_dir')
         if (subject is None) and (self._subject is None):
