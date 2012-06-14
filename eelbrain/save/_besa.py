@@ -39,7 +39,7 @@ def meg160_triggers(ds, dest=None):
 
 
 
-def besa_edt(ds, dest=None, sub=None, tstart=-0.1, tstop=0.6, pad=0.1):
+def besa_evt(ds, dest=None, sub=None, tstart=-0.1, tstop=0.6, pad=0.1):
     """
     ds needs to be the same dataset (i.e., same length) from which the MEG-160 
     triggers were created
@@ -51,7 +51,7 @@ def besa_edt(ds, dest=None, sub=None, tstart=-0.1, tstop=0.6, pad=0.1):
     if dest is None:
         dest = ui.ask_saveas("Save Besa Events", "Please pick a "
                              "destination for the Besa Events", 
-                             ('edt', 'Besa Events'))
+                             ('evt', 'Besa Events'))
         if not dest:
             return
     
