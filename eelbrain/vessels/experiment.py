@@ -434,6 +434,25 @@ class mne_experiment(object):
         elif mkdir and not os.path.exists(directory):
             os.makedirs(directory)
         
+        # special cases that can create the file in question
+        if name =='trans':
+            if not os.path.exists(path):
+                a = ui.ask("Launch mne_analyze for Coordinate-Coregistration?", 
+                           "The 'trans' file for %r, %r does not exist. Should " 
+                           "mne_analyzed be launched to create it?" % 
+                           (self._subject, self._experiment),
+                           cancel=False, default=True)
+                if a:
+                    subp.run_mne_analyze(self.get('mri_dir'),
+                                         self.get('raw_sdir'), modal=True)
+                    if not os.path.exists(path):
+                        err = ("Error creating file; %r does not exist" % path)
+                        raise IOError(err)
+                else:
+                    err = ("No trans file for %r, %r" % 
+                           (self._subject, self._experiment))
+                    raise IOError(err)
+        
         path = os.path.expanduser(path)
         return path
     
