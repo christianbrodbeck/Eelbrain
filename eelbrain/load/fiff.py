@@ -126,14 +126,14 @@ def events(raw=None, name=None, merge=-1, baseline=0):
 
 
 
-def add_epochs(dataset, tstart=-0.1, tstop=0.6, baseline=None,
+def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
                downsample=1, mult=1, unit='T', proj=True,
                add=True, target="MEG", i_start='i_start', 
                properties=None, sensorsname='fiff-sensors'):
     """
-    Adds data from individual epochs as a ndvar to a dataset.
-    Uses the events in ``dataset[i_start]`` to extract epochs from the raw 
-    file associated with ``dataset``; returns ndvar or nothing (see ``add`` 
+    Adds data from individual epochs as a ndvar to a dataset (``ds``).
+    Uses the events in ``ds[i_start]`` to extract epochs from the raw 
+    file associated with ``ds``; returns ndvar or nothing (see ``add`` 
     argument).
     
     add : bool
@@ -166,44 +166,18 @@ def add_epochs(dataset, tstart=-0.1, tstop=0.6, baseline=None,
         name for the new ndvar containing the epoch data  
          
     """
-    events = mne_events(ds=dataset, i_start=i_start)
-    
-    raw = dataset.info['raw']
-    
-    # parse sensor net
-    sensor_net = sensors.from_mne(raw.info, name=sensorsname)
-    
-    # source
-    picks = mne.fiff.pick_types(raw.info, meg=True, eeg=False, stim=False, 
-                                eog=False, include=[], exclude=[])
-    epochs = mne.Epochs(raw, events, 1, tstart, tstop, picks=picks, 
-                        baseline=baseline, proj=proj)
-    
-    # transformation
-    index = slice(None, None, downsample)
-    
-    # target container
-    T = epochs.times[index]
-    time = _data.var(T, 'time')
-    dims = ('case', sensor_net, time)
-    epoch_shape = (len(picks), len(time))
-    data_shape = (len(events), len(picks), len(time))
-    data = np.empty(data_shape, dtype='float32') 
+    epochs = mne_Epochs(ds, i_start=i_start)
     
     # read the data
-#    data = epochs.get_data() # this call iterates through epochs as well
-    for i, epoch in enumerate(epochs):
-        epoch_data = epoch[:,index]
-        if epoch_data.shape == epoch_shape:
-            if mult != 1:
-                epoch_data = epoch_data * mult
-            data[i] = epoch_data
-        else:
-            msg = ("Epoch %i shape mismatch: does your epoch definition "
-                   "result in an epoch that overlaps the end of your data "
-                   "file?" % i)
-            raise IOError(msg)
-    
+    x = epochs.get_data() # this call iterates through epochs as well
+    T = epochs.times
+    if downsample != 1:
+        index = slice(None, None, downsample)
+        x = x[:,:,index]
+        T = T[index]
+    if mult != 1:
+        x = x * mult
+        
     # read data properties
     props = {'proj': 'z root',
              'unit': unit,
@@ -217,9 +191,14 @@ def add_epochs(dataset, tstart=-0.1, tstop=0.6, baseline=None,
     if properties:
         props.update(properties)
     
-    ndvar = _data.ndvar(data, dims=dims, properties=props, name=target)
+    # target container
+    sensor_net = sensors.from_mne(epochs.info, name=sensorsname)
+    time = _data.var(T, 'time')
+    dims = ('case', sensor_net, time)
+    
+    ndvar = _data.ndvar(x, dims=dims, properties=props, name=target)
     if add:
-        dataset.add(ndvar)
+        ds.add(ndvar)
     else:
         return ndvar
 
@@ -380,29 +359,22 @@ def mne_events(ds=None, i_start='i_start'):
     return events
 
 
-def mne_write_cov(ds, tstart=-.1, tstop=0, baseline=(None, 0), dest='{source}-cov.fif'):
-    events = mne_events(ds=ds)
-    raw = ds.info['raw']
-    source_path = raw.info['filename']
-    epochs = mne.Epochs(raw, events, 1, tstart, tstop, baseline=baseline)
-    cov = mne.compute_covariance(epochs, keep_sample_mean=True)
-    
-    source, _ = os.path.splitext(source_path)
-    dest = dest.format(source=source)
-    cov.save(dest)
-
-
 def mne_Raw(ds):
     return ds.info['raw']
 
 
-def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None, proj=True):
+def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None, 
+               proj=True, i_start='i_start'):
     """
     reject : 
         e.g., {'mag': 2e-12}
     """
     raw = ds.info['raw']
-    events = mne_events(ds=ds)
-    epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, 
+    events = mne_events(ds=ds, i_start=i_start)
+    
+    picks = mne.fiff.pick_types(raw.info, meg=True, eeg=False, stim=False, 
+                                eog=False, include=[], exclude=raw.info['bads'])
+    
+    epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, picks=picks, 
                         baseline=baseline, reject=reject, proj=proj)
     return epochs
