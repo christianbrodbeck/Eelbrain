@@ -112,6 +112,7 @@ class mne_experiment(object):
         meg_dir = os.path.join(root, 'meg')
         mri_dir = os.path.join(root, 'mri')
         raw_dir = os.path.join(meg_dir, sub, 'raw')
+        mne_dir = os.path.join(meg_dir, sub, 'mne')
         log_dir = os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp)))
         
         t = dict(
@@ -125,34 +126,33 @@ class mne_experiment(object):
                  raw_sdir = raw_dir,
                  log_sdir = os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp))),
                  
-                 # kit2fiff
+                 # raw
                  mrk = os.path.join(raw_dir, '_'.join((sub, exp, 'marker.txt'))),
                  elp = os.path.join(raw_dir, '*.elp'),
                  hsp = os.path.join(raw_dir, '*.hsp'),
                  rawtxt = os.path.join(raw_dir, '_'.join((sub, exp, '*raw.txt'))),
                  rawfif = os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
-        
+                 trans = os.path.join(raw_dir, '_'.join((sub, exp, 'raw-trans.fif'))), # mne p. 196
+                 
                  # eye-tracker
                  edf = os.path.join(log_dir, '*.edf'),
                  
-                # fwd model
-                 fwd = os.path.join(raw_dir, '_'.join((sub, exp)) + '_fwd.fif'),
+                 # mne analysis
+                 projs = os.path.join(mne_dir, '_'.join((sub, exp, an, 'projs.fif'))),
+                 
+                 # fwd model
+                 fwd = os.path.join(mne_dir, '_'.join((sub, exp, an, 'fwd.fif'))),
                  bem = os.path.join(mri_dir, sub, 'bem', sub+'-5120-bem-sol.fif'),
                  src = os.path.join(mri_dir, sub, 'bem', sub+'-ico-4-src.fif'),
-                 
-                 # these might not be necessary after doing coordinate alignment in mne_analyze!
-#                 trans = os.path.join(mri_dir, sub, sub+'-trans.fif'), # mne p. 203
-                 trans = os.path.join(raw_dir, '_'.join((sub, exp, 'raw-trans.fif'))), # mne p. 196
-#                 cor = os.path.join(mri_dir, sub, 'mri', 'T1-neuromag', 'sets', 'COR.fif'),
                  
                 # !! these would invalidate the s_e_* pattern with a third _
                  cov = os.path.join(raw_dir, '_'.join((sub, exp, an)) + '-cov.fif'),
 #                inv = os.path.join(raw_dir, '_'.join((sub, exp, an)) + '-inv.fif'),
                 
-                # BESA
-                besa_triggers = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an, 'triggers.txt'))),
-                besa_edt = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an + '.edt'))),
-                )
+                 # BESA
+                 besa_triggers = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an, 'triggers.txt'))),
+                 besa_edt = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an + '.edt'))),
+                 )
         
         return t
         
