@@ -447,8 +447,9 @@ def run_mne_analyze(mri_dir, fif_dir, modal=True):
     
        a. set LAP, Nasion and RAP. 
        b. ``Align using fiducials``. 
-       c. Run ``ICP alignment`` with 20 steps
-       d. ``Save default``
+       c. (``Omit``)
+       d. Run ``ICP alignment`` with 20 steps
+       e. ``Save default``
     
     this creates a file next to the raw file with the '-trans.fif' extension.
     

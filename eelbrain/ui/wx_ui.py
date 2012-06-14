@@ -126,6 +126,11 @@ def ask_color(parent=None, default=(0,0,0)):
     return out
 
 
+def show_help(obj):
+    app = GetWxParent()
+    app.help_lookup(obj)
+
+
 def message(title, message="", icon='i'):
     """
     icon : str

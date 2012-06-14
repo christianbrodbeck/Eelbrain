@@ -437,6 +437,7 @@ class mne_experiment(object):
         # special cases that can create the file in question
         if name =='trans':
             if not os.path.exists(path):
+                ui.show_help(subp.run_mne_analyze)
                 a = ui.ask("Launch mne_analyze for Coordinate-Coregistration?", 
                            "The 'trans' file for %r, %r does not exist. Should " 
                            "mne_analyzed be launched to create it?" % 
