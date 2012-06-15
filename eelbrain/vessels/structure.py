@@ -191,21 +191,26 @@ class celltable:
     def __len__(self):
         return len(self.cells)
     
+    def cell_label(self, cell, delim=' '):
+        """
+        Returns a label for a cell. Interaction cells (represented as tuple
+        of strings) are joined by ``delim``.
+        
+        """
+        if isinstance(cell, tuple):
+            return delim.join(cell)
+        else:
+            return cell
+    
     def cell_labels(self, delim=' '):
         """
-        returns a list of all cell names as strings.
+        Returns a list of all cell names as strings.
         
         delim : str
-            delimiter to join cell names with multiple components
-         
+            delimiter to join interaction cell names
+        
         """
-        labels = []
-        for cell in self.cells:
-            if isinstance(cell, tuple):
-                labels.append(delim.join(cell))
-            else:
-                labels.append(cell)
-        return labels
+        return [self.cell_label(cell, delim) for cell in self.cells]
     
     def get_data(self, out=list):
         if out is dict:

@@ -48,8 +48,6 @@ def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies", ds=None):
         return table
     
     
-    X = _data.asfactor(X)
-    
     ct = _structure.celltable(Y, X, sub=sub)
     
     Y_categories = ct.Y.values()
@@ -69,7 +67,7 @@ def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies", ds=None):
     
     # body
     for cell in ct.cells:
-        table.cell(cell)
+        table.cell(ct.cell_label(cell))
         data = ct.data[cell]
         for Ycell in Y_categories:
             n = np.sum(data == Ycell)
