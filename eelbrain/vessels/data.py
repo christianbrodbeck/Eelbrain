@@ -193,7 +193,7 @@ def combine(items):
     elif isndvar(item0):
         dims = item0.dims
         x = np.concatenate([v.x for v in items], axis=0)
-        return ndvar(dims, x, name=item0.name, properties=item0.properties)
+        return ndvar(x, dims=dims, name=item0.name, properties=item0.properties)
     else:
         raise ValueError("Unknown data-object: %r" % item0)
 
