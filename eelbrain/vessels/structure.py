@@ -181,8 +181,11 @@ class celltable:
         if self.match is not None:
             args.append("match=%s"%self.match.name)
         if self.sub is not None:
-            indexes = ' '.join(str(i) for i in self.sub[:4])
-            args.append("match=[%s...]"  % indexes)
+            if _data.isvar(self.sub):
+                args.append('sub=%s' % self.sub.name)
+            else:
+                indexes = ' '.join(str(i) for i in self.sub[:4])
+                args.append("sub=[%s...]"  % indexes)
         return rpr % (', '.join(args))
     
     def __len__(self):
