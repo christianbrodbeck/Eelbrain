@@ -166,7 +166,8 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
         name for the new ndvar containing the epoch data  
          
     """
-    epochs = mne_Epochs(ds, i_start=i_start)
+    epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
+                        proj=proj, i_start=i_start)
     
     # read the data
     x = epochs.get_data() # this call iterates through epochs as well
