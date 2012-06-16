@@ -118,14 +118,6 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         extent = artist.get_window_extent(self)
         self.blit(extent)
     
-    def redraw_ax(self, *axes):
-        "redraw one or several axes"
-        self.restore_region(self._background)
-        for ax in axes:
-            ax.draw_artist(ax)
-            extent = ax.get_window_extent()
-            self.blit(extent)
-    
 
 
 
@@ -187,6 +179,9 @@ class CanvasFrame(wx.Frame):
         tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
         self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
         
+        tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
+        self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
+        
         tb.AddLabelTool(ID.FULLSCREEN, "Fullscreen", Icon("tango/actions/view-fullscreen"))
         self.Bind(wx.EVT_TOOL, self.OnShowFullScreen, id=ID.FULLSCREEN)
     
@@ -228,6 +223,14 @@ class CanvasFrame(wx.Frame):
                              "determined from the extension.", None)
         if path:
             self.figure.savefig(path)
+    
+    def OnHelp(self, event):
+        app = wx.GetApp()
+        shell = getattr(app, 'shell', None)
+        if hasattr(shell, 'help_lookup'):
+            shell.help_lookup(self)
+        else:
+            print self.__doc__
     
     def OnLeaveAxesStatusBarUpdate(self, event):
         "update the status bar when the cursor leaves axes"
