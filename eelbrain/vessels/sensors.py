@@ -7,8 +7,8 @@ different file types.
 
 """
 
-
 import os
+import re
 
 import numpy as np
 #import matplotlib.pyplot as P
@@ -127,6 +127,9 @@ class sensor_net(object):
         if proj == 'default':
             proj = self.default_transform_2d
         
+        if proj is None:
+            proj = 'z+'
+        
         index = (proj, extent) 
         if index in self._transformed:
             return self._transformed[index]
@@ -173,11 +176,27 @@ class sensor_net(object):
                 F = r[idx] / r_xy[idx] # stretching factor accounting for current r
                 locs2d[idx] *= F
         
-        elif proj is None:
-            locs2d = np.copy(self.locs[:,:2])
         else:
-            raise ValueError("invalid proj kwarg: %r" % proj)
-                
+            pattern = re.compile('([xyz])([+-])')
+            match = pattern.match(proj.lower())
+            if match:
+                ax = match.group(1)
+                sign = match.group(2)
+                if ax == 'x':
+                    locs2d = np.copy(self.locs[:,1:])
+                    if sign == '-':
+                        locs2d[:,0] = -locs2d[:,0]
+                elif ax == 'y':
+                    locs2d = self.locs[:,[0,2]]
+                    if sign == '+':
+                        locs2d[:,0] = -locs2d[:,0]
+                elif ax == 'z':
+                    locs2d = self.locs[:,:2]
+                    if sign == '-':
+                        locs2d[:,1] = -locs2d[:,1]
+            else:
+                raise ValueError("invalid proj kwarg: %r" % proj)
+        
         # correct extent
         if extent:
             locs2d -= np.min(locs2d)
