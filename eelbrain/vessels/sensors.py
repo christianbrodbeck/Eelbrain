@@ -120,13 +120,13 @@ class sensor_net(object):
             How to transform 3d coordinates into a 2d map; see class 
             documentation for options.
         ``extent``: 
-            coordinates will be scale with minimum value 0 and maximum value
+            coordinates will be scaled with minimum value 0 and maximum value
             defined by the value of ``extent``.
         
         """
         if proj == 'default':
             proj = self.default_transform_2d
-           
+        
         index = (proj, extent) 
         if index in self._transformed:
             return self._transformed[index]

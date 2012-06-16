@@ -58,7 +58,8 @@ if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  ###
                 {"CFBundleTypeExtensions": ["py"],
                  "CFBundleTypeName": "Python Script",
                  "CFBundleTypeRole": "Editor",
-                 "CFBundleTypeIconFile": "../icons/system-icons/pydoc.icns"},
+#                 "CFBundleTypeIconFile": "../icons/system-icons/pydoc.icns",
+                 },
                 ]
     
     OPTIONS = {
@@ -93,12 +94,17 @@ if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  ###
 else: #####  py2exe & normal  #####  #####  #####  #####  #####  #####  #####  #####  #####
     kwargs.update( # FIXME:
                   packages = ['eelbrain',
-                              'eelbrain.plot', 
+                              'eelbrain.analyze', 
                               'eelbrain.fmtxt', 
-                              'eelbrain.signal_processing', 
-                              'eelbrain.signal_processing.fileio', 
-                              'eelbrain.ui',
-                              'eelbrain.wx_gui'],
+                              'eelbrain.plot', 
+                              'eelbrain.psyphys', 
+                              'eelbrain.ui', 
+                              'eelbrain.utils',
+                              'eelbrain.vessels',
+                              'eelbrain.wxgui',
+                              'eelbrain.wxterm',
+                              'eelbrain.wxutils',
+                              ],
                   )
     
     if arg == 'py2exe':  #####  #####  #####  #####  #####  #####  #####  #####  #####

@@ -9,7 +9,7 @@ import logging, os
 from copy import deepcopy
 
 import numpy as np
-import scipy as sp
+import scipy.stats
 
 import eelbrain.fmtxt as textab
 
@@ -40,22 +40,25 @@ def _leastsq_2(Y, X):
     return beta
 
 
-def _hopkins_ems(regression_model, v=False):
+def _hopkins_ems(X, v=False):
     """
     Returns a table that can be used
     
-    v=True prints E(MS) components (False by default)
+    X : model
+        model for which to derive E(MS)
+    v : bool
+        verbose (False by default) - if True, prints E(MS) components
     
     """
-    regression_model = asmodel(regression_model)
+    X = asmodel(X)
     # check that no var is in model
-    if any([type(f) == var for f in regression_model.factors]):
-        return [None] * len(regression_model.effects)
+    if any([type(f) == var for f in X.factors]):
+        return [None] * len(X.effects)
     # E(MS) table (after Hopkins, 1976)
     E_MS_table = []
-    for e in regression_model.effects:
+    for e in X.effects:
         E_MS_row = []
-        for e2 in regression_model.effects:
+        for e2 in X.effects:
             if np.all([(f.random or e.contains_factor(f)) for f in e2.factors]) \
                and np.all([(e2.contains_factor(f) or e2.nestedin(f)) for f in e.factors]):
                 E_MS_row.append(True)
@@ -69,7 +72,7 @@ def _hopkins_ems(regression_model, v=False):
     
     # read MS denominator for F tests from table
     MS_denominators = []
-    for i,f in enumerate(regression_model.effects):
+    for i,f in enumerate(X.effects):
         e_ms_den = deepcopy(E_MS[i])
         e_ms_den[i] = False
         match = np.all(E_MS == e_ms_den, axis=1)
@@ -109,52 +112,6 @@ def _is_higher_order(e1, e0):
 ##    return False
 #    return True
 
-
-#def fit(Y, X, lsq=1):
-#    """
-#    fits the model X to Y, returns
-#    
-#    {
-#     'total': {'SS':xx, 'df':xx, 'MS':xx},
-#     'model': {...},
-#     'residuals': {...},
-#     'beta': beta weights,
-#     'values': beta * X
-#     }
-#    
-#    
-#    lsq: least square estimator
-#         1: after Fox
-#         else: numpy 
-#    
-#    """
-#    out = {}
-#    Y = asvar(Y)
-#    X = asmodel(X)
-#    if lsq == 1:
-#        beta = _leastsq(Y.x, X.full)
-#    else:
-#        beta = _leastsq_np(Y.x, X.full)
-#    out['beta'] = beta
-#    mu = Y.x.mean()
-#    SS = np.sum((Y.x - mu)**2)
-#    df = Y.N - 1
-#    MS = SS / df
-#    out['total'] = dict(SS=SS, df=df, MS=MS)
-#    out['values'] = values = beta * X.full
-#    Y_est = values.sum(1)
-#    if not mu == Y_est.mean():
-#        logging.debug("mu=%s != Y_est.mean()=%s"%(mu, Y_est.mean()))
-#    SSm = np.sum((Y_est - mu)**2)
-#    dfm = X.df
-#    MSm = SSm / dfm
-#    out['model'] = dict(SS=SSm, df=dfm, MS=MSm)
-#    residuals = Y.x - Y_est
-#    SS_res = np.sum(residuals**2)
-#    df_res = X.df_error
-#    MS_res = SS_res / df_res
-#    out['residuals'] = dict(SS=SS_res, df=df_res, MS=MS_res)
-#    return out
 
 
 class lm:
@@ -214,10 +171,12 @@ class lm:
         SS_total = self.SS_total = np.sum((Y.x - Y.mu)**2)
         df_total = self.df_total = X.df_total
         MS_total = self.MS_total = SS_total / df_total
+        
         # SS residuals
         self.SS_res = SS_res
         df_res = self.df_res = X.df_error
         MS_res = self.MS_res = SS_res / df_res
+        
         # SS explained
 #        SS_model = self.SS_model = np.sum((Y_est - Y.mu)**2)
         SS_model = self.SS_model = SS_total - SS_res
@@ -228,6 +187,7 @@ class lm:
         self.Y = Y
         self.X = X
         self.beta = beta
+    
     def F_test(self):
         """
         Tests the null-hypothesis that the model does not explain a significant
@@ -235,8 +195,9 @@ class lm:
         
         """
         F = self.MS_model / self.MS_res
-        p = sp.stats.distributions.f.sf(F, self.df_model, self.df_res)
+        p = scipy.stats.distributions.f.sf(F, self.df_model, self.df_res)
         return F, p
+    
     @property
     def residuals(self):
         if not hasattr(self, '_residuals'):
@@ -252,6 +213,7 @@ class lm:
         else:
             yname = 'Y'
         return txt.format(Y=yname, model=self.X.model_eq)
+    
 # TODO:    def assumptions(self):
 #        """
 #        Tests the assumptions required for the validity of inferential 
@@ -259,6 +221,7 @@ class lm:
 #        
 #        """
 #        pass
+
 
 
 class _old_lm_(lm):
@@ -340,7 +303,7 @@ class _old_lm_(lm):
             # F-test
             if MS_d != False:
                 F = MS / MS_d
-                p = 1 - sp.stats.distributions.f.cdf(F, df, df_d)
+                p = 1 - scipy.stats.distributions.f.cdf(F, df, df_d)
                 stars = test.star(p)
                 tex_stars = textab.Stars(stars)
                 F_tex = [F, tex_stars]
@@ -525,7 +488,7 @@ class lm_fitter(object):
                     #
                     if df_d > 0:                        
                         F = MS_n / MS_d
-                        P = 1 - sp.stats.distributions.f.cdf(F, df_n, df_d)
+                        P = 1 - scipy.stats.distributions.f.cdf(F, df_n, df_d)
                         out_map.append((e[0], F.reshape(original_shape[:-1]), 
                                         P.reshape(original_shape[:-1])))
                 # append RESIDUALS to output
@@ -725,7 +688,7 @@ def incremental_F_test(lm1, lm0, MS_e=None, df_e=None):
         
     if df_e > 0:
         F = MS_diff / MS_e
-        p = sp.stats.distributions.f.sf(F, df_diff, df_e)
+        p = scipy.stats.distributions.f.sf(F, df_diff, df_e)
     else:
         F = None
         p = None
@@ -750,7 +713,7 @@ def comparelm(lm1, lm2):
     df_diff = lm1.df_res - lm2.df_res
     MS_diff = SS_diff / df_diff
     F = MS_diff / lm2.MS_res
-    p = 1 - sp.stats.distributions.f.cdf(F, df_diff, lm2.df_res)
+    p = 1 - scipy.stats.distributions.f.cdf(F, df_diff, lm2.df_res)
     stars = test.star(p).replace(' ', '')
     difftxt = "Residual SS reduction: {SS}, df difference: {df}, " + \
               "F = {F:.3f}{s}, p = {p:.4f}"
@@ -1062,7 +1025,7 @@ def compare(Y, first_model, test_effect, sub=None):
     #    txt = "\nWARNING: SS_diff: {0} a1.SS_res - a2.SS_res: {1}"
     #    print txt.format(SS_diff, a1.SS_res - a2.SS_res)
     F = MS_diff / a2.MS_res
-    p = 1 - sp.stats.distributions.f.cdf(F, df_diff, a2.df_res)
+    p = 1 - scipy.stats.distributions.f.cdf(F, df_diff, a2.df_res)
     stars = test.star(p).replace(' ', '')
     difftxt = "Residual SS reduction: {SS}, df difference: {df}, " + \
               "F = {F}{s}, p = {p}"

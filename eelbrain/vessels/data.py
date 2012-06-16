@@ -296,48 +296,7 @@ class _regressor_(object):
     def iter_beta(self):
         for i, name in enumerate(self.beta_labels):
             yield i, name
-    
-    def get_dict_for_keys(self, key_factor, key_labels=True, value_labels=True, 
-                          conflict='raise'):
-        """
-        Returns a dictionary mapping categories of key -> values on self
-        
-        :arg factor key_factor: factor which provides the keys
-        :arg bool key_labels: whether to use labels as keys (if available)
-        :arg bool value_labels: whether to use labels as values (if available)
-        :arg conflict: value to substitute in case more than one values on 
-            self map to the same key. Default behavior is to raise an error. 
-        
-        """
-        raise NotImplementedError
-        assert key_factor.N == self.N, "Unequal number of values"
-        if not iscategorial(key_factor):
-            key_labels = False
-        if not iscategorial(self):
-            value_labels = False
-        
-        out = {}
-        for i in xrange(self.N):
-            key = key_factor.__getitem__(i)
-            if key_labels:
-                key = key_factor.cells[key]
-            value = self.__getitem__(i)
-            if value_labels:
-                value = self.cells[value]
-            # add to out
-            if key in out:
-                if out[key] == value:
-                    pass
-                elif np.isnan(out[key]) and np.isnan(value):
-                    pass
-                elif conflict == 'raise':
-                    raise ValueError("Non-unique value for key %r" % key)
-                else:
-                    out[key] = conflict
-            else:
-                out[key] = value
-        
-        return out
+
                     
                 
 

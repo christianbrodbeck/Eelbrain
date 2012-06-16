@@ -26,6 +26,7 @@ plotSensors:
 
 from __future__ import division
 
+import logging
 
 import numpy as np
 import matplotlib.pyplot as _plt
@@ -37,6 +38,11 @@ from eelbrain.wxutils import mpl_canvas
 import _base
 import utsnd
 import sensors as _plt_sensors
+
+try:
+    from _topo3d import *
+except:
+    logging.info("eelbrain.plot.topo: _topo3d import failed, 3d-plots not available")
 
 
 __hide__ = ['cs', 'test', 'utsnd']
