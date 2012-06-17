@@ -16,13 +16,14 @@ import matplotlib.cm as _cm
 import matplotlib.pyplot as plt
 
 import eelbrain.vessels.data as _data
+from eelbrain.vessels.structure import celltable
 
 
 __hide__ = ['plt', 'division']
 
 
 def stat(Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
-         sub=None, ds=None,
+         sub=None, match=None, ds=None,
          figsize=(6,3), dpi=90, legend='upper right', title=True, ylabel=True,
          xdim='time', cm=_cm.jet):
     """
@@ -58,51 +59,35 @@ def stat(Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
         axes title; if ``True``, use ``var.name``
     
     """
-    if isinstance(Y, basestring):
-        Y = ds[Y]
-    if title is True:
-        title = Y.name
-    if isinstance(X, basestring):
-        X = ds[X]
-    if isinstance(sub, str):
-        sub = ds[sub]
+    ct = celltable(Y, X, sub=sub, match=match, ds=ds)
     
-    if sub is not None:
-        Y = Y[sub]
-        X = X[sub]
+    if title is True:
+        title = ct.Y.name
     
     fig = plt.figure(figsize=figsize, dpi=dpi)
     top = .9 # - bool(title) * .1
     plt.subplots_adjust(.1, .1, .95, top, .1, .4)
     ax = plt.axes()
     ax.x_fmt = "t = %.3f s"
-    
-    if X:
-        X = _data.ascategorial(X)
-        values = X.values()
-        groups = [Y[X==v] for v in values]
-    else:
-        values = [None]
-        groups = [Y]
-    
+        
     h = []
     legend_h = []
     legend_lbl = []
-    N = len(groups)
-    for i, group, value in zip(range(N), groups, values):
-        lbl = str(value)
+    N = len(ct)
+    for i, cell in enumerate(ct.cells):
+        lbl = ct.cell_label(cell, ' ')
         c = cm(i / N)
-        _h = _plt_stat(ax, group, main, dev, label=lbl, xdim=xdim, color=c)
+        _h = _plt_stat(ax, ct.data[cell], main, dev, label=lbl, xdim=xdim, color=c)
         h.append(_h)
         legend_h.append(_h['main'][0])
         legend_lbl.append(lbl)
     
-    dim = Y.get_dim(xdim)
+    dim = ct.Y.get_dim(xdim)
     if title:
         ax.set_title(title)
     ax.set_xlabel(dim.name)
     ax.set_xlim(min(dim), max(dim))
-    if legend and any(values):
+    if legend and len(ct) > 1:
         fig.legend(legend_h, legend_lbl, loc=legend)
     
     if ylabel is True:
