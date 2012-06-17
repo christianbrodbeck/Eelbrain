@@ -88,15 +88,6 @@ class CallbackFigure:
         figs.append(self)
         return self.fig
     
-    def redraw_ax(self, *axes):
-        "redraw an ax"
-        canvas = self.canvas
-        canvas.restore_region(self._background)
-        for ax in axes:
-            ax.draw_artist(ax)
-            extent = ax.get_window_extent()
-            canvas.blit(extent)
-    
     def store_canvas(self):
         self._background = self.canvas.copy_from_bbox(self.fig.bbox)
 

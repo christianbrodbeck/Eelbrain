@@ -160,7 +160,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         self._mean_handle[0].set_paths([Y])
         
         # update figure
-        self.canvas.redraw_ax(self._mean_ax)
+        self.canvas.redraw(axes=[self._mean_ax])
     
     def set_ax_state(self, axID, state):
         ax = self._case_axes[axID]
@@ -171,8 +171,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
             h.set_facecolors('r')
         ax._epoch_state = state
         
-        self.canvas.redraw_ax(ax)
-#        self.canvas_panel.redraw_artist(ax, h)
+        self.canvas.redraw(artists=[h])
         self._update_mean()
     
     def invert_selection(self, axID):
@@ -272,7 +271,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
                 txt = "Page average,   %s"
             # update topomap plot
             plot.topo._ax_topomap(self._topo_ax, [tseg])
-            self.canvas.redraw_ax(self._topo_ax)
+            self.canvas.redraw(axes=[self._topo_ax])
             return txt
         else:
             return '%s'
@@ -431,7 +430,7 @@ class pca(mpl_canvas.CanvasFrame):
             else:
                 self._rm_comp.append(Id)
                 ax.set_axis_bgcolor('r')
-            self.canvas.redraw_ax(ax)
+            self.canvas.redraw(axes=[ax])
     
     def OnRemove(self, event):
         target = None

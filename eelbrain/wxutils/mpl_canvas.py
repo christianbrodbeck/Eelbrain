@@ -101,23 +101,15 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
             self.blit(extent)
         for artist in artists:
             ax = artist.get_axes()
+            # FIXME:
+#            ax.draw_artist(artist)
+#            extent = artist.get_window_extent(self.get_renderer()) # or self?
             # substitute redrawing whole ax
             ax.draw_artist(ax)
             extent = ax.get_window_extent()
+            # end substitute
             self.blit(extent)
-            # FIXME:
-#            ax.draw_artist(artist)
-#            extent = artist.get_window_extent(self.get_renderer())
-#            self.blit(extent)
-    
-    def redraw_artist(self, artist):
-        "redraw a single artist"
-        ax = artist.get_axes()
-        self.restore_region(self._background)
-        ax.draw_artist(artist)
-        extent = artist.get_window_extent(self)
-        self.blit(extent)
-    
+
 
 
 

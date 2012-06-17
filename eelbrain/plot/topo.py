@@ -666,7 +666,7 @@ class array(mpl_canvas.CanvasFrame):
         "update a window (used for mouse-over and for pick)"
         t = mouseevent.xdata
         self._selected_window.update(parent_ax=parent_ax, t=t)
-        self.canvas.redraw_ax(self._selected_window.ax)
+        self.canvas.redraw(axes=[self._selected_window.ax])
     
     def _pick_handler(self, pickevent):
         mouseevent = pickevent.mouseevent
