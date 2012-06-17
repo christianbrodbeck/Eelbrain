@@ -128,9 +128,9 @@ class Edf(object):
         
         target.x *= self.get_accept(tstart=tstart, tstop=tstop)
     
-    def add_by_T(self, ds, tstart=-0.1, tstop=0.6, T='t_edf', accept='accept'):
+    def add_by_T(self, ds, tstart=-0.1, tstop=0.6, T='t_edf', target='accept'):
         "adds acceptability to a dataset based on edf-time values"
-        ds[accept] = self.get_accept(T=ds[T], tstart=tstart, tstop=tstop)
+        ds[target] = self.get_accept(T=ds[T], tstart=tstart, tstop=tstop)
     
     def add_T_by_Id(self, ds, Id='eventID', t_edf='t_edf'):
         """
