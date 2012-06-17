@@ -12,6 +12,7 @@ Plot types
 from __future__ import division
 
 import logging
+import math
 
 import numpy as np
 import scipy as sp
@@ -27,7 +28,7 @@ from eelbrain.vessels import colorspaces as _cs
 import _base
 
 
-__hide__ = ['plt']
+__hide__ = ['plt', 'math']
 
 
 # MARK: im arrays
@@ -58,7 +59,7 @@ def _plt_im_array(ax, epoch, dims=('time', 'sensor'), colorspace=None,
     
 
 def _ax_im_array(ax, layers, x='time', #vmax=None,
-                 xlabel=True, ylabel=True, title=None, tick_spacing=.5):
+                 xlabel=True, ylabel=True, title=None, tick_spacing=.3):
     """
     plots segment data as im
     
@@ -101,9 +102,9 @@ def _ax_im_array(ax, layers, x='time', #vmax=None,
         ax.set_ylabel(ylabel)
     
     # x-ticks
-    tickstart = int((-xdim[0] - 1e-3) / tick_spacing)
-    ticklabels = np.r_[-tickstart * tick_spacing :  \
-                       xdim[-1] + 1e-3 : tick_spacing]
+    tickstart = math.ceil(xdim[0] / tick_spacing) * tick_spacing
+    tickend = xdim[-1] + tick_spacing / 1e4
+    ticklabels = np.arange(tickstart, tickend, tick_spacing)
     ax.xaxis.set_ticks(ticklabels)
     ax.x_fmt = "t = %.3f s"
     
