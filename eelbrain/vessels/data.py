@@ -1122,28 +1122,71 @@ class ndvar(object):
                  'properties': self.properties}
         return state
     
+    def _align(self, other):
+        "align data from 2 ndvars"
+        i_self = list(self.dimnames)
+        dims = list(self.dims)
+        i_other = []
+        
+        for dim in i_self:
+            if dim in other.dimnames:
+                i_other.append(dim)
+            else:
+                i_other.append(None)
+        
+        for dim in other.dimnames:
+            if dim in i_self:
+                pass
+            else:
+                i_self.append(None)
+                i_other.append(dim)
+                dims.append(other.get_dim(dim))
+        
+        x_self = self.get_data(i_self)
+        x_other = other.get_data(i_other)
+        return dims, x_self, x_other
+    
+    def _ialign(self, other):
+        "align for self-mofiying operations (+= ...)"
+        assert all(dim in self.dimnames for dim in other.dimnames)
+        i_other = []
+        for dim in self.dimnames:
+            if dim in other.dimnames:
+                i_other.append(dim)
+            else:
+                i_other.append(None)
+        return other.get_data(i_other)
+       
     def __add__(self, other):
-        if hasattr(other, 'x'):
-            x = self.x + other.x
-            name = '+'.join((self.name, other.name))
+        if isndvar(other):
+            dims, x_self, x_other = self._align(other)
+            x = x_self + x_other
         elif np.isscalar(other):
             x = self.x + other
-            name = '%s+%r' % (self.name, other)
+            dims = self.dims
         else:
             raise ValueError("can't add %r" % other)
-        return ndvar(x, self.dims, properties=self.properties, name=name)
+        return ndvar(x, dims=dims, properties=self.properties)
+    
+    def __iadd__(self, other):
+        self.x += self._ialign(other)
+        return self
     
     def __sub__(self, other): # TODO: use dims
-        if hasattr(other, 'x'):
-            x = self.x - other.x
-            name = '-'.join((self.name, other.name))
+        if isndvar(other):
+            dims, x_self, x_other = self._align(other)
+            x = x_self - x_other
         elif np.isscalar(other):
             x = self.x - other
-            name = '%s-%r' % (self.name, other)
+            dims = self.dims
         else:
             raise ValueError("can't subtract %r" % other)
-        return ndvar(x, self.dims, properties=self.properties, name=name)    
-
+        return ndvar(x, dims=dims, properties=self.properties)    
+    
+    def __isub__(self, other):
+        self.x -= self._ialign(other)
+        return self
+    
     def __getitem__(self, index):
         if isvar(index):
             index = index.x
@@ -1236,25 +1279,35 @@ class ndvar(object):
         returns the data with a specific ordering of dimension as indicated in 
         ``dims``.
         
-        dims : sequence of str
+        dims : sequence of str and None
             List of dimension names. The array that is returned will have axes 
-            in this order. 
+            in this order. None can be used to increase the insert a dimension
+            with size 1.
         
         """
-        if set(dims) != set(self.dimnames):
+        if set(dims).difference([None]) != set(self.dimnames):
             err = "Requested dimensions %r from %r" % (dims, self)
             raise DimensionMismatchError(err)
         
         dimnames = list(self.dimnames)
         x = self.x
         
-        for i_tgt, dim in enumerate(dims):
+        index = []
+        dim_seq = []
+        for dim in dims:
+            if dim is None:
+                index.append(None)
+            else:
+                index.append(slice(None))
+                dim_seq.append(dim)
+        
+        for i_tgt, dim in enumerate(dim_seq):
             i_src = dimnames.index(dim)
             if i_tgt != i_src:
                 x = x.swapaxes(i_src, i_tgt)
                 dimnames[i_src], dimnames[i_tgt] = dimnames[i_tgt], dimnames[i_src]
         
-        return x
+        return x[index]
     
     def get_dim(self, name):
         "Returns the dimension var named ``name``"
