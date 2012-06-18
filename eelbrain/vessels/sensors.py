@@ -162,12 +162,11 @@ class sensor_net(object):
             # implement projection
             locs2d = np.copy(locs3d[:,:2])
             if proj=='cone':
-                locs2d[:,0] *= (1 - locs3d[:,2]) 
-                locs2d[:,1] *= (1 - locs3d[:,2])
+                locs2d[:,[0,1]] *= (1 - locs3d[:,[2]]) 
             elif proj=='lower cone':
                 lower_half = locs3d[:,2] < 0
                 if any(lower_half):
-                    locs2d[lower_half] *= (1 - locs3d[lower_half,[2]]) 
+                    locs2d[lower_half] *= (1 - locs3d[lower_half][:,[2]]) 
             elif proj == 'z root':
                 z = max(locs3d[:,2]) - locs3d[:,[2]] # distance form top
                 r = np.sqrt(z)  # desired 2d radius
@@ -187,11 +186,11 @@ class sensor_net(object):
                     if sign == '-':
                         locs2d[:,0] = -locs2d[:,0]
                 elif ax == 'y':
-                    locs2d = self.locs[:,[0,2]]
+                    locs2d = np.copy(self.locs[:,[0,2]])
                     if sign == '+':
                         locs2d[:,0] = -locs2d[:,0]
                 elif ax == 'z':
-                    locs2d = self.locs[:,:2]
+                    locs2d = np.copy(self.locs[:,:2])
                     if sign == '-':
                         locs2d[:,1] = -locs2d[:,1]
             else:
@@ -199,8 +198,9 @@ class sensor_net(object):
         
         # correct extent
         if extent:
-            locs2d -= np.min(locs2d)
-            locs2d /= (np.max(locs2d) / extent)
+            locs2d -= np.min(locs2d, axis=0) # move to bottom left
+            locs2d /= (np.max(locs2d) / extent) # scale to extent
+            locs2d -= np.min(locs2d, axis=0) / 2 # center
         
         # save for future access
         self._transformed[index] = locs2d
