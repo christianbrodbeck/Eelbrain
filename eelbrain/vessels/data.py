@@ -665,9 +665,17 @@ class factor(_regressor_):
                 _x[x==cat] = cat
                 _labels[cat] = labels.get(cat, str(cat))
         else: # reassign codes
-            for i, cat in enumerate(categories):
+            for cat in categories:
+                label = labels.get(cat, str(cat))
+                if label in _labels.values():
+                    i = 0
+                    while _labels[i] != label:
+                        i += 1
+                else:
+                    i = max(_labels) + 1 if _labels else 0
+                    _labels[i] = label
+                
                 _x[x==cat] = i
-                _labels[i] = labels.get(cat, str(cat))
         
         if colors: # convert color keys from values to codes
             codes = {lbl: code for code, lbl in _labels.iteritems()}
