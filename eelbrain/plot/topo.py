@@ -106,7 +106,7 @@ class butterfly(mpl_canvas.CanvasFrame):
     
     """
     def __init__(self, epochs, size=2, bflywidth=3, dpi=90, 
-                 res=100, interpolation='nearest', 
+                 proj='default', res=100, interpolation='nearest', 
                  title=True, xlabel=True, ylabel=True,
                  color=True, sensors=True, ROI=None, ylim=None):
         """
@@ -165,7 +165,8 @@ class butterfly(mpl_canvas.CanvasFrame):
         y_sep = (1 - y_bottomframe) / n_plots
         height = y_sep - yframe
         
-        self.topo_kwargs = {'res': res,
+        self.topo_kwargs = {'proj': proj,
+                            'res': res,
                             'interpolation': interpolation,
                             'sensors': sensors,
                             'ROI': ROI,
@@ -410,7 +411,8 @@ def _ax_topomap(ax, layers, title=True,
     ax.set_axis_off()
     handles = {}
     for layer in layers:
-        handles[layer.name] = _plt_topomap(ax, layer, im_frame=im_frame, **im_kwargs)
+        handles[layer.name] = _plt_topomap(ax, layer, im_frame=im_frame, 
+                                           proj=proj, **im_kwargs)
         if title is True:
             title = getattr(layer, 'name', True)
     
