@@ -27,7 +27,8 @@ from eelbrain import __version__ as VERSION
 if len(sys.argv) > 1:
     arg = sys.argv[1]
 else:
-    print "For more specific instructions, see README.txt"
+    print ("For more specific instructions, see "
+           "http://christianmbrodbeck.github.com/Eelbrain/")
     arg = None
 
 
@@ -43,7 +44,7 @@ kwargs = dict(
               name = 'eelbrain',
               version = VERSION,
               description = "Eelbrain",
-              url = 'XXX',
+              url = 'http://christianmbrodbeck.github.com/Eelbrain/',
               author = "Christian M. Brodbeck",
               author_email = 'christianmbrodbeck@gmail.com',
               license = 'GPL3',
@@ -96,12 +97,16 @@ else: #####  py2exe & normal  #####  #####  #####  #####  #####  #####  #####  #
                   packages = ['eelbrain',
                               'eelbrain.analyze', 
                               'eelbrain.fmtxt', 
+                              'eelbrain.load', 
                               'eelbrain.plot', 
                               'eelbrain.psyphys', 
+                              'eelbrain.psyphys.fileio', 
+                              'eelbrain.save', 
                               'eelbrain.ui', 
                               'eelbrain.utils',
                               'eelbrain.vessels',
                               'eelbrain.wxgui',
+                              'eelbrain.wxgui.psyphys',
                               'eelbrain.wxterm',
                               'eelbrain.wxutils',
                               ],
@@ -141,9 +146,9 @@ else: #####  py2exe & normal  #####  #####  #####  #####  #####  #####  #####  #
     else: # NORMAL sdist  #####  #####  #####  #####  #####  #####  #####  #####  #####
 #        from distutils2.core import setup
         from distutils.core import setup
-        kwargs.update(scripts = ['scripts/eelbrain'],
-                      requires = ['numpy', 'scipy', 'matplotlib', 'wxPython',
-                                  'tex', 'bioread'],
+        kwargs.update(scripts = ['eelbrain.py'],
+                      requires = ['numpy', 'scipy', 'matplotlib', 'wxPython'],
+#                      ['tex', 'bioread'], # optional
                       )
 
 
