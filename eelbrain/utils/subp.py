@@ -17,6 +17,7 @@ Created on Mar 4, 2012
 @author: christian
 '''
 
+import cPickle as pickle
 import fnmatch
 import logging
 import os
@@ -31,7 +32,7 @@ from eelbrain import ui
 from eelbrain.vessels import data as _dt
 
 
-__hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch',
+__hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch', 'pickle',
             'np',
             'ui']
 #__all__ = [
@@ -42,10 +43,66 @@ __hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch',
 #           'mne_experiment'
 #           ] 
 
+def _set_bin_dirs(mne=None, freesurfer=None, edfapi=None):
+    "Setup for binary packages"
+    if mne:
+        mne = os.path.expanduser(mne)
+        if os.path.exists(mne):
+            os.environ['MNE_ROOT'] = mne
+            os.environ['DYLD_LIBRARY_PATH'] = os.path.join(mne, 'lib')
+            
+            mne_bin = os.path.join(mne, 'bin')
+            if 'PATH' in os.environ:
+                os.environ['PATH'] += ':%s' % mne_bin
+            else:
+                os.environ['PATH'] = mne_bin
+        else:
+            raise IOError("%r does not exist" % mne)
+    
+    if freesurfer:
+        freesurfer = os.path.expanduser(freesurfer)
+        if os.path.exists(mne):
+            os.environ['FREESURFER_HOME'] = freesurfer
+        else:
+            raise IOError("%r does not exist" % freesurfer)
+
+
+
 # keep track of whether the mne dir has been successfully set
-_bin_dirs = {'mne': None,
-             'freesurfer': None,
-             'edfapi': None}
+_cfg_path = os.path.join(os.path.dirname(__file__), 'bin_cfg.pickled')
+_bin_dirs = {'mne': 'None',
+             'freesurfer': 'None',
+             'edfapi': 'None'}
+try:
+    _bin_dirs.update(pickle.load(open(_cfg_path)))
+    _set_bin_dirs(**_bin_dirs)
+except:
+    logging.info("subp: loading paths failed at %r" % _cfg_path)
+
+def get_bin(package, name):
+    if package not in _bin_dirs:
+        raise KeyError("Unknown binary package: %r" % package)
+    
+    bin_path = os.path.join(_bin_dirs[package], name)
+    while not os.path.exists(bin_path):
+        title = "Select %r bin Directory" % package
+        message = ("Please select the directory containing the binaries for "
+                   "the %r package." % package)
+        answer = ui.ask_dir(title, message, must_exist=True)
+        if answer:
+            bin_path = os.path.join(answer, name)
+            if os.path.exists(bin_path):
+                _bin_dirs[package] = answer
+                pickle.dump(_bin_dirs, open(_cfg_path, 'w'))
+                _set_bin_dirs(**{package: answer})
+            else:
+                pass
+        else:
+            raise IOError("%r bin directory not set" % package)
+    
+    return bin_path
+
+
 
 # create dictionary of available sns files
 _sns_files = {}
@@ -58,42 +115,6 @@ for name in ['NYU-nellab']:
 
 
 _verbose = 1
-
-
-def set_bin_dirs(mne=None, freesurfer=None, edf=None):
-    """
-    Set the directories where binaries are installed. E.g. ::
-    
-        >>> set_bin_dirs(mne='~/unix_apps/mne-2.7.3')
-    
-    """
-    if mne:
-        mne = os.path.expanduser(mne)
-        if os.path.exists(mne):
-            os.environ['MNE_ROOT'] = mne
-            os.environ['DYLD_LIBRARY_PATH'] = os.path.join(mne, 'lib')
-            
-            mne_bin = os.path.join(mne, 'bin')
-            if 'PATH' in os.environ:
-                os.environ['PATH'] += ':%s' % mne_bin
-            else:
-                os.environ['PATH'] = mne_bin
-            _bin_dirs['mne'] = mne
-        else:
-            raise IOError("%r does not exist" % mne)
-    
-    if freesurfer:
-        freesurfer = os.path.expanduser(freesurfer)
-        if os.path.exists(mne):
-            os.environ['FREESURFER_HOME'] = freesurfer
-        else:
-            raise IOError("%r does not exist" % freesurfer)
-    
-    if edf:
-        edf = os.path.expanduser(edf)
-        if os.path.exists(edf):
-            _bin_dirs['edfapi'] = edf
-
 
 
 class edf_file:
@@ -110,7 +131,7 @@ class edf_file:
         
         self.source_path = path
         self.temp_dir = tempfile.mkdtemp()
-        cmd = [os.path.join(_bin_dirs['edfapi'], 'edf2asc'), # options in Manual p. 106
+        cmd = [get_bin('edfapi', 'edf2asc'), # options in Manual p. 106
                '-t', # use only tabs as delimiters
                '-e', # outputs event data only
                '-nse', # blocks output of start events
@@ -237,10 +258,6 @@ def kit2fiff(paths=dict(mrk = None,
         Alignment tolerance for coregistration
     
     """
-    mne_dir = _bin_dirs['mne']
-    if not mne_dir:
-        raise IOError("mne-dir not set. See mne_link.set_bin_dirs.")
-    
     # get all the paths
     mrk_path = paths.get('mrk')
     elp_file = paths.get('elp')
@@ -270,7 +287,7 @@ def kit2fiff(paths=dict(mrk = None,
                       "it be replaced?" % out_file):
             return
         
-    cmd = [os.path.join(mne_dir, 'bin', 'mne_kit2fiff'),
+    cmd = [get_bin('mne', 'mne_kit2fiff'),
            '--elp', elp_file,
            '--hsp', hsp_file,
            '--sns', sns_file,
@@ -330,7 +347,7 @@ def process_raw(raw, save='{raw}_filt', args=[], **kwargs):
     
     save = save.format(raw=raw_name)
     
-    cmd = [os.path.join(_bin_dirs['mne'], 'bin', 'mne_process_raw'),
+    cmd = [get_bin('mne', 'mne_process_raw'),
            '--raw', raw,
            '--save', save]
     
@@ -406,7 +423,7 @@ def setup_mri(mri_sdir, ico=4):
     
     # mne_setup_forward_model
     os.environ['SUBJECTS_DIR'] = mri_dir    
-    cmd = [os.path.join(_bin_dirs['mne'], 'bin', "mne_setup_forward_model"),
+    cmd = [get_bin('mne', "mne_setup_forward_model"),
            '--subject', subject,
            '--surf',
            '--ico', ico,
@@ -513,11 +530,8 @@ def do_forward_solution(paths=dict(rawfif=None,
     fif_name, _ = os.path.splitext(fif_file)
     fwd_file = fwd_file.format(fif = fif_name)
     
-    mne_dir = _bin_dirs['mne']
-    # could I use that??
-#    os.path.join(mne_dir, 'share', 'mne', 'mne_analyze', 'fsaverage')
     os.environ['SUBJECTS_DIR'] = mri_dir
-    cmd = [os.path.join(mne_dir, 'bin', "mne_do_forward_solution"),
+    cmd = [get_bin('mne', "mne_do_forward_solution"),
            '--subject', mri_subject,
            '--src', src_file,
            '--bem', bem_file, 
@@ -551,7 +565,7 @@ def do_inverse_operator(fwd_file, cov_file, inv_file='{cov}inv.fif',
     
     inv_file = inv_file.format(cov=cov)
     
-    cmd = [os.path.join(_bin_dirs['mne'], 'bin', "mne_do_inverse_operator"),
+    cmd = [get_bin('mne', "mne_do_inverse_operator"),
            '--fwd', fwd_file,
            '--meg', # Employ MEG data in the inverse calculation. If neither --meg nor --eeg is set only MEG channels are included.
            '--depth', 
