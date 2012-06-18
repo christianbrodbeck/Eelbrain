@@ -15,11 +15,10 @@ import scipy.stats
 import matplotlib.cm as _cm
 import matplotlib.pyplot as plt
 
-import eelbrain.vessels.data as _data
 from eelbrain.vessels.structure import celltable
 
 
-__hide__ = ['plt', 'division']
+__hide__ = ['plt', 'division', 'celltable']
 
 
 def stat(Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
