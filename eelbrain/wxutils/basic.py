@@ -10,20 +10,6 @@ import wx
 import icons
 
 
-def GetWxParent():
-    if hasattr(wx, 'GetApp'):
-        app = wx.GetApp()
-        if app:
-            parent = app.GetTopWindow()
-            return parent
-        else:
-            raise ImportError("No wx application is running")
-    elif wx:
-        raise NotImplementedError("creating new wx.App")
-    else:
-        raise ImportError("No wx application is running")
-
-
 
 # store icons once loaded for repeated access
 cache = {}

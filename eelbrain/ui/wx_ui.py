@@ -2,7 +2,9 @@ import os
 
 import wx
 
-from eelbrain.wxutils import GetWxParent
+
+def GetWxParent():
+    return wx.GetApp().GetTopWindow()
 
 
 
@@ -14,9 +16,7 @@ def _wildcard_from_ext(ext):
         return ""
 
 
-def ask_saveas(title = "Save File",
-               message = "Please Pick a File Name", 
-               ext = [('eelbrain', "pickled eelbrain experiment")]):
+def ask_saveas(title, message, ext):
     """
     ext: list of (extension, description) tuples
          or None
@@ -113,8 +113,8 @@ def ask(title = "Overwrite File?",
     elif answer == wx.ID_CANCEL:
         return None
 
-def ask_color(parent=None, default=(0,0,0)):
-    dlg = wx.ColourDialog(parent)
+def ask_color(default=(0,0,0)):
+    dlg = wx.ColourDialog(GetWxParent())
     dlg.GetColourData().SetChooseFull(True)
     if dlg.ShowModal() == wx.ID_OK:
         data = dlg.GetColourData()
@@ -185,10 +185,7 @@ def progress(*args, **kwargs):
 
 
 def copy_file(path):
-    """
-    copies a file to the clipboard
-    
-    """
+    "copies a file to the clipboard"
     if wx.TheClipboard.Open():
         try:
             data_object = wx.FileDataObject()
