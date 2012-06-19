@@ -46,25 +46,18 @@ __hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch', 'pickle',
 def _set_bin_dirs(mne=None, freesurfer=None, edfapi=None):
     "Setup for binary packages"
     if mne:
-        mne = os.path.expanduser(mne)
-        if os.path.exists(mne):
-            os.environ['MNE_ROOT'] = mne
-            os.environ['DYLD_LIBRARY_PATH'] = os.path.join(mne, 'lib')
-            
-            mne_bin = os.path.join(mne, 'bin')
-            if 'PATH' in os.environ:
-                os.environ['PATH'] += ':%s' % mne_bin
-            else:
-                os.environ['PATH'] = mne_bin
+        mne_bin = mne
+        mne_root, _ = os.path.split(mne)
+        os.environ['MNE_ROOT'] = mne_root
+        os.environ['DYLD_LIBRARY_PATH'] = os.path.join(mne_root, 'lib')
+        
+        if 'PATH' in os.environ:
+            os.environ['PATH'] += ':%s' % mne_bin
         else:
-            raise IOError("%r does not exist" % mne)
+            os.environ['PATH'] = mne_bin
     
     if freesurfer:
-        freesurfer = os.path.expanduser(freesurfer)
-        if os.path.exists(mne):
-            os.environ['FREESURFER_HOME'] = freesurfer
-        else:
-            raise IOError("%r does not exist" % freesurfer)
+        os.environ['FREESURFER_HOME'] = freesurfer
 
 
 
