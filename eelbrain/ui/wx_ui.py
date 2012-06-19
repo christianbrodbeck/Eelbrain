@@ -126,11 +126,6 @@ def ask_color(default=(0,0,0)):
     return out
 
 
-def show_help(obj):
-    app = GetWxParent()
-    app.help_lookup(obj)
-
-
 def message(title, message="", icon='i'):
     """
     icon : str
@@ -182,6 +177,11 @@ def progress(*args, **kwargs):
     def terminate(self):
         self.dialog.Close()
         self.dialog.Destroy()
+
+
+def show_help(obj):
+    app = GetWxParent()
+    app.help_lookup(obj)
 
 
 def copy_file(path):
