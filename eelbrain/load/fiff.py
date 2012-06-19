@@ -373,7 +373,7 @@ def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None,
     raw = ds.info['raw']
     events = mne_events(ds=ds, i_start=i_start)
     
-    picks = mne.fiff.pick_types(raw.info, meg=True, eeg=False, stim=False, 
+    picks = mne.fiff.pick_types(raw.info, meg='mag', eeg=False, stim=False, 
                                 eog=False, include=[], exclude=raw.info['bads'])
     
     epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, picks=picks, 
