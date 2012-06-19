@@ -500,43 +500,44 @@ class mne_experiment(object):
         
         return ds
     
-    def load_evts(self, subject, experiment, 
-                  edf=True, bad=True, tstart=-0.1, tstop=0.6):
-        """
-        adding labels:
+    def load_events(self, subject=None, experiment=None, proj='fixation'):
+        """OK 12/06/18
         
-        - ID -> label 
-        
-            * dict
-            * dict with list key?
-        
-        - labels that span a trial
-        
-            * list with trial start IDs
-            
-            
-            
-        #.  trial start ID list
-        #.  trial 
+        Loads events from the corresponding raw file.
         
         """
-        fifraw = self.get('rawfif', subject, experiment)
-        ds = load.fiff.events(fifraw)
-        if edf:
-            edf_file = self.get('edf', subject, experiment)
-            edf = load.eyelink.Edf(edf_file)
-            edf.add_by_Id(ds, tstart=tstart, tstop=tstop)
+        self.set(subject=subject, experiment=experiment)
+        
+        raw = self.load_raw(proj=proj)
+        ds = load.fiff.events(raw)
+        
+        if subject is None: 
+            subject = self._subject
+        if experiment is None: 
+            experiment = self._experiment
         
         self.label_events(ds, experiment, subject)
-        
-        if not bad:
-            ds = ds.subset('accept')
-        
         return ds
     
-    def load_mne_raw(self, subject=None, experiment=None):
-        src = self.get('rawfif', subject=subject, experiment=experiment)
+    def load_raw(self, subject=None, experiment=None, proj='fixation'):
+        """OK 12/6/18
+        
+        #.  trial start ID list
+        proj : None | str
+            name of the projections to load
+        
+        """
+        self.set(subject=subject, experiment=experiment)
+        
+        src = self.get('rawfif')
         raw = mne.fiff.Raw(src)
+        raw.info['bads'].append('MEG 065')
+        
+        if proj:
+            proj_file = self.get('projs', analysis=proj)
+            proj = mne.read_proj(proj_file)
+            raw.info['projs'] += proj[:]
+        
         return raw
     
     def parse_dirs(self):
