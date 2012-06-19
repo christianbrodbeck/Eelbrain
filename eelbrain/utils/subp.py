@@ -66,6 +66,7 @@ _cfg_path = os.path.join(os.path.dirname(__file__), 'bin_cfg.pickled')
 _bin_dirs = {'mne': 'None',
              'freesurfer': 'None',
              'edfapi': 'None'}
+
 try:
     _bin_dirs.update(pickle.load(open(_cfg_path)))
     _set_bin_dirs(**_bin_dirs)
@@ -77,7 +78,8 @@ def get_bin(package, name):
         raise KeyError("Unknown binary package: %r" % package)
     
     bin_path = os.path.join(_bin_dirs[package], name)
-    while not os.path.exists(bin_path):
+    have_valid_path = os.path.exists(bin_path)
+    while not have_valid_path:
         title = "Select %r bin Directory" % package
         message = ("Please select the directory containing the binaries for "
                    "the %r package." % package)
@@ -88,8 +90,11 @@ def get_bin(package, name):
                 _bin_dirs[package] = answer
                 pickle.dump(_bin_dirs, open(_cfg_path, 'w'))
                 _set_bin_dirs(**{package: answer})
+                have_valid_path = True
             else:
-                pass
+                msg = ("You need to select a directory containing an "
+                       "executable called %r." % name)
+                ui.message("Wrong Directory", msg, 'error')
         else:
             raise IOError("%r bin directory not set" % package)
     
