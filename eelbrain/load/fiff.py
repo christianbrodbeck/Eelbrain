@@ -128,6 +128,7 @@ def events(raw=None, name=None, merge=-1, baseline=0):
 
 def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
                downsample=1, mult=1, unit='T', proj=True,
+               data='mag',
                add=True, target="MEG", i_start='i_start', 
                properties=None, sensorsname='fiff-sensors'):
     """
@@ -166,8 +167,15 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
         name for the new ndvar containing the epoch data  
          
     """
+    if data == 'eeg':
+        kwargs = dict(meg=False, eeg=True)
+    elif data in ['grad', 'mag']:
+        kwargs = dict(meg=data, eeg=False)
+    else:
+        raise NotImplementedError
+    
     epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
-                        proj=proj, i_start=i_start)
+                        proj=proj, i_start=i_start, **kwargs)
     
     # read the data
     x = epochs.get_data() # this call iterates through epochs as well
@@ -365,7 +373,7 @@ def mne_Raw(ds):
 
 
 def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None, 
-               proj=True, i_start='i_start'):
+               proj=True, i_start='i_start', meg='mag', eeg=False):
     """
     reject : 
         e.g., {'mag': 2e-12}
@@ -373,7 +381,7 @@ def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None,
     raw = ds.info['raw']
     events = mne_events(ds=ds, i_start=i_start)
     
-    picks = mne.fiff.pick_types(raw.info, meg='mag', eeg=False, stim=False, 
+    picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False, 
                                 eog=False, include=[], exclude=raw.info['bads'])
     
     epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, picks=picks, 
