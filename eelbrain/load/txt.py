@@ -15,7 +15,8 @@ __all__ = ['tsv', 'var']
 
 
 
-def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None):
+def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
+        skiprows=0):
     """
     returns a ``dataset`` with data from a tab-separated values file. 
     
@@ -40,6 +41,10 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None):
     delimiter : str
         value delimiting cells in the input file (None = any whitespace; 
         e.g., ``'\\t'``)
+    skiprows : int
+        Skip so many rows at the beginning of the file (for tsv files with
+        headers). Column names (if names==True) are expected to come after
+        the skipped rows.
     
     """
     if path is None:
@@ -49,6 +54,9 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None):
             return
     
     with open(path) as f:
+        for i in xrange(skiprows):
+            f.readline()
+        
         # read / create names
         if names == True:
             names = f.readline().split(delimiter)
