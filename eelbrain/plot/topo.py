@@ -175,6 +175,7 @@ class butterfly(mpl_canvas.CanvasFrame):
         self.topo_axes = []
         self.bfly_axes = []
         self.topos = []
+        self.t_markers = []
         
         # plot epochs (x/y are in figure coordinates)
         for i, layers in enumerate(epochs):
@@ -225,60 +226,61 @@ class butterfly(mpl_canvas.CanvasFrame):
         self._realtime_topo = True
         self.canvas.mpl_connect('motion_notify_event', self._on_mouse_motion)
         self.canvas.store_canvas()
-        self.set_topo_t(0, draw=False)
+        self._draw_topo(0, draw=False)
         self.Show()
     
     def _on_mouse_motion(self, event):
         ax = event.inaxes
         if self._realtime_topo and ax and hasattr(ax, 'ID'):
-            self.set_topo_t(event.xdata)
+            self._draw_topo(event.xdata)
     
-    def set_topo_t(self, t, draw=True):
-        "set the time point of the topo-maps"
+    def _draw_topo(self, t, draw=True):
         self._current_t = t
-        t_str = "t = %.3f" % t
-#        self._t_title.set_text(t_str)
         for topo_ax, layers in self.topos:
-#            t_marker.set_xdata([t, t])
-            
             topo_ax.cla()
             layers = [l.subdata(time=t) for l in layers]
             _ax_topomap(topo_ax, layers, **self.topo_kwargs)
         
-        ax = self.topo_axes[-1]
-        
         if draw:
-            if draw == 'full':
-                if not self._realtime_topo:
-                    self._t_label = ax.text(.5, -0.1, t_str, ha='center', va='top')
-                
-                self.canvas.draw() # otherwise time label does not get redrawn
-            elif self._realtime_topo:
-                self.canvas.redraw(axes=self.topo_axes)#, artists=self.t_markers)
-                # redrawing t-markers is slow
-            else:
-                pass
+            self.canvas.redraw(axes=self.topo_axes)#, artists=self.t_markers)
+    
+    def _rm_markers(self):
+        if self.t_markers:
+            for m in self.t_markers:
+                m.remove()
+            self.t_markers = []
+    
+    def set_topo_t(self, t):
+        "set the time point of the topo-maps"
+        self._realtime_topo = False
+        self._draw_topo(t, draw=False)
+        
+        # update t-markers
+        self._rm_markers()
+        for ax in self.bfly_axes:
+            t_marker = ax.axvline(t, color='k')
+            self.t_markers.append(t_marker)
+        
+        # add time label
+        ax = self.topo_axes[-1]
+        t_str = "t = %.3f" % t
+        self._t_label = ax.text(.5, -0.1, t_str, ha='center', va='top')
+        
+        self.canvas.draw() # otherwise time label does not get redrawn
     
     def _on_click(self, event):
         ax = event.inaxes
         if ax and hasattr(ax, 'ID'):
-            t = event.xdata
             button = {1:'l', 2:'r', 3:'r'}[event.button]
-            if hasattr(self, 't_markers'):
-                for m in self.t_markers:
-                    m.remove()
-                del self.t_markers
-
             if button == 'l':
-                self._realtime_topo = False
-                self.t_markers = []
-                for ax in self.bfly_axes:
-                    t_marker = ax.axvline(t, color='k')
-                    self.t_markers.append(t_marker)
+                t = event.xdata
+                self.set_topo_t(t)
             elif (button == 'r') and (self._realtime_topo == False):
+                self._rm_markers()
+                self._t_label.remove()
                 self._realtime_topo = True
-            
-            self.set_topo_t(t, draw='full')
+                self.canvas.draw()
+#                self.canvas.redraw(axes=self.bfly_axes) # this leaves the time label
     
     def OnLeaveAxesStatusBarUpdate(self, event):
         "update the status bar when the cursor leaves axes"
