@@ -362,6 +362,9 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
     if ylabel not in [False, None]:
         ax.set_ylabel(ylabel)
     
+#    ax.yaxis.set_offset_position('right')
+    ax.yaxis.offsetText.set_va('top')
+    
     ax.x_fmt = "t = %.3f s"
     if isinstance(title, str):
         ax.set_title(title)

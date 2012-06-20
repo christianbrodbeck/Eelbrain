@@ -204,12 +204,10 @@ class butterfly(mpl_canvas.CanvasFrame):
             utsnd._ax_butterfly(ax1, layers, sensors=ROI, ylim=ylim, 
                                 title=False, xlabel=show_x_axis, ylabel=ylabel, 
                                 color=color)
-            ax1.yaxis.set_offset_position('right')
+            
             if not show_x_axis:
 #                ax1.xaxis.set_visible(False)
                 ax1.xaxis.set_ticklabels([])
-            
-            # ax1.yaxis.get_offset_text().get_text()
             
             # find and print epoch title
             title = True
