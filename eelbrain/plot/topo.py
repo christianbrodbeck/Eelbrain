@@ -29,10 +29,8 @@ from __future__ import division
 import logging
 
 import numpy as np
-import matplotlib.pyplot as _plt
 import wx
 
-from eelbrain.vessels import colorspaces as cs
 from eelbrain.wxutils import mpl_canvas
 
 import _base
@@ -310,60 +308,6 @@ class butterfly(mpl_canvas.CanvasFrame):
             if i % 2 == 0:
                 ax.set_ylim(ymin, ymax)
         self.canvas.draw()
-
-
-
-def _axgrid_topomaps(nRows, nCols, nAxes = False,
-                        header=.25, footer='auto', 
-                        figsize=_base.defaults['figsize'], # if one is negative, this dim is derived. 
-                                                        # float --> fig width
-                        resolution=1,   # (multiplier)
-                        frame = .0,      # element size (inches)
-                        between = .05,
-                        axsize = 'auto',    # if not auto, it overrides figsize
-                        structured = True,
-                        **kwargs):
-    # elements in inches:
-    fix_space_x = 2*frame + (nCols-1)*between
-    if axsize == 'auto':
-        x_inches, y_inches = figsize
-        assert x_inches > 0
-        axsize = (x_inches - fix_space_x)/nCols
-    else:
-        x_inches = nCols*axsize + fix_space_x
-        y_inches = -1
-    if y_inches == -1:
-        if footer == 'auto':
-            footer = axsize+between
-        y_inches = frame*2 + axsize*nRows + \
-                   between * (nRows-1+bool(header)+bool(footer)) + \
-                   header + footer
-    else:
-        raise NotImplementedError()
-    #x_inches = frame*2 + axsize*nCols + between*(nCols-1)
-    fig  = _plt.figure(figsize=(x_inches, y_inches))
-    # make axes
-    if not nAxes:
-        nAxes = nRows * nCols
-    axes = []
-    width = axsize/x_inches
-    height = axsize/y_inches
-    left_coords = [(frame + (between+axsize)*u) / x_inches for u in range(nCols)]
-    for v in range(nRows-1, -1 , -1):
-        bottom = (footer+v*(axsize+between)) / y_inches
-        lineaxes = []
-        for left in left_coords:
-            if nAxes:
-                lineaxes.append(_plt.axes((left, bottom, width, height)))
-                nAxes -= 1
-        if structured:
-            axes.append(lineaxes)
-        else:
-            axes += lineaxes
-    return fig, axes
-
-
-
 
 
 def _plt_topomap(ax, epoch, proj='default', res=100, 

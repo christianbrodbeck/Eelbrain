@@ -1468,7 +1468,7 @@ class dataset(collections.OrderedDict):
     """
     A dataset is a dictionary that stores a collection of variables (``var``, 
     ``factor``, and ``ndvar`` objects) that describe the same underlying cases. 
-    Keys are inforced to be ``str`` objects and should preferably correspond 
+    Keys are enforced to be ``str`` objects and should preferably correspond 
     to the variable names.
     
 
