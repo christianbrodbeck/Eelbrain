@@ -120,7 +120,8 @@ Editor
 * Executing Code:
 
 	* ``ctrl`` - ``r``: Save the script and execute the whole script from disk. 
-	* ``ctrl`` - ``e``: Execute the selection. 
+	* ``ctrl`` - ``e``: Execute the selection. If nothing is selected, execute 
+	  the current line.
 
 
 Shell
@@ -158,10 +159,6 @@ commands. For more information, use help(command):
 
 	clear the shell
 
-.. py:function:: copy(object)
-
-	copy str(object) to the clipboard
-
 .. py:function:: detach()
 
     remove from the global namespace any variables that were added to it 
@@ -169,19 +166,11 @@ commands. For more information, use help(command):
 
 .. py:function:: help([object])
 
-	retrieve help for any object 
-
-.. py:function:: loadtable([filename])
-
-	load a table from a file
+	open the help viewer for any object 
 
 .. py:function:: printdict(dictionary)
 
 	prints a more readable representation for complex dictionaries.
-
-.. py:function:: table([list])
-
-	open a simple table editor. Can create a table from a 2 dimensional list as argument
 
 
 Startup Script
