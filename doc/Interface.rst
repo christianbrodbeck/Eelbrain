@@ -155,10 +155,6 @@ commands. For more information, use help(command):
     this function from the global namespace.  
 	 
 
-.. py:function:: clear()
-
-	clear the shell
-
 .. py:function:: detach()
 
     remove from the global namespace any variables that were added to it 
