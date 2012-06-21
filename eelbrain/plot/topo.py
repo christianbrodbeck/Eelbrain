@@ -100,7 +100,11 @@ class topomap(mpl_canvas.CanvasFrame):
 
 class butterfly(mpl_canvas.CanvasFrame):
     """
-    Butterfly plot with corresponding topomap
+    Butterfly plot with corresponding topomaps
+    
+     - LMB click in butterfly plots fixates the topomap time.
+     - RMB click in butterfly plots removes the time point, the topomaps follow
+       the mouse pointer.
     
     """
     def __init__(self, epochs, size=2, bflywidth=3, dpi=90, 
@@ -461,15 +465,26 @@ class _Window_Topo:
 
 
 class array(mpl_canvas.CanvasFrame):
+    """
+    Channel by sample plots with corresponding topomaps
+    
+     - LMB click on a topomap selects it for tracking the mouse pointer
+         - LMB on the array plot fixates the topomap time point
+     - RMB on a topomap removes the topomap
+    
+    """
     def __init__(self, epochs, title=None, height=3, width=2.5, ntopo=3, dpi=100,
                  ylim=None, t=[]):
         """
-        Interface for exploring channel by sample plots by extracting topo-plots
+        Channel by sample array-plots with topomaps corresponding to 
+        individual time points.
         
         kwargs
         ------
-        title
-        ntopo=None  number of topoplots per segment (None -> 6 / nplots)
+        title : str | None
+            title
+        ntopo | int
+            number of topomaps per array-plot
         
         """
         frame_title = "plot.topo.array: %r"
