@@ -146,19 +146,20 @@ def array(epochs, xlabel=True, ylabel=True,
     epochs = _base.unpack_epochs_arg(epochs, 2)
     
     n_plots = len(epochs)
-    n = round(np.sqrt(n_plots))
-    figsize = (n*w, n*h)
+#    n = round(np.sqrt(n_plots))
+    figsize = (n_plots * w, h)
     fig = plt.figure(figsize=figsize, dpi=dpi)
     plt.subplots_adjust(.1, .1, .95, .95, .1, .4)
     
     for i, layers in enumerate(epochs):
-        ax = fig.add_subplot(n, n, i+1)
+        ax = fig.add_subplot(1, n_plots, i+1)
         
         _ylabel = ylabel if i==1 else None
         _xlabel = xlabel if i==n_plots-1 else None
         
         _ax_im_array(ax, layers, xlabel=_xlabel, ylabel=ylabel)
     
+    fig.tight_layout()
     fig.show()
     return fig
 
