@@ -1621,9 +1621,7 @@ class dataset(collections.OrderedDict):
         return rep_tmp % args
     
     def __setitem__(self, name, item, overwrite=True):
-        try:
-            name = str(name)
-        except TypeError:
+        if not isinstance(name, str):
             raise TypeError("dataset indexes need to be strings")
         else:
             # test if name already exists
@@ -1647,12 +1645,18 @@ class dataset(collections.OrderedDict):
                     raise ValueError(msg)
             
             # make sure the item has the right length
-            if len(self) == 0:
-                self.N = len(item)
+            # ndvars without case
+            if isndvar(item) and not item._case:
+                N = 0
             else:
-                if self.N != len(item):
+                N = len(item)
+             
+            if len(self) == 0:
+                self.N = N
+            else:
+                if self.N != N:
                     msg = ("The item`s length (%i) is different from the "
-                           "number of cases in the datase (%i)." % (len(item), self.N))
+                           "number of cases in the datase (%i)." % (N, self.N))
                     raise ValueError(msg)
             
             super(dataset, self).__setitem__(name, item)
