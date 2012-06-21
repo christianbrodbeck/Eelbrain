@@ -151,7 +151,7 @@ class mne_experiment(object):
                 
                  # BESA
                  besa_triggers = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an, 'triggers.txt'))),
-                 besa_edt = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an + '.edt'))),
+                 besa_evt = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an + '.evt'))),
                  )
         
         return t
