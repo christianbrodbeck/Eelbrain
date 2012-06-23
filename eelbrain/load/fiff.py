@@ -128,7 +128,7 @@ def events(raw=None, name=None, merge=-1, baseline=0):
 
 def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
                downsample=1, mult=1, unit='T', proj=True,
-               data='mag',
+               data='mag', raw=None,
                add=True, target="MEG", i_start='i_start', 
                properties=None, sensorsname='fiff-sensors'):
     """
@@ -175,7 +175,7 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
         raise NotImplementedError
     
     epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
-                        proj=proj, i_start=i_start, **kwargs)
+                        proj=proj, i_start=i_start, raw=raw, **kwargs)
     
     # read the data
     x = epochs.get_data() # this call iterates through epochs as well
@@ -373,12 +373,14 @@ def mne_Raw(ds):
 
 
 def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None, 
-               proj=True, i_start='i_start', meg='mag', eeg=False):
+               proj=True, i_start='i_start', meg='mag', eeg=False, raw=None):
     """
     reject : 
         e.g., {'mag': 2e-12}
     """
-    raw = ds.info['raw']
+    if raw is None:
+        raw = ds.info['raw']
+    
     events = mne_events(ds=ds, i_start=i_start)
     
     picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False, 
