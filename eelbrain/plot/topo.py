@@ -66,9 +66,8 @@ class topomap(mpl_canvas.CanvasFrame):
         x_size = size * n_plots
         y_size = size
         figsize = (x_size, y_size)
-        parent = wx.GetApp().shell
         
-        super(topomap, self).__init__(parent, title, figsize=figsize, dpi=dpi)
+        super(topomap, self).__init__(title=title, figsize=figsize, dpi=dpi)
         
         # plot epochs (x/y are in figure coordinates)
         frame = .05
@@ -145,9 +144,8 @@ class butterfly(mpl_canvas.CanvasFrame):
         x_size = size * (1 + bflywidth)
         y_size = size * n_plots
         figsize = (x_size, y_size)
-        parent = wx.GetApp().shell
         
-        mpl_canvas.CanvasFrame.__init__(self, parent, frame_title, figsize=figsize, dpi=dpi)
+        super(butterfly, self).__init__(title=frame_title, figsize=figsize, dpi=dpi)
         
         # axes sizes 
         frame = .05 # in inches; .4
@@ -511,8 +509,7 @@ class array(mpl_canvas.CanvasFrame):
         x_per_ax = (1 - x_frame_l - x_frame_r) / n_epochs
         
         # create figure
-        parent = wx.GetApp().shell
-        mpl_canvas.CanvasFrame.__init__(self, parent, frame_title, dpi=dpi, figsize=figsize)
+        super(array, self).__init__(title=frame_title, dpi=dpi, figsize=figsize)
         fig = self.figure
         
         fig.subplots_adjust(left = x_frame_l, 

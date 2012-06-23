@@ -145,10 +145,8 @@ class multi(mpl_canvas.CanvasFrame):
     
     """
     def __init__(self, sensors, size=7, dpi=100, frame=.05, ROI=[], proj='default'):
-        parent = wx.GetApp().shell
         title = "Sensor Net: %s" % getattr(sensors, 'name', '')
-        super(multi, self).__init__(parent, title=title, 
-                                    figsize=(size, size), dpi=dpi)
+        super(multi, self).__init__(title=title, figsize=(size, size), dpi=dpi)
         
         # in case sensor_net parent is submitted
         if hasattr(sensors, 'sensors'):
@@ -361,10 +359,8 @@ class map2d(mpl_canvas.CanvasFrame):
             locations in a plane
         
         """
-        parent = wx.GetApp().shell
         title = "Sensor Net: %s" % getattr(sensor_net, 'name', '')
-        super(map2d, self).__init__(parent, title=title, 
-                                    figsize=(size, size), dpi=dpi)
+        super(map2d, self).__init__(title=title, figsize=(size, size), dpi=dpi)
         
         # in case sensor_net parent is submitted
         if hasattr(sensor_net, 'sensors'):
