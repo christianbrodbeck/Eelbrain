@@ -60,7 +60,7 @@ hidden_attr = [
                'wx',
                ]
 
-_punctuation = string.punctuation.replace('.', '')
+_punctuation = string.punctuation.replace('.', '').replace('_', '')
 
 
 def is_py_char(char):
