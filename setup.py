@@ -18,8 +18,13 @@ http://packages.python.org/py2app
 http://docs.python.org/distutils/index.html
 
 """
-
 import sys
+
+from distribute_setup import use_setuptools
+use_setuptools()
+
+from setuptools import setup, find_packages
+
 
 #VERSION must be in X.X.X format, e.g., "0.0.3dev"
 from eelbrain import __version__ as VERSION
@@ -30,14 +35,6 @@ else:
     print ("For more specific instructions, see "
            "http://christianmbrodbeck.github.com/Eelbrain/")
     arg = None
-
-
-# clear build and dist directories
-#print "removing build and dist directories"
-#for dir in ['dist', 'build']:
-#    print os.path.abspath(dir)
-#    if os.path.exists(dir):
-#        shutil.rmtree(dir)
 
 
 kwargs = dict(
@@ -51,10 +48,8 @@ kwargs = dict(
               long_description = open('README.txt').read(),
               )
 
-
+# py2app -----------------------------------------------------------------------
 if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  #####  #####
-    from setuptools import setup
-    
     doctypes = [
                 {"CFBundleTypeExtensions": ["py"],
                  "CFBundleTypeName": "Python Script",
@@ -83,7 +78,6 @@ if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  ###
                }
 
     kwargs.update(
-#                  app=['run_eelbrain_py2app.py'],
                   app=['eelbrain.py'],
 #                  data_files=[('.', ['icons/system-icons/eelbrain.icns'])],
 #                  app=['scripts/eelbrain'], # tries relative import of eelbrain
@@ -92,28 +86,11 @@ if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  ###
 #elif arg =='build':  #####  #####  #####  #####  #####  #####  #####  #####  #####  #####  
 #    from cx_Freeze import setup, Executable
 #    kwargs.update(executables = [Executable("scripts/eelbrain")])
-else: #####  py2exe & normal  #####  #####  #####  #####  #####  #####  #####  #####  #####
-    kwargs.update( # FIXME:
-                  packages = ['eelbrain',
-                              'eelbrain.analyze', 
-                              'eelbrain.fmtxt', 
-                              'eelbrain.load', 
-                              'eelbrain.plot', 
-                              'eelbrain.psyphys', 
-                              'eelbrain.psyphys.fileio', 
-                              'eelbrain.save', 
-                              'eelbrain.ui', 
-                              'eelbrain.utils',
-                              'eelbrain.vessels',
-                              'eelbrain.wxgui',
-                              'eelbrain.wxgui.psyphys',
-                              'eelbrain.wxterm',
-                              'eelbrain.wxutils',
-                              ],
-                  )
-    
-    if arg == 'py2exe':  #####  #####  #####  #####  #####  #####  #####  #####  #####
-        from distutils.core import setup
+else:
+    # normal & py2exe -----------------------------------------------------------------------
+    kwargs['packages'] = find_packages()
+    # py2exe -----------------------------------------------------------------------
+    if arg == 'py2exe':  
         import py2exe, matplotlib
         data_files = matplotlib.get_py2exe_datafiles()
         
@@ -143,10 +120,10 @@ else: #####  py2exe & normal  #####  #####  #####  #####  #####  #####  #####  #
                       #com_server=['myserver'],
                       )
     
-    else: # NORMAL sdist  #####  #####  #####  #####  #####  #####  #####  #####  #####
-#        from distutils2.core import setup
-        from distutils.core import setup
-        kwargs.update(scripts = ['eelbrain.py'],
+    # normal -----------------------------------------------------------------------
+    else:
+        kwargs.update(
+                      scripts = ['scripts/eelbrain'],
                       requires = ['numpy', 'scipy', 'matplotlib', 'wxPython'],
 #                      ['tex', 'bioread'], # optional
                       )

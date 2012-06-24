@@ -1,0 +1,4 @@
+#! /Library/Frameworks/Python.framework/Versions/Current/bin/python
+
+import eelbrain.wxterm
+eelbrain.wxterm.launch()

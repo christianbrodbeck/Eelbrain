@@ -35,7 +35,6 @@ _extension = 'jkldfsa'
 
 #import eelbrain.wxgui.viewers as viewers
 
-import eelbrain.utils.print_funcs as print_funcs
 from eelbrain import wxutils
 from eelbrain.wxutils import Icon
 from eelbrain.wxutils import droptarget
@@ -198,7 +197,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
     bufferOpen = 1 # Dummy attr so that py.frame enables Open menu 
     bufferNew = 1  # same for New menu command
     bufferClose = 1  # same for Close menu command (handled by OnFileClose)
-    def __init__(self, parent, namespace, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         
         app = wx.GetApp()
         
@@ -220,9 +219,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
         
         
     # SHELL initialization
-        # put my Shell into wx.py.shell and init
+        # put my Shell subclass into wx.py.shell
         wx.py.shell.Shell = Shell
-        kwargs.update(locals=namespace, title='Eelbrain Shell')
+        
         dataDir = self.wx_config.Read("dataDir")
         if os.path.exists(dataDir):
             kwargs['dataDir'] = dataDir
@@ -232,7 +231,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
                    "preferences to change the dataDir." % dataDir)
             ui.message(title, msg, '!')
         
-        wx.py.shell.ShellFrame.__init__(self, parent, *args, **kwargs)
+        wx.py.shell.ShellFrame.__init__(self, *args, **kwargs)
         self.SetStatusText('Eelbrain %s' % __version__)
         
         droptarget.set_for_strings(self.shell)
@@ -247,7 +246,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 #        self.shell.autoCompleteIncludeMagic = True
         
         # attr
-        self.global_namespace = namespace
+        self.global_namespace = self.shell.interp.locals
         self.editors = []
         self.active_editor = None # editor last used; updated by Editor.OnActivate and Editor.__init__
         self.tables = []
@@ -478,8 +477,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.global_namespace['attach'] = self.attach
         self.global_namespace['detach'] = self.detach
         self.global_namespace['help'] = self.help_lookup        
-        self.global_namespace['printdict'] = print_funcs.printdict
-        self.global_namespace['printlist'] = print_funcs.printlist
         
         # other Bindings
         self.Bind(wx.EVT_MAXIMIZE, self.OnMaximize)

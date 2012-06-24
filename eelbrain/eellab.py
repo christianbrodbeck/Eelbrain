@@ -64,3 +64,5 @@ except:
 import save
 
 import utils.statfuncs as statf
+
+from utils.print_funcs import printdict, printlist 

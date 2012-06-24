@@ -11,7 +11,7 @@ Module Hierarchy
 'a < b' means a imports from b, so b can not import from a:
 
 wxterm < wxgui < wxutils 
-               < plot < analyze (/signal_processing?) < datavessels < fmtxt
+               < plot < analyze < vessels < fmtxt
     
 
 
@@ -23,5 +23,3 @@ Copyright (c) 2012. All rights reserved.
 """
 
 __version__ = '0.0.4dev'
-
-import vessels

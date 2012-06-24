@@ -25,3 +25,4 @@ dist
 *cfg.pickled
 
 doc/_build
+distribute-*
