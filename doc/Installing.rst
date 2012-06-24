@@ -45,20 +45,22 @@ Obtain the Eelbrain Source
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The Eelbrain source code is hosted on `GitHub 
-<https://github.com/christianmbrodbeck/Eelbrain>`_. 
-Since the code is currently evolving, the best option is to clone (or fork) 
-the project. A way to do this is::
+<https://github.com/christianmbrodbeck/Eelbrain>`_. The latest source can be 
+downloaded as a 
+`zip archive <https://github.com/christianmbrodbeck/Eelbrain/zipball/master>`_.
+However, since the code is currently evolving, the better option is to clone 
+the project with git. A way to do this is::
 
     $ cd /target/directory
     $ git clone git@github.com:christianmbrodbeck/Eelbrain.git
 
-After the source is downloaded, the source can be updated to the latest version
+The source can then always be updated to the latest version
 from within the ``Eelbrain`` directory::
 
     $ cd /target/directory/Eelbrain
     $ git pull
 
-Now, there are several options to use Eelbrain:
+After obtaining the source, there are several options to use Eelbrain:
 
 .. note::
     Make sure to run setup.py with the python version that you want to run
