@@ -10,8 +10,8 @@ import types
 import os
 import webbrowser
 
-import wx
 import wx.html
+import docutils.core
 
 import ID
 from eelbrain.wxutils import Icon
@@ -21,33 +21,27 @@ from eelbrain import fmtxt
 
 HtmlTemplate = """<pre class="literal-block">%s</pre>"""
 
-"""
-reStructuredText to HTML parsing following:
-http://stackoverflow.com/questions/6654519
-"""
-try:
-    import docutils.core
+
+def rst2html(rst):
+    """
+    reStructuredText to HTML parsing following:
+    http://stackoverflow.com/questions/6654519
+    """
+    # remove leading whitespaces; make an exception for the first line, 
+    # since several functions start their docstring on the first line
+    rst = fmtxt.unindent(rst, True)
     
-    def rst2html(rst):
-        # remove leading whitespaces; make an exception for the first line, 
-        # since several functions start their docstring on the first line
-        rst = fmtxt.unindent(rst, True)
-        
-        try:
-            html = docutils.core.publish_parts(rst, writer_name='html')['body']
-            logging.debug("rst2html success")
+    try:
+        html = docutils.core.publish_parts(rst, writer_name='html')['body']
+        logging.debug("rst2html success")
 #            html = os.linesep.join((html['stylesheet'], html['body']))
 #            html = html['whole']  
 #            html = '<span style="color: rgb(0, 0, 255);">RST2HTML:</span><br>' + html
-        except:
-            html = HtmlTemplate % rst
-            logging.debug("rst2html failed")
+    except:
+        html = HtmlTemplate % rst
+        logging.debug("rst2html failed")
 #            html = '<span style="color: rgb(255, 0, 0);">RST2HTML FAILED:</span><br>' + html
-        return html
-except:
-    def rst2html(text):
-        text = HtmlTemplate % text
-        return text
+    return html
 
 
 def doc2html(obj, default='No doc-string.<br>'):
