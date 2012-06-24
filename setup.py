@@ -101,6 +101,7 @@ else:
     kwargs['packages'] = find_packages()
     # py2exe -----------------------------------------------------------------------
     if arg == 'py2exe':  
+        # http://wiki.wxpython.org/DistributingYourApplication
         import py2exe, matplotlib
         data_files = matplotlib.get_py2exe_datafiles()
         

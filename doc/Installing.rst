@@ -3,71 +3,45 @@
 Installing Eelbrain
 ===================
 
-Eelbrain is a pure Python project. In order to run Eelbrain, follow 
-these 3 steps:
+Eelbrain is a pure Python project and uses `Distribute 
+<http://packages.python.org/distribute/setuptools.html>`_. 
+Since Eelbrain is still under development, it is not on the Python Packaging 
+index yet. In order to run Eelbrain, 
 
-#.  Take care of the :ref:`dependencies <installing-dependencies>`
-#.  :ref:`Get the Eelbrain source <installing-eelbrain>`
-#.  Run Eelbrain in one of those ways:
+#.  :ref:`Obtain the source code <obtain-source>`
+#.  Depending on your purpose, install :ref:`optional dependencies <dependencies>`
 
-    a. Run :ref:`from source <run-from-source>`
-    b. On OS X, :ref:`create an Eelbrain.app Application <installing-OS-X>`
+    .. warning::
+        At least under OS X, it seems that wxPython can not be automatically 
+        installed by distutils. Unless it is already installed on your system 
+        (e.g. through EPD), wxPython has to be installed manually with an installer
+        from `here <http://www.wxpython.org/download.php>`_.
+
+#.  Install and run Eelbrain in one of those ways:
+
+    a. :ref:`Install as package <install-package>`
+    b. On OS X, :ref:`create an Eelbrain.app Application <OS-X-app>`
        with :py:mod:`py2app`
-    c. :ref:`Install with setup.py <install>` 
 
 
-.. _installing-dependencies:
+.. _dependencies:
 
-Dependencies
-^^^^^^^^^^^^
+Optional Dependencies
+^^^^^^^^^^^^^^^^^^^^^
 
-Besides an installation of Python 2.6 or 2.7, Eelbrain requires a number of 
-Python modules to run. The `Enthough Python Distribution <http://enthought.com/
-products/epd.php>`_ (EPD) contains most required 
-dependencies, so the easiest way to get started is to install EPD.
-
-.. warning::
-    In EPD 7.3, ``mdp`` seems to be broken; For now, I recommend using EPD 7.2.
-    In addition, on OS X the 32 bit version has to be used because the 64 bit 
-    version does not contain ``wxPython``. 
-
-.. note::
-    The EPD also
-    installs `setuptools <http://pypi.python.org/pypi/setuptools>`_, which means 
-    that you can install any additional modules using::
-    
-        $ easy_install modulename
-
-The following modules are included in the EPD and are required:
-
-* `WxPython <http://www.wxpython.org/>`_
-* `NumPy <http://numpy.scipy.org>`_
-* `Matplotlib <http://matplotlib.sourceforge.net/>`_
-* `SciPy <http://www.scipy.org/>`_
-* `MDP <http://mdp-toolkit.sourceforge.net/>`_
-
-
-In EPD and optional:
-
-* `docutils <http://docutils.sourceforge.net/>`_: nicer formatting in the 
-  wxterm help viewer 
-
-
-The following modules are not included in the EPD and provide optional 
-functionality:
+The following modules provide additional functionality if they are installed:
     
 * `mne <https://github.com/mne-tools/mne-python>`_
 * `tex <http://pypi.python.org/pypi/tex>`_ Enables exporting tables as pdf 
-  (also requires a working tex distribution)
   (also requires a working `LaTeX <http://www.latex-project.org/>`_ installation)
 * `bioread <http://pypi.python.org/pypi/bioread>`_ Enables an importer for 
   ``.acq`` files.
 
 
-.. _installing-eelbrain:
+.. _obtain-source:
 
-Get Eelbrain
-^^^^^^^^^^^^
+Obtain the Eelbrain Source
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The Eelbrain source code is hosted on `GitHub 
 <https://github.com/christianmbrodbeck/Eelbrain>`_. 
@@ -83,26 +57,43 @@ from within the ``Eelbrain`` directory::
     $ cd /target/directory/Eelbrain
     $ git pull
 
-Now, there are several options to run Eelbrain:
+Now, there are several options to use Eelbrain:
+
+.. note::
+    Make sure to run setup.py with the python version that you want to run
+    Eelbrain with.
 
 
-.. _run-from-source:
 
-A. Run from Source
-------------------
+.. _install-package:
 
-Eelbrain can be launched by running ``Eelbrain/eelbrain.py``.::
+A. Install as a Package
+-----------------------
+
+If you install Eelbrain as a package, you can use it in two ways:
+
+- import as a module
+- launch as an application
+
+I recommend to install Eelbrain in ``develop`` mode. This has the
+benefit that changes in the source folder (e.g., after running 
+``$ git pull``) take effect without re-installing::
 
 	$ cd /target/directory/Eelbrain
-	$ python eelbrain.py
-   
+	$ python setup.py develop
 
-.. _installing-OS-X:
+Besides installing the ``eelbrain`` module, this installs a shell script so 
+that Eelbrain can be launched with::
+
+    $ eelbrain 
+
+
+.. _OS-X-app:
 
 B. Create Eelbrian.app on OS X
 ------------------------------
 
-On OS X a convenient application file can be generated::
+On OS X, you can generate an application::
 
     $ cd /target/directory/Eelbrain
     $ python setup.py py2app -A
@@ -113,27 +104,6 @@ to your Applications folder (or anywhere else). However, the application file
 keeps references to the original source (due to the ``-A`` flag), 
 so you must leave the source folder intact. 
 The advantage of this method is that any 
-changes in the source (such as ``git pull``) will be 
+changes in the source (such as ``$ git pull``) will be 
 reflected as soon as you restart the application.
 
-.. note::
-    Make sure to run setup.py with the python version that you want to run
-    Eelbrain with.
-
-
-.. _install:
-
-C. Install with setup.py
-------------------------
-
-Eelbrain can also be installed using the ``setup.py`` script, but this has to
-be repeated every time the source is updated::
-
-    $ cd /target/directory/Eelbrain
-    $ python setup.py install
-
-After this, the command ``eelbrain`` is available in the Terminal to start 
-Eelbrain.
-
-
- 
