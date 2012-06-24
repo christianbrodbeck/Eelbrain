@@ -8,18 +8,19 @@ Eelbrain is a pure Python project and uses `Distribute
 Since Eelbrain is still under development, it is not on the Python Packaging 
 index yet. In order to run Eelbrain, 
 
-#.  :ref:`Obtain the source code <obtain-source>`
 #.  Depending on your purpose, install :ref:`optional dependencies <dependencies>`
 
     .. warning::
         At least under OS X, it seems that wxPython can not be automatically 
         installed by distutils. Unless it is already installed on your system 
-        (e.g. through EPD), wxPython has to be installed manually with an installer
+        (e.g. through `EPD <http://enthought.com/products/epd.php>`_), wxPython
+        has to be installed manually with an installer
         from `here <http://www.wxpython.org/download.php>`_.
 
+#.  :ref:`Obtain the Eelbrian source code <obtain-source>`
 #.  Install and run Eelbrain in one of those ways:
 
-    a. :ref:`Install as package <install-package>`
+    a. :ref:`Install as a package <install-package>`
     b. On OS X, :ref:`create an Eelbrain.app Application <OS-X-app>`
        with :py:mod:`py2app`
 
