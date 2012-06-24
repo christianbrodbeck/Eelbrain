@@ -46,6 +46,16 @@ kwargs = dict(
               author_email = 'christianmbrodbeck@gmail.com',
               license = 'GPL3',
               long_description = open('README.txt').read(),
+              install_requires = [
+                                  'mdp',
+                                  'matplotlib',
+                                  'scipy',
+                                  'numpy',
+                                  'docutils',
+                                  'wxPython',
+                                  ],
+#                                  ['tex', 'bioread'], # optional
+              package_data = {'eelbrain': ['Resources/sns/*.txt']}
               )
 
 # py2app -----------------------------------------------------------------------
@@ -76,7 +86,7 @@ if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  ###
                              ),
                'argv_emulation': True
                }
-
+    
     kwargs.update(
                   app=['eelbrain.py'],
 #                  data_files=[('.', ['icons/system-icons/eelbrain.icns'])],
@@ -122,11 +132,7 @@ else:
     
     # normal -----------------------------------------------------------------------
     else:
-        kwargs.update(
-                      scripts = ['scripts/eelbrain'],
-                      requires = ['numpy', 'scipy', 'matplotlib', 'wxPython'],
-#                      ['tex', 'bioread'], # optional
-                      )
+        kwargs['scripts'] = ['scripts/eelbrain']
 
 
 setup(**kwargs)
