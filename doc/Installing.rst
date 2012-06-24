@@ -3,15 +3,15 @@
 Installing Eelbrain
 ===================
 
-Eelbrain itself is a pure Python project, but it has a lot of :ref:`dependencies 
-<installing-dependencies>`, some of which are optional.
+Eelbrain is a pure Python project. In order to run Eelbrain, follow 
+these 3 steps:
 
 #.  Take care of the :ref:`dependencies <installing-dependencies>`
-#.  :ref:`Get Eelbrain <installing-eelbrain>`
-#.  Run Eelbrain
+#.  :ref:`Get the Eelbrain source <installing-eelbrain>`
+#.  Run Eelbrain in one of those ways:
 
-    a. :ref:`From source <run-from-source>`
-    b. On OS X, an :ref:`Eelbrain.app Application <installing-OS-X>` can be created
+    a. Run :ref:`from source <run-from-source>`
+    b. On OS X, :ref:`create an Eelbrain.app Application <installing-OS-X>`
        with :py:mod:`py2app`
     c. :ref:`Install with setup.py <install>` 
 
@@ -123,8 +123,8 @@ reflected as soon as you restart the application.
 
 .. _install:
 
-C. Installing
--------------
+C. Install with setup.py
+------------------------
 
 Eelbrain can also be installed using the ``setup.py`` script, but this has to
 be repeated every time the source is updated::
