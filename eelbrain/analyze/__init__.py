@@ -100,7 +100,7 @@ objects. These three classes all provide methods used by other classes/functions
  
 Models
 ------
-Any combination of data containers returns a model object. Provides .full proprty
+Any combination of data containers returns a model object. Provides .full property
 returning the full model. An intercept is automatically added if none is contained
 in the model (This property is used by the lm class). The .as_effects property
 returns the model without intercept.

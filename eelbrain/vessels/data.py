@@ -207,7 +207,7 @@ class _regressor_(object):
     
     """    
     def __len__(self):
-        return self.N
+        return self._n_cases
     
     # __ combination - methods __
     def __add__(self, other):
@@ -338,13 +338,12 @@ class var(_regressor_):
         self.name = name
         self.x = x
         # derived
-        self.N = len(x)
+        self._n_cases = len(x)
         self.mu = x.mean()
         self.centered = self.x - self.mu
         self.SS = np.sum(self.centered**2)     
         # constants
         self.df = 1
-        self.visible = True
         self.random = False
     
     def __getstate__(self):
@@ -539,21 +538,23 @@ class var(_regressor_):
     def beta_labels(self):
         return [self.name]
     
-    def diff(self, X, i1, i2, match):
+    def diff(self, X, v1, v2, match):
         """
-        subtracts X==i2 from X==i1; sorts values in ascending order according 
+        subtracts X==v2 from X==v1; sorts values in ascending order according 
         to match
         
         """
+        raise NotImplementedError
+        # FIXME: use celltable
         assert isfactor(X)
-        I1 = X==i1;             I2 = X==i2
+        I1 = X==v1;             I2 = X==v2
         Y1 = self[I1];          Y2 = self[I2]
-        m1 = match.x[I1];       m2 = match.x[I2]
+        m1 = match[I1];         m2 = match[I2]
         s1 = np.argsort(m1);    s2 = np.argsort(m2)
         y = Y1[s1] - Y2[s2]
         name = "{n}({x1}-{x2})".format(n=self.name, 
-                                       x1=X.cells[i1],
-                                       x2=X.cells[i2])
+                                       x1=X.cells[v1],
+                                       x2=X.cells[v2])
         return var(y, name)
     
     def export(self, fn=None, fmt='%.10g', delim=os.linesep):
@@ -597,10 +598,9 @@ class factor(_regressor_):
     
     """
     _stype_ = "factor"
-    def __init__(self, x, name=None, random=False, 
-                 labels={}, colors={}, retain_label_codes=False,
-                 rep=1, chain=1):
-        """        
+    def __init__(self, x, name=None, random=False, rep=1, tile=1,
+                 labels={}, colors={}):
+        """
         x : array-like 
             Sequence of values (initialization uses ravel(x) to create 1-d 
             array). If all conditions are coded with a single character, x can 
@@ -610,24 +610,26 @@ class factor(_regressor_):
             name of the factor
             
         random : bool
-            treat factor as random factor (important for ANOVA; default = False)
+            treat factor as random factor (for ANOVA; default is False)
             
+        rep : int
+            like numpy.repeat(): repeat values in x rep times, 
+            e.g. ``factor(['in', 'out'], rep=3)``
+            --> ``factor(['in', 'in', 'in', 'out', 'out', 'out'])``
+        
+        tile : int
+            like numpy.tile(): e.g. ``factor(['in', 'out'], chain=3)``
+            --> ``factor(['in', 'out', 'in', 'out', 'in', 'out'])``
+        
         labels : dict or None
             if provided, these labels are used to replace values in x when
             constructing the labels dictionary. All labels for values of 
             x not in `labels` are constructed using ``str(value)``.
             
-        colors : dict {label: color, ...}
-            Provide a color for each value, hich can be used by some plotting 
-            functions. Colors should be matplotlib-readable.
-        
-        rep : int
-            repeat values in x rep times e.g. ``factor(['in', 'out'], rep=3)``
-            --> ``factor(['in', 'in', 'in', 'out', 'out', 'out'])``
-        
-        chain : int
-            chain x; e.g. ``factor(['in', 'out'], chain=3)``
-            --> ``factor(['in', 'out', 'in', 'out', 'in', 'out'])``
+        colors : dict {value: color, ...}
+            Provide a color for each value, which can be used by some plotting 
+            functions. Colors should be matplotlib-readable. Values can be 
+            values in x as well as labels.
         
         
         Example - different ways to initialize the same factor::
@@ -638,56 +640,42 @@ class factor(_regressor_):
         
         """
         _regressor_.__init__(self)
-        # prepare arguments
+        
+        state = {'name': name, 'random': random}
+        labels_ = state['labels'] = {} # {code -> label}
+        colors_ = state['colors'] = {}
+        
+        # convert x to codes
         if isstr(x):
             x = list(x)
         
         x = np.ravel(x)
-        if rep > 1: x = x.repeat(rep)
-        if chain > 1: x = np.tile(x, chain)
+        cells = np.unique(x)
+        x_ = np.empty(len(x), dtype=np.uint16)
+        codes = {} # {label -> code}
+        for cell in cells:
+            label = str(labels.get(cell, cell))
+            if label in codes:
+                code = codes.get(label)
+            else: # new code
+                code = max(labels_) + 1 if labels_ else 0
+                labels_[code] = label
+                codes[label] = code
+            
+            x_[x==cell] = code
         
-        # prepare data containers: _x are internal versions
-        state = {'name': name, 'random': random, 'colors': {}}
-        N = len(x)
-        _x = state['x'] = np.empty(N, dtype=np.uint16)
-        _labels = state['labels'] = {}
-        categories = np.unique(x)
-        if retain_label_codes and N > 0:
-            if not issubclass(x.dtype.type, np.integer):
-                msg = ("When retaining_label_codes is True, x must contain "
-                       "integers")
-                raise ValueError(msg)
-            elif min(x) < 0 or max(x) > 65534:
-                msg =  ("When retaining_label_codes is True, x must contain "
-                       "unsigned 16-bit integers (0 <= x < 65534)")
-                raise ValueError(msg)
-            for i, cat in enumerate(categories):
-                _x[x==cat] = cat
-                _labels[cat] = labels.get(cat, str(cat))
-        else: # reassign codes
-            for cat in categories:
-                label = labels.get(cat, str(cat))
-                if label in _labels.values():
-                    i = 0
-                    while _labels[i] != label:
-                        i += 1
-                else:
-                    i = max(_labels) + 1 if _labels else 0
-                    _labels[i] = label
-                
-                _x[x==cat] = i
+        # convert colors keys to codes
+        for value in colors:
+            code = codes[value]
+            colors_[code] = colors[value]
         
-        if colors: # convert color keys from values to codes
-            codes = {lbl: code for code, lbl in _labels.iteritems()}
-            for label in colors:
-                try:
-                    code = codes[label]
-                except KeyError:
-                    msg = "Label %r in colors, but not in values" % label
-                    raise KeyError(msg)
-                else:
-                    state['colors'][code] = colors[label]
+        if rep > 1:
+            x_ = x_.repeat(rep)
         
+        if tile > 1:
+            x_ = np.tile(x_, tile)
+        
+        state['x'] = x_
         self.__setstate__(state)
     
     def __setstate__(self, state):
@@ -697,38 +685,8 @@ class factor(_regressor_):
         self._labels = labels = state['labels']
         self._codes = {lbl: code for code, lbl in labels.iteritems()}
         self._colors = state['colors']
-        # constants
-        self.visible = True
-        # derived
-        self.N = N = len(x)
+        self._n_cases = len(x)
         
-        # get unique categories and sort them in order of first occurrence
-        categories = np.unique(x)
-        self.df = df = max(0, len(categories) - 1)
-        
-        if N: 
-            # x_deviation_coded
-            categories = np.unique(x)
-            cats = categories[:-1]
-            contrast = categories[-1]
-            shape = (N, df)
-            codes = np.empty(shape, dtype=np.int8)
-            for i, cat in enumerate(cats):
-                codes[:,i] = x==cat
-            codes -= (x==contrast)[:,None]
-            self.x_deviation_coded = self.as_effects = codes
-            
-            # x_dummy_coded
-            codes = np.empty(shape, dtype=np.int8)
-            for i, cat in enumerate(cats):
-                codes[:,i] = x==cat
-            self.x_dummy_coded = self.as_dummy = codes
-        else:
-            self.x_deviation_coded = np.array([])
-            self.as_effects = np.array([])
-            self.x_dummy_coded = np.array([])
-            self.as_dummy = np.array([])
-    
     def __getstate__(self):
         state = {'x': self.x,
                  'name': self.name,
@@ -759,7 +717,7 @@ class factor(_regressor_):
             args.append('random=True')
         
         if not use_labels:
-            args.append('labels=%s' % self.cells)
+            args.append('labels=%s' % self._labels)
         
         return 'factor(%s)' % ', '.join(args)
     
@@ -812,7 +770,7 @@ class factor(_regressor_):
             n = len(self_unique_local_values)
             nest_codes = _effect_eye(n)
             
-            v_codes = np.zeros((self.N, n-1), dtype=int)
+            v_codes = np.zeros((self._n_cases, n-1), dtype=int)
             
             i1 = set(nest_indexes)
             for v_self, v_code in zip(self_unique_local_values, nest_codes):
@@ -830,10 +788,9 @@ class factor(_regressor_):
         kwargs = dict(labels = self._labels,
                       name = name.format(name=self.name), 
                       random = self.random,
-                      colors = self._colors,
-                      retain_label_codes = True)
+                      colors = self._colors)
         return kwargs
-            
+    
     def _interpret_y(self, Y, create=False):
         """
         in: string or list of strings
@@ -865,27 +822,45 @@ class factor(_regressor_):
             raise ValueError("unknown cell: %r" % Y)
     
     @property
+    def as_dummy(self): # x_dummy_coded
+        shape = (self._n_cases, self.df)
+        codes = np.empty(shape, dtype=np.int8)
+        for i, cell in enumerate(self.cells[:-1]):
+            codes[:,i] = self==cell
+        
+        return codes
+    
+    @property
     def as_dummy_complete(self):
         x = self.x[:,None]
         categories = np.unique(x)
         codes = np.hstack([x==cat for cat in categories])
         return codes.astype(np.int8)
+    
+    @property
+    def as_effects(self): # x_deviation_coded
+        shape = (self._n_cases, self.df)
+        codes = np.empty(shape, dtype=np.int8)
+        cells = self.cells
+        for i, cell in enumerate(cells[:-1]):
+            codes[:,i] = self==cell
         
+        contrast = self==self.cells[-1]
+        codes -= contrast[:,None]
+        return codes
+    
     def as_labels(self):
         return [self._labels[v] for v in self.x]
     
     @property
     def beta_labels(self):
-        labels = self.dummy_complete_labels
+        cells = self.cells
         txt = '{0}=={1}'
-        return [txt.format(labels[i], labels[-1]) for i in range(len(labels)-1)]
+        return [txt.format(cells[i], cells[-1]) for i in range(len(cells) - 1)]
     
     @property
     def cells(self):
-        return self._labels.copy()
-    
-    def codes(self):
-        return np.unique(self.x)
+        return self._labels.values()
     
     def compress(self, X, name='{name}'):
         """
@@ -912,7 +887,7 @@ class factor(_regressor_):
         
         x = np.array(x)
         name = name.format(name=self.name)
-        out = factor(x, name=name, labels=self.cells, random=self.random)
+        out = factor(x, name=name, labels=self._labels, random=self.random)
         return out
     
     def copy(self, name='{name}', rep=1, chain=1):
@@ -922,10 +897,9 @@ class factor(_regressor_):
         return f
     
     @property
-    def dummy_complete_labels(self):
-        categories = np.unique(self.x)
-        return [self._labels[cat] for cat in categories]
-
+    def df(self):
+        return max(0, len(self._labels) - 1)
+    
     @property
     def factors(self):
         return [self]
@@ -1932,21 +1906,21 @@ class interaction(_regressor_):
                 else:
                     raise NotImplementedError("No Interaction between two variables")
         
-        N = self.N = self.base[0].N; assert all([f.N == N for f in self.base[1:]])
+        N = self._n_cases = len(self.base[0])
+        assert all([len(f) == N for f in self.base[1:]])
         name = ' x '.join([f.name for f in self.base])
         _regressor_.__init__(self)
         self.name = name
-        self.visible = True
         self.random = False
         self.beta_labels = beta_labels
         
         self.df =  reduce(operator.mul, [f.df for f in self.base])
         
         # determine cells:
-        label_dicts = [f.cells for f in self.factors if isfactor(f)]
-        self.cells = _permutate_address_dicts(label_dicts)
+        label_dicts = [f._labels for f in self.factors if isfactor(f)]
+        self._labels = _permutate_address_dicts(label_dicts)
         self._cells = _permutate_address_dicts(label_dicts, link=False)
-        self.indexes = sorted(self.cells.keys())
+        self.indexes = sorted(self._labels.keys())
         self._colors = {}
         
         # effect coding
@@ -1978,7 +1952,7 @@ class interaction(_regressor_):
             return out
     
     def __eq__(self, other):
-        out = np.ones(self.N, dtype=bool)
+        out = np.ones(self._n_cases, dtype=bool)
         for i, f in zip(other, self.factors):
             if i != None:
                 out *= f==i
@@ -1986,7 +1960,7 @@ class interaction(_regressor_):
     
     def as_codes(self):
         out = []
-        for i in xrange(self.N):
+        for i in xrange(self._n_cases):
             code = tuple(f.x[i] for f in self.factors)
             out.append(code)
         return out
@@ -1997,7 +1971,7 @@ class interaction(_regressor_):
         return factor(x, name)
     
     def as_labels(self):
-        out = [self.cells[code] for code in self.as_codes()]
+        out = [self._labels[code] for code in self.as_codes()]
         return out
     
     def values(self):
@@ -2029,6 +2003,11 @@ class diff(object):
         match: factor matching values between categories
         
         """
+        raise NotImplementedError
+        # FIXME: use celltable
+        sub = X.isany(c1, c2)
+#        ct = celltable
+#        ...
         i1 = X.code_for_label(c1)
         i2 = X.code_for_label(c2)
         self.I1 = X==i1;                self.I2 = X==i2
@@ -2151,10 +2130,9 @@ class nonbasic_effect(_regressor_):
         self._nestedin = nestedin
         _regressor_.__init__(self)
         self.name = name
-        self.visible = True
         self.random = False
         self.as_effects = effect_codes
-        self.N, self.df = effect_codes.shape
+        self._n_cases, self.df = effect_codes.shape
         self.factors = factors
         self.beta_labels = beta_labels
     def __repr__(self):
@@ -2168,7 +2146,7 @@ class multifactor(factor):
     def __init__(self, factors, v=False):
         factors = [asfactor(f) for f in factors]
         
-        self.N = factors[0].N
+        self._n_cases = factors[0]._n_cases
         
         if len(factors) == 1:
             f = factors[0]
@@ -2195,11 +2173,11 @@ class multifactor(factor):
             categories = np.unique(x_tup)
             if v:
                 print categories
-            x = np.zeros(self.N)
+            x = np.zeros(self._n_cases)
             labels = {}
             for i, index in enumerate(categories):
                 x[np.all(x_full==index, axis=1)] = i
-                labels[i] = ', '.join([f.cells[j] for f,j in zip(factors, index)])
+                labels[i] = ', '.join([f._labels[j] for f,j in zip(factors, index)])
             # create factor TODO: random
             if v:
                 print x
@@ -2213,7 +2191,7 @@ class multifactor(factor):
         return out
     
     def iter_n_i(self):
-        for i, n in self.cells.iteritems():
+        for i, n in self._labels.iteritems():
             yield n, self.x==i
 
         
@@ -2240,9 +2218,9 @@ class model(object):
         for e in x:
             # sort out N
             if N == 0:
-                N = e.N
+                N = len(e)
             else:
-                assert e.N == N, "%s has different N, stupid!"%e.name
+                assert len(e) == N, "%s has different N, stupid!" % e.name
             # 
             if e._stype_ in ["factor", "var", "nonbasic", "interaction"]:
                 effects.append(e)
@@ -2250,13 +2228,13 @@ class model(object):
                 effects += e.effects
             else:
                 raise ValueError("model needs to be initialized with factors and"+\
-                                 "/or models (got %s)"%type(e))
+                                 "/or models (got %s)" % type(e))
         self.effects = effects
         
         # some stable attributes
         self.name = ' + '.join([e.name for e in self.effects])
         self.factor_names = ', '.join([f.name for f in self.factors])
-        self.N = N
+        self._n_cases = N
         # dfs
         self.df_total = N - 1 # 1=intercept
         self.df = sum(e.df for e in self.effects)
@@ -2326,12 +2304,12 @@ class model(object):
             
     # dimensional properties
     def __len__(self):
-        return self.N
+        return self._n_cases
     
     # coding
     @property
     def as_effects(self):
-        out = np.empty((self.N, self.df))
+        out = np.empty((self._n_cases, self.df))
         i = 0
         for e in self.effects:
             j = i+e.df
@@ -2344,10 +2322,10 @@ class model(object):
     def full(self):
         "returns the full model including an intercept"
         df = self.df
-        assert df < self.N, "Model overspecified"
-        out = np.empty((self.N, self.df+1))
+        assert df < self._n_cases, "Model overspecified"
+        out = np.empty((self._n_cases, self.df+1))
         # intercept
-        out[:,0] = np.ones(self.N)
+        out[:,0] = np.ones(self._n_cases)
         # effects
         i = 1
         for e in self.effects:
@@ -2358,12 +2336,12 @@ class model(object):
         # old:
 #        model = self.as_effects
 #        if not any([len(np.unique(x))==1 for x in model.T]):
-#            intercept = np.ones((self.N, 1), dtype=int)
+#            intercept = np.ones((self._n_cases, 1), dtype=int)
 #            model = np.hstack((intercept, model))
-#        assert model.shape[1] <= self.N, "Model overspecified"
+#        assert model.shape[1] <= self._n_cases, "Model overspecified"
 #        return model
     
-    # MARK: coding access
+    # coding ---
     @property
     def as_dummy_complete(self):
         m = np.hstack(f.as_dummy_complete for f in self.factors)
@@ -2388,7 +2366,7 @@ class model(object):
                 e1 = self.effects[i]
                 e2 = self.effects[j]
                 X = np.hstack((codes[i], codes[j]))
-#                V0 = np.zeros(self.N)
+#                V0 = np.zeros(self._n_cases)
                 #trash, trash, rank, trash = np.linalg.lstsq(X, V0)
                 if rank(X) < X.shape[1]:
 #                    ok = False
@@ -2474,17 +2452,7 @@ class model(object):
         for i in self.unique:
             cat = np.all(full==i, axis=1)
             yield cat
-    
-#    @property
-#    def cells(self):
-#        # TODO: implement cells ??? what for? use self.unique?
-#        fm = self.full
-#        categories = []
-#        for i, line in enumerate(fm):
-#            if not any([i in cat_list for cat_list in categories]):
-#                f = ((fm == line).mean(1) == 1)
-#        return categories
-    
+        
     def repeat(self, n):
         "Analogous to numpy repeat method"
         effects = [e.repeat(n) for e in self.effects]
@@ -2493,18 +2461,17 @@ class model(object):
     
     ## for access by aov 
     def iter_effects(self):
-        "iterator over visible effects (name, location_slice, df)"
+        "iterator over effects (name, location_slice, df)"
         index = 1
         for i, e in enumerate(self.effects):
             index_end = index + e.df
-            #if vis:  
             yield i, e.name, slice(index, index_end), e.df
             index = index_end
 #    def iter_regressors(self, random=False):
 #        "random: also yield regressors involving random factors"
 #        i = 1
 #        for e in self.effects:
-#            pass # FIXME: dshyg5erjbhaegr
+#            pass # FIXME: 
 
 
 

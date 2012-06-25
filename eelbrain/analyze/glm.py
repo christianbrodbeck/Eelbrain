@@ -145,7 +145,7 @@ class lm:
             Y = Y[sub]
             X = X[sub]
         
-        assert Y.N == X.N
+        assert len(Y) == len(X)
         assert X.df_error > 0
 
         # fit
@@ -430,8 +430,8 @@ class lm_fitter(object):
         
         """
         original_shape = Y.shape
-        assert original_shape[-1] == self.X.N, "last dimension must contain cases"
-        Y = Y.reshape((-1, self.X.N))
+        assert original_shape[-1] == len(self.X), "last dimension must contain cases"
+        Y = Y.reshape((-1, len(self.X)))
         if v:
             print Y.shape, self.Xinv.shape
         # Split Y that are too long
@@ -771,7 +771,7 @@ class anova(object):
             Y = Y[sub]
             X = X[sub]
         
-        assert Y.N == X.N
+        assert len(Y) == len(X)
 
         # save args
         self.Y = Y
@@ -934,7 +934,7 @@ class anova(object):
         table.midrule()
         table.cell("Total")
         table.cell(textab.stat(self.Y.SS))
-        table.cell(textab.stat(self.Y.N-1, fmt='%i'))
+        table.cell(textab.stat(len(self.Y) - 1, fmt='%i'))
         return table
 
 

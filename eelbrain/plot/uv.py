@@ -690,7 +690,7 @@ def timeplot(Y, categories, time, match=None, sub=None,
     elif isinstance(colors_arg, (tuple, list)):
         colors.update(dict(zip(categories.indexes, colors_arg)))
     
-    for c in categories.cells.keys():
+    for c in categories.cells:
         if c not in colors:
             colors[c] = '.5'
     
@@ -788,7 +788,7 @@ def timeplot(Y, categories, time, match=None, sub=None,
     if line_plot:
         # plot means
         x = time_points
-        for i, cat in enumerate(sorted(categories.cells.keys())):
+        for i, cat in enumerate(categories.cells):
             y = line_values[i]
             name = categories.cells[cat]
     
@@ -1022,7 +1022,7 @@ class multitimeplot:
         elif isinstance(colors_arg, (tuple, list)):
             colors.update(dict(zip(categories.indexes, colors_arg)))
         
-        for c in categories.cells.keys():
+        for c in categories.cells:
             if c not in colors:
                 colors[c] = '.5'
         
@@ -1133,11 +1133,10 @@ class multitimeplot:
         if line_plot:
             # plot means
             x = time_points + t_add
-            for i, cat in enumerate(sorted(categories.cells.keys())):
+            for i, cell in enumerate(categories.cells):
                 y = line_values[i]
-                name = categories.cells[cat]
         
-                color = colors[cat]
+                color = colors[cell]
                 
                 if hatch:
                     ls = defaults['linestyle'][i]
@@ -1157,10 +1156,10 @@ class multitimeplot:
                     marker = None
                 
         ### NOT same as timeplot() #####  #####  #####  #####  #####  #####
-                if self.fig.legend_has_label(name):
+                if self.fig.legend_has_label(cell):
                     label = None
                 else:
-                    label = name
+                    label = cell
                 handles = ax.plot(x, y, color=color, linestyle=ls, label=label,
                                   zorder=6, marker=marker, mfc=mfc)
         ### same as timeplot()     #####  #####  #####  #####  #####  #####            
@@ -1172,7 +1171,7 @@ class multitimeplot:
                     else:
                         x_errbars = x
                     ax.errorbar(x_errbars, y, yerr=yerr[i], fmt=None, zorder=5,
-                                ecolor=color, linestyle=ls, label=name)
+                                ecolor=color, linestyle=ls, label=cell)
         
         ### NOT same as timeplot() #####  #####  #####  #####  #####  #####
         # heading

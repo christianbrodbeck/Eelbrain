@@ -155,7 +155,7 @@ def get_permutated_dataset(variables, count='caseID', randomize=False):
     ds = _data.dataset(name='Design')
     for v in variables:
         x = out[:,v.ID]
-        f = _data.factor(x, v.name, labels=v.cells, retain_label_codes=True)
+        f = _data.factor(x, v.name, labels=v.cells)
         ds.add(f)
     
     if count:
@@ -258,7 +258,7 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
                         raise RandomizationError(msg)
         
         x[c_index] = values
-    return _data.factor(x, name, labels=cells, retain_label_codes=True)
+    return _data.factor(x, name, labels=cells)
 
 
 def add_missing(base, name='missing', values=None):

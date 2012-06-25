@@ -625,8 +625,8 @@ def _corr(Y, X, index):
     if index is not None:
         Y = Y[index]
         X = X[index]
-    n = Y.N
-    assert n == X.N
+    n = len(Y)
+    assert n == len(X)
     df = n - 2
     r = np.corrcoef(Y.x, X.x)[0,1]
     t = r / np.sqrt((1-r**2) / df)
@@ -658,15 +658,15 @@ class bootstrap_pairwise(object):
                  title="Bootstrapped Pairwise Tests"):
         Y = asvar(Y, sub)
         X = asfactor(X, sub)
-        assert Y.N == X.N, "dataset length mismatch"
+        assert len(Y) == len(X), "dataset length mismatch"
                 
         if match:
             if sub is not None:
                 match = match[sub]
-            assert match.N==Y.N, "dataset length mismatch"
+            assert len(match) == len(Y), "dataset length mismatch"
 
         # prepare data container
-        resampled = np.empty((samples + 1, Y.N)) # sample X subject within category
+        resampled = np.empty((samples + 1, len(Y))) # sample X subject within category
         resampled[0] = Y.x
         # fill resampled
         for i, Y_resampled in enumerate(_resample(Y, unit=match, samples=samples,
@@ -674,17 +674,16 @@ class bootstrap_pairwise(object):
             resampled[i+1] = Y_resampled.x
         self.resampled = resampled
             
-        X_cell_ids = sorted(X.cells.keys())
-        n_groups = len(X_cell_ids)
-        group_names = [X.cells[i] for i in X_cell_ids]
+        cells = X.cells
+        n_groups = len(cells)
         
         if match:
             # if there are several values per X%match cell, take the average
             # T: indexes to transform Y.x to [X%match, value]-array
-            match_cell_ids = match.cells.keys()
+            match_cell_ids = match.cells
             group_size = len(match_cell_ids)
             T = None; i = 0
-            for X_cell in X_cell_ids:
+            for X_cell in cells:
                 for match_cell in match_cell_ids:
                     source_indexes = np.where((X==X_cell) * (match==match_cell))[0]
                     if T is None:
@@ -711,7 +710,7 @@ class bootstrap_pairwise(object):
                 group_2 = groups[g2]
                 diffs = ordered[:, group_1] - ordered[:, group_2]
                 t[:,i] = np.mean(diffs, axis=1) * np.sqrt(group_size) / np.std(diffs, axis=1, ddof=1)
-                comp_names.append(' - '.join((group_names[g1], group_names[g2])))
+                comp_names.append(' - '.join((cells[g1], cells[g2])))
             
             self.diffs = diffs
             self.t_resampled = np.max(np.abs(t[1:]), axis=1)
@@ -721,7 +720,7 @@ class bootstrap_pairwise(object):
         
         self._Y = Y
         self._X = X
-        self._group_names = group_names
+        self._group_names = cells
         self._group_data = np.array([ordered[0, g] for g in groups])
         self._group_size = group_size
         self._df = group_size - 1
@@ -732,6 +731,7 @@ class bootstrap_pairwise(object):
         self._p_parametric = self.test_param(t)
         self._p_boot = self.test_boot(t)
         self.title = title
+    
     def __repr__(self):
         out = ['bootstrap_pairwise(', self._Y.name, self._X.name]
         if self._match:
@@ -739,8 +739,10 @@ class bootstrap_pairwise(object):
         out.append('saples=%i '%self._n_samples)
         out.append('replacement=%s)'%self._replacement)
         return ''.join(out)
+    
     def __str__(self):
         return str(self.table())
+    
     def table(self):
         table = fmtxt.Table('lrrrr')
         table.title(self.title)
@@ -766,6 +768,7 @@ class bootstrap_pairwise(object):
             table.cell(fmtxt.p(pc, stars=s1))
             table.cell(fmtxt.p(p2, stars=s2))
         return table
+    
     def plot_t_dist(self, ax=None):
         """
         After:
@@ -780,6 +783,7 @@ class bootstrap_pairwise(object):
 #        density._compute_covariance()
         xs = np.linspace(0, max(t), 200)
         P.plot(xs, density(xs))
+    
     def plot_dv_dist(self, ax=None):
         if ax is None:
             fig = P.figure()
@@ -790,9 +794,11 @@ class bootstrap_pairwise(object):
             density = scipy.stats.gaussian_kde(self._group_data[i])
             P.plot(xs, density(xs), label=name)
         P.legend()
+    
     def test_param(self, t):
         p = scipy.stats.t.sf(np.abs(t), self._group_size-1) * 2
         return p
+    
     def test_boot(self, t):
         "t: scalar or array; returns p for each t"
         test = self.t_resampled[:,None] > np.abs(t)
@@ -848,13 +854,13 @@ def _resample(Y, unit=None, replacement=True, samples=1000):
             
     else:
         if replacement:
-            N = Y.N
-            for i in xrange(samples):
+            N = len(Y)
+            for _ in xrange(samples):
                 index = np.random.randint(N)
                 Yout.x = Y.x[index]
                 yield Yout
         else:
-            for i in xrange(samples):
+            for _ in xrange(samples):
                 np.random.shuffle(Yout.x)
                 yield Yout
 

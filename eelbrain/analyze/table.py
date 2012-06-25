@@ -105,8 +105,6 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean]):
         test        0.2253   0.2844 
     
     """
-    y_ids = sorted(y.cells.keys())
-    
     if x is None:
         ct = _structure.celltable(Y, y, sub=sub, match=match)
         
@@ -127,17 +125,16 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean]):
     else:
         ct = _structure.celltable(Y, y%x, sub=sub, match=match)
         
-        table = fmtxt.Table('l'*(len(x.cells)+1))
-        x_ids = sorted(x.cells.keys())
+        N = len(x.cells)
+        table = fmtxt.Table('l'*(N + 1))
         
         # table header
         table.cell()
-        table.cell(x.name, width=len(x_ids), just='c')
-        table.midrule(span=(2, 1+len(x_ids)))
+        table.cell(x.name, width=N, just='c')
+        table.midrule(span=(2, N + 1))
         table.cell()
         
-        for xid in x_ids:
-            table.cell(x.cells[xid])
+        table.cells(*x.cells)
         table.midrule()
         
         # table body
@@ -298,8 +295,6 @@ def rm_table(Y, X=None, match=None, cov=[], sub=None, fmt='%r', labels=True,
                 # get value
                 first_i = np.nonzero(indexes)[0][0]
                 cov_value = c[first_i]
-                if _data.isfactor(c) and labels:
-                    cov_value = c.cells[cov_value]
                 table.cell(cov_value, fmt=fmt)
     else:
         table = fmtxt.Table('l'*(1 + n_dependents))

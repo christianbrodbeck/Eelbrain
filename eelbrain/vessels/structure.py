@@ -130,7 +130,7 @@ class celltable:
         self.match = match
 
         # extract cells and cell data
-        self.cells = X.values()
+        self.cells = X.cells
         self.data = {}
         self.data_indexes = {}
         
