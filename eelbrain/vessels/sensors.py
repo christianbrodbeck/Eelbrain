@@ -7,12 +7,11 @@ different file types.
 
 """
 
+#import logging
 import os
 import re
 
 import numpy as np
-#import matplotlib.pyplot as P
-import matplotlib as mpl
 import matplotlib.delaunay as delaunay
 from scipy.optimize import leastsq
 
@@ -156,11 +155,13 @@ class sensor_net(object):
             # center the sensor locations based on the sphere and scale to
             # radius 1
             sphere_center = np.array((cx, cy, cz))
+#            logging.debug("Sensor sphere projection: %r, %r" % (sphere_center, r))
             locs3d = self.locs - sphere_center
             locs3d /= r
             
             # implement projection
             locs2d = np.copy(locs3d[:,:2])
+            
             if proj=='cone':
                 locs2d[:,[0,1]] *= (1 - locs3d[:,[2]]) 
             elif proj=='lower cone':
@@ -168,12 +169,12 @@ class sensor_net(object):
                 if any(lower_half):
                     locs2d[lower_half] *= (1 - locs3d[lower_half][:,[2]]) 
             elif proj == 'z root':
-                z = max(locs3d[:,2]) - locs3d[:,[2]] # distance form top
+                z = max(locs3d[:,2]) - locs3d[:,2] # distance form top
                 r = np.sqrt(z)  # desired 2d radius
-                r_xy = np.sqrt(locs3d[:,[0]]**2 + locs3d[:,[1]]**2) # current radius in xy
+                r_xy = np.sqrt(np.sum(locs3d[:,:2]**2, 1)) # current radius in xy
                 idx = (r_xy != 0) # avoid zero division
                 F = r[idx] / r_xy[idx] # stretching factor accounting for current r
-                locs2d[idx] *= F
+                locs2d[idx,:] *= F[:,None]
         
         else:
             pattern = re.compile('([xyz])([+-])')
