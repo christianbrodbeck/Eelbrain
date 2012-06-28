@@ -13,6 +13,9 @@ There are two primary data-objects:
 Multiple variables belonging to the same dataset can be grouped in a 
 :class:`~eelbrain.vessels.data.dataset` object.
 
+Below is a simple example using those objects. For more examples, see the 
+``Eelbrain/examples/statistics`` folder.
+
 
 .. _statistics-example:
 
