@@ -385,19 +385,23 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.menuBar.Insert(Id, m, "Online Help")
             
         
-        m.Append(ID.HELP_EELBRAIN, "Eelbrain (web)",
+        m.Append(ID.HELP_EELBRAIN, "Eelbrain",
                  "Open the Eelbrain documentation pages in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_EELBRAIN)
         
-        m.Append(ID.HELP_PYTHON, "Python (web)",
+        m.Append(ID.HELP_PYTHON, "Python",
                  "Open the official Python documentation page in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_PYTHON)
         
-        m.Append(ID.HELP_MPL, "Matplotlib (web)", 
+        m.Append(ID.HELP_PDB, "   pdb (Python Debugger)",
+                 "Open the Python Debugger documentation page in an external browser.")
+        self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_PDB)
+        
+        m.Append(ID.HELP_MPL, "Matplotlib", 
                  "Open the Matplotlib homepage in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_MPL)
         
-        m.Append(ID.HELP_MDP, "mdp (web)", 
+        m.Append(ID.HELP_MDP, "mdp", 
                  "Open the mdp Documentation page in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_MDP)
         
@@ -947,6 +951,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
             webbrowser.open("http://matplotlib.sourceforge.net/")
         elif Id == ID.HELP_MDP:
             webbrowser.open("http://mdp-toolkit.sourceforge.net/documentation.html")
+        elif Id == ID.HELP_PDB:
+            webbrowser.open("http://docs.python.org/library/pdb.html")
         elif Id == ID.HELP_PYTHON:
             webbrowser.open("http://docs.python.org/")
         else:

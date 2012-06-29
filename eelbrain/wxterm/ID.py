@@ -25,6 +25,7 @@ HELP_EELBRAIN = wx.NewId()
 HELP_HIDE = wx.NewId()
 HELP_MDP = wx.NewId()
 HELP_MPL = wx.NewId()
+HELP_PDB = wx.NewId()
 HELP_PYTHON = wx.NewId()
 
 INSERT_Color = wx.NewId()
