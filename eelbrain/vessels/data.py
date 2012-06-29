@@ -163,7 +163,14 @@ def ascategorial(Y, sub=None):
         return Y[sub]
     else:
         return Y
-    
+
+
+def cell_label(cell, delim=' '):
+    if isinstance(cell, tuple):
+        return delim.join(cell)
+    else:
+        return cell
+
 
 def combine(items):
     """
@@ -2138,63 +2145,9 @@ class nonbasic_effect(_regressor_):
     def __repr__(self):
         txt = "<nonbasic_effect: {n}>"
         return txt.format(n=self.name)
-    
 
 
-class multifactor(factor):
-    "For getting categories from the combination of a list of factors"
-    def __init__(self, factors, v=False):
-        factors = [asfactor(f) for f in factors]
-        
-        self._n_cases = factors[0]._n_cases
-        
-        if len(factors) == 1:
-            f = factors[0]
-            self.x = np.copy(f.x)
-            self._labels = f._labels.copy()
-            self.name = f.name
-        else:
-            x_full = np.hstack([f.x[:,None] for f in factors])
-            x_tup = [tuple(x) for x in x_full]
-            # categories            
-            if v:
-                print "x_tup:"
-                print x_tup
-            categories, c_sort = np.unique(x_tup, return_index=True)
-            if v:
-                print "categories:"
-                print categories
-                print c_sort
-            categories = categories[np.argsort(c_sort)]
-            if v:
-                print "categories:"
-                print categories
-            # data containers
-            categories = np.unique(x_tup)
-            if v:
-                print categories
-            x = np.zeros(self._n_cases)
-            labels = {}
-            for i, index in enumerate(categories):
-                x[np.all(x_full==index, axis=1)] = i
-                labels[i] = ', '.join([f._labels[j] for f,j in zip(factors, index)])
-            # create factor TODO: random
-            if v:
-                print x
-            self.x = x
-            self._labels = labels
-            self.name = ':'.join([f.name for f in factors])
-    
-    def __repr__(self):
-        factors = ', '.join(f.name for f in self.factors)
-        out = "multifactor(%s)" % factors
-        return out
-    
-    def iter_n_i(self):
-        for i, n in self._labels.iteritems():
-            yield n, self.x==i
 
-        
 class model(object):
     """
     stores a list of effects which constitute a model for an ANOVA.

@@ -11,8 +11,8 @@ import scipy.stats
 from matplotlib import pyplot as P
 
 from eelbrain import fmtxt
-from eelbrain.vessels.data import var, isvar, asvar, isfactor, asfactor, ismodel
-from eelbrain.vessels.data import multifactor
+from eelbrain.vessels.data import (var, isvar, asvar, isfactor, asfactor, 
+                                   ismodel, iscategorial, cell_label)
 from eelbrain.vessels.structure import celltable
 
 # these should be available here
@@ -22,7 +22,6 @@ from glm import anova, ancova
 __hide__ = ['division', 'random', 'itertools', 'scipy',
             'fmtxt', 'texstr',
             'var', 'isvar', 'asvar', 'isfactor', 'asfactor', 'ismodel', 'celltable',
-            'multifactor', 
             ]
 
 
@@ -571,14 +570,13 @@ def correlations(Y, Xs, cat=None, levels=[.05, .01, .001], diff=None, sub=None,
     if diff is not None:
         raise NotImplementedError
     
-    if ismodel(cat) or isfactor(cat):
-        table = fmtxt.Table('l'*5)
-        table.cells('Variable', 'Category', 'r', 'p', 'n')
-        if ismodel(cat):
-            cat = multifactor(cat.factors)
-    else:
+    if cat is None:
         table = fmtxt.Table('l'*4)
         table.cells('Variable', 'r', 'p', 'n')
+    else:
+        assert iscategorial(cat)
+        table = fmtxt.Table('l'*5)
+        table.cells('Variable', 'Category', 'r', 'p', 'n')
     
     table.midrule()
     table.title("Correlations with %s"%(Y.name))
@@ -586,18 +584,18 @@ def correlations(Y, Xs, cat=None, levels=[.05, .01, .001], diff=None, sub=None,
     table._my_nan_count = 0
     
     for X in Xs:
-        if isfactor(cat) or type(cat) is multifactor:
+        if cat is None:
+            _corr_to_table(table, Y, X, cat, levels, pmax=pmax, nan=nan)
+        else:
             printXname = True
-            for i in np.unique(cat.x):
+            for cell in cat.cells:
                 tlen = len(table)
-                
-                _corr_to_table(table, Y, X, cat==i, levels, pmax=pmax, nan=nan,
-                               printXname=printXname, label=cat.cells[i])
+                sub = (cat == cell)
+                _corr_to_table(table, Y, X, sub, levels, pmax=pmax, nan=nan,
+                               printXname=printXname, label=cell_label(cell))
                 
                 if len(table) > tlen: #
                     printXname = False
-        else:
-            _corr_to_table(table, Y, X, cat, levels, pmax=pmax, nan=nan)
 
     # last row
     if pmax is None:

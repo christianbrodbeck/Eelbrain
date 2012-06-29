@@ -16,15 +16,15 @@ from eelbrain import fmtxt as textab
 
 from eelbrain.analyze import test
 
-from eelbrain.vessels.data import isfactor, asfactor, isvar, asvar, ismodel, asmodel
-from eelbrain.vessels.data import multifactor
+from eelbrain.vessels.data import (isfactor, asfactor, isvar, asvar, ismodel, 
+                                   asmodel, cell_label)
 from eelbrain.vessels.structure import celltable
 
 
 __hide__ = ['division', 'scipy',
             'textab', 'test',
             'isfactor', 'asfactor', 'isvar', 'asvar', 'ismodel', 'asmodel',
-            'celltable', 'multifactor', 
+            'celltable',
             ]
 
 
@@ -1246,9 +1246,9 @@ def _reg_line(Y, reg):
 
 
 
-def corrplot(Y, X, cat=None, ax=None, title=None, c=['b','r','k','c','p','y','g'], 
+def corrplot(Y, X, cat=None, ax=None, sub=None,
+             title=None, c=['b','r','k','c','p','y','g'], delim=' ',
              lloc='lower center', lncol=2, figlegend=True, texify=True,
-             sub=None,
              xlabel=True, ylabel=True, rinxlabel=True):
     """
     cat: categories
@@ -1272,7 +1272,6 @@ def corrplot(Y, X, cat=None, ax=None, title=None, c=['b','r','k','c','p','y','g'
         else:
             pass
     #
-    categories = cat
     if ax is None:
         if cat is None:
             fig = P.figure(figsize=(3.5,3.5))
@@ -1291,43 +1290,50 @@ def corrplot(Y, X, cat=None, ax=None, title=None, c=['b','r','k','c','p','y','g'
     if sub is not None:
         Y = Y[sub]
         X = X[sub]
-        if isfactor(categories) or ismodel(categories):
-            categories = categories[sub]
+        if cat is not None:
+            cat = cat[sub]
     
-    if isfactor(categories) or ismodel(categories):
-        if ismodel(categories):
-            categories = multifactor(categories.factors)
+    if isfactor(cat):
         labels = []; handles = []
-        for col,i in zip(c, np.unique(categories.x)):
-            Xi = X[categories==i]    
-            Yi = Y[categories==i]
-            label = categories.cells[i]
-            if texify: label = textab.texify(label)
-            labels.append(label)
-            handles.append(ax.scatter(Xi.x, Yi.x, c=col, label=label, alpha=.5))
+        for color, cell in zip(c, cat.cells):
+            idx = (cat == cell)
+            Xi = X[idx]
+            Yi = Y[idx]
+            cell = cell_label(cell)
+            
+            if texify: 
+                cell = textab.texify(cell)
+            
+            handles.append(ax.scatter(Xi.x, Yi.x, c=color, label=cell, alpha=.5))
+            labels.append(cell)
+        
         if figlegend:
             ax.figure.legend(handles, labels, lloc, ncol=lncol)
         else:
             ax.legend(lloc, ncol=lncol)
+    elif cat is None:
+        ax.scatter(X.x, Y.x, alpha=.5)
     else:
-        if categories is None:
-            ax.scatter(X.x, Y.x, alpha=.5)
-        else:
-            ax.scatter(X[categories].x, Y[categories].x, alpha=.5)
+        ax.scatter(X[cat].x, Y[cat].x, alpha=.5)
+    
     return ax
 
 
+
 def regplot(Y, regressor, categories=None, match=None, sub=None,
-            ax=None, ylabel=True, title=None, alpha=.2, legend=True,
+            ax=None, ylabel=True, title=None, alpha=.2, legend=True, delim=' ',
             c=['#009CFF','#FF7D26','#54AF3A','#FE58C6','#20F2C3']):
+    # TODO: merge with corrplot
     """
     parameters
     ----------
-    alpha: alpha for individual data points (to control visualization of 
-           overlap)
-    legend: applies if categories != None: possible values [True, False] or
-            mpl ax.legend() loc kwarg 
-            http://matplotlib.sourceforge.net/api/axes_api.html#matplotlib.axes.Axes.legend
+    
+    alpha : scalar
+        alpha for individual data points (to control visualization of 
+        overlap)
+    legend : bool | str
+        applies if categories != None: can be mpl ax.legend() loc kwarg 
+        http://matplotlib.sourceforge.net/api/axes_api.html#matplotlib.axes.Axes.legend
             
     """
     # data types
@@ -1386,17 +1392,16 @@ def regplot(Y, regressor, categories=None, match=None, sub=None,
         x, y = _reg_line(y, reg)
         ax.plot(x, y, c=color)
     else:
-        categories = asmodel(categories)
-        categories = multifactor(categories.effects)
-        for i, (name, indexes) in enumerate(categories.iter_n_i()):
+        for i, cell in enumerate(categories.cells):
+            idx = (categories == cell)
             # scatter
-            y = Y.x[indexes]
-            reg = regressor.x[indexes]
+            y = Y.x[idx]
+            reg = regressor.x[idx]
             color = c[i % len(c)]
             ax.scatter(reg, y, edgecolor=color, facecolor=color, **scatter_kwargs)
             # regression line
             x, y = _reg_line(y, reg)
-            ax.plot(x, y, c=color, label=name)
+            ax.plot(x, y, c=color, label=cell_label(cell))
         if legend == True:
             ax.legend()
         elif legend != False:
