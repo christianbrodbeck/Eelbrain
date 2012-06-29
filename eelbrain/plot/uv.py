@@ -335,11 +335,12 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             ylabel = None
     
     # xlabel
-    if xlabel is True:
-        if hasattr(X, 'factor_names'):
-            xlabel = textab.texify(X.factor_names)
+    if (xlabel is True):
+        if X.name:
+            xlabel = textab.texify(X.name)
         else:
             xlabel = False
+    
     # get axes     
     fig = _simple_fig(title, xlabel, ylabel, titlekwargs, **simple_kwargs)
     ax = fig.ax
