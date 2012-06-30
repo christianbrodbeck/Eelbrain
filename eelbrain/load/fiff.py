@@ -1,5 +1,5 @@
 '''
-Functions for loading datasets from mne's fiff files. 
+Functions for loading data from mne's fiff files. 
 
 
 
@@ -19,12 +19,13 @@ import mne.minimum_norm as _mn
 
 import eelbrain.vessels.data as _data
 import eelbrain.vessels.colorspaces as _cs
-import eelbrain.vessels.sensors as sensors
+import eelbrain.vessels.sensors as _sensors
 from eelbrain import ui
 
 __all__ = ['events', 'add_epochs', # basic pipeline
            'ds_2_evoked', 'evoked_2_stc', # get lists of mne objects
-           'mne_events', 'mne_write_cov', 'mne_Raw', 'mne_Epochs' # get mne objects
+           'mne_events', 'mne_Raw', 'mne_Epochs', # get mne objects
+           'sensors',
            ]
 
 
@@ -72,7 +73,7 @@ def events(raw=None, name=None, merge=-1, baseline=0):
     
     if baseline:
         pick = mne.event.pick_channels(raw.info['ch_names'], include='STI 014')
-        data, times = raw[pick, :]
+        data, _ = raw[pick, :]
         idx = np.where(np.abs(np.diff(data[0])) > 0)[0]
         
         # find baseline NULL-events
@@ -168,14 +169,22 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
          
     """
     if data == 'eeg':
-        kwargs = dict(meg=False, eeg=True)
+        meg = False 
+        eeg = True
     elif data in ['grad', 'mag']:
-        kwargs = dict(meg=data, eeg=False)
+        meg = data 
+        eeg = False
     else:
         raise NotImplementedError
     
+    if raw is None:
+        raw = ds.info['raw']
+    
+    picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False, 
+                                eog=False, include=[], exclude=raw.info['bads'])
+    
     epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
-                        proj=proj, i_start=i_start, raw=raw, **kwargs)
+                        proj=proj, i_start=i_start, raw=raw, picks=picks)
     
     # read the data
     x = epochs.get_data() # this call iterates through epochs as well
@@ -201,9 +210,9 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
         props.update(properties)
     
     # target container
-    sensor_net = sensors.from_mne(epochs.info, name=sensorsname)
+    sensor = sensors(epochs, picks=picks, name=sensorsname)
     time = _data.var(T, 'time')
-    dims = ('case', sensor_net, time)
+    dims = ('case', sensor, time)
     
     ndvar = _data.ndvar(x, dims=dims, properties=props, name=target)
     if add:
@@ -373,7 +382,7 @@ def mne_Raw(ds):
 
 
 def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None, 
-               proj=True, i_start='i_start', meg='mag', eeg=False, raw=None):
+               proj=True, i_start='i_start', raw=None, picks=None):
     """
     reject : 
         e.g., {'mag': 2e-12}
@@ -382,10 +391,27 @@ def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None,
         raw = ds.info['raw']
     
     events = mne_events(ds=ds, i_start=i_start)
-    
-    picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False, 
-                                eog=False, include=[], exclude=raw.info['bads'])
-    
+        
     epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, picks=picks, 
                         baseline=baseline, reject=reject, proj=proj)
     return epochs
+
+
+def sensors(fiff, picks=None, name='fiff-sensors'):
+    """
+    returns a sensor_net object based on the info in a fiff file.
+     
+    """
+    info = fiff.info
+    if picks is None:
+        picks = mne.fiff.pick_types(info)
+
+    chs = [info['chs'][i] for i in picks]
+    ch_locs = []
+    ch_names = []
+    for ch in chs:
+        x, y, z = ch['loc'][:3]
+        ch_name = ch['ch_name']
+        ch_locs.append((x, y, z))
+        ch_names.append(ch_name)
+    return _sensors.sensor_net(ch_locs, ch_names, name=name)
