@@ -652,16 +652,17 @@ class factor(_regressor_):
         labels_ = state['labels'] = {} # {code -> label}
         colors_ = state['colors'] = {}
         
+        try:
+            n_cases = len(x)
+        except TypeError: # for generators:
+            x = tuple(x)
+            n_cases = len(x)
+            
         # convert x to codes
-        if isstr(x):
-            x = list(x)
-        
-        x = np.ravel(x)
-        cells = np.unique(x)
-        x_ = np.empty(len(x), dtype=np.uint16)
         codes = {} # {label -> code}
-        for cell in cells:
-            label = str(labels.get(cell, cell))
+        x_ = np.empty(n_cases, dtype=np.uint16)
+        for i, value in enumerate(x):
+            label = str(labels.get(value, value))
             if label in codes:
                 code = codes.get(label)
             else: # new code
@@ -669,7 +670,7 @@ class factor(_regressor_):
                 labels_[code] = label
                 codes[label] = code
             
-            x_[x==cell] = code
+            x_[i] = code
         
         # convert colors keys to codes
         for value in colors:
