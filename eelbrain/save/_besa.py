@@ -8,6 +8,8 @@ import numpy as np
 from eelbrain import ui
 from eelbrain.vessels.data import var, dataset
 
+import _txt
+
 
 
 __all__ = ['meg160_triggers', 'besa_evt']
@@ -35,7 +37,7 @@ def meg160_triggers(ds, dest=None):
     a = np.ones(len(T) + 10) * 2
     a[5:-5] = T.x
     triggers = var(a, name='triggers')
-    triggers.export(dest)
+    _txt.txt(triggers, dest=dest)
 
 
 

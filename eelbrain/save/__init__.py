@@ -3,6 +3,7 @@ import cPickle
 
 from eelbrain import ui
 from _besa import *
+from _txt import *
 
 
 __hide__ = ['ui', 'cPickle', 'os']
