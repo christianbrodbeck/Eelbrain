@@ -177,7 +177,7 @@ class f_oneway(test_result):
             Y = Y[sub]
             X = X[sub]
         
-        Ys = [Y[X==c] for c in X.values()]
+        Ys = [Y[X==c] for c in X.cells]
         Ys = [y.x.reshape((y.x.shape[0], -1)) for y in Ys]
         N = Ys[0].shape[1]
         

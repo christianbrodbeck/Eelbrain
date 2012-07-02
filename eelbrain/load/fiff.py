@@ -233,7 +233,7 @@ def ds_2_evoked(ds, X, tstart=-0.1, tstop=0.6, baseline=(None, 0),
     
     """
     evoked = []
-    for cell in X.values():
+    for cell in X.cells:
         ds_cell = ds.subset(X == cell)
         epochs = mne_Epochs(ds_cell, tstart=tstart, tstop=tstop, 
                             baseline=baseline, reject=reject)

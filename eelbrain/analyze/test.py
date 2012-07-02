@@ -297,7 +297,7 @@ def test(Y, X=None, against=0, match=None, sub=None,
     
     if isinstance(against, str):
         k = len(ct.indexes) - 1
-        assert against in ct.cells.values()
+        assert against in ct.cells
         for id in ct.indexes:
             label = ct.cells[id]
             if against == label:

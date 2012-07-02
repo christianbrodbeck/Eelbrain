@@ -193,7 +193,7 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
         regions = groups.as_factor()
         
         # for now, they have to be of equal length
-        region_lens = [np.sum(regions==v) for v in regions.values()]
+        region_lens = [np.sum(regions==cell) for cell in regions.cells]
         if len(np.unique(region_lens)) > 1:
             raise NotImplementedError
         
@@ -219,7 +219,7 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
     
     
     # cycle through values of the balance containers
-    for region in regions.values():
+    for region in regions.cells:
         if rand:# and _randomize:
             np.random.shuffle(values)
         
@@ -274,7 +274,7 @@ def add_missing(base, name='missing', values=None):
     """
     N = len(base[0])
     if values is None:
-        values = base[0].values()
+        values = base[0].cells
     
     cells = dict(enumerate(values))
     

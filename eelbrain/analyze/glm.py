@@ -14,7 +14,7 @@ import scipy.stats
 import eelbrain.fmtxt as textab
 
 import test
-from eelbrain.vessels.data import model, var, asmodel, isvar, asvar
+from eelbrain.vessels.data import model, asmodel, isvar, asvar, find_factors, isnestedin
 
 
 
@@ -51,20 +51,16 @@ def _hopkins_ems(X, v=False):
     
     """
     X = asmodel(X)
-    # check that no var is in model
-    if any([type(f) == var for f in X.factors]):
-        return [None] * len(X.effects)
+    
+    if any(map(isvar, X.factors)):
+        raise TypeError("Hopkins E(MS) only for categorial models")
+    
     # E(MS) table (after Hopkins, 1976)
     E_MS_table = []
-    for e in X.effects:
-        E_MS_row = []
-        for e2 in X.effects:
-            if np.all([(f.random or e.contains_factor(f)) for f in e2.factors]) \
-               and np.all([(e2.contains_factor(f) or e2.nestedin(f)) for f in e.factors]):
-                E_MS_row.append(True)
-            else:
-                E_MS_row.append(False)
+    for e1 in X.effects:
+        E_MS_row = [_hopkins_test(e1, e2) for e2 in X.effects]
         E_MS_table.append(E_MS_row)
+    
     E_MS = np.array(E_MS_table, dtype = bool)
     
     if v:
@@ -78,6 +74,7 @@ def _hopkins_ems(X, v=False):
         match = np.all(E_MS == e_ms_den, axis=1)
         if v:
             print f.name, ':', match
+        
         if match.sum() == 1:
             match_i = np.where(match)[0][0]
             MS_denominators.append(match_i)
@@ -89,11 +86,42 @@ def _hopkins_ems(X, v=False):
     return MS_denominators
 
 
+def _hopkins_test(e, e2):
+    """
+    e : effect
+        effect whose E(MS) is being constructed 
+    e2 : effect
+        model effect which is tested for inclusion in E(MS) of e 
+    
+    """
+    if e is e2:
+        return False
+    else:
+        e_factors = find_factors(e)
+        e_model = model(*e_factors)
+        e2_factors = find_factors(e2)
+        e2_model = model(*e2_factors)
+        
+        a = np.all([(f in e_model or f.random) for f in e2_factors])
+        b = np.all([(f in e2_model or isnestedin(e2, f)) for f in e_factors])
+        
+        return a and b
+
+def _find_hopkins_ems(e, X):
+    return [e2 for e2 in X.effects if _hopkins_test(e, e2)]
+
+
+
 def _is_higher_order(e1, e0):
-    "returns True if e1 is a higher order term of e0"
+    """
+    returns True if e1 is a higher order term of e0
+    
+    e1 & e0: 
+        effects
+    """
     # == all factors in e0 are contained in e1
-    f1s = e1.factors
-    for f0 in e0.factors:
+    f1s = find_factors(e1)
+    for f0 in find_factors(e0):
         # if f0 not in f1s
         if any(f0 is f1 for f1 in f1s):
             continue
@@ -357,7 +385,7 @@ class _old_lm_(lm):
             if True:#e.showreg:
                 table.cell(e.name+':')
                 table.newrow()
-                for i, name in e.iter_beta(): # Fox pp. 106 ff.
+                for i, name in enumerate(e.beta_labels): # Fox pp. 106 ff.
                     beta = self.beta[q+i]
 #                    Evar_pt_est = self.SS_res / df
                     #SEB 
@@ -817,7 +845,9 @@ class anova(object):
             results_table.append(("Residuals", lm0.SS_res, lm0.df_res, 
                                   lm0.MS_res, None, None))
         else:
-            if not rfx:
+            if rfx:
+                pass # <- Hopkins
+            else:
                 full_lm = lm(Y, X, lsq=lsq)
                 SS_e = full_lm.SS_res
                 MS_e = full_lm.MS_res
@@ -857,13 +887,8 @@ class anova(object):
                     
                     if rfx:
                         # find E(MS)
-                        EMS_effects = []
-                        for e in X.effects:
-                            if e is e_test:
-                                pass
-                            elif all([(e_test.contains_factor(f) or f.random) for f in e.factors]):
-                                if all([(e.contains_factor(f) or e.nestedin(f)) for f in e_test.factors]):
-                                    EMS_effects.append(e)
+                        EMS_effects = _find_hopkins_ems(e_test, X)
+                        
                         if len(EMS_effects) > 0:
                             lm_EMS = lm(Y, model(*EMS_effects), lsq=lsq)
                             MS_e = lm_EMS.MS_model
@@ -891,12 +916,16 @@ class anova(object):
                 results_table.append(("Residuals", SS_e, df_e, MS_e, None, None))
         self._test_table = test_table
         self._results_table = results_table
+    
     def __repr__(self):
         return "anova(%s, %s)" % (self.Y.name, self.X.name)
+    
     def __str__(self):
         return str(self.anova())
-    def log(self):
+    
+    def print_log(self):
         print os.linesep.join(self._log)
+    
     def anova(self):
         "Return ANOVA table"
         if self.show_ems is None:

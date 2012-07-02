@@ -139,7 +139,7 @@ class celltable:
             newdata = Y[cell_index]
             if match:
                 group = match[cell_index]
-                values = group.values()
+                values = group.cells
                 
                 # sort
                 if len(values) < len(group):

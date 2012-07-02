@@ -42,15 +42,15 @@ def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies", ds=None):
         table.cell()
         table.cell('n')
         table.midrule()
-        for cat in Y.values():
-            table.cell(cat)
-            table.cell(np.sum(Y == cat))
+        for cell in Y.cells:
+            table.cell(cell)
+            table.cell(np.sum(Y == cell))
         return table
     
     
     ct = _structure.celltable(Y, X, sub=sub)
     
-    Y_categories = ct.Y.values()
+    Y_categories = ct.Y.cells
     
     # header
     n_Y_categories = len(Y_categories)
@@ -146,9 +146,9 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean]):
         else:
             raise ValueError("fmt does not match funcs")
         
-        for Ycell in y.values():
+        for Ycell in y.cells:
             table.cell(Ycell)
-            for Xcell in x.values():
+            for Xcell in x.cells:
                 # construct address
                 a = ()
                 if isinstance(Ycell, tuple):
@@ -260,7 +260,7 @@ def rm_table(Y, X=None, match=None, cov=[], sub=None, fmt='%r', labels=True,
         if show_case:
             table.cell(match.name)
             case_labels = ct.matchlabels[ct.cells[0]]
-            assert all(np.all(case_labels == l) for l in ct.matchlabels.values())
+            assert all(np.all(case_labels == l) for l in ct.matchlabels.cells)
         for i in range(n_dependents):
             for name in ct.cells:        
                 table.cell(name.replace(' ','_'))
