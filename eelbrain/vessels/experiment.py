@@ -13,7 +13,6 @@ import fnmatch
 import os
 import shutil
 
-import numpy as np
 from collections import defaultdict
 
 import mne
@@ -21,7 +20,6 @@ import mne
 from eelbrain import ui
 from eelbrain import fmtxt
 from eelbrain.utils import subp
-import data
 from eelbrain import load
 import process
 
@@ -68,16 +66,8 @@ class mne_experiment(object):
         self._edir = directory
         self._log_path = os.path.join(directory, 'mne-experiment.pickle')
         
-        # make sure base directories exist 
         # templates ---
         self.templates = self.get_templates()
-#        path = self.get('meg_dir', root=directory)
-#        if not os.path.exists(path):
-#            raise IOError("MEG-dir not found: %r" % path)
-        
-#        path = mri_dir.format(root=directory)
-#        if not os.path.exists(path):
-#            raise IOError("MRI-dir not found: %r" % path)
         
         # dictionaries ---
         self.edf_use = defaultdict(lambda: ['ESACC', 'EBLINK'])      
@@ -180,25 +170,13 @@ class mne_experiment(object):
         obj = getattr(self, '_cfg_%s' % name)
         pickle.dump(obj, open(dest, 'w'))
     
-    def define_cov(self, name, experiment, stim='fixation', stimvar='stim', 
-                   tstart=0.2, tstop=0.4, baseline=(None, None), edf=True):
-        index = (experiment, name)
-        if index in self._cfg_cov:
-            raise NotImplementedError()
-        
-        self._cfg_cov[index] = dict(
-                                    stim = stim,
-                                    stimvar = stimvar,
-                                    tstart = tstart,
-                                    tstop = tstop,
-                                    baseline = baseline,
-                                    edf = edf,
-                                    )
-        self._save_cfg('cov')
-    
     def define_epoch(self, name, experiment, stim='fixation', stimvar='stim',  
-                     tstart=-0.2, tstop=0.6, baseline=(None, None), 
+                     tstart=-0.1, tstop=0.6, baseline=(None, 0), 
                      edf=True, threshold=None):
+        """
+        Define an epoch that can be used as input for different functions.
+        
+        """
         index = (experiment, name)
         if index in self._cfg_epochs:
             raise NotImplementedError()
@@ -214,38 +192,6 @@ class mne_experiment(object):
                                        )
         self._save_cfg('epochs')
     
-    def do_besa_evts(self, experiment, epoch_name, subject=None, target_root=None, redo=False):
-        cfg = self._cfg_epochs[(experiment, epoch_name)]
-        kwargs = {k: cfg[k] for k in ('tstart', 'tstop', 'edf', 'threshold', 'stimvar', 'stim')}
-        for subject, _ in self.iter_se(subject=subject, experiment=experiment, analysis=epoch_name):
-            dest_trg = self.get('besa_triggers', root=target_root)
-            dest_edt = self.get('besa_edt', root=target_root)
-            if not redo and os.path.exists(dest_edt) and os.path.exists(dest_trg):
-                continue
-            
-            ds = self.load_data(subject, experiment, bad=False, **kwargs)
-            ds['T'] = ds['i_start'] / ds.info['samplingrate']
-            
-            # MEG160 export triggers
-            T = ds['T']
-            a = np.ones(len(T) + 10) * 2
-            a[5:-5] = T.x
-            triggers = data.var(a, 'triggers')
-            triggers.export(dest_trg)
-            
-            # BESA events
-            evts = data.dataset()
-            
-            tstart2 = cfg['tstart'] - .1
-            tstop2 = cfg['tstop'] + .1
-            epoch_len = tstop2 - tstart2
-            start = epoch_len * 5 - tstart2
-            stop = epoch_len * (5 + len(T))
-            evts['Tsec'] = data.var(np.arange(start, stop, epoch_len))
-            
-            evts['Code'] = data.var(np.ones(len(T)))
-            evts['TriNo'] = data.var(ds['eventID'].x)
-            evts.export(dest_edt)
     
     def do_cov(self, experiment, cov_name, subject=None, redo=False):
         cfg = self._cfg_cov[(experiment, cov_name)]
@@ -296,7 +242,7 @@ class mne_experiment(object):
             print table
     
     def do_kit2fiff(self, do='ask', aligntol=xrange(20, 40, 5)):
-        """
+        """OK 12/7/2
         find any raw txt files that have not been converted
         
         do : bool | 'ask',
@@ -489,16 +435,15 @@ class mne_experiment(object):
             keep bad trials
         
         """
-        ds = self.load_evts(subject, experiment, 
-                            edf=edf, bad=bad, tstart=tstart, tstop=tstop)
+        ds = self.load_evts(subject, experiment, tstart=tstart, tstop=tstop,
+                            edf=edf, bad=bad)
         ds = ds.subset(ds[stimvar] == stim)
         
         load.fiff.add_epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline, 
-                         downsample=downsample)
+                             downsample=downsample)
         
         # threshold rejection
         if threshold:
-            
             process.mark_by_threshold(ds, threshold=threshold)
             if not bad:
                 ds = ds.subset('accept')
@@ -605,7 +550,7 @@ class mne_experiment(object):
                 experiments.add(fname.split('_')[1])
     
     def pull(self, src_root, names=['rawfif', 'log_sdir'], overwrite=False):
-        """
+        """OK 12/7/2
         Copies all items matching a template from another root to the current
         root.
         
