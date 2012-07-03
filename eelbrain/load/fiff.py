@@ -404,7 +404,10 @@ def sensors(fiff, picks=None, name='fiff-sensors'):
     """
     info = fiff.info
     if picks is None:
-        picks = mne.fiff.pick_types(info)
+        if hasattr(fiff, 'picks'):
+            picks = fiff.picks
+        else:
+            picks = mne.fiff.pick_types(info)
 
     chs = [info['chs'][i] for i in picks]
     ch_locs = []
