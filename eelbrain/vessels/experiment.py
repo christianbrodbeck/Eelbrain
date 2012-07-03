@@ -14,6 +14,8 @@ import os
 import shutil
 
 import numpy as np
+from collections import defaultdict
+
 import mne
 
 from eelbrain import ui
@@ -67,6 +69,7 @@ class mne_experiment(object):
         self._log_path = os.path.join(directory, 'mne-experiment.pickle')
         
         # make sure base directories exist 
+        # templates ---
         self.templates = self.get_templates()
 #        path = self.get('meg_dir', root=directory)
 #        if not os.path.exists(path):
@@ -76,6 +79,8 @@ class mne_experiment(object):
 #        if not os.path.exists(path):
 #            raise IOError("MRI-dir not found: %r" % path)
         
+        # dictionaries ---
+        self.edf_use = defaultdict(lambda: ['ESACC', 'EBLINK'])      
         
         
         # load config
@@ -500,10 +505,17 @@ class mne_experiment(object):
         
         return ds
     
-    def load_events(self, subject=None, experiment=None, proj='fixation'):
-        """OK 12/06/18
+    def load_events(self, subject=None, experiment=None, proj='fixation', 
+                    edf=True):
+        """OK 12/7/3
         
-        Loads events from the corresponding raw file.
+        Loads events from the corresponding raw file, adds the raw to the info 
+        dict. 
+        
+        proj : None | name
+            load a projection file and ad it to the raw
+        edf : bool
+            Loads edf and add it to the info dict.
         
         """
         self.set(subject=subject, experiment=experiment)
@@ -517,6 +529,13 @@ class mne_experiment(object):
             experiment = self._experiment
         
         self.label_events(ds, experiment, subject)
+        
+        # add edf
+        if edf:
+            edf = load.eyelink.Edf(self.get('edf'))
+            edf.add_T_to(ds)
+            ds.info['edf'] = edf
+        
         return ds
     
     def load_raw(self, subject=None, experiment=None, proj='fixation'):
