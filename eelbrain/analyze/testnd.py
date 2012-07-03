@@ -56,17 +56,32 @@ class ttest(test_result):
     **Attributes:**
     
     all :
-        c1, c2, [c2 - c1, P]
+        c1, c0, [c0 - c1, P]
     diff :
-        [c2 - c1, P]
+        [c0 - c1, P]
     
     """
-    def __init__(self, Y='MEG', X=None, c1=None, c2=0, 
+    def __init__(self, Y='MEG', X=None, c1=None, c0=0, 
                  match=None, sub=None, ds=None, 
                  contours={.05: (.8, .2, .0),  .01: (1., .6, .0),  .001: (1., 1., .0)}):
         """
-        c1 and c2 : str
-            categories in X between which to perform the test
+        
+        Y : var
+            dependent variable
+        X : categorial | None
+            Model; None if the grand average should be tested against a 
+            constant.
+        c1 : str | None
+            Test condition (cell of X)
+        c0 : str | scalar
+            Control condition (cell of X or constant to test against)
+        match : factor
+            Match cases for a repeated measures t-test
+        sub : index-array
+            perform test with a subset of the data
+        ds : dataset
+            If a dataset is specified, all data-objects can be specified as 
+            names of dataset variables 
         
         """
 #        contours = { .05: (.8, .2, .0),  .01: (1., .6, .0),  .001: (1., 1., .0),
@@ -75,43 +90,43 @@ class ttest(test_result):
 #                    (currently, p values are not directional)
         ct = _vsl.structure.celltable(Y, X, match, sub, ds=ds)
         
-        if ct.X is None:
+        if len(ct) == 1:
             pass
         elif c1 is None:
             if len(ct) == 2:
-                c1, c2 = ct.cell_labels()
+                c1, c0 = ct.cell_labels()
             else:
                 err = ("If X does not have exactly 2 categories (has %s), c1 and c0 "
                        "must be explicitly specified." % len(ct))
                 raise ValueError(err)
         
         
-        if isinstance(c2, basestring):
+        if isinstance(c0, basestring):
             c1_mean = ct.data[c1].summary(name=c1)
-            c2_mean = ct.data[c2].summary(name=c2)
-            diff = c1_mean - c2_mean
+            c0_mean = ct.data[c0].summary(name=c0)
+            diff = c1_mean - c0_mean
             if match:
-                if not ct.within[(c1, c2)]:
+                if not ct.within[(c1, c0)]:
                     err = ("match kwarg: Conditions have different values on"
                            " <%r>" % match.name)
                     raise ValueError(err)
-                T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c2].x, axis=0)
+                T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c0].x, axis=0)
                 test_name = 'Related Samples t-Test'
             else:
-                T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c2].x, axis=0)
+                T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c0].x, axis=0)
                 test_name = 'Independent Samples t-Test'
-        elif np.isscalar(c2):
+        elif np.isscalar(c0):
             c1_data = ct.data[str(Y.name)]
             c1_mean = c1_data.summary()
-            c2_mean = None
-            T, P = scipy.stats.ttest_1samp(c1_data.x, popmean=c2, axis=0)
+            c0_mean = None
+            T, P = scipy.stats.ttest_1samp(c1_data.x, popmean=c0, axis=0)
             test_name = '1-Sample t-Test'
-            if c2:
-                diff = c1_mean - c2
+            if c0:
+                diff = c1_mean - c0
             else:
                 diff = None
         else:
-            raise ValueError('invalid c2: %r' % c2)
+            raise ValueError('invalid c0: %r' % c0)
         
 #        direction = np.sign(diff.x)
 #        P = P * direction# + 1 # (1 - P)
@@ -135,15 +150,15 @@ class ttest(test_result):
         # create dataset
         super(ttest, self).__init__(T, P, name=test_name)
         self['c1_m'] = c1_mean
-        if c2_mean: 
-            self['c2_m'] = c2_mean
+        if c0_mean: 
+            self['c0_m'] = c0_mean
         if diff:
             self['diff'] = diff
         
     @property
     def all(self):
-        if 'c2_m' in self:
-            return [self['c1_m'], self['c2_m']] + self.diff
+        if 'c0_m' in self:
+            return [self['c1_m'], self['c0_m']] + self.diff
         elif 'diff' in self:
             return [self['c1_m']] + self.diff
         else:
