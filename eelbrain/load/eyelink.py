@@ -26,7 +26,7 @@ class Edf(object):
         >>> path = '/path/to/edf.edf'
         >>> edf = load.eyelink.Edf(path)
     
-    There are several ways of retrieving trial acceptability values (the the 
+    There are several ways of retrieving trial acceptability values (see the 
     used methods' documentation for more information):
     
     
@@ -64,7 +64,7 @@ class Edf(object):
     
         >>> ds_edf = edf.get_triggers()
     
-    The ``'t_edf'`` time variable can be used to add trigger time values to 
+    The ``ds_edf['t_edf']`` time variable can be used to add trigger time values to 
     arbitrary events, which can then in turn be used with::
     
         >>> edf.mark(...)
