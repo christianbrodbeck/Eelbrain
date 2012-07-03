@@ -734,7 +734,7 @@ class factor(_effect_):
     def __setitem__(self, index, x):
         # convert x to code
         if isinstance(x, basestring):
-            code = self._get_code[x]
+            code = self._get_code(x)
         elif np.iterable(x):
             code = np.empty(len(x), dtype=np.uint16)
             for i, v in enumerate(x):
@@ -744,11 +744,11 @@ class factor(_effect_):
         self.x[index] = code
         
         # obliterate redundant labels
-        present_codes = np.unique(self.x)
-        for code in self._labels:
-            if code not in present_codes:
-                label = self._labels.pop(code)
-                del self._codes[label]
+        codes_in_use = set(np.unique(self.x))
+        rm = set(self._labels) - codes_in_use
+        for code in rm:
+            label = self._labels.pop(code)
+            del self._codes[label]
     
     def _get_code(self, label):
         "add the label if it does not exists and return its code"
