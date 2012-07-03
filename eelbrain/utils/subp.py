@@ -500,21 +500,10 @@ def do_forward_solution(paths=dict(rawfif=None,
                                    bem=None,
                                    src=None,
                                    trans=None,
-                                   cor=None), 
+                                   cor=None),
                         overwrite=False, v=1):
     """
-    MNE-manual, 3.13, p. 36 ff.
-    
-    fixed : bool
-        "Use fixed source orientations normal to the cortical mantle. By 
-        default, the source orientations are not constrained. If --fixed is 
-        specified, the --loose flag is ignored." (MNE-manual, 36)
-    loose | scalar <amount>
-        "Use a 'loose' orientation constraint. This means that the source 
-        covariance matrix entries corresponding to the current component normal
-        to the cortex are set equal to one and the transverse components are 
-        set to <amount>. Recommended value of amount is 0.1...0.6." 
-        (MNE-manual, 37)
+    MNE Handbook 3.13
     
     """
     fif_file = paths.get('rawfif')
