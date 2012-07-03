@@ -2,8 +2,6 @@
 Data-Objects
 ************
 
-Vars, Factors, Datasets
-=======================
 
 There are two primary data-objects: 
 
@@ -13,16 +11,85 @@ There are two primary data-objects:
 Multiple variables belonging to the same dataset can be grouped in a 
 :class:`~eelbrain.vessels.data.dataset` object.
 
-Below is a simple example using those objects. For more examples, see the 
-``Eelbrain/examples/statistics`` folder.
+
+Factor
+======
+
+A factor is a container for one-dimensional, categorial data: Each case is 
+described by a string label. The most obvious way to initialize a factor 
+is a list of strings::
+
+    >>> A = factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b'], name='A')
+
+There are many shortcuts to initialize factors  (for more shortcuts see 
+the factor's class documentation)::
+
+    >>> A = factor(['a', 'b', 'c'], rep=4, name='A')
+    >>> A
+    factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'c', 'c', 'c', 'c'], name='A')
+
+Indexing works like for arrays::
+
+    >>> A[0]
+    'a'
+    >>> A[0:6]
+    factor(['a', 'a', 'a', 'a', 'b', 'b'], name='A')
+
+All values present in a factor are accessible in its ``.cells`` attribute::
+
+    >>> A.cells
+    ['a', 'b', 'c']
+
+Based on the factor's values, boolean indexes can be generated::
+
+    >>> A == 'a'
+    array([ True,  True,  True,  True, False, False, False, False, False,
+           False, False, False], dtype=bool)
+    >>> A.isany('a', 'b')
+    array([ True,  True,  True,  True,  True,  True,  True,  True, False,
+           False, False, False], dtype=bool)
+    >>> A.isnot('a', 'b')
+    array([False, False, False, False, False, False, False, False,  True,
+            True,  True,  True], dtype=bool)
+
+Interaction effects can be constructed from multiple factors::
+
+    >>> B = factor(['d', 'e'], rep=2, tile=3, name='B')
+    >>> B
+    factor(['d', 'd', 'e', 'e', 'd', 'd', 'e', 'e', 'd', 'd', 'e', 'e'], name='B')
+    >>> i = A % B
+    >>> i
+    interaction(A, B)
+
+Interaction effects are in many ways interchangeable with factors in places 
+where a categorial model is required::
+ 
+    >>> i.cells
+    [('a', 'd'), ('a', 'e'), ('b', 'd'), ('b', 'e'), ('c', 'd'), ('c', 'e')]
+    >>> i == ('a', 'd')
+    array([ True,  True, False, False, False, False, False, False, False,
+           False, False, False], dtype=bool)
+
+
+Vars
+====
+
+
+Models
+======
+
+
+Datasets
+========
 
 
 .. _statistics-example:
 
 Example
-^^^^^^^
+=======
 
-This example illustrates the use of those objects::
+Below is a simple example using data objects. For more examples, see the 
+``Eelbrain/examples/statistics`` folder::
 
     >>> import numpy as np
     >>> from eelbrain.eellab import *
@@ -104,13 +171,16 @@ This example illustrates the use of those objects::
 
 
 Exporting Data
-^^^^^^^^^^^^^^
+==============
 
-:class:`~eelbrain.vessels.data.dataset`, :class:`~eelbrain.vessels.data.var` and 
-:class:`~eelbrain.vessels.data.factor` objects have an ``export()`` method for
+:class:`~eelbrain.vessels.data.dataset` objects have an ``export()`` method for
 saving in various formats. In addition, the dataset's
 :py:meth:`~eelbrain.vessels.data.dataset.as_table` method can create tables with 
 more flexibility.
+
+Iterators (such as :class:`~eelbrain.vessels.data.var` and 
+:class:`~eelbrain.vessels.data.factor`) can be exported using the
+:func:`eelbrain.save.txt` function.
 
 .. 
     not nice enough ...
