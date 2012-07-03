@@ -19,20 +19,56 @@ __all__ = ['Edf']
 class Edf(object):
     """
     Class for reading an eyelink .edf file and extracting acceptability
-    based on contamination with ocular artifacts (saccades and blinks)
+    based on contamination with ocular artifacts (saccades and blinks). 
+    An edf file reader is initialized with the path to the corresponding 
+    file::
     
-    **Methods:**
+        >>> path = '/path/to/edf.edf'
+        >>> edf = load.eyelink.Edf(path)
     
-    add_by_Id:
-        Add acceptability to a dataset based on matching event-Ids
-    add_by_T:
-        Add acceptability to a dataset based on time values (in the edf file's 
-        timing)
-    get_accept:
-        returns acceptability for a list of time points
-    get_triggers:
-        returns all trigger events found in the .edf file (Id and time)
+    There are several ways of retrieving trial acceptability values (the the 
+    used methods' documentation for more information):
     
+    
+    1. For all triggers 
+    -------------------
+    
+    Acceptability for all triggers can be added to a dataset with a single 
+    command if the dataset contains the same events as the edf file::
+    
+        >>> edf.mark_all(ds, ...)
+    
+    
+    2. For a subset of triggers
+    ---------------------------
+    
+    Often it is more efficient to compute acceptability only for a subset of
+    the triggers contained in the edf file. For those cases, the trigger time 
+    should first be added to the complete dataset with::
+    
+        >>> edf.add_T_to(ds)
+    
+    Now, the dataset can be decimated::
+    
+        >>> ds = ds.subset(...)
+    
+    and acceptability can be added for the subset::
+    
+        >>> edf.mark(ds, ...)
+    
+    
+    3. Customized
+    -------------
+    
+    For a more customized use, all triggers from the edf can be retrieved using::
+    
+        >>> ds_edf = edf.get_triggers()
+    
+    The ``'t_edf'`` time variable can be used to add trigger time values to 
+    arbitrary events, which can then in turn be used with::
+    
+        >>> edf.mark(...)
+        
     """
     def __init__(self, path=None):
         """
@@ -77,7 +113,12 @@ class Edf(object):
     def __repr__(self):
         return "Edf(%r)" % self.path
     
-    def _assert_Id_match(self, Id):
+    def assert_Id_match(self, Id):
+        """
+        Raises an error if the Ids in ``Id`` do not match the Ids in the Edf 
+        file(s).
+        
+        """
         ID_edf = self.triggers['Id']
         if len(Id) != len(ID_edf):
             lens = (len(Id), len(ID_edf))
@@ -97,52 +138,32 @@ class Edf(object):
             err = "Event ID mismatch: %s" % np.where(check==False)[0]
             raise ValueError(err)
     
-    def add_by_Id(self, ds, tstart=-0.1, tstop=0.6, Id='eventID',
-               target='accept', reject=False, accept=None):
+    def add_T_to(self, ds, Id='eventID', t_edf='t_edf'):
         """
-        Mark each epoch in the ds for acceptability based on overlap with 
-        blinks and saccades. ds needs to contain exactly the same triggers
-        as the edf file. For adding acceptability to a decimated ds, use 
-        Edf.add_T_by_Id() and then Edf.add_by_T().
+        Add edf trigger times as a variable to dataset ds.
+        These can then be used for Edf.add_by_T(ds) after ds hads been 
+        decimated.
         
-        dataset : dataset
-            dataset that contains the data to work with.
-        start : scalar
-            start of the time window relevant for rejection. 
-        stop : scalar
-            stop of the time window relevant for rejection.
-        reject : 
-            value that is assigned to epochs that should be rejected based on 
-            the eye-tracker data.
-        accept :
-            value that is assigned to epochs that can be accepted based on 
-            the eye-tracker data.
-        
-        """        
-        self._assert_Id_match(ds[Id])
-
-        if isinstance(target, str):
-            if target not in ds:
-                ds[target] = var(np.ones(ds.N, dtype=np.bool_))
-            target = ds[target]
-        
-        target.x *= self.get_accept(tstart=tstart, tstop=tstop)
-    
-    def add_by_T(self, ds, tstart=-0.1, tstop=0.6, T='t_edf', target='accept'):
-        "adds acceptability to a dataset based on edf-time values"
-        ds[target] = self.get_accept(T=ds[T], tstart=tstart, tstop=tstop)
-    
-    def add_T_by_Id(self, ds, Id='eventID', t_edf='t_edf'):
-        """
-        Asserts that trigger events in the dataset match trigger events in the 
-        edf file, and adds edf trigger time to the ds. This can be used for
-        Edf.add_by_T(ds) after ds hads been decimated.
+        ds : dataset
+            The dataset to which the variable is added
+        Id : str | var | None
+            variable (or its name in the dataset) containing event IDs. Values 
+            in this variable are checked against the events in the EDF file, 
+            and an error is raised if there is a mismatch. This test can be 
+            skipped by setting Id=None.
+        t_edf : str
+            Name for the target variable holding the edf trigger times.
          
         """
-        self._assert_Id_match(ds[Id])
+        if Id:
+            if isinstance(Id, str):
+                Id = ds[Id]
+            
+            self.assert_Id_match(Id)
+        
         ds[t_edf] = var(self.triggers['T'])
     
-    def get_accept(self, T=None, tstart=-0.1, tstop=0.6):
+    def get_accept(self, T=None, tstart=-0.1, tstop=0.6, use=['ESACC', 'EBLIN']):
         """
         returns a boolean var indicating for each epoch whether it should be 
         accepted or not based on ocular artifacts in the edf file.
@@ -168,9 +189,14 @@ class Edf(object):
         # get data for triggers
         N = len(T)
         accept = np.empty(N, np.bool_)
+        
+        X = tuple(self.artifacts['event'] == name for name in use)
+        idx = np.any(X, axis=0)
+        artifacts = self.artifacts[idx]
+        
         for i, t in enumerate(T):
-            starts_before_tstop = self.artifacts['start'] < t + stop
-            stops_after_tstart = self.artifacts['stop'] > t + start
+            starts_before_tstop = artifacts['start'] < t + stop
+            stops_after_tstart = artifacts['stop'] > t + start
             overlap = np.all((starts_before_tstop, stops_after_tstart), axis=0)
             accept[i] = not np.any(overlap)
             
@@ -178,10 +204,102 @@ class Edf(object):
         
         return accept
     
+    def get_T(self, name='t_edf'):
+        "returns all trigger times in the dataset"
+        return var(self.triggers['T'])
+    
     def get_triggers(self, Id='Id', T='t_edf'):
+        """
+        Returns a dataset with trigger Ids and corresponding Edf time values
+         
+        """
         ds = dataset()
         ds[Id] = var(self.triggers['Id'])
-        ds[T] = var(self.triggers['T'])
+        ds[T] = self.get_T(name=T)
         return ds
-
-
+    
+    def mark(self, ds, tstart=-0.1, tstop=0.6, good=None, bad=False, 
+             use=['ESACC', 'EBLINK'], T='t_edf', target='accept'):
+        """
+        Mark events in ds as acceptable or not. ds needs to contain edf trigger
+        times in a variable whose name is specified by the ``T`` argument.
+         
+        ds : dataset
+            dataset that contains the data to work with.
+        tstart : scalar
+            start of the time window relevant for rejection. 
+        tstop : scalar
+            stop of the time window relevant for rejection.
+        good : 
+            vale assigned to epochs that should be retained based on 
+            the eye-tracker data.
+        bad : 
+            value that is assigned to epochs that should be rejected 
+            based on the eye-tracker data.
+        use : list of str
+            Artifact categories to include
+        T : var
+            variable providing the trigger time values
+        target : var
+            variable to which the good/bad values are assigned (if it does not 
+            exist, a new variable will be created with all values True 
+            initially)
+         
+        """
+        if isinstance(target, str):
+            if target in ds:
+                target = ds[target]
+            else:
+                ds[target] = target = var(np.ones(ds.n_cases, dtype=bool))
+        
+        if isinstance(T, str):
+            T = ds[T]
+        
+        accept = self.get_accept(T, tstart=tstart, tstop=tstop, use=use)
+        if good is not None:
+            target[accept] = good
+        if bad is not None:
+            target[np.invert(accept)] = bad
+    
+    def mark_all(self, ds, tstart=-0.1, tstop=0.6, good=None, bad=False, 
+                 use=['ESACC', 'EBLINK'], 
+                 Id='eventID', target='accept'):
+        """
+        Mark each epoch in the ds for acceptability based on overlap with 
+        blinks and saccades. ds needs to contain the same number of triggers
+        as the edf file. For adding acceptability to a decimated ds, use 
+        Edf.add_T_to(ds, ...) and then Edf.mark(ds, ...).
+        
+        ds : dataset
+            dataset that contains the data to work with.
+        tstart : scalar
+            start of the time window relevant for rejection. 
+        tstop : scalar
+            stop of the time window relevant for rejection.
+        good : 
+            vale assigned to epochs that should be retained based on 
+            the eye-tracker data.
+        bad : 
+            value that is assigned to epochs that should be rejected 
+            based on the eye-tracker data.
+        use : list of str
+            Artifact categories to include
+        Id : var | None
+            variable containing trigger Ids for asserting that the dataset 
+            contains the same triggers as rhe edf file(s). The test can be 
+            skipped by setting Id=None
+        target : var
+            variable to which the good/bad values are assigned (if it does not 
+            exist, a new variable will be created with all values True 
+            initially)
+        
+        """
+        if Id:
+            if isinstance(Id, str):
+                Id = ds[Id]
+            
+            self.assert_Id_match(Id)
+        
+        T = self.get_T()
+        self.mark(ds, tstart=tstart, tstop=tstop, good=good, bad=bad, use=use, 
+                  T=T, target=target)
