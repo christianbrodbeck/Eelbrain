@@ -146,7 +146,7 @@ class mne_experiment(object):
                  src = os.path.join(mri_dir, sub, 'bem', sub+'-ico-4-src.fif'),
                  
                 # !! these would invalidate the s_e_* pattern with a third _
-                 cov = os.path.join(raw_dir, '_'.join((sub, exp, an)) + '-cov.fif'),
+                 cov = os.path.join(mne_dir, '_'.join((sub, exp, an)) + '-cov.fif'),
 #                inv = os.path.join(raw_dir, '_'.join((sub, exp, an)) + '-inv.fif'),
                 
                  # BESA
