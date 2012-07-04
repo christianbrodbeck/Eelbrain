@@ -590,10 +590,8 @@ class factor(_effect_):
     def __init__(self, x, name=None, random=False, rep=1, tile=1,
                  labels={}, colors={}):
         """
-        x : array-like 
-            Sequence of values (initialization uses ravel(x) to create 1-d 
-            array). If all conditions are coded with a single character, x can 
-            be a string, e.g. ``factor('io'*8, name='InOut')``
+        x : Iterator 
+            Sequence of factor values (see the ``labels`` kwarg).
         
         name : str
             name of the factor
@@ -602,13 +600,19 @@ class factor(_effect_):
             treat factor as random factor (for ANOVA; default is False)
             
         rep : int
-            like numpy.repeat(): repeat values in x rep times, 
-            e.g. ``factor(['in', 'out'], rep=3)``
-            --> ``factor(['in', 'in', 'in', 'out', 'out', 'out'])``
+            like ``numpy.repeat()``: repeat values in ``x`` ``rep`` times, 
+            e.g.::
+            
+                >>> factor(['in', 'out'], rep=3)
+                factor(['in', 'in', 'in', 'out', 'out', 'out'])
+        
         
         tile : int
-            like numpy.tile(): e.g. ``factor(['in', 'out'], chain=3)``
-            --> ``factor(['in', 'out', 'in', 'out', 'in', 'out'])``
+            like ``numpy.tile()``::
+            
+                >>> factor(['in', 'out'], chain=3)
+                factor(['in', 'out', 'in', 'out', 'in', 'out'])``
+        
         
         labels : dict or None
             if provided, these labels are used to replace values in x when
@@ -621,11 +625,17 @@ class factor(_effect_):
             values in x as well as labels.
         
         
-        Example - different ways to initialize the same factor::
+        **Examples**
+        
+        different ways to initialize a factor::
         
             >>> factor(['in', 'in', 'in', 'out', 'out', 'out'])
-            >>> factor([1, 1, 1, 0, 0, 0], labels={1: 'in', 2: 'out'})
-        
+            factor(['in', 'in', 'in', 'out', 'out', 'out'], name=None)
+            >>> factor([1, 1, 1, 0, 0, 0], labels={1: 'in', 0: 'out'})
+            factor(['in', 'in', 'in', 'out', 'out', 'out'], name=None)
+            >>> factor('iiiooo')
+            factor(['i', 'i', 'i', 'o', 'o', 'o'], name=None)
+
         
         """
         state = {'name': name, 'random': random}
@@ -1221,6 +1231,21 @@ class ndvar(object):
             raise DimensionMismatchError(err)
     
     def compress(self, X, func=np.mean, name='{name}'):
+        """
+        Return an ndvar with one case for each cell in ``X``. 
+        
+        X : categorial
+            Categorial whose cells are used to compress the ndvar.
+        func : function with axis argument
+            Function that is used to create a summary of the cases falling 
+            into each cell of X. The function needs to accept the data as 
+            first argument and ``axis`` as keyword-argument. Default is 
+            ``numpy.mean``.
+        name : str
+            Name for the resulting ndvar. ``'{name}'`` is formatted to the 
+            current ndvar's ``.name``. 
+        
+        """
         if not self._case:
             raise DimensionMismatchError("%r has no case dimension" % self)
         if len(X) != len(self):

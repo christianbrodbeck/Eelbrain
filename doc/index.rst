@@ -21,6 +21,7 @@ Contents:
    Changes
    Interface
    data-objects
+   Reference
    psyphys
    psyphys-tutorial
    Various
