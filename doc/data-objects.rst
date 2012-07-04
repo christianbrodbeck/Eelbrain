@@ -15,6 +15,8 @@ Multiple variables belonging to the same dataset can be grouped in a
 Factor
 ======
 
+.. py:class:: eelbrain.vessels.data.factor(x, name=None, random=False, rep=1, tile=1, labels={})
+
 A factor is a container for one-dimensional, categorial data: Each case is 
 described by a string label. The most obvious way to initialize a factor 
 is a list of strings::
@@ -194,3 +196,7 @@ Iterators (such as :class:`~eelbrain.vessels.data.var` and
     .. autoclass:: eelbrain.vessels.data.factor
     
     .. autoclass:: eelbrain.vessels.data.dataset
+    
+    
+    .. automodule:: eelbrain.vessels.data
+       :members:
