@@ -210,6 +210,8 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
         props.update(properties)
     
     # target container
+    picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False, 
+                                eog=False, include=[])
     sensor = sensors(epochs, picks=picks, name=sensorsname)
     time = _data.var(T, 'time')
     dims = ('case', sensor, time)
