@@ -797,7 +797,7 @@ class factor(_effect_):
         if isinstance(Y, str):
             return self._codes[Y]
         else:
-            out = np.empty_like(self.Y)
+            out = np.empty(len(Y), dtype=self.x.dtype)
             for i, v in enumerate(Y):
                 out[i] = self._codes.get(v, -1)
             return out
@@ -1253,9 +1253,9 @@ class ndvar(object):
             raise ValueError(err)
         
         x = []
-        for i in X.values():
-            x_i = self.x[X == i]
-            x.append(func(x_i, axis=0))
+        for cell in X.cells:
+            x_cell = self.x[X == cell]
+            x.append(func(x_cell, axis=0))
         
         # update properties for summary
         properties = self.properties.copy()
