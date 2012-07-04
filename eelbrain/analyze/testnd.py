@@ -108,7 +108,7 @@ class ttest(test_result):
             if match:
                 if not ct.within[(c1, c0)]:
                     err = ("match kwarg: Conditions have different values on"
-                           " <%r>" % match.name)
+                           " <%r>" % ct.match.name)
                     raise ValueError(err)
                 T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c0].x, axis=0)
                 test_name = 'Related Samples t-Test'

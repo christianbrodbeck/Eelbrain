@@ -795,7 +795,7 @@ class factor(_effect_):
     
     def _encode_(self, Y):
         if isinstance(Y, str):
-            return self._codes[Y]
+            return self._codes.get(Y, -1)
         else:
             out = np.empty(len(Y), dtype=self.x.dtype)
             for i, v in enumerate(Y):
