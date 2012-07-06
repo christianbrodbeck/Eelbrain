@@ -20,14 +20,11 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
     """
     returns a ``dataset`` with data from a tab-separated values file. 
     
-     
-    Arguments
-    ---------
-    
+        
     names :
     
-    * ``True``: look for names on the first line if the file
-    * ``[name1, ...]`` use these names
+    * ``True``: look for names on the first line of the file
+    * ``['name1', ...]`` use these names
     * ``False``: use "v1", "v2", ...
         
     types :
@@ -123,6 +120,15 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
 
 
 def var(path=None, name=None):
+    """
+    Loads a ``var`` object from a text file by splitting at white-spaces.
+    
+    path : str(path) | None
+        Source file. If None, a system file dialog is opened.
+    name : str | None
+        Name for the var.
+    
+    """
     if path is None:
         path = ui.ask_file("Select var File", "()")
     

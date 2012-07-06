@@ -1487,19 +1487,15 @@ class dataset(collections.OrderedDict):
     A dataset is a dictionary that stores a collection of variables (``var``, 
     ``factor``, and ``ndvar`` objects) that describe the same underlying cases. 
     Keys are enforced to be ``str`` objects and should preferably correspond 
-    to the variable names.
+    to the variable names. The dataset class inherits most of its behavior 
+    from its superclass :py:class:`collections.OrderedDict`, and provides an
+    additional interface for working with cases/rows:
     
 
     **Accessing Data:**
     
-    - Use the the ``.get_case()`` method or iteration over the dataset to 
-      retrieve individual cases/rows as {name: value} dictionaries.  
-    - Use standard indexing (``dataset[x]``) for retrieving 
-      variables (``str`` keys) and printing certain rows (``>>> print 
-      dataset[1:4]``). 
-    
     Standard indexing with *strings* is used to access the contained var and
-    factor objects:
+    factor objects. Nesting is possible:
             
     - ``ds['var1']`` --> ``var1``. 
     - ``ds['var1',]`` --> ``[var1]``.
@@ -1507,19 +1503,18 @@ class dataset(collections.OrderedDict):
     
     Standard indexing with *integers* can be used to retrieve a subset of cases 
     (rows):
-    
+        
     - ``ds[1]``
     - ``ds[1:5]`` == ``ds[1,2,3,4]``
     - ``ds[1, 5, 6, 9]`` == ``ds[[1, 5, 6, 9]]``
+
+    .. Note::
+        Case indexing is implemented by a call to the .subset() method, which 
+        should probably be used preferably for anything but interactive table
+        inspection.  
     
-    Case indexing is primarily useful to display only certain rows of the 
-    table::
-    
-        >>> print ds[3:5]
-    
-    Case indexing is implemented by a call to the .subset() method, which 
-    should probably be used preferably for anything but interactive table
-    inspection.  
+    The ``.get_case()`` method or iteration over the dataset 
+    retrieve individual cases/rows as {name: value} dictionaries.  
     
     """
     _stype_ = "dataset"
@@ -1528,12 +1523,10 @@ class dataset(collections.OrderedDict):
         Datasets can be initialize with data-objects, or with 
         ('name', data-object) tuples.::
 
-            >>> dataset(var1, var2)
-            >>> dataset(('v1', var1), ('v2', var2))
+            >>> ds = dataset(var1, var2)
+            >>> ds = dataset(('v1', var1), ('v2', var2))
 
         The dataset stores the input items themselves, without making a copy().
-        The dataset class is a :class:`collections.OrderedDict` subclass, with
-        different initialization and representation.
         
         
         **Naming:**
@@ -1549,13 +1542,16 @@ class dataset(collections.OrderedDict):
             >>> ds['v3'] = var3
         
         If a var/factor that is added to a dataset does not have a name, the new 
-        key is automatically added as name to the var/factor. 
+        key is automatically assigned to the var/factor's ``.name`` attribute. 
         
         
         **optional kwargs:**
         
         name : str
             name describing the dataset
+        info : dict
+            info dictionary, can contain arbitrary entries and can be accessad 
+            as ``.info`` attribute after initialization. 
                 
         """ 
         args = []
@@ -1798,17 +1794,16 @@ class dataset(collections.OrderedDict):
         Writes the dataset to a file. The file extesion is used to determine 
         the format:
         
-         - '.txt' or '.tsv':  tsv
-         - '.tex':  as TeX table
-         - '.pickled':  use pickle.dump
-         - a filename with any other extension is exported as tsv
+        - '.txt' or '.tsv':  tsv
+        - '.tex':  as TeX table
+        - '.pickled':  use pickle.dump
+        - a filename with any other extension is exported as tsv
         
-        Text and tex export use :py:meth:`.as_table`. You can use 
+        Text and tex export use the :py:meth:`.as_table` method. You can use 
         :py:meth:`.as_table` directly for more control over the output. 
         
         
-        Arguments
-        ---------
+        **Arguments:**
         
         fn : str(path) | None
             target file name (if ``None`` is supplied, a save file dialog is 

@@ -22,7 +22,13 @@ is a list of strings::
 
     >>> A = factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b'], name='A')
 
-There are many shortcuts to initialize factors  (for more shortcuts see 
+Since factor initialization simply iterates over the given data, the 
+same factor can be initialized with::
+
+    >>> factor('aaaabbbb', name='A')
+    factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b'], name='A')
+ 
+There are other shortcuts to initialize factors  (see also 
 the factor's class documentation)::
 
     >>> A = factor(['a', 'b', 'c'], rep=4, name='A')
@@ -72,16 +78,131 @@ where a categorial model is required::
            False, False, False], dtype=bool)
 
 
-Vars
-====
+Var
+===
+
+The :py:class:`~eelbrain.vessels.data.var` class is basically a container to 
+associate one-dimensional
+:py:class:`numpy.array` objects with a name. While simple operations can be 
+performed on the object directly, for any more complex operations on the data
+the corresponding :py:class:`numpy.array` can be retrieved in the 
+:py:class:`~eelbrain.vessels.data.var`'s
+:py:attr:`~eelbrain.vessels.data.var.x` attribute::
+
+    >>> Y = var(np.random.rand(10), name='Y')
+    >>> Y
+    var([0.185, 0.285, 0.105, 0.916, 0.76, 0.888, 0.288, 0.0165, 0.901, 0.72], name='Y')
+    >>> Y[5:]
+    var([0.888, 0.288, 0.0165, 0.901, 0.72], name='Y')    
+    >>> Y + 1
+    var([1.18, 1.28, 1.11, 1.92, 1.76, 1.89, 1.29, 1.02, 1.9, 1.72], name='Y+1')
+    >>> Y.x
+    array([ 0.18454728,  0.28479396,  0.10546204,  0.91619036,  0.76006963,
+            0.88807645,  0.28807859,  0.01645504,  0.90112081,  0.71991843])
+
+.. Note::
+    Note however that the ``var.x`` attribute is not intended to be replaced;
+    rather, a new ``var`` object should be created for a new array. 
 
 
-Models
-======
+Dataset
+=======
 
+The :py:class:`~eelbrain.vessels.data.dataset` class is a subclass of 
+:py:class:`collections.OrderedDict` and inherits much of its behavior from it.
+Its intended purpose is to be a vessel for variable objects  
+(:py:class:`~eelbrain.vessels.data.factor`, 
+:py:class:`~eelbrain.vessels.data.var` and
+:py:class:`~eelbrain.vessels.data.ndvar`) 
+describing the same cases. 
+As a dictionary, its keys are strings and its values are data-objects.
 
-Datasets
-========
+The :py:class:`~eelbrain.vessels.data.dataset` class interacts with 
+data-objects' names:
+
+* A :py:class:`~eelbrain.vessels.data.dataset` initialized with 
+  data-objects automatically uses their names as keys::
+
+        >>> A = factor('aabb', name='A')
+        >>> B = factor('cdcd', name='B')
+        >>> ds = dataset(A, B)
+        >>> print ds
+        A   B
+        -----
+        a   c
+        a   d
+        b   c
+        b   d
+        >>> ds['A']
+        factor(['a', 'a', 'b', 'b'], name='A')
+
+* When an unnamed data-object is asigned to a dataset, the data-object is 
+  automatically assigned its key as a name::
+        
+        >>> ds['Y'] = var([2,1,4,2])
+        >>> print ds
+        A   B   Y
+        ---------
+        a   c   2
+        a   d   1
+        b   c   4
+        b   d   2
+        >>> ds['Y']
+        var([2, 1, 4, 2], name='Y')
+
+The "official" string representation of a dataset contains information on the 
+variables stored in it::
+
+    >>> ds
+    <dataset N=4 {'A':F, 'B':F, 'Y':V}>    
+
+``N=4`` indicates that the dataset contains four cases (rows). The subsequent 
+dict-like representation shows the keys and the types of the corresponding 
+values 
+(``F``:   :py:class:`~eelbrain.vessels.data.factor`,
+``V``:   :py:class:`~eelbrain.vessels.data.var`,
+``Vnd``: :py:class:`~eelbrain.vessels.data.ndvar`).
+If a variable's name does not match its key in the dataset, this is also 
+indicated::
+
+    >>> ds['C'] = factor('qwer', name='another_name')
+    >>> ds
+    <dataset N=4 {'A':F, 'B':F, 'Y':V, 'C':<F 'another_name'>}>
+
+While indexing a dataset with strings returns the corresponding data-objects,
+:py:class:`numpy.array`-like indexing on the dataset can be used to access a 
+subset of cases::
+
+    >>> ds2 = ds[2:]
+    >>> print ds2
+    A   B   Y   C
+    -------------
+    b   c   4   e
+    b   d   2   r
+    >>> ds2['A']
+    factor(['b', 'b'], name='A')
+
+Together with the "informal" string representation (retrieved
+by the ``print`` statement) this can be used to inspect the cases contained in
+the dataset::
+
+    >>> print ds[0]
+    A   B   Y   C
+    -------------
+    a   c   2   q
+    >>> print ds[2:]
+    A   B   Y   C
+    -------------
+    b   c   4   e
+    b   d   2   r
+
+This type of indexing also allows indexing based on the dataset's variables::
+
+    >>> print ds[A == 'a']
+    A   B   Y   C
+    -------------
+    a   c   2   q
+    a   d   1   w 
 
 
 .. _statistics-example:
@@ -130,6 +251,15 @@ Below is a simple example using data objects. For more examples, see the
     0.75213     c
     1.509       c
     0.62189     c
+    >>> table.frequencies(A)
+    
+    Frequencies of A
+    
+        n
+    -----
+    a   7
+    b   7
+    c   7
     >>> test.anova(Y, A)
                 SS      df   MS       F        p  
     ----------------------------------------------

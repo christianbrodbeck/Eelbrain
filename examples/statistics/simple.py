@@ -11,6 +11,7 @@ Y = var(y, 'Y')
 A = factor('abc', 'A', rep=7)
 
 print dataset(Y, A)
+print table.frequencies(A)
 print test.anova(Y, A)
 print test.pairwise(Y, A, corr='Hochberg')
 
