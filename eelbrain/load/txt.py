@@ -122,15 +122,14 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
     return ds
 
 
-def var(path=None, name=None, isbool=None):
+def var(path=None, name=None):
     if path is None:
         path = ui.ask_file("Select var File", "()")
     
-    if isbool is None:
-        FILE = open(path)
-        line = FILE.readline()
-        FILE.close()
-        is_bool = any(line.startswith(v) for v in ['True', 'False'])
+    FILE = open(path)
+    lines = FILE.read().split()
+    FILE.close()
+    is_bool = all(line in ['True', 'False'] for line in lines)
     
     if is_bool:
         x = np.genfromtxt(path, dtype=bool)
