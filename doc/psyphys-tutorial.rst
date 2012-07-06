@@ -1,5 +1,6 @@
-Psychophysiology Tutorial: Skin Conductance Responses
-=====================================================
+====================================
+Tutorial: Skin Conductance Responses
+====================================
 
 The tutorial is based on some simulated data which can be downloaded `here 
 <http://dl.dropbox.com/u/659990/eelbrain_doc/files/simulated_scr.zip>`_. 

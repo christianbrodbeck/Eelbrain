@@ -1,5 +1,6 @@
-Psychophysiology (psyphys)
-==========================
+============
+Introduction
+============
 
 Hierarchical structure: 
 
