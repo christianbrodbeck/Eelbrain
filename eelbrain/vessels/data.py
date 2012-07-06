@@ -302,8 +302,9 @@ class var(object):
             x = [fmt % v for v in self.x[:n_cases]]
             x.append('<... N=%s>' % len(self.x))
         
-        x = '[' + ', '.join(x) + ']'
-        args = [x, 'name=%r' % self.name]
+        args = ['[%s]' % ', '.join(x)]
+        if self.name is not None:
+            args.append('name=%r' % self.name)
         
         return "var(%s)" % ', '.join(args)
     
@@ -600,7 +601,7 @@ class factor(_effect_):
             treat factor as random factor (for ANOVA; default is False)
             
         rep : int
-            like ``numpy.repeat()``: repeat values in ``x`` ``rep`` times, 
+            like ``numpy.repeat()``: repeat each value in ``x`` ``rep`` times, 
             e.g.::
             
                 >>> factor(['in', 'out'], rep=3)
@@ -630,11 +631,11 @@ class factor(_effect_):
         different ways to initialize a factor::
         
             >>> factor(['in', 'in', 'in', 'out', 'out', 'out'])
-            factor(['in', 'in', 'in', 'out', 'out', 'out'], name=None)
+            factor(['in', 'in', 'in', 'out', 'out', 'out'])
             >>> factor([1, 1, 1, 0, 0, 0], labels={1: 'in', 0: 'out'})
-            factor(['in', 'in', 'in', 'out', 'out', 'out'], name=None)
+            factor(['in', 'in', 'in', 'out', 'out', 'out'])
             >>> factor('iiiooo')
-            factor(['i', 'i', 'i', 'o', 'o', 'o'], name=None)
+            factor(['i', 'i', 'i', 'o', 'o', 'o'])
 
         
         """
@@ -709,7 +710,10 @@ class factor(_effect_):
             x.append('<... N=%s>' % len(self.x))
             x = '[' + ', '.join(x) + ']'
         
-        args = [x, 'name=%r' % self.name]
+        args = [x]
+        
+        if self.name is not None:
+            args.append('name=%r' % self.name)
         
         if self.random:
             args.append('random=True')
@@ -1615,7 +1619,21 @@ class dataset(collections.OrderedDict):
             return super(dataset, self).__getitem__(name)
     
     def __repr__(self):
-        rep_tmp = "<dataset %(name)r N=%(N)i: %(items)s>"
+        if not hasattr(self, 'n_cases'):
+            items = []
+            if self.name:
+                items.append('name=%r' % self.name)
+            if self.info:
+                info = repr(self.info)
+                if len(info) > 60:
+                    info = '<...>'
+                items.append('info=%s' % info)
+            return 'dataset(%s)' % ', '.join(items)
+        
+        rep_tmp = "<dataset %(name)s%(N)s{%(items)s}>"
+        fmt = {}
+        fmt['name'] = '%r ' % self.name if self.name else ''
+        fmt['N'] = 'N=%i ' % self.n_cases
         items = []
         for key in self:
             v = self[key]
@@ -1626,13 +1644,17 @@ class dataset(collections.OrderedDict):
             elif isinstance(v, ndvar):
                 lbl = 'Vnd'
             else:
-                lbl = '?'
+                lbl = type(v).__name__
             
-            name = repr(key)
-            items.append((name, lbl))
-        items = ', '.join('%s(%s)'%(k, v) for k, v in items)
-        args = dict(name=self.name, N=self.N, items=items)
-        return rep_tmp % args
+            if getattr(v, 'name', key) == key:
+                item = '%r:%s' % (key, lbl)
+            else:
+                item = '%r:<%s %r>' % (key, lbl, v.name)
+            
+            items.append(item)
+        
+        fmt['items']= ', '.join(items)
+        return rep_tmp % fmt
     
     def __setitem__(self, name, item, overwrite=True):
         if not isinstance(name, str):
