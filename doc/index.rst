@@ -23,6 +23,7 @@ Contents:
    data-obj-intro
    data-obj-reference
    psyphys
+   psyphys-intro
    psyphys-tutorial
    Various
 
