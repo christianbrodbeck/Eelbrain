@@ -20,8 +20,8 @@ Contents:
    Installing
    Changes
    Interface
-   data-objects
-   Reference
+   data-obj-intro
+   data-obj-reference
    psyphys
    psyphys-tutorial
    Various
