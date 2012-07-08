@@ -1593,10 +1593,7 @@ class dataset(collections.OrderedDict):
             >>> ds['MEG1', 'MEG2']  (list of strings) -> list of vars; can be nested!
         
         """
-        if isinstance(name, int):
-            name = slice(name, name+1)
-        
-        if isinstance(name, slice):
+        if isinstance(name, (int, slice)):
             return self.subset(name)
         
         is_str = isinstance(name, basestring)
@@ -1912,7 +1909,9 @@ class dataset(collections.OrderedDict):
             name for the new dataset
         
         """
-        if isinstance(index, str):
+        if isinstance(index, int):
+            index = slice(index, index + 1)
+        elif isinstance(index, str):
             index = self[index]
         
         name = name.format(name=self.name)
