@@ -76,6 +76,22 @@ def _effect_interaction(a, b):
 
 
 
+def cellname(cell, delim=' '):
+    """
+    Returns a consistent ``str`` representation for cells.
+    
+    * for factor cells: the cell (str)
+    * for interaction cell: delim.join(cell).
+     
+    """
+    if isinstance(cell, str):
+        return cell
+    elif isinstance(cell, tuple):
+        return delim.join(cell)
+    else:
+        return str(cell)
+
+
 def rank(A, tol=1e-8):
     """
     Rank of a matrix, from 

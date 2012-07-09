@@ -197,10 +197,7 @@ class celltable:
         of strings) are joined by ``delim``.
         
         """
-        if isinstance(cell, tuple):
-            return delim.join(cell)
-        else:
-            return cell
+        return _data.cellname(cell)
     
     def cell_labels(self, delim=' '):
         """
@@ -210,7 +207,7 @@ class celltable:
             delimiter to join interaction cell names
         
         """
-        return [self.cell_label(cell, delim) for cell in self.cells]
+        return [_data.cellname(cell, delim) for cell in self.cells]
     
     def get_data(self, out=list):
         if out is dict:
