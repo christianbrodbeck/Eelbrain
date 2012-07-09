@@ -185,8 +185,8 @@ class lm:
             Y_est = values.sum(1)
             self._residuals = residuals = Y.x - Y_est
             SS_res = np.sum(residuals**2)
-            if not Y.mu == Y_est.mean():
-                logging.warning("Y.mu=%s != Y_est.mean()=%s"%(Y.mu, Y_est.mean()))
+            if not Y.mean() == Y_est.mean():
+                logging.warning("Y.mean()=%s != Y_est.mean()=%s"%(Y.mean(), Y_est.mean()))
         else:
             # use numpy
             beta, SS_res, rank, s = np.linalg.lstsq(X.full, Y.x)
@@ -196,7 +196,7 @@ class lm:
                 SS_res = 0
         
         # SS total
-        SS_total = self.SS_total = np.sum((Y.x - Y.mu)**2)
+        SS_total = self.SS_total = np.sum((Y.x - Y.mean())**2)
         df_total = self.df_total = X.df_total
         MS_total = self.MS_total = SS_total / df_total
         
@@ -206,7 +206,7 @@ class lm:
         MS_res = self.MS_res = SS_res / df_res
         
         # SS explained
-#        SS_model = self.SS_model = np.sum((Y_est - Y.mu)**2)
+#        SS_model = self.SS_model = np.sum((Y_est - Y.mean())**2)
         SS_model = self.SS_model = SS_total - SS_res
         df_model = self.df_model = X.df
         MS_model = self.MS_model = SS_model / df_model
@@ -962,7 +962,8 @@ class anova(object):
         # total
         table.midrule()
         table.cell("Total")
-        table.cell(textab.stat(self.Y.SS))
+        SS = np.sum((self.Y.x - self.Y.mean()) ** 2)
+        table.cell(textab.stat(SS))
         table.cell(textab.stat(len(self.Y) - 1, fmt='%i'))
         return table
 

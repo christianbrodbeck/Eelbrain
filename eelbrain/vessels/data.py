@@ -290,12 +290,8 @@ class var(object):
         # raw
         self.name = name
         self.x = x
-        # derived
-        self._n_cases = len(x)
-        self.mu = x.mean()
-        self.centered = self.x - self.mu
-        self.SS = np.sum(self.centered**2)     
         # constants
+        self._n_cases = len(x)
         self.df = 1
         self.random = False
     
@@ -480,7 +476,7 @@ class var(object):
     @property
     def as_effects(self):
         "for effect initialization"
-        return self.centered[:,None]
+        return self.centered()[:,None]
     
     def as_factor(self, name=None, labels='%r'):
         """
@@ -502,6 +498,9 @@ class var(object):
         
         f = factor(self.x, name=name, labels=labels)
         return f
+    
+    def centered(self):
+        return self.x - self.x.mean()
     
     def copy(self, name='{name}'):
         "returns a deep copy of itself"
@@ -558,6 +557,9 @@ class var(object):
     
     def isnot(self, *values):
         return np.all([self.x != v for v in values], axis=0)
+    
+    def mean(self):
+        return self.x.mean()
     
     def repeat(self, repeats, name='{name}'):
         "Like :py:func:`numpy.repeat`"
