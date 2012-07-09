@@ -33,6 +33,8 @@ def rst2html(rst):
     
     try:
         html = docutils.core.publish_parts(rst, writer_name='html')['body']
+        if "ERROR/3" in html:
+            raise RuntimeError("rst2html unresolved cross-ref")
         logging.debug("rst2html success")
 #            html = os.linesep.join((html['stylesheet'], html['body']))
 #            html = html['whole']  
