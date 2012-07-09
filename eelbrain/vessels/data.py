@@ -1072,6 +1072,7 @@ class ndvar(object):
         
         """        
         # check data shape
+        dims = tuple(dims)
         ndim = len(dims)
         if ndim != x.ndim:
             err = ("Unequal number of dimensions (data: %i, dims: %i)" %
@@ -1420,10 +1421,10 @@ class ndvar(object):
                 if key.startswith('summary_') and (key != 'summary_func'):
                     properties[key[8:]] = properties.pop(key)
             
-            if dims:
-                return ndvar(x, dims=dims, name=name, properties=properties, info=info)
-            else:
+            if dims == ['case']:
                 return var(x, name=name)
+            else:
+                return ndvar(x, dims=dims, name=name, properties=properties, info=info)
     
     def mean(self, name="mean({name})"): # FIXME: Do I need this?
         if self._case:
