@@ -142,7 +142,11 @@ class mne_experiment(object):
                  
                 # !! these would invalidate the s_e_* pattern with a third _
                  cov = os.path.join(mne_dir, '_'.join((sub, exp, an)) + '-cov.fif'),
-#                inv = os.path.join(raw_dir, '_'.join((sub, exp, an)) + '-inv.fif'),
+                 
+                 # mne's stc.save() requires stub filename and will add '-?h.stc'  
+                 stc_tgt = os.path.join(mne_dir, '_'.join((sub, exp, an))),
+                 stc = os.path.join(mne_dir, '_'.join((sub, exp, an)) + '.stc'),
+                 label = os.path.join(mri_dir, sub, 'label', 'aparc', '%s.label' % an),
                 
                  # BESA
                  besa_triggers = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an, 'triggers.txt'))),
@@ -335,7 +339,7 @@ class mne_experiment(object):
             else:
                 subject = self._subject
             
-            if name in ['bem', 'cor', 'src', 'mri_sdir']:
+            if name in ['bem', 'cor', 'src', 'mri_sdir', 'label']:
                 subject = self._mri_subjects[subject]
             
             fmt['subject'] = subject
