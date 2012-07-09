@@ -2018,7 +2018,8 @@ class interaction(_effect_):
         if isvar(index):
             index = index.x
         
-        out = [f[index] for f in self.base]
+        out = tuple(f[index] for f in self.base)
+        
         if np.iterable(index):
             return interaction(out)
         else:
