@@ -245,26 +245,24 @@ def find_factors(obj):
 class var(object):
     """
     Container for scalar data.
+        
+    While :py:class:`var` objects support a few basic operations in a 
+    :py:mod:`numpy`-like fashion (``+``, ``-``, ``*``, ``/``, ``//``), their 
+    :py:attr:`var.x` attribute provides access to the corresponding 
+    :py:class:`numpy.array` which can be used for anything more complicated.
+    :py:attr:`var.x` can be read and modified, but should not be replaced.
     
     """
     _stype_ = "var"
     def __init__(self, x, name=None):
         """
-        Initialization:
+        :initialization:
         
-        :arg array x: data
-        :arg name: name of the variable
-        
-        Apart from model building operations, the following operations are
-        available for var objects:
-        
-        :Operations:
-        
-            * ``var + scalar``
-            * ``var - scalar`` 
-            * ``var * scalar`` 
-            * ``var / scalar`` 
-        
+            x : array-like 
+                Data; is converted with ``np.asarray(x)``
+            name : str | None
+                Name of the variable
+                        
         """
         x = np.asarray(x)
         if x.ndim > 1:
