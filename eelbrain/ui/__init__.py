@@ -8,7 +8,8 @@ except ImportError:
     logging.info("wx unavailable; using tk_ui")
     wx_ui = False
 
-import tk_ui
+#  needs to be imported anyways in case wx is available but no wx.App is running.
+import tk_ui 
 
 
 __all__ = ['ask', 'ask_color', 'ask_dir', 'ask_saveas',

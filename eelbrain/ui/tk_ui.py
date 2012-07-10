@@ -9,6 +9,7 @@ http://tkinter.unpythonic.net/wiki/tkFileDialog
 '''
 import tkFileDialog
 import tkMessageBox
+from Tkinter import Tk
 
 
 
@@ -28,6 +29,19 @@ def ask(title = "Overwrite File?",
         default=True, # True=YES, False=NO, None=Nothing
         ):
     return tkMessageBox.askyesno(title, message)
+
+
+def copy_file(path):
+    raise NotImplementedError
+
+
+def copy_text(text):
+    # http://stackoverflow.com/a/4203897/166700
+    r = Tk()
+    r.withdraw()
+    r.clipboard_clear()
+    r.clipboard_append(text)
+    r.destroy()
 
 
 def message(title, message="", icon='i'):
