@@ -1,36 +1,24 @@
 """
-Table class 
------------
-Create tables which can be output in equal width font as well as tex.
+Create text objects which can be output as str as well as tex.
+The main class is :py:class:`~eelbrain.fmtxt.Table`, which can represent 
+tables in equal width font as well as tex.
 
-wx is used for selecting a filename when saving as tex and can be deactivated 
-if this function is not needed.
+:py:mod:`fmtxt` objects provide:
 
-Usage:
-table = tex.Table('lll')
-table.cell()
-table.cell("Hamster")
-table.cell("Ethel")
-table.midrule()
-table.cell("Weight")
-table.cell(2./3, digits=2)
-table.cell(5./2, digits=2)
-table.cell("Height")
-table.cell("<1 foot")
-table.cell("4 foot 3", "textbf")
+- a :py:meth:`__str__` method for a string representation
+- a :py:meth:`get_gex` method for a tex code representation
 
-print table
-table.savetex()
+The module also provides functions that work with fmtxt objects:
+
+- :py:func:`save_tex` for saving an object's tex representation
+- :py:func:`copy_tex` for copying an object's tex representation to 
+  the clipboard
+- :py:func:`save_pdf` for saving a pdf
+- :py:func:`copy_pdf` for copying a pdf to the clipboard
+  
 
 
-
-Text objects need 
- - __str__    -> string for terminal
- - get_tex    -> tex code
-
-
-
-(Written by Christian Brodbeck 2009; ChristianMBrodbeck@gmail.com)
+@author Christian M Brodbeck 2009; christianmbrodbeck@gmail.com
 """
 
 import os
@@ -40,30 +28,29 @@ import tempfile
 try:
     import tex
 except:
-    logging.warning("module tex not found; tex functions not available")
+    logging.warning("module tex not found; pdf export not available")
     tex = None
 
 import numpy as np
 
-#try:
-#    from eelbrain.ui import wx as ui
-#except ImportError:
-#    logging.warning("wx unavailable; using shell ui")
-#    from eelbrain.ui import terminal as ui
 from eelbrain import ui
 
 
-defaults = dict(table_del = '   ') # ' \t'
+defaults = dict(
+                table_delim = '   ', # delimiter for tables' string representation
+                keep_recent = 3,     # number of recent tables to keep in memory
+                )
 
 
 
 # to keep track of recent tex out and allow copying
 _recent_texout = []
-_recent_len = 3
 def _add_to_recent(tex_obj):
-    if len(_recent_texout) >= _recent_len-1:
-        _recent_texout.pop(0)
-    _recent_texout.append(tex_obj)
+    keep_recent = defaults['keep_recent']
+    if keep_recent:
+        if len(_recent_texout) >= keep_recent - 1:
+            _recent_texout.pop(0)
+        _recent_texout.append(tex_obj)
 
 
 
@@ -146,7 +133,8 @@ def texify(txt):
 
 class texstr(object):
     """
-    item that can function as a string, but can hold a more complete 
+    The elementary unit of the :py:mod:`fmtxt` module. 
+    An item that can function as a string, but can hold a more complete 
     representation (e.g. font properties) at the same time.
     
     The following methods are used to get different string representations:
@@ -169,10 +157,12 @@ class texstr(object):
         number properties
         -----------------
         
-        fmt='%.6g': changes the standard representation (only affects 
-            numerical values). Can be overwritten ...
+        fmt : format-str (default ``'%.6g'``)
+            Format for numerical ``text`` values
         
-        drop0=False: drop 0 before the point (for p values)
+        drop0 : bool (default ``False``)
+            For  numbers smaller than 0, drop the '0' before the decimal 
+            point (e.g., for p values)
 
         """
 #        logging.debug("tex.texstr.__init__(%s)"%str(text))
@@ -344,7 +334,7 @@ def eq(name, result, eq='=', df=None, fmt='%.2f', drop0=False,
 
 
 def bold(txt):
-    return texstr(txt, property = r'\textbf')
+    return texstr(txt, property=r'\textbf')
 
 
 class Stars(texstr):
@@ -475,35 +465,54 @@ class Row(list):
 
 class Table:
     """
-    creates and stores a table that can be output in text with equal width font
-    as well as tex
+    A table that can be output in text with equal width font
+    as well as tex.
     
     Example::
     
-    >>> table = tex.Table('lll')
-    >>> table.cell()    # empty cell top left
-    >>> table.cell("Outside", "textbf")
-    >>> table.cell("Inside", "textbf")
-    >>> table.midrule()
-    >>> table.cell("Duck")
-    >>> table.cell("Feathers")
-    >>> table.cell("Duck Meat")
-    >>> table.cell("Dog")
-    >>> table.cell("Fur")
-    >>> table.cell("Hotdog")
-    >>> print table
-    >>> print table.tex()
-    >>> table.savetex()
+        >>> from eelbrain import fmtxt
+        >>> table = fmtxt.Table('lll')
+        >>> table.cell()
+        >>> table.cell("example 1")
+        >>> table.cell("example 2")
+        >>> table.midrule()
+        >>> table.cell("string")
+        >>> table.cell('???')
+        >>> table.cell('another string')
+        >>> table.cell("Number")
+        >>> table.cell(4.5)
+        >>> table.cell(2./3, fmt='%.4g')
+        >>> print table
+                 example 1   example 2     
+        -----------------------------------
+        string   ???         another string
+        Number   4.5         0.6667        
+        >>> print table.get_tex()
+        \begin{center}
+        \begin{tabular}{lll}
+        \toprule
+         & example 1 & example 2 \\
+        \midrule
+        string & ??? & another string \\
+        Number & 4.5 & 0.6667 \\
+        \bottomrule
+        \end{tabular}
+        \end{center}
+        >>> table.save_tex()
+    
     
     """
     def __init__(self, columns, rules=True, title=None, caption=None, rows=[]):
         """
-        columns e.g. 'lrr'
+        columns : str
+            alignment for each column, e.g. ``'lrr'``
+        rules : bool
+            Add toprule and bottomrule
         
         """
         self.columns = columns
         self._table = rows[:]
-        self.rules = rules      # whether to add top and bottom rules
+        self.rules = rules
         self.title(title)
         self.caption(caption)
         self._active_row = None
@@ -577,7 +586,7 @@ class Table:
     def endline(self):
         "finishes the active row"
         if self._active_row is not None:
-            for i in xrange(len(self.columns) - len(self._active_row)):
+            for _ in xrange(len(self.columns) - len(self._active_row)):
                 self._active_row.append(Cell())
         self._active_row = None
     
@@ -632,7 +641,7 @@ class Table:
         _add_to_recent(self)
         
         if row_delimiter == 'default':
-            row_delimiter = defaults['table_del']
+            row_delimiter = defaults['table_delim']
         
         # determine column widths
         widths = []
@@ -773,10 +782,11 @@ class Table:
 
 def unindent(text, skip1=False):
     """
-    removes leading whitespaces present in all lines
+    removes the minimum number of leading spaces present in all lines.
     
     skip1 : bool
-        skip the first
+        Ignore the first line when determining number of spaces to unindent,
+        and remove all leading whitespaces from it.
     
     """
     # count leading whitespaces
