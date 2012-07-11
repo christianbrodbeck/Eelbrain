@@ -241,6 +241,7 @@ class Editor(wx.py.editor.EditorFrame):
         logging.debug("Editor.Destroy()")
         self.shell.RemovePyEditor(self)
         wx.py.editor.EditorFrame.Destroy(self)
+    
     def OnActivate(self, event=None):
         #logging.debug(" Shell Activate Event: {0}".format(event.Active))
         if self.editor:
@@ -251,6 +252,7 @@ class Editor(wx.py.editor.EditorFrame):
             else:
                 self.editor.window.SetCaretForeground(wx.Colour(200,200,200))
                 self.editor.window.SetCaretPeriod(0)
+    
     def OnExec(self, event=None):
         "Execute the whole script in the shell."
         if self.editor:
@@ -264,6 +266,7 @@ class Editor(wx.py.editor.EditorFrame):
                                 shell_globals=shell_globals,
                                 filedir=self.buffer.doc.filedir,
                                 internal_call=True)
+    
     def OnExecFromDrive(self, event=None):
         "Save unsaved changes and execute file in shell."
         self.bufferSave()        
@@ -280,7 +283,9 @@ class Editor(wx.py.editor.EditorFrame):
                 if pos == 0:
                     start = 0
                 else:
-                    start = self.editor.window.GetLineEndPosition(pos-1) + 2
+                    long_eol = (self.editor.window.GetEOLMode() == wx.stc.STC_EOL_CRLF)
+                    start = (self.editor.window.GetLineEndPosition(pos-1)
+                             + 1 + long_eol)
                 stop = self.editor.window.GetLineEndPosition(pos)
                 self.editor.window.SetSelection(start, stop)
             
@@ -309,6 +314,7 @@ class Editor(wx.py.editor.EditorFrame):
                                     internal_call=True)
             else:
                 pass
+    
     def OnExec_ToggleIsolate(self, event=None):
         """
         Toggle whether code is executed with the shell's globals or in a 
@@ -321,8 +327,10 @@ class Editor(wx.py.editor.EditorFrame):
         else:
             bmp = Icon("actions/terminal-off")
         self.toolbar.SetToolNormalBitmap(ID.PYDOC_EXEC_ISOLATE, bmp)
+    
     def GetCurLine(self):
         return self.editor.window.GetCurLine()
+    
     def OnKeyDown(self, event):
         # these ought to be handles in stc.StyledTextCtrl
         # src/osx_cocoa/stc.py ?
@@ -437,6 +445,7 @@ class Editor(wx.py.editor.EditorFrame):
     def OnSearchMod(self, event):
         self.search_str = event.GetString()
         self.OnSearchForward(event)
+    
     def OnSearchForward(self, event):
         w = self.editor.window
         old_pos = w.GetSelection()
@@ -448,6 +457,7 @@ class Editor(wx.py.editor.EditorFrame):
             w.SetSelection(min(old_pos), max(old_pos))
         else:
             w.ScrollToLine(w.LineFromPosition(index) - 15)
+    
     def OnSearchBackward(self, event):
         w = self.editor.window
         old_pos = w.GetSelection()
@@ -459,6 +469,7 @@ class Editor(wx.py.editor.EditorFrame):
             w.SetSelection(min(old_pos), max(old_pos))
         else:
             w.ScrollToLine(w.LineFromPosition(index) - 15)
+    
     def OnSearchCancel(self, event=None):
         self.search_ctrl.Clear()
         self._search_string = None

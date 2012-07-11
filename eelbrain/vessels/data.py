@@ -1501,12 +1501,20 @@ class ndvar(object):
 
 class dataset(collections.OrderedDict):
     """
-    A dataset is a dictionary that stores a collection of variables (``var``, 
-    ``factor``, and ``ndvar`` objects) that describe the same underlying cases. 
-    Keys are enforced to be ``str`` objects and should preferably correspond 
-    to the variable names. The dataset class inherits most of its behavior 
-    from its superclass :py:class:`collections.OrderedDict`, and provides an
-    additional interface for working with cases/rows:
+    A dataset is a dictionary that stores a collection of named variables 
+    (``var``, ``factor``, and ``ndvar`` objects) 
+    that describe the same underlying cases.
+    The dataset can be thought of as a data table in which each variable 
+    constitutes one column. 
+    Keys are enforced to be :py:class:`str` objects 
+    and should preferably correspond to the variable names. 
+    The dataset class inherits most of its behavior 
+    from its superclass :py:class:`collections.OrderedDict`:
+    
+    - The dataset's length is the number of variables (the number of cases/rows
+      is available in the :py:attr:`dataset.n_cases` attribute.
+      
+    In addition, the dataset provides an interface for working with cases/rows:
     
 
     **Accessing Data:**

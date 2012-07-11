@@ -29,7 +29,7 @@ same factor can be initialized with::
     factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b'], name='A')
  
 There are other shortcuts to initialize factors  (see also 
-the factor's class documentation)::
+the :py:class:`~eelbrain.vessels.data.factor` class documentation)::
 
     >>> A = factor(['a', 'b', 'c'], rep=4, name='A')
     >>> A
@@ -42,12 +42,13 @@ Indexing works like for arrays::
     >>> A[0:6]
     factor(['a', 'a', 'a', 'a', 'b', 'b'], name='A')
 
-All values present in a factor are accessible in its ``.cells`` attribute::
+All values present in a factor are accessible in its 
+:py:attr:`~eelbrain.vessels.data.factor.cells` attribute::
 
     >>> A.cells
     ['a', 'b', 'c']
 
-Based on the factor's values, boolean indexes can be generated::
+Based on the factor's cell values, boolean indexes can be generated::
 
     >>> A == 'a'
     array([ True,  True,  True,  True, False, False, False, False, False,
@@ -109,7 +110,8 @@ Dataset
 =======
 
 The :py:class:`~eelbrain.vessels.data.dataset` class is a subclass of 
-:py:class:`collections.OrderedDict` and inherits much of its behavior from it.
+:py:class:`collections.OrderedDict` from which it inherits much of its 
+behavior.
 Its intended purpose is to be a vessel for variable objects  
 (:py:class:`~eelbrain.vessels.data.factor`, 
 :py:class:`~eelbrain.vessels.data.var` and
@@ -118,7 +120,7 @@ describing the same cases.
 As a dictionary, its keys are strings and its values are data-objects.
 
 The :py:class:`~eelbrain.vessels.data.dataset` class interacts with 
-data-objects' names:
+data-objects' :py:attr:`name` attribute:
 
 * A :py:class:`~eelbrain.vessels.data.dataset` initialized with 
   data-objects automatically uses their names as keys::
@@ -304,7 +306,8 @@ Below is a simple example using data objects. For more examples, see the
 Exporting Data
 ==============
 
-:class:`~eelbrain.vessels.data.dataset` objects have an ``export()`` method for
+:class:`~eelbrain.vessels.data.dataset` objects have an 
+:py:meth:`~eelbrain.vessels.data.dataset.export` method for
 saving in various formats. In addition, the dataset's
 :py:meth:`~eelbrain.vessels.data.dataset.as_table` method can create tables with 
 more flexibility.
