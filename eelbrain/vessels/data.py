@@ -118,6 +118,10 @@ def isdataobject(Y):
 def isdataset(Y):
     return hasattr(Y, '_stype_') and Y._stype_ == 'dataset'
 
+def iseffect(Y):
+    effectnames = ["factor", "var", "interaction", "nonbasic", "nested"]
+    return hasattr(Y, '_stype_') and  Y._stype_ in effectnames
+
 def isfactor(Y):
     return hasattr(Y, '_stype_') and Y._stype_ == "factor"
 
@@ -140,12 +144,6 @@ def isnestedin(item, item2):
 def isndvar(Y):
     return hasattr(Y, '_stype_') and Y._stype_ == "ndvar"
 
-def isvar(Y):
-    return hasattr(Y, '_stype_') and Y._stype_ == "var"
-
-def iseffect(Y):
-    effectnames = ["factor", "var", "interaction", "nonbasic", "nested"]
-    return hasattr(Y, '_stype_') and  Y._stype_ in effectnames
 def isscalar(Y):
     "var, ndvar"
     return hasattr(Y, '_stype_') and Y._stype_ in ["ndvar", "var"]    
@@ -153,6 +151,9 @@ def isscalar(Y):
 def isuv(Y):
     "univariate (var, factor)"
     return hasattr(Y, '_stype_') and Y._stype_ in ["factor", "var"]
+
+def isvar(Y):
+    return hasattr(Y, '_stype_') and Y._stype_ == "var"
 
 
 def asmodel(X, sub=None):
@@ -1054,17 +1055,18 @@ class ndvar(object):
         Arguments
         ---------
         
-        For each agument, the example assumes you are importing 600 epochs of 
+        For each argument, the example assumes you are importing 600 epochs of 
         EEG data for 80 time points from 32 sensors.
         
         dims : tuple
-            the dimensions characterizing the shape of each case. E.g., 
-            ``(var('time', range(-.2, .6, .01)), sensor_net)``.
+            the dimensions characterizing the shape of each case. If present,
+            ``'cases'`` is provided as a :py:class:`str`, and should always
+            occupy the first axis.  E.g., 
+            ``('case', var('time', range(-.2, .6, .01)), sensor_net)``.
         
         x : array
-            the first dimension should contain cases, and the subsequent 
-            dimensions should correspond to the ``dims`` argument. E.g., 
-            ``data.shape = (600, 80, 32).
+            The data, with axes corresponding to the ``dims`` argument. E.g., 
+            data with shape ``(600, 80, 32)``.
         
         properties : dict
             data properties dictionary
