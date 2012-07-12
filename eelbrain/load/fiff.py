@@ -225,8 +225,8 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
 
 
 def ds_2_evoked(ds, X, tstart=-0.1, tstop=0.6, baseline=(None, 0), 
-                target='evoked', i_start='i_start', eventID='eventID', count='n',
                 reject=None, 
+                target='evoked', i_start='i_start', eventID='eventID', count='n',
                 ):
     """
     Takes as input a single-trial dataset ``ds``, and returns a dataset 
@@ -256,9 +256,9 @@ def ds_2_evoked(ds, X, tstart=-0.1, tstop=0.6, baseline=(None, 0),
 
 
 
-def evoked_2_stc(ds, fwd, cov, evoked='evoked', target='stc', 
-                 loose=0.2, depth=0.8,
-                 lambda2 = 1.0 / 3**2, dSPM=True, pick_normal=False):
+def evoked_2_stc(ds, files={'fwd':None, 'cov':None}, loose=0.2, depth=0.8,
+                 lambda2 = 1.0 / 9, dSPM=True, pick_normal=False,
+                 evoked='evoked', target='stc'):
     """
     Takes a dataset with an evoked list and adds a corresponding stc list
     
@@ -276,13 +276,11 @@ def evoked_2_stc(ds, fwd, cov, evoked='evoked', target='stc',
     lambda2, dSPM, pick_normal
     """
     stcs = []
+    fwd_file = files.get('fwd')
+    cov_file = files.get('cov')
+    fwd_obj = mne.read_forward_solution(fwd_file, force_fixed=False, surf_ori=True)
+    cov_obj = mne.Covariance(cov_file)
     for case in ds.itercases():
-        fwd_file = fwd.format(**case)
-        cov_file = cov.format(**case)
-        
-        fwd_obj = mne.read_forward_solution(fwd_file, force_fixed=False, surf_ori=True)
-        cov_obj = mne.Covariance(cov_file)
-        
         evoked = case['evoked']
         inv = _mn.make_inverse_operator(evoked.info, fwd_obj, cov_obj, loose=loose, depth=depth)
         

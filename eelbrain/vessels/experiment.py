@@ -196,55 +196,6 @@ class mne_experiment(object):
                                        )
         self._save_cfg('epochs')
     
-    
-    def do_cov(self, experiment, cov_name, subject=None, redo=False):
-        cfg = self._cfg_cov[(experiment, cov_name)]
-        stimvar = cfg['stimvar']
-        stim = cfg['stim'] 
-        evt_kwargs = {k: cfg[k] for k in ('tstart', 'tstop', 'edf')}
-        epoch_kwargs = {k: cfg[k] for k in ('tstart', 'tstop', 'baseline')}
-        for subject, _ in self.iter_se(subject=subject, experiment=experiment, analysis=cov_name):
-            dest = self.get('cov')
-            if not redo and os.path.exists(dest):
-                continue
-            
-            ds = self.load_evts(subject, experiment, bad=False, **evt_kwargs)
-            ds = ds.subset(ds[stimvar] == stim)
-            epochs = load.fiff.mne_Epochs(ds, **epoch_kwargs)
-            cov = mne.cov.compute_covariance(epochs)
-            cov.save(dest)
-    
-    def do_fwd(self, subject=None, exp=None, redo=False, v=1):
-        """
-        find fifs lacking forward solution
-        
-        redo : bool
-            redo any fwd files already present
-        v : 0, 1, 2
-            verbosity level: 1) list converted file; 2) show all 
-            mne_do_forward_solution output  
-        
-        """
-        missing = []
-        for subject, experiment in self.iter_se(subject=subject, experiment=exp):
-            rawfif = self.get('rawfif', match=False)
-            if os.path.exists(rawfif):
-                fwd = self.get('fwd', match=False)
-                if redo or (not os.path.exists(fwd)):
-                    missing.append((subject, experiment))
-        
-        table = fmtxt.Table('ll')
-        table.cells("Subject", "Experiment")
-        table.midrule()
-        for subject, experiment in missing:
-            self.set(subject=subject, experiment=experiment)
-            subp.do_forward_solution(self, overwrite=redo, v=max(0, v-1))
-            table.cells(subject, experiment)
-        
-        self.last_job = table
-        if v:
-            print table
-    
     def do_kit2fiff(self, do='ask', aligntol=xrange(20, 40, 5)):
         """OK 12/7/2
         find any raw txt files that have not been converted
@@ -426,34 +377,7 @@ class mne_experiment(object):
     
     def label_events(self, ds, experiment, subject):
         return ds
-    
-    def load_data(self, subject, experiment, 
-                  edf=True, bad=False,
-                  tstart=-0.1, tstop=0.6, baseline=(None, 0), downsample=4,
-                  stim='fixation', stimvar='stim',  
-                  threshold=None):
-        """
-        Threshold
-            1.25e-11
-        bad : bool
-            keep bad trials
         
-        """
-        ds = self.load_evts(subject, experiment, tstart=tstart, tstop=tstop,
-                            edf=edf, bad=bad)
-        ds = ds.subset(ds[stimvar] == stim)
-        
-        load.fiff.add_epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline, 
-                             downsample=downsample)
-        
-        # threshold rejection
-        if threshold:
-            process.mark_by_threshold(ds, threshold=threshold)
-            if not bad:
-                ds = ds.subset('accept')
-        
-        return ds
-    
     def load_events(self, subject=None, experiment=None, proj='fixation', 
                     edf=True):
         """OK 12/7/3
@@ -490,7 +414,6 @@ class mne_experiment(object):
     def load_raw(self, subject=None, experiment=None, proj='fixation'):
         """OK 12/6/18
         
-        #.  trial start ID list
         proj : None | str
             name of the projections to load
         
