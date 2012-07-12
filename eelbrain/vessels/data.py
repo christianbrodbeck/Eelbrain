@@ -146,6 +146,9 @@ def isvar(Y):
 def iseffect(Y):
     effectnames = ["factor", "var", "interaction", "nonbasic", "nested"]
     return hasattr(Y, '_stype_') and  Y._stype_ in effectnames
+def isscalar(Y):
+    "var, ndvar"
+    return hasattr(Y, '_stype_') and Y._stype_ in ["ndvar", "var"]    
 
 def isuv(Y):
     "univariate (var, factor)"
