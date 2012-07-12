@@ -504,7 +504,9 @@ class var(object):
     
     def copy(self, name='{name}'):
         "returns a deep copy of itself"
-        return var(self.x.copy(), name=name.format(name=self.name))
+        x = self.x.copy()
+        name = name.format(name=self.name)
+        return var(x, name=name)
     
     def compress(self, X, func=np.mean, name='{name}'):
         """
@@ -937,7 +939,7 @@ class factor(_effect_):
     
     def copy(self, name='{name}', rep=1, chain=1):
         "returns a deep copy of itself"
-        f = factor(np.copy(self.x), rep=rep, chain=chain, 
+        f = factor(self.x.copy(), rep=rep, chain=chain, 
                    **self._child_kwargs(name))
         return f
     
@@ -1290,19 +1292,14 @@ class ndvar(object):
         out = ndvar(x, self.dims, properties=properties, info=info, name=name)
         return out
     
-    def copy(self):
-        "returns a copy with a view on the object's data"
-        x = self.x
-        return self.__class__(x, dims=self.dims, name=self.name, 
-                              properties=self.properties)
-    
-    def deepcopy(self):
-        "returns a copy with a deep copy of the object's data"
+    def copy(self, name='{name}'):
+        "returns a deep copy of itself"
         x = self.x.copy()
-#        dims = tuple(dim.copy() for dim in self.dims)
-        return self.__class__(x, dims=self.dims, name=self.name, 
-                              properties=self.properties)
-    
+        name = name.format(name=self.name)
+        properties = self.properties.copy()
+        return self.__class__(x, dims=self.dims, name=name,
+                              properties=properties)
+        
     def get_axis(self, dim):
         return self._dim_2_ax[dim]
     
