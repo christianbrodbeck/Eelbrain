@@ -276,18 +276,7 @@ class Editor(wx.py.editor.EditorFrame):
     def OnExecSelected(self, event=None):
         "Execute the selection in the shell."
         if self.editor:
-            # if nothing is selscted select the current line:
-            start, stop = self.editor.window.GetSelection()
-            if start == stop:
-                pos = self.editor.window.GetCurrentLine()
-                if pos == 0:
-                    start = 0
-                else:
-                    long_eol = (self.editor.window.GetEOLMode() == wx.stc.STC_EOL_CRLF)
-                    start = (self.editor.window.GetLineEndPosition(pos-1)
-                             + 1 + long_eol)
-                stop = self.editor.window.GetLineEndPosition(pos)
-                self.editor.window.SetSelection(start, stop)
+            self.SelectFragment()
             
             # execute the selection
             txt = self.editor.window.GetSelectedText()
@@ -422,6 +411,7 @@ class Editor(wx.py.editor.EditorFrame):
         if not self.editor:
             return
         
+        self.SelectFragment()
         txt = self.editor.window.GetSelectedText()
         txt = ''.join(txt.split('\r')) # remove carriage returns
         txt = fmtxt.unindent(txt) # remove leading whitespaces
@@ -473,6 +463,21 @@ class Editor(wx.py.editor.EditorFrame):
     def OnSearchCancel(self, event=None):
         self.search_ctrl.Clear()
         self._search_string = None
+    
+    def SelectFragment(self):
+        "if nothing is selscted select the current line"
+        start, stop = self.editor.window.GetSelection()
+        if start == stop:
+            pos = self.editor.window.GetCurrentLine()
+            if pos == 0:
+                start = 0
+            else:
+                long_eol = (self.editor.window.GetEOLMode() == wx.stc.STC_EOL_CRLF)
+                start = (self.editor.window.GetLineEndPosition(pos-1)
+                         + 1 + long_eol)
+            
+            stop = self.editor.window.GetLineEndPosition(pos)
+            self.editor.window.SetSelection(start, stop)
     
     def updateTitle(self):
         if self.editor is None:
