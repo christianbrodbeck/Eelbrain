@@ -207,6 +207,28 @@ This type of indexing also allows indexing based on the dataset's variables::
     a   d   1   w 
 
 
+Working with a dataset's contents
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In Eelbrain's pyshell, :py:func:`attach` can be used to make a dataset's 
+contents available in the global namespace::
+
+    >>> del A, B
+    >>> attach(ds)
+    attached: ['A', 'B']
+    >>> A
+    factor(['a', 'a', 'b', 'b'], name='A')
+    >>> detach()
+    >>> A
+    Traceback (most recent call last):
+      File "<input>", line 1, in <module>
+    NameError: name 'A' is not defined
+
+The same can be achieved generally with::
+
+    >>> globals().update(ds)
+
+
 .. _statistics-example:
 
 Example
