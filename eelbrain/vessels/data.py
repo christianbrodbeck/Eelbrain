@@ -1157,43 +1157,57 @@ class ndvar(object):
                  'properties': self.properties}
         return state
     
+    # numeric ---
     def _align(self, other):
         "align data from 2 ndvars"
-        i_self = list(self.dimnames)
-        dims = list(self.dims)
-        i_other = []
-        
-        for dim in i_self:
-            if dim in other.dimnames:
-                i_other.append(dim)
-            else:
-                i_other.append(None)
-        
-        for dim in other.dimnames:
-            if dim in i_self:
-                pass
-            else:
-                i_self.append(None)
-                i_other.append(dim)
-                dims.append(other.get_dim(dim))
-        
-        x_self = self.get_data(i_self)
-        x_other = other.get_data(i_other)
-        return dims, x_self, x_other
+        if isvar(other):
+            return self.dims, self.x, self._ialign(other)
+        elif isndvar(other):
+            i_self = list(self.dimnames)
+            dims = list(self.dims)
+            i_other = []
+            
+            for dim in i_self:
+                if dim in other.dimnames:
+                    i_other.append(dim)
+                else:
+                    i_other.append(None)
+            
+            for dim in other.dimnames:
+                if dim in i_self:
+                    pass
+                else:
+                    i_self.append(None)
+                    i_other.append(dim)
+                    dims.append(other.get_dim(dim))
+            
+            x_self = self.get_data(i_self)
+            x_other = other.get_data(i_other)
+            return dims, x_self, x_other
+        else:
+            raise TypeError
     
     def _ialign(self, other):
         "align for self-mofiying operations (+= ...)"
-        assert all(dim in self.dimnames for dim in other.dimnames)
-        i_other = []
-        for dim in self.dimnames:
-            if dim in other.dimnames:
-                i_other.append(dim)
-            else:
-                i_other.append(None)
-        return other.get_data(i_other)
-       
+        if isvar(other):
+            assert self._case
+            n = len(other)
+            shape = (n,) + (1,) * (self.x.ndim - 1)
+            return other.x.reshape(shape)
+        elif isndvar(other):
+            assert all(dim in self.dimnames for dim in other.dimnames)
+            i_other = []
+            for dim in self.dimnames:
+                if dim in other.dimnames:
+                    i_other.append(dim)
+                else:
+                    i_other.append(None)
+            return other.get_data(i_other)
+        else:
+            raise TypeError
+    
     def __add__(self, other):
-        if isndvar(other):
+        if isscalar(other):
             dims, x_self, x_other = self._align(other)
             x = x_self + x_other
         elif np.isscalar(other):
@@ -1201,14 +1215,14 @@ class ndvar(object):
             dims = self.dims
         else:
             raise ValueError("can't add %r" % other)
-        return ndvar(x, dims=dims, properties=self.properties)
+        return ndvar(x, dims=dims, name=self.name, properties=self.properties)
     
     def __iadd__(self, other):
         self.x += self._ialign(other)
         return self
     
     def __sub__(self, other): # TODO: use dims
-        if isndvar(other):
+        if isscalar(other):
             dims, x_self, x_other = self._align(other)
             x = x_self - x_other
         elif np.isscalar(other):
@@ -1216,12 +1230,13 @@ class ndvar(object):
             dims = self.dims
         else:
             raise ValueError("can't subtract %r" % other)
-        return ndvar(x, dims=dims, properties=self.properties)    
+        return ndvar(x, dims=dims, name=self.name, properties=self.properties)    
     
     def __isub__(self, other):
         self.x -= self._ialign(other)
         return self
     
+    # container ---
     def __getitem__(self, index):
         if isvar(index):
             index = index.x
