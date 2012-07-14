@@ -251,7 +251,9 @@ def find_factors(obj):
     if isuv(obj):
         return [obj]
     elif ismodel(obj):
-        f = set(sum(find_factors(e) for e in obj.effects))
+        f = set()
+        for e in obj.effects:
+            f.update(find_factors(e))
         return list(f)
     elif isnested(obj):
         return find_factors(obj.effect)
