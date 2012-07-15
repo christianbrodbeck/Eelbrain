@@ -69,7 +69,7 @@ def _hopkins_ems(X, v=False):
     """
     X = asmodel(X)
     
-    if any(map(isvar, X.factors)):
+    if any(map(isvar, find_factors(X))):
         raise TypeError("Hopkins E(MS) only for categorial models")
     
     # E(MS) table (after Hopkins, 1976)
