@@ -8,7 +8,7 @@ Created on Feb 28, 2012
 '''
 
 
-def printdict(dictionary, w=80):
+def printdict(dictionary, w=100, fmt='%r'):
     """
     Prints only one key-value pair per line, hopefully a more readable
     representation for complex dictionaries. 
@@ -16,11 +16,15 @@ def printdict(dictionary, w=80):
     TODO: multiline-values
     
     """
+    print strdict(dictionary, w=w, fmt=fmt)
+
+
+def strdict(dictionary, w=100, fmt='%r'):
     items = []
     k_len = 0
     for k, v in dictionary.iteritems():
-        k = repr(k)
-        v = repr(v)
+        k = fmt % k
+        v = fmt % v
         k_len = max(k_len, len(k))
         items.append((k, v))
     if k_len > w - 5:
@@ -35,7 +39,7 @@ def printdict(dictionary, w=80):
                 lines.append(empty_k + v[i : i+v_len])
     lines[0] = '{' + lines[0]
     lines[-1] = lines[-1] + '}'
-    print ',\n '.join(lines)
+    return ',\n '.join(lines)
 
 
 def printlist(list_obj, rep=True):
