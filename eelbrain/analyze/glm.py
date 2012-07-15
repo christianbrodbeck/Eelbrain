@@ -1,4 +1,18 @@
 '''
+
+
+References
+----------
+
+Fox, J. (2008). Applied regression analysis and generalized linear models. 
+    2nd ed. Sage, Los Angeles.
+
+Hopkins, K. D. (1976). A Simplified Method for Determining Expected Mean 
+    Squares and Error Terms in the Analysis of Variance. Journal of 
+    Experimental Education, 45(2), 13--18.
+
+
+
 Created on Oct 17, 2010
 
 @author: christian
@@ -11,14 +25,17 @@ from copy import deepcopy
 import numpy as np
 import scipy.stats
 
-import eelbrain.fmtxt as textab
+from eelbrain import fmtxt
+from eelbrain.utils import LazyProperty
+from eelbrain.utils.print_funcs import strdict
 
 import test
 from eelbrain.vessels.data import model, asmodel, isvar, asvar, find_factors, isnestedin
 
 
 
-defaults = dict(show_ems=False, #True or False; show E(MS) in Anova tables
+defaults = dict(
+                show_ems=False, #True or False; show E(MS) in Anova tables
                 p_fmt='%.4f',
                 )
 
@@ -108,7 +125,7 @@ def _hopkins_test(e, e2):
         return a and b
 
 def _find_hopkins_ems(e, X):
-    return [e2 for e2 in X.effects if _hopkins_test(e, e2)]
+    return tuple(e2 for e2 in X.effects if _hopkins_test(e, e2))
 
 
 
@@ -143,29 +160,19 @@ def _is_higher_order(e1, e0):
 
 
 class lm:
-    """
-    object for fitting a linear model to one set of data, implementing lazy
-    creation of results
-    
-    """
-    def __init__(self, Y, X, sub=None, v=False, lsq=0, title=None):
+    "Fit a model to a dependent variable"
+    def __init__(self, Y, X, sub=None, _lsq=0):
         """
-        Y: 
+        Fit the model X to the dependent variable Y.
+        
+        Y : 
             dependent variable
-        X: 
+        X : 
             model
-        v: 
-            print some intermediate results for inspection
-        
-        lsq : int
-            0 = numpy lsq
-            1 = my least sq (Fox)
-        
-        performs an anova/ancova based on residuals. Fixed effects only
-        
+        sub : None | index
+            Only use part of the data
+
         """
-        self.title = title
-        self.results = {} # will store results
         # prepare input
         Y = asvar(Y)
         X = asmodel(X)#.sorted()
@@ -177,7 +184,13 @@ class lm:
         assert X.df_error > 0
 
         # fit
-        if lsq == 1:
+        if _lsq == 0: # use numpy (faster)
+            beta, SS_res, _, _ = np.linalg.lstsq(X.full, Y.x)
+            if len(SS_res) == 1:
+                SS_res = SS_res[0]
+            else:
+                raise ValueError("Bad model")
+        elif _lsq == 1: # Fox
             # estimate least squares approximation
             beta = _leastsq(Y.x, X.full)
             # estimate
@@ -188,34 +201,51 @@ class lm:
             if not Y.mean() == Y_est.mean():
                 logging.warning("Y.mean()=%s != Y_est.mean()=%s"%(Y.mean(), Y_est.mean()))
         else:
-            # use numpy
-            beta, SS_res, rank, s = np.linalg.lstsq(X.full, Y.x)
-            if len(SS_res) == 1:
-                SS_res = SS_res[0]
-            else:
-                SS_res = 0
+            raise ValueError
         
         # SS total
         SS_total = self.SS_total = np.sum((Y.x - Y.mean())**2)
         df_total = self.df_total = X.df_total
-        MS_total = self.MS_total = SS_total / df_total
+        self.MS_total = SS_total / df_total
         
         # SS residuals
         self.SS_res = SS_res
         df_res = self.df_res = X.df_error
-        MS_res = self.MS_res = SS_res / df_res
+        self.MS_res = SS_res / df_res
         
         # SS explained
 #        SS_model = self.SS_model = np.sum((Y_est - Y.mean())**2)
         SS_model = self.SS_model = SS_total - SS_res
         df_model = self.df_model = X.df
-        MS_model = self.MS_model = SS_model / df_model
+        self.MS_model = SS_model / df_model
 
         # store stuff
         self.Y = Y
         self.X = X
+        self.sub = sub
         self.beta = beta
     
+    def __repr__(self):
+        # repr kwargs
+        kwargs = []
+        if self.sub:
+            kwargs.append(('sub', getattr(self.sub, 'name', '<...>')))
+        
+        fmt = {'Y': getattr(self.Y, 'name', '<Y>'),
+               'X': self.X.model_eq}
+        if kwargs:
+            fmt['kw'] = ', '.join([''] + map('='.join, kwargs))
+        else:
+            fmt['kw'] = ''
+        return "lm({Y}, {X}{kw})".format(**fmt)
+    
+    def __str__(self):
+        F, p = self.F_test
+        F = 'F(%i,%i) = %s' % (self.df_model, self.df_res, F)
+        p = 'p = %s' % p
+        return ',  '.join((F, p))
+    
+    @LazyProperty
     def F_test(self):
         """
         Tests the null-hypothesis that the model does not explain a significant
@@ -226,29 +256,48 @@ class lm:
         p = scipy.stats.distributions.f.sf(F, self.df_model, self.df_res)
         return F, p
     
-    @property
-    def residuals(self):
-        if not hasattr(self, '_residuals'):
-            values = self.beta * self.X.full
-            Y_est = values.sum(1)
-            self._residuals = self.Y.x - Y_est
-        return self._residuals
-
-    def __repr__(self):
-        txt = "lm({Y} ~ {model})"
-        if hasattr(self.Y, 'name'):
-            yname = self.Y.name
-        else:
-            yname = 'Y'
-        return txt.format(Y=yname, model=self.X.model_eq)
+    @LazyProperty
+    def regression_table(self):
+        """
+        Not fully implemented!
+        
+        A table containing slope coefficients for all effects.
+        
+        """
+        # prepare table
+        table = fmtxt.Table('l'*4)
+        df = self.X.df_error
+        table.cell()
+        table.cell('\\beta', mat=True)
+        table.cell('T_{%i}'%df, mat=True)
+        table.cell('p', mat=True)
+        table.midrule()
+        #
+        q = 1 # track start location of effect in model.full
+        for e in self.X.effects:
+            if True:#e.showreg:
+                table.cell(e.name+':')
+                table.endline()
+                for i, name in enumerate(e.beta_labels): # Fox pp. 106 ff.
+                    beta = self.beta[q+i]
+#                    Evar_pt_est = self.SS_res / df
+                    #SEB 
+#                    SS = (self.values[q+i])**2
+                    T = 0
+                    p =  0
+                    # todo: T/p
+                    table.cell(name)
+                    table.cell(beta)
+                    table.cell(T)
+                    table.cell(p, fmt=defaults['p_fmt'])
+            q += e.df
+        return table
     
-# TODO:    def assumptions(self):
-#        """
-#        Tests the assumptions required for the validity of inferential 
-#        statistics
-#        
-#        """
-#        pass
+    @LazyProperty
+    def residuals(self):
+        values = self.beta * self.X.full
+        Y_est = values.sum(1)
+        return self.Y.x - Y_est
 
 
 
@@ -271,7 +320,7 @@ class _old_lm_(lm):
         #    hopkins = False
 
         # table head
-        table = textab.Table('l'+'r'*(5+ems))
+        table = fmtxt.Table('l'+'r'*(5+ems))
         if title:
             table.title(title)
         elif self.title:
@@ -333,7 +382,7 @@ class _old_lm_(lm):
                 F = MS / MS_d
                 p = 1 - scipy.stats.distributions.f.cdf(F, df, df_d)
                 stars = test.star(p)
-                tex_stars = textab.Stars(stars)
+                tex_stars = fmtxt.Stars(stars)
                 F_tex = [F, tex_stars]
             else:
                 F_tex = None
@@ -363,75 +412,21 @@ class _old_lm_(lm):
             table.cell(self.df_res, fmt='%i')
             table.cell(self.MS_res)
         return table
-    def reg(self):
-        """
-        returns a table containing slope coefficitions for covariates. 
-        (Slope coefficients are shown for all factors with attribute 
-        showreg==True)
-        
-        
-        """
-        # prepare table
-        table = textab.Table('l'*4)
-        df = self.X.df_error
-        table.cell()
-        table.cell('\\beta', mat=True)
-        table.cell('T_{%i}'%df, mat=True)
-        table.cell('p', mat=True)
-        table.midrule()
-        #
-        q = 1 # track start location of effect in model.full
-        for e in self.X.effects:
-            if True:#e.showreg:
-                table.cell(e.name+':')
-                table.newrow()
-                for i, name in enumerate(e.beta_labels): # Fox pp. 106 ff.
-                    beta = self.beta[q+i]
-#                    Evar_pt_est = self.SS_res / df
-                    #SEB 
-#                    SS = (self.values[q+i])**2
-                    T = 0
-                    p =  0
-                    table.cell(name)
-                    table.cell(beta)
-                    table.cell(T)
-                    table.cell(p, fmt=defaults['p_fmt'])
-            q += e.df
-        return table
-    ## older functions
-#    def plot(self, sub=None):
-#        return plot(self, sub=sub)
-    def Ysub(self, effects):
-        "return Y after subtracting the SS explained by the given effects"
-        # FIXME: Ysub
-        effects = asmodel(effects)
-        Yout = deepcopy(self.Y.x)
-        for e in effects.effects:
-            Yout -= self.values[:,self.indexes[e.name]].sum(1)
-        return Yout
 
-# MARK: Multitest object
 
 
 class lm_fitter(object):
     """
-    ANOVA model class. E(MS) for F statistic after Hopkins (1976)
+    Object for efficiently fitting a model to multiple dependent variables. 
+    E(MS) for F statistic after Hopkins (1976)
     
-    Each method takes the kwarg v ("verbose", default ``False``); displays more
-    information if True.
-    
-    use .aov method for single anova, .map method for list.
-    
-    Reference
-    ---------
-    Hopkins, K. D. (1976). A Simplified Method for Determining Expected Mean 
-        Squares and Error Terms in the Analysis of Variance. Journal of 
-        Experimental Education, 45(2), 13--18.
-
     """
-    def __init__(self, X, title=False):
-        self.title = title
-        self.results = {} # will store results
+    def __init__(self, X, version=1):
+        """
+        X : model
+            Model which will be fitted to the data.
+        
+        """
         # prepare input
         X = asmodel(X)
         self.X = X
@@ -444,17 +439,21 @@ class lm_fitter(object):
         self.E_ms = _hopkins_ems(X)
         self.df_res = X.df_error
     
-    def map(self, Y, v=False, sender=None, new=False):
+    def map(self, Y, v=False, sender=None):
         """
-        Returns results for multiple sets of dependents. Returns a list with 
-        (name, F-field, P-field) tuples for all effects that can be estimated 
-        with the current method.
+        Fits the model to multiple dependent variables
         
-        Y: np.array
-            Assumes that the last dimension of Y provides cases. 
+        Y : np.array
+            Assumes that the first dimension of Y provides cases. 
             Other than that, shape is free to vary and output shape will match 
             input shape.
         
+        
+        Returns
+        -------
+        
+        A list with (name, F-field, P-field) tuples for all effects that can 
+        be estimated with the current method.
         
         """
         original_shape = Y.shape
@@ -753,30 +752,54 @@ def comparelm(lm1, lm2):
 # MARK: Convenience functions
 
 class anova(object):
+    """
+    Fits a univariate ANOVA model. The objects' string representation is the 
+    anova table, so the model can be created and examined inone command::
+    
+        >>> print anova(Y, X)
+    
+    For other uses, properties of the fit can be accessed with methods and 
+    attributes.
+    
+    
+    Methods
+    -------    
+    
+    
+    """
     def __init__(self, Y, X, sub=None, 
-                 title=None, empty=True, ems=None, lsq=0,
+                 title=None, empty=True, ems=None,
                  showall=False):
         """
-        Returns an ANOVA table for the linear model. Mixed effects models require 
-        full model specification so that E(MS) can be estimated according to 
-        Hopkins (1976)
+        Fits a univariate ANOVA model. 
         
-        Random effects: If the model is fully specified, a Hopkins E(MS) table 
-        is used to determine error terms in the mixed effects model. Otherwise,
-        random factors are treated as fixed factors.
+        Mixed effects models require full model specification so that E(MS) 
+        can be estimated according to Hopkins (1976)
         
-        kwargs
-        ------
-        empty:  include rows without F-Tests (True/False)
-        ems:  display source of E(MS) for F-Tests (True/False; None = use default)
-        lsq:  least square fitter
-                = 0 -> numpy.linalg.lstsq 
-                = 1 -> after Fox
-        showall: show SS, df and MS for effects without F test
+        
+        Arguments
+        ---------
+        
+        Y : var
+            dependent variable
+        X : model
+            Model to fit to Y
+        
+        empty : bool
+            include rows without F-Tests (True/False)
+        ems : bool | None
+            display source of E(MS) for F-Tests (True/False; None = use default)
+        lsq : int
+            least square fitter to use;
+            0 -> numpy.linalg.lstsq 
+            1 -> after Fox
+        showall : bool
+            show SS, df and MS for effects without F test
         
         
         TODO
         ----
+        
           - sort model
           - reuse lms which are used repeatedly
           - provide threshold for including interaction effects when testing lower 
@@ -795,20 +818,20 @@ class anova(object):
         Y = asvar(Y)
         X = asmodel(X)
         
+        if len(Y) != len(X):
+            raise ValueError("Y and X must describe same number of cases")
+        
         if sub is not None:
             Y = Y[sub]
             X = X[sub]
         
-        assert len(Y) == len(X)
-
         # save args
         self.Y = Y
         self.X = X
         self.title = title
         self.show_ems = ems
-
         self._log = []
-            
+        
         # decide which E(MS) model to use
         if X.df_error == 0:
             rfx = 1
@@ -818,14 +841,8 @@ class anova(object):
             fx_desc = 'Fixed'
         else:
             raise ValueError("Model Overdetermined")
-        self._log.append("%s effects model" % fx_desc)
-        
-        if lsq == 1:
-            self._log.append("(my lsq)")
-        elif lsq ==0:
-            self._log.append("\n (np lsq)")
-        
-    
+        self._log.append("Using %s effects model" % fx_desc)
+            
         # create testing table:  
         # list of (effect, lm, lm_comp, lm_EMS)
         test_table = []
@@ -836,11 +853,11 @@ class anova(object):
         
         if len(X.effects) == 1:
             self._log.append("single factor model")
-            lm0 = lm(Y, X, lsq=lsq)
+            lm0 = lm(Y, X)
             SS = lm0.SS_model
             df = lm0.df_model
             MS = lm0.MS_model
-            F, p = lm0.F_test()
+            F, p = lm0.F_test
             results_table.append((X.name, SS, df, MS, F, p))
             results_table.append(("Residuals", lm0.SS_res, lm0.df_res, 
                                   lm0.MS_res, None, None))
@@ -848,7 +865,7 @@ class anova(object):
             if rfx:
                 pass # <- Hopkins
             else:
-                full_lm = lm(Y, X, lsq=lsq)
+                full_lm = lm(Y, X)
                 SS_e = full_lm.SS_res
                 MS_e = full_lm.MS_res
                 df_e = full_lm.df_res
@@ -875,13 +892,13 @@ class anova(object):
                 if e_test.df > model0.df_error:
                     skip = "overspecified"
                 else:
-                    lm0 = lm(Y, model0, lsq=lsq)
+                    lm0 = lm(Y, model0)
                     
                     # find model 1
                     effects.append(e_test)
                     model1 = model(*effects)
                     if model1.df_error > 0:
-                        lm1 = lm(Y, model1, lsq=lsq)
+                        lm1 = lm(Y, model1)
                     else:
                         lm1 = None
                     
@@ -890,7 +907,7 @@ class anova(object):
                         EMS_effects = _find_hopkins_ems(e_test, X)
                         
                         if len(EMS_effects) > 0:
-                            lm_EMS = lm(Y, model(*EMS_effects), lsq=lsq)
+                            lm_EMS = lm(Y, model(*EMS_effects))
                             MS_e = lm_EMS.MS_model
                             df_e = lm_EMS.df_model
                         else:
@@ -934,7 +951,7 @@ class anova(object):
             ems = self.show_ems
         
         # table head
-        table = textab.Table('l'+'r'*(5+ems))
+        table = fmtxt.Table('l'+'r'*(5+ems))
         if self.title:
             table.title(self.title)
         table.cell()
@@ -948,13 +965,13 @@ class anova(object):
         # table body
         for name, SS, df, MS, F, p in self._results_table:
             table.cell(name)
-            table.cell(textab.stat(SS))
-            table.cell(textab.stat(df, fmt='%i'))
-            table.cell(textab.stat(MS))
+            table.cell(fmtxt.stat(SS))
+            table.cell(fmtxt.stat(df, fmt='%i'))
+            table.cell(fmtxt.stat(MS))
             if F:
                 stars = test.star(p)
-                table.cell(textab.stat(F, stars=stars))
-                table.cell(textab.p(p))
+                table.cell(fmtxt.stat(F, stars=stars))
+                table.cell(fmtxt.p(p))
             else:
                 table.cell()
                 table.cell()
@@ -963,8 +980,8 @@ class anova(object):
         table.midrule()
         table.cell("Total")
         SS = np.sum((self.Y.x - self.Y.mean()) ** 2)
-        table.cell(textab.stat(SS))
-        table.cell(textab.stat(len(self.Y) - 1, fmt='%i'))
+        table.cell(fmtxt.stat(SS))
+        table.cell(fmtxt.stat(len(self.Y) - 1, fmt='%i'))
         return table
 
 
@@ -977,6 +994,7 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
     
     args
     ----
+    
     Y: dependent variable
     factorial model:
     covariate:
@@ -984,16 +1002,17 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
     
     kwargs
     ------
+    
     interaction: term from the factorial model to check for interaction with
                  the covariate
     v=True: display more information
     **anova_kwargs: ems, empty
     
     
-    Based on
-    --------
-    Exercise to STATISTICS: AN INTRODUCTION USING R
-    http://www.bio.ic.ac.uk/research/crawley/statistics/exercises/R6Ancova.pdf
+    Based on: 
+        `Exercise to STATISTICS: AN INTRODUCTION USING R 
+        <http://www.bio.ic.ac.uk/research/crawley/statistics/exercises/R6Ancova.pdf>`_
+    
     """
     assert isvar(covariate)
     anova_kwargs = {'empty': empty, 'ems': ems}
