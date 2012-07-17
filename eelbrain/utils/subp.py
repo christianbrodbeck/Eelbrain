@@ -499,8 +499,7 @@ def do_forward_solution(paths=dict(rawfif=None,
                                    fwd='{fif}-fwd.fif',
                                    bem=None,
                                    src=None,
-                                   trans=None,
-                                   cor=None),
+                                   trans=None),
                         overwrite=False, v=1):
     """
     MNE Handbook 3.13
@@ -512,7 +511,6 @@ def do_forward_solution(paths=dict(rawfif=None,
     bem_file = paths.get('bem')
     src_file = paths.get('src')
     trans_file = paths.get('trans')
-#    mri_cor_file = paths.get('cor')
     
     mri_dir, mri_subject = os.path.split(mri_sdir)
     
