@@ -641,7 +641,7 @@ class mne_experiment(object):
         
         for subject in sorted(results):
             table.cell(subject)
-            mri_subject = self._mri_subjects.get('subject', '*missing*')
+            mri_subject = self._mri_subjects.get(subject, '*missing*')
             if mri_subject == subject:
                 table.cell('own')
             else:
