@@ -222,10 +222,6 @@ class f_oneway(test_result):
 
 class anova(test_result):
     """
-    Attributes:
-    
-    allps:
-        p-map for each effect
     
     """
     def __init__(self, Y='MEG', X='condition', sub=None, ds=None, info={}, v=False,
@@ -249,9 +245,9 @@ class anova(test_result):
         kwargs = dict(dims = Y.dims[1:],
                       properties = properties)
         
-        for name, Fs, Ps in fitter.map(Y.x.T, v=v):
+        for name, Fs, Ps in fitter.map(Y.x, v=v):
             effect_names.append(name)
-            P = _vsl.data.ndvar(Ps.T, name=name, **kwargs)
+            P = _vsl.data.ndvar(Ps, name=name, **kwargs)
             self[name + '_p'] = P
     
     @property
@@ -261,7 +257,8 @@ class anova(test_result):
             epochs.append(self[name+'_p'])
         
         return epochs
-
+    
+    
 
 
 

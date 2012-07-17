@@ -30,7 +30,12 @@ from eelbrain.utils import LazyProperty
 from eelbrain.utils.print_funcs import strdict
 
 import test
-from eelbrain.vessels.data import model, asmodel, isvar, asvar, find_factors, isnestedin
+from eelbrain.vessels.data import (
+                                   find_factors, 
+                                   isbalanced, isnestedin,
+                                   isvar, asvar, 
+                                   model, asmodel, 
+                                   )
 
 
 
@@ -103,6 +108,35 @@ def _hopkins_ems(X, v=False):
     return MS_denominators
 
 
+class hopkins_ems(dict):
+    """
+    A dictionary supplying for each of a model's effects the components of 
+    the F-test denominator (error term).
+    
+    "The E(MS) for any source of variation for any ANOVA model, in addition 
+    to the specified effect (main effect or interaction), includes the 
+    interaction of this effect with any random factor or combinations of 
+    random factors, plus any random effect nested within the specified effect, 
+    plus any random effect that either crosses or is nested within each 
+    ingredient and the specified effect." (Hopkins, 1976: 18)
+    
+    """
+    def __init__(self, X):
+        super(hopkins_ems, self).__init__()
+        if not isbalanced(X):
+            logging.warn('X is not balanced')
+        for e in X.effects:
+            self[e] = _find_hopkins_ems(e, X)
+    
+    def __repr__(self):
+        items = {}
+        for k, v in self.iteritems():
+            kstr = ' %s' % k.name
+            vstr = '(%s)' % ''.join(e.name+', ' for e in v)
+            items[kstr] = vstr
+        return strdict(items, fmt='%s')
+
+
 def _hopkins_test(e, e2):
     """
     e : effect
@@ -115,12 +149,10 @@ def _hopkins_test(e, e2):
         return False
     else:
         e_factors = find_factors(e)
-        e_model = model(*e_factors)
         e2_factors = find_factors(e2)
-        e2_model = model(*e2_factors)
         
-        a = np.all([(f in e_model or f.random) for f in e2_factors])
-        b = np.all([(f in e2_model or isnestedin(e2, f)) for f in e_factors])
+        a = np.all([(f in e_factors or f.random) for f in e2_factors])
+        b = np.all([(f in e2_factors or isnestedin(e2, f)) for f in e_factors])
         
         return a and b
 
@@ -414,6 +446,7 @@ class _old_lm_(lm):
         return table
 
 
+_lm_version = 1
 
 class lm_fitter(object):
     """
@@ -421,23 +454,32 @@ class lm_fitter(object):
     E(MS) for F statistic after Hopkins (1976)
     
     """
-    def __init__(self, X, version=1):
+    def __init__(self, X):
         """
         X : model
             Model which will be fitted to the data.
         
         """
         # prepare input
-        X = asmodel(X)
-        self.X = X
-        # X inverse
-        X_ = X.full
-        self.Xinv = np.matrix(X_).I.A # alternative still used for map
-        self.Xsinv = np.dot(np.matrix(np.dot(X_.T, X_)).I.A,
-                            X_.T)
-        # E MS
-        self.E_ms = _hopkins_ems(X)
-        self.df_res = X.df_error
+        self.X = X = asmodel(X)
+        if not isbalanced(X):
+            raise NotImplementedError("Unbalanced models")
+        self.X_ = X.full
+        self.E_MS = hopkins_ems(X)
+        
+        if _lm_version == 0:
+            pass
+        elif _lm_version == 1:
+            # invert X
+            # performance seems to be better with arrays than with matrices
+            X_ = np.matrix(X.full)
+#            self.Xinv = X_.I.A
+            self.Xsinv = np.array((X_.T * X_).I.A * X_.T)
+        else:
+            raise ValueError('version')
+
+    def __repr__(self):
+        return 'lm_fitter((%s))' % self.X.name
     
     def map(self, Y, v=False, sender=None):
         """
@@ -456,193 +498,92 @@ class lm_fitter(object):
         be estimated with the current method.
         
         """
+        X = self.X
         original_shape = Y.shape
-        assert original_shape[-1] == len(self.X), "last dimension must contain cases"
-        Y = Y.reshape((-1, len(self.X)))
-        if v:
-            print Y.shape, self.Xinv.shape
+        if original_shape[0] != len(X):
+            raise ValueError("first dimension of Y must contain cases")
+        
+        Y = Y.reshape((len(X), -1))
+        df_res = X.df_error
+        
         # Split Y that are too long
-        df = self.Xinv.shape[0]
-        if np.log2(Y.shape[0] * df**2) > _max_array_size:
-            max_len = int(2**_max_array_size // df**2)
-            n_parts = Y.shape[0] // max_len + 1
-            logging.debug(" S.lm_fitter: Splitting Y in {0} parts".format(n_parts))
-            Y_list = [Y[i*max_len:(i+1)*max_len,:] for i in range(n_parts)]
+        max_len = int(2**_max_array_size // X.df**2)
+        if Y.shape[1] > max_len:
+            splits = np.arange(0, Y.shape[1], max_len)
+            
+            msg = ("lm_fitter: Y.shape=%s; splitting Y at %s" % 
+                   (Y.shape, splits))
+            logging.debug(msg)
+            
+            Y_list = (Y[:, s:s+max_len] for s in splits)
             out_maps = [self.map(Yi) for Yi in Y_list]
             out_map = []
-            for i in range(len(out_maps[0])):
-                e = out_maps[0][i][0]
-                if v:
-                    print str([m[i][1].shape for m in out_maps])
-                F = np.hstack([m[i][1] for m in out_maps]).reshape(original_shape[:-1])
-                P = np.hstack([m[i][2] for m in out_maps]).reshape(original_shape[:-1])
-                out_map.append((e, F, P))
+            for i in xrange(len(out_maps[0])):
+                name = out_maps[0][i][0]
+                F = np.hstack([m[i][1] for m in out_maps]).reshape(original_shape[1:])
+                P = np.hstack([m[i][2] for m in out_maps]).reshape(original_shape[1:])
+                out_map.append((name, F, P))
             return out_map
-        # do the actual estimation
-        else:
-            if new:
-                raise NotImplementedError
-            else:
-                params = (Y[:,None,:] * self.Xinv).sum(2) # c * effect-code
-                values = params[:,None,:] * self.X.full # c x param x effect-code
-                # MS res
-                if self.df_res > 0:
-                    Yp = values.sum(2)
-                    SS_res = ((Y - Yp)**2).sum(1)
-                    MS_res = SS_res / self.df_res
-                # collect SS, df, MS
-                i = 0
-                e_list = [] #<- (ss, df, ms)
-                for i, name, index, df in self.X.iter_effects():
-                    Yp = values[:,:,index].sum(2)
-                    SS = (Yp**2).sum(1)
-                    MS = SS / df
-                    e_list.append([name, df, MS])
-                # F Tests
-                out_map = [] #<- (name, F, P)
-                for i, e in enumerate(e_list):
-                    df_n = e[1]
-                    MS_n = e[2]
-                    E_ms = self.E_ms[i]
-                    if E_ms != None:
-                        df_d = e_list[E_ms][1]
-                        MS_d = e_list[E_ms][2]
-                    elif self.df_res > 0:
-                        df_d = self.df_res
-                        MS_d = MS_res
-                    else:
-                        df_d = 0
-                    #
-                    if df_d > 0:                        
-                        F = MS_n / MS_d
-                        P = 1 - scipy.stats.distributions.f.cdf(F, df_n, df_d)
-                        out_map.append((e[0], F.reshape(original_shape[:-1]), 
-                                        P.reshape(original_shape[:-1])))
-                # append RESIDUALS to output
-                #if self.df_res > 0:
-                #    out_map.append
-                return out_map
-    
-    def __repr__(self):
-        txt = ''.join(['lm_fitter(', self.X.__repr__(), ')'])
-        return txt
-#    def __str__(self):
-#        eq = self.model.__repr__()
-#        space = max([len(e.name) for e in self.model.effects]) + 1
-#        E_MS = ['  '.join([e.name.rjust(space)] + [str(int(i)) for i in line]) \
-#                for e, line in zip(self.model.effects, self.E_MS_table)]
-#        return '\n'.join([eq, str(self.MS_denominators), "E(MS):"] + E_MS)
-
-
-'''   
-    # deriving params for 1 set of measurements
-    def fit(self, Y, v=False):
-        """
-        Returns a list with the results of fitting Y. Use aov(Y) method to get
-        reults in the form of a table.
-        
-        Output list has [ss, df, ms, F, p] list for each effect (in the order of 
-        self.model.effects).
-        
-        
-        """
-        Y = np.ravel(Y)
-        self.Y = Y 
-        
-        #params = (Y * self.Xinv).sum(1)
-        params = np.dot(self.Xsinv, Y)
-        self.params = params
-        if v:
-            print params
-            print (params * self.model.full).sum(1)
-        values = params * self.model.full
-        
-        # collect SS, df, MS
-        i = 0
-        e_list = [] # (ss, df, ms)
-        for e in self.model.effects:
-            Yp = values[:,i:i+e.df].sum(1)
-            SS = (Yp**2).sum(0)
-            MS = SS / e.df
-            e_list.append([SS, e.df, MS])
-            i += e.df
-        
-        # residuals
-        if self.model.df_error > 0: 
-            SS = np.sum((Y - values.sum(1))**2)
-            df = self.model.df_error
-            MS = SS / df
-            self.res = {'SS':SS, 'df':df, 'MS':MS}
-        else:
-            self.res = None
-        
-        # F Tests
-        for i, e in enumerate(e_list):
-            denominator = self.MS_denominators[i]
-            if denominator or self.res:
-                df_n = e[1]
-                MS_n = e[2]
-                if denominator:
-                    df_d = e_list[denominator][1]
-                    MS_d = e_list[denominator][2]
-                elif self.res:
-                    print "WARNING: Residuals --> test # %s"%i
-                    df_d = self.res['df']
-                    MS_d = self.res['MS']
+        else: # do the actual estimation
+            X_ = self.X_
+            if _lm_version == 0:
+                beta, SS_res, _, _ = np.linalg.lstsq(X_, Y)
+                # beta: coefficient X test
+            elif _lm_version == 1:
+                beta = np.dot(self.Xsinv, Y)
+#                beta = (Y[:,None,:] * self.Xinv).sum(2) # c * effect-code
+                # for single Y
+#                beta = (Y * self.Xinv).sum(1)
+#                beta = np.dot(self.Xsinv, Y)
+            
+            values = beta[None,:,:] * X_[:,:,None] # case x effect-code x test
+            
+            # MS res
+            if df_res > 0:
+                Yp = values.sum(1) # case x test
+                SS_res = ((Y - Yp)**2).sum(0)
+                MS_res = SS_res / df_res
+            
+            # collect SS, df, MS
+            MSs = {} #<- (ss, df, ms)
+            for e in X.effects:
+                index = X.beta_index[e]
+                Yp = values[:,index,:].sum(1)
+                SS = (Yp**2).sum(0)
+                MS = SS / e.df
+                MSs[e] = MS
+            
+            # F Tests
+            out_map = [] #<- (name, F, P)
+            for e_n in X.effects:
+                df_n = e_n.df # n = numerator
+                MS_n = MSs[e_n]
+                E_MS_cmp = self.E_MS[e_n]
+                if E_MS_cmp:
+                    df_d = 0 # d = denominator
+                    MS_d = 0
+                    for e_d in E_MS_cmp:
+                        df_d += e_d.df
+                        MS_d += MSs[e_d]
+                elif df_res > 0:
+                    print "using SS res"
+                    df_d = df_res
+                    MS_d = MS_res
                 else:
-                    raise ValueError("WTF Error")
-                F = MS_n / MS_d
-                p = 1 - sp.stats.distributions.f.cdf(F, df_n, df_d)
-                e += [F, p]
-            else:
-                e += [None, None]
-        return e_list
-    # casting params in nice table for one set of measurements
-    def aov(self, Y, spss=False, **kwargs):
-        "returns a textab.table with the results of fitting Y"
-        if spss:
-            self.table(Y)
-        table = textab.Table('lrrrrr')
-        table.cell()
-        for hd in ["SS", "df", "MS", "F", "p"]:
-            table.cell(hd, "textbf", just='c')
-        table.midrule()
-        for e,line in zip(self.model.effects, self.fit(Y)):
-            SS, df, MS, F, p = line
-            table.cell(e.name)
-            table.cell(SS)
-            table.cell(df, digits=0)
-            table.cell(MS)
-            if p:
-                stars = test.star(p)
-                tex_stars = textab.Element(stars, "^", )
-                table.cell([F, tex_stars], mat=True)
-            else:
-                table.cell(F)
-            table.cell(p, drop0=True)
-        if self.res:
-            table.cell("Residuals")
-            table.cell(self.res['SS'])
-            table.cell(self.res['df'], digits=0)
-            table.cell(self.res['MS'])
-        return table
-    def table(self, Y, within=None):
-        "convenience method for transferring Y with factors to SPSS"
-        data = np.ravel(Y)[:,None].astype('|S8')
-        names = ['Y']
-        # collect factors
-        for e in self.model.effects:
-            for f in e.factors:
-                if f.name not in names:
-                    names.append(f.name)
-                    data = np.hstack((data, f.x[:,None].astype(int)))
-        # print
-        print '\t'.join(names)
-        for line in data:
-            print '\t'.join(line)
-    def sorted(self, factors):
-        pass
-'''
+                    df_d = 0
+                
+                #
+                if df_d > 0:                        
+                    F = MS_n / MS_d
+                    P = scipy.stats.distributions.f.sf(F, df_n, df_d)
+                    name = e_n.name
+                    Fmap = F.reshape(original_shape[1:])
+                    Pmap = P.reshape(original_shape[1:])
+                    out_map.append((name, Fmap, Pmap))
+            
+            return out_map
+
+
 
 #def incremental_F_test(lm1, lm0, lmEMS=None):
 #    """

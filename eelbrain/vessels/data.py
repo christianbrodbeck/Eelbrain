@@ -102,6 +102,20 @@ def rank(A, tol=1e-8):
     return np.sum(np.where(s > tol, 1, 0))
 
 
+def isbalanced(X):
+    """
+    returns True if X is balanced, False otherwise.
+    
+    X : categorial
+        categorial model (factor or interaction)
+    
+    """
+    if ismodel(X):
+        return all(isbalanced(e) for e in X.effects)
+    else:
+        ns = (np.sum(X==c) for c in X.cells)
+        return len(np.unique(ns)) <= 1
+
 def iscategorial(Y):
     "factors as well as interactions are categorial"
     if isfactor(Y):
@@ -249,19 +263,39 @@ def combine(items):
 def find_factors(obj):
     "returns a list of all factors contained in obj"
     if isuv(obj):
-        return [obj]
+        return effect_list([obj])
     elif ismodel(obj):
         f = set()
         for e in obj.effects:
             f.update(find_factors(e))
-        return list(f)
+        return effect_list(f)
     elif isnested(obj):
         return find_factors(obj.effect)
     else: # interaction | nonbasic_effect
         try:
-            return obj.factors
+            return effect_list(obj.factors)
         except:
             raise TypeError("%r has no factors" % obj)
+
+
+class effect_list(list):
+    def __repr__(self):
+        names = (f.name for f in self)
+        return 'effect_list((%s))' % ', '.join(names)
+    
+    def __contains__(self, item):
+        for f in self:
+            if (len(f) == len(item)) and np.all(item==f):
+                return True
+        return False
+    
+    def index(self, item):
+        for i, f in enumerate(self):
+            if (len(f) == len(item)) and np.all(item==f):
+                return i
+        raise ValueError("factor %r not in effect_list" % item.name)
+
+
 
 
 class var(object):
@@ -2392,6 +2426,14 @@ class model(object):
                        % type(e))
                 raise TypeError(err)
         
+        # beta indices
+        self.beta_index = beta_index = {}
+        i = 1
+        for e in effects:
+            k = i + e.df
+            beta_index[e] = slice(i, k)
+            i = k
+        
         # dfs
         self.df_total = df_total = n_cases - 1 # 1=intercept
         self.df = df = sum(e.df for e in effects)
@@ -2583,15 +2625,6 @@ class model(object):
         effects = [e.repeat(n) for e in self.effects]
         out = model(effects)
         return out
-    
-    ## for access by aov 
-    def iter_effects(self):
-        "iterator over effects (name, location_slice, df)"
-        index = 1
-        for i, e in enumerate(self.effects):
-            index_end = index + e.df
-            yield i, e.name, slice(index, index_end), e.df
-            index = index_end
 
 
 
