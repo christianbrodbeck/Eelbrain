@@ -73,16 +73,6 @@ class mne_experiment(object):
         self.edf_use = defaultdict(lambda: ['ESACC', 'EBLINK'])      
         
         
-        # load config
-        for cfg in ['cov', 'epochs']:
-            path = self.get('config', analysis=cfg)
-            if os.path.exists(path):
-                obj = pickle.load(open(path))
-            else:
-                obj = {}
-            
-            setattr(self, '_cfg_%s' % cfg, obj)
-        
         # find experiment data structure
         self.parse_dirs()
         
@@ -111,9 +101,6 @@ class mne_experiment(object):
         log_dir = os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp)))
         
         t = dict(
-                 # config
-                 config = os.path.join(root, 'cfg_%s.pickled' % an),
-                 
                  # basic dir
                  meg_dir = meg_dir, # contains subject-name folders for MEG data
                  mri_dir = mri_dir, # contains subject-name folders for MEG data
@@ -168,33 +155,6 @@ class mne_experiment(object):
         args.extend('='.join(pair) for pair in kwargs)
         args = ', '.join(args)
         return "mne_experiment(%s)" % args
-    
-    def _save_cfg(self, name):
-        dest = self.get('config', analysis=name)
-        obj = getattr(self, '_cfg_%s' % name)
-        pickle.dump(obj, open(dest, 'w'))
-    
-    def define_epoch(self, name, experiment, stim='fixation', stimvar='stim',  
-                     tstart=-0.1, tstop=0.6, baseline=(None, 0), 
-                     edf=True, threshold=None):
-        """
-        Define an epoch that can be used as input for different functions.
-        
-        """
-        index = (experiment, name)
-        if index in self._cfg_epochs:
-            raise NotImplementedError()
-        
-        self._cfg_epochs[index] = dict(
-                                       stim = stim,
-                                       stimvar = stimvar,
-                                       tstart = tstart,
-                                       tstop = tstop,
-                                       baseline = baseline,
-                                       edf = edf,
-                                       threshold = threshold,
-                                       )
-        self._save_cfg('epochs')
     
     def do_kit2fiff(self, do='ask', aligntol=xrange(20, 40, 5)):
         """OK 12/7/2
@@ -567,22 +527,6 @@ class mne_experiment(object):
         
         subp.run_mne_browse_raw(fif_dir, modal)
         
-    def rm_cov(self, experiment, cov_name):
-        index = (experiment, cov_name)
-        del self._cfg_cov[index]
-        
-        for _ in self.iter_se(experiment=experiment, analysis=cov_name):
-            path = self.get('cov')
-            if os.path.exists(path):
-                os.remove(path)
-        
-        self._save_cfg('cov')
-    
-    def rm_epoch(self, experiment, name):
-        index = (experiment, name)
-        del self._cfg_epochs[index]
-        self._save_cfg('cov')
-    
     def set(self, subject=None, experiment=None, analysis=None, match=False):
         """
         match : bool
@@ -649,27 +593,6 @@ class mne_experiment(object):
             
             for exp in experiments:
                 table.cell(results[subject].get(exp, '?'))
-        
-        return table
-    
-    def summary_cov(self):
-        files = {}
-        table = fmtxt.Table('l' * (1 + len(self._cfg_cov)))
-        table.cell('subject')
-        for (exp, name), cov in self._cfg_cov.iteritems():
-            table.cell('%r-%r' % (exp, name))
-            for sub, _ in self.iter_se(experiment=exp, analysis=name):
-                path = self.get('cov')
-                exists = os.path.exists(path)
-                files.setdefault(sub, []).append(exists)
-        
-        for s in files:
-            table.cell(s)
-            for v in files[s]:
-                if v: 
-                    table.cell('X')
-                else:
-                    table.cell('')
         
         return table
     
