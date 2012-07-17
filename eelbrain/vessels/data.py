@@ -1690,6 +1690,7 @@ class dataset(collections.OrderedDict):
             return super(dataset, self).__getitem__(name)
     
     def __repr__(self):
+        class_name = self.__class__.__name__
         if not hasattr(self, 'n_cases'):
             items = []
             if self.name:
@@ -1699,10 +1700,10 @@ class dataset(collections.OrderedDict):
                 if len(info) > 60:
                     info = '<...>'
                 items.append('info=%s' % info)
-            return 'dataset(%s)' % ', '.join(items)
+            return '%s(%s)' % (class_name, ', '.join(items))
         
-        rep_tmp = "<dataset %(name)s%(N)s{%(items)s}>"
-        fmt = {}
+        rep_tmp = "<%(class_name)s %(name)s%(N)s{%(items)s}>"
+        fmt = {'class_name': class_name}
         fmt['name'] = '%r ' % self.name if self.name else ''
         fmt['N'] = 'N=%i ' % self.n_cases
         items = []
