@@ -585,16 +585,15 @@ class lm_fitter(object):
                 
                 #
                 if df_d > 0:                        
-                    name = e_n.name
                     MS_n = MSs[e_n]
                     F = MS_n / MS_d
                     Fmap = F.reshape(original_shape[1:])
                     if p:
                         P = scipy.stats.distributions.f.sf(F, df_n, df_d)
                         Pmap = P.reshape(original_shape[1:])
-                        out_map.append((name, Fmap, Pmap))
+                        out_map.append((e_n, Fmap, Pmap))
                     else:
-                        out_map.append((name, Fmap))
+                        out_map.append((e_n, Fmap))
             
             return out_map
 

@@ -224,7 +224,7 @@ class anova(test_result):
     """
     
     """
-    def __init__(self, Y='MEG', X='condition', sub=None, ds=None, info={}, v=False,
+    def __init__(self, Y='MEG', X='condition', sub=None, ds=None, info={},
                  p=.05, contours={.01: '.5', .001: '0'}):
         if isinstance(Y, basestring):
             Y = ds[Y]
@@ -245,7 +245,8 @@ class anova(test_result):
         kwargs = dict(dims = Y.dims[1:],
                       properties = properties)
         
-        for name, Fs, Ps in fitter.map(Y.x, v=v):
+        for e, _, Ps in fitter.map(Y.x):
+            name = e.name
             effect_names.append(name)
             P = _vsl.data.ndvar(Ps, name=name, **kwargs)
             self[name + '_p'] = P
