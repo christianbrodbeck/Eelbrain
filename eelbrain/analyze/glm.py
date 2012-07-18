@@ -123,6 +123,9 @@ class hopkins_ems(dict):
     """
     def __init__(self, X):
         super(hopkins_ems, self).__init__()
+        if X.df_error > 0:
+            err = "Hopkins E(MS) estimate requires a fully specified model"
+            raise ValueError(err)
         if not isbalanced(X):
             logging.warn('X is not balanced')
         for e in X.effects:
