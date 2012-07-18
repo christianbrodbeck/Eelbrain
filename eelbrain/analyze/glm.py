@@ -44,7 +44,7 @@ defaults = dict(
                 p_fmt='%.4f',
                 )
 
-_max_array_size = 25 # constant for max array size in lm_fitter
+_max_array_size = 26 # constant for max array size in lm_fitter
 
 
 
@@ -465,10 +465,16 @@ class lm_fitter(object):
         """
         # prepare input
         self.X = X = asmodel(X)
+        self.n_cases = len(X)
         if not isbalanced(X):
             raise NotImplementedError("Unbalanced models")
         self.X_ = X.full
-        self.E_MS = hopkins_ems(X)
+        
+        self.full_model = fm = (X.df_error == 0)
+        if fm:
+            self.E_MS = hopkins_ems(X)
+        
+        self.max_len = int(2**_max_array_size // X.df**2)
         
         if _lm_version == 0:
             pass
@@ -484,67 +490,72 @@ class lm_fitter(object):
     def __repr__(self):
         return 'lm_fitter((%s))' % self.X.name
     
-    def map(self, Y, v=False, sender=None):
+    def map(self, Y, p=True):
         """
-        Fits the model to multiple dependent variables
+        Fits the model to multiple dependent variables and returns arrays of
+        F-values and optionally p-values.
         
         Y : np.array
             Assumes that the first dimension of Y provides cases. 
             Other than that, shape is free to vary and output shape will match 
             input shape.
+        p : bool
+            Also return a field of p-values corresponding to the F-values.
         
         
         Returns
         -------
         
-        A list with (name, F-field, P-field) tuples for all effects that can 
+        A list with (name, F-field [, P-field]) tuples for all effects that can 
         be estimated with the current method.
         
         """
         X = self.X
+        n_cases = self.n_cases
+        
         original_shape = Y.shape
-        if original_shape[0] != len(X):
+        if original_shape[0] != n_cases:
             raise ValueError("first dimension of Y must contain cases")
         
-        Y = Y.reshape((len(X), -1))
+        Y = Y.reshape((n_cases, -1))
         df_res = X.df_error
         
         # Split Y that are too long
-        max_len = int(2**_max_array_size // X.df**2)
-        if Y.shape[1] > max_len:
-            splits = np.arange(0, Y.shape[1], max_len)
+        if Y.shape[1] > self.max_len:
+            splits = xrange(0, Y.shape[1], self.max_len)
             
             msg = ("lm_fitter: Y.shape=%s; splitting Y at %s" % 
-                   (Y.shape, splits))
+                   (Y.shape, list(splits)))
             logging.debug(msg)
             
-            Y_list = (Y[:, s:s+max_len] for s in splits)
-            out_maps = [self.map(Yi) for Yi in Y_list]
+            Y_list = (Y[:, s:s+self.max_len] for s in splits)
+            out_maps = [self.map(Yi, p=p) for Yi in Y_list]
             out_map = []
             for i in xrange(len(out_maps[0])):
                 name = out_maps[0][i][0]
                 F = np.hstack([m[i][1] for m in out_maps]).reshape(original_shape[1:])
-                P = np.hstack([m[i][2] for m in out_maps]).reshape(original_shape[1:])
-                out_map.append((name, F, P))
+                if p:
+                    P = np.hstack([m[i][2] for m in out_maps]).reshape(original_shape[1:])
+                    out_map.append((name, F, P))
+                else:
+                    out_map.append((name, F))
             return out_map
         else: # do the actual estimation
             X_ = self.X_
+            # beta: coefficient X test
             if _lm_version == 0:
                 beta, SS_res, _, _ = np.linalg.lstsq(X_, Y)
-                # beta: coefficient X test
             elif _lm_version == 1:
                 beta = np.dot(self.Xsinv, Y)
-#                beta = (Y[:,None,:] * self.Xinv).sum(2) # c * effect-code
-                # for single Y
-#                beta = (Y * self.Xinv).sum(1)
-#                beta = np.dot(self.Xsinv, Y)
             
-            values = beta[None,:,:] * X_[:,:,None] # case x effect-code x test
+            # values: case x effect-code x test
+            values = beta[None,:,:] * X_[:,:,None]
             
-            # MS res
-            if df_res > 0:
-                Yp = values.sum(1) # case x test
-                SS_res = ((Y - Yp)**2).sum(0)
+            # MS of the residuals
+            if not self.full_model:
+                if _lm_version == 1:
+                    Yp = values.sum(1) # case x test
+                    SS_res = ((Y - Yp)**2).sum(0)
                 MS_res = SS_res / df_res
             
             # collect SS, df, MS
@@ -560,29 +571,30 @@ class lm_fitter(object):
             out_map = [] #<- (name, F, P)
             for e_n in X.effects:
                 df_n = e_n.df # n = numerator
-                MS_n = MSs[e_n]
-                E_MS_cmp = self.E_MS[e_n]
-                if E_MS_cmp:
+                if self.full_model:
+                    E_MS_cmp = self.E_MS[e_n]
                     df_d = 0 # d = denominator
-                    MS_d = 0
-                    for e_d in E_MS_cmp:
-                        df_d += e_d.df
-                        MS_d += MSs[e_d]
-                elif df_res > 0:
-                    print "using SS res"
+                    if E_MS_cmp:
+                        MS_d = 0
+                        for e_d in E_MS_cmp:
+                            df_d += e_d.df
+                            MS_d += MSs[e_d]
+                else:
                     df_d = df_res
                     MS_d = MS_res
-                else:
-                    df_d = 0
                 
                 #
                 if df_d > 0:                        
-                    F = MS_n / MS_d
-                    P = scipy.stats.distributions.f.sf(F, df_n, df_d)
                     name = e_n.name
+                    MS_n = MSs[e_n]
+                    F = MS_n / MS_d
                     Fmap = F.reshape(original_shape[1:])
-                    Pmap = P.reshape(original_shape[1:])
-                    out_map.append((name, Fmap, Pmap))
+                    if p:
+                        P = scipy.stats.distributions.f.sf(F, df_n, df_d)
+                        Pmap = P.reshape(original_shape[1:])
+                        out_map.append((name, Fmap, Pmap))
+                    else:
+                        out_map.append((name, Fmap))
             
             return out_map
 
@@ -692,8 +704,6 @@ def comparelm(lm1, lm2):
 
 
 
-
-# MARK: Convenience functions
 
 class anova(object):
     """
