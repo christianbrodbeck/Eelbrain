@@ -549,7 +549,7 @@ class mne_experiment(object):
             self._analysis = analysis
     
     def summary(self, templates=['rawtxt', 'rawfif', 'fwd'], missing='-', link='>',
-                analysis=None):
+                analysis=None, count=True):
         if not isinstance(templates, (list, tuple)):
             templates = [templates]
         
@@ -577,13 +577,17 @@ class mne_experiment(object):
             results.setdefault(sub, {})[exp] = desc
             experiments.add(exp)
         
-        table = fmtxt.Table('l' * (2 + len(experiments)), title=analysis)
+        table = fmtxt.Table('l' * (2 + len(experiments) + count), title=analysis)
+        if count:
+            table.cell()
         table.cells('Subject', 'MRI')
         experiments = list(experiments)
         table.cells(*experiments)
         table.midrule()
         
-        for subject in sorted(results):
+        for i, subject in enumerate(sorted(results)):
+            if count:
+                table.cell(i)
             table.cell(subject)
             mri_subject = self._mri_subjects.get(subject, '*missing*')
             if mri_subject == subject:
