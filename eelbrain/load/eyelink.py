@@ -113,12 +113,15 @@ class Edf(object):
     def __repr__(self):
         return "Edf(%r)" % self.path
     
-    def assert_Id_match(self, Id):
+    def assert_Id_match(self, ds=None, Id='eventId'):
         """
         Raises an error if the Ids in ``Id`` do not match the Ids in the Edf 
         file(s).
         
         """
+        if isinstance(Id, str):
+            Id = ds[Id]
+        
         ID_edf = self.triggers['Id']
         if len(Id) != len(ID_edf):
             lens = (len(Id), len(ID_edf))
@@ -128,9 +131,9 @@ class Edf(object):
                     mm = i
                     break
             
-            args = lens + (mm,)
-            err = ("dataset containes different number of events from edf file "
-                   "(%i vs %i); first mismatch at %i." % args)
+            args = (getattr(ds, 'name', 'None'), self.path) + lens + (mm,)
+            err = ("dataset %r containes different number of events from edf "
+                   "file %r (%i vs %i); first mismatch at %i." % args)
             raise ValueError(err)
         
         check = (Id == ID_edf)
@@ -156,10 +159,9 @@ class Edf(object):
          
         """
         if Id:
+            self.assert_Id_match(ds=ds, Id=Id)
             if isinstance(Id, str):
                 Id = ds[Id]
-            
-            self.assert_Id_match(Id)
         
         ds[t_edf] = var(self.triggers['T'])
     
@@ -295,10 +297,9 @@ class Edf(object):
         
         """
         if Id:
+            self.assert_Id_match(ds=ds, Id=Id)
             if isinstance(Id, str):
                 Id = ds[Id]
-            
-            self.assert_Id_match(Id)
         
         T = self.get_T()
         self.mark(ds, tstart=tstart, tstop=tstop, good=good, bad=bad, use=use, 
