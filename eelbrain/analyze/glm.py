@@ -453,7 +453,8 @@ _lm_version = 1
 
 class lm_fitter(object):
     """
-    Object for efficiently fitting a model to multiple dependent variables. 
+    Object for efficiently fitting a model to multiple dependent variables.
+    Currently only implemented for balanced models. 
     E(MS) for F statistic after Hopkins (1976)
     
     """
