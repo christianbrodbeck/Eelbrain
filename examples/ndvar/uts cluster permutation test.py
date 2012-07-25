@@ -19,13 +19,13 @@ B = factor(['b0', 'b1'], rep=15, tile=2, name='B')
 
 
 # fixed effects model
-res = spm.cluster_anova(Y, A*B)
+res = testnd.cluster_anova(Y, A*B)
 plot.uts.clusters(res, title="Fixed Effects Model")
 
 
 # random effects model:
 subject = factor(range(15), tile=4, random=True, name='subject')
-res = spm.cluster_anova(Y, A*B*subject)
+res = testnd.cluster_anova(Y, A*B*subject)
 plot.uts.clusters(res, title="Random Effects Model")
 
 # plot Y
