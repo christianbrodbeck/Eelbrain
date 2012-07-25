@@ -11,7 +11,7 @@ import scipy.stats
 from matplotlib import pyplot as P
 
 from eelbrain import fmtxt
-from eelbrain.vessels.data import (var, isvar, asvar, isfactor, asfactor, 
+from eelbrain.vessels.data import (isvar, isndvar, asvar, isfactor, asfactor, 
                                    ismodel, iscategorial, cell_label)
 from eelbrain.vessels.structure import celltable
 
@@ -667,8 +667,8 @@ class bootstrap_pairwise(object):
         resampled = np.empty((samples + 1, len(Y))) # sample X subject within category
         resampled[0] = Y.x
         # fill resampled
-        for i, Y_resampled in enumerate(_resample(Y, unit=match, samples=samples,
-                                                  replacement=replacement)):
+        for i, Y_resampled in _resample(Y, unit=match, samples=samples,
+                                        replacement=replacement):
             resampled[i+1] = Y_resampled.x
         self.resampled = resampled
             
@@ -810,23 +810,35 @@ def _resample(Y, unit=None, replacement=True, samples=1000):
     """
     Generator function to resample a dependent variable (Y) multiple times
     
-    unit: factor specdifying unit of measurement (e.g. subject). If unit is 
-          specified, resampling proceeds by first resampling the categories of 
-          unit (with or without replacement) and then shuffling the values 
-          within unites (no replacement). 
-    replacement: whether random samples should be drawn with replacement or 
-                 without
-    samples: number of samples to yield
+    Y : var | ndvar
+        Variable which is to be resampled; a copy of ``Y`` is yielded in each 
+        iteration.
+    
+    unit : categorial
+        factor specifying unit of measurement (e.g. subject). If unit is 
+        specified, resampling proceeds by first resampling the categories of 
+        unit (with or without replacement) and then shuffling the values 
+        within unites (no replacement). 
+    
+    replacement : bool
+        whether random samples should be drawn with replacement or 
+        without
+    
+    samples : int
+        number of samples to yield
     
     """
     if isvar(Y):
-        Yout = Y.copy('_resampled')
-        Y
+        pass
+    elif isndvar(Y):
+        if not Y._case:
+            raise ValueError("Need ndvar with cases")
     else:
-        Y = var(Y)
-        Yout = var(Y.copy(), name="Y resampled")
+        raise TypeError("need var or ndvar")
     
-    if unit:
+    Yout = Y.copy('{name}_resampled')
+    
+    if unit: # not implemented
         ct = celltable(Y, unit)
         unit_data = ct.get_data(out=list)
         unit_indexes = ct.data_indexes.values()
@@ -834,33 +846,32 @@ def _resample(Y, unit=None, replacement=True, samples=1000):
         
         if replacement:
             n = len(ct.indexes)
-            for sample in xrange(samples):
+            for i in xrange(samples):
                 source_ids = np.random.randint(n, size=n)
                 for index, source_index in zip(unit_indexes, source_ids):
                     data = unit_data[source_index]
                     np.random.shuffle(data)
                     x_out[index] = data
-                yield Yout
+                yield i, Yout
             
         else:
-            for sample in xrange(samples):
+            for i in xrange(samples):
                 random.shuffle(unit_data)
                 for index, data in zip(unit_indexes, unit_data):
                     np.random.shuffle(data)
                     x_out[index] = data
-                yield Yout
-            
-    else:
+                yield i, Yout
+    else: # OK
         if replacement:
             N = len(Y)
-            for _ in xrange(samples):
-                index = np.random.randint(N)
+            for i in xrange(samples):
+                index = np.random.randint(N, N)
                 Yout.x = Y.x[index]
-                yield Yout
-        else:
-            for _ in xrange(samples):
+                yield i, Yout
+        else: #OK
+            for i in xrange(samples):
                 np.random.shuffle(Yout.x)
-                yield Yout
+                yield i, Yout
 
         
         
