@@ -16,6 +16,9 @@ import matplotlib.cm as _cm
 import matplotlib.pyplot as plt
 
 from eelbrain.vessels.structure import celltable
+from eelbrain.wxutils import mpl_canvas
+
+import _base
 
 
 __hide__ = ['plt', 'division', 'celltable']
@@ -101,6 +104,100 @@ def stat(Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
     return fig
 
 
+class clusters(mpl_canvas.CanvasFrame):
+    def __init__(self, epochs, pmax=0.05, t=True,
+                 title=None, cm=_cm.jet,
+                 width=6, height=3, frame=.1, dpi=90,
+                 overlay=False):
+        """
+        Specialized plotting function for Permutation Cluster test results
+        
+        t : bool
+            plot threshold
+        
+        """
+        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
+        
+        # create figure
+        N = len(epochs)
+        x_size = width
+        y_size = height if overlay else height * N 
+        figsize = (x_size, y_size)
+        
+        if title:
+            title = unicode(title)
+        else:
+            title=''
+        
+        super(clusters, self).__init__(title=title, figsize=figsize, dpi=dpi)
+        self.figure.subplots_adjust(hspace=.2, top=.95, bottom=.05)
+        
+        width = .85
+        if overlay:
+            height = .95
+            ax = self.figure.add_subplot(111)
+        else:
+            height = .95 / N
+        
+        for i, layers in enumerate(epochs):
+            if not overlay: # create axes
+                ax = self.figure.add_subplot(N, 1, i + 1)
+                ax.set_title(layers[0].name)
+                        
+            # color
+            color = cm(i / N)
+            _ax_clusters(ax, layers, color=color, pmax=pmax, t=t)
+        
+        self.Show()
+
+
+
+def _ax_uts(ax, layers, color=None, xdim='time'):
+    for l in layers:
+        _plt_uts(ax, l, color=color, xdim=xdim)
+    
+    x = layers[0].get_dim(xdim).x
+    ax.set_xlim(x[0], x[-1])
+
+
+def _plt_uts(ax, layer, color=None, xdim='time'):
+    x = layer.get_dim(xdim).x
+    y = layer.get_data((xdim,))
+    ax.plot(x, y, color=color)
+
+
+def _ax_clusters(ax, layers, color=None, pmax=0.05, t=True, xdim='time'):
+    if t is True:
+        t = layers[0].properties.get('tF', None)
+    if t:
+        ax.axhline(t, color='k')
+    
+    _plt_uts(ax, layers[0], color=color, xdim=xdim)
+    
+    for l in layers[1:]:
+        if l.properties['p'] <= pmax:
+            _plt_cluster(ax, l, color=color, xdim=xdim, y=layers[0])
+    
+    x = layers[0].get_dim(xdim).x
+    ax.set_xlim(x[0], x[-1])
+    ax.set_ylim(bottom=0)
+
+
+def _plt_cluster(ax, ndvar, color=None, y=None, xdim='time',
+                 hatch='/'):
+    x = ndvar.get_dim(xdim).x
+    v = ndvar.get_data((xdim,))
+    where = np.where(v)[0]
+    assert np.abs(np.diff(where)).sum() <= 2
+    x0 = where[0]
+    x1 = where[-1]
+    
+    if y is None:
+        ax.vspan(x0, x1, color=color, hatch=hatch, fill=False)
+    else:
+        y = y.get_data((xdim,))
+        ax.fill_between(x, y, where=v, color=color, alpha=0.5)
+
 
 def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwargs):
     h = {}
@@ -150,3 +247,5 @@ def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwarg
         pass
     
     return h
+
+

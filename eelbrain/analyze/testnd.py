@@ -9,11 +9,14 @@ Created on Feb 22, 2012
 
 import numpy as np
 import scipy.stats
-#import mne
+import scipy.ndimage
+import mne
 
 from eelbrain import vessels as _vsl
+from eelbrain.vessels.data import ndvar, asmodel
 
 import glm as _glm
+from test import _resample
 
 
 __hide__ = ['test_result', 'test',
@@ -176,6 +179,9 @@ class ttest(test_result):
 
 
 
+
+
+
 class f_oneway(test_result):
     def __init__(self, Y='MEG', X='condition', sub=None, dataset=None,
                  p=.05, contours={.01: '.5', .001: '0'}):
@@ -208,7 +214,7 @@ class f_oneway(test_result):
         
         properties = Y.properties.copy()
         properties['colorspace'] = _vsl.colorspaces.get_sig(p=p, contours=contours)
-        p = _vsl.data.ndvar(Ps, dims, properties=properties, name=X.name, info=test_name)
+        p = ndvar(Ps, dims, properties=properties, name=X.name, info=test_name)
 
         # create dataset
         super(f_oneway, self).__init__(name="anova")
@@ -248,7 +254,7 @@ class anova(test_result):
         for e, _, Ps in fitter.map(Y.x):
             name = e.name
             effect_names.append(name)
-            P = _vsl.data.ndvar(Ps, name=name, **kwargs)
+            P = ndvar(Ps, name=name, **kwargs)
             self[name + '_p'] = P
     
     @property
@@ -258,8 +264,84 @@ class anova(test_result):
             epochs.append(self[name+'_p'])
         
         return epochs
+
+
+class cluster_anova(test_result):
+    def __init__(self, Y, X, t=.1, sub=None, samples=1000, replacement=False,
+                 pmax=1):
+        """
+        t : scalar
+            Threshold: uncorrected p-value to use as threshold for finding 
+            clusters
+        pmax : scalar <= 1
+            Maximum cluster p-values to keep cluster.
+        
+        FIXME: connectivity for >2 dimensional data
+        """
+        if sub is not None:
+            Y = Y[sub]
+            X = X[sub]
+        
+        X = self.X = asmodel(X)
+        lm = _glm.lm_fitter(X)
+        
+        # get F-thresholds from p-threshold
+        tF = {}
+        if lm.full_model:
+            for e in lm.E_MS:
+                effects_d = lm.E_MS[e]
+                if effects_d:
+                    df_d = sum(ed.df for ed in effects_d)
+                    tF[e] = scipy.stats.distributions.f.isf(t, e.df, df_d)
+        else:
+            df_d = X.df_error
+            tF = {e: scipy.stats.distributions.f.isf(t, e.df, df_d) for e in X.effects}
+        
+        # Estimate statistic distributions from permuted Ys
+        dists = {e: np.empty(samples) for e in tF}
+        for i, Yrs in _resample(Y, replacement=replacement, samples=samples):
+            for e, F in lm.map(Yrs.x, p=False):
+                clusters, n = scipy.ndimage.label(F > tF[e])
+                if n:
+                    clusters_v = scipy.ndimage.measurements.sum(F, clusters, xrange(1, n+1))
+                    dists[e][i] = max(clusters_v)
+                else:
+                    dists[e][i] = 0
+        
+        # 
+        test0 = lm.map(Y.x, p=False)
+        self.clusters = {}
+        self.F_maps = {}
+        dims = Y.dims[1:]
+        for e, F in test0:
+            dist = dists[e]
+            clusters, n = scipy.ndimage.label(F > tF[e])#, structure, output)
+            clusters_v = scipy.ndimage.measurements.sum(F, clusters, xrange(1,n+1))
+            clist = self.clusters[e] = []
+            for i in xrange(n):
+                v = clusters_v[i]
+                p = 1 - scipy.stats.percentileofscore(dist, v, 'mean') / 100
+                if p <= pmax:
+                    im = (clusters == i+1)
+                    name = '%s (p=%s)' % (e.name, p)
+                    properties = {'p': p}
+                    ndv = ndvar(im, dims=dims, name=name, properties=properties)
+                    clist.append(ndv)
+            
+            props = {'tF': tF[e]}
+            self.F_maps[e] = ndvar(F, dims=dims, name=e.name, properties=props)
+        
+        super(cluster_anova, self).__init__(name="ANOVA Permutation Cluster Test")#, info=info)
+        self.tF = tF
     
-    
+    @property
+    def all(self):
+        epochs = []
+        for e in self.X.effects:
+            if e in self.F_maps:
+                epochs.append([self.F_maps[e]] + self.clusters[e])
+        
+        return epochs
 
 
 
