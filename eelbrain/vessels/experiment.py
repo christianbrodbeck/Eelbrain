@@ -338,6 +338,11 @@ class mne_experiment(object):
     def label_events(self, ds, experiment, subject):
         return ds
         
+    def load_edf(self, subject=None, experiment=None):
+        src = self.get('edf', subject=subject, experiment=experiment)
+        edf = load.eyelink.Edf(src)
+        return edf
+    
     def load_events(self, subject=None, experiment=None, proj='fixation', 
                     edf=True):
         """OK 12/7/3
@@ -365,7 +370,7 @@ class mne_experiment(object):
         
         # add edf
         if edf:
-            edf = load.eyelink.Edf(self.get('edf'))
+            edf = self.load_edf()
             edf.add_T_to(ds)
             ds.info['edf'] = edf
         
