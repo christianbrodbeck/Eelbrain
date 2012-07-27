@@ -20,6 +20,9 @@ from eelbrain import ui
 from eelbrain import fmtxt
 from eelbrain.utils import subp
 from eelbrain import load
+from eelbrain import plot
+from eelbrain.vessels.data import ndvar
+
 
 __all__ = ['mne_experiment']
 
@@ -393,6 +396,43 @@ class mne_experiment(object):
             raw.info['projs'] += proj[:]
         
         return raw
+    
+    def make_proj_for_epochs(self, epochs, dest, n_mag=5):
+        """
+        computes the first ``n_mag`` PCA components, plots them, and asks for 
+        user input (a tuple) on which ones to save.
+        
+        epochs : mne.Epochs
+            epochs which should be used for the PCA
+        
+        dest : str(path)
+            path where to save the projections
+        
+        n_mag : int
+            number of components to compute 
+            
+        """
+        proj = mne.proj.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
+    
+        sensor = load.fiff.sensors(epochs)
+        
+        # plot PCA components
+        PCA = []
+        for p in proj:
+            d = p['data']['data'][0]
+            name = p['desc'][-5:]
+            v = ndvar(d, (sensor,), name=name)
+            PCA.append(v)
+        
+        title = os.path.basename(dest)
+        p = plot.topo.topomap(PCA, size=1, title=title)
+        rm = None
+        while not isinstance(rm, tuple):
+            rm = input("which components to remove? (tuple / 'x'): ")
+            if rm == 'x': raise
+        proj = [proj[i] for i in rm]
+        p.Close()
+        mne.write_proj(dest, proj)
     
     def parse_dirs(self):
         """
