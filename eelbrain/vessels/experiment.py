@@ -8,7 +8,6 @@ Created on May 2, 2012
 @author: christian
 '''
 
-import cPickle as pickle
 import fnmatch
 import os
 import shutil
@@ -21,7 +20,6 @@ from eelbrain import ui
 from eelbrain import fmtxt
 from eelbrain.utils import subp
 from eelbrain import load
-import process
 
 __all__ = ['mne_experiment']
 
@@ -70,7 +68,7 @@ class mne_experiment(object):
         self.templates = self.get_templates()
         
         # dictionaries ---
-        self.edf_use = defaultdict(lambda: ['ESACC', 'EBLINK'])      
+        self.edf_use = defaultdict(lambda: ['ESACC', 'EBLINK'])
         
         
         # find experiment data structure

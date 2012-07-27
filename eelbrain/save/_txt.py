@@ -14,7 +14,7 @@ __all__ = ['txt']
 
 def txt(iterator, fmt='%s', delim=os.linesep, dest=None):
     """
-    Writes an iterator to a text file.
+    Writes any object that supports iteration to a text file.
     
     iterator : iterator
         Object that iterates over values to be saved

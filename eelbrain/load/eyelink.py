@@ -232,10 +232,10 @@ class Edf(object):
             start of the time window relevant for rejection. 
         tstop : scalar
             stop of the time window relevant for rejection.
-        good : 
+        good : bool | None
             vale assigned to epochs that should be retained based on 
             the eye-tracker data.
-        bad : 
+        bad : bool | None
             value that is assigned to epochs that should be rejected 
             based on the eye-tracker data.
         use : list of str
