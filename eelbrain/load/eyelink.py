@@ -208,7 +208,7 @@ class Edf(object):
     
     def get_T(self, name='t_edf'):
         "returns all trigger times in the dataset"
-        return var(self.triggers['T'])
+        return var(self.triggers['T'], name=name)
     
     def get_triggers(self, Id='Id', T='t_edf'):
         """
