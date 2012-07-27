@@ -148,6 +148,7 @@ class clusters(mpl_canvas.CanvasFrame):
             color = cm(i / N)
             _ax_clusters(ax, layers, color=color, pmax=pmax, t=t)
         
+        self.figure.tight_layout()
         self.Show()
 
 
@@ -167,12 +168,16 @@ def _plt_uts(ax, layer, color=None, xdim='time'):
 
 
 def _ax_clusters(ax, layers, color=None, pmax=0.05, t=True, xdim='time'):
+    Y = layers[0]
     if t is True:
         t = layers[0].properties.get('tF', None)
     if t:
         ax.axhline(t, color='k')
+    ylabel = Y.properties.get('unit', None)
     
-    _plt_uts(ax, layers[0], color=color, xdim=xdim)
+    _plt_uts(ax, Y, color=color, xdim=xdim)
+    if ylabel:
+        ax.set_ylabel(ylabel)
     
     for l in layers[1:]:
         if l.properties['p'] <= pmax:

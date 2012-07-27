@@ -328,7 +328,7 @@ class cluster_anova(test_result):
                     ndv = ndvar(im, dims=dims, name=name, properties=properties)
                     clist.append(ndv)
             
-            props = {'tF': tF[e]}
+            props = {'tF': tF[e], 'unit': 'F'}
             self.F_maps[e] = ndvar(F, dims=dims, name=e.name, properties=props)
         
         super(cluster_anova, self).__init__(name="ANOVA Permutation Cluster Test")#, info=info)
