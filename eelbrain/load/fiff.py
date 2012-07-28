@@ -22,11 +22,14 @@ import eelbrain.vessels.colorspaces as _cs
 import eelbrain.vessels.sensors as _sensors
 from eelbrain import ui
 
-__all__ = ['events', 'add_epochs', # basic pipeline
+__all__ = ['raw', 'events', 'add_epochs', # basic pipeline
            'ds_2_evoked', 'evoked_2_stc', # get lists of mne objects
            'mne_events', 'mne_Raw', 'mne_Epochs', # get mne objects
            'sensors',
            ]
+
+# make this available here for consistency
+from mne.fiff import Raw as raw
 
 
 
