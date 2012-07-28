@@ -47,6 +47,7 @@ kwargs = dict(
               license = 'GPL3',
               long_description = open('README.txt').read(),
               install_requires = [
+                                  'tex',
                                   'mdp',
                                   'matplotlib',
                                   'scipy',
