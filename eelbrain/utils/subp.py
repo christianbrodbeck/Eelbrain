@@ -360,7 +360,7 @@ def process_raw(raw, save='{raw}_filt', args=[], **kwargs):
 
 
 
-def _run(cmd, v=None):
+def _run(cmd, v=None, cwd=None):
     """
     cmd: list of strings
         command that is submitted to subprocess.Popen.
@@ -378,7 +378,8 @@ def _run(cmd, v=None):
             print repr(line)
     
     cmd = [unicode(c) for c in cmd]
-    sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    sp = subprocess.Popen(cmd, cwd=cwd,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = sp.communicate()
     
     if v > 1:
