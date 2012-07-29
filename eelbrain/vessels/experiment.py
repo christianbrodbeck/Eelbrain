@@ -72,6 +72,7 @@ class mne_experiment(object):
         
         # dictionaries ---
         self.edf_use = defaultdict(lambda: ['ESACC', 'EBLINK'])
+        self.bad_channels = defaultdict(lambda: ['MEG 065']) # (sub, exp) -> list
         
         
         # find experiment data structure
@@ -388,7 +389,8 @@ class mne_experiment(object):
         
         src = self.get('rawfif')
         raw = mne.fiff.Raw(src)
-        raw.info['bads'].append('MEG 065')
+        bad_chs = self.bad_channels[(self._subject, self._experiment)]
+        raw.info['bads'].extend(bad_chs)
         
         if proj:
             proj_file = self.get('projs', analysis=proj)
