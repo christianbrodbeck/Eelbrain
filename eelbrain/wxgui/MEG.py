@@ -185,6 +185,13 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         # update plot
         self.set_ax_state(axID, state)
     
+    def set_ylim(self, y):
+        for ax in self._case_axes:
+            ax.set_ylim(-y, y)
+        self._mean_ax.set_ylim(-y, y)
+        self.canvas.draw()
+        self._bfly_kwargs['ylim'] = y
+    
     def show_page(self, page):
         "Dislay a specific page (start counting with 0)"
         self._current_page_i = page
