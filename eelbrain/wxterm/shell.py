@@ -866,9 +866,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 with open(path) as FILE:
                     dinnerplate = pickle.load(FILE)
                 
-                msg = ("What name should the unpickled data be assigned "
-                       "to? (Leave empty to attach it.)")
-                dlg = wx.TextEntryDialog(self, msg, "Name?", "")
+                typename = dinnerplate.__class__.__name__
+                msg = ("What name should the unpickled data of\ntype %r be assigned "
+                       "to?\n(Leave empty to attach it)" % typename)
+                dlg = wx.TextEntryDialog(self, msg, "Name for Unpickled Content", "")
                 while True:
                     if dlg.ShowModal() == wx.ID_OK:
                         name = str(dlg.GetValue()).strip()
