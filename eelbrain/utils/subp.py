@@ -313,12 +313,23 @@ def kit2fiff(paths=dict(mrk = None,
         raise RuntimeError("kit2fiff failed (see above)")
 
 
-def brain_vision2fiff(vhdr_file=None):
+def brain_vision2fiff(vhdr_file=None, dig=None, orignames=False, eximia=False):
     """
     Convert a set of brain vision files to a fiff file.
     
     vhdr_file : str(path) | None
         Path to the header file; if None, a file dialog will ask for a file.
+    
+    
+    **mne_brain_vision2fiff arguments**
+    
+    dig : str(path) | None
+        The digitization data file.
+    orignames : bool
+        Keep original electrode labels.
+    eximia : bool
+        These are Nexstim eXimia data. Interpret the first four channels 
+        in a special way.
     
     """
     vhdr = _vhdr(vhdr_file)
@@ -344,6 +355,13 @@ def brain_vision2fiff(vhdr_file=None):
     cmd = [get_bin('mne', 'mne_brain_vision2fiff'),
            '--header', new_vhdr_file,
            '--out', out_file]
+    if dig:
+        cmd.extend(['--dig', dig])
+    if orignames:
+        cmd.append('--orignames')
+    if eximia:
+        cmd.append('--eximia')
+    
     out, err = _run(cmd, cwd=tempdir)
     shutil.rmtree(tempdir)
     if not os.path.exists(out_file):
