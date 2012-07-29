@@ -18,7 +18,6 @@ Created on Mar 4, 2012
 '''
 
 import cPickle as pickle
-import fnmatch
 import logging
 import os
 import re
@@ -26,10 +25,7 @@ import shutil
 import subprocess
 import tempfile
 
-import numpy as np
-
 from eelbrain import ui
-from eelbrain.vessels import data as _dt
 
 
 __hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch', 'pickle',
@@ -567,42 +563,6 @@ def do_inverse_operator(fwd_file, cov_file, inv_file='{cov}inv.fif',
     elif fixed:
         cmd.append('--fixed')
     
-    out, err = _run(cmd)
+    _, err = _run(cmd)
     if not os.path.exists(inv_file):
         raise RuntimeError(os.linesep.join(["inv-file not created", err]))
-    
-        
-#           (creates RawGrandAve-7-fwd-inv.fif).
-
-    # -> /Users/christian/Data/eref/meg/R0368/myfif/R0368_eref3_raw-R0368-ico-4-src-fwd.fif...done
-#    fwd_file ='-fwd' 
-#    cov_file = ''
-#    
-#    cmd = [os.path.join(_mne_dir, 'bin', "mne_do_inverse_operator"),
-#           '--fwd', fwd_file, 
-#           '--meg', 
-#           '--depth', 
-#           '--megreg', '0.1',
-#           '--senscov', cov_file]
-    # -> (creates RawGrandAve-7-fwd-inv.fif). 
-
-
-"""
-    #. invokes mne_analyze (if coreg == True) for manual coregistration 
-       (see below)
-    #. runs mne_do_forward_solution
-
-"""
-
-
-
-def noise_covariance():
-    """
-    
-    """
-    pass
-    # mne.cov.compute_covariance iterates over an Epoch file
-    
-
-
-
