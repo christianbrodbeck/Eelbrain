@@ -26,6 +26,7 @@ import subprocess
 import tempfile
 
 from eelbrain import ui
+from eelbrain.load.brainvision import vhdr as _vhdr
 
 
 __hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch', 'pickle',
@@ -310,6 +311,76 @@ def kit2fiff(paths=dict(mrk = None,
     
     if not os.path.exists(out_file):
         raise RuntimeError("kit2fiff failed (see above)")
+
+
+def brain_vision2fiff(vhdr_file=None):
+    """
+    Convert a set of brain vision files to a fiff file.
+    
+    vhdr_file : str(path) | None
+        Path to the header file; if None, a file dialog will ask for a file.
+    
+    """
+    vhdr = _vhdr(vhdr_file)
+    tempdir = tempfile.mkdtemp()
+    
+    # vhdr
+    new_vhdr_file = os.path.join(tempdir, vhdr.basename)
+    os.symlink(vhdr.path, new_vhdr_file)
+    
+    # data
+    new_data_file = os.path.join(tempdir, os.path.basename(vhdr.datafile))
+    os.symlink(vhdr.datafile, new_data_file)
+    
+    # vmrk
+    vmrk_file = vhdr.markerfile
+    new_vmrk_file = os.path.join(tempdir, os.path.basename(vmrk_file))
+    prepare_vmrk(vmrk_file, new_vmrk_file)
+    
+    # destination
+    vhdr_root, _ = os.path.splitext(vhdr.path)
+    out_file = os.extsep.join((vhdr_root+'_raw', 'fif'))
+    
+    cmd = [get_bin('mne', 'mne_brain_vision2fiff'),
+           '--header', new_vhdr_file,
+           '--out', out_file]
+    out, err = _run(cmd, cwd=tempdir)
+    shutil.rmtree(tempdir)
+    if not os.path.exists(out_file):
+        print out
+        print err
+        raise RuntimeError("brain_vision2fiff failed (see above)")
+
+
+
+def prepare_vmrk(vmrk, dest):
+    """
+    Prepares events in a brain vision .vmrk file for mne_brain_vision2fiff by
+    setting all event types to "Stimulus".
+    
+    vmrk : str(path)
+        path to the original vmrk file
+    
+    dest : str(path)
+        detination for the modified vmrk file
+    
+    """
+    # Each entry: Mk<Marker number>=<Type>,<Description>,<Position in data points>,
+    # <Size in data points>, <Channel number (0 = marker is related to all channels)>
+    rdr = re.compile('Mk([0-9]+)=(\w+),(\w+),(\w+),(\w+),(\w+)')
+    temp = 'Mk%s=%s,%s,%s,%s,%s' + os.linesep
+    OUT = []
+    for line in open(vmrk):
+        m = rdr.match(line)
+        if m:
+            Id, stype, desc, pos, size, chan  = m.groups()
+            stype = 'Stimulus'
+            desc = 'S%s' % desc[1:]
+            OUT.append(temp % (Id, stype, desc, pos, size, chan))
+        else:
+            OUT.append(line)
+    
+    open(dest, 'w').writelines(OUT)
 
 
 
