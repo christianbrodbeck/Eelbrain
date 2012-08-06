@@ -32,6 +32,3 @@ Properties
 
 
 """
-
-import design
-import process
