@@ -136,7 +136,11 @@ class mne_experiment(object):
                  stc_tgt = os.path.join(mne_dir, '_'.join((sub, exp, an))),
                  stc = os.path.join(mne_dir, '_'.join((sub, exp, an)) + '.stc'),
                  label = os.path.join(mri_dir, sub, 'label', 'aparc', '%s.label' % an),
-                
+                 
+                 # EEG
+                 vhdr = os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp+'.vhdr'))),
+                 eegfif = os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp, 'raw.fif'))),
+                 
                  # BESA
                  besa_triggers = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an, 'triggers.txt'))),
                  besa_evt = os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an + '.evt'))),
