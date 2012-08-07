@@ -107,7 +107,7 @@ class Edf(object):
         
         dtype = [('T', np.uint32), ('Id', np.uint8)]
         self.triggers = np.array(triggers, dtype=dtype)
-        dtype = np.dtype([('event', np.str_, 5), ('start', np.uint32), ('stop', np.uint32)])
+        dtype = np.dtype([('event', np.str_, 6), ('start', np.uint32), ('stop', np.uint32)])
         self.artifacts = np.array(artifacts, dtype=dtype)
     
     def __repr__(self):
@@ -165,7 +165,7 @@ class Edf(object):
         
         ds[t_edf] = var(self.triggers['T'])
     
-    def get_accept(self, T=None, tstart=-0.1, tstop=0.6, use=['ESACC', 'EBLIN']):
+    def get_accept(self, T=None, tstart=-0.1, tstop=0.6, use=['ESACC', 'EBLINK']):
         """
         returns a boolean var indicating for each epoch whether it should be 
         accepted or not based on ocular artifacts in the edf file.
