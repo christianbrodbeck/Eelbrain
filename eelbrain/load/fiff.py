@@ -384,19 +384,20 @@ def mne_Raw(ds):
     return ds.info['raw']
 
 
-def mne_Epochs(ds, tstart=-0.1, tstop=0.6, baseline=(None, 0), reject=None, 
-               proj=True, i_start='i_start', raw=None, picks=None):
+def mne_Epochs(ds, tstart=-0.1, tstop=0.6, i_start='i_start', raw=None, **kwargs):
     """
+    All ``**kwargs`` are forwarded to the mne.Epochs instance creation.
+    
     reject : 
         e.g., {'mag': 2e-12}
+    
     """
     if raw is None:
         raw = ds.info['raw']
     
     events = mne_events(ds=ds, i_start=i_start)
-        
-    epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, picks=picks, 
-                        baseline=baseline, reject=reject, proj=proj)
+    
+    epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, **kwargs)
     return epochs
 
 
