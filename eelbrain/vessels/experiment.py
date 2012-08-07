@@ -511,6 +511,9 @@ class mne_experiment(object):
                 src = e.get(name)
                 if '*' in src:
                     raise NotImplementedError("Can't fnmatch here yet")
+                elif not os.path.exists(src):
+                    print "Missing: %r %r" % (sub, exp)
+                    continue
                 
                 dst = self.get(name, subject=sub, experiment=exp, match=False, mkdir=True)
                 if os.path.isdir(src):
