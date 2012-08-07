@@ -1,3 +1,8 @@
+"""
+Module to deploy GUI elements depending on the current environment.
+
+"""
+
 import logging
 import os
 

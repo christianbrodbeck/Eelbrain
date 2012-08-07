@@ -1,3 +1,8 @@
+"""
+Helper functions for saving data in various formats.
+
+"""
+
 import os
 import cPickle
 
