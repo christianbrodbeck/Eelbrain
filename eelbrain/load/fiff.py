@@ -369,14 +369,20 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
 
 
 
-def mne_events(ds=None, i_start='i_start'):
+
+def mne_events(ds=None, i_start='i_start', eventID='eventID'):
     if isinstance(i_start, basestring):
         i_start = ds[i_start]
+    
+    if isinstance(eventID, basestring):
+        eventID = ds[eventID]
+    elif eventID is None:
+        eventID = np.ones(len(i_start))
     
     events = np.empty((ds.N, 3), dtype=np.int32)
     events[:,0] = i_start.x
     events[:,1] = 0
-    events[:,2] = 1
+    events[:,2] = eventID
     return events
 
 
@@ -397,7 +403,7 @@ def mne_Epochs(ds, tstart=-0.1, tstop=0.6, i_start='i_start', raw=None, **kwargs
     
     events = mne_events(ds=ds, i_start=i_start)
     
-    epochs = mne.Epochs(raw, events, 1, tmin=tstart, tmax=tstop, **kwargs)
+    epochs = mne.Epochs(raw, events, None, tmin=tstart, tmax=tstop, **kwargs)
     return epochs
 
 
