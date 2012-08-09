@@ -24,7 +24,7 @@ from eelbrain import ui
 
 __all__ = ['raw', 'events', 'add_epochs', # basic pipeline
            'ds_2_evoked', 'evoked_2_stc', # get lists of mne objects
-           'mne_events', 'mne_Raw', 'mne_Epochs', # get mne objects
+           'mne2ndvar', 'mne_events', 'mne_Raw', 'mne_Epochs', # get mne objects
            'sensors',
            ]
 
@@ -178,7 +178,8 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
         meg = data 
         eeg = False
     else:
-        raise NotImplementedError
+        err = 'data=%r' % data
+        raise NotImplementedError(err)
     
     if raw is None:
         raw = ds.info['raw']
@@ -368,6 +369,42 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
 #    label_mean_flip = np.mean(flip[:, np.newaxis] * data, axis=0)
 
 
+def mne2ndvar(mne_object, data='mag', name=None, bads=False):
+    """
+    Converts an mne data object to an ndvar. 
+    
+    The main difference is that an ndvar
+    can only contain one type of data ('mag', 'grad', 'eeg')
+    
+    """
+    if data == 'eeg':
+        meg = False 
+        eeg = True
+    elif data in ['grad', 'mag']:
+        meg = data 
+        eeg = False
+    else:
+        err = 'data=%r' % data
+        raise NotImplementedError(err)
+    
+    if bads:
+        exclude = mne_object.info['bads']
+    else:
+        exclude = []
+    
+    picks = mne.fiff.pick_types(mne_object.info, meg=meg, eeg=eeg, stim=False, 
+                                eog=False, include=[], exclude=exclude)
+    
+    if isinstance(mne_object, mne.fiff.Evoked):
+        x = mne_object.data[picks]
+        print x.shape
+        time = _data.var(mne_object.times, name='time')
+        sensor = sensors(mne_object, picks=picks)
+        dims = (sensor, time)
+        return _data.ndvar(x, dims=dims, name=name)
+    else:
+        err = "converting %s is not implemented" % type(mne_object)
+        raise NotImplementedError(err)
 
 
 def mne_events(ds=None, i_start='i_start', eventID='eventID'):
