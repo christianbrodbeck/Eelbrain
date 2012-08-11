@@ -206,7 +206,7 @@ def kit2fiff(paths=dict(mrk = None,
              sns='NYU-nellab',
              sfreq=1000, lowpass=100, highpass=0,
              stim=xrange(168, 160, -1),  stimthresh=2.5, add=None,#(188, 190), #xrange()
-             aligntol=25):
+             aligntol=25, overwrite=False):
     """
     Calls the ``mne_kit2fiff`` binary which reads multiple input files and 
     combines them into a fiff file. Implemented after Gwyneth's Manual; for 
@@ -251,6 +251,9 @@ def kit2fiff(paths=dict(mrk = None,
         
     aligntol : scalar
         Alignment tolerance for coregistration
+        
+    overwrite : bool
+        Automatically overwrite the target fiff file if it already exists.
     
     """
     # get all the paths
@@ -277,7 +280,7 @@ def kit2fiff(paths=dict(mrk = None,
     out_dir = os.path.dirname(out_file)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
-    elif os.path.exists(out_file):
+    elif not overwrite and os.path.exists(out_file):
         if not ui.ask("Overwrite?", "Target File Already Exists at: %r. Should "
                       "it be replaced?" % out_file):
             return

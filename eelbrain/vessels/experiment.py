@@ -167,7 +167,7 @@ class mne_experiment(object):
         args = ', '.join(args)
         return "mne_experiment(%s)" % args
     
-    def do_kit2fiff(self, do='ask', aligntol=xrange(20, 40, 5)):
+    def do_kit2fiff(self, do='ask', aligntol=xrange(15, 40, 5), redo=False):
         """OK 12/7/2
         find any raw txt files that have not been converted
         
@@ -190,7 +190,7 @@ class mne_experiment(object):
             for fname in fnames:
                 fs, fexp, _ = fname.split('_', 2)
                 fifpath = self.get('rawfif', subject=fs, experiment=fexp, match=False)
-                if not os.path.exists(fifpath):
+                if redo or not os.path.exists(fifpath):
                     raw_txt.append((subject, fexp, fname))
         
         table = fmtxt.Table('lll')
@@ -203,12 +203,16 @@ class mne_experiment(object):
             do = raw_input('convert missing (y)?') in ['y', 'Y', '\n']
         
         if do:
+            aligntols = {}
             failed = []
             for subject, experiment, fname in raw_txt:
                 self.set(subject=subject, experiment=experiment)
+                key = '_'.join((subject, experiment))
                 for at in aligntol:
                     try:
-                        subp.kit2fiff(self, aligntol=at, **self._kit2fiff_args)
+                        subp.kit2fiff(self, aligntol=at, overwrite=redo, 
+                                      **self._kit2fiff_args)
+                        aligntols[key] = at
                     except RuntimeError:
                         if at < max(aligntol):
                             pass
@@ -216,6 +220,9 @@ class mne_experiment(object):
                             failed.append(fname)
                     else:
                         break
+            
+            print aligntols
+            
             if len(failed) > 0:
                 table = fmtxt.Table('l')
                 table.cell("Failed")
