@@ -1086,7 +1086,7 @@ class factor(_effect_):
 
 class ndvar(object):
     _stype_ = "ndvar"
-    def __init__(self, x, dims=('case',), properties=None, name=None, info=""):
+    def __init__(self, x, dims=('case',), properties=None, name=None):
         """
         Arguments
         ---------
@@ -1147,8 +1147,7 @@ class ndvar(object):
         
         state = {'dims': dims,
                  'x': x,
-                 'name': name,
-                 'info': info}
+                 'name': name}
         
         # store attributes
         if properties is None:
@@ -1170,7 +1169,6 @@ class ndvar(object):
         
         self.x = x = state['x']
         self.name = state['name']
-        self.info = state['info']
         self.properties = state['properties']
         # derived
         self.ndim = len(dims)
@@ -1189,7 +1187,6 @@ class ndvar(object):
         state = {'dims': self.dims,
                  'x': self.x,
                  'name': self.name,
-                 'info': self.info,
                  'properties': self.properties}
         return state
     
@@ -1344,8 +1341,7 @@ class ndvar(object):
         
         x = np.array(x)
         name = name.format(name=self.name)
-        info = os.linesep.join((self.info, "compressed by %r" % X)) 
-        out = ndvar(x, self.dims, properties=properties, info=info, name=name)
+        out = ndvar(x, self.dims, properties=properties, name=name)
         return out
     
     def copy(self, name='{name}'):
@@ -1366,8 +1362,7 @@ class ndvar(object):
         
         x = self.x[index]
         name = name.format(name=self.name, index=index)
-        case = ndvar(x, dims=self.dims[1:], properties=self.properties, name=name, 
-                     info=self.info + ".get_case(%i)" % index)
+        case = ndvar(x, dims=self.dims[1:], properties=self.properties, name=name)
         return case
     
     def get_data(self, dims):
@@ -1422,7 +1417,7 @@ class ndvar(object):
     
     def repeat(self, repeats, dim='case', name='{name}'):
         """
-        Analogous to :py.func:`numpy.repeat`
+        Analogous to :py:func:`numpy.repeat`
         
         """
         ax = self.get_axis(dim)
@@ -1483,8 +1478,6 @@ class ndvar(object):
                 x = func(x, axis=axis)
                 dims.pop(axis)
             
-            info = os.linesep.join((self.info, 'summary: %s' % func.__name__))
-            
             # update properties for summary
             properties = self.properties.copy()
             for key in self.properties:
@@ -1494,7 +1487,7 @@ class ndvar(object):
             if dims == ['case']:
                 return var(x, name=name)
             else:
-                return ndvar(x, dims=dims, name=name, properties=properties, info=info)
+                return ndvar(x, dims=dims, name=name, properties=properties)
     
     def mean(self, name="mean({name})"): # FIXME: Do I need this?
         if self._case:
