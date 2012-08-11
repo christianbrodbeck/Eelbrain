@@ -9,7 +9,9 @@ Created on May 2, 2012
 '''
 
 import fnmatch
+import itertools
 import os
+import re
 import shutil
 
 from collections import defaultdict
@@ -64,7 +66,6 @@ class mne_experiment(object):
         
         self._kit2fiff_args = kit2fiff_args
         
-        self._edir = directory
         self._log_path = os.path.join(directory, 'mne-experiment.pickle')
         
         # templates ---
@@ -76,6 +77,8 @@ class mne_experiment(object):
         
         
         # find experiment data structure
+        self.var_values = {}
+        self.state = {'root': directory}
         self.parse_dirs()
         
         mri_dir = self.get('mri_dir')
@@ -84,10 +87,6 @@ class mne_experiment(object):
             self.lbl = Labels(lbl_dir)
         
         # store current values
-        self._subject = None
-        self._experiment = None
-        self._analysis = None
-        self._root = directory
         self.set(subject=subject, experiment=experiment, analysis=analysis)
     
     def get_templates(self):
@@ -112,8 +111,8 @@ class mne_experiment(object):
                  
                  # raw
                  mrk = os.path.join(raw_dir, '_'.join((sub, exp, 'marker.txt'))),
-                 elp = os.path.join(raw_dir, '*.elp'),
-                 hsp = os.path.join(raw_dir, '*.hsp'),
+                 elp = os.path.join(raw_dir, sub+'_HS.elp'),
+                 hsp = os.path.join(raw_dir, sub+'_HS.hsp'),
                  rawtxt = os.path.join(raw_dir, '_'.join((sub, exp, '*raw.txt'))),
                  rawfif = os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
                  trans = os.path.join(raw_dir, '_'.join((sub, exp, 'raw-trans.fif'))), # mne p. 196
@@ -149,15 +148,21 @@ class mne_experiment(object):
         return t
         
     def __repr__(self):
-        args = [repr(self._edir)]
+        args = [repr(self.state['root'])]
         kwargs = []
-#        kwargs = [('megdir', repr(self._megdir))]
-        if self._subject is not None:
-            kwargs.append(('subject', repr(self._subject)))
-        if self._experiment is not None:
-            kwargs.append(('experiment', repr(self._experiment)))
-        if self._analysis is not None:
-            kwargs.append(('analysis', repr(self._analysis)))
+        
+        subject = self.state.get('subject')
+        if subject is not None:
+            kwargs.append(('subject', repr(subject)))
+        
+        experiment = self.state.get('experiment')
+        if experiment is not None:
+            kwargs.append(('experiment', repr(experiment)))
+        
+        analysis = self.state.get('analysis')
+        if analysis is not None:
+            kwargs.append(('analysis', repr(analysis)))
+        
         args.extend('='.join(pair) for pair in kwargs)
         args = ', '.join(args)
         return "mne_experiment(%s)" % args
@@ -246,45 +251,29 @@ class mne_experiment(object):
                     
         """
         temp = self.templates[name]
-        fmt = {}
         self.set(subject=subject, experiment=experiment, analysis=analysis, 
                  match=match)
+        fmt = self.state.copy()
         
         if '{subject}' in temp:
-            if self._subject is None:
+            subject = fmt.get('subject')
+            if subject is None:
                 raise RuntimeError("No subject specified")
-            else:
-                subject = self._subject
-            
-            if name in ['bem', 'cor', 'src', 'mri_sdir', 'label']:
-                subject = self._mri_subjects[subject]
-            
-            fmt['subject'] = subject
+            elif name in ['bem', 'cor', 'src', 'mri_sdir', 'label']:
+                fmt['subject'] = self._mri_subjects[subject]
         
-        if '{experiment}' in temp:
-            if self._experiment is None:
-                raise RuntimeError("No experiment specified")
-            else:
-                experiment = self._experiment
-            
-            fmt['experiment'] = experiment
+        if ('{experiment}' in temp) and (fmt.get('experiment') is None):
+            raise RuntimeError("No experiment specified")
         
-        if '{analysis}' in temp:
-            if self._analysis is None:
-                raise RuntimeError("No analysis specified")
-            else:
-                analysis = self._analysis
-            
-            fmt['analysis'] = analysis
+        if ('{analysis}' in temp) and (fmt.get('analysis') is None):
+            raise RuntimeError("No analysis specified")
         
         if '{root}' in temp:
-            if root is None:
-                root = self._edir
-            
-            if root.endswith(os.path.extsep):
-                root = root[:-1]
-            
-            fmt['root'] = root
+            if root is not None:
+                if root.endswith(os.path.extsep):
+                    root = root[:-1]
+                
+                fmt['root'] = root
         
         path = temp.format(**fmt)
         
@@ -313,7 +302,7 @@ class mne_experiment(object):
                 a = ui.ask("Launch mne_analyze for Coordinate-Coregistration?", 
                            "The 'trans' file for %r, %r does not exist. Should " 
                            "mne_analyzed be launched to create it?" % 
-                           (self._subject, self._experiment),
+                           (self.state['subject'], self.state['experiment']),
                            cancel=False, default=True)
                 if a:
                     subp.run_mne_analyze(self.get('mri_dir'),
@@ -323,11 +312,34 @@ class mne_experiment(object):
                         raise IOError(err)
                 else:
                     err = ("No trans file for %r, %r" % 
-                           (self._subject, self._experiment))
+                           (self.state['subject'], self.state['experiment']))
                     raise IOError(err)
         
         path = os.path.expanduser(path)
         return path
+    
+    def iter_temp(self, name):
+        temp = self.templates[name]
+        pattern = re.compile('\{(\w+)\}')
+        variables = set(pattern.findall(temp)).difference(['root'])
+        variables = list(variables)
+        for state in self.iter_vars(variables):
+            path = temp.format(**state)
+            yield path
+    
+    def iter_path(self, temp, ignore=['root']):
+        pattern = re.compile('\{(\w+)\}')
+        variables = set(pattern.findall(temp)).difference(ignore)
+        variables = list(variables)
+        for state in self.iter_vars(variables):
+            path = temp.format(**state)
+            yield path
+    
+    def iter_vars(self, variables):
+        var_values = tuple(self.var_values[v] for v in variables)
+        for v_list in itertools.product(*var_values):
+            self.state.update(dict(zip(variables, v_list)))
+            yield self.state
     
     def iter_se(self, subject=None, experiment=None, analysis=None):
         """
@@ -368,9 +380,9 @@ class mne_experiment(object):
         ds = load.fiff.events(raw)
         
         if subject is None: 
-            subject = self._subject
+            subject = self.state['subject']
         if experiment is None: 
-            experiment = self._experiment
+            experiment = self.state['experiment']
         
         self.label_events(ds, experiment, subject)
         
@@ -393,7 +405,7 @@ class mne_experiment(object):
         
         src = self.get('rawfif')
         raw = mne.fiff.Raw(src)
-        bad_chs = self.bad_channels[(self._subject, self._experiment)]
+        bad_chs = self.bad_channels[(self.state['subject'], self.state['experiment'])]
         raw.info['bads'].extend(bad_chs)
         
         if proj:
@@ -484,6 +496,9 @@ class mne_experiment(object):
             fnames.extend(fnmatch.filter(all_fnames, txtname))
             for fname in fnames:
                 experiments.add(fname.split('_')[1])
+        
+        self.var_values['subject'] = list(subjects)
+        self.var_values['experiment'] = list(experiments)
     
     def pull(self, src_root, names=['rawfif', 'log_sdir'], overwrite=False):
         """OK 12/7/2
@@ -532,39 +547,44 @@ class mne_experiment(object):
                 elif overwrite or not os.path.exists(dst):
                     shutil.copy(src, dst)
     
-    def push(self, dst_root, names=[], overwrite=False):
-        "See .pull()"
+    def push(self, dst_root, names=[], overwrite=False, missing='warn'):
+        """
+        Copy certain branches of the directory tree.
+        
+        missing : 'raise' | 'warn' | 'ignor'
+
+        """
+        assert missing in ['raise', 'warn', 'ignore']
+        
         if isinstance(names, basestring):
             names = [names]
         
-        e = self.__class__(dst_root)
         for name in names:
-            if '{experiment}' in self.templates[name]:
-                exp = None
-            else:
-                exp = 'NULL'
-            
-            for sub, exp in self.iter_se(experiment=exp):
-                src = self.get(name)
+            for src in self.iter_temp(name):
                 if '*' in src:
                     raise NotImplementedError("Can't fnmatch here yet")
                 
-                dst = e.get(name, subject=sub, experiment=exp, match=False, mkdir=True)
-                if os.path.isdir(src):
-                    if os.path.exists(dst):
-                        if overwrite:
-                            shutil.rmtree(dst)
-                            shutil.copytree(src, dst)
+                if os.path.exists(src):
+                    dst = self.get(name, root=dst_root, match=False, mkdir=True)
+                    if os.path.isdir(src):
+                        if os.path.exists(dst):
+                            if overwrite:
+                                shutil.rmtree(dst)
+                                shutil.copytree(src, dst)
+                            else:
+                                pass
                         else:
-                            pass
-                    else:
-                        shutil.copytree(src, dst)
-                elif overwrite or not os.path.exists(dst):
-                    shutil.copy(src, dst)
+                            shutil.copytree(src, dst)
+                    elif overwrite or not os.path.exists(dst):
+                        shutil.copy(src, dst)
+                elif missing == 'warn':
+                    print "Skipping (missing): %r" % src
+                elif missing == 'raise':
+                    raise IOError("Missing: %r" % src)
     
     def run_mne_analyze(self, subject=None, modal=False):
         mri_dir = self.get('mri_dir')
-        if (subject is None) and (self._subject is None):
+        if (subject is None) and (self.state['subject'] is None):
             fif_dir = self.get('meg_dir')
         else:
             fif_dir = self.get('raw_sdir', subject=subject)
@@ -572,7 +592,7 @@ class mne_experiment(object):
         subp.run_mne_analyze(mri_dir, fif_dir, modal)
     
     def run_mne_browse_raw(self, subject=None, modal=False):
-        if (subject is None) and (self._subject is None):
+        if (subject is None) and (self.state['subject'] is None):
             fif_dir = self.get('meg_dir')
         else:
             fif_dir = self.get('raw_sdir', subject=subject)
@@ -589,16 +609,16 @@ class mne_experiment(object):
             if match and not (subject in self._subjects) and not ('*' in subject):
                 raise ValueError("No subject named %r" % subject)
             else:
-                self._subject = subject
+                self.state['subject'] = subject
         
         if experiment is not None:
             if match and not (experiment in self._experiments) and not ('*' in experiment):
                 raise ValueError("No experiment named %r" % experiment)
             else:
-                self._experiment = experiment
+                self.state['experiment'] = experiment
         
         if analysis is not None:
-            self._analysis = analysis
+            self.state['analysis'] = analysis
     
     def summary(self, templates=['rawtxt', 'rawfif', 'fwd'], missing='-', link='>',
                 analysis=None, count=True):
