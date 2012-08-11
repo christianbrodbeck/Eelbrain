@@ -697,7 +697,7 @@ class Table:
         if self._caption:
             out.append(str(self._caption))
         
-        return '\n'.join(out)
+        return os.linesep.join(out)
     
     def get_tex(self, fmt=None):
         tex_pre = [r"\begin{center}", 
@@ -717,7 +717,7 @@ class Table:
         if self.rules:
             tex_post = [r"\bottomrule"] + tex_post
         # combine
-        tex = '\n'.join(tex_pre + tex_body + tex_post)
+        tex = os.linesep.join(tex_pre + tex_body + tex_post)
         return tex
     
     def get_tsv(self, delimiter='\t', linesep='\r\n', fmt='%.9g'):
