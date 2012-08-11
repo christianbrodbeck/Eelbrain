@@ -604,7 +604,7 @@ class var(object):
         return self.x.mean()
     
     def repeat(self, repeats, name='{name}'):
-        "Like :py:func:`numpy.repeat`"
+        "Analogous to :py:func:`numpy.repeat`"
         return var(self.x.repeat(repeats), name=name.format(name=self.name))
 
 
@@ -1066,7 +1066,7 @@ class factor(_effect_):
         return factor(x, **self._child_kwargs(name))
     
     def repeat(self, repeats, name='{name}'):
-        "Repeat elements of a factor (like :py:func:`numpy.repeat`)"
+        "Repeat elements of a factor (analogous to :py:func:`numpy.repeat`)"
         return factor(self.x.repeat(repeats), **self._child_kwargs(name))
     
     def set_color(self, cell, color):
@@ -1419,6 +1419,23 @@ class ndvar(object):
     def get_dims(self, names):
         "Returns a tuple with the requested dimension vars"
         return tuple(self.get_dim(name) for name in names)
+    
+    def repeat(self, repeats, dim='case', name='{name}'):
+        """
+        Analogous to :py.func:`numpy.repeat`
+        
+        """
+        ax = self.get_axis(dim)
+        x = self.x.repeat(repeats, axis=ax)
+        
+        repdim = self.dims[ax]
+        if not isinstance(repdim, str):
+            repdim = repdim.repeat(repeats)
+        
+        dims = self.dims[:ax] + (repdim,) + self.dims[ax+1:]
+        properties = self.properties.copy()
+        name = name.format(name=self.name)
+        return ndvar(x, dims, properties=properties, name=name)
     
     def summary(self, *dims, **regions):
         r"""
@@ -1969,6 +1986,17 @@ class dataset(collections.OrderedDict):
     def n_items(self):
         return super(dataset, self).__len__()
     
+    def repeat(self, n, name='{name}'):
+        """
+        Analogous to :py:fun:`numpy.repeat`. Returns a new dataset with each 
+        row repeated ``n`` times.
+         
+        """
+        ds = dataset(name=name.format(name=self.name))
+        for k, v in self.iteritems():
+            ds[k] = v.repeat(n)
+        return ds
+        
     @property
     def shape(self):
         return (self.n_cases, len(self))
