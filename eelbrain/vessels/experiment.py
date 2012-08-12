@@ -555,10 +555,17 @@ class mne_experiment(object):
                     shutil.copy(src, dst)
     
     def push(self, dst_root, names=[], overwrite=False, missing='warn'):
-        """
+        """OK 12/8/12
         Copy certain branches of the directory tree.
         
+        name : str | list of str
+            name(s) of the template(s) of the files that should be copied 
+        overwrite : bool
+            What to do if the target file already exists (overwrite it with the 
+            source file or keep it)
         missing : 'raise' | 'warn' | 'ignor'
+            What to do about missing source files(raise an error, print a 
+            warning, or ignore them)
 
         """
         assert missing in ['raise', 'warn', 'ignore']

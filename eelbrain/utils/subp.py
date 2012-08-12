@@ -483,7 +483,9 @@ def _run(cmd, v=None, cwd=None):
 
 def setup_mri(mri_sdir, ico=4):
     """
-    runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
+    Prepares an MRI for use in the mne-pipeline:
+     - creates symlinks in the bem directory 
+     - runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
     
     """
     mri_dir, subject = os.path.split(mri_sdir)
