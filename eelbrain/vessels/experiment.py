@@ -507,10 +507,14 @@ class mne_experiment(object):
         self.var_values['subject'] = list(subjects)
         self.var_values['experiment'] = list(experiments)
     
-    def pull(self, src_root, names=['rawfif', 'log_sdir'], overwrite=False):
-        """OK 12/7/2
+    def pull(self, src_root, names=['rawfif', 'log_sdir'], **kwargs):
+        """OK 12/8/12
         Copies all items matching a template from another root to the current
         root.
+        
+        .. warning:: Implemented by creating a new instance of the same class with
+            ``src_root`` as root and calling its ``.push()`` method. 
+            This determines available templates and var_values.
         
         src_root : str(path)
             root of the source experiment
@@ -519,40 +523,12 @@ class mne_experiment(object):
             tested for 'rawfif' and 'log_sdir'. 
             Should work for any template with an exact match; '*' is not 
             implemented and will raise an error. 
-        overwrite : bool
-            if the item already exists in the current experiment, replace it 
-         
-        """
-        if isinstance(names, basestring):
-            names = [names]
+        **kwargs** : 
+            see :py:meth:`push`
         
+        """
         e = self.__class__(src_root)
-        for name in names:
-            if '{experiment}' in self.templates[name]:
-                exp = None
-            else:
-                exp = 'NULL'
-            
-            for sub, exp in e.iter_se(experiment=exp):
-                src = e.get(name)
-                if '*' in src:
-                    raise NotImplementedError("Can't fnmatch here yet")
-                elif not os.path.exists(src):
-                    print "Missing: %r %r" % (sub, exp)
-                    continue
-                
-                dst = self.get(name, subject=sub, experiment=exp, match=False, mkdir=True)
-                if os.path.isdir(src):
-                    if os.path.exists(dst):
-                        if overwrite:
-                            shutil.rmtree(dst)
-                            shutil.copytree(src, dst)
-                        else:
-                            pass
-                    else:
-                        shutil.copytree(src, dst)
-                elif overwrite or not os.path.exists(dst):
-                    shutil.copy(src, dst)
+        e.push(self._root, names=names, **kwargs)
     
     def push(self, dst_root, names=[], overwrite=False, missing='warn'):
         """OK 12/8/12
