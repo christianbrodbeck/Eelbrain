@@ -422,7 +422,7 @@ class mne_experiment(object):
         
         return raw
     
-    def make_proj_for_epochs(self, epochs, dest, n_mag=5):
+    def make_proj_for_epochs(self, epochs, dest, n_mag=5, auto=False):
         """
         computes the first ``n_mag`` PCA components, plots them, and asks for 
         user input (a tuple) on which ones to save.
@@ -434,7 +434,11 @@ class mne_experiment(object):
             path where to save the projections
         
         n_mag : int
-            number of components to compute 
+            number of components to compute
+        
+        auto : False | tuple
+            automaticelly reject certain components, but keep plot for double
+            checking.
             
         """
         proj = mne.proj.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
@@ -451,12 +455,15 @@ class mne_experiment(object):
         
         title = os.path.basename(dest)
         p = plot.topo.topomap(PCA, size=1, title=title)
-        rm = None
-        while not isinstance(rm, tuple):
-            rm = input("which components to remove? (tuple / 'x'): ")
-            if rm == 'x': raise
+        if auto:
+            rm = auto
+        else:
+            rm = None
+            while not isinstance(rm, tuple):
+                rm = input("which components to remove? (tuple / 'x'): ")
+                if rm == 'x': raise
+            p.Close()
         proj = [proj[i] for i in rm]
-        p.Close()
         mne.write_proj(dest, proj)
     
     def parse_dirs(self):
