@@ -326,11 +326,17 @@ class mne_experiment(object):
         path = os.path.expanduser(path)
         return path
     
-    def iter_temp(self, name):
+    def iter_temp(self, name, constants={}):
+        # set constants
+        constants['root'] = self._root
+        self.state.update(constants)
+        
+        # find variables for iteration
         temp = self.templates[name]
         pattern = re.compile('\{(\w+)\}')
-        variables = set(pattern.findall(temp)).difference(['root'])
+        variables = set(pattern.findall(temp)).difference(constants)
         variables = list(variables)
+        
         for state in self.iter_vars(variables):
             path = temp.format(**state)
             yield path
