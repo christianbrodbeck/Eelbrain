@@ -46,11 +46,11 @@ class Labels(object):
 
 
 class mne_experiment(object):
-    def __init__(self, directory=None, 
+    def __init__(self, root=None, 
                  subject=None, experiment=None, analysis=None,
                  kit2fiff_args=_kit2fiff_args):
         """
-        directory : str
+        root : str
             the root directory for the experiment (i.e., the directory 
             containing the 'meg' and 'mri' directories) 
         
@@ -58,15 +58,15 @@ class mne_experiment(object):
             dictionary specifying the forward model parameters
         
         """
-        if directory:
-            directory = os.path.expanduser(directory)
+        if root:
+            root = os.path.expanduser(root)
         else:
             msg = "Please select the meg directory of your experiment"
-            directory = ui.ask_dir("Select Directory", msg, True)
+            root = ui.ask_dir("Select Root Directory", msg, True)
         
         self._kit2fiff_args = kit2fiff_args
         
-        self._log_path = os.path.join(directory, 'mne-experiment.pickle')
+        self._log_path = os.path.join(root, 'mne-experiment.pickle')
         
         # templates ---
         self.templates = self.get_templates()
@@ -78,7 +78,8 @@ class mne_experiment(object):
         
         # find experiment data structure
         self.var_values = {}
-        self.state = {'root': directory}
+        self._root = root
+        self.state = {'root': root}
         self.parse_dirs()
         
         mri_dir = self.get('mri_dir')
@@ -148,7 +149,7 @@ class mne_experiment(object):
         return t
         
     def __repr__(self):
-        args = [repr(self.state['root'])]
+        args = [repr(self._root)]
         kwargs = []
         
         subject = self.state.get('subject')
