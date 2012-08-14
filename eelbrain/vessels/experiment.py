@@ -326,25 +326,27 @@ class mne_experiment(object):
         path = os.path.expanduser(path)
         return path
     
-    def iter_temp(self, name, constants={}):
+    def iter_temp(self, temp, constants={}):
+        """
+        Iterate through all paths conforming to a template given in ``temp``.
+        
+        temp : str
+            Name of a template in the mne_experiment.templates dictionary, or
+            a path template with variables indicated as in ``'{var_name}'``
+        
+        """
+        # if the name is an existing template, retrieve it
+        temp = self.templates.get(temp, temp)
+        
         # set constants
         constants['root'] = self._root
         self.state.update(constants)
         
         # find variables for iteration
-        temp = self.templates[name]
         pattern = re.compile('\{(\w+)\}')
         variables = set(pattern.findall(temp)).difference(constants)
         variables = list(variables)
         
-        for state in self.iter_vars(variables):
-            path = temp.format(**state)
-            yield path
-    
-    def iter_path(self, temp, ignore=['root']):
-        pattern = re.compile('\{(\w+)\}')
-        variables = set(pattern.findall(temp)).difference(ignore)
-        variables = list(variables)
         for state in self.iter_vars(variables):
             path = temp.format(**state)
             yield path
