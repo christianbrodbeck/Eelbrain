@@ -151,7 +151,7 @@ def isnested(Y):
 def isnestedin(item, item2):
     "returns True if item is nested in item2, False otherwise"
     if hasattr(item, 'nestedin'):
-        return item.nestedin and (item2 in model(*find_factors(item.nestedin)))
+        return item.nestedin and (item2 in find_factors(item.nestedin))
     else:
         return False
 
