@@ -48,8 +48,8 @@ def events(raw=None, name=None, merge=-1, baseline=0):
         indicates in which direction they should be merged (negative means 
         towards the earlier event, positive towards the later event).
     
-    name : str
-        A name for the dataset.
+    name : str | None
+        A name for the dataset. If ``None``, the raw filename will be used.
     
     baseline : int
         After kit2fiff conversion of sqd files with unused trigger channels, 

@@ -968,7 +968,9 @@ class factor(_effect_):
         for cell in X.cells:
             x_i = np.unique(self.x[X == cell])
             if len(x_i) > 1:
-                raise ValueError("non-unique cell")
+                err = ("non-unique cell: factor %r has multiple values for "
+                       "cell %r" % (self.name, cell))
+                raise ValueError(err)
             else:
                 x.append(x_i[0])
         
@@ -1142,7 +1144,7 @@ class ndvar(object):
             n_dim = len(dim)
             if n_dim != n:
                 err = ("Dimension %r length mismatch: %i in data, "
-                       "%i in dimension" % (dim.name, n, n_dim))
+                       "%i in dimension %r" % (dim.name, n, n_dim, dim.name))
                 raise DimensionMismatchError(err)
         
         state = {'dims': dims,
@@ -2057,7 +2059,7 @@ class interaction(_effect_):
                     if self.is_categorial:
                         self.is_categorial = False
                     else:
-                        raise TypeError("No Interaction between two variables")
+                        raise TypeError("No Interaction between two var objects")
             elif isinteraction(b):
                 self.base.extend(b.base)
             elif b._stype_ == "nonbasic":

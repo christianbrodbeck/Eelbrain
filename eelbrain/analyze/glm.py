@@ -142,6 +142,8 @@ class hopkins_ems(dict):
 
 def _hopkins_test(e, e2):
     """
+    Tests whether e2 is in the E(MS) of e.
+    
     e : effect
         effect whose E(MS) is being constructed 
     e2 : effect
