@@ -2324,6 +2324,11 @@ class nested_effect(object):
         else:
             e_name = '(%s)' % self.effect
         self.name = "%s(%s)" % (e_name, nestedin.name)
+        
+        if len(nestedin) != self._n_cases:
+            err = ("Unequal lengths: effect %r len=%i, nestedin %r len=%i" % 
+                   (e_name, len(effect), nestedin.name, len(nestedin)))
+            raise ValueError(err)
     
     def __repr__(self):
         return self.name
