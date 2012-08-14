@@ -669,7 +669,7 @@ class factor(_effect_):
         tile : int
             like ``numpy.tile()``::
             
-                >>> factor(['in', 'out'], chain=3)
+                >>> factor(['in', 'out'], tile=3)
                 factor(['in', 'out', 'in', 'out', 'in', 'out'])``
         
         
@@ -977,9 +977,9 @@ class factor(_effect_):
         out = factor(x, name=name, labels=self._labels, random=self.random)
         return out
     
-    def copy(self, name='{name}', rep=1, chain=1):
+    def copy(self, name='{name}', rep=1, tile=1):
         "returns a deep copy of itself"
-        f = factor(self.x.copy(), rep=rep, chain=chain, 
+        f = factor(self.x.copy(), rep=rep, tile=tile, 
                    **self._child_kwargs(name))
         return f
     
