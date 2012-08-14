@@ -1,5 +1,5 @@
 '''
-Loaders for brain vision data format. Currently only vhdr header file can be 
+Loaders for brain vision data format. Currently only vhdr header files can be 
 read.
 
 
@@ -24,8 +24,8 @@ class vhdr(dict):
         """
         if path is None:
             path = ui.ask_file("Pick a Brain Vision EEG Header File", 
-                                    "Pick a Brain Vision EEG Header File",
-                                    ext=[('vhdr', 'Brain Vision Header File')])
+                               "Pick a Brain Vision EEG Header File",
+                               ext=[('vhdr', 'Brain Vision Header File')])
             if not path:
                 raise RuntimeError("User Canceled")
 

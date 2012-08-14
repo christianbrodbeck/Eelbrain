@@ -731,5 +731,3 @@ class mne_experiment(object):
         self.last_job = table
         if v:
             return table
-                
-            

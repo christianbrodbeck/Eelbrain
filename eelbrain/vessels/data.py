@@ -1774,7 +1774,7 @@ class dataset(collections.OrderedDict):
             else:
                 if self.n_cases != N:
                     msg = ("The item`s length (%i) is different from the "
-                           "number of cases in the datase (%i)." % (N, self.N))
+                           "number of cases in the dataset (%i)." % (N, self.N))
                     raise ValueError(msg)
             
             super(dataset, self).__setitem__(name, item)

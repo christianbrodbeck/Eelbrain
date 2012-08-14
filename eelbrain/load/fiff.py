@@ -17,7 +17,7 @@ import numpy as np
 import mne
 import mne.minimum_norm as _mn
 
-import eelbrain.vessels.data as _data
+from eelbrain.vessels.data import var, ndvar, dataset
 import eelbrain.vessels.colorspaces as _cs
 import eelbrain.vessels.sensors as _sensors
 from eelbrain import ui
@@ -121,12 +121,12 @@ def events(raw=None, name=None, merge=-1, baseline=0):
         
         events = events[index]
     
-    istart = _data.var(events[:,0], name='i_start')
-    event = _data.var(events[:,2], name='eventID')
+    istart = var(events[:,0], name='i_start')
+    event = var(events[:,2], name='eventID')
     info = {'raw': raw,
             'samplingrate': raw.info['sfreq'][0],
             'info': raw.info}
-    return _data.dataset(event, istart, name=name, info=info)
+    return dataset(event, istart, name=name, info=info)
 
 
 
@@ -217,14 +217,14 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False, 
                                 eog=False, include=[])
     sensor = sensors(epochs, picks=picks, name=sensorsname)
-    time = _data.var(T, 'time')
+    time = var(T, 'time')
     dims = ('case', sensor, time)
     
-    ndvar = _data.ndvar(x, dims=dims, properties=props, name=target)
+    epochs_var = ndvar(x, dims=dims, properties=props, name=target)
     if add:
-        ds.add(ndvar)
+        ds.add(epochs_var)
     else:
-        return ndvar
+        return epochs_var
 
 
 
@@ -353,8 +353,8 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
     
     x = np.vstack(s.data.mean(0) for s in stcs)
     s = stcs[0]
-    dims = ('case', _data.var(s.times, 'time'),)
-    ds[name] = _data.ndvar(x, dims, properties=None, info='')
+    dims = ('case', var(s.times, 'time'),)
+    ds[name] = ndvar(x, dims, properties=None, info='')
     
     return stcs
     
@@ -397,11 +397,10 @@ def mne2ndvar(mne_object, data='mag', name=None, bads=False):
     
     if isinstance(mne_object, mne.fiff.Evoked):
         x = mne_object.data[picks]
-        print x.shape
-        time = _data.var(mne_object.times, name='time')
+        time = var(mne_object.times, name='time')
         sensor = sensors(mne_object, picks=picks)
         dims = (sensor, time)
-        return _data.ndvar(x, dims=dims, name=name)
+        return ndvar(x, dims=dims, name=name)
     else:
         err = "converting %s is not implemented" % type(mne_object)
         raise NotImplementedError(err)
