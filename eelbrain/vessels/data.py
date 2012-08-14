@@ -562,9 +562,10 @@ class var(object):
             raise ValueError(err)
         
         x = []
-        for i in X.cells:
-            x_i = self.x[X == i]
-            x.append(func(x_i))
+        for cell in X.cells:
+            x_cell = self.x[X == cell]
+            if len(x_cell) > 0:
+                x.append(func(x_cell))
         
         x = np.array(x)
         name = name.format(name=self.name)
@@ -969,13 +970,15 @@ class factor(_effect_):
         
         x = []
         for cell in X.cells:
-            x_i = np.unique(self.x[X == cell])
-            if len(x_i) > 1:
-                err = ("non-unique cell: factor %r has multiple values for "
-                       "cell %r" % (self.name, cell))
-                raise ValueError(err)
-            else:
-                x.append(x_i[0])
+            idx = (X == cell)
+            if np.sum(idx):
+                x_i = np.unique(self.x[idx])
+                if len(x_i) > 1:
+                    err = ("non-unique cell: factor %r has multiple values for "
+                           "cell %r" % (self.name, cell))
+                    raise ValueError(err)
+                else:
+                    x.append(x_i[0])
         
         x = np.array(x)
         name = name.format(name=self.name)
@@ -1335,8 +1338,10 @@ class ndvar(object):
         
         x = []
         for cell in X.cells:
-            x_cell = self.x[X == cell]
-            x.append(func(x_cell, axis=0))
+            idx = (X == cell)
+            if np.sum(idx):
+                x_cell = self.x[idx]
+                x.append(func(x_cell, axis=0))
         
         # update properties for summary
         properties = self.properties.copy()
@@ -1950,16 +1955,27 @@ class dataset(collections.OrderedDict):
                 out[cell] = self.subset(index, setname)
         return out
     
-    def compress(self, X, name='{name}', count='n'):
+    def compress(self, X, drop_empty=True, name='{name}', count='n'):
+        """
+        Return a dataset with one case for each cell in X.
+        
+        drop_empty : True
+            Drops empty cells from the dataset. This is currently the only 
+            option.
+
+        """
+        if not drop_empty:
+            raise NotImplementedError
+        
         ds = dataset(name=name.format(name=self.name))
         
         if count:
-            x = [np.sum(X == cell) for cell in X.cells]
+            x = filter(None, (np.sum(X == cell) for cell in X.cells))
             ds[count] = var(x)
         
         for k in self:
             ds[k] = self[k].compress(X)
-                
+        
         return ds
     
     def itercases(self, start=None, stop=None):
