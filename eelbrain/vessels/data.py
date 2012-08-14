@@ -23,6 +23,7 @@ managed by
 
 from __future__ import division
 
+import itertools
 import cPickle as pickle
 import operator
 import os
@@ -271,7 +272,9 @@ def find_factors(obj):
         return effect_list(f)
     elif isnested(obj):
         return find_factors(obj.effect)
-    else: # interaction | nonbasic_effect
+    elif isinteraction(obj):
+        return obj.base
+    else: # nonbasic_effect
         try:
             return effect_list(obj.factors)
         except:
@@ -2048,21 +2051,26 @@ class interaction(_effect_):
         """
         # FIXME: interaction does not update when component factors update
         self.factors = []
-        self.base = []
+        self.base = effect_list()
         self.is_categorial = True
         self.nestedin = set()
         
         for b in base:
             if isuv(b):
-                self.base.append(b)
+                self.base.append(b.copy()),
                 if isvar(b):
                     if self.is_categorial:
                         self.is_categorial = False
                     else:
                         raise TypeError("No Interaction between two var objects")
             elif isinteraction(b):
-                self.base.extend(b.base)
-            elif b._stype_ == "nonbasic":
+                if (not b.is_categorial) and (not self.is_categorial):
+                    raise TypeError("No Interaction between two var objects")
+                else:
+                    self.base.extend(b.base)
+                    self.is_categorial = (self.is_categorial and b.is_categorial)
+            
+            elif b._stype_ == "nonbasic": # TODO: nested effects
                 raise NotImplementedError("interaction of non-basic effects")
 #    from _regresor_.__mod__ (?) 
 #        if any([type(e)==nonbasic_effect for e in [self, other]]):
@@ -2076,9 +2084,6 @@ class interaction(_effect_):
                 self.nestedin.update(b.nestedin)
             else:
                 raise TypeError("Invalid type for interaction: %r" % type(b))
-            
-            self.factors.extend(find_factors(b))
-            
         
         self._n_cases = N = len(self.base[0])
         if not all([len(f) == N for f in self.base[1:]]):
@@ -2086,18 +2091,14 @@ class interaction(_effect_):
                    "cases")
             raise ValueError(err)
         
-        name = ' x '.join([str(f.name) for f in self.base])
-        self.name = name
+        self.name = ' x '.join([str(f.name) for f in self.base])
         self.random = False
         self.beta_labels = beta_labels
-        
         self.df =  reduce(operator.mul, [f.df for f in self.base])
         
         # determine cells:
-        label_dicts = [f._labels for f in self.factors if isfactor(f)]
-        self._labels = _permutate_address_dicts(label_dicts)
-        self._cells = _permutate_address_dicts(label_dicts, link=False)
-        self.indexes = sorted(self._labels.keys())
+        factors = effect_list(filter(lambda f: isfactor(f), self.base))
+        self.cells = list(itertools.product(*(f.cells for f in factors)))
         self._colors = {}
         
         # effect coding
@@ -2130,11 +2131,11 @@ class interaction(_effect_):
             return out
     
     def __contains__(self, item):
-        item_id = id(item)
-        if any([item_id == id(f) for f in self.factors]): 
-            return True
-        else:
-            return any([np.all(f.as_effects == item.as_effects) for f in self.factors])
+        return self.base.__contains__(item)
+    
+    def __iter__(self):
+        for i in xrange(len(self)):
+            yield tuple(b[i] for b in self.base)
     
     # numeric ---
     def __eq__(self, other):
@@ -2145,26 +2146,16 @@ class interaction(_effect_):
         X = tuple((f != cell) for f, cell in zip (self.base, other)) 
         return np.any(X, axis=0)
     
-    def as_codes(self):
-        out = []
-        for i in xrange(self._n_cases):
-            code = tuple(f.x[i] for f in self.factors)
-            out.append(code)
-        return out
-    
     def as_factor(self):
         name = self.name.replace(' ', '')
         x = self.as_labels()
         return factor(x, name)
     
-    def as_labels(self):
-        out = [self._labels[code] for code in self.as_codes()]
-        return out
+    def as_cells(self):
+        [case for case in self]
     
-    @property
-    def cells(self):
-        values = self._cells.values()
-        return sorted(values)
+    def as_labels(self, delim=' '):
+        return map(delim.join, self)
 
 
 
