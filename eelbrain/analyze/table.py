@@ -75,7 +75,12 @@ def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies", ds=None):
     
     # title
     if title:
-        title = title.format(Yname=Y.name.capitalize())
+        if '{Yname}' in title:
+            try:
+                Yname = Y.name.capitalize()
+            except:
+                Yname = '[unnamed]'
+            title = title.format(Yname=Yname)
         table.title(title)
     
     return table
