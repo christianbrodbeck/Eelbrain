@@ -33,7 +33,17 @@ from mne.fiff import Raw as raw
 
 
 
-def events(raw=None, name=None, merge=-1, baseline=0):
+def _raw_name_root(raw_file):
+    "returns the 'root' of a raw file path"
+    raw_root, _ = os.path.splitext(raw_file)
+    for prune in ['raw', '_']:
+        if raw_root.endswith(prune):
+            raw_root = raw_root[:-len(prune)]
+    return raw_root
+
+
+
+def events(raw=None, merge=-1, proj=False, name=None, baseline=0):
     """
     Returns a dataset containing events from a raw fiff file. Use
     :func:`fiff_epochs` to load MEG data corresponding to those events.
@@ -47,6 +57,13 @@ def events(raw=None, name=None, merge=-1, baseline=0):
         indicates over how many samples events should be merged, and the sign
         indicates in which direction they should be merged (negative means 
         towards the earlier event, positive towards the later event).
+    
+    proj : bool | str
+        Path to the projections file that will be loaded with the raw file.
+        ``'{raw}'`` will be expanded to the raw file's path minus 
+        ``'_raw.fif'``. With ``proj=True``, ``'{raw}_*proj.fif'`` will be used,
+        looking for any proj file with the raw file's name. If multiple files 
+        match the pattern, a ValueError will be raised.
     
     name : str | None
         A name for the dataset. If ``None``, the raw filename will be used.
@@ -70,9 +87,33 @@ def events(raw=None, name=None, merge=-1, baseline=0):
         else:
             raise IOError("%r is not a file" % raw)
     
+    raw_file = raw.info['filename']
+    
+    if proj:
+        if proj == True:
+            proj = '{raw}_*proj.fif'
+        
+        if '{raw}' in proj:
+            proj = proj.format(raw=_raw_name_root(raw_file))
+        
+        if '*' in proj:
+            head, tail = os.path.split(proj)
+            names = fnmatch.filter(os.listdir(head), tail)
+            if len(names) == 1:
+                proj = os.path.join(head, names[0])
+            else:
+                if len(names) == 0:
+                    err = "No file matching %r"
+                else:
+                    err = "Multiple files matching %r"
+                raise ValueError(err % proj)
+        
+        # add the projections to the raw file
+        proj = mne.read_proj(proj)
+        raw.info['projs'] += proj[:]
+    
     if name is None:
-        fname = raw.info['filename']
-        name = os.path.basename(fname)
+        name = os.path.basename(raw_file)
     
     if baseline:
         pick = mne.event.pick_channels(raw.info['ch_names'], include='STI 014')
