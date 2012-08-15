@@ -33,16 +33,6 @@ from mne.fiff import Raw as raw
 
 
 
-def _raw_name_root(raw_file):
-    "returns the 'root' of a raw file path"
-    raw_root, _ = os.path.splitext(raw_file)
-    for prune in ['raw', '_']:
-        if raw_root.endswith(prune):
-            raw_root = raw_root[:-len(prune)]
-    return raw_root
-
-
-
 def events(raw=None, merge=-1, proj=False, name=None, baseline=0):
     """
     Returns a dataset containing events from a raw fiff file. Use
@@ -60,10 +50,10 @@ def events(raw=None, merge=-1, proj=False, name=None, baseline=0):
     
     proj : bool | str
         Path to the projections file that will be loaded with the raw file.
-        ``'{raw}'`` will be expanded to the raw file's path minus 
-        ``'_raw.fif'``. With ``proj=True``, ``'{raw}_*proj.fif'`` will be used,
-        looking for any proj file with the raw file's name. If multiple files 
-        match the pattern, a ValueError will be raised.
+        ``'{raw}'`` will be expanded to the raw file's path minus extension.
+        With ``proj=True``, ``'{raw}_*proj.fif'`` will be used,
+        looking for any projection file starting with the raw file's name. 
+        If multiple files match the pattern, a ValueError will be raised.
     
     name : str | None
         A name for the dataset. If ``None``, the raw filename will be used.
@@ -94,7 +84,8 @@ def events(raw=None, merge=-1, proj=False, name=None, baseline=0):
             proj = '{raw}_*proj.fif'
         
         if '{raw}' in proj:
-            proj = proj.format(raw=_raw_name_root(raw_file))
+            raw_root, _ = os.path.splitext(raw_file)
+            proj = proj.format(raw=raw_root)
         
         if '*' in proj:
             head, tail = os.path.split(proj)
