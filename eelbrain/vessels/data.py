@@ -1251,12 +1251,14 @@ class ndvar(object):
         if isscalar(other):
             dims, x_self, x_other = self._align(other)
             x = x_self + x_other
+            name = '+'.join((self.name, other.name))
         elif np.isscalar(other):
             x = self.x + other
             dims = self.dims
+            name = '+'.join((self.name, str(other)))
         else:
             raise ValueError("can't add %r" % other)
-        return ndvar(x, dims=dims, name=self.name, properties=self.properties)
+        return ndvar(x, dims=dims, name=name, properties=self.properties)
     
     def __iadd__(self, other):
         self.x += self._ialign(other)
@@ -1266,12 +1268,14 @@ class ndvar(object):
         if isscalar(other):
             dims, x_self, x_other = self._align(other)
             x = x_self - x_other
+            name = '-'.join((self.name, other.name))
         elif np.isscalar(other):
             x = self.x - other
             dims = self.dims
+            name = '-'.join((self.name, str(other)))
         else:
             raise ValueError("can't subtract %r" % other)
-        return ndvar(x, dims=dims, name=self.name, properties=self.properties)    
+        return ndvar(x, dims=dims, name=name, properties=self.properties)    
     
     def __isub__(self, other):
         self.x -= self._ialign(other)
