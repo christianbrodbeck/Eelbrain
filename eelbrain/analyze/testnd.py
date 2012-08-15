@@ -140,10 +140,11 @@ class ttest(test_result):
         properties = ct.Y.properties.copy()
         
         properties['colorspace'] = _vsl.colorspaces.Colorspace(contours=contours)
-        P = _vsl.data.ndvar(P, dims, properties=properties, name='p', info=test_name)
+        properties['test'] = test_name
+        P = _vsl.data.ndvar(P, dims, properties=properties, name='p')
         
         properties['colorspace'] = _vsl.colorspaces.get_default()
-        T = _vsl.data.ndvar(T, dims, properties=properties, name='T', info=test_name)
+        T = _vsl.data.ndvar(T, dims, properties=properties, name='T')
         
         # add Y.name to dataset name
         Yname = getattr(Y, 'name', None)
@@ -214,7 +215,8 @@ class f_oneway(test_result):
         
         properties = Y.properties.copy()
         properties['colorspace'] = _vsl.colorspaces.get_sig(p=p, contours=contours)
-        p = ndvar(Ps, dims, properties=properties, name=X.name, info=test_name)
+        properties['test'] = test_name
+        p = ndvar(Ps, dims, properties=properties, name=X.name)
 
         # create dataset
         super(f_oneway, self).__init__(name="anova")
