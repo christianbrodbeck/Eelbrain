@@ -122,7 +122,7 @@ class mne_experiment(object):
                  edf = os.path.join(log_dir, '*.edf'),
                  
                  # mne analysis
-                 projs = os.path.join(mne_dir, '_'.join((sub, exp, an, 'projs.fif'))),
+                 proj = os.path.join(raw_dir, '_'.join((sub, exp, an+'-proj.fif'))),
                  
                  # fwd model
                  fwd = os.path.join(mne_dir, '_'.join((sub, exp, an, 'fwd.fif'))),
@@ -377,8 +377,8 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
     
-    def load_events(self, subject=None, experiment=None, proj='fixation', 
-                    edf=True):
+    def load_events(self, raw_temp='rawfif', subject=None, experiment=None,
+                    proj=True, edf=True):
         """OK 12/7/3
         
         Loads events from the corresponding raw file, adds the raw to the info 
@@ -391,9 +391,12 @@ class mne_experiment(object):
         
         """
         self.set(subject=subject, experiment=experiment)
+        raw_file = self.get(raw_temp)
+        ds = load.fiff.events(raw_file, proj=proj)
         
-        raw = self.load_raw(proj=proj)
-        ds = load.fiff.events(raw)
+        raw = ds.info['raw']
+        bad_chs = self.bad_channels[(self.state['subject'], self.state['experiment'])]
+        raw.info['bads'].extend(bad_chs)
         
         if subject is None: 
             subject = self.state['subject']
@@ -410,28 +413,8 @@ class mne_experiment(object):
         
         return ds
     
-    def load_raw(self, subject=None, experiment=None, proj='fixation'):
-        """OK 12/6/18
-        
-        proj : None | str
-            name of the projections to load
-        
-        """
-        self.set(subject=subject, experiment=experiment)
-        
-        src = self.get('rawfif')
-        raw = mne.fiff.Raw(src)
-        bad_chs = self.bad_channels[(self.state['subject'], self.state['experiment'])]
-        raw.info['bads'].extend(bad_chs)
-        
-        if proj:
-            proj_file = self.get('projs', analysis=proj)
-            proj = mne.read_proj(proj_file)
-            raw.info['projs'] += proj[:]
-        
-        return raw
-    
-    def make_proj_for_epochs(self, epochs, dest, n_mag=5, auto=False):
+    def make_proj_for_epochs(self, epochs, dest='{raw}_proj.fif', n_mag=5, 
+                             auto=False, save_plot=False):
         """
         computes the first ``n_mag`` PCA components, plots them, and asks for 
         user input (a tuple) on which ones to save.
@@ -448,7 +431,10 @@ class mne_experiment(object):
         auto : False | tuple
             automaticelly reject certain components, but keep plot for double
             checking.
-            
+        
+        save_plot : False | str(path)
+            target path to save the plot
+        
         """
         proj = mne.proj.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
     
@@ -462,18 +448,20 @@ class mne_experiment(object):
             v = ndvar(d, (sensor,), name=name)
             PCA.append(v)
         
-        title = os.path.basename(dest)
-        p = plot.topo.topomap(PCA, size=1, title=title)
-        if auto:
-            rm = auto
-        else:
-            rm = None
-            while not isinstance(rm, tuple):
-                rm = input("which components to remove? (tuple / 'x'): ")
-                if rm == 'x': raise
-            p.Close()
-        proj = [proj[i] for i in rm]
-        mne.write_proj(dest, proj)
+        p = plot.topo.topomap(PCA, size=1, title=str(epochs.name))
+        if save_plot:
+            p.figure.savefig(save_plot)
+        if dest:
+            if auto:
+                rm = auto
+            else:
+                rm = None
+                while not isinstance(rm, tuple):
+                    rm = input("which components to remove? (tuple / 'x'): ")
+                    if rm == 'x': raise
+                p.Close()
+            proj = [proj[i] for i in rm]
+            mne.write_proj(dest, proj)
     
     def parse_dirs(self):
         """
