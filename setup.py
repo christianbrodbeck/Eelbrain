@@ -67,6 +67,11 @@ if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  ###
                  "CFBundleTypeRole": "Editor",
 #                 "CFBundleTypeIconFile": "../icons/system-icons/pydoc.icns",
                  },
+                {"CFBundleTypeExtensions": ["pickled"],
+                 "CFBundleTypeName": "Pickled Python Object",
+                 "CFBundleTypeRole": "Editor",
+#                 "CFBundleTypeIconFile": "../icons/system-icons/pydoc.icns",
+                 },
                 ]
     
     OPTIONS = {
