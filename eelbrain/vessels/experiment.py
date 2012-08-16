@@ -350,22 +350,23 @@ class mne_experiment(object):
         
         """
         # if the name is an existing template, retrieve it
-        
-        # set constants
-        constants['root'] = self._root
-        self.state.update(constants)
         temp = self.get_template(temp)
         
         # find variables for iteration
         pattern = re.compile('\{(\w+)\}')
-        variables = set(pattern.findall(temp)).difference(constants)
-        variables = list(variables)
+        variables = pattern.findall(temp)
         
-        for state in self.iter_vars(variables):
+        for state in self.iter_vars(variables, constants=constants):
             path = temp.format(**state)
             yield path
     
-    def iter_vars(self, variables):
+    def iter_vars(self, variables, constants={}):
+        # set constants
+        constants['root'] = self._root
+        self.state.update(constants)
+        
+        variables = list(set(variables).difference(constants))
+
         var_values = tuple(self.var_values[v] for v in variables)
         for v_list in itertools.product(*var_values):
             self.state.update(dict(zip(variables, v_list)))
