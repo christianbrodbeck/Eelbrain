@@ -79,7 +79,7 @@ class mne_experiment(object):
         # find experiment data structure
         self.var_values = {}
         self._root = root
-        self.state = {'root': root}
+        self.state = {'root': root, 'raw': 'rawraw'}
         self.parse_dirs()
         
         mri_dir = self.get('mri_dir')
@@ -115,22 +115,22 @@ class mne_experiment(object):
                  elp = os.path.join(raw_dir, sub+'_HS.elp'),
                  hsp = os.path.join(raw_dir, sub+'_HS.hsp'),
                  rawtxt = os.path.join(raw_dir, '_'.join((sub, exp, '*raw.txt'))),
-                 rawfif = os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
-                 trans = os.path.join(raw_dir, '_'.join((sub, exp, 'raw-trans.fif'))), # mne p. 196
+                 rawraw = os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
+                 trans = os.path.join(raw_dir, '_'.join((sub, exp, 'trans.fif'))), # mne p. 196
                  
                  # eye-tracker
                  edf = os.path.join(log_dir, '*.edf'),
                  
-                 # mne analysis
-                 proj = os.path.join(raw_dir, '_'.join((sub, exp, an+'-proj.fif'))),
+                 # mne raw-derivatives analysis
+                 proj = '_'.join(('{raw}', an+'-proj.fif')),
+                 cov  = '_'.join(('{raw}', an+'-cov.fif')),
+                 fwd  = '_'.join(('{raw}', an+'-fwd.fif')),
                  
                  # fwd model
-                 fwd = os.path.join(mne_dir, '_'.join((sub, exp, an, 'fwd.fif'))),
                  bem = os.path.join(mri_dir, sub, 'bem', sub+'-5120-bem-sol.fif'),
                  src = os.path.join(mri_dir, sub, 'bem', sub+'-ico-4-src.fif'),
                  
                 # !! these would invalidate the s_e_* pattern with a third _
-                 cov = os.path.join(mne_dir, '_'.join((sub, exp, an)) + '-cov.fif'),
                  
                  # mne's stc.save() requires stub filename and will add '-?h.stc'  
                  stc_tgt = os.path.join(mne_dir, '_'.join((sub, exp, an))),
@@ -258,9 +258,11 @@ class mne_experiment(object):
             if the directory containing the file does not exist, create it
                     
         """
-        temp = self.templates[name]
         self.set(subject=subject, experiment=experiment, analysis=analysis, 
                  match=match)
+        
+        temp = self.get_template(name)
+        
         fmt = self.state.copy()
         
         if '{subject}' in temp:
@@ -326,6 +328,18 @@ class mne_experiment(object):
         path = os.path.expanduser(path)
         return path
     
+    def get_template(self, name):
+        if name in ['raw', 'rawfif']:
+            name = self.state.get('raw', 'rawraw')
+        
+        temp = self.templates.get(name, name)
+        if '{raw}' in temp:
+            raw = self.get_template('raw')
+            raw, _ = os.path.splitext(raw)
+            temp = temp.replace('{raw}', raw)
+        
+        return temp
+
     def iter_temp(self, temp, constants={}):
         """
         Iterate through all paths conforming to a template given in ``temp``.
@@ -336,11 +350,11 @@ class mne_experiment(object):
         
         """
         # if the name is an existing template, retrieve it
-        temp = self.templates.get(temp, temp)
         
         # set constants
         constants['root'] = self._root
         self.state.update(constants)
+        temp = self.get_template(temp)
         
         # find variables for iteration
         pattern = re.compile('\{(\w+)\}')
@@ -366,7 +380,7 @@ class mne_experiment(object):
         experiments = self._experiments if experiment is None else [experiment] 
         for subject in subjects:
             for experiment in experiments:
-                self.set(subject, experiment, analysis)
+                self.set(subject=subject, experiment=experiment, analysis=analysis)
                 yield subject, experiment
     
     def label_events(self, ds, experiment, subject):
@@ -377,8 +391,8 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
     
-    def load_events(self, raw_temp='rawfif', subject=None, experiment=None,
-                    proj=True, edf=True):
+    def load_events(self, subject=None, experiment=None,
+                    proj=True, edf=True, raw=None):
         """OK 12/7/3
         
         Loads events from the corresponding raw file, adds the raw to the info 
@@ -390,8 +404,8 @@ class mne_experiment(object):
             Loads edf and add it to the info dict.
         
         """
-        self.set(subject=subject, experiment=experiment)
-        raw_file = self.get(raw_temp)
+        self.set(subject=subject, experiment=experiment, raw=raw)
+        raw_file = self.get('raw')
         ds = load.fiff.events(raw_file, proj=proj)
         
         raw = ds.info['raw']
@@ -593,10 +607,10 @@ class mne_experiment(object):
         
         subp.run_mne_browse_raw(fif_dir, modal)
         
-    def set(self, subject=None, experiment=None, analysis=None, match=False):
+    def set(self, subject=None, experiment=None, match=False, **kwargs):
         """
         match : bool
-            require existence
+            require existence (for subject and experiment)
         
         """
         if subject is not None:
@@ -611,8 +625,10 @@ class mne_experiment(object):
             else:
                 self.state['experiment'] = experiment
         
-        if analysis is not None:
-            self.state['analysis'] = analysis
+        for k in kwargs.keys():
+            if kwargs[k] is None:
+                del kwargs[k]
+        self.state.update(kwargs)
     
     def summary(self, templates=['rawtxt', 'rawfif', 'fwd'], missing='-', link='>',
                 analysis=None, count=True):
