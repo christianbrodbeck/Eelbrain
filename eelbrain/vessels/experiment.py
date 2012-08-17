@@ -79,7 +79,7 @@ class mne_experiment(object):
         # find experiment data structure
         self.var_values = {}
         self._root = root
-        self.state = {'root': root, 'raw': 'rawraw'}
+        self.state = {'root': root, 'raw': 'raw_raw'}
         self.parse_dirs()
         
         mri_dir = self.get('mri_dir')
@@ -115,7 +115,7 @@ class mne_experiment(object):
                  elp = os.path.join(raw_dir, sub+'_HS.elp'),
                  hsp = os.path.join(raw_dir, sub+'_HS.hsp'),
                  rawtxt = os.path.join(raw_dir, '_'.join((sub, exp, '*raw.txt'))),
-                 rawraw = os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
+                 raw_raw = os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
                  trans = os.path.join(raw_dir, '_'.join((sub, exp, 'trans.fif'))), # mne p. 196
                  
                  # eye-tracker
@@ -330,7 +330,7 @@ class mne_experiment(object):
     
     def get_template(self, name):
         if name in ['raw', 'rawfif']:
-            name = self.state.get('raw', 'rawraw')
+            name = self.state.get('raw', 'raw_raw')
         
         temp = self.templates.get(name, name)
         if '{raw}' in temp:
