@@ -368,8 +368,11 @@ class mne_experiment(object):
         variables = list(set(variables).difference(constants))
 
         var_values = tuple(self.var_values[v] for v in variables)
-        for v_list in itertools.product(*var_values):
-            self.state.update(dict(zip(variables, v_list)))
+        if len(var_values):
+            for v_list in itertools.product(*var_values):
+                self.state.update(dict(zip(variables, v_list)))
+                yield self.state
+        else:
             yield self.state
     
     def iter_se(self, subject=None, experiment=None, analysis=None):
