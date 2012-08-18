@@ -62,6 +62,20 @@ class Colorspace:
         self.contours = contours
         self.contour_kwargs = {'linestyles': 'solid'}
     
+    def __repr__(self):
+        temp = "Colorspace(%s)"
+        args = []
+        if self.cmap:
+            args.append("cmap=<%r>" % getattr(self.cmap, 'name', '???'))
+        if self.vmax is not None:
+            args.append("vmax=%s" % self.vmax)
+            if self.vmin not in [-self.vmax, None]:
+                args.append("vmin=%s" % self.vmin)
+        if self.contours:
+            args.append("contours=%s" % self.contours)
+        
+        return temp % ', '.join(args)
+    
     def get_imkwargs(self):
         kwargs = {'vmin': self.vmin,
                   'vmax': self.vmax,
