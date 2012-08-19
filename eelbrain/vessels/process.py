@@ -205,7 +205,6 @@ def rm_baseline(ndvar, tstart=None, tend=0, name='{name}'):
     dims = ndvar.dims
     data = ndvar.x - bl_data
     name = name.format(name=ndvar.name)
-    info = ndvar.info
-    return _data.ndvar(data, dims=dims, properties=ndvar.properties, name=name, info=info)
+    return _data.ndvar(data, dims=dims, properties=ndvar.properties, name=name)
 
 
