@@ -164,14 +164,15 @@ def events(raw=None, merge=-1, proj=False, name=None, baseline=0):
 
 def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
                downsample=1, mult=1, unit='T', proj=True,
-               data='mag', raw=None,
-               add=True, target="MEG", i_start='i_start', 
+               data='mag', threshold=None,
+               raw=None, add=True,
+               target="MEG", i_start='i_start', 
                properties=None, sensorsname='fiff-sensors'):
     """
-    Adds data from individual epochs as a ndvar to a dataset (``ds``).
-    Uses the events in ``ds[i_start]`` to extract epochs from the raw 
-    file associated with ``ds``; returns ndvar or nothing (see ``add`` 
-    argument).
+    Adds data from individual epochs as a ndvar to the dataset ``ds`` and 
+    returns the dataset. Unless the ``threshold`` argument is specified, ``ds``
+    is modified in place. With ``threshold``, a subset of ``ds`` is returned 
+    containing only those events for which data was loaded.
     
     add : bool
         Add the variable to the dataset. If ``True`` (default), the data is 
@@ -200,8 +201,11 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     unit : str
         Unit of the data (default is 'T').
     target : str
-        name for the new ndvar containing the epoch data  
-         
+        name for the new ndvar containing the epoch data
+    threshold : None | scalar
+        Threshold for rejecting epochs. Requires a for of mne-python which 
+        implements the Epochs.model['index'] variable.
+    
     """
     if data == 'eeg':
         meg = False 
@@ -219,8 +223,14 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False, 
                                 eog=False, include=[], exclude=raw.info['bads'])
     
+    if threshold:
+        reject = {data: threshold}
+    else:
+        reject = None
+    
     epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
-                        proj=proj, i_start=i_start, raw=raw, picks=picks)
+                        proj=proj, i_start=i_start, raw=raw, picks=picks,
+                        reject=reject, preload=True)
     
     # read the data
     x = epochs.get_data() # this call iterates through epochs as well
@@ -254,7 +264,15 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     
     epochs_var = ndvar(x, dims=dims, properties=props, name=target)
     if add:
+        if threshold:
+            if hasattr(epochs, 'model'):
+                ds = ds.subset(epochs.model['index'])
+            else:
+                raise TypeError("The threshold argument requires a fork of "
+                                "mne-python implementing the Epochs.model "
+                                "attribute")
         ds.add(epochs_var)
+        return ds
     else:
         return epochs_var
 
