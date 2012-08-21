@@ -124,6 +124,7 @@ class clusters(mpl_canvas.CanvasFrame):
         y_size = height if overlay else height * N 
         figsize = (x_size, y_size)
         
+        self._caxes = []
         if title:
             title = unicode(title)
         else:
@@ -146,10 +147,19 @@ class clusters(mpl_canvas.CanvasFrame):
                         
             # color
             color = cm(i / N)
-            _ax_clusters(ax, layers, color=color, pmax=pmax, t=t)
+            cax = _ax_clusters(ax, layers, color=color, pmax=pmax, t=t)
+            self._caxes.append(cax)
         
         self.figure.tight_layout()
         self.Show()
+
+    def set_pmax(self, pmax=0.05):
+        "set the threshold p-value for clusters to be displayed"
+        for cax in self._caxes:
+            cax.set_pmax(pmax=pmax)
+
+        self.canvas.draw()
+
 
 
 
@@ -167,25 +177,46 @@ def _plt_uts(ax, layer, color=None, xdim='time'):
     ax.plot(x, y, color=color)
 
 
-def _ax_clusters(ax, layers, color=None, pmax=0.05, t=True, xdim='time'):
-    Y = layers[0]
-    if t is True:
-        t = layers[0].properties.get('tF', None)
-    if t:
-        ax.axhline(t, color='k')
-    ylabel = Y.properties.get('unit', None)
-    
-    _plt_uts(ax, Y, color=color, xdim=xdim)
-    if ylabel:
-        ax.set_ylabel(ylabel)
-    
-    for l in layers[1:]:
-        if l.properties['p'] <= pmax:
-            _plt_cluster(ax, l, color=color, xdim=xdim, y=layers[0])
-    
-    x = layers[0].get_dim(xdim).x
-    ax.set_xlim(x[0], x[-1])
-    ax.set_ylim(bottom=0)
+class _ax_clusters:
+    def __init__(self, ax, layers, color=None, pmax=0.05, t=True, xdim='time'):
+        Y = layers[0]
+        if t is True:
+            t = layers[0].properties.get('tF', None)
+        if t:
+            ax.axhline(t, color='k')
+        ylabel = Y.properties.get('unit', None)
+
+        _plt_uts(ax, Y, color=color, xdim=xdim)
+        if ylabel:
+            ax.set_ylabel(ylabel)
+
+        self.ax = ax
+        x = layers[0].get_dim(xdim).x
+        self.xlim = (x[0], x[-1])
+        self.clusters = layers[1:]
+        self.cluster_hs = {}
+        self.plt_kwargs = dict(color=color, xdim=xdim, y=layers[0])
+        self.set_pmax(pmax=pmax)
+
+    def draw(self):
+        ax = self.ax
+
+        for c in self.clusters:
+            if c.properties['p'] <= self.pmax:
+                if c not in self.cluster_hs:
+                    h = _plt_cluster(ax, c, **self.plt_kwargs)
+                    self.cluster_hs[c] = h
+            else:
+                if c in self.cluster_hs:
+                    h = self.cluster_hs.pop(c)
+                    h.remove()
+
+        ax.set_xlim(*self.xlim)
+        ax.set_ylim(bottom=0)
+
+    def set_pmax(self, pmax=0.05):
+        self.pmax = pmax
+        self.draw()
 
 
 def _plt_cluster(ax, ndvar, color=None, y=None, xdim='time',
@@ -198,10 +229,12 @@ def _plt_cluster(ax, ndvar, color=None, y=None, xdim='time',
     x1 = where[-1]
     
     if y is None:
-        ax.vspan(x0, x1, color=color, hatch=hatch, fill=False)
+        h = ax.vspan(x0, x1, color=color, hatch=hatch, fill=False)
     else:
         y = y.get_data((xdim,))
-        ax.fill_between(x, y, where=v, color=color, alpha=0.5)
+        h = ax.fill_between(x, y, where=v, color=color, alpha=0.5)
+
+    return h
 
 
 def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwargs):
