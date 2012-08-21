@@ -863,8 +863,12 @@ class ShellFrame(wx.py.shell.ShellFrame):
             if ext == '.py':
                 self.create_py_editor(pyfile=path)
             elif ext == '.pickled':
-                with open(path) as FILE:
-                    dinnerplate = pickle.load(FILE)
+                try:
+                    with open(path) as FILE:
+                        dinnerplate = pickle.load(FILE)
+                except Exception as exc:
+                    wx.MessageBox('%s: %s' % (type(exc).__name__, exc), "Unplicking Failed", 
+                                  style=wx.OK|wx.ICON_ERROR)
                 
                 typename = dinnerplate.__class__.__name__
                 msg = ("What name should the unpickled data of\ntype %r be assigned "
