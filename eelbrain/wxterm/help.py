@@ -68,6 +68,9 @@ def format_chapter(title, txt):
                       '-'*(2+len(title)),
                       txt, '\n'))
 
+def format_subtitle(subtitle):
+    return '<span style="color: rgb(102, 102, 102);">%s</span>' % subtitle
+
 
 class HelpViewer(wx.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -400,6 +403,27 @@ class HtmlHelpPanel(HelpPanel):
             else:
                 subtitle = "Method of %s" % str(type(obj.__self__))[1:-1]
             intro = doc2html(obj) + '<br>'
+        elif isinstance(obj, types.ObjectType):
+            if isinstance(obj, types.TypeType):
+                title = "%s" % obj.__name__
+            else:
+                title = "%s" % obj.__class__.__name__
+            if obj.__class__.__module__ == '__builtin__':
+                subtitle = "builtin class"
+            else:
+                subtitle = "class in %s" % obj.__class__.__module__
+            intro = '<br>'.join((doc2html(obj),
+                                 "<h2>Initialization</h2>",
+#                                 format_subtitle("(...)"),
+                                 doc2html(obj.__init__)))
+            attrs_title = "Methods"
+            for attr in dir(obj):
+                if attr.startswith('_'):
+                    continue
+                a = getattr(obj, attr)
+                if not hasattr(a, '__call__'):
+                    continue
+                attrs[attr] = "", doc2html(a)
         else: ### OLD default parsing
             is_function = isinstance(obj, (types.FunctionType, types.BuiltinFunctionType))
             
@@ -418,6 +442,7 @@ class HtmlHelpPanel(HelpPanel):
             
             # collect attributes
             if not is_function:
+                attrs_title = "Attributes"
                 for attr in dir(obj):
                     if attr[0] != '_' or attr=='__init__':
                         try:
@@ -445,11 +470,11 @@ class HtmlHelpPanel(HelpPanel):
         # compose text
         txt = "<h1>%s</h1><br>" % title
         if subtitle:
-            txt += '<span style="color: rgb(102, 102, 102);">%s</span><br>' % subtitle
+            txt += '%s<br>' % format_subtitle(subtitle)
         txt += intro
         
         if len(TOC) > 0:
-            txt += '<h1><a name="TOC"></a>Attributes</h1><br>'
+            txt += '<h1><a name="TOC"></a>%s</h1><br>' % attrs_title
             txt += ''.join(TOC)
             txt += '<br>'.join(chapters)
         
