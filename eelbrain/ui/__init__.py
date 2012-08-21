@@ -17,9 +17,12 @@ except ImportError:
 __all__ = ['ask', 'ask_color', 'ask_dir', 'ask_saveas',
            'copy_file'
            'message', 
-           'progress', 
+           'progress_monitor', 'kill_progress_monitors',
            'test_targetpath',
            ]
+
+_progress_monitors = []
+
 
 def get_ui():
     if wx_ui and bool(wx.GetApp()):
@@ -65,6 +68,11 @@ def ask_color(default=(0,0,0)):
     return get_ui().ask_color(default)
 
 
+def kill_progress_monitors():
+    while len(_progress_monitors) > 0:
+        p = _progress_monitors.pop()
+        p.terminate()
+
 def show_help(obj):
     return get_ui().show_help(obj)
 
@@ -73,8 +81,19 @@ def message(title, message="", icon='i'):
     return get_ui().message(title, message, icon)
 
 
-def progress(*args, **kwargs):
-    return get_ui().progress(*args, **kwargs)
+def progress_monitor(i_max=None,
+                     title="Progress",
+                     message="Be positivistic!",
+                     cancel=True):
+    """
+    With wx_ui, the shell becomes unresponsive as long as the progress_monitor 
+    is displayed. This leaves the
+    
+    """
+    dialog = get_ui().progress_monitor(i_max=i_max, title=title, message=message,
+                                       cancel=cancel)
+    _progress_monitors.append(dialog)
+    return dialog
 
 
 def copy_file(path):

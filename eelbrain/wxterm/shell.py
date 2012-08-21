@@ -1111,6 +1111,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
     
     def OnQuit(self, event=None):
         logging.debug(" QUIT")
+        ui.kill_progress_monitors()
         if self.help_viewer:
             self.help_viewer.Close()
         unsaved = []

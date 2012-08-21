@@ -7,6 +7,7 @@ http://tkinter.unpythonic.net/wiki/tkFileDialog
 
 @author: Christian M Brodbeck
 '''
+import logging
 import tkFileDialog
 import tkMessageBox
 from Tkinter import Tk
@@ -55,8 +56,28 @@ def message(title, message="", icon='i'):
         raise ValueError("Invalid icon argument: %r" % icon)
 
 
-def progress(*args, **kwargs):
-    pass
+class progress_monitor:
+    def __init__(self, i_max=None,
+                 title="Task Progress",
+                 message="Wait and pray!",
+                 cancel=True):
+        self.i = -1
+        self.i_max = i_max
+        self.title = title
+        self.message = message
+        self.advance(message)
+
+    def advance(self, new_msg=None):
+        self.i += 1
+        if new_msg:
+            self.message = new_msg
+
+        msg = ("Progress %r: %s of %s; %r" % (self.title, self.i, self.i_max,
+                                              self.message))
+        logging.info(msg)
+
+    def terminate(self):
+        pass
 
 
 def show_help(obj):

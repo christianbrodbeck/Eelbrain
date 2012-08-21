@@ -149,22 +149,28 @@ def message(title, message="", icon='i'):
     dlg.ShowModal()
 
 
-def progress(*args, **kwargs):
+class progress_monitor:
     """
     catches calls meant to create a progress indicator, because the wx 
     ProgressDialog was way too slow.
     
     """
     def __init__(self, i_max=None,
-                 title="Progress",
-                 message="Be positivistic!",
+                 title="Task Progress",
+                 message="Wait and pray!",
                  cancel=True):
         style = wx.PD_AUTO_HIDE|wx.GA_SMOOTH#|wx.PD_REMAINING_TIME
         if cancel:
             style = style|wx.PD_CAN_ABORT
-        self.dialog = wx.ProgressDialog(title, message, i_max, GetWxParent(), style)
+        self.dialog = wx.ProgressDialog(title, message, i_max, None, style)
+        # parent=None instead of GetWxParent() because the dialog's parent 
+        # is unresponsive as long as progress dialog is shown 
+        # (and stays unresponsive if the underlaying process raises an error) 
         self.i = 0
-    
+
+    def __del__(self):
+        self.terminate()
+
     def advance(self, new_msg=None):
         self.i += 1
         args = (self.i, )
@@ -172,11 +178,13 @@ def progress(*args, **kwargs):
             args += (new_msg, )
         cont, skip = self.dialog.Update(*args)
         if not cont:
+            self.terminate()
             raise KeyboardInterrupt
     
     def terminate(self):
-        self.dialog.Close()
-        self.dialog.Destroy()
+        if hasattr(self.dialog, 'Close'):
+            self.dialog.Close()
+            self.dialog.Destroy()
 
 
 def show_help(obj):
