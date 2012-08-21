@@ -156,7 +156,7 @@ def events(raw=None, merge=-1, proj=False, name=None, baseline=0):
     istart = var(events[:,0], name='i_start')
     event = var(events[:,2], name='eventID')
     info = {'raw': raw,
-            'samplingrate': raw.info['sfreq'][0],
+            'samplingrate': raw.info['sfreq'],
             'info': raw.info}
     return dataset(event, istart, name=name, info=info)
 
@@ -251,7 +251,7 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
              'summary_colorspace': _cs.get_MEG(2e-13 * mult), # was 2.5
              }
 
-    props['samplingrate'] = epochs.info['sfreq'][0] / downsample
+    props['samplingrate'] = epochs.info['sfreq'] / downsample
     if properties:
         props.update(properties)
     
