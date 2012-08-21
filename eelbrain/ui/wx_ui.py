@@ -162,21 +162,33 @@ class progress_monitor:
         style = wx.PD_AUTO_HIDE|wx.GA_SMOOTH#|wx.PD_REMAINING_TIME
         if cancel:
             style = style|wx.PD_CAN_ABORT
+        if i_max is None:
+            self.indeterminate = True
+            i_max = 1
+        else:
+            self.indeterminate = False
+
         self.dialog = wx.ProgressDialog(title, message, i_max, None, style)
         # parent=None instead of GetWxParent() because the dialog's parent 
         # is unresponsive as long as progress dialog is shown 
         # (and stays unresponsive if the underlaying process raises an error) 
         self.i = 0
+        if self.indeterminate:
+            self.dialog.Pulse()
 
     def __del__(self):
         self.terminate()
 
     def advance(self, new_msg=None):
-        self.i += 1
-        args = (self.i, )
-        if new_msg:
-            args += (new_msg, )
-        cont, skip = self.dialog.Update(*args)
+        if self.indeterminate:
+            cont, skip = self.dialog.Pulse(new_msg)
+        else:
+            self.i += 1
+            args = (self.i,)
+            if new_msg:
+                args += (new_msg,)
+            cont, skip = self.dialog.Update(*args)
+
         if not cont:
             self.terminate()
             raise KeyboardInterrupt

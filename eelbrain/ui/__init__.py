@@ -86,8 +86,14 @@ def progress_monitor(i_max=None,
                      message="Be positivistic!",
                      cancel=True):
     """
-    With wx_ui, the shell becomes unresponsive as long as the progress_monitor 
-    is displayed. This leaves the
+    With wx-python, show a progress dialog, otherwise send progress messages to 
+    logging.info.
+    
+    i_max : None | int
+        Final state; None: show an indeterminate progress bar
+    cancel : bool
+        Show a cancel button. After the 'cancel' button is clicked, 
+        :py:meth`advance` will return False.
     
     """
     dialog = get_ui().progress_monitor(i_max=i_max, title=title, message=message,
