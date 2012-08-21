@@ -233,7 +233,9 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
                         reject=reject, preload=True)
     
     # read the data
-    x = epochs.get_data() # this call iterates through epochs as well
+    x = epochs.get_data() # this call iterates through epochs
+    if len(x) == 0:
+        raise RuntimeError("No events left in %r" % raw.info['filename'])
     T = epochs.times
     if downsample != 1:
         index = slice(None, None, downsample)
