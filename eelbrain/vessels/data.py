@@ -1982,6 +1982,12 @@ class dataset(collections.OrderedDict):
         
         return ds
     
+    def copy(self):
+        "ds.copy() returns an shallow copy of ds"
+        ds = dataset(name=self.name, info=self.info.copy())
+        ds.update(self)
+        return ds
+
     def itercases(self, start=None, stop=None):
         "iterate through cases (each case represented as a dict)"
         if start is None:
