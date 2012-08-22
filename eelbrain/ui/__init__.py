@@ -82,8 +82,8 @@ def message(title, message="", icon='i'):
 
 
 def progress_monitor(i_max=None,
-                     title="Progress",
-                     message="Be positivistic!",
+                     title="Task Progress",
+                     message="Good luck!",
                      cancel=True):
     """
     With wx-python, show a progress dialog, otherwise send progress messages to 

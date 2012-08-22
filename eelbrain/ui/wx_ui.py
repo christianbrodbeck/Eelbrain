@@ -192,7 +192,13 @@ class progress_monitor:
         if not cont:
             self.terminate()
             raise KeyboardInterrupt
-    
+
+    def message(self, new_msg):
+        cont, skip = self.dialog.Update(self.i, new_msg)
+        if not cont:
+            self.terminate()
+            raise KeyboardInterrupt
+
     def terminate(self):
         if hasattr(self.dialog, 'Close'):
             self.dialog.Close()
