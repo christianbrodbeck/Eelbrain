@@ -195,6 +195,8 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     mult : scalar
         multiply all data by a constant. If used, the ``unit`` kwarg should
         specify the target unit, not the source unit.
+    proj : bool
+        mne.Epochs kwarg (subtract projections when loading data)
     tstart : scalar
         start of the epoch relative to the cue
     tstop : scalar
@@ -206,6 +208,8 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     threshold : None | scalar
         Threshold for rejecting epochs. Requires a for of mne-python which 
         implements the Epochs.model['index'] variable.
+    raw : None | mne.fiff.Raw
+        Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
     
     """
     if data == 'eeg':

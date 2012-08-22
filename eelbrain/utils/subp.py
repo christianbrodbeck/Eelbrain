@@ -496,6 +496,12 @@ def setup_mri(mri_sdir, ico=4):
      - creates symlinks in the bem directory 
      - runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
     
+    The utility needs permission to access the MRI files. In case of a 
+    permission error, the following shell command can be used on the mri 
+    folder to set permissions appropriately::
+    
+        $ sudo chmod -R 7700 mri-folder
+    
     """
     mri_dir, subject = os.path.split(mri_sdir)
     bemdir = os.path.join(mri_sdir, 'bem')

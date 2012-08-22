@@ -86,14 +86,20 @@ def progress_monitor(i_max=None,
                      message="Good luck!",
                      cancel=True):
     """
-    With wx-python, show a progress dialog, otherwise send progress messages to 
-    logging.info.
+    With wx-python, show a progress dialog. In Tk this is not fully 
+    implemented and merely sends messages to logging.info.
     
     i_max : None | int
-        Final state; None: show an indeterminate progress bar
+        Final state; None: show an indeterminate progress bar.
+    title : str
+        The window title.
+    message : str
+        The message; is replaced when :py:meth:`advance` is called with a
+        str argument.
     cancel : bool
-        Show a cancel button. After the 'cancel' button is clicked, 
-        :py:meth`advance` will return False.
+        Show a cancel button. If the 'cancel' button is clicked, 
+        the next call to :py:meth`advance` will raise a KeyboardInterrupt 
+        Exception.
     
     """
     dialog = get_ui().progress_monitor(i_max=i_max, title=title, message=message,
