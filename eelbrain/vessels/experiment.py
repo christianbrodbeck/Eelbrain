@@ -60,6 +60,8 @@ class mne_experiment(object):
         """
         if root:
             root = os.path.expanduser(root)
+            if not os.path.exists(root):
+                raise IOError("Path does not exist: %r" % root)
         else:
             msg = "Please select the meg directory of your experiment"
             root = ui.ask_dir("Select Root Directory", msg, True)
