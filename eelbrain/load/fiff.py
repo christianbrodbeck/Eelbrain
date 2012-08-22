@@ -267,13 +267,15 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     
     epochs_var = ndvar(x, dims=dims, properties=props, name=target)
     if add:
-        if threshold:
+        if len(epochs.events) != ds.n_cases:
             if hasattr(epochs, 'model'):
                 ds = ds.subset(epochs.model['index'])
             else:
-                raise TypeError("The threshold argument requires a fork of "
-                                "mne-python implementing the Epochs.model "
-                                "attribute")
+                err = ("The mne.Epochs object ended up with fewer epochs than "
+                       "the dataset has cases. Matching epochs with events "
+                       "requires a fork of mne-python implementing the "
+                       "Epochs.model attribute")
+                raise TypeError(err)
         ds.add(epochs_var)
         return ds
     else:
