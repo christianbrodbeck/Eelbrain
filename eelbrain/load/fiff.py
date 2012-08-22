@@ -33,7 +33,8 @@ from mne.fiff import Raw as raw
 
 
 
-def events(raw=None, merge=-1, proj=False, name=None, baseline=0):
+def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
+           verbose=False):
     """
     Returns a dataset containing events from a raw fiff file. Use
     :func:`fiff_epochs` to load MEG data corresponding to those events.
@@ -73,7 +74,7 @@ def events(raw=None, merge=-1, proj=False, name=None, baseline=0):
     
     if isinstance(raw, basestring):
         if os.path.isfile(raw):
-            raw = mne.fiff.Raw(raw)
+            raw = mne.fiff.Raw(raw, verbose=verbose)
         else:
             raise IOError("%r is not a file" % raw)
     
