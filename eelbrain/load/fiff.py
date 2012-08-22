@@ -102,7 +102,7 @@ def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
         
         # add the projections to the raw file
         proj = mne.read_proj(proj)
-        raw.info['projs'] += proj[:]
+        raw.add_proj(proj, remove_existing=True)
     
     if name is None:
         name = os.path.basename(raw_file)
@@ -124,7 +124,7 @@ def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
         events[:,1] = np.zeros_like(idx)
         events[:,2] = values
     else:
-        events = mne.find_events(raw)
+        events = mne.find_events(raw, verbose=verbose)
     
     if len(events) == 0:
         raise ValueError("No events found!")
