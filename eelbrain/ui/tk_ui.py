@@ -64,17 +64,24 @@ class progress_monitor:
         self.i = -1
         self.i_max = i_max
         self.title = title
-        self.message = message
+        self._message = message
         self.advance(message)
+
+    def _log(self):
+        msg = ("Progress %r: %s of %s; %r" % (self.title, self.i, self.i_max,
+                                              self._message))
+        logging.info(msg)
 
     def advance(self, new_msg=None):
         self.i += 1
         if new_msg:
-            self.message = new_msg
+            self._message = new_msg
 
-        msg = ("Progress %r: %s of %s; %r" % (self.title, self.i, self.i_max,
-                                              self.message))
-        logging.info(msg)
+        self._log()
+
+    def message(self, new_msg):
+        self._message = new_msg
+        self._log()
 
     def terminate(self):
         pass
