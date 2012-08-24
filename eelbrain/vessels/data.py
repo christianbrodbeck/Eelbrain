@@ -184,7 +184,10 @@ def asmodel(X, sub=None):
     else:
         return X
 
-def asvar(Y, sub=None):
+def asvar(Y, sub=None, ds=None):
+    if isinstance(Y, str):
+        Y = ds[Y]
+
     if isvar(Y):
         pass
     else:
@@ -195,7 +198,10 @@ def asvar(Y, sub=None):
     else:
         return Y
 
-def asfactor(Y, sub=None):
+def asfactor(Y, sub=None, ds=None):
+    if isinstance(Y, str):
+        Y = ds[Y]
+
     if isfactor(Y):
         pass
     elif isvar(Y):
@@ -208,7 +214,10 @@ def asfactor(Y, sub=None):
     else:
         return Y
 
-def ascategorial(Y, sub=None):
+def ascategorial(Y, sub=None, ds=None):
+    if isinstance(Y, str):
+        Y = ds[Y]
+
     if iscategorial(Y):
         pass
     else:
