@@ -165,6 +165,34 @@ class Edf(object):
         
         ds[t_edf] = var(self.triggers['T'])
     
+    def filter(self, ds, tstart= -0.1, tstop=0.6, use=['ESACC', 'EBLINK'],
+               T='t_edf'):
+        """
+        Return a copy of the dataset ``ds`` with all bad events removed. A 
+        dataset containing all the bad events is stored in 
+        ``ds.info['rejected']``.
+        
+        ds : dataset
+            The dataset that is to be filtered
+        tstart : scalar
+            Start of the time window in which to look for artifacts
+        tstop : scalar
+            End of the time window in which to look for artifacts
+        use : list of str
+            Events which are to be treated as artifacts ('ESACC' and 'EBLINK')
+        T : str | var
+            Variable describing edf-relative timing for the events in ``ds``. 
+            Usually this is a string key for a variable in ``ds``.
+         
+        """
+        if isinstance(T, str):
+            T = ds[T]
+        accept = self.get_accept(T, tstart=tstart, tstop=tstop, use=use)
+        accepted = ds.subset(accept)
+        rejected = ds.subset(accept == False)
+        accepted.info['rejected'] = rejected
+        return accepted
+
     def get_accept(self, T=None, tstart=-0.1, tstop=0.6, use=['ESACC', 'EBLINK']):
         """
         returns a boolean var indicating for each epoch whether it should be 
