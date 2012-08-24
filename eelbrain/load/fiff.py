@@ -25,7 +25,7 @@ from eelbrain import ui
 __all__ = ['raw', 'events', 'add_epochs', # basic pipeline
            'ds_2_evoked', 'evoked_2_stc', # get lists of mne objects
            'mne2ndvar', 'mne_events', 'mne_Raw', 'mne_Epochs', # get mne objects
-           'sensors',
+           'sensor_net',
            ]
 
 # make this available here for consistency
@@ -168,7 +168,7 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
                data='mag', threshold=None,
                raw=None, add=True,
                target="MEG", i_start='i_start', 
-               properties=None, sensorsname='fiff-sensors'):
+               properties=None, sensors=None):
     """
     Adds data from individual epochs as a ndvar to the dataset ``ds`` and 
     returns the dataset. Unless the ``threshold`` argument is specified, ``ds``
@@ -265,7 +265,10 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     # target container
     picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False, 
                                 eog=False, include=[])
-    sensor = sensors(epochs, picks=picks, name=sensorsname)
+    if sensors is None:
+        sensor = sensor_net(epochs, picks=picks)
+    else:
+        sensor = sensors
     time = var(T, 'time')
     dims = ('case', sensor, time)
     
@@ -457,7 +460,7 @@ def mne2ndvar(mne_object, data='mag', name=None, bads=False):
     if isinstance(mne_object, mne.fiff.Evoked):
         x = mne_object.data[picks]
         time = var(mne_object.times, name='time')
-        sensor = sensors(mne_object, picks=picks)
+        sensor = sensor_net(mne_object, picks=picks)
         dims = (sensor, time)
         return ndvar(x, dims=dims, name=name)
     else:
@@ -502,7 +505,7 @@ def mne_Epochs(ds, tstart=-0.1, tstop=0.6, i_start='i_start', raw=None, **kwargs
     return epochs
 
 
-def sensors(fiff, picks=None, name='fiff-sensors'):
+def sensor_net(fiff, picks=None, name='fiff-sensors'):
     """
     returns a sensor_net object based on the info in a fiff file.
      
