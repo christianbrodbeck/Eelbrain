@@ -603,7 +603,19 @@ class var(object):
                                        x1=X.cells[v1],
                                        x2=X.cells[v2])
         return var(y, name)
+
+    def index(self, *values):
+        """
+        v.index(*values) returns an array of indices of where v has one of
+        *values. 
         
+        """
+        idx = []
+        for v in values:
+            where = np.where(self == v)[0]
+            idx.extend(where)
+        return sorted(idx)
+
     def isany(self, *values):
         return np.any([self.x == v for v in values], axis=0)
     
@@ -619,6 +631,10 @@ class var(object):
     def repeat(self, repeats, name='{name}'):
         "Analogous to :py:func:`numpy.repeat`"
         return var(self.x.repeat(repeats), name=name.format(name=self.name))
+
+    @property
+    def values(self):
+        return np.unique(self.x)
 
 
 
