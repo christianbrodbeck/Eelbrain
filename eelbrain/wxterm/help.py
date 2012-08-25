@@ -404,14 +404,17 @@ class HtmlHelpPanel(HelpPanel):
                 subtitle = "Method of %s" % str(type(obj.__self__))[1:-1]
             intro = doc2html(obj) + '<br>'
         elif isinstance(obj, types.ObjectType):
-            if isinstance(obj, types.TypeType):
+            if isinstance(obj, (types.TypeType, types.ClassType)):
+                # ClassType: old-style classes (?)
                 title = "%s" % obj.__name__
+                module = obj.__module__
             else:
                 title = "%s" % obj.__class__.__name__
-            if obj.__class__.__module__ == '__builtin__':
+                module = obj.__class__.__module__
+            if module == '__builtin__':
                 subtitle = "builtin class"
             else:
-                subtitle = "class in %s" % obj.__class__.__module__
+                subtitle = "class in %s" % module
             intro = '<br>'.join((doc2html(obj),
                                  "<h2>Initialization</h2>",
 #                                 format_subtitle("(...)"),
