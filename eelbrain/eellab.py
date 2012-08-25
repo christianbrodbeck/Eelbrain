@@ -44,6 +44,7 @@ from vessels.data import (factor,
                           ndvar,
                           dataset,
                           combine,
+                          interaction,
                           )
 
 from vessels import process
@@ -53,6 +54,7 @@ from analyze import (test,
                      testnd,
                      table) 
 
+import ui
 import plot
 
 import load.txt
@@ -64,6 +66,6 @@ except:
 
 import save
 
-import utils.statfuncs as statf
+from utils import statfuncs
 
 from utils.print_funcs import printdict, printlist 
