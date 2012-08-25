@@ -488,20 +488,32 @@ def mne_Raw(ds):
     return ds.info['raw']
 
 
-def mne_Epochs(ds, tstart=-0.1, tstop=0.6, i_start='i_start', raw=None, **kwargs):
+def mne_Epochs(ds, tstart=-0.1, tstop=0.6, i_start='i_start', raw=None, name='{name}', **kwargs):
     """
-    All ``**kwargs`` are forwarded to the mne.Epochs instance creation.
+    All ``**kwargs`` are forwarded to the mne.Epochs instance creation. If the
+    mne-python fork in use supports the ``epochs.model`` attribute, 
+    ``epochs.model`` is updated with ``ds``
     
-    reject : 
-        e.g., {'mag': 2e-12}
-    
+    raw : None | mne.fiff.Raw
+        If None, ds.info['raw'] is used.
+    name : str
+        Name for the Epochs object. ``'{name}'`` is formatted with the dataset 
+        name ``ds.name``.
+        
     """
     if raw is None:
         raw = ds.info['raw']
     
     events = mne_events(ds=ds, i_start=i_start)
     
-    epochs = mne.Epochs(raw, events, None, tmin=tstart, tmax=tstop, **kwargs)
+    epochs = mne.Epochs(raw, events, None, tmin=tstart, tmax=tstop, 
+                        name=name.format(name=ds.name), **kwargs)
+    if hasattr(epochs, 'model'):
+        if epochs.model.n_cases < ds.n_cases:
+            index = epochs.model['index']
+            ds = ds.subset(index)
+        epochs.model.update(ds)
+
     return epochs
 
 
