@@ -1,10 +1,15 @@
 """
-Colorspaces provides colormaps for plotting functions. A segment's properties
-dictionary can contain a colormap to provide defaults to plotting functions.
+Colorspace objects provide settings for plotting functions.
 
-This module provides functions to create some default colorspaces (the ``get_...`` 
-functions), and custom colorspaces can be created using the Colorspace class.
+Besides the :py:class:`Colorspace` class, this module also provides functions 
+to create some default colorspaces (the ``get_...`` functions), and the 
+colormaps `cm_polar` and `cm_xpolar`:
 
+cm_polar
+    white at 0, red for positive and blue for negative values.
+cm_xpolar
+    like cm_polar, but extends the range by fading red and blue into black at 
+    extremes
 
 """
 
@@ -151,33 +156,49 @@ def colorbars_toFig_row_(cspaces, fig, row, nRows=None):
 
 
 
-# MARK: colorspace factories
+_cdict = {'red':  [(.0, .0, .0),
+                   (.5, 1., 1.),
+                   (1., 1., 1.)],
+          'green':[(.0, .0, .0),
+                   (.5, 1., 1.),
+                   (1., .0, .0)],
+          'blue': [(.0, 1., 1.),
+                   (.5, 1., 1.),
+                   (1., .0, .0)]}
+cm_polar = mpl.colors.LinearSegmentedColormap("polar", _cdict)
+cm_polar.set_bad('w', alpha=0.)
 
+x = .3
+_cdict = {'red':  [(0, 0., 0.),
+                   (0 + x, 0., 0.),
+                   (.5, 1., 1.),
+                   (1 - x, 1., 1.),
+                   (1, 0., 0.)],
+          'green':[(0, 0., 0.),
+                   (0 + x, 0., 0.),
+                   (.5, 1., 1.),
+                   (1 - x, 0., 0.),
+                   (1., 0., 0.)],
+          'blue': [(0, 0., 0.),
+                   (0 + x, 1., 1.),
+                   (.5, 1., 1.),
+                   (1 - x, 0., 0.),
+                   (1, .0, .0)]}
+cm_xpolar = mpl.colors.LinearSegmentedColormap("extended polar", _cdict)
+cm_xpolar.set_bad('w', alpha=0.)
+del x, _cdict
 
-def _get_polar_cmap():
-    cdict = {'red':[(0.,  .0,  .0),
-                    (.5, 1.,  1.),
-                    (1.,  1.0,  1.0)],
-         'green':  [(0.0,  0.,  0.),
-                    (.5, 1.,  1.),
-                    (1.0,  0.,   0.)],
-         'blue':   [(0.0,  1.0,  1.0),
-                    (.5,  1.,  1.),
-                    (1.0,  0.,  0.)]}
-    cmap = mpl.colors.LinearSegmentedColormap("polarCmap", cdict)
-    cmap.set_bad('w', alpha=0.)
-    return cmap
 
 def get_default():
     return Colorspace(cmap=mpl.cm.jet)
 
 
 def get_EEG(vmax=1.5, unit=r'$\mu V$', p='unused', **kwargs):
-    kwargs['cmap'] = _get_polar_cmap()
+    kwargs['cmap'] = cm_xpolar
     return Colorspace(vmax=vmax, unit=unit, **kwargs)
 
 def get_MEG(vmax=2e-12, unit='Tesla', p='unused', **kwargs):
-    kwargs['cmap'] = _get_polar_cmap()
+    kwargs['cmap'] = cm_xpolar
     return Colorspace(vmax=vmax, unit=unit, **kwargs)
 
 
