@@ -66,8 +66,15 @@ class mne_experiment(object):
             msg = "Please select the meg directory of your experiment"
             root = ui.ask_dir("Select Root Directory", msg, True)
         
+        # settings
         self._kit2fiff_args = kit2fiff_args
-        
+        self.auto_launch_mne = True
+        """bool | None
+        If the requested file does not exist, make it if possible. With 
+        ``None``, the application asks each time. Currently affects only
+        the "trans" file.
+        """
+
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
         
         # templates ---
@@ -308,15 +315,18 @@ class mne_experiment(object):
             os.makedirs(directory)
         
         # special cases that can create the file in question
-        if name =='trans':
+        if name == 'trans':
             if not os.path.exists(path):
-                ui.show_help(subp.run_mne_analyze)
-                a = ui.ask("Launch mne_analyze for Coordinate-Coregistration?", 
-                           "The 'trans' file for %r, %r does not exist. Should " 
-                           "mne_analyzed be launched to create it?" % 
-                           (self.state['subject'], self.state['experiment']),
-                           cancel=False, default=True)
+                if self.auto_launch_mne is None:
+                    a = ui.ask("Launch mne_analyze for Coordinate-Coregistration?",
+                               "The 'trans' file for %r, %r does not exist. Should "
+                               "mne_analyzed be launched to create it?" %
+                               (self.state['subject'], self.state['experiment']),
+                               cancel=False, default=True)
+                else:
+                    a = bool(self.auto_launch_mne)
                 if a:
+                    ui.show_help(subp.run_mne_analyze)
                     subp.run_mne_analyze(self.get('mri_dir'),
                                          self.get('raw_sdir'), modal=True)
                     if not os.path.exists(path):
