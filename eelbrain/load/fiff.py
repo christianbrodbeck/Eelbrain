@@ -206,10 +206,14 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     target : str
         name for the new ndvar containing the epoch data
     threshold : None | scalar
-        Threshold for rejecting epochs. Requires a for of mne-python which 
-        implements the Epochs.model['index'] variable.
+        Threshold for rejecting epochs (peak to peak). Requires a for of 
+        mne-python which implements the Epochs.model['index'] variable.
     raw : None | mne.fiff.Raw
         Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
+    sensors : None | eelbrain.vessels.sensors.sensor_net
+        The default (``None``) reads the sensor locations from the fiff file. 
+        If the fiff file contains incorrect sensor locations, a different 
+        sensor_net can be supplied through this kwarg.
     
     """
     if data == 'eeg':
