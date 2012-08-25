@@ -44,6 +44,7 @@ from vessels.data import (factor,
                           ndvar,
                           dataset,
                           combine,
+                          align,
                           interaction,
                           )
 

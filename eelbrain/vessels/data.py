@@ -236,6 +236,49 @@ def cell_label(cell, delim=' '):
         return cell
 
 
+def align(d1, d2, out='ds', i1='index', i2='index'):
+    """
+    Aligns two data-objects d1 and d2 (i.e., case 0 of d1 should correspond to 
+    case 0 of d2 etc.). d1 is used as the basis for the case sequence. 
+    
+    If d1 and d2 are datasets, i1 and i2 can be keys for variables in d1 and 
+    d2. If d1 an d2 are other data objects, i1 and i2 have to be actual indices
+    (array-like)
+    
+    d1, d2 : data-object
+        Two data objects which are to be aligned
+    i1, i2 : str | array-like (dtype=int)
+        Indexes for cases in d1 and d2.
+    out : 'd' | 'index'
+        **'d'**: returns the two aligned data objects. **'index'**: returns two 
+        indices index1 and index2 which can be used to align the datasets with
+        ``ds1[index1]; ds2[index2]``. 
+    
+    """
+    i1 = asvar(i1, ds=d1)
+    i2 = asvar(i2, ds=d2)
+
+    if len(i1) > len(i1.values):
+        raise ValueError('Non-unique index in i1 for %r' % d1.name)
+    if len(i2) > len(i2.values):
+        raise ValueError('Non-unique index in i2 for %r' % d2.name)
+
+    idx1 = []
+    idx2 = []
+    for i, idx in enumerate(i1):
+        if idx in i2:
+            idx1.append(i)
+            where2 = i2.index(idx)[0]
+            idx2.append(where2)
+
+    if out == 'd':
+        return d1[idx1], d2[idx2]
+    elif out == 'index':
+        return idx1, idx2
+    else:
+        return ValueError("Invalid value for out parameter: %r" % out)
+
+
 def combine(items):
     """
     combine a list of items of the same type into one item (dataset, var, 
