@@ -295,6 +295,15 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.optionsMenu.Append(ID_PREFERENCES, "&Preferences...\tCtrl+,")
         self.Bind(wx.EVT_MENU, self.OnPreferences, id=wx.ID_PREFERENCES)
         
+    # add "Open Examples" to file menu
+        ex_root = __file__
+        for _ in xrange(3):
+            ex_root, _ = os.path.split(ex_root)
+        self._examples_root = os.path.join(ex_root, 'examples')
+        print __file__, self._examples_root
+        self.fileMenu.Insert(3, ID.SHOW_EXAMPLES, "Open Example...")
+        self.Bind(wx.EVT_MENU, self.OnShowExamples, id=ID.SHOW_EXAMPLES)
+
     # Options > History > Open As Script
         self.historyMenu.Prepend(ID.SHELL_History2PyDoc, "Open As Script", "Open"
                                  "the terminal's history as a new Python "
@@ -1188,6 +1197,23 @@ class ShellFrame(wx.py.shell.ShellFrame):
         if not hasattr(self, 'c_dlg'):
             self.c_dlg = wx.ColourDialog(self)
     
+    def OnShowExamples(self, event=None):
+        """
+        __init__(self, Window parent, String message=FileSelectorPromptStr, 
+            String defaultDir=EmptyString, String defaultFile=EmptyString, 
+            String wildcard=FileSelectorDefaultWildcardStr, 
+            long style=FD_DEFAULT_STYLE, 
+            Point pos=DefaultPosition) -> FileDialog
+        """
+        dialog = wx.FileDialog(self, "Open Eelbrain Example",
+                               defaultDir=self._examples_root,
+                               wildcard="Python Scripts (*.py)|*.py",
+                               style=wx.FD_OPEN)
+        dialog.ShowModal()
+        path = dialog.GetPath()
+        if path:
+            self.create_py_editor(pyfile=path)
+
     def OnTableNew(self, event=None):
         self.FrameTable(None)
     
