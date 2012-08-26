@@ -469,9 +469,9 @@ class mne_experiment(object):
         
         """
         proj = mne.proj.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
-    
-        sensor = load.fiff.sensors(epochs)
-        
+
+        sensor = load.fiff.sensor_net(epochs)
+
         # plot PCA components
         PCA = []
         for p in proj:
