@@ -54,7 +54,8 @@ def _set_bin_dirs(mne=None, freesurfer=None, edfapi=None):
             os.environ['PATH'] = mne_bin
     
     if freesurfer:
-        os.environ['FREESURFER_HOME'] = freesurfer
+        fs_home, _ = os.path.split(freesurfer)
+        os.environ['FREESURFER_HOME'] = fs_home
 
 
 
