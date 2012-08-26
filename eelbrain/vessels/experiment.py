@@ -87,8 +87,11 @@ class mne_experiment(object):
         
         # find experiment data structure
         self.var_values = {}
-        self._root = root
-        self.state = {'root': root, 'raw': 'raw_raw'}
+        self.root = root
+        self.state = {'root': root,
+                      'raw': 'raw_raw',
+                      'labeldir': 'label',
+                      'hemi': 'lh'}
         self.parse_dirs()
         
         mri_dir = self.get('mri_dir')
@@ -103,6 +106,7 @@ class mne_experiment(object):
         # path elements
         root = '{root}'
         sub = '{subject}'
+        mrisub = '{mrisubject}'
         exp = '{experiment}'
         an = '{analysis}'
         meg_dir = os.path.join(root, 'meg')
@@ -115,10 +119,10 @@ class mne_experiment(object):
                  # basic dir
                  meg_dir = meg_dir, # contains subject-name folders for MEG data
                  mri_dir = mri_dir, # contains subject-name folders for MEG data
-                 mri_sdir = os.path.join(mri_dir, sub),
                  raw_sdir = raw_dir,
                  log_sdir = os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp))),
                  
+                 mri_sdir=os.path.join(mri_dir, mrisub),
                  # raw
                  mrk = os.path.join(raw_dir, '_'.join((sub, exp, 'marker.txt'))),
                  elp = os.path.join(raw_dir, sub+'_HS.elp'),
@@ -136,16 +140,16 @@ class mne_experiment(object):
                  fwd  = '_'.join(('{raw}', an+'-fwd.fif')),
                  
                  # fwd model
-                 bem = os.path.join(mri_dir, sub, 'bem', sub+'-5120-bem-sol.fif'),
-                 src = os.path.join(mri_dir, sub, 'bem', sub+'-ico-4-src.fif'),
                  
+                 bem=os.path.join(mri_dir, mrisub, 'bem', mrisub + '-5120-bem-sol.fif'),
+                 src=os.path.join(mri_dir, mrisub, 'bem', mrisub + '-ico-4-src.fif'),
                 # !! these would invalidate the s_e_* pattern with a third _
                  
                  # mne's stc.save() requires stub filename and will add '-?h.stc'  
                  stc_tgt = os.path.join(mne_dir, '_'.join((sub, exp, an))),
                  stc = os.path.join(mne_dir, '_'.join((sub, exp, an)) + '.stc'),
-                 label = os.path.join(mri_dir, sub, 'label', 'aparc', '%s.label' % an),
                  
+                 label=os.path.join(mri_dir, mrisub, '{labeldir}', '{hemi}.%s.label' % an),
                  # EEG
                  vhdr = os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp+'.vhdr'))),
                  eegfif = os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp, 'raw.fif'))),
@@ -158,7 +162,7 @@ class mne_experiment(object):
         return t
         
     def __repr__(self):
-        args = [repr(self._root)]
+        args = [repr(self.root)]
         kwargs = []
         
         subject = self.state.get('subject')
@@ -278,8 +282,6 @@ class mne_experiment(object):
             subject = fmt.get('subject')
             if subject is None:
                 raise RuntimeError("No subject specified")
-            elif name in ['bem', 'cor', 'src', 'mri_sdir', 'label']:
-                fmt['subject'] = self._mri_subjects[subject]
         
         if ('{experiment}' in temp) and (fmt.get('experiment') is None):
             raise RuntimeError("No experiment specified")
@@ -374,7 +376,7 @@ class mne_experiment(object):
     
     def iter_vars(self, variables, constants={}):
         # set constants
-        constants['root'] = self._root
+        constants['root'] = self.root
         self.state.update(constants)
         
         variables = list(set(variables).difference(constants))
@@ -499,7 +501,8 @@ class mne_experiment(object):
         
         """
         subjects = self._subjects = set()
-        
+        self._mri_subjects = mri_subjects = {}
+
         meg_dir = self.get('meg_dir')
         if os.path.exists(meg_dir):
             for fname in os.listdir(meg_dir):
@@ -512,7 +515,6 @@ class mne_experiment(object):
         
         # find MRIs
         mri_dir = self.get('mri_dir')
-        self._mri_subjects = mri_subjects = {}
         if os.path.exists(mri_dir):
             mris = os.listdir(mri_dir)
             for s in subjects:
@@ -562,7 +564,7 @@ class mne_experiment(object):
         
         """
         e = self.__class__(src_root)
-        e.push(self._root, names=names, **kwargs)
+        e.push(self.root, names=names, **kwargs)
     
     def push(self, dst_root, names=[], overwrite=False, missing='warn'):
         """OK 12/8/12
@@ -632,9 +634,10 @@ class mne_experiment(object):
         if subject is not None:
             if match and not (subject in self._subjects) and not ('*' in subject):
                 raise ValueError("No subject named %r" % subject)
-            else:
-                self.state['subject'] = subject
-        
+
+            self.state['subject'] = subject
+            self.state['mrisubject'] = self._mri_subjects.get(subject, None)
+
         if experiment is not None:
             if match and not (experiment in self._experiments) and not ('*' in experiment):
                 raise ValueError("No experiment named %r" % experiment)
