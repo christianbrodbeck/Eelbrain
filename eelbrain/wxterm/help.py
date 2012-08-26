@@ -5,6 +5,7 @@ TODO: use wx.html2
 
 """
 
+import inspect
 import logging
 import types
 import os
@@ -403,6 +404,31 @@ class HtmlHelpPanel(HelpPanel):
             else:
                 subtitle = "Method of %s" % str(type(obj.__self__))[1:-1]
             intro = doc2html(obj) + '<br>'
+        elif isinstance(obj, (types.FunctionType, types.BuiltinFunctionType)):
+            title = "%s(...)" % obj.__name__
+            module = obj.__module__
+            if module == '__builtin__':
+                subtitle = "builtin function"
+            else:
+                subtitle = "function in %s" % module
+
+            # function signature
+            if inspect.isfunction(obj):
+                a = inspect.getargspec(obj)
+                if a.defaults:
+                    n_args = len(a.args) - len(a.defaults)
+                    args = a.args[:n_args]
+                    args.extend(map('='.join, zip(a.args[n_args:], map(repr, a.defaults))))
+                else:
+                    args = a.args
+                if a.varargs:
+                    args.append('*%s' % a.varargs)
+                if a.keywords:
+                    args.append('**%s' % a.keywords)
+                signature = "%s(%s)" % (obj.__name__, ', '.join(args))
+                subtitle = '<br>'.join((subtitle, signature))
+
+            intro = doc2html(obj)
         elif isinstance(obj, types.ObjectType):
             if isinstance(obj, (types.TypeType, types.ClassType)):
                 # ClassType: old-style classes (?)
@@ -427,7 +453,8 @@ class HtmlHelpPanel(HelpPanel):
                 if not hasattr(a, '__call__'):
                     continue
                 attrs[attr] = "", doc2html(a)
-        else: ### OLD default parsing
+        ### OLD default parsing
+        else:
             is_function = isinstance(obj, (types.FunctionType, types.BuiltinFunctionType))
             
             # doc-string for the object itself
