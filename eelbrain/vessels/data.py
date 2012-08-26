@@ -637,7 +637,7 @@ class var(object):
         raise NotImplementedError
         # FIXME: use celltable
         assert isfactor(X)
-        I1 = X==v1;             I2 = X==v2
+        I1 = (X == v1);         I2 = (X == v2)
         Y1 = self[I1];          Y2 = self[I2]
         m1 = match[I1];         m2 = match[I2]
         s1 = np.argsort(m1);    s2 = np.argsort(m2)
@@ -986,8 +986,8 @@ class factor(_effect_):
         shape = (self._n_cases, self.df)
         codes = np.empty(shape, dtype=np.int8)
         for i, cell in enumerate(self.cells[:-1]):
-            codes[:,i] = self==cell
         
+            codes[:, i] = (self == cell)
         return codes
     
     @property

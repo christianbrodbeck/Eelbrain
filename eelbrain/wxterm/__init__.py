@@ -4,7 +4,7 @@ def launch():
     import wx
     if wx.GetApp():
         raise RuntimeError("wx.App already running")
-        # irregular behavior if called from Eelbrain or pyshell 
+        # prevent irregular behavior if called from Eelbrain or pyshell 
     
     import matplotlib as mpl
     mpl.use('WXAgg')

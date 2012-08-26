@@ -18,7 +18,7 @@ import sys
 import types
 import webbrowser
 
-#import wx
+import wx
 import wx.stc
 import wx.py.shell
 import wx.lib.colourselect
@@ -29,11 +29,7 @@ import matplotlib.pyplot as plt
 
 from eelbrain import __version__
 from eelbrain import ui
-#from eelbrain.signal_processing import Experiment, _extension
-#from eelbrain.signal_processing import isexperiment, is_experiment_item#, isDataset
 _extension = 'jkldfsa'
-
-#import eelbrain.wxgui.viewers as viewers
 
 from eelbrain import wxutils
 from eelbrain.wxutils import Icon
@@ -42,7 +38,6 @@ from eelbrain.wxutils import droptarget
 import ID
 import about_dialog
 import preferences_dialog
-#from experiment_frame import ExperimentFrame
 from help import HelpViewer
 from table import TableFrame
 import py_editor
