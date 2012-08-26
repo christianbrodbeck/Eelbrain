@@ -1,6 +1,8 @@
 import numpy as np
 from eelbrain.eellab import *
 import eelbrain.vessels.colorspaces as cs
+import eelbrain.vessels.sensors
+
 
 """
 Create simulated data with shape 
