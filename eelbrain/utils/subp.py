@@ -482,11 +482,11 @@ def _run(cmd, v=None, cwd=None):
     stdout, stderr = sp.communicate()
     
     if v > 1:
-        print "\n> OUT:"
+        print "\n> stdout:"
         print stdout
     
     if v > 0 and stderr:
-        print '\n> ERROR:'
+        print '\n> stderr:'
         print stderr
     
     return stdout, stderr
