@@ -86,7 +86,7 @@ class mne_experiment(object):
 
 
         # find experiment data structure
-        self.var_values = {}
+        self.var_values = {'hemi': ('lh', 'rh')}
         self.root = root
         self.state = {'root': root,
                       'raw': 'raw_raw',
