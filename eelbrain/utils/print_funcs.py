@@ -23,8 +23,8 @@ def strdict(dictionary, w=100, fmt='%r'):
     items = []
     k_len = 0
     for k, v in dictionary.iteritems():
-        k = fmt % k
-        v = fmt % v
+        k = str(k) if isinstance(k, tuple) else fmt % k
+        v = str(v) if isinstance(v, tuple) else fmt % v
         k_len = max(k_len, len(k))
         items.append((k, v))
     if k_len > w - 5:
