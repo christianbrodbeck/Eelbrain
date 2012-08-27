@@ -354,7 +354,7 @@ class mne_experiment(object):
         
         return temp
 
-    def iter_temp(self, temp, constants={}):
+    def iter_temp(self, temp, constants={}, values={}):
         """
         Iterate through all paths conforming to a template given in ``temp``.
         
@@ -370,21 +370,33 @@ class mne_experiment(object):
         pattern = re.compile('\{(\w+)\}')
         variables = pattern.findall(temp)
         
-        for state in self.iter_vars(variables, constants=constants):
+        for state in self.iter_vars(variables, constants=constants, values=values):
             path = temp.format(**state)
             yield path
-    
-    def iter_vars(self, variables, constants={}):
+
+    def iter_vars(self, variables, constants={}, values={}):
+        """
+        variables : list
+            variables which should be iterated
+        constants : dict(name -> value)
+            variables with constant values throughout the iteration
+        values : dict(name -> (list of values))
+            variables with values to iterate in addition to, or in spite of
+            the mne_experiment.var_values dictionary
+        
+        """
         # set constants
         constants['root'] = self.root
-        self.state.update(constants)
-        
-        variables = list(set(variables).difference(constants))
+        self.set(**constants)
 
-        var_values = tuple(self.var_values[v] for v in variables)
+        variables = list(set(variables).difference(constants).union(values))
+
+        var_values = self.var_values.copy()
+        var_values.update(values)
+        var_values = tuple(var_values[v] for v in variables)
         if len(var_values):
             for v_list in itertools.product(*var_values):
-                self.state.update(dict(zip(variables, v_list)))
+                self.set(**dict(zip(variables, v_list)))
                 yield self.state
         else:
             yield self.state
