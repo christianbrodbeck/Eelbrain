@@ -48,12 +48,12 @@ def _set_bin_dirs(mne=None, freesurfer=None, edfapi=None):
         mne_root, _ = os.path.split(mne)
         os.environ['MNE_ROOT'] = mne_root
         os.environ['DYLD_LIBRARY_PATH'] = os.path.join(mne_root, 'lib')
-        
+
         if 'PATH' in os.environ:
             os.environ['PATH'] += ':%s' % mne_bin
         else:
             os.environ['PATH'] = mne_bin
-    
+
     if freesurfer:
         fs_home, _ = os.path.split(freesurfer)
         os.environ['FREESURFER_HOME'] = fs_home
@@ -75,7 +75,7 @@ except:
 def get_bin(package, name):
     if package not in _bin_dirs:
         raise KeyError("Unknown binary package: %r" % package)
-    
+
     bin_path = os.path.join(_bin_dirs[package], name)
     have_valid_path = os.path.exists(bin_path)
     while not have_valid_path:
@@ -96,7 +96,7 @@ def get_bin(package, name):
                 ui.message("Wrong Directory", msg, 'error')
         else:
             raise IOError("%r bin directory not set" % package)
-    
+
     return bin_path
 
 
@@ -108,7 +108,7 @@ for i in xrange(2):
     _sns_dir = os.path.dirname(_sns_dir)
 _sns_dir = os.path.join(_sns_dir, 'Resources', 'sns')
 for name in ['NYU-nellab']:
-    _sns_files[name] = os.path.join(_sns_dir, name+'.txt')
+    _sns_files[name] = os.path.join(_sns_dir, name + '.txt')
 
 
 _verbose = 1
@@ -125,7 +125,7 @@ class edf_file:
         if not os.path.exists(path):
             err = "File does not exist: %r" % path
             raise ValueError(err)
-        
+
         self.source_path = path
         self.temp_dir = tempfile.mkdtemp()
         cmd = [get_bin('edfapi', 'edf2asc'), # options in Manual p. 106
@@ -134,29 +134,29 @@ class edf_file:
                '-nse', # blocks output of start events
                '-p', self.temp_dir, # writes output with same name to <path> directory
                path]
-        
+
         _run(cmd)
-        
+
         # find asc file
         name, _ = os.path.splitext(os.path.basename(path))
         ascname = os.path.extsep.join((name, 'asc'))
         self.asc_path = os.path.join(self.temp_dir, ascname)
         self.asc_file = open(self.asc_path)
         self.asc_str = self.asc_file.read()
-        
+
         # find trigger events
         #                           MSG   time    msg...      ID  
         re_trigger = re.compile(r'\bMSG\t(\d+)\tMEG Trigger: (\d+)')
         self.triggers = re_trigger.findall(self.asc_str)
-        
+
         # find artifacts
         #                            type                    start   end
         re_artifact = re.compile(r'\b(ESACC|EBLINK)\t[LR]\t(\d+)\t(\d+)')
         self.artifacts = re_artifact.findall(self.asc_str)
-            
+
     def __del__(self):
         shutil.rmtree(self.temp_dir)
-    
+
     def __repr__(self):
         return 'edf_file(%r)' % self.source_path
 
@@ -172,12 +172,12 @@ class marker_avg_file:
             if match:
                 output_lines.append('\t'.join(match.groups()))
         txt = '\n'.join(output_lines)
-        
+
         fd, self.path = tempfile.mkstemp(suffix='hpi', text=True)
         f = os.fdopen(fd, 'w')
         f.write(txt)
         f.close()
-    
+
     def __del__(self):
         os.remove(self.path)
 
@@ -187,27 +187,27 @@ def _format_path(path, fmt, is_new=False):
     "helper function to format the path to mne files"
     if not isinstance(path, basestring):
         path = os.path.join(*path)
-    
+
     if fmt:
         path = path.format(**fmt)
-    
+
     # test the path
     path = os.path.expanduser(path)
     if is_new or os.path.exists(path):
         return path
     else:
         raise IOError("%r does not exist" % path)
-    
 
 
-def kit2fiff(paths=dict(mrk = None,
-                        elp = None,
-                        hsp = None,
-                        rawtxt = None,
-                        rawfif = None),
+
+def kit2fiff(paths=dict(mrk=None,
+                        elp=None,
+                        hsp=None,
+                        rawtxt=None,
+                        rawfif=None),
              sns='NYU-nellab',
              sfreq=1000, lowpass=100, highpass=0,
-             stim=xrange(168, 160, -1),  stimthresh=2.5, add=None,#(188, 190), #xrange()
+             stim=xrange(168, 160, -1), stimthresh=2.5, add=None, #(188, 190), #xrange()
              aligntol=25, overwrite=False):
     """
     Calls the ``mne_kit2fiff`` binary which reads multiple input files and 
@@ -264,7 +264,7 @@ def kit2fiff(paths=dict(mrk = None,
     hsp_file = paths.get('hsp')
     raw_file = paths.get('rawtxt')
     out_file = paths.get('rawfif')
-    
+
     if sns in _sns_files:
         sns_file = _sns_files[sns]
     elif os.path.exists(sns):
@@ -273,7 +273,7 @@ def kit2fiff(paths=dict(mrk = None,
         err = ("sns needs to the be name of a provided sns file (%s) ro a valid"
                "path to an sns file" % ', '.join(map(repr, _sns_files)))
         raise IOError(err)
-    
+
     # convert the marker file
     mrk_file = marker_avg_file(mrk_path)
     hpi_file = mrk_file.path
@@ -286,7 +286,7 @@ def kit2fiff(paths=dict(mrk = None,
         if not ui.ask("Overwrite?", "Target File Already Exists at: %r. Should "
                       "it be replaced?" % out_file):
             return
-        
+
     cmd = [get_bin('mne', 'mne_kit2fiff'),
            '--elp', elp_file,
            '--hsp', hsp_file,
@@ -301,19 +301,19 @@ def kit2fiff(paths=dict(mrk = None,
            '--highpass', highpass,
            '--stimthresh', stimthresh,
            ]
-    
+
     if add:
         cmd.extend(('--add', ':'.join(map(str, add))))
-    
+
     _run(cmd)
-    
+
     # TODO: rename additional channels
     # how do I know their names?? ~/Desktop/test/EOG  has MISC 28 and MISC 30
 #    if add:
 #        cmd = [os.path.join(mne_dir, 'bin', 'mne_rename_channels'),
 #               '--fif', out_file,
 #               ]
-    
+
     if not os.path.exists(out_file):
         raise RuntimeError("kit2fiff failed (see above)")
 
@@ -339,24 +339,24 @@ def brain_vision2fiff(vhdr_file=None, dig=None, orignames=False, eximia=False):
     """
     vhdr = _vhdr(vhdr_file)
     tempdir = tempfile.mkdtemp()
-    
+
     # vhdr
     new_vhdr_file = os.path.join(tempdir, vhdr.basename)
     os.symlink(vhdr.path, new_vhdr_file)
-    
+
     # data
     new_data_file = os.path.join(tempdir, os.path.basename(vhdr.datafile))
     os.symlink(vhdr.datafile, new_data_file)
-    
+
     # vmrk
     vmrk_file = vhdr.markerfile
     new_vmrk_file = os.path.join(tempdir, os.path.basename(vmrk_file))
     prepare_vmrk(vmrk_file, new_vmrk_file)
-    
+
     # destination
     vhdr_root, _ = os.path.splitext(vhdr.path)
-    out_file = os.extsep.join((vhdr_root+'_raw', 'fif'))
-    
+    out_file = os.extsep.join((vhdr_root + '_raw', 'fif'))
+
     cmd = [get_bin('mne', 'mne_brain_vision2fiff'),
            '--header', new_vhdr_file,
            '--out', out_file]
@@ -366,7 +366,7 @@ def brain_vision2fiff(vhdr_file=None, dig=None, orignames=False, eximia=False):
         cmd.append('--orignames')
     if eximia:
         cmd.append('--eximia')
-    
+
     out, err = _run(cmd, cwd=tempdir)
     shutil.rmtree(tempdir)
     if not os.path.exists(out_file):
@@ -396,13 +396,13 @@ def prepare_vmrk(vmrk, dest):
     for line in open(vmrk):
         m = rdr.match(line)
         if m:
-            Id, stype, desc, pos, size, chan  = m.groups()
+            Id, stype, desc, pos, size, chan = m.groups()
             stype = 'Stimulus'
             desc = 'S%s' % desc[1:]
             OUT.append(temp % (Id, stype, desc, pos, size, chan))
         else:
             OUT.append(line)
-    
+
     open(dest, 'w').writelines(OUT)
 
 
@@ -435,20 +435,20 @@ def process_raw(raw, save='{raw}_filt', args=['projoff'], rm_eve=True, **kwargs)
     eve_file = '%s-eve.fif' % raw_name
     if raw_name.endswith('_raw'):
         raw_name = raw_name[:-4]
-    
+
     save = save.format(raw=raw_name)
-    
+
     cmd = [get_bin('mne', 'mne_process_raw'),
            '--raw', raw,
            '--save', save]
-    
+
     for arg in args:
         cmd.append('--%s' % arg)
-    
+
     for key, value in kwargs.iteritems():
         cmd.append('--%s' % key)
         cmd.append(value)
-    
+
     _run(cmd)
     if rm_eve:
         try:
@@ -470,25 +470,25 @@ def _run(cmd, v=None, cwd=None):
     """
     if v is None:
         v = _verbose
-    
+
     if v > 1:
         print "> COMMAND:"
         for line in cmd:
             print repr(line)
-    
+
     cmd = [unicode(c) for c in cmd]
     sp = subprocess.Popen(cmd, cwd=cwd,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = sp.communicate()
-    
+
     if v > 1:
         print "\n> stdout:"
         print stdout
-    
+
     if v > 0 and stderr:
         print '\n> stderr:'
         print stderr
-    
+
     return stdout, stderr
 
 
@@ -507,11 +507,11 @@ def setup_mri(mri_sdir, ico=4):
     """
     mri_dir, subject = os.path.split(mri_sdir)
     bemdir = os.path.join(mri_sdir, 'bem')
-    
+
     # symlinks (MNE-manual 3.6, p. 24 / Gwyneth's Manual X) 
     for name in ['inner_skull', 'outer_skull', 'outer_skin']:
         # can I make path relative by omitting initial bemdir,  ?
-        src = os.path.join('watershed', '%s_%s_surface' % (subject, name)) 
+        src = os.path.join('watershed', '%s_%s_surface' % (subject, name))
         dest = os.path.join(bemdir, '%s.surf' % name)
         if os.path.exists(dest):
             if os.path.islink(dest):
@@ -525,16 +525,16 @@ def setup_mri(mri_sdir, ico=4):
             else:
                 raise IOError("%r exists and is no symlink" % dest)
         else:
-            os.symlink(src, dest)    
-    
+            os.symlink(src, dest)
+
     # mne_setup_forward_model
-    os.environ['SUBJECTS_DIR'] = mri_dir    
+    os.environ['SUBJECTS_DIR'] = mri_dir
     cmd = [get_bin('mne', "mne_setup_forward_model"),
            '--subject', subject,
            '--surf',
            '--ico', ico,
            '--homog']
-    
+
     _run(cmd)
     # -> creates a number of files in <mri_sdir>/bem
 
@@ -577,6 +577,7 @@ def run_mne_analyze(mri_dir, fif_dir, modal=True):
     this creates a file next to the raw file with the '-trans.fif' extension.
     
     """
+    # TODO: use more command line args (manual pdf p. 152)
     os.environ['SUBJECTS_DIR'] = mri_dir
     os.chdir(fif_dir)
     setup_path = get_bin('mne', 'mne_setup_sh')
@@ -602,8 +603,8 @@ def run_mne_browse_raw(fif_dir, modal=False):
 
 
 
-def do_forward_solution(paths=dict(rawfif=None, 
-                                   mri_sdir=None, 
+def do_forward_solution(paths=dict(rawfif=None,
+                                   mri_sdir=None,
                                    fwd='{fif}-fwd.fif',
                                    bem=None,
                                    src=None,
@@ -619,29 +620,29 @@ def do_forward_solution(paths=dict(rawfif=None,
     bem_file = paths.get('bem')
     src_file = paths.get('src')
     trans_file = paths.get('trans')
-    
+
     mri_dir, mri_subject = os.path.split(mri_sdir)
-    
+
     fif_name, _ = os.path.splitext(fif_file)
-    fwd_file = fwd_file.format(fif = fif_name)
-    
+    fwd_file = fwd_file.format(fif=fif_name)
+
     os.environ['SUBJECTS_DIR'] = mri_dir
     cmd = [get_bin('mne', "mne_do_forward_solution"),
            '--subject', mri_subject,
            '--src', src_file,
-           '--bem', bem_file, 
+           '--bem', bem_file,
 #           '--mri', mri_cor_file, # MRI description file containing the MEG/MRI coordinate transformation.
            '--mri', trans_file, # MRI description file containing the MEG/MRI coordinate transformation.
 #           '--trans', trans_file, #  head->MRI coordinate transformation (obviates --mri). 
            '--meas', fif_file, # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
            '--fwd', fwd_file, #'--destdir', target_file_dir, # optional 
            '--megonly']
-    
+
     if overwrite:
         cmd.append('--overwrite')
     elif os.path.exists(fwd_file):
         raise IOError("fwd file at %r already exists" % fwd_file)
-    
+
     out, err = _run(cmd, v=v)
     if os.path.exists(fwd_file):
         return fwd_file
@@ -652,28 +653,28 @@ def do_forward_solution(paths=dict(rawfif=None,
         raise RuntimeError(err)
 
 
-def do_inverse_operator(fwd_file, cov_file, inv_file='{cov}inv.fif', 
+def do_inverse_operator(fwd_file, cov_file, inv_file='{cov}inv.fif',
                         loose=False, fixed=False):
     cov, _ = os.path.splitext(cov_file)
     if cov.endswith('cov'):
         cov = cov[:-3]
-    
+
     inv_file = inv_file.format(cov=cov)
-    
+
     cmd = [get_bin('mne', "mne_do_inverse_operator"),
            '--fwd', fwd_file,
            '--meg', # Employ MEG data in the inverse calculation. If neither --meg nor --eeg is set only MEG channels are included.
-           '--depth', 
-           '--megreg', 0.1, 
+           '--depth',
+           '--megreg', 0.1,
            '--noisecov', cov_file,
            '--inv', inv_file, # Save the inverse operator decomposition here. 
            ]
-    
+
     if loose:
         cmd.extend(['--loose', loose])
     elif fixed:
         cmd.append('--fixed')
-    
+
     _, err = _run(cmd)
     if not os.path.exists(inv_file):
         raise RuntimeError(os.linesep.join(["inv-file not created", err]))

@@ -71,23 +71,23 @@ def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
                           ext=[('fif', 'Fiff')])
         if not raw:
             return
-    
+
     if isinstance(raw, basestring):
         if os.path.isfile(raw):
             raw = mne.fiff.Raw(raw, verbose=verbose)
         else:
             raise IOError("%r is not a file" % raw)
-    
+
     raw_file = raw.info['filename']
-    
+
     if proj:
         if proj == True:
             proj = '{raw}_*proj.fif'
-        
+
         if '{raw}' in proj:
             raw_root, _ = os.path.splitext(raw_file)
             proj = proj.format(raw=raw_root)
-        
+
         if '*' in proj:
             head, tail = os.path.split(proj)
             names = fnmatch.filter(os.listdir(head), tail)
@@ -99,47 +99,47 @@ def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
                 else:
                     err = "Multiple files matching %r"
                 raise ValueError(err % proj)
-        
+
         # add the projections to the raw file
         proj = mne.read_proj(proj)
         raw.add_proj(proj, remove_existing=True)
-    
+
     if name is None:
         name = os.path.basename(raw_file)
-    
+
     if baseline:
         pick = mne.event.pick_channels(raw.info['ch_names'], include='STI 014')
         data, _ = raw[pick, :]
         idx = np.where(np.abs(np.diff(data[0])) > 0)[0]
-        
+
         # find baseline NULL-events
         values = data[0, idx + 1]
         valid_events = np.where(values != baseline)[0]
         idx = idx[valid_events]
         values = values[valid_events]
-        
+
         N = len(values)
         events = np.empty((N, 3), dtype=np.int32)
-        events[:,0] = idx
-        events[:,1] = np.zeros_like(idx)
-        events[:,2] = values
+        events[:, 0] = idx
+        events[:, 1] = np.zeros_like(idx)
+        events[:, 2] = values
     else:
         events = mne.find_events(raw, verbose=verbose)
-    
+
     if len(events) == 0:
         raise ValueError("No events found!")
-    
-    if any(events[:,1] != 0):
+
+    if any(events[:, 1] != 0):
         raise NotImplementedError("Events starting with ID other than 0")
         # this was the case in the raw-eve file, which contained all event 
         # offsets, but not in the raw file created by kit2fiff. For handling
         # see :func:`fiff_event_file`
-    
+
     if merge:
         index = np.ones(len(events), dtype=bool)
-        diff = np.diff(events[:,0])
+        diff = np.diff(events[:, 0])
         where = np.where(diff <= abs(merge))[0]
-        
+
         if merge > 0:
             # drop the earlier event
             index[where] = False
@@ -150,12 +150,12 @@ def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
             for w in reversed(where):
                 i1 = w
                 i2 = w + 1
-                events[i1,2] = events[i2,2]
-        
+                events[i1, 2] = events[i2, 2]
+
         events = events[index]
-    
-    istart = var(events[:,0], name='i_start')
-    event = var(events[:,2], name='eventID')
+
+    istart = var(events[:, 0], name='i_start')
+    event = var(events[:, 2], name='eventID')
     info = {'raw': raw,
             'samplingrate': raw.info['sfreq'],
             'info': raw.info}
@@ -163,11 +163,11 @@ def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
 
 
 
-def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
+def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
                downsample=1, mult=1, unit='T', proj=True,
                data='mag', threshold=None,
                raw=None, add=True,
-               target="MEG", i_start='i_start', 
+               target="MEG", i_start='i_start',
                properties=None, sensors=None):
     """
     Adds data from individual epochs as a ndvar to the dataset ``ds`` and 
@@ -217,30 +217,30 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     
     """
     if data == 'eeg':
-        meg = False 
+        meg = False
         eeg = True
     elif data in ['grad', 'mag']:
-        meg = data 
+        meg = data
         eeg = False
     else:
         err = 'data=%r' % data
         raise NotImplementedError(err)
-    
+
     if raw is None:
         raw = ds.info['raw']
-    
-    picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False, 
+
+    picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False,
                                 eog=False, include=[], exclude=raw.info['bads'])
-    
+
     if threshold:
         reject = {data: threshold}
     else:
         reject = None
-    
+
     epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
                         proj=proj, i_start=i_start, raw=raw, picks=picks,
                         reject=reject, preload=True)
-    
+
     # read the data
     x = epochs.get_data() # this call iterates through epochs
     if len(x) == 0:
@@ -248,11 +248,11 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     T = epochs.times
     if downsample != 1:
         index = slice(None, None, downsample)
-        x = x[:,:,index]
+        x = x[:, :, index]
         T = T[index]
     if mult != 1:
         x = x * mult
-        
+
     # read data properties
     props = {'proj': 'z root',
              'unit': unit,
@@ -265,9 +265,9 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     props['samplingrate'] = epochs.info['sfreq'] / downsample
     if properties:
         props.update(properties)
-    
+
     # target container
-    picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False, 
+    picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False,
                                 eog=False, include=[])
     if sensors is None:
         sensor = sensor_net(epochs, picks=picks)
@@ -275,7 +275,7 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
         sensor = sensors
     time = var(T, 'time')
     dims = ('case', sensor, time)
-    
+
     epochs_var = ndvar(x, dims=dims, properties=props, name=target)
     if add:
         if len(epochs.events) != ds.n_cases:
@@ -294,8 +294,8 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
 
 
 
-def ds_2_evoked(ds, X, tstart=-0.1, tstop=0.6, baseline=(None, 0), 
-                reject=None, 
+def ds_2_evoked(ds, X, tstart= -0.1, tstop=0.6, baseline=(None, 0),
+                reject=None,
                 target='evoked', i_start='i_start', eventID='eventID', count='n',
                 ):
     """
@@ -307,27 +307,27 @@ def ds_2_evoked(ds, X, tstart=-0.1, tstop=0.6, baseline=(None, 0),
     evoked = []
     for cell in X.cells:
         ds_cell = ds.subset(X == cell)
-        epochs = mne_Epochs(ds_cell, tstart=tstart, tstop=tstop, 
+        epochs = mne_Epochs(ds_cell, tstart=tstart, tstop=tstop,
                             baseline=baseline, reject=reject)
         evoked.append(epochs.average())
-    
-    
+
+
     dsc = ds.compress(X, count=count)
     if isinstance(count, str):
         count = dsc[count]
-    
+
     dsc[target] = evoked
-    
+
     # update n cases per average
-    for i,ev in enumerate(evoked):
+    for i, ev in enumerate(evoked):
         count[i] = ev.nave
-    
+
     return dsc
 
 
 
 def evoked_2_stc(ds, files={'fwd':None, 'cov':None}, loose=0.2, depth=0.8,
-                 lambda2 = 1.0 / 9, dSPM=True, pick_normal=False,
+                 lambda2=1.0 / 9, dSPM=True, pick_normal=False,
                  evoked='evoked', target='stc'):
     """
     Takes a dataset with an evoked list and adds a corresponding stc list
@@ -353,11 +353,11 @@ def evoked_2_stc(ds, files={'fwd':None, 'cov':None}, loose=0.2, depth=0.8,
     for case in ds.itercases():
         evoked = case['evoked']
         inv = _mn.make_inverse_operator(evoked.info, fwd_obj, cov_obj, loose=loose, depth=depth)
-        
+
         stc = _mn.apply_inverse(evoked, inv, lambda2=lambda2, dSPM=dSPM, pick_normal=pick_normal)
         stc.src = inv['src'] # add the source space so I don't have to retrieve it independently 
         stcs.append(stc)
-    
+
     if target:
         ds[target] = stcs
     else:
@@ -365,7 +365,7 @@ def evoked_2_stc(ds, files={'fwd':None, 'cov':None}, loose=0.2, depth=0.8,
 
 
 def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None,
-             tstart=-0.1, tstop=0.6, baseline=(None, 0)):
+             tstart= -0.1, tstop=0.6, baseline=(None, 0)):
     """
     adds data from one label as
     
@@ -377,15 +377,15 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
             name = lbl.replace('-', '_')
         else:
             name = 'stc'
-    
+
     info = ds.info['info']
-    
+
     raw = ds.info['raw']
     fif_name = raw.info['filename']
     fif_name, _ = os.path.splitext(fif_name)
     if fif_name.endswith('raw'):
         fif_name = fif_name[:-3]
-    
+
     fwd = fwd.format(fif=fif_name)
     if '*' in fwd:
         d, n = os.path.split(fwd)
@@ -394,7 +394,7 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
             fwd = os.path.join(d, names[0])
         else:
             raise IOError("No unique fwd file matching %r" % fwd)
-    
+
     cov = cov.format(fif=fif_name)
     if '*' in cov:
         d, n = os.path.split(cov)
@@ -403,29 +403,29 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
             cov = os.path.join(d, names[0])
         else:
             raise IOError("No unique cov file matching %r" % cov)
-    
+
     fwd = mne.read_forward_solution(fwd, force_fixed=False, surf_ori=True)
     cov = mne.Covariance(cov)
     inv = _mn.make_inverse_operator(info, fwd, cov, loose=0.2, depth=0.8)
     epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline)
-    
+
     # mne example:
     snr = 3.0
     lambda2 = 1.0 / snr ** 2
-    
+
     if label is not None:
         label = mne.read_label(label)
     stcs = _mn.apply_inverse_epochs(epochs, inv, lambda2, dSPM=False, label=label)
-    
+
     x = np.vstack(s.data.mean(0) for s in stcs)
     s = stcs[0]
     dims = ('case', var(s.times, 'time'),)
     ds[name] = ndvar(x, dims, properties=None, info='')
-    
+
     return stcs
-    
-    
-    
+
+
+
 #    data = sum(stc.data for stc in stcs) / len(stcs)
 #    
 #    # compute sign flip to avoid signal cancelation when averaging signed values
@@ -444,10 +444,10 @@ def mne2ndvar(mne_object, data='mag', vmax=2e-12, unit='T', name=None):
     
     """
     if data == 'eeg':
-        meg = False 
+        meg = False
         eeg = True
     elif data in ['grad', 'mag']:
-        meg = data 
+        meg = data
         eeg = False
     else:
         err = 'data=%r' % data
@@ -472,16 +472,16 @@ def mne2ndvar(mne_object, data='mag', vmax=2e-12, unit='T', name=None):
 def mne_events(ds=None, i_start='i_start', eventID='eventID'):
     if isinstance(i_start, basestring):
         i_start = ds[i_start]
-    
+
     if isinstance(eventID, basestring):
         eventID = ds[eventID]
     elif eventID is None:
         eventID = np.ones(len(i_start))
-    
+
     events = np.empty((ds.N, 3), dtype=np.int32)
-    events[:,0] = i_start.x
-    events[:,1] = 0
-    events[:,2] = eventID
+    events[:, 0] = i_start.x
+    events[:, 1] = 0
+    events[:, 2] = eventID
     return events
 
 
@@ -489,7 +489,7 @@ def mne_Raw(ds):
     return ds.info['raw']
 
 
-def mne_Epochs(ds, tstart=-0.1, tstop=0.6, i_start='i_start', raw=None, name='{name}', **kwargs):
+def mne_Epochs(ds, tstart= -0.1, tstop=0.6, i_start='i_start', raw=None, name='{name}', **kwargs):
     """
     All ``**kwargs`` are forwarded to the mne.Epochs instance creation. If the
     mne-python fork in use supports the ``epochs.model`` attribute, 
@@ -504,10 +504,10 @@ def mne_Epochs(ds, tstart=-0.1, tstop=0.6, i_start='i_start', raw=None, name='{n
     """
     if raw is None:
         raw = ds.info['raw']
-    
+
     events = mne_events(ds=ds, i_start=i_start)
-    
-    epochs = mne.Epochs(raw, events, None, tmin=tstart, tmax=tstop, 
+
+    epochs = mne.Epochs(raw, events, None, tmin=tstart, tmax=tstop,
                         name=name.format(name=ds.name), **kwargs)
     if hasattr(epochs, 'model'):
         if epochs.model.n_cases < ds.n_cases:
@@ -527,7 +527,7 @@ def sensor_net(fiff, picks=None, name='fiff-sensors'):
     if picks is None:
         if hasattr(fiff, 'picks'):
             picks = fiff.picks
-        
+
         if picks is None:
             picks = mne.fiff.pick_types(info)
 

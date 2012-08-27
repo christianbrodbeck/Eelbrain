@@ -24,10 +24,10 @@ def ask_saveas(title, message, ext):
     """
     if not ext: # allow for []
         ext = None
-    
+
     dialog = wx.FileDialog(GetWxParent(), message,
-                           wildcard = _wildcard_from_ext(ext),
-                           style=wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
+                           wildcard=_wildcard_from_ext(ext),
+                           style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
     dialog.SetMessage(message)
 #    dialog.SetWildcard(wildcard)
     dialog.SetTitle(title)
@@ -43,14 +43,14 @@ def ask_saveas(title, message, ext):
         return False
 
 
-def ask_dir(title = "Select Folder",
-            message = "Please Pick a Folder",
-            must_exist = True):
+def ask_dir(title="Select Folder",
+            message="Please Pick a Folder",
+            must_exist=True):
     style = wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
     if must_exist:
         style = style | wx.DD_DIR_MUST_EXIST
-        
-    dialog = wx.DirDialog(GetWxParent(), message, name=title, 
+
+    dialog = wx.DirDialog(GetWxParent(), message, name=title,
                           style=style)
     dialog.SetTitle(title)
     if dialog.ShowModal() == wx.ID_OK:
@@ -59,9 +59,9 @@ def ask_dir(title = "Select Folder",
         return False
 
 
-def ask_file(title = "Pick File",
-             message = "Please Pick a File", 
-             ext = [('*', "all files")],
+def ask_file(title="Pick File",
+             message="Please Pick a File",
+             ext=[('*', "all files")],
              directory='',
              mult=False):
     """
@@ -72,9 +72,9 @@ def ask_file(title = "Pick File",
     """
     style = wx.FD_OPEN
     if mult:
-        style = style|wx.FD_MULTIPLE
+        style = style | wx.FD_MULTIPLE
     dialog = wx.FileDialog(GetWxParent(), message, directory,
-                           wildcard = _wildcard_from_ext(ext), 
+                           wildcard=_wildcard_from_ext(ext),
                            style=style)
     dialog.SetTitle(title)
     if dialog.ShowModal() == wx.ID_OK:
@@ -86,8 +86,8 @@ def ask_file(title = "Pick File",
         return False
 
 
-def ask(title = "Overwrite File?",
-        message = "Duplicate filename. Do you want to overwrite?",
+def ask(title="Overwrite File?",
+        message="Duplicate filename. Do you want to overwrite?",
         cancel=False,
         default=True, # True=YES, False=NO, None=Nothing
         ):
@@ -97,13 +97,13 @@ def ask(title = "Overwrite File?",
      NO     -> False
      CANCEL -> None
     """
-    style = wx.YES_NO|wx.ICON_QUESTION
+    style = wx.YES_NO | wx.ICON_QUESTION
     if cancel:
-        style = style|wx.CANCEL
+        style = style | wx.CANCEL
     if default:
-        style = style|wx.YES_DEFAULT
+        style = style | wx.YES_DEFAULT
     elif default == False:
-        style = style|wx.NO_DEFAULT
+        style = style | wx.NO_DEFAULT
     dialog = wx.MessageDialog(GetWxParent(), message, title, style)
     answer = dialog.ShowModal()
     if answer == wx.ID_NO:
@@ -113,13 +113,13 @@ def ask(title = "Overwrite File?",
     elif answer == wx.ID_CANCEL:
         return None
 
-def ask_color(default=(0,0,0)):
+def ask_color(default=(0, 0, 0)):
     dlg = wx.ColourDialog(GetWxParent())
     dlg.GetColourData().SetChooseFull(True)
     if dlg.ShowModal() == wx.ID_OK:
         data = dlg.GetColourData()
         out = data.GetColour().Get()
-        out = tuple([o/255. for o in out])
+        out = tuple([o / 255. for o in out])
     else:
         out = False
     dlg.Destroy()
@@ -159,9 +159,9 @@ class progress_monitor:
                  title="Task Progress",
                  message="Wait and pray!",
                  cancel=True):
-        style = wx.PD_AUTO_HIDE|wx.GA_SMOOTH#|wx.PD_REMAINING_TIME
+        style = wx.PD_AUTO_HIDE | wx.GA_SMOOTH#|wx.PD_REMAINING_TIME
         if cancel:
-            style = style|wx.PD_CAN_ABORT
+            style = style | wx.PD_CAN_ABORT
         if i_max is None:
             self.indeterminate = True
             i_max = 1
