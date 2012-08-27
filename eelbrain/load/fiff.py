@@ -435,7 +435,7 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
 #    label_mean_flip = np.mean(flip[:, np.newaxis] * data, axis=0)
 
 
-def mne2ndvar(mne_object, data='mag', name=None, bads=False):
+def mne2ndvar(mne_object, data='mag', vmax=2e-12, unit='T', name=None):
     """
     Converts an mne data object to an ndvar. 
     
@@ -452,21 +452,18 @@ def mne2ndvar(mne_object, data='mag', name=None, bads=False):
     else:
         err = 'data=%r' % data
         raise NotImplementedError(err)
-    
-    if bads:
-        exclude = mne_object.info['bads']
-    else:
-        exclude = []
-    
-    picks = mne.fiff.pick_types(mne_object.info, meg=meg, eeg=eeg, stim=False, 
+
+    exclude = mne_object.info.get('bads', [])
+    picks = mne.fiff.pick_types(mne_object.info, meg=meg, eeg=eeg, stim=False,
                                 eog=False, include=[], exclude=exclude)
-    
+    properties = {'colorspace': _cs.get_MEG(vmax=vmax, unit=unit)}
+
     if isinstance(mne_object, mne.fiff.Evoked):
         x = mne_object.data[picks]
         time = var(mne_object.times, name='time')
         sensor = sensor_net(mne_object, picks=picks)
         dims = (sensor, time)
-        return ndvar(x, dims=dims, name=name)
+        return ndvar(x, dims=dims, name=name, properties=properties)
     else:
         err = "converting %s is not implemented" % type(mne_object)
         raise NotImplementedError(err)
