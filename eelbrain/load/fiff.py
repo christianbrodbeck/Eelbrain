@@ -22,15 +22,77 @@ import eelbrain.vessels.colorspaces as _cs
 import eelbrain.vessels.sensors as _sensors
 from eelbrain import ui
 
-__all__ = ['raw', 'events', 'add_epochs', # basic pipeline
+__all__ = ['Raw', 'events', 'add_epochs', # basic pipeline
            'ds_2_evoked', 'evoked_2_stc', # get lists of mne objects
            'mne2ndvar', 'mne_events', 'mne_Raw', 'mne_Epochs', # get mne objects
            'sensor_net',
            ]
 
-# make this available here for consistency
-from mne.fiff import Raw as raw
 
+
+def Raw(path=None, proj=True, **kwargs):
+    """
+    Returns a mne.fiff.Raw object with added projections if appropriate.
+    
+    Arguments
+    ---------
+    
+    path : None | str(path)
+        path to the raw fiff file. If ``None``, a file can be chosen form a 
+        file dialog.
+
+    proj : bool | str(path)
+        Add projections from a separate file to the Raw object. 
+        **``False``**: No proj file will be added.
+        **``True``**: ``'{raw}_*proj.fif'`` will be used. 
+        ``'{raw}'`` will be replaced with the raw file's path minus extension, 
+        and '*' will be expanded using fnmatch. If multiple files match the 
+        pattern, a ValueError will be raised.
+        **``str``**: A custom path template can be provided, ``'{raw}'`` and
+        ``'*'`` will be treated as with ``True``.
+    
+    **kwargs**
+        Additional keyword arguments are forwarded to mne.fiff.Raw
+        initialization.
+    
+    """
+    if path is None:
+        path = ui.ask_file("Pick a Raw Fiff File", "Pick a Raw Fiff File",
+                           ext=[('fif', 'Fiff')])
+        if not path:
+            return
+
+    if not os.path.isfile(path):
+        raise IOError("%r is not a file" % path)
+
+    raw = mne.fiff.Raw(path, **kwargs)
+
+    if proj:
+        if proj == True:
+            proj = '{raw}_*proj.fif'
+
+        if '{raw}' in proj:
+            raw_file = raw.info['filename']
+            raw_root, _ = os.path.splitext(raw_file)
+            proj = proj.format(raw=raw_root)
+
+        if '*' in proj:
+            head, tail = os.path.split(proj)
+            names = fnmatch.filter(os.listdir(head), tail)
+            if len(names) == 1:
+                proj = os.path.join(head, names[0])
+            else:
+                if len(names) == 0:
+                    err = "No file matching %r"
+                else:
+                    err = "Multiple files matching %r"
+                raise ValueError(err % proj)
+
+        # add the projections to the raw file
+        proj = mne.read_proj(proj)
+        raw.add_proj(proj, remove_existing=True)
+
+    return raw
 
 
 def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
@@ -66,45 +128,11 @@ def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
         value is provided as parameter, the events can still be extracted.
      
     """
-    if raw is None:
-        raw = ui.ask_file("Pick a Fiff File", "Pick a Fiff File",
-                          ext=[('fif', 'Fiff')])
-        if not raw:
-            return
-
-    if isinstance(raw, basestring):
-        if os.path.isfile(raw):
-            raw = mne.fiff.Raw(raw, verbose=verbose)
-        else:
-            raise IOError("%r is not a file" % raw)
-
-    raw_file = raw.info['filename']
-
-    if proj:
-        if proj == True:
-            proj = '{raw}_*proj.fif'
-
-        if '{raw}' in proj:
-            raw_root, _ = os.path.splitext(raw_file)
-            proj = proj.format(raw=raw_root)
-
-        if '*' in proj:
-            head, tail = os.path.split(proj)
-            names = fnmatch.filter(os.listdir(head), tail)
-            if len(names) == 1:
-                proj = os.path.join(head, names[0])
-            else:
-                if len(names) == 0:
-                    err = "No file matching %r"
-                else:
-                    err = "Multiple files matching %r"
-                raise ValueError(err % proj)
-
-        # add the projections to the raw file
-        proj = mne.read_proj(proj)
-        raw.add_proj(proj, remove_existing=True)
+    if raw is None or isinstance(raw, basestring):
+        raw = Raw(raw, proj=proj, verbose=verbose)
 
     if name is None:
+        raw_file = raw.info['filename']
         name = os.path.basename(raw_file)
 
     if baseline:
