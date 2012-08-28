@@ -502,7 +502,7 @@ class array(mpl_canvas.CanvasFrame):
         figsize=(fig_width, fig_height)
         
         # fig coordinates
-        x_frame_l = .25 / n_epochs
+        x_frame_l = .5 / width / n_epochs
         x_frame_r = .025 / n_epochs
         x_sep = .01 / n_epochs
         
