@@ -581,7 +581,8 @@ def run_mne_analyze(mri_dir, fif_dir, modal=True):
     os.environ['SUBJECTS_DIR'] = mri_dir
     os.chdir(fif_dir)
     setup_path = get_bin('mne', 'mne_setup_sh')
-    p = subprocess.Popen('. %s; mne_analyze' % setup_path, shell=True)
+    bin_path = get_bin('mne', 'mne_analyze')
+    p = subprocess.Popen('. %s; %s' % (setup_path, bin_path), shell=True)
     if modal:
         print "Waiting for mne_analyze to be closed..."
         p.wait() # causes the shell to be unresponsive until mne_analyze is closed
