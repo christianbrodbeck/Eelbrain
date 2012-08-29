@@ -157,45 +157,45 @@ class clusters(mpl_canvas.CanvasFrame):
                  overlay=False):
         """
         Specialized plotting function for Permutation Cluster test results
-        
+
         t : bool
             plot threshold
-        
+
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
-        
+
         # create figure
         N = len(epochs)
         x_size = width
-        y_size = height if overlay else height * N 
+        y_size = height if overlay else height * N
         figsize = (x_size, y_size)
-        
+
         self._caxes = []
         if title:
             title = unicode(title)
         else:
-            title=''
-        
+            title = ''
+
         super(clusters, self).__init__(title=title, figsize=figsize, dpi=dpi)
         self.figure.subplots_adjust(hspace=.2, top=.95, bottom=.05)
-        
+
         width = .85
         if overlay:
             height = .95
             ax = self.figure.add_subplot(111)
         else:
             height = .95 / N
-        
+
         for i, layers in enumerate(epochs):
             if not overlay: # create axes
                 ax = self.figure.add_subplot(N, 1, i + 1)
                 ax.set_title(layers[0].name)
-                        
+
             # color
             color = cm(i / N)
             cax = _ax_clusters(ax, layers, color=color, pmax=pmax, t=t)
             self._caxes.append(cax)
-        
+
         self.figure.tight_layout()
         self.Show()
 
@@ -212,7 +212,7 @@ class clusters(mpl_canvas.CanvasFrame):
 def _ax_uts(ax, layers, color=None, xdim='time'):
     for l in layers:
         _plt_uts(ax, l, color=color, xdim=xdim)
-    
+
     x = layers[0].get_dim(xdim).x
     ax.set_xlim(x[0], x[-1])
 
@@ -273,7 +273,7 @@ def _plt_cluster(ax, ndvar, color=None, y=None, xdim='time',
     assert np.abs(np.diff(where)).sum() <= 2
     x0 = where[0]
     x1 = where[-1]
-    
+
     if y is None:
         h = ax.vspan(x0, x1, color=color, hatch=hatch, fill=False)
     else:
@@ -288,29 +288,29 @@ def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwarg
     dim = ndvar.get_dim(xdim)
     x = dim.x
     y = ndvar.get_data(('case', 'time'))
-    
+
     if color:
         kwargs['color'] = color
-    
+
     main_kwargs = kwargs.copy()
     dev_kwargs = kwargs.copy()
     if label:
         main_kwargs['label'] = label
-    
+
     if np.isscalar(dev):
         dev_kwargs['alpha'] = dev
         dev = 'all'
     else:
         dev_kwargs['alpha'] = .3
-    
-    if dev =='all':
+
+    if dev == 'all':
         if 'linewidth' in kwargs:
             main_kwargs['linewidth'] = kwargs['linewidth'] * 2
         elif 'lw' in kwargs:
             main_kwargs['lw'] = kwargs['lw'] * 2
         else:
             main_kwargs['lw'] = 2
-    
+
     # plot main
     if hasattr(main, '__call__'):
         y_ct = main(y, axis=0)
@@ -319,17 +319,17 @@ def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwarg
         pass
     else:
         raise ValueError("Invalid argument: main=%r" % main)
-    
+
     # plot dev
     if hasattr(dev, '__call__'):
         ydev = dev(y, axis=0)
-        h['dev'] = ax.fill_between(x, y_ct-ydev, y_ct+ydev, zorder=0, **dev_kwargs)
+        h['dev'] = ax.fill_between(x, y_ct - ydev, y_ct + ydev, zorder=0, **dev_kwargs)
     elif dev == 'all':
         h['dev'] = ax.plot(x, y.T, **dev_kwargs)
         dev = None
     else:
         pass
-    
+
     return h
 
 
