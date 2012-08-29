@@ -26,6 +26,10 @@ import shutil
 import subprocess
 import tempfile
 
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+
 from eelbrain import ui
 from eelbrain.load.brainvision import vhdr as _vhdr
 
@@ -193,15 +197,24 @@ class edf_file:
 
 
 class marker_avg_file:
+    """
+    Attributes
+    ----------
+
+    points : np.array
+        array with shape point by coordinate (x, y, z)
+
+    path : str
+        path to the temporary file containing the simplified marker file for
+        input to mne_kit2fiff
+
+    """
     def __init__(self, path):
-        # Parse marker file, based on Tal's pipeline:
-        regexp = re.compile(r'Marker \d:   MEG:x= *([\.\-0-9]+), y= *([\.\-0-9]+), z= *([\.\-0-9]+)')
-        output_lines = []
-        for line in open(path):
-            match = regexp.search(line)
-            if match:
-                output_lines.append('\t'.join(match.groups()))
-        txt = '\n'.join(output_lines)
+        # pattern by Tal:
+        p = re.compile(r'Marker \d:   MEG:x= *([\.\-0-9]+), y= *([\.\-0-9]+), z= *([\.\-0-9]+)')
+        str_points = p.findall(open(path).read())
+        txt = '\n'.join(map('\t'.join, str_points))
+        self.points = np.array(str_points, dtype=float)
 
         fd, self.path = tempfile.mkstemp(suffix='hpi', text=True)
         f = os.fdopen(fd, 'w')
@@ -210,6 +223,21 @@ class marker_avg_file:
 
     def __del__(self):
         os.remove(self.path)
+
+    def plot(self, marker='+k'):
+        "returns: axes object with 3d plot"
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        ax.plot(self.points[:, 0], self.points[:, 1], self.points[:, 2], marker)
+        for i, (x, y, z) in enumerate(self.points):
+            ax.text(x, y, z, str(i))
+
+        xmin, ymin, zmin = self.points.min(0) - 1
+        xmax, ymax, zmax = self.points.max(0) + 1
+        ax.set_xlim3d(xmin, xmax)
+        ax.set_ylim3d(ymin, ymax)
+        ax.set_zlim3d(zmin, zmax)
+        return ax
 
 
 
