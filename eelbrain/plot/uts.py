@@ -15,6 +15,7 @@ import scipy.stats
 import matplotlib.cm as _cm
 import matplotlib.pyplot as plt
 
+from eelbrain.vessels import data as _data
 from eelbrain.vessels.structure import celltable
 from eelbrain.wxutils import mpl_canvas
 
@@ -24,13 +25,14 @@ import _base
 __hide__ = ['plt', 'division', 'celltable']
 
 
-def stat(Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
-         sub=None, match=None, ds=None,
-         figsize=(6,3), dpi=90, legend='upper right', title=True, ylabel=True,
-         xdim='time', cm=_cm.jet):
-    """
+class stat(mpl_canvas.CanvasFrame):
+    def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
+                 sub=None, match=None, ds=None, Xax=None, ncol=3,
+                 width=6, height=3, dpi=90, legend='upper right', title=True, ylabel=True,
+                 xdim='time', cm=_cm.jet):
+        """
     Plots statistics for a one-dimensional ndvar
-    
+
     Y : 1d-ndvar
         dependent variable (one-dimensional ndvar)
     X : categorial or None
@@ -38,70 +40,114 @@ def stat(Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
     main : func | None
         central tendency (function that takes an ``axis`` argument).
     dev : func | 'all' | float
-        Measure for spread / deviation from the central tendency. Either a 
+        Measure for spread / deviation from the central tendency. Either a
         function that takes an ``axis`` argument, 'all' to plot all traces, or
         a float to plot all traces with a certain alpha value
     ds : dataset
-        if ``var`` or ``X`` is submitted as string, the ``ds`` argument 
+        if ``var`` or ``X`` is submitted as string, the ``ds`` argument
         must provide a dataset containing those variables.
-    
+
     **plotting parameters:**
-    
+
     xdim : str
-        dimension for the x-axis (default is 'time') 
+        dimension for the x-axis (default is 'time')
     cm : matplotlib colormap
-        colormap from which colors for different categories in ``X`` are 
+        colormap from which colors for different categories in ``X`` are
         derived
-    
+
     **figure parameters:**
-    
+
     legend : str | None
         matplotlib figure legend location argument
     title : str | True | False
         axes title; if ``True``, use ``var.name``
-    
-    """
-    ct = celltable(Y, X, sub=sub, match=match, ds=ds)
-    
-    if title is True:
-        title = ct.Y.name
-    
-    fig = plt.figure(figsize=figsize, dpi=dpi)
-    top = .9 # - bool(title) * .1
-    plt.subplots_adjust(.1, .1, .95, top, .1, .4)
-    ax = plt.axes()
+
+        """
+        cells = _data.ascategorial(X, sub=sub, ds=ds).cells
+        N = len(cells)
+        colors = {cell:cm(i / N) for i, cell in enumerate(cells)}
+
+        legend_h = {}
+        kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
+                      colors=colors, legend_h=legend_h)
+
+        if Xax is None:
+            figsize = (width, height)
+            ct = celltable(Y, X, sub=sub, match=match, ds=ds)
+        else:
+            ct = celltable(Y, Xax, sub=sub, ds=ds)
+            Xct = celltable(X, Xax, sub=sub, ds=ds)
+            matchct = celltable(match, Xax, sub=sub, ds=ds)
+            nplot = len(ct.cells)
+            ncol = min(nplot, ncol)
+            nrow = round(nplot / ncol + .49)
+            figsize = (ncol * width, nrow * height)
+
+        if title is True:
+            title = ct.Y.name
+        super(stat, self).__init__(title=title, figsize=figsize, dpi=dpi)
+
+        if Xax is None:
+#            top = .9 # - bool(title) * .1
+#        plt.subplots_adjust(.1, .1, .95, top, .1, .4)
+#            ax = self.figure.add_axes([.1, .1, .8, .8])
+            ax = self.figure.add_subplot(111)
+            _ax_stat(ax, ct, **kwargs)
+            if len(ct) < 2:
+                legend = False
+        else:
+            for i, cell in enumerate(ct.cells):
+                kwargs['xlabel'] = True if i == len(ct) - 1 else False
+                ax = self.figure.add_subplot(nrow, ncol, i + 1)
+                cct = celltable(ct.data[cell],
+                                Xct.data[cell],
+                                match=matchct.data[cell])
+                _ax_stat(ax, cct, title=_data.cellname(cell), ** kwargs)
+
+        if len(legend_h) > 1:
+            self.figure.legend(legend_h.values(), legend_h.keys(), loc=legend)
+
+        self.figure.tight_layout()
+        self.Show()
+
+
+
+def _ax_stat(ax, ct, colors, legend_h={},
+             dev=scipy.stats.sem, main=np.mean,
+             sub=None, match=None, ds=None,
+             figsize=(6, 3), dpi=90, legend='upper right', title=True, ylabel=True,
+             xdim='time', xlabel=True):
+
     ax.x_fmt = "t = %.3f s"
-        
+
     h = []
-    legend_h = []
-    legend_lbl = []
-    N = len(ct)
-    for i, cell in enumerate(ct.cells):
+    for cell in ct.cells:
         lbl = ct.cell_label(cell, ' ')
-        c = cm(i / N)
+        c = colors[cell]
         _h = _plt_stat(ax, ct.data[cell], main, dev, label=lbl, xdim=xdim, color=c)
         h.append(_h)
-        legend_h.append(_h['main'][0])
-        legend_lbl.append(lbl)
-    
+        if lbl not in legend_h:
+            legend_h[lbl] = _h['main'][0]
+
     dim = ct.Y.get_dim(xdim)
+
     if title:
+        if title is True:
+            title = ct.Y.name
         ax.set_title(title)
-    ax.set_xlabel(dim.name)
+
+    if xlabel:
+        if xlabel is True:
+            xlabel = dim.name
+        ax.set_xlabel(xlabel)
     ax.set_xlim(min(dim), max(dim))
-    if legend and len(ct) > 1:
-        fig.legend(legend_h, legend_lbl, loc=legend)
-    
+
     if ylabel is True:
-        ylabel = Y.properties.get('unit', None)
-    
+        ylabel = ct.Y.properties.get('unit', None)
+
     if ylabel:
         ax.set_ylabel(ylabel)
 
-
-    fig.tight_layout()
-    fig.show()
-    return fig
 
 
 class clusters(mpl_canvas.CanvasFrame):
