@@ -63,25 +63,30 @@ class stat(mpl_canvas.CanvasFrame):
         axes title; if ``True``, use ``var.name``
 
         """
-        cells = _data.ascategorial(X, sub=sub, ds=ds).cells
-        N = len(cells)
-        colors = {cell:cm(i / N) for i, cell in enumerate(cells)}
-
-        legend_h = {}
-        kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
-                      colors=colors, legend_h=legend_h)
-
         if Xax is None:
             figsize = (width, height)
             ct = celltable(Y, X, sub=sub, match=match, ds=ds)
         else:
             ct = celltable(Y, Xax, sub=sub, ds=ds)
-            Xct = celltable(X, Xax, sub=sub, ds=ds)
-            matchct = celltable(match, Xax, sub=sub, ds=ds)
+            if X is not None:
+                Xct = celltable(X, Xax, sub=sub, ds=ds)
+            if match is not None:
+                matchct = celltable(match, Xax, sub=sub, ds=ds)
             nplot = len(ct.cells)
             ncol = min(nplot, ncol)
             nrow = round(nplot / ncol + .49)
             figsize = (ncol * width, nrow * height)
+
+        if X is None:
+            colors = {ct.Y.name: 'b'}
+        else:
+            cells = _data.ascategorial(X, sub=sub, ds=ds).cells
+            N = len(cells)
+            colors = {cell:cm(i / N) for i, cell in enumerate(cells)}
+
+        legend_h = {}
+        kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
+                      colors=colors, legend_h=legend_h)
 
         if title is True:
             title = ct.Y.name
@@ -99,9 +104,11 @@ class stat(mpl_canvas.CanvasFrame):
             for i, cell in enumerate(ct.cells):
                 kwargs['xlabel'] = True if i == len(ct) - 1 else False
                 ax = self.figure.add_subplot(nrow, ncol, i + 1)
-                cct = celltable(ct.data[cell],
-                                Xct.data[cell],
-                                match=matchct.data[cell])
+                if X is not None:
+                    X = Xct.data[cell]
+                if match is not None:
+                    match = matchct.data[cell]
+                cct = celltable(ct.data[cell], X, match=match)
                 _ax_stat(ax, cct, title=_data.cellname(cell), ** kwargs)
 
         if len(legend_h) > 1:
