@@ -16,6 +16,8 @@ import shutil
 
 from collections import defaultdict
 
+import numpy as np
+
 import mne
 
 from eelbrain import ui
@@ -354,7 +356,7 @@ class mne_experiment(object):
 
         return temp
 
-    def iter_temp(self, temp, constants={}, values={}):
+    def iter_temp(self, temp, constants={}, values={}, prog=False):
         """
         Iterate through all paths conforming to a template given in ``temp``.
         
@@ -369,12 +371,13 @@ class mne_experiment(object):
         # find variables for iteration
         pattern = re.compile('\{(\w+)\}')
         variables = pattern.findall(temp)
-        
-        for state in self.iter_vars(variables, constants=constants, values=values):
+
+        for state in self.iter_vars(variables, constants=constants,
+                                    values=values, prog=prog):
             path = temp.format(**state)
             yield path
 
-    def iter_vars(self, variables, constants={}, values={}):
+    def iter_vars(self, variables, constants={}, values={}, prog=False):
         """
         variables : list
             variables which should be iterated
@@ -383,6 +386,8 @@ class mne_experiment(object):
         values : dict(name -> (list of values))
             variables with values to iterate in addition to, or in spite of
             the mne_experiment.var_values dictionary
+        prog : bool | str
+            Show a progress dialog; str for dialog title.
         
         """
         # set constants
@@ -395,9 +400,21 @@ class mne_experiment(object):
         var_values.update(values)
         var_values = tuple(var_values[v] for v in variables)
         if len(var_values):
+            if prog:
+                i_max = np.prod(map(len, var_values))
+                if not isinstance(prog, str):
+                    prog = "MNE Experiment Iterator"
+                progm = ui.progress_monitor(i_max, prog, "")
+                prog = True
+
             for v_list in itertools.product(*var_values):
-                self.set(**dict(zip(variables, v_list)))
+                values = dict(zip(variables, v_list))
+                if prog:
+                    progm.message(' | '.join(map(str, v_list)))
+                self.set(**values)
                 yield self.state
+                if prog:
+                    progm.advance()
         else:
             yield self.state
 
