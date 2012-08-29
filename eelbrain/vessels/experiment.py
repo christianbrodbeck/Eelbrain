@@ -187,6 +187,24 @@ class mne_experiment(object):
         args = ', '.join(args)
         return "mne_experiment(%s)" % args
 
+    def combine_labels(self, target, sources=[], hemi=['lh', 'rh'], redo=False):
+        """
+        target : str
+            name of the target label
+        sources : list of str
+            names of the source labels
+
+        """
+        msg = "Making Label: %s" % target
+        for _ in self.iter_vars(['mrisubject'], values={'hemi': hemi}, prog=msg):
+            tgt = self.get('label', analysis=target)
+            if redo or not os.path.exists(tgt):
+                srcs = [self.get('label', analysis=name) for name in sources]
+                label = mne.read_label(srcs.pop(0))
+                for path in srcs:
+                    label += mne.read_label(path)
+                label.save(tgt)
+
     def do_kit2fiff(self, do='ask', aligntol=xrange(15, 40, 5), redo=False):
         """OK 12/7/2
         find any raw txt files that have not been converted
