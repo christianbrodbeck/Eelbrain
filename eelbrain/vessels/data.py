@@ -87,7 +87,7 @@ def cellname(cell, delim=' '):
     """
     if isinstance(cell, str):
         return cell
-    elif isinstance(cell, tuple):
+    elif isinstance(cell, (list, tuple)):
         return delim.join(cell)
     else:
         return str(cell)
