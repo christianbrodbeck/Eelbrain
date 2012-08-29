@@ -107,7 +107,7 @@ class celltable:
         if isinstance(sub, basestring):
             sub = ds[sub]
         
-        if _data.isfactor(Y) or _data.isndvar(Y):
+        if _data.iscategorial(Y) or _data.isndvar(Y):
             if sub is not None:
                 Y = Y[sub]
         else:
