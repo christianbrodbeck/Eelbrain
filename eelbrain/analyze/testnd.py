@@ -12,6 +12,7 @@ import scipy.stats
 import scipy.ndimage
 import mne
 
+from eelbrain import fmtxt
 from eelbrain import vessels as _vsl
 from eelbrain.vessels.data import ndvar, asmodel
 
@@ -344,6 +345,22 @@ class cluster_anova(test_result):
                 epochs.append([self.F_maps[e]] + self.clusters[e])
         
         return epochs
+
+    def as_table(self, pmax=1.):
+        table = fmtxt.Table('ll')
+        for e in self.X.effects:
+            if e in self.F_maps:
+                table.cell(e.name, width=2)
+                cs = self.clusters[e]
+                ps = [c.properties['p'] for c in cs]
+                for i in np.argsort(ps):
+                    c = cs[i]
+                    p = c.properties['p']
+                    if p > pmax:
+                        break
+                    table.cell(i)
+                    table.cell(p)
+        return table
 
 
 
