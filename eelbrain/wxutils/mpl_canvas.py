@@ -268,12 +268,12 @@ class CanvasFrame(wx.Frame):
 
 
 class TestCanvas(CanvasFrame):
+    "This is a minimal CanvasFrame subclass"
     def __init__(self, effect=10, mpl_toolbar=True):
-        parent = wx.GetApp().shell
-        CanvasFrame.__init__(self, parent, title="Test MPL Frame", 
-                             mpl_toolbar=mpl_toolbar)
+        CanvasFrame.__init__(self, title="Test MPL Frame", mpl_toolbar=mpl_toolbar)
         self.plot()
         self.Show(effect)
+
     def plot(self):
         self.axes = self.figure.add_subplot(111)
         t = np.arange(0.0, 3.0, 0.01)
