@@ -570,7 +570,7 @@ def setup_mri(mri_sdir, ico=4):
 
 
 
-def run_mne_analyze(mri_dir, fif_dir, modal=True):
+def run_mne_analyze(mri_dir, fif_dir, mri_subject=None, modal=True):
     """
     invokes mne_analyze (e.g., for manual coregistration)
 
@@ -607,22 +607,19 @@ def run_mne_analyze(mri_dir, fif_dir, modal=True):
     this creates a file next to the raw file with the '-trans.fif' extension.
 
     """
-    # TODO: use more command line args (manual pdf p. 152)
     os.environ['SUBJECTS_DIR'] = mri_dir
     os.chdir(fif_dir)
     setup_path = get_bin('mne', 'mne_setup_sh')
     bin_path = get_bin('mne', 'mne_analyze')
-    p = subprocess.Popen('. %s; %s' % (setup_path, bin_path), shell=True)
+    cmd = ['. %s;' % setup_path, bin_path]
+    if mri_subject:
+        cmd.extend(('--subject', mri_subject))
+
+    p = subprocess.Popen(' '.join(cmd), shell=True)
     if modal:
         print "Waiting for mne_analyze to be closed..."
         p.wait() # causes the shell to be unresponsive until mne_analyze is closed
-#    p = subprocess.Popen(['%s/bin/mne_setup' % _mne_dir],
-#                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-#    p.wait()
-#    a, b = p.communicate('mne_analyze')
-#    p = subprocess.Popen('mne_analyze')
-# Gwyneth's Manual, XII
-## SUBJECTS_DIR is MRI directory according to MNE 17
+
 
 def run_mne_browse_raw(fif_dir, modal=False):
     os.chdir(fif_dir)

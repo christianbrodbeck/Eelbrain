@@ -624,10 +624,13 @@ class mne_experiment(object):
         mri_dir = self.get('mri_dir')
         if (subject is None) and (self.state['subject'] is None):
             fif_dir = self.get('meg_dir')
+            mri_subject = None
         else:
             fif_dir = self.get('raw_sdir', subject=subject)
+            mri_subject = self.get('{mrisubject}')
 
-        subp.run_mne_analyze(mri_dir, fif_dir, modal)
+        subp.run_mne_analyze(mri_dir, fif_dir, mri_subject=mri_subject,
+                             modal=modal)
 
     def run_mne_browse_raw(self, subject=None, modal=False):
         if (subject is None) and (self.state['subject'] is None):
