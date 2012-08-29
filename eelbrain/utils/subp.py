@@ -77,27 +77,57 @@ def get_bin(package, name):
         raise KeyError("Unknown binary package: %r" % package)
 
     bin_path = os.path.join(_bin_dirs[package], name)
-    have_valid_path = os.path.exists(bin_path)
+    if not os.path.exists(bin_path):
+        set_bin_dir(package)
+        bin_path = os.path.join(_bin_dirs[package], name)
+
+    return bin_path
+
+
+def _is_bin_path(package, path):
+    if package == 'mne':
+        test = ['mne_add_patch_info', 'mne_analyze']
+    elif package == 'freesurfer':
+        test = ['mri_annotation2label']
+    elif package == 'edfapi':
+        test = ['edf2asc']
+    else:
+        raise KeyError("Unknown package: %r" % package)
+
+    test_paths = [os.path.join(path, testname) for testname in test]
+    if all(map(os.path.exists, test_paths)):
+        return True
+    else:
+        msg = ("You need to select a directory containing the following "
+               "executables: %r" % test)
+        ui.message("Invalid Binary Directory", msg, 'error')
+
+
+def set_bin_dir(package):
+    """
+    Change the location from which binaries are used.
+
+    package : str
+        Binary package for which to set the directory. One from:
+        ``['mne', 'freesurfer', 'edfapi']``
+
+    """
+    have_valid_path = False
     while not have_valid_path:
         title = "Select %r bin Directory" % package
         message = ("Please select the directory containing the binaries for "
                    "the %r package." % package)
         answer = ui.ask_dir(title, message, must_exist=True)
         if answer:
-            bin_path = os.path.join(answer, name)
-            if os.path.exists(bin_path):
+            if _is_bin_path(package, answer):
                 _bin_dirs[package] = answer
                 pickle.dump(_bin_dirs, open(_cfg_path, 'w'))
                 _set_bin_dirs(**{package: answer})
                 have_valid_path = True
-            else:
-                msg = ("You need to select a directory containing an "
-                       "executable called %r." % name)
-                ui.message("Wrong Directory", msg, 'error')
         else:
             raise IOError("%r bin directory not set" % package)
 
-    return bin_path
+
 
 
 
