@@ -797,7 +797,7 @@ def unindent(text, skip1=False):
         if len_stripped:
             ws_lead.append(len(line) - len_stripped)
     
-    if len(ws_lead) > 1:
+    if len(ws_lead) > skip1:
         rm = min(ws_lead)
         if rm:
             if skip1:
