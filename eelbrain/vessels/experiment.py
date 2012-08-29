@@ -89,6 +89,7 @@ class mne_experiment(object):
 
         # find experiment data structure
         self.var_values = {'hemi': ('lh', 'rh')}
+        self.exclude = {}
         self.root = root
         self.state = {'root': root,
                       'raw': 'raw_raw',
@@ -420,16 +421,25 @@ class mne_experiment(object):
 
         var_values = self.var_values.copy()
         var_values.update(values)
-        var_values = tuple(var_values[v] for v in variables)
-        if len(var_values):
+
+        # pick out the variables to iterate, but drop excluded cases:
+        v_lists = []
+        for v in variables:
+            values = var_values[v]
+            for exc in self.exclude.get(v, ()):
+                if exc in values:
+                    values.remove(exc)
+            v_lists.append(values)
+
+        if len(v_lists):
             if prog:
-                i_max = np.prod(map(len, var_values))
+                i_max = np.prod(map(len, v_lists))
                 if not isinstance(prog, str):
                     prog = "MNE Experiment Iterator"
                 progm = ui.progress_monitor(i_max, prog, "")
                 prog = True
 
-            for v_list in itertools.product(*var_values):
+            for v_list in itertools.product(*v_lists):
                 values = dict(zip(variables, v_list))
                 if prog:
                     progm.message(' | '.join(map(str, v_list)))
