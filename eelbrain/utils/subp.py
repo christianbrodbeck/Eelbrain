@@ -148,7 +148,7 @@ class edf_file:
     """
     Converts an "eyelink data format" (.edf) file to a temporary directory
     and parses its content.
-    
+
     """
     def __init__(self, path):
         # convert
@@ -240,53 +240,53 @@ def kit2fiff(paths=dict(mrk=None,
              stim=xrange(168, 160, -1), stimthresh=2.5, add=None, #(188, 190), #xrange()
              aligntol=25, overwrite=False):
     """
-    Calls the ``mne_kit2fiff`` binary which reads multiple input files and 
-    combines them into a fiff file. Implemented after Gwyneth's Manual; for 
-    more information see the mne manual (p. 222). 
-    
+    Calls the ``mne_kit2fiff`` binary which reads multiple input files and
+    combines them into a fiff file. Implemented after Gwyneth's Manual; for
+    more information see the mne manual (p. 222).
+
     **Arguments:**
-    
+
     paths : dict
-        Dictionary containing paths to input and output files. 
+        Dictionary containing paths to input and output files.
         Needs the folowing keys:
-        'mrk', 'elp', 'hsp', 'sns', 'rawtxt', 'outfif' 
-        
+        'mrk', 'elp', 'hsp', 'sns', 'rawtxt', 'outfif'
+
     experiment : str
         The experiment name as it appears in file names.
-    
+
     highpass : scalar
         The highpass filter corner frequency (only for file info, does not
         filter the data). 0 Hz for DC recording.
-    
+
     lowpass : scalar
         like highpass
-    
+
     meg_sdir : str or tuple (see above)
-        Path to the subjects's meg directory. If ``None``, a file dialog is 
+        Path to the subjects's meg directory. If ``None``, a file dialog is
         displayed to ask for the directory.
-    
+
     sfreq : scalar
         samplingrate of the data
-    
+
     stimthresh : scalar
         The threshold value used when synthesizing the digital trigger channel
-    
+
     add : sequence of int | None
         channels to include in addition to the 157 default MEG channels and the
-        digital trigger channel. These numbers refer to the scanning order 
+        digital trigger channel. These numbers refer to the scanning order
         channels as listed in the sns file, starting from one.
-    
+
     stim : iterable over ints
-        trigger channels that are used to reconstruct the event cue value from 
-        the separate trigger channels. The default ``xrange(168, 160, -1)`` 
+        trigger channels that are used to reconstruct the event cue value from
+        the separate trigger channels. The default ``xrange(168, 160, -1)``
         reconstructs the values sent through psychtoolbox.
-        
+
     aligntol : scalar
         Alignment tolerance for coregistration
-        
+
     overwrite : bool
         Automatically overwrite the target fiff file if it already exists.
-    
+
     """
     # get all the paths
     mrk_path = paths.get('mrk')
@@ -351,21 +351,21 @@ def kit2fiff(paths=dict(mrk=None,
 def brain_vision2fiff(vhdr_file=None, dig=None, orignames=False, eximia=False):
     """
     Convert a set of brain vision files to a fiff file.
-    
+
     vhdr_file : str(path) | None
         Path to the header file; if None, a file dialog will ask for a file.
-    
-    
+
+
     **mne_brain_vision2fiff arguments**
-    
+
     dig : str(path) | None
         The digitization data file.
     orignames : bool
         Keep original electrode labels.
     eximia : bool
-        These are Nexstim eXimia data. Interpret the first four channels 
+        These are Nexstim eXimia data. Interpret the first four channels
         in a special way.
-    
+
     """
     vhdr = _vhdr(vhdr_file)
     tempdir = tempfile.mkdtemp()
@@ -410,13 +410,13 @@ def prepare_vmrk(vmrk, dest):
     """
     Prepares events in a brain vision .vmrk file for mne_brain_vision2fiff by
     setting all event types to "Stimulus".
-    
+
     vmrk : str(path)
         path to the original vmrk file
-    
+
     dest : str(path)
         detination for the modified vmrk file
-    
+
     """
     # Each entry: Mk<Marker number>=<Type>,<Description>,<Position in data points>,
     # <Size in data points>, <Channel number (0 = marker is related to all channels)>
@@ -439,12 +439,12 @@ def prepare_vmrk(vmrk, dest):
 
 def process_raw(raw, save='{raw}_filt', args=['projoff'], rm_eve=True, **kwargs):
     """
-    Calls ``mne_process_raw`` to process raw fiff files. All 
+    Calls ``mne_process_raw`` to process raw fiff files. All
     options can be submitted in ``args`` or as kwargs (for a description of
     the options, see mne manual 2.7.3, ch. 4 / p. 41)
-    
+
     raw : str(path)
-        Source file. 
+        Source file.
     save : str(path)
         Destination file. ``'{raw}'`` will be replaced with the raw file path
         without the extension.
@@ -453,13 +453,13 @@ def process_raw(raw, save='{raw}_filt', args=['projoff'], rm_eve=True, **kwargs)
         use ``args=['filteroff']``).
     rm_eve : bool
         Remove the event file automatically generated by ``mne_process_raw``
-    **kwargs:** 
+    **kwargs:**
         ``mne_process_raw`` options that require values (see example).
-    
+
     Example::
-    
+
         >>> process_raw('/some/file_raw.fif', highpass=8, lowpass=12)
-    
+
     """
     raw_name, _ = os.path.splitext(raw)
     eve_file = '%s-eve.fif' % raw_name
@@ -494,9 +494,9 @@ def _run(cmd, v=None, cwd=None):
     cmd: list of strings
         command that is submitted to subprocess.Popen.
     v : 0 | 1 | 2 | None
-        verbosity level (0: nothing;  1: stderr;  2: stdout;  None: use 
+        verbosity level (0: nothing;  1: stderr;  2: stdout;  None: use
         _verbose module attribute)
-    
+
     """
     if v is None:
         v = _verbose
@@ -525,15 +525,15 @@ def _run(cmd, v=None, cwd=None):
 def setup_mri(mri_sdir, ico=4):
     """
     Prepares an MRI for use in the mne-pipeline:
-     - creates symlinks in the bem directory 
+     - creates symlinks in the bem directory
      - runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
-    
-    The utility needs permission to access the MRI files. In case of a 
-    permission error, the following shell command can be used on the mri 
+
+    The utility needs permission to access the MRI files. In case of a
+    permission error, the following shell command can be used on the mri
     folder to set permissions appropriately::
-    
+
         $ sudo chmod -R 7700 mri-folder
-    
+
     """
     mri_dir, subject = os.path.split(mri_sdir)
     bemdir = os.path.join(mri_sdir, 'bem')
@@ -573,39 +573,39 @@ def setup_mri(mri_sdir, ico=4):
 def run_mne_analyze(mri_dir, fif_dir, modal=True):
     """
     invokes mne_analyze (e.g., for manual coregistration)
-    
+
     **Arguments:**
-    
+
     mri_dir : str(path)
-        the directory containing the mri data (subjects's mri directory, or 
+        the directory containing the mri data (subjects's mri directory, or
         fsaverage)
     fif_file : str(path)
         the target fiff file
     modal : bool
         causes the shell to be unresponsive until mne_analyze is closed
-    
-    
+
+
     **Coregistration Procedure:**
-    
+
     (For more information see  MNE-manual 3.10 & 12.11)
-    
+
     #. File > Load Surface: select the subject`s directory and "Inflated"
     #. File > Load digitizer data: select the fiff file
     #. View > Show viewer
-       
-       a. ``Options``: Switch cortical surface display off, make 
+
+       a. ``Options``: Switch cortical surface display off, make
           scalp transparent. ``Done``
-       
-    #. Adjust > Coordinate Alignment: 
-    
-       a. set LAP, Nasion and RAP. 
-       b. ``Align using fiducials``. 
+
+    #. Adjust > Coordinate Alignment:
+
+       a. set LAP, Nasion and RAP.
+       b. ``Align using fiducials``.
        c. (``Omit``)
        d. Run ``ICP alignment`` with 20 steps
        e. ``Save default``
-    
+
     this creates a file next to the raw file with the '-trans.fif' extension.
-    
+
     """
     # TODO: use more command line args (manual pdf p. 152)
     os.environ['SUBJECTS_DIR'] = mri_dir
@@ -643,7 +643,7 @@ def do_forward_solution(paths=dict(rawfif=None,
                         overwrite=False, v=1):
     """
     MNE Handbook 3.13
-    
+
     """
     fif_file = paths.get('rawfif')
     mri_sdir = paths.get('mri_sdir')
@@ -737,25 +737,25 @@ def mri_annotation2label(mri_dir, subject='*', annot='aparc',
                          dest=os.path.join("{sdir}", "label", "{annot}"),
                          hemi='*'):
     """
-    Calls ``mri_annotation2label`` (`freesurfer wiki 
+    Calls ``mri_annotation2label`` (`freesurfer wiki
     <http://surfer.nmr.mgh.harvard.edu/fswiki/mri_annotation2label>`_)
-    
+
     mri_dir : str(path)
         Path containing mri subject directories (freesurfer's ``SUBJECTS_DIR``).
-    
+
     subject : str
         Name of the subject ('*' uses fnmatch to find folders in ``mri_dir``).
-        
+
     annot : str
         Name of the annotation file (e.g., ``'aparc'``, ...).
-    
+
     dest : str(path)
         Destination for the label files. {sdir}" and "{annot}" are filled in
         appropriately.
-        
+
     hemi : 'lh' | 'rh' | '*'
         Hemisphere to process; '*' proceses both.
-    
+
     """
     hemis = _fs_hemis(hemi)
     subjects = _fs_subjects(subject, mri_dir)
@@ -788,7 +788,7 @@ def mri_label2label(mri_dir, src_subject='fsaverage', tgt_subject='*',
                     regmethod='surface'):
     """
     Calls the freesurfer command ``mri_label2label``.
-    
+
     mri_dir : str
         Path containing mri subject directories (freesurfer's ``SUBJECTS_DIR``)
     src_subject : str
@@ -797,11 +797,11 @@ def mri_label2label(mri_dir, src_subject='fsaverage', tgt_subject='*',
         subject for which the label should be created (default ``'*'``: all
         subjects except ``src_subjects``)
     label : str
-        '{sdir}' and '{hemi}' are filled in using :py:meth:`str.format`; 
-        '*' is expanded using fnmatch; 
+        '{sdir}' and '{hemi}' are filled in using :py:meth:`str.format`;
+        '*' is expanded using fnmatch;
     hemi : 'lh' | 'rh' | '*'
         only required for ``regmethod=='surface'``
-    
+
     """
     src_sdir = os.path.join(mri_dir, src_subject)
 
