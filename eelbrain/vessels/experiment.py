@@ -25,7 +25,7 @@ from eelbrain import fmtxt
 from eelbrain.utils import subp
 from eelbrain import load
 from eelbrain import plot
-from eelbrain.vessels.data import ndvar
+from eelbrain.vessels.data import ndvar, cellname
 
 
 __all__ = ['mne_experiment']
@@ -106,15 +106,20 @@ class mne_experiment(object):
 
     def get_templates(self):
         # path elements
-        root = '{root}'
+        root = '{root}' # the experiment root
         sub = '{subject}'
         mrisub = '{mrisubject}'
         exp = '{experiment}'
         an = '{analysis}'
+        raw = '{raw}' # raw placeholder (replaced with the raw path or state['raw']
+                      # default: 'raw_raw'
+        fwd_an = '{fwd_an}' # forward solution description
+        stc_an = '{stc_an}'
+
         meg_dir = os.path.join(root, 'meg')
         mri_dir = os.path.join(root, 'mri')
         raw_dir = os.path.join(meg_dir, sub, 'raw')
-        mne_dir = os.path.join(meg_dir, sub, 'mne')
+        mne_dir = os.path.join(meg_dir, sub, '_'.join(('mne', fwd_an, stc_an)))
         log_dir = os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp)))
 
         t = dict(
@@ -137,9 +142,9 @@ class mne_experiment(object):
                  edf=os.path.join(log_dir, '*.edf'),
 
                  # mne raw-derivatives analysis
-                 proj='_'.join(('{raw}', an + '-proj.fif')),
-                 cov='_'.join(('{raw}', an + '-cov.fif')),
-                 fwd='_'.join(('{raw}', an + '-fwd.fif')),
+                 proj='_'.join((raw, an + '-proj.fif')),
+                 cov='_'.join((raw, fwd_an + '-cov.fif')),
+                 fwd='_'.join((raw, fwd_an + '-fwd.fif')),
 
                  # fwd model
                  bem=os.path.join(mri_dir, mrisub, 'bem', mrisub + '-5120-bem-sol.fif'),
@@ -148,8 +153,7 @@ class mne_experiment(object):
                 # !! these would invalidate the s_e_* pattern with a third _
 
                  # mne's stc.save() requires stub filename and will add '-?h.stc'  
-                 stc_tgt=os.path.join(mne_dir, '_'.join((sub, exp, an))),
-                 stc=os.path.join(mne_dir, '_'.join((sub, exp, an)) + '.stc'),
+                 stc=os.path.join(mne_dir, '_'.join((exp, '{cell}'))),
                  label=os.path.join(mri_dir, mrisub, '{labeldir}', '{hemi}.%s.label' % an),
 
                  # EEG
@@ -570,6 +574,7 @@ class mne_experiment(object):
                 experiments.add(fname.split('_')[1])
 
         self.var_values['subject'] = list(subjects)
+        self.var_values['mrisubject'] = list(mri_subjects.values())
         self.var_values['experiment'] = list(experiments)
 
     def pull(self, src_root, names=['rawfif', 'log_sdir'], **kwargs):
@@ -680,6 +685,26 @@ class mne_experiment(object):
             if kwargs[k] is None:
                 del kwargs[k]
         self.state.update(kwargs)
+
+    def set_cell(self, stim, cell):
+        "cell: data cell"
+        name = '-'.join((stim, cellname(cell, '-')))
+        self.state['cell'] = name
+
+    def set_fwd_an(self, stim, tw, proj):
+        temp = '{stim}-{tw}-{proj}'
+        fwd_an = temp.format(stim=stim, tw=tw, proj=proj)
+        self.state['fwd_an'] = fwd_an
+
+    def set_stc_an(self, blc, method, ori):
+        temp = '{blc}-{method}-{ori}'
+        if blc:
+            blc_name = 'blc'
+        else:
+            blc_name = 'noblc'
+
+        stc_an = temp.format(blc=blc_name, method=method, ori=ori)
+        self.state['stc_an'] = stc_an
 
     def summary(self, templates=['rawtxt', 'rawfif', 'fwd'], missing='-', link='>',
                 analysis=None, count=True):
