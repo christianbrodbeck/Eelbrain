@@ -270,24 +270,79 @@ class anova(test_result):
 
 
 class cluster_anova(test_result):
-    def __init__(self, Y, X, t=.1, sub=None, samples=1000, replacement=False,
-                 pmax=1):
+    def __init__(self, Y, X, t=.1, samples=1000, replacement=False,
+                 tstart=None, tstop=None, close_time=0,
+                 sub=None, pmax=1,
+                 ):
         """
+
+        Arguments
+        ---------
+
+        Y : ndvar
+            Measurements (dependent variable)
+
+        X : categorial
+            Model
+
         t : scalar
-            Threshold: uncorrected p-value to use as threshold for finding 
-            clusters
+            Threshold (uncorrected p-value) to use for finding clusters
+
+        samples : int
+            Number of samples to estimate parameter distributions
+
+        replacement : bool
+            whether random samples should be drawn with replacement or
+            without
+
+        tstart, tstop : None | scalar
+            Time window for clusters.
+            **None**: use the whole epoch;
+            **scalar**: use only a part of the epoch
+
+            .. Note:: implementation is not optimal: F-values are still
+                computed but ignored.
+
+        close_time : scalar
+            Close gaps in clusters that are smaller than this interval. Assumes
+            that Y is a uniform time series.
+
+        sub : index
+            Apply analysis to a subset of cases in Y, X
+
         pmax : scalar <= 1
             Maximum cluster p-values to keep cluster.
-        
-        FIXME: connectivity for >2 dimensional data
+
+
+        .. FIXME:: connectivity for >2 dimensional data. Currently, adjacent
+            samples are connected.
+
         """
         if sub is not None:
             Y = Y[sub]
             X = X[sub]
-        
+
         X = self.X = asmodel(X)
         lm = _glm.lm_fitter(X)
-        
+
+        # prepare cluster merging
+        if close_time:
+            assert Y.get_axis('time') == 1
+            T = Y.get_dim('time')
+            dT = np.mean(np.diff(T.x))
+            close_time_structure = np.ones(round(close_time / dT))
+        close_time = bool(close_time)
+
+        # prepare morphology manipulation
+        delim = (tstart is not None) or (tstop is not None)
+        if delim:
+            T = Y.get_dim('time')
+            delim_idx = np.zeros(len(T), dtype=bool)
+            if tstart is not None:
+                delim_idx[T < tstart] = True
+            if tstop is not None:
+                delim_idx[T >= tstop] = True
+
         # get F-thresholds from p-threshold
         tF = {}
         if lm.full_model:
@@ -299,33 +354,51 @@ class cluster_anova(test_result):
         else:
             df_d = X.df_error
             tF = {e: scipy.stats.distributions.f.isf(t, e.df, df_d) for e in X.effects}
-        
+
         # Estimate statistic distributions from permuted Ys
         dists = {e: np.empty(samples) for e in tF}
         for i, Yrs in _resample(Y, replacement=replacement, samples=samples):
             for e, F in lm.map(Yrs.x, p=False):
-                clusters, n = scipy.ndimage.label(F > tF[e])
+                cmap = (F > tF[e])
+
+                # manipulate morphology
+                if delim:
+                    cmap[delim_idx] = False
+                if close_time:
+                    cmap = cmap | scipy.ndimage.binary_closing(cmap, close_time_structure)
+
+                # find clusters
+                clusters, n = scipy.ndimage.label(cmap)
                 if n:
-                    clusters_v = scipy.ndimage.measurements.sum(F, clusters, xrange(1, n+1))
+                    clusters_v = scipy.ndimage.measurements.sum(F, clusters, xrange(1, n + 1))
                     dists[e][i] = max(clusters_v)
                 else:
                     dists[e][i] = 0
-        
-        # 
+
+        # Find clusters in the actual data
         test0 = lm.map(Y.x, p=False)
         self.clusters = {}
         self.F_maps = {}
         dims = Y.dims[1:]
         for e, F in test0:
-            dist = dists[e]
-            clusters, n = scipy.ndimage.label(F > tF[e])#, structure, output)
-            clusters_v = scipy.ndimage.measurements.sum(F, clusters, xrange(1,n+1))
+            cmap = (F > tF[e])
+
+            # manipulate morphology
+            if delim:
+                cmap[delim_idx] = False
+            if close_time:
+                cmap = cmap | scipy.ndimage.binary_closing(cmap, close_time_structure)
+
+            # find clusters
+            clusters, n = scipy.ndimage.label(cmap)
+            clusters_v = scipy.ndimage.measurements.sum(F, clusters, xrange(1, n + 1))
             clist = self.clusters[e] = []
+            dist = dists[e]
             for i in xrange(n):
                 v = clusters_v[i]
                 p = 1 - scipy.stats.percentileofscore(dist, v, 'mean') / 100
                 if p <= pmax:
-                    im = (clusters == i+1)
+                    im = (clusters == i + 1)
                     name = '%s (p=%s)' % (e.name, p)
                     properties = {'p': p}
                     ndv = ndvar(im, dims=dims, name=name, properties=properties)
