@@ -602,7 +602,7 @@ class mne_experiment(object):
                 experiments.add(fname.split('_')[1])
 
         self.var_values['subject'] = list(subjects)
-        self.var_values['mrisubject'] = list(mri_subjects.values())
+        self.var_values['mrisubject'] = set(mri_subjects.values())
         self.var_values['experiment'] = list(experiments)
 
     def pull(self, src_root, names=['rawfif', 'log_sdir'], **kwargs):
@@ -690,12 +690,29 @@ class mne_experiment(object):
 
         subp.run_mne_browse_raw(fif_dir, modal)
 
-    def set(self, subject=None, experiment=None, match=False, **kwargs):
+    def set(self, subject=None, experiment=None, match=False, mrisubject=None,
+            **kwargs):
         """
         match : bool
             require existence (for subject and experiment)
-        
+
+        mrisubject :
+            If subject is None, subject will be set to an arbitrary subject
+            using that mri (an error will be raised if no subject uses
+            the mri)
+
         """
+        if mrisubject is not None:
+            if subject is None:
+                for sub, mrisub in self._mri_subjects.iteritems():
+                    if mrisub == mrisubject:
+                        subject = sub
+                        break
+                if subject is None:
+                    raise ValueError("no subject found for mrisubject %r" % mrisubject)
+            else:
+                assert self._mri_subjects[subject] == mrisubject
+
         if subject is not None:
             if match and not (subject in self._subjects) and not ('*' in subject):
                 raise ValueError("No subject named %r" % subject)
