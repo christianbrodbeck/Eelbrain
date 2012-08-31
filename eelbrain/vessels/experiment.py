@@ -8,13 +8,12 @@ Created on May 2, 2012
 @author: christian
 '''
 
+from collections import defaultdict
 import fnmatch
 import itertools
 import os
 import re
 import shutil
-
-from collections import defaultdict
 
 import numpy as np
 
@@ -53,12 +52,12 @@ class mne_experiment(object):
                  kit2fiff_args=_kit2fiff_args):
         """
         root : str
-            the root directory for the experiment (i.e., the directory 
-            containing the 'meg' and 'mri' directories) 
-        
+            the root directory for the experiment (i.e., the directory
+            containing the 'meg' and 'mri' directories)
+
         fwd : None | dict
             dictionary specifying the forward model parameters
-        
+
         """
         if root:
             root = os.path.expanduser(root)
@@ -72,7 +71,7 @@ class mne_experiment(object):
         self._kit2fiff_args = kit2fiff_args
         self.auto_launch_mne = True
         """bool | None
-        If the requested file does not exist, make it if possible. With 
+        If the requested file does not exist, make it if possible. With
         ``None``, the application asks each time. Currently affects only
         the "trans" file.
         """
@@ -112,8 +111,7 @@ class mne_experiment(object):
         mrisub = '{mrisubject}'
         exp = '{experiment}'
         an = '{analysis}'
-        raw = '{raw}' # raw placeholder (replaced with the raw path or state['raw']
-                      # default: 'raw_raw'
+        raw = '{raw}' # raw placeholder (replaced with the raw path or state['raw']) default: 'raw_raw'
         fwd_an = '{fwd_an}' # forward solution description
         stc_an = '{stc_an}'
 
@@ -210,15 +208,15 @@ class mne_experiment(object):
     def do_kit2fiff(self, do='ask', aligntol=xrange(15, 40, 5), redo=False):
         """OK 12/7/2
         find any raw txt files that have not been converted
-        
+
         do : bool | 'ask',
             whether to automatically convert raw txt files
-        
+
         **assumes:**
-        
+
          - all files in the subjects' raw folder
          - filename of schema "<s>_<e>_raw.txt"
-        
+
         """
         assert do in [True, False, 'ask']
 
@@ -274,11 +272,11 @@ class mne_experiment(object):
     def get(self, name, subject=None, experiment=None, analysis=None, root=None,
             match=True, mkdir=False):
         """
-        Retrieve a path. With match=True, '*' are expanded to match a file, 
-        and if there is not a unique match, an error is raised. With 
+        Retrieve a path. With match=True, '*' are expanded to match a file,
+        and if there is not a unique match, an error is raised. With
         mkdir=True, the directory containing the file is created if it does not
         exist.
-        
+
         name : str
             name (code) of the requested file
         subject : None | str
@@ -291,11 +289,11 @@ class mne_experiment(object):
             ... (currently unused)
         match : bool
             require that the file exists. If the path cotains '*', the path is
-            extended to the actual file. If not file is found, an IOError is 
+            extended to the actual file. If not file is found, an IOError is
             raised.
         mkdir : bool
             if the directory containing the file does not exist, create it
-                    
+
         """
         self.set(subject=subject, experiment=experiment, analysis=analysis,
                  match=match)
@@ -383,11 +381,11 @@ class mne_experiment(object):
     def iter_temp(self, temp, constants={}, values={}, prog=False):
         """
         Iterate through all paths conforming to a template given in ``temp``.
-        
+
         temp : str
             Name of a template in the mne_experiment.templates dictionary, or
             a path template with variables indicated as in ``'{var_name}'``
-        
+
         """
         # if the name is an existing template, retrieve it
         temp = self.get_template(temp)
@@ -412,7 +410,7 @@ class mne_experiment(object):
             the mne_experiment.var_values dictionary
         prog : bool | str
             Show a progress dialog; str for dialog title.
-        
+
         """
         # set constants
         constants['root'] = self.root
@@ -454,7 +452,7 @@ class mne_experiment(object):
     def iter_se(self, subject=None, experiment=None, analysis=None):
         """
         iterate through subject and experiment names
-        
+
         """
         subjects = self._subjects if subject is None else [subject]
         experiments = self._experiments if experiment is None else [experiment]
@@ -474,15 +472,15 @@ class mne_experiment(object):
     def load_events(self, subject=None, experiment=None,
                     proj=True, edf=True, raw=None):
         """OK 12/7/3
-        
-        Loads events from the corresponding raw file, adds the raw to the info 
-        dict. 
-        
+
+        Loads events from the corresponding raw file, adds the raw to the info
+        dict.
+
         proj : None | name
             load a projection file and ad it to the raw
         edf : bool
             Loads edf and add it to the info dict.
-        
+
         """
         self.set(subject=subject, experiment=experiment, raw=raw)
         raw_file = self.get('raw')
@@ -510,25 +508,25 @@ class mne_experiment(object):
     def make_proj_for_epochs(self, epochs, dest='{raw}_proj.fif', n_mag=5,
                              auto=False, save_plot=False):
         """
-        computes the first ``n_mag`` PCA components, plots them, and asks for 
+        computes the first ``n_mag`` PCA components, plots them, and asks for
         user input (a tuple) on which ones to save.
-        
+
         epochs : mne.Epochs
             epochs which should be used for the PCA
-        
+
         dest : str(path)
             path where to save the projections
-        
+
         n_mag : int
             number of components to compute
-        
+
         auto : False | tuple
             automaticelly reject certain components, but keep plot for double
             checking.
-        
+
         save_plot : False | str(path)
             target path to save the plot
-        
+
         """
         proj = mne.proj.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
 
@@ -560,7 +558,7 @@ class mne_experiment(object):
     def parse_dirs(self):
         """
         find subject and experiment names by looking through directory structure
-        
+
         """
         subjects = self._subjects = set()
         self._mri_subjects = mri_subjects = {}
@@ -610,21 +608,21 @@ class mne_experiment(object):
         """OK 12/8/12
         Copies all items matching a template from another root to the current
         root.
-        
+
         .. warning:: Implemented by creating a new instance of the same class with
-            ``src_root`` as root and calling its ``.push()`` method. 
+            ``src_root`` as root and calling its ``.push()`` method.
             This determines available templates and var_values.
-        
+
         src_root : str(path)
             root of the source experiment
         names : list of str
             list of template names to copy.
-            tested for 'rawfif' and 'log_sdir'. 
-            Should work for any template with an exact match; '*' is not 
-            implemented and will raise an error. 
-        **kwargs** : 
+            tested for 'rawfif' and 'log_sdir'.
+            Should work for any template with an exact match; '*' is not
+            implemented and will raise an error.
+        **kwargs** :
             see :py:meth:`push`
-        
+
         """
         e = self.__class__(src_root)
         e.push(self.root, names=names, **kwargs)
@@ -632,14 +630,14 @@ class mne_experiment(object):
     def push(self, dst_root, names=[], overwrite=False, missing='warn'):
         """OK 12/8/12
         Copy certain branches of the directory tree.
-        
+
         name : str | list of str
-            name(s) of the template(s) of the files that should be copied 
+            name(s) of the template(s) of the files that should be copied
         overwrite : bool
-            What to do if the target file already exists (overwrite it with the 
+            What to do if the target file already exists (overwrite it with the
             source file or keep it)
         missing : 'raise' | 'warn' | 'ignor'
-            What to do about missing source files(raise an error, print a 
+            What to do about missing source files(raise an error, print a
             warning, or ignore them)
 
         """
@@ -720,6 +718,7 @@ class mne_experiment(object):
 
             self.state['subject'] = subject
             self.state['mrisubject'] = self._mri_subjects.get(subject, None)
+
 
         if experiment is not None:
             if match and not (experiment in self._experiments) and not ('*' in experiment):
@@ -807,14 +806,14 @@ class mne_experiment(object):
     def sync(self, template, source=None, dest=None,
              subject=None, experiment=None, analysis=None, replace=False, v=1):
         """
-        copies all files corresponding to a ``template`` *from* the 
+        copies all files corresponding to a ``template`` *from* the
         ``source`` experiment, *to* the ``dest`` experiment.
-        
+
         template : str
             name of the template to copy
         replace : bool
             if the file already exists at the destination, replace it
-        
+
         """
         results = {} # {subject -> {experiment -> status}}
         experiments = set()
