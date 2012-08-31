@@ -2027,13 +2027,23 @@ class dataset(collections.OrderedDict):
                 out[cell] = self.subset(index, setname)
         return out
 
-    def compress(self, X, drop_empty=True, name='{name}', count='n'):
+    def compress(self, X, drop_empty=True, name='{name}', count='n', drop_bad=False):
         """
         Return a dataset with one case for each cell in X.
         
         drop_empty : True
-            Drops empty cells from the dataset. This is currently the only 
+            Drops empty cells in X from the dataset. This is currently the only
             option.
+
+        count : str
+            Add a variable with this name to the new dataset, containing the
+            number of cases in each cell in X.
+
+        drop_bad : bool
+            Drop bad items: silently drop any items for which compression
+            raises an error. This concerns primarily factors with non-unique
+            values for cells in X (if drop_bad is False, an error is raised
+            when such a factor is encountered)
 
         """
         if not drop_empty:
@@ -2046,7 +2056,13 @@ class dataset(collections.OrderedDict):
             ds[count] = var(x)
 
         for k in self:
-            ds[k] = self[k].compress(X)
+            try:
+                ds[k] = self[k].compress(X)
+            except:
+                if drop_bad:
+                    pass
+                else:
+                    raise
 
         return ds
 
