@@ -65,6 +65,8 @@ def Raw(path=None, proj=True, **kwargs):
     if not os.path.isfile(path):
         raise IOError("%r is not a file" % path)
 
+    if 'verbose' not in kwargs:
+        kwargs['verbose'] = False
     raw = mne.fiff.Raw(path, **kwargs)
 
     if proj:
