@@ -92,12 +92,14 @@ class stat(mpl_canvas.CanvasFrame):
             title = ct.Y.name
         super(stat, self).__init__(title=title, figsize=figsize, dpi=dpi)
 
+        self.axes = []
         if Xax is None:
 #            top = .9 # - bool(title) * .1
 #        plt.subplots_adjust(.1, .1, .95, top, .1, .4)
 #            ax = self.figure.add_axes([.1, .1, .8, .8])
             ax = self.figure.add_subplot(111)
-            _ax_stat(ax, ct, **kwargs)
+            self.axes.append(ax)
+            _ax_stat(ax, ct, title=title, **kwargs)
             if len(ct) < 2:
                 legend = False
         else:
@@ -110,6 +112,7 @@ class stat(mpl_canvas.CanvasFrame):
                     match = matchct.data[cell]
                 cct = celltable(ct.data[cell], X, match=match)
                 _ax_stat(ax, cct, title=_data.cellname(cell), ** kwargs)
+                self.axes.append(ax)
 
         if len(legend_h) > 1:
             self.figure.legend(legend_h.values(), legend_h.keys(), loc=legend)
