@@ -160,6 +160,7 @@ class mne_experiment(object):
                  # EEG
                  vhdr=os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp + '.vhdr'))),
                  eegfif=os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp, 'raw.fif'))),
+                 eegfilt=os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp, 'filt_raw.fif'))),
 
                  # BESA
                  besa_triggers=os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an, 'triggers.txt'))),
