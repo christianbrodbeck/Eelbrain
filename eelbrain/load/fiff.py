@@ -282,7 +282,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
         x = x[:, :, index]
         T = T[index]
     if mult != 1:
-        x = x * mult
+        x *= mult
 
     # read data properties
     props = {'proj': 'z root',
