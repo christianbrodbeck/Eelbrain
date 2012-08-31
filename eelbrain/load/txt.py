@@ -57,7 +57,7 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
         # read / create names
         if names == True:
             names = f.readline().split(delimiter)
-            names = [n.strip('"') for n in names]
+            names = [n.strip().strip('"') for n in names]
         
         lines = []
         for line in f:
