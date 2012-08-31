@@ -158,7 +158,7 @@ def _ax_stat(ax, ct, colors, legend_h={},
 
 
 class clusters(mpl_canvas.CanvasFrame):
-    def __init__(self, epochs, pmax=0.05, t=True,
+    def __init__(self, epochs, pmax=0.05, ptrend=0.1, t=True,
                  title=None, cm=_cm.jet,
                  width=6, height=3, frame=.1, dpi=90,
                  overlay=False):
@@ -200,7 +200,7 @@ class clusters(mpl_canvas.CanvasFrame):
 
             # color
             color = cm(i / N)
-            cax = _ax_clusters(ax, layers, color=color, pmax=pmax, t=t)
+            cax = _ax_clusters(ax, layers, color=color, pmax=pmax, ptrend=ptrend, t=t)
             self._caxes.append(cax)
 
         self.figure.tight_layout()
@@ -231,7 +231,8 @@ def _plt_uts(ax, layer, color=None, xdim='time'):
 
 
 class _ax_clusters:
-    def __init__(self, ax, layers, color=None, pmax=0.05, t=True, xdim='time'):
+    def __init__(self, ax, layers, color=None, pmax=0.05, ptrend=0.1,
+                 t=True, xdim='time'):
         Y = layers[0]
         if t is True:
             t = layers[0].properties.get('tF', None)
@@ -248,8 +249,9 @@ class _ax_clusters:
         self.xlim = (x[0], x[-1])
         self.clusters = layers[1:]
         self.cluster_hs = {}
-        self.plt_kwargs = dict(color=color, xdim=xdim, y=layers[0])
-        self.set_pmax(pmax=pmax)
+        self.sig_kwargs = dict(color=color, xdim=xdim, y=layers[0])
+        self.trend_kwargs = dict(color=(.7, .7, .7), xdim=xdim, y=layers[0])
+        self.set_pmax(pmax=pmax, ptrend=ptrend)
 
     def draw(self):
         ax = self.ax
@@ -257,7 +259,11 @@ class _ax_clusters:
         for c in self.clusters:
             if c.properties['p'] <= self.pmax:
                 if c not in self.cluster_hs:
-                    h = _plt_cluster(ax, c, **self.plt_kwargs)
+                    h = _plt_cluster(ax, c, **self.sig_kwargs)
+                    self.cluster_hs[c] = h
+            elif c.properties['p'] <= self.ptrend:
+                if c not in self.cluster_hs:
+                    h = _plt_cluster(ax, c, **self.trend_kwargs)
                     self.cluster_hs[c] = h
             else:
                 if c in self.cluster_hs:
@@ -267,8 +273,9 @@ class _ax_clusters:
         ax.set_xlim(*self.xlim)
         ax.set_ylim(bottom=0)
 
-    def set_pmax(self, pmax=0.05):
+    def set_pmax(self, pmax=0.05, ptrend=0.1):
         self.pmax = pmax
+        self.ptrend = ptrend
         self.draw()
 
 
