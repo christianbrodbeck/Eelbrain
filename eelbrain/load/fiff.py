@@ -26,6 +26,7 @@ __all__ = ['Raw', 'events', 'add_epochs', # basic pipeline
            'ds_2_evoked', 'evoked_2_stc', # get lists of mne objects
            'mne2ndvar', 'mne_events', 'mne_Raw', 'mne_Epochs', # get mne objects
            'sensor_net',
+           'brainvision_events_to_fiff',
            ]
 
 
@@ -321,6 +322,20 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
         return ds
     else:
         return epochs_var
+
+
+
+def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
+    """
+    ..Warning:
+        modifies the dataset ``ds`` in place
+    
+    """
+    ds[i_start] -= 1
+    if raw is None or isinstance(raw, basestring):
+        raw = Raw(raw, proj=proj)
+
+    ds.info['raw'] = raw
 
 
 
