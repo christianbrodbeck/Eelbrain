@@ -29,7 +29,7 @@ class stat(mpl_canvas.CanvasFrame):
     def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
                  sub=None, match=None, ds=None, Xax=None, ncol=3,
                  width=6, height=3, dpi=90, legend='upper right', title=True,
-                 ylabel=True, xlabel=True,
+                 ylabel=True, xlabel=True, invy=False,
                  xdim='time', cm=_cm.jet):
         """
     Plots statistics for a one-dimensional ndvar
@@ -62,6 +62,8 @@ class stat(mpl_canvas.CanvasFrame):
         matplotlib figure legend location argument
     title : str | True | False
         axes title; if ``True``, use ``var.name``
+    invy : bool
+        invert the y axis
 
         """
         if Xax is None:
@@ -86,7 +88,7 @@ class stat(mpl_canvas.CanvasFrame):
             colors = {cell:cm(i / N) for i, cell in enumerate(cells)}
 
         legend_h = {}
-        kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
+        kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim, invy=invy,
                       xlabel=xlabel, colors=colors, legend_h=legend_h)
 
         if title is True:
@@ -127,7 +129,7 @@ def _ax_stat(ax, ct, colors, legend_h={},
              dev=scipy.stats.sem, main=np.mean,
              sub=None, match=None, ds=None,
              figsize=(6, 3), dpi=90, legend='upper right', title=True, ylabel=True,
-             xdim='time', xlabel=True):
+             xdim='time', xlabel=True, invy=False):
 
     ax.x_fmt = "t = %.3f s"
 
@@ -155,9 +157,11 @@ def _ax_stat(ax, ct, colors, legend_h={},
 
     if ylabel is True:
         ylabel = ct.Y.properties.get('unit', None)
-
     if ylabel:
         ax.set_ylabel(ylabel)
+    if invy:
+        y0, y1 = ax.get_ylim()
+        ax.set_ylim(y1, y0)
 
 
 
