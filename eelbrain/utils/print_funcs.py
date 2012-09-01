@@ -8,21 +8,32 @@ Created on Feb 28, 2012
 '''
 
 
-def printdict(dictionary, w=100, fmt='%r'):
+def printdict(dictionary, w=100, fmt='%r', sort=True):
     """
     Prints only one key-value pair per line, hopefully a more readable
     representation for complex dictionaries. 
     
+    sort : bool
+        Sort keys
+
+
     TODO: multiline-values
     
     """
-    print strdict(dictionary, w=w, fmt=fmt)
+    print strdict(dictionary, w=w, fmt=fmt, sort=sort)
 
 
-def strdict(dictionary, w=100, fmt='%r'):
+def strdict(dictionary, w=100, fmt='%r', sort=True):
     items = []
     k_len = 0
-    for k, v in dictionary.iteritems():
+
+    if sort:
+        keys = sorted(dictionary)
+    else:
+        keys = dictionary.keys()
+
+    for k in keys:
+        v = dictionary[k]
         k = str(k) if isinstance(k, tuple) else fmt % k
         v = str(v) if isinstance(v, tuple) else fmt % v
         k_len = max(k_len, len(k))
