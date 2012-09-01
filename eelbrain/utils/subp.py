@@ -736,6 +736,20 @@ def do_inverse_operator(fwd_file, cov_file, inv_file='{cov}inv.fif',
         raise RuntimeError(os.linesep.join(["inv-file not created", err]))
 
 
+def mne_make_morph_maps(s_from, s_to, make_all=False, redo=False,
+                        subjects_dir=None):
+    cmd = [get_bin('mne', "mne_make_morph_maps"),
+           '--from', s_from,
+           '--to', s_to,
+           ]
+    if make_all:
+        cmd.append('--all')
+    if redo:
+        cmd.appen('--redo')
+    if subjects_dir:
+        os.environ['SUBJECTS_DIR'] = subjects_dir
+    _run(cmd)
+
 # freesurfer---
 
 def _fs_hemis(arg):
