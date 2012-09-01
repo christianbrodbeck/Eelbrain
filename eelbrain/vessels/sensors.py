@@ -27,6 +27,9 @@ sfp_path = os.path.abspath(sfp_path)
 
 class sensor_net(object):
     """
+    Class for representing topographic sensor locations.
+
+
     Transforms
     ----------
     
@@ -322,6 +325,12 @@ class sensor_net(object):
         return sensor_net(locs, names, name=name)
     
     def label2id(self, label):
+        """
+        Returns the index of the sensor with the given label. Raises a
+        KeyError if no sensor with that label exists or if several sensors with
+        that label exist.
+
+        """
         idxs = np.where(self.names == label)[0]
         if len(idxs) == 0:
             raise KeyError("No sensor named %r" % label)

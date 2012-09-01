@@ -26,6 +26,14 @@ __all__ = ['select_cases_butterfly', 'pca']
 
 
 class select_cases_butterfly(mpl_canvas.CanvasFrame):
+    """
+    Interfaces showing individual cases in an ndvar as butterfly plots, with
+    the option to interactively manipulate a boolean list (i.e., select cases).
+
+    LMB on any butterfly plot:
+        (de-)select this case
+
+    """
     def __init__(self, dataset, data='MEG', target='accept', nplots=(6,6), plotsize=(3,1.5),
                  mean=True, topo=True, ylim=None, aa=False, dpi=50):
         """
@@ -39,6 +47,15 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         dataset : dataset
             dataset on which to perform the selection.
         
+        topo : bool
+            Show a dynamically updated topographic plot at the bottom right
+
+        ylim : scalar
+            y-limit of the butterfly plots
+
+        aa : bool
+            antialiasing (matplolibt parameter)
+
         Example::
         
             >>> select_cases_butterfly(my_dataset)

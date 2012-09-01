@@ -553,7 +553,7 @@ def _run(cmd, v=None, cwd=None):
 def setup_mri(mri_sdir, ico=4):
     """
     Prepares an MRI for use in the mne-pipeline:
-     - creates symlinks in the bem directory
+     - creates symlinks for watershed files in the bem directory
      - runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
 
     The utility needs permission to access the MRI files. In case of a
@@ -561,6 +561,9 @@ def setup_mri(mri_sdir, ico=4):
     folder to set permissions appropriately::
 
         $ sudo chmod -R 7700 mri-folder
+
+    .. TODO:: check what steps have been completed based on existence of files and
+        resum from there
 
     """
     mri_dir, subject = os.path.split(mri_sdir)
