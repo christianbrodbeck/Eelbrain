@@ -35,7 +35,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
 
     """
     def __init__(self, dataset, data='MEG', target='accept', nplots=(6,6), plotsize=(3,1.5),
-                 mean=True, topo=True, ylim=None, aa=False, dpi=50):
+                 mean=True, topo=True, ylim=None, fill=True, aa=False, dpi=50):
         """
         Plots all cases in the collection segment and allows visual selection
         of cases. The selection can be retrieved through the get_selection 
@@ -52,6 +52,10 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
 
         ylim : scalar
             y-limit of the butterfly plots
+
+        fill : bool
+            Only show extrema in the butterfly plots, instead of all traces.
+            This is faster for data with many channels.
 
         aa : bool
             antialiasing (matplolibt parameter)
@@ -106,7 +110,7 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
                                     hspace=.5)
                 
     # compile plot kwargs:
-        self._bfly_kwargs = {'extrema': True}
+        self._bfly_kwargs = {'extrema': fill}
         if ylim is None:
             ylim = data.properties.get('ylim', None)
         if ylim:
