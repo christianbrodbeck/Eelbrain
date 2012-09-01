@@ -126,6 +126,10 @@ class CanvasFrame(wx.Frame):
         size = (figsize[0] * dpi, figsize[1] * dpi + 45)
         if parent is None:
             app = wx.GetApp()
+            if app is None:
+                err = ("This plot needs to be created from within a wxPython "
+                       "application.")
+                raise RuntimeError(err)
             parent = app.GetTopWindow()
         
         wx.Frame.__init__(self, parent, -1, title=title, size=size)
