@@ -124,7 +124,8 @@ class mne_experiment(object):
         t = dict(
                  # basic dir
                  meg_dir=meg_dir, # contains subject-name folders for MEG data
-                 mri_dir=mri_dir, # contains subject-name folders for MEG data
+                 meg_sdir=os.path.join(meg_dir, sub),
+                 mri_dir=mri_dir, # contains subject-name folders for MRI data
                  mri_sdir=os.path.join(mri_dir, mrisub),
                  raw_sdir=raw_dir,
                  log_sdir=os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp))),
@@ -153,7 +154,9 @@ class mne_experiment(object):
 
                  # mne's stc.save() requires stub filename and will add '-?h.stc'  
                  stc=os.path.join(mne_dir, '_'.join((exp, '{cell}'))),
+                 stc_morphed=os.path.join(mne_dir, '_'.join((exp, '{cell}_fsaverage'))),
                  label=os.path.join(mri_dir, mrisub, '{labeldir}', '{hemi}.%s.label' % an),
+                 morphmap=os.path.join(mri_dir, 'morph-maps', '{subject}-fsaverage-morph.fif'),
 
                  # EEG
                  vhdr=os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp + '.vhdr'))),
