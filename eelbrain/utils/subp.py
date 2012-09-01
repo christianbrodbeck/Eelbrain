@@ -739,14 +739,19 @@ def do_inverse_operator(fwd_file, cov_file, inv_file='{cov}inv.fif',
         raise RuntimeError(os.linesep.join(["inv-file not created", err]))
 
 
-def mne_make_morph_maps(s_from, s_to, make_all=False, redo=False,
-                        subjects_dir=None):
-    cmd = [get_bin('mne', "mne_make_morph_maps"),
-           '--from', s_from,
-           '--to', s_to,
-           ]
-    if make_all:
+def mne_make_morph_maps(s_to='fsaverage', s_from=None, redo=False, subjects_dir=None):
+    """
+    s_to, s_from : str | None
+        None -> all subejcts
+
+    """
+    cmd = [get_bin('mne', "mne_make_morph_maps")]
+    if not s_to or not s_from:
         cmd.append('--all')
+    if s_to:
+        cmd.extend(('--to', s_to))
+    if s_from:
+        cmd.extend(('--from', s_from))
     if redo:
         cmd.appen('--redo')
     if subjects_dir:
