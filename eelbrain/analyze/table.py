@@ -110,6 +110,7 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean]):
         test        0.2253   0.2844 
     
     """
+    Y = _data.asvar(Y)
     if x is None:
         ct = _structure.celltable(Y, y, sub=sub, match=match)
         
@@ -126,7 +127,7 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean]):
             data = ct.data[cell]
             table.cell(cell)
             for func in funcs:
-                table.cell(fmt % func(data))
+                table.cell(fmt % func(data.x))
     else:
         ct = _structure.celltable(Y, y%x, sub=sub, match=match)
         
@@ -167,7 +168,7 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean]):
                 
                 # cell
                 data = ct.data[a]
-                values = (f(data) for f in funcs)
+                values = (f(data.x) for f in funcs)
                 if fmt_once:
                     txt = fmt % values
                 else:
