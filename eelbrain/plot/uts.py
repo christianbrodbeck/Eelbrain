@@ -28,7 +28,8 @@ __hide__ = ['plt', 'division', 'celltable']
 class stat(mpl_canvas.CanvasFrame):
     def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
                  sub=None, match=None, ds=None, Xax=None, ncol=3,
-                 width=6, height=3, dpi=90, legend='upper right', title=True, ylabel=True,
+                 width=6, height=3, dpi=90, legend='upper right', title=True,
+                 ylabel=True, xlabel=True,
                  xdim='time', cm=_cm.jet):
         """
     Plots statistics for a one-dimensional ndvar
@@ -86,7 +87,7 @@ class stat(mpl_canvas.CanvasFrame):
 
         legend_h = {}
         kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
-                      colors=colors, legend_h=legend_h)
+                      xlabel=xlabel, colors=colors, legend_h=legend_h)
 
         if title is True:
             title = ct.Y.name
@@ -104,7 +105,7 @@ class stat(mpl_canvas.CanvasFrame):
                 legend = False
         else:
             for i, cell in enumerate(ct.cells):
-                kwargs['xlabel'] = True if i == len(ct) - 1 else False
+                kwargs['xlabel'] = xlabel if i == len(ct) - 1 else False
                 ax = self.figure.add_subplot(nrow, ncol, i + 1)
                 if X is not None:
                     X = Xct.data[cell]
@@ -114,7 +115,7 @@ class stat(mpl_canvas.CanvasFrame):
                 _ax_stat(ax, cct, title=_data.cellname(cell), ** kwargs)
                 self.axes.append(ax)
 
-        if len(legend_h) > 1:
+        if legend and len(legend_h) > 1:
             self.figure.legend(legend_h.values(), legend_h.keys(), loc=legend)
 
         self.figure.tight_layout()
