@@ -378,7 +378,7 @@ class mne_experiment(object):
 
         return temp
 
-    def iter_temp(self, temp, constants={}, values={}, prog=False):
+    def iter_temp(self, temp, constants={}, values={}, exclude={}, prog=False):
         """
         Iterate through all paths conforming to a template given in ``temp``.
 
@@ -395,11 +395,12 @@ class mne_experiment(object):
         variables = pattern.findall(temp)
 
         for state in self.iter_vars(variables, constants=constants,
-                                    values=values, prog=prog):
+                                    values=values, exclude=exclude, prog=prog):
             path = temp.format(**state)
             yield path
 
-    def iter_vars(self, variables, constants={}, values={}, prog=False):
+    def iter_vars(self, variables, constants={}, values={}, exclude={},
+                  prog=False):
         """
         variables : list
             variables which should be iterated
@@ -408,6 +409,8 @@ class mne_experiment(object):
         values : dict(name -> (list of values))
             variables with values to iterate in addition to, or in spite of
             the mne_experiment.var_values dictionary
+        exclude : dict(name -> (list of values))
+            values to exclude from the iteration
         prog : bool | str
             Show a progress dialog; str for dialog title.
 
@@ -418,8 +421,13 @@ class mne_experiment(object):
 
         variables = list(set(variables).difference(constants).union(values))
 
+        # gather possible values to iterate over
         var_values = self.var_values.copy()
         var_values.update(values)
+
+        # exclude values
+        for k in exclude:
+            var_values[k] = set(var_values[k]).difference(exclude[k])
 
         # pick out the variables to iterate, but drop excluded cases:
         v_lists = []
