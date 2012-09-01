@@ -117,19 +117,28 @@ def copy_text(text):
 
 
 
-def test_targetpath(path):
+def test_targetpath(path, cancel=True):
     """
     Returns True if path is a valid path to write to, False otherwise. If the
     directory does not exist, the user is asked whether it should be created.
     
+    cancel : bool
+        Add a cancel button. If clicked, a KeyboardInterrupt Exception is
+        raised.
+
     """
     if not path:
         return False
 
-    dirname = os.path.dirname(path)
+    dirname = os.path.abspath(os.path.dirname(path))
     if not os.path.exists(dirname):
         msg = ("The directory %r does not exist. Should it be created?" % dirname)
-        if ask("Create Directory?", msg):
+        answer = ask("Create Directory?", msg, cancel=cancel)
+        if answer:
             os.makedirs(dirname)
+        elif answer is None: # cancel
+            err = ("User canceled because the directory %r does not exist"
+                   % dirname)
+            raise KeyboardInterrupt(err)
 
     return os.path.exists(dirname)
