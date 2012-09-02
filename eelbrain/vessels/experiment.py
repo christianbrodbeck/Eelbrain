@@ -754,12 +754,7 @@ class mne_experiment(object):
 
     def set_stc_an(self, blc, method, ori):
         temp = '{blc}-{method}-{ori}'
-        if blc:
-            blc_name = 'blc'
-        else:
-            blc_name = 'noblc'
-
-        stc_an = temp.format(blc=blc_name, method=method, ori=ori)
+        stc_an = temp.format(blc=blc, method=method, ori=ori)
         self.state['stc_an'] = stc_an
 
     def summary(self, templates=['rawtxt', 'rawfif', 'fwd'], missing='-', link='>',
