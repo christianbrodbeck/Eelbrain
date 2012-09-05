@@ -710,6 +710,10 @@ class _effect_(object):
     def __mod__(self, other):
         return interaction((self, other))
 
+    def index(self, cell):
+        "``e.index(cell)`` returns an array of indices where e equals cell"
+        return np.nonzero(self == cell)[0]
+
 
 
 class factor(_effect_):
