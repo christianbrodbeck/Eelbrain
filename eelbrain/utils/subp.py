@@ -141,7 +141,7 @@ _sns_dir = __file__
 for i in xrange(2):
     _sns_dir = os.path.dirname(_sns_dir)
 _sns_dir = os.path.join(_sns_dir, 'Resources', 'sns')
-for name in ['NYU-nellab']:
+for name in ['NYU-nellab-2008', 'NYU-nellab-2010']:
     _sns_files[name] = os.path.join(_sns_dir, name + '.txt')
 
 
@@ -263,7 +263,7 @@ def kit2fiff(paths=dict(mrk=None,
                         hsp=None,
                         rawtxt=None,
                         rawfif=None),
-             sns='NYU-nellab',
+             sns='NYU-nellab-2010',
              sfreq=1000, lowpass=100, highpass=0,
              stim=xrange(168, 160, -1), stimthresh=2.5, add=None, #(188, 190), #xrange()
              aligntol=25, overwrite=False):
@@ -328,8 +328,8 @@ def kit2fiff(paths=dict(mrk=None,
     elif os.path.exists(sns):
         sns_file = sns
     else:
-        err = ("sns needs to the be name of a provided sns file (%s) ro a valid"
-               "path to an sns file" % ', '.join(map(repr, _sns_files)))
+        err = ("sns needs to the be the name of a buit-in sns file (%s) or a path"
+               "to an existing sns file" % ', '.join(map(repr, _sns_files)))
         raise IOError(err)
 
     # convert the marker file
