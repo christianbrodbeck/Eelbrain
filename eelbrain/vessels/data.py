@@ -1644,6 +1644,59 @@ class ndvar(object):
 
 
 
+class datalist(list):
+    """
+    list subclass that provides certain methods that allow
+    more comprehensive nclusion in a dataset.
+
+    """
+    def __getitem__(self, index):
+        if isinstance(index, (int, slice)):
+            return list.__getitem__(self, index)
+
+        index = np.array(index)
+        if issubclass(index.dtype.type, np.bool_):
+            N = len(self)
+            assert len(index) == N
+            return datalist(self[i] for i in xrange(N) if index[i])
+        elif issubclass(index.dtype.type, np.integer):
+            return dataset(self[i] for i in index)
+        else:
+            err = ("Unsupported type of index for datalist: %r" % index)
+            raise TypeError(err)
+
+    def compress(self, X, merge='mean'):
+        """
+        X: factor or interaction; returns a compressed factor with one value
+        for each cell in X.
+
+        merge : str
+            How to merge entries.
+            ``'mean'``: use sum(Y[1:], Y[0])
+
+        """
+        if len(X) != len(self):
+            err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
+            raise ValueError(err)
+
+        x = datalist()
+        for cell in X.cells:
+            x_cell = self[X == cell]
+            n = len(x_cell)
+            if n == 1:
+                x.append(x_cell)
+            elif n > 1:
+                if merge == 'mean':
+                    xc = reduce(lambda x, y: x + y, x_cell)
+                    xc /= n
+                else:
+                    raise ValueError("Invalid value for merge: %r" % merge)
+                x.append(xc)
+
+        return x
+
+
+
 class dataset(collections.OrderedDict):
     """
     A dataset is a dictionary that stores a collection of named variables 
