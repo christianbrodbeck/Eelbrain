@@ -93,7 +93,12 @@ class stat(mpl_canvas.CanvasFrame):
 
         if title is True:
             title = ct.Y.name
-        super(stat, self).__init__(title=title, figsize=figsize, dpi=dpi)
+
+        if isinstance(title, basestring):
+            win_title = title
+        else:
+            win_title = ct.Y.name
+        super(stat, self).__init__(title=win_title, figsize=figsize, dpi=dpi)
 
         self.axes = []
         if Xax is None:
