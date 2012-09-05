@@ -55,14 +55,14 @@ class DimensionMismatchError(Exception):
 
 def _effect_eye(n):
     """
-    Returns effect coding for n categories. E.g.:: 
-    
+    Returns effect coding for n categories. E.g.::
+
         >>> _effect_eye(4)
         array([[ 1,  0,  0],
                [ 0,  1,  0],
                [ 0,  0,  1],
                [-1, -1, -1]])
-    
+
     """
     X = np.empty((n, n - 1), dtype=np.int8)
     X[:n - 1] = np.eye(n - 1, dtype=np.int8)
@@ -80,10 +80,10 @@ def _effect_interaction(a, b):
 def cellname(cell, delim=' '):
     """
     Returns a consistent ``str`` representation for cells.
-    
+
     * for factor cells: the cell (str)
     * for interaction cell: delim.join(cell).
-     
+
     """
     if isinstance(cell, str):
         return cell
@@ -95,9 +95,9 @@ def cellname(cell, delim=' '):
 
 def rank(A, tol=1e-8):
     """
-    Rank of a matrix, from 
-    http://mail.scipy.org/pipermail/numpy-discussion/2008-February/031218.html 
-    
+    Rank of a matrix, from
+    http://mail.scipy.org/pipermail/numpy-discussion/2008-February/031218.html
+
     """
     s = np.linalg.svd(A, compute_uv=0)
     return np.sum(np.where(s > tol, 1, 0))
@@ -106,10 +106,10 @@ def rank(A, tol=1e-8):
 def isbalanced(X):
     """
     returns True if X is balanced, False otherwise.
-    
+
     X : categorial
         categorial model (factor or interaction)
-    
+
     """
     if ismodel(X):
         return all(isbalanced(e) for e in X.effects)
@@ -238,22 +238,22 @@ def cell_label(cell, delim=' '):
 
 def align(d1, d2, out='ds', i1='index', i2='index'):
     """
-    Aligns two data-objects d1 and d2 (i.e., case 0 of d1 should correspond to 
-    case 0 of d2 etc.). d1 is used as the basis for the case sequence. 
-    
-    If d1 and d2 are datasets, i1 and i2 can be keys for variables in d1 and 
+    Aligns two data-objects d1 and d2 (i.e., case 0 of d1 should correspond to
+    case 0 of d2 etc.). d1 is used as the basis for the case sequence.
+
+    If d1 and d2 are datasets, i1 and i2 can be keys for variables in d1 and
     d2. If d1 an d2 are other data objects, i1 and i2 have to be actual indices
     (array-like)
-    
+
     d1, d2 : data-object
         Two data objects which are to be aligned
     i1, i2 : str | array-like (dtype=int)
         Indexes for cases in d1 and d2.
     out : 'd' | 'index'
-        **'d'**: returns the two aligned data objects. **'index'**: returns two 
+        **'d'**: returns the two aligned data objects. **'index'**: returns two
         indices index1 and index2 which can be used to align the datasets with
-        ``ds1[index1]; ds2[index2]``. 
-    
+        ``ds1[index1]; ds2[index2]``.
+
     """
     i1 = asvar(i1, ds=d1)
     i2 = asvar(i2, ds=d2)
@@ -281,9 +281,9 @@ def align(d1, d2, out='ds', i1='index', i2='index'):
 
 def combine(items):
     """
-    combine a list of items of the same type into one item (dataset, var, 
+    combine a list of items of the same type into one item (dataset, var,
     factor or ndvar)
-    
+
     """
     item0 = items[0]
     if isdataset(item0):
@@ -356,24 +356,24 @@ class effect_list(list):
 class var(object):
     """
     Container for scalar data.
-        
-    While :py:class:`var` objects support a few basic operations in a 
-    :py:mod:`numpy`-like fashion (``+``, ``-``, ``*``, ``/``, ``//``), their 
-    :py:attr:`var.x` attribute provides access to the corresponding 
+
+    While :py:class:`var` objects support a few basic operations in a
+    :py:mod:`numpy`-like fashion (``+``, ``-``, ``*``, ``/``, ``//``), their
+    :py:attr:`var.x` attribute provides access to the corresponding
     :py:class:`numpy.array` which can be used for anything more complicated.
     :py:attr:`var.x` can be read and modified, but should not be replaced.
-    
+
     """
     _stype_ = "var"
     def __init__(self, x, name=None):
         """
         :initialization:
-        
-            x : array-like 
+
+            x : array-like
                 Data; is converted with ``np.asarray(x)``
             name : str | None
                 Name of the variable
-                        
+
         """
         x = np.asarray(x)
         if x.ndim > 1:
@@ -542,9 +542,9 @@ class var(object):
         scalar:
             returns var divided by other
         factor:
-            returns a separate slope for each level of the factor; needed for 
+            returns a separate slope for each level of the factor; needed for
             ANCOVA
-        
+
         """
         if np.isscalar(other):
             return var(self.x / other,
@@ -576,11 +576,11 @@ class var(object):
     def as_factor(self, name=None, labels='%r'):
         """
         convert the var into a factor
-        
+
         :arg name: if None, it will copy the var name
-        :arg labels: dictionary maping values->labels, or format string for 
+        :arg labels: dictionary maping values->labels, or format string for
             converting values into labels
-        
+
         """
         if name is None:
             name = self.name
@@ -605,9 +605,9 @@ class var(object):
 
     def compress(self, X, func=np.mean, name='{name}'):
         """
-        X: factor or interaction; returns a compressed factor with one value
-        for each cell in X.
-        
+        X: factor or interaction; returns a compressed var object with one
+        value for each cell in X.
+
         """
         if len(X) != len(self):
             err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
@@ -630,9 +630,9 @@ class var(object):
 
     def diff(self, X, v1, v2, match):
         """
-        subtracts X==v2 from X==v1; sorts values in ascending order according 
+        subtracts X==v2 from X==v1; sorts values in ascending order according
         to match
-        
+
         """
         raise NotImplementedError
         # FIXME: use celltable
@@ -650,8 +650,8 @@ class var(object):
     def index(self, *values):
         """
         v.index(*values) returns an array of indices of where v has one of
-        *values. 
-        
+        *values.
+
         """
         idx = []
         for v in values:
@@ -718,52 +718,52 @@ class _effect_(object):
 
 class factor(_effect_):
     """
-    Container for categorial data. 
-    
+    Container for categorial data.
+
     """
     _stype_ = "factor"
     def __init__(self, x, name=None, random=False, rep=1, tile=1,
                  labels={}, colors={}):
         """
-        x : Iterator 
+        x : Iterator
             Sequence of factor values (see the ``labels`` kwarg).
-        
+
         name : str
             name of the factor
-        
+
         random : bool
             treat factor as random factor (for ANOVA; default is False)
-            
+
         rep : int
-            like ``numpy.repeat()``: repeat each value in ``x`` ``rep`` times, 
+            like ``numpy.repeat()``: repeat each value in ``x`` ``rep`` times,
             e.g.::
-            
+
                 >>> factor(['in', 'out'], rep=3)
                 factor(['in', 'in', 'in', 'out', 'out', 'out'])
-        
-        
+
+
         tile : int
             like ``numpy.tile()``::
-            
+
                 >>> factor(['in', 'out'], tile=3)
                 factor(['in', 'out', 'in', 'out', 'in', 'out'])``
-        
-        
+
+
         labels : dict or None
             if provided, these labels are used to replace values in x when
-            constructing the labels dictionary. All labels for values of 
+            constructing the labels dictionary. All labels for values of
             x not in `labels` are constructed using ``str(value)``.
-            
+
         colors : dict {value: color, ...}
-            Provide a color for each value, which can be used by some plotting 
-            functions. Colors should be matplotlib-readable. Values can be 
+            Provide a color for each value, which can be used by some plotting
+            functions. Colors should be matplotlib-readable. Values can be
             values in x as well as labels.
-        
-        
+
+
         **Examples**
-        
+
         different ways to initialize a factor::
-        
+
             >>> factor(['in', 'in', 'in', 'out', 'out', 'out'])
             factor(['in', 'in', 'in', 'out', 'out', 'out'])
             >>> factor([1, 1, 1, 0, 0, 0], labels={1: 'in', 0: 'out'})
@@ -771,7 +771,7 @@ class factor(_effect_):
             >>> factor('iiiooo')
             factor(['i', 'i', 'i', 'o', 'o', 'o'])
 
-        
+
         """
         state = {'name': name, 'random': random}
         labels_ = state['labels'] = {} # {code -> label}
@@ -868,7 +868,7 @@ class factor(_effect_):
         """
         sub needs to be int or an array of bools of shape(self.x)
         this method is valid for factors and nonbasic effects
-        
+
         """
         if isvar(index):
             index = index.x
@@ -944,7 +944,7 @@ class factor(_effect_):
         """
         Create a nested effect. A factor A is nested in another factor B if
         each level of A only occurs together with one level of B.
-        
+
         """
         return nested_effect(self, other)
 
@@ -959,7 +959,7 @@ class factor(_effect_):
         """
         in: string or list of strings
         returns: list of values (codes) corresponding to the categories
-        
+
         """
         if isinstance(Y, basestring):
             if Y in self._codes:
@@ -1029,12 +1029,12 @@ class factor(_effect_):
         """
         :returns: a compressed :class:`factor` with one value for each cell in X
         :rtype: :class:`factor`
-        
+
         :arg X: cell definition
         :type X: factor or interaction
-        
+
         Raises an error if there are cells that contain more than one value.
-        
+
         """
         if len(X) != len(self):
             err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
@@ -1073,11 +1073,11 @@ class factor(_effect_):
         returns ``index`` to transform from the order of self to the order of
         ``other``. To guarantee exact matching, wach value can only occur once
         in self. Example::
-        
+
             >>> index = factor1.get_index_to_match(factor2)
             >>> all(factor1[index] == factor2)
             True
-        
+
         """
         assert self._labels == other._labels
         index = []
@@ -1092,13 +1092,13 @@ class factor(_effect_):
 
     def isany(self, *values):
         """
-        Returns a boolean array that is True where the factor matches 
+        Returns a boolean array that is True where the factor matches
         one of the ``values``::
-        
+
             >>> a = factor('aabbcc')
             >>> b.isany('b', 'c')
             array([False, False,  True,  True,  True,  True], dtype=bool)
-        
+
         """
         return self.isin(values)
 
@@ -1108,9 +1108,9 @@ class factor(_effect_):
 
     def isnot(self, *values):
         """
-        returns a boolean array that is True where the data does not equal any 
+        returns a boolean array that is True where the data does not equal any
         of the values
-        
+
         """
         is_not_v = [self.x != self._codes[v] for v in values]
         return np.all(is_not_v, axis=0)
@@ -1131,14 +1131,14 @@ class factor(_effect_):
     def project(self, target, name='{name}'):
         """
         Project the factor onto an index array ``target``:
-        
+
             >>> f = V.data.factor('abc')
             >>> f.as_labels()
             ['a', 'b', 'c']
             >>> fp = f.project([1,2,1,2,0,0])
             >>> fp.as_labels()
             ['b', 'c', 'b', 'c', 'a', 'a']
-        
+
         """
         if isvar(target):
             target = target.x
@@ -1155,7 +1155,7 @@ class factor(_effect_):
             cell name
         color : matplotlib compatible color
             color for cell
-        
+
         """
         if cell in self.cells:
             self._colors[cell] = color
@@ -1170,29 +1170,29 @@ class ndvar(object):
         """
         Arguments
         ---------
-        
-        For each argument, the example assumes you are importing 600 epochs of 
+
+        For each argument, the example assumes you are importing 600 epochs of
         EEG data for 80 time points from 32 sensors.
-        
+
         dims : tuple
             the dimensions characterizing the shape of each case. If present,
             ``'cases'`` is provided as a :py:class:`str`, and should always
-            occupy the first axis.  E.g., 
+            occupy the first axis.  E.g.,
             ``('case', var('time', range(-.2, .6, .01)), sensor_net)``.
-        
+
         x : array
-            The data, with axes corresponding to the ``dims`` argument. E.g., 
+            The data, with axes corresponding to the ``dims`` argument. E.g.,
             data with shape ``(600, 80, 32)``.
-        
+
         properties : dict
             data properties dictionary
-        
-        
+
+
          .. note::
             ``data`` and ``dims`` are stored without copying. A shallow
-            copy of ``properties`` is stored. Make sure the relevant objects 
+            copy of ``properties`` is stored. Make sure the relevant objects
             are not modified externally later.
-        
+
         """
         # check data shape
         dims = tuple(dims)
@@ -1392,19 +1392,19 @@ class ndvar(object):
 
     def compress(self, X, func=np.mean, name='{name}'):
         """
-        Return an ndvar with one case for each cell in ``X``. 
-        
+        Return an ndvar with one case for each cell in ``X``.
+
         X : categorial
             Categorial whose cells are used to compress the ndvar.
         func : function with axis argument
-            Function that is used to create a summary of the cases falling 
-            into each cell of X. The function needs to accept the data as 
-            first argument and ``axis`` as keyword-argument. Default is 
+            Function that is used to create a summary of the cases falling
+            into each cell of X. The function needs to accept the data as
+            first argument and ``axis`` as keyword-argument. Default is
             ``numpy.mean``.
         name : str
-            Name for the resulting ndvar. ``'{name}'`` is formatted to the 
-            current ndvar's ``.name``. 
-        
+            Name for the resulting ndvar. ``'{name}'`` is formatted to the
+            current ndvar's ``.name``.
+
         """
         if not self._case:
             raise DimensionMismatchError("%r has no case dimension" % self)
@@ -1453,14 +1453,14 @@ class ndvar(object):
 
     def get_data(self, dims):
         """
-        returns the data with a specific ordering of dimension as indicated in 
+        returns the data with a specific ordering of dimension as indicated in
         ``dims``.
-        
+
         dims : sequence of str and None
-            List of dimension names. The array that is returned will have axes 
+            List of dimension names. The array that is returned will have axes
             in this order. None can be used to increase the insert a dimension
             with size 1.
-        
+
         """
         if set(dims).difference([None]) != set(self.dimnames):
             err = "Requested dimensions %r from %r" % (dims, self)
@@ -1504,7 +1504,7 @@ class ndvar(object):
     def repeat(self, repeats, dim='case', name='{name}'):
         """
         Analogous to :py:func:`numpy.repeat`
-        
+
         """
         ax = self.get_axis(dim)
         x = self.x.repeat(repeats, axis=ax)
@@ -1521,29 +1521,29 @@ class ndvar(object):
     def summary(self, *dims, **regions):
         r"""
         Returns a new ndvar with specified dimensions collapsed.
-        
+
         .. warning::
-            Data is collapsed over the different dimensions in turn using the 
-            provided function with an axis argument. For certain functions 
+            Data is collapsed over the different dimensions in turn using the
+            provided function with an axis argument. For certain functions
             this is not equivalent to collapsing over several axes concurrently
             (e.g., np.var)
-        
+
         \*dims : int | str
-            dimensions specified are collapsed over their whole range.  
-        \*\*regions : 
-            If regions are specified through keyword-arguments, then only the 
+            dimensions specified are collapsed over their whole range.
+        \*\*regions :
+            If regions are specified through keyword-arguments, then only the
             data over the specified range is included. Use like .subdata()
             kwargs.
-        
-        
+
+
         **additional kwargs:**
-        
+
         func : callable
-            Function used to collapse the data. Needs to accept an "axis" 
+            Function used to collapse the data. Needs to accept an "axis"
             kwarg (default: np.mean)
         name : str
             default: "{func}({name})"
-        
+
         """
         func = regions.pop('func', self.properties.get('summary_func', np.mean))
         name = regions.pop('name', '{func}({name})')
@@ -1586,17 +1586,17 @@ class ndvar(object):
         returns an ndvar object with a subset of the current ndvar's data.
         The slice is specified using kwargs, with dimensions as keywords and
         indexes as values, e.g.::
-        
+
             >>> Y.subdata(time = 1)
-        
+
         returns a slice for time point 1 (second). For dimensions whose values
-        change monotonically, a tuple can be used to specify a window:: 
-        
+        change monotonically, a tuple can be used to specify a window::
+
             >>> Y.subdata(time = (.2, .6))
-            
-        returns a slice containing all values for times .2 seconds to .6 
+
+        returns a slice containing all values for times .2 seconds to .6
         seconds.
-        
+
         """
         properties = self.properties.copy()
         dims = list(self.dims)
@@ -1701,85 +1701,86 @@ class datalist(list):
 
 
 
+
 class dataset(collections.OrderedDict):
     """
-    A dataset is a dictionary that stores a collection of named variables 
-    (``var``, ``factor``, and ``ndvar`` objects) 
+    A dataset is a dictionary that stores a collection of named variables
+    (``var``, ``factor``, and ``ndvar`` objects)
     that describe the same underlying cases.
-    The dataset can be thought of as a data table in which each variable 
-    constitutes one column. 
-    Keys are enforced to be :py:class:`str` objects 
-    and should preferably correspond to the variable names. 
-    The dataset class inherits most of its behavior 
+    The dataset can be thought of as a data table in which each variable
+    constitutes one column.
+    Keys are enforced to be :py:class:`str` objects
+    and should preferably correspond to the variable names.
+    The dataset class inherits most of its behavior
     from its superclass :py:class:`collections.OrderedDict`:
-    
+
     - The dataset's length is the number of variables (the number of cases/rows
       is available in the :py:attr:`dataset.n_cases` attribute.
-      
+
     In addition, the dataset provides an interface for working with cases/rows:
-    
+
 
     **Accessing Data:**
-    
+
     Standard indexing with *strings* is used to access the contained var and
     factor objects. Nesting is possible:
-            
-    - ``ds['var1']`` --> ``var1``. 
+
+    - ``ds['var1']`` --> ``var1``.
     - ``ds['var1',]`` --> ``[var1]``.
     - ``ds['var1', 'var2']`` --> ``[var1, var2]``
-    
-    Standard indexing with *integers* can be used to retrieve a subset of cases 
+
+    Standard indexing with *integers* can be used to retrieve a subset of cases
     (rows):
-        
+
     - ``ds[1]``
     - ``ds[1:5]`` == ``ds[1,2,3,4]``
     - ``ds[1, 5, 6, 9]`` == ``ds[[1, 5, 6, 9]]``
 
     .. Note::
-        Case indexing is implemented by a call to the .subset() method, which 
+        Case indexing is implemented by a call to the .subset() method, which
         should probably be used preferably for anything but interactive table
-        inspection.  
-    
-    The ``.get_case()`` method or iteration over the dataset 
-    retrieve individual cases/rows as {name: value} dictionaries.  
-    
+        inspection.
+
+    The ``.get_case()`` method or iteration over the dataset
+    retrieve individual cases/rows as {name: value} dictionaries.
+
     """
     _stype_ = "dataset"
     def __init__(self, *items, **kwargs):
         """
-        Datasets can be initialize with data-objects, or with 
+        Datasets can be initialize with data-objects, or with
         ('name', data-object) tuples.::
 
             >>> ds = dataset(var1, var2)
             >>> ds = dataset(('v1', var1), ('v2', var2))
 
         The dataset stores the input items themselves, without making a copy().
-        
-        
+
+
         **Naming:**
-        
-        While var and factor objects themselves need not be named, they need 
-        to be named when added to a dataset. This can be done by a) adding a 
+
+        While var and factor objects themselves need not be named, they need
+        to be named when added to a dataset. This can be done by a) adding a
         name when initializing the dataset::
-        
+
             >>> ds = dataset(('v1', var1), ('v2', var2))
-        
+
         or b) by adding the var or factor witha key::
-        
+
             >>> ds['v3'] = var3
-        
-        If a var/factor that is added to a dataset does not have a name, the new 
-        key is automatically assigned to the var/factor's ``.name`` attribute. 
-        
-        
+
+        If a var/factor that is added to a dataset does not have a name, the new
+        key is automatically assigned to the var/factor's ``.name`` attribute.
+
+
         **optional kwargs:**
-        
+
         name : str
             name describing the dataset
         info : dict
-            info dictionary, can contain arbitrary entries and can be accessad 
-            as ``.info`` attribute after initialization. 
-                
+            info dictionary, can contain arbitrary entries and can be accessad
+            as ``.info`` attribute after initialization.
+
         """
         args = []
         for item in items:
@@ -1812,13 +1813,13 @@ class dataset(collections.OrderedDict):
     def __getitem__(self, name):
         """
         possible::
-        
+
             >>> ds[9]        (int) -> case
             >>> ds[9:12]     (slice) -> subset with those cases
             >>> ds[[9, 10, 11]]     (list) -> subset with those cases
             >>> ds['MEG1']  (strings) -> var
             >>> ds['MEG1', 'MEG2']  (list of strings) -> list of vars; can be nested!
-        
+
         """
         if isinstance(name, (int, slice)):
             return self.subset(name)
@@ -1928,14 +1929,14 @@ class dataset(collections.OrderedDict):
 
     def add(self, item, replace=False):
         """
-        ``ds.add(item)`` -> ``ds[item.name] = item`` 
-        
-        unless the dataset already contains a variable named item.name, in 
-        which case a KeyError is raised. In order to replace existing 
+        ``ds.add(item)`` -> ``ds[item.name] = item``
+
+        unless the dataset already contains a variable named item.name, in
+        which case a KeyError is raised. In order to replace existing
         variables, set ``replace`` to True::
-        
+
             >>> ds.add(item, True)
-        
+
         """
         if not isdataobject(item):
             raise ValueError("Not a valid data-object: %r" % item)
@@ -1947,20 +1948,20 @@ class dataset(collections.OrderedDict):
     def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, sort=False,
                  header=True, midrule=False, count=False):
         r"""
-        returns a fmtxt.Table containing all vars and factors in the dataset 
+        returns a fmtxt.Table containing all vars and factors in the dataset
         (ndvars are skipped). Can be used for exporting in different formats
         such as csv.
-        
+
         Arguments
         ---------
-        
+
         cases : int
-            number of cases to include (0 includes all; negative number works 
+            number of cases to include (0 includes all; negative number works
             like negative indexing)
         count : bool
             Add an initial column containing the case number
         fmt : str
-            format string for numerical variables. Hast to be a valid 
+            format string for numerical variables. Hast to be a valid
             `format string,
             <http://docs.python.org/library/stdtypes.html#string-formatting>`
         f_fmt : str
@@ -1972,8 +1973,8 @@ class dataset(collections.OrderedDict):
         midrule : bool
             print a midrule after table header
         sort : bool
-            Sort the columns alphabetically 
-        
+            Sort the columns alphabetically
+
         """
         if cases < 1:
             cases = self.N + cases
@@ -2016,31 +2017,31 @@ class dataset(collections.OrderedDict):
 
     def export(self, fn=None, fmt='%.10g', header=True, sort=False):
         """
-        Writes the dataset to a file. The file extesion is used to determine 
+        Writes the dataset to a file. The file extesion is used to determine
         the format:
-        
+
         - '.txt' or '.tsv':  tsv
         - '.tex':  as TeX table
         - '.pickled':  use pickle.dump
         - a filename with any other extension is exported as tsv
-        
-        Text and tex export use the :py:meth:`.as_table` method. You can use 
-        :py:meth:`.as_table` directly for more control over the output. 
-        
-        
+
+        Text and tex export use the :py:meth:`.as_table` method. You can use
+        :py:meth:`.as_table` directly for more control over the output.
+
+
         **Arguments:**
-        
+
         fn : str(path) | None
-            target file name (if ``None`` is supplied, a save file dialog is 
-            displayed). the extesion is used to determine the format (see 
+            target file name (if ``None`` is supplied, a save file dialog is
+            displayed). the extesion is used to determine the format (see
             above)
         fmt : format str
             format for scalar values
         header : bool
             write the variables' names in the first line
         sort : bool
-            Sort variables alphabetically according to their name 
-        
+            Sort variables alphabetically according to their name
+
         """
         if not isinstance(fn, basestring):
             fn = ui.ask_saveas(ext=[('txt', "Tab-separated values"),
@@ -2069,9 +2070,9 @@ class dataset(collections.OrderedDict):
 
     def get_subsets_by(self, X, exclude=[], name='{name}[{cell}]'):
         """
-        splits the dataset by the cells of a factor and 
+        splits the dataset by the cells of a factor and
         returns as dictionary of subsets.
-        
+
         """
         if isinstance(X, basestring):
             X = self[X]
@@ -2087,7 +2088,7 @@ class dataset(collections.OrderedDict):
     def compress(self, X, drop_empty=True, name='{name}', count='n', drop_bad=False):
         """
         Return a dataset with one case for each cell in X.
-        
+
         drop_empty : True
             Drops empty cells in X from the dataset. This is currently the only
             option.
@@ -2153,9 +2154,9 @@ class dataset(collections.OrderedDict):
 
     def repeat(self, n, name='{name}'):
         """
-        Analogous to :py:fun:`numpy.repeat`. Returns a new dataset with each 
+        Analogous to :py:fun:`numpy.repeat`. Returns a new dataset with each
         row repeated ``n`` times.
-         
+
         """
         ds = dataset(name=name.format(name=self.name))
         for k, v in self.iteritems():
@@ -2168,9 +2169,9 @@ class dataset(collections.OrderedDict):
 
     def subset(self, index, name='{name}'):
         """
-        Returns a dataset containing only the subset of cases selected by 
-        `index`. 
-        
+        Returns a dataset containing only the subset of cases selected by
+        `index`.
+
         index : array | str
             index selecting a subset of epochs. Can be an valid numpy index or
             the name of a variable in dataset.
@@ -2179,7 +2180,7 @@ class dataset(collections.OrderedDict):
             basic slicing (using slices) returns a view.
         name : str
             name for the new dataset
-        
+
         """
         if isinstance(index, int):
             index = slice(index, index + 1)
@@ -2203,15 +2204,15 @@ class dataset(collections.OrderedDict):
 class interaction(_effect_):
     _stype_ = "interaction"
     """
-    
+
     attributes
     ----------
-    factors : 
+    factors :
         list of all factors (i.e. nonbasic effects are broken
         up into factors)
     base :
-        all effects 
-    
+        all effects
+
     """
     def __init__(self, base, beta_labels=None):
         """
@@ -2329,7 +2330,7 @@ class interaction(_effect_):
 class diff(object):
     """
     helper to create difference values for correlation.
-    
+
     """
     def __init__(self, X, c1, c2, match, sub=None):
         """
@@ -2337,7 +2338,7 @@ class diff(object):
         c1: category 1
         c2: category 2
         match: factor matching values between categories
-        
+
         """
         raise NotImplementedError
         # FIXME: use celltable
@@ -2389,9 +2390,9 @@ class diff(object):
 
 def var_from_dict(name, base, values_dict, default=0):
     """
-    Creates a variable containing a value defined in values_dict for each 
+    Creates a variable containing a value defined in values_dict for each
     category in key_factor.
-    
+
     """
     x = np.empty(len(base))
     x.fill(default)
@@ -2412,12 +2413,12 @@ def var_from_apply(source_var, function, apply_to_array=True):
 
 def box_cox_transform(X, p, name=True):
     """
-    :returns: a variable with the Box-Cox transform applied to X. With p==0, 
+    :returns: a variable with the Box-Cox transform applied to X. With p==0,
         this is the log of X; otherwise (X**p - 1) / p
-    
+
     :arg var X: Source variable
     :arg float p: Parameter for Box-Cox transform
-    
+
     """
     if isvar(X):
         if name is True:
@@ -2440,13 +2441,13 @@ def split(Y, n=2, name='{name}_{split}'):
     """
     Returns a factor splitting Y in n categories with equal number of cases
     (e.g. n=2 for a median split)
-    
+
     Y : array-like
         variable to split
     n : int
         number of categories
-    name : str | 
-    
+    name : str |
+
     """
     if isinstance(Y, var):
         y = Y.x
@@ -2567,25 +2568,25 @@ class nonbasic_effect(object):
 class model(object):
     """
     stores a list of effects which constitute a model for an ANOVA.
-    
+
     a model's data is exhausted by its. .effects list; all the rest are
     @properties.
-    
+
     """
     _stype_ = "model"
     def __init__(self, *x):
         """
         returns a model based on the effects in *x
-        
-        
+
+
         Parameters
         ----------
-        
+
         *x : factors | effects | models
-            a list of factors and secondary effects contained in the model. 
+            a list of factors and secondary effects contained in the model.
             Can also contain models, in which case all the models' effects
-            will be added. 
-    
+            will be added.
+
         """
         if len(x) == 0:
             raise ValueError("model needs to be initialized with effects")
@@ -2652,7 +2653,7 @@ class model(object):
     def sorted(self):
         """
         returns sorted model, interactions last
-         
+
         """
         out = []
         i = 1
@@ -2686,9 +2687,9 @@ class model(object):
         """
         :returns: the full model as a table.
         :rtype: :class:`fmtxt.Table`
-        
+
         :arg cases: maximum number of cases (lines) to display.
-         
+
         """
         full_model = self.full
         if cases == 'all':
