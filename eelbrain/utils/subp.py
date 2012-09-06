@@ -268,7 +268,7 @@ def kit2fiff(paths=dict(mrk=None,
              sns='NYU-nellab-2010',
              sfreq=1000, lowpass=100, highpass=0,
              stim=xrange(168, 160, -1), stimthresh=2.5, add=None, #(188, 190), #xrange()
-             aligntol=25, overwrite=False):
+             aligntol=5, overwrite=False):
     """
     Calls the ``mne_kit2fiff`` binary which reads multiple input files and
     combines them into a fiff file. Implemented after Gwyneth's Manual; for
@@ -312,7 +312,7 @@ def kit2fiff(paths=dict(mrk=None,
         reconstructs the values sent through psychtoolbox.
 
     aligntol : scalar
-        Alignment tolerance for coregistration
+        Alignment tolerance for coregistration [mm]
 
     overwrite : bool
         Automatically overwrite the target fiff file if it already exists.

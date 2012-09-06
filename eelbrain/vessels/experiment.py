@@ -208,7 +208,7 @@ class mne_experiment(object):
                     label += mne.read_label(path)
                 label.save(tgt)
 
-    def do_kit2fiff(self, do='ask', aligntol=xrange(15, 40, 5), redo=False):
+    def do_kit2fiff(self, do='ask', aligntol=xrange(5, 40, 5), redo=False):
         """OK 12/7/2
         find any raw txt files that have not been converted
 
@@ -246,7 +246,9 @@ class mne_experiment(object):
         if do:
             aligntols = {}
             failed = []
+            prog = ui.progress_monitor(len(raw_txt), "kit2fiff", "")
             for subject, experiment, fname in raw_txt:
+                prog.message(subject + ' ' + experiment)
                 self.set(subject=subject, experiment=experiment)
                 key = '_'.join((subject, experiment))
                 for at in aligntol:
@@ -261,6 +263,7 @@ class mne_experiment(object):
                             failed.append(fname)
                     else:
                         break
+                prog.advance()
 
             print aligntols
 
