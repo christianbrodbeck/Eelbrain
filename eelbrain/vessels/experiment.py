@@ -136,7 +136,7 @@ class mne_experiment(object):
                  hsp=os.path.join(raw_dir, sub + '_HS.hsp'),
                  rawtxt=os.path.join(raw_dir, '_'.join((sub, exp, '*raw.txt'))),
                  raw_raw=os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
-                 trans=os.path.join(raw_dir, '_'.join((sub, exp, 'raw-trans.fif'))), # mne p. 196
+                 trans=os.path.join(raw_dir, '_'.join((sub, 'trans.fif'))), # mne p. 196
 
                  # eye-tracker
                  edf=os.path.join(log_dir, '*.edf'),
