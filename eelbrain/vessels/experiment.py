@@ -25,6 +25,7 @@ from eelbrain.utils import subp
 from eelbrain import load
 from eelbrain import plot
 from eelbrain.vessels.data import ndvar, cellname
+from eelbrain.utils.print_funcs import printlist
 
 
 __all__ = ['mne_experiment']
@@ -682,6 +683,20 @@ class mne_experiment(object):
                     print "Skipping (missing): %r" % src
                 elif missing == 'raise':
                     raise IOError("Missing: %r" % src)
+
+    def rm(self, temp, constants={}, values={}, exclude={}):
+        files = []
+        for temp in self.iter_temp(temp, constants=constants, values=values,
+                                   exclude=exclude):
+            if os.path.exists(temp):
+                files.append(temp)
+        if files:
+            printlist(files)
+            if raw_input("Delete (confirm with 'yes')? ") == 'yes':
+                for path in files:
+                    os.remove(path)
+        else:
+            print "No files found for %r" % temp
 
     def run_mne_analyze(self, subject=None, modal=False):
         mri_dir = self.get('mri_dir')
