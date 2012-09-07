@@ -53,10 +53,10 @@ kwargs = dict(
                                   'scipy',
                                   'numpy',
                                   'docutils',
-                                  'wxPython',
+#                                  'wxPython',
+# Does not install properly from pypi (http://stackoverflow.com/q/477573/166700)
                                   ],
-#                                  ['tex', 'bioread'], # optional
-              package_data = {'eelbrain': ['Resources/sns/*.txt']}
+              package_data={'eelbrain': ['Resources/sns/*.txt']}
               )
 
 # py2app -----------------------------------------------------------------------

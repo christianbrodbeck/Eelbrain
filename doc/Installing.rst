@@ -3,20 +3,14 @@
 Installing Eelbrain
 ===================
 
-Eelbrain is a pure Python project and uses `Distribute 
-<http://packages.python.org/distribute/setuptools.html>`_. 
-Since Eelbrain is still under development, it is not on the Python Packaging 
-index yet. In order to run Eelbrain, 
+Eelbrain is a pure Python project and uses 
+`Distribute <http://packages.python.org/distribute/setuptools.html>`_, 
+so required dependencies are automatically installed from the Python Package
+Index. Since Eelbrain is still under development, it is not on the Python 
+Package Index yet. In order to run Eelbrain, 
 
-#.  Depending on your purpose, install :ref:`optional dependencies <dependencies>`
-
-    .. warning::
-        At least under OS X, it seems that wxPython can not be automatically 
-        installed by distutils. Unless it is already installed on your system 
-        (e.g. through `EPD <http://enthought.com/products/epd.php>`_), wxPython
-        has to be installed manually with an installer
-        from `here <http://www.wxpython.org/download.php>`_.
-
+#.  Depending on your purpose, install :ref:`optional dependencies 
+    <dependencies>`
 #.  :ref:`Obtain the Eelbrian source code <obtain-source>`
 #.  Install and run Eelbrain in one of those ways:
 
@@ -32,6 +26,12 @@ Optional Dependencies
 
 The following modules provide additional functionality if they are installed:
     
+* `wxPython <http://www.wxpython.org>`_ 
+  for using the GUI based on pyshell.
+  It `seems <http://stackoverflow.com/q/477573/166700>`_ that currently 
+  wxPython can not be installed through distutils. 
+  Installers are provided on the
+  `here <http://www.wxpython.org/download.php>`_. 
 * `mne <https://github.com/mne-tools/mne-python>`_
 * `tex <http://pypi.python.org/pypi/tex>`_ Enables exporting tables as pdf 
   (also requires a working `LaTeX <http://www.latex-project.org/>`_ installation)
