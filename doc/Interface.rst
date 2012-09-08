@@ -177,3 +177,29 @@ dataDir contains a Python script named ``'startup'`` (note: no extension), this
 script is executed every time the shell starts up (this is a feature of the
 :py:class:`wx.py.shell.ShellFrame <http://www.wxpython.org/docs/api/wx.py.shell.ShellFrame-class.html>`). 
 
+
+Editor
+------
+
+Executing Scripts
+^^^^^^^^^^^^^^^^^
+
+By default, scripts are executed in the global namespace of the shell. That 
+means, an variables the script defines will be replaced in the shell. E.g.,
+you type ``a=1`` in the shell, then run a script that includes a line ``a=2``,
+and then inspect the value of ``a`` again in the shell, it will be ``2``.
+
+This execution mode can be changed using the |exec-mode-public| toggle button.
+When the button is in |exec-mode-private| mode, the script will be executed in 
+a separate namespace and will not affect any variables defined in the shell
+(it will also not have access to any of the variables in the shell, so e.g. all
+required modules need to be imported in the script)
+
+.. |exec-mode-private| image:: ../../icons/actions/terminal-off.png
+.. |exec-mode-public| image:: ../../icons/actions/terminal-on.png
+
+When any part of a script is executed, and the script is associated with a path
+(i.e., has been loaded or saved), the current directory is automatically set to 
+the folder containing the script before the script is executed. 
+
+.. TODO: Toolbar buttons:

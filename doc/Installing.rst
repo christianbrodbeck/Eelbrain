@@ -30,7 +30,7 @@ The following modules provide additional functionality if they are installed:
   for using the GUI based on pyshell.
   It `seems <http://stackoverflow.com/q/477573/166700>`_ that currently 
   wxPython can not be installed through distutils. 
-  Installers are provided on the
+  Installers are provided
   `here <http://www.wxpython.org/download.php>`_. 
 * `mne <https://github.com/mne-tools/mne-python>`_
 * `tex <http://pypi.python.org/pypi/tex>`_ Enables exporting tables as pdf 
