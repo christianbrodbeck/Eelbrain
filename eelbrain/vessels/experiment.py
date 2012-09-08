@@ -48,6 +48,19 @@ class Labels(object):
 
 
 class mne_experiment(object):
+    """
+
+    Option Attributes
+    -----------------
+
+    auto_launch_mne : bool | None
+        If the requested file does not exist, open mne so the user can
+        create it. With
+        ``None``, the application asks each time.
+        Currently affects only "trans" files.
+
+    """
+    _fmt_pattern = re.compile('\{(\w+)\}')
     def __init__(self, root=None,
                  subject=None, experiment=None, analysis=None,
                  kit2fiff_args=_kit2fiff_args):
@@ -69,18 +82,11 @@ class mne_experiment(object):
             root = ui.ask_dir("Select Root Directory", msg, True)
 
         # settings
+        self.root = root
         self._kit2fiff_args = kit2fiff_args
         self.auto_launch_mne = True
-        """bool | None
-        If the requested file does not exist, make it if possible. With
-        ``None``, the application asks each time. Currently affects only
-        the "trans" file.
-        """
 
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
-
-        # templates ---
-        self.templates = self.get_templates()
 
         # dictionaries ---
         self.edf_use = defaultdict(lambda: ['ESACC', 'EBLINK'])
@@ -88,86 +94,66 @@ class mne_experiment(object):
 
 
         # find experiment data structure
+        self.state = self.get_templates()
         self.var_values = {'hemi': ('lh', 'rh')}
         self.exclude = {}
-        self.root = root
-        self.state = {'root': root,
-                      'raw': 'raw_raw',
-                      'labeldir': 'label',
-                      'hemi': 'lh'}
-        self.parse_dirs()
 
-        mri_dir = self.get('mri_dir')
-        lbl_dir = os.path.join(mri_dir, 'fsaverage', 'label', 'aparc')
-        if os.path.exists(lbl_dir):
-            self.lbl = Labels(lbl_dir)
+        self.set(root=root, raw='{raw_raw}', labeldir='label', hemi='lh')
+        self.parse_dirs()
 
         # store current values
         self.set(subject=subject, experiment=experiment, analysis=analysis)
 
     def get_templates(self):
-        # path elements
-        root = '{root}' # the experiment root
-        sub = '{subject}'
-        mrisub = '{mrisubject}'
-        exp = '{experiment}'
-        an = '{analysis}'
-        raw = '{raw}' # raw placeholder (replaced with the raw path or state['raw']) default: 'raw_raw'
-        fwd_an = '{fwd_an}' # forward solution description
-        stc_an = '{stc_an}'
+        t = {
+             # basic dir
+             'meg_dir': os.path.join('{root}', 'meg'), # contains subject-name folders for MEG data
+             'meg_sdir': os.path.join('{meg_dir}', '{subject}'),
+             'mri_dir': os.path.join('{root}', 'mri'), # contains subject-name folders for MRI data
+             'mri_sdir': os.path.join('{mri_dir}', '{mrisubject}'),
+             'raw_sdir': os.path.join('{meg_sdir}', 'raw'),
+             'eeg_sdir': os.path.join('{meg_dir}', '{subject}', 'raw_eeg'),
+             'log_sdir': os.path.join('{meg_sdir}', 'logs', '{subject}_{experiment}'),
 
-        meg_dir = os.path.join(root, 'meg')
-        mri_dir = os.path.join(root, 'mri')
-        raw_dir = os.path.join(meg_dir, sub, 'raw')
-        mne_dir = os.path.join(meg_dir, sub, '_'.join(('mne', fwd_an, stc_an)))
-        log_dir = os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp)))
+             # raw
+             'mrk': os.path.join('{raw_sdir}', '{subject}_{experiment}_marker.txt'),
+             'elp': os.path.join('{raw_sdir}', '{subject}_HS.elp'),
+             'hsp': os.path.join('{raw_sdir}', '{subject}_HS.hsp'),
+             'rawtxt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
+             'raw_base': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
+             'raw_raw': os.path.join('{raw_base}_raw.fif'),
+             'trans': os.path.join('{raw_sdir}', '{subject}_trans.fif'), # mne p. 196
 
-        t = dict(
-                 # basic dir
-                 meg_dir=meg_dir, # contains subject-name folders for MEG data
-                 meg_sdir=os.path.join(meg_dir, sub),
-                 mri_dir=mri_dir, # contains subject-name folders for MRI data
-                 mri_sdir=os.path.join(mri_dir, mrisub),
-                 raw_sdir=raw_dir,
-                 log_sdir=os.path.join(meg_dir, sub, 'logs', '_'.join((sub, exp))),
+             # eye-tracker
+             'edf': os.path.join('{log_sdir}', '*.edf'),
 
-                 # raw
-                 mrk=os.path.join(raw_dir, '_'.join((sub, exp, 'marker.txt'))),
-                 elp=os.path.join(raw_dir, sub + '_HS.elp'),
-                 hsp=os.path.join(raw_dir, sub + '_HS.hsp'),
-                 rawtxt=os.path.join(raw_dir, '_'.join((sub, exp, '*raw.txt'))),
-                 raw_raw=os.path.join(raw_dir, '_'.join((sub, exp, 'raw.fif'))),
-                 trans=os.path.join(raw_dir, '_'.join((sub, 'trans.fif'))), # mne p. 196
+             # mne raw-derivatives analysis
+             'proj': '{raw}_{analysis}-proj.fif',
+             'cov': '{raw}_{fwd_an}-cov.fif',
+             'fwd': '{raw}_{fwd_an}-fwd.fif',
 
-                 # eye-tracker
-                 edf=os.path.join(log_dir, '*.edf'),
+             # fwd model
+             'bem': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-5120-bem-sol.fif'),
+             'src': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-ico-4-src.fif'),
 
-                 # mne raw-derivatives analysis
-                 proj='_'.join((raw, an + '-proj.fif')),
-                 cov='_'.join((raw, fwd_an + '-cov.fif')),
-                 fwd='_'.join((raw, fwd_an + '-fwd.fif')),
+            # !! these would invalidate the s_e_* pattern with a third _
 
-                 # fwd model
-                 bem=os.path.join(mri_dir, mrisub, 'bem', mrisub + '-5120-bem-sol.fif'),
-                 src=os.path.join(mri_dir, mrisub, 'bem', mrisub + '-ico-4-src.fif'),
+             # mne's stc.save() requires stub filename and will add '-?h.stc'  
+             'mne_dir': os.path.join('{meg_sdir}', 'mne_{fwd_an}_{stc_an}'),
+             'stc': os.path.join('{mne_dir}', '{experiment}_{cell}'),
+             'stc_morphed': os.path.join('{mne_dir}', '{experiment}_{cell}_fsaverage'),
+             'label': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{analysis}.label'),
+             'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-fsaverage-morph.fif'),
 
-                # !! these would invalidate the s_e_* pattern with a third _
+             # EEG
+             'vhdr': os.path.join('{eeg_sdir}', '{subject}_{experiment}.vhdr'),
+             'eegfif': os.path.join('{eeg_sdir}', '{subject}_{experiment}_raw.fif'),
+             'eegfilt': os.path.join('{eeg_sdir}', '{subject}_{experiment}_filt_raw.fif'),
 
-                 # mne's stc.save() requires stub filename and will add '-?h.stc'  
-                 stc=os.path.join(mne_dir, '_'.join((exp, '{cell}'))),
-                 stc_morphed=os.path.join(mne_dir, '_'.join((exp, '{cell}_fsaverage'))),
-                 label=os.path.join(mri_dir, mrisub, '{labeldir}', '{hemi}.%s.label' % an),
-                 morphmap=os.path.join(mri_dir, 'morph-maps', '{subject}-fsaverage-morph.fif'),
-
-                 # EEG
-                 vhdr=os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp + '.vhdr'))),
-                 eegfif=os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp, 'raw.fif'))),
-                 eegfilt=os.path.join(meg_dir, sub, 'raw_eeg', '_'.join((sub, exp, 'filt_raw.fif'))),
-
-                 # BESA
-                 besa_triggers=os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an, 'triggers.txt'))),
-                 besa_evt=os.path.join(meg_dir, sub, 'besa', '_'.join((sub, exp, an + '.evt'))),
-                 )
+             # BESA
+             'besa_triggers': os.path.join('{meg_sdir}', 'besa', '{subject}_{experiment}_{analysis}_triggers.txt'),
+             'besa_evt': os.path.join('{meg_sdir}', 'besa', '{subject}_{experiment}_{analysis}.evt'),
+             }
 
         return t
 
@@ -231,7 +217,7 @@ class mne_experiment(object):
             fnames = fnmatch.filter(os.listdir(tdir), tname)
             for fname in fnames:
                 fs, fexp, _ = fname.split('_', 2)
-                fifpath = self.get('rawfif', subject=fs, experiment=fexp, match=False)
+                fifpath = self.get('raw_raw', subject=fs, experiment=fexp, match=False)
                 if redo or not os.path.exists(fifpath):
                     raw_txt.append((subject, fexp, fname))
 
@@ -276,10 +262,30 @@ class mne_experiment(object):
         else:
             return raw_txt
 
-    def get(self, name, subject=None, experiment=None, analysis=None, root=None,
-            match=True, mkdir=False):
+    def format(self, temp, vmatch=True, **kwargs):
         """
-        Retrieve a path. With match=True, '*' are expanded to match a file,
+        Returns the template temp formatted with current values. Formatting
+        retrieves values from self.state and self.templates iteratively
+
+        TODO: finish
+
+        """
+        self.set(match=vmatch, **kwargs)
+
+        while True:
+            variables = self._fmt_pattern.findall(temp)
+            if variables:
+                temp = temp.format(**self.state)
+            else:
+                break
+
+        path = os.path.expanduser(temp)
+        return path
+
+    def get(self, temp, fmatch=True, vmatch=True, match=True, mkdir=False, **kwargs):
+        """
+        Retrieve a formatted path by template name.
+        With match=True, '*' are expanded to match a file,
         and if there is not a unique match, an error is raised. With
         mkdir=True, the directory containing the file is created if it does not
         exist.
@@ -302,36 +308,14 @@ class mne_experiment(object):
             if the directory containing the file does not exist, create it
 
         """
-        self.set(subject=subject, experiment=experiment, analysis=analysis,
-                 match=match)
+        if not match:
+            fmatch = vmatch = False
 
-        temp = self.get_template(name)
-
-        fmt = self.state.copy()
-
-        if '{subject}' in temp:
-            subject = fmt.get('subject')
-            if subject is None:
-                raise RuntimeError("No subject specified")
-
-        if ('{experiment}' in temp) and (fmt.get('experiment') is None):
-            raise RuntimeError("No experiment specified")
-
-        if ('{analysis}' in temp) and (fmt.get('analysis') is None):
-            raise RuntimeError("No analysis specified")
-
-        if '{root}' in temp:
-            if root is not None:
-                if root.endswith(os.path.extsep):
-                    root = root[:-1]
-
-                fmt['root'] = root
-
-        path = temp.format(**fmt)
+        path = self.format('{%s}' % temp, vmatch=vmatch, **kwargs)
 
         # assert the presence of the file
         directory, fname = os.path.split(path)
-        if match and ('*' in fname):
+        if fmatch and ('*' in fname):
             if not os.path.exists(directory):
                 err = ("Directory does not exist: %r" % directory)
                 raise IOError(err)
@@ -348,7 +332,7 @@ class mne_experiment(object):
             os.makedirs(directory)
 
         # special cases that can create the file in question
-        if name == 'trans':
+        if temp == 'trans':
             if not os.path.exists(path):
                 if self.auto_launch_mne is None:
                     a = ui.ask("Launch mne_analyze for Coordinate-Coregistration?",
@@ -370,18 +354,30 @@ class mne_experiment(object):
                            (self.state['subject'], self.state['experiment']))
                     raise IOError(err)
 
-        path = os.path.expanduser(path)
         return path
 
-    def get_template(self, name):
-        if name in ['raw', 'rawfif']:
-            name = self.state.get('raw', 'raw_raw')
+    def expand_template(self, temp, values={}):
+        """
+        Expands a template so far as subtemplates are neither in
+        self.var_values nor in the collection provided through the ``values``
+        kwarg
 
-        temp = self.templates.get(name, name)
-        if '{raw}' in temp:
-            raw = self.get_template('raw')
-            raw, _ = os.path.splitext(raw)
-            temp = temp.replace('{raw}', raw)
+        values : container (implements __contains__)
+            values which should not be expanded (in addition to
+        """
+        temp = self.state.get(temp, temp)
+
+        while True:
+            stop = True
+            for var in self._fmt_pattern.findall(temp):
+                if (var in values) or (var in self.var_values):
+                    pass
+                else:
+                    temp = temp.replace('{%s}' % var, self.state[var])
+                    stop = False
+
+            if stop:
+                break
 
         return temp
 
@@ -395,11 +391,10 @@ class mne_experiment(object):
 
         """
         # if the name is an existing template, retrieve it
-        temp = self.get_template(temp)
+        temp = self.expand_template(temp, values=values)
 
         # find variables for iteration
-        pattern = re.compile('\{(\w+)\}')
-        variables = pattern.findall(temp)
+        variables = self._fmt_pattern.findall(temp)
 
         for state in self.iter_vars(variables, constants=constants,
                                     values=values, exclude=exclude, prog=prog):
@@ -469,11 +464,12 @@ class mne_experiment(object):
         iterate through subject and experiment names
 
         """
+        self.set(analysis=analysis)
         subjects = self._subjects if subject is None else [subject]
         experiments = self._experiments if experiment is None else [experiment]
         for subject in subjects:
             for experiment in experiments:
-                self.set(subject=subject, experiment=experiment, analysis=analysis)
+                self.set(subject=subject, experiment=experiment)
                 yield subject, experiment
 
     def label_events(self, ds, experiment, subject):
@@ -578,6 +574,7 @@ class mne_experiment(object):
         subjects = self._subjects = set()
         self._mri_subjects = mri_subjects = {}
 
+        # find subjects
         meg_dir = self.get('meg_dir')
         if os.path.exists(meg_dir):
             for fname in os.listdir(meg_dir):
@@ -597,29 +594,27 @@ class mne_experiment(object):
                     mri_subjects[s] = s
                 elif 'fsaverage' in mris:
                     mri_subjects[s] = 'fsaverage'
-#                else:
-#                    err = "If subject has no mri, fsaverage must be provided"
-#                    raise IOError(err)
+                else:
+                    mri_subjects[s] = None
 
         # find experiments
         experiments = self._experiments = set()
         for s in subjects:
-            temp_fif = self.get('rawfif', subject=s, experiment='*', match=False)
+            temp_fif = self.format('{raw_base}_*raw.fif', subject=s, experiment='*', vmatch=False)
             temp_txt = self.get('rawtxt', subject=s, experiment='*', match=False)
 
-            tdir, fifname = os.path.split(temp_fif)
-            _, txtname = os.path.split(temp_txt)
-            all_fnames = os.listdir(tdir)
-            fnames = fnmatch.filter(all_fnames, fifname)
-            fnames.extend(fnmatch.filter(all_fnames, txtname))
-            for fname in fnames:
+            fifdir, fifname = os.path.split(temp_fif)
+            txtdir, txtname = os.path.split(temp_txt)
+            fif_fnames = fnmatch.filter(os.listdir(fifdir), fifname)
+            txt_fnames = fnmatch.filter(os.listdir(txtdir), txtname)
+            for fname in fif_fnames + txt_fnames:
                 experiments.add(fname.split('_')[1])
 
         self.var_values['subject'] = list(subjects)
         self.var_values['mrisubject'] = set(mri_subjects.values())
         self.var_values['experiment'] = list(experiments)
 
-    def pull(self, src_root, names=['rawfif', 'log_sdir'], **kwargs):
+    def pull(self, src_root, names=['raw_raw', 'log_sdir'], **kwargs):
         """OK 12/8/12
         Copies all items matching a template from another root to the current
         root.
@@ -668,6 +663,7 @@ class mne_experiment(object):
 
                 if os.path.exists(src):
                     dst = self.get(name, root=dst_root, match=False, mkdir=True)
+                    self.set(root=self.root)
                     if os.path.isdir(src):
                         if os.path.exists(dst):
                             if overwrite:
@@ -718,7 +714,7 @@ class mne_experiment(object):
 
         subp.run_mne_browse_raw(fif_dir, modal)
 
-    def set(self, subject=None, experiment=None, match=False, mrisubject=None,
+    def set(self, subject=None, experiment=None, vmatch=False, mrisubject=None,
             **kwargs):
         """
         match : bool
@@ -742,7 +738,7 @@ class mne_experiment(object):
                 assert self._mri_subjects[subject] == mrisubject
 
         if subject is not None:
-            if match and not (subject in self._subjects) and not ('*' in subject):
+            if vmatch and not (subject in self._subjects) and not ('*' in subject):
                 raise ValueError("No subject named %r" % subject)
 
             self.state['subject'] = subject
@@ -750,32 +746,31 @@ class mne_experiment(object):
 
 
         if experiment is not None:
-            if match and not (experiment in self._experiments) and not ('*' in experiment):
+            if vmatch and not (experiment in self._experiments) and not ('*' in experiment):
                 raise ValueError("No experiment named %r" % experiment)
             else:
                 self.state['experiment'] = experiment
 
-        for k in kwargs.keys():
-            if kwargs[k] is None:
-                del kwargs[k]
-        self.state.update(kwargs)
+        for k, v in kwargs.iteritems():
+            if v is not None:
+                self.state[k] = v
 
     def set_cell(self, stim, cell):
         "cell: data cell"
         name = '-'.join((stim, cellname(cell, '-')))
-        self.state['cell'] = name
+        self.set(cell=name)
 
     def set_fwd_an(self, stim, tw, proj):
         temp = '{stim}-{tw}-{proj}'
         fwd_an = temp.format(stim=stim, tw=tw, proj=proj)
-        self.state['fwd_an'] = fwd_an
+        self.set(fwd_an=fwd_an)
 
     def set_stc_an(self, blc, method, ori):
         temp = '{blc}-{method}-{ori}'
         stc_an = temp.format(blc=blc, method=method, ori=ori)
-        self.state['stc_an'] = stc_an
+        self.set(stc_an=stc_an)
 
-    def summary(self, templates=['rawtxt', 'rawfif', 'fwd'], missing='-', link='>',
+    def summary(self, templates=['rawtxt', 'raw', 'fwd'], missing='-', link='>',
                 analysis=None, count=True):
         if not isinstance(templates, (list, tuple)):
             templates = [templates]
@@ -826,59 +821,3 @@ class mne_experiment(object):
                 table.cell(results[subject].get(exp, '?'))
 
         return table
-
-    def sync(self, template, source=None, dest=None,
-             subject=None, experiment=None, analysis=None, replace=False, v=1):
-        """
-        copies all files corresponding to a ``template`` *from* the
-        ``source`` experiment, *to* the ``dest`` experiment.
-
-        template : str
-            name of the template to copy
-        replace : bool
-            if the file already exists at the destination, replace it
-
-        """
-        results = {} # {subject -> {experiment -> status}}
-        experiments = set()
-        for subject, experiment in self.iter_se(subject=subject, experiment=experiment, analysis=analysis):
-            src = self.get(template, root=source, match=False)
-            dst = self.get(template, root=dest, match=False)
-
-            if '*' in src:
-                raise NotImplementedError()
-            elif os.path.exists(src):
-                if os.path.exists(dst):
-                    if replace:
-                        shutil.copyfile(src, dst)
-                        status = 'replaced'
-                    else:
-                        status = 'present'
-                else:
-                    dirname = os.path.dirname(dst)
-                    if not os.path.exists(dirname):
-                        os.mkdir(dirname)
-                    shutil.copyfile(src, dst)
-                    status = 'copied'
-            elif os.path.exists(dst):
-                status = 'src missing'
-            else:
-                status = 'missing'
-
-            results.setdefault(subject, {})[experiment] = status
-            experiments.add(experiment)
-
-        # create table
-        experiments = list(experiments)
-        table = fmtxt.Table('l' * (len(experiments) + 1))
-        table.cell('subject')
-        table.cells(*experiments)
-        table.midrule()
-        for subject in results:
-            table.cell(subject)
-            for exp in experiments:
-                table.cell(results[subject].get(exp, '?'))
-
-        self.last_job = table
-        if v:
-            return table
