@@ -8,10 +8,6 @@ Plotting functions for sensor_net instances.
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-try:
-    from mpl_toolkits.mplot3d import Axes3D as _Axes3D
-except:
-    _Axes3d = None
 
 import wx
 from eelbrain.wxutils import mpl_canvas
@@ -448,26 +444,24 @@ class map2d(mpl_canvas.CanvasFrame):
 
 
 
-def map3d(sensor_net, marker='c*', labels=False, headBall=0):
-    """not very helpful..."""
-    if _Axes3D is None:
-        raise ImportError("mpl_toolkits.mplot3d.Axes3D could not be imported")
-    
+
+def map3d(sensor_net, marker='c*', labels=False, head=0):
+    """3d plot of a sensor_net"""
     if hasattr(sensor_net, 'sensors'):
         sensor_net = sensor_net.sensors
     locs = sensor_net.locs
-    fig = plt.gcf()
-    ax = _Axes3D(fig)
-    ax.scatter(locs[:,0], locs[:,1], locs[:,2])
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(locs[:, 0], locs[:, 1], locs[:, 2])
     # plot head ball
-    if headBall>0:
+    if head:
         u = np.linspace(0, 1 * np.pi, 10)
         v = np.linspace(0, np.pi, 10)
-        
-        x = 5 * headBall * np.outer( np.cos(u), np.sin(v))
-        z = 10 * (headBall * np.outer( np.sin(u), np.sin(v)) -.5)         # vertical
-        y = 5 * headBall * np.outer( np.ones(np.size(u)), np.cos(v))  # axis of the sphere
-        ax.plot_surface(x, y, z,  rstride=1, cstride=1, color='w')
+
+        x = 5 * head * np.outer(np.cos(u), np.sin(v))
+        z = 10 * (head * np.outer(np.sin(u), np.sin(v)) - .5)         # vertical
+        y = 5 * head * np.outer(np.ones(np.size(u)), np.cos(v))  # axis of the sphere
+        ax.plot_surface(x, y, z, rstride=1, cstride=1, color='w')
     #n = 100
     #for c, zl, zh in [('r', -50, -25), ('b', -30, -5)]:
     #xs, ys, zs = zip(*
