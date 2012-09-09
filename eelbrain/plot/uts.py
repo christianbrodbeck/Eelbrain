@@ -25,7 +25,7 @@ import _base
 __hide__ = ['plt', 'division', 'celltable']
 
 
-class stat(mpl_canvas.CanvasFrame):
+class stat(_base.eelfigure):
     def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
                  sub=None, match=None, ds=None, Xax=None, ncol=3,
                  width=6, height=3, dpi=90, legend='upper right', title=True,
@@ -126,7 +126,7 @@ class stat(mpl_canvas.CanvasFrame):
             self.figure.legend(legend_h.values(), legend_h.keys(), loc=legend)
 
         self.figure.tight_layout()
-        self.Show()
+        self._show()
 
 
 
@@ -170,7 +170,7 @@ def _ax_stat(ax, ct, colors, legend_h={},
 
 
 
-class clusters(mpl_canvas.CanvasFrame):
+class clusters(_base.eelfigure):
     def __init__(self, epochs, pmax=0.05, ptrend=0.1, t=True,
                  title=None, cm=_cm.jet,
                  width=6, height=3, frame=.1, dpi=90,
@@ -217,7 +217,7 @@ class clusters(mpl_canvas.CanvasFrame):
             self._caxes.append(cax)
 
         self.figure.tight_layout()
-        self.Show()
+        self._show()
 
     def set_pmax(self, pmax=0.05):
         "set the threshold p-value for clusters to be displayed"
@@ -296,8 +296,12 @@ def _plt_cluster(ax, ndvar, color=None, y=None, xdim='time',
                  hatch='/'):
     x = ndvar.get_dim(xdim).x
     v = ndvar.get_data((xdim,))
-    where = np.where(v)[0]
-    assert np.abs(np.diff(where)).sum() <= 2
+    where = np.nonzero(v)[0]
+
+    # make sure the cluster is contiguous
+    if np.max(np.diff(where)) > 1:
+        raise ValueError("Non-contiguous clusters not supported; where = %r" % where)
+
     x0 = where[0]
     x1 = where[-1]
 

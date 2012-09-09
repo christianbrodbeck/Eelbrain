@@ -9,8 +9,12 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-import wx
-from eelbrain.wxutils import mpl_canvas
+try:
+    import wx
+except:
+    pass
+
+import _base
 
 
 
@@ -119,7 +123,7 @@ def _plt_map2d_labels(ax, sensor_net, proj='default',
 
 
 
-class multi(mpl_canvas.CanvasFrame):
+class multi(_base.eelfigure):
     """
     Select ROIs
     ----------- 
@@ -203,8 +207,8 @@ class multi(mpl_canvas.CanvasFrame):
         self.ax3.set_ylim(-frame, 1+frame)
         
         self.axes = [self.ax0, self.ax1, self.ax2, self.ax3]
-        self.Show()
         
+        self._show()
         # ROI
         self.ROI_kwargs = dict(marker='o', # symbol
                                color='r', # mpl plot kwargs ...
@@ -218,23 +222,21 @@ class multi(mpl_canvas.CanvasFrame):
             self.ROI = None
         
         # setup mpl event handling
-        self.canvas.mpl_connect("button_press_event", self.on_button_press)
-        self.canvas.mpl_connect("button_release_event", self.on_button_release)
-        self.canvas.mpl_connect("motion_notify_event", self.on_motion)
+        self.canvas.mpl_connect("button_press_event", self._on_button_press)
+        self.canvas.mpl_connect("button_release_event", self._on_button_release)
+        self.canvas.mpl_connect("motion_notify_event", self._on_motion)
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
     
-    def _init_FillToolBar(self, tb):
+    def _fill_toolbar(self, tb):
         tb.AddSeparator()
         
         # plot labels
         btn = wx.Button(tb, wx.ID_CLEAR, "Clear")
         tb.AddControl(btn)
-        self.Bind(wx.EVT_BUTTON, self.OnClear, btn)
-        
-        super(multi, self)._init_FillToolBar(tb)
-    
+        btn.Bind(wx.EVT_BUTTON, self._OnClear)
+
     def clear(self):
         "clear the ROI"
         self.ROI = None
@@ -245,8 +247,8 @@ class multi(mpl_canvas.CanvasFrame):
             return []
         else:
             return np.where(self.ROI)[0]
-    
-    def on_button_press(self, event):
+
+    def _on_button_press(self, event):
         ax = event.inaxes
         if ax:
             self._is_dragging = True
@@ -258,8 +260,11 @@ class multi(mpl_canvas.CanvasFrame):
             x = np.ones(5) * event.xdata
             y = np.ones(5) * event.ydata
             self._drag_rect = ax.plot(x, y, '-k')[0]
-    
-    def on_button_release(self, event):
+
+    def _on_button_release(self, event):
+        if not hasattr(self, '_drag_rect'):
+            return
+
         x = self._drag_rect.get_xdata()
         y = self._drag_rect.get_ydata()
         xmin = min(x) 
@@ -288,8 +293,8 @@ class multi(mpl_canvas.CanvasFrame):
         self._drag_y = None
         
         self.update_ROI_plot()
-    
-    def on_motion(self, event):
+
+    def _on_motion(self, event):
         ax = event.inaxes
         if ax and ax is self._drag_ax:
             x0 = self._drag_x
@@ -300,8 +305,8 @@ class multi(mpl_canvas.CanvasFrame):
             y = [y0, y0, y1, y1, y0]
             self._drag_rect.set_data(x, y)
             self.canvas.redraw(artists=[self._drag_rect])
-    
-    def OnClear(self, event):
+
+    def _OnClear(self, event):
         self.clear()
     
     def set_ROI(self, ROI):
@@ -327,7 +332,7 @@ class multi(mpl_canvas.CanvasFrame):
 
 
 
-class map2d(mpl_canvas.CanvasFrame):
+class map2d(_base.eelfigure):
     """
     2d Sensor Map, Methods:
     
@@ -379,10 +384,10 @@ class map2d(mpl_canvas.CanvasFrame):
         self._label_h = None
         if labels:
             self.plot_labels(labels=labels)
-        
-        self.Show()
-    
-    def _init_FillToolBar(self, tb):
+
+        self._show()
+
+    def _fill_toolbar(self, tb):
         tb.AddSeparator()
         
         # plot labels
@@ -391,11 +396,9 @@ class map2d(mpl_canvas.CanvasFrame):
                          (_ID_label_names, "Names"),]:
             btn = wx.Button(tb, Id, name)
             tb.AddControl(btn)
-            self.Bind(wx.EVT_BUTTON, self.OnPlotLabels, btn)
-        
-        super(map2d, self)._init_FillToolBar(tb)
-    
-    def OnPlotLabels(self, event):
+            btn.Bind(wx.EVT_BUTTON, self._OnPlotLabels)
+
+    def _OnPlotLabels(self, event):
         Id = event.GetId()
         labels = {_ID_label_None: None,
                   _ID_label_Ids: "id",

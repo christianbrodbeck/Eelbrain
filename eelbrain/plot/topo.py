@@ -47,7 +47,7 @@ __hide__ = ['cs', 'test', 'utsnd']
 
 
 
-class topomap(mpl_canvas.CanvasFrame):
+class topomap(_base.eelfigure):
     def __init__(self, epochs, sensors=True, proj='default',
                  size=5, dpi=100, title="plot.topomap", 
                  res=100, interpolation='nearest'):
@@ -93,11 +93,11 @@ class topomap(mpl_canvas.CanvasFrame):
             
             _ax_topomap(ax, layers, title=True, **topo_kwargs)
         
-        self.Show()
+        self._show()
 
 
 
-class butterfly(mpl_canvas.CanvasFrame):
+class butterfly(_base.eelfigure):
     """
     Butterfly plot with corresponding topomaps
     
@@ -224,16 +224,10 @@ class butterfly(mpl_canvas.CanvasFrame):
         # setup callback
         self.canvas.mpl_connect('button_press_event', self._on_click)
         self._realtime_topo = True
-        self.canvas.mpl_connect('motion_notify_event', self._on_mouse_motion)
-        self.canvas.store_canvas()
+        self._frame.store_canvas()
         self._draw_topo(0, draw=False)
-        self.Show()
-    
-    def _on_mouse_motion(self, event):
-        ax = event.inaxes
-        if self._realtime_topo and ax and hasattr(ax, 'ID'):
-            self._draw_topo(event.xdata)
-    
+        self._show()
+
     def _draw_topo(self, t, draw=True):
         self._current_t = t
         for topo_ax, layers in self.topos:
@@ -242,7 +236,7 @@ class butterfly(mpl_canvas.CanvasFrame):
             _ax_topomap(topo_ax, layers, **self.topo_kwargs)
         
         if draw:
-            self.canvas.redraw(axes=self.topo_axes)#, artists=self.t_markers)
+            self._frame.redraw(axes=self.topo_axes)#, artists=self.t_markers)
     
     def _rm_markers(self):
         if self.t_markers:
@@ -280,19 +274,20 @@ class butterfly(mpl_canvas.CanvasFrame):
                 self._t_label.remove()
                 self._realtime_topo = True
                 self.canvas.draw()
-#                self.canvas.redraw(axes=self.bfly_axes) # this leaves the time label
+#                self._frame.redraw(axes=self.bfly_axes) # this leaves the time label
     
-    def OnLeaveAxesStatusBarUpdate(self, event):
+    def _on_leave_axes(self, event):
         "update the status bar when the cursor leaves axes"
-        sb = self.GetStatusBar()
         txt = "Topomap: t = %.3f" % self._current_t
-        sb.SetStatusText(txt, 0)
+        self._frame.SetStatusText(txt)
 
-    def OnMotionStatusBarUpdate(self, event):
+    def _on_motion(self, event):
         "update the status bar for mouse movement"
         ax = event.inaxes
         if ax and hasattr(ax, 'ID'):
-            super(self.__class__, self).OnMotionStatusBarUpdate(event)
+            super(self.__class__, self)._on_motion(event)
+        if self._realtime_topo and ax and hasattr(ax, 'ID'):
+            self._draw_topo(event.xdata)
     
     def set_ylim(self, *ylim):
         """
@@ -462,7 +457,7 @@ class _Window_Topo:
 
 
 
-class array(mpl_canvas.CanvasFrame):
+class array(_base.eelfigure):
     """
     Channel by sample plots with corresponding topomaps
     
@@ -563,8 +558,8 @@ class array(mpl_canvas.CanvasFrame):
         self._selected_window = None
         self.canvas.mpl_connect('pick_event', self._pick_handler)
         self.canvas.mpl_connect('motion_notify_event', self._motion_handler)
-        self.canvas.store_canvas()
-        self.Show()
+        self._frame.store_canvas()
+        self._show()
     
     def __repr__(self):
         e_repr = []
@@ -624,7 +619,7 @@ class array(mpl_canvas.CanvasFrame):
         "update a window (used for mouse-over and for pick)"
         t = mouseevent.xdata
         self._selected_window.update(parent_ax=parent_ax, t=t)
-        self.canvas.redraw(axes=[self._selected_window.ax])
+        self._frame.redraw(axes=[self._selected_window.ax])
     
     def _pick_handler(self, pickevent):
         mouseevent = pickevent.mouseevent
