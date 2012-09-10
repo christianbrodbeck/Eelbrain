@@ -32,6 +32,7 @@ The following modules provide additional functionality if they are installed:
   wxPython can not be installed through distutils. 
   Installers are provided
   `here <http://www.wxpython.org/download.php>`_. 
+  For installing on EPD-64 bit on OsX, see :ref:`below <EPD64>`.
 * `mne <https://github.com/mne-tools/mne-python>`_
 * `tex <http://pypi.python.org/pypi/tex>`_ Enables exporting tables as pdf 
   (also requires a working `LaTeX <http://www.latex-project.org/>`_ installation)
@@ -39,10 +40,36 @@ The following modules provide additional functionality if they are installed:
   ``.acq`` files.
 
 
+.. _EPD64:
+
+EPD-64 bit on OsX
+-----------------
+
+First, make sure the right Python distribution (and *only* the right one) is 
+added to the ``PATH`` in ``~/.bash_profile``. 
+
+Install wxPython from source::
+
+    $ wget http://downloads.sourceforge.net/wxpython/wxPython-src-2.9.4.0.tar.bz2
+    $ open wxPython-src-2.9.4.0.tar.bz2 
+    $ cd wxPython-src-2.9.4.0/wxPython
+    $ sudo python build-wxpython.py --build_dir=../bld --osx_cocoa --install
+
+EPD-64 seems to come with a deficient version of MDP, so we need to replace it; 
+this is easiest through pip, so install PIP::
+
+    $ curl https://raw.github.com/pypa/pip/master/contrib/get-pip.py | sudo python
+
+Then, install MDP::
+
+    $ sudo pip install -e git://github.com/mdp-toolkit/mdp-toolkit#egg=MDP
+    
+
+
 .. _obtain-source:
 
-Obtain the Eelbrain Source
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+Installing from Source
+^^^^^^^^^^^^^^^^^^^^^^
 
 The Eelbrain source code is hosted on `GitHub 
 <https://github.com/christianmbrodbeck/Eelbrain>`_. The latest source can be 
@@ -96,7 +123,13 @@ that Eelbrain can be launched with::
 B. Create Eelbrian.app on OS X
 ------------------------------
 
-On OS X, you can generate an application::
+.. note::
+    Invoking ``$ python setup.py py2app`` does not seem to properly
+    take care of dependencies. For this reason, Eelbrain should
+    be :ref:`installed as package <install-package>` before invoking the 
+    ``py2app`` build command.
+
+The application can be generated with::
 
     $ cd /target/directory/Eelbrain
     $ python setup.py py2app -A
