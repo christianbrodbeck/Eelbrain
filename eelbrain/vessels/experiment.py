@@ -343,11 +343,25 @@ class mne_experiment(object):
                 else:
                     a = bool(self.auto_launch_mne)
                 if a:
+                    # take snapshot of files in raw_sdir
+                    raw_sdir = self.get('raw_sdir')
+                    flist = os.listdir(raw_sdir)
+
+                    # allow the user to create the file
                     ui.show_help(subp.run_mne_analyze)
+                    print "Opening mne_analyze for generating %r" % path
                     subp.run_mne_analyze(self.get('mri_dir'),
-                                         self.get('raw_sdir'),
+                                         raw_sdir,
                                          mri_subject=self.get('mrisubject'),
                                          modal=True)
+
+                    # rename the file if possible
+                    newf = set(os.listdir(raw_sdir)).difference(flist)
+                    newf = filter(lambda x: str.endswith(x, '-trans.fif'), newf)
+                    if len(newf) == 1:
+                        src = os.path.join(raw_sdir, newf[0])
+                        os.rename(src, path)
+
                     if not os.path.exists(path):
                         err = ("Error creating file; %r does not exist" % path)
                         raise IOError(err)
