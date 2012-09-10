@@ -345,7 +345,9 @@ class mne_experiment(object):
                 if a:
                     ui.show_help(subp.run_mne_analyze)
                     subp.run_mne_analyze(self.get('mri_dir'),
-                                         self.get('raw_sdir'), modal=True)
+                                         self.get('raw_sdir'),
+                                         mri_subject=self.get('mrisubject'),
+                                         modal=True)
                     if not os.path.exists(path):
                         err = ("Error creating file; %r does not exist" % path)
                         raise IOError(err)
