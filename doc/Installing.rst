@@ -32,7 +32,7 @@ The following modules provide additional functionality if they are installed:
   wxPython can not be installed through distutils. 
   Installers are provided
   `here <http://www.wxpython.org/download.php>`_. 
-  For installing on EPD-64 bit on OsX, see :ref:`below <EPD64>`.
+  For installing on EPD-64 bit on OS X, see :ref:`below <EPD64>`.
 * `mne <https://github.com/mne-tools/mne-python>`_
 * `tex <http://pypi.python.org/pypi/tex>`_ Enables exporting tables as pdf 
   (also requires a working `LaTeX <http://www.latex-project.org/>`_ installation)
@@ -42,9 +42,11 @@ The following modules provide additional functionality if they are installed:
 
 .. _EPD64:
 
-EPD-64 bit on OsX
------------------
+EPD-64 bit on OS X
+------------------
 
+EPD-64 bit comes without wxPython, but the latest development version of
+wxPython can be installed manually.
 First, make sure the right Python distribution (and *only* the right one) is 
 added to the ``PATH`` in ``~/.bash_profile``. 
 
@@ -55,15 +57,15 @@ Install wxPython from source::
     $ cd wxPython-src-2.9.4.0/wxPython
     $ sudo python build-wxpython.py --build_dir=../bld --osx_cocoa --install
 
-EPD-64 seems to come with a deficient version of MDP, so we need to replace it; 
-this is easiest through pip, so install PIP::
+EPD-64 7.3 seems to come with a deficient version of MDP, so we need to replace it; 
+this is easiest through `pip <http://www.pip-installer.org/>`_, so install pip
+(unless it is already installed)::
 
     $ curl https://raw.github.com/pypa/pip/master/contrib/get-pip.py | sudo python
 
-Then, install MDP::
+Then, install MDP from github::
 
     $ sudo pip install -e git://github.com/mdp-toolkit/mdp-toolkit#egg=MDP
-    
 
 
 .. _obtain-source:
