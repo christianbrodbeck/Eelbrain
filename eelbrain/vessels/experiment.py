@@ -120,16 +120,16 @@ class mne_experiment(object):
              'elp': os.path.join('{raw_sdir}', '{subject}_HS.elp'),
              'hsp': os.path.join('{raw_sdir}', '{subject}_HS.hsp'),
              'rawtxt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
-             'raw_base': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
-             'raw_raw': os.path.join('{raw_base}_raw.fif'),
-             'rawfif': '{raw_raw}', # for subp.kit2fiff
+             'raw_raw': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
+             'rawfif': '{raw}_raw.fif', # for subp.kit2fiff
              'trans': os.path.join('{raw_sdir}', '{subject}_trans.fif'), # mne p. 196
 
              # eye-tracker
              'edf': os.path.join('{log_sdir}', '*.edf'),
 
              # mne raw-derivatives analysis
-             'proj': '{raw}_{analysis}-proj.fif',
+             'proj': '{raw}_{projname}-proj.fif',
+             'proj-plot': '{raw}_{projname}-proj.pdf',
              'cov': '{raw}_{fwd_an}-cov.fif',
              'fwd': '{raw}_{fwd_an}-fwd.fif',
 
@@ -218,7 +218,7 @@ class mne_experiment(object):
             fnames = fnmatch.filter(os.listdir(tdir), tname)
             for fname in fnames:
                 fs, fexp, _ = fname.split('_', 2)
-                fifpath = self.get('raw_raw', subject=fs, experiment=fexp, match=False)
+                fifpath = self.get('rawfif', raw='{raw_raw}', subject=fs, experiment=fexp, match=False)
                 if redo or not os.path.exists(fifpath):
                     raw_txt.append((subject, fexp, fname))
 
@@ -511,7 +511,7 @@ class mne_experiment(object):
 
         """
         self.set(subject=subject, experiment=experiment, raw=raw)
-        raw_file = self.get('raw')
+        raw_file = self.get('rawfif')
         ds = load.fiff.events(raw_file, proj=proj)
 
         raw = ds.info['raw']
@@ -533,8 +533,8 @@ class mne_experiment(object):
 
         return ds
 
-    def make_proj_for_epochs(self, epochs, dest='{raw}_proj.fif', n_mag=5,
-                             auto=False, save_plot=False):
+    def make_proj_for_epochs(self, epochs, projname='ironcross', n_mag=5,
+                             save=True, save_plot=True):
         """
         computes the first ``n_mag`` PCA components, plots them, and asks for
         user input (a tuple) on which ones to save.
@@ -548,9 +548,10 @@ class mne_experiment(object):
         n_mag : int
             number of components to compute
 
-        auto : False | tuple
-            automaticelly reject certain components, but keep plot for double
-            checking.
+        save : False | True | tuple
+            False: don'r save proj fil; True: manuall pick componentws to
+            include in the proj file; tuple: automatically include these
+            components
 
         save_plot : False | str(path)
             target path to save the plot
@@ -570,17 +571,16 @@ class mne_experiment(object):
 
         p = plot.topo.topomap(PCA, size=1, title=str(epochs.name))
         if save_plot:
-            p.figure.savefig(save_plot)
-        if dest:
-            if auto:
-                rm = auto
-            else:
-                rm = None
-                while not isinstance(rm, tuple):
-                    rm = input("which components to remove? (tuple / 'x'): ")
-                    if rm == 'x': raise
-                p.Close()
+            dest = self.get('proj-plot', projname=projname)
+            p.figure.savefig(dest)
+        if save:
+            rm = save
+            while not isinstance(rm, tuple):
+                rm = input("which components to remove? (tuple / 'x'): ")
+                if rm == 'x': raise
+            p.close()
             proj = [proj[i] for i in rm]
+            dest = self.get('proj', projname=projname)
             mne.write_proj(dest, proj)
 
     def parse_dirs(self):
@@ -617,7 +617,7 @@ class mne_experiment(object):
         # find experiments
         experiments = self._experiments = set()
         for s in subjects:
-            temp_fif = self.format('{raw_base}_*raw.fif', subject=s, experiment='*', vmatch=False)
+            temp_fif = self.format('{raw_raw}_*raw.fif', subject=s, experiment='*', vmatch=False)
             temp_txt = self.get('rawtxt', subject=s, experiment='*', match=False)
 
             fifdir, fifname = os.path.split(temp_fif)
@@ -631,7 +631,7 @@ class mne_experiment(object):
         self.var_values['mrisubject'] = set(mri_subjects.values())
         self.var_values['experiment'] = list(experiments)
 
-    def pull(self, src_root, names=['raw_raw', 'log_sdir'], **kwargs):
+    def pull(self, src_root, names=['rawfif', 'log_sdir'], **kwargs):
         """OK 12/8/12
         Copies all items matching a template from another root to the current
         root.
@@ -787,7 +787,7 @@ class mne_experiment(object):
         stc_an = temp.format(blc=blc, method=method, ori=ori)
         self.set(stc_an=stc_an)
 
-    def summary(self, templates=['rawtxt', 'raw', 'fwd'], missing='-', link='>',
+    def summary(self, templates=['rawfif'], missing='-', link='>',
                 analysis=None, count=True):
         if not isinstance(templates, (list, tuple)):
             templates = [templates]
