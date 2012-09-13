@@ -512,7 +512,8 @@ class mne_experiment(object):
         """
         self.set(subject=subject, experiment=experiment, raw=raw)
         raw_file = self.get('rawfif')
-        ds = load.fiff.events(raw_file, proj=proj)
+        proj_path = self.get('proj', projname=proj)
+        ds = load.fiff.events(raw_file, proj=proj_path)
 
         raw = ds.info['raw']
         bad_chs = self.bad_channels[(self.state['subject'], self.state['experiment'])]
