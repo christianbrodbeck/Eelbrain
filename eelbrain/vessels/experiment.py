@@ -129,7 +129,7 @@ class mne_experiment(object):
 
              # mne raw-derivatives analysis
              'proj': '{raw}_{projname}-proj.fif',
-             'proj-plot': '{raw}_{projname}-proj.pdf',
+             'proj_plot': '{raw}_{projname}-proj.pdf',
              'cov': '{raw}_{fwd_an}-cov.fif',
              'fwd': '{raw}_{fwd_an}-fwd.fif',
 
@@ -571,7 +571,7 @@ class mne_experiment(object):
 
         p = plot.topo.topomap(PCA, size=1, title=str(epochs.name))
         if save_plot:
-            dest = self.get('proj-plot', projname=projname)
+            dest = self.get('proj_plot', projname=projname)
             p.figure.savefig(dest)
         if save:
             rm = save
