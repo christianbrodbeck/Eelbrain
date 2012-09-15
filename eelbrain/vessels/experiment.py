@@ -698,6 +698,31 @@ class mne_experiment(object):
                 elif missing == 'raise':
                     raise IOError("Missing: %r" % src)
 
+    def rename(self, old, new, constants={}, v=True, do=True):
+        """
+        Parameters
+        ----------
+
+        old, new : str
+            Template names (i.e., the corresponding template needs to be
+            present in e.state.
+
+        v : bool
+            Verbose mode
+
+        do : bool
+            Do actually perform the renaming (use ``v=True, do=False`` to
+            check the result without actually performing the operation)
+
+        """
+        for old_name in self.iter_temp(old, constants=constants):
+            if os.path.exists(old_name):
+                new_name = self.get(new)
+                if do:
+                    os.rename(old_name, new_name)
+                if v:
+                    print "%r\n  ->%r" % (old_name, new_name)
+
     def rm(self, temp, constants={}, values={}, exclude={}):
         files = []
         for temp in self.iter_temp(temp, constants=constants, values=values,
