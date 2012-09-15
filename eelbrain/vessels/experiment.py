@@ -122,7 +122,7 @@ class mne_experiment(object):
              'rawtxt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
              'raw_raw': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
              'rawfif': '{raw}_raw.fif', # for subp.kit2fiff
-             'trans': os.path.join('{raw_sdir}', '{subject}_trans.fif'), # mne p. 196
+             'trans': os.path.join('{raw_sdir}', '{subject}-trans.fif'), # mne p. 196
 
              # eye-tracker
              'edf': os.path.join('{log_sdir}', '*.edf'),
