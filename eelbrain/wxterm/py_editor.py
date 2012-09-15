@@ -244,14 +244,18 @@ class Editor(wx.py.editor.EditorFrame):
     
     def OnActivate(self, event=None):
         #logging.debug(" Shell Activate Event: {0}".format(event.Active))
-        if self.editor:
-            if event.Active:
-                self.editor.window.SetCaretForeground(wx.Colour(0,0,0))
-                self.editor.window.SetCaretPeriod(500)
-                self.shell.active_editor = self 
-            else:
-                self.editor.window.SetCaretForeground(wx.Colour(200,200,200))
-                self.editor.window.SetCaretPeriod(0)
+        if not self.editor:
+            return
+
+        if event.Active:
+            self.editor.window.SetCaretForeground(wx.Colour(0, 0, 0))
+            self.editor.window.SetCaretPeriod(500)
+            self.shell.active_editor = self
+            if self._exec_in_shell_namespace:
+                self.buffer.interp.locals.update(self.shell.global_namespace)
+        else:
+            self.editor.window.SetCaretForeground(wx.Colour(200, 200, 200))
+            self.editor.window.SetCaretPeriod(0)
     
     def OnExec(self, event=None):
         "Execute the whole script in the shell."
