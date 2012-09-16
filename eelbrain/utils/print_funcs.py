@@ -6,6 +6,31 @@ Created on Feb 28, 2012
 
 @author: christian
 '''
+import os
+import numpy as np
+
+
+def dicttree(dictionary):
+    """readable repr for a hierarchical dictionary"""
+    print os.linesep.join(_dict_repr(dictionary))
+
+def _dict_repr(dictionary, indent=0):
+    out = []
+    head = ' ' * indent
+    for k, v in dictionary.iteritems():
+        if isinstance(v, dict):
+            out.append(head + repr(k))
+            out.extend(_dict_repr(v, indent=indent + 3))
+        else:
+            r = repr(v)
+            if len(r) > 40:
+                if isinstance(v, np.ndarray):
+                    r = "<array, shape = %s>" % repr(v.shape)
+                else:
+                    r = str(type(v))
+            out.append(head + repr(k) + ': ' + r)
+    return out
+
 
 
 def printdict(dictionary, w=100, fmt='%r', sort=True):
