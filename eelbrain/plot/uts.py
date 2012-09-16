@@ -30,7 +30,7 @@ class stat(_base.eelfigure):
                  sub=None, match=None, ds=None, Xax=None, ncol=3,
                  width=6, height=3, dpi=90, legend='upper right', title=True,
                  ylabel=True, xlabel=True, invy=False,
-                 xdim='time', cm=_cm.jet):
+                 xdim='time', cm=_cm.jet, colors=None):
         """
     Plots statistics for a one-dimensional ndvar
 
@@ -55,6 +55,11 @@ class stat(_base.eelfigure):
     cm : matplotlib colormap
         colormap from which colors for different categories in ``X`` are
         derived
+    colors : None | list | dict
+        Override the default color assignment base on a colormap ``cm``:
+        **list**: map the sequence of colors on X.cells.
+        **dict**: provide a color for each cell in X.
+
 
     **figure parameters:**
 
@@ -80,12 +85,20 @@ class stat(_base.eelfigure):
             nrow = round(nplot / ncol + .49)
             figsize = (ncol * width, nrow * height)
 
+        # assemble colors
         if X is None:
             colors = {ct.Y.name: 'b'}
         else:
-            cells = _data.ascategorial(X, sub=sub, ds=ds).cells
-            N = len(cells)
-            colors = {cell:cm(i / N) for i, cell in enumerate(cells)}
+            if isinstance(colors, (list, tuple)):
+                colors = dict(zip(X.cells, colors))
+            if isinstance(colors, dict):
+                for cell in X.cells:
+                    if cell not in colors:
+                        raise KeyError("%r not in colors" % cell)
+            else:
+                cells = _data.ascategorial(X, sub=sub, ds=ds).cells
+                N = len(cells)
+                colors = {cell:cm(i / N) for i, cell in enumerate(cells)}
 
         legend_h = {}
         kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim, invy=invy,
