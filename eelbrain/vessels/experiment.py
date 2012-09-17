@@ -222,6 +222,10 @@ class mne_experiment(object):
                 if redo or not os.path.exists(fifpath):
                     raw_txt.append((subject, fexp, fname))
 
+        if len(raw_txt) == 0:
+            print "No files found for conversion"
+            return
+
         table = fmtxt.Table('lll')
         table.cells("subject", "experiment", 'file')
         for line in raw_txt:
