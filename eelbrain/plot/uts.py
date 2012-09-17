@@ -141,6 +141,17 @@ class stat(_base.eelfigure):
         self.figure.tight_layout()
         self._show()
 
+    def set_ylim(self, bottom=None, top=None):
+        """
+        Adjust the y-axis limits on all axes (see matplotlib's
+        :py:meth:`axes.set_ylim`)
+
+        """
+        for ax in self.axes:
+            ax.set_ylim(bottom, top)
+
+        self.draw()
+
 
 
 def _ax_stat(ax, ct, colors, legend_h={},
