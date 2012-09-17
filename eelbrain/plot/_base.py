@@ -242,3 +242,6 @@ class eelfigure(object):
 
     def close(self):
         self._frame.Close()
+
+    def draw(self):
+        self._frame.canvas.draw()
