@@ -246,3 +246,13 @@ class eelfigure(object):
 
     def draw(self):
         self._frame.canvas.draw()
+
+
+
+class legend(eelfigure):
+    def __init__(self, handles, labels, dpi=90):
+        super(legend, self).__init__(title="Legend", dpi=dpi)
+
+        self.legend = self.figure.legend(handles, labels, loc=2)
+
+        self._show()

@@ -135,11 +135,58 @@ class stat(_base.eelfigure):
                 _ax_stat(ax, cct, title=_data.cellname(cell), ** kwargs)
                 self.axes.append(ax)
 
-        if legend and len(legend_h) > 1:
-            self.figure.legend(legend_h.values(), legend_h.keys(), loc=legend)
+        self.legend_handles = legend_h.values()
+        self.legend_labels = legend_h.keys()
+        self.plot_legend(legend)
 
         self.figure.tight_layout()
         self._show()
+
+    def plot_legend(self, loc='fig'):
+        """Plots (or removes) the legend from the figure.
+
+        Possible values for the ``loc`` argument:
+
+        ``False``/``None``:
+            Make the current legend invisible
+        'fig':
+            Plot the legend in a new figure
+        str | int
+            Matplotlib position argument: plot the legend on the figure
+
+
+        legend content can be modified through the figure's
+        ``legend_handles`` and ``legend_labels`` attributes.
+
+
+        Matplotlib Position Arguments
+        -----------------------------
+
+        'upper right'  : 1,
+        'upper left'   : 2,
+        'lower left'   : 3,
+        'lower right'  : 4,
+        'right'        : 5,
+        'center left'  : 6,
+        'center right' : 7,
+        'lower center' : 8,
+        'upper center' : 9,
+        'center'       : 10,
+
+        """
+        if loc and len(self.legend_handles) > 1:
+            handles = self.legend_handles
+            labels = self.legend_labels
+            if loc == 'fig':
+                return _base.legend(handles, labels)
+            else:
+                self.legend = self.figure.legend(handles, labels, loc=loc)
+                self.draw()
+        else:
+            if hasattr(self, 'legend'):
+                self.legend.set_visible(False)
+                del self.legend
+                self.draw()
 
     def set_ylim(self, bottom=None, top=None):
         """
