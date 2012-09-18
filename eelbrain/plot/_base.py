@@ -235,6 +235,7 @@ class eelfigure(object):
             self._frame.SetStatusText(txt % pos_txt)
 
     def _show(self):
+        self.draw()
         self._frame.Show()
 
     def _fill_toolbar(self, tb):
