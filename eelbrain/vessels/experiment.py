@@ -508,16 +508,17 @@ class mne_experiment(object):
         Loads events from the corresponding raw file, adds the raw to the info
         dict.
 
-        proj : None | name
-            load a projection file and ad it to the raw
+        proj : True | False | str
+            load a projection file and add it to the raw
         edf : bool
             Loads edf and add it to the info dict.
 
         """
         self.set(subject=subject, experiment=experiment, raw=raw)
         raw_file = self.get('rawfif')
-        proj_path = self.get('proj', projname=proj)
-        ds = load.fiff.events(raw_file, proj=proj_path)
+        if isinstance(proj, str):
+            proj = self.get('proj', projname=proj)
+        ds = load.fiff.events(raw_file, proj=proj)
 
         raw = ds.info['raw']
         bad_chs = self.bad_channels[(self.state['subject'], self.state['experiment'])]
