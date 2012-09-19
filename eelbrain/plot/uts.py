@@ -30,6 +30,7 @@ class stat(_base.eelfigure):
                  sub=None, match=None, ds=None, Xax=None, ncol=3,
                  width=6, height=3, dpi=90, legend='upper right', title=True,
                  ylabel=True, xlabel=True, invy=False,
+                 bottom=None, top=None,
                  xdim='time', cm=_cm.jet, colors=None):
         """
     Plots statistics for a one-dimensional ndvar
@@ -69,6 +70,8 @@ class stat(_base.eelfigure):
         axes title; if ``True``, use ``var.name``
     invy : bool
         invert the y axis
+    bottom, top | None | scalar
+        Set an absolute range for the plot's y axis.
 
         """
         if Xax is None:
@@ -87,7 +90,11 @@ class stat(_base.eelfigure):
 
         # assemble colors
         if X is None:
-            colors = {ct.Y.name: 'b'}
+            if colors is None:
+                colors = 'b'
+            elif isinstance(colors, (list, tuple)):
+                colors = colors[0]
+            colors = {ct.Y.name: colors}
         else:
             if isinstance(colors, (list, tuple)):
                 colors = dict(zip(X.cells, colors))
@@ -101,7 +108,8 @@ class stat(_base.eelfigure):
                 colors = {cell:cm(i / N) for i, cell in enumerate(cells)}
 
         legend_h = {}
-        kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim, invy=invy,
+        kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
+                      invy=invy, bottom=bottom, top=top,
                       xlabel=xlabel, colors=colors, legend_h=legend_h)
 
         if title is True:
@@ -142,7 +150,38 @@ class stat(_base.eelfigure):
         self.figure.tight_layout()
         self._show()
 
-    def plot_legend(self, loc='fig'):
+    def plot_clusters(self, clusters, p=0.05, color=(.7, .7, .7), ax=0):
+        """Add clusters from a cluster test to the uts plot (as shaded area).
+
+        Arguments
+        ---------
+
+        clusters : list of ndvars
+            The clusters, as stored in the cluster test results
+            :py:attr:`.clusters` dictionary.
+
+        p : scalar
+            Threshold p value: plot all clusters with p <= this value.
+
+        color : matplotlib color
+            Color for the cluster.
+
+        ax : int
+            Index of the axes (in the uts plot) to which the clusters are to
+            be plotted.
+
+        """
+        ax = self.axes[ax]
+        for c in clusters:
+            if c.properties['p'] <= p:
+                i0 = np.nonzero(c.x)[0][0]
+                i1 = np.nonzero(c.x)[0][-1]
+                t0 = c.time[i0]
+                t1 = c.time[i1]
+                ax.axvspan(t0, t1, zorder= -1, color=color)
+        self.draw()
+
+    def plot_legend(self, loc='fig', figsize=(2, 2)):
         """Plots (or removes) the legend from the figure.
 
         Possible values for the ``loc`` argument:
@@ -178,7 +217,7 @@ class stat(_base.eelfigure):
             handles = self.legend_handles
             labels = self.legend_labels
             if loc == 'fig':
-                return _base.legend(handles, labels)
+                return _base.legend(handles, labels, figsize=figsize)
             else:
                 self.legend = self.figure.legend(handles, labels, loc=loc)
                 self.draw()
@@ -205,7 +244,7 @@ def _ax_stat(ax, ct, colors, legend_h={},
              dev=scipy.stats.sem, main=np.mean,
              sub=None, match=None, ds=None,
              figsize=(6, 3), dpi=90, legend='upper right', title=True, ylabel=True,
-             xdim='time', xlabel=True, invy=False):
+             xdim='time', xlabel=True, invy=False, bottom=None, top=None):
 
     ax.x_fmt = "t = %.3f s"
 
@@ -237,7 +276,11 @@ def _ax_stat(ax, ct, colors, legend_h={},
         ax.set_ylabel(ylabel)
     if invy:
         y0, y1 = ax.get_ylim()
-        ax.set_ylim(y1, y0)
+        bottom = bottom if (bottom is not None) else y1
+        top = top if (top is not None) else y0
+    if (bottom is not None) or (top is not None):
+        ax.set_ylim(bottom, top)
+
 
 
 

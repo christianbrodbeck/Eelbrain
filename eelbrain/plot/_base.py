@@ -250,8 +250,8 @@ class eelfigure(object):
 
 
 class legend(eelfigure):
-    def __init__(self, handles, labels, dpi=90):
-        super(legend, self).__init__(title="Legend", dpi=dpi)
+    def __init__(self, handles, labels, dpi=90, figsize=(2, 2)):
+        super(legend, self).__init__(title="Legend", dpi=dpi, figsize=figsize)
 
         self.legend = self.figure.legend(handles, labels, loc=2)
 
