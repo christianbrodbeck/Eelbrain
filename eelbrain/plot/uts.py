@@ -101,7 +101,7 @@ class stat(_base.eelfigure):
             if isinstance(colors, dict):
                 for cell in X.cells:
                     if cell not in colors:
-                        raise KeyError("%r not in colors" % cell)
+                        raise KeyError("%s not in colors" % repr(cell))
             else:
                 cells = _data.ascategorial(X, sub=sub, ds=ds).cells
                 N = len(cells)
