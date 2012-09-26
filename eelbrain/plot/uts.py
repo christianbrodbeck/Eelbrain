@@ -140,7 +140,7 @@ class stat(_base.eelfigure):
                 if match is not None:
                     match = matchct.data[cell]
                 cct = celltable(ct.data[cell], X, match=match)
-                _ax_stat(ax, cct, title=_data.cellname(cell), ** kwargs)
+                _ax_stat(ax, cct, title=_data.cellname(cell), **kwargs)
                 self.axes.append(ax)
 
         self.legend_handles = legend_h.values()

@@ -2,8 +2,8 @@
 supplies attach function to ui module
 
 
-TODO: 
-management of attached items 
+TODO:
+management of attached items
  - keep dictionary that can be checked and restored
 experiment management
 
@@ -76,11 +76,11 @@ class Shell(wx.py.shell.Shell):
 #        self.push('from __future__ import print_function')
     def autoCompleteShow(self, command, offset=0):
         """
-        Display auto-completion popup list from wxPython, with an additional 
+        Display auto-completion popup list from wxPython, with an additional
         mechanism for filtering out unwanted names:
          - names listed in the object's __hide__ attribute
          - names in hidden_attr (defined in this module)
-        
+
         """
         ###### MY ADDITIONAL PRUNING MECHANISM
         #logging.debug(" AutoComplete for command {c}".format(c=str(command)))
@@ -122,9 +122,9 @@ class Shell(wx.py.shell.Shell):
 
     def writeOut(self, message):
         """
-        
+
         sep = False: adds linebreaks at the top and at the bottom of message
-        
+
         ascommand = False: adds the prompt in front of the message to mimmick
                    command
         """
@@ -202,7 +202,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         """
         Options
         -------
-                
+
         use: config.Read(name, default_value)
              config.Write(name, value)
         """
@@ -491,7 +491,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.Bind(wx.EVT_ACTIVATE, self.OnActivate)
         self.shell.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
         # my shell customization
-        self.SetColours(self.shell)
+        self.ApplyStyle()
         self.OnResize_HalfScreen(None)
         # icon
         if sys.platform != 'darwin':
@@ -557,13 +557,13 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def attach(self, dictionary, detach=True, _internal_call=False):
         """
-        Adds a dictionary to the globals and keeps track of the items so that 
-        they can be removed safely with the detach function. Also works for 
+        Adds a dictionary to the globals and keeps track of the items so that
+        they can be removed safely with the detach function. Also works for
         modules (in which case any private attributes are ignored).
-        
+
         detach : bool
             Detach anything else before attaching the current dictionary.
-        
+
         """
         if detach:
             self.detach()
@@ -629,12 +629,12 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def create_py_editor(self, pyfile=None):
         """
         Creates and returns a new py_editor object.
-        
+
         :arg pyfile: filename as string, or True in order to display an "open
             file" dialog (None creates an empty editor)
         :arg openfile: True if an 'open file' dialog should be shown after the
             editor is cerated
-        
+
         """
         editor = py_editor.Editor(self, self, pos=self.pos_for_new_window(),
                                   pyfile=pyfile)
@@ -654,12 +654,12 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def detach(self, dictionary=None):
         """
         Removes the contents of `dictionary` from the global namespace. Neither
-        the item itself is removed, nor are any references that were not 
+        the item itself is removed, nor are any references that were not
         created through the :func:`attach` function.
-        
+
         `dictionary`: dict-like
             Dictionary which to detach; `None`: detach everything
-         
+
         """
         if dictionary is None:
             dIDs = self._attached_items.keys()
@@ -677,16 +677,16 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def ExecFile(self, filename, shell_globals=True):
         """
         Execute a file in the shell.
-        
+
         shell_globals determines wheter the shell's globals are submitted to
         the call to execfile or not.
-        
-        
+
+
         (!)
         A problem currently (also with the commented-out version below) is that
-        __file__ and sys.argv[0] point to eelbrain.__main__ instead of the 
-        executed file.  
-        
+        __file__ and sys.argv[0] point to eelbrain.__main__ instead of the
+        executed file.
+
         """
         if filename and os.path.exists(filename):
             os.chdir(os.path.dirname(filename))
@@ -726,22 +726,22 @@ class ShellFrame(wx.py.shell.ShellFrame):
                  shell_globals=True, filedir=None, internal_call=False):
         """
         Compile txt and Execute it in the shell.
-        
+
         **kwargs**
 
-        out: 
+        out:
             shell.Execute
-        title: 
-            is displayed in the shell and should identify the source of the 
-            code. 
-        comment: 
+        title:
+            is displayed in the shell and should identify the source of the
+            code.
+        comment:
             displayed after title
-        shell_globals: 
+        shell_globals:
             determines wheter the shell's globals are submitted to
             the call to execfile or not.
-        filedir: 
+        filedir:
             perform os.chdir before executing
-        
+
         """
         if comment is None:
             msg = '<exec %r>' % title
@@ -825,7 +825,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def help_lookup(self, what=None):
         """
         what = object whose docstring should be displayed
-        
+
         """
         # this is the function that is pulled into the shell as help()
         self.OnHelpViewer(topic=what)
@@ -872,11 +872,11 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnExecFile(self, event=None):
         """
         Execute a file in the shell.
-        
+
         filename: if None, will ask
-        isolate: execute with separate globals, do not touch the shell's 
+        isolate: execute with separate globals, do not touch the shell's
                  globals
-        
+
         """
         dialog = wx.FileDialog(self, style=wx.FD_OPEN)
         dialog.SetMessage("Select Python File")
@@ -887,9 +887,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def OnFileClose(self, event):
         """
-        Handler to catch and distribute 'close' command  in Os-X 
+        Handler to catch and distribute 'close' command  in Os-X
         (see wx.py.frame.Frame)
-        
+
         """
         win = self.get_active_window()
         if win:
@@ -1020,16 +1020,16 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def OnHelpViewer(self, event=None, topic=None, topic_str=None, pos=None):
         """
-        topic : 
+        topic :
             object
-        topic_str : 
+        topic_str :
             string that can be evaluated to get topic object
-        pos : 
+        pos :
             With topic_str, the pos argument can be used to search for a
-            Python object name within topic_str. When the user asks for help 
-            in the shell or editor, the topic_str is the current line and pos 
-            is the caret position. 
-         
+            Python object name within topic_str. When the user asks for help
+            in the shell or editor, the topic_str is the current line and pos
+            is the caret position.
+
         """
         if self.help_viewer:
             if self.help_viewer.IsShown():
@@ -1245,10 +1245,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def OnShowExamples(self, event=None):
         """
-        __init__(self, Window parent, String message=FileSelectorPromptStr, 
-            String defaultDir=EmptyString, String defaultFile=EmptyString, 
-            String wildcard=FileSelectorDefaultWildcardStr, 
-            long style=FD_DEFAULT_STYLE, 
+        __init__(self, Window parent, String message=FileSelectorPromptStr,
+            String defaultDir=EmptyString, String defaultFile=EmptyString,
+            String wildcard=FileSelectorDefaultWildcardStr,
+            long style=FD_DEFAULT_STYLE,
             Point pos=DefaultPosition) -> FileDialog
         """
         dialog = wx.FileDialog(self, "Open Eelbrain Example",
@@ -1353,13 +1353,13 @@ class ShellFrame(wx.py.shell.ShellFrame):
         kwargs
         ------
         sep = False: adds linebreaks at the top and at the bottom of message
-        
+
         ascommand = False: adds the prompt in front of the message to mimmick
                    command
-                   
-        internal_call: notification that the call is made by the app mainloop 
+
+        internal_call: notification that the call is made by the app mainloop
                        rather than form the shell
-        
+
         """
         ls = os.linesep
         if message != ls:

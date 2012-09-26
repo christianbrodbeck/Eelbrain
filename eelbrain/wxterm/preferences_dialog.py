@@ -16,7 +16,7 @@ Help_dataDir = ("DataDir is used by the pyShell. A file called 'startup' in the 
 
 
 class PreferencesDialog(wx.Frame):
-    def __init__(self, shell, ID=wx.ID_ANY, pos=wx.DefaultPosition,
+    def __init__(self, shell, Id=wx.ID_ANY, pos=wx.DefaultPosition,
                  size=(500,50), style=wx.DEFAULT_FRAME_STYLE): #wx.DefaultSize
         """
         tutorial on layout:
@@ -24,7 +24,7 @@ class PreferencesDialog(wx.Frame):
         
         """
         title = "Eelbrain Preferences"
-        wx.Frame.__init__(self, shell, ID, title, pos, size, style)
+        wx.Frame.__init__(self, shell, Id, title, pos, size, style)
         self.config = shell.wx_config
         
         pref_sizer = wx.BoxSizer(wx.VERTICAL)
