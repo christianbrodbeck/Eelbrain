@@ -728,7 +728,8 @@ class mne_experiment(object):
                 if v:
                     print "%r\n  ->%r" % (old_name, new_name)
 
-    def rm(self, temp, constants={}, values={}, exclude={}):
+    def rm(self, temp, constants={}, values={}, exclude={}, **kwargs):
+        self.set(**kwargs)
         files = []
         for temp in self.iter_temp(temp, constants=constants, values=values,
                                    exclude=exclude):
