@@ -98,8 +98,9 @@ def Raw(path=None, proj=True, **kwargs):
     return raw
 
 
-def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
-           verbose=False):
+def events(raw=None, merge= -1, proj=False, name=None,
+           stim_channel='STI 014',
+           baseline=0, verbose=False):
     """
     Returns a dataset containing events from a raw fiff file. Use
     :func:`fiff_epochs` to load MEG data corresponding to those events.
@@ -124,7 +125,11 @@ def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
     name : str | None
         A name for the dataset. If ``None``, the raw filename will be used.
     
+    stim_channel : str
+        Name of the trigger channel.
+
     baseline : int
+        For corrupted event channels:
         After kit2fiff conversion of sqd files with unused trigger channels, 
         the resulting fiff file's event channel can contain a baseline other 
         than 0. This interferes with normal event extraction. If the baseline
@@ -139,7 +144,7 @@ def events(raw=None, merge= -1, proj=False, name=None, baseline=0,
         name = os.path.basename(raw_file)
 
     if baseline:
-        pick = mne.event.pick_channels(raw.info['ch_names'], include='STI 014')
+        pick = mne.event.pick_channels(raw.info['ch_names'], include=stim_channel)
         data, _ = raw[pick, :]
         idx = np.where(np.abs(np.diff(data[0])) > 0)[0]
 
