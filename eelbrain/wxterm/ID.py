@@ -49,6 +49,7 @@ RESIZE = wx.NewId()
 RECENT_LOAD_E = wx.NewId()
 RECENT_LOAD_PYDOC = wx.NewId()
 
+SET_FONT = wx.NewId()
 SET_TEND = wx.NewId()
 SET_TSTART = wx.NewId()
 SHELL_Clear = wx.NewId()

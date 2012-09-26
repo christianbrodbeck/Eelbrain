@@ -3,7 +3,12 @@ Created on Nov 8, 2011
 
 @author: christian
 '''
-import os, wx
+import logging
+import os 
+
+import wx
+
+import ID
 
 Help_dataDir = ("DataDir is used by the pyShell. A file called 'startup' in the dataDir is "
                 "executed as startup script (restart Eelbrain for changes to take effect)")
@@ -22,7 +27,7 @@ class PreferencesDialog(wx.Frame):
         wx.Frame.__init__(self, shell, ID, title, pos, size, style)
         self.config = shell.wx_config
         
-#        pref_sizer = wx.BoxSizer(wx.VERTICAL)
+        pref_sizer = wx.BoxSizer(wx.VERTICAL)
         
     # Data Dir
         panel_dataDir = wx.Panel(self, -1)#, size=(500,300))
@@ -34,7 +39,8 @@ class PreferencesDialog(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.SetDataDir, id=ID_DATADIR)
         sizer.Add(button, 0, wx.ALIGN_LEFT|wx.EXPAND)
         # path
-        txt = self.dataDirTxt = wx.TextCtrl(panel_dataDir, -1, dataDir, style=wx.TE_READONLY)#, size=(500,100))
+        txt = self.dataDirTxt = wx.TextCtrl(panel_dataDir, -1, dataDir, 
+                                            size=(400,0), style=wx.TE_READONLY)
         sizer.Add(txt, 1, wx.EXPAND|wx.ALIGN_RIGHT)
         # edit startup script
         ID_EDIT = wx.NewId()
@@ -47,21 +53,60 @@ class PreferencesDialog(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.OnHelpDataDir, btn)
         
         # 
-        panel_dataDir.SetSizer(sizer)
-#        pref_sizer.Add(sizer, 0)
+#        panel_dataDir.SetSizer(sizer)
+        pref_sizer.Add(sizer, 0)
         
+        
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        button = wx.Button(panel_dataDir, ID.SET_FONT, "Font")
+        self.Bind(wx.EVT_BUTTON, self.OnSetFont, id=ID.SET_FONT)
+        sizer.Add(button, 0, wx.ALIGN_LEFT|wx.EXPAND)        
+        pref_sizer.Add(sizer, 0)
+        
+        panel_dataDir.SetSizer(pref_sizer)
+        
+        pref_sizer.Fit(self)
 #        panel_dataDir.Fit()
-        
 #        self.SetSizer(pref_sizer)
 #        self.Fit()
 #        self.SetAutoLayout(True)
 #        self.Layout()
+    
     def OnHelpDataDir(self, event=None):
         dlg = wx.MessageDialog(self, Help_dataDir, "Help: dataDir", 
                                wx.OK|wx.ICON_INFORMATION)
         dlg.ShowModal()
         dlg.Destroy()
+    
+    def OnSetFont(self, event):
+        font = wx.Font(pointSize=int(self.config.Read('font size')),
+                       family=wx.FONTFAMILY_UNKNOWN,
+                       style=wx.FONTSTYLE_NORMAL,
+                       weight=wx.FONTWEIGHT_NORMAL,
+                       face=self.config.Read('font'))
+        data = wx.FontData()
+        data.EnableEffects(True)
+        data.SetInitialFont(font)
+        data.SetColour(self.config.Read('font color'))
+        dlg = wx.FontDialog(self, data)
+        if dlg.ShowModal() == wx.ID_OK:
+            data = dlg.GetFontData()
+            font_ = data.GetChosenFont()
+            font = font_.GetFaceName()
+            size = font_.GetPointSize()
+            color_ = data.GetColour()
+            color = color_.GetAsString(wx.C2S_HTML_SYNTAX)
+
+            logging.debug('You selected: "%s", %d points, color %s\n' %
+                          (font, size, color))
+
+            self.config.Write("font", font)
+            self.config.Write("font size", str(size))
+            self.config.Write("font color", color)
+            self.Parent.ApplyStyle()
         
+        dlg.Destroy()
+    
     def SetDataDir(self, event=None):
         dlg = wx.DirDialog(self, "Select user dataDir directory")
         if dlg.ShowModal() == wx.ID_OK:

@@ -146,7 +146,7 @@ class Editor(wx.py.editor.EditorFrame):
     
     def bufferCreate(self, filename=None):
         wx.py.editor.EditorFrame.bufferCreate(self, filename=filename)
-        self.shell.SetColours(self.editor.window)
+        self.shell.ApplyStyleTo(self.editor.window)
         
         zoom = self.shell.shell.GetZoom()
         self.editor.window.SetZoom(zoom)

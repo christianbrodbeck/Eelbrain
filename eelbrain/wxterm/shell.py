@@ -504,6 +504,57 @@ class ShellFrame(wx.py.shell.ShellFrame):
         text = wx.py.shell.HELP_TEXT
         self.__doc__ = text
 
+    def ApplyStyle(self):
+        "reapply the layout to all editwindows"
+#        if 'wxMac' in wx.PlatformInfo:
+        self._style = {'times'     : 'Lucida Grande',
+                       'mono'      : self.wx_config.Read('font', 'Monaco'), # 'Courier New'
+                       'helv'      : 'Geneva',
+                       'other'     : 'new century schoolbook',
+                       'size'      : int(self.wx_config.Read('font size', '13')),
+                       'lnsize'    : 16,
+                       'forecol'   : self.wx_config.Read('font color', '#FFFF00'),
+                       'backcol'   : '#F0F0F0', #'#000010',
+                       'calltipbg' : '#101010',
+                       'calltipfg' : '#BBDDFF',
+                       }
+
+        self.ApplyStyleTo(self.shell)
+        for ed in self.editors:
+            if hasattr(ed, 'editor'): # check if alife
+                self.ApplyStyleTo(ed.editor.window)
+
+    def ApplyStyleTo(self, obj):
+        """
+        see
+         - wx.py.editwindow.EditWindow.setStyles
+         - wx.py.shell.editwindow.EditWindow.__config()
+
+        """
+        obj.SetCaretWidth(2)
+
+        obj.StyleClearAll()
+        FACES = self._style
+
+        obj.setStyles(FACES) # this calls wx.py.editwindow.EditWindow.setStyles
+        obj.CallTipSetBackground(FACES['calltipbg'])
+        obj.CallTipSetForeground(FACES['calltipfg'])
+
+        obj.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, "fore:%(forecol)s" % FACES)#,back:#666666")
+        obj.StyleSetSpec(wx.stc.STC_P_DEFAULT, "fore:#000000,face:%(mono)s" % FACES)  # '\' space
+        obj.StyleSetSpec(wx.stc.STC_P_NUMBER, "fore:#0000FF")
+        obj.StyleSetSpec(wx.stc.STC_STYLE_CONTROLCHAR, "fore:#FF0000")
+        obj.StyleSetSpec(wx.stc.STC_P_STRING, "fore:#FF0000")
+        obj.StyleSetSpec(wx.stc.STC_P_CHARACTER, "fore:#0000FF")
+        obj.StyleSetSpec(wx.stc.STC_P_OPERATOR, "fore:#000010,face:%(mono)s" % FACES)
+        obj.StyleSetSpec(wx.stc.STC_P_DECORATOR, "fore:#FF00FF")
+        obj.StyleSetSpec(wx.stc.STC_P_WORD, "fore:#FF00FF")
+        obj.StyleSetSpec(wx.stc.STC_STYLE_MAX, "fore:#0000FF")
+        comment = "fore:#008811"
+        obj.StyleSetSpec(wx.stc.STC_P_COMMENTLINE, comment)
+        obj.StyleSetSpec(wx.stc.STC_P_TRIPLEDOUBLE, "%s,back:#F0F0F0" % comment)
+        obj.StyleSetSpec(wx.stc.STC_P_TRIPLE, comment)
+
     def attach(self, dictionary, detach=True, _internal_call=False):
         """
         Adds a dictionary to the globals and keeps track of the items so that 
@@ -1293,45 +1344,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.windowMenuWindows.pop(ID)
         self.windowMenuMenuItems.pop(ID)
         self.windowMenu.Remove(ID)
-
-    def SetColours(self, obj):
-        """
-        see 
-         - wx.py.editwindow.EditWindow.setStyles
-         - wx.py.shell.editwindow.EditWindow.__config()
-        
-        """
-        obj.SetCaretWidth(2)
-        if 'wxMac' in wx.PlatformInfo:
-            FACES = { 'times'     : 'Lucida Grande',
-                      'mono'      : 'Inconsolata', # 'Monaco', 'Courier New'
-                      'helv'      : 'Geneva',
-                      'other'     : 'new century schoolbook',
-                      'size'      : 13,
-                      'lnsize'    : 16,
-                      'backcol'   : '#F0F0F0', #'#000010',
-                      'calltipbg' : '#101010',
-                      'calltipfg' : '#BBDDFF',
-                    }
-            obj.StyleClearAll()
-            obj.setStyles(FACES)
-            obj.CallTipSetBackground(FACES['calltipbg'])
-            obj.CallTipSetForeground(FACES['calltipfg'])
-
-        obj.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, "fore:#FFFF00")#,back:#666666")
-        obj.StyleSetSpec(wx.stc.STC_P_DEFAULT, "fore:#000000")  # '\'
-        obj.StyleSetSpec(wx.stc.STC_P_NUMBER, "fore:#0000FF")
-        obj.StyleSetSpec(wx.stc.STC_STYLE_CONTROLCHAR, "fore:#FF0000")
-        obj.StyleSetSpec(wx.stc.STC_P_STRING, "fore:#FF0000")
-        obj.StyleSetSpec(wx.stc.STC_P_CHARACTER, "fore:#0000FF")
-        obj.StyleSetSpec(wx.stc.STC_P_OPERATOR, "fore:#000010")
-        obj.StyleSetSpec(wx.stc.STC_P_DECORATOR, "fore:#FF00FF")
-        obj.StyleSetSpec(wx.stc.STC_P_WORD, "fore:#FF00FF")
-        obj.StyleSetSpec(wx.stc.STC_STYLE_MAX, "fore:#0000FF")
-        comment = "fore:#008811"
-        obj.StyleSetSpec(wx.stc.STC_P_COMMENTLINE, comment)
-        obj.StyleSetSpec(wx.stc.STC_P_TRIPLEDOUBLE, "%s,back:#F0F0F0" % comment)
-        obj.StyleSetSpec(wx.stc.STC_P_TRIPLE, comment)
 
     def shell_message(self, message, sep=False, ascommand=False, endline=True,
                       internal_call=False):
