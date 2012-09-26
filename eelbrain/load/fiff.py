@@ -160,7 +160,7 @@ def events(raw=None, merge= -1, proj=False, name=None,
         events[:, 1] = np.zeros_like(idx)
         events[:, 2] = values
     else:
-        events = mne.find_events(raw, verbose=verbose)
+        events = mne.find_events(raw, verbose=verbose, stim_channel=stim_channel)
 
     if len(events) == 0:
         raise ValueError("No events found!")
