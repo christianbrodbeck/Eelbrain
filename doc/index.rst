@@ -25,7 +25,7 @@ Contents:
    Various
 
 
-.. .. seealso:: `Eelbrain on Launchpad <https://launchpad.net/eelbrain>`_
+.. seealso:: `Eelbrain on GitHub <http://github.com/christianmbrodbeck/Eelbrain>`_
 
 Indices and tables
 ==================

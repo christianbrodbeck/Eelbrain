@@ -70,7 +70,7 @@ Then, install MDP from github::
 
 .. _obtain-source:
 
-Installing from Source
+Installing from GitHub
 ^^^^^^^^^^^^^^^^^^^^^^
 
 The Eelbrain source code is hosted on `GitHub 
@@ -81,7 +81,14 @@ However, since the code is currently evolving, the better option is to clone
 the project with git. A way to do this is::
 
     $ cd /target/directory
-    $ git clone git@github.com:christianmbrodbeck/Eelbrain.git
+    $ git clone https://github.com/christianmbrodbeck/Eelbrain.git
+
+This will create the folder ``/target/directory/Eelbrain`` containing all the 
+source files.
+
+
+Updating
+--------
 
 The source can then always be updated to the latest version
 from within the ``Eelbrain`` directory::
@@ -92,8 +99,8 @@ from within the ``Eelbrain`` directory::
 After obtaining the source, there are several options to use Eelbrain:
 
 .. note::
-    Make sure to run setup.py with the python version that you want to run
-    Eelbrain with.
+    Make sure to run setup.py with the python version with which you want to
+    use Eelbrain.
 
 
 
