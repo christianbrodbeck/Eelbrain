@@ -160,6 +160,11 @@ commands. For more information, use help(command):
     remove from the global namespace any variables that were added to it 
     using the :py:func:`attach` function.
 
+.. py:function:: curdir([path])
+
+    Called without argument: returns the current working directory. Called with
+    a path (as ``str``): changes the current working directory. 
+
 .. py:function:: help([object])
 
 	open the help viewer for any object 

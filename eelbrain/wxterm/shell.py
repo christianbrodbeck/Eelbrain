@@ -485,6 +485,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.global_namespace['attach'] = self.attach
         self.global_namespace['detach'] = self.detach
         self.global_namespace['help'] = self.help_lookup
+        self.global_namespace['curdir'] = self.curdir
+        if os.path.exists(dataDir):
+            self.curdir(dataDir)
+
 
         # other Bindings
         self.Bind(wx.EVT_MAXIMIZE, self.OnMaximize)
@@ -651,6 +655,21 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         return editor
 
+    def curdir(self, dirname=None):
+        """
+        Set the current directory. With None, returns the current directory.
+
+        """
+        if dirname:
+            os.chdir(dirname)
+            if dirname not in sys.path:
+                if hasattr(self, '_added_to_path'):
+                    sys.path.remove(self._added_to_path)
+                sys.path.append(dirname)
+                self._added_to_path = dirname
+        else:
+            return os.path.abspath(os.curdir)
+
     def detach(self, dictionary=None):
         """
         Removes the contents of `dictionary` from the global namespace. Neither
@@ -689,7 +708,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         """
         if filename and os.path.exists(filename):
-            os.chdir(os.path.dirname(filename))
+            # set paths in environment
+            dirname = os.path.dirname(filename)
+            self.curdir(dirname)
+
             if shell_globals:
                 self.global_namespace['__file__'] = filename
                 self.shell.Execute("execfile(%r)" % filename)
@@ -750,7 +772,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.shell_message(msg, ascommand=False, internal_call=internal_call)
 
         if filedir:
-            os.chdir(filedir)
+            self.curdir(filedir)
 
         if out:
             self.shell.Execute(txt)
@@ -1051,6 +1073,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         if topic_str:
             if pos is not None:
+                # TODO: use RE
+#                p = re.compile('')
                 # find the python command around pos in the line
                 topic_scan = topic_str.replace('.', 'a')
                 start = pos
