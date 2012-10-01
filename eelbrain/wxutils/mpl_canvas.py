@@ -219,8 +219,9 @@ class CanvasFrame(wx.Frame):
 
     def OnClose(self, event):
         # remove circular reference
-        del self._eelfigure._frame
-        del self._eelfigure
+        if self._eelfigure:
+            del self._eelfigure._frame
+            del self._eelfigure
         event.Skip()
 
     def OnAttach(self, event):
