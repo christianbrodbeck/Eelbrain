@@ -17,6 +17,7 @@ from eelbrain.vessels import process
 
 import ID
 from eelbrain import ui
+from eelbrain.plot._base import eelfigure
 from eelbrain.wxutils import mpl_canvas
 from eelbrain.wxutils import Icon
 
@@ -25,7 +26,7 @@ __all__ = ['select_cases_butterfly', 'pca']
 
 
 
-class select_cases_butterfly(mpl_canvas.CanvasFrame):
+class select_cases_butterfly(eelfigure):
     """
     Interfaces showing individual cases in an ndvar as butterfly plots, with
     the option to interactively manipulate a boolean list (i.e., select cases).
@@ -34,7 +35,8 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         (de-)select this case
 
     """
-    def __init__(self, dataset, data='MEG', target='accept', nplots=(6,6), plotsize=(3,1.5),
+    def __init__(self, dataset, data='MEG', target='accept',
+                 nplots=(6, 6), plotsize=(3, 1.5),
                  mean=True, topo=True, ylim=None, fill=True, aa=False, dpi=50):
         """
         Plots all cases in the collection segment and allows visual selection
@@ -93,22 +95,22 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         self._segs_by_page = []
         for i in xrange(n_pages):
             start = i * n_per_page
-            stop = min((i+1) * n_per_page, dataset.N)
+            stop = min((i + 1) * n_per_page, dataset.N)
             self._segs_by_page.append(range(start, stop))
         
     # init wx frame
-        parent = wx.GetApp().shell
         title = "select_cases_butterfly -> %r" % target.name
         figsize = (plotsize[0] * nplots[0], plotsize[1] * nplots[1])
-        mpl_canvas.CanvasFrame.__init__(self, parent, title, figsize=figsize, 
-                                        dpi=dpi)
-        # connect
-        self.canvas.mpl_connect('button_press_event', self.OnClick)
-        self.canvas.mpl_connect('axes_leave_event', self.OnLeaveAxes)
-        # figure
-        self.figure.subplots_adjust(left=.01, right=.99, bottom=.05, top=.95, 
+        super(self.__class__, self).__init__(title=title, figsize=figsize, dpi=dpi)
+
+    # setup figure
+        self.figure.subplots_adjust(left=.01, right=.99, bottom=.05, top=.95,
                                     hspace=.5)
-                
+        # connect canvas
+        self.canvas.mpl_connect('button_press_event', self._on_click)
+        if self._is_wx:
+            self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
+
     # compile plot kwargs:
         self._bfly_kwargs = {'extrema': fill}
         if ylim is None:
@@ -119,10 +121,10 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
     # finalize
         self._dataset = dataset
         self.show_page(0)
-        self.canvas.store_canvas()
-        self.Show()
-    
-    def _init_FillToolBar(self, tb):
+        self._frame.store_canvas()
+        self._show()
+
+    def _fill_toolbar(self, tb):
         tb.AddSeparator()
         
         # --> select page
@@ -134,27 +136,25 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
             pages.append('%i: %i...' % (i, istart))
         c = self._page_choice = wx.Choice(tb, -1, choices=pages)
         tb.AddControl(c)
-        tb.Bind(wx.EVT_CHOICE, self.OnPageChoice)
-        
+        tb.Bind(wx.EVT_CHOICE, self._OnPageChoice)
+
         # forward / backward
         tb.AddLabelTool(wx.ID_BACKWARD, "Back", Icon("tango/actions/go-previous"))
-        self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
+        tb.Bind(wx.EVT_TOOL, self._OnBackward, id=wx.ID_BACKWARD)
         tb.AddLabelTool(wx.ID_FORWARD, "Next", Icon("tango/actions/go-next"))
-        self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
+        tb.Bind(wx.EVT_TOOL, self._OnForward, id=wx.ID_FORWARD)
         if self._n_pages < 2:
             tb.EnableTool(wx.ID_FORWARD, False)
             tb.EnableTool(wx.ID_BACKWARD, False)
         tb.AddLabelTool(wx.ID_REFRESH, "Refresh", Icon("tango/actions/view-refresh"))
-        self.Bind(wx.EVT_TOOL, self.OnRefresh, id=wx.ID_REFRESH)
+        tb.Bind(wx.EVT_TOOL, self._Refresh, id=wx.ID_REFRESH)
         tb.AddSeparator()
         
         # Thresholding
         btn = wx.Button(tb, ID.THRESHOLD, "Threshold")
         tb.AddControl(btn)
-        self.Bind(wx.EVT_BUTTON, self.OnThreshold, id=ID.THRESHOLD)
-        
-        mpl_canvas.CanvasFrame._init_FillToolBar(self, tb)
-    
+        btn.Bind(wx.EVT_BUTTON, self._OnThreshold)
+
     def _get_page_mean_seg(self):
         seg_IDs = self._segs_by_page[self._current_page_i]
         index = np.zeros(self._dataset.N, dtype=bool)
@@ -181,8 +181,8 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         self._mean_handle[0].set_paths([Y])
         
         # update figure
-        self.canvas.redraw(axes=[self._mean_ax])
-    
+        self._frame.redraw(axes=[self._mean_ax])
+
     def set_ax_state(self, axID, state):
         ax = self._case_axes[axID]
         h = self._case_handles[axID]
@@ -191,8 +191,8 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         else:
             h.set_facecolors('r')
         ax._epoch_state = state
-        
-        self.canvas.redraw(artists=[h])
+
+        self._frame.redraw(artists=[h])
         self._update_mean()
     
     def invert_selection(self, axID):
@@ -259,29 +259,29 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         ax.set_axis_off()
         
         self.canvas.draw()
-    
-    def OnBackward(self, event):
-        "turns the page forward"
+
+    def _OnBackward(self, event):
+        "turns the page backward"
         if self._current_page_i == 0:
             self.show_page(self._n_pages - 1)
         else:
             self.show_page(self._current_page_i - 1)
-    
-    def OnClick(self, event):
+
+    def _on_click(self, event):
         "called by mouse clicks"
         logging.debug('click: ')
         ax = event.inaxes
         if ax and ax.ID >= 0:
             self.invert_selection(ax.ID)
 
-    def OnForward(self, event):
-        "turns the page backwards"
+    def _OnForward(self, event):
+        "turns the page forward"
         if self._current_page_i < self._n_pages - 1:
             self.show_page(self._current_page_i + 1)
         else:
             self.show_page(0)
-    
-    def OnLeaveAxes(self, event):
+
+    def _on_leave_axes(self, event):
         sb = self.GetStatusBar()
         sb.SetStatusText("", 0)
     
@@ -299,57 +299,52 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
                 txt = "Page average,   %s"
             # update topomap plot
             plot.topo._ax_topomap(self._topo_ax, [tseg])
-            self.canvas.redraw(axes=[self._topo_ax])
+            self._frame.redraw(axes=[self._topo_ax])
             return txt
         else:
             return '%s'
-            
-    
-    def OnPageChoice(self, event):
+
+
+    def _OnPageChoice(self, event):
         "called by the page Choice control"
         page = self._page_choice.GetSelection()
         self.show_page(page)
-    
-    def OnRefresh(self, event):
+
+    def _Refresh(self, event):
         "updates the states of the segments on the current page"
         for ax in self._case_axes:
             state = self._target[ax.segID]
             if state != ax._epoch_state:
                 self.set_ax_state(ax.ID, state)
-    
-    def OnFileSave(self, event):
-        dialog = wx.FileDialog(self, "Save Figure (If no extension is provided, pdf is used).", 
-                               style=wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
-#                               wildcard="Current Page|*.pdf|All Pages (*_n.*)|*.gif")
-        if dialog.ShowModal() == wx.ID_OK:
-            path = dialog.GetPath()
-#            wc = dialog.GetFilterIndex()
-            wc = 0
-            path, filename = os.path.split(path)
-            if wc == 0: # save only current page
-                if not '.' in filename:
-                    filename += '.pdf'
-                self.figure.savefig(os.path.join(path, filename))
-            elif wc == 1: # save all pages
-                fn_temp = os.path.join('{dir}', '{root}_{n}.{ext}')
-                if '.' in filename:
-                    filename, ext = filename.split('.')
-                else:
-                    ext = 'pdf'
-                i = self.current_page_i
-                self.figure.savefig(fn_temp.format(dir=path, root=filename, n=i, ext=ext))
-                pages = range(self.n)
-                pages.remove(i)
-                prog = ui.progress(self.n-1, "Saving Figures", "Saving Figures")
-                for i in pages:
-                    self.show_page(i)
-                    self.figure.savefig(fn_temp.format(dir=path, root=filename, n=i, ext=ext))
-                    prog.advance()
-                prog.terminate()
-            else:
-                logging.error(" invalid wildcard: %s"%wc)
-    
-    def OnThreshold(self, event):
+
+    def save_all_pages(self, fname=None):
+        if fname is None:
+            msg = ("Save all pages. Index is inserted before extension. "
+                   "If no extension is provided, pdf is used.")
+            fname = ui.ask_saveas("title", msg, None)
+            if not fname:
+                return
+
+        head, tail = os.path.split(fname)
+        if os.path.extsep in tail:
+            root, ext = os.path.splitext(tail)
+        else:
+            root = fname
+            ext = '.pdf'
+        fntemp = os.path.join(head, root) + '_%i' + ext
+
+        i = self.current_page_i
+        self.figure.savefig(fntemp % i)
+        pages = range(self.n)
+        pages.remove(i)
+        prog = ui.progress_monitor(self.n - 1, "Saving Figures", "Saving Figures")
+        for i in pages:
+            self.show_page(i)
+            self.figure.savefig(fntemp % i)
+            prog.advance()
+        prog.terminate()
+
+    def _OnThreshold(self, event):
         """
         above: True, False, None
             how to mark segments that exceed the threshold: True->good; 
@@ -378,9 +373,9 @@ class select_cases_butterfly(mpl_canvas.CanvasFrame):
         process.mark_by_threshold(self._dataset, DV=self._data, 
                                   threshold=threshold, above=above, 
                                   below=below, target=self._target)
-        
-        self.OnRefresh(event)
-    
+
+        self._Refresh(event)
+
 
 
 class pca(mpl_canvas.CanvasFrame):
