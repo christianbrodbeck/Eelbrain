@@ -49,18 +49,25 @@ class select_cases_butterfly(eelfigure):
         dataset : dataset
             dataset on which to perform the selection.
 
+        nplots : 1 | 2 | (i, j)
+            Number of plots (including topo plots and mean).
+
+        mean : bool
+            Plot the page mean on each page.
+
         topo : bool
-            Show a dynamically updated topographic plot at the bottom right
+            Show a dynamically updated topographic plot at the bottom right.
 
         ylim : scalar
-            y-limit of the butterfly plots
+            y-limit of the butterfly plots.
 
         fill : bool
             Only show extrema in the butterfly plots, instead of all traces.
             This is faster for data with many channels.
 
         aa : bool
-            antialiasing (matplolibt parameter)
+            Antialiasing (matplolibt parameter).
+
 
         Example::
 
@@ -76,6 +83,15 @@ class select_cases_butterfly(eelfigure):
             data = dataset[data]
         self._data = data
 
+        if np.prod(nplots) == 1:
+            nplots = (1, 1)
+            mean = False
+            topo = False
+        elif np.prod(nplots) == 2:
+            mean = False
+            if nplots == 2:
+                nplots = (1, 2)
+
         if isinstance(target, basestring):
             try:
                 target = dataset[target]
@@ -84,10 +100,12 @@ class select_cases_butterfly(eelfigure):
                 target = _data.var(x, name=target)
                 dataset.add(target)
         self._target = target
+        self._plot_mean = mean
+        self._plot_topo = topo
 
     # prepare segments
         self._nplots = nplots
-        n_per_page = self._n_per_page = np.prod(nplots) - 2
+        n_per_page = self._n_per_page = np.prod(nplots) - bool(topo) - bool(mean)
         n_pages = dataset.N // n_per_page + bool(dataset.N % n_per_page)
         self._n_pages = n_pages
 
@@ -247,16 +265,18 @@ class select_cases_butterfly(eelfigure):
 
 
         # mean plot
-        ax = self._mean_ax = self.figure.add_subplot(nx, ny, nx * ny)
-        ax.ID = -1
+        if self._plot_mean:
+            ax = self._mean_ax = self.figure.add_subplot(nx, ny, nx * ny)
+            ax.ID = -1
 
-        mseg = self._mean_seg = self._get_page_mean_seg()
-        self._mean_handle = plot.utsnd._ax_butterfly(ax, [mseg], color='k', **self._bfly_kwargs)
+            mseg = self._mean_seg = self._get_page_mean_seg()
+            self._mean_handle = plot.utsnd._ax_butterfly(ax, [mseg], color='k', **self._bfly_kwargs)
 
         # topomap
-        ax = self._topo_ax = self.figure.add_subplot(nx, ny, nx * ny - 1)
-        ax.ID = -2
-        ax.set_axis_off()
+        if self._plot_topo:
+            ax = self._topo_ax = self.figure.add_subplot(nx, ny, nx * ny - self._plot_mean)
+            ax.ID = -2
+            ax.set_axis_off()
 
         self.canvas.draw()
 
