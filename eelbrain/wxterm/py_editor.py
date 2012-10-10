@@ -476,9 +476,7 @@ class Editor(wx.py.editor.EditorFrame):
             if pos == 0:
                 start = 0
             else:
-                long_eol = (self.editor.window.GetEOLMode() == wx.stc.STC_EOL_CRLF)
-                start = (self.editor.window.GetLineEndPosition(pos-1)
-                         + 1 + long_eol)
+                start = self.editor.window.GetLineEndPosition(pos - 1) + 1
             
             stop = self.editor.window.GetLineEndPosition(pos)
             self.editor.window.SetSelection(start, stop)
