@@ -469,7 +469,7 @@ class Editor(wx.py.editor.EditorFrame):
         self._search_string = None
     
     def SelectFragment(self):
-        "if nothing is selscted select the current line"
+        "if nothing is selected select the current line"
         start, stop = self.editor.window.GetSelection()
         if start == stop:
             pos = self.editor.window.GetCurrentLine()

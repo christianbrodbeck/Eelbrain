@@ -1,5 +1,39 @@
 '''
-Functions for loading data from mne's fiff files. 
+Functions for loading data from mne's fiff files.
+
+To load events as a dataset::
+
+    >>> ds = load.fiff.events(path)
+
+Events can then be modified in he ds (adding variables, discarding events,
+...). These events can then be used in the following ways (for more
+options, see the documentation of the relevant functions):
+
+
+1) load epochs as ndvar
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The epochs can be added as an ndvar object with::
+
+    >>> ds = load.fiff.add_epochs(ds)
+
+The returned ds contains the new ndvar as 'MEG'
+If no epochs are rejected during loading, the returned ds is identical with the
+input ds.
+If epochs are rejected during loading, the returned ds is a shortened version
+of the input dataset that only contains the good epochs.
+
+
+2) load epochs as mne.Epochs object
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The epochs can be loaded as mne.Epochs object using::
+
+    >>> epochs = load.fiff.mne_Epochs(ds)
+
+Note that the returned epochs event does not contain meaningful event ids,
+and ``epochs.event_id`` is None.
+
 
 
 
@@ -278,7 +312,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
                         reject=reject, preload=True)
 
     # read the data
-    x = epochs.get_data() # this call iterates through epochs
+    x = epochs.get_data()
     if len(x) == 0:
         raise RuntimeError("No events left in %r" % raw.info['filename'])
     T = epochs.times
@@ -544,7 +578,7 @@ def mne_Epochs(ds, tstart= -0.1, tstop=0.6, i_start='i_start', raw=None, name='{
     name : str
         Name for the Epochs object. ``'{name}'`` is formatted with the dataset 
         name ``ds.name``.
-        
+
     """
     if raw is None:
         raw = ds.info['raw']
