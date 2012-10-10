@@ -314,15 +314,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
 
     epochs_var = ndvar(x, dims=dims, properties=props, name=target)
     if add:
-        if len(epochs.events) != ds.n_cases:
-            if hasattr(epochs, 'model'):
-                ds = ds.subset(epochs.model['index'])
-            else:
-                err = ("The mne.Epochs object ended up with fewer epochs than "
-                       "the dataset has cases. Matching epochs with events "
-                       "requires a fork of mne-python implementing the "
-                       "Epochs.model attribute")
-                raise TypeError(err)
+        ds = trim_ds(ds, epochs)
         ds.add(epochs_var)
         return ds
     else:
@@ -523,12 +515,14 @@ def mne_events(ds=None, i_start='i_start', eventID='eventID'):
     if isinstance(i_start, basestring):
         i_start = ds[i_start]
 
+    N = len(i_start)
+
     if isinstance(eventID, basestring):
         eventID = ds[eventID]
     elif eventID is None:
-        eventID = np.ones(len(i_start))
+        eventID = np.ones(N)
 
-    events = np.empty((ds.N, 3), dtype=np.int32)
+    events = np.empty((N, 3), dtype=np.int32)
     events[:, 0] = i_start.x
     events[:, 1] = 0
     events[:, 2] = eventID
@@ -556,14 +550,11 @@ def mne_Epochs(ds, tstart= -0.1, tstop=0.6, i_start='i_start', raw=None, name='{
         raw = ds.info['raw']
 
     events = mne_events(ds=ds, i_start=i_start)
+    # epochs with (event_id == None) does not use columns 1 and 2 of events
+    events[:, 2] = np.arange(len(events))
 
-    epochs = mne.Epochs(raw, events, None, tmin=tstart, tmax=tstop,
+    epochs = mne.Epochs(raw, events, event_id=None, tmin=tstart, tmax=tstop,
                         name=name.format(name=ds.name), **kwargs)
-    if hasattr(epochs, 'model'):
-        if epochs.model.n_cases < ds.n_cases:
-            index = epochs.model['index']
-            ds = ds.subset(index)
-        epochs.model.update(ds)
 
     return epochs
 
@@ -590,3 +581,24 @@ def sensor_net(fiff, picks=None, name='fiff-sensors'):
         ch_locs.append((x, y, z))
         ch_names.append(ch_name)
     return _sensors.sensor_net(ch_locs, ch_names, name=name)
+
+
+def trim_ds(ds, epochs):
+    """
+    Trim a dataset to account for rejected epochs. If no epochs were rejected,
+    the original ds is rturned.
+
+    Parameters
+    ----------
+
+    ds : dataset
+        Dataset that was used to construct epochs.
+    epochs : Epochs
+        Epochs loaded with mne_Epochs()
+
+    """
+    if len(epochs.events) < ds.n_cases:
+        index = epochs.events[:, 2]
+        ds = ds.subset(index)
+
+    return ds
