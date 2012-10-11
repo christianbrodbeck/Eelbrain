@@ -682,13 +682,38 @@ class var(object):
 
 
 def find_time_point(timevar, time):
-    if time in timevar.x:
+    """
+    Returns (index, time) for the closest point to ``time`` in ``timevar``
+    
+    timevar : array-like 1d
+        Monotonically increasing values.
+    time : scalar
+        Time point for which to find a match.
+    
+    """
+    if time in timevar:
         i = np.where(timevar == time)[0][0]
     else:
-        i_next = np.where(timevar > time)[0][0]
+        gr = (timevar > time)
+        if np.all(gr):
+            if timevar[1] - timevar[0] > timevar[0] - time:
+                return 0, timevar[0]
+            else:
+                name = repr(timevar.name) if hasattr(timevar, 'name') else ''
+                raise ValueError("time=%s lies outside array %r" % (time, name))
+        elif np.any(gr):
+            i_next = np.where(gr)[0][0]
+        elif timevar[-1] - timevar[-2] > time - timevar[-1]:
+            return len(timevar) - 1, timevar[-1]
+        else:
+            name = repr(timevar.name) if hasattr(timevar, 'name') else ''
+            raise ValueError("time=%s lies outside array %r" % (time, name))
         t_next = timevar[i_next]
-        i_prev = np.where(timevar < time)[0][-1]
+        
+        sm = timevar < time
+        i_prev = np.where(sm)[0][-1]
         t_prev = timevar[i_prev]
+
         if (t_next - time) < (time - t_prev):
             i = i_next
             time = t_next
