@@ -240,6 +240,26 @@ class stat(_base.eelfigure):
 
 
 
+class uts(_base.eelfigure):
+    def __init__(self, epochs, ncol=3, width=6, height=3, dpi=90):
+        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
+
+        nplot = len(epochs)
+        ncol = min(nplot, ncol)
+        nrow = round(nplot / ncol + .49)
+        figsize = (ncol * width, nrow * height)
+
+        win_title = 'plot.uts.uts: '
+        super(uts, self).__init__(title=win_title, figsize=figsize, dpi=dpi)
+
+        for i, epoch in enumerate(epochs):
+            ax = self.figure.add_subplot(nrow, ncol, i + 1)
+            _ax_uts(ax, epoch)
+
+        self._show()
+
+
+
 def _ax_stat(ax, ct, colors, legend_h={},
              dev=scipy.stats.sem, main=np.mean,
              sub=None, match=None, ds=None,
@@ -343,18 +363,49 @@ class clusters(_base.eelfigure):
 
 
 
-def _ax_uts(ax, layers, color=None, xdim='time'):
+def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
+            xlabel=True, ylabel=True, color=None, xdim='time'):
+    contours = {}
     for l in layers:
-        _plt_uts(ax, l, color=color, xdim=xdim)
+        colorspace = _base.read_cs_arg(l, None)
+        if colorspace.cmap:
+            _plt_uts(ax, l, color=color, xdim=xdim)
+        for v, color in colorspace.contours.iteritems():
+            if v in contours:
+                continue
+            contours[v] = ax.axhline(v, color=color)
 
-    x = layers[0].get_dim(xdim).x
+    x = layers[0].get_dim(xdim)
     ax.set_xlim(x[0], x[-1])
+    ax.x_fmt = "t = %.3f s"
+
+    if title:
+        ax.set_title(title)
+
+    if xlabel:
+        if xlabel is True:
+            xlabel = x.name
+        ax.set_xlabel(xlabel)
+
+#    if ylabel:
+#        if ylabel is True:
+#            ylabel = l.properties.get('unit', None)
+#        ax.set_ylabel(ylabel)
+
+    if invy:
+        y0, y1 = ax.get_ylim()
+        bottom = bottom if (bottom is not None) else y1
+        top = top if (top is not None) else y0
+    if (bottom is not None) or (top is not None):
+        ax.set_ylim(bottom, top)
 
 
-def _plt_uts(ax, layer, color=None, xdim='time'):
+def _plt_uts(ax, layer, color=None, xdim='time', kwargs={}):
     x = layer.get_dim(xdim).x
     y = layer.get_data((xdim,))
-    ax.plot(x, y, color=color)
+    if color is not None:
+        kwargs['color'] = color
+    ax.plot(x, y, **kwargs)
 
 
 class _ax_clusters:
