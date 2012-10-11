@@ -27,7 +27,7 @@ class Colorspace:
     """
     def __init__(self, cmap=None, vmax=None, vmin=None,
                  # contours: {v -> color} 
-                 contours={},
+                 contours={}, ps={},
                  # decoration
                  sensor_color='k', sensor_marker='x', cbar_data='vrange',
                  unit=None, ticks=None, ticklabels=None):
@@ -37,6 +37,8 @@ class Colorspace:
             colormap documentation <http://matplotlib.sourceforge.net/api/cm_api.html>`_
         contours : {value: color} dict
             contours are drawn as lines on top of the im
+        ps : {value: p-value} dict
+            Mappings from parameter value to p-value. Used for labeling contours. 
         unit: str
             the unit of measurement (only used for labels)
         vmax, vmin:
@@ -65,6 +67,7 @@ class Colorspace:
 
         # contour
         self.contours = contours
+        self.ps = ps
         self.contour_kwargs = {'linestyles': 'solid'}
 
     def __repr__(self):
@@ -78,6 +81,8 @@ class Colorspace:
                 args.append("vmin=%s" % self.vmin)
         if self.contours:
             args.append("contours=%s" % self.contours)
+        if self.ps:
+            args.append("ps=%s" % self.ps)
 
         return temp % ', '.join(args)
 

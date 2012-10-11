@@ -13,6 +13,7 @@ import scipy.ndimage
 
 from eelbrain import fmtxt
 from eelbrain import vessels as _vsl
+import eelbrain.vessels.colorspaces as _cs
 from eelbrain.vessels.data import ndvar, asmodel
 
 import glm as _glm
@@ -52,6 +53,75 @@ class test_result_subdata_helper(test_result):
     def __init__(self, name, info):
         super(test_result, self).__init__(name=name, info=info)
 
+
+class corr(test_result):
+    def __init__(self, Y, X, norm=None, ds=None,
+                 contours={.05: (.8, .2, .0), .01: (1., .6, .0), .001: (1., 1., .0)}):
+        """
+
+        Y : var
+            dependent variable
+        X : continuous | None
+            This is the continuous variable that used to correlate your data with.
+
+        """
+        if isinstance(Y, basestring):
+            Y = ds[Y]
+        if isinstance(X, basestring):
+            X = ds[X]
+
+        if not Y._case:
+            msg = ("Dependent variable needs case dimension")
+            raise ValueError(msg)
+
+        y = Y.x.reshape((len(Y), -1))
+        if norm is not None:
+            y = y.copy()
+            for cell in norm.cells:
+                idx = (norm == cell)
+                y[idx] = scipy.stats.mstats.zscore(y[idx])
+
+        n = len(X)
+        x = X.x.reshape((n, -1))
+
+        # covariance
+        m_x = np.mean(x)
+        if np.isnan(m_x):
+            raise ValueError("np.mean(x) is nan")
+        x -= m_x
+        y -= np.mean(y, axis=0)
+        cov = np.sum(x * y, axis=0) / (n - 1)
+
+        # correlation
+        r = cov / (np.std(x, axis=0) * np.std(y, axis=0))
+
+        # p-value calculation
+        #http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
+        pcont = {}
+        r_ps = {}
+        df = n - 2
+        for p, color in contours.iteritems():
+            t = scipy.stats.distributions.t.isf(p, df)
+            r_p = t / np.sqrt(n - 2 + t ** 2)
+            pcont[r_p] = color
+            r_ps[r_p] = p
+            pcont[-r_p] = color
+            r_ps[-r_p] = p
+
+        dims = Y.dims[1:]
+        shape = Y.x.shape[1:]
+        properties = Y.properties.copy()
+        cs = _cs.Colorspace(cmap=_cs.cm_xpolar, vmax=1, vmin= -1, contours=pcont, ps=r_ps)
+        properties['colorspace'] = cs
+
+        # create dataset
+        name = "%s corr %s" % (Y.name, X.name)
+        super(corr, self).__init__(name=name)
+        self['r'] = ndvar(r.reshape(shape), dims=dims, properties=properties)
+
+    @property
+    def all(self):
+        return [self['r']]
 
 
 class ttest(test_result):
