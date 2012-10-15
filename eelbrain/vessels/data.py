@@ -1264,12 +1264,12 @@ class ndvar(object):
 
     def __setstate__(self, state):
         self.dims = dims = state['dims']
-        self._case = (dims[0] == 'case')
-        self._truedims = truedims = dims[self._case:]
+        self.has_case = (dims[0] == 'case')
+        self._truedims = truedims = dims[self.has_case:]
 
         # dimnames
         self.dimnames = tuple(dim.name for dim in truedims)
-        if self._case:
+        if self.has_case:
             self.dimnames = ('case',) + self.dimnames
 
         self.x = x = state['x']
@@ -1328,7 +1328,7 @@ class ndvar(object):
     def _ialign(self, other):
         "align for self-mofiying operations (+= ...)"
         if isvar(other):
-            assert self._case
+            assert self.has_case
             n = len(other)
             shape = (n,) + (1,) * (self.x.ndim - 1)
             return other.x.reshape(shape)
@@ -1400,7 +1400,7 @@ class ndvar(object):
 
     def __repr__(self):
         rep = '<ndvar %(name)r: %(dims)s>'
-        if self._case:
+        if self.has_case:
             dims = [(self._len, 'case')]
         else:
             dims = []
@@ -1431,7 +1431,7 @@ class ndvar(object):
             current ndvar's ``.name``.
 
         """
-        if not self._case:
+        if not self.has_case:
             raise DimensionMismatchError("%r has no case dimension" % self)
         if len(X) != len(self):
             err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
@@ -1468,7 +1468,7 @@ class ndvar(object):
 
     def get_case(self, index, name="{name}[{index}]"):
         "returns a single case (epoch) as ndvar"
-        if not self._case:
+        if not self.has_case:
             raise DimensionMismatchError("%r does not have cases" % self)
 
         x = self.x[index]
@@ -1630,7 +1630,7 @@ class ndvar(object):
                 return ndvar(x, dims=dims, name=name, properties=properties)
 
     def mean(self, name="mean({name})"): # FIXME: Do I need this?
-        if self._case:
+        if self.has_case:
             return self.summary(func=np.mean, name=name)
         else:
             return self
@@ -1958,7 +1958,7 @@ class dataset(collections.OrderedDict):
 
             # make sure the item has the right length
             # ndvars without case
-            if isndvar(item) and not item._case:
+            if isndvar(item) and not item.has_case:
                 N = 0
             else:
                 N = len(item)

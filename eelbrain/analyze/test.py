@@ -831,7 +831,7 @@ def _resample(Y, unit=None, replacement=True, samples=1000):
     if isvar(Y):
         pass
     elif isndvar(Y):
-        if not Y._case:
+        if not Y.has_case:
             raise ValueError("Need ndvar with cases")
     else:
         raise TypeError("need var or ndvar")

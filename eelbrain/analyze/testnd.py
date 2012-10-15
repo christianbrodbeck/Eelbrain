@@ -70,7 +70,7 @@ class corr(test_result):
         if isinstance(X, basestring):
             X = ds[X]
 
-        if not Y._case:
+        if not Y.has_case:
             msg = ("Dependent variable needs case dimension")
             raise ValueError(msg)
 
