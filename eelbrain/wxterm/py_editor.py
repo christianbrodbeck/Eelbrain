@@ -472,12 +472,15 @@ class Editor(wx.py.editor.EditorFrame):
         "if nothing is selected select the current line"
         start, stop = self.editor.window.GetSelection()
         if start == stop:
-            pos = self.editor.window.GetCurrentLine()
+            win = self.editor.window
+            pos = win.GetCurrentLine()
             if pos == 0:
                 start = 0
             else:
-                start = self.editor.window.GetLineEndPosition(pos - 1) + 1
-            
+                start = win.GetLineEndPosition(pos - 1) + 1
+                while win.GetText()[start] in ('\n', '\r'):
+                    start += 1
+
             stop = self.editor.window.GetLineEndPosition(pos)
             self.editor.window.SetSelection(start, stop)
     
