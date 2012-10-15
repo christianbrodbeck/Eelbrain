@@ -236,7 +236,7 @@ def cell_label(cell, delim=' '):
         return cell
 
 
-def align(d1, d2, out='ds', i1='index', i2='index'):
+def align(d1, d2, out='data', i1='index', i2='index'):
     """
     Aligns two data-objects d1 and d2 (i.e., case 0 of d1 should correspond to
     case 0 of d2 etc.). d1 is used as the basis for the case sequence.
@@ -249,8 +249,8 @@ def align(d1, d2, out='ds', i1='index', i2='index'):
         Two data objects which are to be aligned
     i1, i2 : str | array-like (dtype=int)
         Indexes for cases in d1 and d2.
-    out : 'd' | 'index'
-        **'d'**: returns the two aligned data objects. **'index'**: returns two
+    out : 'data' | 'index'
+        **'data'**: returns the two aligned data objects. **'index'**: returns two
         indices index1 and index2 which can be used to align the datasets with
         ``ds1[index1]; ds2[index2]``.
 
@@ -271,7 +271,7 @@ def align(d1, d2, out='ds', i1='index', i2='index'):
             where2 = i2.index(idx)[0]
             idx2.append(where2)
 
-    if out == 'd':
+    if out == 'data':
         return d1[idx1], d2[idx2]
     elif out == 'index':
         return idx1, idx2
