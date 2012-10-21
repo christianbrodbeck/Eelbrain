@@ -1,5 +1,27 @@
 '''
-tests for varnd objects
+Statistical tests for ndvar objects.
+
+Tests are defined as classes that provide aspects of their results as
+attributes and methods::
+
+    >>> res = testnd.ttest(Y, X, 'test', 'control')
+    >>> res.p  # an ndvar object with an uncorrected p-value for each sample
+
+Test result objects can be directly submitted to plotting functions. To plot
+only part of the results, specific attributes can be submitted (for a
+description of the attributes see the relevant class documentation)::
+
+    >>> plot.uts.uts(res)  # plots values in both conditions as well as
+    ... difference values with p-value thresholds
+    >>> plot.uts.uts(res.p)  # plots only p-values
+
+The way this is implemented is that plotting functions test for the presence
+of a ``._default_plot_obj`` and a ``.all`` attribute (in that order) which
+is expected to provide a default object for plotting. This is implemented in
+:py:mod:`plot._base.unpack_epochs_arg`.
+
+
+
 
 
 Created on Feb 22, 2012
@@ -14,61 +36,39 @@ import scipy.ndimage
 from eelbrain import fmtxt
 from eelbrain import vessels as _vsl
 import eelbrain.vessels.colorspaces as _cs
-from eelbrain.vessels.data import ndvar, asmodel
+from eelbrain.vessels.data import ascategorial, asmodel, asndvar, asvar, ndvar
 
 import glm as _glm
 from test import _resample
 
 
-__hide__ = ['test_result', 'test',
-            'test_result_subdata_helper']
+__all__ = ['corr', 'ttest', 'f_oneway', 'anova', 'cluster_anova']
 
 
-class test_result(_vsl.data.dataset):
+
+class corr:
     """
-    Subclass of dataset that holds results of a statistical test. Its special
-    property is that all entries describe the same dimensional space. That
-    property makes a .subdata() method possible.
+    Attributes
+    ----------
+
+    r : ndvar
+        Correlation (with threshold contours).
 
     """
-    def subdata(self, **kwargs):
-        "see ndvar.subdata() documentation"
-        # create a subclass that inherits test-specific properties while
-        # bypassing the test's __init__ method:
-        class test_result_subdata(test_result_subdata_helper, self.__class__):
-            pass
-
-        out = test_result_subdata(self.name, self.info)
-        for k, v in self.iteritems():
-            out[k] = v.subdata(**kwargs)
-
-        return out
-
-    @property
-    def _default_plot_obj(self):
-        return self.all
-
-
-class test_result_subdata_helper(test_result):
-    def __init__(self, name, info):
-        super(test_result, self).__init__(name=name, info=info)
-
-
-class corr(test_result):
-    def __init__(self, Y, X, norm=None, ds=None,
+    def __init__(self, Y, X, norm=None, sub=None, ds=None,
                  contours={.05: (.8, .2, .0), .01: (1., .6, .0), .001: (1., 1., .0)}):
         """
 
-        Y : var
-            dependent variable
+        Y : ndvar
+            Dependent variable.
         X : continuous | None
-            This is the continuous variable that used to correlate your data with.
+            The continuous predictor variable.
+        norm : None | categorial
+            Categories in which to normalize (z-score) X.
 
         """
-        if isinstance(Y, basestring):
-            Y = ds[Y]
-        if isinstance(X, basestring):
-            X = ds[X]
+        Y = asndvar(Y, sub=sub, ds=ds)
+        X = asvar(X, sub=sub, ds=ds)
 
         if not Y.has_case:
             msg = ("Dependent variable needs case dimension")
@@ -96,7 +96,7 @@ class corr(test_result):
         r = cov / (np.std(x, axis=0) * np.std(y, axis=0))
 
         # p-value calculation
-        #http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
+        # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
         pcont = {}
         r_ps = {}
         df = n - 2
@@ -113,18 +113,15 @@ class corr(test_result):
         properties = Y.properties.copy()
         cs = _cs.Colorspace(cmap=_cs.cm_xpolar, vmax=1, vmin= -1, contours=pcont, ps=r_ps)
         properties['colorspace'] = cs
+        r = ndvar(r.reshape(shape), dims=dims, properties=properties)
 
-        # create dataset
-        name = "%s corr %s" % (Y.name, X.name)
-        super(corr, self).__init__(name=name)
-        self['r'] = ndvar(r.reshape(shape), dims=dims, properties=properties)
-
-    @property
-    def all(self):
-        return [self['r']]
+        # store results
+        self.name = "%s corr %s" % (Y.name, X.name)
+        self.r = r
+        self.all = r
 
 
-class ttest(test_result):
+class ttest:
     """
     **Attributes:**
 
@@ -221,53 +218,38 @@ class ttest(test_result):
         if Yname:
             test_name = ' of '.join((test_name, Yname))
 
-        # create dataset
-        super(ttest, self).__init__(T, P, name=test_name)
-        self['c1_m'] = c1_mean
+        # store attributes
+        self.t = T
+        self.p = P
+        self.name = test_name
+        self.c1_mean = c1_mean
         if c0_mean:
-            self['c0_m'] = c0_mean
+            self.c0_mean = c0_mean
+
         if diff:
-            self['diff'] = diff
-
-    @property
-    def all(self):
-        if 'c0_m' in self:
-            return [self['c1_m'], self['c0_m']] + self.diff
-        elif 'diff' in self:
-            return [self['c1_m']] + self.diff
+            self.diff = diff
+            self.p_val = [[diff, P]]
         else:
-            return self.diff
+            self.p_val = [[c1_mean, P]]
 
-    @property
-    def diff(self):
-        if 'diff' in self:
-            layers = [self['diff']]
+        if c0_mean:
+            self.all = [c1_mean, c0_mean] + self.p_val
+        elif diff:
+            self.all = [c1_mean] + self.p_val
         else:
-            layers = [self['c1_m']]
-
-        layers.append(self['p'])
-        return [layers]
+            self.all = self.p_val
 
 
 
-
-
-
-class f_oneway(test_result):
-    def __init__(self, Y='MEG', X='condition', sub=None, dataset=None,
+class f_oneway:
+    def __init__(self, Y='MEG', X='condition', sub=None, ds=None,
                  p=.05, contours={.01: '.5', .001: '0'}):
         """
         uses scipy.stats.f_oneway
 
         """
-        if isinstance(Y, basestring):
-            Y = dataset[Y]
-        if isinstance(X, basestring):
-            X = dataset[X]
-
-        if sub is not None:
-            Y = Y[sub]
-            X = X[sub]
+        Y = asndvar(Y, sub=sub, ds=ds)
+        X = ascategorial(X, sub=sub, ds=ds)
 
         Ys = [Y[X == c] for c in X.cells]
         Ys = [y.x.reshape((y.x.shape[0], -1)) for y in Ys]
@@ -288,61 +270,69 @@ class f_oneway(test_result):
         properties['test'] = test_name
         p = ndvar(Ps, dims, properties=properties, name=X.name)
 
-        # create dataset
-        super(f_oneway, self).__init__(name="anova")
-        self['p'] = p
-
-    @property
-    def all(self):
-        return self['p']
+        # store results
+        self.name = "anova"
+        self.p = p
+        self.all = p
 
 
 
-class anova(test_result):
+class anova:
     """
+    Attributes
+    ----------
+
+    Y : ndvar
+        Dependent variable.
+    X : model
+        Model.
+    p_maps : {effect -> ndvar}
+        Maps of p-values.
+    all : [ndvar]
+        List of all p-maps.
 
     """
-    def __init__(self, Y='MEG', X='condition', sub=None, ds=None, info={},
+    def __init__(self, Y='MEG', X='condition', sub=None, ds=None,
                  p=.05, contours={.01: '.5', .001: '0'}):
-        if isinstance(Y, basestring):
-            Y = ds[Y]
-        if isinstance(X, basestring):
-            X = ds[X]
-        if sub is not None:
-            if isinstance(sub, basestring):
-                sub = ds[sub]
-            Y = Y[sub]
-            X = X[sub]
+        self.name = "anova"
+        Y = self.Y = asndvar(Y, sub=sub, ds=ds)
+        X = self.X = asmodel(X, sub=sub, ds=ds)
 
         fitter = _glm.lm_fitter(X)
 
-        info['effect_names'] = effect_names = []
-        super(anova, self).__init__(name="anova", info=info)
         properties = Y.properties.copy()
         properties['colorspace'] = _vsl.colorspaces.get_sig(p=p, contours=contours)
-        kwargs = dict(dims=Y.dims[1:],
-                      properties=properties)
+        kwargs = dict(dims=Y.dims[1:], properties=properties)
 
+        self.all = []
+        self.p_maps = {}
         for e, _, Ps in fitter.map(Y.x):
             name = e.name
-            effect_names.append(name)
             P = ndvar(Ps, name=name, **kwargs)
-            self[name + '_p'] = P
-
-    @property
-    def all(self):
-        epochs = []
-        for name in self.info['effect_names']:
-            epochs.append(self[name + '_p'])
-
-        return epochs
+            self.all.append(P)
+            self.p_maps[e] = P
 
 
-class cluster_anova(test_result):
-    # TODO: parent class integration - make subdata work in a useful way
+class cluster_anova:
+    """
+    Attributes
+    ----------
+
+    Y : ndvar
+        Dependent variable.
+    X : model
+        Model.
+
+    all other attributes are dictionaries mapping effects from X.effects to
+    results
+
+    F_maps : {effect -> ndvar{
+        Maps of F-values.
+
+    """
     def __init__(self, Y, X, t=.1, samples=1000, replacement=False,
                  tstart=None, tstop=None, close_time=0,
-                 sub=None, pmax=1,
+                 pmax=1, sub=None, ds=None,
                  ):
         """
 
@@ -388,11 +378,8 @@ class cluster_anova(test_result):
             samples are connected.
 
         """
-        if sub is not None:
-            Y = Y[sub]
-            X = X[sub]
-
-        X = self.X = asmodel(X)
+        Y = self.Y = asndvar(Y, sub=sub, ds=ds)
+        X = self.X = asmodel(X, sub=sub, ds=ds)
         lm = _glm.lm_fitter(X)
 
         # prepare cluster merging
@@ -477,17 +464,11 @@ class cluster_anova(test_result):
             props = {'tF': tF[e], 'unit': 'F'}
             self.F_maps[e] = ndvar(F, dims=dims, name=e.name, properties=props)
 
-        super(cluster_anova, self).__init__(name="ANOVA Permutation Cluster Test")#, info=info)
+        self.name = "ANOVA Permutation Cluster Test"
         self.tF = tF
 
-    @property
-    def all(self):
-        epochs = []
-        for e in self.X.effects:
-            if e in self.F_maps:
-                epochs.append([self.F_maps[e]] + self.clusters[e])
-
-        return epochs
+        self.all = [[self.F_maps[e]] + self.clusters[e] for e in self.X.effects
+                    if e in self.F_maps]
 
     def as_table(self, pmax=1.):
         table = fmtxt.Table('ll')
@@ -530,12 +511,12 @@ def _test(ndvars, parametric=True, match=None, func=None, attr='data',
         data = [func(d) for d in data]
 
     # test
-    k = len(ndvars) # number of levels
+    k = len(ndvars)  # number of levels
     if k == 0:
         raise ValueError("no segments provided")
 
     # perform test
-    if parametric: # simple tests
+    if parametric:  # simple tests
         if k == 1:
             statistic = 't'
             T, P = scipy.stats.ttest_1samp(*data, popmean=0, axis=0)
@@ -552,7 +533,7 @@ def _test(ndvars, parametric=True, match=None, func=None, attr='data',
             statistic = 'F'
             raise NotImplementedError("Use segframe for 1-way ANOVA")
 
-    else: # non-parametric:
+    else:  # non-parametric:
         raise NotImplementedError("axis from -1 to 0")
         if k <= 2:
             if related:

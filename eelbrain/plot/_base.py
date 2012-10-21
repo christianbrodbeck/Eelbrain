@@ -69,7 +69,7 @@ def unpack_epochs_arg(ndvars, ndim, dataset=None, levels=1):
     """
     Returns a nested list of epochs (through the summary method)
     """
-    ndvars = getattr(ndvars, '_default_plot_obj', ndvars)
+    ndvars = getattr(ndvars, '_default_plot_obj', getattr(ndvars, 'all', ndvars))
     if not isinstance(ndvars, (tuple, list)):
         ndvars = [ndvars]
 

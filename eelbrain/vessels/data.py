@@ -171,7 +171,10 @@ def isvar(Y):
     return hasattr(Y, '_stype_') and Y._stype_ == "var"
 
 
-def asmodel(X, sub=None):
+def asmodel(X, sub=None, ds=None):
+    if isinstance(X, str):
+        X = ds[X]
+
     if ismodel(X):
         pass
     elif isinstance(X, (list, tuple)):
