@@ -2641,18 +2641,17 @@ class model(object):
     a model's data is exhausted by its. .effects list; all the rest are
     @properties.
 
+    Accessing effects:
+     - as list in model.effects
+     - with name as model[name]
+
     """
     _stype_ = "model"
     def __init__(self, *x):
         """
-        returns a model based on the effects in *x
 
-
-        Parameters
-        ----------
-
-        *x : factors | effects | models
-            a list of factors and secondary effects contained in the model.
+        Parameters : factors | effects | models
+            factors and secondary effects contained in the model.
             Can also contain models, in which case all the models' effects
             will be added.
 
@@ -2714,7 +2713,13 @@ class model(object):
         return self._n_cases
 
     def __getitem__(self, sub):
-        return model(*(x[sub] for x in self.effects))
+        if isinstance(sub, str):
+            for e in self.effects:
+                if e.name == sub:
+                    return e
+            raise ValueError("No effect named %r" % sub)
+        else:
+            return model(*(x[sub] for x in self.effects))
 
     def __contains__(self, effect):
         return id(effect) in map(id, self.effects)
