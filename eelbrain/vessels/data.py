@@ -214,6 +214,18 @@ def asfactor(Y, sub=None, ds=None):
     else:
         return Y
 
+def asndvar(Y, sub=None, ds=None):
+    if isinstance(Y, str):
+        Y = ds[Y]
+
+    if not isndvar(Y):
+        raise TypeError("ndvar required")
+
+    if sub is not None:
+        return Y[sub]
+    else:
+        return Y
+
 def ascategorial(Y, sub=None, ds=None):
     if isinstance(Y, str):
         Y = ds[Y]
