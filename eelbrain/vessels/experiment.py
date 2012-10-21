@@ -90,7 +90,7 @@ class mne_experiment(object):
 
         # dictionaries ---
         self.edf_use = defaultdict(lambda: ['ESACC', 'EBLINK'])
-        self.bad_channels = defaultdict(lambda: ['MEG 065']) # (sub, exp) -> list
+        self.bad_channels = defaultdict(lambda: ['MEG 065'])  # (sub, exp) -> list
 
 
         # find experiment data structure
@@ -107,9 +107,9 @@ class mne_experiment(object):
     def get_templates(self):
         t = {
              # basic dir
-             'meg_dir': os.path.join('{root}', 'meg'), # contains subject-name folders for MEG data
+             'meg_dir': os.path.join('{root}', 'meg'),  # contains subject-name folders for MEG data
              'meg_sdir': os.path.join('{meg_dir}', '{subject}'),
-             'mri_dir': os.path.join('{root}', 'mri'), # contains subject-name folders for MRI data
+             'mri_dir': os.path.join('{root}', 'mri'),  # contains subject-name folders for MRI data
              'mri_sdir': os.path.join('{mri_dir}', '{mrisubject}'),
              'raw_sdir': os.path.join('{meg_sdir}', 'raw'),
              'eeg_sdir': os.path.join('{meg_dir}', '{subject}', 'raw_eeg'),
@@ -121,8 +121,8 @@ class mne_experiment(object):
              'hsp': os.path.join('{raw_sdir}', '{subject}_HS.hsp'),
              'rawtxt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
              'raw_raw': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
-             'rawfif': '{raw}_raw.fif', # for subp.kit2fiff
-             'trans': os.path.join('{raw_sdir}', '{subject}-trans.fif'), # mne p. 196
+             'rawfif': '{raw}_raw.fif',  # for subp.kit2fiff
+             'trans': os.path.join('{raw_sdir}', '{subject}-trans.fif'),  # mne p. 196
 
              # eye-tracker
              'edf': os.path.join('{log_sdir}', '*.edf'),
@@ -139,7 +139,7 @@ class mne_experiment(object):
 
             # !! these would invalidate the s_e_* pattern with a third _
 
-             # mne's stc.save() requires stub filename and will add '-?h.stc'  
+             # mne's stc.save() requires stub filename and will add '-?h.stc'
              'mne_dir': os.path.join('{meg_sdir}', 'mne_{fwd_an}_{stc_an}'),
              'stc': os.path.join('{mne_dir}', '{experiment}_{cell}'),
              'stc_morphed': os.path.join('{mne_dir}', '{experiment}_{cell}_fsaverage'),

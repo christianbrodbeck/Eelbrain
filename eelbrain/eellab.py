@@ -1,6 +1,6 @@
 '''
-The eelbrain.eellab module contains a collection of Eelbrain components that 
-are useful for 
+The eelbrain.eellab module contains a collection of Eelbrain components that
+are useful for
 interactive data analysis, so for interactive usage you could::
 
     >>> from eelbrain.eellab import *
@@ -50,10 +50,9 @@ from vessels.data import (factor,
 
 from vessels import process
 
-#from analyze.glm import anova, ancova
 from analyze import (test,
                      testnd,
-                     table) 
+                     table)
 
 import ui
 import plot

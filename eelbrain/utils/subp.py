@@ -34,13 +34,13 @@ from eelbrain.load.kit import marker_avg_file
 __hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch', 'pickle',
             'np',
             'ui']
-#__all__ = [
-##           'forward',
-#           'kit2fiff', 
-#           'process_raw', 
+# __all__ = [
+# #           'forward',
+#           'kit2fiff',
+#           'process_raw',
 #           'set_bin_dirs',
 #           'mne_experiment'
-#           ] 
+#           ]
 
 def _set_bin_dirs(mne=None, freesurfer=None, edfapi=None):
     "Setup for binary packages"
@@ -161,11 +161,11 @@ class edf_file:
 
         self.source_path = path
         self.temp_dir = tempfile.mkdtemp()
-        cmd = [get_bin('edfapi', 'edf2asc'), # options in Manual p. 106
-               '-t', # use only tabs as delimiters
-               '-e', # outputs event data only
-               '-nse', # blocks output of start events
-               '-p', self.temp_dir, # writes output with same name to <path> directory
+        cmd = [get_bin('edfapi', 'edf2asc'),  # options in Manual p. 106
+               '-t',  # use only tabs as delimiters
+               '-e',  # outputs event data only
+               '-nse',  # blocks output of start events
+               '-p', self.temp_dir,  # writes output with same name to <path> directory
                path]
 
         _run(cmd)
@@ -178,7 +178,7 @@ class edf_file:
         self.asc_str = self.asc_file.read()
 
         # find trigger events
-        #                           MSG   time    msg...      ID  
+        #                           MSG   time    msg...      ID
         re_trigger = re.compile(r'\bMSG\t(\d+)\tMEG Trigger: (\d+)')
         self.triggers = re_trigger.findall(self.asc_str)
 
@@ -219,7 +219,7 @@ def kit2fiff(paths=dict(mrk=None,
                         rawfif=None),
              sns='NYU-nellab-2010',
              sfreq=1000, lowpass=100, highpass=0,
-             stim=xrange(168, 160, -1), stimthresh=2.5, add=None, #(188, 190), #xrange()
+             stim=xrange(168, 160, -1), stimthresh=2.5, add=None,  # (188, 190), #xrange()
              aligntol=5, overwrite=False):
     """
     Calls the ``mne_kit2fiff`` binary which reads multiple input files and
@@ -306,7 +306,7 @@ def kit2fiff(paths=dict(mrk=None,
            '--hpi', hpi_file,
            '--raw', raw_file,
            '--out', out_file,
-           '--stim', ':'.join(map(str, stim)), # '161:162:163:164:165:166:167:168'
+           '--stim', ':'.join(map(str, stim)),  # '161:162:163:164:165:166:167:168'
            '--sfreq', sfreq,
            '--aligntol', aligntol,
            '--lowpass', lowpass,
@@ -523,7 +523,7 @@ def setup_mri(mri_sdir, ico=4):
     mri_dir, subject = os.path.split(mri_sdir)
     bemdir = os.path.join(mri_sdir, 'bem')
 
-    # symlinks (MNE-manual 3.6, p. 24 / Gwyneth's Manual X) 
+    # symlinks (MNE-manual 3.6, p. 24 / Gwyneth's Manual X)
     for name in ['inner_skull', 'outer_skull', 'outer_skin']:
         # can I make path relative by omitting initial bemdir,  ?
         src = os.path.join('watershed', '%s_%s_surface' % (subject, name))
@@ -603,7 +603,7 @@ def run_mne_analyze(mri_dir, fif_dir, mri_subject=None, modal=True):
     p = subprocess.Popen(' '.join(cmd), shell=True)
     if modal:
         print "Waiting for mne_analyze to be closed..."
-        p.wait() # causes the shell to be unresponsive until mne_analyze is closed
+        p.wait()  # causes the shell to be unresponsive until mne_analyze is closed
 
 
 def run_mne_browse_raw(fif_dir, modal=False):
@@ -612,7 +612,7 @@ def run_mne_browse_raw(fif_dir, modal=False):
     p = subprocess.Popen('. %s; mne_browse_raw' % setup_path, shell=True)
     if modal:
         print "Waiting for mne_browse_raw to be closed..."
-        p.wait() # causes the shell to be unresponsive until mne_analyze is closed
+        p.wait()  # causes the shell to be unresponsive until mne_analyze is closed
 
 
 
@@ -645,10 +645,10 @@ def do_forward_solution(paths=dict(rawfif=None,
            '--src', src_file,
            '--bem', bem_file,
 #           '--mri', mri_cor_file, # MRI description file containing the MEG/MRI coordinate transformation.
-           '--mri', trans_file, # MRI description file containing the MEG/MRI coordinate transformation.
-#           '--trans', trans_file, #  head->MRI coordinate transformation (obviates --mri). 
-           '--meas', fif_file, # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
-           '--fwd', fwd_file, #'--destdir', target_file_dir, # optional 
+           '--mri', trans_file,  # MRI description file containing the MEG/MRI coordinate transformation.
+#           '--trans', trans_file, #  head->MRI coordinate transformation (obviates --mri).
+           '--meas', fif_file,  # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
+           '--fwd', fwd_file,  # '--destdir', target_file_dir, # optional
            '--megonly']
 
     if overwrite:
@@ -676,11 +676,11 @@ def do_inverse_operator(fwd_file, cov_file, inv_file='{cov}inv.fif',
 
     cmd = [get_bin('mne', "mne_do_inverse_operator"),
            '--fwd', fwd_file,
-           '--meg', # Employ MEG data in the inverse calculation. If neither --meg nor --eeg is set only MEG channels are included.
+           '--meg',  # Employ MEG data in the inverse calculation. If neither --meg nor --eeg is set only MEG channels are included.
            '--depth',
            '--megreg', 0.1,
            '--noisecov', cov_file,
-           '--inv', inv_file, # Save the inverse operator decomposition here. 
+           '--inv', inv_file,  # Save the inverse operator decomposition here.
            ]
 
     if loose:
@@ -820,7 +820,7 @@ def mri_label2label(mri_dir, src_subject='fsaverage', tgt_subject='*',
         raise NotImplementedError("'*' in directory in %r" % label)
 
     # find labels
-    labels = [] # [(label, hemi), ...] paths to labels with {sdir}
+    labels = []  # [(label, hemi), ...] paths to labels with {sdir}
     for hemi in hemis:
         label_pattern = label.format(sdir=src_sdir, hemi=hemi)
         label_dir, label_name = os.path.split(label_pattern)
