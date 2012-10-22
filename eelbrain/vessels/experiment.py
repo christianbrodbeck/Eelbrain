@@ -26,6 +26,7 @@ from eelbrain import load
 from eelbrain import plot
 from eelbrain.vessels.data import ndvar, cellname
 from eelbrain.utils.print_funcs import printlist
+from eelbrain.utils.kit import split_label
 
 
 __all__ = ['mne_experiment']
@@ -819,6 +820,30 @@ class mne_experiment(object):
         stc_an = temp.format(blc=blc, method=method, ori=ori)
         self.set(stc_an=stc_an)
 
+    def split_label(self, src_label, new_name, redo=False, part0='post', part1='ant', hemi=['lh', 'rh']):
+        """
+        new_name : str
+            name of the target label ('post' and 'ant' is appended)
+        sources : list of str
+            names of the source labels
+
+        """
+        msg = "Splitting Label: %s" % src_label
+        for _ in self.iter_vars(['mrisubject'], values={'hemi': hemi}, prog=msg):
+            name0 = new_name + part0
+            name1 = new_name + part1
+            tgt0 = self.get('label', analysis=name0)
+            tgt1 = self.get('label', analysis=name1)
+            if (not redo) and os.path.exists(tgt0) and os.path.exists(tgt1):
+                continue
+            
+            src = self.get('label', analysis=src_label)
+            label = mne.read_label(src)
+            fwd_fname = self.get('fwd')
+            lbl0, lbl1 = split_label(label, fwd_fname, name0, name1)
+            lbl0.save(tgt0)
+            lbl1.save(tgt1)
+                
     def summary(self, templates=['rawfif'], missing='-', link='>',
                 analysis=None, count=True):
         if not isinstance(templates, (list, tuple)):
