@@ -18,7 +18,10 @@ class celltable:
     """
     **Attributes:**
     
-    .X, .Y, .sub, .match:
+    .Y, .X,
+        Y and X after sub was applied
+
+    .sub, .match:
         input arguments
     
     .cells : list of str
