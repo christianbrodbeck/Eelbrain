@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 
 try:
     import wx
+    _ID_label_Ids = wx.NewId()
+    _ID_label_names = wx.NewId()
+    _ID_label_None = wx.NewId()
 except:
     pass
 
@@ -20,9 +23,6 @@ import _base
 
 __hide__ = ['mpl_canvas']
 
-_ID_label_Ids = wx.NewId()
-_ID_label_names = wx.NewId()
-_ID_label_None = wx.NewId()
 
 
 # some useful kwarg dictionaries for different plot layouts
