@@ -35,6 +35,8 @@ class marker_avg_file:
             Path to marker avg file (saved as text form MEG160).
 
         """
+        self.src_path = path
+
         # pattern by Tal:
         p = re.compile(r'Marker \d:   MEG:x= *([\.\-0-9]+), y= *([\.\-0-9]+), z= *([\.\-0-9]+)')
         str_points = p.findall(open(path).read())
@@ -49,10 +51,13 @@ class marker_avg_file:
     def __del__(self):
         os.remove(self.path)
 
+    def __repr__(self):
+        return 'marker_avg_file(%r)' % self.src_path
+
     def plt(self, marker='+k'):
         self.plot_mpl(marker=marker)
 
-    def plot_mpl(self, marker='+k', ax=None):
+    def plot_mpl(self, marker='+k', ax=None, title=True):
         "returns: axes object with 3d plot"
         if ax is None:
             fig = plt.figure()
@@ -67,5 +72,11 @@ class marker_avg_file:
         ax.set_xlim3d(xmin, xmax)
         ax.set_ylim3d(ymin, ymax)
         ax.set_zlim3d(zmin, zmax)
+
+        if title:
+            if title is True:
+                title = os.path.basename(self.src_path)
+            ax.set_title(str(title))
+
         return ax
 
