@@ -1989,6 +1989,9 @@ class dataset(collections.OrderedDict):
             super(dataset, self).__setitem__(name, item)
 
     def __str__(self):
+        if sum(map(isuv, self.values())) == 0:
+            return self.__repr__()
+
         maxn = defaults['dataset_str_n_cases']
         txt = str(self.as_table(cases=maxn, fmt='%.5g', midrule=True))
         if self.N > maxn:
