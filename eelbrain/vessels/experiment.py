@@ -666,6 +666,13 @@ class mne_experiment(object):
         self.var_values['mrisubject'] = set(mri_subjects.values())
         self.var_values['experiment'] = list(experiments)
 
+    def plot_mrk(self, **kwargs):
+        self.set(**kwargs)
+        fname = self.get('mrk')
+        mf = load.kit.marker_avg_file(fname)
+        ax = mf.plot_mpl()
+        return ax
+
     def pull(self, src_root, names=['rawfif', 'log_sdir'], **kwargs):
         """OK 12/8/12
         Copies all items matching a template from another root to the current
