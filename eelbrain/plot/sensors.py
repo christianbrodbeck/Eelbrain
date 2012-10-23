@@ -17,6 +17,12 @@ try:
 except:
     pass
 
+try:
+    from _sensors_mayavi import coreg
+except:
+    pass
+
+
 import _base
 
 
