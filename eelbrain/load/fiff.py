@@ -65,7 +65,7 @@ __all__ = ['Raw', 'events', 'add_epochs', # basic pipeline
 
 
 
-def Raw(path=None, proj=True, **kwargs):
+def Raw(path=None, proj=False, **kwargs):
     """
     Returns a mne.fiff.Raw object with added projections if appropriate.
     
@@ -79,8 +79,8 @@ def Raw(path=None, proj=True, **kwargs):
     proj : bool | str(path)
         Add projections from a separate file to the Raw object. 
         **``False``**: No proj file will be added.
-        **``True``**: ``'{raw}_*proj.fif'`` will be used. 
-        ``'{raw}'`` will be replaced with the raw file's path minus extension, 
+        **``True``**: ``'{raw}*proj.fif'`` will be used.
+        ``'{raw}'`` will be replaced with the raw file's path minus '_raw.fif',
         and '*' will be expanded using fnmatch. If multiple files match the 
         pattern, a ValueError will be raised.
         **``str``**: A custom path template can be provided, ``'{raw}'`` and
@@ -106,11 +106,12 @@ def Raw(path=None, proj=True, **kwargs):
 
     if proj:
         if proj == True:
-            proj = '{raw}_*proj.fif'
+            proj = '{raw}*proj.fif'
 
         if '{raw}' in proj:
             raw_file = raw.info['filename']
             raw_root, _ = os.path.splitext(raw_file)
+            raw_root = raw_root.rstrip('raw')
             proj = proj.format(raw=raw_root)
 
         if '*' in proj:
