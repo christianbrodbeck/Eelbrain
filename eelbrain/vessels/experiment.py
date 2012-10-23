@@ -64,7 +64,8 @@ class mne_experiment(object):
     _fmt_pattern = re.compile('\{(\w+)\}')
     def __init__(self, root=None,
                  subject=None, experiment=None, analysis=None,
-                 kit2fiff_args=_kit2fiff_args):
+                 kit2fiff_args=_kit2fiff_args,
+                 subjects=True, mri_subjects=True, experiments=True):
         """
         root : str
             the root directory for the experiment (i.e., the directory
@@ -100,7 +101,7 @@ class mne_experiment(object):
         self.exclude = {}
 
         self.set(root=root, raw='{raw_raw}', labeldir='label', hemi='lh')
-        self.parse_dirs()
+        self.parse_dirs(subjects=subjects, mri_subjects=mri_subjects, experiments=experiments)
 
         # store current values
         self.set(subject=subject, experiment=experiment, analysis=analysis)
@@ -590,49 +591,76 @@ class mne_experiment(object):
             dest = self.get('proj', projname=projname)
             mne.write_proj(dest, proj)
 
-    def parse_dirs(self):
+    def makeplt_coreg(self, save='coreg',
+                      sens=True, mrk=True, fiduc=True, hs=False, hs_mri=True,
+                      constants={}):
+        from mayavi import mlab
+        for _ in self.iter_vars(['subject', 'experiment'], constants=constants):
+            self.plot_coreg(sens=sens, mrk=mrk, fiduc=fiduc, hs=hs, hs_mri=hs_mri)
+            mlab.view(90, 90)
+            mlab.savefig(self.get('plot_png', name=save + '-F', mkdir=True))
+            mlab.view(180, 90)
+            mlab.savefig(self.get('plot_png', name=save + '-L', mkdir=True))
+            mlab.view(0, 0)
+            mlab.savefig(self.get('plot_png', name=save + '-T', mkdir=True))
+
+    def parse_dirs(self, subjects=True, mri_subjects=True, experiments=True):
         """
-        find subject and experiment names by looking through directory structure
+        find subject and experiment names by looking through directory
+        structure. If values are provided (i.e., not True), the automatic
+        search is omitted.
 
         """
-        subjects = self._subjects = set()
-        self._mri_subjects = mri_subjects = {}
+        parse_sub = (subjects == True)
+        parse_mri = (mri_subjects == True)
+
+        self._mri_subjects = mri_subjects = {} if parse_mri else dict(mri_subjects)
+        self._subjects = subjects = set() if parse_sub else set(subjects)
 
         # find subjects
-        meg_dir = self.get('meg_dir')
-        if os.path.exists(meg_dir):
-            for fname in os.listdir(meg_dir):
-                isdir = os.path.isdir(os.path.join(meg_dir, fname))
-                isname = not fname.startswith('.')
-                raw_sdir = self.get('raw_sdir', subject=fname, match=False)
-                hasraw = os.path.exists(raw_sdir)
-                if isdir and isname and hasraw:
-                    subjects.add(fname)
+        if parse_sub:
+            meg_dir = self.get('meg_dir')
+            if os.path.exists(meg_dir):
+                for fname in os.listdir(meg_dir):
+                    isdir = os.path.isdir(os.path.join(meg_dir, fname))
+                    isname = not fname.startswith('.')
+                    raw_sdir = self.get('raw_sdir', subject=fname, match=False)
+                    hasraw = os.path.exists(raw_sdir)
+                    if isdir and isname and hasraw:
+                        subjects.add(fname)
+
 
         # find MRIs
-        mri_dir = self.get('mri_dir')
-        if os.path.exists(mri_dir):
-            mris = os.listdir(mri_dir)
+        if parse_mri:
+            mri_dir = self.get('mri_dir')
+            if os.path.exists(mri_dir):
+                mris = os.listdir(mri_dir)
+                for s in subjects:
+                    if s in mris:
+                        mri_subjects[s] = s
+                    elif 'fsaverage' in mris:
+                        mri_subjects[s] = 'fsaverage'
+                    else:
+                        mri_subjects[s] = None
+
+
+        if experiments == True:
+
+            # find experiments
+            experiments = set()
             for s in subjects:
-                if s in mris:
-                    mri_subjects[s] = s
-                elif 'fsaverage' in mris:
-                    mri_subjects[s] = 'fsaverage'
-                else:
-                    mri_subjects[s] = None
+                temp_fif = self.format('{raw_raw}_*raw.fif', subject=s, experiment='*', vmatch=False)
+                temp_txt = self.get('rawtxt', subject=s, experiment='*', match=False)
 
-        # find experiments
-        experiments = self._experiments = set()
-        for s in subjects:
-            temp_fif = self.format('{raw_raw}_*raw.fif', subject=s, experiment='*', vmatch=False)
-            temp_txt = self.get('rawtxt', subject=s, experiment='*', match=False)
-
-            fifdir, fifname = os.path.split(temp_fif)
-            txtdir, txtname = os.path.split(temp_txt)
-            fif_fnames = fnmatch.filter(os.listdir(fifdir), fifname)
-            txt_fnames = fnmatch.filter(os.listdir(txtdir), txtname)
-            for fname in fif_fnames + txt_fnames:
-                experiments.add(fname.split('_')[1])
+                fifdir, fifname = os.path.split(temp_fif)
+                txtdir, txtname = os.path.split(temp_txt)
+                fif_fnames = fnmatch.filter(os.listdir(fifdir), fifname)
+                txt_fnames = fnmatch.filter(os.listdir(txtdir), txtname)
+                for fname in fif_fnames + txt_fnames:
+                    experiments.add(fname.split('_')[1])
+        else:
+            experiments = set(experiments)
+        self._experiments = experiments
 
         self.var_values['subject'] = list(subjects)
         self.var_values['mrisubject'] = set(mri_subjects.values())
@@ -658,7 +686,9 @@ class mne_experiment(object):
             see :py:meth:`push`
 
         """
-        e = self.__class__(src_root)
+        e = self.__class__(src_root, subjects=self._subjects,
+                           mri_subjects=self._mri_subjects,
+                           experiments=self._experiments)
         e.push(self.root, names=names, **kwargs)
 
     def push(self, dst_root, names=[], overwrite=False, missing='warn'):
