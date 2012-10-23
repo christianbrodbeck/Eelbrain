@@ -63,6 +63,7 @@ try:
     import load.fiff
 except:
     globals().setdefault('err', []).append('load.fiff (mne)')
+import load.kit
 
 import save
 
