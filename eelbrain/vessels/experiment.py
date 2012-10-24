@@ -138,6 +138,7 @@ class mne_experiment(object):
              # fwd model
              'bem': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-5120-bem-sol.fif'),
              'src': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-ico-4-src.fif'),
+             'bem_head': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-head.fif'),
 
             # !! these would invalidate the s_e_* pattern with a third _
 
@@ -665,6 +666,16 @@ class mne_experiment(object):
         self.var_values['subject'] = list(subjects)
         self.var_values['mrisubject'] = set(mri_subjects.values())
         self.var_values['experiment'] = list(experiments)
+
+    def plot_coreg(self, sens=True, mrk=True, fiduc=True, hs=False,
+                   hs_mri=True, fig=1, **kwargs):
+        self.set(**kwargs)
+
+        fwd = mne.read_forward_solution(self.get('fwd'))
+        raw = mne.fiff.Raw(self.get('rawfif'))
+        bem = self.get('bem_head')
+
+        return plot.sensors.coreg(raw, fwd, bem=bem)
 
     def plot_mrk(self, **kwargs):
         self.set(**kwargs)
