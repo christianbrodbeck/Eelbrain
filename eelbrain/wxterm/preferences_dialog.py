@@ -79,7 +79,12 @@ class PreferencesDialog(wx.Frame):
         dlg.Destroy()
     
     def OnSetFont(self, event):
-        font = wx.Font(pointSize=int(self.config.Read('font size')),
+        try:
+            cur_size = int(self.config.Read('font size'))
+        except:
+            cur_size = 12
+
+        font = wx.Font(pointSize=cur_size,
                        family=wx.FONTFAMILY_UNKNOWN,
                        style=wx.FONTSTYLE_NORMAL,
                        weight=wx.FONTWEIGHT_NORMAL,
