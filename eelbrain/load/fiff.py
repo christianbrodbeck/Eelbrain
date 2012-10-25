@@ -357,6 +357,15 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
 
 
 
+def add_mne_epochs(ds, target='epochs', **kwargs):
+    """Add an mne.Epochs object to the dataset."""
+    epochs = mne_Epochs(ds, **kwargs)
+    ds = trim_ds(ds, epochs)
+    ds[target] = epochs
+    return ds
+
+
+
 def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
     """
     ..Warning:

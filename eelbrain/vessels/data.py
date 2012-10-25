@@ -1959,24 +1959,22 @@ class dataset(collections.OrderedDict):
             if isdataobject(item):
                 if not item.name:
                     item.name = name
-            elif isinstance(item, list):
-                pass # list of something
+            elif isinstance(item, (list, tuple)):
+                item = datalist(item)
             else:
-                try:
-                    if all(np.isreal(item)):
-                        item = var(item, name=name)
-                    else:
-                        item = factor(item, name=name)
-                except:
-                    msg = "%r could not be converted to a valid data object" % item
-                    raise ValueError(msg)
+                pass
 
             # make sure the item has the right length
-            # ndvars without case
             if isndvar(item) and not item.has_case:
                 N = 0
             else:
-                N = len(item)
+                try:
+                    N = len(item)
+                except:
+                    if hasattr(item, '_data'):  # mne epochs
+                        N = len(item._data)
+                    else:
+                        raise
 
             if len(self) == 0:
                 self.n_cases = N
