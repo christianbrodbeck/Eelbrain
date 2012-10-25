@@ -4,6 +4,8 @@ Created on Sep 30, 2012
 @author: christian
 '''
 import numpy as np
+from numpy import sin, cos
+from scipy.optimize import leastsq
 
 import traits.api as traits
 from traitsui.api import View, Item, HGroup
@@ -34,6 +36,7 @@ class coreg(traits.HasTraits):
     scalp = traits.Bool(True)
     scalp_alpha = traits.Range(0., 1., 1.)
     sensors = traits.Bool(True)
+
     scene = traits.Instance(MlabSceneModel, ())
 
     def __init__(self, raw, fwd, bem=None):
@@ -54,7 +57,7 @@ class coreg(traits.HasTraits):
         traits.HasTraits.__init__(self)
 
         if isinstance(raw, basestring):
-            raw = mne.fiff.Raw(raw)
+            raw = load.fiff.Raw(raw)
         if isinstance(fwd, basestring):
             fwd = mne.read_forward_solution(fwd)
         if isinstance(bem, basestring):
@@ -166,4 +169,119 @@ class coreg(traits.HasTraits):
                 HGroup('sensors', 'head_shape'),
                 HGroup('scalp', 'scalp_alpha'),
                 HGroup('fiducials', 'dig_points'),
+                )
+
+
+
+def trans(pts, params):
+    a, b, c, p, q, r = params
+    assert len(pts) == 3
+    # trans
+    pts = pts + [[a], [b], [c]]
+    # rot
+    pts = np.dot([[1, 0, 0], [0, cos(p), -sin(p)], [0, sin(p), cos(p)]], pts)
+    pts = np.dot([[cos(q), 0, sin(q)], [0, 1, 0], [-sin(q), 0, cos(q)]], pts)
+    pts = np.dot([[cos(r), -sin(r), 0], [sin(r), cos(r), 0], [0, 0, 1]], pts)
+    return pts
+
+
+def fit(src, tgt):
+    def err(params):
+        est = trans(src, params)
+        return (tgt - est).ravel()
+
+    # initial guess
+    params = (0, 0, 0, 0, 0, 0)
+    est_params, _ = leastsq(err, params)
+    return est_params
+
+
+class mrk_fix(traits.HasTraits):
+    # views
+    center = traits.Button()
+
+    # markers
+    _0 = traits.Bool(True)
+    _1 = traits.Bool(True)
+    _2 = traits.Bool(True)
+    _3 = traits.Bool(True)
+    _4 = traits.Bool(True)
+
+    scene = traits.Instance(MlabSceneModel, ())
+
+    def __init__(self, mrk, raw):
+        """
+        Parameters
+        ----------
+
+        mrk : load.kit.marker_avg_file | str(path)
+            marker_avg_file object, or path to a marker file.
+        raw : mne.fiff.Raw | str(path)
+            MNE Raw object, or path to a raw file.
+
+        """
+        traits.HasTraits.__init__(self)
+
+        if isinstance(mrk, basestring):
+            mrk = load.kit.marker_avg_file(mrk)
+        self.mrk_pts = mrk_pts = mrk.points.T
+
+        if isinstance(raw, basestring):
+            raw = load.fiff.Raw(raw)
+        dig_pts = filter(lambda d: d['kind'] == 2, raw.info['dig'])
+        dig_pts = np.vstack([d['r'] for d in dig_pts]).T * 1000
+        self.dig_pts = dig_pts
+
+        self.configure_traits()
+        self.plot()
+        self.center = True
+
+    @traits.on_trait_change('_0,_1,_2,_3,_4')
+    def plot(self):
+        mlab = self.scene.mlab
+        mlab.clf()
+
+        dig_pts = self.dig_pts
+        mrk_pts = self.mrk_pts
+
+        x, y, z = mrk_pts
+        mlab.points3d(x, y, z, color=(1, 0, 0), opacity=.3)
+
+        idx = np.array([self._0, self._1, self._2, self._3, self._4], dtype=bool)
+        if np.sum(idx) < 3:
+            mlab.text(0.1, 0.1, 'Need at least 3 points!')
+            return
+
+        for i in xrange(mrk_pts.shape[1]):
+            x, y, z = mrk_pts[:, i]
+            mlab.text3d(x, y, z, str(i), scale=10)
+
+        est_params = fit(dig_pts[:, idx], mrk_pts[:, idx])
+        est = trans(dig_pts, est_params)
+
+        # plot dig fiducials
+        x, y, z = est
+        mlab.points3d(x, y, z, color=(0, .5, 1), opacity=.3)
+        return
+
+    @traits.on_trait_change('center')
+    def _view_top(self):
+        self.set_view('center')
+
+    def set_view(self, view='frontal'):
+#        self.scene.parallel_projection = True
+#        self.scene.camera.parallel_scale = .15
+#        kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180, reset_roll=True)
+#        if view == 'left':
+#            kwargs.update(azimuth=180, roll=90)
+#        elif view == 'top':
+#            kwargs.update(elevation=0)
+#        self.scene.mlab.view(**kwargs)
+        self.scene.mlab.view(azimuth=90, elevation=0, roll=90)
+
+    # the layout of the dialog created
+    view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
+                     height=450, width=450, show_label=False),
+                HGroup('center',),
+                HGroup('_0', '_1', '_2', '_3', '_4'),
                 )

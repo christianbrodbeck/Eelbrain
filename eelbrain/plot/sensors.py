@@ -18,7 +18,7 @@ except:
     pass
 
 try:
-    from _sensors_mayavi import coreg
+    from _sensors_mayavi import coreg, mrk_fix
 except:
     pass
 

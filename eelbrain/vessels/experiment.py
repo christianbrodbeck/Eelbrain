@@ -684,6 +684,13 @@ class mne_experiment(object):
         ax = mf.plot_mpl()
         return ax
 
+    def plot_mrk_fix(self, **kwargs):
+        self.set(**kwargs)
+        mrk = self.get('mrk')
+        raw = self.get('rawfif')
+        fig = plot.sensors.mrk_fix(mrk, raw)
+        return fig
+
     def pull(self, src_root, names=['rawfif', 'log_sdir'], **kwargs):
         """OK 12/8/12
         Copies all items matching a template from another root to the current
