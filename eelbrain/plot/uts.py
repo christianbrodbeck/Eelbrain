@@ -413,7 +413,7 @@ class _ax_clusters:
                  t=True, xdim='time'):
         Y = layers[0]
         if t is True:
-            t = layers[0].properties.get('tF', None)
+            t = layers[0].properties.get('threshold', None)
         if t:
             ax.axhline(t, color='k')
         ylabel = Y.properties.get('unit', None)
@@ -449,7 +449,7 @@ class _ax_clusters:
                     h.remove()
 
         ax.set_xlim(*self.xlim)
-        ax.set_ylim(bottom=0)
+#        ax.set_ylim(bottom=0)
 
     def set_pmax(self, pmax=0.05, ptrend=0.1):
         self.pmax = pmax
