@@ -18,6 +18,7 @@ http://packages.python.org/py2app
 http://docs.python.org/distutils/index.html
 
 """
+import os
 import sys
 
 from distribute_setup import use_setuptools
@@ -139,7 +140,28 @@ else:
     
     # normal -----------------------------------------------------------------------
     else:
-        kwargs['scripts'] = ['scripts/eelbrain']
+        if sys.platform == 'darwin':
+            # script for mac
+            python = sys.executable
+            destdir = os.path.split(python)[0]
+
+            for _ in xrange(2): python = os.path.split(python)[0]
+            python = os.path.join(python, 'Resources/Python.app/Contents/MacOS/Python')
+            destfile = os.path.join(destdir, 'eelbrain_run.py')
+            mac_script = '\n'.join(("#!/bin/sh",
+                                    'exec "%s" %s "$@"' % (python, destfile),
+                                    ''))
+
+            scriptfile = 'scripts_mac/eelbrain'
+            with open(scriptfile, 'w') as FILE:
+                FILE.write(mac_script)
+            os.chmod(scriptfile, 0755)
+            SCRIPTS = [scriptfile,
+                       'scripts_mac/eelbrain_run.py']
+        else:
+            SCRIPTS = ['scripts/eelbrain']
+
+        kwargs['scripts'] = SCRIPTS
 
 
 setup(**kwargs)

@@ -239,6 +239,11 @@ class eelfigure(object):
         self._frame.Show()
 
     def _fill_toolbar(self, tb):
+        """
+        Subclasses should add their toolbar items in this function which
+        is called by CanvasFrame.FillToolBar()
+
+        """
         pass
 
     def close(self):

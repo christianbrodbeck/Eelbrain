@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "/Library/Frameworks/Python.framework/Versions/Current/Resources/Python.app/Contents/MacOS/Python" /Library/Frameworks/Python.framework/Versions/Current/bin/eelbrain_run.py "$@"

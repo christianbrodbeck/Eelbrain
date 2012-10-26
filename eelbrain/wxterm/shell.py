@@ -985,8 +985,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnFileSave(self, event):
         logging.debug("shell.OnFileSave()")
         win = self.get_active_window()
-        if win is self:
-            self.bufferSave()
+        if hasattr(win, 'bufferSave'):
+            win.bufferSave()
         else:
             event.Skip()
 
