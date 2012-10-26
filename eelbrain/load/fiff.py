@@ -56,7 +56,7 @@ import eelbrain.vessels.colorspaces as _cs
 import eelbrain.vessels.sensors as _sensors
 from eelbrain import ui
 
-__all__ = ['Raw', 'events', 'add_epochs', # basic pipeline
+__all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
            'ds_2_evoked', 'evoked_2_stc', # get lists of mne objects
            'mne2ndvar', 'mne_events', 'mne_Raw', 'mne_Epochs', # get mne objects
            'sensor_net',
@@ -358,7 +358,28 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
 
 
 def add_mne_epochs(ds, target='epochs', **kwargs):
-    """Add an mne.Epochs object to the dataset."""
+    """
+    Add an mne.Epochs object to the dataset and return the dataset.
+
+    If, after loading, the Epochs contain fewer cases than the dataset, a copy
+    of the dataset is made containing only those events also contained in the
+    Epochs. Note that the Epochs are always loaded with ``preload==True``.
+
+
+    Parameters
+    ----------
+
+    ds : dataset
+        Dataset with events from a raw fiff file (i.e., created by
+        load.fiff.events).
+    target : str
+        Name for the Epochs object in the dataset.
+    kwargs :
+        Any additional keyword arguments are forwarded to the mne Epochs
+        object initialization.
+
+    """
+    kwargs['preload'] = True
     epochs = mne_Epochs(ds, **kwargs)
     ds = trim_ds(ds, epochs)
     ds[target] = epochs
