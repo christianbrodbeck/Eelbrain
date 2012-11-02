@@ -598,12 +598,16 @@ def mne_Raw(ds):
     return ds.info['raw']
 
 
-def mne_Epochs(ds, tstart= -0.1, tstop=0.6, i_start='i_start', raw=None, name='{name}', **kwargs):
+def mne_Epochs(ds, tstart= -0.1, tstop=0.6, i_start='i_start', raw=None,
+               drop_bad_chs=True, name='{name}', **kwargs):
     """
     All ``**kwargs`` are forwarded to the mne.Epochs instance creation. If the
     mne-python fork in use supports the ``epochs.model`` attribute, 
     ``epochs.model`` is updated with ``ds``
     
+    drop_bad_chs : bool
+        Drop all channels in raw.info['bads'] form the Epochs. This argument is
+        ignored if the picks argument is specified.
     raw : None | mne.fiff.Raw
         If None, ds.info['raw'] is used.
     name : str
@@ -613,6 +617,10 @@ def mne_Epochs(ds, tstart= -0.1, tstop=0.6, i_start='i_start', raw=None, name='{
     """
     if raw is None:
         raw = ds.info['raw']
+
+    if drop_bad_chs and ('picks' not in kwargs) and raw.info['bads']:
+        kwargs['picks'] = mne.fiff.pick_channels(raw.info['ch_names'], [],
+                                                 raw.info['bads'])
 
     events = mne_events(ds=ds, i_start=i_start)
     # epochs with (event_id == None) does not use columns 1 and 2 of events
