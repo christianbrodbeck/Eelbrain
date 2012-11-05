@@ -330,7 +330,8 @@ class Editor(wx.py.editor.EditorFrame):
         key = event.GetKeyCode()
         mod = wxutils.key_mod(event)
         if any(mod):
-            logging.info("Editor OnKeyDown: {0} {1}".format(mod, key))
+            mod_str = '-'.join(d for d, s in zip(['ctrl', 'cmd', 'alt'], mod) if s)
+            logging.info("Editor OnKeyDown: {0} {1}".format(mod_str, key))
         
         if mod == [1, 0, 0]: # [ctrl]
             if key == 47: # [/] --> comment
