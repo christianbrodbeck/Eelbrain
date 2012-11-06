@@ -509,10 +509,15 @@ class cluster_anova:
                 for i in np.argsort(ps):
                     c = cs[i]
                     p = c.properties['p']
+                    interval = np.nonzero(c.x)[0]
+                    c_start = format(c.time[interval[0]], '1.3f')
+                    c_stop = format(c.time[interval[-1]], '1.3f')
                     if p > pmax:
                         break
                     table.cell(i)
+                    table.cell((c_start,c_stop))
                     table.cell(p)
+
         return table
 
 
