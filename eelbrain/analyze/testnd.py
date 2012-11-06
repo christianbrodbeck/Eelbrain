@@ -42,7 +42,8 @@ import glm as _glm
 from test import _resample
 
 
-__all__ = ['corr', 'ttest', 'f_oneway', 'anova', 'cluster_anova']
+__all__ = ['anova', 'cluster_anova', 'cluster_corr', 'corr', 'ttest',
+           'f_oneway']
 
 
 
