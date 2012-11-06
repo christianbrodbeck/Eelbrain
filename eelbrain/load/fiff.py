@@ -54,6 +54,7 @@ import mne.minimum_norm as _mn
 from eelbrain.vessels.data import var, ndvar, dataset
 import eelbrain.vessels.colorspaces as _cs
 import eelbrain.vessels.sensors as _sensors
+from eelbrain.vessels.dimensions import source_space
 from eelbrain import ui
 
 __all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
@@ -654,6 +655,60 @@ def sensor_net(fiff, picks=None, name='fiff-sensors'):
         ch_locs.append((x, y, z))
         ch_names.append(ch_name)
     return _sensors.sensor_net(ch_locs, ch_names, name=name)
+
+
+
+def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
+    """
+    create an ndvar object from an mne SourceEstimate object
+
+    stc : SourceEstimate
+        A source estimate object.
+    subject : str
+        MRI subject (used for loading MRI in PySurfer plotting)
+    name : str | None
+        Ndvar name.
+    check : bool
+        Check if all stcs have the same times and vertices.
+
+    """
+    time = var(stc.times, name='time')
+    ss = source_space(stc.vertno, subject=subject)
+    dims = (ss, time)
+    return ndvar(stc.data, dims, name=name)
+
+
+def stcs_ndvar(stcs, subject='fsaverage', name=None, check=True):
+    """
+    create an ndvar object from a collection of mne SourceEstimate objects
+
+    stcs : list of SourceEstimate
+        A list of SourceEstimate objects.
+    subject : str
+        MRI subject (used for loading MRI in PySurfer plotting)
+    name : str | None
+        Ndvar name.
+    check : bool
+        Check if all stcs have the same times and vertices.
+
+    """
+    stc = stcs[0]
+    vert_lh, vert_rh = vertno = stc.vertno
+    times = stc.times
+
+    if check:
+        for stc in stcs[1:]:
+            assert np.all(times == stc.times)
+            lh, rh = stc.vertno
+            assert np.all(vert_lh == lh)
+            assert np.all(vert_rh == rh)
+
+    time = var(times, name='time')
+    ss = source_space(vertno, subject=subject)
+    dims = ('case', ss, time)
+    data = np.array([s.data for s in stcs])
+    return ndvar(data, dims, name=name)
+
 
 
 def trim_ds(ds, epochs):
