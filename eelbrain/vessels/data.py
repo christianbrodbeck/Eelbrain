@@ -34,6 +34,7 @@ import scipy.stats
 
 from eelbrain import fmtxt
 from eelbrain import ui
+from dimensions import find_time_point
 
 
 
@@ -693,49 +694,6 @@ class var(object):
     @property
     def values(self):
         return np.unique(self.x)
-
-
-
-def find_time_point(timevar, time):
-    """
-    Returns (index, time) for the closest point to ``time`` in ``timevar``
-    
-    timevar : array-like 1d
-        Monotonically increasing values.
-    time : scalar
-        Time point for which to find a match.
-    
-    """
-    if time in timevar:
-        i = np.where(timevar == time)[0][0]
-    else:
-        gr = (timevar > time)
-        if np.all(gr):
-            if timevar[1] - timevar[0] > timevar[0] - time:
-                return 0, timevar[0]
-            else:
-                name = repr(timevar.name) if hasattr(timevar, 'name') else ''
-                raise ValueError("time=%s lies outside array %r" % (time, name))
-        elif np.any(gr):
-            i_next = np.where(gr)[0][0]
-        elif timevar[-1] - timevar[-2] > time - timevar[-1]:
-            return len(timevar) - 1, timevar[-1]
-        else:
-            name = repr(timevar.name) if hasattr(timevar, 'name') else ''
-            raise ValueError("time=%s lies outside array %r" % (time, name))
-        t_next = timevar[i_next]
-        
-        sm = timevar < time
-        i_prev = np.where(sm)[0][-1]
-        t_prev = timevar[i_prev]
-
-        if (t_next - time) < (time - t_prev):
-            i = i_next
-            time = t_next
-        else:
-            i = i_prev
-            time = t_prev
-    return i, time
 
 
 
@@ -1528,7 +1486,7 @@ class ndvar(object):
 
     def get_dim(self, name):
         "Returns the dimension var named ``name``"
-        if name in self._dim_2_ax:
+        if self.has_dim(name):
             i = self._dim_2_ax[name]
             return self.dims[i]
         elif name == 'epoch':
@@ -1540,6 +1498,9 @@ class ndvar(object):
     def get_dims(self, names):
         "Returns a tuple with the requested dimension vars"
         return tuple(self.get_dim(name) for name in names)
+
+    def has_dim(self, name):
+        return name in self._dim_2_ax
 
     def repeat(self, repeats, dim='case', name='{name}'):
         """
@@ -1674,16 +1635,19 @@ class ndvar(object):
         for name, args in kwargs.iteritems():
             try:
                 dimax = self._dim_2_ax[name]
-                dimvar = self.dims[dimax]
+                dim = self.dims[dimax]
             except KeyError:
                 err = ("Segment does not contain %r dimension." % name)
                 raise DimensionMismatchError(err)
+
+            if hasattr(dim, 'dimindex'):
+                args = dim.dimindex(args)
 
             if np.isscalar(args):
                 if name == 'sensor':
                     i, value = args, args
                 else:
-                    i, value = find_time_point(dimvar, args)
+                    i, value = find_time_point(dim, args)
                 index[dimax] = i
                 dims[dimax] = None
                 properties[name] = value
@@ -1692,22 +1656,22 @@ class ndvar(object):
                 if start is None:
                     i0 = None
                 else:
-                    i0, _ = find_time_point(dimvar, start)
+                    i0, _ = find_time_point(dim, start)
 
                 if end is None:
                     i1 = None
                 else:
-                    i1, _ = find_time_point(dimvar, end)
+                    i1, _ = find_time_point(dim, end)
 
                 s = slice(i0, i1)
-                dims[dimax] = dimvar[s]
+                dims[dimax] = dim[s]
                 index[dimax] = s
             else:
                 index[dimax] = args
                 if name == 'sensor':
-                    dims[dimax] = dimvar.get_subnet(args)
+                    dims[dimax] = dim.get_subnet(args)
                 else:
-                    dims[dimax] = dimvar[index]
+                    dims[dimax] = dim[args]
                 properties[name] = args
 
         # create subdata object
