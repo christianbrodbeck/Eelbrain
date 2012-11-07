@@ -1351,6 +1351,10 @@ class ndvar(object):
         self.x -= self._ialign(other)
         return self
 
+    def __rsub__(self, other):
+        x = other - self.x
+        return ndvar(x, self.dims, self.properties, name=self.name)
+
     # container ---
     def __getitem__(self, index):
         if isvar(index):
