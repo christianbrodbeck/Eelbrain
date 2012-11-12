@@ -77,34 +77,21 @@ class stc:
         cycle through time points and optionally save each image. Saving the
         animation (``save_mov``) requires `ffmpeg <http://ffmpeg.org>`_
 
+
+        Parameters
+        ----------
+
         tstart, tstop, tstep | scalar
             Start, end and step time for the animation.
 
         save_frames : str(path)
-            Path to save frames to. Should contain '%03d' for frame index.
+            Path to save frames to. Should contain '%s' for frame index.
             Extension determines format (mayavi supported formats).
 
         save_mov : str(path)
             save the movie
 
         """
-        if save_frames:
-            tempdir = False
-            save_frames = os.path.expanduser(save_frames)
-            save_frames = os.path.abspath(save_frames)
-            try:
-                save_frames % 0
-            except TypeError:
-                err = ("save needs to specify a path that can be formatted "
-                       "with exactly one integer")
-                raise ValueError(err)
-            dirname = os.path.split(save_frames)[0]
-            if not os.path.exists(dirname):
-                os.makedirs(dirname)
-        else:
-            tempdir = tempfile.mkdtemp()
-            save_frames = os.path.join(tempdir, 'frame%03d.png')
-
         # find time points
         if tstep is None:
             times = self._time.x
@@ -119,12 +106,39 @@ class stc:
                 tstop = self._time.x.max()
             times = np.arange(tstart, tstop + tstep / 2, tstep)
 
+        # find number of digits necessary to name frames
+        n_digits = 1 + int(np.log10(len(times)))
+        fmt = '%%0%id' % n_digits
+
+        # find output paths
+        if save_frames:
+            tempdir = False
+            save_frames = os.path.expanduser(save_frames)
+            save_frames = os.path.abspath(save_frames)
+            try:
+                save_frames = save_frames % fmt
+            except TypeError:
+                try:
+                    save_frames % 0
+                except TypeError:
+                    err = ("save needs to specify a path that can be formatted "
+                           "with exactly one integer")
+                    raise ValueError(err)
+            dirname = os.path.split(save_frames)[0]
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+        else:
+            tempdir = tempfile.mkdtemp()
+            save_frames = os.path.join(tempdir, 'frame%s.png' % fmt)
+
+        # render and save the frames
         for i, t in enumerate(times):
             self.set_time(t)
             if save_frames:
                 fname = save_frames % i
                 self.fig.scene.save(fname)
         
+        # make the movie
         if save_mov:
             save_mov = os.path.expanduser(save_mov)
             save_mov = os.path.abspath(save_mov)
