@@ -94,7 +94,7 @@ class stat(_base.eelfigure):
                 colors = 'b'
             elif isinstance(colors, (list, tuple)):
                 colors = colors[0]
-            colors = {ct.Y.name: colors}
+            colors = {None: colors}
         else:
             if isinstance(colors, (list, tuple)):
                 colors = dict(zip(X.cells, colors))
