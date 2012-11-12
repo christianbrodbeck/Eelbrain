@@ -18,8 +18,14 @@ from eelbrain.vessels.dimensions import find_time_point
 __all__ = ['stc', 'stat']
 
 
-def stat(p_map, param_map=None, p0=0.05, p1=0.01):
-    pmap, lut, vmax = colorize_p(p_map, param_map, p0=p0, p1=p1)
+def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False):
+    """
+    solid : bool
+        Use solid color patches between p0 and p1 (else: blend transparency
+        between p0 and p1)
+
+    """
+    pmap, lut, vmax = colorize_p(p_map, param_map, p0=p0, p1=p1, solid=solid)
     return stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False)
 
 
@@ -153,7 +159,7 @@ class stc:
             self.rh.set_data_time_index(time_idx)
 
 
-def colorize_p(pmap, tmap, p0=0.05, p1=0.01):
+def colorize_p(pmap, tmap, p0=0.05, p1=0.01, solid=False):
     """
 
     assuming
@@ -196,10 +202,15 @@ def colorize_p(pmap, tmap, p0=0.05, p1=0.01):
     lut[128:, 2] = 255
     lut[-i1:, 0] = 255
     # alpha
-    lut[:126, 3] = 255
-    lut[126, 3] = 127
-    lut[129, 3] = 127
-    lut[130:, 3] = 255
+    if solid:
+        lut[:126, 3] = 255
+        lut[126, 3] = 127
+        lut[129, 3] = 127
+        lut[130:, 3] = 255
+    else:
+        n = 127 - i1
+        lut[129:-i1, 3] = np.linspace(0, 255, n)
+        lut[126:i1 - 1:-1, 3] = np.linspace(0, 255, n)
 
     return pmap, lut, vmax
 
