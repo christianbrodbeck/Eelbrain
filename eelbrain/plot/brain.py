@@ -46,7 +46,8 @@ class stc:
         self.lh = self.rh = None
         b_kwargs = dict(surf=surf, figure=fig, curv=True)
         d_kwargs = dict(colormap=colormap, alpha=1, smoothing_steps=20,
-                        time_label='%.3g s', min=min, max=max)
+                        time_label='%.3g s', min=min, max=max,
+                        colorbar=colorbar)
         if v.has_dim('time'):
             d_kwargs['time'] = v.time.x
 
