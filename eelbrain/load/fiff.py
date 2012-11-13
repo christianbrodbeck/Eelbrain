@@ -61,6 +61,7 @@ __all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
            'ds_2_evoked', 'evoked_2_stc', # get lists of mne objects
            'mne2ndvar', 'mne_events', 'mne_Raw', 'mne_Epochs', # get mne objects
            'sensor_net',
+           'stc_ndvar', 'stcs_ndvar',
            'brainvision_events_to_fiff',
            ]
 
