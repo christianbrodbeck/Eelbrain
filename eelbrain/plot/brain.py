@@ -179,6 +179,12 @@ class stc:
             if tempdir:
                 shutil.rmtree(tempdir)
 
+    def close(self):
+        if self.lh is None:
+            self.rh.close
+        else:
+            self.lh.close()
+
     def set_time(self, t):
         "set the time frame displayed (in seconds)"
         if self._time is False:
