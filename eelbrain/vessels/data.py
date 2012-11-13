@@ -1604,7 +1604,9 @@ class ndvar(object):
                 if key.startswith('summary_') and (key != 'summary_func'):
                     properties[key[8:]] = properties.pop(key)
 
-            if dims == ['case']:
+            if len(dims) == 0:
+                return x
+            elif dims == ['case']:
                 return var(x, name=name)
             else:
                 return ndvar(x, dims=dims, name=name, properties=properties)
