@@ -36,7 +36,7 @@ class stc:
         Parameters
         ----------
 
-        v : ndvar [source_space ( x time)]
+        v : ndvar [source ( x time)]
             ndvar to plot
         surf : 'smoothwm' |
             Freesurfer surface
@@ -51,10 +51,10 @@ class stc:
         if v.has_dim('time'):
             d_kwargs['time'] = v.time.x
 
-        if v.source_space.lh_n:
+        if v.source.lh_n:
             self.lh = self._hemi(v, 'lh', b_kwargs, d_kwargs)
             d_kwargs['time_label'] = ''
-        if v.source_space.rh_n:
+        if v.source.rh_n:
             self.rh = self._hemi(v, 'rh', b_kwargs, d_kwargs)
 
         # time
@@ -64,9 +64,9 @@ class stc:
             self._time = False
 
     def _hemi(self, v, hemi, b_kwargs, d_kwargs):
-        brain = surfer.Brain(v.source_space.subject, hemi, **b_kwargs)
-        data = v.subdata(source_space=hemi).x
-        vert = v.source_space.vertno[hemi == 'rh']
+        brain = surfer.Brain(v.source.subject, hemi, **b_kwargs)
+        data = v.subdata(source=hemi).x
+        vert = v.source.vertno[hemi == 'rh']
         brain.add_data(data, vertices=vert, **d_kwargs)
         return brain
 

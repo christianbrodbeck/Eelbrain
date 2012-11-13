@@ -53,7 +53,7 @@ def find_time_point(timevar, time):
 
 
 class source_space:
-    name = 'source_space'
+    name = 'source'
     """
     Indexing
     --------
