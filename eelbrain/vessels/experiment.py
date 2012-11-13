@@ -865,6 +865,13 @@ class mne_experiment(object):
         name = '-'.join((stim, cellname(cell, '-')))
         self.set(cell=name)
 
+    def set_env(self):
+        """
+        Set environment variables for free for freesurfer etc.
+
+        """
+        os.environ['SUBJECTS_DIR'] = self.get('mri_dir')
+
     def set_fwd_an(self, stim, tw, proj):
         temp = '{stim}-{tw}-{proj}'
         fwd_an = temp.format(stim=stim, tw=tw, proj=proj)
