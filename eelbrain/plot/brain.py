@@ -242,8 +242,10 @@ def colorize_p(pmap, tmap, p0=0.05, p1=0.01, solid=False):
         lut[130:, 3] = 255
     else:
         n = 127 - i1
-        lut[129:-i1, 3] = np.linspace(0, 255, n)
+        lut[:i1, 3] = 255
         lut[126:i1 - 1:-1, 3] = np.linspace(0, 255, n)
+        lut[129:-i1, 3] = np.linspace(0, 255, n)
+        lut[-i1:, 3] = 255
 
     return pmap, lut, vmax
 
