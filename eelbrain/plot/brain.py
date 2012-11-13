@@ -19,7 +19,7 @@ from eelbrain.vessels.dimensions import find_time_point
 __all__ = ['stc', 'stat']
 
 
-def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False):
+def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, hemi='both'):
     """
     solid : bool
         Use solid color patches between p0 and p1 (else: blend transparency
@@ -27,22 +27,33 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False):
 
     """
     pmap, lut, vmax = colorize_p(p_map, param_map, p0=p0, p1=p1, solid=solid)
-    return stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False)
+    return stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False, hemi=hemi)
 
 
 class stc:
     def __init__(self, v, colormap='hot', min=0, max=30, surf='smoothwm',
-                 figsize=(500, 500), colorbar=True):
+                 figsize=(500, 500), colorbar=True, hemi='both'):
         """
         Parameters
         ----------
 
-        v : ndvar [source ( x time)]
-            ndvar to plot
-        surf : 'smoothwm' |
-            Freesurfer surface
+        v : ndvar [source [ x time]]
+            Ndvar to plot. Must contain a source dimension, and can optionally
+            contain a time dimension.
+
+        surf : 'smoothwm' | ...
+            Freesurfer surface.
+
+        hemi : 'both' | 'l[eft]' | 'r[ight]'
+            Only plot one hemisphere.
 
         """
+        hemi = hemi.lower()
+        if hemi.startswith('l'):
+            v = v.subdata(source='lh')
+        elif hemi.startswith('r'):
+            v = v.subdata(source='rh')
+
         self.fig = fig = mlab.figure(size=figsize)
         self.lh = self.rh = None
         b_kwargs = dict(surf=surf, figure=fig, curv=True)
