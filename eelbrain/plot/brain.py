@@ -235,11 +235,11 @@ def colorize_p(pmap, tmap, p0=0.05, p1=0.01, solid=False):
     i1 = int(p1 / pstep)
 
     # negative
-    lut[:128, 0] = 255
-    lut[:i1, 1] = 255
+    lut[:128, 2] = 255
+    lut[:i1, 0] = 255
     # positive
-    lut[128:, 2] = 255
-    lut[-i1:, 0] = 255
+    lut[128:, 0] = 255
+    lut[-i1:, 1] = 255
     # alpha
     if solid:
         lut[:126, 3] = 255
