@@ -12,6 +12,7 @@ import numpy as np
 from mayavi import mlab
 import surfer
 
+from eelbrain.utils.subp import cmd_exists
 from eelbrain.vessels.dimensions import find_time_point
 
 
@@ -92,6 +93,25 @@ class stc:
             save the movie
 
         """
+        # make sure movie file will be writable
+        if save_mov:
+            save_mov = os.path.expanduser(save_mov)
+            save_mov = os.path.abspath(save_mov)
+            root, ext = os.path.splitext(save_mov)
+            dirname = os.path.dirname(save_mov)
+            if ext not in ['.mov', '.avi']:
+                ext = '.mov'
+                save_mov = root + ext
+
+            if not cmd_exists('ffmpeg'):
+                err = ("Need ffmpeg for saving movies. Download from "
+                       "http://ffmpeg.org/download.html")
+                raise RuntimeError(err)
+            elif os.path.exists(save_mov):
+                os.remove(save_mov)
+            elif not os.path.exists(dirname):
+                os.mkdir(dirname)
+
         # find time points
         if tstep is None:
             times = self._time.x
@@ -137,11 +157,9 @@ class stc:
             if save_frames:
                 fname = save_frames % i
                 self.fig.scene.save(fname)
-        
+
         # make the movie
         if save_mov:
-            save_mov = os.path.expanduser(save_mov)
-            save_mov = os.path.abspath(save_mov)
             frame_dir, frame_name = os.path.split(save_frames)
             cmd = ['ffmpeg',  # ?!? order of options matters
                    '-f', 'image2',  # force format
@@ -157,7 +175,7 @@ class stc:
             stdout, stderr = sp.communicate()
             if not os.path.exists(save_mov):
                 raise RuntimeError("ffmpeg failed:\n" + stderr)
-        
+
             if tempdir:
                 shutil.rmtree(tempdir)
 
