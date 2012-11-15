@@ -14,6 +14,7 @@ import itertools
 import os
 import re
 import shutil
+import subprocess
 
 import numpy as np
 
@@ -919,6 +920,10 @@ class mne_experiment(object):
         temp = '{blc}-{method}-{ori}'
         stc_an = temp.format(blc=blc, method=method, ori=ori)
         self.set(stc_an=stc_an)
+
+    def show_in_finder(self, key, **kwargs):
+        fname = self.get(key, **kwargs)
+        subprocess.call(["open", "-R", fname])
 
     def split_label(self, src_label, new_name, redo=False, part0='post', part1='ant', hemi=['lh', 'rh']):
         """
