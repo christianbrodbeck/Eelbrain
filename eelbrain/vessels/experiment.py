@@ -48,6 +48,31 @@ class Labels(object):
                 setattr(self, name, path)
 
 
+def _etree_expand(node, state):
+    for tk, tv in node.iteritems():
+        if tk == '.':
+            continue
+
+        for k, v in state.iteritems():
+            name = '{%s}' % tk
+            if str(v).startswith(name):
+                tv[k] = {'.': v.replace(name, '')}
+        if len(tv) > 1:
+            _etree_expand(tv, state)
+
+
+def _etree_node_repr(node, name, indent=0):
+    head = ' ' * indent
+    out = [(name, head + node['.'])]
+    for k, v in node.iteritems():
+        if k == '.':
+            continue
+
+        out.extend(_etree_node_repr(v, k, indent=indent + 3))
+    return out
+
+
+
 class mne_experiment(object):
     """
 
@@ -114,7 +139,7 @@ class mne_experiment(object):
              'mri_dir': os.path.join('{root}', 'mri'),  # contains subject-name folders for MRI data
              'mri_sdir': os.path.join('{mri_dir}', '{mrisubject}'),
              'raw_sdir': os.path.join('{meg_sdir}', 'raw'),
-             'eeg_sdir': os.path.join('{meg_dir}', '{subject}', 'raw_eeg'),
+             'eeg_sdir': os.path.join('{meg_sdir}', 'raw_eeg'),
              'log_sdir': os.path.join('{meg_sdir}', 'logs', '{subject}_{experiment}'),
 
              # raw
@@ -691,6 +716,19 @@ class mne_experiment(object):
         fig = plot.sensors.mrk_fix(mrk, raw)
         return fig
 
+    def print_tree(self):
+        tree = {'.': 'root'}
+        for k, v in self.state.iteritems():
+            if str(v).startswith('{root}'):
+                tree[k] = {'.': v.replace('{root}', '')}
+        _etree_expand(tree, self.state)
+        out = []
+        nodes = _etree_node_repr(tree, 'root')
+        name_len = max(len(n) for n, _ in nodes)
+        path_len = max(len(p) for _, p in nodes)
+        pad = ' ' * (80 - name_len - path_len)
+        print os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len) for n, p in nodes)
+
     def pull(self, src_root, names=['rawfif', 'log_sdir'], **kwargs):
         """OK 12/8/12
         Copies all items matching a template from another root to the current
@@ -898,14 +936,14 @@ class mne_experiment(object):
             tgt1 = self.get('label', analysis=name1)
             if (not redo) and os.path.exists(tgt0) and os.path.exists(tgt1):
                 continue
-            
+
             src = self.get('label', analysis=src_label)
             label = mne.read_label(src)
             fwd_fname = self.get('fwd')
             lbl0, lbl1 = split_label(label, fwd_fname, name0, name1)
             lbl0.save(tgt0)
             lbl1.save(tgt1)
-                
+
     def summary(self, templates=['rawfif'], missing='-', link='>',
                 analysis=None, count=True):
         if not isinstance(templates, (list, tuple)):
