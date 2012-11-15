@@ -1101,7 +1101,7 @@ class factor(_effect_):
         return self.isin(values)
 
     def isin(self, values):
-        is_v = [self.x == self._codes[v] for v in values]
+        is_v = [self.x == self._codes[v] for v in values if v in self._codes]
         return np.any(is_v, 0)
 
     def isnot(self, *values):
@@ -1110,7 +1110,7 @@ class factor(_effect_):
         of the values
 
         """
-        is_not_v = [self.x != self._codes[v] for v in values]
+        is_not_v = [self.x != self._codes[v] for v in values if v in self._codes]
         return np.all(is_not_v, axis=0)
 
     def table_categories(self):
