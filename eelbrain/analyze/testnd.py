@@ -269,7 +269,7 @@ class ttest:
                 T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c0].x, axis=0)
                 test_name = 'Independent Samples t-Test'
         elif np.isscalar(c0):
-            c1_data = ct.data[str(Y.name)]
+            c1_data = ct.data[c1]
             c1_mean = c1_data.summary()
             c0_mean = None
             T, P = scipy.stats.ttest_1samp(c1_data.x, popmean=c0, axis=0)

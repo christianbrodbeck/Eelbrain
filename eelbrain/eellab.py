@@ -56,6 +56,10 @@ from analyze import (test,
 
 import ui
 import plot
+try:  # mayavi
+    import plot.brain
+except:
+    globals().setdefault('err', []).append('plot.brain (mayavi)')
 
 import load.txt
 import load.eyelink

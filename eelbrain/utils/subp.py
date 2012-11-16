@@ -34,13 +34,9 @@ from eelbrain.load.kit import marker_avg_file
 __hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch', 'pickle',
             'np',
             'ui']
-# __all__ = [
-# #           'forward',
-#           'kit2fiff',
-#           'process_raw',
-#           'set_bin_dirs',
-#           'mne_experiment'
-#           ]
+
+
+# handling binaries ---
 
 def _set_bin_dirs(mne=None, freesurfer=None, edfapi=None):
     "Setup for binary packages"
@@ -146,6 +142,21 @@ for name in ['NYU-nellab-2008', 'NYU-nellab-2010']:
 
 _verbose = 1
 
+
+
+def cmd_exists(cmd):
+    """
+    Return True if the corresponding command exists (based on stackoverflow_
+    answer).
+
+    .. _stackoverflow: http://stackoverflow.com/a/11069822/166700
+
+    """
+    return subprocess.call(["type", cmd], stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE) == 0
+
+
+# classes for files ---
 
 class edf_file:
     """

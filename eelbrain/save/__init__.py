@@ -16,6 +16,15 @@ __hide__ = ['ui', 'cPickle', 'os']
 
 
 def pickle(obj, dest=None):
+    """
+    Pickle an object.
+
+    dest : None | str
+        Path to destination where to save the  file. If no destination is
+        provided, a file dialog opens. If a destination without extension is
+        provided, '.pickled' is appended.
+
+    """
     if dest is None:
         dest = ui.ask_saveas("Pickle Destination", '', 
                              ext=[('pickled', "Pickled Python Object")])
@@ -25,6 +34,8 @@ def pickle(obj, dest=None):
             return
     else:
         dest = os.path.expanduser(dest)
+        if not os.path.splitext(dest)[1]:
+            dest += '.pickled'
     
     with open(dest, 'w') as FILE:
         cPickle.dump(obj, FILE)

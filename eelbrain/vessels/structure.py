@@ -116,9 +116,7 @@ class celltable:
         else:
             Y = _data.asvar(Y, sub)
         
-        if X is None:
-            X = _data.factor([str(Y.name)] * len(Y), name='all')
-        else:
+        if X is not None:
             X = _data.ascategorial(X, sub)
         
         if match:
@@ -133,9 +131,15 @@ class celltable:
         self.match = match
 
         # extract cells and cell data
-        self.cells = X.cells
         self.data = {}
         self.data_indexes = {}
+        if X is None:
+            self.data[None] = Y
+            self.data_indexes[None] = np.ones(len(Y), dtype=bool)
+            self.cells = [None]
+            return
+
+        self.cells = X.cells
         
         for cell in self.cells:
             self.data_indexes[cell] = cell_index = (X == cell)

@@ -26,14 +26,9 @@ def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies", ds=None):
     X: model defining cells for which frequencies are displayed
     
     """
-    if isinstance(X, str):
-        X = ds[X]
-    if isinstance(Y, str):
-        Y = ds[Y]
-    if isinstance(sub, str):
-        sub = ds[sub]
-    
-    Y = _data.asfactor(Y)
+    Y = _data.ascategorial(Y, sub, ds)
+    if X is not None:
+        X = _data.ascategorial(X, sub, ds)
     
     if X is None:
         table = fmtxt.Table('ll')
@@ -48,7 +43,7 @@ def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies", ds=None):
         return table
     
     
-    ct = _structure.celltable(Y, X, sub=sub)
+    ct = _structure.celltable(Y, X)
     
     Y_categories = ct.Y.cells
     

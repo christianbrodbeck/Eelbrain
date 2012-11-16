@@ -1101,7 +1101,7 @@ class factor(_effect_):
         return self.isin(values)
 
     def isin(self, values):
-        is_v = [self.x == self._codes[v] for v in values]
+        is_v = [self.x == self._codes[v] for v in values if v in self._codes]
         return np.any(is_v, 0)
 
     def isnot(self, *values):
@@ -1110,7 +1110,7 @@ class factor(_effect_):
         of the values
 
         """
-        is_not_v = [self.x != self._codes[v] for v in values]
+        is_not_v = [self.x != self._codes[v] for v in values if v in self._codes]
         return np.all(is_not_v, axis=0)
 
     def table_categories(self):
@@ -1350,6 +1350,10 @@ class ndvar(object):
     def __isub__(self, other):
         self.x -= self._ialign(other)
         return self
+
+    def __rsub__(self, other):
+        x = other - self.x
+        return ndvar(x, self.dims, self.properties, name=self.name)
 
     # container ---
     def __getitem__(self, index):
@@ -1600,7 +1604,9 @@ class ndvar(object):
                 if key.startswith('summary_') and (key != 'summary_func'):
                     properties[key[8:]] = properties.pop(key)
 
-            if dims == ['case']:
+            if len(dims) == 0:
+                return x
+            elif dims == ['case']:
                 return var(x, name=name)
             else:
                 return ndvar(x, dims=dims, name=name, properties=properties)
