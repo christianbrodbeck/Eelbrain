@@ -238,14 +238,14 @@ def events(raw=None, merge= -1, proj=False, name=None,
 
 def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
                downsample=1, mult=1, unit='T', proj=True,
-               data='mag', threshold=None,
+               data='mag', reject=None,
                raw=None, add=True,
                target="MEG", i_start='i_start',
                properties=None, sensors=None):
     """
     Adds data from individual epochs as a ndvar to the dataset ``ds`` and 
-    returns the dataset. Unless the ``threshold`` argument is specified, ``ds``
-    is modified in place. With ``threshold``, a subset of ``ds`` is returned 
+    returns the dataset. Unless the ``reject`` argument is specified, ``ds``
+    is modified in place. With ``reject``, a subset of ``ds`` is returned 
     containing only those events for which data was loaded.
     
     add : bool
@@ -278,7 +278,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
         Unit of the data (default is 'T').
     target : str
         name for the new ndvar containing the epoch data
-    threshold : None | scalar
+    reject : None | scalar
         Threshold for rejecting epochs (peak to peak). Requires a for of 
         mne-python which implements the Epochs.model['index'] variable.
     raw : None | mne.fiff.Raw
@@ -305,8 +305,8 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
     picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False,
                                 eog=False, include=[], exclude=raw.info['bads'])
 
-    if threshold:
-        reject = {data: threshold}
+    if reject:
+        reject = {data: reject}
     else:
         reject = None
 
