@@ -30,6 +30,30 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, hemi='both'):
     return stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False, hemi=hemi)
 
 
+def activation(stc_activation, a_thresh=None, act_max=None, hemi='both'):
+    """
+
+    Add a color map to plotting stc activation.
+    a_thresh = starting point of applying alpha transparency. Values below are not seen. When None,
+                a_thresh = one standard deviation above and below the mean.
+    act_max = the upper range of activation values. values are clipped above this range. When None,
+                act_max = two standard deviations above and below the mean.
+
+    """
+    x = stc_activation.x.mean()
+    std = stc_activation.x.std()
+
+    if a_thresh is None:
+        a_thresh = x + std
+    if act_max is None:
+        act_max = x + 2 * std
+
+
+    lut = colorize_activation(a_thresh=a_thresh, act_max=act_max)
+    if stc_activation.has_case:
+        stc_activation = stc_activation.summary()
+    return stc(stc_activation, colormap=lut, min= -act_max, max=act_max, colorbar=False, hemi=hemi)
+
 class stc:
     def __init__(self, v, colormap='hot', min=0, max=30, surf='smoothwm',
                  figsize=(500, 500), colorbar=True, hemi='both'):
@@ -266,3 +290,39 @@ def colorize_p(pmap, tmap, p0=0.05, p1=0.01, solid=False):
 
     return pmap, lut, vmax
 
+
+
+def colorize_activation(a_thresh=3, act_max=8):
+    """
+    midpoint is 127
+    a_thresh is point at which values gain 50% visibility.
+        from a_thresh and beyond, alpha = 100% visibility.
+    act_max is the upper bound range of activation.
+    for colors:
+        negative is blue.
+        super negative is purple.
+        positive is red.
+        super positive is yellow.
+    """
+
+    values = np.linspace(-act_max, act_max, 256)
+    trans_uidx = np.argmin(np.abs(values - a_thresh))
+    trans_lidx = np.argmin(np.abs(values + a_thresh))
+
+    #Transparent ramping
+    lut = np.zeros((256, 4), dtype=np.uint8)
+    lut[127:trans_uidx, 3] = np.linspace(0, 128, trans_uidx - 127)
+    lut[trans_lidx:127, 3] = np.linspace(128, 0, 127 - trans_lidx)
+    lut[trans_uidx:, 3] = 255
+    lut[:trans_lidx, 3] = 255
+
+    # negative -> Blue
+    lut[:127, 2] = 255
+    # super negative -> Purple
+    lut[:trans_lidx, 0] = np.linspace(0, 255, trans_lidx)
+    # positive -> Red
+    lut[127:, 0] = 255
+    # super positive -> Yellow
+    lut[trans_uidx:, 1] = np.linspace(0, 255, 256 - trans_uidx)
+
+    return lut
