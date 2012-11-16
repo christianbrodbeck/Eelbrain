@@ -42,7 +42,8 @@ import glm as _glm
 from test import _resample
 
 
-__all__ = ['corr', 'ttest', 'f_oneway', 'anova', 'cluster_anova']
+__all__ = ['anova', 'cluster_anova', 'cluster_corr', 'corr', 'ttest',
+           'f_oneway']
 
 
 
@@ -479,15 +480,18 @@ class cluster_anova:
         # Estimate statistic distributions from permuted Ys
         kwargs = dict(tstart=tstart, tstop=tstop, close_time=close_time, unit='F')
         dists = {e: cluster_dist(Y, samples, tF[e], name=e.name, **kwargs) for e in tF}
+        self.cluster_dists = dists
         for _, Yrs in _resample(Y, replacement=replacement, samples=samples):
             for e, F in lm.map(Yrs.x, p=False):
                 dists[e].add_perm(F)
 
         # Find clusters in the actual data
         test0 = lm.map(Y.x, p=False)
+        self.effects = []
         self.clusters = {}
         self.F_maps = {}
         for e, F in test0:
+            self.effects.append(e)
             dist = dists[e]
             dist.add_original(F)
             self.clusters[e] = dist.clusters
@@ -500,20 +504,13 @@ class cluster_anova:
                     if e in self.F_maps]
 
     def as_table(self, pmax=1.):
-        table = fmtxt.Table('ll')
-        for e in self.X.effects:
-            if e in self.F_maps:
-                table.cell(e.name, width=2)
-                cs = self.clusters[e]
-                ps = [c.properties['p'] for c in cs]
-                for i in np.argsort(ps):
-                    c = cs[i]
-                    p = c.properties['p']
-                    if p > pmax:
-                        break
-                    table.cell(i)
-                    table.cell(p)
-        return table
+        tables = []
+        for e in self.effects:
+            dist = self.cluster_dists[e]
+            table = dist.as_table(pmax=pmax)
+            table.title(e.name)
+            tables.append(table)
+        return tables
 
 
 
@@ -553,6 +550,7 @@ class cluster_dist:
         assert Y.ndims == 2
         assert Y.has_case
         assert Y.get_axis('time') == 1
+        self._time_ax = Y.get_axis('time') - 1
         self.dims = Y.dims[1:]
 
         # prepare cluster merging
@@ -631,6 +629,35 @@ class cluster_dist:
             self.dist[self._i] = max(clusters_v)
 
         self._i += 1
+        
+    def as_table(self, pmax=1.):
+        cols = 'll'
+        headings = ('#', 'p')
+        if self._time_ax is not None:
+            time = self.dims[self._time_ax]
+            cols += 'l'
+            headings += ('time interval',)
+        
+        table = fmtxt.Table(cols)
+        table.cells(*headings)
+        table.midrule()
+        
+        i = 0
+        for c in self.clusters:
+            p = c.properties['p']
+            if p <= pmax:
+                table.cell(i)
+                i += 1
+                table.cell(p)
+
+                if self._time_ax is not None:
+                    nz = c.x.nonzero()[self._time_ax]
+                    tstart = time[nz.min()]
+                    tstop = time[nz.max()]
+                    interval = '%.3f - %.3f s' % (tstart, tstop)
+                    table.cell(interval)
+
+        return table
 
 
 

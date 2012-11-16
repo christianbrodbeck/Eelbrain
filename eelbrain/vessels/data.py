@@ -1044,7 +1044,7 @@ class factor(_effect_):
             if np.sum(idx):
                 x_i = np.unique(self.x[idx])
                 if len(x_i) > 1:
-                    err = ("non-unique cell: factor %r has multiple values for "
+                    err = ("ambiguous cell: factor %r has multiple values for "
                            "cell %r" % (self.name, cell))
                     raise ValueError(err)
                 else:
