@@ -311,10 +311,10 @@ def colorize_activation(a_thresh=3, act_max=8):
                 act_max = two standard deviations above and below the mean.
 
 
-    """
+Notes:
 
-#   midpoint is 127        
-#   act_max is the upper bound range of activation.
+    midpoint is 127        
+    act_max is the upper bound range of activation.
     
     for colors:
         negative is blue.
