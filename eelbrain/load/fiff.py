@@ -663,52 +663,42 @@ def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
     """
     create an ndvar object from an mne SourceEstimate object
 
-    stc : SourceEstimate
-        A source estimate object.
+    stc : SourceEstimate | list of SourceEstimates
+        The source estimate object(s).
     subject : str
         MRI subject (used for loading MRI in PySurfer plotting)
     name : str | None
         Ndvar name.
     check : bool
-        Check if all stcs have the same times and vertices.
+        If multiple stcs are provided, check if all stcs have the same times
+        and vertices.
 
     """
+    if isinstance(stc, mne.SourceEstimate):
+        case = False
+        x = stc.data
+    else:
+        case = True
+        stcs = stc
+        stc = stcs[0]
+        if check:
+            vert_lh, vert_rh = stc.vertno
+            times = stc.times
+            for stc_ in stcs[1:]:
+                assert np.all(times == stc_.times)
+                lh, rh = stc_.vertno
+                assert np.all(vert_lh == lh)
+                assert np.all(vert_rh == rh)
+        x = np.array([s.data for s in stcs])
+
     time = var(stc.times, name='time')
     ss = source_space(stc.vertno, subject=subject)
-    dims = (ss, time)
-    return ndvar(stc.data, dims, name=name)
+    if case:
+        dims = ('case', ss, time)
+    else:
+        dims = (ss, time)
 
-
-def stcs_ndvar(stcs, subject='fsaverage', name=None, check=True):
-    """
-    create an ndvar object from a collection of mne SourceEstimate objects
-
-    stcs : list of SourceEstimate
-        A list of SourceEstimate objects.
-    subject : str
-        MRI subject (used for loading MRI in PySurfer plotting)
-    name : str | None
-        Ndvar name.
-    check : bool
-        Check if all stcs have the same times and vertices.
-
-    """
-    stc = stcs[0]
-    vert_lh, vert_rh = vertno = stc.vertno
-    times = stc.times
-
-    if check:
-        for stc in stcs[1:]:
-            assert np.all(times == stc.times)
-            lh, rh = stc.vertno
-            assert np.all(vert_lh == lh)
-            assert np.all(vert_rh == rh)
-
-    time = var(times, name='time')
-    ss = source_space(vertno, subject=subject)
-    dims = ('case', ss, time)
-    data = np.array([s.data for s in stcs])
-    return ndvar(data, dims, name=name)
+    return ndvar(x, dims, name=name)
 
 
 
