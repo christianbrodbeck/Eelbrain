@@ -32,12 +32,16 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, hemi='both'):
 
 def activation(stc_activation, a_thresh=None, act_max=None, hemi='both'):
     """
-
     Add a color map to plotting stc activation.
-    a_thresh = starting point of applying alpha transparency. Values below are not seen. When None,
+
+    Parameters
+    ----------
+    a_thresh : int
+        the point at which alpha transparency is 50%. When None,
                 a_thresh = one standard deviation above and below the mean.
-    act_max = the upper range of activation values. values are clipped above this range. When None,
-                act_max = two standard deviations above and below the mean.
+    act_max : int
+        the upper range of activation values. values are clipped above this range. 
+            When None, act_max = two standard deviations above and below the mean.
 
     """
     x = stc_activation.x.mean()
@@ -238,7 +242,7 @@ def colorize_p(pmap, tmap, p0=0.05, p1=0.01, solid=False):
 
     assuming
 
-    loop up table
+    look up table
     -------------
 
     index -> p-value
@@ -294,10 +298,24 @@ def colorize_p(pmap, tmap, p0=0.05, p1=0.01, solid=False):
 
 def colorize_activation(a_thresh=3, act_max=8):
     """
-    midpoint is 127
-    a_thresh is point at which values gain 50% visibility.
+    Creates a lookup table containing a color map for plotting stc activation.
+
+    Parameters
+    ----------
+    a_thresh : int
+        a_thresh is point at which values gain 50% visibility.
         from a_thresh and beyond, alpha = 100% visibility.
+
+    act_max : int
+        the upper range of activation values. values are clipped above this range. When None,
+                act_max = two standard deviations above and below the mean.
+
+
+Notes:
+
+    midpoint is 127        
     act_max is the upper bound range of activation.
+    
     for colors:
         negative is blue.
         super negative is purple.
