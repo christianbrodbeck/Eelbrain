@@ -322,7 +322,15 @@ def combine(items):
         return factor(x, **kwargs)
     elif isndvar(item0):
         dims = item0.dims
-        x = np.concatenate([v.x for v in items], axis=0)
+        has_case = np.array([v.has_case for v in items])
+        if all(has_case):
+            x = np.concatenate([v.x for v in items], axis=0)
+        elif all(has_case == False):
+            x = np.array([v.x for v in items])
+            dims = ('case',) + dims
+        else:
+            err = ("Some items have a 'case' dimension, others do not")
+            raise DimensionMismatchError(err)
         return ndvar(x, dims=dims, name=item0.name, properties=item0.properties)
     else:
         raise ValueError("Unknown data-object: %r" % item0)
