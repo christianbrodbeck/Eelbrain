@@ -326,7 +326,7 @@ def combine(items):
         if all(has_case):
             x = np.concatenate([v.x for v in items], axis=0)
         elif all(has_case == False):
-            x = np.vstack([v.x for v in items])
+            x = np.array([v.x for v in items])
             dims = ('case',) + dims
         else:
             err = ("Some items have a 'case' dimension, others do not")
