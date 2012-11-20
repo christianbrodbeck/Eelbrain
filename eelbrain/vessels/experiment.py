@@ -90,7 +90,7 @@ class mne_experiment(object):
     _fmt_pattern = re.compile('\{(\w+)\}')
     def __init__(self, root=None,
                  subject=None, experiment=None, analysis=None,
-                 kit2fiff_args=_kit2fiff_args,
+                 kit2fiff_args=_kit2fiff_args, common_brain = 'fsaverage',
                  subjects=True, mri_subjects=True, experiments=True):
         """
         root : str
@@ -127,7 +127,8 @@ class mne_experiment(object):
         self.exclude = {}
 
         self.set(root=root, raw='{raw_raw}', labeldir='label', hemi='lh')
-        self.parse_dirs(subjects=subjects, mri_subjects=mri_subjects, experiments=experiments)
+        self.parse_dirs(subjects=subjects, mri_subjects=mri_subjects, 
+                        common_brain = common_brain, experiments=experiments)
 
         # store current values
         self.set(subject=subject, experiment=experiment, analysis=analysis)
@@ -631,7 +632,8 @@ class mne_experiment(object):
             mlab.view(0, 0)
             mlab.savefig(self.get('plot_png', name=save + '-T', mkdir=True))
 
-    def parse_dirs(self, subjects=True, mri_subjects=True, experiments=True):
+    def parse_dirs(self, subjects=True, mri_subjects=True, 
+                   common_brain = 'fsaverage', experiments=True):
         """
         find subject and experiment names by looking through directory
         structure. If values are provided (i.e., not True), the automatic
@@ -665,8 +667,8 @@ class mne_experiment(object):
                 for s in subjects:
                     if s in mris:
                         mri_subjects[s] = s
-                    elif 'fsaverage' in mris:
-                        mri_subjects[s] = 'fsaverage'
+                    elif common_brain in mris:
+                        mri_subjects[s] = common_brain
                     else:
                         mri_subjects[s] = None
 
