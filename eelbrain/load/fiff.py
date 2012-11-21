@@ -58,8 +58,8 @@ from eelbrain.vessels.dimensions import source_space
 from eelbrain import ui
 
 __all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
-           'ds_2_evoked', 'evoked_2_stc', # get lists of mne objects
-           'mne2ndvar', 'mne_events', 'mne_Raw', 'mne_Epochs', # get mne objects
+           'ds_2_evoked', 'evoked_2_stc',  # get lists of mne objects
+           'mne2ndvar', 'mne_events', 'mne_Raw', 'mne_Epochs',  # get mne objects
            'sensor_net',
            'stc_ndvar', 'stcs_ndvar',
            'brainvision_events_to_fiff',
@@ -70,28 +70,28 @@ __all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
 def Raw(path=None, proj=False, **kwargs):
     """
     Returns a mne.fiff.Raw object with added projections if appropriate.
-    
+
     Arguments
     ---------
-    
+
     path : None | str(path)
-        path to the raw fiff file. If ``None``, a file can be chosen form a 
+        path to the raw fiff file. If ``None``, a file can be chosen form a
         file dialog.
 
     proj : bool | str(path)
-        Add projections from a separate file to the Raw object. 
+        Add projections from a separate file to the Raw object.
         **``False``**: No proj file will be added.
         **``True``**: ``'{raw}*proj.fif'`` will be used.
         ``'{raw}'`` will be replaced with the raw file's path minus '_raw.fif',
-        and '*' will be expanded using fnmatch. If multiple files match the 
+        and '*' will be expanded using fnmatch. If multiple files match the
         pattern, a ValueError will be raised.
         **``str``**: A custom path template can be provided, ``'{raw}'`` and
         ``'*'`` will be treated as with ``True``.
-    
+
     **kwargs**
         Additional keyword arguments are forwarded to mne.fiff.Raw
         initialization.
-    
+
     """
     if path is None:
         path = ui.ask_file("Pick a Raw Fiff File", "Pick a Raw Fiff File",
@@ -141,37 +141,37 @@ def events(raw=None, merge= -1, proj=False, name=None,
     """
     Returns a dataset containing events from a raw fiff file. Use
     :func:`fiff_epochs` to load MEG data corresponding to those events.
-    
+
     raw : str(path) | None | mne.fiff.Raw
-        The raw fiff file from which to extract events (if ``None``, a file 
+        The raw fiff file from which to extract events (if ``None``, a file
         dialog will be displayed).
-    
+
     merge : int
-        use to merge events lying in neighboring samples. The integer value 
+        use to merge events lying in neighboring samples. The integer value
         indicates over how many samples events should be merged, and the sign
-        indicates in which direction they should be merged (negative means 
+        indicates in which direction they should be merged (negative means
         towards the earlier event, positive towards the later event).
-    
+
     proj : bool | str
         Path to the projections file that will be loaded with the raw file.
         ``'{raw}'`` will be expanded to the raw file's path minus extension.
         With ``proj=True``, ``'{raw}_*proj.fif'`` will be used,
-        looking for any projection file starting with the raw file's name. 
+        looking for any projection file starting with the raw file's name.
         If multiple files match the pattern, a ValueError will be raised.
-    
+
     name : str | None
         A name for the dataset. If ``None``, the raw filename will be used.
-    
+
     stim_channel : str
         Name of the trigger channel.
 
     stim_channel_bl : int
         For corrupted event channels:
-        After kit2fiff conversion of sqd files with unused trigger channels, 
-        the resulting fiff file's event channel can contain a baseline other 
+        After kit2fiff conversion of sqd files with unused trigger channels,
+        the resulting fiff file's event channel can contain a baseline other
         than 0. This interferes with normal event extraction. If the baseline
         value is provided as parameter, the events can still be extracted.
-     
+
     """
     if raw is None or isinstance(raw, basestring):
         raw = Raw(raw, proj=proj, verbose=verbose)
@@ -204,7 +204,7 @@ def events(raw=None, merge= -1, proj=False, name=None,
 
     if any(events[:, 1] != 0):
         raise NotImplementedError("Events starting with ID other than 0")
-        # this was the case in the raw-eve file, which contained all event 
+        # this was the case in the raw-eve file, which contained all event
         # offsets, but not in the raw file created by kit2fiff. For handling
         # see :func:`fiff_event_file`
 
@@ -243,23 +243,23 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
                target="MEG", i_start='i_start',
                properties=None, sensors=None):
     """
-    Adds data from individual epochs as a ndvar to the dataset ``ds`` and 
+    Adds data from individual epochs as a ndvar to the dataset ``ds`` and
     returns the dataset. Unless the ``reject`` argument is specified, ``ds``
-    is modified in place. With ``reject``, a subset of ``ds`` is returned 
+    is modified in place. With ``reject``, a subset of ``ds`` is returned
     containing only those events for which data was loaded.
-    
+
     add : bool
-        Add the variable to the dataset. If ``True`` (default), the data is 
+        Add the variable to the dataset. If ``True`` (default), the data is
         added to the dataset and the function returns nothing; if ``False``,
         the function returns the ndvar object.
     baseline : tuple(start, stop) or ``None``
-        Time interval in seconds for baseline correction; ``None`` omits 
+        Time interval in seconds for baseline correction; ``None`` omits
         baseline correction (default).
     dataset : dataset
         Dataset containing a variable (i_start) which defines epoch cues
     downsample : int
-        Downsample the data by this factor when importing. ``1`` means no 
-        downsampling. Note that this function does not low-pass filter 
+        Downsample the data by this factor when importing. ``1`` means no
+        downsampling. Note that this function does not low-pass filter
         the data. The data is downsampled by picking out every
         n-th sample (see `Wikipedia <http://en.wikipedia.org/wiki/Downsampling>`_).
     i_start : str
@@ -279,15 +279,15 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
     target : str
         name for the new ndvar containing the epoch data
     reject : None | scalar
-        Threshold for rejecting epochs (peak to peak). Requires a for of 
+        Threshold for rejecting epochs (peak to peak). Requires a for of
         mne-python which implements the Epochs.model['index'] variable.
     raw : None | mne.fiff.Raw
         Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
     sensors : None | eelbrain.vessels.sensors.sensor_net
-        The default (``None``) reads the sensor locations from the fiff file. 
-        If the fiff file contains incorrect sensor locations, a different 
+        The default (``None``) reads the sensor locations from the fiff file.
+        If the fiff file contains incorrect sensor locations, a different
         sensor_net can be supplied through this kwarg.
-    
+
     """
     if data == 'eeg':
         meg = False
@@ -332,7 +332,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
              'ylim': 2e-12 * mult,
              'summary_ylim': 3.5e-13 * mult,
              'colorspace': _cs.get_MEG(2e-12 * mult),
-             'summary_colorspace': _cs.get_MEG(2e-13 * mult), # was 2.5
+             'summary_colorspace': _cs.get_MEG(2e-13 * mult),  # was 2.5
              }
 
     props['samplingrate'] = epochs.info['sfreq'] / downsample
@@ -393,7 +393,7 @@ def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
     """
     ..Warning:
         modifies the dataset ``ds`` in place
-    
+
     """
     ds[i_start] -= 1
     if raw is None or isinstance(raw, basestring):
@@ -408,10 +408,10 @@ def ds_2_evoked(ds, X, tstart= -0.1, tstop=0.6, baseline=(None, 0),
                 target='evoked', i_start='i_start', eventID='eventID', count='n',
                 ):
     """
-    Takes as input a single-trial dataset ``ds``, and returns a dataset 
-    compressed to the model ``X``, adding a list variable named ``target`` (by 
+    Takes as input a single-trial dataset ``ds``, and returns a dataset
+    compressed to the model ``X``, adding a list variable named ``target`` (by
     default ``"evoked"``) containing an ``mne.Evoked`` object for each cell.
-    
+
     """
     evoked = []
     for cell in X.cells:
@@ -440,18 +440,18 @@ def evoked_2_stc(ds, files={'fwd':None, 'cov':None}, loose=0.2, depth=0.8,
                  evoked='evoked', target='stc'):
     """
     Takes a dataset with an evoked list and adds a corresponding stc list
-    
-    
+
+
     *mne inverse operator:*
-    
+
     loose: float in [0, 1]
         Value that weights the source variances of the dipole components
         defining the tangent space of the cortical surfaces.
     depth: None | float in [0, 1]
         Depth weighting coefficients. If None, no depth weighting is performed.
-    
+
     **mne apply inverse:**
-    
+
     lambda2, dSPM, pick_normal
     """
     stcs = []
@@ -464,7 +464,7 @@ def evoked_2_stc(ds, files={'fwd':None, 'cov':None}, loose=0.2, depth=0.8,
         inv = _mn.make_inverse_operator(evoked.info, fwd_obj, cov_obj, loose=loose, depth=depth)
 
         stc = _mn.apply_inverse(evoked, inv, lambda2=lambda2, dSPM=dSPM, pick_normal=pick_normal)
-        stc.src = inv['src'] # add the source space so I don't have to retrieve it independently 
+        stc.src = inv['src']  # add the source space so I don't have to retrieve it independently
         stcs.append(stc)
 
     if target:
@@ -477,7 +477,7 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
              tstart= -0.1, tstop=0.6, baseline=(None, 0)):
     """
     adds data from one label as
-    
+
     """
     if name is None:
         if label:
@@ -536,21 +536,21 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
 
 
 #    data = sum(stc.data for stc in stcs) / len(stcs)
-#    
+#
 #    # compute sign flip to avoid signal cancelation when averaging signed values
 #    flip = mne.label_sign_flip(label, inverse_operator['src'])
-#    
+#
 #    label_mean = np.mean(data, axis=0)
 #    label_mean_flip = np.mean(flip[:, np.newaxis] * data, axis=0)
 
 
 def mne2ndvar(mne_object, data='mag', vmax=2e-12, unit='T', name=None):
     """
-    Converts an mne data object to an ndvar. 
-    
+    Converts an mne data object to an ndvar.
+
     The main difference is that an ndvar
     can only contain one type of data ('mag', 'grad', 'eeg')
-    
+
     """
     if data == 'eeg':
         meg = False
@@ -604,16 +604,16 @@ def mne_Epochs(ds, tstart= -0.1, tstop=0.6, i_start='i_start', raw=None,
                drop_bad_chs=True, name='{name}', **kwargs):
     """
     All ``**kwargs`` are forwarded to the mne.Epochs instance creation. If the
-    mne-python fork in use supports the ``epochs.model`` attribute, 
+    mne-python fork in use supports the ``epochs.model`` attribute,
     ``epochs.model`` is updated with ``ds``
-    
+
     drop_bad_chs : bool
         Drop all channels in raw.info['bads'] form the Epochs. This argument is
         ignored if the picks argument is specified.
     raw : None | mne.fiff.Raw
         If None, ds.info['raw'] is used.
     name : str
-        Name for the Epochs object. ``'{name}'`` is formatted with the dataset 
+        Name for the Epochs object. ``'{name}'`` is formatted with the dataset
         name ``ds.name``.
 
     """
@@ -637,7 +637,7 @@ def mne_Epochs(ds, tstart= -0.1, tstop=0.6, i_start='i_start', raw=None,
 def sensor_net(fiff, picks=None, name='fiff-sensors'):
     """
     returns a sensor_net object based on the info in a fiff file.
-     
+
     """
     info = fiff.info
     if picks is None:
@@ -663,52 +663,42 @@ def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
     """
     create an ndvar object from an mne SourceEstimate object
 
-    stc : SourceEstimate
-        A source estimate object.
+    stc : SourceEstimate | list of SourceEstimates
+        The source estimate object(s).
     subject : str
         MRI subject (used for loading MRI in PySurfer plotting)
     name : str | None
         Ndvar name.
     check : bool
-        Check if all stcs have the same times and vertices.
+        If multiple stcs are provided, check if all stcs have the same times
+        and vertices.
 
     """
+    if isinstance(stc, mne.SourceEstimate):
+        case = False
+        x = stc.data
+    else:
+        case = True
+        stcs = stc
+        stc = stcs[0]
+        if check:
+            vert_lh, vert_rh = stc.vertno
+            times = stc.times
+            for stc_ in stcs[1:]:
+                assert np.all(times == stc_.times)
+                lh, rh = stc_.vertno
+                assert np.all(vert_lh == lh)
+                assert np.all(vert_rh == rh)
+        x = np.array([s.data for s in stcs])
+
     time = var(stc.times, name='time')
     ss = source_space(stc.vertno, subject=subject)
-    dims = (ss, time)
-    return ndvar(stc.data, dims, name=name)
+    if case:
+        dims = ('case', ss, time)
+    else:
+        dims = (ss, time)
 
-
-def stcs_ndvar(stcs, subject='fsaverage', name=None, check=True):
-    """
-    create an ndvar object from a collection of mne SourceEstimate objects
-
-    stcs : list of SourceEstimate
-        A list of SourceEstimate objects.
-    subject : str
-        MRI subject (used for loading MRI in PySurfer plotting)
-    name : str | None
-        Ndvar name.
-    check : bool
-        Check if all stcs have the same times and vertices.
-
-    """
-    stc = stcs[0]
-    vert_lh, vert_rh = vertno = stc.vertno
-    times = stc.times
-
-    if check:
-        for stc in stcs[1:]:
-            assert np.all(times == stc.times)
-            lh, rh = stc.vertno
-            assert np.all(vert_lh == lh)
-            assert np.all(vert_rh == rh)
-
-    time = var(times, name='time')
-    ss = source_space(vertno, subject=subject)
-    dims = ('case', ss, time)
-    data = np.array([s.data for s in stcs])
-    return ndvar(data, dims, name=name)
+    return ndvar(x, dims, name=name)
 
 
 

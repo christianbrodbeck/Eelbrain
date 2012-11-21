@@ -322,7 +322,15 @@ def combine(items):
         return factor(x, **kwargs)
     elif isndvar(item0):
         dims = item0.dims
-        x = np.concatenate([v.x for v in items], axis=0)
+        has_case = np.array([v.has_case for v in items])
+        if all(has_case):
+            x = np.concatenate([v.x for v in items], axis=0)
+        elif all(has_case == False):
+            x = np.array([v.x for v in items])
+            dims = ('case',) + dims
+        else:
+            err = ("Some items have a 'case' dimension, others do not")
+            raise DimensionMismatchError(err)
         return ndvar(x, dims=dims, name=item0.name, properties=item0.properties)
     else:
         raise ValueError("Unknown data-object: %r" % item0)
@@ -1299,7 +1307,7 @@ class ndvar(object):
             raise TypeError
 
     def _ialign(self, other):
-        "align for self-mofiying operations (+= ...)"
+        "align for self-modifying operations (+= ...)"
         if isvar(other):
             assert self.has_case
             n = len(other)
@@ -2258,7 +2266,7 @@ class interaction(_effect_):
         """
         """
         # FIXME: interaction does not update when component factors update
-        self.factors = []
+#        self.factors = []
         self.base = effect_list()
         self.is_categorial = True
         self.nestedin = set()
@@ -2299,13 +2307,14 @@ class interaction(_effect_):
                    "cases")
             raise ValueError(err)
 
-        self.name = ' x '.join([str(f.name) for f in self.base])
+        self.base_names = [str(f.name) for f in self.base]
+        self.name = ' x '.join(self.base_names)
         self.random = False
         self.beta_labels = beta_labels
         self.df = reduce(operator.mul, [f.df for f in self.base])
 
         # determine cells:
-        factors = effect_list(filter(lambda f: isfactor(f), self.base))
+        factors = effect_list(filter(isfactor, self.base))
         self.cells = list(itertools.product(*(f.cells for f in factors)))
         self._colors = {}
 
