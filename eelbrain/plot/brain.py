@@ -36,13 +36,12 @@ def activation(stc_activation, a_thresh=None, act_max=None, hemi='both'):
 
     Parameters
     ----------
-
     a_thresh : int
         the point at which alpha transparency is 50%. When None,
-        a_thresh = one standard deviation above and below the mean.
+                a_thresh = one standard deviation above and below the mean.
     act_max : int
         the upper range of activation values. values are clipped above this range. 
-        When None, act_max = two standard deviations above and below the mean.
+            When None, act_max = two standard deviations above and below the mean.
 
     """
     x = stc_activation.x.mean()
@@ -303,29 +302,25 @@ def colorize_activation(a_thresh=3, act_max=8):
 
     Parameters
     ----------
-
     a_thresh : int
         a_thresh is point at which values gain 50% visibility.
         from a_thresh and beyond, alpha = 100% visibility.
 
     act_max : int
         the upper range of activation values. values are clipped above this range. When None,
-        act_max = two standard deviations above and below the mean.
+                act_max = two standard deviations above and below the mean.
 
 
-    Notes
-    -----
+Notes:
 
     midpoint is 127        
     act_max is the upper bound range of activation.
     
     for colors:
-
-    - negative is blue.
-    - super negative is purple.
-    - positive is red.
-    - super positive is yellow.
-
+        negative is blue.
+        super negative is purple.
+        positive is red.
+        super positive is yellow.
     """
 
     values = np.linspace(-act_max, act_max, 256)
