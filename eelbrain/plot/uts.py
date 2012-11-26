@@ -464,7 +464,7 @@ def _plt_cluster(ax, ndvar, color=None, y=None, xdim='time',
     where = np.nonzero(v)[0]
 
     # make sure the cluster is contiguous
-    if np.max(np.diff(where)) > 1:
+    if len(where) > 1 and np.max(np.diff(where)) > 1:
         raise ValueError("Non-contiguous clusters not supported; where = %r" % where)
 
     x0 = where[0]
