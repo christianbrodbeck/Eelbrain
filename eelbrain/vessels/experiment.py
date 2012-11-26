@@ -88,6 +88,9 @@ class mne_experiment(object):
 
     """
     _fmt_pattern = re.compile('\{(\w+)\}')
+    # the default value for the common_brain (can be overridden using the set
+    # method after __init__()):
+    _common_brain = 'fsaverage'
     def __init__(self, root=None,
                  subject=None, experiment=None, analysis=None,
                  kit2fiff_args=_kit2fiff_args,
@@ -123,6 +126,7 @@ class mne_experiment(object):
 
         # find experiment data structure
         self.state = self.get_templates()
+        self.set(common_brain=self._common_brain)
         self.var_values = {'hemi': ('lh', 'rh')}
         self.exclude = {}
 
@@ -171,9 +175,9 @@ class mne_experiment(object):
              # mne's stc.save() requires stub filename and will add '-?h.stc'
              'mne_dir': os.path.join('{meg_sdir}', 'mne_{fwd_an}_{stc_an}'),
              'stc': os.path.join('{mne_dir}', '{experiment}_{cell}'),
-             'stc_morphed': os.path.join('{mne_dir}', '{experiment}_{cell}_fsaverage'),
+             'stc_morphed': os.path.join('{mne_dir}', '{experiment}_{cell}_{common_brain}'),
              'label': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{analysis}.label'),
-             'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-fsaverage-morph.fif'),
+             'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
 
              # EEG
              'vhdr': os.path.join('{eeg_sdir}', '{subject}_{experiment}.vhdr'),
@@ -641,6 +645,7 @@ class mne_experiment(object):
         parse_sub = (subjects == True)
         parse_mri = (mri_subjects == True)
 
+        subjects_has_mri = []
         self._mri_subjects = mri_subjects = {} if parse_mri else dict(mri_subjects)
         self._subjects = subjects = set() if parse_sub else set(subjects)
 
@@ -665,10 +670,9 @@ class mne_experiment(object):
                 for s in subjects:
                     if s in mris:
                         mri_subjects[s] = s
-                    elif 'fsaverage' in mris:
-                        mri_subjects[s] = 'fsaverage'
+                        subjects_has_mri.append(s)
                     else:
-                        mri_subjects[s] = None
+                        mri_subjects[s] = '{common_brain}'
 
 
         if experiments == True:
@@ -692,6 +696,7 @@ class mne_experiment(object):
         self.var_values['subject'] = list(subjects)
         self.var_values['mrisubject'] = set(mri_subjects.values())
         self.var_values['experiment'] = list(experiments)
+        self.subjects_has_mri = tuple(subjects_has_mri)
 
     def plot_coreg(self, sens=True, mrk=True, fiduc=True, hs=False,
                    hs_mri=True, fig=1, **kwargs):
