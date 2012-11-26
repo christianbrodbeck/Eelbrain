@@ -1119,7 +1119,10 @@ class factor(_effect_):
 
         """
         is_not_v = [self.x != self._codes[v] for v in values if v in self._codes]
-        return np.all(is_not_v, axis=0)
+        if is_not_v:
+            return np.all(is_not_v, axis=0)
+        else:
+            return np.ones(len(self), dtype=bool)
 
     def table_categories(self):
         "returns a table containing information about categories"
