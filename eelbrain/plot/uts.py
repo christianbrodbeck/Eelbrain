@@ -15,6 +15,11 @@ import scipy.stats
 import matplotlib.cm as _cm
 import matplotlib.pyplot as plt
 
+try:
+    import wx
+except:
+    pass
+
 from eelbrain.vessels import data as _data
 from eelbrain.vessels.structure import celltable
 from eelbrain.wxutils import mpl_canvas
@@ -146,9 +151,21 @@ class stat(_base.eelfigure):
         self.legend_handles = legend_h.values()
         self.legend_labels = legend_h.keys()
         self.plot_legend(legend)
+        self.info = ""
 
         self.figure.tight_layout()
         self._show()
+
+    def _fill_toolbar(self, tb):
+        btn = wx.Button(tb, wx.ID_ABOUT, "Info")
+        tb.AddControl(btn)
+        btn.Bind(wx.EVT_BUTTON, self._OnShowInfo)
+
+    def _OnShowInfo(self, event):
+        dlg = wx.MessageDialog(self._frame, self.info, self._frame.GetTitle(),
+                               wx.OK | wx.ICON_INFORMATION)
+        dlg.ShowModal()
+        dlg.Destroy()
 
     def plot_clusters(self, clusters, p=0.05, color=(.7, .7, .7), ax=0):
         """Add clusters from a cluster test to the uts plot (as shaded area).
@@ -171,6 +188,10 @@ class stat(_base.eelfigure):
             be plotted.
 
         """
+        if hasattr(clusters, 'clusters'):
+            self.info += "Clusters\n--------\n\n%s" % clusters.as_table()
+            clusters = clusters.clusters
+
         ax = self.axes[ax]
         for c in clusters:
             if c.properties['p'] <= p:
