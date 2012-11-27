@@ -494,14 +494,14 @@ class cluster_anova:
             self.effects.append(e)
             dist = dists[e]
             dist.add_original(F)
-            self.clusters[e] = dist.clusters
+            self.clusters[e] = dist
             self.F_maps[e] = dist.P
 
         self.name = "ANOVA Permutation Cluster Test"
         self.tF = tF
 
-        self.all = [[self.F_maps[e]] + self.clusters[e] for e in self.X.effects
-                    if e in self.F_maps]
+        self.all = [[self.F_maps[e]] + self.clusters[e].clusters
+                    for e in self.X.effects if e in self.F_maps]
 
     def as_table(self, pmax=1.):
         tables = []
