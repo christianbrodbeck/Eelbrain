@@ -18,7 +18,7 @@ except:
     pass
 
 try:
-    from _sensors_mayavi import coreg, mrk_fix
+    from _sensors_mayavi import coreg, mrk_fix, fit_coreg
 except:
     pass
 
@@ -230,7 +230,6 @@ class multi(_base.eelfigure):
         # setup mpl event handling
         self.canvas.mpl_connect("button_press_event", self._on_button_press)
         self.canvas.mpl_connect("button_release_event", self._on_button_release)
-        self.canvas.mpl_connect("motion_notify_event", self._on_motion)
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
@@ -301,6 +300,7 @@ class multi(_base.eelfigure):
         self.update_ROI_plot()
 
     def _on_motion(self, event):
+        super(self.__class__, self)._on_motion(event)
         ax = event.inaxes
         if ax and ax is self._drag_ax:
             x0 = self._drag_x
