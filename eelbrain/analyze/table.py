@@ -17,7 +17,7 @@ __hide__ = ['division', 'fmtxt', 'scipy',
 
 
 
-def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies", ds=None):
+def frequencies(Y, X=None, of=None, sub=None, title="{Yname} Frequencies", ds=None):
     """
     Display frequency of occurrence of all categories in Y in the cells 
     defined by X.
@@ -29,6 +29,9 @@ def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies", ds=None):
     Y = _data.ascategorial(Y, sub, ds)
     if X is not None:
         X = _data.ascategorial(X, sub, ds)
+    if of is not None:
+        of = _data.ascategorial(of, sub, ds)
+        Y = Y.compress(of)
     
     if X is None:
         table = fmtxt.Table('ll')
@@ -42,7 +45,9 @@ def frequencies(Y, X=None, sub=None, title="{Yname} Frequencies", ds=None):
             table.cell(np.sum(Y == cell))
         return table
     
-    
+    if of is not None:
+        X = X.compress(of)
+
     ct = _structure.celltable(Y, X)
     
     Y_categories = ct.Y.cells
