@@ -28,7 +28,7 @@ __hide__ = ['plt', 'division', 'celltable']
 class stat(_base.eelfigure):
     def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
                  sub=None, match=None, ds=None, Xax=None, ncol=3,
-                 width=6, height=3, dpi=90, legend='upper right', title=True,
+                 width=6, height=3, dpi=90, legend='upper right', title='{name}',
                  ylabel=True, xlabel=True, invy=False,
                  bottom=None, top=None,
                  xdim='time', cm=_cm.jet, colors=None):
@@ -66,8 +66,8 @@ class stat(_base.eelfigure):
 
     legend : str | None
         matplotlib figure legend location argument
-    title : str | True | False
-        axes title; if ``True``, use ``var.name``
+    title : str | False
+        axes title; '{name}' will be formatted to ``Y.name``
     invy : bool
         invert the y axis
     bottom, top | None | scalar
@@ -112,8 +112,8 @@ class stat(_base.eelfigure):
                       invy=invy, bottom=bottom, top=top,
                       xlabel=xlabel, colors=colors, legend_h=legend_h)
 
-        if title is True:
-            title = ct.Y.name
+        if '{name}' in title:
+            title = title.format(name=ct.Y.name)
 
         if isinstance(title, basestring):
             win_title = title
