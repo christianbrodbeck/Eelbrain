@@ -635,7 +635,8 @@ class mne_experiment(object):
             mlab.view(0, 0)
             mlab.savefig(self.get('plot_png', name=save + '-T', mkdir=True))
 
-    def parse_dirs(self, subjects=True, mri_subjects=True, experiments=True):
+    def parse_dirs(self, subjects=True, mri_subjects=True, 
+                   common_brain = 'fsaverage', experiments=True):
         """
         find subject and experiment names by looking through directory
         structure. If values are provided (i.e., not True), the automatic
