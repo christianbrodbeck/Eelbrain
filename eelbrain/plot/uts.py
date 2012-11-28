@@ -9,6 +9,7 @@ Created on Mar 13, 2012
 '''
 from __future__ import division
 
+import os
 
 import numpy as np
 import scipy.stats
@@ -17,6 +18,7 @@ import matplotlib.pyplot as plt
 
 try:
     import wx
+    from wx.lib.dialogs import ScrolledMessageDialog as TextDialog
 except:
     pass
 
@@ -151,23 +153,27 @@ class stat(_base.eelfigure):
         self.legend_handles = legend_h.values()
         self.legend_labels = legend_h.keys()
         self.plot_legend(legend)
-        self.info = ""
+
+        self._cluster_h = []
+        self.cluster_info = []
 
         self.figure.tight_layout()
         self._show()
 
     def _fill_toolbar(self, tb):
-        btn = wx.Button(tb, wx.ID_ABOUT, "Info")
+        btn = self._cluster_btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
+        btn.Enable(False)
         tb.AddControl(btn)
-        btn.Bind(wx.EVT_BUTTON, self._OnShowInfo)
+        btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
 
-    def _OnShowInfo(self, event):
-        dlg = wx.MessageDialog(self._frame, self.info, self._frame.GetTitle(),
-                               wx.OK | wx.ICON_INFORMATION)
+    def _OnShowClusterInfo(self, event):
+        size = (350, 700)
+        info = (os.linesep * 2).join(map(str, self.cluster_info))
+        dlg = TextDialog(self._frame, info, "Clusters", size=size)
         dlg.ShowModal()
         dlg.Destroy()
 
-    def plot_clusters(self, clusters, p=0.05, color=(.7, .7, .7), ax=0):
+    def plot_clusters(self, clusters, p=0.05, color=(.7, .7, .7), ax=0, clear=True):
         """Add clusters from a cluster test to the uts plot (as shaded area).
 
         Arguments
@@ -188,9 +194,17 @@ class stat(_base.eelfigure):
             be plotted.
 
         """
+        if clear:
+            for h in self._cluster_h:
+                h.remove()
+            self._cluster_h = []
+            self.cluster_info = []
+            
         if hasattr(clusters, 'clusters'):
-            self.info += "Clusters\n--------\n\n%s" % clusters.as_table()
+            self.cluster_info.append(clusters.as_table())
             clusters = clusters.clusters
+            if self._is_wx:
+                self._cluster_btn.Enable(True)
 
         ax = self.axes[ax]
         for c in clusters:
@@ -199,7 +213,8 @@ class stat(_base.eelfigure):
                 i1 = np.nonzero(c.x)[0][-1]
                 t0 = c.time[i0]
                 t1 = c.time[i1]
-                ax.axvspan(t0, t1, zorder= -1, color=color)
+                h = ax.axvspan(t0, t1, zorder= -1, color=color)
+                self._cluster_h.append(h)
         self.draw()
 
     def plot_legend(self, loc='fig', figsize=(2, 2)):
@@ -337,6 +352,11 @@ class clusters(_base.eelfigure):
             plot threshold
 
         """
+        try:
+            self.cluster_info = epochs.as_table()
+        except AttributeError:
+            self.cluster_info = "No Cluster Info"
+
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
 
         # create figure
@@ -373,6 +393,18 @@ class clusters(_base.eelfigure):
 
         self.figure.tight_layout()
         self._show()
+
+    def _fill_toolbar(self, tb):
+        btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
+        tb.AddControl(btn)
+        btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
+
+    def _OnShowClusterInfo(self, event):
+        size = (350, 700)
+        info = (os.linesep * 2).join(map(str, self.cluster_info))
+        dlg = TextDialog(self._frame, info, "Clusters", size=size)
+        dlg.ShowModal()
+        dlg.Destroy()
 
     def set_pmax(self, pmax=0.05):
         "set the threshold p-value for clusters to be displayed"
