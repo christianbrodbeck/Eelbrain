@@ -904,9 +904,24 @@ class mne_experiment(object):
             if v is not None:
                 self.state[k] = v
 
-    def set_cell(self, stim, cell):
-        "cell: data cell"
-        name = '-'.join((stim, cellname(cell, '-')))
+    _cell_order = ()
+    _cell_fullname = True  # whether or not to include factor name in cell
+    def set_cell(self, cell):
+        """
+        a {factor: cell} dictionary. Uses self._cell_order to determine te
+        order of factors.
+
+        cell: data cell
+
+        """
+        parts = []
+        for f in self._cell_order:
+            if f in cell:
+                if self._cell_fullname:
+                    parts.append('%s=%s' % (f, cell[f]))
+                else:
+                    parts.append(cell[f])
+        name = '-'.join(parts)
         self.set(cell=name)
 
     def set_env(self):
