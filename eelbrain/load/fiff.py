@@ -312,17 +312,13 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
 
     epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
                         proj=proj, i_start=i_start, raw=raw, picks=picks,
-                        reject=reject, preload=True)
+                        reject=reject, preload=True, decim=downsample)
 
     # read the data
     x = epochs.get_data()
     if len(x) == 0:
         raise RuntimeError("No events left in %r" % raw.info['filename'])
     T = epochs.times
-    if downsample != 1:
-        index = slice(None, None, downsample)
-        x = x[:, :, index]
-        T = T[index]
     if mult != 1:
         x *= mult
 
@@ -335,7 +331,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
              'summary_colorspace': _cs.get_MEG(2e-13 * mult),  # was 2.5
              }
 
-    props['samplingrate'] = epochs.info['sfreq'] / downsample
+    props['samplingrate'] = epochs.info['sfreq']
     if properties:
         props.update(properties)
 
