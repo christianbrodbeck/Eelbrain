@@ -1205,10 +1205,10 @@ class ndvar(object):
         """
         # check data shape
         dims = tuple(dims)
-        self.ndims = ndims = len(dims)
-        if ndims != x.ndim:
+        ndim = len(dims)
+        if ndim != x.ndim:
             err = ("Unequal number of dimensions (data: %i, dims: %i)" %
-                   (x.ndim, ndims))
+                   (x.ndim, ndim))
             raise DimensionMismatchError(err)
 
         # check dimensions

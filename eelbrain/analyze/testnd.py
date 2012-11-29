@@ -547,7 +547,7 @@ class cluster_dist:
 
         """
         # make sure we only get case by time data
-        assert Y.ndims == 2
+        assert Y.ndim == 2
         assert Y.has_case
         assert Y.get_axis('time') == 1
         self._time_ax = Y.get_axis('time') - 1
