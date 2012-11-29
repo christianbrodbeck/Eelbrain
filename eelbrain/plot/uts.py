@@ -354,6 +354,8 @@ class clusters(_base.eelfigure):
         """
         try:
             self.cluster_info = epochs.as_table()
+            if not isinstance(self.cluster_info, (list, tuple)):
+                self.cluster_info = [self.cluster_info]
         except AttributeError:
             self.cluster_info = "No Cluster Info"
 
