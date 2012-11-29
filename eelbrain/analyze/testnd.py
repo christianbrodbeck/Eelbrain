@@ -189,6 +189,7 @@ class cluster_corr:
 
         self.r_map = cdist.P
         self.all = [[self.r_map] + cdist.clusters]
+        self.clusters = cdist
 
     def _corr(self, Y):
         n = self.n
@@ -202,6 +203,9 @@ class cluster_corr:
         r = cov / (np.std(x, axis=0) * np.std(y, axis=0))
         return r
 
+    def as_table(self, pmax=1.):
+        table = self.clusters.as_table(pmax=pmax)
+        return table
 
 
 class ttest:
@@ -547,7 +551,7 @@ class cluster_dist:
 
         """
         # make sure we only get case by time data
-        assert Y.ndims == 2
+        assert Y.ndim == 2
         assert Y.has_case
         assert Y.get_axis('time') == 1
         self._time_ax = Y.get_axis('time') - 1
