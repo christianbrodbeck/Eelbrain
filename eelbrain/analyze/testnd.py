@@ -617,7 +617,8 @@ class cluster_dist:
                 ndv = ndvar(im, dims=self.dims, name=name, properties=properties)
                 self.clusters.append(ndv)
 
-        props = {'tF': self.clusters, 'unit': self.unit, 'cs': self.cs}
+        props = {'tF': self.clusters, 'unit': self.unit, 'cs': self.cs,
+                 'threshold': self.threshold}
         self.P = ndvar(P, dims=self.dims, name=self.name, properties=props)
 
     def add_perm(self, P):
