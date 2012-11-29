@@ -88,13 +88,16 @@ class mne_experiment(object):
 
     """
     _fmt_pattern = re.compile('\{(\w+)\}')
+    _subject_loc = 'meg_dir'  # location of subject folders
+    subject_re = re.compile('R\d{4}$')
+    _mri_loc = 'mri_dir',  # location of subject mri folders
     # the default value for the common_brain (can be overridden using the set
     # method after __init__()):
     _common_brain = 'fsaverage'
-    def __init__(self, root=None,
-                 subject=None, experiment=None, analysis=None,
-                 kit2fiff_args=_kit2fiff_args,
-                 subjects=True, mri_subjects=True, experiments=True):
+    _experiments = []
+    def __init__(self, root=None, parse_subjects=True, parse_mri=True,
+                 subjects=[], mri_subjects={},
+                 kit2fiff_args=_kit2fiff_args, **kwargs):
         """
         root : str
             the root directory for the experiment (i.e., the directory
@@ -131,10 +134,11 @@ class mne_experiment(object):
         self.exclude = {}
 
         self.set(root=root, raw='{raw_raw}', labeldir='label', hemi='lh')
-        self.parse_dirs(subjects=subjects, mri_subjects=mri_subjects, experiments=experiments)
+        self.parse_dirs(parse_subjects=parse_subjects, parse_mri=parse_mri,
+                        subjects=subjects, mri_subjects=mri_subjects)
 
         # store current values
-        self.set(subject=subject, experiment=experiment, analysis=analysis)
+        self.set(**kwargs)
 
     def get_templates(self):
         t = {
@@ -635,68 +639,46 @@ class mne_experiment(object):
             mlab.view(0, 0)
             mlab.savefig(self.get('plot_png', name=save + '-T', mkdir=True))
 
-    def parse_dirs(self, subjects=True, mri_subjects=True, experiments=True):
+    def parse_dirs(self, subjects=[], mri_subjects={}, parse_subjects=True,
+                   parse_mri=True):
         """
-        find subject and experiment names by looking through directory
-        structure. If values are provided (i.e., not True), the automatic
-        search is omitted.
+        find subject names by looking through the directory
+        structure.
 
         """
-        parse_sub = (subjects == True)
-        parse_mri = (mri_subjects == True)
-
-        subjects_has_mri = []
-        self._mri_subjects = mri_subjects = {} if parse_mri else dict(mri_subjects)
-        self._subjects = subjects = set() if parse_sub else set(subjects)
+        self._subjects = subjects = set(subjects)
+        self._mri_subjects = mri_subjects = dict(mri_subjects)
 
         # find subjects
-        if parse_sub:
-            meg_dir = self.get('meg_dir')
-            if os.path.exists(meg_dir):
-                for fname in os.listdir(meg_dir):
-                    isdir = os.path.isdir(os.path.join(meg_dir, fname))
-                    isname = not fname.startswith('.')
-                    raw_sdir = self.get('raw_sdir', subject=fname, match=False)
-                    hasraw = os.path.exists(raw_sdir)
-                    if isdir and isname and hasraw:
+        if parse_subjects:
+            pattern = self.subject_re
+            sub_dir = self.get(self._subject_loc)
+            if os.path.exists(sub_dir):
+                for fname in os.listdir(sub_dir):
+                    isdir = os.path.isdir(os.path.join(sub_dir, fname))
+                    if isdir and pattern.match(fname):
                         subjects.add(fname)
 
 
         # find MRIs
         if parse_mri:
-            mri_dir = self.get('mri_dir')
+            mri_dir = self.get(self._mri_loc)
             if os.path.exists(mri_dir):
                 mris = os.listdir(mri_dir)
                 for s in subjects:
-                    if s in mris:
+                    if s in mri_subjects:
+                        continue
+                    elif s in mris:
                         mri_subjects[s] = s
-                        subjects_has_mri.append(s)
                     else:
                         mri_subjects[s] = '{common_brain}'
 
-
-        if experiments == True:
-
-            # find experiments
-            experiments = set()
-            for s in subjects:
-                temp_fif = self.format('{raw_raw}_*raw.fif', subject=s, experiment='*', vmatch=False)
-                temp_txt = self.get('rawtxt', subject=s, experiment='*', match=False)
-
-                fifdir, fifname = os.path.split(temp_fif)
-                txtdir, txtname = os.path.split(temp_txt)
-                fif_fnames = fnmatch.filter(os.listdir(fifdir), fifname)
-                txt_fnames = fnmatch.filter(os.listdir(txtdir), txtname)
-                for fname in fif_fnames + txt_fnames:
-                    experiments.add(fname.split('_')[1])
-        else:
-            experiments = set(experiments)
-        self._experiments = experiments
-
         self.var_values['subject'] = list(subjects)
         self.var_values['mrisubject'] = set(mri_subjects.values())
-        self.var_values['experiment'] = list(experiments)
-        self.subjects_has_mri = tuple(subjects_has_mri)
+        self.var_values['experiment'] = list(self._experiments)
+        self._experiments = set(self._experiments)
+        has_mri = (s for s in subjects if mri_subjects[s] != '{common_brain}')
+        self.subjects_has_mri = tuple(has_mri)
 
     def plot_coreg(self, sens=True, mrk=True, fiduc=True, hs=False,
                    hs_mri=True, fig=1, **kwargs):
