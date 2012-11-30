@@ -374,10 +374,11 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
     return handles
 
 
-def butterfly(epochs, sensors=None, ylim=None, w=4, h=2, dpi=90, ncol=3,
-              title=None, axtitle='{name}',  # tax=False,
-              xlabel=True, ylabel=True, color=None):
-    """
+class butterfly(_base.eelfigure):
+    def __init__(self, epochs, sensors=None, ylim=None, w=4, h=2, dpi=90,
+                 ncol=3, title=None, axtitle='{name}',
+                 xlabel=True, ylabel=True, color=None):
+        """
     Creates a butterfly plot
 
     Arguments
@@ -396,45 +397,34 @@ def butterfly(epochs, sensors=None, ylim=None, w=4, h=2, dpi=90, ncol=3,
         scalar or (min, max) tuple specifying the y-axis limits (the default
         ``None`` leaves mpl's default limits unaffected)
 
-    """
-    epochs = _base.unpack_epochs_arg(epochs, 2)
+        """
+        epochs = _base.unpack_epochs_arg(epochs, 2)
 
-    n_plots = len(epochs)
-    nrow = math.ceil(n_plots / ncol)
-    ncol = min(n_plots, ncol)
+        n_plots = len(epochs)
+        nrow = math.ceil(n_plots / ncol)
+        ncol = min(n_plots, ncol)
 
-    figsize = (w * ncol, h * nrow)
-    fig = plt.figure(figsize=figsize, dpi=dpi)
-    plt.subplots_adjust(.1, .1, .95, .95, .1, .4)
-    # create axes
-#    if tax:
-#        fig = plt.figure()
-#        x0 = .07 + bool(ylabel)*.05
-#        x1 = .97 - x0
-#        y0 = .15 + bool(xlabel)*.05
-#        y1 = .97 - y0 - bool(title)*.05
-#        axrect = (x0, y0, x1, y1)
-#        ax = _t_axes(axrect, xmin=segment.tstart, xmax=segment.tend,
-#                     ticks=True, vmax=segment.data.max())
-#    else:
+        figsize = (w * ncol, h * nrow)
+        win_title = title if isinstance(title, str) else 'plot.butterfly'
+        super(butterfly, self).__init__(title=win_title, figsize=figsize, dpi=dpi)
+        fig = self.figure
 
-    for i, layers in enumerate(epochs):
-        ax = fig.add_subplot(nrow, ncol, i + 1)
+        for i, layers in enumerate(epochs):
+            ax = fig.add_subplot(nrow, ncol, i + 1)
 
-        if i == n_plots - 1:
-            _xlabel = xlabel
-        else:
-            _xlabel = None
+            if i == n_plots - 1:
+                _xlabel = xlabel
+            else:
+                _xlabel = None
 
-        _ax_butterfly(ax, layers, sensors=sensors, ylim=ylim, title=axtitle,
-                      xlabel=_xlabel, ylabel=ylabel, color=color)
+            _ax_butterfly(ax, layers, sensors=sensors, ylim=ylim, title=axtitle,
+                          xlabel=_xlabel, ylabel=ylabel, color=color)
 
-    if title:
-        fig.suptitle(title)
+        if title:
+            fig.suptitle(title)
 
-    fig.tight_layout()
-    fig.show()
-    return fig
+        fig.tight_layout()
+        self._show()
 
 
 
