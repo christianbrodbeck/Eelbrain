@@ -88,6 +88,7 @@ class mne_experiment(object):
 
     """
     bad_channels = defaultdict(list)  # (sub, exp) -> list
+    log = defaultdict(list)
     subject_re = re.compile('R\d{4}$')
     # the default value for the common_brain (can be overridden using the set
     # method after __init__()):
@@ -571,6 +572,24 @@ class mne_experiment(object):
             ds.info['edf'] = edf
 
         return ds
+        
+        def logger(self, log, verbose = False):
+        """
+        A simple logger for actions done in an experiment session.
+        
+        Parameters
+        ----------
+        
+        log: str
+            log entry. takes the syntax, key: message
+            e.g. edf: 98% of trials remain
+            
+        """
+        
+        entry = log.split(':',1)
+        self.log[entry[0]].append(entry[1])
+        if verbose:
+            print log
 
     def make_proj_for_epochs(self, epochs, projname='ironcross', n_mag=5,
                              save=True, save_plot=True):
