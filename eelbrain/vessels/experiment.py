@@ -87,14 +87,15 @@ class mne_experiment(object):
         Currently affects only "trans" files.
 
     """
-    _fmt_pattern = re.compile('\{(\w+)\}')
-    _subject_loc = 'meg_dir'  # location of subject folders
+    bad_channels = defaultdict(list)  # (sub, exp) -> list
     subject_re = re.compile('R\d{4}$')
-    _mri_loc = 'mri_dir'  # location of subject mri folders
     # the default value for the common_brain (can be overridden using the set
     # method after __init__()):
     _common_brain = 'fsaverage'
     _experiments = []
+    _fmt_pattern = re.compile('\{(\w+)\}')
+    _mri_loc = 'mri_dir'  # location of subject mri folders
+    _subject_loc = 'meg_dir'  # location of subject folders
     def __init__(self, root=None, parse_subjects=True, parse_mri=True,
                  subjects=[], mri_subjects={},
                  kit2fiff_args=_kit2fiff_args, **kwargs):
@@ -121,11 +122,6 @@ class mne_experiment(object):
         self.auto_launch_mne = True
 
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
-
-        # dictionaries ---
-        self.edf_use = defaultdict(lambda: ['ESACC', 'EBLINK'])
-        self.bad_channels = defaultdict(lambda: ['MEG 065'])  # (sub, exp) -> list
-
 
         # find experiment data structure
         self.state = self.get_templates()
