@@ -90,7 +90,7 @@ class mne_experiment(object):
     _fmt_pattern = re.compile('\{(\w+)\}')
     _subject_loc = 'meg_dir'  # location of subject folders
     subject_re = re.compile('R\d{4}$')
-    _mri_loc = 'mri_dir',  # location of subject mri folders
+    _mri_loc = 'mri_dir'  # location of subject mri folders
     # the default value for the common_brain (can be overridden using the set
     # method after __init__()):
     _common_brain = 'fsaverage'

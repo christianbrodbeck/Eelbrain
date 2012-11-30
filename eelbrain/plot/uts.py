@@ -384,7 +384,7 @@ class clusters(_base.eelfigure):
             height = .95 / N
 
         for i, layers in enumerate(epochs):
-            if not overlay: # create axes
+            if not overlay:  # create axes
                 ax = self.figure.add_subplot(N, 1, i + 1)
                 ax.set_title(layers[0].name)
 
