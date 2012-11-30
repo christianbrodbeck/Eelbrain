@@ -661,6 +661,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         """
         if dirname:
+            dirname = os.path.expanduser(dirname)
             os.chdir(dirname)
             if dirname not in sys.path:
                 if hasattr(self, '_added_to_path'):
