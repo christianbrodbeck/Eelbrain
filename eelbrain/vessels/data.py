@@ -1029,7 +1029,7 @@ class factor(_effect_):
 
     @property
     def cells(self):
-        return self._labels.values()
+        return sorted(self._labels.values())
 
     def compress(self, X, name='{name}'):
         """
