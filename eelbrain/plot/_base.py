@@ -261,3 +261,14 @@ class legend(eelfigure):
         self.legend = self.figure.legend(handles, labels, loc=2)
 
         self._show()
+
+
+def unpack(Y, X):
+    "Returns a list of Y[cell] corresponding to the cells in X"
+    epochs = []
+    for cell in X.cells:
+        y = Y[X == cell]
+        y.name = cell
+        epochs.append(y)
+    return epochs
+
