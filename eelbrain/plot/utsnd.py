@@ -301,7 +301,7 @@ def _plt_extrema(ax, epoch, **plot_kwargs):
 
 
 def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
-                  title=True, xlabel=True, ylabel=True, color=None, 
+                  title='{name}', xlabel=True, ylabel=True, color=None,
                   **plot_kwargs):
     """
     Arguments
@@ -315,6 +315,7 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
     
     xmin = []
     xmax = []
+    name = ''
     for l in layers:
         colorspace = _base.read_cs_arg(l)
         if not colorspace.cmap:
@@ -336,10 +337,10 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
         handles.append(h)
         xmin.append(l.time[0])
         xmax.append(l.time[-1])
-        
-        if title is True:
-            title = getattr(l, 'name', True)
-    
+
+        if not name:
+            name = getattr(l, 'name', '')
+
     # axes decoration
     l = layers[0]
     if xlabel is True:
@@ -368,28 +369,30 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
     
     ax.x_fmt = "t = %.3f s"
     if isinstance(title, str):
-        ax.set_title(title)
-    
+        ax.set_title(title.format(name=name))
+
     return handles
 
 
-def butterfly(epochs, sensors=None, ylim=None, size=(4, 2), dpi=90,
-              # tax=False,  
-              xlabel=True, ylabel=True, color=None, **plot_kwargs):
+def butterfly(epochs, sensors=None, ylim=None, w=4, h=2, dpi=90, ncol=3,
+              title=None, axtitle='{name}',  # tax=False,
+              xlabel=True, ylabel=True, color=None):
     """
     Creates a butterfly plot
     
     Arguments
     ---------
     
+    sensors: None or list of sensor IDs
+        sensors to plot (``None`` = all)
+    w, h : scalar
+        width and height of the individual aces in inches
     color: (mpl color)
         default (``None``): use segment color if available, otherwise black; 
         ``True``: alternate colors (mpl default)
     title: bool or string
         Title for the axes. If ``True``, the segment's name is used.
-    sensors: None or list of sensor IDs
-        sensors to plot (``None`` = all)
-    ylim: 
+    ylim:
         scalar or (min, max) tuple specifying the y-axis limits (the default
         ``None`` leaves mpl's default limits unaffected)
     
@@ -397,7 +400,10 @@ def butterfly(epochs, sensors=None, ylim=None, size=(4, 2), dpi=90,
     epochs = _base.unpack_epochs_arg(epochs, 2)
     
     n_plots = len(epochs)
-    figsize = (size[0], n_plots * size[1])
+    nrow = math.ceil(n_plots / ncol)
+    ncol = min(n_plots, ncol)
+
+    figsize = (w * ncol, h * nrow)
     fig = plt.figure(figsize=figsize, dpi=dpi)
     plt.subplots_adjust(.1, .1, .95, .95, .1, .4)
     # create axes
@@ -413,16 +419,20 @@ def butterfly(epochs, sensors=None, ylim=None, size=(4, 2), dpi=90,
 #    else:
     
     for i, layers in enumerate(epochs):
-        ax = fig.add_subplot(n_plots, 1, i+1)
-        
-        if i == n_plots-1:
+        ax = fig.add_subplot(nrow, ncol, i + 1)
+
+        if i == n_plots - 1:
             _xlabel = xlabel
         else:
             _xlabel = None
-        
-        _ax_butterfly(ax, layers, sensors=sensors, ylim=ylim,
+
+        _ax_butterfly(ax, layers, sensors=sensors, ylim=ylim, title=axtitle,
                       xlabel=_xlabel, ylabel=ylabel, color=color)
-    
+
+    if title:
+        fig.suptitle(title)
+
+    fig.tight_layout()
     fig.show()
     return fig
 
