@@ -82,8 +82,11 @@ def unpack_epochs_arg(ndvars, ndim, dataset=None, levels=1):
                 ndvar = dataset[ndvar]
 
             if ndvar.ndim == ndim + 1:
-                if ndvar.dims[0] is 'case':
-                    ndvar = ndvar.summary()
+                if ndvar.has_case:
+                    if len(ndvar) == 1:
+                        ndvar = ndvar.summary(name='{name}')
+                    else:
+                        ndvar = ndvar.summary()
 
             if ndvar.ndim == ndim:
                 pass
