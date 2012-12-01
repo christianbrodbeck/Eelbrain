@@ -583,6 +583,10 @@ class Table:
             raise ValueError("Cell too long -- row width exceeds table width")
         self._active_row.append(cell)
     
+    def empty_row(self):
+        self.endline()
+        self._table.append(Row())
+
     def endline(self):
         "finishes the active row"
         if self._active_row is not None:
