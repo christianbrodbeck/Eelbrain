@@ -292,6 +292,7 @@ class uts(_base.eelfigure):
             ax = self.figure.add_subplot(nrow, ncol, i + 1)
             _ax_uts(ax, epoch)
 
+        self.figure.tight_layout()
         self._show()
 
 
