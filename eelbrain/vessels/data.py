@@ -505,7 +505,7 @@ class var(object):
         elif isvar(other):
             x = self.x * other.x
             name = '*'.join((self.name, other.name))
-        else: #  np.isscalar(other)
+        else:  #  np.isscalar(other)
             x = self.x * other
             other_name = str(other)
             if len(other_name) < 12:
@@ -783,23 +783,23 @@ class factor(_effect_):
 
         """
         state = {'name': name, 'random': random}
-        labels_ = state['labels'] = {} # {code -> label}
+        labels_ = state['labels'] = {}  # {code -> label}
         colors_ = state['colors'] = {}
 
         try:
             n_cases = len(x)
-        except TypeError: # for generators:
+        except TypeError:  # for generators:
             x = tuple(x)
             n_cases = len(x)
 
         # convert x to codes
-        codes = {} # {label -> code}
+        codes = {}  # {label -> code}
         x_ = np.empty(n_cases, dtype=np.uint16)
         for i, value in enumerate(x):
             label = str(labels.get(value, value))
             if label in codes:
                 code = codes.get(label)
-            else: # new code
+            else:  # new code
                 code = max(labels_) + 1 if labels_ else 0
                 labels_[code] = label
                 codes[label] = code
@@ -838,8 +838,8 @@ class factor(_effect_):
         return state
 
     def __repr__(self, full=False):
-        use_labels = defaults['factor_repr_use_labels']
-        n_cases = defaults['factor_repr_n_cases']
+        use_labels = preferences['factor_repr_use_labels']
+        n_cases = preferences['factor_repr_n_cases']
 
         if use_labels:
             values = self.as_labels()
@@ -983,7 +983,7 @@ class factor(_effect_):
                 self._codes[Y] = code
                 return code
             else:
-                return 65535 # code for values not present in the factor 
+                return 65535  # code for values not present in the factor
         elif np.iterable(Y):
             out = np.empty(len(Y), dtype=np.uint16)
             for i, y in enumerate(Y):
@@ -995,7 +995,7 @@ class factor(_effect_):
             raise ValueError("unknown cell: %r" % Y)
 
     @property
-    def as_dummy(self): # x_dummy_coded
+    def as_dummy(self):  # x_dummy_coded
         shape = (self._n_cases, self.df)
         codes = np.empty(shape, dtype=np.int8)
         for i, cell in enumerate(self.cells[:-1]):
@@ -1011,7 +1011,7 @@ class factor(_effect_):
         return codes.astype(np.int8)
 
     @property
-    def as_effects(self): # x_deviation_coded
+    def as_effects(self):  # x_deviation_coded
         shape = (self._n_cases, self.df)
         codes = np.empty(shape, dtype=np.int8)
         for i, cell in enumerate(self.cells[:-1]):
@@ -1348,7 +1348,7 @@ class ndvar(object):
         self.x += self._ialign(other)
         return self
 
-    def __sub__(self, other): # TODO: use dims
+    def __sub__(self, other):  # TODO: use dims
         if isscalar(other):
             dims, x_self, x_other = self._align(other)
             x = x_self - x_other
@@ -1625,7 +1625,7 @@ class ndvar(object):
             else:
                 return ndvar(x, dims=dims, name=name, properties=properties)
 
-    def mean(self, name="mean({name})"): # FIXME: Do I need this?
+    def mean(self, name="mean({name})"):  # FIXME: Do I need this?
         if self.has_case:
             return self.summary(func=np.mean, name=name)
         else:
@@ -2272,7 +2272,6 @@ class interaction(_effect_):
         """
         """
         # FIXME: interaction does not update when component factors update
-#        self.factors = []
         self.base = effect_list()
         self.is_categorial = True
         self.nestedin = set()
@@ -2292,9 +2291,9 @@ class interaction(_effect_):
                     self.base.extend(b.base)
                     self.is_categorial = (self.is_categorial and b.is_categorial)
 
-            elif b._stype_ == "nonbasic": # TODO: nested effects
+            elif b._stype_ == "nonbasic":  # TODO: nested effects
                 raise NotImplementedError("interaction of non-basic effects")
-#    from _regresor_.__mod__ (?) 
+#    from _regresor_.__mod__ (?)
 #        if any([type(e)==nonbasic_effect for e in [self, other]]):
 #            multcodes = _inter
 #            name = ':'.join([self.name, other.name])
@@ -2328,6 +2327,7 @@ class interaction(_effect_):
         codelist = [f.as_effects for f in self.base]
         codes = reduce(_effect_interaction, codelist)
         self.as_effects = codes
+        self.beta_labels = ['?'] * codes.shape[1]  # TODO:
 
     def __repr__(self):
         names = [f.name for f in self.base]
@@ -2422,7 +2422,7 @@ class diff(object):
         Y2 = Y[self.I2]
         y = Y1[self.s1] - Y2[self.s2]
         name = self.name.format(Y.name)
-        #name = Y.name + '_DIFF'
+        # name = Y.name + '_DIFF'
         return var(y, name)
 
     def extract(self, Y):
@@ -2574,23 +2574,23 @@ class nested_effect(object):
 #        codelist = []
 #        for v in np.unique(value_map):
 #            nest_indexes = np.where([v1 == v for v1 in value_map])[0]
-#            
+#
 #            e_local_values = self.effect.x[nest_indexes]
 #            e_unique_local_values = np.unique(e_local_values)
-#            
+#
 #            n = len(e_unique_local_values)
 #            nest_codes = _effect_eye(n)
-#            
+#
 #            v_codes = np.zeros((self.effect._n_cases, n - 1), dtype=int)
-#            
+#
 #            i1 = set(nest_indexes)
 #            for v_self, v_code in zip(e_unique_local_values, nest_codes):
 #                i2 = set(np.where(self.effect.x == v_self)[0])
 #                i = list(i1.intersection(i2))
 #                v_codes[i] = v_code
-#            
+#
 #            codelist.append(v_codes)
-#        
+#
 #        effect_codes = np.hstack(codelist)
 #        return effect_codes
 
@@ -2655,7 +2655,7 @@ class model(object):
                        " %i cases." % (e0.name, len(e0), e.name, len(e)))
                 raise ValueError(err)
 
-            # 
+            #
             if iseffect(e):
                 effects.append(e)
             elif ismodel(e):
@@ -2675,7 +2675,7 @@ class model(object):
             i = k
 
         # dfs
-        self.df_total = df_total = n_cases - 1 # 1=intercept
+        self.df_total = df_total = n_cases - 1  # 1=intercept
         self.df = df = sum(e.df for e in effects)
         self.df_error = df_error = df_total - df
 
@@ -2822,7 +2822,7 @@ class model(object):
                 e2 = self.effects[j]
                 X = np.hstack((codes[i], codes[j]))
 #                V0 = np.zeros(self._n_cases)
-                #trash, trash, rank, trash = np.linalg.lstsq(X, V0)
+                # trash, trash, rank, trash = np.linalg.lstsq(X, V0)
                 if rank(X) < X.shape[1]:
 #                    ok = False
 #                    allok = False

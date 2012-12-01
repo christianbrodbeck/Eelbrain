@@ -57,12 +57,12 @@ except:
 
 
 defaults = {
-          'figsize':(6, -1), # was 7
+          'figsize':(6, -1),  # was 7
         }
 title_kwargs = {'size': 18,
                 'family': 'serif'}
-figs = [] # store callback figures (they need to be preserved)
-show_block_arg = True # if the mpl figure is used, this is submitted to plt.show(block=show_block_arg)
+figs = []  # store callback figures (they need to be preserved)
+show_block_arg = True  # if the mpl figure is used, this is submitted to plt.show(block=show_block_arg)
 
 
 def unpack_epochs_arg(ndvars, ndim, dataset=None, levels=1):
@@ -100,10 +100,12 @@ def unpack_epochs_arg(ndvars, ndim, dataset=None, levels=1):
 
 
 def read_cs_arg(epoch, colorspace=None):
-    if (colorspace is None):# and ('colorspace' in epoch.properties):
-#        colorspace = epoch.properties['colorspace']
-        colorspace = epoch.properties.get('colorspace',
-                                          _vsl.colorspaces.get_default())
+    if (colorspace is None):
+        if 'colorspace' in epoch.properties:
+            colorspace = epoch.properties['colorspace']
+        else:
+            colorspace = _vsl.colorspaces.get_default()
+
     return colorspace
 
 
