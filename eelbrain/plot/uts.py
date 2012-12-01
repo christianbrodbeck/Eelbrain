@@ -277,7 +277,7 @@ class stat(_base.eelfigure):
 
 
 class uts(_base.eelfigure):
-    def __init__(self, epochs, ncol=3, width=6, height=3, dpi=90):
+    def __init__(self, epochs, axtitle='{name}', ncol=3, width=6, height=3, dpi=90):
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
 
         nplot = len(epochs)
@@ -290,7 +290,7 @@ class uts(_base.eelfigure):
 
         for i, epoch in enumerate(epochs):
             ax = self.figure.add_subplot(nrow, ncol, i + 1)
-            _ax_uts(ax, epoch)
+            _ax_uts(ax, epoch, title=axtitle)
 
         self.figure.tight_layout()
         self._show()
@@ -431,11 +431,13 @@ def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
                 continue
             contours[v] = ax.axhline(v, color=color)
 
-    x = layers[0].get_dim(xdim)
+    l0 = layers[0]
+    x = l0.get_dim(xdim)
     ax.set_xlim(x[0], x[-1])
     ax.x_fmt = "t = %.3f s"
 
     if title:
+        title = title.format(name=l0.name)
         ax.set_title(title)
 
     if xlabel:
