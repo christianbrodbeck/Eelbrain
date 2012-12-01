@@ -36,17 +36,17 @@ import numpy as np
 from eelbrain import ui
 
 
-defaults = dict(
-                table_delim = '   ', # delimiter for tables' string representation
-                keep_recent = 3,     # number of recent tables to keep in memory
-                )
+preferences = dict(
+                   table_delim='   ',  # delimiter for tables' string representation
+                   keep_recent=3,  # number of recent tables to keep in memory
+                   )
 
 
 
 # to keep track of recent tex out and allow copying
 _recent_texout = []
 def _add_to_recent(tex_obj):
-    keep_recent = defaults['keep_recent']
+    keep_recent = preferences['keep_recent']
     if keep_recent:
         if len(_recent_texout) >= keep_recent - 1:
             _recent_texout.pop(0)
@@ -645,7 +645,7 @@ class Table:
         _add_to_recent(self)
         
         if row_delimiter == 'default':
-            row_delimiter = defaults['table_delim']
+            row_delimiter = preferences['table_delim']
         
         # determine column widths
         widths = []
