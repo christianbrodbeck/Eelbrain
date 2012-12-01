@@ -166,22 +166,17 @@ def _find_hopkins_ems(e, X):
 
 
 
-def _is_higher_order(e1, e0):
+def is_higher_order(e1, e0):
     """
-    returns True if e1 is a higher order term of e0
+    Returns True if e1 is a higher order term of e0 (i.e., all factors in e0
+    are contained in e1).
 
-    e1 & e0:
-        effects
+    e1, e0 : effects
+        The effects to compare.
+
     """
-    # == all factors in e0 are contained in e1
     f1s = find_factors(e1)
-    for f0 in find_factors(e0):
-        # if f0 not in f1s
-        if any(f0 is f1 for f1 in f1s):
-            continue
-        else:
-            return False
-    return True
+    return all(f in f1s for f in find_factors(e0))
 
 
 
@@ -833,7 +828,7 @@ class anova(object):
                     if e is e_test:
                         pass
                     else:
-                        if _is_higher_order(e, e_test):
+                        if is_higher_order(e, e_test):
                             excluded_e.append(e)
                         else:
                             effects.append(e)
