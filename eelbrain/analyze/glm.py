@@ -37,13 +37,6 @@ from eelbrain.vessels.data import (
                                    model, asmodel,
                                    )
 
-
-
-defaults = dict(
-                show_ems=False,  # True or False; show E(MS) in Anova tables
-                p_fmt='%.4f',
-                )
-
 _max_array_size = 26  # constant for max array size in lm_fitter
 
 
@@ -61,51 +54,6 @@ def _leastsq_2(Y, X):
     beta = np.dot(Xsinv, Y)
     return beta
 
-
-def _hopkins_ems(X, v=False):
-    """
-    Returns a table that can be used
-
-    X : model
-        model for which to derive E(MS)
-    v : bool
-        verbose (False by default) - if True, prints E(MS) components
-
-    """
-    X = asmodel(X)
-
-    if any(map(isvar, find_factors(X))):
-        raise TypeError("Hopkins E(MS) only for categorial models")
-
-    # E(MS) table (after Hopkins, 1976)
-    E_MS_table = []
-    for e1 in X.effects:
-        E_MS_row = [_hopkins_test(e1, e2) for e2 in X.effects]
-        E_MS_table.append(E_MS_row)
-
-    E_MS = np.array(E_MS_table, dtype=bool)
-
-    if v:
-        print "E(MS) component table:\n", E_MS
-
-    # read MS denominator for F tests from table
-    MS_denominators = []
-    for i, f in enumerate(X.effects):
-        e_ms_den = deepcopy(E_MS[i])
-        e_ms_den[i] = False
-        match = np.all(E_MS == e_ms_den, axis=1)
-        if v:
-            print f.name, ':', match
-
-        if match.sum() == 1:
-            match_i = np.where(match)[0][0]
-            MS_denominators.append(match_i)
-        elif match.sum() == 0:
-            MS_denominators.append(None)
-        else:
-            raise NotImplementedError("too many matches")
-
-    return MS_denominators
 
 
 class hopkins_ems(dict):
@@ -192,7 +140,18 @@ def is_higher_order(e1, e0):
 
 
 class lm:
-    "Fit a model to a dependent variable"
+    """
+    Fit a model to a dependent variable
+
+
+    Attributes
+    ----------
+
+    F, p : scalar
+        Test of the null-hypothesis that the model does not explain a
+        significant amount of the variance in the dependent variable.
+
+    """
     def __init__(self, Y, X, sub=None, _lsq=0):
         """
         Fit the model X to the dependent variable Y.
@@ -226,7 +185,7 @@ class lm:
             # estimate least squares approximation
             beta = _leastsq(Y.x, X.full)
             # estimate
-            values = self.values = beta * X.full
+            values = beta * X.full
             Y_est = values.sum(1)
             self._residuals = residuals = Y.x - Y_est
             SS_res = np.sum(residuals ** 2)
@@ -247,9 +206,9 @@ class lm:
 
         # SS explained
 #        SS_model = self.SS_model = np.sum((Y_est - Y.mean())**2)
-        SS_model = self.SS_model = SS_total - SS_res
-        df_model = self.df_model = X.df
-        self.MS_model = SS_model / df_model
+        SS_model = self.SS = self.SS_model = SS_total - SS_res
+        df_model = self.df = self.df_model = X.df
+        self.MS_model = self.MS = SS_model / df_model
 
         # store stuff
         self.Y = Y
@@ -264,29 +223,106 @@ class lm:
             kwargs.append(('sub', getattr(self.sub, 'name', '<...>')))
 
         fmt = {'Y': getattr(self.Y, 'name', '<Y>'),
-               'X': self.X.model_eq}
+               'X': repr(self.X)}
         if kwargs:
             fmt['kw'] = ', '.join([''] + map('='.join, kwargs))
         else:
             fmt['kw'] = ''
         return "lm({Y}, {X}{kw})".format(**fmt)
 
-    def __str__(self):
-        F, p = self.F_test
-        F = 'F(%i,%i) = %s' % (self.df_model, self.df_res, F)
-        p = 'p = %s' % p
-        return ',  '.join((F, p))
+    def anova(self, title='ANOVA', empty=True, ems=False):
+        """
+        returns an ANOVA table for the linear model
+
+        """
+        Y = self.Y
+        X = self.X
+        values = self.beta * self.X.full
+
+        if X.df_error == 0:
+            e_ms = hopkins_ems(X)
+        else:
+            e_ms = False
+
+        # table head
+        table = fmtxt.Table('l' + 'r' * (5 + ems))
+        if title:
+            table.title(title)
+
+        if not isbalanced(X):
+            table.caption("Warning: model is unbalanced, use anova class")
+
+        table.cell()
+        headers = ["SS", "df", "MS"]
+        if ems:
+            headers += ["E(MS)"]
+        headers += ["F", "p"]
+        for hd in headers:
+            table.cell(hd, r"\textbf", just='c')
+        table.midrule()
+
+        # MS for factors (Needed for models involving random effects)
+        MSs = {}
+        SSs = {}
+        for e in X.effects:
+            idx = X.full_index[e]
+            SSs[e] = SS = np.sum(values[:, idx].sum(1) ** 2)
+            MSs[e] = (SS / e.df)
+
+        # table body
+        results = {}
+        for e in X.effects:
+            MS = MSs[e]
+            if e_ms:
+                e_EMS = e_ms[e]
+                df_d = sum(c.df for c in e_EMS)
+                MS_d = sum(MSs[c] for c in e_EMS)
+                e_ms_name = ' + '.join(repr(c) for c in e_EMS)
+            else:
+                df_d = self.df_res
+                MS_d = self.MS_res
+                e_ms_name = "Res"
+
+            # F-test
+            if MS_d != False:
+                F = MS / MS_d
+                p = 1 - scipy.stats.distributions.f.cdf(F, e.df, df_d)
+                stars = test.star(p)
+                tex_stars = fmtxt.Stars(stars)
+                F_tex = [F, tex_stars]
+            else:
+                F_tex = None
+                p = None
+            # add to table
+            if e_ms_name or empty:
+                table.cell(e.name)
+                table.cell(SSs[e])
+                table.cell(e.df, fmt='%i')
+                table.cell(MS)
+                if ems:
+                    table.cell(e_ms_name)
+                table.cell(F_tex, mat=True)
+                table.cell(fmtxt.p(p))
+            # store results
+            results[e.name] = {'SS': SS, 'df': e.df, 'MS': MS, 'E(MS)': e_ms_name,
+                             'F': F, 'p':p}
+
+        # Residuals
+        if self.df_res > 0:
+            table.cell("Residuals")
+            table.cell(self.SS_res)
+            table.cell(self.df_res, fmt='%i')
+            table.cell(self.MS_res)
+
+        return table
 
     @LazyProperty
-    def F_test(self):
-        """
-        Tests the null-hypothesis that the model does not explain a significant
-        amount of the variance in the dependent variable. Returns F, p.
+    def F(self):
+        return self.MS_model / self.MS_res
 
-        """
-        F = self.MS_model / self.MS_res
-        p = scipy.stats.distributions.f.sf(F, self.df_model, self.df_res)
-        return F, p
+    @LazyProperty
+    def p(self):
+        return scipy.stats.distributions.f.sf(self.F, self.df_model, self.df_res)
 
     @LazyProperty
     def regression_table(self):
@@ -306,23 +342,25 @@ class lm:
         table.midrule()
         #
         q = 1  # track start location of effect in model.full
-        for e in self.X.effects:
-            if True:  # e.showreg:
-                table.cell(e.name + ':')
-                table.endline()
-                for i, name in enumerate(e.beta_labels):  # Fox pp. 106 ff.
-                    beta = self.beta[q + i]
+        ne = len(self.X.effects)
+        for ie, e in enumerate(self.X.effects):
+            table.cell(e.name + ':')
+            table.endline()
+            for i, name in enumerate(e.beta_labels):  # Fox pp. 106 ff.
+                beta = self.beta[q + i]
 #                    Evar_pt_est = self.SS_res / df
-                    # SEB
+                # SEB
 #                    SS = (self.values[q+i])**2
-                    T = 0
-                    p = 0
-                    # todo: T/p
-                    table.cell(name)
-                    table.cell(beta)
-                    table.cell(T)
-                    table.cell(p, fmt=defaults['p_fmt'])
+                T = 0
+                p = 0
+                # todo: T/p
+                table.cell(name)
+                table.cell(beta)
+                table.cell(T)
+                table.cell(fmtxt.p(p))
             q += e.df
+            if ie < ne - 1:
+                table.empty_row()
         return table
 
     @LazyProperty
@@ -331,119 +369,6 @@ class lm:
         Y_est = values.sum(1)
         return self.Y.x - Y_est
 
-
-
-class _old_lm_(lm):
-    def anova(self, title=None, empty=True, ems=None):
-        """
-        returns an ANOVA table for the linear model
-
-        """
-        if ems is None:
-            ems = defaults['show_ems']
-        Y = self.Y
-        X = self.X
-        values = self.values
-        # method
-        # if X.df_error == 0:
-        #    hopkins = True
-        e_ms = _hopkins_ems(X)
-        # else:
-        #    hopkins = False
-
-        # table head
-        table = fmtxt.Table('l' + 'r' * (5 + ems))
-        if title:
-            table.title(title)
-        elif self.title:
-            table.title(self.title)
-#        for msg in X.check():
-#            table.caption('! '+msg)
-        table.cell()
-        headers = ["SS", "df", "MS"]
-        if ems: headers += ["E(MS)"]
-        headers += ["F", "p"]
-        for hd in headers:
-            table.cell(hd, r"\textbf", just='c')
-        table.midrule()
-
-        if isbalanced(X):
-            # MS for factors (Needed for models involving random effects)
-            self.MS = []
-            for i, name, index, df in X.iter_effects():
-                SS = np.sum(values[:, index].sum(1) ** 2)
-                self.MS.append(SS / df)
-        else:
-            raise NotImplementedError()
-            tests = {}
-            for e in X.effects:  # effect to test
-                m0effects = []
-                for e0 in X.effects:  # effect in model0
-                    if e0 is e:
-                        pass
-                    elif all([f in e0.factors for f in e.factors]):
-                        pass
-                    else:
-                        m0effects.append(e0)
-                model0 = model(m0effects)
-                model1 = model0 + e
-                SS, df, MS, F, p = incremental_F_test(Y, model1, model0)
-                tests[e.name] = dict(SS=SS, df=df, MS=MS, F=F, p=p)
-
-        # table body
-        self.results = {}
-        for i, name, index, df in X.iter_effects():
-            SS = np.sum(values[:, index].sum(1) ** 2)
-            # if v: print name, index, SS
-            MS = SS / df
-            # self.results[name] = {'SS':SS, 'df':df, 'MS':MS}
-            if e_ms[i] != None:  # hopkins and
-                e_ms_i = e_ms[i]
-                MS_d = self.MS[e_ms_i]
-                df_d = X.effects[e_ms_i].df
-                e_ms_name = X.effects[e_ms_i].name
-            elif self.df_res > 0:
-                df_d = self.df_res
-                MS_d = self.MS_res
-                e_ms_name = "Res"
-            else:
-                MS_d = False
-                e_ms_name = None
-            # F-test
-            if MS_d != False:
-                F = MS / MS_d
-                p = 1 - scipy.stats.distributions.f.cdf(F, df, df_d)
-                stars = test.star(p)
-                tex_stars = fmtxt.Stars(stars)
-                F_tex = [F, tex_stars]
-            else:
-                F_tex = None
-                p = None
-            # add to table
-            if e_ms_name or empty:
-                table.cell(name)
-                table.cell(SS)
-                table.cell(df, fmt='%i')
-                table.cell(MS)
-                if ems:
-                    table.cell(e_ms_name)
-                table.cell(F_tex, mat=True)
-                table.cell(p, fmt=defaults['p_fmt'], drop0=True)
-            # store results
-            self.results[name] = {'SS':SS,
-                                  'df':df,
-                                  'MS':MS,
-                                  'E(MS)':e_ms_name,
-                                  'F':F,
-                                  'p':p}
-            # self.indexes[name] = index # for self.Ysub()
-        # table end
-        if self.df_res > 0:
-            table.cell("Residuals")
-            table.cell(self.SS_res)
-            table.cell(self.df_res, fmt='%i')
-            table.cell(self.MS_res)
-        return table
 
 
 _lm_version = 1
@@ -597,83 +522,84 @@ class lm_fitter(object):
 
 
 
-#def incremental_F_test(lm1, lm0, lmEMS=None):
-#    """
-#    IMPLEMENTATION FOR model OBJECTS
-#
-#    tests the hypothesis that model1 does not explain more variance than 
-#    model0. 
-#    (model1 is the model0 + q factors)
-#    
-#    EMS: model for the Expected value of MS; if == None, the error MS of model1
-#         is used (valid as long as the model consists of fixed effects only)
-#    
-#    SS, df, MS, F, p = incremental_F_test(Y, model1, model0)
-#    
-#    """
-#    n = lm1.X.N
-#    RegSS1 = lm1.SS_model
-#    k = lm1.df_model
-#    RegSS0 = lm0.SS_model
-#    
-#    if lmEMS == None:
-#        MS_e = lm1.MS_res
-#    else:
-#        MS_e = lmEMS.MS_model
-#    
-#    df = lm1.df_model - lm0.df_model
-#    SS = RegSS1 - RegSS0
-#    MS = SS / df
-#    
-#    F = MS / MS_e
-#    p = 1 - sp.stats.distributions.f.cdf(F, df, n-k-1)
-#    return SS, df, MS, F, p
+class incremental_F_test:
+    """
+    Attributes
+    ----------
+
+    lm1 : model
+        The extended model
+    lm0 : model
+        The control model
+    SS : scalar
+        the difference in the SS explained by the two models
+    df : int
+        The difference in df between the two models
+    MS : scalar
+        The MS of the difference
+    F, p : scalar
+        F and p valuer of the comparison
+
+    """
+    def __init__(self, lm1, lm0, MS_e=None, df_e=None, name=None):
+        """
+        tests the null hypothesis that the model of lm1 does not explain more
+        variance than that of lm0 (with model_1 == model_0 + q factors,  q > 0).
+        If lm1 is None it is assumed that lm1 is the full model with 0 residuals.
+
+        lm1, lm0 : model
+            The two models to compare.
+        MS_e, df_e : scalar | None
+            Parameters for random effects models: the Expected value of MS;
+            if None, the error MS of lm1 is used (valid for fixed effects
+            models).
 
 
-def incremental_F_test(lm1, lm0, MS_e=None, df_e=None):
-    """
-    tests the null hypothesis that the model of lm1 does not explain more 
-    variance than that of lm0 (with model_1 == model_0 + q factors,  q > 0).
-    If lm1 is None it is assumed that lm1 is the full model with 0 residuals.
-    
-    MS_e, f_e:  model for the Expected value of MS; if == None, the error MS of 
-           model1 is used (valid for fixed effects models)
-    
-    
-    SS_diff, df_diff, MS_diff, F, p = incremental_F_test(lm1, lm0, lmEMS)
-    
-    (Fox 2008, p. 109 f.)
-    
-    """
-    if lm1 is None:
-        lm1_SS_res = 0
-        lm1_MS_res = 0
-        lm1_df_res = 0
-    else:
-        lm1_SS_res = lm1.SS_res
-        lm1_MS_res = lm1.MS_res
-        lm1_df_res = lm1.df_res
-    
-    
-    if MS_e is None:
-        assert df_e is None
-        MS_e = lm1_MS_res
-        df_e = lm1_df_res
-    else:
-        assert df_e is not None
-    
-    SS_diff = lm0.SS_res - lm1_SS_res
-    df_diff = lm0.df_res - lm1_df_res
-    MS_diff = SS_diff / df_diff
-        
-    if df_e > 0:
-        F = MS_diff / MS_e
-        p = scipy.stats.distributions.f.sf(F, df_diff, df_e)
-    else:
-        F = None
-        p = None
-    
-    return SS_diff, df_diff, MS_diff, F, p
+        (Fox 2008, p. 109 f.)
+
+        """
+        if lm1 is None:
+            lm1_SS_res = 0
+            lm1_MS_res = 0
+            lm1_df_res = 0
+        else:
+            lm1_SS_res = lm1.SS_res
+            lm1_MS_res = lm1.MS_res
+            lm1_df_res = lm1.df_res
+
+
+        if MS_e is None:
+            assert df_e is None
+            MS_e = lm1_MS_res
+            df_e = lm1_df_res
+        else:
+            assert df_e is not None
+
+        SS_diff = lm0.SS_res - lm1_SS_res
+        df_diff = lm0.df_res - lm1_df_res
+        MS_diff = SS_diff / df_diff
+
+        if df_e > 0:
+            F = MS_diff / MS_e
+            p = scipy.stats.distributions.f.sf(F, df_diff, df_e)
+        else:
+            F = None
+            p = None
+
+        self.lm0 = lm0
+        self.lm1 = lm1
+        self.SS = SS_diff
+        self.df = df_diff
+        self.MS = MS_diff
+        self.F = F
+        self.p = p
+        self.name = name
+
+    def __repr__(self):
+        name = ' %r' % self.name if self.name else ''
+        return "<incremental_F_test%s: F=%.2f, p=%.3f>" % (name, self.F, self.p)
+
+
 
 
 def comparelm(lm1, lm2):
@@ -788,24 +714,17 @@ class anova(object):
             raise ValueError("Model Overdetermined")
         self._log.append("Using %s effects model" % fx_desc)
 
-        # create testing table:
-        # list of (effect, lm, lm_comp, lm_EMS)
-        test_table = []
-        #
         # list of (name, SS, df, MS, F, p)
-        results_table = []
+        self.F_tests = []
+        self.names = []
 
 
         if len(X.effects) == 1:
             self._log.append("single factor model")
-            lm0 = lm(Y, X)
-            SS = lm0.SS_model
-            df = lm0.df_model
-            MS = lm0.MS_model
-            F, p = lm0.F_test
-            results_table.append((X.name, SS, df, MS, F, p))
-            results_table.append(("Residuals", lm0.SS_res, lm0.df_res,
-                                  lm0.MS_res, None, None))
+            lm1 = lm(Y, X)
+            self.F_tests.append(lm1)
+            self.names.append(X.name)
+            self.residuals = lm1.SS_res, lm1.df_res, lm1.MS_res
         else:
             if rfx:
                 pass  # <- Hopkins
@@ -856,29 +775,24 @@ class anova(object):
                             MS_e = lm_EMS.MS_model
                             df_e = lm_EMS.df_model
                         else:
-                            if showall:
-                                if lm1 is None:
-                                    SS = lm0.SS_res
-                                    df = lm0.df_res
-                                else:
-                                    SS = lm0.SS_res - lm1.SS_res
-                                    df = lm0.df_res - lm1.df_res
-                                MS = SS / df
-                                results_table.append((name, SS, df, MS, None, None))
-                            skip = "no Hopkins E(MS)"
-
+                            if lm1 is None:
+                                SS = lm0.SS_res
+                                df = lm0.df_res
+                            else:
+                                SS = lm0.SS_res - lm1.SS_res
+                                df = lm0.df_res - lm1.df_res
+                            MS = SS / df
+                            skip = ("no Hopkins E(MS); SS=%.2f, df=%i, "
+                                    "MS=%.2f" % (SS, df, MS))
 
                 if skip:
                     self._log.append("SKIPPING: %s (%s)" % (e_test.name, skip))
                 else:
-                    test_table.append((e_test, lm1, lm0, MS_e, df_e))
-                    SS, df, MS, F, p = incremental_F_test(lm1, lm0, MS_e=MS_e, df_e=df_e)
-                    results_table.append((name, SS, df, MS, F, p))
+                    res = incremental_F_test(lm1, lm0, MS_e=MS_e, df_e=df_e, name=name)
+                    self.F_tests.append(res)
+                    self.names.append(name)
             if not rfx:
-                results_table.append(("Residuals", SS_e, df_e, MS_e, None, None))
-
-        self._test_table = test_table
-        self._results_table = results_table
+                self.residuals = SS_e, df_e, MS_e
 
     def __repr__(self):
         return "anova(%s, %s)" % (self.Y.name, self.X.name)
@@ -887,40 +801,45 @@ class anova(object):
         return str(self.anova())
 
     def print_log(self):
-        print os.linesep.join(self._log)
-    
-    def anova(self):
-        "Return ANOVA table"
-        if self.show_ems is None:
-            ems = defaults['show_ems']
-        else:
-            ems = self.show_ems
+        out = self._log[:]
+        print os.linesep.join(out)
 
+    def anova(self):
+        "Return an ANOVA table"
         # table head
-        table = fmtxt.Table('l' + 'r' * (5 + ems))
+        table = fmtxt.Table('l' + 'r' * 5)
         if self.title:
             table.title(self.title)
         table.cell()
         headers = ["SS", "df", "MS"]
-#        if ems: headers += ["E(MS)"]
         headers += ["F", "p"]
         for hd in headers:
             table.cell(hd, r"\textbf", just='c')
         table.midrule()
 
         # table body
-        for name, SS, df, MS, F, p in self._results_table:
+        for name, F_test in zip(self.names, self.F_tests):
             table.cell(name)
-            table.cell(fmtxt.stat(SS))
-            table.cell(fmtxt.stat(df, fmt='%i'))
-            table.cell(fmtxt.stat(MS))
-            if F:
-                stars = test.star(p)
-                table.cell(fmtxt.stat(F, stars=stars))
-                table.cell(fmtxt.p(p))
+            table.cell(fmtxt.stat(F_test.SS))
+            table.cell(fmtxt.stat(F_test.df, fmt='%i'))
+            table.cell(fmtxt.stat(F_test.MS))
+            if F_test.F:
+                stars = test.star(F_test.p)
+                table.cell(fmtxt.stat(F_test.F, stars=stars))
+                table.cell(fmtxt.p(F_test.p))
             else:
                 table.cell()
                 table.cell()
+
+        # residuals
+        if self.X.df_error > 0:
+            table.empty_row()
+            table.cell("Residuals")
+            SS, df, MS = self.residuals
+            table.cell(SS)
+            table.cell(df, fmt='%i')
+            table.cell(MS)
+            table.endline()
 
         # total
         table.midrule()

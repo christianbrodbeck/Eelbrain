@@ -34,19 +34,21 @@ import scipy.stats
 
 from eelbrain import fmtxt
 from eelbrain import ui
+from eelbrain.utils import LazyProperty
 from dimensions import find_time_point
 
 
 
 
-defaults = dict(fullrepr=False, # whether to display full arrays/dicts in __repr__ methods
-                repr_len=5, # length of repr
-                dataset_str_n_cases=500,
-                var_repr_n_cases=100,
-                factor_repr_n_cases=100,
-                var_repr_fmt='%.3g',
-                factor_repr_use_labels=True,
-               )
+preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
+                   repr_len=5,  # length of repr
+                   dataset_str_n_cases=500,
+                   var_repr_n_cases=100,
+                   factor_repr_n_cases=100,
+                   var_repr_fmt='%.3g',
+                   factor_repr_use_labels=True,
+                   short_repr=True,  # "A % B" vs "interaction(A, B)"
+                   )
 
 
 class DimensionMismatchError(Exception):
@@ -350,7 +352,7 @@ def find_factors(obj):
         return find_factors(obj.effect)
     elif isinteraction(obj):
         return obj.base
-    else: # nonbasic_effect
+    else:  # nonbasic_effect
         try:
             return effect_list(obj.factors)
         except:
@@ -359,8 +361,7 @@ def find_factors(obj):
 
 class effect_list(list):
     def __repr__(self):
-        names = (f.name for f in self)
-        return 'effect_list((%s))' % ', '.join(names)
+        return 'effect_list((%s))' % ', '.join(self.names())
 
     def __contains__(self, item):
         for f in self:
@@ -374,6 +375,8 @@ class effect_list(list):
                 return i
         raise ValueError("factor %r not in effect_list" % item.name)
 
+    def names(self):
+        return [e.name if isuv(e) else repr(e) for e in self]
 
 
 
@@ -418,12 +421,12 @@ class var(object):
         return (self.x, self.name)
 
     def __repr__(self, full=False):
-        n_cases = defaults['var_repr_n_cases']
+        n_cases = preferences['var_repr_n_cases']
 
         if self.x.dtype == bool:
             fmt = '%r'
         else:
-            fmt = defaults['var_repr_fmt']
+            fmt = preferences['var_repr_fmt']
 
         if full or len(self.x) <= n_cases:
             x = [fmt % v for v in self.x]
@@ -1971,7 +1974,7 @@ class dataset(collections.OrderedDict):
         if sum(map(isuv, self.values())) == 0:
             return self.__repr__()
 
-        maxn = defaults['dataset_str_n_cases']
+        maxn = preferences['dataset_str_n_cases']
         txt = str(self.as_table(cases=maxn, fmt='%.5g', midrule=True))
         if self.N > maxn:
             note = "... (use .as_table() method to see the whole dataset)"
@@ -2328,12 +2331,10 @@ class interaction(_effect_):
 
     def __repr__(self):
         names = [f.name for f in self.base]
-        txt = "interaction({n})"
-        return txt.format(n=', '.join(names))
-
-    def __str__(self):
-        names = [f.name for f in self.base]
-        return ' % '.join(names)
+        if preferences['short_repr']:
+            return ' % '.join(names)
+        else:
+            return "interaction({n})".format(n=', '.join(names))
 
     # container ---
     def __len__(self):
@@ -2643,7 +2644,7 @@ class model(object):
             raise ValueError("model needs to be initialized with effects")
 
         # try to find effects in input
-        self.effects = effects = []
+        self.effects = effects = effect_list()
         self._n_cases = n_cases = len(x[0])
         for e in x:
             # check that all effects have same number of cases
@@ -2685,8 +2686,12 @@ class model(object):
         self.name = ' + '.join([str(e.name) for e in self.effects])
 
     def __repr__(self):
-        x = ', '.join(e.name for e in self.effects)
-        return "model(%s)" % x
+        names = self.effects.names()
+        if preferences['short_repr']:
+            return ' + '.join(names)
+        else:
+            x = ', '.join(names)
+            return "model(%s)" % x
 
     def __str__(self):
         return str(self.get_table(cases=50))
@@ -2777,23 +2782,25 @@ class model(object):
         return table
 
     # coding
-    @property
+    @LazyProperty
     def as_effects(self):
         return np.hstack((e.as_effects for e in self.effects))
 
-    @property
+    @LazyProperty
     def full(self):
         "returns the full model including an intercept"
         out = np.empty((self._n_cases, self.df + 1))
 
         # intercept
         out[:, 0] = np.ones(self._n_cases)
+        self.full_index = {'I': slice(0, 1)}
 
         # effects
         i = 1
         for e in self.effects:
             j = i + e.df
             out[:, i:j] = e.as_effects
+            self.full_index[e] = slice(i, j)
             i = j
         return out
 
