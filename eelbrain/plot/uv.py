@@ -287,13 +287,13 @@ class _simple_fig():
 
 def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             bottom=None, 
-            title=True, ylabel=True, xlabel=True, xtick_delim='\n',
+            title=True, ylabel='{unit}', xlabel=True, xtick_delim='\n',
             titlekwargs=defaults['title_kwargs'],
             baseline=None, # category for plot of difference values
             ## pairwise kwargs
             test=True, par=True, trend=".", corr='Hochberg',
             pwcolors=None, hatch = False, colors=False, 
-            **simple_kwargs
+            ds=None, **simple_kwargs
             ):
     """
     Arguments
@@ -328,11 +328,11 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
         title = getattr(Y, 'name', None)#textab.texify(Y.name)
     
     # ylabel
-    if ylabel is True:
-        if hasattr(Y, 'properties'):
-            ylabel = Y.properties.get('unit', None)
-        else:
-            ylabel = None
+    if hasattr(Y, 'properties'):
+        unit = Y.properties.get('unit', '')
+    else:
+        unit = ''
+    ylabel = ylabel.format(unit=unit)
     
     # xlabel
     if (xlabel is True):
@@ -346,7 +346,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     ax = fig.ax
 
     # get data
-    ct = celltable(Y, X, match=match, sub=sub)
+    ct = celltable(Y, X, match=match, sub=sub, ds=ds)
     
     # diff (plot difference values instead of abs)
     if baseline is not None:
@@ -443,7 +443,7 @@ def barplot(Y, X=None, match=None, sub=None,
             ylabel='{unit}{err}', err='2sem', ec='k', xlabel=True,  xtick_delim='\n',
             hatch = False, colors=False, 
             bottom=0, c='#0099FF', edgec=None,
-            **simple_kwargs
+            ds=None, **simple_kwargs
             ):
     """
     
@@ -521,7 +521,7 @@ def barplot(Y, X=None, match=None, sub=None,
     fig = _simple_fig(title, xlabel, ylabel, **simple_kwargs)
     ax = fig.ax
     
-    ct = celltable(Y, X, match=match, sub=sub)
+    ct = celltable(Y, X, match=match, sub=sub, ds=ds)
     
     x0,x1,y0,y1 = _barplot(ax, ct,
                            test=test, par=par, trend=trend, corr=corr,
@@ -568,8 +568,8 @@ def _barplot(ax, ct,
     k = len(ct.cells)
     if left is None:
         left = np.arange(k) - width/2
-    height = ct.get_statistic(np.mean, out=np.array)
-    y_error = ct.get_statistic(err, out=np.array)
+    height = np.array(ct.get_statistic(np.mean))
+    y_error = np.array(ct.get_statistic(err))
     
              
     # fig spacing
@@ -751,7 +751,7 @@ def timeplot(Y, categories, time, match=None, sub=None,
     for i_t, t in enumerate(time_points):
         ct = celltable(Y, categories, match=match, sub=(time==t))
         if line_plot:
-            line_values[:,i_t] = ct.get_statistic(line_plot, out=list)
+            line_values[:, i_t] = ct.get_statistic(line_plot)
         
         pos = rel_pos + t
         if local_plot == 'box':
@@ -784,7 +784,7 @@ def timeplot(Y, categories, time, match=None, sub=None,
                            hatch=hatch, colors=color_list, 
                            bottom=0, left=pos, width=within_spacing)
         elif spread:
-            yerr[:,i_t] = ct.get_statistic(spread, out=list)
+            yerr[:, i_t] = ct.get_statistic(spread)
     
     if line_plot:
         # plot means
@@ -1081,7 +1081,7 @@ class multitimeplot:
         for i_t, t in enumerate(time_points):
             ct = celltable(Y, categories, match=match, sub=(time==t))
             if line_plot:
-                line_values[:,i_t] = ct.get_statistic(line_plot, out=list)
+                line_values[:, i_t] = ct.get_statistic(line_plot)
             
             pos = rel_pos + t
             if local_plot == 'box':
@@ -1118,9 +1118,9 @@ class multitimeplot:
                 ymax_loc = lim[1]
                 ymin_loc = lim[0]
             elif spread:
-                yerr_loc = ct.get_statistic(spread, out=np.array)
+                yerr_loc = np.array(ct.get_statistic(spread))
                 yerr[:,i_t] = yerr_loc
-                y_loc = ct.get_statistic(np.mean, out=np.array)
+                y_loc = np.array(ct.get_statistic(np.mean))
                 ymax_loc = max(y_loc + yerr_loc)
                 ymin_loc = min(y_loc - yerr_loc)
             

@@ -222,46 +222,54 @@ class celltable:
         elif out is list:
             return [self.data[cell] for cell in self.cells]
         
-    def get_statistic(self, function=np.mean, out=dict, a=1, **kwargs):
+    def get_statistic(self, func=np.mean, a=1, **kwargs):
         """
-        :returns: function applied to all data cells.
+        Returns a list with a * func(data) for each data cell.
         
-        :arg function: can be string, '[X]sem', '[X]std', or '[X]ci' with X being 
-            float, e.g. '2sem'
-        :arg out: can be dict or list.
-        :arg a: multiplier (if not provided in ``function`` string)
+        Parameters
+        ----------
+
+        func : callable | str
+            statistics function that is applied to the data. Can be string,
+            such as '[X]sem', '[X]std', or '[X]ci', e.g. '2sem'.
+        a : scalar
+            Multiplier (if not provided in ``function`` string).
+        kwargs :
+            Are submitted to the statistic function.
         
-        :arg kwargs: are submitted to the statistic function 
-        
+        See also
+        --------
+
+        :py:meth:`get_statistic_dict`
+
         """
-        if isinstance(function, basestring):
-            if function.endswith('ci'):
-                if len(function) > 2:
-                    a = float(function[:-2])
+        if isinstance(func, basestring):
+            if func.endswith('ci'):
+                if len(func) > 2:
+                    a = float(func[:-2])
                 elif a == 1:
                     a = .95
-                function = _statfuncs.CIhw
-            elif function.endswith('sem'):
-                if len(function) > 3:
-                    a = float(function[:-3])
-                function = scipy.stats.sem
-            elif function.endswith('std'):
-                if len(function) > 3:
-                    a = float(function[:-3])
-                function = np.std
+                func = _statfuncs.CIhw
+            elif func.endswith('sem'):
+                if len(func) > 3:
+                    a = float(func[:-3])
+                func = scipy.stats.sem
+            elif func.endswith('std'):
+                if len(func) > 3:
+                    a = float(func[:-3])
+                func = np.std
                 if 'ddof' not in kwargs:
                     kwargs['ddof'] = 1
             else:
-                raise ValueError('unrecognized statistic: %s'%function)
+                raise ValueError('unrecognized statistic: %r' % func)
         
-        if out in [list, np.array]:
-            as_list = [a * function(self.data[cell], **kwargs) for cell in self.cells]
-            if out is list:
-                return as_list
-            else:
-                return np.array(as_list)
-        elif out is dict:
-            return dict((cell, a * function(self.data[cell], **kwargs)) 
-                        for cell in self.cells)
-        else:
-            raise ValueError("out not in [list, dict]")
+        Y = [a * func(self.data[cell].x, **kwargs) for cell in self.cells]
+        return Y
+
+    def get_statistic_dict(self, func=np.mean, a=1, **kwargs):
+        """
+        Same as :py:meth:`get_statistic`, except that he result is returned in
+        a {cell: value} dictionary.
+
+        """
+        return zip(self.cells, self.get_statistic(func=func, a=a, **kwargs))
