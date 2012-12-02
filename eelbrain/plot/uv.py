@@ -447,54 +447,60 @@ def barplot(Y, X=None, match=None, sub=None,
             ):
     """
     
-    :arg float bottom: lowest possible value on the y axis (default 0)
+    Y : scalar var
+        Dependent variable.
+
+    X : categorial
+        Model (factor or interaction)
+
+    bottom : scalar
+        Lowest possible value on the y axis (default is 0).
     
-    :arg test: True (default): perform pairwise tests;  False/None: no tests;
+    test : bool | scalar
+        True (default): perform pairwise tests;  False: no tests;
         scalar: 1-sample tests against this value 
     
-    
-    kwargs:
-    
-    test:   True: pairwise tests
-            False/None: no tests
-            scalar: 1-sample tests against this number 
-    
-    bar: make bar plot (otherwise make box plot)
-    
-    pwcolors: list of mpl colors corresponding to levels (e.g. ['#FFCC00',
-              '#FF6600','#FF3300'] with 3 levels
-              
-    err: "[x][type]"
-         'std' : standard deviation
-         '.95ci' : 95% confidence interval (see :func:`stats.CI`)
-         '2sem' : 2 standard error of the mean
+    pwcolors : list of colors
+        list of mpl colors corresponding to the cells in X (e.g. ['#FFCC00',
+        '#FF6600','#FF3300'] with 3 levels
+
+    err: func | "[x][type]"
+        The magnitude of the error bars to display. Examples:
+        'std' : 1 standard deviation;
+        '.95ci' : 95% confidence interval (see :func:`eellab.statfuncs.CI`);
+        '2sem' : 2 standard error of the mean
          
-    ylabel formatting:
+    ylabel : str
+        The following
         {err} = error bar description
+
     """
     if title is True:
         title = getattr(Y, 'name', None)
     
-    err_desc = ''
     if isinstance(err, basestring):
         if err.endswith('ci'):
             if len(err) > 2:
                 a = float(err[:-2])
             else:
                 a = .95
-            err_desc = '$\pm %g ci$'%a
+            err_desc = '$\pm %g ci$' % a
         elif err.endswith('sem'):
             if len(err) > 3:
                 a = float(err[:-3])
             else:
                 a = 1
-            err_desc = '$\pm %g sem$'%a
+            err_desc = '$\pm %g sem$' % a
         elif err.endswith('std'):
             if len(err) > 3:
                 a = float(err[:-3])
             else:
                 a = 1
-            err_desc = '$\pm %g std$'%a
+            err_desc = '$\pm %g std$' % a
+        else:
+            raise ValueError('unrecognized statistic: %r' % err)
+    else:
+        err_desc = getattr(err, '__name__', '')
     
     # ylabel
     if ylabel:
