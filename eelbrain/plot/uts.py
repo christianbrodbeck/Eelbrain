@@ -353,7 +353,7 @@ class clusters(_base.subplot_figure):
         t : bool
             Plot threshold for forming clusters.
         ls : str
-            Line style. e.g. [‘solid’ | ‘dashed’ | ‘dashdot’ | ‘dotted’]
+            Line style. e.g. ['solid' | 'dashed' | 'dashdot' | 'dotted']
         tcolor : str
             Line color for threshold.
         title : str
@@ -482,7 +482,7 @@ def _plt_uts(ax, layer, color=None, xdim='time', kwargs={}):
 
 class _ax_clusters:
     def __init__(self, ax, layers, color=None, pmax=0.05, ptrend=0.1,
-                 t=True, ls = 'solid', tcolor = tcolor, xdim='time', 
+                 t=True, ls = 'solid', tcolor = 'k', xdim='time', 
                  title=None):
         Y = layers[0]
 
