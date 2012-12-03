@@ -259,6 +259,21 @@ class eelfigure(object):
 
 
 
+class subplot_figure(eelfigure):
+    def _show(self, figtitle=None):
+        self.figure.tight_layout()
+        if figtitle:
+            t = self.figure.suptitle(figtitle)
+            trans = self.figure.transFigure.inverted()
+            bbox = trans.transform(t.get_window_extent(self.figure.canvas.renderer))
+            print bbox
+            t_bottom = bbox[0, 1]
+            self.figure.subplots_adjust(top=1 - 2 * (1 - t_bottom))
+
+        super(subplot_figure, self)._show()
+
+
+
 class legend(eelfigure):
     def __init__(self, handles, labels, dpi=90, figsize=(2, 2)):
         super(legend, self).__init__(title="Legend", dpi=dpi, figsize=figsize)

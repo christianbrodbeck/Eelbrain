@@ -32,10 +32,11 @@ import _base
 __hide__ = ['plt', 'division', 'celltable']
 
 
-class stat(_base.eelfigure):
+class stat(_base.subplot_figure):
     def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
                  sub=None, match=None, ds=None, Xax=None, ncol=3,
-                 width=6, height=3, dpi=90, legend='upper right', title='{name}',
+                 width=6, height=3, dpi=90, legend='upper right',
+                 title='plot.uts.stat - {name}', figtitle=None, axtitle='{name}',
                  ylabel=True, xlabel=True, invy=False,
                  bottom=None, top=None,
                  xdim='time', cm=_cm.jet, colors=None):
@@ -121,21 +122,17 @@ class stat(_base.eelfigure):
 
         if '{name}' in title:
             title = title.format(name=ct.Y.name)
-
-        if isinstance(title, basestring):
-            win_title = title
-        else:
-            win_title = ct.Y.name
-        super(stat, self).__init__(title=win_title, figsize=figsize, dpi=dpi)
+        super(stat, self).__init__(title=title, figsize=figsize, dpi=dpi)
 
         self.axes = []
         if Xax is None:
-#            top = .9 # - bool(title) * .1
-#        plt.subplots_adjust(.1, .1, .95, top, .1, .4)
-#            ax = self.figure.add_axes([.1, .1, .8, .8])
             ax = self.figure.add_subplot(111)
             self.axes.append(ax)
-            _ax_stat(ax, ct, title=title, **kwargs)
+            if axtitle and '{name}' in axtitle:
+                title_ = axtitle.format(name=ct.Y.name)
+            else:
+                title_ = axtitle
+            _ax_stat(ax, ct, title=title_, **kwargs)
             if len(ct) < 2:
                 legend = False
         else:
@@ -147,7 +144,8 @@ class stat(_base.eelfigure):
                 if match is not None:
                     match = matchct.data[cell]
                 cct = celltable(ct.data[cell], X, match=match)
-                _ax_stat(ax, cct, title=_data.cellname(cell), **kwargs)
+                title_ = axtitle.format(name=_data.cellname(cell))
+                _ax_stat(ax, cct, title=title_, **kwargs)
                 self.axes.append(ax)
 
         self.legend_handles = legend_h.values()
@@ -157,8 +155,7 @@ class stat(_base.eelfigure):
         self._cluster_h = []
         self.cluster_info = []
 
-        self.figure.tight_layout()
-        self._show()
+        self._show(figtitle=figtitle)
 
     def _fill_toolbar(self, tb):
         btn = self._cluster_btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
@@ -199,7 +196,7 @@ class stat(_base.eelfigure):
                 h.remove()
             self._cluster_h = []
             self.cluster_info = []
-            
+
         if hasattr(clusters, 'clusters'):
             self.cluster_info.append(clusters.as_table())
             clusters = clusters.clusters
@@ -276,8 +273,10 @@ class stat(_base.eelfigure):
 
 
 
-class uts(_base.eelfigure):
-    def __init__(self, epochs, axtitle='{name}', ncol=3, width=6, height=3, dpi=90):
+class uts(_base.subplot_figure):
+    def __init__(self, epochs, ncol=3, width=6, height=3, dpi=90,
+                 title='plot.uts.uts', figtitle=None, axtitle='{name}',
+                 ):
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
 
         nplot = len(epochs)
@@ -285,15 +284,13 @@ class uts(_base.eelfigure):
         nrow = round(nplot / ncol + .49)
         figsize = (ncol * width, nrow * height)
 
-        win_title = 'plot.uts.uts: '
-        super(uts, self).__init__(title=win_title, figsize=figsize, dpi=dpi)
+        super(uts, self).__init__(title=title, figsize=figsize, dpi=dpi)
 
         for i, epoch in enumerate(epochs):
             ax = self.figure.add_subplot(nrow, ncol, i + 1)
             _ax_uts(ax, epoch, title=axtitle)
 
-        self.figure.tight_layout()
-        self._show()
+        self._show(figtitle=figtitle)
 
 
 
@@ -341,16 +338,30 @@ def _ax_stat(ax, ct, colors, legend_h={},
 
 
 
-class clusters(_base.eelfigure):
+class clusters(_base.subplot_figure):
     def __init__(self, epochs, pmax=0.05, ptrend=0.1, t=True,
-                 title=None, cm=_cm.jet,
-                 width=6, height=3, frame=.1, dpi=90,
+                 title="plot.uts.clusters", figtitle=None, axtitle='{name}',
+                 cm=_cm.jet, width=6, height=3, frame=.1, dpi=90,
                  overlay=False):
         """
         Specialized plotting function for Permutation Cluster test results
 
+        pmax : scalar
+            Maximum p-value of clusters to plot as solid.
+        ptrend : scalar
+            Maximum p-value of clusters to plot as trend.
         t : bool
-            plot threshold
+            Plot threshold for forming clusters.
+        title : str
+            Window title.
+        figtitle : str | None
+            Figure title.
+        axtitle : str | Nonw
+            Axes title pattern. '{name}' is formatted to the first layer's
+            name
+        overlay : bool
+            Plot epochs (time course for different effects) on top of each
+            other (as opposed to on separate axes).
 
         """
         try:
@@ -364,38 +375,35 @@ class clusters(_base.eelfigure):
 
         # create figure
         N = len(epochs)
+        Nax = 1 if overlay else N
         x_size = width
-        y_size = height if overlay else height * N
+        y_size = height * Nax
         figsize = (x_size, y_size)
 
         self._caxes = []
-        if title:
-            title = unicode(title)
-        else:
-            title = ''
+        title = unicode(title)
 
         super(clusters, self).__init__(title=title, figsize=figsize, dpi=dpi)
         self.figure.subplots_adjust(hspace=.2, top=.95, bottom=.05)
 
         width = .85
-        if overlay:
-            height = .95
-            ax = self.figure.add_subplot(111)
-        else:
-            height = .95 / N
+        height = .95 / Nax
 
         for i, layers in enumerate(epochs):
-            if not overlay:  # create axes
-                ax = self.figure.add_subplot(N, 1, i + 1)
-                ax.set_title(layers[0].name)
+            if i < Nax:  # create axes
+                ax = self.figure.add_subplot(Nax, 1, i + 1)
+                title_ = axtitle
+            else:
+                title_ = None
 
             # color
             color = cm(i / N)
-            cax = _ax_clusters(ax, layers, color=color, pmax=pmax, ptrend=ptrend, t=t)
+            cax = _ax_clusters(ax, layers, color=color, pmax=pmax, t=t,
+                               title=title_, ptrend=ptrend)
             self._caxes.append(cax)
 
-        self.figure.tight_layout()
-        self._show()
+        self._show(figtitle=figtitle)
+
 
     def _fill_toolbar(self, tb):
         btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
@@ -437,7 +445,8 @@ def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
     ax.x_fmt = "t = %.3f s"
 
     if title:
-        title = title.format(name=l0.name)
+        if 'name' in title:
+            title = title.format(name=l0.name)
         ax.set_title(title)
 
     if xlabel:
@@ -468,7 +477,12 @@ def _plt_uts(ax, layer, color=None, xdim='time', kwargs={}):
 
 class _ax_clusters:
     def __init__(self, ax, layers, color=None, pmax=0.05, ptrend=0.1,
-                 t=True, xdim='time'):
+                 t=True, xdim='time', title=None):
+        if title:
+            if '{name}' in title:
+                title = title.format(name=layers[0].name)
+            ax.set_title(title)
+
         Y = layers[0]
         if t is True:
             t = layers[0].properties.get('threshold', None)
