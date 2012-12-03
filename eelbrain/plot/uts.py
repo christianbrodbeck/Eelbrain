@@ -339,10 +339,10 @@ def _ax_stat(ax, ct, colors, legend_h={},
 
 
 class clusters(_base.subplot_figure):
-    def __init__(self, epochs, pmax=0.05, ptrend=0.1, t=True,
+    def __init__(self, epochs, pmax=0.05, ptrend=0.1, t=True, ls = 'solid', 
                  title="plot.uts.clusters", figtitle=None, axtitle='{name}',
                  cm=_cm.jet, width=6, height=3, frame=.1, dpi=90,
-                 overlay=False):
+                 tcolor = 'k', overlay=False):
         """
         Specialized plotting function for Permutation Cluster test results
 
@@ -352,11 +352,15 @@ class clusters(_base.subplot_figure):
             Maximum p-value of clusters to plot as trend.
         t : bool
             Plot threshold for forming clusters.
+        ls : str
+            Line style. e.g. ['solid' | 'dashed' | 'dashdot' | 'dotted']
+        tcolor : str
+            Line color for threshold.
         title : str
             Window title.
         figtitle : str | None
             Figure title.
-        axtitle : str | Nonw
+        axtitle : str | None
             Axes title pattern. '{name}' is formatted to the first layer's
             name
         overlay : bool
@@ -399,7 +403,8 @@ class clusters(_base.subplot_figure):
             # color
             color = cm(i / N)
             cax = _ax_clusters(ax, layers, color=color, pmax=pmax, t=t,
-                               title=title_, ptrend=ptrend)
+                               tcolor = tcolor, ls = ls, title=title_, 
+                               ptrend=ptrend)
             self._caxes.append(cax)
 
         self._show(figtitle=figtitle)
@@ -477,7 +482,8 @@ def _plt_uts(ax, layer, color=None, xdim='time', kwargs={}):
 
 class _ax_clusters:
     def __init__(self, ax, layers, color=None, pmax=0.05, ptrend=0.1,
-                 t=True, xdim='time', title=None):
+                 t=True, ls = 'solid', tcolor = 'k', xdim='time', 
+                 title=None):
         Y = layers[0]
 
         if title:
@@ -488,7 +494,7 @@ class _ax_clusters:
         if t is True:
             t = Y.properties.get('threshold', None)
         if t:
-            ax.axhline(t, color='k')
+            ax.axhline(t, color = tcolor, ls = ls)
         ylabel = Y.properties.get('unit', None)
 
         _plt_uts(ax, Y, color=color, xdim=xdim)
