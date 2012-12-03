@@ -478,14 +478,15 @@ def _plt_uts(ax, layer, color=None, xdim='time', kwargs={}):
 class _ax_clusters:
     def __init__(self, ax, layers, color=None, pmax=0.05, ptrend=0.1,
                  t=True, xdim='time', title=None):
+        Y = layers[0]
+
         if title:
             if '{name}' in title:
-                title = title.format(name=layers[0].name)
+                title = title.format(name=Y.name)
             ax.set_title(title)
 
-        Y = layers[0]
         if t is True:
-            t = layers[0].properties.get('threshold', None)
+            t = Y.properties.get('threshold', None)
         if t:
             ax.axhline(t, color='k')
         ylabel = Y.properties.get('unit', None)
@@ -493,14 +494,16 @@ class _ax_clusters:
         _plt_uts(ax, Y, color=color, xdim=xdim)
         if ylabel:
             ax.set_ylabel(ylabel)
+        if np.any(Y.x < 0) and np.any(Y.x > 0):
+            ax.axhline(0, color='k')
 
         self.ax = ax
-        x = layers[0].get_dim(xdim).x
+        x = Y.get_dim(xdim).x
         self.xlim = (x[0], x[-1])
         self.clusters = layers[1:]
         self.cluster_hs = {}
-        self.sig_kwargs = dict(color=color, xdim=xdim, y=layers[0])
-        self.trend_kwargs = dict(color=(.7, .7, .7), xdim=xdim, y=layers[0])
+        self.sig_kwargs = dict(color=color, xdim=xdim, y=Y)
+        self.trend_kwargs = dict(color=(.7, .7, .7), xdim=xdim, y=Y)
         self.set_pmax(pmax=pmax, ptrend=ptrend)
 
     def draw(self):
