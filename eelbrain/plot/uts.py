@@ -490,7 +490,7 @@ def _plt_uts(ax, layer, color=None, xdim='time', kwargs={}):
 
 class _ax_clusters:
     def __init__(self, ax, layers, color=None, pmax=0.05, ptrend=0.1,
-                 t = t, xdim='time', title=None):
+                 t = {}, xdim='time', title=None):
         Y = layers[0]
 
         if title:
