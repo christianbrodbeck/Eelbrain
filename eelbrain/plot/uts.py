@@ -339,18 +339,15 @@ def _ax_stat(ax, ct, colors, legend_h={},
 
 
 class clusters(_base.subplot_figure):
-<<<<<<< HEAD
     def __init__(self, epochs, pmax=0.05, ptrend=0.1, t=True, ls = 'solid', 
                  title="plot.uts.clusters", figtitle=None, axtitle='{name}',
                  cm=_cm.jet, width=6, height=3, frame=.1, dpi=90,
                  tcolor = 'k', overlay=False):
-=======
     def __init__(self, epochs, pmax=0.05, ptrend=0.1, 
                  title="plot.uts.clusters", figtitle=None, axtitle='{name}',
                  cm=_cm.jet, width=6, height=3, frame=.1, dpi=90,
                   overlay=False, t = {'linestyle': 'solid', 'tcolor': 'k'}):
         
->>>>>>> master
         """
         Specialized plotting function for Permutation Cluster test results
 
@@ -360,17 +357,14 @@ class clusters(_base.subplot_figure):
             Maximum p-value of clusters to plot as trend.
         t : dict
             Plot threshold for forming clusters.
-<<<<<<< HEAD
         ls : str
             Line style. e.g. ['solid' | 'dashed' | 'dashdot' | 'dotted']
         tcolor : str
-=======
             Contains threshold plotting properties.
         linestyle : str
             Line style for threshold. 
             e.g. ['solid' | 'dashed' | 'dashdot' | 'dotted']
         color : str
->>>>>>> master
             Line color for threshold.
         title : str
             Window title.
@@ -418,14 +412,11 @@ class clusters(_base.subplot_figure):
 
             # color
             color = cm(i / N)
-<<<<<<< HEAD
             cax = _ax_clusters(ax, layers, color=color, pmax=pmax, t=t,
                                tcolor = tcolor, ls = ls, title=title_, 
                                ptrend=ptrend)
-=======
             cax = _ax_clusters(ax, layers, color=color, pmax=pmax, 
                                title=title_, ptrend=ptrend, tkwargs = t)
->>>>>>> master
             self._caxes.append(cax)
 
         self._show(figtitle=figtitle)
@@ -503,12 +494,9 @@ def _plt_uts(ax, layer, color=None, xdim='time', kwargs={}):
 
 class _ax_clusters:
     def __init__(self, ax, layers, color=None, pmax=0.05, ptrend=0.1,
-<<<<<<< HEAD
                  t=True, ls = 'solid', tcolor = 'k', xdim='time', 
                  title=None):
-=======
                  tkwargs = {}, xdim='time', title=None):
->>>>>>> master
         Y = layers[0]
 
         if title:
@@ -518,12 +506,9 @@ class _ax_clusters:
 
         if tkwargs:
             t = Y.properties.get('threshold', None)
-<<<<<<< HEAD
         if t:
             ax.axhline(t, color = tcolor, ls = ls)
-=======
             ax.axhline(t, **tkwargs)
->>>>>>> master
         ylabel = Y.properties.get('unit', None)
 
         _plt_uts(ax, Y, color=color, xdim=xdim)
