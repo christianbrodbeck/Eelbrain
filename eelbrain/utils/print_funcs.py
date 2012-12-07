@@ -33,22 +33,19 @@ def _dict_repr(dictionary, indent=0):
 
 
 
-def printdict(dictionary, w=100, fmt='%r', sort=True):
+def printdict(dictionary, w=100, fmt='%r', sort=True, max_v_lines=6):
     """
     Prints only one key-value pair per line, hopefully a more readable
-    representation for complex dictionaries. 
-    
+    representation for complex dictionaries.
+
     sort : bool
         Sort keys
 
-
-    TODO: multiline-values
-    
     """
-    print strdict(dictionary, w=w, fmt=fmt, sort=sort)
+    print strdict(dictionary, w=w, fmt=fmt, sort=sort, max_v_lines=max_v_lines)
 
 
-def strdict(dictionary, w=100, fmt='%r', sort=True):
+def strdict(dictionary, w=100, fmt='%r', sort=True, max_v_lines=6):
     items = []
     k_len = 0
 
@@ -66,13 +63,16 @@ def strdict(dictionary, w=100, fmt='%r', sort=True):
     if k_len > w - 5:
         raise ValueError("Key representation exceeds max len")
     v_len = w - 2 - k_len
-    empty_k = k_len*' ' + '  '
+    empty_k = k_len * ' ' + '  '
     lines = []
     for k, v in items:
         lines.append(': '.join((k.ljust(k_len), v[:v_len])))
         if len(v) >= v_len:
-            for i in xrange(v_len, len(v)+v_len-1, v_len):
-                lines.append(empty_k + v[i : i+v_len])
+            for i in xrange(v_len, len(v) + v_len - 1, v_len):
+                lines.append(empty_k + v[i : i + v_len])
+                if i > v_len * max_v_lines:
+                    lines.append(empty_k + '... ')
+                    break
     lines[0] = '{' + lines[0]
     lines[-1] = lines[-1] + '}'
     return ',\n '.join(lines)
@@ -81,9 +81,9 @@ def strdict(dictionary, w=100, fmt='%r', sort=True):
 def printlist(list_obj, rep=True):
     """
     print each element of a list on a new line
-    
+
     :arg rep: print repr representation (vs str representation)
-    
+
     """
     for line in list_obj:
         if rep:

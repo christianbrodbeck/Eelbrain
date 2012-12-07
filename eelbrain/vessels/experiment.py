@@ -98,7 +98,7 @@ class mne_experiment(object):
     _subject_loc = 'meg_dir'  # location of subject folders
     def __init__(self, root=None, parse_subjects=True, parse_mri=True,
                  subjects=[], mri_subjects={},
-                 kit2fiff_args=_kit2fiff_args, **kwargs):
+                 kit2fiff_args=_kit2fiff_args):
         """
         root : str
             the root directory for the experiment (i.e., the directory
@@ -125,16 +125,19 @@ class mne_experiment(object):
 
         # find experiment data structure
         self.state = self.get_templates()
-        self.set(common_brain=self._common_brain)
+        self.add_to_state(common_brain=self._common_brain)
         self.var_values = {'hemi': ('lh', 'rh')}
         self.exclude = {}
 
-        self.set(root=root, raw='{raw_raw}', labeldir='label', hemi='lh')
+        self.add_to_state(root=root, raw='{raw_raw}', labeldir='label', hemi='lh')
         self.parse_dirs(parse_subjects=parse_subjects, parse_mri=parse_mri,
                         subjects=subjects, mri_subjects=mri_subjects)
 
-        # store current values
-        self.set(**kwargs)
+    def add_to_state(self, **kv):
+        for k, v in kv.iteritems():
+            if k in self.state:
+                raise KeyError("%r already in state" % k)
+            self.state[k] = v
 
     def get_templates(self):
         t = {
@@ -841,8 +844,8 @@ class mne_experiment(object):
 
         subp.run_mne_browse_raw(fif_dir, modal)
 
-    def set(self, subject=None, experiment=None, vmatch=False, mrisubject=None,
-            **kwargs):
+    def set(self, subject=None, experiment=None, match=False, mrisubject=None,
+            add=False, **kwargs):
         """
         match : bool
             require existence (for subject and experiment)
@@ -865,7 +868,7 @@ class mne_experiment(object):
                 assert self._mri_subjects[subject] == mrisubject
 
         if subject is not None:
-            if vmatch and not (subject in self._subjects) and not ('*' in subject):
+            if match and not (subject in self._subjects) and not ('*' in subject):
                 raise ValueError("No subject named %r" % subject)
 
             self.state['subject'] = subject
@@ -873,14 +876,17 @@ class mne_experiment(object):
 
 
         if experiment is not None:
-            if vmatch and not (experiment in self._experiments) and not ('*' in experiment):
+            if match and not (experiment in self._experiments) and not ('*' in experiment):
                 raise ValueError("No experiment named %r" % experiment)
             else:
                 self.state['experiment'] = experiment
 
         for k, v in kwargs.iteritems():
-            if v is not None:
-                self.state[k] = v
+            if add or k in self.state:
+                if v is not None:
+                    self.state[k] = v
+            else:
+                raise KeyError("No variable named %r" % k)
 
     _cell_order = ()
     _cell_fullname = True  # whether or not to include factor name in cell
@@ -900,7 +906,7 @@ class mne_experiment(object):
                 else:
                     parts.append(cell[f])
         name = '-'.join(parts)
-        self.set(cell=name)
+        self.set(cell=name, add=True)
 
     def set_env(self):
         """
@@ -912,12 +918,12 @@ class mne_experiment(object):
     def set_fwd_an(self, stim, tw, proj):
         temp = '{stim}-{tw}-{proj}'
         fwd_an = temp.format(stim=stim, tw=tw, proj=proj)
-        self.set(fwd_an=fwd_an)
+        self.set(fwd_an=fwd_an, add=True)
 
     def set_stc_an(self, blc, method, ori):
         temp = '{blc}-{method}-{ori}'
         stc_an = temp.format(blc=blc, method=method, ori=ori)
-        self.set(stc_an=stc_an)
+        self.set(stc_an=stc_an, add=True)
 
     def show_in_finder(self, key, **kwargs):
         fname = self.get(key, **kwargs)
