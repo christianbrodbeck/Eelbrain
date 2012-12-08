@@ -133,6 +133,10 @@ class mne_experiment(object):
         self.parse_dirs(parse_subjects=parse_subjects, parse_mri=parse_mri,
                         subjects=subjects, mri_subjects=mri_subjects)
 
+        # set initial values
+        for k, v in self.var_values.iteritems():
+            self.state[k] = v[0]
+
     def add_to_state(self, **kv):
         for k, v in kv.iteritems():
             if k in self.state:
@@ -248,8 +252,9 @@ class mne_experiment(object):
         assert do in [True, False, 'ask']
 
         raw_txt = []
-        for subject in self._subjects:
-            temp = self.get('rawtxt', experiment='*', subject=subject, match=False)
+        for _ in self.iter_vars(['subject']):
+            subject = self.get('subject')
+            temp = self.get('rawtxt', experiment='*', match=False)
             tdir, tname = os.path.split(temp)
             fnames = fnmatch.filter(os.listdir(tdir), tname)
             for fname in fnames:
@@ -466,8 +471,8 @@ class mne_experiment(object):
         constants : dict(name -> value)
             variables with constant values throughout the iteration
         values : dict(name -> (list of values))
-            variables with values to iterate in addition to, or in spite of
-            the mne_experiment.var_values dictionary
+            variables with values to iterate over instead of the corresponding
+            `mne_experiment.var_values`
         exclude : dict(name -> (list of values))
             values to exclude from the iteration
         prog : bool | str
@@ -515,19 +520,6 @@ class mne_experiment(object):
                     progm.advance()
         else:
             yield self.state
-
-    def iter_se(self, subject=None, experiment=None, analysis=None):
-        """
-        iterate through subject and experiment names
-
-        """
-        self.set(analysis=analysis)
-        subjects = self._subjects if subject is None else [subject]
-        experiments = self._experiments if experiment is None else [experiment]
-        for subject in subjects:
-            for experiment in experiments:
-                self.set(subject=subject, experiment=experiment)
-                yield subject, experiment
 
     def label_events(self, ds, experiment, subject):
         return ds
@@ -645,7 +637,7 @@ class mne_experiment(object):
         structure.
 
         """
-        self._subjects = subjects = set(subjects)
+        subjects = set(subjects)
         self._mri_subjects = mri_subjects = dict(mri_subjects)
 
         # find subjects
@@ -673,9 +665,8 @@ class mne_experiment(object):
                         mri_subjects[s] = '{common_brain}'
 
         self.var_values['subject'] = list(subjects)
-        self.var_values['mrisubject'] = set(mri_subjects.values())
+        self.var_values['mrisubject'] = list(mri_subjects.values())
         self.var_values['experiment'] = list(self._experiments)
-        self._experiments = set(self._experiments)
         has_mri = (s for s in subjects if mri_subjects[s] != '{common_brain}')
         self.subjects_has_mri = tuple(has_mri)
 
@@ -709,7 +700,6 @@ class mne_experiment(object):
             if str(v).startswith('{root}'):
                 tree[k] = {'.': v.replace('{root}', '')}
         _etree_expand(tree, self.state)
-        out = []
         nodes = _etree_node_repr(tree, 'root')
         name_len = max(len(n) for n, _ in nodes)
         path_len = max(len(p) for _, p in nodes)
@@ -736,9 +726,9 @@ class mne_experiment(object):
             see :py:meth:`push`
 
         """
-        e = self.__class__(src_root, subjects=self._subjects,
-                           mri_subjects=self._mri_subjects,
-                           experiments=self._experiments)
+        subjects = self.var_values['subjects']
+        e = self.__class__(src_root, subjects=subjects,
+                           mri_subjects=self._mri_subjects)
         e.push(self.root, names=names, **kwargs)
 
     def push(self, dst_root, names=[], overwrite=False, missing='warn'):
@@ -844,43 +834,30 @@ class mne_experiment(object):
 
         subp.run_mne_browse_raw(fif_dir, modal)
 
-    def set(self, subject=None, experiment=None, match=False, mrisubject=None,
-            add=False, **kwargs):
+    def set(self, subject=None, experiment=None, match=False, add=False,
+            **kwargs):
         """
+        special variables
+        -----------------
+
+        subjects:
+            The corresponding `mrisubject` is also set
+
         match : bool
-            require existence (for subject and experiment)
-
-        mrisubject :
-            If subject is None, subject will be set to an arbitrary subject
-            using that mri (an error will be raised if no subject uses
-            the mri)
+            require existence (for variables in self.var_values)
 
         """
-        if mrisubject is not None:
-            if subject is None:
-                for sub, mrisub in self._mri_subjects.iteritems():
-                    if mrisub == mrisubject:
-                        subject = sub
-                        break
-                if subject is None:
-                    raise ValueError("no subject found for mrisubject %r" % mrisubject)
-            else:
-                assert self._mri_subjects[subject] == mrisubject
-
         if subject is not None:
-            if match and not (subject in self._subjects) and not ('*' in subject):
-                raise ValueError("No subject named %r" % subject)
+            kwargs['subject'] = subject
+            kwargs['mrisubject'] = self._mri_subjects.get(subject, None)
 
-            self.state['subject'] = subject
-            self.state['mrisubject'] = self._mri_subjects.get(subject, None)
+        # test var_value
+        for k, v in kwargs.iteritems():
+            if match and (k in self.var_values) and not ('*' in v):
+                if v not in self.var_values[k]:
+                    raise ValueError("Variable %r has not value %r" % (k, v))
 
-
-        if experiment is not None:
-            if match and not (experiment in self._experiments) and not ('*' in experiment):
-                raise ValueError("No experiment named %r" % experiment)
-            else:
-                self.state['experiment'] = experiment
-
+        # set state
         for k, v in kwargs.iteritems():
             if add or k in self.state:
                 if v is not None:
@@ -919,6 +896,15 @@ class mne_experiment(object):
         temp = '{stim}-{tw}-{proj}'
         fwd_an = temp.format(stim=stim, tw=tw, proj=proj)
         self.set(fwd_an=fwd_an, add=True)
+
+    def set_mri_subject(self, subject, mri_subject):
+        """
+        Reassign a subject's MRI and make sure that var_values is
+        appropriately updated.
+
+        """
+        self._mri_subjects[subject] = mri_subject
+        self.var_values['mrisubject'] = list(self._mri_subjects.values())
 
     def set_stc_an(self, blc, method, ori):
         temp = '{blc}-{method}-{ori}'
@@ -960,7 +946,7 @@ class mne_experiment(object):
 
         results = {}
         experiments = set()
-        for sub, exp in self.iter_se(analysis=analysis):
+        for sub, exp in self.iter_vars(['subject', 'experiment'], analysis=analysis):
             items = []
 
             for temp in templates:
