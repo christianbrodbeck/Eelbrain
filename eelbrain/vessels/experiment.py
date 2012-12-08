@@ -180,9 +180,11 @@ class mne_experiment(object):
             # !! these would invalidate the s_e_* pattern with a third _
 
              # mne's stc.save() requires stub filename and will add '-?h.stc'
-             'mne_dir': os.path.join('{meg_sdir}', 'mne_{fwd_an}_{stc_an}'),
-             'stc': os.path.join('{mne_dir}', '{experiment}_{cell}'),
-             'stc_morphed': os.path.join('{mne_dir}', '{experiment}_{cell}_{common_brain}'),
+             'evoked_dir': os.path.join('{meg_sdir}', 'mne_{fwd_an}_{stc_an}'),
+             'evoked':os.path.join('{evoked_dir}', 'evoked_{fwd_an}_{stc_an}'),
+             'stc_dir': os.path.join('{meg_sdir}', 'stc_{fwd_an}_{stc_an}'),
+             'stc': os.path.join('{stc_dir}', '{experiment}_{cell}'),
+             'stc_morphed': os.path.join('{stc_dir}', '{experiment}_{cell}_{common_brain}'),
              'label': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{analysis}.label'),
              'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
 
