@@ -654,6 +654,24 @@ def sensor_net(fiff, picks=None, name='fiff-sensors'):
     return _sensors.sensor_net(ch_locs, ch_names, name=name)
 
 
+def evoked(fname):
+    "Load an mne evoked file as ndvar"
+    evoked = mne.fiff.Evoked(fname)
+    return evoked_ndvar(evoked)
+
+
+def evoked_ndvar(evoked, name='MEG'):
+    x = evoked.data
+    sensor = sensor_net(evoked)
+    time = var(evoked.times, name='time')
+    return ndvar(x, (sensor, time), name=name)
+
+
+def stc(fname, subject='fsaverage'):
+    "Load an stc as ndvar from a file"
+    stc = mne.read_source_estimate(fname)
+    return stc_ndvar(stc, subject=subject)
+
 
 def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
     """
