@@ -26,7 +26,7 @@ from mayavi.core.ui.mayavi_scene import MayaviScene
 
 import mne
 from mne import fiff
-from mne.fiff.trans import write_trans
+from mne import write_trans
 from mne.fiff.constants import FIFF
 
 from eelbrain import load
