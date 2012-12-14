@@ -17,72 +17,72 @@ import eelbrain.utils.statfuncs as _statfuncs
 class celltable:
     """
     **Attributes:**
-    
+
     .Y, .X,
         Y and X after sub was applied
 
     .sub, .match:
         input arguments
-    
+
     .cells : list of str
         list of all cells in X
-    
+
     .data : dict(cell -> data)
         data in each cell
-    
+
     .data_indexes : dict(cell -> index-array)
         for each cell, a boolean-array specifying the index for that cell in ``X``
-    
+
     **If ``match`` is specified**:
-    
+
     .within : dict(cell1, cell2 -> bool)
         dictionary that specifies for each cell pair whether the corresponding
-        comparison is a repeated-measures or an independent measures 
-        comparison (only available when the input argument ``match`` is 
+        comparison is a repeated-measures or an independent measures
+        comparison (only available when the input argument ``match`` is
         specified.
-    
+
     .all_within : bool
         whether all comparison are repeated-measures comparisons or not
-    
-    .group : dict(cell -> group)
+
+    .groups : dict(cell -> group)
         group for each cell as ???
-    
-    
+
+
     **Previous Attributes:**
-    
+
     indexes
         list of indexes
-    
+
     cells
         dict(index -> label)
-    
+
     data
-        dict(index -> cell_data) 
-    
+        dict(index -> cell_data)
+
     group
         dict(index -> match_values)
-    
+
     within
-        pairwise square; True if all match_values are equal, False 
+        pairwise square; True if all match_values are equal, False
         otherwise (i.e. whether a dependent measures test is appropri-
         ate or not)
-    
+
     all_within
         True if np.all(self.within)
-        
+
     """
     def __init__(self, Y, X, match=None, sub=None, match_func=np.mean, ds=None):
         """
         divides Y into cells defined by X
-        
+
         Y : var, ndvar
             dependent measurement
         X : categorial
             factor or interaction
-        match : 
-            factor on which cases are matched (i.e. subject for a repeated 
-            measures comparisons). If several data points with the same 
-            case fall into one cell of X, they are combined using 
+        match :
+            factor on which cases are matched (i.e. subject for a repeated
+            measures comparisons). If several data points with the same
+            case fall into one cell of X, they are combined using
             match_func. If match is not None, celltable.groups contains the
             {Xcell -> [match values of data points], ...} mapping corres-
             ponding to self.data
@@ -91,15 +91,15 @@ class celltable:
         match_func : callable
             see match
         ds : dataset
-            If a dataset is specified, input items (Y / X / match / sub) can 
-            be str instead of data-objects, in which case they will be 
+            If a dataset is specified, input items (Y / X / match / sub) can
+            be str instead of data-objects, in which case they will be
             retrieved from the dataset.
-        
-        
+
+
         e.g.::
-        
+
             >>> c = S.celltable(Y, A%B, match=subject)
-        
+
         """
         if isinstance(Y, basestring):
             Y = ds[Y]
@@ -109,21 +109,21 @@ class celltable:
             match = ds[match]
         if isinstance(sub, basestring):
             sub = ds[sub]
-        
+
         if _data.iscategorial(Y) or _data.isndvar(Y):
             if sub is not None:
                 Y = Y[sub]
         else:
             Y = _data.asvar(Y, sub)
-        
+
         if X is not None:
             X = _data.ascategorial(X, sub)
-        
+
         if match:
             match = _data.asfactor(match, sub)
             assert len(match) == len(Y)
             self.groups = {}
-        
+
         # save args
         self.X = X
         self.Y = Y
@@ -140,14 +140,14 @@ class celltable:
             return
 
         self.cells = X.cells
-        
+
         for cell in self.cells:
             self.data_indexes[cell] = cell_index = (X == cell)
             newdata = Y[cell_index]
             if match:
                 group = match[cell_index]
                 values = group.cells
-                
+
                 # sort
                 if len(values) < len(group):
                     newdata = newdata.compress(group, func=match_func)
@@ -157,13 +157,13 @@ class celltable:
                     sort_arg = np.sum(group_ids * np.arange(len(values)), axis=0)
                     newdata = newdata[sort_arg]
                     group = group[sort_arg]
-                
+
                 self.groups[cell] = group
-            
+
             self.data[cell] = newdata
-        
+
         if match:
-            # determine which cells compare values for dependent values on 
+            # determine which cells compare values for dependent values on
             # match_variable
 #            n_cells = len(self.indexes)
 #            self.within = np.empty((n_cells, n_cells), dtype=bool)
@@ -176,56 +176,56 @@ class celltable:
                         v = self.groups[cell1] == self.groups[cell2]
                         if v is not False:
                             v = all(v)
-                        self.within[cell1,cell2] = v
-                        self.within[cell2,cell1] = v
+                        self.within[cell1, cell2] = v
+                        self.within[cell2, cell1] = v
             self.all_within = np.all(self.within.values())
         else:
             self.all_within = False
-    
+
     def __repr__(self):
         args = [self.Y.name, self.X.name]
         rpr = "celltable(%s)"
         if self.match is not None:
-            args.append("match=%s"%self.match.name)
+            args.append("match=%s" % self.match.name)
         if self.sub is not None:
             if _data.isvar(self.sub):
                 args.append('sub=%s' % self.sub.name)
             else:
                 indexes = ' '.join(str(i) for i in self.sub[:4])
-                args.append("sub=[%s...]"  % indexes)
+                args.append("sub=[%s...]" % indexes)
         return rpr % (', '.join(args))
-    
+
     def __len__(self):
         return len(self.cells)
-    
+
     def cell_label(self, cell, delim=' '):
         """
         Returns a label for a cell. Interaction cells (represented as tuple
         of strings) are joined by ``delim``.
-        
+
         """
         return _data.cellname(cell)
-    
+
     def cell_labels(self, delim=' '):
         """
         Returns a list of all cell names as strings.
-        
+
         delim : str
             delimiter to join interaction cell names
-        
+
         """
         return [_data.cellname(cell, delim) for cell in self.cells]
-    
+
     def get_data(self, out=list):
         if out is dict:
             return self.data
         elif out is list:
             return [self.data[cell] for cell in self.cells]
-        
+
     def get_statistic(self, func=np.mean, a=1, **kwargs):
         """
         Returns a list with a * func(data) for each data cell.
-        
+
         Parameters
         ----------
 
@@ -236,7 +236,7 @@ class celltable:
             Multiplier (if not provided in ``function`` string).
         kwargs :
             Are submitted to the statistic function.
-        
+
         See also
         --------
 
@@ -262,7 +262,7 @@ class celltable:
                     kwargs['ddof'] = 1
             else:
                 raise ValueError('unrecognized statistic: %r' % func)
-        
+
         Y = [a * func(self.data[cell].x, **kwargs) for cell in self.cells]
         return Y
 
