@@ -596,7 +596,7 @@ def mne_Raw(ds):
     return ds.info['raw']
 
 
-def mne_Epochs(ds, tstart= -0.1, tstop=0.6, i_start='i_start', raw=None,
+def mne_Epochs(ds, i_start='i_start', raw=None,
                drop_bad_chs=True, name='{name}', **kwargs):
     """
     All ``**kwargs`` are forwarded to the mne.Epochs instance creation. If the
@@ -620,12 +620,17 @@ def mne_Epochs(ds, tstart= -0.1, tstop=0.6, i_start='i_start', raw=None,
         kwargs['picks'] = mne.fiff.pick_channels(raw.info['ch_names'], [],
                                                  raw.info['bads'])
 
+    kwargs['name'] = name = name.format(name=ds.name)
+    if 'tstart' in kwargs:
+        kwargs['tmin'] = kwargs['tstart']
+    if 'tstop' in kwargs:
+        kwargs['tmax'] = kwargs['tstop']
+
     events = mne_events(ds=ds, i_start=i_start)
     # epochs with (event_id == None) does not use columns 1 and 2 of events
     events[:, 2] = np.arange(len(events))
 
-    epochs = mne.Epochs(raw, events, event_id=None, tmin=tstart, tmax=tstop,
-                        name=name.format(name=ds.name), **kwargs)
+    epochs = mne.Epochs(raw, events, event_id=None, **kwargs)
 
     return epochs
 
