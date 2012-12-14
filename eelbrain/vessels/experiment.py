@@ -2,6 +2,22 @@
 mne_experiment is a base class for managing an mne experiment.
 
 
+Epochs
+------
+
+The following aspects need consideration:
+
+ - tstart, tstop of the data
+ - a potential link to another epoch (e.g., a disjoint baseline) with which
+   trials need to be aligned
+
+This leads to the following name pattern:
+
+"{tstart ms}-{tstop ms}" [ + "-{group name}"]
+
+
+
+
 
 Created on May 2, 2012
 
@@ -95,6 +111,7 @@ class mne_experiment(object):
     _experiments = []
     _fmt_pattern = re.compile('\{(\w+)\}')
     _mri_loc = 'mri_dir'  # location of subject mri folders
+    _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
     _subject_loc = 'meg_dir'  # location of subject folders
     def __init__(self, root=None, parse_subjects=True, parse_mri=True,
                  subjects=[], mri_subjects={},
@@ -204,17 +221,9 @@ class mne_experiment(object):
         args = [repr(self.root)]
         kwargs = []
 
-        subject = self.state.get('subject')
-        if subject is not None:
-            kwargs.append(('subject', repr(subject)))
-
-        experiment = self.state.get('experiment')
-        if experiment is not None:
-            kwargs.append(('experiment', repr(experiment)))
-
-        analysis = self.state.get('analysis')
-        if analysis is not None:
-            kwargs.append(('analysis', repr(analysis)))
+        for k in self._repr_vars:
+            v = self.get(k)
+            kwargs.append((k, repr(v)))
 
         args.extend('='.join(pair) for pair in kwargs)
         args = ', '.join(args)
