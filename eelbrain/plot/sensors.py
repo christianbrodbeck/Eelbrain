@@ -18,7 +18,7 @@ except:
     pass
 
 try:
-    from _sensors_mayavi import coreg, mrk_fix, fit_coreg
+    from _sensors_mayavi import coreg, fit_coreg, fit_dev2head
 except:
     pass
 
@@ -51,9 +51,9 @@ def _ax_map2d_fast(ax, sensor_net, proj='default',
 def _ax_map2d(ax, sensor_net, proj='default', extent=1,
               frame=.02,
               kwargs=dict(
-                          marker='x', # symbol
-                          color='b', # mpl plot kwargs ...
-                          ms=3, # marker size
+                          marker='x',  # symbol
+                          color='b',  # mpl plot kwargs ...
+                          ms=3,  # marker size
                           markeredgewidth=.5,
                           ls='',
                           ),
@@ -71,9 +71,9 @@ def _ax_map2d(ax, sensor_net, proj='default', extent=1,
 
 def _plt_map2d(ax, sensor_net, proj='default', extent=1, ROI=None,
                kwargs=dict(
-                           marker='.', # symbol
-                           color='k', # mpl plot kwargs ...
-                           ms=1, # marker size
+                           marker='.',  # symbol
+                           color='k',  # mpl plot kwargs ...
+                           ms=1,  # marker size
                            markeredgewidth=.5,
                            ls='',
                            ),
@@ -97,9 +97,9 @@ def _plt_map2d(ax, sensor_net, proj='default', extent=1, ROI=None,
 
 
 def _plt_map2d_labels(ax, sensor_net, proj='default',
-                      text='id', # 'id', 'name'
-                      xpos=0, # horizontal distance from marker
-                      ypos=.01, # vertical distance from marker
+                      text='id',  # 'id', 'name'
+                      xpos=0,  # horizontal distance from marker
+                      ypos=.01,  # vertical distance from marker
                       kwargs=dict(# mpl text kwargs ...
                                   color='k',
                                   fontsize=8,
@@ -216,9 +216,9 @@ class multi(_base.eelfigure):
         self._show()
 
         # ROI
-        self.ROI_kwargs = dict(marker='o', # symbol
-                               color='r', # mpl plot kwargs ...
-                               ms=5, # marker size
+        self.ROI_kwargs = dict(marker='o',  # symbol
+                               color='r',  # mpl plot kwargs ...
+                               ms=5,  # marker size
                                markeredgewidth=.9,
                                ls='')
         self._ROI_h = []
@@ -433,9 +433,9 @@ class map2d(_base.eelfigure):
         self._label_h = h
         self.canvas.draw()
 
-    def plot_ROI(self, ROI, kwargs=dict(marker='o', # symbol
-                                        color='r', # mpl plot kwargs ...
-                                        ms=5, # marker size
+    def plot_ROI(self, ROI, kwargs=dict(marker='o',  # symbol
+                                        color='r',  # mpl plot kwargs ...
+                                        ms=5,  # marker size
                                         markeredgewidth=.9,
                                         ls='',
                                         )):
@@ -467,14 +467,14 @@ def map3d(sensor_net, marker='c*', labels=False, head=0):
         v = np.linspace(0, np.pi, 10)
 
         x = 5 * head * np.outer(np.cos(u), np.sin(v))
-        z = 10 * (head * np.outer(np.sin(u), np.sin(v)) - .5)         # vertical
+        z = 10 * (head * np.outer(np.sin(u), np.sin(v)) - .5)  # vertical
         y = 5 * head * np.outer(np.ones(np.size(u)), np.cos(v))  # axis of the sphere
         ax.plot_surface(x, y, z, rstride=1, cstride=1, color='w')
-    #n = 100
-    #for c, zl, zh in [('r', -50, -25), ('b', -30, -5)]:
-    #xs, ys, zs = zip(*
+    # n = 100
+    # for c, zl, zh in [('r', -50, -25), ('b', -30, -5)]:
+    # xs, ys, zs = zip(*
     #               [(random.randrange(23, 32),
     #                 random.randrange(100),
     #                 random.randrange(zl, zh)
     #                 ) for i in range(n)])
-    #ax.scatter(xs, ys, zs, c=c)
+    # ax.scatter(xs, ys, zs, c=c)
