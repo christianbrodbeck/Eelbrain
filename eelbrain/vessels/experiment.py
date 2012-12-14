@@ -2,6 +2,22 @@
 mne_experiment is a base class for managing an mne experiment.
 
 
+Epochs
+------
+
+The following aspects need consideration:
+
+ - tstart, tstop of the data
+ - a potential link to another epoch (e.g., a disjoint baseline) with which
+   trials need to be aligned
+
+This leads to the following name pattern:
+
+"{tstart ms}-{tstop ms}" [ + "-{group name}"]
+
+
+
+
 
 Created on May 2, 2012
 
@@ -95,6 +111,7 @@ class mne_experiment(object):
     _experiments = []
     _fmt_pattern = re.compile('\{(\w+)\}')
     _mri_loc = 'mri_dir'  # location of subject mri folders
+    _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
     _subject_loc = 'meg_dir'  # location of subject folders
     def __init__(self, root=None, parse_subjects=True, parse_mri=True,
                  subjects=[], mri_subjects={},
@@ -133,6 +150,17 @@ class mne_experiment(object):
         self.parse_dirs(parse_subjects=parse_subjects, parse_mri=parse_mri,
                         subjects=subjects, mri_subjects=mri_subjects)
 
+        # set initial values
+        for k, v in self.var_values.iteritems():
+            self.state[k] = v[0]
+
+        # set defaults for any existing templates
+        for k in self.state.keys():
+            temp = self.state[k]
+            for name in self._fmt_pattern.findall(temp):
+                if name not in self.state:
+                    self.state[name] = '<%s not set>' % name
+
     def add_to_state(self, **kv):
         for k, v in kv.iteritems():
             if k in self.state:
@@ -140,6 +168,7 @@ class mne_experiment(object):
             self.state[k] = v
 
     def get_templates(self):
+        # rub: need to distinguish files from
         t = {
              # basic dir
              'meg_dir': os.path.join('{root}', 'meg'),  # contains subject-name folders for MEG data
@@ -163,8 +192,8 @@ class mne_experiment(object):
              'edf': os.path.join('{log_sdir}', '*.edf'),
 
              # mne raw-derivatives analysis
-             'proj': '{raw}_{projname}-proj.fif',
-             'proj_plot': '{raw}_{projname}-proj.pdf',
+             'proj_file': '{raw}_{proj}-proj.fif',
+             'proj_plot': '{raw}_{proj}-proj.pdf',
              'cov': '{raw}_{fwd_an}-cov.fif',
              'fwd': '{raw}_{fwd_an}-fwd.fif',
 
@@ -176,16 +205,24 @@ class mne_experiment(object):
             # !! these would invalidate the s_e_* pattern with a third _
 
              # mne's stc.save() requires stub filename and will add '-?h.stc'
-             'mne_dir': os.path.join('{meg_sdir}', 'mne_{fwd_an}_{stc_an}'),
-             'stc': os.path.join('{mne_dir}', '{experiment}_{cell}'),
-             'stc_morphed': os.path.join('{mne_dir}', '{experiment}_{cell}_{common_brain}'),
+             'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
+             'evoked': os.path.join('{evoked_dir}', '{experiment}_{cell}_{epoch}_{proj}-evoked.fif'),
+             'stc_dir': os.path.join('{meg_sdir}', 'stc_{fwd_an}_{stc_an}'),
+             'stc': os.path.join('{stc_dir}', '{experiment}_{cell}_{epoch}'),
+             'stc_morphed': os.path.join('{stc_dir}', '{experiment}_{cell}_{common_brain}'),
              'label': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{analysis}.label'),
              'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
+
+             'n_key': '{subject}_{experiment}_{epoch}_{cell}_{proj}',
 
              # EEG
              'vhdr': os.path.join('{eeg_sdir}', '{subject}_{experiment}.vhdr'),
              'eegfif': os.path.join('{eeg_sdir}', '{subject}_{experiment}_raw.fif'),
              'eegfilt': os.path.join('{eeg_sdir}', '{subject}_{experiment}_filt_raw.fif'),
+
+             # output files
+             'plot_dir': os.path.join('{root}', 'plots'),
+             'plot_png': os.path.join('{plot_dir}', '{analysis}', '{name}.png'),
 
              # BESA
              'besa_triggers': os.path.join('{meg_sdir}', 'besa', '{subject}_{experiment}_{analysis}_triggers.txt'),
@@ -198,17 +235,9 @@ class mne_experiment(object):
         args = [repr(self.root)]
         kwargs = []
 
-        subject = self.state.get('subject')
-        if subject is not None:
-            kwargs.append(('subject', repr(subject)))
-
-        experiment = self.state.get('experiment')
-        if experiment is not None:
-            kwargs.append(('experiment', repr(experiment)))
-
-        analysis = self.state.get('analysis')
-        if analysis is not None:
-            kwargs.append(('analysis', repr(analysis)))
+        for k in self._repr_vars:
+            v = self.get(k)
+            kwargs.append((k, repr(v)))
 
         args.extend('='.join(pair) for pair in kwargs)
         args = ', '.join(args)
@@ -248,8 +277,9 @@ class mne_experiment(object):
         assert do in [True, False, 'ask']
 
         raw_txt = []
-        for subject in self._subjects:
-            temp = self.get('rawtxt', experiment='*', subject=subject, match=False)
+        for _ in self.iter_vars(['subject']):
+            subject = self.get('subject')
+            temp = self.get('rawtxt', experiment='*', match=False)
             tdir, tname = os.path.split(temp)
             fnames = fnmatch.filter(os.listdir(tdir), tname)
             for fname in fnames:
@@ -451,7 +481,7 @@ class mne_experiment(object):
         temp = self.expand_template(temp, values=values)
 
         # find variables for iteration
-        variables = self._fmt_pattern.findall(temp)
+        variables = set(self._fmt_pattern.findall(temp))
 
         for state in self.iter_vars(variables, constants=constants,
                                     values=values, exclude=exclude, prog=prog):
@@ -466,8 +496,8 @@ class mne_experiment(object):
         constants : dict(name -> value)
             variables with constant values throughout the iteration
         values : dict(name -> (list of values))
-            variables with values to iterate in addition to, or in spite of
-            the mne_experiment.var_values dictionary
+            variables with values to iterate over instead of the corresponding
+            `mne_experiment.var_values`
         exclude : dict(name -> (list of values))
             values to exclude from the iteration
         prog : bool | str
@@ -516,19 +546,6 @@ class mne_experiment(object):
         else:
             yield self.state
 
-    def iter_se(self, subject=None, experiment=None, analysis=None):
-        """
-        iterate through subject and experiment names
-
-        """
-        self.set(analysis=analysis)
-        subjects = self._subjects if subject is None else [subject]
-        experiments = self._experiments if experiment is None else [experiment]
-        for subject in subjects:
-            for experiment in experiments:
-                self.set(subject=subject, experiment=experiment)
-                yield subject, experiment
-
     def label_events(self, ds, experiment, subject):
         return ds
 
@@ -553,7 +570,7 @@ class mne_experiment(object):
         self.set(subject=subject, experiment=experiment, raw=raw)
         raw_file = self.get('rawfif')
         if isinstance(proj, str):
-            proj = self.get('proj', projname=proj)
+            proj = self.get('proj_file', proj=proj)
         ds = load.fiff.events(raw_file, proj=proj)
 
         raw = ds.info['raw']
@@ -574,6 +591,36 @@ class mne_experiment(object):
             ds.info['edf'] = edf
 
         return ds
+
+    def make_fake_mris(self, subject=None, exclude=None, **kwargs):
+        """
+        ! make sure to retrieve proper rawfif using `kwargs`
+
+        """
+        self.set(**kwargs)
+        self.set_env()
+        kwargs = {}
+        if subject:
+            if isinstance(subject, str):
+                subject = [subject]
+            kwargs['values'] = {'subject': subject}
+        if exclude:
+            if isinstance(exclude, str):
+                exclude = [exclude]
+            kwargs['exclude'] = {'subjects': exclude}
+
+        for _ in self.iter_vars(['subject'], **kwargs):
+            s_to = self.get('subject')
+            mri_sdir = self.get('mri_sdir', mrisubject=s_to, match=False)
+            if os.path.exists(mri_sdir):
+                continue
+
+            s_from = self.get('common_brain')
+            raw = self.get('rawfif')
+            p = plot.sensors.fit_coreg(s_from, raw, s_to)
+            p.fit()
+            p.save()
+            self.set_mri_subject(s_to, s_to)
 
     def make_proj_for_epochs(self, epochs, projname='ironcross', n_mag=5,
                              save=True, save_plot=True):
@@ -613,7 +660,7 @@ class mne_experiment(object):
 
         p = plot.topo.topomap(PCA, size=1, title=str(epochs.name))
         if save_plot:
-            dest = self.get('proj_plot', projname=projname)
+            dest = self.get('proj_plot', proj=projname)
             p.figure.savefig(dest)
         if save:
             rm = save
@@ -622,21 +669,23 @@ class mne_experiment(object):
                 if rm == 'x': raise
             p.close()
             proj = [proj[i] for i in rm]
-            dest = self.get('proj', projname=projname)
+            dest = self.get('proj_file', proj=projname)
             mne.write_proj(dest, proj)
 
-    def makeplt_coreg(self, save='coreg',
-                      sens=True, mrk=True, fiduc=True, hs=False, hs_mri=True,
-                      constants={}):
-        from mayavi import mlab
+    def makeplt_coreg(self, plotname='{subject}_{experiment}', constants={}):
+        """
+        view name will be added to plotname
+
+        """
+        self.set(analysis='coreg')
         for _ in self.iter_vars(['subject', 'experiment'], constants=constants):
-            self.plot_coreg(sens=sens, mrk=mrk, fiduc=fiduc, hs=hs, hs_mri=hs_mri)
-            mlab.view(90, 90)
-            mlab.savefig(self.get('plot_png', name=save + '-F', mkdir=True))
-            mlab.view(180, 90)
-            mlab.savefig(self.get('plot_png', name=save + '-L', mkdir=True))
-            mlab.view(0, 0)
-            mlab.savefig(self.get('plot_png', name=save + '-T', mkdir=True))
+            p = self.plot_coreg()
+            p.frontal = True
+            p.scene.save(self.get('plot_png', name=plotname + '-F', mkdir=True))
+            p.lateral = True
+            p.scene.save(self.get('plot_png', name=plotname + '-L'))
+            p.top = True
+            p.scene.save(self.get('plot_png', name=plotname + '-T'))
 
     def parse_dirs(self, subjects=[], mri_subjects={}, parse_subjects=True,
                    parse_mri=True):
@@ -645,7 +694,7 @@ class mne_experiment(object):
         structure.
 
         """
-        self._subjects = subjects = set(subjects)
+        subjects = set(subjects)
         self._mri_subjects = mri_subjects = dict(mri_subjects)
 
         # find subjects
@@ -673,14 +722,12 @@ class mne_experiment(object):
                         mri_subjects[s] = '{common_brain}'
 
         self.var_values['subject'] = list(subjects)
-        self.var_values['mrisubject'] = set(mri_subjects.values())
+        self.var_values['mrisubject'] = list(mri_subjects.values())
         self.var_values['experiment'] = list(self._experiments)
-        self._experiments = set(self._experiments)
         has_mri = (s for s in subjects if mri_subjects[s] != '{common_brain}')
         self.subjects_has_mri = tuple(has_mri)
 
-    def plot_coreg(self, sens=True, mrk=True, fiduc=True, hs=False,
-                   hs_mri=True, fig=1, **kwargs):
+    def plot_coreg(self, **kwargs):  # sens=True, mrk=True, fiduc=True, hs=False, hs_mri=True,
         self.set(**kwargs)
 
         fwd = mne.read_forward_solution(self.get('fwd'))
@@ -709,7 +756,6 @@ class mne_experiment(object):
             if str(v).startswith('{root}'):
                 tree[k] = {'.': v.replace('{root}', '')}
         _etree_expand(tree, self.state)
-        out = []
         nodes = _etree_node_repr(tree, 'root')
         name_len = max(len(n) for n, _ in nodes)
         path_len = max(len(p) for _, p in nodes)
@@ -736,9 +782,9 @@ class mne_experiment(object):
             see :py:meth:`push`
 
         """
-        e = self.__class__(src_root, subjects=self._subjects,
-                           mri_subjects=self._mri_subjects,
-                           experiments=self._experiments)
+        subjects = self.var_values['subjects']
+        e = self.__class__(src_root, subjects=subjects,
+                           mri_subjects=self._mri_subjects)
         e.push(self.root, names=names, **kwargs)
 
     def push(self, dst_root, names=[], overwrite=False, missing='warn'):
@@ -824,6 +870,26 @@ class mne_experiment(object):
         else:
             print "No files found for %r" % temp
 
+    def rm_fake_mris(self, confirm=False):
+        """
+        Remove all fake MRIs and trans files
+
+        """
+        rmd = []  # dirs
+        rmf = []  # files
+        for _ in self.iter_vars(['subject']):
+            mri_sdir = self.get('mri_sdir')
+            if os.path.exists(mri_sdir):
+                mridir = os.path.join(mri_sdir, 'mri')
+                if not os.path.exists(mridir):
+                    rmd.append(mri_sdir)
+            trans = self.get('trans')
+            if os.path.exists(trans):
+                rmf.append(trans)
+        if ui.ask("Delete?", '\n'.join(rmd + rmf), default=False):
+            map(shutil.rmtree, rmd)
+            map(os.remove, rmf)
+
     def run_mne_analyze(self, subject=None, modal=False):
         mri_dir = self.get('mri_dir')
         if (subject is None) and (self.state['subject'] is None):
@@ -844,43 +910,30 @@ class mne_experiment(object):
 
         subp.run_mne_browse_raw(fif_dir, modal)
 
-    def set(self, subject=None, experiment=None, match=False, mrisubject=None,
-            add=False, **kwargs):
+    def set(self, subject=None, experiment=None, match=False, add=False,
+            **kwargs):
         """
+        special variables
+        -----------------
+
+        subjects:
+            The corresponding `mrisubject` is also set
+
         match : bool
-            require existence (for subject and experiment)
-
-        mrisubject :
-            If subject is None, subject will be set to an arbitrary subject
-            using that mri (an error will be raised if no subject uses
-            the mri)
+            require existence (for variables in self.var_values)
 
         """
-        if mrisubject is not None:
-            if subject is None:
-                for sub, mrisub in self._mri_subjects.iteritems():
-                    if mrisub == mrisubject:
-                        subject = sub
-                        break
-                if subject is None:
-                    raise ValueError("no subject found for mrisubject %r" % mrisubject)
-            else:
-                assert self._mri_subjects[subject] == mrisubject
-
         if subject is not None:
-            if match and not (subject in self._subjects) and not ('*' in subject):
-                raise ValueError("No subject named %r" % subject)
+            kwargs['subject'] = subject
+            kwargs['mrisubject'] = self._mri_subjects.get(subject, None)
 
-            self.state['subject'] = subject
-            self.state['mrisubject'] = self._mri_subjects.get(subject, None)
+        # test var_value
+        for k, v in kwargs.iteritems():
+            if match and (k in self.var_values) and not ('*' in v):
+                if v not in self.var_values[k]:
+                    raise ValueError("Variable %r has not value %r" % (k, v))
 
-
-        if experiment is not None:
-            if match and not (experiment in self._experiments) and not ('*' in experiment):
-                raise ValueError("No experiment named %r" % experiment)
-            else:
-                self.state['experiment'] = experiment
-
+        # set state
         for k, v in kwargs.iteritems():
             if add or k in self.state:
                 if v is not None:
@@ -892,13 +945,18 @@ class mne_experiment(object):
     _cell_fullname = True  # whether or not to include factor name in cell
     def set_cell(self, cell):
         """
-        a {factor: cell} dictionary. Uses self._cell_order to determine te
-        order of factors.
-
-        cell: data cell
+        cell : dict
+            a {factor: cell} dictionary. Uses self._cell_order to determine te
+            order of factors.
 
         """
         parts = []
+        for k in cell:
+            if k not in self._cell_order:
+                err = ("Cell name not specified in self._cell_order: "
+                       "%r" % k)
+                raise ValueError(err)
+
         for f in self._cell_order:
             if f in cell:
                 if self._cell_fullname:
@@ -915,10 +973,25 @@ class mne_experiment(object):
         """
         os.environ['SUBJECTS_DIR'] = self.get('mri_dir')
 
+    def set_epoch(self, tstart, tstop, name=None):
+        desc = '%i-%i' % (tstart * 1000, tstop * 1000)
+        if name:
+            desc += '-%s' % name
+        self.set(epoch=desc, add=True)
+
     def set_fwd_an(self, stim, tw, proj):
         temp = '{stim}-{tw}-{proj}'
         fwd_an = temp.format(stim=stim, tw=tw, proj=proj)
         self.set(fwd_an=fwd_an, add=True)
+
+    def set_mri_subject(self, subject, mri_subject):
+        """
+        Reassign a subject's MRI and make sure that var_values is
+        appropriately updated.
+
+        """
+        self._mri_subjects[subject] = mri_subject
+        self.var_values['mrisubject'] = list(self._mri_subjects.values())
 
     def set_stc_an(self, blc, method, ori):
         temp = '{blc}-{method}-{ori}'
@@ -960,7 +1033,7 @@ class mne_experiment(object):
 
         results = {}
         experiments = set()
-        for sub, exp in self.iter_se(analysis=analysis):
+        for sub, exp in self.iter_vars(['subject', 'experiment'], analysis=analysis):
             items = []
 
             for temp in templates:

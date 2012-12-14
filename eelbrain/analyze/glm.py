@@ -429,7 +429,7 @@ class lm_fitter(object):
         Returns
         -------
 
-        A list with (name, F-field [, P-field]) tuples for all effects that can
+        A list with (effect, F-field [, P-field]) tuples for all effects that can
         be estimated with the current method.
 
         """
