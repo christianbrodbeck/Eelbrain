@@ -14,7 +14,6 @@ import os
 import numpy as np
 import scipy.stats
 import matplotlib.cm as _cm
-import matplotlib.pyplot as plt
 
 try:
     import wx
@@ -24,7 +23,6 @@ except:
 
 from eelbrain.vessels import data as _data
 from eelbrain.vessels.structure import celltable
-from eelbrain.wxutils import mpl_canvas
 
 import _base
 

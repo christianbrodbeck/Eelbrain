@@ -29,7 +29,7 @@ class PreferencesDialog(wx.Frame):
         
         pref_sizer = wx.BoxSizer(wx.VERTICAL)
         
-    # Data Dir
+    # Data Dir ---
         panel_dataDir = wx.Panel(self, -1)#, size=(500,300))
         panel_dataDir.SetBackgroundColour("BLUE")
         dataDir = self.config.Read("dataDir")
@@ -51,12 +51,11 @@ class PreferencesDialog(wx.Frame):
         btn = wx.Button(panel_dataDir, wx.ID_HELP)
         sizer.Add(btn, 0, wx.ALIGN_RIGHT)
         self.Bind(wx.EVT_BUTTON, self.OnHelpDataDir, btn)
-        
-        # 
-#        panel_dataDir.SetSizer(sizer)
+
         pref_sizer.Add(sizer, 0)
         
         
+        # Font ---
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(panel_dataDir, ID.SET_FONT, "Font")
         self.Bind(wx.EVT_BUTTON, self.OnSetFont, id=ID.SET_FONT)
@@ -66,11 +65,6 @@ class PreferencesDialog(wx.Frame):
         panel_dataDir.SetSizer(pref_sizer)
         
         pref_sizer.Fit(self)
-#        panel_dataDir.Fit()
-#        self.SetSizer(pref_sizer)
-#        self.Fit()
-#        self.SetAutoLayout(True)
-#        self.Layout()
     
     def OnHelpDataDir(self, event=None):
         dlg = wx.MessageDialog(self, Help_dataDir, "Help: dataDir", 
