@@ -350,13 +350,8 @@ class clusters(_base.subplot_figure):
         ptrend : scalar
             Maximum p-value of clusters to plot as trend.
         t : dict
+            Contains kwargs for matplotlib axhline for threshold plotting.
             Plot threshold for forming clusters.
-            Contains threshold plotting properties.
-        linestyle : str
-            Line style for threshold. 
-            e.g. ['solid' | 'dashed' | 'dashdot' | 'dotted']
-        color : str
-            Line color for threshold.
         title : str
             Window title.
         figtitle : str | None
