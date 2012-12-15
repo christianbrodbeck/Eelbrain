@@ -340,7 +340,7 @@ class clusters(_base.subplot_figure):
     def __init__(self, epochs, pmax=0.05, ptrend=0.1, 
                  title="plot.uts.clusters", figtitle=None, axtitle='{name}',
                  cm=_cm.jet, width=6, height=3, frame=.1, dpi=90,
-                  overlay=False, t = {'linestyle': 'solid', 'tcolor': 'k'}):
+                  overlay=False, t = {'linestyle': 'solid', 'color': 'k'}):
         
         """
         Specialized plotting function for Permutation Cluster test results
