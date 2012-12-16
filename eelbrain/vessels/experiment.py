@@ -152,7 +152,8 @@ class mne_experiment(object):
 
         # set initial values
         for k, v in self.var_values.iteritems():
-            self.state[k] = v[0]
+            if v:
+                self.state[k] = v[0]
 
         # set defaults for any existing templates
         for k in self.state.keys():
