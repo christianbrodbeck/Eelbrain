@@ -485,9 +485,13 @@ class _ax_clusters:
                 title = title.format(name=Y.name)
             ax.set_title(title)
 
-        if tkwargs:
-            t = Y.properties.get('threshold', None)
-            ax.axhline(t, **tkwargs)
+        t = Y.properties.get('threshold', None)
+        if t:
+            if tkwargs:
+                ax.axhline(t, **tkwargs)
+            else:
+                ax.axhline(t)
+
         ylabel = Y.properties.get('unit', None)
 
         _plt_uts(ax, Y, color=color, xdim=xdim)
