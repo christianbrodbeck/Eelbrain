@@ -486,8 +486,8 @@ class _ax_clusters:
             ax.set_title(title)
 
         t = Y.properties.get('threshold', None)
-        if t:
-            if tkwargs:
+        if t is not None:
+            if tkwargs is not None:
                 ax.axhline(t, **tkwargs)
             else:
                 ax.axhline(t)
