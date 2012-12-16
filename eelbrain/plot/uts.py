@@ -337,11 +337,11 @@ def _ax_stat(ax, ct, colors, legend_h={},
 
 
 class clusters(_base.subplot_figure):
-    def __init__(self, epochs, pmax=0.05, ptrend=0.1, 
+    def __init__(self, epochs, pmax=0.05, ptrend=0.1,
                  title="plot.uts.clusters", figtitle=None, axtitle='{name}',
                  cm=_cm.jet, width=6, height=3, frame=.1, dpi=90,
-                  overlay=False, t = {'linestyle': 'solid', 'color': 'k'}):
-        
+                 overlay=False, t={'linestyle': 'solid', 'color': 'k'}):
+
         """
         Specialized plotting function for Permutation Cluster test results
 
@@ -350,13 +350,8 @@ class clusters(_base.subplot_figure):
         ptrend : scalar
             Maximum p-value of clusters to plot as trend.
         t : dict
+            Contains kwargs for matplotlib axhline for threshold plotting.
             Plot threshold for forming clusters.
-            Contains threshold plotting properties.
-        linestyle : str
-            Line style for threshold. 
-            e.g. ['solid' | 'dashed' | 'dashdot' | 'dotted']
-        color : str
-            Line color for threshold.
         title : str
             Window title.
         figtitle : str | None
@@ -393,7 +388,7 @@ class clusters(_base.subplot_figure):
 
         width = .85
         height = .95 / Nax
-        
+
         for i, layers in enumerate(epochs):
             if i < Nax:  # create axes
                 ax = self.figure.add_subplot(Nax, 1, i + 1)
@@ -403,8 +398,8 @@ class clusters(_base.subplot_figure):
 
             # color
             color = cm(i / N)
-            cax = _ax_clusters(ax, layers, color=color, pmax=pmax, 
-                               title=title_, ptrend=ptrend, tkwargs = t)
+            cax = _ax_clusters(ax, layers, color=color, pmax=pmax,
+                               title=title_, ptrend=ptrend, tkwargs=t)
             self._caxes.append(cax)
 
         self._show(figtitle=figtitle)
@@ -482,7 +477,7 @@ def _plt_uts(ax, layer, color=None, xdim='time', kwargs={}):
 
 class _ax_clusters:
     def __init__(self, ax, layers, color=None, pmax=0.05, ptrend=0.1,
-                 tkwargs = {}, xdim='time', title=None):
+                 tkwargs={}, xdim='time', title=None):
         Y = layers[0]
 
         if title:
@@ -490,9 +485,13 @@ class _ax_clusters:
                 title = title.format(name=Y.name)
             ax.set_title(title)
 
-        if tkwargs:
-            t = Y.properties.get('threshold', None)
-            ax.axhline(t, **tkwargs)
+        t = Y.properties.get('threshold', None)
+        if t is not None:
+            if tkwargs is not None:
+                ax.axhline(t, **tkwargs)
+            else:
+                ax.axhline(t)
+
         ylabel = Y.properties.get('unit', None)
 
         _plt_uts(ax, Y, color=color, xdim=xdim)

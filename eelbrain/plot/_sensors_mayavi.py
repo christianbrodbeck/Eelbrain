@@ -502,13 +502,12 @@ class fit_coreg:
 
         # write trans file
         T_trans = self.get_T_trans('m')
-        trans = {'to':FIFF.FIFFV_COORD_MRI, 'from': FIFF.FIFFV_COORD_HEAD,
-                 'trans': T_trans}
         dig = deepcopy(self._fid_pts)  # these are in m
         for d in dig:
             coord = apply_T_1pt(d['r'], T_trans, scale=1. / 1000)
-            d['r'] = coord[:3]
-        info = {'trans': trans, 'dig': dig}
+            d['r'] = coord[:3, 0]
+        info = {'to':FIFF.FIFFV_COORD_MRI, 'from': FIFF.FIFFV_COORD_HEAD,
+                'trans': np.array(T_trans), 'dig': dig}
         write_trans(trans_fname, info)
 
 
