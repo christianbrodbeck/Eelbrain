@@ -622,11 +622,9 @@ def mne_Epochs(ds, i_start='i_start', raw=None,
 
     kwargs['name'] = name = name.format(name=ds.name)
     if 'tstart' in kwargs:
-        kwargs['tmin'] = kwargs['tstart']
-        del kwargs['tstart']
+        kwargs['tmin'] = kwargs.pop('tstart')
     if 'tstop' in kwargs:
-        kwargs['tmax'] = kwargs['tstop']
-        del kwargs['tstop']
+        kwargs['tmax'] = kwargs.pop('tstop')
 
     events = mne_events(ds=ds, i_start=i_start)
     # epochs with (event_id == None) does not use columns 1 and 2 of events
