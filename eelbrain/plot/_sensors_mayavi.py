@@ -1068,7 +1068,8 @@ class fit_dev2head:
         if fname is None:
             msg = "Destination for the modified raw file"
             ext = [('fif', 'MNE Fiff File')]
-            fname = ui.ask_saveas("Save Raw File", msg, ext)
+            fname = ui.ask_saveas("Save Raw File", msg, ext,
+                                  default=self._raw_fname)
 
         info = self.raw.info
         info['dev_head_t']['trans'] = np.array(self.est_T.I)
