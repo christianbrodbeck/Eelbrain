@@ -27,6 +27,7 @@ from mayavi.core.ui.mayavi_scene import MayaviScene
 import mne
 from mne import fiff
 from mne import write_trans
+from mne.fiff import write
 from mne.fiff.constants import FIFF
 
 from eelbrain import load
@@ -292,18 +293,6 @@ class coreg(traits.HasTraits):
 
 
 
-def fit(src, tgt):
-    def err(params):
-        est = trans(src, params)
-        return (tgt - est).ravel()
-
-    # initial guess
-    params = (0, 0, 0, 0, 0, 0)
-    est_params, _ = leastsq(err, params)
-    return est_params
-
-
-
 class head:
     """
     represents a head model with fiducials
@@ -414,6 +403,7 @@ class head:
 
 
 class fit_coreg:
+    "Fit an MRI to a head shape model."
     def __init__(self, s_from, raw, s_to=None, subjects_dir=None):
         """
         s_from : str
@@ -447,14 +437,6 @@ class fit_coreg:
         raw = mne.fiff.Raw(raw)
         pts = filter(lambda d: d['kind'] == 4, raw.info['dig'])
         pts = np.array([d['r'] for d in pts]) * 1000
-#        fid = []
-#        for d in raw.info['dig']:
-# #            d['r'] *= 1000
-#            if d['kind'] == 1:
-#                dc = d.copy()
-#                dc['r'] *= 1000
-#                raw.info['dig']
-#                fid.append(dc)
 
         fid = filter(lambda d: d['kind'] == 1, raw.info['dig'])
         self._fid_pts = fid
@@ -481,7 +463,6 @@ class fit_coreg:
         self.MRI.update_plot()
         self.DIG.update_plot()
 
-# --- fitting --- ---
     def _error(self, T):
         "For each point in pts, the distance to the closest point in pts0"
 #        err = np.empty(pts.shape)
@@ -745,38 +726,32 @@ def mult(x=1, y=1, z=1):
 
 
 
-from mne.fiff import write
-from struct import pack
-"""
-$ mne_show_fiff --in fsaverage-fiducials.fif
-100 = file ID
-101 = dir pointer
-106 = free list
-104 = {    107 = isotrak
-  3506 = MNE coordf
-   213 = dig. point [3]
-105 = }    107 = isotrak
-108 = NOP
-
-"""
 def read_fiducials(fname):
     """
-    Returns a list of  arrays
-
-    Courtesy of Alex Gramfort
+    Read fiducials from a fiff file
 
 
-    Coordinate frames:
-    1 FIFFV_COORD_DEVICE
-    2 FIFFV_COORD_ISOTRAK
-    3 FIFFV_COORD_HPI
-    4 FIFFV_COORD_HEAD
-    5 FIFFV_COORD_MRI
-    6 FIFFV_COORD_MRI_SLICE
-    7 FIFFV_COORD_MRI_DISPLAY
-    8 FIFFV_COORD_DICOM_DEVICE
-    9 FIFFV_COORD_IMAGING_DEVICE
-    0 FIFFV_COORD_UNKNOWN
+    Returns
+    -------
+    pts : list of dicts
+        List of digitizer points (each point in a dict).
+    coord_frame : int
+        The coordinate frame of the points (see below).
+
+
+    MNE Coordinate Frames
+    ---------------------
+
+    1  FIFFV_COORD_DEVICE
+    2  FIFFV_COORD_ISOTRAK
+    3  FIFFV_COORD_HPI
+    4  FIFFV_COORD_HEAD
+    5  FIFFV_COORD_MRI
+    6  FIFFV_COORD_MRI_SLICE
+    7  FIFFV_COORD_MRI_DISPLAY
+    8  FIFFV_COORD_DICOM_DEVICE
+    9  FIFFV_COORD_IMAGING_DEVICE
+    0  FIFFV_COORD_UNKNOWN
 
     """
     fid, tree, _ = fiff.open.fiff_open(fname)
@@ -803,7 +778,6 @@ def write_fiducials(fname, dig, coord_frame=0):
     """
     fid = write.start_file(fname)
     write.start_block(fid, FIFF.FIFFB_ISOTRAK)
-#    write.write_id(fid, FIFF.FIFF_MNE_COORD_FRAME, dig['coord_frame'])
     write.write_int(fid, FIFF.FIFF_MNE_COORD_FRAME, coord_frame)
     for pt in dig:
         write.write_dig_point(fid, pt)
@@ -813,139 +787,21 @@ def write_fiducials(fname, dig, coord_frame=0):
 
 
 
-def rotation(theta):
-    """
-    http://mail.scipy.org/pipermail/numpy-discussion/2009-March/040807.html
-    """
-    tx, ty, tz = theta
-
-    Rx = np.array([[1, 0, 0], [0, cos(tx), -sin(tx)], [0, sin(tx), cos(tx)]])
-    Ry = np.array([[cos(ty), 0, -sin(ty)], [0, 1, 0], [sin(ty), 0, cos(ty)]])
-    Rz = np.array([[cos(tz), -sin(tz), 0], [sin(tz), cos(tz), 0], [0, 0, 1]])
-
-    return np.dot(Rx, np.dot(Ry, Rz))
-
-
-class mrk_fix(traits.HasTraits):
-    # views
-    center = traits.Button()
-
-    # markers
-    _0 = traits.Bool(True)
-    _1 = traits.Bool(True)
-    _2 = traits.Bool(True)
-    _3 = traits.Bool(True)
-    _4 = traits.Bool(True)
-
-    scene = traits.Instance(MlabSceneModel, ())
-
-    def __init__(self, mrk, raw):
-        """
-        Parameters
-        ----------
-
-        mrk : load.kit.marker_avg_file | str(path)
-            marker_avg_file object, or path to a marker file.
-        raw : mne.fiff.Raw | str(path)
-            MNE Raw object, or path to a raw file.
-
-        """
-        traits.HasTraits.__init__(self)
-
-        if isinstance(mrk, basestring):
-            mrk = load.kit.marker_avg_file(mrk)
-        self.mrk_pts = mrk_pts = mrk.points.T
-
-        if isinstance(raw, basestring):
-            raw = load.fiff.Raw(raw)
-        dig_pts = filter(lambda d: d['kind'] == 2, raw.info['dig'])
-        dig_pts = np.vstack([d['r'] for d in dig_pts]).T * 1000
-        self.dig_pts = dig_pts
-
-        self.configure_traits()
-        self.plot()
-        self.center = True
-
-    @traits.on_trait_change('_0,_1,_2,_3,_4')
-    def plot(self):
-        mlab = self.scene.mlab
-        mlab.clf()
-
-        dig_pts = self.dig_pts
-        mrk_pts = self.mrk_pts
-
-        x, y, z = mrk_pts
-        mlab.points3d(x, y, z, color=(1, 0, 0), opacity=.3)
-
-        idx = np.array([self._0, self._1, self._2, self._3, self._4], dtype=bool)
-        if np.sum(idx) < 3:
-            mlab.text(0.1, 0.1, 'Need at least 3 points!')
-            return
-
-        for i in xrange(mrk_pts.shape[1]):
-            x, y, z = mrk_pts[:, i]
-            mlab.text3d(x, y, z, str(i), scale=10)
-
-        est_params = fit(dig_pts[:, idx], mrk_pts[:, idx])
-        est = trans(dig_pts, est_params)
-
-        # plot dig fiducials
-        x, y, z = est
-        mlab.points3d(x, y, z, color=(0, .5, 1), opacity=.3)
-        return
-
-    @traits.on_trait_change('center')
-    def _view_top(self):
-        self.set_view('center')
-
-    def set_view(self, view='frontal'):
-#        self.scene.parallel_projection = True
-#        self.scene.camera.parallel_scale = .15
-#        kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180, reset_roll=True)
-#        if view == 'left':
-#            kwargs.update(azimuth=180, roll=90)
-#        elif view == 'top':
-#            kwargs.update(elevation=0)
-#        self.scene.mlab.view(**kwargs)
-        self.scene.mlab.view(azimuth=90, elevation=0, roll=90)
-
-    # the layout of the dialog created
-    view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
-                     height=450, width=450, show_label=False),
-                HGroup('center',),
-                HGroup('_0', '_1', '_2', '_3', '_4'),
-                )
-
-
 class geom:
     """
-    represents a head model with fiducials
-
-    Complete transformations:
-
-        pts = T * origin * pts
-        T = rot * mult
-
-    split into
-
-     - scale -> apply now
-     - movement and rotation -> write to trans file
-
-    get_T_scale:
-        inv(origin) * mult * origin
-    get_T_trans:
-        inv(dig_origin) * rot * origin
+    Represents a set of points and a list of transformations, and can plot the
+    points as points or as surface to a mayavi figure.
 
     """
     def __init__(self, pts, tri=None):
         """
-        tri : None | array
+        pts : array, shape = (n_pts, 3)
+            A list of points
+        tri : None | array, shape = (n_tri, 3)
+            Triangularization (optional). A list of triangles, each triangle
+            composed of the indices of three points forming a triangle
+            together.
 
-
-        opacity
-            opacity of points
-        rep
-            representation of the surface
         """
         self.trans = []
 
@@ -957,12 +813,23 @@ class geom:
 
     def get_pts(self, T=None):
         """
-        returns `T * self.pts`  (i.e., ignores self.T)
+        returns the points contained in the object
 
-        T : None
-            None: don't transform
-            True: apply T that is stored in the object
-            matrix: apply the matrix
+
+        Parameters
+        ----------
+
+        T : None | true | Matrix (4x4)
+            None: don't transform the points
+            True: apply the transformation matrix that is stored in the object
+            matrix: apply the given transformation matrix
+
+
+        Returns
+        -------
+
+        pts : array, shape = (n_pts, 3)
+            The points.
 
         """
         if T is True:
