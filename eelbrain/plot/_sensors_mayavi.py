@@ -34,6 +34,109 @@ from eelbrain import ui
 
 
 
+class dev_head_viewer(traits.HasTraits):
+    """
+    Mayavi viewer for modifying the device-to-head coordinate coregistration.
+
+    """
+    # views
+    frontal = traits.Button()
+    left = traits.Button()
+    top = traits.Button()
+
+    # visibility
+    head_shape = traits.Bool(True)
+
+    # fitting
+    _refit = traits.Bool(False)
+    _0 = traits.Bool(True)
+    _1 = traits.Bool(True)
+    _2 = traits.Bool(True)
+    _3 = traits.Bool(True)
+    _4 = traits.Bool(True)
+
+    _save = traits.Button()
+    scene = traits.Instance(MlabSceneModel, ())
+
+    def __init__(self, raw, mrk):
+        """
+        Parameters
+        ----------
+
+        raw : mne.fiff.Raw | str(path)
+            MNE Raw object, or path to a raw file.
+        mrk : load.kit.marker_avg_file | str(path)
+            marker_avg_file object, or path to a marker file.
+
+        """
+        traits.HasTraits.__init__(self)
+        self.configure_traits()
+
+        self.fitter = dev_head_fitter(raw, mrk)
+        self.fitter.plot(fig=self.scene.mayavi_scene)
+        self._current_fit = None
+
+        self.frontal = True
+
+    @traits.on_trait_change('head_shape')
+    def _show_hs(self):
+        self.fitter.headshape.set_opacity(int(self.head_shape))
+
+    @traits.on_trait_change('frontal')
+    def _view_frontal(self):
+        self.set_view('frontal')
+
+    @traits.on_trait_change('left')
+    def _view_left(self):
+        self.set_view('left')
+
+    @traits.on_trait_change('top')
+    def _view_top(self):
+        self.set_view('top')
+
+    @traits.on_trait_change('_refit,_0,_1,_2,_3,_4')
+    def _fit(self):
+        if not self._refit:
+            if self._current_fit is not None:
+                self.fitter.reset()
+                self._current_fit = None
+            return
+
+        idx = np.array([self._0, self._1, self._2, self._3, self._4], dtype=bool)
+        if np.sum(idx) < 3:
+            ui.message("Not Enough Points Selected", "Need at least 3 points.",
+                       '!')
+            return
+
+        self.fitter.fit(idx)
+        self._current_fit = idx
+
+    @traits.on_trait_change('_save')
+    def save(self):
+        self.fitter.save()
+
+    def set_view(self, view='frontal'):
+        self.scene.parallel_projection = True
+        self.scene.camera.parallel_scale = .15
+        kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
+                      reset_roll=True, figure=self.scene.mayavi_scene)
+        if view == 'left':
+            kwargs.update(azimuth=180, roll=90)
+        elif view == 'top':
+            kwargs.update(elevation=0)
+        self.scene.mlab.view(**kwargs)
+
+    # the layout of the dialog created
+    view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
+                     height=450, width=450, show_label=False),
+                HGroup('top', 'frontal', 'left',),
+                HGroup('head_shape'),
+                HGroup('_refit', '_0', '_1', '_2', '_3', '_4'),
+                HGroup('_save'),
+                )
+
+
+
 class coreg(traits.HasTraits):
     """
 
@@ -880,6 +983,7 @@ class geom:
         return T
 
     def plot_solid(self, fig, opacity=1., rep='surface', color=(1, 1, 1)):
+        "Returns: mesh, surf"
         if self.tri is None:
             d = scipy.spatial.Delaunay(self.pts[:3].T)
             self.tri = d.convex_hull
@@ -894,7 +998,10 @@ class geom:
         if self.trans:
             self.update_plot()
 
+        return mesh, surf
+
     def plot_points(self, fig, scale=1e-2, opacity=1., color=(1, 0, 0)):
+        "Returns: src, glyph"
         x, y, z, _ = self.pts
 
         src = pipeline.scalar_scatter(x, y, z)
@@ -904,6 +1011,8 @@ class geom:
         self._plots_pt.append((src, glyph))
         if self.trans:
             self.update_plot()
+
+        return src, glyph
 
     def add_T(self, T):
         self.trans.append(T)
@@ -948,7 +1057,7 @@ class geom:
             src.data.points = pts
 
 
-class fit_dev2head:
+class dev_head_fitter:
     def __init__(self, raw, mrk):
         """
         Parameters
@@ -966,7 +1075,10 @@ class fit_dev2head:
 
         # interpret raw
         if isinstance(raw, basestring):
+            self._raw_fname = raw
             raw = load.fiff.Raw(raw)
+        else:
+            self._raw_fname = raw.info['filename']
         self.raw = raw
 
         # sensors
@@ -994,15 +1106,16 @@ class fit_dev2head:
         # T head-to-device
         trans = raw.info['dev_head_t']['trans']
         self.T_head2dev = np.matrix(trans).I
-        self.reset_T()
+        self.reset()
         self._HPI_flipped = False
 
     def fit(self, include=range(5)):
         """
         Fit the marker points to the digitizer points.
 
-        include : list
-            which points to include.
+        include : index (numpy compatible)
+            Which points to include in the fit. Index should select among
+            points [0, 1, 2, 3, 4].
         """
         def err(params):
             T = trans(*params[:3]) * rot(*params[3:])
@@ -1030,7 +1143,7 @@ class fit_dev2head:
             Add number labels to the HPI points.
 
         """
-        if fig == None:
+        if fig is None:
             fig = mlab.figure(size=size)
 
         self.mrk.plot_points(fig, scale=1.1e-2, opacity=.5, color=(1, 0, 0))
@@ -1049,7 +1162,9 @@ class fit_dev2head:
                 x, y, z = pt
                 mlab.text3d(x, y, z, str(i), scale=.01, color=(1, .8, 0))
 
-    def reset_T(self):
+        return fig
+
+    def reset(self):
         """
         Reset the current device-to-head transformation to the one contained
         in the raw file
@@ -1070,6 +1185,8 @@ class fit_dev2head:
             ext = [('fif', 'MNE Fiff File')]
             fname = ui.ask_saveas("Save Raw File", msg, ext,
                                   default=self._raw_fname)
+        if not fname:
+            return
 
         info = self.raw.info
         info['dev_head_t']['trans'] = np.array(self.est_T.I)
