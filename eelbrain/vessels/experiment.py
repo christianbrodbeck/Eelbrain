@@ -924,6 +924,8 @@ class mne_experiment(object):
             require existence (for variables in self.var_values)
 
         """
+        if experiment is not None:
+            kwargs['experiment'] = experiment
         if subject is not None:
             kwargs['subject'] = subject
             kwargs['mrisubject'] = self._mri_subjects.get(subject, None)
