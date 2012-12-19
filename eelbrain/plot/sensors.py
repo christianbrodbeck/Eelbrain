@@ -18,7 +18,7 @@ except:
     pass
 
 try:
-    from _sensors_mayavi import coreg, fit_coreg, dev_head_fitter
+    from _sensors_mayavi import coreg, mri_head_fitter, dev_head_fitter
 except:
     pass
 

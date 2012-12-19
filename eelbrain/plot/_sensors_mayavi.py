@@ -4,6 +4,7 @@ Created on Sep 30, 2012
 @author: christian
 '''
 from copy import deepcopy
+import fnmatch
 import logging
 import os
 import shutil
@@ -402,7 +403,7 @@ class head:
 
 
 
-class fit_coreg:
+class mri_head_fitter:
     "Fit an MRI to a head shape model."
     def __init__(self, s_from, raw, s_to=None, subjects_dir=None):
         """
@@ -571,7 +572,7 @@ class fit_coreg:
             else:
                 raise IOError(msg)
 
-
+        # find target paths
         bemdir = os.path.join(sdir, 'bem')
         os.makedirs(bemdir.format(sub=s_to))
         bempath = os.path.join(bemdir, '{name}.{ext}')
@@ -579,7 +580,7 @@ class fit_coreg:
         os.mkdir(surfdir.format(sub=s_to))
         surfpath = os.path.join(surfdir, '{name}')
 
-        # write T
+        # write parameters as text
         fname = os.path.join(sdir, 'T.txt').format(sub=s_to)
         with open(fname, 'w') as fid:
             fid.write(', '.join(map(str, self._params)))
@@ -595,8 +596,8 @@ class fit_coreg:
         write_trans(trans_fname, info)
 
 
+        # Scaling
         T = self.get_T_scale()
-
 
         # assemble list of surface files to duplicate
         # surf/ files
@@ -620,14 +621,14 @@ class fit_coreg:
             v = bempath.format(sub=s_to, name=surf, ext='surf')
             paths[k] = v
 
-        # make surf files (in mm)
+        # make surf files [in mm]
         for src, dest in paths.iteritems():
             pts, tri = mne.read_surface(src)
             pts = apply_T(pts, T)
             mne.write_surface(dest, pts, tri)
 
 
-        # write bem
+        # write bem [in m]
         path = os.path.join(self.subjects_dir, '{sub}', 'bem', '{sub}-{name}.fif')
         for name in ['head']:  # '5120-bem-sol',
             src = path.format(sub=s_from, name=name)
@@ -640,7 +641,7 @@ class fit_coreg:
         fname = path.format(sub=s_from, name='fiducials')
         pts, cframe = read_fiducials(fname)
         for pt in pts:
-            pt['r'] = apply_T_1pt(pt['r'], T, scale=1. / 1000)
+            pt['r'] = apply_T_1pt(pt['r'], T, scale=.001)
         fname = path.format(sub=s_to, name='fiducials')
         write_fiducials(fname, pts, cframe)
 
@@ -654,7 +655,27 @@ class fit_coreg:
         dest = path.format(sub=s_to)
         mne.write_source_spaces(dest, sss)
 
-        # duplicate files
+        # Labels [in m]
+        lbl_dir = os.path.join(self.subjects_dir, '{sub}', 'label')
+        top = lbl_dir.format(sub=s_from)
+        relpath_start = len(top) + 1
+        dest_top = lbl_dir.format(sub=s_to)
+        lbls = []
+        for dirp, _, files in os.walk(top):
+            files = fnmatch.filter(files, '*.label')
+            dirp = dirp[relpath_start:]
+            lbls.extend(map(os.path.join(dirp, '{0}').format, files))
+        for lbl in lbls:
+            l = mne.read_label(os.path.join(top, lbl))
+            pos = apply_T(l.pos, T, scale=.001)
+            l2 = mne.Label(l.vertices, pos, l.values, l.hemi, l.comment)
+            dest = os.path.join(dest_top, lbl)
+            dirname, _ = os.path.split(dest)
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
+            l2.save(dest)
+
+        # duplicate curvature files
         path = os.path.join(self.subjects_dir, '{sub}', 'surf', '{name}')
         for name in ['lh.curv', 'rh.curv']:
             src = path.format(sub=s_from, name=name)
