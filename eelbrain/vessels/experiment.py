@@ -404,7 +404,7 @@ class mne_experiment(object):
             os.makedirs(directory)
 
         # special cases that can create the file in question
-        if temp == 'trans':
+        if match and temp == 'trans':
             if not os.path.exists(path):
                 if self.auto_launch_mne is None:
                     a = ui.ask("Launch mne_analyze for Coordinate-Coregistration?",
@@ -884,7 +884,7 @@ class mne_experiment(object):
                 mridir = os.path.join(mri_sdir, 'mri')
                 if not os.path.exists(mridir):
                     rmd.append(mri_sdir)
-            trans = self.get('trans')
+            trans = self.get('trans', match=False)
             if os.path.exists(trans):
                 rmf.append(trans)
         if ui.ask("Delete?", '\n'.join(rmd + rmf), default=False):
