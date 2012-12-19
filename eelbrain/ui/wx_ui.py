@@ -16,7 +16,7 @@ def _wildcard_from_ext(ext):
         return ""
 
 
-def ask_saveas(title, message, ext):
+def ask_saveas(title, message, ext, default=None):
     """
     ext: list of (extension, description) tuples
          or None
@@ -31,6 +31,10 @@ def ask_saveas(title, message, ext):
     dialog.SetMessage(message)
 #    dialog.SetWildcard(wildcard)
     dialog.SetTitle(title)
+    if default:
+        dirname, fname = os.path.split(default)
+        dialog.SetDirectory(dirname)
+        dialog.SetFilename(fname)
     if dialog.ShowModal() == wx.ID_OK:
         path = dialog.GetPath()
         if ext is not None:

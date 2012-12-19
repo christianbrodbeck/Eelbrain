@@ -58,6 +58,7 @@ import ui
 import plot
 try:  # mayavi
     import plot.brain
+    import plot.coreg
 except:
     globals().setdefault('err', []).append('plot.brain (mayavi)')
 

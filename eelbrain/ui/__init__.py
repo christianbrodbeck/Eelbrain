@@ -34,8 +34,9 @@ def get_ui():
 
 def ask_saveas(title="Save File",
                message="Please Pick a File Name",
-               ext=[('pickled', "pickled Python object")]):
-    return get_ui().ask_saveas(title, message, ext)
+               ext=[('pickled', "pickled Python object")],
+               default=None):
+    return get_ui().ask_saveas(title, message, ext, default=default)
 
 
 
