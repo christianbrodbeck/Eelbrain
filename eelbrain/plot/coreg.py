@@ -48,6 +48,7 @@ class dev_head_viewer(traits.HasTraits):
 
     # visibility
     head_shape = traits.Bool(True)
+    mri = traits.Bool(True)
 
     # fitting
     _refit = traits.Bool(False)
@@ -60,7 +61,7 @@ class dev_head_viewer(traits.HasTraits):
     _save = traits.Button()
     scene = traits.Instance(MlabSceneModel, ())
 
-    def __init__(self, raw, mrk):
+    def __init__(self, raw, mrk, mri=None, trans=None):
         """
         Parameters
         ----------
@@ -74,15 +75,25 @@ class dev_head_viewer(traits.HasTraits):
         traits.HasTraits.__init__(self)
         self.configure_traits()
 
-        self.fitter = dev_head_fitter(raw, mrk)
+        self.fitter = dev_head_fitter(raw, mrk, mri, trans)
+        self.scene.disable_render = True
         self.fitter.plot(fig=self.scene.mayavi_scene)
         self._current_fit = None
 
         self.frontal = True
+        self.scene.disable_render = False
 
     @traits.on_trait_change('head_shape')
     def _show_hs(self):
         self.fitter.headshape.set_opacity(int(self.head_shape))
+
+    @traits.on_trait_change('mri')
+    def _show_mri(self):
+        if self.fitter.MRI:
+            self.fitter.MRI.set_opacity(int(self.mri))
+        else:
+            ui.message("No MRI Loaded", "Load an MRI when initializing the "
+                       "viewer", '!')
 
     @traits.on_trait_change('frontal')
     def _view_frontal(self):
@@ -132,7 +143,7 @@ class dev_head_viewer(traits.HasTraits):
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
                      height=450, width=450, show_label=False),
                 HGroup('top', 'frontal', 'left',),
-                HGroup('head_shape'),
+                HGroup('head_shape', 'mri'),
                 HGroup('_refit', '_0', '_1', '_2', '_3', '_4'),
                 HGroup('_save'),
                 )
@@ -946,7 +957,7 @@ class geom:
 
 
 class dev_head_fitter:
-    def __init__(self, raw, mrk):
+    def __init__(self, raw, mrk, mri=None, trans=None):
         """
         Parameters
         ----------
@@ -955,6 +966,9 @@ class dev_head_fitter:
             MNE Raw object, or path to a raw file.
         mrk : load.kit.marker_avg_file | str(path)
             marker_avg_file object, or path to a marker file.
+        mri : None |
+            Only for visualization purposes.
+
 
         """
         # interpret mrk
@@ -968,6 +982,24 @@ class dev_head_fitter:
         else:
             self._raw_fname = raw.info['filename']
         self.raw = raw
+
+        # mri-head-trans
+        if mri is None:
+            self.MRI = None
+        else:
+            if not isinstance(trans, dict):
+                trans = mne.read_trans(trans)
+            T = np.matrix(trans['trans'])
+            self.T_mri_head = T.I
+
+            # interpret mri
+            if isinstance(mri, basestring):
+                s = mne.read_bem_surfaces(mri)[0]
+                pts, tri = s['rr'], s['tris']
+            else:
+                pts, tri = mri
+            self.MRI = geom(pts, tri=tri)
+            self.MRI.set_T(self.T_mri_head)
 
         # sensors
         pts = filter(lambda d: d['kind'] == FIFF.FIFFV_MEG_CH, raw.info['chs'])
@@ -1021,6 +1053,8 @@ class dev_head_fitter:
 
         self.headshape.set_T(T)
         self.HPI.set_T(T)
+        if self.MRI:
+            self.MRI.set_T(T * self.T_mri_head)
 
     def plot(self, size=(800, 800), fig=None, HPI_ns=False):
         """
@@ -1039,6 +1073,9 @@ class dev_head_fitter:
 
         self.HPI.plot_points(fig, scale=1e-2, color=(1, .8, 0))
         self.headshape.plot_solid(fig, opacity=1., color=(1, 1, 1))
+
+        if self.MRI is not None:
+            self.MRI.plot_solid(fig, opacity=1., color=(.6, .6, .5))
 
         # label marker points
         for i, pt in enumerate(self.mrk.pts[:3].T):
@@ -1061,6 +1098,8 @@ class dev_head_fitter:
         T = self.T_head2dev
         self.headshape.set_T(T)
         self.HPI.set_T(T)
+        if self.MRI:
+            self.MRI.set_T(T * self.T_mri_head)
 
     def save(self, fname=None):
         """
