@@ -1124,3 +1124,125 @@ class dev_head_fitter:
         self.headshape.set_opacity(v)
 
 
+
+class set_nasion(traits.HasTraits):
+    """
+    Mayavi viewer for modifying the device-to-head coordinate coregistration.
+
+    """
+    # views
+    frontal = traits.Button()
+    left = traits.Button()
+    top = traits.Button()
+
+#    coord = traits.Array(float, (1, 3))
+    x = traits.Float()
+    y = traits.Float()
+    z = traits.Float()
+
+    _save = traits.Button()
+    scene = traits.Instance(MlabSceneModel, ())
+
+    def __init__(self, subject, subjects_dir=None):
+        """
+        Parameters
+        ----------
+
+        raw : mne.fiff.Raw | str(path)
+            MNE Raw object, or path to a raw file.
+        mrk : load.kit.marker_avg_file | str(path)
+            marker_avg_file object, or path to a marker file.
+
+        """
+        traits.HasTraits.__init__(self)
+        self.configure_traits()
+
+        self.scene.disable_render = True
+
+        if subjects_dir is None:
+            subjects_dir = os.environ['SUBJECTS_DIR']
+        self.subjects_dir = subjects_dir
+        self.subject = subject
+
+        fname = os.path.join(subjects_dir, subject, 'bem', subject + '-head.fif')
+        s = mne.read_bem_surfaces(fname)[0]
+        self._pts = s['rr']
+        self.head = geom(s['rr'], tri=s['tris'])
+        self.head_mesh, _ = self.head.plot_solid(self.scene.mayavi_scene,
+                                                 color=(.7, .7, .6))
+
+        self.nasion = pipeline.scalar_scatter(0, 0, 0)
+        glyph = pipeline.glyph(self.nasion, figure=self.scene.mayavi_scene,
+                               color=(1, 0, 0), opacity=0.8, scale_factor=0.01)
+
+#        self.nasion.data.points.sync_trait('data', self.coord)
+
+        picker = self.scene.mayavi_scene.on_mouse_pick(self._on_mouse_click)
+        self._current_fit = None
+
+        self.frontal = True
+        self.scene.disable_render = False
+
+    def _on_mouse_click(self, picker):
+        l = dir(picker)
+        l = filter(lambda x: not x.startswith('_'), l)
+        picked = picker.actors
+        pid = picker.point_id
+        self.x, self.y, self.z = self._pts[pid]
+
+    @traits.on_trait_change('x,y,z')
+    def on_nasion_change(self):
+        self.nasion.data.points = [(self.x, self.y, self.z)]
+
+    @traits.on_trait_change('frontal')
+    def _view_frontal(self):
+        self.set_view('frontal')
+
+    @traits.on_trait_change('left')
+    def _view_left(self):
+        self.set_view('left')
+
+    @traits.on_trait_change('top')
+    def _view_top(self):
+        self.set_view('top')
+
+    @traits.on_trait_change('_save')
+    def _on_dave(self):
+        self.save()
+
+    def save(self, fname=None, overwrite=False):
+        if fname is None:
+            fname = os.path.join(self.subjects_dir, self.subject, 'bem',
+                                 self.subject + '-fiducials.fif')
+
+        if os.path.exists(fname) and not overwrite:
+            if not ui.ask("Overwrite?", "File already exists: %r" % fname):
+                return
+
+
+        dig = [
+               {'kind': 1, 'ident': 1, 'r': np.array([.08, 0, 0])},
+               {'kind': 1, 'ident': 2, 'r': np.array([self.x, self.y, self.z])},
+               {'kind': 1, 'ident': 3, 'r': np.array([-.08, 0, 0])},
+               ]
+        write_fiducials(fname, dig, FIFF.FIFFV_COORD_MRI)
+
+    def set_view(self, view='frontal'):
+        self.scene.parallel_projection = True
+        self.scene.camera.parallel_scale = .15
+        kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
+                      reset_roll=True, figure=self.scene.mayavi_scene)
+        if view == 'left':
+            kwargs.update(azimuth=180, roll=90)
+        elif view == 'top':
+            kwargs.update(elevation=0)
+        self.scene.mlab.view(**kwargs)
+
+    # the layout of the dialog created
+    view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
+                     height=600, width=600, show_label=False),
+                HGroup('top', 'frontal', 'left',),
+                HGroup('x', 'y', 'z',),
+#                HGroup('coord',),
+                HGroup('_save'),
+                )
