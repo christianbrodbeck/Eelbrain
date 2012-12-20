@@ -11,7 +11,8 @@ import os
 
 def ask_saveas(title = "Save File",
                message = "Please Pick a File Name", 
-               ext = [('eelbrain', "pickled eelbrain experiment")]):
+               ext=[('eelbrain', "pickled eelbrain experiment")],
+               default=None):
     """
     ext: list of (extension, description) tuples
          or None

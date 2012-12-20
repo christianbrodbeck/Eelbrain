@@ -17,12 +17,6 @@ try:
 except:
     pass
 
-try:
-    from _sensors_mayavi import coreg, fit_coreg, fit_dev2head
-except:
-    pass
-
-
 import _base
 
 

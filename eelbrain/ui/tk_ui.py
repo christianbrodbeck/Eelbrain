@@ -14,7 +14,7 @@ from Tkinter import Tk
 
 
 
-def ask_saveas(title, message, ext):
+def ask_saveas(title, message, ext, default=None):
     return tkFileDialog.asksaveasfile(title=title, message=message)
 
 
