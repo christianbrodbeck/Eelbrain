@@ -10,6 +10,7 @@ import wx
 APYDOC_NEW = wx.NewId()
 ATTACH = wx.NewId()
 
+CLEAR_CACHE = wx.NewId()
 CLEAR_TERMINAL = wx.NewId()
 COLOUR_CHOOSER = wx.NewId()
 
