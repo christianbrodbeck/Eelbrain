@@ -150,6 +150,112 @@ class dev_head_viewer(traits.HasTraits):
 
 
 
+class mri_head_viewer(traits.HasTraits):
+    """
+    Mayavi viewer for fitting an MRI to a digitized head shape.
+
+    """
+    # views
+    frontal = traits.Button()
+    left = traits.Button()
+    top = traits.Button()
+
+    # fitting
+    nasion = traits.Array(float, (1, 3))
+    rotation = traits.Array(float, (1, 3))
+    scale = traits.Array(float, (1, 3), [[1, 1, 1]])
+
+    fit_scale = traits.Button()
+    fit_no_scale = traits.Button()
+
+    _save = traits.Button()
+    _save_trans = traits.Button()
+
+    scene = traits.Instance(MlabSceneModel, ())
+
+    def __init__(self, s_from, raw, s_to=None, subjects_dir=None):
+        """
+        Parameters
+        ----------
+
+        s_from : str
+            name of the source subject (e.g., 'fsaverage')
+        raw : str(path)
+            path to a raw file containing the digitizer data.
+        s_to : str | None
+            Name of the the subject for which the MRI is destined (used to
+            save MRI and in the trans file's file name). The defaut (`None`)
+            is identical with s_from.
+        subjects_dir : None | path
+            Override the SUBJECTS_DIR environment variable
+            (sys.environ['SUBJECTS_DIR'])
+
+        """
+        traits.HasTraits.__init__(self)
+        self.configure_traits()
+
+        self.fitter = mri_head_fitter(s_from, raw, s_to, subjects_dir)
+
+        self.scene.disable_render = True
+        self.fitter.plot(fig=self.scene.mayavi_scene)
+        self.frontal = True
+        self.scene.disable_render = False
+
+    @traits.on_trait_change('fit_scale,fit_no_scale')
+    def _fit(self, caller, info2):
+        if caller == 'fit_scale':
+            self.fitter.fit(method='mr')
+        elif caller == 'fit_no_scale':
+            self.fitter.fit(method='r')
+        else:
+            ui.message("Error", "Unknown caller for _fit(): %r" % caller, '!')
+
+        self.rotation = [self.fitter.get_rot()]
+        self.scale = [self.fitter.get_scale()]
+
+    @traits.on_trait_change('_save')
+    def save(self):
+        self.fitter.save()
+
+    @traits.on_trait_change('_save_trans')
+    def save_trans(self):
+        self.fitter.save_trans()
+
+    @traits.on_trait_change('nasion')
+    def set_nasion(self):
+        args = tuple(self.nasion[0])
+        self.fitter.set_nasion(*args)
+
+    @traits.on_trait_change('scale,rotation')
+    def set_trans(self):
+        args = tuple(self.rotation[0]) + tuple(self.scale[0])
+        self.fitter.set(*args)
+
+    @traits.on_trait_change('top,left,frontal')
+    def set_view(self, view='frontal', info=None):
+        self.scene.parallel_projection = True
+        self.scene.camera.parallel_scale = 150
+        kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
+                      reset_roll=True, figure=self.scene.mayavi_scene)
+        if view == 'left':
+            kwargs.update(azimuth=180, roll=90)
+        elif view == 'top':
+            kwargs.update(elevation=0)
+        self.scene.mlab.view(**kwargs)
+
+    # the layout of the dialog created
+    view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
+                     height=500, width=500, show_label=False),
+                HGroup('top', 'frontal', 'left',),
+                HGroup('fit_scale', 'fit_no_scale'),
+                HGroup('nasion'),
+                HGroup('scale'),
+                HGroup('rotation'),
+                HGroup('_save', '_save_trans'),
+                )
+
+
+
 class coreg(traits.HasTraits):
     """
 
@@ -305,126 +411,36 @@ class coreg(traits.HasTraits):
 
 
 
-class head:
-    """
-    represents a head model with fiducials
-
-    Complete transformations:
-
-        pts = T * origin * pts
-        T = rot * mult
-
-    split into
-
-     - scale -> apply now
-     - movement and rotation -> write to trans file
-
-    get_T_scale:
-        inv(origin) * mult * origin
-    get_T_trans:
-        inv(dig_origin) * rot * origin
-
-    """
-    def __init__(self, pts, fid, tri=None):
-        """
-        opacity
-            opacity of points
-        rep
-            representation of the surface
-        """
-        self.origin = trans(0, 0, 0)
-        self.rot = trans(0, 0, 0)
-        self.mult = trans(0, 0, 0)
-
-        if tri is None:
-            d = scipy.spatial.Delaunay(pts)
-            tri = d.convex_hull
-
-        self.pts = pts = np.vstack((pts.T, np.ones(len(pts))))
-        self.tri = tri
-
-        # fiducials
-        self.fid = np.vstack((fid.T, np.ones(len(fid))))
-        self.aur_r = fid[0]
-        self.nas = fid[1]
-        self.aur_l = fid[2]
-
-        self._plots = []
-
-    def get_pts(self, T=None):
-        "returns `T * self.origin * self.pts`  (i.e., ignores self.T)"
-        Tc = self.origin
-        if T is not None:
-            Tc = T * Tc
-
-        pts = Tc * self.pts
-        return np.array(pts[:3].T)
-
-    def get_T(self):
-        "complete transformation (T * origin)"
-        return self.rot * self.mult * self.origin
-
-    def plot(self, fig, pt_scale=10, opacity=1., rep='surface'):
-        h = {}
-        self._plots.append(h)
-
-        pts = self.pts
-        tri = self.tri
-        x, y, z, _ = pts
-        mesh = pipeline.triangular_mesh_source(x, y, z, tri, figure=fig)
-        h['surf'] = pipeline.surface(mesh, figure=fig, color=(1, 1, 1),
-                                     representation=rep)
-
-        kwargs = dict(color=(1, 0, 0), figure=fig, scale_factor=pt_scale,
-                      opacity=opacity)
-        h['mesh'] = mesh
-
-        x, y, z = self.nas
-        h['nas_pt'] = src = pipeline.scalar_scatter(x, y, z)
-        pipeline.glyph(src, **kwargs)
-        kwargs['color'] = (1, 1, 0)
-        x, y, z = self.aur_l
-        h['aur_l_pt'] = src = pipeline.scalar_scatter(x, y, z)
-        pipeline.glyph(src, **kwargs)
-        x, y, z = self.aur_r
-        h['aur_r_pt'] = src = pipeline.scalar_scatter(x, y, z)
-        pipeline.glyph(src, **kwargs)
-
-    def set_origin(self, x, y, z):
-        self.origin = trans(-x, -y, -z)
-        self.update_plot()
-
-    def set_T(self, rot, mult):
-        self.mult = mult
-        self.rot = rot
-        self.update_plot()
-
-    def update_plot(self):
-        T = self.get_T()
-        pts = np.array(T * self.pts)
-        fid = np.array(T * self.fid)
-        for h in self._plots:
-            # mesh
-            h['mesh'].data.points = pts[:3].T
-
-            # points
-            h['aur_r_pt'].data.points = fid[:3, :1].T
-            h['nas_pt'].data.points = fid[:3, 1:2].T
-            h['aur_l_pt'].data.points = fid[:3, 2:].T
-
-
-
 class mri_head_fitter:
-    "Fit an MRI to a head shape model."
+    """
+    Fit an MRI to a head shape model.
+
+    Distances are internally represented in mm and converted where needed.
+
+    Transforms applied to MRI:
+
+    1) move MRI nasion to origin
+    2) apply scaling
+    3) apply rotation
+    2) move MRI nasion to headshape nasion
+
+    """
     def __init__(self, s_from, raw, s_to=None, subjects_dir=None):
         """
+        Parameters
+        ----------
+
         s_from : str
             name of the source subject (e.g., 'fsaverage')
         raw : str(path)
             path to a raw file containing the digitizer data.
-        dest : str
-            name of the destination for the new files (i.e. the subject for
-            which the files are adapted)
+        s_to : str | None
+            Name of the the subject for which the MRI is destined (used to
+            save MRI and in the trans file's file name). The defaut (`None`)
+            is identical with s_from.
+        subjects_dir : None | path
+            Override the SUBJECTS_DIR environment variable
+            (sys.environ['SUBJECTS_DIR'])
 
         """
         # interpret paths
@@ -439,41 +455,41 @@ class mri_head_fitter:
         # MRI head shape
         fname = os.path.join(subjects_dir, s_from, 'bem', 'outer_skin.surf')
         pts, tri = mne.read_surface(fname)
+        self.mri_hs = geom(pts, tri)
+
         fname = os.path.join(subjects_dir, s_from, 'bem', s_from + '-fiducials.fif')
-        fid, _ = read_fiducials(fname)
-        fid = np.array([d['r'] for d in fid]) * 1000
-        self.MRI = head(pts, fid, tri=tri)
+        dig, _ = read_fiducials(fname)
+        self.mri_fid = geom_fid(dig, unit='mm')
 
         # digitizer data from raw
         self._raw = raw
         raw = mne.fiff.Raw(raw)
         pts = filter(lambda d: d['kind'] == 4, raw.info['dig'])
         pts = np.array([d['r'] for d in pts]) * 1000
-
-        fid = filter(lambda d: d['kind'] == 1, raw.info['dig'])
-        self._fid_pts = fid
-        fid = np.array([d['r'] for d in fid]) * 1000
-        self.DIG = head(pts, fid,)
+        self.dig_hs = geom(pts)
+        self.dig_fid = geom_fid(raw.info['dig'], unit='mm')
 
         # move to the origin
-        self.MRI.set_origin(*self.MRI.nas[:3])
-        self.DIG.set_origin(*self.DIG.nas[:3])
-        # store the origin distance
-        self._trans0 = self.DIG.nas[:3] - self.DIG.nas[:3]
+        self.mri_o_t = trans(*self.mri_fid.nas).I
+        self.o_dig_t = trans(*self.dig_fid.nas)
 
         self.subjects_dir = subjects_dir
         self.s_from = s_from
         self.s_to = s_to
 
-    def plot(self, size=(512, 512)):
-        self.fig = fig = mlab.figure(size=size)
-        self.MRI.plot(fig)
-        self.DIG.plot(fig, pt_scale=40, opacity=.25, rep='wireframe')
-        self.update_plot()
+        self.nas_t = trans(0, 0, 0)
+        self.set(0, 0, 0, 1, 1, 1)
 
-    def update_plot(self):
-        self.MRI.update_plot()
-        self.DIG.update_plot()
+    def plot(self, size=(512, 512), fig=None):
+        if fig is None:
+            fig = mlab.figure(size=size)
+
+        self.fig = fig
+        self.mri_hs.plot_solid(fig)
+        self.mri_fid.plot_points(fig, scale=5)
+        self.dig_hs.plot_solid(fig, opacity=.5, rep='wireframe')
+        self.dig_fid.plot_points(fig, scale=40, opacity=.25)
+        return fig
 
     def _error(self, T):
         "For each point in pts, the distance to the closest point in pts0"
@@ -483,15 +499,22 @@ class mri_head_fitter:
 #            dist = np.sqrt(np.sum(dist3d ** 2, 1))
 #            idx = dist.argmin()
 #            err[i] = dist3d[idx]
-        pts = self.DIG.get_pts()
-        pts0 = self.MRI.get_pts(T)
+        pts = self.dig_hs.get_pts()
+        pts0 = self.mri_hs.get_pts(self.o_dig_t * T * self.nas_t * self.mri_o_t)
         Y = scipy.spatial.distance.cdist(pts, pts0, 'euclidean')
         dist = Y.min(axis=1)
         return dist
 
-    def _dist_fixnas(self, param):
+    def _dist_fixnas_mr(self, param):
         rx, ry, rz, mx, my, mz = param
         T = rot(rx, ry, rz) * mult(mx, my, mz)
+        err = self._error(T)
+        logging.debug("Params = %s -> Error = %s" % (param, np.sum(err ** 2)))
+        return err
+
+    def _dist_fixnas_r(self, param):
+        rx, ry, rz = param
+        T = rot(rx, ry, rz)
         err = self._error(T)
         logging.debug("Params = %s -> Error = %s" % (param, np.sum(err ** 2)))
         return err
@@ -503,9 +526,14 @@ class mri_head_fitter:
         logging.debug("Params = %s -> Error = %s" % (param, np.sum(err ** 2)))
         return err
 
-    def _estimate_fixnas(self, params=(0, 0, 0, 1, 1, 1), **kwargs):
+    def _estimate_fixnas_mr(self, params=(0, 0, 0, 1, 1, 1), **kwargs):
         params = np.asarray(params, dtype=float)
-        est_params, self.info = leastsq(self._dist_fixnas, params, **kwargs)
+        est_params, self.info = leastsq(self._dist_fixnas_mr, params, **kwargs)
+        return est_params
+
+    def _estimate_fixnas_r(self, params=(0, 0, 0), **kwargs):
+        params = np.asarray(params, dtype=float)
+        est_params, self.info = leastsq(self._dist_fixnas_r, params, **kwargs)
         return est_params
 
     def _estimate_fixnas_1mult(self, params=(0, 0, 0, 1), **kwargs):
@@ -513,16 +541,23 @@ class mri_head_fitter:
         est_params, self.info = leastsq(self._dist_fixnas_1mult, params, **kwargs)
         return est_params
 
-    def fit(self, epsfcn=0.01, method='3mult', **kwargs):
+    def fit(self, epsfcn=0.01, method='mr', **kwargs):
         """
+        method : 'mr' | 'r'
+            m: multiplication;
+            r: rotationl;
+
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.leastsq.html
         """
         t0 = time.time()
         if method == '1mult':
             est = self._estimate_fixnas_1mult(epsfcn=epsfcn, **kwargs)
             est = np.hstack((est, np.ones(2) * est[-1:]))
-        elif method == '3mult':
-            est = self._estimate_fixnas(epsfcn=epsfcn, **kwargs)
+        elif method == 'mr':
+            est = self._estimate_fixnas_mr(epsfcn=epsfcn, **kwargs)
+        elif method == 'r':
+            est = self._estimate_fixnas_r(epsfcn=epsfcn, **kwargs)
+            est = tuple(est) + (1, 1, 1)
         else:
             raise ValueError("method")
         self.set(*est)
@@ -530,27 +565,40 @@ class mri_head_fitter:
         print "%r took %.2f minutes" % (method, dt / 60)
         return est
 
-    def get_T_scale(self):
-        return self.MRI.origin.I * self.DIG.mult * self.MRI.origin
-
     def get_T_trans(self, unit='mm'):
         "T for the trans file;, rot + translation "
+        T0 = self.nas_t * self.mri_o_t
         if unit == 'mm':
-            T = self.DIG.origin.I * self.MRI.rot * self.MRI.origin
+            T = self.o_dig_t * self.trans_rot * T0
         elif unit == 'm':
-            trans0 = self.MRI.origin.copy()
-            trans0[:3, 3] /= 1000
-            trans2 = self.DIG.origin.I
-            trans2[:3, 3] /= 1000
-            T = trans2 * self.MRI.rot * trans0
+            T0[:3, 3] /= 1000
+            trans1 = self.o_dig_t.copy()
+            trans1[:3, 3] /= 1000
+            T = trans1 * self.trans_rot * T0
         else:
             raise ValueError('Unknown unit %r' % unit)
         return T.I
 
-    def save(self, s_to=None):
+    def get_rot(self):
+        return self._params[:3]
+
+    def get_scale(self):
+        return self._params[3:]
+
+    def save(self, s_to=None, fwd_args=["--ico", '4', '--surf'], make_fwd=True):
         """
         s_to : None | str
             Override s_to set on initialization.
+
+        fwd_args : list
+            List of arguments for the `mne_setup_forward_model` call.
+
+        make_fwd : bool | 'block'
+            Call `mne_setup_forward_model` at the end. With True, the command
+            is called and the corresponding Popen object returned. With
+            'block', the Python interpreter is blocked until
+            `mne_setup_forward_model` finishes.
+
         """
         s_from = self.s_from
         if s_to is None:
@@ -560,26 +608,12 @@ class mri_head_fitter:
                 s_to = self.s_to
 
         # make sure we have an empty target directory
-        err = []
-        rm_sdir = False
-        rm_trans = False
         sdir = os.path.join(self.subjects_dir, '{sub}')
         sdir_dest = sdir.format(sub=s_to)
         if os.path.exists(sdir_dest):
-            err.append("Subject directory exists: %r." % sdir_dest)
-            rm_sdir = True
-        rawdir = os.path.dirname(self._raw)
-        trans_fname = os.path.join(rawdir, s_to + '-trans.fif')
-        if os.path.exists(trans_fname):
-            err.append("Trans file exists: %r" % trans_fname)
-            rm_trans = True
-        if err:
-            msg = '\n'.join(err)
-            if ui.ask("Overwrite?", msg):
-                if rm_sdir:
-                    shutil.rmtree(sdir_dest)
-                if rm_trans:
-                    os.remove(trans_fname)
+            msg = ("Subject directory exists: %r." % sdir_dest)
+            if ui.ask("Overwrite MRI?", msg):
+                shutil.rmtree(sdir_dest)
             else:
                 raise IOError(msg)
 
@@ -597,18 +631,11 @@ class mri_head_fitter:
             fid.write(', '.join(map(str, self._params)))
 
         # write trans file
-        T_trans = self.get_T_trans('m')
-        dig = deepcopy(self._fid_pts)  # these are in m
-        for d in dig:
-            coord = apply_T_1pt(d['r'], T_trans, scale=1. / 1000)
-            d['r'] = coord[:3, 0]
-        info = {'to':FIFF.FIFFV_COORD_MRI, 'from': FIFF.FIFFV_COORD_HEAD,
-                'trans': np.array(T_trans), 'dig': dig}
-        write_trans(trans_fname, info)
+        self.save_trans(s_to=s_to)
 
-
-        # Scaling
-        T = self.get_T_scale()
+        # MRI Scaling
+        T0 = self.nas_t * self.mri_o_t
+        T = T0.I * self.trans_scale * T0
 
         # assemble list of surface files to duplicate
         # surf/ files
@@ -693,16 +720,62 @@ class mri_head_fitter:
             dest = path.format(sub=s_to, name=name)
             shutil.copyfile(src, dest)
 
-#        subprocess.call(["mne_setup_forward_model", "--subject", "R0040",
-#                         "--ico", "4", "--surf"])
+        # run mne_setup_forward_model
+        if not make_fwd:
+            return
 
-    def set(self, rx, ry, rz, mx, my, mz, error=False):
+        cmd = ["mne_setup_forward_model", "--subject", "R0040"] + fwd_args
+
+        if make_fwd == 'block':
+            subprocess.call(cmd)
+        else:
+            return subprocess.Popen(cmd)
+
+    def save_trans(self, fname=None, s_to=None):
+        """
+        Save only the trans file (with structural MRI)
+        """
+        if fname is None:
+            if s_to is None:
+                if self.s_to is None:
+                    raise IOError("No destination specified")
+                else:
+                    s_to = self.s_to
+            rawdir = os.path.dirname(self._raw)
+            fname = os.path.join(rawdir, s_to + '-trans.fif')
+
+        if os.path.exists(fname):
+            msg = ("Trans file exists: %r" % fname)
+            if ui.ask("Overwrite Trans?", msg):
+                os.remove(fname)
+            else:
+                raise IOError(msg)
+
+        # in m
+        trans = self.get_T_trans('m')
+        dig = deepcopy(self.dig_fid.source_dig)  # these are in m
+        for d in dig:
+            coord = apply_T_1pt(d['r'], trans, scale=1. / 1000)
+            d['r'] = coord[:3, 0]
+        info = {'to':FIFF.FIFFV_COORD_MRI, 'from': FIFF.FIFFV_COORD_HEAD,
+                'trans': np.array(trans), 'dig': dig}
+        write_trans(fname, info)
+
+    def set(self, rx, ry, rz, mx, my, mz):
         self._params = (rx, ry, rz, mx, my, mz)
-        r = rot(rx, ry, rz)
-        m = mult(mx, my, mz)
-        self.MRI.set_T(r, m)
-        if error:
-            print "error SS = %g" % np.sum(self._error(r * m) ** 2)
+        self.trans_rot = rot(rx, ry, rz)
+        self.trans_scale = mult(mx, my, mz)
+        self.update()
+
+    def set_nasion(self, x, y, z):
+        self.nas_t = trans(x, y, z)
+        self.update()
+
+    def update(self):
+        T = self.o_dig_t * self.trans_rot * self.trans_scale * self.nas_t * self.mri_o_t
+        T = T.I
+        for g in [self.dig_hs, self.dig_fid]:
+            g.set_T(T)
 
 
 
@@ -819,7 +892,7 @@ def write_fiducials(fname, dig, coord_frame=0):
 
 
 
-class geom:
+class geom(object):
     """
     Represents a set of points and a list of transformations, and can plot the
     points as points or as surface to a mayavi figure.
@@ -954,6 +1027,31 @@ class geom:
             mesh.data.points = pts
         for src, _ in self._plots_pt:
             src.data.points = pts
+
+
+
+class geom_fid(geom):
+    def __init__(self, dig, unit='mm'):
+        if unit == 'mm':
+            x = 1000
+        elif unit == 'm':
+            x = 1
+        else:
+            raise ValueError('Unit: %r' % unit)
+
+        dig = filter(lambda d: d['kind'] == 1, dig)
+        pts = np.array([d['r'] for d in dig]) * x
+
+        super(geom_fid, self).__init__(pts)
+        self.unit = unit
+        self.dig = dig
+
+        self.source_dig = dig
+        digs = {d['ident']: d for d in dig}
+        self.rap = digs[1]['r'] * x
+        self.nas = digs[2]['r'] * x
+        self.lap = digs[3]['r'] * x
+
 
 
 class dev_head_fitter:
