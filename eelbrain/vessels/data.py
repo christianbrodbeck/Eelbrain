@@ -256,8 +256,16 @@ def cell_label(cell, delim=' '):
 
 def align(d1, d2, out='data', i1='index', i2='index'):
     """
-    Aligns two data-objects d1 and d2 (i.e., case 0 of d1 should correspond to
-    case 0 of d2 etc.). d1 is used as the basis for the case sequence.
+    Aligns two data-objects d1 and d2 based on two index variables, i1 and i2.
+
+    Before aligning, d1 and d2 describe the same cases, but their order does
+    not correspond. Align uses the indexes (i1 and i2) to match each case in
+    d2 to a case in d1 (i.e., d1 is used as the basis for the case order).
+    Cases that are not present in both d1 and d2 are dropped.
+
+
+    Parameters
+    ----------
 
     If d1 and d2 are datasets, i1 and i2 can be keys for variables in d1 and
     d2. If d1 an d2 are other data objects, i1 and i2 have to be actual indices
@@ -271,6 +279,12 @@ def align(d1, d2, out='data', i1='index', i2='index'):
         **'data'**: returns the two aligned data objects. **'index'**: returns two
         indices index1 and index2 which can be used to align the datasets with
         ``ds1[index1]; ds2[index2]``.
+
+
+    Example
+    -------
+
+    see examples/datasets/align.py
 
     """
     i1 = asvar(i1, ds=d1)
