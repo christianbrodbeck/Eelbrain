@@ -245,7 +245,7 @@ class select_cases_butterfly(eelfigure):
         self._case_axes = []
         self._case_segs = []
         for i, ID in enumerate(seg_IDs):
-            case = self._data.get_case(ID)
+            case = self._data[ID]
             state = self._target[ID]
             if state:
                 color = 'k'

@@ -1471,16 +1471,6 @@ class ndvar(object):
     def get_axis(self, dim):
         return self._dim_2_ax[dim]
 
-    def get_case(self, index, name="{name}[{index}]"):
-        "returns a single case (epoch) as ndvar"
-        if not self.has_case:
-            raise DimensionMismatchError("%r does not have cases" % self)
-
-        x = self.x[index]
-        name = name.format(name=self.name, index=index)
-        case = ndvar(x, dims=self.dims[1:], properties=self.properties, name=name)
-        return case
-
     def get_data(self, dims):
         """
         returns the data with a specific ordering of dimension as indicated in
@@ -1638,12 +1628,6 @@ class ndvar(object):
                 return var(x, name=name)
             else:
                 return ndvar(x, dims=dims, name=name, properties=properties)
-
-    def mean(self, name="mean({name})"):  # FIXME: Do I need this?
-        if self.has_case:
-            return self.summary(func=np.mean, name=name)
-        else:
-            return self
 
     def subdata(self, **kwargs):
         """
