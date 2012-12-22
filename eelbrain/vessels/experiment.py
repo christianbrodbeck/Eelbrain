@@ -649,9 +649,10 @@ class mne_experiment(object):
             target path to save the plot
 
         """
-        proj = mne.proj.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
+        proj = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
 
-        sensor = load.fiff.sensor_net(epochs)
+        picks = mne.epochs.pick_types(epochs.info)
+        sensor = load.fiff.sensor_net(epochs, picks=picks)
 
         # plot PCA components
         PCA = []
