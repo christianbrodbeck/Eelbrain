@@ -1197,27 +1197,34 @@ class ndvar(object):
         Arguments
         ---------
 
-        For each argument, the example assumes you are importing 600 epochs of
-        EEG data for 80 time points from 32 sensors.
+        x : array
+            The data
 
         dims : tuple
-            the dimensions characterizing the shape of each case. If present,
-            ``'cases'`` is provided as a :py:class:`str`, and should always
-            occupy the first axis.  E.g.,
-            ``('case', var('time', range(-.2, .6, .01)), sensor_net)``.
-
-        x : array
-            The data, with axes corresponding to the ``dims`` argument. E.g.,
-            data with shape ``(600, 80, 32)``.
+            The dimensions characterizing the axes of the data. If present,
+            ``'case'`` should be provided as a :py:class:`str`, and should
+            always occupy the first position.
 
         properties : dict
-            data properties dictionary
+            A dictionary with data properties.
 
 
          .. note::
             ``data`` and ``dims`` are stored without copying. A shallow
             copy of ``properties`` is stored. Make sure the relevant objects
             are not modified externally later.
+
+
+        Examples
+        --------
+
+        Importing 600 epochs of data for 80 time points:
+
+            >>> time = var('time', range(-.2, .6, .01))
+            >>> dims = ('case', time)
+            >>> data.shape
+            (600, 80)
+            >>> Y = ndvar(data, dims=dims)
 
         """
         # check data shape
@@ -1327,7 +1334,7 @@ class ndvar(object):
             raise TypeError
 
     def _ialign(self, other):
-        "align for self-modifying operations (+= ...)"
+        "align for self-modifying operations (+=, ...)"
         if isvar(other):
             assert self.has_case
             n = len(other)
