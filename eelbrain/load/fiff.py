@@ -646,7 +646,7 @@ def sensor_net(fiff, picks=None, name='fiff-sensors'):
     """
     info = fiff.info
     if picks is None:
-        chs = info['chs'].copy()
+        chs = info['chs']
     else:
         chs = [info['chs'][i] for i in picks]
 

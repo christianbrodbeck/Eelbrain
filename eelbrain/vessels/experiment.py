@@ -41,7 +41,7 @@ from eelbrain import fmtxt
 from eelbrain.utils import subp
 from eelbrain import load
 from eelbrain import plot
-from eelbrain.vessels.data import ndvar, cellname
+from eelbrain.vessels.data import ndvar
 from eelbrain.utils.print_funcs import printlist
 from eelbrain.utils.kit import split_label
 
@@ -103,6 +103,7 @@ class mne_experiment(object):
         Currently affects only "trans" files.
 
     """
+    auto_launch_mne = False
     bad_channels = defaultdict(list)  # (sub, exp) -> list
     subject_re = re.compile('R\d{4}$')
     # the default value for the common_brain (can be overridden using the set
@@ -136,7 +137,6 @@ class mne_experiment(object):
         # settings
         self.root = root
         self._kit2fiff_args = kit2fiff_args
-        self.auto_launch_mne = True
 
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
 
@@ -595,7 +595,9 @@ class mne_experiment(object):
 
     def make_fake_mris(self, subject=None, exclude=None, **kwargs):
         """
-        ! make sure to retrieve proper rawfif using `kwargs`
+        ..warning::
+            This is a quick-and-dirty method. Coregistration should be
+            supervised using plot.coreg.mri_head_viewer.
 
         """
         self.set(**kwargs)
@@ -618,7 +620,7 @@ class mne_experiment(object):
 
             s_from = self.get('common_brain')
             raw = self.get('rawfif')
-            p = plot.sensors.fit_coreg(s_from, raw, s_to)
+            p = plot.coreg.mri_head_fitter(s_from, raw, s_to)
             p.fit()
             p.save()
             self.set_mri_subject(s_to, s_to)
@@ -878,18 +880,27 @@ class mne_experiment(object):
         """
         rmd = []  # dirs
         rmf = []  # files
+        sub = []
         for _ in self.iter_vars(['subject']):
             mri_sdir = self.get('mri_sdir')
             if os.path.exists(mri_sdir):
                 mridir = os.path.join(mri_sdir, 'mri')
                 if not os.path.exists(mridir):
                     rmd.append(mri_sdir)
-            trans = self.get('trans', match=False)
-            if os.path.exists(trans):
-                rmf.append(trans)
-        if ui.ask("Delete?", '\n'.join(rmd + rmf), default=False):
+                    sub.append(self.get('subject'))
+                    trans = self.get('trans', match=False)
+                    if os.path.exists(trans):
+                        rmf.append(trans)
+
+        if not rmf and not rmd:
+            ui.message("No Fake MRIs Found", "")
+            return
+
+        if ui.ask("Delete?", '\n'.join(sorted(rmd + rmf)), default=False):
             map(shutil.rmtree, rmd)
             map(os.remove, rmf)
+            for s in sub:
+                self.set_mri_subject(s, self._common_brain)
 
     def run_mne_analyze(self, subject=None, modal=False):
         mri_dir = self.get('mri_dir')
