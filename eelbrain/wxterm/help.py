@@ -86,13 +86,15 @@ class HelpViewer(wx.Frame):
         self.history = []
         self.current_history_id = -1
         
-        # TOOLBAR
+        # TOOLBAR ---
         self.toolbar = tb = self.CreateToolBar(wx.TB_HORIZONTAL)
         tb.SetToolBitmapSize(size=(32,32))
+
         # hide
         tb.AddLabelTool(ID.HELP_HIDE, "Hide", Icon("tango/status/image-missing"))
         self.Bind(wx.EVT_TOOL, self.OnHide, id=ID.HELP_HIDE) 
         tb.AddSeparator()
+
         # forward/backward
         tb.AddLabelTool(wx.ID_HOME, "Home", Icon("tango/places/start-here"))
         self.Bind(wx.EVT_TOOL, self.OnHome, id=wx.ID_HOME)
@@ -124,11 +126,22 @@ class HelpViewer(wx.Frame):
 #        height = self.GetMaxHeight()
 #        self.SetMaxSize((600, height))
         
+        if wx.__version__ >= '2.9':
+            tb.AddStretchableSpace()
+        else:
+            tb.AddSeparator()
+
+        # clear cache
+        tb.AddLabelTool(ID.CLEAR_CACHE, "Clear Cache", Icon("tango/actions/edit-clear"))
+        self.Bind(wx.EVT_TOOL, self.OnClearCache, id=ID.CLEAR_CACHE)
+
         # finish
         tb.Realize()
+
     def GetCurLine(self):
         # FIXME: better implementation that returns the actual line!
         return self.help_panel.GetCurLine()
+
     def Help_Lookup(self, topic=None, name=None):
         """
         Display help for a topic. Topic can be 
@@ -156,6 +169,9 @@ class HelpViewer(wx.Frame):
         
         self.Raise()
     
+    def OnClearCache(self, event):
+        self.help_panel.delete_cache()
+
     def OnHide(self, event=None):
         self.Show(False)
     

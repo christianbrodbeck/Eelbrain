@@ -256,8 +256,16 @@ def cell_label(cell, delim=' '):
 
 def align(d1, d2, out='data', i1='index', i2='index'):
     """
-    Aligns two data-objects d1 and d2 (i.e., case 0 of d1 should correspond to
-    case 0 of d2 etc.). d1 is used as the basis for the case sequence.
+    Aligns two data-objects d1 and d2 based on two index variables, i1 and i2.
+
+    Before aligning, d1 and d2 describe the same cases, but their order does
+    not correspond. Align uses the indexes (i1 and i2) to match each case in
+    d2 to a case in d1 (i.e., d1 is used as the basis for the case order).
+    Cases that are not present in both d1 and d2 are dropped.
+
+
+    Parameters
+    ----------
 
     If d1 and d2 are datasets, i1 and i2 can be keys for variables in d1 and
     d2. If d1 an d2 are other data objects, i1 and i2 have to be actual indices
@@ -271,6 +279,12 @@ def align(d1, d2, out='data', i1='index', i2='index'):
         **'data'**: returns the two aligned data objects. **'index'**: returns two
         indices index1 and index2 which can be used to align the datasets with
         ``ds1[index1]; ds2[index2]``.
+
+
+    Example
+    -------
+
+    see examples/datasets/align.py
 
     """
     i1 = asvar(i1, ds=d1)
@@ -1183,27 +1197,34 @@ class ndvar(object):
         Arguments
         ---------
 
-        For each argument, the example assumes you are importing 600 epochs of
-        EEG data for 80 time points from 32 sensors.
+        x : array
+            The data
 
         dims : tuple
-            the dimensions characterizing the shape of each case. If present,
-            ``'cases'`` is provided as a :py:class:`str`, and should always
-            occupy the first axis.  E.g.,
-            ``('case', var('time', range(-.2, .6, .01)), sensor_net)``.
-
-        x : array
-            The data, with axes corresponding to the ``dims`` argument. E.g.,
-            data with shape ``(600, 80, 32)``.
+            The dimensions characterizing the axes of the data. If present,
+            ``'case'`` should be provided as a :py:class:`str`, and should
+            always occupy the first position.
 
         properties : dict
-            data properties dictionary
+            A dictionary with data properties.
 
 
          .. note::
             ``data`` and ``dims`` are stored without copying. A shallow
             copy of ``properties`` is stored. Make sure the relevant objects
             are not modified externally later.
+
+
+        Examples
+        --------
+
+        Importing 600 epochs of data for 80 time points:
+
+            >>> time = var('time', range(-.2, .6, .01))
+            >>> dims = ('case', time)
+            >>> data.shape
+            (600, 80)
+            >>> Y = ndvar(data, dims=dims)
 
         """
         # check data shape
@@ -1313,7 +1334,7 @@ class ndvar(object):
             raise TypeError
 
     def _ialign(self, other):
-        "align for self-modifying operations (+= ...)"
+        "align for self-modifying operations (+=, ...)"
         if isvar(other):
             assert self.has_case
             n = len(other)
@@ -1456,16 +1477,6 @@ class ndvar(object):
 
     def get_axis(self, dim):
         return self._dim_2_ax[dim]
-
-    def get_case(self, index, name="{name}[{index}]"):
-        "returns a single case (epoch) as ndvar"
-        if not self.has_case:
-            raise DimensionMismatchError("%r does not have cases" % self)
-
-        x = self.x[index]
-        name = name.format(name=self.name, index=index)
-        case = ndvar(x, dims=self.dims[1:], properties=self.properties, name=name)
-        return case
 
     def get_data(self, dims):
         """
@@ -1624,12 +1635,6 @@ class ndvar(object):
                 return var(x, name=name)
             else:
                 return ndvar(x, dims=dims, name=name, properties=properties)
-
-    def mean(self, name="mean({name})"):  # FIXME: Do I need this?
-        if self.has_case:
-            return self.summary(func=np.mean, name=name)
-        else:
-            return self
 
     def subdata(self, **kwargs):
         """
