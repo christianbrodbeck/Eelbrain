@@ -36,6 +36,17 @@ from eelbrain import ui
 
 
 
+def is_fake_mri(mri_dir):
+    items = os.listdir(mri_dir)
+    nc = [c for c in ['bem', 'label', 'surf', 'T.txt'] if c not in items]
+    c = [c for c in ['mri', 'src', 'stats'] if c in items]
+    if c or nc:
+        return False
+    else:
+        return True
+
+
+
 class dev_head_viewer(traits.HasTraits):
     """
     Mayavi viewer for modifying the device-to-head coordinate coregistration.
@@ -612,6 +623,9 @@ class mri_head_fitter:
         sdir_dest = sdir.format(sub=s_to)
         if os.path.exists(sdir_dest):
             msg = ("Subject directory exists: %r." % sdir_dest)
+            if not is_fake_mri(sdir_dest):
+                msg = os.linesep.join((msg, "", "WARNING: Does not seem to be"
+                                       " a fake MRI directory"))
             if ui.ask("Overwrite MRI?", msg):
                 shutil.rmtree(sdir_dest)
             else:

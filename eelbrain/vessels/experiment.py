@@ -885,8 +885,7 @@ class mne_experiment(object):
         for _ in self.iter_vars(['subject']):
             mri_sdir = self.get('mri_sdir')
             if os.path.exists(mri_sdir):
-                mridir = os.path.join(mri_sdir, 'mri')
-                if not os.path.exists(mridir):
+                if plot.coreg.is_fake_mri(mri_sdir):
                     rmd.append(mri_sdir)
                     sub.append(self.get('subject'))
                     trans = self.get('trans', match=False)
