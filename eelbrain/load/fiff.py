@@ -623,8 +623,12 @@ def mne_Epochs(ds, i_start='i_start', raw=None,
     kwargs['name'] = name = name.format(name=ds.name)
     if 'tstart' in kwargs:
         kwargs['tmin'] = kwargs.pop('tstart')
+    elif not 'tmin' in kwargs:
+        kwargs['tmin'] = -0.1
     if 'tstop' in kwargs:
         kwargs['tmax'] = kwargs.pop('tstop')
+    elif not 'tmax' in kwargs:
+        kwargs['tmax'] = 0.5
 
     events = mne_events(ds=ds, i_start=i_start)
     # epochs with (event_id == None) does not use columns 1 and 2 of events
@@ -642,13 +646,10 @@ def sensor_net(fiff, picks=None, name='fiff-sensors'):
     """
     info = fiff.info
     if picks is None:
-        if hasattr(fiff, 'picks'):
-            picks = fiff.picks
+        chs = info['chs']
+    else:
+        chs = [info['chs'][i] for i in picks]
 
-        if picks is None:
-            picks = mne.fiff.pick_types(info)
-
-    chs = [info['chs'][i] for i in picks]
     ch_locs = []
     ch_names = []
     for ch in chs:

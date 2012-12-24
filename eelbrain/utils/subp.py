@@ -482,7 +482,7 @@ def process_raw(raw, save='{raw}_filt', args=['projoff'], rm_eve=True, **kwargs)
 
 
 
-def _run(cmd, v=None, cwd=None):
+def _run(cmd, v=None, cwd=None, block=True):
     """
     cmd: list of strings
         command that is submitted to subprocess.Popen.
@@ -499,49 +499,72 @@ def _run(cmd, v=None, cwd=None):
         for line in cmd:
             print repr(line)
 
-    cmd = [unicode(c) for c in cmd]
-    sp = subprocess.Popen(cmd, cwd=cwd,
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = sp.communicate()
+    cmd = map(unicode, cmd)
+    sp = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE)
 
-    if v > 1:
-        print "\n> stdout:"
-        print stdout
+    if block:
+        stdout, stderr = sp.communicate()
 
-    if v > 0 and stderr:
-        print '\n> stderr:'
-        print stderr
+        if v > 1:
+            print "\n> stdout:"
+            print stdout
 
-    return stdout, stderr
+        if v > 0 and stderr:
+            print '\n> stderr:'
+            print stderr
+
+        return stdout, stderr
 
 
-def setup_mri(mri_sdir, ico=4):
+
+def setup_mri(subject, subjects_dir=None, ico=4, block=False):
     """
     Prepares an MRI for use in the mne-pipeline:
-     - creates symlinks for watershed files in the bem directory
-     - runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
 
-    The utility needs permission to access the MRI files. In case of a
-    permission error, the following shell command can be used on the mri
-    folder to set permissions appropriately::
+    - creates symlinks for watershed files in the bem directory
+    - runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
 
-        $ sudo chmod -R 7700 mri-folder
 
-    .. TODO:: check what steps have been completed based on existence of files and
-        resum from there
+    Parameters
+    ----------
+
+    subject : str
+        Subject whose MRI should be processed.
+    subjects_dir : None | str(path)
+        Overrides `sys.environ['SUBJECTS_DIR']` if not `None`.
+    ico : int
+        `--ico` argument for `mne_setup_forward_model`.
+    block : bool
+        Block the Python interpreter until mne_setup_forward_model is
+        finished.
+
+
+    .. note::
+        The utility needs permission to access the MRI files. In case of a
+        permission error, the following shell command can be used on the mri
+        folder to set permissions appropriately::
+
+            $ sudo chmod -R 7700 mri-folder
 
     """
-    mri_dir, subject = os.path.split(mri_sdir)
-    bemdir = os.path.join(mri_sdir, 'bem')
+    if subjects_dir is None:
+        subjects_dir = os.environ['SUBJECTS_DIR']
+        _sub_dir = None
+    else:
+        _sub_dir = os.environ.get('SUBJECTS_DIR', None)
+        os.environ['SUBJECTS_DIR'] = subjects_dir
+
+    bemdir = os.path.join(subjects_dir, subject, 'bem')
 
     # symlinks (MNE-manual 3.6, p. 24 / Gwyneth's Manual X)
     for name in ['inner_skull', 'outer_skull', 'outer_skin']:
-        # can I make path relative by omitting initial bemdir,  ?
         src = os.path.join('watershed', '%s_%s_surface' % (subject, name))
         dest = os.path.join(bemdir, '%s.surf' % name)
         if os.path.exists(dest):
             if os.path.islink(dest):
-                if os.path.realpath(dest) == src:
+                abs_src = os.path.join(bemdir, src)
+                if os.path.realpath(dest) == abs_src:
                     pass
                 else:
                     logging.debug("replacing symlink: %r" % dest)
@@ -551,18 +574,19 @@ def setup_mri(mri_sdir, ico=4):
             else:
                 raise IOError("%r exists and is no symlink" % dest)
         else:
+            logging.debug("creating symlink: %r" % dest)
             os.symlink(src, dest)
 
     # mne_setup_forward_model
-    os.environ['SUBJECTS_DIR'] = mri_dir
     cmd = [get_bin('mne', "mne_setup_forward_model"),
            '--subject', subject,
            '--surf',
            '--ico', ico,
            '--homog']
 
-    _run(cmd)
-    # -> creates a number of files in <mri_sdir>/bem
+    _run(cmd, block=block)  # -> creates a number of files in <mri_sdir>/bem
+    if _sub_dir:
+        os.environ['SUBJECTS_DIR'] = _sub_dir
 
 
 
