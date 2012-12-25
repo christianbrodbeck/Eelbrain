@@ -199,11 +199,10 @@ class mne_experiment(object):
              'fwd': '{raw}_{fwd_an}-fwd.fif',
 
              # fwd model
+             'fid': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-fiducials.fif'),
              'bem': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-5120-bem-sol.fif'),
              'src': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-ico-4-src.fif'),
              'bem_head': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-head.fif'),
-
-            # !! these would invalidate the s_e_* pattern with a third _
 
              # mne's stc.save() requires stub filename and will add '-?h.stc'
              'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
@@ -505,6 +504,8 @@ class mne_experiment(object):
             Show a progress dialog; str for dialog title.
 
         """
+        state_ = self.state.copy()
+
         # set constants
         constants['root'] = self.root
         self.set(**constants)
@@ -546,6 +547,8 @@ class mne_experiment(object):
                     progm.advance()
         else:
             yield self.state
+
+        self.state.update(state_)
 
     def label_events(self, ds, experiment, subject):
         return ds
@@ -1040,15 +1043,16 @@ class mne_experiment(object):
             lbl0.save(tgt0)
             lbl1.save(tgt1)
 
-    def summary(self, templates=['rawfif'], missing='-', link='>',
-                analysis=None, count=True):
+    def summary(self, templates=['rawfif'], missing='-', link='>', count=True):
         if not isinstance(templates, (list, tuple)):
             templates = [templates]
 
         results = {}
         experiments = set()
-        for sub, exp in self.iter_vars(['subject', 'experiment'], analysis=analysis):
+        for _ in self.iter_vars(['subject', 'experiment']):
             items = []
+            sub = self.get('subject')
+            exp = self.get('experiment')
 
             for temp in templates:
                 path = self.get(temp, match=False)
@@ -1069,7 +1073,7 @@ class mne_experiment(object):
             results.setdefault(sub, {})[exp] = desc
             experiments.add(exp)
 
-        table = fmtxt.Table('l' * (2 + len(experiments) + count), title=analysis)
+        table = fmtxt.Table('l' * (2 + len(experiments) + count))
         if count:
             table.cell()
         table.cells('Subject', 'MRI')
