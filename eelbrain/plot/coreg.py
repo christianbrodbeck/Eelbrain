@@ -189,9 +189,11 @@ class mri_head_viewer(traits.HasTraits):
     nasion = traits.Array(float, (1, 3))
     rotation = traits.Array(float, (1, 3))
     scale = traits.Array(float, (1, 3), [[1, 1, 1]])
+    shrink = traits.Float(1)
 
     fit_scale = traits.Button()
     fit_no_scale = traits.Button()
+    restore_fit = traits.Button()
 
     save = traits.Button()
     save_trans = traits.Button()
@@ -219,17 +221,31 @@ class mri_head_viewer(traits.HasTraits):
         traits.HasTraits.__init__(self)
         self.configure_traits()
 
+        if s_to:
+            subjects_dir = get_subjects_dir(subjects_dir)
+            mri_sdir = os.path.join(subjects_dir, s_to)
+            if os.path.exists(mri_sdir):
+                msg = ("MRI-dir for subject %r already exists%%s. "
+                       "Proceed?" % s_to)
+                if is_fake_mri(mri_sdir):
+                    msg = msg % ' (fake MRI)'
+                else:
+                    msg = msg % ''
+                if not ui.ask("Overwrite MRI?", msg, cancel=False, default=False):
+                    raise RuntimeError("User interrupted.")
+
         self.fitter = mri_head_fitter(s_from, raw, s_to, subjects_dir)
 
         self.scene.disable_render = True
         self.fitter.plot(fig=self.scene.mayavi_scene)
         self.frontal = True
         self.scene.disable_render = False
+        self._last_fit = None
 
     @traits.on_trait_change('fit_scale,fit_no_scale')
     def _fit(self, caller, info2):
         if caller == 'fit_scale':
-            self.fitter.fit(method='mr')
+            self.fitter.fit(method='sr')
         elif caller == 'fit_no_scale':
             self.fitter.fit(method='r')
         else:
@@ -237,12 +253,27 @@ class mri_head_viewer(traits.HasTraits):
 
         rotation = self.fitter.get_rot()
         scale = self.fitter.get_scale()
-        self.rotation = [rotation]
-        self.scale = [scale]
+        self._last_fit = ([scale], [rotation])
+        self.on_restore_fit()
+
+    @traits.on_trait_change('restore_fit')
+    def on_restore_fit(self):
+        if self._last_fit is None:
+            ui.message("No Fit", "No fit has been performed", 'i')
+            return
+
+        self.scale, self.rotation = self._last_fit
+        self.shrink = 1
 
     @traits.on_trait_change('save')
     def on_save(self):
-        self.fitter.save(prog=True)
+        s_to = self.fitter.s_to
+        if s_to is None:
+            s_to = ui.ask_str("s_to", "MRI target subject", "")
+            if not s_to:
+                raise ValueError("No s_to")
+
+        self.fitter.save(s_to=s_to, prog=True)
 
     @traits.on_trait_change('save_trans')
     def on_save_trans(self):
@@ -253,9 +284,12 @@ class mri_head_viewer(traits.HasTraits):
         args = tuple(self.nasion[0])
         self.fitter.set_nasion(*args)
 
-    @traits.on_trait_change('scale,rotation')
-    def set_trans(self):
-        args = tuple(self.rotation[0]) + tuple(self.scale[0])
+    @traits.on_trait_change('scale,rotation,shrink')
+    def on_set_trans(self):
+        scale = np.array(self.scale[0])
+        scale_scale = (1 - self.shrink) * np.array([1, .4, 1])
+        scale *= (1 - scale_scale)
+        args = tuple(self.rotation[0]) + tuple(scale)
         self.fitter.set(*args)
 
     @traits.on_trait_change('top,left,frontal')
@@ -274,9 +308,9 @@ class mri_head_viewer(traits.HasTraits):
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
                      height=500, width=500, show_label=False),
                 HGroup('top', 'frontal', 'left',),
-                HGroup('fit_scale', 'fit_no_scale'),
+                HGroup('fit_scale', 'fit_no_scale', 'restore_fit'),
                 HGroup('nasion'),
-                HGroup('scale'),
+                HGroup('scale', 'shrink'),
                 HGroup('rotation'),
                 HGroup('save', 'save_trans'),
                 )
@@ -527,7 +561,7 @@ class mri_head_fitter:
 
     def _dist_fixnas_mr(self, param):
         rx, ry, rz, mx, my, mz = param
-        T = rot(rx, ry, rz) * mult(mx, my, mz)
+        T = rot(rx, ry, rz) * scale(mx, my, mz)
         err = self._error(T)
         logging.debug("Params = %s -> Error = %s" % (param, np.sum(err ** 2)))
         return err
@@ -537,14 +571,14 @@ class mri_head_fitter:
         T = rot(rx, ry, rz)
         m = self._params[3:]
         if any(p != 1 for p in m):
-            T = T * mult(*m)
+            T = T * scale(*m)
         err = self._error(T)
         logging.debug("Params = %s -> Error = %s" % (param, np.sum(err ** 2)))
         return err
 
-    def _dist_fixnas_1mult(self, param):
+    def _dist_fixnas_1scale(self, param):
         rx, ry, rz, m = param
-        T = rot(rx, ry, rz) * mult(m, m, m)
+        T = rot(rx, ry, rz) * scale(m, m, m)
         err = self._error(T)
         logging.debug("Params = %s -> Error = %s" % (param, np.sum(err ** 2)))
         return err
@@ -561,25 +595,25 @@ class mri_head_fitter:
         est_params, self.info = leastsq(self._dist_fixnas_r, params, **kwargs)
         return est_params
 
-    def _estimate_fixnas_1mult(self, **kwargs):
+    def _estimate_fixnas_1scale(self, **kwargs):
         params = self._params[:4]
         params = np.asarray(params, dtype=float)
-        est_params, self.info = leastsq(self._dist_fixnas_1mult, params, **kwargs)
+        est_params, self.info = leastsq(self._dist_fixnas_1scale, params, **kwargs)
         return est_params
 
-    def fit(self, epsfcn=0.01, method='mr', **kwargs):
+    def fit(self, epsfcn=0.01, method='sr', **kwargs):
         """
-        method : 'mr' | 'r' | '1mr'
-            m: multiplication;
-            r: rotationl;
+        method : 'sr' | 'r' | '1sr'
+            s: scale;
+            r: rotation;
 
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.leastsq.html
         """
         t0 = time.time()
-        if method == '1mr':
-            est = self._estimate_fixnas_1mult(epsfcn=epsfcn, **kwargs)
+        if method == '1sr':
+            est = self._estimate_fixnas_1scale(epsfcn=epsfcn, **kwargs)
             est = np.hstack((est, np.ones(2) * est[-1:]))
-        elif method == 'mr':
+        elif method == 'sr':
             est = self._estimate_fixnas_mr(epsfcn=epsfcn, **kwargs)
         elif method == 'r':
             est = self._estimate_fixnas_r(epsfcn=epsfcn, **kwargs)
@@ -657,12 +691,8 @@ class mri_head_fitter:
         os.mkdir(surfdir.format(sub=s_to))
         surfpath = os.path.join(surfdir, '{name}')
 
-        # write parameters as text
         if prog:
             prog.advance("Trans")
-        fname = os.path.join(sdir, 'T.txt').format(sub=s_to)
-        with open(fname, 'w') as fid:
-            fid.write(', '.join(map(str, self._params)))
 
         # write trans file
         self.save_trans(s_to=s_to)
@@ -670,6 +700,10 @@ class mri_head_fitter:
         # MRI Scaling
         T0 = self.nas_t * self.mri_o_t
         T = T0.I * self.trans_scale * T0
+
+        # write parameters as text
+        fname = os.path.join(sdir, 'T.txt').format(sub=s_to)
+        np.savetxt(fname, T, fmt='%g')
 
         # assemble list of surface files to duplicate
         # surf/ files
@@ -810,7 +844,7 @@ class mri_head_fitter:
     def set(self, rx, ry, rz, mx, my, mz):
         self._params = (rx, ry, rz, mx, my, mz)
         self.trans_rot = rot(rx, ry, rz)
-        self.trans_scale = mult(mx, my, mz)
+        self.trans_scale = scale(mx, my, mz)
         self.update()
 
     def set_nasion(self, x, y, z):
@@ -868,7 +902,7 @@ def rot(x=0, y=0, z=0):
                   [0, 0, 0, 1]])
     return r
 
-def mult(x=1, y=1, z=1):
+def scale(x=1, y=1, z=1):
     s = np.matrix([[x, 0, 0, 0],
                    [0, y, 0, 0],
                    [0, 0, z, 0],
