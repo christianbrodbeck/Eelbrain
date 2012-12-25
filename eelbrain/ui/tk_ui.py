@@ -32,6 +32,10 @@ def ask(title="Overwrite File?",
     return tkMessageBox.askyesno(title, message)
 
 
+def ask_str(message, title, default=''):
+    return Tk.tkSimpleDialog.askstring(title, message, initialvalue=default)
+
+
 def copy_file(path):
     raise NotImplementedError
 

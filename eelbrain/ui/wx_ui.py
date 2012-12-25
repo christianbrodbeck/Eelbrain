@@ -130,6 +130,14 @@ def ask_color(default=(0, 0, 0)):
     return out
 
 
+def ask_str(msg, title, default=''):
+    dlg = wx.TextEntryDialog(GetWxParent(), msg, title, default)
+    if dlg.ShowModal() == wx.ID_OK:
+        return str(dlg.GetValue()).strip()
+    else:
+        return False
+
+
 def message(title, message="", icon='i'):
     """
     icon : str

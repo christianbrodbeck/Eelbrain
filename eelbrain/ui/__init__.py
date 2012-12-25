@@ -14,7 +14,7 @@ except ImportError:
     wx_ui = False
 
 
-__all__ = ['ask', 'ask_color', 'ask_dir', 'ask_saveas',
+__all__ = ['ask', 'ask_color', 'ask_dir', 'ask_saveas', 'ask_str',
            'copy_file'
            'message',
            'progress_monitor', 'kill_progress_monitors',
@@ -67,6 +67,10 @@ def ask(title="Overwrite File?",
 
 def ask_color(default=(0, 0, 0)):
     return get_ui().ask_color(default)
+
+
+def ask_str(msg, title, default=''):
+    return get_ui().ask_str(msg, title, default)
 
 
 def kill_progress_monitors():
