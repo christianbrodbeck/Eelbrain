@@ -179,8 +179,8 @@ class mri_head_viewer(traits.HasTraits):
     fit_scale = traits.Button()
     fit_no_scale = traits.Button()
 
-    _save = traits.Button()
-    _save_trans = traits.Button()
+    save = traits.Button()
+    save_trans = traits.Button()
 
     scene = traits.Instance(MlabSceneModel, ())
 
@@ -221,19 +221,21 @@ class mri_head_viewer(traits.HasTraits):
         else:
             ui.message("Error", "Unknown caller for _fit(): %r" % caller, '!')
 
-        self.rotation = [self.fitter.get_rot()]
-        self.scale = [self.fitter.get_scale()]
+        rotation = self.fitter.get_rot()
+        scale = self.fitter.get_scale()
+        self.rotation = [rotation]
+        self.scale = [scale]
 
-    @traits.on_trait_change('_save')
-    def save(self):
-        self.fitter.save()
+    @traits.on_trait_change('save')
+    def on_save(self):
+        self.fitter.save(prog=True)
 
-    @traits.on_trait_change('_save_trans')
-    def save_trans(self):
+    @traits.on_trait_change('save_trans')
+    def on_save_trans(self):
         self.fitter.save_trans()
 
     @traits.on_trait_change('nasion')
-    def set_nasion(self):
+    def on_set_nasion(self):
         args = tuple(self.nasion[0])
         self.fitter.set_nasion(*args)
 
@@ -243,7 +245,7 @@ class mri_head_viewer(traits.HasTraits):
         self.fitter.set(*args)
 
     @traits.on_trait_change('top,left,frontal')
-    def set_view(self, view='frontal', info=None):
+    def on_set_view(self, view='frontal', info=None):
         self.scene.parallel_projection = True
         self.scene.camera.parallel_scale = 150
         kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
@@ -262,7 +264,7 @@ class mri_head_viewer(traits.HasTraits):
                 HGroup('nasion'),
                 HGroup('scale'),
                 HGroup('rotation'),
-                HGroup('_save', '_save_trans'),
+                HGroup('save', 'save_trans'),
                 )
 
 
