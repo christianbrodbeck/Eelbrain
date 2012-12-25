@@ -27,7 +27,7 @@ def ask_dir(title="Select Folder",
 def ask(title="Overwrite File?",
         message="Duplicate filename. Do you want to overwrite?",
         cancel=False,
-        default=True, # True=YES, False=NO, None=Nothing
+        default=True,  # True=YES, False=NO, None=Nothing
         ):
     return tkMessageBox.askyesno(title, message)
 

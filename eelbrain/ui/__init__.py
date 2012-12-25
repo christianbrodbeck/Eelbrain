@@ -59,7 +59,7 @@ def ask_file(title="Pick File",
 def ask(title="Overwrite File?",
         message="Duplicate filename. Do you want to overwrite?",
         cancel=False,
-        default=True, # True=YES, False=NO, None=Nothing
+        default=True,  # True=YES, False=NO, None=Nothing
         ):
     return get_ui().ask(title, message, cancel, default)
 
@@ -91,9 +91,9 @@ def progress_monitor(i_max=None,
                      message="Good luck!",
                      cancel=True):
     """
-    With wx-python, show a progress dialog. In Tk this is not fully 
+    With wx-python, show a progress dialog. In Tk this is not fully
     implemented and merely sends messages to logging.info.
-    
+
     i_max : None | int
         Final state; None: show an indeterminate progress bar.
     title : str
@@ -102,10 +102,10 @@ def progress_monitor(i_max=None,
         The message; is replaced when :py:meth:`advance` is called with a
         str argument.
     cancel : bool
-        Show a cancel button. If the 'cancel' button is clicked, 
-        the next call to :py:meth`advance` will raise a KeyboardInterrupt 
+        Show a cancel button. If the 'cancel' button is clicked,
+        the next call to :py:meth`advance` will raise a KeyboardInterrupt
         Exception.
-    
+
     """
     dialog = get_ui().progress_monitor(i_max=i_max, title=title, message=message,
                                        cancel=cancel)
@@ -126,7 +126,7 @@ def test_targetpath(path, cancel=True):
     """
     Returns True if path is a valid path to write to, False otherwise. If the
     directory does not exist, the user is asked whether it should be created.
-    
+
     cancel : bool
         Add a cancel button. If clicked, a KeyboardInterrupt Exception is
         raised.
@@ -141,7 +141,7 @@ def test_targetpath(path, cancel=True):
         answer = ask("Create Directory?", msg, cancel=cancel)
         if answer:
             os.makedirs(dirname)
-        elif answer is None: # cancel
+        elif answer is None:  # cancel
             err = ("User canceled because the directory %r does not exist"
                    % dirname)
             raise KeyboardInterrupt(err)
