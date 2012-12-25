@@ -47,6 +47,20 @@ def is_fake_mri(mri_dir):
 
 
 
+def get_subjects_dir(subjects_dir):
+    if subjects_dir is None:
+        if 'SUBJECTS_DIR' in os.environ:
+            subjects_dir = os.environ['SUBJECTS_DIR']
+        else:
+            msg = "Set SUBJECTS_DIR"
+            subjects_dir = ui.ask_dir(msg, msg, must_exist=True)
+        if not subjects_dir:
+            err = ("No SUBJECTS_DIR specified")
+            raise ValueError(err)
+    return subjects_dir
+
+
+
 class dev_head_viewer(traits.HasTraits):
     """
     Mayavi viewer for modifying the device-to-head coordinate coregistration.
@@ -456,14 +470,7 @@ class mri_head_fitter:
             (sys.environ['SUBJECTS_DIR'])
 
         """
-        # interpret paths
-        if subjects_dir is None:
-            if 'SUBJECTS_DIR' in os.environ:
-                subjects_dir = os.environ['SUBJECTS_DIR']
-            else:
-                err = ("If SUBJECTS_DIR is not set as environment variable, "
-                       "it must be provided as subjects_dir parameter")
-                raise ValueError(err)
+        subjects_dir = get_subjects_dir(subjects_dir)
 
         # MRI head shape
         fname = os.path.join(subjects_dir, s_from, 'bem', 'outer_skin.surf')
@@ -528,6 +535,9 @@ class mri_head_fitter:
     def _dist_fixnas_r(self, param):
         rx, ry, rz = param
         T = rot(rx, ry, rz)
+        m = self._params[3:]
+        if any(p != 1 for p in m):
+            T = T * mult(*m)
         err = self._error(T)
         logging.debug("Params = %s -> Error = %s" % (param, np.sum(err ** 2)))
         return err
@@ -539,31 +549,34 @@ class mri_head_fitter:
         logging.debug("Params = %s -> Error = %s" % (param, np.sum(err ** 2)))
         return err
 
-    def _estimate_fixnas_mr(self, params=(0, 0, 0, 1, 1, 1), **kwargs):
+    def _estimate_fixnas_mr(self, **kwargs):
+        params = self._params
         params = np.asarray(params, dtype=float)
         est_params, self.info = leastsq(self._dist_fixnas_mr, params, **kwargs)
         return est_params
 
-    def _estimate_fixnas_r(self, params=(0, 0, 0), **kwargs):
+    def _estimate_fixnas_r(self, **kwargs):
+        params = self._params[:3]
         params = np.asarray(params, dtype=float)
         est_params, self.info = leastsq(self._dist_fixnas_r, params, **kwargs)
         return est_params
 
-    def _estimate_fixnas_1mult(self, params=(0, 0, 0, 1), **kwargs):
+    def _estimate_fixnas_1mult(self, **kwargs):
+        params = self._params[:4]
         params = np.asarray(params, dtype=float)
         est_params, self.info = leastsq(self._dist_fixnas_1mult, params, **kwargs)
         return est_params
 
     def fit(self, epsfcn=0.01, method='mr', **kwargs):
         """
-        method : 'mr' | 'r'
+        method : 'mr' | 'r' | '1mr'
             m: multiplication;
             r: rotationl;
 
         http://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.leastsq.html
         """
         t0 = time.time()
-        if method == '1mult':
+        if method == '1mr':
             est = self._estimate_fixnas_1mult(epsfcn=epsfcn, **kwargs)
             est = np.hstack((est, np.ones(2) * est[-1:]))
         elif method == 'mr':
@@ -572,7 +585,7 @@ class mri_head_fitter:
             est = self._estimate_fixnas_r(epsfcn=epsfcn, **kwargs)
             est = tuple(est) + (1, 1, 1)
         else:
-            raise ValueError("method")
+            raise ValueError("No method %r" % method)
         self.set(*est)
         dt = time.time() - t0
         print "%r took %.2f minutes" % (method, dt / 60)
@@ -598,7 +611,8 @@ class mri_head_fitter:
     def get_scale(self):
         return self._params[3:]
 
-    def save(self, s_to=None, fwd_args=["--ico", '4', '--surf'], make_fwd=True):
+    def save(self, s_to=None, fwd_args=["--ico", '4', '--surf'], make_fwd=True,
+             prog=False):
         """
         s_to : None | str
             Override s_to set on initialization.
@@ -634,6 +648,8 @@ class mri_head_fitter:
                 raise IOError(msg)
 
         # find target paths
+        if prog:
+            prog = ui.progress_monitor(6 + (make_fwd == 'block'), "Saving MRI", "bem")
         bemdir = os.path.join(sdir, 'bem')
         os.makedirs(bemdir.format(sub=s_to))
         bempath = os.path.join(bemdir, '{name}.{ext}')
@@ -642,6 +658,8 @@ class mri_head_fitter:
         surfpath = os.path.join(surfdir, '{name}')
 
         # write parameters as text
+        if prog:
+            prog.advance("Trans")
         fname = os.path.join(sdir, 'T.txt').format(sub=s_to)
         with open(fname, 'w') as fid:
             fid.write(', '.join(map(str, self._params)))
@@ -655,6 +673,8 @@ class mri_head_fitter:
 
         # assemble list of surface files to duplicate
         # surf/ files
+        if prog:
+            prog.advance("Surf Files")
         surf_names = ('orig', 'orig_avg',
                       'inflated', 'inflated_avg', 'inflated_pre',
                       'pial', 'pial_avg',
@@ -683,6 +703,8 @@ class mri_head_fitter:
 
 
         # write bem [in m]
+        if prog:
+            prog.advance("Head")
         path = os.path.join(self.subjects_dir, '{sub}', 'bem', '{sub}-{name}.fif')
         for name in ['head']:  # '5120-bem-sol',
             src = path.format(sub=s_from, name=name)
@@ -700,6 +722,8 @@ class mri_head_fitter:
         write_fiducials(fname, pts, cframe)
 
         # write src
+        if prog:
+            prog.advance("Source space")
         path = os.path.join(self.subjects_dir, '{sub}', 'bem', '{sub}-ico-4-src.fif')
         src = path.format(sub=s_from)
         sss = mne.read_source_spaces(src)
@@ -710,6 +734,8 @@ class mri_head_fitter:
         mne.write_source_spaces(dest, sss)
 
         # Labels [in m]
+        if prog:
+            prog.advance("Labels")
         lbl_dir = os.path.join(self.subjects_dir, '{sub}', 'label')
         top = lbl_dir.format(sub=s_from)
         relpath_start = len(top) + 1
@@ -730,6 +756,8 @@ class mri_head_fitter:
             l2.save(dest)
 
         # duplicate curvature files
+        if prog:
+            prog.advance("Curvature")
         path = os.path.join(self.subjects_dir, '{sub}', 'surf', '{name}')
         for name in ['lh.curv', 'rh.curv']:
             src = path.format(sub=s_from, name=name)
@@ -743,6 +771,8 @@ class mri_head_fitter:
         cmd = ["mne_setup_forward_model", "--subject", "R0040"] + fwd_args
 
         if make_fwd == 'block':
+            if prog:
+                prog.advance("mne_setup_forward_model")
             subprocess.call(cmd)
         else:
             return subprocess.Popen(cmd)
