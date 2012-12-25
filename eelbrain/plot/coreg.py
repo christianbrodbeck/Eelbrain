@@ -238,6 +238,12 @@ class mri_head_viewer(traits.HasTraits):
 
         self.scene.disable_render = True
         self.fitter.plot(fig=self.scene.mayavi_scene)
+        if s_to is None or s_to == s_from:
+            text = "%s" % s_from
+        else:
+            text = "%s -> %s" % (s_from, s_to)
+        self.scene.mlab.text(0.01, 0.01, text, figure=self.scene.mayavi_scene)
+
         self.frontal = True
         self.scene.disable_render = False
         self._last_fit = None
@@ -541,7 +547,7 @@ class mri_head_fitter:
         self.fig = fig
         self.mri_hs.plot_solid(fig)
         self.mri_fid.plot_points(fig, scale=5)
-        self.dig_hs.plot_solid(fig, opacity=.5, rep='wireframe')
+        self.dig_hs.plot_solid(fig, opacity=1., rep='wireframe', color=(.5, .5, 1))
         self.dig_fid.plot_points(fig, scale=40, opacity=.25)
         return fig
 
