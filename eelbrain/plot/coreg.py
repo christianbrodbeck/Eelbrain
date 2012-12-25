@@ -784,7 +784,7 @@ class mri_head_fitter:
         if fname is None:
             if s_to is None:
                 if self.s_to is None:
-                    raise IOError("No destination specified")
+                    s_to = self.s_from
                 else:
                     s_to = self.s_to
             rawdir = os.path.dirname(self._raw)
