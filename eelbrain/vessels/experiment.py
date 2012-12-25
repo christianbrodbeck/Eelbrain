@@ -1049,10 +1049,19 @@ class mne_experiment(object):
 
         results = {}
         experiments = set()
+        mris = {}
         for _ in self.iter_vars(['subject', 'experiment']):
             items = []
             sub = self.get('subject')
             exp = self.get('experiment')
+            mri_subject = self.get('mrisubject')
+            if mri_subject == sub:
+                if plot.coreg.is_fake_mri(self.get('mri_sdir')):
+                    mris[sub] = 'fake'
+                else:
+                    mris[sub] = 'own'
+            else:
+                mris[sub] = mri_subject
 
             for temp in templates:
                 path = self.get(temp, match=False)
@@ -1085,11 +1094,7 @@ class mne_experiment(object):
             if count:
                 table.cell(i)
             table.cell(subject)
-            mri_subject = self._mri_subjects.get(subject, '*missing*')
-            if mri_subject == subject:
-                table.cell('own')
-            else:
-                table.cell(mri_subject)
+            table.cell(mris[subject])
 
             for exp in experiments:
                 table.cell(results[subject].get(exp, '?'))
