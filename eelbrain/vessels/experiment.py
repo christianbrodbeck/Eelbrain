@@ -684,15 +684,17 @@ class mne_experiment(object):
         view name will be added to plotname
 
         """
+        from mayavi import mlab
         self.set(analysis='coreg')
         for _ in self.iter_vars(['subject', 'experiment'], constants=constants):
             p = self.plot_coreg()
-            p.frontal = True
-            p.scene.save(self.get('plot_png', name=plotname + '-F', mkdir=True))
-            p.lateral = True
-            p.scene.save(self.get('plot_png', name=plotname + '-L'))
-            p.top = True
-            p.scene.save(self.get('plot_png', name=plotname + '-T'))
+            p.view('frontal')
+            p.fig.scene.save(self.get('plot_png', name=plotname + '-F', mkdir=True))
+            p.view('left')
+            p.fig.scene.save(self.get('plot_png', name=plotname + '-L'))
+            p.view('top')
+            p.fig.scene.save(self.get('plot_png', name=plotname + '-T'))
+            mlab.close()
 
     def parse_dirs(self, subjects=[], mri_subjects={}, parse_subjects=True,
                    parse_mri=True):
@@ -736,12 +738,8 @@ class mne_experiment(object):
 
     def plot_coreg(self, **kwargs):  # sens=True, mrk=True, fiduc=True, hs=False, hs_mri=True,
         self.set(**kwargs)
-
-        fwd = mne.read_forward_solution(self.get('fwd'))
         raw = mne.fiff.Raw(self.get('rawfif'))
-        bem = self.get('bem_head')
-
-        return plot.sensors.coreg(raw, fwd, bem=bem)
+        return plot.coreg.dev_mri(raw)
 
     def plot_mrk(self, **kwargs):
         self.set(**kwargs)
@@ -899,7 +897,8 @@ class mne_experiment(object):
             ui.message("No Fake MRIs Found", "")
             return
 
-        if ui.ask("Delete?", '\n'.join(sorted(rmd + rmf)), default=False):
+        if ui.ask("Delete %i Files?" % (len(rmd) + len(rmf)),
+                  '\n'.join(sorted(rmd + rmf)), default=False):
             map(shutil.rmtree, rmd)
             map(os.remove, rmf)
             for s in sub:

@@ -179,6 +179,94 @@ class dev_head_viewer(traits.HasTraits):
 
 
 
+class dev_mri(object):
+    """
+
+    """
+    def __init__(self, raw, subject=None, head_mri_t=None, mri='head',
+                 hs=True, subjects_dir=None, fig=None):
+        """
+        Parameters
+        ----------
+
+        raw : str(path)
+            Path to raw fiff file.
+        subject : None | str
+            Name of the mri subject. Can be None if the raw file-name starts
+            with "{subject}_".
+        head_mri_t : None | str(path)
+            Path to the trans file for head-mri coregistration. Can be None if
+            the file is located in the raw directory and names
+            "{subject}-trans.fif"
+        mri : str
+            Name of the mri model to load (default is 'head')
+        hs : bool
+            Display the digitizer head-shape stored in the raw file.
+
+        """
+        subjects_dir = get_subjects_dir(subjects_dir)
+
+        if fig is None:
+            fig = mlab.figure()
+        self.fig = fig
+
+        # raw
+        if isinstance(raw, basestring):
+            raw_fname = raw
+            raw = load.fiff.Raw(raw_fname)
+        else:
+            raw_fname = raw.info['filename']
+
+        # subject
+        if subject is None:
+            _, tail = os.path.split(raw_fname)
+            subject = tail.split('_')[0]
+
+        # mri_head_t
+        if head_mri_t is None:
+            head, _ = os.path.split(raw_fname)
+            head_mri_t = os.path.join(head, subject + '-trans.fif')
+        if isinstance(head_mri_t, basestring):
+            head_mri_t = mne.read_trans(head_mri_t)
+
+        # mri_dev_t
+        mri_head_t = np.matrix(head_mri_t['trans']).I
+        head_dev_t = np.matrix(raw.info['dev_head_t']['trans']).I
+        mri_dev_t = head_dev_t * mri_head_t
+
+        # sensors
+        pts = filter(lambda d: d['kind'] == FIFF.FIFFV_MEG_CH, raw.info['chs'])
+        pts = np.array([d['loc'][:3] for d in pts])
+        self.sensors = geom(pts)
+        self.sensors.plot_points(fig, scale=0.005, color=(0, 0, 1))
+
+        # mri
+        bem = os.path.join(subjects_dir, subject, 'bem', '%s-%s.fif' % (subject, mri))
+        self.mri = geom_bem(bem, unit='m')
+        self.mri.set_T(mri_dev_t)
+        self.mri.plot_solid(fig, color=(.8, .6, .5))
+
+        # head-shape
+        if hs:
+            self.hs = geom_dig_hs(raw.info['dig'], unit='m')
+            self.hs.set_T(head_dev_t)
+            self.hs.plot_solid(fig, opacity=1, rep='points', color=(1, .5, 0))
+
+        self.view()
+
+    def view(self, view='frontal'):
+        self.fig.scene.parallel_projection = True
+        self.fig.scene.camera.parallel_scale = .15
+        kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
+                      reset_roll=True, figure=self.fig)
+        if view == 'left':
+            kwargs.update(azimuth=180, roll=90)
+        elif view == 'top':
+            kwargs.update(elevation=0)
+        mlab.view(**kwargs)
+
+
+
 class mri_head_viewer(traits.HasTraits):
     """
     Mayavi viewer for fitting an MRI to a digitized head shape.
@@ -378,9 +466,7 @@ class mri_head_fitter:
         # digitizer data from raw
         self._raw = raw
         raw = mne.fiff.Raw(raw)
-        pts = filter(lambda d: d['kind'] == 4, raw.info['dig'])
-        pts = np.array([d['r'] for d in pts]) * 1000
-        self.dig_hs = geom(pts)
+        self.dig_hs = geom_dig_hs(raw.info['dig'], unit='mm')
         self.dig_fid = geom_fid(raw.info['dig'], unit='mm')
 
         # move to the origin
@@ -1001,6 +1087,41 @@ class geom_fid(geom):
         self.rap = digs[1]['r'] * x
         self.nas = digs[2]['r'] * x
         self.lap = digs[3]['r'] * x
+
+
+
+class geom_dig_hs(geom):
+    def __init__(self, dig, unit='mm'):
+        if unit == 'mm':
+            x = 1000
+        elif unit == 'm':
+            x = 1
+        else:
+            raise ValueError('Unit: %r' % unit)
+
+        pts = filter(lambda d: d['kind'] == 4, dig)
+        pts = np.array([d['r'] for d in pts]) * x
+
+        super(geom_dig_hs, self).__init__(pts)
+
+
+
+class geom_bem(geom):
+    def __init__(self, bem, unit='m'):
+        if isinstance(bem, basestring):
+            bem = mne.read_bem_surfaces(bem)[0]
+
+        pts = bem['rr']
+        tri = bem['tris']
+
+        if unit == 'mm':
+            pts *= 1000
+        elif unit == 'm':
+            pass
+        else:
+            raise ValueError('Unit: %r' % unit)
+
+        super(geom_bem, self).__init__(pts, tri)
 
 
 
