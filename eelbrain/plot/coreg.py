@@ -86,7 +86,7 @@ class dev_head_viewer(traits.HasTraits):
     _save = traits.Button()
     scene = traits.Instance(MlabSceneModel, ())
 
-    def __init__(self, raw, mrk, mri=None, trans=None):
+    def __init__(self, raw, mrk, bem=None, trans=None):
         """
         Parameters
         ----------
@@ -95,12 +95,16 @@ class dev_head_viewer(traits.HasTraits):
             MNE Raw object, or path to a raw file.
         mrk : load.kit.marker_avg_file | str(path)
             marker_avg_file object, or path to a marker file.
+        bem : None | str(path)
+            Path to a bem file (optional, only for visualization purposes).
+        trans : None | dict | str(path)
+            MRI-Head transform (optional).
 
         """
         traits.HasTraits.__init__(self)
         self.configure_traits()
 
-        self.fitter = dev_head_fitter(raw, mrk, mri, trans)
+        self.fitter = dev_head_fitter(raw, mrk, bem, trans)
         self.scene.disable_render = True
         self.fitter.plot(fig=self.scene.mayavi_scene)
         self._current_fit = None
@@ -326,173 +330,20 @@ class mri_head_viewer(traits.HasTraits):
 
 
 
-class coreg(traits.HasTraits):
-    """
-
-    http://docs.enthought.com/mayavi/mayavi/building_applications.html#making-the-visualization-live
-    """
-    # views
-    frontal = traits.Button()
-    left = traits.Button()
-    top = traits.Button()
-
-    # visibility
-    fiducials = traits.Bool(True)
-    dig_points = traits.Bool(True)
-    head_shape = traits.Bool(True)
-    scalp = traits.Bool(True)
-    scalp_alpha = traits.Range(0., 1., 1.)
-    sensors = traits.Bool(True)
-
-    scene = traits.Instance(MlabSceneModel, ())
-
-    def __init__(self, raw, fwd, bem=None):
-        """
-        Parameters
-        ----------
-
-        raw : mne.fiff.Raw | str(path)
-            MNE Raw object, or path to a raw file.
-        fwd : dict | str(path)
-            MNE forward solution (returned by mne.read_forward_solution),
-            or path to an MNE forward solution.
-        bem : None | list | str(path)
-            Bem file for the scalp surface: list as returned by
-            mne.read_bem_surfaces, or path to a bem file.
-
-        """
-        traits.HasTraits.__init__(self)
-
-        if isinstance(raw, basestring):
-            raw = load.fiff.Raw(raw)
-        if isinstance(fwd, basestring):
-            fwd = mne.read_forward_solution(fwd)
-        if isinstance(bem, basestring):
-            bem = mne.read_bem_surfaces(bem)
-
-        points3d = self.scene.mlab.points3d
-
-        dev_2_head = fwd['info']['dev_head_t']['trans']
-        head_2_dev = np.linalg.inv(dev_2_head)
-        mri_2_head = fwd['mri_head_t']['trans']
-
-        # sensors
-        s = load.fiff.sensor_net(raw)
-        x, y, z = s.locs.T
-        self._sensors = points3d(x, y, z, scale_factor=0.005, color=(0, .2, 1))
-
-        # head shape
-        pts = filter(lambda d: d['kind'] == 4, raw.info['dig'])
-        pts = np.array([d['r'] for d in raw.info['dig']])
-        pts = np.hstack((pts, np.ones((len(pts), 1))))
-        x, y, z, _ = np.dot(head_2_dev, pts.T)
-        pts = points3d(x, y, z, opacity=0)  # color=(1,0,0), scale_factor=0.005)
-        d = self.scene.mlab.pipeline.delaunay3d(pts)
-        self._head_shape = self.scene.mlab.pipeline.surface(d)
-
-        # scalp (mri-headshape)
-        if bem:
-            surf = bem[0]
-            pts = surf['rr']
-            pts = np.hstack((pts, np.ones((len(pts), 1))))
-            pts = np.dot(mri_2_head, pts.T)
-            pts = np.dot(head_2_dev, pts)
-            x, y, z, _ = pts
-            faces = surf['tris']
-            self._bem = self.scene.mlab.triangular_mesh(x, y, z, faces, color=(.8, .8, .8), opacity=1)
-
-        # fiducials
-        pts = filter(lambda d: d['kind'] == 1, raw.info['dig'])
-        pts = np.vstack([d['r'] for d in pts])
-        pts = np.hstack((pts, np.ones((len(pts), 1))))
-        pts = np.dot(head_2_dev, pts.T)
-        x, y, z, _ = pts
-        self._fiducials = points3d(x, y, z, color=(0, 1, 1), opacity=0.5)
-
-        # dig points
-        pts = filter(lambda d: d['kind'] == 2, raw.info['dig'])
-        pts = np.vstack([d['r'] for d in pts])
-        pts = np.hstack((pts, np.ones((len(pts), 1))))
-        pts = np.dot(head_2_dev, pts.T)
-        x, y, z, _ = pts
-        self._dig_pts = points3d(x, y, z, color=(1, 0, 0), opacity=0.5)
-
-        self.configure_traits()
-        self.frontal = True
-        if bem:
-            self.head_shape = False
-
-    @traits.on_trait_change('dig_points')
-    def _show_dig_pts(self):
-        self._dig_pts.actor.visible = self.dig_points
-
-    @traits.on_trait_change('fiducials')
-    def _show_fiducials(self):
-        self._fiducials.actor.visible = self.fiducials
-
-    @traits.on_trait_change('head_shape')
-    def _show_hs(self):
-        self._head_shape.actor.visible = self.head_shape
-
-    @traits.on_trait_change('scalp')
-    def _show_bem(self):
-        if not hasattr(self, '_bem'):
-            return
-        self._bem.actor.visible = self.scalp
-
-    @traits.on_trait_change('sensors')
-    def _show_sensors(self):
-        self._sensors.visible = self.sensors
-
-    @traits.on_trait_change('scalp_alpha')
-    def _set_scalp_alpha(self):
-        self._bem.actor.property.opacity = self.scalp_alpha
-
-    @traits.on_trait_change('frontal')
-    def _view_frontal(self):
-        self.set_view('frontal')
-
-    @traits.on_trait_change('left')
-    def _view_left(self):
-        self.set_view('left')
-
-    @traits.on_trait_change('top')
-    def _view_top(self):
-        self.set_view('top')
-
-    def set_view(self, view='frontal'):
-        self.scene.parallel_projection = True
-        self.scene.camera.parallel_scale = .15
-        kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180, reset_roll=True)
-        if view == 'left':
-            kwargs.update(azimuth=180, roll=90)
-        elif view == 'top':
-            kwargs.update(elevation=0)
-        self.scene.mlab.view(**kwargs)
-
-    # the layout of the dialog created
-    view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
-                     height=450, width=450, show_label=False),
-                HGroup('top', 'frontal', 'left',),
-                HGroup('sensors', 'head_shape'),
-                HGroup('scalp', 'scalp_alpha'),
-                HGroup('fiducials', 'dig_points'),
-                )
-
-
-
 class mri_head_fitter:
     """
     Fit an MRI to a head shape model.
 
-    Distances are internally represented in mm and converted where needed.
-
     Transforms applied to MRI:
 
-    1) move MRI nasion to origin
-    2) apply scaling
-    3) apply rotation
-    2) move MRI nasion to headshape nasion
+    #. move MRI nasion to origin
+    #. move MRI nasion according to the specified parameters
+    #. apply scaling
+    #. apply rotation
+    #. move MRI nasion to headshape nasion
+
+    .. note::
+        Distances are internally represented in mm and converted where needed.
 
     """
     def __init__(self, s_from, raw, s_to=None, subjects_dir=None):
@@ -634,8 +485,20 @@ class mri_head_fitter:
         print "%r took %.2f minutes" % (method, dt / 60)
         return est
 
-    def get_T_trans(self, unit='mm'):
-        "T for the trans file;, rot + translation "
+    def get_t_scale(self, unit='mm'):
+        T0 = self.nas_t * self.mri_o_t
+        if unit == 'mm':
+            pass
+        elif unit == 'm':
+            T0[:3, 3] /= 1000
+        else:
+            raise ValueError("unit: %r" % unit)
+
+        T = T0.I * self.trans_scale * T0
+        return T
+
+    def get_t_trans(self, unit='mm'):
+        "head_mri_t for the trans file;, rot + translation "
         T0 = self.nas_t * self.mri_o_t
         if unit == 'mm':
             T = self.o_dig_t * self.trans_rot * T0
@@ -707,9 +570,7 @@ class mri_head_fitter:
         self.save_trans(s_to=s_to)
 
         # MRI Scaling [in m]
-        T0 = self.nas_t * self.mri_o_t
-        T0[:3, 3] /= 1000
-        T = T0.I * self.trans_scale * T0
+        T = self.get_t_scale('m')
 
         # write parameters as text
         fname = os.path.join(sdir, 'T.txt').format(sub=s_to)
@@ -842,7 +703,7 @@ class mri_head_fitter:
                 raise IOError(msg)
 
         # in m
-        trans = self.get_T_trans('m')
+        trans = self.get_t_trans('m')
         dig = deepcopy(self.dig_fid.source_dig)  # these are in m
         for d in dig:  # [in m]
             coord = apply_T_1pt(d['r'], trans)
@@ -1145,7 +1006,7 @@ class geom_fid(geom):
 
 
 class dev_head_fitter:
-    def __init__(self, raw, mrk, mri=None, trans=None):
+    def __init__(self, raw, mrk, bem=None, trans=None):
         """
         Parameters
         ----------
@@ -1154,9 +1015,10 @@ class dev_head_fitter:
             MNE Raw object, or path to a raw file.
         mrk : load.kit.marker_avg_file | str(path)
             marker_avg_file object, or path to a marker file.
-        mri : None |
-            Only for visualization purposes.
-
+        bem : None | str(path)
+            Path to a bem file (optional, only for visualization purposes).
+        trans : None | dict | str(path)
+            MRI-Head transform (optional).
 
         """
         # interpret mrk
@@ -1172,7 +1034,7 @@ class dev_head_fitter:
         self.raw = raw
 
         # mri-head-trans
-        if mri is None:
+        if bem is None:
             self.MRI = None
         else:
             if not isinstance(trans, dict):
@@ -1181,11 +1043,11 @@ class dev_head_fitter:
             self.T_mri_head = T.I
 
             # interpret mri
-            if isinstance(mri, basestring):
-                s = mne.read_bem_surfaces(mri)[0]
+            if isinstance(bem, basestring):
+                s = mne.read_bem_surfaces(bem)[0]
                 pts, tri = s['rr'], s['tris']
             else:
-                pts, tri = mri
+                pts, tri = bem
             self.MRI = geom(pts, tri=tri)
             self.MRI.set_T(self.T_mri_head)
 
