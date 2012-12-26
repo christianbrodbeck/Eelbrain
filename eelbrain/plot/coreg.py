@@ -742,7 +742,7 @@ class mri_head_fitter:
         # make surf files [in mm]
         for src, dest in paths.iteritems():
             pts, tri = mne.read_surface(src)
-            pts = apply_T(pts, T)
+            pts = apply_T(pts, T, scale=.001)
             mne.write_surface(dest, pts, tri)
 
 
@@ -844,8 +844,8 @@ class mri_head_fitter:
         # in m
         trans = self.get_T_trans('m')
         dig = deepcopy(self.dig_fid.source_dig)  # these are in m
-        for d in dig:
-            coord = apply_T_1pt(d['r'], trans, scale=1. / 1000)
+        for d in dig:  # [in m]
+            coord = apply_T_1pt(d['r'], trans)
             d['r'] = coord[:3, 0]
         info = {'to':FIFF.FIFFV_COORD_MRI, 'from': FIFF.FIFFV_COORD_HEAD,
                 'trans': np.array(trans), 'dig': dig}
