@@ -170,7 +170,7 @@ class dev_head_viewer(traits.HasTraits):
 
     # the layout of the dialog created
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
-                     height=450, width=450, show_label=False),
+                     height=500, width=500, show_label=False),
                 HGroup('top', 'frontal', 'left',),
                 HGroup('head_shape', 'mri'),
                 HGroup('_refit', '_0', '_1', '_2', '_3', '_4'),
@@ -995,7 +995,6 @@ class geom_fid(geom):
 
         super(geom_fid, self).__init__(pts)
         self.unit = unit
-        self.dig = dig
 
         self.source_dig = dig
         digs = {d['ident']: d for d in dig}
@@ -1165,9 +1164,7 @@ class dev_head_fitter:
         if not fname:
             return
 
-        info = self.raw.info
-        info['dev_head_t']['trans'] = np.array(self.est_T.I)
-
+        self.raw.info['dev_head_t']['trans'] = np.array(self.est_T.I)
         self.raw.save(fname)
 
     def set_hs_opacity(self, v=1):
