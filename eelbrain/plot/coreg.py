@@ -706,8 +706,9 @@ class mri_head_fitter:
         # write trans file
         self.save_trans(s_to=s_to)
 
-        # MRI Scaling
+        # MRI Scaling [in m]
         T0 = self.nas_t * self.mri_o_t
+        T0[:3, 3] /= 1000
         T = T0.I * self.trans_scale * T0
 
         # write parameters as text
@@ -901,21 +902,21 @@ def trans(x=0, y=0, z=0):
     m = np.matrix([[1, 0, 0, x],
                    [0, 1, 0, y],
                    [0, 0, 1, z],
-                   [0, 0, 0, 1]])
+                   [0, 0, 0, 1]], dtype=float)
     return m
 
 def rot(x=0, y=0, z=0):
     r = np.matrix([[cos(y) * cos(z), -cos(x) * sin(z) + sin(x) * sin(y) * cos(z), sin(x) * sin(z) + cos(x) * sin(y) * cos(z), 0],
                   [cos(y) * sin(z), cos(x) * cos(z) + sin(x) * sin(y) * sin(z), -sin(x) * cos(z) + cos(x) * sin(y) * sin(z), 0],
                   [-sin(y), sin(x) * cos(y), cos(x) * cos(y), 0],
-                  [0, 0, 0, 1]])
+                  [0, 0, 0, 1]], dtype=float)
     return r
 
 def scale(x=1, y=1, z=1):
     s = np.matrix([[x, 0, 0, 0],
                    [0, y, 0, 0],
                    [0, 0, z, 0],
-                   [0, 0, 0, 1]])
+                   [0, 0, 0, 1]], dtype=float)
     return s
 
 
