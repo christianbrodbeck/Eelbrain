@@ -679,16 +679,17 @@ class mne_experiment(object):
             dest = self.get('proj_file', proj=projname)
             mne.write_proj(dest, proj)
 
-    def makeplt_coreg(self, plotname='{subject}_{experiment}', constants={}):
+    def makeplt_coreg(self, variables=['subject', 'experiment'], constants={},
+                      values={}):
         """
-        view name will be added to plotname
+        Save coregistration plots
 
         """
         from mayavi import mlab
         self.set(analysis='coreg')
-        for _ in self.iter_vars(['subject', 'experiment'], constants=constants):
+        for _ in self.iter_vars(variables, constants=constants, values=values):
             p = self.plot_coreg()
-            fname = self.get('plot_png', name=plotname, mkdir=True)
+            fname = self.get('plot_png', name='{subject}_{experiment}', mkdir=True)
             p.save_views(fname)
             mlab.close()
 
