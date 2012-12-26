@@ -33,6 +33,7 @@ from mne.fiff.constants import FIFF
 
 from eelbrain import load
 from eelbrain import ui
+import _base
 
 
 
@@ -253,6 +254,14 @@ class dev_mri(object):
             self.hs.plot_solid(fig, opacity=1, rep='points', color=(1, .5, 0))
 
         self.view()
+
+    def save_views(self, fname, views=['top', 'frontal', 'left']):
+        tiler = _base.ImageTiler(fname, ncol=3)
+        for view in views:
+            fname = tiler.get_temp_fname()
+            self.view(view)
+            self.fig.scene.save(fname)
+            tiler.add_fname(fname)
 
     def view(self, view='frontal'):
         self.fig.scene.parallel_projection = True

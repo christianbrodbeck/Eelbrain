@@ -688,12 +688,8 @@ class mne_experiment(object):
         self.set(analysis='coreg')
         for _ in self.iter_vars(['subject', 'experiment'], constants=constants):
             p = self.plot_coreg()
-            p.view('frontal')
-            p.fig.scene.save(self.get('plot_png', name=plotname + '-F', mkdir=True))
-            p.view('left')
-            p.fig.scene.save(self.get('plot_png', name=plotname + '-L'))
-            p.view('top')
-            p.fig.scene.save(self.get('plot_png', name=plotname + '-T'))
+            fname = self.get('plot_png', name=plotname, mkdir=True)
+            p.save_views(fname)
             mlab.close()
 
     def parse_dirs(self, subjects=[], mri_subjects={}, parse_subjects=True,
