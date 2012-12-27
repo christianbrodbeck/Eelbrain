@@ -1076,7 +1076,7 @@ class mri_head_fitter:
         if not make_fwd:
             return
 
-        cmd = ["mne_setup_forward_model", "--subject", "R0040"] + fwd_args
+        cmd = ["mne_setup_forward_model", "--subject", s_to] + fwd_args
 
         if make_fwd == 'block':
             if prog:
