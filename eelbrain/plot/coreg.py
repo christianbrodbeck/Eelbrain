@@ -81,6 +81,7 @@ from numpy import sin, cos
 import scipy
 from scipy.optimize import leastsq
 
+import wx
 from mayavi import mlab
 from mayavi.tools import pipeline
 
@@ -434,6 +435,8 @@ class mri_head_viewer(traits.HasTraits):
 
     @traits.on_trait_change('fit_scale,fit_no_scale')
     def _fit(self, caller, info2):
+        bi = wx.BusyInfo("Fit In Progress")
+
         if caller == 'fit_scale':
             self.fitter.fit(method='sr')
         elif caller == 'fit_no_scale':
@@ -445,6 +448,8 @@ class mri_head_viewer(traits.HasTraits):
         scale = self.fitter.get_scale()
         self._last_fit = ([scale], [rotation])
         self.on_restore_fit()
+
+        bi.Destroy()
 
     @traits.on_trait_change('restore_fit')
     def on_restore_fit(self):
