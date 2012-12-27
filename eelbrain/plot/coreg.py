@@ -101,9 +101,24 @@ from eelbrain import load
 from eelbrain import ui
 import _base
 
+__all__ = ['dev_head_viewer', 'dev_head_fitter', 'dev_mri', 'mri_head_viewer',
+           'mri_head_fitter', 'set_nasion', 'is_fake_mri']
+
 
 
 def is_fake_mri(mri_dir):
+    """Check whether a directory is a fake MRI subject directory
+
+    Parameters
+    ----------
+    mri_dir : str(path)
+        Path to a directory.
+
+    Returns
+    -------
+    True is `mri_dir` is a fake MRI directory.
+
+    """
     items = os.listdir(mri_dir)
     nc = [c for c in ['bem', 'label', 'surf', 'T.txt'] if c not in items]
     c = [c for c in ['mri', 'src', 'stats'] if c in items]
@@ -752,11 +767,19 @@ class mri_head_fitter:
                 s_to = subject
 
         # MRI head shape
-        fname = os.path.join(subjects_dir, s_from, 'bem', 'outer_skin.surf')
+        mri_sdir = os.path.join(subjects_dir, s_from)
+        if not os.path.exists(mri_sdir):
+            err = ("MRI-directory for %r not found (%r)" % (s_from, mri_sdir))
+            raise ValueError(err)
+        fname = os.path.join(mri_sdir, 'bem', 'outer_skin.surf')
         pts, tri = mne.read_surface(fname)
         self.mri_hs = geom(pts, tri)
 
-        fname = os.path.join(subjects_dir, s_from, 'bem', s_from + '-fiducials.fif')
+        fname = os.path.join(mri_sdir, 'bem', s_from + '-fiducials.fif')
+        if not os.path.exists(mri_sdir):
+            err = ("Fiducials file for %r not found (%r). Use set_nasion() "
+                   "to create it." % (s_from, mri_sdir))
+            raise ValueError(err)
         dig, _ = read_fiducials(fname)
         self.mri_fid = geom_fid(dig, unit='mm')
 
