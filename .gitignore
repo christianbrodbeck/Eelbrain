@@ -24,6 +24,9 @@ dist
 
 *cfg.pickled
 
+
+.coverage
+coverage/
 doc/_build
 distribute-*
 scripts_mac/eelbrain
