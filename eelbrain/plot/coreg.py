@@ -248,7 +248,9 @@ class dev_head_viewer(traits.HasTraits):
 
     @traits.on_trait_change('_save')
     def save(self):
+        bi = wx.BusyInfo("Saving Raw...")
         self.fitter.save()
+        bi.Destroy()
 
     def set_view(self, view='frontal'):
         self.scene.parallel_projection = True
