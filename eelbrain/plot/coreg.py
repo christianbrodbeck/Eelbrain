@@ -257,6 +257,191 @@ class dev_head_viewer(traits.HasTraits):
 
 
 
+class dev_head_fitter:
+    def __init__(self, raw, mrk, bem='head', trans=None, subject=None,
+                 subjects_dir=None):
+        """
+        Parameters
+        ----------
+
+        raw : mne.fiff.Raw | str(path)
+            MNE Raw object, or path to a raw file.
+        mrk : load.kit.marker_avg_file | str(path)
+            marker_avg_file object, or path to a marker file.
+        bem : None | str(path)
+            Name of the bem model to load (optional, only for visualization
+            purposes).
+        trans : None | dict | str(path)
+            MRI-Head transform (optional).
+            Can be None if the file is located in the raw directory and named
+            "{subject}-trans.fif"
+        subject : None | str
+            Name of the mri subject.
+            Can be None if the raw file-name starts with "{subject}_".
+
+        """
+        subjects_dir = get_subjects_dir(subjects_dir)
+
+        # interpret mrk
+        if isinstance(mrk, basestring):
+            mrk = load.kit.marker_avg_file(mrk)
+
+        # interpret raw
+        if isinstance(raw, basestring):
+            raw_fname = raw
+            raw = load.fiff.Raw(raw)
+        else:
+            raw_fname = raw.info['filename']
+        self._raw_fname = raw_fname
+        self.raw = raw
+
+        # subject
+        if subject is None:
+            _, tail = os.path.split(raw_fname)
+            subject = tail.split('_')[0]
+        self.subject = subject
+
+        # bem (mri-head-trans)
+        if bem is None:
+            self.MRI = None
+        else:
+            # trans
+            if trans is None:
+                head, _ = os.path.split(raw_fname)
+                trans = os.path.join(head, subject + '-trans.fif')
+            if isinstance(trans, basestring):
+                head_mri_t = mne.read_trans(trans)
+
+            # mri_dev_t
+            self.mri_head_t = np.matrix(head_mri_t['trans']).I
+
+            fname = os.path.join(subjects_dir, subject, 'bem',
+                                 '%s-%s.fif' % (subject, bem))
+            self.MRI = geom_bem(fname, unit='m')
+            self.MRI.set_T(self.mri_head_t)
+
+        # sensors
+        pts = filter(lambda d: d['kind'] == FIFF.FIFFV_MEG_CH, raw.info['chs'])
+        pts = np.array([d['loc'][:3] for d in pts])
+        self.sensors = geom(pts)
+
+        # marker points
+        pts = mrk.points / 1000
+        pts = pts[:, [1, 0, 2]]
+        pts[:, 0] *= -1
+        self.mrk = geom(pts)
+
+        # head shape
+        pts = filter(lambda d: d['kind'] == FIFF.FIFFV_POINT_EXTRA, raw.info['dig'])
+        pts = np.array([d['r'] for d in pts])
+        self.headshape = geom(pts)
+
+        # HPI points
+        pts = filter(lambda d: d['kind'] == FIFF.FIFFV_POINT_HPI, raw.info['dig'])
+        assert [d['ident'] for d in pts] == range(1, 6)
+        pts = np.array([d['r'] for d in pts])
+        self.HPI = geom(pts)
+
+        # T head-to-device
+        trans = raw.info['dev_head_t']['trans']
+        self.T_head2dev = np.matrix(trans).I
+        self.reset()
+        self._HPI_flipped = False
+
+    def fit(self, include=range(5)):
+        """
+        Fit the marker points to the digitizer points.
+
+        include : index (numpy compatible)
+            Which points to include in the fit. Index should select among
+            points [0, 1, 2, 3, 4].
+        """
+        def err(params):
+            T = trans(*params[:3]) * rot(*params[3:])
+            est = self.HPI.get_pts(T)[include]
+            tgt = self.mrk.get_pts()[include]
+            return (tgt - est).ravel()
+
+        # initial guess
+        params = (0, 0, 0, 0, 0, 0)
+        params, _ = leastsq(err, params)
+        self.est_params = params
+
+        T = trans(*params[:3]) * rot(*params[3:])
+        self.est_T = T
+
+        self.headshape.set_T(T)
+        self.HPI.set_T(T)
+        if self.MRI:
+            self.MRI.set_T(T * self.mri_head_t)
+
+    def plot(self, size=(800, 800), fig=None, HPI_ns=False):
+        """
+        Plot sensor helmet and head. ``fig`` is used if provided, otherwise
+        a new mayavi figure is created with ``size``.
+
+        HPI_ns : bool
+            Add number labels to the HPI points.
+
+        """
+        if fig is None:
+            fig = mlab.figure(size=size)
+
+        self.mrk.plot_points(fig, scale=1.1e-2, opacity=.5, color=(1, 0, 0))
+        self.sensors.plot_points(fig, scale=1e-2, color=(0, 0, 1))
+
+        self.HPI.plot_points(fig, scale=1e-2, color=(1, .8, 0))
+        self.headshape.plot_solid(fig, opacity=1., color=(1, 1, 1))
+
+        if self.MRI is not None:
+            self.MRI.plot_solid(fig, opacity=1., color=(.6, .6, .5))
+
+        # label marker points
+        for i, pt in enumerate(self.mrk.pts[:3].T):
+            x, y, z = pt
+            self.txt = mlab.text3d(x, y, z, str(i), scale=.01)
+
+        if HPI_ns:  # label HPI points
+            for i, pt in enumerate(self.HPI.pts[:3].T):
+                x, y, z = pt
+                mlab.text3d(x, y, z, str(i), scale=.01, color=(1, .8, 0))
+
+        return fig
+
+    def reset(self):
+        """
+        Reset the current device-to-head transformation to the one contained
+        in the raw file
+
+        """
+        T = self.T_head2dev
+        self.headshape.set_T(T)
+        self.HPI.set_T(T)
+        if self.MRI:
+            self.MRI.set_T(T * self.mri_head_t)
+
+    def save(self, fname=None):
+        """
+        Save a copy of the raw file with the current device-to-head
+        transformation
+
+        """
+        if fname is None:
+            msg = "Destination for the modified raw file"
+            ext = [('fif', 'MNE Fiff File')]
+            fname = ui.ask_saveas("Save Raw File", msg, ext,
+                                  default=self._raw_fname)
+        if not fname:
+            return
+
+        self.raw.info['dev_head_t']['trans'] = np.array(self.est_T.I)
+        self.raw.save(fname)
+
+    def set_hs_opacity(self, v=1):
+        self.headshape.set_opacity(v)
+
+
+
 class dev_mri(object):
     """
 
@@ -1226,191 +1411,6 @@ class geom_bem(geom):
             raise ValueError('Unit: %r' % unit)
 
         super(geom_bem, self).__init__(pts, tri)
-
-
-
-class dev_head_fitter:
-    def __init__(self, raw, mrk, bem='head', trans=None, subject=None,
-                 subjects_dir=None):
-        """
-        Parameters
-        ----------
-
-        raw : mne.fiff.Raw | str(path)
-            MNE Raw object, or path to a raw file.
-        mrk : load.kit.marker_avg_file | str(path)
-            marker_avg_file object, or path to a marker file.
-        bem : None | str(path)
-            Name of the bem model to load (optional, only for visualization
-            purposes).
-        trans : None | dict | str(path)
-            MRI-Head transform (optional).
-            Can be None if the file is located in the raw directory and named
-            "{subject}-trans.fif"
-        subject : None | str
-            Name of the mri subject.
-            Can be None if the raw file-name starts with "{subject}_".
-
-        """
-        subjects_dir = get_subjects_dir(subjects_dir)
-
-        # interpret mrk
-        if isinstance(mrk, basestring):
-            mrk = load.kit.marker_avg_file(mrk)
-
-        # interpret raw
-        if isinstance(raw, basestring):
-            raw_fname = raw
-            raw = load.fiff.Raw(raw)
-        else:
-            raw_fname = raw.info['filename']
-        self._raw_fname = raw_fname
-        self.raw = raw
-
-        # subject
-        if subject is None:
-            _, tail = os.path.split(raw_fname)
-            subject = tail.split('_')[0]
-        self.subject = subject
-
-        # bem (mri-head-trans)
-        if bem is None:
-            self.MRI = None
-        else:
-            # trans
-            if trans is None:
-                head, _ = os.path.split(raw_fname)
-                trans = os.path.join(head, subject + '-trans.fif')
-            if isinstance(trans, basestring):
-                head_mri_t = mne.read_trans(trans)
-
-            # mri_dev_t
-            self.mri_head_t = np.matrix(head_mri_t['trans']).I
-
-            fname = os.path.join(subjects_dir, subject, 'bem',
-                                 '%s-%s.fif' % (subject, bem))
-            self.MRI = geom_bem(fname, unit='m')
-            self.MRI.set_T(self.mri_head_t)
-
-        # sensors
-        pts = filter(lambda d: d['kind'] == FIFF.FIFFV_MEG_CH, raw.info['chs'])
-        pts = np.array([d['loc'][:3] for d in pts])
-        self.sensors = geom(pts)
-
-        # marker points
-        pts = mrk.points / 1000
-        pts = pts[:, [1, 0, 2]]
-        pts[:, 0] *= -1
-        self.mrk = geom(pts)
-
-        # head shape
-        pts = filter(lambda d: d['kind'] == FIFF.FIFFV_POINT_EXTRA, raw.info['dig'])
-        pts = np.array([d['r'] for d in pts])
-        self.headshape = geom(pts)
-
-        # HPI points
-        pts = filter(lambda d: d['kind'] == FIFF.FIFFV_POINT_HPI, raw.info['dig'])
-        assert [d['ident'] for d in pts] == range(1, 6)
-        pts = np.array([d['r'] for d in pts])
-        self.HPI = geom(pts)
-
-        # T head-to-device
-        trans = raw.info['dev_head_t']['trans']
-        self.T_head2dev = np.matrix(trans).I
-        self.reset()
-        self._HPI_flipped = False
-
-    def fit(self, include=range(5)):
-        """
-        Fit the marker points to the digitizer points.
-
-        include : index (numpy compatible)
-            Which points to include in the fit. Index should select among
-            points [0, 1, 2, 3, 4].
-        """
-        def err(params):
-            T = trans(*params[:3]) * rot(*params[3:])
-            est = self.HPI.get_pts(T)[include]
-            tgt = self.mrk.get_pts()[include]
-            return (tgt - est).ravel()
-
-        # initial guess
-        params = (0, 0, 0, 0, 0, 0)
-        params, _ = leastsq(err, params)
-        self.est_params = params
-
-        T = trans(*params[:3]) * rot(*params[3:])
-        self.est_T = T
-
-        self.headshape.set_T(T)
-        self.HPI.set_T(T)
-        if self.MRI:
-            self.MRI.set_T(T * self.mri_head_t)
-
-    def plot(self, size=(800, 800), fig=None, HPI_ns=False):
-        """
-        Plot sensor helmet and head. ``fig`` is used if provided, otherwise
-        a new mayavi figure is created with ``size``.
-
-        HPI_ns : bool
-            Add number labels to the HPI points.
-
-        """
-        if fig is None:
-            fig = mlab.figure(size=size)
-
-        self.mrk.plot_points(fig, scale=1.1e-2, opacity=.5, color=(1, 0, 0))
-        self.sensors.plot_points(fig, scale=1e-2, color=(0, 0, 1))
-
-        self.HPI.plot_points(fig, scale=1e-2, color=(1, .8, 0))
-        self.headshape.plot_solid(fig, opacity=1., color=(1, 1, 1))
-
-        if self.MRI is not None:
-            self.MRI.plot_solid(fig, opacity=1., color=(.6, .6, .5))
-
-        # label marker points
-        for i, pt in enumerate(self.mrk.pts[:3].T):
-            x, y, z = pt
-            self.txt = mlab.text3d(x, y, z, str(i), scale=.01)
-
-        if HPI_ns:  # label HPI points
-            for i, pt in enumerate(self.HPI.pts[:3].T):
-                x, y, z = pt
-                mlab.text3d(x, y, z, str(i), scale=.01, color=(1, .8, 0))
-
-        return fig
-
-    def reset(self):
-        """
-        Reset the current device-to-head transformation to the one contained
-        in the raw file
-
-        """
-        T = self.T_head2dev
-        self.headshape.set_T(T)
-        self.HPI.set_T(T)
-        if self.MRI:
-            self.MRI.set_T(T * self.mri_head_t)
-
-    def save(self, fname=None):
-        """
-        Save a copy of the raw file with the current device-to-head
-        transformation
-
-        """
-        if fname is None:
-            msg = "Destination for the modified raw file"
-            ext = [('fif', 'MNE Fiff File')]
-            fname = ui.ask_saveas("Save Raw File", msg, ext,
-                                  default=self._raw_fname)
-        if not fname:
-            return
-
-        self.raw.info['dev_head_t']['trans'] = np.array(self.est_T.I)
-        self.raw.save(fname)
-
-    def set_hs_opacity(self, v=1):
-        self.headshape.set_opacity(v)
 
 
 
