@@ -152,7 +152,8 @@ class dev_head_viewer(traits.HasTraits):
     _save = traits.Button()
     scene = traits.Instance(MlabSceneModel, ())
 
-    def __init__(self, raw, mrk, bem=None, trans=None):
+    def __init__(self, raw, mrk, bem='head', trans=None, subject=None,
+                 subjects_dir=None):
         """
         Parameters
         ----------
@@ -162,18 +163,28 @@ class dev_head_viewer(traits.HasTraits):
         mrk : load.kit.marker_avg_file | str(path)
             marker_avg_file object, or path to a marker file.
         bem : None | str(path)
-            Path to a bem file (optional, only for visualization purposes).
+            Name of the bem model to load (optional, only for visualization
+            purposes).
         trans : None | dict | str(path)
             MRI-Head transform (optional).
+            Can be None if the file is located in the raw directory and named
+            "{subject}-trans.fif"
+        subject : None | str
+            Name of the mri subject.
+            Can be None if the raw file-name starts with "{subject}_".
 
         """
         traits.HasTraits.__init__(self)
         self.configure_traits()
 
-        self.fitter = dev_head_fitter(raw, mrk, bem, trans)
+        fig = self.scene.mayavi_scene
+        self.fitter = dev_head_fitter(raw, mrk, bem, trans, subject, subjects_dir)
         self.scene.disable_render = True
-        self.fitter.plot(fig=self.scene.mayavi_scene)
+        self.fitter.plot(fig=fig)
         self._current_fit = None
+
+        subject = self.fitter.subject
+        self.scene.mlab.text(0.01, 0.01, subject, figure=fig, width=.2)
 
         self.frontal = True
         self.scene.disable_render = False
@@ -262,7 +273,7 @@ class dev_mri(object):
             with "{subject}_".
         head_mri_t : None | str(path)
             Path to the trans file for head-mri coregistration. Can be None if
-            the file is located in the raw directory and names
+            the file is located in the raw directory and named
             "{subject}-trans.fif"
         mri : str
             Name of the mri model to load (default is 'head')
@@ -366,19 +377,20 @@ class mri_head_viewer(traits.HasTraits):
 
     scene = traits.Instance(MlabSceneModel, ())
 
-    def __init__(self, s_from, raw, s_to=None, subjects_dir=None):
+    def __init__(self, raw, s_from=None, s_to=None, subjects_dir=None):
         """
         Parameters
         ----------
 
-        s_from : str
-            name of the source subject (e.g., 'fsaverage')
         raw : str(path)
             path to a raw file containing the digitizer data.
+        s_from : str
+            name of the source subject (e.g., 'fsaverage').
+            Can be None if the raw file-name starts with "{subject}_".
         s_to : str | None
             Name of the the subject for which the MRI is destined (used to
-            save MRI and in the trans file's file name). The defaut (`None`)
-            is identical with s_from.
+            save MRI and in the trans file's file name).
+            Can be None if the raw file-name starts with "{subject}_".
         subjects_dir : None | path
             Override the SUBJECTS_DIR environment variable
             (sys.environ['SUBJECTS_DIR'])
@@ -400,7 +412,10 @@ class mri_head_viewer(traits.HasTraits):
                 if not ui.ask("Overwrite MRI?", msg, cancel=False, default=False):
                     raise RuntimeError("User interrupted.")
 
-        self.fitter = mri_head_fitter(s_from, raw, s_to, subjects_dir)
+        self.fitter = mri_head_fitter(raw, s_from, s_to, subjects_dir)
+
+        s_to = self.fitter.s_to
+        s_from = self.fitter.s_from
 
         fig = self.scene.mayavi_scene
         self.scene.disable_render = True
@@ -508,25 +523,43 @@ class mri_head_fitter:
         Distances are internally represented in mm and converted where needed.
 
     """
-    def __init__(self, s_from, raw, s_to=None, subjects_dir=None):
+    def __init__(self, raw, s_from=None, s_to=None, subjects_dir=None):
         """
         Parameters
         ----------
 
-        s_from : str
-            name of the source subject (e.g., 'fsaverage')
         raw : str(path)
             path to a raw file containing the digitizer data.
+        s_from : str
+            name of the source subject (e.g., 'fsaverage').
+            Can be None if the raw file-name starts with "{subject}_".
         s_to : str | None
             Name of the the subject for which the MRI is destined (used to
-            save MRI and in the trans file's file name). The defaut (`None`)
-            is identical with s_from.
+            save MRI and in the trans file's file name).
+            Can be None if the raw file-name starts with "{subject}_".
         subjects_dir : None | path
             Override the SUBJECTS_DIR environment variable
             (sys.environ['SUBJECTS_DIR'])
 
         """
         subjects_dir = get_subjects_dir(subjects_dir)
+
+        # raw
+        if isinstance(raw, basestring):
+            raw_fname = raw
+            raw = load.fiff.Raw(raw_fname)
+        else:
+            raw_fname = raw.info['filename']
+        self._raw_fname = raw_fname
+
+        # subject
+        if (s_from is None) or (s_to is None):
+            _, tail = os.path.split(raw_fname)
+            subject = tail.split('_')[0]
+            if s_from is None:
+                s_from = subject
+            if s_to is None:
+                s_to = subject
 
         # MRI head shape
         fname = os.path.join(subjects_dir, s_from, 'bem', 'outer_skin.surf')
@@ -538,8 +571,6 @@ class mri_head_fitter:
         self.mri_fid = geom_fid(dig, unit='mm')
 
         # digitizer data from raw
-        self._raw = raw
-        raw = mne.fiff.Raw(raw)
         self.dig_hs = geom_dig_hs(raw.info['dig'], unit='mm')
         self.dig_fid = geom_fid(raw.info['dig'], unit='mm')
 
@@ -695,10 +726,7 @@ class mri_head_fitter:
         """
         s_from = self.s_from
         if s_to is None:
-            if self.s_to is None:
-                raise IOError("No destination specified")
-            else:
-                s_to = self.s_to
+            s_to = self.s_to
 
         # make sure we have an empty target directory
         sdir = os.path.join(self.subjects_dir, '{sub}')
@@ -848,11 +876,8 @@ class mri_head_fitter:
         """
         if fname is None:
             if s_to is None:
-                if self.s_to is None:
-                    s_to = self.s_from
-                else:
-                    s_to = self.s_to
-            rawdir = os.path.dirname(self._raw)
+                s_to = self.s_to
+            rawdir = os.path.dirname(self._raw_fname)
             fname = os.path.join(rawdir, s_to + '-trans.fif')
 
         if os.path.exists(fname):
@@ -1200,7 +1225,8 @@ class geom_bem(geom):
 
 
 class dev_head_fitter:
-    def __init__(self, raw, mrk, bem=None, trans=None):
+    def __init__(self, raw, mrk, bem='head', trans=None, subject=None,
+                 subjects_dir=None):
         """
         Parameters
         ----------
@@ -1210,40 +1236,56 @@ class dev_head_fitter:
         mrk : load.kit.marker_avg_file | str(path)
             marker_avg_file object, or path to a marker file.
         bem : None | str(path)
-            Path to a bem file (optional, only for visualization purposes).
+            Name of the bem model to load (optional, only for visualization
+            purposes).
         trans : None | dict | str(path)
             MRI-Head transform (optional).
+            Can be None if the file is located in the raw directory and named
+            "{subject}-trans.fif"
+        subject : None | str
+            Name of the mri subject.
+            Can be None if the raw file-name starts with "{subject}_".
 
         """
+        subjects_dir = get_subjects_dir(subjects_dir)
+
         # interpret mrk
         if isinstance(mrk, basestring):
             mrk = load.kit.marker_avg_file(mrk)
 
         # interpret raw
         if isinstance(raw, basestring):
-            self._raw_fname = raw
+            raw_fname = raw
             raw = load.fiff.Raw(raw)
         else:
-            self._raw_fname = raw.info['filename']
+            raw_fname = raw.info['filename']
+        self._raw_fname = raw_fname
         self.raw = raw
 
-        # mri-head-trans
+        # subject
+        if subject is None:
+            _, tail = os.path.split(raw_fname)
+            subject = tail.split('_')[0]
+        self.subject = subject
+
+        # bem (mri-head-trans)
         if bem is None:
             self.MRI = None
         else:
-            if not isinstance(trans, dict):
-                trans = mne.read_trans(trans)
-            T = np.matrix(trans['trans'])
-            self.T_mri_head = T.I
+            # trans
+            if trans is None:
+                head, _ = os.path.split(raw_fname)
+                trans = os.path.join(head, subject + '-trans.fif')
+            if isinstance(trans, basestring):
+                head_mri_t = mne.read_trans(trans)
 
-            # interpret mri
-            if isinstance(bem, basestring):
-                s = mne.read_bem_surfaces(bem)[0]
-                pts, tri = s['rr'], s['tris']
-            else:
-                pts, tri = bem
-            self.MRI = geom(pts, tri=tri)
-            self.MRI.set_T(self.T_mri_head)
+            # mri_dev_t
+            self.mri_head_t = np.matrix(head_mri_t['trans']).I
+
+            fname = os.path.join(subjects_dir, subject, 'bem',
+                                 '%s-%s.fif' % (subject, bem))
+            self.MRI = geom_bem(fname, unit='m')
+            self.MRI.set_T(self.mri_head_t)
 
         # sensors
         pts = filter(lambda d: d['kind'] == FIFF.FIFFV_MEG_CH, raw.info['chs'])
@@ -1298,7 +1340,7 @@ class dev_head_fitter:
         self.headshape.set_T(T)
         self.HPI.set_T(T)
         if self.MRI:
-            self.MRI.set_T(T * self.T_mri_head)
+            self.MRI.set_T(T * self.mri_head_t)
 
     def plot(self, size=(800, 800), fig=None, HPI_ns=False):
         """
@@ -1343,7 +1385,7 @@ class dev_head_fitter:
         self.headshape.set_T(T)
         self.HPI.set_T(T)
         if self.MRI:
-            self.MRI.set_T(T * self.T_mri_head)
+            self.MRI.set_T(T * self.mri_head_t)
 
     def save(self, fname=None):
         """
