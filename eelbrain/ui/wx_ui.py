@@ -20,9 +20,9 @@ def ask_saveas(title, message, ext, default=None):
     """
     ext: list of (extension, description) tuples
          or None
-    
+
     """
-    if not ext: # allow for []
+    if not ext:  # allow for []
         ext = None
 
     dialog = wx.FileDialog(GetWxParent(), message,
@@ -70,9 +70,9 @@ def ask_file(title="Pick File",
              mult=False):
     """
     returns path(s) or False
-    
+
     :arg directory: path to initial directory
-    
+
     """
     style = wx.FD_OPEN
     if mult:
@@ -93,7 +93,7 @@ def ask_file(title="Pick File",
 def ask(title="Overwrite File?",
         message="Duplicate filename. Do you want to overwrite?",
         cancel=False,
-        default=True, # True=YES, False=NO, None=Nothing
+        default=True,  # True=YES, False=NO, None=Nothing
         ):
     """
     returns:
@@ -130,11 +130,19 @@ def ask_color(default=(0, 0, 0)):
     return out
 
 
+def ask_str(msg, title, default=''):
+    dlg = wx.TextEntryDialog(GetWxParent(), msg, title, default)
+    if dlg.ShowModal() == wx.ID_OK:
+        return str(dlg.GetValue()).strip()
+    else:
+        return False
+
+
 def message(title, message="", icon='i'):
     """
     icon : str
         can be one of the following: '?', '!', 'i', 'error', None
-    
+
     """
     style = wx.OK
     if icon == 'i':
@@ -155,15 +163,15 @@ def message(title, message="", icon='i'):
 
 class progress_monitor:
     """
-    catches calls meant to create a progress indicator, because the wx 
+    catches calls meant to create a progress indicator, because the wx
     ProgressDialog was way too slow.
-    
+
     """
     def __init__(self, i_max=None,
                  title="Task Progress",
                  message="Wait and pray!",
                  cancel=True):
-        style = wx.PD_AUTO_HIDE | wx.GA_SMOOTH#|wx.PD_REMAINING_TIME
+        style = wx.PD_AUTO_HIDE | wx.GA_SMOOTH  # |wx.PD_REMAINING_TIME
         if cancel:
             style = style | wx.PD_CAN_ABORT
         if i_max is None:
@@ -173,9 +181,9 @@ class progress_monitor:
             self.indeterminate = False
 
         self.dialog = wx.ProgressDialog(title, message, i_max, None, style)
-        # parent=None instead of GetWxParent() because the dialog's parent 
-        # is unresponsive as long as progress dialog is shown 
-        # (and stays unresponsive if the underlaying process raises an error) 
+        # parent=None instead of GetWxParent() because the dialog's parent
+        # is unresponsive as long as progress dialog is shown
+        # (and stays unresponsive if the underlaying process raises an error)
         self.i = 0
         if self.indeterminate:
             self.dialog.Pulse()

@@ -43,8 +43,14 @@ TODO
 
 """
 
+import os
+import shutil
+import tempfile
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
+import PIL
 
 from eelbrain import vessels as _vsl
 from eelbrain.vessels import data as _dt
@@ -291,4 +297,60 @@ def unpack(Y, X):
         y.name = cell
         epochs.append(y)
     return epochs
+
+
+class ImageTiler(object):
+    """
+    http://stackoverflow.com/q/4567409/166700
+
+    """
+    def __init__(self, dest, ncol, nrow=1):
+        self.dest = dest
+        self.ncol = ncol
+        self.nrow = nrow
+        _, self.ext = os.path.splitext(dest)
+        self.tempdir = None
+        self.files = []
+        self.n_files = ncol * nrow
+        self._i_temp = 0
+
+    def __del__(self):
+        shutil.rmtree(self.tempdir)
+
+    def _get_tempdir(self):
+        if not self.tempdir:
+            self.tempdir = tempfile.mkdtemp()
+        return self.tempdir
+
+    def add_fname(self, fname):
+        self.files.append(fname)
+        if len(self.files) < self.n_files:
+            return
+
+        # finalize
+        images = []
+        colw = [0] * self.ncol
+        rowh = [0] * self.nrow
+        for r in xrange(self.nrow):
+            row = []
+            for c in xrange(self.ncol):
+                fname = self.files.pop(0)
+                im = PIL.Image.open(fname)
+                row.append(im)
+                colw[c] = max(colw[c], im.size[0])
+                rowh[r] = max(rowh[r], im.size[1])
+            images.append(row)
+
+        cpos = np.cumsum([0] + colw)
+        rpos = np.cumsum([0] + rowh)
+        out = PIL.Image.new('RGB', (cpos[-1], rpos[-1]))
+        for r, row in enumerate(images):
+            for c, im in enumerate(row):
+                out.paste(im, (cpos[c], rpos[r]))
+        out.save(self.dest)
+
+    def get_temp_fname(self):
+        fname = os.path.join(self._get_tempdir(), str(self._i_temp) + self.ext)
+        self._i_temp += 1
+        return fname
 

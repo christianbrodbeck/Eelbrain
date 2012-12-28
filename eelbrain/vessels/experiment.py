@@ -199,11 +199,10 @@ class mne_experiment(object):
              'fwd': '{raw}_{fwd_an}-fwd.fif',
 
              # fwd model
+             'fid': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-fiducials.fif'),
              'bem': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-5120-bem-sol.fif'),
              'src': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-ico-4-src.fif'),
              'bem_head': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-head.fif'),
-
-            # !! these would invalidate the s_e_* pattern with a third _
 
              # mne's stc.save() requires stub filename and will add '-?h.stc'
              'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
@@ -505,6 +504,8 @@ class mne_experiment(object):
             Show a progress dialog; str for dialog title.
 
         """
+        state_ = self.state.copy()
+
         # set constants
         constants['root'] = self.root
         self.set(**constants)
@@ -546,6 +547,8 @@ class mne_experiment(object):
                     progm.advance()
         else:
             yield self.state
+
+        self.state.update(state_)
 
     def label_events(self, ds, experiment, subject):
         return ds
@@ -676,20 +679,19 @@ class mne_experiment(object):
             dest = self.get('proj_file', proj=projname)
             mne.write_proj(dest, proj)
 
-    def makeplt_coreg(self, plotname='{subject}_{experiment}', constants={}):
+    def makeplt_coreg(self, variables=['subject', 'experiment'], constants={},
+                      values={}):
         """
-        view name will be added to plotname
+        Save coregistration plots
 
         """
+        from mayavi import mlab
         self.set(analysis='coreg')
-        for _ in self.iter_vars(['subject', 'experiment'], constants=constants):
+        for _ in self.iter_vars(variables, constants=constants, values=values):
             p = self.plot_coreg()
-            p.frontal = True
-            p.scene.save(self.get('plot_png', name=plotname + '-F', mkdir=True))
-            p.lateral = True
-            p.scene.save(self.get('plot_png', name=plotname + '-L'))
-            p.top = True
-            p.scene.save(self.get('plot_png', name=plotname + '-T'))
+            fname = self.get('plot_png', name='{subject}_{experiment}', mkdir=True)
+            p.save_views(fname)
+            mlab.close()
 
     def parse_dirs(self, subjects=[], mri_subjects={}, parse_subjects=True,
                    parse_mri=True):
@@ -733,12 +735,8 @@ class mne_experiment(object):
 
     def plot_coreg(self, **kwargs):  # sens=True, mrk=True, fiduc=True, hs=False, hs_mri=True,
         self.set(**kwargs)
-
-        fwd = mne.read_forward_solution(self.get('fwd'))
         raw = mne.fiff.Raw(self.get('rawfif'))
-        bem = self.get('bem_head')
-
-        return plot.sensors.coreg(raw, fwd, bem=bem)
+        return plot.coreg.dev_mri(raw)
 
     def plot_mrk(self, **kwargs):
         self.set(**kwargs)
@@ -885,8 +883,7 @@ class mne_experiment(object):
         for _ in self.iter_vars(['subject']):
             mri_sdir = self.get('mri_sdir')
             if os.path.exists(mri_sdir):
-                mridir = os.path.join(mri_sdir, 'mri')
-                if not os.path.exists(mridir):
+                if plot.coreg.is_fake_mri(mri_sdir):
                     rmd.append(mri_sdir)
                     sub.append(self.get('subject'))
                     trans = self.get('trans', match=False)
@@ -897,7 +894,8 @@ class mne_experiment(object):
             ui.message("No Fake MRIs Found", "")
             return
 
-        if ui.ask("Delete?", '\n'.join(sorted(rmd + rmf)), default=False):
+        if ui.ask("Delete %i Files?" % (len(rmd) + len(rmf)),
+                  '\n'.join(sorted(rmd + rmf)), default=False):
             map(shutil.rmtree, rmd)
             map(os.remove, rmf)
             for s in sub:
@@ -1041,15 +1039,25 @@ class mne_experiment(object):
             lbl0.save(tgt0)
             lbl1.save(tgt1)
 
-    def summary(self, templates=['rawfif'], missing='-', link='>',
-                analysis=None, count=True):
+    def summary(self, templates=['rawfif'], missing='-', link='>', count=True):
         if not isinstance(templates, (list, tuple)):
             templates = [templates]
 
         results = {}
         experiments = set()
-        for sub, exp in self.iter_vars(['subject', 'experiment'], analysis=analysis):
+        mris = {}
+        for _ in self.iter_vars(['subject', 'experiment']):
             items = []
+            sub = self.get('subject')
+            exp = self.get('experiment')
+            mri_subject = self.get('mrisubject')
+            if mri_subject == sub:
+                if plot.coreg.is_fake_mri(self.get('mri_sdir')):
+                    mris[sub] = 'fake'
+                else:
+                    mris[sub] = 'own'
+            else:
+                mris[sub] = mri_subject
 
             for temp in templates:
                 path = self.get(temp, match=False)
@@ -1070,7 +1078,7 @@ class mne_experiment(object):
             results.setdefault(sub, {})[exp] = desc
             experiments.add(exp)
 
-        table = fmtxt.Table('l' * (2 + len(experiments) + count), title=analysis)
+        table = fmtxt.Table('l' * (2 + len(experiments) + count))
         if count:
             table.cell()
         table.cells('Subject', 'MRI')
@@ -1082,11 +1090,7 @@ class mne_experiment(object):
             if count:
                 table.cell(i)
             table.cell(subject)
-            mri_subject = self._mri_subjects.get(subject, '*missing*')
-            if mri_subject == subject:
-                table.cell('own')
-            else:
-                table.cell(mri_subject)
+            table.cell(mris[subject])
 
             for exp in experiments:
                 table.cell(results[subject].get(exp, '?'))

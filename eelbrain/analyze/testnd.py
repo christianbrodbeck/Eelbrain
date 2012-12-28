@@ -44,6 +44,7 @@ from test import _resample
 
 __all__ = ['anova', 'cluster_anova', 'cluster_corr', 'corr', 'ttest',
            'f_oneway']
+__test__ = False
 
 
 

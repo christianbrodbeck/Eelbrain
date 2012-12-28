@@ -22,8 +22,13 @@ def frequencies(Y, X=None, of=None, sub=None, title="{Yname} Frequencies", ds=No
     Display frequency of occurrence of all categories in Y in the cells
     defined by X.
 
-    Y: factor whose frequencies are of interest
-    X: model defining cells for which frequencies are displayed
+    Y : categorial
+        Factor with values whose frequencies are of interest.
+    X : None | categorial
+        Model defining cells for which frequencies are displayed.
+    of : categorial
+        If `X` is constant within `of`, only count frequencies for each value
+        in `of` once. (Compress Y and X before calculating frequencies.)
 
     """
     Y = _data.ascategorial(Y, sub, ds)
@@ -32,6 +37,8 @@ def frequencies(Y, X=None, of=None, sub=None, title="{Yname} Frequencies", ds=No
     if of is not None:
         of = _data.ascategorial(of, sub, ds)
         Y = Y.compress(of)
+        if X is not None:
+            X = X.compress(of)
 
     if X is None:
         table = fmtxt.Table('ll')
@@ -44,9 +51,6 @@ def frequencies(Y, X=None, of=None, sub=None, title="{Yname} Frequencies", ds=No
             table.cell(cell)
             table.cell(np.sum(Y == cell))
         return table
-
-    if of is not None:
-        X = X.compress(of)
 
     ct = _structure.celltable(Y, X)
 

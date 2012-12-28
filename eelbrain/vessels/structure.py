@@ -204,7 +204,7 @@ class celltable:
         of strings) are joined by ``delim``.
 
         """
-        return _data.cellname(cell)
+        return _data.cellname(cell, delim=delim)
 
     def cell_labels(self, delim=' '):
         """

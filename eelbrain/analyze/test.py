@@ -23,6 +23,7 @@ __hide__ = ['division', 'random', 'itertools', 'scipy',
             'fmtxt', 'texstr',
             'var', 'isvar', 'asvar', 'isfactor', 'asfactor', 'ismodel', 'celltable',
             ]
+__test__ = False
 
 
 
