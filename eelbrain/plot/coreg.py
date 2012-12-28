@@ -923,8 +923,8 @@ class mri_head_fitter:
     def get_scale(self):
         return self._params[3:]
 
-    def save(self, s_to=None, fwd_args=["--ico", '4', '--surf'], make_fwd=True,
-             prog=False):
+    def save(self, s_to=None, fwd_args=["--ico", '4', '--surf', '--homog'],
+             make_fwd=True, prog=False):
         """
         s_to : None | str
             Override s_to set on initialization.
