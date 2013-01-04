@@ -4,7 +4,7 @@ Created on Nov 8, 2011
 @author: christian
 '''
 import logging
-import os 
+import os
 
 import wx
 
@@ -17,61 +17,61 @@ Help_dataDir = ("DataDir is used by the pyShell. A file called 'startup' in the 
 
 class PreferencesDialog(wx.Frame):
     def __init__(self, shell, Id=wx.ID_ANY, pos=wx.DefaultPosition,
-                 size=(500,50), style=wx.DEFAULT_FRAME_STYLE): #wx.DefaultSize
+                 size=(500, 50), style=wx.DEFAULT_FRAME_STYLE):  # wx.DefaultSize
         """
         tutorial on layout:
         http://zetcode.com/wxpython/layout/
-        
+
         """
         title = "Eelbrain Preferences"
         wx.Frame.__init__(self, shell, Id, title, pos, size, style)
         self.config = shell.wx_config
-        
+
         pref_sizer = wx.BoxSizer(wx.VERTICAL)
-        
+
     # Data Dir ---
-        panel_dataDir = wx.Panel(self, -1)#, size=(500,300))
+        panel_dataDir = wx.Panel(self, -1)  # , size=(500,300))
         panel_dataDir.SetBackgroundColour("BLUE")
         dataDir = self.config.Read("dataDir")
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         ID_DATADIR = wx.NewId()
         button = wx.Button(panel_dataDir, ID_DATADIR, "set dataDir")
         self.Bind(wx.EVT_BUTTON, self.SetDataDir, id=ID_DATADIR)
-        sizer.Add(button, 0, wx.ALIGN_LEFT|wx.EXPAND)
+        sizer.Add(button, 0, wx.ALIGN_LEFT | wx.EXPAND)
         # path
-        txt = self.dataDirTxt = wx.TextCtrl(panel_dataDir, -1, dataDir, 
-                                            size=(400,0), style=wx.TE_READONLY)
-        sizer.Add(txt, 1, wx.EXPAND|wx.ALIGN_RIGHT)
+        txt = self.dataDirTxt = wx.TextCtrl(panel_dataDir, -1, dataDir,
+                                            size=(400, 0), style=wx.TE_READONLY)
+        sizer.Add(txt, 1, wx.EXPAND | wx.ALIGN_RIGHT)
         # edit startup script
         ID_EDIT = wx.NewId()
         button = wx.Button(panel_dataDir, ID_EDIT, "Edit Startup Script")
         self.Bind(wx.EVT_BUTTON, self.EditStartupScript, id=ID_EDIT)
-        sizer.Add(button, 0, wx.ALIGN_LEFT|wx.EXPAND)        
+        sizer.Add(button, 0, wx.ALIGN_LEFT | wx.EXPAND)
         # help btn
         btn = wx.Button(panel_dataDir, wx.ID_HELP)
         sizer.Add(btn, 0, wx.ALIGN_RIGHT)
         self.Bind(wx.EVT_BUTTON, self.OnHelpDataDir, btn)
 
         pref_sizer.Add(sizer, 0)
-        
-        
+
+
         # Font ---
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(panel_dataDir, ID.SET_FONT, "Font")
         self.Bind(wx.EVT_BUTTON, self.OnSetFont, id=ID.SET_FONT)
-        sizer.Add(button, 0, wx.ALIGN_LEFT|wx.EXPAND)        
+        sizer.Add(button, 0, wx.ALIGN_LEFT | wx.EXPAND)
         pref_sizer.Add(sizer, 0)
-        
+
         panel_dataDir.SetSizer(pref_sizer)
-        
+
         pref_sizer.Fit(self)
-    
+
     def OnHelpDataDir(self, event=None):
-        dlg = wx.MessageDialog(self, Help_dataDir, "Help: dataDir", 
-                               wx.OK|wx.ICON_INFORMATION)
+        dlg = wx.MessageDialog(self, Help_dataDir, "Help: dataDir",
+                               wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
         dlg.Destroy()
-    
+
     def OnSetFont(self, event):
         try:
             cur_size = int(self.config.Read('font size'))
@@ -103,9 +103,9 @@ class PreferencesDialog(wx.Frame):
             self.config.Write("font size", str(size))
             self.config.Write("font color", color)
             self.Parent.ApplyStyle()
-        
+
         dlg.Destroy()
-    
+
     def SetDataDir(self, event=None):
         dlg = wx.DirDialog(self, "Select user dataDir directory")
         if dlg.ShowModal() == wx.ID_OK:
@@ -113,7 +113,7 @@ class PreferencesDialog(wx.Frame):
             self.config.Write("dataDir", dataDir)
             self.dataDirTxt.SetValue(dataDir)
         dlg.Destroy()
-    
+
     def EditStartupScript(self, event=None):
         dataDir = self.config.Read("dataDir")
         path = os.path.join(dataDir, 'startup')
@@ -122,5 +122,5 @@ class PreferencesDialog(wx.Frame):
                 f.write("# Eelbrain startup script")
         self.Parent.create_py_editor(pyfile=path)
 
-        
-        
+
+
