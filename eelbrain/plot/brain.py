@@ -1,8 +1,12 @@
 '''
-Created on Oct 25, 2012
+plot.brain
+==========
 
-@author: christian
+Plot source estimates with mayavi/pysurfer.
+
 '''
+# author: Christian Brodbeck
+
 import os
 import shutil
 import subprocess
@@ -16,63 +20,85 @@ from eelbrain.utils.subp import cmd_exists
 from eelbrain.vessels.dimensions import find_time_point
 
 
-__all__ = ['stc', 'stat']
+__all__ = ['activation', 'stc', 'stat']
 
 
 def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, hemi='both'):
     """
+    Plot a statistic in source space.
+
+    Parameters
+    ----------
+    p_map : ndvar
+        Statistic to plot (normally a map of p values).
+    param_map : ndvar
+        Statistical parameter covering the same data points as p_map. Used
+        only for incorporating the directionality of the effect into the plot.
+    p0, p1 : scalar
+        Threshold p-values for the color map.
     solid : bool
         Use solid color patches between p0 and p1 (else: blend transparency
         between p0 and p1)
+    hemi : 'lh' | 'rh' | 'both'
+        Which hemisphere to plot.
 
     """
     pmap, lut, vmax = colorize_p(p_map, param_map, p0=p0, p1=p1, solid=solid)
     return stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False, hemi=hemi)
 
 
-def activation(stc_activation, a_thresh=None, act_max=None, hemi='both'):
+def activation(stc, a_thresh=None, act_max=None, hemi='both'):
     """
-    Add a color map to plotting stc activation.
+    Plot activation in source space.
 
     Parameters
     ----------
-
-    a_thresh : int
+    stc : ndvar
+        An ndvar describing activation in source space.
+    a_thresh : scalar | None
         the point at which alpha transparency is 50%. When None,
         a_thresh = one standard deviation above and below the mean.
-    act_max : int
-        the upper range of activation values. values are clipped above this range. 
+    act_max : scalar | None
+        the upper range of activation values. values are clipped above this range.
         When None, act_max = two standard deviations above and below the mean.
+    hemi : 'lh' | 'rh' | 'both'
+        Which hemisphere to plot.
 
     """
-    x = stc_activation.x.mean()
-    std = stc_activation.x.std()
+    x = stc.x.mean()
+    std = stc.x.std()
 
     if a_thresh is None:
         a_thresh = x + std
     if act_max is None:
         act_max = x + 2 * std
 
-
     lut = colorize_activation(a_thresh=a_thresh, act_max=act_max)
-    if stc_activation.has_case:
-        stc_activation = stc_activation.summary()
-    return stc(stc_activation, colormap=lut, min= -act_max, max=act_max, colorbar=False, hemi=hemi)
+    if stc.has_case:
+        stc = stc.summary()
+    return stc(stc, colormap=lut, min= -act_max, max=act_max, colorbar=False, hemi=hemi)
+
 
 class stc:
+    """
+    Plot a source space ndvar.
+
+    See also
+    --------
+    activation : plot activation in source space
+    stat : plot statistics in source space
+
+    """
     def __init__(self, v, colormap='hot', min=0, max=30, surf='smoothwm',
                  figsize=(500, 500), colorbar=True, hemi='both'):
         """
         Parameters
         ----------
-
         v : ndvar [source [ x time]]
             Ndvar to plot. Must contain a source dimension, and can optionally
             contain a time dimension.
-
         surf : 'smoothwm' | ...
             Freesurfer surface.
-
         hemi : 'both' | 'l[eft]' | 'r[ight]'
             Only plot one hemisphere.
 
@@ -316,9 +342,9 @@ def colorize_activation(a_thresh=3, act_max=8):
     Notes
     -----
 
-    midpoint is 127        
+    midpoint is 127
     act_max is the upper bound range of activation.
-    
+
     for colors:
 
     - negative is blue.
@@ -332,7 +358,7 @@ def colorize_activation(a_thresh=3, act_max=8):
     trans_uidx = np.argmin(np.abs(values - a_thresh))
     trans_lidx = np.argmin(np.abs(values + a_thresh))
 
-    #Transparent ramping
+    # Transparent ramping
     lut = np.zeros((256, 4), dtype=np.uint8)
     lut[127:trans_uidx, 3] = np.linspace(0, 128, trans_uidx - 127)
     lut[trans_lidx:127, 3] = np.linspace(128, 0, 127 - trans_lidx)

@@ -22,7 +22,7 @@ Package Index yet. In order to run Eelbrain,
 .. _dependencies:
 
 Optional Dependencies
-^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 The following modules provide additional functionality if they are installed:
     
@@ -71,7 +71,7 @@ Then, install MDP from github::
 .. _obtain-source:
 
 Installing from GitHub
-^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 
 The Eelbrain source code is hosted on `GitHub 
 <https://github.com/christianmbrodbeck/Eelbrain>`_. The latest source can be 
@@ -88,7 +88,7 @@ source files.
 
 
 Updating
---------
+^^^^^^^^
 
 The source can then always be updated to the latest version
 from within the ``Eelbrain`` directory::

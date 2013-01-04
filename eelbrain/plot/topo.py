@@ -1,26 +1,8 @@
 """
-Topographic maps
-================
+plot.topo
+=========
 
-
-Figure Types
-------------
-
-butterfly:
-    plot a butterfly plot and a corresponding topomap
-series:
-    Plot a series of topomaps with mean data for each time bin
-topomap:
-    plot individual topomaps
-xbyx:
-    Plot a uts array and dynamic topomaps
-
-
-topomap kwargs
---------------
-
-plotSensors:
-    mark sensor locations on a topomap; False, True, or list of sensor IDs
+Plots with topographic maps.
 
 """
 
@@ -47,9 +29,10 @@ class topomap(_base.eelfigure):
                  size=5, dpi=100, title="plot.topomap",
                  res=100, interpolation='nearest'):
         """
-        Plots a single topogeraphy.
+        Plots individual topogeraphies.
 
-        **parameters:**
+        Parameters
+        ----------
 
         sensors : bool | 'id' | 'name'
 
@@ -94,7 +77,7 @@ class topomap(_base.eelfigure):
 
 class butterfly(_base.eelfigure):
     """
-    Butterfly plot with corresponding topomaps
+    Butterfly plot with corresponding topomaps.
 
      - LMB click in butterfly plots fixates the topomap time.
      - RMB click in butterfly plots removes the time point, the topomaps follow

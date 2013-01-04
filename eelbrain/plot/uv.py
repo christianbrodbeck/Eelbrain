@@ -1,7 +1,12 @@
 '''
+plot.uv
+=======
+
 Plotting psystats objects.
 
 '''
+# author: Christian Brodbeck
+
 from __future__ import division
 
 import logging
@@ -296,9 +301,12 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             ds=None, **simple_kwargs
             ):
     """
-    Arguments
-    ---------
-    
+    Returns a matplotlib figure.
+
+
+    Parameters
+    ----------
+
     Y : var
         dependent variable
     X : factor or model
@@ -446,6 +454,11 @@ def barplot(Y, X=None, match=None, sub=None,
             ds=None, **simple_kwargs
             ):
     """
+    Returns a matplotlib figure.
+
+
+    Parameters
+    ----------
 
     Y : scalar var
         Dependent variable.
@@ -637,25 +650,43 @@ def timeplot(Y, categories, time, match=None, sub=None,
              **simple_kwargs
              ):
     """
-    kwargs
-    ------
-    
-    spread: 'box' - boxplots
-            for lineplots:
-            'Xsem' X standard error of the means
-            'Xstd' X standard deviations
-            None -  without 
-            
-    main: draw lines to connect values across time (default: np.mean)  
-          can be 'bar' for barplots or False
-    
-    datalabels = float (in std) : label outlier data
-    
-    diff=Value   Use value as baseline for plotting; test other conditions
-         agaist baseline (instead of pairwise)
-    
-    legend: bool or 'fig' to plot figlegend. The kwarg 'loc' is the legend kwarg.
-    
+    Plot a variable over time.
+
+
+    Parameters
+    ----------
+
+    spread : str
+        How to indicator data spread.
+        None - without
+        'box' - boxplots
+        for lineplots:
+        'Xsem' X standard error of the means
+        'Xstd' X standard deviations
+
+    main : numpy function
+        draw lines to connect values across time (default: np.mean)
+        can be 'bar' for barplots or False
+
+    datalabels : scalar
+        Label outlier data. The argument is provided in std.
+
+    diff : scalar
+        Use this value as baseline for plotting; test other conditions
+        agaist baseline (instead of pairwise)
+
+    legend : bool | 'fig'
+        Plot a legend; with `fig`, plot as figlegend.
+
+    loc :
+        The legend location.
+
+
+    Returns
+    -------
+    fig : matplotlib figure
+        Reference to the matplotlib figure
+
     """
     categories = asfactor(categories)
 
@@ -896,12 +927,18 @@ class multitimeplot:
                  titlekwargs=defaults['title_kwargs'],
                  ):
         """
+        Template for a figure including multiple timeplots.
+
         Create an empty template figure for a plot subsuming several
-        :func:`timeplot`s. Add timeplots using the plot method.
-        
-        :arg ylim: (bottom, top) tuple of scalars; if left at default (None),
-            ylim depend on the data plotted.
-         
+        :func:`timeplot`s. Add timeplots using the ``plot`` method.
+
+
+        Parameters
+        ----------
+
+        ylim : None | (bottom, top) tuple of scalars
+            By default (None), ylim depend on the data plotted.
+
         """
         self._ylim = ylim
         # ylabel
@@ -960,36 +997,27 @@ class multitimeplot:
              heading=None, headingy=None,
              colors=True, hatch=False, markers=True):
         """
-        Main Args
-        ---------
-        Y: variable to plot
-        categories: factor indicating different categories to plot
-        time: variable indicating time
-        match: factor which indicates dependent measures (e.g. subject)
-        sub: subset
-        
-        heading: heading for this set (if None, no heading is added)
-        headingy: y coordinate on which to plot the heading
-         
-        kwargs
-        ------
-        
-        spread: 'box' - boxplots
-                for lineplots:
-                'Xsem' X standard error of the means
-                'Xstd' X standard deviations
-                None -  without 
-                
-        main: draw lines to connect values across time (default: np.mean)  
-              can be 'bar' for barplots or False
-        
-        datalabels = float (in std) : label outlier data
-        
-        diff=Value   Use value as baseline for plotting; test other conditions
-             agaist baseline (instead of pairwise)
-        
-        legend: bool or 'fig' to plot figlegend. The kwarg 'loc' is the legend kwarg.
-        
+        Parameters
+        ----------
+
+        Y :
+            variable to plot
+        categories :
+            factor indicating different categories to plot
+        time :
+            variable indicating time
+        match :
+            factor which indicates dependent measures (e.g. subject)
+        sub :
+            subset
+        heading :
+            heading for this set (if None, no heading is added)
+        headingy :
+            y coordinate on which to plot the heading
+
+
+        See also timeplot parameters.
+
         """
         categories = asfactor(categories)
 
@@ -1258,8 +1286,16 @@ def corrplot(Y, X, cat=None, ax=None, sub=None,
              lloc='lower center', lncol=2, figlegend=True, texify=True,
              xlabel=True, ylabel=True, rinxlabel=True):
     """
-    cat: categories
-    rinxlabel: print the correlation in the xlabel
+    Plot the correlation between two variables.
+
+
+    Parameters
+    ----------
+    cat :
+        categories
+    rinxlabel :
+        print the correlation in the xlabel
+
     """
     # LABELS
     if xlabel is True:
@@ -1332,6 +1368,9 @@ def regplot(Y, regressor, categories=None, match=None, sub=None,
             c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3']):
     # TODO: merge with corrplot
     """
+    Plot the regression of Y on a regressor.
+
+
     parameters
     ----------
 
@@ -1461,26 +1500,26 @@ def _normality_plot(ax, data, **kwargs):
     P.yticks(ticks, labels)
 
 
-def normality(*args, **kwargs):
-    raise ValueError("Deprecated. Use histogram command")
-
-def histogram(Y, X=None, match=None, sub=None, 
-              matrix=True, pooled=True, trend=".",
-              
-              datalabels=None,
-              title=None, ylabel=True, 
+def histogram(Y, X=None, match=None, sub=None, pooled=True,
+              title=None, ylabel=True,
               titlekwargs=defaults['title_kwargs'],
               # layout
               ncols=3, ax_size=2.5
               ):
     """
-    kwargs
-    ------
-    matrix: distribution of categories, or of differences if within subject data is provided
-    pooled: one plot with all values/differences pooled
-    
-    datalabels = float (in std) : label outlier data
-    
+    Make histogram plots and test normality.
+
+
+    Parameters
+    ----------
+
+    pooled : bool
+        Add one plot with all values/differences pooled.
+    title : None | str
+        Figure title.
+    titlekwargs : dict
+        Forwarded to :py:func:`pyplot.suptitle`.
+
     """
     assert isvar(Y)
 
@@ -1577,9 +1616,13 @@ def histogram(Y, X=None, match=None, sub=None,
 
 def boxcox_explore(Y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=True):
     """
-    
-    **Arguments:**
-    
+    Plot the distribution resulting from a Box-Cox transformation with
+    different parameters.
+
+
+    Parameters
+    ----------
+
     Y : array-like
         array containing data whose distribution is to be examined
     crange :

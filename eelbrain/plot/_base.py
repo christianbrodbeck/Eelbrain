@@ -258,9 +258,11 @@ class eelfigure(object):
         pass
 
     def close(self):
+        "Close the figure."
         self._frame.Close()
 
     def draw(self):
+        "(Re-)draw the figure (after making manual changes)."
         self._frame.canvas.draw()
 
 

@@ -1,11 +1,8 @@
 """
+plot.utsnd
+==========
+
 plots for multivariate uniform time series
-
-
-Plot types
-----------
-
-...
 
 """
 
@@ -375,27 +372,26 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
 
 
 class butterfly(_base.eelfigure):
+    "Plot data in a butterfly plot."
     def __init__(self, epochs, sensors=None, ylim=None, w=4, h=2, dpi=90,
                  ncol=3, title=None, axtitle='{name}',
                  xlabel=True, ylabel=True, color=None):
         """
-    Creates a butterfly plot
+        Parameters
+        ----------
 
-    Arguments
-    ---------
-
-    sensors: None or list of sensor IDs
-        sensors to plot (``None`` = all)
-    w, h : scalar
-        width and height of the individual aces in inches
-    color: (mpl color)
-        default (``None``): use segment color if available, otherwise black;
-        ``True``: alternate colors (mpl default)
-    title: bool or string
-        Title for the axes. If ``True``, the segment's name is used.
-    ylim:
-        scalar or (min, max) tuple specifying the y-axis limits (the default
-        ``None`` leaves mpl's default limits unaffected)
+        sensors: None or list of sensor IDs
+            sensors to plot (``None`` = all)
+        w, h : scalar
+            width and height of the individual aces in inches
+        color: (mpl color)
+            default (``None``): use segment color if available, otherwise
+            black; ``True``: alternate colors (mpl default)
+        title: bool or string
+            Title for the axes. If ``True``, the segment's name is used.
+        ylim:
+            scalar or (min, max) tuple specifying the y-axis limits (the
+            default ``None`` leaves mpl's default limits unaffected)
 
         """
         epochs = _base.unpack_epochs_arg(epochs, 2)

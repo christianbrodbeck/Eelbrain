@@ -18,21 +18,20 @@ __all__ = ['tsv', 'var']
 def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
         skiprows=0):
     """
-    returns a ``dataset`` with data from a tab-separated values file. 
-    
-        
-    names :
-    
-    * ``True``: look for names on the first line of the file
-    * ``['name1', ...]`` use these names
-    * ``False``: use "v1", "v2", ...
-        
-    types :
-    
-    * ``'auto'`` -> import as var if all values can be converted float, 
-      otherwise as factor
-    * list of 0=auto, 1=factor, 2=var. e.g. ``[0,1,1,0]``
-    
+    returns a ``dataset`` with data from a tab-separated values file.
+
+
+    Parameters
+    ----------
+
+    names : list of str | bool
+        * ``['name1', ...]`` use these names
+        * ``True``: look for names on the first line of the file
+        * ``False``: use "v1", "v2", ...
+    types : 'auto' | list of int
+        * ``'auto'`` -> import as var if all values can be converted float,
+          otherwise as factor
+        * list of 0=auto, 1=factor, 2=var. e.g. ``[0,1,1,0]``
     empty :
         value to substitute for empty cells
     delimiter : str
