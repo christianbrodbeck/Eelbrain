@@ -47,16 +47,12 @@ class MainApp(wx.App):
 
         return True
 
-    def MacOpenFile(self, filename):
-        """
-        after
-        http://wiki.wxpython.org/Optimizing%20for%20Mac%20OS%20X
+    def MacOpenFile(self, fname):
+        if not fname.endswith('eelbrain_run.py'):
+            self.MacOpenFiles([fname])
 
-        """
-        logging.debug("MAC Open File: %s" % filename)
-        if os.path.basename(filename) == 'eelbrain':
-            # (when launching through the script, MacOpenFile is called with
-            # the script's path)
-            return
-        elif os.path.isfile(filename):
-            self.shell.OnFileOpen(path=filename)
+    def MacOpenFiles(self, filenames):
+        logging.debug("MacOpenFiles: %s" % repr(filenames))
+        for filename in filenames:
+            if os.path.isfile(filename):
+                self.shell.OnFileOpen(path=filename)
