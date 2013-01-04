@@ -252,7 +252,7 @@ class Editor(wx.py.editor.EditorFrame):
             self.editor.window.SetCaretPeriod(500)
             self.shell.active_editor = self
             if self._exec_in_shell_namespace:
-                self.buffer.interp.locals.update(self.shell.global_namespace)
+                self.updateNamespace()
         else:
             self.editor.window.SetCaretForeground(wx.Colour(200, 200, 200))
             self.editor.window.SetCaretPeriod(0)
@@ -321,6 +321,7 @@ class Editor(wx.py.editor.EditorFrame):
             bmp = Icon("actions/terminal-off")
         self.toolbar.SetToolNormalBitmap(ID.PYDOC_EXEC_ISOLATE, bmp)
     
+        self.updateNamespace()
     def GetCurLine(self):
         return self.editor.window.GetCurLine()
     
@@ -434,9 +435,9 @@ class Editor(wx.py.editor.EditorFrame):
         self.shell.Raise()
     
     def OnUpdateNamespace(self, event=None):
-        self.buffer.updateNamespace()
     
     ## Text Search
+        self.updateNamespace()
     def OnSearchMod(self, event):
         self.search_str = event.GetString()
         self.OnSearchForward(event)
@@ -485,6 +486,14 @@ class Editor(wx.py.editor.EditorFrame):
             stop = self.editor.window.GetLineEndPosition(pos)
             self.editor.window.SetSelection(start, stop)
     
+    def updateNamespace(self):
+        if self._exec_in_shell_namespace:
+            self.buffer.interp.locals.clear()
+            self.buffer.interp.locals.update(self.shell.global_namespace)
+        else:
+            super(Editor, self).updateNamespace()
+#        self.buffer.updateNamespace()
+
     def updateTitle(self):
         if self.editor is None:
             self.SetTitle("Empty Editor")
