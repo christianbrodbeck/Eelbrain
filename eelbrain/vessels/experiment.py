@@ -195,8 +195,8 @@ class mne_experiment(object):
              # mne raw-derivatives analysis
              'proj_file': '{raw}_{proj}-proj.fif',
              'proj_plot': '{raw}_{proj}-proj.pdf',
-             'cov': '{raw}_{fwd_an}-cov.fif',
-             'fwd': '{raw}_{fwd_an}-fwd.fif',
+             'cov': '{raw}_{cov_name}-{proj}-cov.fif',
+             'fwd': '{raw}_{cov_name}-{proj}-fwd.fif',
 
              # fwd model
              'fid': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-fiducials.fif'),
@@ -207,7 +207,7 @@ class mne_experiment(object):
              # mne's stc.save() requires stub filename and will add '-?h.stc'
              'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
              'evoked': os.path.join('{evoked_dir}', '{experiment}_{cell}_{epoch}_{proj}-evoked.fif'),
-             'stc_dir': os.path.join('{meg_sdir}', 'stc_{fwd_an}_{stc_an}'),
+             'stc_dir': os.path.join('{meg_sdir}', 'stc_{cov_name}-{proj}_{inv_name}'),
              'stc': os.path.join('{stc_dir}', '{experiment}_{cell}_{epoch}'),
              'stc_morphed': os.path.join('{stc_dir}', '{experiment}_{cell}_{common_brain}'),
              'label': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{analysis}.label'),
@@ -992,11 +992,6 @@ class mne_experiment(object):
             desc += '-%s' % name
         self.set(epoch=desc, add=True)
 
-    def set_fwd_an(self, stim, tw, proj):
-        temp = '{stim}-{tw}-{proj}'
-        fwd_an = temp.format(stim=stim, tw=tw, proj=proj)
-        self.set(fwd_an=fwd_an, add=True)
-
     def set_mri_subject(self, subject, mri_subject):
         """
         Reassign a subject's MRI and make sure that var_values is
@@ -1005,11 +1000,6 @@ class mne_experiment(object):
         """
         self._mri_subjects[subject] = mri_subject
         self.var_values['mrisubject'] = list(self._mri_subjects.values())
-
-    def set_stc_an(self, blc, method, ori):
-        temp = '{blc}-{method}-{ori}'
-        stc_an = temp.format(blc=blc, method=method, ori=ori)
-        self.set(stc_an=stc_an, add=True)
 
     def show_in_finder(self, key, **kwargs):
         fname = self.get(key, **kwargs)
