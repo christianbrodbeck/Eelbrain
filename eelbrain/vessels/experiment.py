@@ -35,6 +35,7 @@ import subprocess
 import numpy as np
 
 import mne
+from mne.minimum_norm import make_inverse_operator
 
 from eelbrain import ui
 from eelbrain import fmtxt
@@ -442,6 +443,21 @@ class mne_experiment(object):
                     raise IOError(err)
 
         return path
+
+    def get_inv(self, fiff, **kwargs):
+        inv_name = self.get('inv_name')
+        method, ori = inv_name.split('-')
+        if ori == 'free':
+            fwd_kwa = dict(force_fixed=False, surf_ori=False)
+            inv_kwa = dict(loose=None, depth=None)
+        else:
+            raise ValueError('ori=%r' % ori)
+
+        self.set(**kwargs)
+        fwd = mne.read_forward_solution(self.get('fwd'), **fwd_kwa)
+        cov = mne.read_cov(self.get('cov'))
+        inv = make_inverse_operator(fiff.info, fwd, cov, **inv_kwa)
+        return inv
 
     def expand_template(self, temp, values={}):
         """
