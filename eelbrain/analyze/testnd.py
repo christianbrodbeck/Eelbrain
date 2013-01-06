@@ -259,6 +259,7 @@ class ttest:
                        "must be explicitly specified." % len(ct))
                 raise ValueError(err)
 
+        axis = ct.Y.get_axis('case')
 
         if isinstance(c0, basestring):
             c1_mean = ct.data[c1].summary(name=c1)
@@ -269,16 +270,31 @@ class ttest:
                     err = ("match kwarg: Conditions have different values on"
                            " <%r>" % ct.match.name)
                     raise ValueError(err)
-                T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c0].x, axis=0)
+                T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c0].x,
+                                             axis=axis)
                 test_name = 'Related Samples t-Test'
             else:
-                T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c0].x, axis=0)
+                T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c0].x,
+                                             axis=axis)
                 test_name = 'Independent Samples t-Test'
         elif np.isscalar(c0):
             c1_data = ct.data[c1]
+            x = c1_data.x
             c1_mean = c1_data.summary()
             c0_mean = None
-            T, P = scipy.stats.ttest_1samp(c1_data.x, popmean=c0, axis=0)
+
+            # compute T and P
+            if np.prod(x.shape) > 2 ** 26:
+                mod_len = x.shape[1]
+                fix_shape = x.shape[0:1] + x.shape[2:]
+                N = 2 ** 26 // np.prod(fix_shape)
+                res = [scipy.stats.ttest_1samp(x[:, i:i + N], popmean=c0, axis=axis)
+                       for i in xrange(0, mod_len, N)]
+                T = np.vstack([v[0] for v in res])
+                P = np.vstack([v[1] for v in res])
+            else:
+                T, P = scipy.stats.ttest_1samp(x, popmean=c0, axis=axis)
+
             test_name = '1-Sample t-Test'
             if c0:
                 diff = c1_mean - c0
