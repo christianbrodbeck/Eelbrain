@@ -16,8 +16,9 @@ import numpy as np
 from mayavi import mlab
 import surfer
 
-from eelbrain.utils.subp import cmd_exists
-from eelbrain.vessels.dimensions import find_time_point
+from ..utils.subp import cmd_exists
+from ..vessels.dimensions import find_time_point
+import _base
 
 
 __all__ = ['activation', 'stc', 'stat']
@@ -120,13 +121,24 @@ class stc:
 
         if v.source.lh_n:
             self.lh = self._hemi(v, 'lh', b_kwargs, d_kwargs)
-            d_kwargs['time_label'] = ''
+            self._lh_visible = True
+            d_kwargs['time_label'] = None
+        else:
+            self._lh_visible = False
+
         if v.source.rh_n:
             self.rh = self._hemi(v, 'rh', b_kwargs, d_kwargs)
+            self._rh_visible = True
+        else:
+            self._rh_visible = False
+
+        # Brian object with decorators
+        self._dec_hemi = self.lh or self.rh
 
         # time
         if v.has_dim('time'):
             self._time = v.get_dim('time')
+            self._time_index = 0
         else:
             self._time = False
 
@@ -137,7 +149,7 @@ class stc:
         brain.add_data(data, vertices=vert, **d_kwargs)
         return brain
 
-    def animate(self, tstart=None, tstop=None, tstep=None,
+    def animate(self, tstart=None, tstop=None, tstep=None, view=None,
                 save_frames=False, save_mov=False, framerate=10,
                 codec='mpeg4'):
         """
@@ -159,25 +171,6 @@ class stc:
             save the movie
 
         """
-        # make sure movie file will be writable
-        if save_mov:
-            save_mov = os.path.expanduser(save_mov)
-            save_mov = os.path.abspath(save_mov)
-            root, ext = os.path.splitext(save_mov)
-            dirname = os.path.dirname(save_mov)
-            if ext not in ['.mov', '.avi']:
-                ext = '.mov'
-                save_mov = root + ext
-
-            if not cmd_exists('ffmpeg'):
-                err = ("Need ffmpeg for saving movies. Download from "
-                       "http://ffmpeg.org/download.html")
-                raise RuntimeError(err)
-            elif os.path.exists(save_mov):
-                os.remove(save_mov)
-            elif not os.path.exists(dirname):
-                os.mkdir(dirname)
-
         # find time points
         if tstep is None:
             times = self._time.x
@@ -192,64 +185,104 @@ class stc:
                 tstop = self._time.x.max()
             times = np.arange(tstart, tstop + tstep / 2, tstep)
 
-        # find number of digits necessary to name frames
-        n_digits = 1 + int(np.log10(len(times)))
-        fmt = '%%0%id' % n_digits
-
-        # find output paths
-        if save_frames:
-            tempdir = False
-            save_frames = os.path.expanduser(save_frames)
-            save_frames = os.path.abspath(save_frames)
-            try:
-                save_frames = save_frames % fmt
-            except TypeError:
-                try:
-                    save_frames % 0
-                except TypeError:
-                    err = ("save needs to specify a path that can be formatted "
-                           "with exactly one integer")
-                    raise ValueError(err)
-            dirname = os.path.split(save_frames)[0]
-            if not os.path.exists(dirname):
-                os.makedirs(dirname)
+        if view is None:
+            pass
+        elif isinstance(view, str):
+            self.show_view(view)
+            view = None
         else:
-            tempdir = tempfile.mkdtemp()
-            save_frames = os.path.join(tempdir, 'frame%s.png' % fmt)
+            # convert unnested list entries
+            isstr = [isinstance(v, str) for v in view]
+            for i in np.nonzero(isstr)[0]:
+                view[i] = [view[i]]
 
-        # render and save the frames
+        nt = len(times)
+        if view is None:
+            nrow = 1
+            ncol = 1
+        else:
+            nrow = len(view)
+            ncols = map(len, view)
+            ncol = ncols[0]
+            for n in ncols[1:]:
+                assert n == ncol
+
+        tiler = _base.ImageTiler('.png', nrow, ncol, nt)
+
+        if view is None:
+            self._make_view_frames(tiler, times)
+        else:
+            time_label_shown = False
+            for r, row in enumerate(view):
+                for c, view_ in enumerate(row):
+                    self.show_view(view_)
+                    if time_label_shown:
+                        self._dec_hemi.texts['time_label'].visible = False
+                    else:
+                        self._dec_hemi.texts['time_label'].visible = True
+                        time_label_shown = True
+                    self._make_view_frames(tiler, times, r, c)
+
+        tiler.make_movie(save_mov, framerate, codec)
+
+    def _make_view_frames(self, tiler, times, row=0, col=0):
+        "Make all frames for a single view"
         for i, t in enumerate(times):
             self.set_time(t)
-            if save_frames:
-                fname = save_frames % i
-                self.fig.scene.save(fname)
-
-        # make the movie
-        if save_mov:
-            frame_dir, frame_name = os.path.split(save_frames)
-            cmd = ['ffmpeg',  # ?!? order of options matters
-                   '-f', 'image2',  # force format
-                   '-r', str(framerate),  # framerate
-                   '-i', frame_name,
-                   '-c', codec,
-                   '-sameq', save_mov,
-                   '-pass', '2'  #
-                   ]
-            sp = subprocess.Popen(cmd, cwd=frame_dir,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
-            stdout, stderr = sp.communicate()
-            if not os.path.exists(save_mov):
-                raise RuntimeError("ffmpeg failed:\n" + stderr)
-
-            if tempdir:
-                shutil.rmtree(tempdir)
+            fname = tiler.get_tile_fname(col, row, i)
+            self.save_frame(fname)
 
     def close(self):
         if self.lh is None:
             self.rh.close
         else:
             self.lh.close()
+
+    def save_frame(self, fname, view=None):
+        """
+        Save an image with one or more views on the current brain.
+
+        Parameters
+        ----------
+        fname : str(path)
+            Destination of the image file.
+        view : str | list
+            View(s) to include in the image.
+
+        """
+        if view is None:
+            self.fig.scene.save(fname)
+            return
+        elif isinstance(view, str):
+            self.show_view(view)
+            self.fig.scene.save(fname)
+            return
+
+        # convert unnested list entries
+        isstr = [isinstance(v, str) for v in view]
+        for i in np.nonzero(isstr)[0]:
+            view[i] = [view[i]]
+
+        nrow = len(view)
+        ncols = map(len, view)
+        ncol = ncols[0]
+        for n in ncols[1:]:
+            assert n == ncol
+
+        _, ext = os.path.splitext(fname)
+        im = _base.ImageTiler(ext, nrow, ncol)
+        time_label_shown = False
+        for r, row in enumerate(view):
+            for c, view_ in enumerate(row):
+                if time_label_shown:
+                    self._dec_hemi.texts['time_label'].visible = False
+                else:
+                    self._dec_hemi.texts['time_label'].visible = True
+                    time_label_shown = True
+                tile_fname = im.get_tile_fname(c, r)
+                self.save_frame(tile_fname, view_)
+
+        im.make_frame(fname, redo=True)
 
     def set_time(self, t):
         "set the time frame displayed (in seconds)"
@@ -258,10 +291,90 @@ class stc:
 
         time_idx , t = find_time_point(self._time, t)
 
-        if self.lh is not None:
+        if self._lh_visible:
             self.lh.set_data_time_index(time_idx)
-        if self.rh is not None:
+        if self._rh_visible:
             self.rh.set_data_time_index(time_idx)
+
+    def show(self, hemi='lh'):
+        """
+        Change the visible hemispheres.
+
+        Parameters
+        ----------
+        hemi : 'lh' | 'rh' | 'both' | None
+            Hemisphere(s) to show. Show both hemispheres, or only the left or
+            the right hemisphere. None hides both hemispheres.
+
+        """
+        if hemi == 'both':
+            self._show_hemi('lh')
+            self._show_hemi('rh')
+        elif hemi == 'lh':
+            self._show_hemi('lh')
+            self._show_hemi('rh', False)
+        elif hemi == 'rh':
+            self._show_hemi('lh', False)
+            self._show_hemi('rh')
+        elif hemi is None:
+            self._show_hemi('lh', False)
+            self._show_hemi('rh', False)
+        else:
+            err = ("Invalid parameter: hemi = %r" % hemi)
+            raise ValueError(err)
+
+    def _show_hemi(self, hemi, show=True):
+        "Show or hide one hemisphere"
+        if hemi == 'lh':
+            brain = self.lh
+        elif hemi == 'rh':
+            brain = self.rh
+        else:
+            err = ("Invalid parameter: hemi = %r" % hemi)
+            raise ValueError(err)
+
+        if brain is None:
+            return
+
+        brain._geo_mesh.visible = show
+        setattr(self, '_%s_visible' % hemi, show)
+        if hasattr(brain, "data"):
+            surf = brain.data['surface']
+            surf.visible = show
+
+            # update time index
+            if show and (brain.data['time_idx'] != self._time_index):
+                brain.set_data_time_index(self._time_index)
+
+    def show_view(self, view):
+        """
+
+        'lateral', 'medial' and 'parietal' need a hemisphere prefix (e.g., 'lh lateral')
+        for 'lateral' and 'medial', the opposite hemisphere will be hidden.
+
+        """
+        if view.endswith(('frontal', 'lateral', 'medial', 'parietal')):
+            hemi, view = view.split()
+            if hemi == 'lh':
+                plot = self.lh
+            elif hemi == 'rh':
+                plot = self.rh
+            else:
+                err = ("The first segment of view needs to specify a "
+                       "hemisphere ('lh'/'rh', not %r)." % hemi)
+                raise ValueError(err)
+        elif self.lh is None:
+            plot = self.rh
+        else:
+            plot = self.lh
+
+        if view in ('lateral', 'medial'):
+            self.show(hemi)
+        else:
+            self.show('both')
+
+        plot.show_view(view)
+
 
 
 def colorize_p(pmap, tmap, p0=0.05, p1=0.01, solid=False):
