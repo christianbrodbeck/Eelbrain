@@ -66,6 +66,57 @@ def is_py_varname(name):
     b = re.match('[a-zA-Z0-9_]', name)
     return a and b
 
+# modify wx.py introspection to take into account __wrapped__
+import inspect
+from wx.py.introspect import getConstructor
+def getBaseObject(object):
+    """Return base object and dropSelf indicator for an object."""
+    if inspect.isbuiltin(object):
+        # Builtin functions don't have an argspec that we can get.
+        dropSelf = 0
+    elif inspect.ismethod(object):
+        # Get the function from the object otherwise
+        # inspect.getargspec() complains that the object isn't a
+        # Python function.
+        try:
+            if object.im_self is None:
+                # This is an unbound method so we do not drop self
+                # from the argspec, since an instance must be passed
+                # as the first arg.
+                dropSelf = 0
+            else:
+                dropSelf = 1
+            object = object.im_func
+        except AttributeError:
+            dropSelf = 0
+    elif inspect.isclass(object):
+        # Get the __init__ method function for the class.
+        constructor = getConstructor(object)
+        if constructor is not None:
+            object = constructor
+            dropSelf = 1
+        else:
+            dropSelf = 0
+    elif callable(object):
+        # Get the __call__ method instead.
+        try:
+            object = object.__call__.im_func
+            dropSelf = 1
+        except AttributeError:
+            dropSelf = 0
+    else:
+        dropSelf = 0
+
+    #  MY MOD
+    object = getattr(object, '__wrapped__', object)
+    # END MY MOD
+
+    return object, dropSelf
+wx.py.introspect.getBaseObject = getBaseObject
+
+
+
+
 # subclass Shell in order to set some custom properties
 class Shell(wx.py.shell.Shell):
     exec_mode = 0  # counter to determine whether other objects than the shell itself are writing to writeOut
