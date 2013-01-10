@@ -270,6 +270,7 @@ class Editor(wx.py.editor.EditorFrame):
                                 shell_globals=shell_globals,
                                 filedir=self.buffer.doc.filedir,
                                 internal_call=True)
+            self.updateNamespace()
 
     def OnExecFromDrive(self, event=None):
         "Save unsaved changes and execute file in shell."
@@ -305,6 +306,7 @@ class Editor(wx.py.editor.EditorFrame):
                                     shell_globals=shell_globals,
                                     filedir=self.buffer.doc.filedir,
                                     internal_call=True)
+                self.updateNamespace()
             else:
                 pass
 
