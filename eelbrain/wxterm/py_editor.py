@@ -431,7 +431,8 @@ class Editor(wx.py.editor.EditorFrame):
                 lines[i] = '... ' + lines[i]
 
         txt = os.linesep.join(lines)
-        self.shell.shell.write(txt)
+
+        self.shell.InsertStrToShell(txt)
         self.shell.Raise()
 
     def OnUpdateNamespace(self, event=None):

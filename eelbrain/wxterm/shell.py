@@ -861,6 +861,15 @@ class ShellFrame(wx.py.shell.ShellFrame):
             if hasattr(editor, 'IsActive') and editor.IsActive():
                 editor.editor.window.ReplaceSelection(text)
                 return
+        self.InsertStrToShell(text)
+
+    def InsertStrToShell(self, text):
+        "Insert text into the shell's command prompt"
+        if not self.shell.CanEdit():
+            pos = self.shell.GetLastPosition()
+            self.shell.SetSelectionStart(pos)
+            self.shell.SetSelectionEnd(pos)
+
         self.shell.ReplaceSelection(text)
 
     def OnAbout(self, event):
