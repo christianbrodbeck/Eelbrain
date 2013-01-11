@@ -518,10 +518,13 @@ def _run(cmd, v=None, cwd=None, block=True):
 
 
 
-def setup_mri(subject, subjects_dir=None, ico=4, block=False):
+def setup_mri(subject, subjects_dir=None, ico=4, block=False, redo=False):
     """
     Prepares an MRI for use in the mne-pipeline:
 
+    - runs mne_setup_mri
+    - runs mne_setup_source_space
+    - runs mne_watershed_bem
     - creates symlinks for watershed files in the bem directory
     - runs mne_setup_forward_model (see MNE manual section 3.7, p. 25)
 
@@ -538,6 +541,8 @@ def setup_mri(subject, subjects_dir=None, ico=4, block=False):
     block : bool
         Block the Python interpreter until mne_setup_forward_model is
         finished.
+    redo : bool
+        Run the commands even if the target files already exist.
 
 
     .. note::
@@ -556,6 +561,30 @@ def setup_mri(subject, subjects_dir=None, ico=4, block=False):
         os.environ['SUBJECTS_DIR'] = subjects_dir
 
     bemdir = os.path.join(subjects_dir, subject, 'bem')
+
+    # mne_setup_mri
+    tgt = os.path.join(subjects_dir, subject, 'mri', 'T1', 'neuromag', 'sets',
+                       'COR.fif')
+    if redo or not os.path.exists(tgt):
+        cmd = [get_bin('mne', 'mne_setup_mri'),
+               '--subject', subject,
+               '--mri', 'T1']
+        _run(cmd)
+
+    # mne_setup_source_space
+    tgt = os.path.join(bemdir, '%s-ico-%i-src.fif' % (subject, ico))
+    if redo or not os.path.exists(tgt):
+        cmd = [get_bin('mne', 'mne_setup_source_space'),
+               '--subject', subject,
+               '--ico', ico]
+        _run(cmd)
+
+    # mne_watershed_bem
+    tgt = os.path.join(bemdir, 'watershed', '%s_outer_skin_surface' % (subject))
+    if redo or not os.path.exists(tgt):
+        cmd = [get_bin('mne', 'mne_watershed_bem'),
+               '--subject', subject]
+        _run(cmd)
 
     # symlinks (MNE-manual 3.6, p. 24 / Gwyneth's Manual X)
     for name in ['inner_skull', 'outer_skull', 'outer_skin']:
