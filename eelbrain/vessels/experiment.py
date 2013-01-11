@@ -884,7 +884,10 @@ class mne_experiment(object):
             printlist(files)
             if raw_input("Delete (confirm with 'yes')? ") == 'yes':
                 for path in files:
-                    os.remove(path)
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                    else:
+                        os.remove(path)
         else:
             print "No files found for %r" % temp
 
