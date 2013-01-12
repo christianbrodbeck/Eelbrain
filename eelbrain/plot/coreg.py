@@ -88,7 +88,7 @@ class dev_head_viewer(traits.HasTraits):
 
     """
     # views
-    frontal = traits.Button()
+    front = traits.Button()
     left = traits.Button()
     top = traits.Button()
 
@@ -141,7 +141,7 @@ class dev_head_viewer(traits.HasTraits):
         subject = self.fitter.subject
         self.scene.mlab.text(0.01, 0.01, subject, figure=fig, width=.2)
 
-        self.frontal = True
+        self.front = True
         self.scene.disable_render = False
 
     @traits.on_trait_change('head_shape')
@@ -156,9 +156,9 @@ class dev_head_viewer(traits.HasTraits):
             ui.message("No MRI Loaded", "Load an MRI when initializing the "
                        "viewer", '!')
 
-    @traits.on_trait_change('frontal')
-    def _view_frontal(self):
-        self.set_view('frontal')
+    @traits.on_trait_change('front')
+    def _view_front(self):
+        self.set_view('front')
 
     @traits.on_trait_change('left')
     def _view_left(self):
@@ -191,7 +191,7 @@ class dev_head_viewer(traits.HasTraits):
         self.fitter.save()
         bi.Destroy()
 
-    def set_view(self, view='frontal'):
+    def set_view(self, view='front'):
         self.scene.parallel_projection = True
         self.scene.camera.parallel_scale = .15
         kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
@@ -205,7 +205,7 @@ class dev_head_viewer(traits.HasTraits):
     # the layout of the dialog created
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
                      height=500, width=500, show_label=False),
-                HGroup('top', 'frontal', 'left',),
+                HGroup('top', 'front', 'left',),
                 HGroup('head_shape', 'mri'),
                 HGroup('_refit', '_0', '_1', '_2', '_3', '_4'),
                 HGroup('_save'),
@@ -475,7 +475,7 @@ class dev_mri(object):
 
         self.view()
 
-    def save_views(self, fname, views=['top', 'frontal', 'left']):
+    def save_views(self, fname, views=['top', 'front', 'left']):
         tiler = _base.ImageTiler(fname, ncol=3)
         for view in views:
             fname = tiler.get_temp_fname()
@@ -483,7 +483,7 @@ class dev_mri(object):
             self.fig.scene.save(fname)
             tiler.add_fname(fname)
 
-    def view(self, view='frontal'):
+    def view(self, view='front'):
         self.fig.scene.parallel_projection = True
         self.fig.scene.camera.parallel_scale = .15
         kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
@@ -502,7 +502,7 @@ class mri_head_viewer(traits.HasTraits):
 
     """
     # views
-    frontal = traits.Button()
+    front = traits.Button()
     left = traits.Button()
     top = traits.Button()
 
@@ -572,7 +572,7 @@ class mri_head_viewer(traits.HasTraits):
             width = .5
         self.scene.mlab.text(0.01, 0.01, text, figure=fig, width=width)
 
-        self.frontal = True
+        self.front = True
         self.scene.disable_render = False
         self._last_fit = None
 
@@ -630,8 +630,8 @@ class mri_head_viewer(traits.HasTraits):
         args = tuple(self.rotation[0]) + tuple(scale)
         self.fitter.set(*args)
 
-    @traits.on_trait_change('top,left,frontal')
-    def on_set_view(self, view='frontal', info=None):
+    @traits.on_trait_change('top,left,front')
+    def on_set_view(self, view='front', info=None):
         self.scene.parallel_projection = True
         self.scene.camera.parallel_scale = 150
         kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
@@ -645,7 +645,7 @@ class mri_head_viewer(traits.HasTraits):
     # the layout of the dialog created
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
                      height=500, width=500, show_label=False),
-                HGroup('top', 'frontal', 'left',),
+                HGroup('top', 'front', 'left',),
                 HGroup('fit_scale', 'fit_no_scale', 'restore_fit'),
                 HGroup('nasion'),
                 HGroup('scale', 'shrink'),
@@ -1386,7 +1386,7 @@ class set_nasion(traits.HasTraits):
 
     """
     # views
-    frontal = traits.Button()
+    front = traits.Button()
     left = traits.Button()
     top = traits.Button()
 
@@ -1435,7 +1435,7 @@ class set_nasion(traits.HasTraits):
         picker = self.scene.mayavi_scene.on_mouse_pick(self._on_mouse_click)
         self._current_fit = None
 
-        self.frontal = True
+        self.front = True
         self.scene.disable_render = False
 
     def _on_mouse_click(self, picker):
@@ -1449,9 +1449,9 @@ class set_nasion(traits.HasTraits):
     def on_nasion_change(self):
         self.nasion.data.points = [(self.x, self.y, self.z)]
 
-    @traits.on_trait_change('frontal')
-    def _view_frontal(self):
-        self.set_view('frontal')
+    @traits.on_trait_change('front')
+    def _view_front(self):
+        self.set_view('front')
 
     @traits.on_trait_change('left')
     def _view_left(self):
@@ -1482,7 +1482,7 @@ class set_nasion(traits.HasTraits):
                ]
         write_fiducials(fname, dig, FIFF.FIFFV_COORD_MRI)
 
-    def set_view(self, view='frontal'):
+    def set_view(self, view='front'):
         self.scene.parallel_projection = True
         self.scene.camera.parallel_scale = .15
         kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
@@ -1496,7 +1496,7 @@ class set_nasion(traits.HasTraits):
     # the layout of the dialog created
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
                      height=600, width=600, show_label=False),
-                HGroup('top', 'frontal', 'left',),
+                HGroup('top', 'front', 'left',),
                 HGroup('x', 'y', 'z',),
 #                HGroup('coord',),
                 HGroup('_save'),
