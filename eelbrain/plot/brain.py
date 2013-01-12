@@ -136,9 +136,9 @@ class stc:
         self._dec_hemi = self.lh or self.rh
 
         # time
+        self._time_index = 0
         if v.has_dim('time'):
             self._time = v.get_dim('time')
-            self._time_index = 0
         else:
             self._time = False
 
@@ -275,9 +275,9 @@ class stc:
         for r, row in enumerate(view):
             for c, view_ in enumerate(row):
                 if time_label_shown:
-                    self._dec_hemi.texts['time_label'].visible = False
+                    self.show_time_label(False)
                 else:
-                    self._dec_hemi.texts['time_label'].visible = True
+                    self.show_time_label(True)
                     time_label_shown = True
                 tile_fname = im.get_tile_fname(c, r)
                 self.save_frame(tile_fname, view_)
@@ -345,6 +345,13 @@ class stc:
             # update time index
             if show and (brain.data['time_idx'] != self._time_index):
                 brain.set_data_time_index(self._time_index)
+
+    def show_time_label(self, show=True):
+        "Show or hide the time label."
+        texts = self._dec_hemi.texts
+        if 'time_label' in texts:
+            if texts['time_label'].visible != show:
+                texts['time_label'].visible = show
 
     def show_view(self, view):
         """
