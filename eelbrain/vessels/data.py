@@ -353,6 +353,8 @@ def combine(items):
             err = ("Some items have a 'case' dimension, others do not")
             raise DimensionMismatchError(err)
         return ndvar(x, dims=dims, name=item0.name, properties=item0.properties)
+    elif isinstance(item0, datalist):
+        return sum(items[1:], item0)
     else:
         raise ValueError("Unknown data-object: %r" % item0)
 
@@ -1749,6 +1751,13 @@ class datalist(list):
     is __getitem__ to add support for list and aray indexes.
 
     """
+    def __init__(self, items=None, name=None):
+        self.name = name
+        if items:
+            super(datalist, self).__init__(items)
+        else:
+            super(datalist, self).__init__()
+
     def __getitem__(self, index):
         if isinstance(index, (int, slice)):
             return list.__getitem__(self, index)
@@ -1983,11 +1992,11 @@ class dataset(collections.OrderedDict):
                 raise KeyError("dataset already contains variable of name %r" % name)
 
             # coerce item to data-object
-            if isdataobject(item):
+            if isdataobject(item) or isinstance(object, datalist):
                 if not item.name:
                     item.name = name
             elif isinstance(item, (list, tuple)):
-                item = datalist(item)
+                item = datalist(item, name=name)
             else:
                 pass
 
