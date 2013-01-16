@@ -178,7 +178,7 @@ class select_cases_butterfly(eelfigure):
         index = np.zeros(self._dataset.N, dtype=bool)
         index[seg_IDs] = True
         index *= self._target
-        mseg = self._data[index].mean()
+        mseg = self._data[index].summary()
         return mseg
 
     def _update_mean(self):
@@ -251,7 +251,7 @@ class select_cases_butterfly(eelfigure):
                 color = 'k'
             else:
                 color = 'r'
-            ax = self.figure.add_subplot(nx, ny, i + 1, xticks=[0], yticks=[])#, 'axis_off')
+            ax = self.figure.add_subplot(nx, ny, i + 1, xticks=[0], yticks=[])  # , 'axis_off')
             ax._epoch_state = state
 #            ax.set_axis_off()
             h = plot.utsnd._ax_butterfly(ax, [case], color=color, antialiased=False,
@@ -308,13 +308,13 @@ class select_cases_butterfly(eelfigure):
     def _get_statusbar_text(self, event):
         "called by parent class to get figure-specific status bar text"
         ax = event.inaxes
-        if ax and (ax.ID > -2): # topomap ID is -2
+        if ax and (ax.ID > -2):  # topomap ID is -2
             t = event.xdata
-            if ax.ID >= 0: # single trial plot
+            if ax.ID >= 0:  # single trial plot
                 seg = self._case_segs[ax.ID]
                 tseg = seg.subdata(time=t)
                 txt = 'Segment %i,   ' % ax.segID + '%s'
-            elif  ax.ID == -1: # mean plot
+            elif  ax.ID == -1:  # mean plot
                 tseg = self._mean_seg.subdata(time=t)
                 txt = "Page average,   %s"
             # update topomap plot
