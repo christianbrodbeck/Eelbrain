@@ -234,7 +234,7 @@ class stc:
 
     def close(self):
         if self.lh is None:
-            self.rh.close
+            self.rh.close()
         else:
             self.lh.close()
 
