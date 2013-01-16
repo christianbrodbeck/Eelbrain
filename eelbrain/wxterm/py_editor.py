@@ -17,35 +17,25 @@ class Editor(wx.py.editor.EditorFrame):
     Editor.editor.window is based on StyledTextCtrl
 
     """
-    def __init__(self, parent, shell, pos=(0, 0), pyfile=None):
+    def __init__(self, parent, shell, pos=(0, 0), size=(640, 840), pyfile=None):
         """
         :arg pyfile: filename as string, or True in order to display an open
             file dialog
 
         """
+        shell.active_editor = self
         self.shell = shell
-        y_size = min([wx.Display().GetGeometry()[-1] - 20, 840])
+        self._exec_in_shell_namespace = True
 
         if isinstance(pyfile, basestring):
             filename = pyfile
         else:
             filename = None
 
-        wx.py.editor.EditorFrame.__init__(self, parent, title="Script Editor",
-                                          size=(640, y_size), pos=pos,
-                                          filename=filename)
+        super(Editor, self).__init__(parent, title="Script Editor", size=size,
+                                     pos=pos, filename=filename)
 
-        if pyfile is True:
-            self.bufferOpen()
-        elif not pyfile:
-            self.bufferCreate()
-
-        shell.active_editor = self  # for ctrl-'/' insertion
-        self._exec_in_shell_namespace = True
-
-
-    ############################################
-    # toolbar
+    # toolbar ---
         tb = self.CreateToolBar(wx.TB_HORIZONTAL)
         tb.SetToolBitmapSize(size=(32, 32))
 
@@ -124,25 +114,19 @@ class Editor(wx.py.editor.EditorFrame):
                         shortHelp="Search forward")
         self.Bind(wx.EVT_TOOL, self.OnSearchForward, id=wx.ID_FORWARD)
 
+        tb.Realize()
+
+    # finalize ---
+        if pyfile is True:
+            self.bufferOpen()
+        elif not pyfile:
+            self.bufferCreate()
+
         # set icon
         if hasattr(parent, 'eelbrain_icon'):
             self.SetIcon(parent.eelbrain_icon)
-#        tb.AddLabelTool(ID.PYDOC_HASH, "Comment", Icon("mine.#"))
-        tb.Realize()
 
-        # if toolbar is not entirely visible, increase window width
-        tb_width = tb.Size[0]
-        size = self.GetSize()
-        diff = tb_width - size[0]
-        if diff > 0:
-            size[0] = size[0] + diff
-            pos = self.GetPosition()
-            pos[0] = max(0, pos[0] - diff)
-            self.SetSize(size)
-            self.SetPosition(pos)
-        else:
-            size[1] -= 2
-            self.SetSize(size)
+        self.SetSize(size)
 
     def bufferCreate(self, filename=None):
         wx.py.editor.EditorFrame.bufferCreate(self, filename=filename)

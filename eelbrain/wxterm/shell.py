@@ -691,8 +691,21 @@ class ShellFrame(wx.py.shell.ShellFrame):
             editor is cerated
 
         """
-        editor = py_editor.Editor(self, self, pos=self.pos_for_new_window(),
-                                  pyfile=pyfile)
+
+        display = wx.Display()
+        area = display.GetClientArea()
+
+        shell = self.GetRect()
+
+        w = 640
+        h = area.height
+        size = (w, h)
+
+        x = min(shell.right, area.right - w)
+        y = area.top
+        pos = (x, y)
+
+        editor = py_editor.Editor(self, self, pos=pos, size=size, pyfile=pyfile)
 
         editor.Show()
         self.editors.append(editor)
