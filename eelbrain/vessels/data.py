@@ -2201,6 +2201,22 @@ class dataset(collections.OrderedDict):
             else:
                 table.save_tsv(fn, fmt=fmt)
 
+    def eval(self, expression):
+        """
+        Evaluate an expression involving items stored in the dataset.
+
+        ``ds.eval(expression)`` is equivalent to ``eval(expression, ds)``.
+
+        Examples
+        --------
+        In a dataset containing factors 'A' and 'B'::
+
+            >>> ds.eval('A % B')
+            A % B
+
+        """
+        return eval(expression, self)
+
     def get_case(self, i):
         "returns the i'th case as a dictionary"
         return dict((k, v[i]) for k, v in self.iteritems())
