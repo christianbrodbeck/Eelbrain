@@ -50,7 +50,7 @@ from .vessels.data import (factor,
 
 from .vessels.structure import celltable
 
-from .vessels import process
+from .vessels import process, datasets
 
 from .analyze import (test,
                       testnd,
