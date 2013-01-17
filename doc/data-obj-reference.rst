@@ -29,6 +29,7 @@ Functions and classes operating with data containers:
    :toctree: generated
 
    align
+   align1
    combine
    celltable
 

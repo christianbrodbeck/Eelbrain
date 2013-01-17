@@ -310,6 +310,36 @@ def align(d1, d2, out='data', i1='index', i2='index'):
         raise ValueError("Invalid value for out parameter: %r" % out)
 
 
+def align1(d, idx, d_idx='index', out='data'):
+    """
+    Align a data object to an index
+
+    Parameters
+    ----------
+    d : data object, n_cases = n1
+        Data object with cases that should be aligned to idx.
+    idx : index array, len = n2
+        index to which d should be aligned.
+    d_idx : str | index array, len = n1
+        Indices of cases in d. If d is a dataset, d_idx can be a name in d.
+    out : 'data' | 'index' | 'bool'
+        Return a subset of d, an array of numerical indices into d, or a
+        boolean array into d.
+    """
+    idx = asvar(idx)
+    d_idx = asvar(d_idx, ds=d)
+
+    where = np.in1d(d_idx, idx, True)
+    if out == 'bool':
+        return where
+    elif out == 'index':
+        return np.nonzero(where)
+    elif out == 'data':
+        return d[where]
+    else:
+        ValueError("Invalid value for out parameter: %r" % out)
+
+
 def combine(items):
     """
     combine a list of items of the same type into one item
