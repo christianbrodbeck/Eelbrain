@@ -943,14 +943,16 @@ class mne_experiment(object):
     def set(self, subject=None, experiment=None, match=False, add=False,
             **kwargs):
         """
-        special variables
-        -----------------
+        Set the state of the experiment.
 
+        Parameters
+        ----------
         subjects:
             The corresponding `mrisubject` is also set
-
         match : bool
             require existence (for variables in self.var_values)
+        add : bool
+            If the template name does not exist, add a new key.
 
         """
         if experiment is not None:
