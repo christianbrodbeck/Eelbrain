@@ -307,7 +307,7 @@ def align(d1, d2, out='data', i1='index', i2='index'):
     elif out == 'index':
         return idx1, idx2
     else:
-        return ValueError("Invalid value for out parameter: %r" % out)
+        raise ValueError("Invalid value for out parameter: %r" % out)
 
 
 def combine(items):
