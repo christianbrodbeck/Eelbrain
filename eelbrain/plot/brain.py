@@ -8,16 +8,11 @@ Plot source estimates with mayavi/pysurfer.
 # author: Christian Brodbeck
 
 import os
-import shutil
-import subprocess
-import tempfile
 
 import numpy as np
 from mayavi import mlab
 import surfer
 
-from ..utils.subp import cmd_exists
-from ..vessels.dimensions import find_time_point
 import _base
 
 
@@ -284,17 +279,15 @@ class stc:
 
         im.make_frame(fname, redo=True)
 
-    def set_time(self, t):
+    def set_time(self, time):
         "set the time frame displayed (in seconds)"
-        if self._time is False:
-            return
-
-        time_idx , t = find_time_point(self._time, t)
-
         if self._lh_visible:
-            self.lh.set_data_time_index(time_idx)
-        if self._rh_visible:
-            self.rh.set_data_time_index(time_idx)
+            self.lh.set_time(time)
+            i = self.lh.data["time_idx"]
+            if self._rh_visible:
+                self.rh.set_data_time_index(i)
+        elif self._rh_visible:
+            self.rh.set_time(time)
 
     def show(self, hemi='lh'):
         """
