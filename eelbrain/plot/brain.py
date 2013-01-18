@@ -325,6 +325,10 @@ class stc:
 
     def _show_hemi(self, hemi, show=True):
         "Show or hide one hemisphere"
+        visible_attr = '_%s_visible' % hemi
+        if getattr(self, visible_attr) == show:
+            return
+
         if hemi == 'lh':
             brain = self.lh
         elif hemi == 'rh':
@@ -337,7 +341,7 @@ class stc:
             return
 
         brain._geo_mesh.visible = show
-        setattr(self, '_%s_visible' % hemi, show)
+        setattr(self, visible_attr, show)
         if hasattr(brain, "data"):
             surf = brain.data['surface']
             surf.visible = show
