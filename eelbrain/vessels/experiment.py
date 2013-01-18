@@ -567,6 +567,8 @@ class mne_experiment(object):
         self.state.update(state_)
 
     def label_events(self, ds, experiment, subject):
+        ds['T'] = ds.eval('i_start / 1000')
+        ds['SOA'] = var(np.ediff1d(ds['T'].x, 0))
         return ds
 
     def load_edf(self, subject=None, experiment=None):
