@@ -5,26 +5,50 @@ mne_experiment is a base class for managing an mne experiment.
 Epochs
 ------
 
-The following aspects need consideration:
+Epochs are defined as dictionaries containing the following entries
+(**mandatory**/optional):
 
- - tstart, tstop of the data
- - a potential link to another epoch (e.g., a disjoint baseline) with which
-   trials need to be aligned
+**stim** : str
+    Value of the stimvar relative to which the epoch is defined.
+**name** : str
+    A name for the epoch; when the resulting data is added to a dataset, this
+    name is used.
+**tmin** : scalar
+    Start of the epoch.
+**tmax** : scalar
+    End of the epoch.
+reject_tmin : scalar
+    Alternate start time for rejection (amplitude and eye-tracker).
+reject_tmax : scalar
+    Alternate end time for rejection (amplitude and eye-tracker).
 
-This leads to the following name pattern:
 
-"{tstart ms}-{tstop ms}" [ + "-{group name}"]
+Epochs can be specified directly in the relevant function, or they can be
+specified in the :attr:`mne_experiment.epochs` dictionary. All keys in this
+dictionary have to be of type :class:`str`, values have to be :class:`dict`s
+containing the epoch specification. If an epoch is specified in
+:attr:`mne_experiment.epochs`, its name (key) can be used in the epochs
+argument to various methods. Example::
 
+    # in mne_experiment subclass definition
+    class experiment(mne_experiment):
+        epochs = {'adjbl': dict(name='bl', stim='adj', tstart=-0.1, tstop=0)}
+        ...
 
+    # use as argument:
+    epochs=[dict(name=evoked', stim='noun', tmin=-0.1, tmax=0.5,
+                 reject_tmin=0), 'adjbl']
 
+The :meth:`mne_experiment.get_epoch_str` method produces A label for each
+epoch specification, which is used for filenames. Data which is excluded from
+artifact rejection is parenthesized. For example, ``"noun[(-100)0,500]"``
+designates data form -100 to 500 ms relative to the stimulus 'noun', with only
+the interval form 0 to 500 ms used for rejection.
 
-
-Created on May 2, 2012
-
-@author: christian
 '''
 
 from collections import defaultdict
+import cPickle as pickle
 import fnmatch
 import itertools
 import os
@@ -37,14 +61,15 @@ import numpy as np
 import mne
 from mne.minimum_norm import make_inverse_operator
 
-from eelbrain import ui
-from eelbrain import fmtxt
-from eelbrain.utils import subp
-from eelbrain import load
-from eelbrain import plot
-from eelbrain.vessels.data import ndvar
-from eelbrain.utils.print_funcs import printlist
-from eelbrain.utils.kit import split_label
+from .. import fmtxt
+from .. import load
+from .. import plot
+from .. import save
+from .. import ui
+from ..utils import subp
+from ..utils.print_funcs import printlist
+from ..utils.kit import split_label
+from .data import dataset, factor, var, ndvar, combine, isfactor, align1
 
 
 __all__ = ['mne_experiment']
@@ -106,6 +131,8 @@ class mne_experiment(object):
     """
     auto_launch_mne = False
     bad_channels = defaultdict(list)  # (sub, exp) -> list
+    epochs = {}
+    subjects_has_own_mri = ()
     subject_re = re.compile('R\d{4}$')
     # the default value for the common_brain (can be overridden using the set
     # method after __init__()):
@@ -163,6 +190,101 @@ class mne_experiment(object):
                 if name not in self.state:
                     self.state[name] = '<%s not set>' % name
 
+    def _process_epochs_arg(self, epochs):
+        "Fill in named epochs and set the 'epoch' template"
+        epochs = list(epochs)
+        e_descs = []  # full epoch descriptor
+        for i in xrange(len(epochs)):
+            ep = epochs[i]
+            if isinstance(ep, str):
+                ep = self.epochs[ep]
+                epochs[i] = ep
+            desc = self.get_epoch_str(**ep)
+            e_descs.append(desc)
+
+        ep_str = '(%s)' % ','.join(sorted(e_descs))
+        self.set(epoch=ep_str)
+        return epochs
+
+    def add_evoked_stc(self, ds, method='sLORETA', ori='free', ind=True,
+                       morph=True, names={'evoked': 'stc'}):
+        """
+        Add an stc (ndvar) to a dataset with an evoked list.
+
+        Assumes that all Evoked of the same subject share the same inverse
+        operator.
+
+        Parameters
+        ----------
+        ind: bool
+            Keep list of SourceEstimate objects on individual brains.
+        morph : bool
+            Add ndvar for data morphed to the common brain.
+
+        """
+        if not (ind or morph):
+            return
+
+        inv_name = method + '-' + ori
+        self.set(inv_name=inv_name)
+
+        # find vars to work on
+        do = []
+        for name in ds:
+            if isinstance(ds[name][0], mne.fiff.Evoked):
+                do.append(name)
+
+        invs = {}
+        if ind:
+            stcs = defaultdict(list)
+        if morph:
+            mstcs = defaultdict(list)
+
+        for case in ds.itercases():
+            subject = case['subject']
+            if subject in self.subjects_has_own_mri:
+                subject_from = subject
+            else:
+                subject_from = self._common_brain
+
+            for name in do:
+                evoked = case[name]
+
+                # get inv
+                if subject in invs:
+                    inv = invs[subject]
+                else:
+                    self.set(subject=subject)
+                    inv = self.get_inv(evoked, depth=0.8)
+                    invs[subject] = inv
+
+                stc = mne.minimum_norm.apply_inverse(evoked, inv, 1 / 9., method)
+                if ind:
+                    stcs[name].append(stc)
+
+                if morph:
+                    stc = mne.morph_data(subject_from, self._common_brain, stc, 4)
+                    mstcs[name].append(stc)
+
+        for name in do:
+            if name in names:
+                s_name = names[name]
+                m_name = s_name + 'm'
+            else:
+                i = 0
+                while name + 's' + '_' * i in ds:
+                    i += 1
+                s_name = name + 's' + '_' * i
+                im = 0
+                while s_name + 'm' + '_' * im in ds:
+                    im += 1
+                m_name = s_name + 'm' + '_' * im
+
+            if ind:
+                ds[s_name] = stcs[name]
+            if morph:
+                ds[m_name] = load.fiff.stc_ndvar(mstcs[name], self._common_brain)
+
     def add_to_state(self, **kv):
         for k, v in kv.iteritems():
             if k in self.state:
@@ -206,15 +328,13 @@ class mne_experiment(object):
              'bem_head': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-head.fif'),
 
              # mne's stc.save() requires stub filename and will add '-?h.stc'
-             'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
-             'evoked': os.path.join('{evoked_dir}', '{experiment}_{cell}_{epoch}_{proj}-evoked.fif'),
+             'evoked_dir': os.path.join('{meg_sdir}', 'evoked_{experiment}_{model}'),
+             'evoked': os.path.join('{evoked_dir}', '{epoch}_{proj}-evoked.pickled'),
              'stc_dir': os.path.join('{meg_sdir}', 'stc_{cov_name}-{proj}_{inv_name}'),
              'stc': os.path.join('{stc_dir}', '{experiment}_{cell}_{epoch}'),
              'stc_morphed': os.path.join('{stc_dir}', '{experiment}_{cell}_{common_brain}'),
              'label': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{analysis}.label'),
              'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
-
-             'n_key': '{subject}_{experiment}_{epoch}_{cell}_{proj}',
 
              # EEG
              'vhdr': os.path.join('{eeg_sdir}', '{subject}_{experiment}.vhdr'),
@@ -444,6 +564,20 @@ class mne_experiment(object):
 
         return path
 
+    def get_epoch_str(self, stim=None, tmin=None, tmax=None, reject_tmin=None,
+                      reject_tmax=None, name=None):
+        "Produces a descriptor for a single epoch specification"
+        desc = '%s[' % stim
+        if reject_tmin is None:
+            desc += '%i,' % (tmin * 1000)
+        else:
+            desc += '(%i)%i,' % (tmin * 1000, reject_tmin * 1000)
+        if reject_tmax is None:
+            desc += '%i]' % (tmax * 1000)
+        else:
+            desc += '(%i)%i]' % (tmax * 1000, reject_tmax * 1000)
+        return desc
+
     def get_inv(self, fiff, depth=0.8, **kwargs):
         self.set(**kwargs)
 
@@ -620,6 +754,170 @@ class mne_experiment(object):
             ds.info['edf'] = edf
 
         return ds
+
+    def load_evoked(self, stimvar='stim', model='ref%side',
+                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)]):
+        """
+        Load as dataset data created with :meth:`mne_experiment.make_evoked`.
+        """
+        epochs = self._process_epochs_arg(epochs)
+        self.set(model=model)
+
+        dss = []
+        for _ in self.iter_vars(['subject']):
+            fname = self.get('evoked')
+            ds = pickle.load(open(fname))
+            dss.append(ds)
+
+        ds = combine(dss)
+        return ds
+
+    def make_evoked(self, stimvar='stim', model='ref%side',
+                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)],
+                    decim=10, random=('subject',), redo=False):
+        """
+        Creates datasets with evoked files for the current subject/experiment
+        pair.
+
+        Parameters
+        ----------
+        stimvar : str
+            Name of the variable containing the stimulus.
+        model : str
+            Name of the model. No spaces, order matters.
+        epochs : list of epoch specifications
+            See the module documentation.
+
+        """
+        epochs = self._process_epochs_arg(epochs)
+        self.set(model=model)
+
+        stim_epochs = defaultdict(list)
+        kwargs = {}
+        e_names = []
+        for ep in epochs:
+            name = ep['name']
+            stim = ep['stim']
+
+            e_names.append(name)
+            stim_epochs[stim].append(name)
+
+            kw = dict(reject={'mag': 3e-12}, baseline=None, decim=decim,
+                      preload=True)
+            for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax'):
+                if k in ep:
+                    kw[k] = ep[k]
+            kwargs[name] = kw
+
+        fname = self.get('evoked', mkdir=True)
+        if not redo and os.path.exists(fname):
+            return
+
+        # constants
+        sub = self.get('subject')
+        proj = self.get('proj')
+        model_name = self.get('model')
+
+        ds = self.load_events(proj=proj)
+        edf = ds.info['edf']
+        if model_name == '':
+            model = None
+            cells = ((),)
+            model_names = []
+        else:
+            model = ds.eval(model_name)
+            cells = model.cells
+            if isfactor(model):
+                model_names = model.name
+            else:
+                model_names = model.base_names
+
+        dss = {}
+        for stim, names in stim_epochs.iteritems():
+            d = ds.subset(ds[stimvar] == stim)
+            for name in names:
+                dss[name] = d
+
+        evokeds = defaultdict(list)
+        factors = defaultdict(list)
+        ns = []
+
+        for cell in cells:
+            cell_dss = {}
+            if model is None:
+                for name, ds in dss.iteritems():
+                    ds.index()
+                    cell_dss[name] = ds
+            else:
+                n = None
+                for name, ds in dss.iteritems():
+                    idx = (ds.eval(model_name) == cell)
+                    if idx.sum() == 0:
+                        break
+                    cds = ds.subset(idx)
+                    cds.index()
+                    cell_dss[name] = cds
+                    if n is None:
+                        n = cds.n_cases
+                    else:
+                        if cds.n_cases != n:
+                            err = "Can't index due to unequal trial counts"
+                            raise RuntimeError(err)
+
+                if len(cell_dss) < len(dss):
+                    continue
+
+            for name in e_names:
+                ds = cell_dss[name]
+                kw = kwargs[name]
+                tstart = kw.get('reject_tmin', kw['tmin'])
+                tstop = kw.get('reject_tmax', kw['tmax'])
+                ds = edf.filter(ds, tstart=tstart, tstop=tstop, use=['EBLINK'])
+                cell_dss[name] = ds
+
+            idx = reduce(np.intersect1d, (ds['index'].x for ds in cell_dss.values()))
+            if idx.sum() == 0:
+                continue
+
+            for name in e_names:
+                ds = cell_dss[name]
+                ds = align1(ds, idx)
+                ds = load.fiff.add_mne_epochs(ds, **kw)
+                cell_dss[name] = ds
+
+            idx = reduce(np.intersect1d, (ds['index'].x for ds in cell_dss.values()))
+            n = len(idx)
+            if n == 0:
+                continue
+
+            for name in e_names:
+                ds = cell_dss[name]
+                ds = align1(ds, idx)
+                epochs = ds['epochs']
+                evoked = epochs.average()
+                assert evoked.nave == n
+                evokeds[name].append(evoked)
+
+            # store values
+            if isinstance(model_names, str):
+                factors[model_names].append(cell)
+            else:
+                for name, v in zip(model_names, cell):
+                    factors[name].append(v)
+            factors['subject'].append(sub)
+            ns.append(n)
+
+        ds_ev = dataset()
+        ds_ev['n'] = var(ns)
+        for name, values in factors.iteritems():
+            if name in random:
+                ds_ev[name] = factor(values, random=True)
+            else:
+                ds_ev[name] = factor(values)
+        for name in e_names:
+            ds_ev[name] = evokeds[name]
+
+        save.pickle(ds_ev, fname)
 
     def make_fake_mris(self, subject=None, exclude=None, **kwargs):
         """
@@ -1015,12 +1313,6 @@ class mne_experiment(object):
 
         """
         os.environ['SUBJECTS_DIR'] = self.get('mri_dir')
-
-    def set_epoch(self, tstart, tstop, name=None):
-        desc = '%i-%i' % (tstart * 1000, tstop * 1000)
-        if name:
-            desc += '-%s' % name
-        self.set(epoch=desc, add=True)
 
     def set_mri_subject(self, subject, mri_subject):
         """
