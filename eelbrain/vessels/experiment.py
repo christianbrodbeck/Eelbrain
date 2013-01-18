@@ -444,16 +444,23 @@ class mne_experiment(object):
 
         return path
 
-    def get_inv(self, fiff, **kwargs):
+    def get_inv(self, fiff, depth=0.8, **kwargs):
+        self.set(**kwargs)
+
         inv_name = self.get('inv_name')
         method, ori = inv_name.split('-')
         if ori == 'free':
             fwd_kwa = dict(force_fixed=False, surf_ori=False)
-            inv_kwa = dict(loose=None, depth=None)
+            inv_kwa = dict(loose=None, depth=depth)
+        elif ori == 'loose':
+            fwd_kwa = dict(force_fixed=False, surf_ori=True)
+            inv_kwa = dict(loose=0.2, depth=depth)
+        elif ori == 'fixed':
+            fwd_kwa = dict(force_fixed=True)
+            inv_kwa = dict(loose=None, depth=depth)
         else:
             raise ValueError('ori=%r' % ori)
 
-        self.set(**kwargs)
         fwd = mne.read_forward_solution(self.get('fwd'), **fwd_kwa)
         cov = mne.read_cov(self.get('cov'))
         inv = make_inverse_operator(fiff.info, fwd, cov, **inv_kwa)
