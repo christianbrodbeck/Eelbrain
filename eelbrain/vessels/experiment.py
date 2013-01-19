@@ -664,7 +664,6 @@ class mne_experiment(object):
         state_ = self.state.copy()
 
         # set constants
-        constants['root'] = self.root
         self.set(**constants)
 
         variables = list(set(variables).difference(constants).union(values))
@@ -719,13 +718,18 @@ class mne_experiment(object):
 
     def load_events(self, subject=None, experiment=None,
                     proj=True, edf=True, raw=None):
-        """OK 12/7/3
+        """
+        Load events from a raw file.
 
         Loads events from the corresponding raw file, adds the raw to the info
         dict.
 
+        Parameters
+        ----------
+        subject, experiment, raw : None | str
+            Call self.set(...).
         proj : True | False | str
-            load a projection file and add it to the raw
+            Load a projection file and add it to the raw.
         edf : bool
             Loads edf and add it to the info dict.
 

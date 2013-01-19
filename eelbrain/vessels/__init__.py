@@ -20,13 +20,13 @@ Properties
     the unit of measurement (used for plotting as y-label)
 
 `ylim` : float
-    for plotting: default limit for the y-axis  
+    for plotting: default limit for the y-axis
 
 `summary_func` : func
-    function used to summarize the data (normally `np.mean`). Needs to take 
+    function used to summarize the data (normally `np.mean`). Needs to take
     `axis` kwargs.
 
-`summary_XXX` : 
+`summary_XXX` :
     replaces `XXX` when a summary is generated. examples: `summary_ylim`
 
 

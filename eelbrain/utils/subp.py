@@ -725,8 +725,7 @@ def do_forward_solution(paths=dict(rawfif=None,
         return fwd_file
     else:
         err = "fwd-file not created"
-        if v < 1:
-            err = os.linesep.join([err, "command out:", out])
+        err = os.linesep.join([err, "command out:", out])
         raise RuntimeError(err)
 
 
