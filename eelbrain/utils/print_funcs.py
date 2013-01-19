@@ -14,6 +14,7 @@ def dicttree(dictionary):
     """readable repr for a hierarchical dictionary"""
     print os.linesep.join(_dict_repr(dictionary))
 
+
 def _dict_repr(dictionary, indent=0):
     out = []
     head = ' ' * indent
@@ -27,7 +28,13 @@ def _dict_repr(dictionary, indent=0):
                 if isinstance(v, np.ndarray):
                     r = "<array, shape = %s>" % repr(v.shape)
                 else:
-                    r = str(type(v))
+                    t = type(v)
+                    try:
+                        l = len(v)
+                        name = t.__name__
+                        r = '<%s, len = %i>' % (name, l)
+                    except:
+                        r = str(t)
             out.append(head + repr(k) + ': ' + r)
     return out
 
