@@ -70,7 +70,8 @@ from .. import ui
 from ..utils import subp
 from ..utils.print_funcs import printlist
 from ..utils.kit import split_label
-from .data import dataset, factor, var, ndvar, combine, isfactor, align1
+from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
+                   DimensionMismatchError)
 
 
 __all__ = ['mne_experiment', 'LabelCache']
@@ -828,6 +829,20 @@ class mne_experiment(object):
             dss.append(ds)
 
         ds = combine(dss)
+
+        # check consistency
+        for name in ds:
+            if isinstance(ds[name][0], (mne.fiff.Evoked, mne.SourceEstimate)):
+                lens = np.array([len(e.times) for e in ds[name]])
+                ulens = np.unique(lens)
+                if len(ulens) > 1:
+                    err = ["Unequel time axis sampling (len):"]
+                    subject = ds['subject']
+                    for l in ulens:
+                        idx = (lens == l)
+                        err.append('%i: %r' % (l, subject[idx].cells))
+                    raise DimensionMismatchError(os.linesep.join(err))
+
         return ds
 
     def load_label(self, **kwargs):
