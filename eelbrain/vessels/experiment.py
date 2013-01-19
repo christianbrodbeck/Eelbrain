@@ -51,6 +51,7 @@ from collections import defaultdict
 import cPickle as pickle
 import fnmatch
 import itertools
+from operator import add
 import os
 import re
 import shutil
@@ -72,12 +73,22 @@ from ..utils.kit import split_label
 from .data import dataset, factor, var, ndvar, combine, isfactor, align1
 
 
-__all__ = ['mne_experiment']
+__all__ = ['mne_experiment', 'LabelCache']
 
 
 
 _kit2fiff_args = {'sfreq':1000, 'lowpass':100, 'highpass':0,
                   'stimthresh':2.5, 'stim':xrange(168, 160, -1)}
+
+
+class LabelCache(dict):
+    def __getitem__(self, path):
+        if path in self:
+            return super(LabelCache, self).__getitem__(path)
+        else:
+            label = mne.read_label(path)
+            self[path] = label
+            return label
 
 
 class Labels(object):
@@ -179,6 +190,7 @@ class mne_experiment(object):
                         subjects=subjects, mri_subjects=mri_subjects)
 
         # set initial values
+        self._label_cache = LabelCache()
         for k, v in self.var_values.iteritems():
             if v:
                 self.state[k] = v[0]
@@ -205,6 +217,50 @@ class mne_experiment(object):
         ep_str = '(%s)' % ','.join(sorted(e_descs))
         self.set(epoch=ep_str)
         return epochs
+
+    def add_evoked_label(self, ds, label, hemi='lh', src='stc'):
+        """
+        Extract the label time course from a list of SourceEstimates.
+
+        Parameters
+        ----------
+        label :
+            the label's bare name (e.g., 'insula').
+        hemi : 'lh' | 'rh' | 'bh' | False
+            False assumes that hemi is a factor in ds.
+        src : str
+            Name of the variable in ds containing the SourceEstimates.
+
+        Returns
+        -------
+        ``None``
+        """
+        if hemi in ['lh', 'rh']:
+            self.set(hemi=hemi)
+            key = label + '_' + hemi
+        else:
+            key = label
+            if hemi != 'bh':
+                assert 'hemi' in ds
+
+        self.set(label=label)
+
+        x = []
+        for case in ds.itercases():
+            if hemi == 'bh':
+                lbl_l = self.load_label(subject=case['subject'], hemi='lh')
+                lbl_r = self.load_label(hemi='rh')
+                lbl = lbl_l + lbl_r
+            else:
+                if hemi is False:
+                    self.set(hemi=case['hemi'])
+                lbl = self.load_label(subject=case['subject'])
+
+            stc = case[src]
+            x.append(stc.in_label(lbl).data.mean(0))
+
+        time = var(stc.times, name='time')
+        ds[key] = ndvar(np.array(x), dims=('case', time))
 
     def add_evoked_stc(self, ds, method='sLORETA', ori='free', ind=True,
                        morph=True, names={'evoked': 'stc'}):
@@ -333,7 +389,7 @@ class mne_experiment(object):
              'stc_dir': os.path.join('{meg_sdir}', 'stc_{cov_name}-{proj}_{inv_name}'),
              'stc': os.path.join('{stc_dir}', '{experiment}_{cell}_{epoch}'),
              'stc_morphed': os.path.join('{stc_dir}', '{experiment}_{cell}_{common_brain}'),
-             'label': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{analysis}.label'),
+             'label_file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
              'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
 
              # EEG
@@ -364,23 +420,21 @@ class mne_experiment(object):
         args = ', '.join(args)
         return "mne_experiment(%s)" % args
 
-    def combine_labels(self, target, sources=[], hemi=['lh', 'rh'], redo=False):
+    def combine_labels(self, target, sources=[], redo=False):
         """
         target : str
-            name of the target label
+            name of the target label.
         sources : list of str
-            names of the source labels
+            names of the source labels.
 
         """
-        msg = "Making Label: %s" % target
-        for _ in self.iter_vars(['mrisubject'], values={'hemi': hemi}, prog=msg):
-            tgt = self.get('label', analysis=target)
-            if redo or not os.path.exists(tgt):
-                srcs = [self.get('label', analysis=name) for name in sources]
-                label = mne.read_label(srcs.pop(0))
-                for path in srcs:
-                    label += mne.read_label(path)
-                label.save(tgt)
+        tgt = self.get('label_file', label=target)
+        if (not redo) and os.path.exists(tgt):
+            return
+
+        srcs = (self.load_label(label=name) for name in sources)
+        label = reduce(add, srcs)
+        label.save(tgt)
 
     def do_kit2fiff(self, do='ask', aligntol=xrange(5, 40, 5), redo=False):
         """OK 12/7/2
@@ -775,6 +829,11 @@ class mne_experiment(object):
 
         ds = combine(dss)
         return ds
+
+    def load_label(self, **kwargs):
+        self.set(**kwargs)
+        fname = self.get('label_file')
+        return self._label_cache[fname]
 
     def make_evoked(self, stimvar='stim', model='ref%side',
                     epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)],
@@ -1331,29 +1390,26 @@ class mne_experiment(object):
         fname = self.get(key, **kwargs)
         subprocess.call(["open", "-R", fname])
 
-    def split_label(self, src_label, new_name, redo=False, part0='post', part1='ant', hemi=['lh', 'rh']):
+    def split_label(self, src_label, new_name, redo=False, part0='post', part1='ant'):
         """
         new_name : str
-            name of the target label ('post' and 'ant' is appended)
+            name of the target label (``part0`` and ``part1`` are appended)
         sources : list of str
             names of the source labels
 
         """
-        msg = "Splitting Label: %s" % src_label
-        for _ in self.iter_vars(['mrisubject'], values={'hemi': hemi}, prog=msg):
-            name0 = new_name + part0
-            name1 = new_name + part1
-            tgt0 = self.get('label', analysis=name0)
-            tgt1 = self.get('label', analysis=name1)
-            if (not redo) and os.path.exists(tgt0) and os.path.exists(tgt1):
-                continue
+        name0 = new_name + part0
+        name1 = new_name + part1
+        tgt0 = self.get('label_file', label=name0)
+        tgt1 = self.get('label_file', label=name1)
+        if (not redo) and os.path.exists(tgt0) and os.path.exists(tgt1):
+            return
 
-            src = self.get('label', analysis=src_label)
-            label = mne.read_label(src)
-            fwd_fname = self.get('fwd')
-            lbl0, lbl1 = split_label(label, fwd_fname, name0, name1)
-            lbl0.save(tgt0)
-            lbl1.save(tgt1)
+        label = self.load_label(label=src_label)
+        fwd_fname = self.get('fwd')
+        lbl0, lbl1 = split_label(label, fwd_fname, name0, name1)
+        lbl0.save(tgt0)
+        lbl1.save(tgt1)
 
     def summary(self, templates=['rawfif'], missing='-', link='>', count=True):
         if not isinstance(templates, (list, tuple)):
