@@ -60,7 +60,7 @@ from eelbrain import ui
 __all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
            'mne_events', 'mne_Raw', 'mne_Epochs',  # get mne objects
            'sensor_net',
-           'evoked', 'evoked_ndvar', 'stc', 'stc_ndvar',
+           'epochs_ndvar', 'evoked', 'evoked_ndvar', 'stc', 'stc_ndvar',
            'brainvision_events_to_fiff',
            ]
 
@@ -302,7 +302,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
         raw = ds.info['raw']
 
     picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False,
-                                eog=False, include=[], exclude=raw.info['bads'])
+                                eog=False, include=[], exclude='bads')
 
     if reject:
         reject = {data: reject}
@@ -576,6 +576,15 @@ def sensor_net(fiff, picks=None, name='fiff-sensors'):
         ch_locs.append((x, y, z))
         ch_names.append(ch_name)
     return _sensors.sensor_net(ch_locs, ch_names, name=name)
+
+
+def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False):
+    picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False,
+                                eog=False, include=[], exclude='bads')
+    x = epochs.get_data()[:, picks]
+    sensor = sensor_net(epochs, picks)
+    time = var(epochs.times, name='time')
+    return ndvar(x, ('case', sensor, time), name=name)
 
 
 def evoked(fname):
