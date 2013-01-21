@@ -405,7 +405,7 @@ class dev_mri(object):
 
     """
     def __init__(self, raw, subject=None, head_mri_t=None, mri='head',
-                 hs=True, subjects_dir=None, fig=None):
+                 hs='wireframe', subjects_dir=None, fig=None):
         """
         Parameters
         ----------
@@ -421,8 +421,8 @@ class dev_mri(object):
             "{subject}-trans.fif"
         mri : str
             Name of the mri model to load (default is 'head')
-        hs : bool
-            Display the digitizer head-shape stored in the raw file.
+        hs : None | 'wireframe' | 'surface' | 'points' | 'balls'
+            How to display the digitizer head-shape stored in the raw file.
 
         """
         subjects_dir = get_subjects_dir(subjects_dir)
@@ -471,6 +471,13 @@ class dev_mri(object):
         if hs:
             self.hs = geom_dig_hs(raw.info['dig'], unit='m')
             self.hs.set_T(head_dev_t)
+            if hs in ['surface', 'wireframe', 'points']:
+                self.hs.plot_solid(fig, opacity=1, rep=hs, color=(1, .5, 0))
+            elif hs == 'balls':
+                self.hs.plot_points(fig, 0.01, opacity=0.5, color=(1, .5, 0))
+            else:
+                raise ValueError('hs kwarg can not be %r' % hs)
+
             self.hs.plot_solid(fig, opacity=1, rep='points', color=(1, .5, 0))
 
         self.view()
