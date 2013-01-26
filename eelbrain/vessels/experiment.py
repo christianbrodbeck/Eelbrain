@@ -700,18 +700,18 @@ class mne_experiment(object):
             path = temp.format(**state)
             yield path
 
-    def iter_vars(self, variables, constants={}, values={}, exclude={},
-                  prog=False):
+    def iter_vars(self, variables=['subject'], constants={}, values={},
+                  exclude={}, prog=False):
         """
-        variables : list
-            variables which should be iterated
+        variables : list | str
+            Variable(s) over which should be iterated.
         constants : dict(name -> value)
-            variables with constant values throughout the iteration
+            Variables with constant values throughout the iteration.
         values : dict(name -> (list of values))
-            variables with values to iterate over instead of the corresponding
-            `mne_experiment.var_values`
+            Variables with values to iterate over instead of the corresponding
+            `mne_experiment.var_values`.
         exclude : dict(name -> (list of values))
-            values to exclude from the iteration
+            Values to exclude from the iteration.
         prog : bool | str
             Show a progress dialog; str for dialog title.
 
@@ -721,6 +721,8 @@ class mne_experiment(object):
         # set constants
         self.set(**constants)
 
+        if isinstance(variables, str):
+            variables = [variables]
         variables = list(set(variables).difference(constants).union(values))
 
         # gather possible values to iterate over
