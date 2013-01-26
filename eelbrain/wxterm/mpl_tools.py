@@ -4,7 +4,9 @@ import matplotlib.pyplot as P
 import wx
 
 from eelbrain import fmtxt
+from eelbrain import ui
 from eelbrain.wxutils import Icon
+from eelbrain.wxutils.mpl_canvas import CanvasFrame
 
 
 
@@ -135,11 +137,17 @@ class PyplotManager(wx.MiniFrame):
             P.show()
 
     def OnCopyTextab(self, event=None):
-        fmtxt.copy_pdf()
+        try:
+            fmtxt.copy_pdf()
+        except Exception as e:
+            ui.message("Error in Copy Tex", str(e), '!')
 
     def OnCloseAll(self, event):
         "Close all open figures"
         P.close('all')
+        for frame in self.Parent.Children:
+            if isinstance(frame, CanvasFrame):
+                frame.Close()
 
     def OnCloseWindow(self, event):
         "Hides the window instead of destroying it"
