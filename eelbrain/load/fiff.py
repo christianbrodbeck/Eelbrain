@@ -240,7 +240,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
                data='mag', reject=None,
                raw=None, add=True,
                target="MEG", i_start='i_start',
-               properties=None, sensors=None):
+               properties=None, sensors=None, exclude='bads'):
     """
     Adds data from individual epochs as a ndvar to the dataset ``ds`` and
     returns the dataset. Unless the ``reject`` argument is specified, ``ds``
@@ -286,6 +286,10 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
         The default (``None``) reads the sensor locations from the fiff file.
         If the fiff file contains incorrect sensor locations, a different
         sensor_net can be supplied through this kwarg.
+    exclude : list of string | str
+        Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
+        If 'bads' (default), exclude channels in info['bads'].
+        If empty do not exclude any.
 
     """
     if data == 'eeg':
@@ -302,7 +306,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
         raw = ds.info['raw']
 
     picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False,
-                                eog=False, include=[], exclude='bads')
+                                eog=False, include=[], exclude=exclude)
 
     if reject:
         reject = {data: reject}
@@ -336,7 +340,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
 
     # target container
     picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False,
-                                eog=False, include=[])
+                                eog=False, include=[], exclude=exclude)
     if sensors is None:
         sensor = sensor_net(epochs, picks=picks)
     else:
@@ -545,7 +549,30 @@ def sensor_net(fiff, picks=None, name='fiff-sensors'):
     return _sensors.sensor_net(ch_locs, ch_names, name=name)
 
 
-def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False):
+def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads'):
+    """
+    Convert an mne.Epochs object to an ndvar.
+
+    Parameters
+    ----------
+    epoch : mne.Epochs
+        The epochs object
+    name : None | str
+        Name for the ndvar.
+    meg : bool or string
+        MEG channels to include (:func:`mne.fiff.pick_types` kwarg).
+        If True include all MEG channels. If False include None
+        If string it can be 'mag' or 'grad' to select only gradiometers
+        or magnetometers. It can also be 'ref_meg' to get CTF
+        reference channels.
+    eeg : bool
+        If True include EEG channels (:func:`mne.fiff.pick_types` kwarg).
+    exclude : list of string | str
+        Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
+        If 'bads' (default), exclude channels in info['bads'].
+        If empty do not exclude any.
+
+    """
     picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False,
                                 eog=False, include=[], exclude='bads')
     x = epochs.get_data()[:, picks]
