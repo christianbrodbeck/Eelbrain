@@ -458,39 +458,6 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
     return stcs
 
 
-def mne2ndvar(mne_object, data='mag', vmax=2e-12, unit='T', name=None):
-    """
-    Converts an mne data object to an ndvar.
-
-    The main difference is that an ndvar
-    can only contain one type of data ('mag', 'grad', 'eeg')
-
-    """
-    if data == 'eeg':
-        meg = False
-        eeg = True
-    elif data in ['grad', 'mag']:
-        meg = data
-        eeg = False
-    else:
-        err = 'data=%r' % data
-        raise NotImplementedError(err)
-
-    exclude = mne_object.info.get('bads', [])
-    picks = mne.fiff.pick_types(mne_object.info, meg=meg, eeg=eeg, stim=False,
-                                eog=False, include=[], exclude=exclude)
-    properties = {'colorspace': _cs.get_MEG(vmax=vmax, unit=unit)}
-
-    if isinstance(mne_object, mne.fiff.Evoked):
-        x = mne_object.data[picks]
-        time = var(mne_object.times, name='time')
-        sensor = sensor_net(mne_object, picks=picks)
-        dims = (sensor, time)
-        return ndvar(x, dims=dims, name=name, properties=properties)
-    else:
-        err = "converting %s is not implemented" % type(mne_object)
-        raise NotImplementedError(err)
-
 
 def mne_events(ds=None, i_start='i_start', eventID='eventID'):
     if isinstance(i_start, basestring):
