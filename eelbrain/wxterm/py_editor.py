@@ -262,6 +262,8 @@ class Editor(wx.py.editor.EditorFrame):
         shell_globals = self._exec_in_shell_namespace
         self.shell.ExecFile(self.buffer.doc.filepath,
                             shell_globals=shell_globals)
+        self.updateNamespace()
+
     def OnExecSelected(self, event=None):
         "Execute the selection in the shell."
         if self.editor:
