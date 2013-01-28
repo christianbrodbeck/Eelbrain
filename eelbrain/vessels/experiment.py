@@ -1367,16 +1367,21 @@ class mne_experiment(object):
     def set(self, subject=None, experiment=None, match=False, add=False,
             **kwargs):
         """
-        Set the state of the experiment.
+        Set variable values.
 
         Parameters
         ----------
-        subjects:
-            The corresponding `mrisubject` is also set
+        subject: str
+            Set the `subject` value. The corresponding `mrisubject` is
+            automatically set to the corresponding mri subject.
         match : bool
-            require existence (for variables in self.var_values)
+            Require existence of the assigned value (only applies for variables
+            in self.var_values)
         add : bool
-            If the template name does not exist, add a new key.
+            If the template name does not exist, add a new key. If False
+            (default), a non-existent key will raise a KeyError.
+        all other : str
+            All other keywords can be used to set templates.
 
         """
         if experiment is not None:
