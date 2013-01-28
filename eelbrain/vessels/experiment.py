@@ -375,6 +375,7 @@ class mne_experiment(object):
              'edf': os.path.join('{log_sdir}', '*.edf'),
 
              # mne raw-derivatives analysis
+             'proj': '',
              'proj_file': '{raw}_{proj}-proj.fif',
              'proj_plot': '{raw}_{proj}-proj.pdf',
              'cov': '{raw}_{cov_name}-{proj}-cov.fif',
@@ -775,8 +776,7 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_events(self, subject=None, experiment=None,
-                    proj=True, edf=True, raw=None):
+    def load_events(self, subject=None, experiment=None, edf=True, raw=None):
         """
         Load events from a raw file.
 
@@ -787,16 +787,17 @@ class mne_experiment(object):
         ----------
         subject, experiment, raw : None | str
             Call self.set(...).
-        proj : True | False | str
-            Load a projection file and add it to the raw.
         edf : bool
             Loads edf and add it to the info dict.
 
         """
         self.set(subject=subject, experiment=experiment, raw=raw)
         raw_file = self.get('rawfif')
-        if isinstance(proj, str):
-            proj = self.get('proj_file', proj=proj)
+        proj = self.get('proj')
+        if proj:
+            proj = self.get('proj_file')
+        else:
+            proj = None
         ds = load.fiff.events(raw_file, proj=proj)
 
         raw = ds.info['raw']
