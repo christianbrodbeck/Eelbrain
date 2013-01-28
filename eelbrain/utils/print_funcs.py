@@ -23,18 +23,7 @@ def _dict_repr(dictionary, indent=0):
             out.append(head + repr(k))
             out.extend(_dict_repr(v, indent=indent + 3))
         else:
-            r = repr(v)
-            if len(r) > 40:
-                if isinstance(v, np.ndarray):
-                    r = "<array, shape = %s>" % repr(v.shape)
-                else:
-                    t = type(v)
-                    try:
-                        l = len(v)
-                        name = t.__name__
-                        r = '<%s, len = %i>' % (name, l)
-                    except:
-                        r = str(t)
+            r = repr_1line(v, w=40)
             out.append(head + repr(k) + ': ' + r)
     return out
 
@@ -85,15 +74,47 @@ def strdict(dictionary, w=100, fmt='%r', sort=True, max_v_lines=6):
     return ',\n '.join(lines)
 
 
-def printlist(list_obj, rep=True):
+def printlist(list_obj, fmt='%r'):
     """
     print each element of a list on a new line
 
-    :arg rep: print repr representation (vs str representation)
-
     """
-    for line in list_obj:
-        if rep:
-            print repr(line)
+    print strlist(list_obj, fmt=fmt)
+
+
+def repr_1line(obj, w=70):
+    r = repr(obj)
+    if len(r) > w:
+        if isinstance(obj, np.ndarray):
+            r = "<array, shape = %s>" % repr(obj.shape)
+        elif isinstance(obj, (list, tuple)):
+            suffix = '...' + r[-1] + ', len=%i' % len(obj)
+            parts = r.split(',')
+            maxlen = w - len(suffix)
+            if len(parts[0]) > maxlen:
+                r = parts[0][:maxlen] + suffix
+            else:
+                i = 1
+                while sum(map(len, parts[:i + 1])) < maxlen and i < len(parts):
+                    i += 1
+                r = ','.join(parts[:i]) + suffix
         else:
-            print str(line)
+            t = type(obj)
+            try:
+                l = len(obj)
+                name = t.__name__
+                r = '<%s, len = %i>' % (name, l)
+            except:
+                r = str(t)
+    return r
+
+
+def strlist(list_obj, fmt='%r'):
+    lines = []
+    for item in list_obj:
+        rep = fmt % (item,)
+        lines.append(rep)
+
+    lines[0] = '[' + lines[0]
+    lines[-1] = lines[-1] + ']'
+    return ',\n '.join(lines)
