@@ -776,7 +776,7 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_events(self, subject=None, experiment=None, edf=True, raw=None):
+    def load_events(self, subject=None, experiment=None, proj=True, edf=True):
         """
         Load events from a raw file.
 
@@ -787,15 +787,21 @@ class mne_experiment(object):
         ----------
         subject, experiment, raw : None | str
             Call self.set(...).
+        proj : bool
+            Add the projections to the Raw object. This does *not* set the
+            proj variable.
         edf : bool
             Loads edf and add it to the info dict.
 
         """
-        self.set(subject=subject, experiment=experiment, raw=raw)
+        self.set(subject=subject, experiment=experiment)
         raw_file = self.get('rawfif')
-        proj = self.get('proj')
         if proj:
-            proj = self.get('proj_file')
+            proj = self.get('proj')
+            if proj:
+                proj = self.get('proj_file')
+            else:
+                proj = None
         else:
             proj = None
         ds = load.fiff.events(raw_file, proj=proj)
@@ -1034,26 +1040,23 @@ class mne_experiment(object):
             p.save()
             self.set_mri_subject(s_to, s_to)
 
-    def make_proj_for_epochs(self, epochs, projname='ironcross', n_mag=5,
-                             save=True, save_plot=True):
+    def make_proj_for_epochs(self, epochs, n_mag=5, save=True, save_plot=True):
         """
         computes the first ``n_mag`` PCA components, plots them, and asks for
         user input (a tuple) on which ones to save.
 
+        Parameters
+        ----------
         epochs : mne.Epochs
             epochs which should be used for the PCA
-
         dest : str(path)
             path where to save the projections
-
         n_mag : int
             number of components to compute
-
         save : False | True | tuple
             False: don'r save proj fil; True: manuall pick componentws to
             include in the proj file; tuple: automatically include these
             components
-
         save_plot : False | str(path)
             target path to save the plot
 
@@ -1073,7 +1076,7 @@ class mne_experiment(object):
 
         p = plot.topo.topomap(PCA, size=1, title=str(epochs.name))
         if save_plot:
-            dest = self.get('proj_plot', proj=projname)
+            dest = self.get('proj_plot')
             p.figure.savefig(dest)
         if save:
             rm = save
@@ -1082,7 +1085,7 @@ class mne_experiment(object):
                 if rm == 'x': raise
             p.close()
             proj = [proj[i] for i in rm]
-            dest = self.get('proj_file', proj=projname)
+            dest = self.get('proj_file')
             mne.write_proj(dest, proj)
 
     def makeplt_coreg(self, redo=False, **kwargs):
