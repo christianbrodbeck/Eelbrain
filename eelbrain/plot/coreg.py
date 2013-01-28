@@ -482,13 +482,16 @@ class dev_mri(object):
 
         self.view()
 
-    def save_views(self, fname, views=['top', 'front', 'left']):
-        tiler = _base.ImageTiler(fname, ncol=3)
-        for view in views:
-            fname = tiler.get_temp_fname()
+    def save_views(self, fname, views=['top', 'front', 'left'], overwrite=False):
+        if not overwrite and os.path.exists(fname):
+            raise IOError("File already exists: %r" % fname)
+
+        tiler = _base.ImageTiler(ncol=len(views))
+        for i, view in enumerate(views):
+            tile_fname = tiler.get_tile_fname(col=i)
             self.view(view)
-            self.fig.scene.save(fname)
-            tiler.add_fname(fname)
+            self.fig.scene.save(tile_fname)
+        tiler.make_frame(fname, overwrite=overwrite)
 
     def view(self, view='front'):
         self.fig.scene.parallel_projection = True
