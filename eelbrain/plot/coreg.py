@@ -1261,9 +1261,14 @@ class geom(object):
 
         x, y, z, _ = self.pts
 
+        if rep == 'wireframe':
+            kwa = dict(line_width=1)
+        else:
+            kwa = {}
+
         mesh = pipeline.triangular_mesh_source(x, y, z, self.tri, figure=fig)
         surf = pipeline.surface(mesh, figure=fig, color=color, opacity=opacity,
-                                representation=rep)
+                                representation=rep, **kwa)
 
         self._plots_surf.append((mesh, surf))
         if self.trans:
