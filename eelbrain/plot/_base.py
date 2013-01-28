@@ -337,6 +337,7 @@ class ImageTiler(object):
         t_fmt = '%%0%id' % (np.floor(np.log10(nt)) + 1)
         self._tile_fmt = 'tile_%s_%s_%s%s' % (row_fmt, col_fmt, t_fmt, ext)
         self._frame_fmt = 'frame_%s%s' % (t_fmt, ext)
+        self._frames_made = np.zeros(nt, dtype=bool)
 
         self.dest = dest
         self.ncol = ncol
@@ -371,7 +372,7 @@ class ImageTiler(object):
         fname = self._frame_fmt % (t,)
         return os.path.join(dirname, fname)
 
-    def make_frame(self, dest=None, t=0, redo=False):
+    def make_frame(self, dest=None, t=0, overwrite=False):
         """
         Produce a single frame. With dest == None, the proper frame filename
         is used.
@@ -384,10 +385,13 @@ class ImageTiler(object):
 
         """
         if dest is None:
+            if self._frames_made[t]:
+                return
             dest = self.get_frame_fname(t)
+            self._frames_made[t] = True
 
-        if (not redo) and os.path.exists(dest):
-            return
+        if (not overwrite) and os.path.exists(dest):
+            raise IOError("File already exists: %r" % dest)
 
         # finalize
         images = []
