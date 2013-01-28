@@ -284,14 +284,16 @@ class ttest:
             c0_mean = None
 
             # compute T and P
-            if np.prod(x.shape) > 2 ** 26:
+            if np.prod(x.shape) > 2 ** 25:
+                ax = np.argmax(x.shape[1:]) + 1
+                x = x.swapaxes(ax, 1)
                 mod_len = x.shape[1]
                 fix_shape = x.shape[0:1] + x.shape[2:]
-                N = 2 ** 26 // np.prod(fix_shape)
+                N = 2 ** 25 // np.prod(fix_shape)
                 res = [scipy.stats.ttest_1samp(x[:, i:i + N], popmean=c0, axis=axis)
                        for i in xrange(0, mod_len, N)]
-                T = np.vstack([v[0] for v in res])
-                P = np.vstack([v[1] for v in res])
+                T = np.vstack((v[0].swapaxes(ax, 1) for v in res))
+                P = np.vstack((v[1].swapaxes(ax, 1) for v in res))
             else:
                 T, P = scipy.stats.ttest_1samp(x, popmean=c0, axis=axis)
 
