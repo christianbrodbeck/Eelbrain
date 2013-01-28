@@ -53,9 +53,11 @@ import fnmatch
 import itertools
 from operator import add
 import os
+from Queue import Queue
 import re
 import shutil
 import subprocess
+from threading import Thread
 
 import numpy as np
 
@@ -1326,6 +1328,40 @@ class mne_experiment(object):
             fif_dir = self.get('raw_sdir', subject=subject)
 
         subp.run_mne_browse_raw(fif_dir, modal)
+
+    def run_subp(self, cmd, workers=2):
+        """
+        Add a command to the processing queue.
+
+        Commands should have a form that can be submitted to
+        :func:`subprocess.call`.
+
+        Parameters
+        ----------
+        cmd : list of str
+            The command.
+        workers : int
+            The number of workers to create. This parameter is only used the
+            first time the method is called.
+        """
+        if cmd is None:
+            return
+
+        if not hasattr(self, 'queue'):
+            self.queue = Queue()
+
+            def worker():
+                while True:
+                    cmd = self.queue.get()
+                    subprocess.call(cmd)
+                    self.queue.task_done()
+
+            for _ in xrange(workers):
+                t = Thread(target=worker)
+                t.daemon = True
+                t.start()
+
+        self.queue.put(cmd)
 
     def set(self, subject=None, experiment=None, match=False, add=False,
             **kwargs):
