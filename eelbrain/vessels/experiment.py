@@ -1085,19 +1085,22 @@ class mne_experiment(object):
             dest = self.get('proj_file', proj=projname)
             mne.write_proj(dest, proj)
 
-    def makeplt_coreg(self, variables=['subject', 'experiment'], constants={},
-                      values={}):
+    def makeplt_coreg(self, redo=False, **kwargs):
         """
-        Save coregistration plots
+        Save a coregistration plot
 
         """
+        self.set(**kwargs)
+
+        fname = self.get('plot_png', name='{subject}_{experiment}',
+                         analysis='coreg', mkdir=True)
+        if not redo and os.path.exists(fname):
+            return
+
         from mayavi import mlab
-        self.set(analysis='coreg')
-        for _ in self.iter_vars(variables, constants=constants, values=values):
-            p = self.plot_coreg()
-            fname = self.get('plot_png', name='{subject}_{experiment}', mkdir=True)
-            p.save_views(fname)
-            mlab.close()
+        p = self.plot_coreg()
+        p.save_views(fname, overwrite=True)
+        mlab.close()
 
     def parse_dirs(self, subjects=[], mri_subjects={}, parse_subjects=True,
                    parse_mri=True):
