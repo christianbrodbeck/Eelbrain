@@ -234,7 +234,6 @@ def events(raw=None, merge= -1, proj=False, name=None,
     return dataset(event, istart, name=name, info=info)
 
 
-
 def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
                downsample=1, mult=1, unit='T', proj=True,
                data='mag', reject=None,
@@ -317,45 +316,19 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
                         proj=proj, i_start=i_start, raw=raw, picks=picks,
                         reject=reject, preload=True, decim=downsample)
 
-    # read the data
-    x = epochs.get_data()
-    if len(x) == 0:
+    epochs_var = epochs_ndvar(epochs, name=target, meg=meg, eeg=eeg,
+                              exclude=exclude, mult=mult, unit=unit,
+                              properties=properties, sensors=sensors)
+
+    if len(epochs) == 0:
         raise RuntimeError("No events left in %r" % raw.info['filename'])
-    T = epochs.times
-    if mult != 1:
-        x *= mult
 
-    # read data properties
-    props = {'proj': 'z root',
-             'unit': unit,
-             'ylim': 2e-12 * mult,
-             'summary_ylim': 3.5e-13 * mult,
-             'colorspace': _cs.get_MEG(2e-12 * mult),
-             'summary_colorspace': _cs.get_MEG(2e-13 * mult),  # was 2.5
-             }
-
-    props['samplingrate'] = epochs.info['sfreq']
-    if properties:
-        props.update(properties)
-
-    # target container
-    picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False,
-                                eog=False, include=[], exclude=exclude)
-    if sensors is None:
-        sensor = sensor_net(epochs, picks=picks)
-    else:
-        sensor = sensors
-    time = var(T, 'time')
-    dims = ('case', sensor, time)
-
-    epochs_var = ndvar(x, dims=dims, properties=props, name=target)
     if add:
         ds = trim_ds(ds, epochs)
         ds.add(epochs_var)
         return ds
     else:
         return epochs_var
-
 
 
 def add_mne_epochs(ds, target='epochs', **kwargs):
@@ -385,7 +358,6 @@ def add_mne_epochs(ds, target='epochs', **kwargs):
     ds = trim_ds(ds, epochs)
     ds[target] = epochs
     return ds
-
 
 
 def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
@@ -460,7 +432,6 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
     ds[name] = ndvar(x, dims, properties=None, info='')
 
     return stcs
-
 
 
 def mne_events(ds=None, i_start='i_start', eventID='eventID'):
@@ -549,7 +520,8 @@ def sensor_net(fiff, picks=None, name='fiff-sensors'):
     return _sensors.sensor_net(ch_locs, ch_names, name=name)
 
 
-def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads'):
+def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
+                 mult=1, unit='T', properties=None, sensors=None):
     """
     Convert an mne.Epochs object to an ndvar.
 
@@ -571,14 +543,48 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads'):
         Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
+    mult : scalar
+        multiply all data by a constant. If used, the ``unit`` kwarg should
+        specify the target unit, not the source unit.
+    unit : str
+        Unit of the data (default is 'T').
+    target : str
+        name for the new ndvar containing the epoch data
+    reject : None | scalar
+        Threshold for rejecting epochs (peak to peak). Requires a for of
+        mne-python which implements the Epochs.model['index'] variable.
+    raw : None | mne.fiff.Raw
+        Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
+    sensors : None | eelbrain.vessels.sensors.sensor_net
+        The default (``None``) reads the sensor locations from the fiff file.
+        If the fiff file contains incorrect sensor locations, a different
+        sensor_net can be supplied through this kwarg.
 
     """
+    props = {'proj': 'z root',
+             'unit': unit,
+             'ylim': 2e-12 * mult,
+             'summary_ylim': 3.5e-13 * mult,
+             'colorspace': _cs.get_MEG(2e-12 * mult),
+             'summary_colorspace': _cs.get_MEG(2e-13 * mult),
+             'samplingrate': epochs.info['sfreq'],
+             }
+
+    if properties:
+        props.update(properties)
+
     picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False,
-                                eog=False, include=[], exclude='bads')
+                                eog=False, include=[], exclude=exclude)
     x = epochs.get_data()[:, picks]
-    sensor = sensor_net(epochs, picks)
+    if mult != 1:
+        x *= mult
+
+    if sensors is None:
+        sensor = sensor_net(epochs, picks=picks)
+    else:
+        sensor = sensors
     time = var(epochs.times, name='time')
-    return ndvar(x, ('case', sensor, time), name=name)
+    return ndvar(x, ('case', sensor, time), properties=props, name=name)
 
 
 def evoked(fname):
@@ -598,7 +604,8 @@ def evoked_ndvar(evoked, name='MEG'):
         evoked = evoked[0]
     sensor = sensor_net(evoked)
     time = var(evoked.times, name='time')
-    return ndvar(x, dims + (sensor, time), name=name)
+    properties = {'colorspace': _cs.get_MEG(2e-13)}
+    return ndvar(x, dims + (sensor, time), properties=properties, name=name)
 
 
 def stc(fname, subject='fsaverage'):
@@ -647,7 +654,6 @@ def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
         dims = (ss, time)
 
     return ndvar(x, dims, name=name)
-
 
 
 def trim_ds(ds, epochs):
