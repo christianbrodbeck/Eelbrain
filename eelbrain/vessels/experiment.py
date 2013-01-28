@@ -642,14 +642,14 @@ class mne_experiment(object):
         inv_name = self.get('inv_name')
         method, ori = inv_name.split('-')
         if ori == 'free':
-            fwd_kwa = dict(force_fixed=False, surf_ori=False)
+            fwd_kwa = dict(surf_ori=True)
             inv_kwa = dict(loose=None, depth=depth)
         elif ori == 'loose':
-            fwd_kwa = dict(force_fixed=False, surf_ori=True)
+            fwd_kwa = dict(surf_ori=True)
             inv_kwa = dict(loose=0.2, depth=depth)
         elif ori == 'fixed':
             fwd_kwa = dict(force_fixed=True)
-            inv_kwa = dict(loose=None, depth=depth)
+            inv_kwa = dict(fixed=True, loose=None, depth=depth)
         else:
             raise ValueError('ori=%r' % ori)
 
