@@ -400,6 +400,14 @@ def brain_vision2fiff(vhdr_file=None, dig=None, orignames=False, eximia=False):
 
 
 
+def open_in_finder(path):
+    """
+    Open ``path`` in the finder.
+    """
+    os.system('open %s' % path)
+
+
+
 def prepare_vmrk(vmrk, dest):
     """
     Prepares events in a brain vision .vmrk file for mne_brain_vision2fiff by
