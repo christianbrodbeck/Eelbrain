@@ -265,8 +265,8 @@ class mne_experiment(object):
         time = var(stc.times, name='time')
         ds[key] = ndvar(np.array(x), dims=('case', time))
 
-    def add_evoked_stc(self, ds, method='sLORETA', ori='free', ind=True,
-                       morph=True, names={'evoked': 'stc'}):
+    def add_evoked_stc(self, ds, method='sLORETA', ori='free', depth=0.8,
+                       ind=True, morph=True, names={'evoked': 'stc'}):
         """
         Add an stc (ndvar) to a dataset with an evoked list.
 
@@ -314,7 +314,7 @@ class mne_experiment(object):
                     inv = invs[subject]
                 else:
                     self.set(subject=subject)
-                    inv = self.get_inv(evoked, depth=0.8)
+                    inv = self.get_inv(evoked, depth=depth)
                     invs[subject] = inv
 
                 stc = mne.minimum_norm.apply_inverse(evoked, inv, 1 / 9., method)
