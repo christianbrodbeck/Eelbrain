@@ -45,6 +45,7 @@ TODO
 
 import os
 import shutil
+import subprocess
 import tempfile
 
 import matplotlib as mpl
@@ -52,6 +53,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import PIL
 
+from ..utils.subp import cmd_exists
 from eelbrain import vessels as _vsl
 from eelbrain.vessels import data as _dt
 
@@ -258,9 +260,11 @@ class eelfigure(object):
         pass
 
     def close(self):
+        "Close the figure."
         self._frame.Close()
 
     def draw(self):
+        "(Re-)draw the figure (after making manual changes)."
         self._frame.canvas.draw()
 
 
@@ -301,31 +305,93 @@ def unpack(Y, X):
 
 class ImageTiler(object):
     """
-    http://stackoverflow.com/q/4567409/166700
+    Create tiled images and animations from individual image files.
 
     """
-    def __init__(self, dest, ncol, nrow=1):
+    def __init__(self, ext='.png', nrow=1, ncol=1, nt=1, dest=None):
+        """
+        Parameters
+        ----------
+        ext : str
+            Extension to append to generated file names.
+        nrow : int
+            Number of rows of tiles in a frame.
+        ncol : int
+            Number of columns of tiles in a frame.
+        nt : int
+            Number of time points in the animation.
+        dest : str(directory)
+            Directory in which to place files. If None, a temporary directory
+            is created and removed upon deletion of the ImageTiler instance.
+        """
+        if dest is None:
+            self.dir = tempfile.mkdtemp()
+        else:
+            if not os.path.exists(dest):
+                os.makedirs(dest)
+            self.dir = dest
+
+        # find number of digits necessary to name images
+        row_fmt = '%%0%id' % (np.floor(np.log10(nrow)) + 1)
+        col_fmt = '%%0%id' % (np.floor(np.log10(ncol)) + 1)
+        t_fmt = '%%0%id' % (np.floor(np.log10(nt)) + 1)
+        self._tile_fmt = 'tile_%s_%s_%s%s' % (row_fmt, col_fmt, t_fmt, ext)
+        self._frame_fmt = 'frame_%s%s' % (t_fmt, ext)
+        self._frames_made = np.zeros(nt, dtype=bool)
+
         self.dest = dest
         self.ncol = ncol
         self.nrow = nrow
-        _, self.ext = os.path.splitext(dest)
-        self.tempdir = None
-        self.files = []
-        self.n_files = ncol * nrow
-        self._i_temp = 0
+        self.nt = nt
 
     def __del__(self):
-        shutil.rmtree(self.tempdir)
+        if self.dest is None:
+            shutil.rmtree(self.dir)
 
-    def _get_tempdir(self):
-        if not self.tempdir:
-            self.tempdir = tempfile.mkdtemp()
-        return self.tempdir
+    def get_tile_fname(self, col=0, row=0, t=0):
+        if col >= self.ncol:
+            raise ValueError("col: %i >= ncol" % col)
+        if row >= self.nrow:
+            raise ValueError("row: %i >= nrow" % row)
+        if t >= self.nt:
+            raise ValueError("t: %i >= nt" % t)
 
-    def add_fname(self, fname):
-        self.files.append(fname)
-        if len(self.files) < self.n_files:
-            return
+        if self.ncol == 1 and self.nrow == 1:
+            return self.get_frame_fname(t)
+
+        fname = self._tile_fmt % (col, row, t)
+        return os.path.join(self.dir, fname)
+
+    def get_frame_fname(self, t=0, dirname=None):
+        if t >= self.nt:
+            raise ValueError("t: %i >= nt" % t)
+
+        if dirname is None:
+            dirname = self.dir
+
+        fname = self._frame_fmt % (t,)
+        return os.path.join(dirname, fname)
+
+    def make_frame(self, dest=None, t=0, overwrite=False):
+        """
+        Produce a single frame. With dest == None, the proper frame filename
+        is used.
+
+        .. Note::
+           In order for
+           :method:`~eelbrain.plot._base.ImageTiler.make_movie` to work, all
+           frames have to be located in the proper location specified by
+           :method:`~eelbrain.plot._base.ImageTiler.get_frame_fname`.
+
+        """
+        if dest is None:
+            if self._frames_made[t]:
+                return
+            dest = self.get_frame_fname(t)
+            self._frames_made[t] = True
+
+        if (not overwrite) and os.path.exists(dest):
+            raise IOError("File already exists: %r" % dest)
 
         # finalize
         images = []
@@ -334,11 +400,14 @@ class ImageTiler(object):
         for r in xrange(self.nrow):
             row = []
             for c in xrange(self.ncol):
-                fname = self.files.pop(0)
-                im = PIL.Image.open(fname)
+                fname = self.get_tile_fname(c, r, t)
+                if os.path.exists(fname):
+                    im = PIL.Image.open(fname)
+                    colw[c] = max(colw[c], im.size[0])
+                    rowh[r] = max(rowh[r], im.size[1])
+                else:
+                    im = None
                 row.append(im)
-                colw[c] = max(colw[c], im.size[0])
-                rowh[r] = max(rowh[r], im.size[1])
             images.append(row)
 
         cpos = np.cumsum([0] + colw)
@@ -346,11 +415,50 @@ class ImageTiler(object):
         out = PIL.Image.new('RGB', (cpos[-1], rpos[-1]))
         for r, row in enumerate(images):
             for c, im in enumerate(row):
-                out.paste(im, (cpos[c], rpos[r]))
-        out.save(self.dest)
+                if im is None:
+                    pass
+                else:
+                    out.paste(im, (cpos[c], rpos[r]))
+        out.save(dest)
 
-    def get_temp_fname(self):
-        fname = os.path.join(self._get_tempdir(), str(self._i_temp) + self.ext)
-        self._i_temp += 1
-        return fname
+    def make_frames(self):
+        for t in xrange(self.nt):
+            self.make_frame(t=t)
 
+    def make_movie(self, dest, framerate=10, codec='mpeg4'):
+        dest = os.path.expanduser(dest)
+        dest = os.path.abspath(dest)
+        root, ext = os.path.splitext(dest)
+        dirname = os.path.dirname(dest)
+        if ext not in ['.mov', '.avi']:
+            if len(ext) == 4:
+                dest = root + '.mov'
+            else:
+                dest = dest + '.mov'
+
+        if not cmd_exists('ffmpeg'):
+            err = ("Need ffmpeg for saving movies. Download from "
+                   "http://ffmpeg.org/download.html")
+            raise RuntimeError(err)
+        elif os.path.exists(dest):
+            os.remove(dest)
+        elif not os.path.exists(dirname):
+            os.mkdir(dirname)
+
+        self.make_frames()
+
+        # make the movie
+        frame_name = self._frame_fmt
+        cmd = ['ffmpeg',  # ?!? order of options matters
+               '-f', 'image2',  # force format
+               '-r', str(framerate),  # framerate
+               '-i', frame_name,
+               '-c', codec,
+               '-sameq', dest,
+               '-pass', '2'  #
+               ]
+        sp = subprocess.Popen(cmd, cwd=self.dir, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
+        stdout, stderr = sp.communicate()
+        if not os.path.exists(dest):
+            raise RuntimeError("ffmpeg failed:\n" + stderr)

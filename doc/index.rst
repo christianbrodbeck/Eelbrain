@@ -18,9 +18,9 @@ Contents:
    
    About
    Installing
-   Changes
    Interface
    data-obj
+   mne
    psyphys
    Various
 

@@ -35,7 +35,8 @@ import scipy.ndimage
 
 from eelbrain import fmtxt
 from eelbrain import vessels as _vsl
-import eelbrain.vessels.colorspaces as _cs
+from ..vessels.structure import celltable
+from ..vessels import colorspaces as _cs
 from eelbrain.vessels.data import ascategorial, asmodel, asndvar, asvar, ndvar
 
 import glm as _glm
@@ -246,7 +247,7 @@ class ttest:
 #                    -.05: (0., .2, 1.), -.01: (.4, .8, 1.), -.001: (.5, 1., 1.),
 #                    }
 #                    (currently, p values are not directional)
-        ct = _vsl.structure.celltable(Y, X, match, sub, ds=ds)
+        ct = celltable(Y, X, match, sub, ds=ds)
 
         if len(ct) == 1:
             pass
@@ -258,6 +259,7 @@ class ttest:
                        "must be explicitly specified." % len(ct))
                 raise ValueError(err)
 
+        axis = ct.Y.get_axis('case')
 
         if isinstance(c0, basestring):
             c1_mean = ct.data[c1].summary(name=c1)
@@ -268,16 +270,33 @@ class ttest:
                     err = ("match kwarg: Conditions have different values on"
                            " <%r>" % ct.match.name)
                     raise ValueError(err)
-                T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c0].x, axis=0)
+                T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c0].x,
+                                             axis=axis)
                 test_name = 'Related Samples t-Test'
             else:
-                T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c0].x, axis=0)
+                T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c0].x,
+                                             axis=axis)
                 test_name = 'Independent Samples t-Test'
         elif np.isscalar(c0):
             c1_data = ct.data[c1]
+            x = c1_data.x
             c1_mean = c1_data.summary()
             c0_mean = None
-            T, P = scipy.stats.ttest_1samp(c1_data.x, popmean=c0, axis=0)
+
+            # compute T and P
+            if np.prod(x.shape) > 2 ** 25:
+                ax = np.argmax(x.shape[1:]) + 1
+                x = x.swapaxes(ax, 1)
+                mod_len = x.shape[1]
+                fix_shape = x.shape[0:1] + x.shape[2:]
+                N = 2 ** 25 // np.prod(fix_shape)
+                res = [scipy.stats.ttest_1samp(x[:, i:i + N], popmean=c0, axis=axis)
+                       for i in xrange(0, mod_len, N)]
+                T = np.vstack((v[0].swapaxes(ax, 1) for v in res))
+                P = np.vstack((v[1].swapaxes(ax, 1) for v in res))
+            else:
+                T, P = scipy.stats.ttest_1samp(x, popmean=c0, axis=axis)
+
             test_name = '1-Sample t-Test'
             if c0:
                 diff = c1_mean - c0
@@ -294,11 +313,11 @@ class ttest:
         dims = ct.Y.dims[1:]
         properties = ct.Y.properties.copy()
 
-        properties['colorspace'] = _vsl.colorspaces.Colorspace(contours=contours)
+        properties['colorspace'] = _cs.Colorspace(contours=contours)
         properties['test'] = test_name
         P = _vsl.data.ndvar(P, dims, properties=properties, name='p')
 
-        properties['colorspace'] = _vsl.colorspaces.get_default()
+        properties['colorspace'] = _cs.get_default()
         T = _vsl.data.ndvar(T, dims, properties=properties, name='T')
 
         # add Y.name to dataset name
@@ -354,7 +373,7 @@ class f_oneway:
         Ps = np.reshape(Ps, tuple(len(dim) for dim in dims))
 
         properties = Y.properties.copy()
-        properties['colorspace'] = _vsl.colorspaces.get_sig(p=p, contours=contours)
+        properties['colorspace'] = _cs.get_sig(p=p, contours=contours)
         properties['test'] = test_name
         p = ndvar(Ps, dims, properties=properties, name=X.name)
 
@@ -389,7 +408,7 @@ class anova:
         fitter = _glm.lm_fitter(X)
 
         properties = Y.properties.copy()
-        properties['colorspace'] = _vsl.colorspaces.get_sig(p=p, contours=contours)
+        properties['colorspace'] = _cs.get_sig(p=p, contours=contours)
         kwargs = dict(dims=Y.dims[1:], properties=properties)
 
         self.all = []
@@ -635,7 +654,7 @@ class cluster_dist:
             self.dist[self._i] = max(clusters_v)
 
         self._i += 1
-        
+
     def as_table(self, pmax=1.):
         cols = 'll'
         headings = ('#', 'p')
@@ -643,11 +662,11 @@ class cluster_dist:
             time = self.dims[self._time_ax]
             cols += 'l'
             headings += ('time interval',)
-        
+
         table = fmtxt.Table(cols)
         table.cells(*headings)
         table.midrule()
-        
+
         i = 0
         for c in self.clusters:
             p = c.properties['p']
@@ -664,116 +683,3 @@ class cluster_dist:
                     table.cell(interval)
 
         return table
-
-
-
-
-
-
-
-# - not functional - ------
-def _test(ndvars, parametric=True, match=None, func=None, attr='data',
-         name="{test}"):
-    """
-    use func (func) or attr (str) to customize data
-    (func=abs for )
-
-    """
-    raise NotImplementedError
-    if match is None:
-        related = False
-    else:
-        raise NotImplementedError
-
-    v0 = ndvars[0]
-
-    # data
-    data = [getattr(v, attr) for v in ndvars]
-    if func != None:
-        data = [func(d) for d in data]
-
-    # test
-    k = len(ndvars)  # number of levels
-    if k == 0:
-        raise ValueError("no segments provided")
-
-    # perform test
-    if parametric:  # simple tests
-        if k == 1:
-            statistic = 't'
-            T, P = scipy.stats.ttest_1samp(*data, popmean=0, axis=0)
-            test_name = '1-Sample $t$-Test'
-        elif k == 2:
-            statistic = 't'
-            if related:
-                T, P = scipy.stats.ttest_rel(*data, axis=0)
-                test_name = 'Related Samples $t$-Test'
-            else:
-                T, P = scipy.stats.ttest_ind(*data, axis=0)
-                test_name = 'Independent Samples $t$-Test'
-        else:
-            statistic = 'F'
-            raise NotImplementedError("Use segframe for 1-way ANOVA")
-
-    else:  # non-parametric:
-        raise NotImplementedError("axis from -1 to 0")
-        if k <= 2:
-            if related:
-                test_func = scipy.stats.wilcoxon
-                statistic = 't'
-                test_name = 'Wilcoxon'
-            else:
-                raise NotImplementedError()
-        else:
-            if related:
-                test_func = scipy.stats.friedmanchisquare
-                statistic = 'Chi**2'
-                test_name = 'Friedman'
-            else:
-                raise NotImplementedError()
-
-        shape = data[0].shape[:-1]
-        # function to apply stat test to array
-        def testField(*args):
-            """
-            will be executed for a grid, args will contain coordinates of shape
-            assumes that subjects are on last axis
-
-            """
-            rargs = [np.ravel(a) for a in args]
-            T = []
-            P = []
-            for indexes in zip(*rargs):
-                index = tuple([slice(int(i), int(i + 1)) for i in indexes] + [slice(0, None)])
-                testArgs = tuple([ d[index].ravel() for d in data])
-                t, p = test_func(*testArgs)
-                T.append(t)
-                P.append(p)
-            P = np.array(P).reshape(args[0].shape)
-            T = np.array(T).reshape(args[0].shape)
-            return T, P
-        T, P = np.fromfunction(testField, shape)
-
-    # Direction of the effect
-    if len(data) == 2:
-        direction = np.sign(data[0].mean(0) - data[1].mean(0))
-        P = (1 - P) * direction
-        cs = _vsl.colorspaces.get_symsig
-    elif len(data) == 1:
-        direction = np.sign(data[0].mean(0))
-        cs = _vsl.colorspaces.get_symsig
-        P = (1 - P) * direction
-    else:
-        cs = _vsl.colorspaces.get_sig
-
-    properties = ndvars[0].properties.copy()
-    properties['colorspace_func'] = cs
-    properties['statistic'] = statistic
-    properties['test'] = test_name
-
-    # create test_segment
-    name_fmt = name.format(**properties)
-    stat = _vsl.data.epoch(v0.dims, T, properties=properties, name=name_fmt)
-    name_fmt = 'P'
-    P = _vsl.data.epoch(v0.dims, P, properties=properties, name=name_fmt)
-    return stat, P

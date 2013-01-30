@@ -1,6 +1,6 @@
-====================================
+************************************
 Tutorial: Skin Conductance Responses
-====================================
+************************************
 
 The tutorial is based on some simulated data which can be downloaded `here 
 <http://dl.dropbox.com/u/659990/eelbrain_doc/files/simulated_scr.zip>`_. 
@@ -12,7 +12,7 @@ The complete scripts can be downloaded from here:
 
 
 Overview
---------
+========
 
 A continuous stream of data is stored in a :class:`segment`. For example, in 
 an experiment where skin conductance is recorded while stimuli are presented
@@ -50,7 +50,7 @@ windows to extract statistics from the skin conductance response dataset.
  
 
 Importing Data
---------------
+==============
 
 The first step is to import the psychophysiology module. Then, you can 
 define an Experiment and add a data importer (for txt files in this case)::
@@ -223,8 +223,8 @@ Now we can import the data::
 (this might take a while).
 
 
-Saving the Procedure as Python Script
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Saving a Procedure as Python Script
+===================================
 
 While saving the experiment will save the result of what you just did, you 
 might also want to keep the script to produce this result. The script is much 
@@ -245,10 +245,10 @@ script can incorporate the new data.
 
 
 Inspecting Data
----------------
+===============
 
 In the Shell
-^^^^^^^^^^^^
+------------
 
 The experiment instance contains as attributes references to each dataset. 
 These can be seen using the print command::
@@ -313,7 +313,7 @@ is more readable::
 
 
 GUIs
-^^^^
+----
 
 There are also GUI elements based on wxpython. The dataset hierarchy of an 
 experiment can be seen in an experiment frame (which at the moment does not
@@ -368,7 +368,7 @@ viewer.
 
 
 Signal Processing
------------------
+=================
 
 Our next step is to extract the skin conductance responses (SCRs) from the raw
 data. Any data transformations are applied as child datasets in eelbrain. All
@@ -394,7 +394,7 @@ Now you can inspect the result in the list viewer::
 
 
 Event Processing
-----------------
+================
 
 Similar to data segments, event segments can be elaborated. First, when 
 inspcting the data the first time, we saw that the event magnitude in the 
@@ -485,10 +485,10 @@ events should be counted::
 
 
 Statistics
-----------
+==========
 
 Collecting Statistics
-^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 The :py:mod:`!psyphys.collect` module contains tools to  collect statistics 
 from the datasets. There are two main functions:
@@ -609,7 +609,7 @@ illustrated in the next section.
 
 
 Analyzing Statistics
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 
     
 The :py:mod:`eelbrain.eellab` module contains functions for analyzing the 

@@ -28,5 +28,6 @@ dist
 .coverage
 coverage/
 doc/_build
+doc/generated
 distribute-*
 scripts_mac/eelbrain

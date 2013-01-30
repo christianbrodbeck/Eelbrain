@@ -1,12 +1,12 @@
 '''
+plot.uts
+========
+
 plotting functions for univariate uniform time-series.
 
-
-
-Created on Mar 13, 2012
-
-@author: christian
 '''
+# author: Christian Brodbeck
+
 from __future__ import division
 
 import os
@@ -272,9 +272,19 @@ class stat(_base.subplot_figure):
 
 
 class uts(_base.subplot_figure):
+    "Value by time plot for uts data."
     def __init__(self, epochs, ncol=3, width=6, height=3, dpi=90,
                  title='plot.uts.uts', figtitle=None, axtitle='{name}',
                  ):
+        """
+        Parameters
+        ----------
+        epochs : epochs
+            Uts data epochs to plot.
+        ncol : int
+            number of columns when plotting multiple axes.
+
+        """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
 
         nplot = len(epochs)

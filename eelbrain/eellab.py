@@ -36,23 +36,25 @@ Created on Mar 27, 2012
 
 @author: christian
 '''
-from vessels.data import (factor,
-                          cellname,
-                          var,
-                          var_from_dict,
-                          var_from_apply,
-                          ndvar,
-                          dataset,
-                          combine,
-                          align,
-                          interaction,
-                          )
+from .vessels.data import (factor,
+                           cellname,
+                           var,
+                           var_from_dict,
+                           var_from_apply,
+                           ndvar,
+                           dataset,
+                           combine,
+                           align,
+                           interaction,
+                           )
 
-from vessels import process
+from .vessels.structure import celltable
 
-from analyze import (test,
-                     testnd,
-                     table)
+from .vessels import process, datasets
+
+from .analyze import (test,
+                      testnd,
+                      table)
 
 import ui
 import plot
@@ -72,6 +74,6 @@ import load.kit
 
 import save
 
-from utils import statfuncs
+from .utils import statfuncs
 
 from utils.print_funcs import printdict, printlist, dicttree

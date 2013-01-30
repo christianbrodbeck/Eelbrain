@@ -15,7 +15,7 @@ __hide__ = ['ui', 'cPickle', 'os']
 
 
 
-def pickle(obj, dest=None):
+def pickle(obj, dest=None, protocol=cPickle.HIGHEST_PROTOCOL):
     """
     Pickle an object.
 
@@ -23,10 +23,12 @@ def pickle(obj, dest=None):
         Path to destination where to save the  file. If no destination is
         provided, a file dialog opens. If a destination without extension is
         provided, '.pickled' is appended.
+    protocol : int
+        Pickle protocol (default is HIGHEST_PROTOCOL).
 
     """
     if dest is None:
-        dest = ui.ask_saveas("Pickle Destination", '', 
+        dest = ui.ask_saveas("Pickle Destination", '',
                              ext=[('pickled', "Pickled Python Object")])
         if dest:
             print 'dest=%r' % dest
@@ -36,6 +38,6 @@ def pickle(obj, dest=None):
         dest = os.path.expanduser(dest)
         if not os.path.splitext(dest)[1]:
             dest += '.pickled'
-    
+
     with open(dest, 'w') as FILE:
-        cPickle.dump(obj, FILE)
+        cPickle.dump(obj, FILE, protocol)

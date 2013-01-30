@@ -1,73 +1,12 @@
 '''
-Coregistration
-==============
+plot.coreg
+==========
 
-
-MRI-Head Coregistration
-^^^^^^^^^^^^^^^^^^^^^^^
-
-Subjects with MRI
------------------
-
-#. Use :py:class:`set_nasion` to define the location of the nasion on the
-   subject's MRI. Save a fiducials file (dummy values are saved for the
-   auricular points).
-#. Use :py:class:`mri_head_viewer`. `s_from` is the name of the subject (which
-   should be identical for the MRI and the MEG subject).
-   The position of head and MRI are initially aligned using the nasion.
-   Use "Fit no scale" to fit the MRI to the head using rotation only.
-   Modify the resulting parameters to achieve a satisfying fit:
-   **Nasion**: Shift the position of the nasion alignment.
-   **Rotation**: Rotation parameters applied with the nasion as center.
-   **Fit ...**: at any time you can make a new fit, taking the current parameters
-   as the starting point.
-#. Once a satisfactory coregistration is achieved, hit "Save trans" to save
-   the trans file.
-
-Subjects without MRI
---------------------
-
-#. Use :py:class:`mri_head_viewer`; `s_from` is the MRI to use (usually
-   `'fsaverage'`), `s_to` is the subject for which the MRI will be used.
-   The position of head and MRI are initially aligned using the nasion.
-#. Use "Fit scale" to fit the MRI to the head using rotation and scaling.
-   Modify the resulting parameters to achieve a satisfying fit:
-   **Nasion**: Shift the position of the nasion alignment.
-   **Scale**: The scale parameters applies with the nasion as center.
-   **Shrink**: Shrink the MRI (affects scale on all axes) to compensate for
-   e.g. an inflated digitizer head shape.
-   **Rotation**: Rotation parameters applied with the nasion as center.
-   **Fit ...**: at any time you can make a new fit, taking the current parameters
-   as the starting point.
-#. Once a satisfactory coregistration is achieved, hit "Save" to save the MRI
-   as well as the trans file.
-
-
-Device-Head Coregistration
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-#. Use :py:class:`dev_head_viewer` to examine the coregistration (the
-   initially displayed coregistration is the one contained in the raw file).
-   If the coregistration is okay, stop here.
-#. If necessary, re-fit the device-head coregistration (tick the "refit" box)
-   and adjust the fit by excluding some of the marker points (0 through 4).
-   When done, hit "save" to save a modified raw file.
-
-
-Check the Coregistration
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-:py:class:`dev_mri` plots a mayavi figure (without interface) that can be
-used to check that the coregistration is ok.
-
-
-
-
-Created on Sep 30, 2012
-
-@author: christian
+Coregistration for :mod:`mne`.
 
 '''
+# author: Christian Brodbeck
+
 from copy import deepcopy
 import fnmatch
 import logging
@@ -149,7 +88,7 @@ class dev_head_viewer(traits.HasTraits):
 
     """
     # views
-    frontal = traits.Button()
+    front = traits.Button()
     left = traits.Button()
     top = traits.Button()
 
@@ -202,7 +141,7 @@ class dev_head_viewer(traits.HasTraits):
         subject = self.fitter.subject
         self.scene.mlab.text(0.01, 0.01, subject, figure=fig, width=.2)
 
-        self.frontal = True
+        self.front = True
         self.scene.disable_render = False
 
     @traits.on_trait_change('head_shape')
@@ -217,9 +156,9 @@ class dev_head_viewer(traits.HasTraits):
             ui.message("No MRI Loaded", "Load an MRI when initializing the "
                        "viewer", '!')
 
-    @traits.on_trait_change('frontal')
-    def _view_frontal(self):
-        self.set_view('frontal')
+    @traits.on_trait_change('front')
+    def _view_front(self):
+        self.set_view('front')
 
     @traits.on_trait_change('left')
     def _view_left(self):
@@ -252,7 +191,7 @@ class dev_head_viewer(traits.HasTraits):
         self.fitter.save()
         bi.Destroy()
 
-    def set_view(self, view='frontal'):
+    def set_view(self, view='front'):
         self.scene.parallel_projection = True
         self.scene.camera.parallel_scale = .15
         kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
@@ -266,7 +205,7 @@ class dev_head_viewer(traits.HasTraits):
     # the layout of the dialog created
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
                      height=500, width=500, show_label=False),
-                HGroup('top', 'frontal', 'left',),
+                HGroup('top', 'front', 'left',),
                 HGroup('head_shape', 'mri'),
                 HGroup('_refit', '_0', '_1', '_2', '_3', '_4'),
                 HGroup('_save'),
@@ -461,10 +400,12 @@ class dev_head_fitter:
 
 class dev_mri(object):
     """
+    Plot the sensor and the mri head in a mayavi figure with proper
+    coregistration.
 
     """
     def __init__(self, raw, subject=None, head_mri_t=None, mri='head',
-                 hs=True, subjects_dir=None, fig=None):
+                 hs='wireframe', subjects_dir=None, fig=None):
         """
         Parameters
         ----------
@@ -480,8 +421,8 @@ class dev_mri(object):
             "{subject}-trans.fif"
         mri : str
             Name of the mri model to load (default is 'head')
-        hs : bool
-            Display the digitizer head-shape stored in the raw file.
+        hs : None | 'wireframe' | 'surface' | 'points' | 'balls'
+            How to display the digitizer head-shape stored in the raw file.
 
         """
         subjects_dir = get_subjects_dir(subjects_dir)
@@ -530,19 +471,29 @@ class dev_mri(object):
         if hs:
             self.hs = geom_dig_hs(raw.info['dig'], unit='m')
             self.hs.set_T(head_dev_t)
+            if hs in ['surface', 'wireframe', 'points']:
+                self.hs.plot_solid(fig, opacity=1, rep=hs, color=(1, .5, 0))
+            elif hs == 'balls':
+                self.hs.plot_points(fig, 0.01, opacity=0.5, color=(1, .5, 0))
+            else:
+                raise ValueError('hs kwarg can not be %r' % hs)
+
             self.hs.plot_solid(fig, opacity=1, rep='points', color=(1, .5, 0))
 
         self.view()
 
-    def save_views(self, fname, views=['top', 'frontal', 'left']):
-        tiler = _base.ImageTiler(fname, ncol=3)
-        for view in views:
-            fname = tiler.get_temp_fname()
-            self.view(view)
-            self.fig.scene.save(fname)
-            tiler.add_fname(fname)
+    def save_views(self, fname, views=['top', 'front', 'left'], overwrite=False):
+        if not overwrite and os.path.exists(fname):
+            raise IOError("File already exists: %r" % fname)
 
-    def view(self, view='frontal'):
+        tiler = _base.ImageTiler(ncol=len(views))
+        for i, view in enumerate(views):
+            tile_fname = tiler.get_tile_fname(col=i)
+            self.view(view)
+            self.fig.scene.save(tile_fname)
+        tiler.make_frame(fname, overwrite=overwrite)
+
+    def view(self, view='front'):
         self.fig.scene.parallel_projection = True
         self.fig.scene.camera.parallel_scale = .15
         kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
@@ -561,7 +512,7 @@ class mri_head_viewer(traits.HasTraits):
 
     """
     # views
-    frontal = traits.Button()
+    front = traits.Button()
     left = traits.Button()
     top = traits.Button()
 
@@ -623,7 +574,7 @@ class mri_head_viewer(traits.HasTraits):
         fig = self.scene.mayavi_scene
         self.scene.disable_render = True
         self.fitter.plot(fig=fig)
-        if s_to is None or s_to == s_from:
+        if s_to == s_from:
             text = "%s" % s_from
             width = .2
         else:
@@ -631,7 +582,7 @@ class mri_head_viewer(traits.HasTraits):
             width = .5
         self.scene.mlab.text(0.01, 0.01, text, figure=fig, width=width)
 
-        self.frontal = True
+        self.front = True
         self.scene.disable_render = False
         self._last_fit = None
 
@@ -689,8 +640,8 @@ class mri_head_viewer(traits.HasTraits):
         args = tuple(self.rotation[0]) + tuple(scale)
         self.fitter.set(*args)
 
-    @traits.on_trait_change('top,left,frontal')
-    def on_set_view(self, view='frontal', info=None):
+    @traits.on_trait_change('top,left,front')
+    def on_set_view(self, view='front', info=None):
         self.scene.parallel_projection = True
         self.scene.camera.parallel_scale = 150
         kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
@@ -704,7 +655,7 @@ class mri_head_viewer(traits.HasTraits):
     # the layout of the dialog created
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
                      height=500, width=500, show_label=False),
-                HGroup('top', 'frontal', 'left',),
+                HGroup('top', 'front', 'left',),
                 HGroup('fit_scale', 'fit_no_scale', 'restore_fit'),
                 HGroup('nasion'),
                 HGroup('scale', 'shrink'),
@@ -1313,9 +1264,14 @@ class geom(object):
 
         x, y, z, _ = self.pts
 
+        if rep == 'wireframe':
+            kwa = dict(line_width=1)
+        else:
+            kwa = {}
+
         mesh = pipeline.triangular_mesh_source(x, y, z, self.tri, figure=fig)
         surf = pipeline.surface(mesh, figure=fig, color=color, opacity=opacity,
-                                representation=rep)
+                                representation=rep, **kwa)
 
         self._plots_surf.append((mesh, surf))
         if self.trans:
@@ -1445,7 +1401,7 @@ class set_nasion(traits.HasTraits):
 
     """
     # views
-    frontal = traits.Button()
+    front = traits.Button()
     left = traits.Button()
     top = traits.Button()
 
@@ -1494,7 +1450,7 @@ class set_nasion(traits.HasTraits):
         picker = self.scene.mayavi_scene.on_mouse_pick(self._on_mouse_click)
         self._current_fit = None
 
-        self.frontal = True
+        self.front = True
         self.scene.disable_render = False
 
     def _on_mouse_click(self, picker):
@@ -1508,9 +1464,9 @@ class set_nasion(traits.HasTraits):
     def on_nasion_change(self):
         self.nasion.data.points = [(self.x, self.y, self.z)]
 
-    @traits.on_trait_change('frontal')
-    def _view_frontal(self):
-        self.set_view('frontal')
+    @traits.on_trait_change('front')
+    def _view_front(self):
+        self.set_view('front')
 
     @traits.on_trait_change('left')
     def _view_left(self):
@@ -1541,7 +1497,7 @@ class set_nasion(traits.HasTraits):
                ]
         write_fiducials(fname, dig, FIFF.FIFFV_COORD_MRI)
 
-    def set_view(self, view='frontal'):
+    def set_view(self, view='front'):
         self.scene.parallel_projection = True
         self.scene.camera.parallel_scale = .15
         kwargs = dict(azimuth=90, elevation=90, distance=None, roll=180,
@@ -1555,7 +1511,7 @@ class set_nasion(traits.HasTraits):
     # the layout of the dialog created
     view = View(Item('scene', editor=SceneEditor(scene_class=MayaviScene),
                      height=600, width=600, show_label=False),
-                HGroup('top', 'frontal', 'left',),
+                HGroup('top', 'front', 'left',),
                 HGroup('x', 'y', 'z',),
 #                HGroup('coord',),
                 HGroup('_save'),

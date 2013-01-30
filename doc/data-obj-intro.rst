@@ -1,6 +1,6 @@
-============
+************
 Introduction
-============
+************
 
 
 There are two primary data-objects: 
@@ -208,7 +208,7 @@ This type of indexing also allows indexing based on the dataset's variables::
 
 
 Working with a dataset's contents
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+---------------------------------
 
 In Eelbrain's pyshell, :py:func:`attach` can be used to make a dataset's 
 contents available in the global namespace::
@@ -337,20 +337,3 @@ more flexibility.
 Iterators (such as :class:`~eelbrain.vessels.data.var` and 
 :class:`~eelbrain.vessels.data.factor`) can be exported using the
 :func:`eelbrain.save.txt` function.
-
-.. 
-    not nice enough ...
-    
-    Class Documentation
-    ===================
-    
-    .. autoclass:: eelbrain.vessels.data.var
-    	:members:
-    
-    .. autoclass:: eelbrain.vessels.data.factor
-    
-    .. autoclass:: eelbrain.vessels.data.dataset
-    
-    
-    .. automodule:: eelbrain.vessels.data
-       :members:

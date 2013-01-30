@@ -47,8 +47,8 @@ import mpl_tools
 
 
 
-# Attributes that are hidden from autocompletion. Should only be attributes 
-# that the user never wants to retrieve from any module. Hence, at the moment 
+# Attributes that are hidden from autocompletion. Should only be attributes
+# that the user never wants to retrieve from any module. Hence, at the moment
 # there are some top-level module names and their abbreviations.
 hidden_attr = [
                'np', 'sp', 'scipy', 'mpl', 'P', 'plt',
@@ -66,10 +66,61 @@ def is_py_varname(name):
     b = re.match('[a-zA-Z0-9_]', name)
     return a and b
 
+# modify wx.py introspection to take into account __wrapped__
+import inspect
+from wx.py.introspect import getConstructor
+def getBaseObject(object):
+    """Return base object and dropSelf indicator for an object."""
+    if inspect.isbuiltin(object):
+        # Builtin functions don't have an argspec that we can get.
+        dropSelf = 0
+    elif inspect.ismethod(object):
+        # Get the function from the object otherwise
+        # inspect.getargspec() complains that the object isn't a
+        # Python function.
+        try:
+            if object.im_self is None:
+                # This is an unbound method so we do not drop self
+                # from the argspec, since an instance must be passed
+                # as the first arg.
+                dropSelf = 0
+            else:
+                dropSelf = 1
+            object = object.im_func
+        except AttributeError:
+            dropSelf = 0
+    elif inspect.isclass(object):
+        # Get the __init__ method function for the class.
+        constructor = getConstructor(object)
+        if constructor is not None:
+            object = constructor
+            dropSelf = 1
+        else:
+            dropSelf = 0
+    elif callable(object):
+        # Get the __call__ method instead.
+        try:
+            object = object.__call__.im_func
+            dropSelf = 1
+        except AttributeError:
+            dropSelf = 0
+    else:
+        dropSelf = 0
+
+    #  MY MOD
+    object = getattr(object, '__wrapped__', object)
+    # END MY MOD
+
+    return object, dropSelf
+wx.py.introspect.getBaseObject = getBaseObject
+
+
+
+
 # subclass Shell in order to set some custom properties
 class Shell(wx.py.shell.Shell):
-    exec_mode = 0       # counter to determine whether other objects than the shell itself are writing to writeOut
-    has_moved = False   # keeps track whether any entity has written to the shell in exec_mode
+    exec_mode = 0  # counter to determine whether other objects than the shell itself are writing to writeOut
+    has_moved = False  # keeps track whether any entity has written to the shell in exec_mode
 #    def __init__(self, *args, **kwargs): # Leads to recursion crash
 #        wx.py.shell.Shell.__init__(self, *args, **kwargs)
 #        self.exec_mode = 0
@@ -83,7 +134,7 @@ class Shell(wx.py.shell.Shell):
 
         """
         ###### MY ADDITIONAL PRUNING MECHANISM
-        #logging.debug(" AutoComplete for command {c}".format(c=str(command)))
+        # logging.debug(" AutoComplete for command {c}".format(c=str(command)))
         ###### MY end
         self.AutoCompSetAutoHide(self.autoCompleteAutoHide)
         self.AutoCompSetIgnoreCase(self.autoCompleteCaseInsensitive)
@@ -111,11 +162,11 @@ class Shell(wx.py.shell.Shell):
                         for item in source['__hide__']:
                             if item in options:
                                 options.remove(item)
-            #logging.debug(" AutoComplete: %s"%str(options))
+            # logging.debug(" AutoComplete: %s"%str(options))
             for item in hidden_attr:
                 if item in options:
                     options.remove(item)
-            #options = [item for item in options if item not in hidden_attr]
+            # options = [item for item in options if item not in hidden_attr]
             ###### MY end
             options = ' '.join(options)
             self.AutoCompShow(offset, options)
@@ -136,7 +187,7 @@ class Shell(wx.py.shell.Shell):
 
 
             start = self.promptPosStart  # start des prompt >>>
-            end = self.promptPosEnd      # end   des prompt >>>
+            end = self.promptPosEnd  # end   des prompt >>>
 #            current = self.CurrentPos    # caret position
 #            last = self.GetLastPosition()# end of the text
 #            logging.debug("WRITEOUT POS: start %s; end %s; current %s; last %s"%(start, end, current, last))
@@ -151,8 +202,8 @@ class Shell(wx.py.shell.Shell):
             new_start = self.GetCurrentPos()
 #            new_end = new_start + (end-start)
             self.promptPosStart = new_start
-            self.promptPosEnd = new_start #new_end
-#            
+            self.promptPosEnd = new_start  # new_end
+#
 #            self.SetCurrentPos(new_end)
 #            self.SetAnchor(new_end)
         else:
@@ -164,7 +215,7 @@ class Shell(wx.py.shell.Shell):
 #        ls = os.linesep
 #        if message != ls:
 #            message = message.replace(ls, ls+'!   ')
-        message = message.replace('"""', '"') # some deprecation errors contain """ messing up shell colors
+        message = message.replace('"""', '"')  # some deprecation errors contain """ messing up shell colors
         self.writeOut(message)
 
     def start_exec(self):
@@ -181,7 +232,7 @@ class Shell(wx.py.shell.Shell):
 #        """Execute the user's PYTHONSTARTUP script if they have one."""
 #        if startupScript and os.path.isfile(startupScript):
 #            text = 'Startup script executed: ' + startupScript
-##            self.push('print %r; execfile(%r)' % (text, startupScript))
+# #            self.push('print %r; execfile(%r)' % (text, startupScript))
 #            self.interp.startupScript = startupScript
 #        else:
 #            self.push('')
@@ -189,7 +240,7 @@ class Shell(wx.py.shell.Shell):
 
 
 class ShellFrame(wx.py.shell.ShellFrame):
-    bufferOpen = 1 # Dummy attr so that py.frame enables Open menu 
+    bufferOpen = 1  # Dummy attr so that py.frame enables Open menu
     bufferNew = 1  # same for New menu command
     bufferClose = 1  # same for Close menu command (handled by OnFileClose)
     def __init__(self, *args, **kwargs):
@@ -243,9 +294,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
         # attr
         self.global_namespace = self.shell.interp.locals
         self.editors = []
-        self.active_editor = None # editor last used; updated by Editor.OnActivate and Editor.__init__
+        self.active_editor = None  # editor last used; updated by Editor.OnActivate and Editor.__init__
         self.tables = []
-        self.experiments = [] # keep track of ExperimentFrames
+        self.experiments = []  # keep track of ExperimentFrames
         self._attached_items = {}
         self.help_viewer = None
 
@@ -255,7 +306,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.P_mgr = mpl_tools.PyplotManager(self, pos=(x_max - 100, y_min + 22 + 4))
 
     # --- MENUS ---
-        # wx 2.8 somehow does not manage to access the 'window' and 'help' 
+        # wx 2.8 somehow does not manage to access the 'window' and 'help'
         # menus; this works in 2.9
 
         def get_menu_Id(name):
@@ -266,7 +317,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         # for debugging:
         # create a name->Id dict for the current menus
         # (created by wx.py.frame.Frame.__createMenus() )
-#        self.menu_names = {self.menuBar.GetMenuLabel(i): i for i in 
+#        self.menu_names = {self.menuBar.GetMenuLabel(i): i for i in
 #                           xrange(self.menuBar.GetMenuCount())}
 
     # recent menu
@@ -308,7 +359,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
     # WINDOW MENU
         Id = get_menu_Id("&Window")
         if Id is None:
-            m = self.windowMenu = wx.Menu()#title="&Window")
+            m = self.windowMenu = wx.Menu()  # title="&Window")
             m.SetTitle("&Window")
             Id_help = get_menu_Id('&Help')
             self.menuBar.Insert(Id_help, m, 'Window')
@@ -319,7 +370,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.Bind(wx.EVT_MENU_OPEN, self.OnOpenWindowMenu)
 
         m.Append(ID.P_MGR, "Pyplot Manager",
-                 "Toggle Pyplot Manager Panel.")#, wx.ITEM_CHECK)
+                 "Toggle Pyplot Manager Panel.")  # , wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnTogglePyplotMgr, id=ID.P_MGR)
 
         m.Append(ID.PYPLOT_CLOSEALL, "Close All Plots",
@@ -359,7 +410,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         m.Append(ID.INSERT_Color, "Color",
                  "Insert color as (r, g, b)-tuple.")
 #        self.Bind(wx.EVT_MENU, self.OnInsertColor, id=ID.INSERT_Color)
-#        this function only works for the colorpicker linked to the button 
+#        this function only works for the colorpicker linked to the button
 
         # path submenu
         m = self.pathMenu = wx.Menu()
@@ -438,7 +489,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
 #        tb.AddLabelTool(ID.EXPERIMENT_NEW, "New", Icon("documents/experiment-new"),
 #                        shortHelp="Create a new experiment")
-#        self.Bind(wx.EVT_TOOL, self.OnNewExperiment, id=ID.EXPERIMENT_NEW) 
+#        self.Bind(wx.EVT_TOOL, self.OnNewExperiment, id=ID.EXPERIMENT_NEW)
 
         tb.AddLabelTool(wx.ID_NEW, "New .Py Document", Icon("documents/pydoc-new"),
                         shortHelp="Open a new Python script editor")
@@ -459,8 +510,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
         # bind the 'insert color' menu entry
         self.Bind(wx.EVT_MENU, self.color_selector.Command, id=ID.INSERT_Color)
         tb.AddControl(b)
-        #tb.AddLabelTool(ID.COLOUR_CHOOSER, "Color", Icon('apps.preferences-desktop-locale'))
-        #self.Bind(wx.EVT_TOOL, self.OnSelectColourAlt, id=ID.COLOUR_CHOOSER)
+        # tb.AddLabelTool(ID.COLOUR_CHOOSER, "Color", Icon('apps.preferences-desktop-locale'))
+        # self.Bind(wx.EVT_TOOL, self.OnSelectColourAlt, id=ID.COLOUR_CHOOSER)
 
         if wx.__version__ >= '2.9':
             tb.AddStretchableSpace()
@@ -512,20 +563,20 @@ class ShellFrame(wx.py.shell.ShellFrame):
         "reapply the layout to all editwindows"
 #        if 'wxMac' in wx.PlatformInfo:
         self._style = {'times'     : 'Lucida Grande',
-                       'mono'      : self.wx_config.Read('font', 'Monaco'), # 'Courier New'
+                       'mono'      : self.wx_config.Read('font', 'Monaco'),  # 'Courier New'
                        'helv'      : 'Geneva',
                        'other'     : 'new century schoolbook',
                        'size'      : int(self.wx_config.Read('font size', '13')),
                        'lnsize'    : 16,
                        'forecol'   : self.wx_config.Read('font color', '#FFFF00'),
-                       'backcol'   : '#F0F0F0', #'#000010',
+                       'backcol'   : '#F0F0F0',  # '#000010',
                        'calltipbg' : '#101010',
                        'calltipfg' : '#BBDDFF',
                        }
 
         self.ApplyStyleTo(self.shell)
         for ed in self.editors:
-            if hasattr(ed, 'editor'): # check if alife
+            if hasattr(ed, 'editor'):  # check if alife
                 self.ApplyStyleTo(ed.editor.window)
 
     def ApplyStyleTo(self, obj):
@@ -540,11 +591,11 @@ class ShellFrame(wx.py.shell.ShellFrame):
         obj.StyleClearAll()
         FACES = self._style
 
-        obj.setStyles(FACES) # this calls wx.py.editwindow.EditWindow.setStyles
+        obj.setStyles(FACES)  # this calls wx.py.editwindow.EditWindow.setStyles
         obj.CallTipSetBackground(FACES['calltipbg'])
         obj.CallTipSetForeground(FACES['calltipfg'])
 
-        obj.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, "fore:%(forecol)s" % FACES)#,back:#666666")
+        obj.StyleSetSpec(wx.stc.STC_STYLE_DEFAULT, "fore:%(forecol)s" % FACES)  # ,back:#666666")
         obj.StyleSetSpec(wx.stc.STC_P_DEFAULT, "fore:#000000,face:%(mono)s" % FACES)  # '\' space
         obj.StyleSetSpec(wx.stc.STC_P_NUMBER, "fore:#0000FF")
         obj.StyleSetSpec(wx.stc.STC_STYLE_CONTROLCHAR, "fore:#FF0000")
@@ -640,8 +691,21 @@ class ShellFrame(wx.py.shell.ShellFrame):
             editor is cerated
 
         """
-        editor = py_editor.Editor(self, self, pos=self.pos_for_new_window(),
-                                  pyfile=pyfile)
+
+        display = wx.Display()
+        area = display.GetClientArea()
+
+        shell = self.GetRect()
+
+        w = 640
+        h = area.height
+        size = (w, h)
+
+        x = min(shell.right, area.right - w)
+        y = area.top
+        pos = (x, y)
+
+        editor = py_editor.Editor(self, self, pos=pos, size=size, pyfile=pyfile)
 
         editor.Show()
         self.editors.append(editor)
@@ -733,11 +797,11 @@ class ShellFrame(wx.py.shell.ShellFrame):
 #            sys.stdout = self.shell.interp.stdout
 #            sys.stderr = self.shell.interp.stderr
 #            sys.stdin = self.shell.interp.stdin
-#            
+#
 #            self.shell.start_exec()
 #            execfile(filename)
 #            self.shell.end_exec()
-#            
+#
 #            sys.stdout = save_stdout
 #            sys.stderr = save_stderr
 #            sys.stdin = save_stdin
@@ -817,7 +881,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 #            self.shell.push(cmp, silent=True)
 
             # 3 (runs onliy first line)
-#            self.shell.interp.runsource(txt) 
+#            self.shell.interp.runsource(txt)
 
             self.shell.end_exec()
 
@@ -861,6 +925,15 @@ class ShellFrame(wx.py.shell.ShellFrame):
             if hasattr(editor, 'IsActive') and editor.IsActive():
                 editor.editor.window.ReplaceSelection(text)
                 return
+        self.InsertStrToShell(text)
+
+    def InsertStrToShell(self, text):
+        "Insert text into the shell's command prompt"
+        if not self.shell.CanEdit():
+            pos = self.shell.GetLastPosition()
+            self.shell.SetSelectionStart(pos)
+            self.shell.SetSelectionEnd(pos)
+
         self.shell.ReplaceSelection(text)
 
     def OnAbout(self, event):
@@ -874,8 +947,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
         return about
 
     def OnActivate(self, event):
-        #logging.debug(" Shell Activate Event: {0}".format(event.Active))
-        if hasattr(self.shell, 'Destroy'): # if alive
+        # logging.debug(" Shell Activate Event: {0}".format(event.Active))
+        if hasattr(self.shell, 'Destroy'):  # if alive
             if event.Active:
                 self.shell.SetCaretForeground(wx.Colour(255, 0, 0))
                 self.shell.SetCaretPeriod(500)
@@ -931,7 +1004,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
             path = ui.ask_file(title="Open File",
                                message="Open a Python script in an editor, or attach pickled data",
                                ext=[('py;*.pickled', 'Readable Files')])
-#                               ext=[('py', 'Python script'), 
+#                               ext=[('py', 'Python script'),
 #                                    ('pickled', 'Pickled data')])
             if not path:
                 return
@@ -1064,9 +1137,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
 #            x, y, w, h = self.GetRect().Get()
             x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
             width = 650
-            x_pos = x_max - width #min(x + w, x_max-600)
+            x_pos = x_max - width  # min(x + w, x_max-600)
             y_pos = 22
-            height = y_max - y_min - y_pos - 55 # min(800, y_max-y_min-21)
+            height = y_max - y_min - y_pos - 55  # min(800, y_max-y_min-21)
             wpos = (x_pos, y_pos)
             wsize = (width, height)
             logging.debug("help viewer: size=%s, pos=%s" % (wsize, wpos))
@@ -1114,18 +1187,18 @@ class ShellFrame(wx.py.shell.ShellFrame):
         if t is None:
             t = event.GetSelection()
         # get
-        if t == 0: # File
+        if t == 0:  # File
             filenames = ui.ask_file(mult=True)
-        elif t == 1: # Dir
+        elif t == 1:  # Dir
             filenames = ui.ask_dir()
-        elif t == 2: # New
+        elif t == 2:  # New
             filenames = ui.ask_saveas(title="Get New File Name",
                                        message="Please Pick a File Name",
                                        ext=None)
 
         string = droptarget.filename_repr(filenames)
 
-        if string: # insert into terminal
+        if string:  # insert into terminal
             self.InsertStr(string)
 
     def OnKeyDown(self, event):
@@ -1133,19 +1206,19 @@ class ShellFrame(wx.py.shell.ShellFrame):
         mod = wxutils.key_mod(event)
 #        logging.debug("app.shell.OnKeyDown(): key=%r, mod=%r" % (key, mod))
 
-        if key == 68: # 'd'
-            if mod == [1, 0, 1]: # alt -> also include output
+        if key == 68:  # 'd'
+            if mod == [1, 0, 1]:  # alt -> also include output
                 mod = [1, 0, 0]
                 duplicate_output = True
             else:
                 duplicate_output = False
         # copy selection to first editor
-        if mod == [1, 0, 0]: # [command]
-            if key == 80: # 'p'
+        if mod == [1, 0, 0]:  # [command]
+            if key == 80:  # 'p'
                 plt.draw()
                 if plt.get_backend() == 'WXAgg':
                     plt.show()
-            elif key == 68: # 'd'
+            elif key == 68:  # 'd'
                 # make sure we have a target editor
                 if not hasattr(self.active_editor, 'InsertLine'):
                     self.OnFileNew(event)
@@ -1201,8 +1274,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.help_viewer.Close()
         unsaved = []
         for ed in self.editors:
-            if hasattr(ed, 'editor'): # check if alife
-                if hasattr (ed.editor, 'hasChanged'): # editor without doc
+            if hasattr(ed, 'editor'):  # check if alife
+                if hasattr (ed.editor, 'hasChanged'):  # editor without doc
                     if ed.editor.hasChanged():
                         unsaved.append(ed)
                     else:
@@ -1324,7 +1397,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
 #        path_list = self.recent_files[t]
 #        menu = self.recent_menus[t]
-#        
+#
 #        if path in path_list:
 #            i = path_list.index(path)
 #            if i == 0:
@@ -1406,7 +1479,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
             if message[-2] != ls:
                 message = message + ls
 
-        if internal_call:# ascommand:
+        if internal_call:  # ascommand:
             logging.debug("internal shell_msg: %r" % message)
             self.shell.start_exec()
             self.shell.writeOut(message)

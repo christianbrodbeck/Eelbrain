@@ -1,26 +1,37 @@
-=========
-Reference
-=========
-
-Data-Containers
-===============
-
-Factor
-------
-
-.. autoclass:: eelbrain.vessels.data.factor
+***************
+Data Containers
+***************
 
 
-Var
----
+Data-Container Classes
+======================
 
-.. autoclass:: eelbrain.vessels.data.var
+Basic data container classes:
+
+.. currentmodule:: eelbrain.vessels.data
+
+.. autosummary::
+   :toctree: generated
+
+   dataset
+   datalist
+   factor
+   interaction
+   ndvar
+   var
 
 
-Dataset
--------
+Functions and classes operating with data containers:
 
-.. autoclass:: eelbrain.vessels.data.dataset
+.. currentmodule:: eelbrain.eellab
+
+.. autosummary::
+   :toctree: generated
+
+   align
+   align1
+   combine
+   celltable
 
 
 File I/O
@@ -29,19 +40,27 @@ File I/O
 Read
 ----
 
-.. autofunction:: eelbrain.load.txt.tsv
-.. autofunction:: eelbrain.load.txt.var
+.. currentmodule:: eelbrain
+
+.. autosummary::
+   :toctree: generated
+
+   load.eyelink.Edf
+   load.txt.tsv
+   load.txt.var
 
 
 Write
 -----
 
 * `Pickling <http://docs.python.org/library/pickle.html>`_: 
-  Any data-object can be pickled. 
+  All data-objects can be pickled. 
 * ``txt`` export: Save a dataset using it's 
   :py:meth:`~eelbrain.vessels.data.dataset.export` method. 
   Save any iterator with 
   :py:func:`eelbrain.save.txt`.
 
-.. automethod:: eelbrain.vessels.data.dataset.export
-.. autofunction:: eelbrain.save.txt
+.. autosummary::
+   :toctree: generated
+
+   save.txt

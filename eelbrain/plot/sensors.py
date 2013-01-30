@@ -1,9 +1,12 @@
 '''
+plot.sensors
+============
+
 Plotting functions for sensor_net instances.
 
-
-@author: christianmbrodbeck
 '''
+# author: Christian Brodbeck
+
 
 import numpy as np
 import matplotlib as mpl
@@ -125,26 +128,31 @@ def _plt_map2d_labels(ax, sensor_net, proj='default',
 
 class multi(_base.eelfigure):
     """
-    Select ROIs
-    -----------
+    GUI with multiple views on a sensor layout.
+
+    Allows selecting sensor groups (ROIs) and retrieving corresponding indices.
+
+
+    **Selecting ROIs:**
 
      - Dragging with the left mouse button adds sensors to the ROI.
-     - Dragging with the right mouse button removes sensors from the current ROI.
-     - The 'Clear' button (or self.clear()) removes the ROI.
-
-
-    Methods
-    -------
-
-    clear :
-        Clear the current ROI selection.
-    get_ROI : list
-        Returns the current ROI as a list of indices.
-    set_ROI
-        Set the current ROI with a list of indices.
+     - Dragging with the right mouse button removes sensors from the current
+       ROI.
+     - The 'Clear' button (or :meth:`clear`) removes the ROI.
 
     """
     def __init__(self, sensors, size=7, dpi=100, frame=.05, ROI=[], proj='default'):
+        """
+        Parameters
+        ----------
+        sensors : sensor_net | ndvar
+            The sensors to use, or an ndvar with a sensor dimension.
+        ROI : list of int
+            Initial ROI.
+        proj : str
+            Sensor projection for the fourth plot.
+
+        """
         title = "Sensor Net: %s" % getattr(sensors, 'name', '')
         super(multi, self).__init__(title=title, figsize=(size, size), dpi=dpi)
 
@@ -237,11 +245,17 @@ class multi(_base.eelfigure):
         btn.Bind(wx.EVT_BUTTON, self._OnClear)
 
     def clear(self):
-        "clear the ROI"
+        "Clear the current ROI selection."
         self.ROI = None
         self.update_ROI_plot()
 
     def get_ROI(self):
+        """
+        Returns
+        -------
+        ROI : list
+            Returns the current ROI as a list of indices.
+        """
         if self.ROI is None:
             return []
         else:
@@ -310,6 +324,14 @@ class multi(_base.eelfigure):
         self.clear()
 
     def set_ROI(self, ROI):
+        """
+        Set the current ROI with a list of indices.
+
+        Parameters
+        ----------
+        ROI : list of int
+            List of sensor indices in the new ROI.
+        """
         self.ROI = np.zeros(len(self._sensors), dtype=bool)
         self.ROI[ROI] = True
         self.update_ROI_plot()
@@ -334,27 +356,18 @@ class multi(_base.eelfigure):
 
 class map2d(_base.eelfigure):
     """
-    2d Sensor Map, Methods:
-
-    plot_ROI:
-        mark sensors in a ROI
-    plot_labels:
-        add labels to the sensors
-    remove_ROIs:
-        remove all marked ROIs
+    Plot a 2d Sensor Map.
 
     """
     def __init__(self, sensor_net, labels='id', proj='default', ROI=None,
                  size=6, dpi=100, frame=.05, **kwargs):
         """
-        **Parameters:**
-
+        Parameters
+        ----------
         sensor_net :
             sensor-net object or object containing sensor-net
-
         labels : 'id' | 'name'
             how the sensors should be labelled
-
         proj:
             Transform to apply to 3 dimensional sensor coordinates for plotting
             locations in a plane
@@ -407,7 +420,9 @@ class map2d(_base.eelfigure):
 
     def plot_labels(self, labels='id'):
         """
-        Add labels to all sensors. Possible values:
+        Add labels to all sensors.
+
+        Possible values:
 
         'id':
             sensor indexes
@@ -433,17 +448,27 @@ class map2d(_base.eelfigure):
                                         markeredgewidth=.9,
                                         ls='',
                                         )):
+        """
+        Mark sensors in a ROI.
+
+        Parameters
+        ----------
+        ROI : list of int
+            List of sensor indices.
+        kwargs : dict
+            Dict with kwargs for customizing the sensor plot (matplotlib plot
+            kwargs).
+        """
         h = _plt_map2d(self.axes, self._sensor_net, proj=self._proj, ROI=ROI, kwargs=kwargs)
         self._ROIs.extend(h)
         self.canvas.draw()
 
     def remove_ROIs(self):
+        "Remove all marked ROIs."
         while len(self._ROIs) > 0:
             h = self._ROIs.pop(0)
             h.remove()
         self.canvas.draw()
-
-
 
 
 

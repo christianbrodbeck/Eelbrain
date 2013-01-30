@@ -5,53 +5,93 @@ mne_experiment is a base class for managing an mne experiment.
 Epochs
 ------
 
-The following aspects need consideration:
+Epochs are defined as dictionaries containing the following entries
+(**mandatory**/optional):
 
- - tstart, tstop of the data
- - a potential link to another epoch (e.g., a disjoint baseline) with which
-   trials need to be aligned
+**stim** : str
+    Value of the stimvar relative to which the epoch is defined.
+**name** : str
+    A name for the epoch; when the resulting data is added to a dataset, this
+    name is used.
+**tmin** : scalar
+    Start of the epoch.
+**tmax** : scalar
+    End of the epoch.
+reject_tmin : scalar
+    Alternate start time for rejection (amplitude and eye-tracker).
+reject_tmax : scalar
+    Alternate end time for rejection (amplitude and eye-tracker).
 
-This leads to the following name pattern:
 
-"{tstart ms}-{tstop ms}" [ + "-{group name}"]
+Epochs can be specified directly in the relevant function, or they can be
+specified in the :attr:`mne_experiment.epochs` dictionary. All keys in this
+dictionary have to be of type :class:`str`, values have to be :class:`dict`s
+containing the epoch specification. If an epoch is specified in
+:attr:`mne_experiment.epochs`, its name (key) can be used in the epochs
+argument to various methods. Example::
 
+    # in mne_experiment subclass definition
+    class experiment(mne_experiment):
+        epochs = {'adjbl': dict(name='bl', stim='adj', tstart=-0.1, tstop=0)}
+        ...
 
+    # use as argument:
+    epochs=[dict(name=evoked', stim='noun', tmin=-0.1, tmax=0.5,
+                 reject_tmin=0), 'adjbl']
 
+The :meth:`mne_experiment.get_epoch_str` method produces A label for each
+epoch specification, which is used for filenames. Data which is excluded from
+artifact rejection is parenthesized. For example, ``"noun[(-100)0,500]"``
+designates data form -100 to 500 ms relative to the stimulus 'noun', with only
+the interval form 0 to 500 ms used for rejection.
 
-
-Created on May 2, 2012
-
-@author: christian
 '''
 
 from collections import defaultdict
+import cPickle as pickle
 import fnmatch
 import itertools
+from operator import add
 import os
+from Queue import Queue
 import re
 import shutil
 import subprocess
+from threading import Thread
 
 import numpy as np
 
 import mne
+from mne.minimum_norm import make_inverse_operator
 
-from eelbrain import ui
-from eelbrain import fmtxt
-from eelbrain.utils import subp
-from eelbrain import load
-from eelbrain import plot
-from eelbrain.vessels.data import ndvar
-from eelbrain.utils.print_funcs import printlist
-from eelbrain.utils.kit import split_label
+from .. import fmtxt
+from .. import load
+from .. import plot
+from .. import save
+from .. import ui
+from ..utils import subp
+from ..utils.print_funcs import printlist
+from ..utils.kit import split_label
+from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
+                   DimensionMismatchError)
 
 
-__all__ = ['mne_experiment']
+__all__ = ['mne_experiment', 'LabelCache']
 
 
 
 _kit2fiff_args = {'sfreq':1000, 'lowpass':100, 'highpass':0,
                   'stimthresh':2.5, 'stim':xrange(168, 160, -1)}
+
+
+class LabelCache(dict):
+    def __getitem__(self, path):
+        if path in self:
+            return super(LabelCache, self).__getitem__(path)
+        else:
+            label = mne.read_label(path)
+            self[path] = label
+            return label
 
 
 class Labels(object):
@@ -105,6 +145,8 @@ class mne_experiment(object):
     """
     auto_launch_mne = False
     bad_channels = defaultdict(list)  # (sub, exp) -> list
+    epochs = {}
+    subjects_has_own_mri = ()
     subject_re = re.compile('R\d{4}$')
     # the default value for the common_brain (can be overridden using the set
     # method after __init__()):
@@ -151,6 +193,7 @@ class mne_experiment(object):
                         subjects=subjects, mri_subjects=mri_subjects)
 
         # set initial values
+        self._label_cache = LabelCache()
         for k, v in self.var_values.iteritems():
             if v:
                 self.state[k] = v[0]
@@ -161,6 +204,145 @@ class mne_experiment(object):
             for name in self._fmt_pattern.findall(temp):
                 if name not in self.state:
                     self.state[name] = '<%s not set>' % name
+
+    def _process_epochs_arg(self, epochs):
+        "Fill in named epochs and set the 'epoch' template"
+        epochs = list(epochs)
+        e_descs = []  # full epoch descriptor
+        for i in xrange(len(epochs)):
+            ep = epochs[i]
+            if isinstance(ep, str):
+                ep = self.epochs[ep]
+                epochs[i] = ep
+            desc = self.get_epoch_str(**ep)
+            e_descs.append(desc)
+
+        ep_str = '(%s)' % ','.join(sorted(e_descs))
+        self.set(epoch=ep_str)
+        return epochs
+
+    def add_evoked_label(self, ds, label, hemi='lh', src='stc'):
+        """
+        Extract the label time course from a list of SourceEstimates.
+
+        Parameters
+        ----------
+        label :
+            the label's bare name (e.g., 'insula').
+        hemi : 'lh' | 'rh' | 'bh' | False
+            False assumes that hemi is a factor in ds.
+        src : str
+            Name of the variable in ds containing the SourceEstimates.
+
+        Returns
+        -------
+        ``None``
+        """
+        if hemi in ['lh', 'rh']:
+            self.set(hemi=hemi)
+            key = label + '_' + hemi
+        else:
+            key = label
+            if hemi != 'bh':
+                assert 'hemi' in ds
+
+        self.set(label=label)
+
+        x = []
+        for case in ds.itercases():
+            if hemi == 'bh':
+                lbl_l = self.load_label(subject=case['subject'], hemi='lh')
+                lbl_r = self.load_label(hemi='rh')
+                lbl = lbl_l + lbl_r
+            else:
+                if hemi is False:
+                    self.set(hemi=case['hemi'])
+                lbl = self.load_label(subject=case['subject'])
+
+            stc = case[src]
+            x.append(stc.in_label(lbl).data.mean(0))
+
+        time = var(stc.times, name='time')
+        ds[key] = ndvar(np.array(x), dims=('case', time))
+
+    def add_evoked_stc(self, ds, method='sLORETA', ori='free', depth=0.8,
+                       ind=True, morph=True, names={'evoked': 'stc'}):
+        """
+        Add an stc (ndvar) to a dataset with an evoked list.
+
+        Assumes that all Evoked of the same subject share the same inverse
+        operator.
+
+        Parameters
+        ----------
+        ind: bool
+            Keep list of SourceEstimate objects on individual brains.
+        morph : bool
+            Add ndvar for data morphed to the common brain.
+
+        """
+        if not (ind or morph):
+            return
+
+        inv_name = method + '-' + ori
+        self.set(inv_name=inv_name)
+
+        # find vars to work on
+        do = []
+        for name in ds:
+            if isinstance(ds[name][0], mne.fiff.Evoked):
+                do.append(name)
+
+        invs = {}
+        if ind:
+            stcs = defaultdict(list)
+        if morph:
+            mstcs = defaultdict(list)
+
+        for case in ds.itercases():
+            subject = case['subject']
+            if subject in self.subjects_has_own_mri:
+                subject_from = subject
+            else:
+                subject_from = self._common_brain
+
+            for name in do:
+                evoked = case[name]
+
+                # get inv
+                if subject in invs:
+                    inv = invs[subject]
+                else:
+                    self.set(subject=subject)
+                    inv = self.get_inv(evoked, depth=depth)
+                    invs[subject] = inv
+
+                stc = mne.minimum_norm.apply_inverse(evoked, inv, 1 / 9., method)
+                if ind:
+                    stcs[name].append(stc)
+
+                if morph:
+                    stc = mne.morph_data(subject_from, self._common_brain, stc, 4)
+                    mstcs[name].append(stc)
+
+        for name in do:
+            if name in names:
+                s_name = names[name]
+                m_name = s_name + 'm'
+            else:
+                i = 0
+                while name + 's' + '_' * i in ds:
+                    i += 1
+                s_name = name + 's' + '_' * i
+                im = 0
+                while s_name + 'm' + '_' * im in ds:
+                    im += 1
+                m_name = s_name + 'm' + '_' * im
+
+            if ind:
+                ds[s_name] = stcs[name]
+            if morph:
+                ds[m_name] = load.fiff.stc_ndvar(mstcs[name], self._common_brain)
 
     def add_to_state(self, **kv):
         for k, v in kv.iteritems():
@@ -187,16 +369,17 @@ class mne_experiment(object):
              'rawtxt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
              'raw_raw': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
              'rawfif': '{raw}_raw.fif',  # for subp.kit2fiff
-             'trans': os.path.join('{raw_sdir}', '{subject}-trans.fif'),  # mne p. 196
+             'trans': os.path.join('{raw_sdir}', '{mrisubject}-trans.fif'),  # mne p. 196
 
              # eye-tracker
              'edf': os.path.join('{log_sdir}', '*.edf'),
 
              # mne raw-derivatives analysis
+             'proj': '',
              'proj_file': '{raw}_{proj}-proj.fif',
              'proj_plot': '{raw}_{proj}-proj.pdf',
-             'cov': '{raw}_{fwd_an}-cov.fif',
-             'fwd': '{raw}_{fwd_an}-fwd.fif',
+             'cov': '{raw}_{cov_name}-{proj}-cov.fif',
+             'fwd': '{raw}_{cov_name}-{proj}-fwd.fif',
 
              # fwd model
              'fid': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-fiducials.fif'),
@@ -205,15 +388,13 @@ class mne_experiment(object):
              'bem_head': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-head.fif'),
 
              # mne's stc.save() requires stub filename and will add '-?h.stc'
-             'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
-             'evoked': os.path.join('{evoked_dir}', '{experiment}_{cell}_{epoch}_{proj}-evoked.fif'),
-             'stc_dir': os.path.join('{meg_sdir}', 'stc_{fwd_an}_{stc_an}'),
+             'evoked_dir': os.path.join('{meg_sdir}', 'evoked_{experiment}_{model}'),
+             'evoked': os.path.join('{evoked_dir}', '{epoch}_{proj}-evoked.pickled'),
+             'stc_dir': os.path.join('{meg_sdir}', 'stc_{cov_name}-{proj}_{inv_name}'),
              'stc': os.path.join('{stc_dir}', '{experiment}_{cell}_{epoch}'),
              'stc_morphed': os.path.join('{stc_dir}', '{experiment}_{cell}_{common_brain}'),
-             'label': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{analysis}.label'),
+             'label_file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
              'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
-
-             'n_key': '{subject}_{experiment}_{epoch}_{cell}_{proj}',
 
              # EEG
              'vhdr': os.path.join('{eeg_sdir}', '{subject}_{experiment}.vhdr'),
@@ -243,23 +424,21 @@ class mne_experiment(object):
         args = ', '.join(args)
         return "mne_experiment(%s)" % args
 
-    def combine_labels(self, target, sources=[], hemi=['lh', 'rh'], redo=False):
+    def combine_labels(self, target, sources=[], redo=False):
         """
         target : str
-            name of the target label
+            name of the target label.
         sources : list of str
-            names of the source labels
+            names of the source labels.
 
         """
-        msg = "Making Label: %s" % target
-        for _ in self.iter_vars(['mrisubject'], values={'hemi': hemi}, prog=msg):
-            tgt = self.get('label', analysis=target)
-            if redo or not os.path.exists(tgt):
-                srcs = [self.get('label', analysis=name) for name in sources]
-                label = mne.read_label(srcs.pop(0))
-                for path in srcs:
-                    label += mne.read_label(path)
-                label.save(tgt)
+        tgt = self.get('label_file', label=target)
+        if (not redo) and os.path.exists(tgt):
+            return
+
+        srcs = (self.load_label(label=name) for name in sources)
+        label = reduce(add, srcs)
+        label.save(tgt)
 
     def do_kit2fiff(self, do='ask', aligntol=xrange(5, 40, 5), redo=False):
         """OK 12/7/2
@@ -443,6 +622,42 @@ class mne_experiment(object):
 
         return path
 
+    def get_epoch_str(self, stim=None, tmin=None, tmax=None, reject_tmin=None,
+                      reject_tmax=None, name=None):
+        "Produces a descriptor for a single epoch specification"
+        desc = '%s[' % stim
+        if reject_tmin is None:
+            desc += '%i,' % (tmin * 1000)
+        else:
+            desc += '(%i)%i,' % (tmin * 1000, reject_tmin * 1000)
+        if reject_tmax is None:
+            desc += '%i]' % (tmax * 1000)
+        else:
+            desc += '(%i)%i]' % (tmax * 1000, reject_tmax * 1000)
+        return desc
+
+    def get_inv(self, fiff, depth=0.8, **kwargs):
+        self.set(**kwargs)
+
+        inv_name = self.get('inv_name')
+        method, ori = inv_name.split('-')
+        if ori == 'free':
+            fwd_kwa = dict(surf_ori=True)
+            inv_kwa = dict(loose=None, depth=depth)
+        elif ori == 'loose':
+            fwd_kwa = dict(surf_ori=True)
+            inv_kwa = dict(loose=0.2, depth=depth)
+        elif ori == 'fixed':
+            fwd_kwa = dict(force_fixed=True)
+            inv_kwa = dict(fixed=True, loose=None, depth=depth)
+        else:
+            raise ValueError('ori=%r' % ori)
+
+        fwd = mne.read_forward_solution(self.get('fwd'), **fwd_kwa)
+        cov = mne.read_cov(self.get('cov'))
+        inv = make_inverse_operator(fiff.info, fwd, cov, **inv_kwa)
+        return inv
+
     def expand_template(self, temp, values={}):
         """
         Expands a template so far as subtemplates are neither in
@@ -488,18 +703,18 @@ class mne_experiment(object):
             path = temp.format(**state)
             yield path
 
-    def iter_vars(self, variables, constants={}, values={}, exclude={},
-                  prog=False):
+    def iter_vars(self, variables=['subject'], constants={}, values={},
+                  exclude={}, prog=False):
         """
-        variables : list
-            variables which should be iterated
+        variables : list | str
+            Variable(s) over which should be iterated.
         constants : dict(name -> value)
-            variables with constant values throughout the iteration
+            Variables with constant values throughout the iteration.
         values : dict(name -> (list of values))
-            variables with values to iterate over instead of the corresponding
-            `mne_experiment.var_values`
+            Variables with values to iterate over instead of the corresponding
+            `mne_experiment.var_values`.
         exclude : dict(name -> (list of values))
-            values to exclude from the iteration
+            Values to exclude from the iteration.
         prog : bool | str
             Show a progress dialog; str for dialog title.
 
@@ -507,9 +722,10 @@ class mne_experiment(object):
         state_ = self.state.copy()
 
         # set constants
-        constants['root'] = self.root
         self.set(**constants)
 
+        if isinstance(variables, str):
+            variables = [variables]
         variables = list(set(variables).difference(constants).union(values))
 
         # gather possible values to iterate over
@@ -551,6 +767,8 @@ class mne_experiment(object):
         self.state.update(state_)
 
     def label_events(self, ds, experiment, subject):
+        ds['T'] = ds.eval('i_start / 1000')
+        ds['SOA'] = var(np.ediff1d(ds['T'].x, 0))
         return ds
 
     def load_edf(self, subject=None, experiment=None):
@@ -558,23 +776,34 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_events(self, subject=None, experiment=None,
-                    proj=True, edf=True, raw=None):
-        """OK 12/7/3
+    def load_events(self, subject=None, experiment=None, proj=True, edf=True):
+        """
+        Load events from a raw file.
 
         Loads events from the corresponding raw file, adds the raw to the info
         dict.
 
-        proj : True | False | str
-            load a projection file and add it to the raw
+        Parameters
+        ----------
+        subject, experiment, raw : None | str
+            Call self.set(...).
+        proj : bool
+            Add the projections to the Raw object. This does *not* set the
+            proj variable.
         edf : bool
             Loads edf and add it to the info dict.
 
         """
-        self.set(subject=subject, experiment=experiment, raw=raw)
+        self.set(subject=subject, experiment=experiment)
         raw_file = self.get('rawfif')
-        if isinstance(proj, str):
-            proj = self.get('proj_file', proj=proj)
+        if proj:
+            proj = self.get('proj')
+            if proj:
+                proj = self.get('proj_file')
+            else:
+                proj = None
+        else:
+            proj = None
         ds = load.fiff.events(raw_file, proj=proj)
 
         raw = ds.info['raw']
@@ -595,6 +824,189 @@ class mne_experiment(object):
             ds.info['edf'] = edf
 
         return ds
+
+    def load_evoked(self, stimvar='stim', model='ref%side',
+                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)]):
+        """
+        Load as dataset data created with :meth:`mne_experiment.make_evoked`.
+        """
+        epochs = self._process_epochs_arg(epochs)
+        self.set(model=model)
+
+        dss = []
+        for _ in self.iter_vars(['subject']):
+            fname = self.get('evoked')
+            ds = pickle.load(open(fname))
+            dss.append(ds)
+
+        ds = combine(dss)
+
+        # check consistency
+        for name in ds:
+            if isinstance(ds[name][0], (mne.fiff.Evoked, mne.SourceEstimate)):
+                lens = np.array([len(e.times) for e in ds[name]])
+                ulens = np.unique(lens)
+                if len(ulens) > 1:
+                    err = ["Unequel time axis sampling (len):"]
+                    subject = ds['subject']
+                    for l in ulens:
+                        idx = (lens == l)
+                        err.append('%i: %r' % (l, subject[idx].cells))
+                    raise DimensionMismatchError(os.linesep.join(err))
+
+        return ds
+
+    def load_label(self, **kwargs):
+        self.set(**kwargs)
+        fname = self.get('label_file')
+        return self._label_cache[fname]
+
+    def make_evoked(self, stimvar='stim', model='ref%side',
+                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)],
+                    decim=10, random=('subject',), redo=False):
+        """
+        Creates datasets with evoked files for the current subject/experiment
+        pair.
+
+        Parameters
+        ----------
+        stimvar : str
+            Name of the variable containing the stimulus.
+        model : str
+            Name of the model. No spaces, order matters.
+        epochs : list of epoch specifications
+            See the module documentation.
+
+        """
+        epochs = self._process_epochs_arg(epochs)
+        self.set(model=model)
+
+        stim_epochs = defaultdict(list)
+        kwargs = {}
+        e_names = []
+        for ep in epochs:
+            name = ep['name']
+            stim = ep['stim']
+
+            e_names.append(name)
+            stim_epochs[stim].append(name)
+
+            kw = dict(reject={'mag': 3e-12}, baseline=None, decim=decim,
+                      preload=True)
+            for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax'):
+                if k in ep:
+                    kw[k] = ep[k]
+            kwargs[name] = kw
+
+        fname = self.get('evoked', mkdir=True)
+        if not redo and os.path.exists(fname):
+            return
+
+        # constants
+        sub = self.get('subject')
+        proj = self.get('proj')
+        model_name = self.get('model')
+
+        ds = self.load_events(proj=proj)
+        edf = ds.info['edf']
+        if model_name == '':
+            model = None
+            cells = ((),)
+            model_names = []
+        else:
+            model = ds.eval(model_name)
+            cells = model.cells
+            if isfactor(model):
+                model_names = model.name
+            else:
+                model_names = model.base_names
+
+        dss = {}
+        for stim, names in stim_epochs.iteritems():
+            d = ds.subset(ds[stimvar] == stim)
+            for name in names:
+                dss[name] = d
+
+        evokeds = defaultdict(list)
+        factors = defaultdict(list)
+        ns = []
+
+        for cell in cells:
+            cell_dss = {}
+            if model is None:
+                for name, ds in dss.iteritems():
+                    ds.index()
+                    cell_dss[name] = ds
+            else:
+                n = None
+                for name, ds in dss.iteritems():
+                    idx = (ds.eval(model_name) == cell)
+                    if idx.sum() == 0:
+                        break
+                    cds = ds.subset(idx)
+                    cds.index()
+                    cell_dss[name] = cds
+                    if n is None:
+                        n = cds.n_cases
+                    else:
+                        if cds.n_cases != n:
+                            err = "Can't index due to unequal trial counts"
+                            raise RuntimeError(err)
+
+                if len(cell_dss) < len(dss):
+                    continue
+
+            for name in e_names:
+                ds = cell_dss[name]
+                kw = kwargs[name]
+                tstart = kw.get('reject_tmin', kw['tmin'])
+                tstop = kw.get('reject_tmax', kw['tmax'])
+                ds = edf.filter(ds, tstart=tstart, tstop=tstop, use=['EBLINK'])
+                cell_dss[name] = ds
+
+            idx = reduce(np.intersect1d, (ds['index'].x for ds in cell_dss.values()))
+            if idx.sum() == 0:
+                continue
+
+            for name in e_names:
+                ds = cell_dss[name]
+                ds = align1(ds, idx)
+                ds = load.fiff.add_mne_epochs(ds, **kw)
+                cell_dss[name] = ds
+
+            idx = reduce(np.intersect1d, (ds['index'].x for ds in cell_dss.values()))
+            n = len(idx)
+            if n == 0:
+                continue
+
+            for name in e_names:
+                ds = cell_dss[name]
+                ds = align1(ds, idx)
+                epochs = ds['epochs']
+                evoked = epochs.average()
+                assert evoked.nave == n
+                evokeds[name].append(evoked)
+
+            # store values
+            if isinstance(model_names, str):
+                factors[model_names].append(cell)
+            else:
+                for name, v in zip(model_names, cell):
+                    factors[name].append(v)
+            factors['subject'].append(sub)
+            ns.append(n)
+
+        ds_ev = dataset()
+        ds_ev['n'] = var(ns)
+        for name, values in factors.iteritems():
+            if name in random:
+                ds_ev[name] = factor(values, random=True)
+            else:
+                ds_ev[name] = factor(values)
+        for name in e_names:
+            ds_ev[name] = evokeds[name]
+
+        save.pickle(ds_ev, fname)
 
     def make_fake_mris(self, subject=None, exclude=None, **kwargs):
         """
@@ -628,26 +1040,23 @@ class mne_experiment(object):
             p.save()
             self.set_mri_subject(s_to, s_to)
 
-    def make_proj_for_epochs(self, epochs, projname='ironcross', n_mag=5,
-                             save=True, save_plot=True):
+    def make_proj_for_epochs(self, epochs, n_mag=5, save=True, save_plot=True):
         """
         computes the first ``n_mag`` PCA components, plots them, and asks for
         user input (a tuple) on which ones to save.
 
+        Parameters
+        ----------
         epochs : mne.Epochs
             epochs which should be used for the PCA
-
         dest : str(path)
             path where to save the projections
-
         n_mag : int
             number of components to compute
-
         save : False | True | tuple
             False: don'r save proj fil; True: manuall pick componentws to
             include in the proj file; tuple: automatically include these
             components
-
         save_plot : False | str(path)
             target path to save the plot
 
@@ -667,7 +1076,7 @@ class mne_experiment(object):
 
         p = plot.topo.topomap(PCA, size=1, title=str(epochs.name))
         if save_plot:
-            dest = self.get('proj_plot', proj=projname)
+            dest = self.get('proj_plot')
             p.figure.savefig(dest)
         if save:
             rm = save
@@ -676,22 +1085,25 @@ class mne_experiment(object):
                 if rm == 'x': raise
             p.close()
             proj = [proj[i] for i in rm]
-            dest = self.get('proj_file', proj=projname)
+            dest = self.get('proj_file')
             mne.write_proj(dest, proj)
 
-    def makeplt_coreg(self, variables=['subject', 'experiment'], constants={},
-                      values={}):
+    def makeplt_coreg(self, redo=False, **kwargs):
         """
-        Save coregistration plots
+        Save a coregistration plot
 
         """
+        self.set(**kwargs)
+
+        fname = self.get('plot_png', name='{subject}_{experiment}',
+                         analysis='coreg', mkdir=True)
+        if not redo and os.path.exists(fname):
+            return
+
         from mayavi import mlab
-        self.set(analysis='coreg')
-        for _ in self.iter_vars(variables, constants=constants, values=values):
-            p = self.plot_coreg()
-            fname = self.get('plot_png', name='{subject}_{experiment}', mkdir=True)
-            p.save_views(fname)
-            mlab.close()
+        p = self.plot_coreg()
+        p.save_views(fname, overwrite=True)
+        mlab.close()
 
     def parse_dirs(self, subjects=[], mri_subjects={}, parse_subjects=True,
                    parse_mri=True):
@@ -868,7 +1280,10 @@ class mne_experiment(object):
             printlist(files)
             if raw_input("Delete (confirm with 'yes')? ") == 'yes':
                 for path in files:
-                    os.remove(path)
+                    if os.path.isdir(path):
+                        shutil.rmtree(path)
+                    else:
+                        os.remove(path)
         else:
             print "No files found for %r" % temp
 
@@ -921,17 +1336,58 @@ class mne_experiment(object):
 
         subp.run_mne_browse_raw(fif_dir, modal)
 
+    def run_subp(self, cmd, workers=2):
+        """
+        Add a command to the processing queue.
+
+        Commands should have a form that can be submitted to
+        :func:`subprocess.call`.
+
+        Parameters
+        ----------
+        cmd : list of str
+            The command.
+        workers : int
+            The number of workers to create. This parameter is only used the
+            first time the method is called.
+        """
+        if cmd is None:
+            return
+
+        if not hasattr(self, 'queue'):
+            self.queue = Queue()
+
+            def worker():
+                while True:
+                    cmd = self.queue.get()
+                    subprocess.call(cmd)
+                    self.queue.task_done()
+
+            for _ in xrange(workers):
+                t = Thread(target=worker)
+                t.daemon = True
+                t.start()
+
+        self.queue.put(cmd)
+
     def set(self, subject=None, experiment=None, match=False, add=False,
             **kwargs):
         """
-        special variables
-        -----------------
+        Set variable values.
 
-        subjects:
-            The corresponding `mrisubject` is also set
-
+        Parameters
+        ----------
+        subject: str
+            Set the `subject` value. The corresponding `mrisubject` is
+            automatically set to the corresponding mri subject.
         match : bool
-            require existence (for variables in self.var_values)
+            Require existence of the assigned value (only applies for variables
+            in self.var_values)
+        add : bool
+            If the template name does not exist, add a new key. If False
+            (default), a non-existent key will raise a KeyError.
+        all other : str
+            All other keywords can be used to set templates.
 
         """
         if experiment is not None:
@@ -986,17 +1442,6 @@ class mne_experiment(object):
         """
         os.environ['SUBJECTS_DIR'] = self.get('mri_dir')
 
-    def set_epoch(self, tstart, tstop, name=None):
-        desc = '%i-%i' % (tstart * 1000, tstop * 1000)
-        if name:
-            desc += '-%s' % name
-        self.set(epoch=desc, add=True)
-
-    def set_fwd_an(self, stim, tw, proj):
-        temp = '{stim}-{tw}-{proj}'
-        fwd_an = temp.format(stim=stim, tw=tw, proj=proj)
-        self.set(fwd_an=fwd_an, add=True)
-
     def set_mri_subject(self, subject, mri_subject):
         """
         Reassign a subject's MRI and make sure that var_values is
@@ -1006,38 +1451,30 @@ class mne_experiment(object):
         self._mri_subjects[subject] = mri_subject
         self.var_values['mrisubject'] = list(self._mri_subjects.values())
 
-    def set_stc_an(self, blc, method, ori):
-        temp = '{blc}-{method}-{ori}'
-        stc_an = temp.format(blc=blc, method=method, ori=ori)
-        self.set(stc_an=stc_an, add=True)
-
     def show_in_finder(self, key, **kwargs):
         fname = self.get(key, **kwargs)
         subprocess.call(["open", "-R", fname])
 
-    def split_label(self, src_label, new_name, redo=False, part0='post', part1='ant', hemi=['lh', 'rh']):
+    def split_label(self, src_label, new_name, redo=False, part0='post', part1='ant'):
         """
         new_name : str
-            name of the target label ('post' and 'ant' is appended)
+            name of the target label (``part0`` and ``part1`` are appended)
         sources : list of str
             names of the source labels
 
         """
-        msg = "Splitting Label: %s" % src_label
-        for _ in self.iter_vars(['mrisubject'], values={'hemi': hemi}, prog=msg):
-            name0 = new_name + part0
-            name1 = new_name + part1
-            tgt0 = self.get('label', analysis=name0)
-            tgt1 = self.get('label', analysis=name1)
-            if (not redo) and os.path.exists(tgt0) and os.path.exists(tgt1):
-                continue
+        name0 = new_name + part0
+        name1 = new_name + part1
+        tgt0 = self.get('label_file', label=name0)
+        tgt1 = self.get('label_file', label=name1)
+        if (not redo) and os.path.exists(tgt0) and os.path.exists(tgt1):
+            return
 
-            src = self.get('label', analysis=src_label)
-            label = mne.read_label(src)
-            fwd_fname = self.get('fwd')
-            lbl0, lbl1 = split_label(label, fwd_fname, name0, name1)
-            lbl0.save(tgt0)
-            lbl1.save(tgt1)
+        label = self.load_label(label=src_label)
+        fwd_fname = self.get('fwd')
+        lbl0, lbl1 = split_label(label, fwd_fname, name0, name1)
+        lbl0.save(tgt0)
+        lbl1.save(tgt1)
 
     def summary(self, templates=['rawfif'], missing='-', link='>', count=True):
         if not isinstance(templates, (list, tuple)):

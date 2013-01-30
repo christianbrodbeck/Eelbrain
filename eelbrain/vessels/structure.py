@@ -14,9 +14,13 @@ import eelbrain.utils.statfuncs as _statfuncs
 
 
 
-class celltable:
+class celltable(object):
     """
-    **Attributes:**
+    Divides Y into cells defined by X.
+
+
+    Attributes
+    ----------
 
     .Y, .X,
         Y and X after sub was applied
@@ -47,33 +51,11 @@ class celltable:
     .groups : dict(cell -> group)
         group for each cell as ???
 
-
-    **Previous Attributes:**
-
-    indexes
-        list of indexes
-
-    cells
-        dict(index -> label)
-
-    data
-        dict(index -> cell_data)
-
-    group
-        dict(index -> match_values)
-
-    within
-        pairwise square; True if all match_values are equal, False
-        otherwise (i.e. whether a dependent measures test is appropri-
-        ate or not)
-
-    all_within
-        True if np.all(self.within)
-
     """
     def __init__(self, Y, X, match=None, sub=None, match_func=np.mean, ds=None):
         """
-        divides Y into cells defined by X
+        Parameters
+        ----------
 
         Y : var, ndvar
             dependent measurement
@@ -96,9 +78,13 @@ class celltable:
             retrieved from the dataset.
 
 
-        e.g.::
+        Examples
+        --------
 
-            >>> c = S.celltable(Y, A%B, match=subject)
+        Split a repeated-measure variable Y into cells defined by the
+        interaction of A and B::
+
+            >>> c = celltable(Y, A % B, match=subject)
 
         """
         if isinstance(Y, basestring):
@@ -237,10 +223,17 @@ class celltable:
         kwargs :
             Are submitted to the statistic function.
 
+
+        Notes
+        ----
+
+        :py:meth:`get_statistic_dict`
+
+
         See also
         --------
 
-        :py:meth:`get_statistic_dict`
+        celltable.get_statistic_dict : return statistics in a dict
 
         """
         if isinstance(func, basestring):
@@ -268,7 +261,7 @@ class celltable:
 
     def get_statistic_dict(self, func=np.mean, a=1, **kwargs):
         """
-        Same as :py:meth:`get_statistic`, except that he result is returned in
+        Same as :py:meth:`~celltable.get_statistic`, except that he result is returned in
         a {cell: value} dictionary.
 
         """

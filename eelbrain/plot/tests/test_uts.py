@@ -3,15 +3,17 @@ Created on Dec 2, 2012
 
 @author: christian
 '''
-from ...vessels.tests.test_data import ds
+from ...vessels  import datasets
 from ...eellab import *
 
-A = ds['A']
-B = ds['B']
 
 
 def test_clusters():
     "test plot.uts plotting functions"
+    ds = datasets.get_basic()
+
+    A = ds['A']
+    B = ds['B']
     Y = ds['Ynd']
 
     # fixed effects model
