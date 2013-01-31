@@ -462,7 +462,8 @@ class dev_mri(object):
         self.sensors.plot_points(fig, scale=0.005, color=(0, 0, 1))
 
         # mri
-        bem = os.path.join(subjects_dir, subject, 'bem', '%s-%s.fif' % (subject, mri))
+        bemdir = os.path.join(subjects_dir, subject, 'bem')
+        bem = os.path.join(bemdir, '%s-%s.fif' % (subject, mri))
         self.mri = geom_bem(bem, unit='m')
         self.mri.set_T(mri_dev_t)
         self.mri.plot_solid(fig, color=(.8, .6, .5))
@@ -479,6 +480,16 @@ class dev_mri(object):
                 raise ValueError('hs kwarg can not be %r' % hs)
 
             self.hs.plot_solid(fig, opacity=1, rep='points', color=(1, .5, 0))
+
+            # Fiducials
+            fname = os.path.join(bemdir, 'bem', subject + '-fiducials.fif')
+            if os.path.exists(fname):
+                dig, _ = read_fiducials(fname)
+                self.mri_fid = geom_fid(dig, unit='m')
+                self.mri_fid.plot_points(fig, scale=0.005)
+                self.dig_fid = geom_fid(raw.info['dig'], unit='m')
+                self.dig_fid.plot_points(fig, scale=0.04, opacity=.25,
+                                         color=(.5, .5, 1))
 
         self.view()
 
