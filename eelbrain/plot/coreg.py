@@ -488,10 +488,11 @@ class dev_mri(object):
                 self.mri_fid = geom_fid(dig, unit='m')
                 self.mri_fid.set_T(mri_dev_t)
                 self.mri_fid.plot_points(fig, scale=0.005)
-                self.dig_fid = geom_fid(raw.info['dig'], unit='m')
-                self.dig_fid.set_T(head_dev_t)
-                self.dig_fid.plot_points(fig, scale=0.04, opacity=.25,
-                                         color=(.5, .5, 1))
+
+            self.dig_fid = geom_fid(raw.info['dig'], unit='m')
+            self.dig_fid.set_T(head_dev_t)
+            self.dig_fid.plot_points(fig, scale=0.04, opacity=.25,
+                                     color=(.5, .5, 1))
 
         self.view()
 
