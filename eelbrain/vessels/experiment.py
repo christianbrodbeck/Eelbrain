@@ -1287,15 +1287,24 @@ class mne_experiment(object):
         else:
             print "No files found for %r" % temp
 
-    def rm_fake_mris(self, confirm=False):
+    def rm_fake_mris(self, exclude=[], confirm=False):
         """
         Remove all fake MRIs and trans files
 
+        Parameters
+        ----------
+        exclude : str | list of str
+            Exclude these subjects.
+
         """
+        if isinstance(exclude, basestring):
+            exclude = [exclude]
         rmd = []  # dirs
         rmf = []  # files
         sub = []
         for _ in self.iter_vars(['subject']):
+            if self.get('subject') in exclude:
+                continue
             mri_sdir = self.get('mri_sdir')
             if os.path.exists(mri_sdir):
                 if plot.coreg.is_fake_mri(mri_sdir):
