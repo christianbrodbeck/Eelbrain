@@ -849,6 +849,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
             # prepare txt
             txt = self.shell.fixLineEndings(txt)
+            txt = txt.replace("'''", '"""')
             txt += os.linesep
 
             # remove leading whitespaces (and comment lines)
