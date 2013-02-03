@@ -59,7 +59,7 @@ def is_fake_mri(mri_dir):
 
     """
     items = os.listdir(mri_dir)
-    nc = [c for c in ['bem', 'label', 'surf', 'T.txt'] if c not in items]
+    nc = [c for c in ['bem', 'label', 'surf', 'MRI-scale-trans.fif'] if c not in items]
     c = [c for c in ['mri', 'src', 'stats'] if c in items]
     if c or nc:
         return False
