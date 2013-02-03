@@ -404,6 +404,8 @@ class mne_experiment(object):
              # output files
              'plot_dir': os.path.join('{root}', 'plots'),
              'plot_png': os.path.join('{plot_dir}', '{analysis}', '{name}.png'),
+             'res_dir': os.path.join('{root}', 'res'),
+             'res': os.path.join('{res_dir}', '{analysis}', '{name}.{ext}'),
 
              # BESA
              'besa_triggers': os.path.join('{meg_sdir}', 'besa', '{subject}_{experiment}_{analysis}_triggers.txt'),
