@@ -28,7 +28,7 @@ import tempfile
 
 from eelbrain import ui
 from eelbrain.load.brainvision import vhdr as _vhdr
-from eelbrain.load.kit import marker_avg_file
+from eelbrain.load.kit import MarkerFile
 from mne.utils import get_subjects_dir
 
 
@@ -299,7 +299,7 @@ def kit2fiff(paths=dict(mrk=None,
         raise IOError(err)
 
     # convert the marker file
-    mrk_file = marker_avg_file(mrk_path)
+    mrk_file = MarkerFile(mrk_path)
     hpi_file = mrk_file.path
 
     # make sure target path exists

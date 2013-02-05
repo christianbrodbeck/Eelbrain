@@ -115,8 +115,8 @@ class dev_head_viewer(traits.HasTraits):
 
         raw : mne.fiff.Raw | str(path)
             MNE Raw object, or path to a raw file.
-        mrk : load.kit.marker_avg_file | str(path)
-            marker_avg_file object, or path to a marker file.
+        mrk : load.kit.MarkerFile | str(path)
+            MarkerFile object, or path to a marker file.
         bem : None | str(path)
             Name of the bem model to load (optional, only for visualization
             purposes).
@@ -222,8 +222,8 @@ class dev_head_fitter:
 
         raw : mne.fiff.Raw | str(path)
             MNE Raw object, or path to a raw file.
-        mrk : load.kit.marker_avg_file | str(path)
-            marker_avg_file object, or path to a marker file.
+        mrk : load.kit.MarkerFile | str(path)
+            MarkerFile object, or path to a marker file.
         bem : None | str(path)
             Name of the bem model to load (optional, only for visualization
             purposes).
@@ -240,7 +240,7 @@ class dev_head_fitter:
 
         # interpret mrk
         if isinstance(mrk, basestring):
-            mrk = load.kit.marker_avg_file(mrk)
+            mrk = load.kit.MarkerFile(mrk)
 
         # interpret raw
         if isinstance(raw, basestring):
@@ -1434,8 +1434,8 @@ class set_nasion(traits.HasTraits):
 
         raw : mne.fiff.Raw | str(path)
             MNE Raw object, or path to a raw file.
-        mrk : load.kit.marker_avg_file | str(path)
-            marker_avg_file object, or path to a marker file.
+        mrk : load.kit.MarkerFile | str(path)
+            MarkerFile object, or path to a marker file.
 
         """
         traits.HasTraits.__init__(self)

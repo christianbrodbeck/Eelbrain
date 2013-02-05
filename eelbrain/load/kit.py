@@ -12,11 +12,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # needed for 3d projection
 
-__all__ = ['marker_avg_file']
+__all__ = ['MarkerFile']
 
 
 
-class marker_avg_file:
+class MarkerFile:
     """
     Attributes
     ----------
@@ -52,7 +52,7 @@ class marker_avg_file:
         os.remove(self.path)
 
     def __repr__(self):
-        return 'marker_avg_file(%r)' % self.src_path
+        return 'MarkerFile(%r)' % self.src_path
 
     def plt(self, marker='+k'):
         self.plot_mpl(marker=marker)
@@ -80,3 +80,6 @@ class marker_avg_file:
 
         return ax
 
+
+# for backwards compatibility
+marker_avg_file = MarkerFile

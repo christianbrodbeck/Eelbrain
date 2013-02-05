@@ -1202,7 +1202,7 @@ class mne_experiment(object):
     def plot_mrk(self, **kwargs):
         self.set(**kwargs)
         fname = self.get('mrk')
-        mf = load.kit.marker_avg_file(fname)
+        mf = load.kit.MarkerFile(fname)
         ax = mf.plot_mpl()
         return ax
 
