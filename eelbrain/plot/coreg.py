@@ -410,8 +410,8 @@ class dev_mri(object):
         Parameters
         ----------
 
-        raw : str(path)
-            Path to raw fiff file.
+        raw : str(path) | Raw
+            Path to raw fiff file, or the mne.fiff.Raw instance.
         subject : None | str
             Name of the mri subject. Can be None if the raw file-name starts
             with "{subject}_".

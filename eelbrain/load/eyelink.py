@@ -110,8 +110,19 @@ class Edf(object):
 
     def assert_Id_match(self, ds=None, Id='eventId'):
         """
+        Make sure the Edf and another event list describe the same events.
+
         Raises an error if the Ids in ``Id`` do not match the Ids in the Edf
         file(s).
+
+        Parameters
+        ----------
+        ds : None | dataset
+            Dataset with events.
+        Id : str | array
+            If `ds` is a dataset, `Id` should be a string naming the variable
+            in `ds` containing the event IDs. If `ds` is None, `Id` should be
+            a series of event Ids.
 
         """
         if isinstance(Id, str):

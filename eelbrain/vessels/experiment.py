@@ -160,12 +160,19 @@ class mne_experiment(object):
                  subjects=[], mri_subjects={},
                  kit2fiff_args=_kit2fiff_args):
         """
+        Parameters
+        ----------
         root : str
-            the root directory for the experiment (i.e., the directory
+            the root directory for the experiment (usually the directory
             containing the 'meg' and 'mri' directories)
-
-        fwd : None | dict
-            dictionary specifying the forward model parameters
+        parse_subjects : bool
+            Find MEG subjects using :attr:`_subjects_loc`
+        parse_mri : bool
+            Find MRI subjects using :attr:`_mri_loc`
+        subjects : list of str
+            Provide additional MEG subjects.
+        mri_subjects : dict, {subject: mrisubject}
+            Provide additional MRI subjects.
 
         """
         if root:
