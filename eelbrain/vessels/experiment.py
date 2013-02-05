@@ -1162,6 +1162,11 @@ class mne_experiment(object):
                     isdir = os.path.isdir(os.path.join(sub_dir, fname))
                     if isdir and pattern.match(fname):
                         subjects.add(fname)
+            else:
+                err = ("MEG subjects directory not found: %r. Initialize with "
+                       "parse_subjects=False, or specifiy proper directory in "
+                       "experiment._subject_loc." % sub_dir)
+                raise IOError(err)
 
 
         # find MRIs
@@ -1176,11 +1181,17 @@ class mne_experiment(object):
                         mri_subjects[s] = s
                     else:
                         mri_subjects[s] = '{common_brain}'
+            else:
+                err = ("MRI subjects directory not found: %r. Initialize with "
+                       "parse_subjects=False, or specifiy proper directory in "
+                       "experiment._mri_loc." % sub_dir)
+                raise IOError(err)
 
         self.var_values['subject'] = list(subjects)
         self.var_values['mrisubject'] = list(mri_subjects.values())
         self.var_values['experiment'] = list(self._experiments)
-        has_mri = (s for s in subjects if mri_subjects[s] != '{common_brain}')
+        has_mri = (s for s in subjects
+                   if mri_subjects.get(s, '') != '{common_brain}')
         self.subjects_has_mri = tuple(has_mri)
 
     def plot_coreg(self, **kwargs):  # sens=True, mrk=True, fiduc=True, hs=False, hs_mri=True,
