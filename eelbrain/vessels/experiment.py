@@ -1042,6 +1042,42 @@ class mne_experiment(object):
             p.save()
             self.set_mri_subject(s_to, s_to)
 
+    def make_fwd_cmd(self, redo=False):
+        """
+        Returns the mne_do_forward_solution command.
+
+        Relevant templates:
+        - rawfif
+        - mrisubject
+        - src
+        - bem
+        - trans
+
+        Returns
+        -------
+        cmd : None | list of str
+            The command to run mne_do_forward_solution as it would be
+            submitted to subprocess.call(). None if redo=False and the target
+            file already exists.
+
+        """
+        fwd = self.get('fwd')
+        if os.path.exists(fwd):
+            if redo:
+                os.remove(fwd)
+            else:
+                return None
+
+        cmd = ["mne_do_forward_solution",
+               '--subject', self.get('mrisubject'),
+               '--src', self.get('src'),
+               '--bem', self.get('bem'),
+               '--mri', self.get('trans'),
+               '--meas', self.get('rawfif'),  # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
+               '--fwd', fwd,
+               '--megonly']
+        return cmd
+
     def make_proj_for_epochs(self, epochs, n_mag=5, save=True, save_plot=True):
         """
         computes the first ``n_mag`` PCA components, plots them, and asks for
