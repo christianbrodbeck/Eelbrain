@@ -521,6 +521,31 @@ class mne_experiment(object):
         else:
             return raw_txt
 
+    def expand_template(self, temp, values={}):
+        """
+        Expands a template so far as subtemplates are neither in
+        self.var_values nor in the collection provided through the ``values``
+        kwarg
+
+        values : container (implements __contains__)
+            values which should not be expanded (in addition to
+        """
+        temp = self.state.get(temp, temp)
+
+        while True:
+            stop = True
+            for var in self._fmt_pattern.findall(temp):
+                if (var in values) or (var in self.var_values):
+                    pass
+                else:
+                    temp = temp.replace('{%s}' % var, self.state[var])
+                    stop = False
+
+            if stop:
+                break
+
+        return temp
+
     def format(self, temp, vmatch=True, **kwargs):
         """
         Returns the template temp formatted with current values. Formatting
@@ -666,31 +691,6 @@ class mne_experiment(object):
         cov = mne.read_cov(self.get('cov'))
         inv = make_inverse_operator(fiff.info, fwd, cov, **inv_kwa)
         return inv
-
-    def expand_template(self, temp, values={}):
-        """
-        Expands a template so far as subtemplates are neither in
-        self.var_values nor in the collection provided through the ``values``
-        kwarg
-
-        values : container (implements __contains__)
-            values which should not be expanded (in addition to
-        """
-        temp = self.state.get(temp, temp)
-
-        while True:
-            stop = True
-            for var in self._fmt_pattern.findall(temp):
-                if (var in values) or (var in self.var_values):
-                    pass
-                else:
-                    temp = temp.replace('{%s}' % var, self.state[var])
-                    stop = False
-
-            if stop:
-                break
-
-        return temp
 
     def iter_temp(self, temp, constants={}, values={}, exclude={}, prog=False):
         """
