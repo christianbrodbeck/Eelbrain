@@ -385,8 +385,8 @@ class mne_experiment(object):
              'proj': '',
              'proj_file': '{raw}_{proj}-proj.fif',
              'proj_plot': '{raw}_{proj}-proj.pdf',
-             'cov': '{raw}_{cov_name}-{proj}-cov.fif',
-             'fwd': '{raw}_{cov_name}-{proj}-fwd.fif',
+             'cov-file': '{raw}_{cov}-{proj}-cov.fif',
+             'fwd': '{raw}_{cov}-{proj}-fwd.fif',
 
              # fwd model
              'fid': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-fiducials.fif'),
@@ -397,7 +397,7 @@ class mne_experiment(object):
              # mne's stc.save() requires stub filename and will add '-?h.stc'
              'evoked_dir': os.path.join('{meg_sdir}', 'evoked_{experiment}_{model}'),
              'evoked': os.path.join('{evoked_dir}', '{epoch}_{proj}-evoked.pickled'),
-             'stc_dir': os.path.join('{meg_sdir}', 'stc_{cov_name}-{proj}_{inv_name}'),
+             'stc_dir': os.path.join('{meg_sdir}', 'stc_{cov}-{proj}_{inv_name}'),
              'stc': os.path.join('{stc_dir}', '{experiment}_{cell}_{epoch}'),
              'stc_morphed': os.path.join('{stc_dir}', '{experiment}_{cell}_{common_brain}'),
              'label_file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
@@ -688,7 +688,7 @@ class mne_experiment(object):
             raise ValueError('ori=%r' % ori)
 
         fwd = mne.read_forward_solution(self.get('fwd'), **fwd_kwa)
-        cov = mne.read_cov(self.get('cov'))
+        cov = mne.read_cov(self.get('cov-file'))
         inv = make_inverse_operator(fiff.info, fwd, cov, **inv_kwa)
         return inv
 
