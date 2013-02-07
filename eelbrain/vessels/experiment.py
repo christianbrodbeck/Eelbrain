@@ -1459,7 +1459,7 @@ class mne_experiment(object):
             kwargs['experiment'] = experiment
         if subject is not None:
             kwargs['subject'] = subject
-            kwargs['mrisubject'] = self._mri_subjects.get(subject, None)
+            kwargs['mrisubject'] = self._mri_subjects.get(subject, 'NO_MRI_SUBJECT')
 
         # test var_value
         for k, v in kwargs.iteritems():
