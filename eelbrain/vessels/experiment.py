@@ -62,7 +62,7 @@ from threading import Thread
 import numpy as np
 
 import mne
-from mne.minimum_norm import make_inverse_operator
+from mne.minimum_norm import make_inverse_operator, apply_inverse
 
 from .. import fmtxt
 from .. import load
@@ -152,7 +152,7 @@ class mne_experiment(object):
     # method after __init__()):
     _common_brain = 'fsaverage'
     _experiments = []
-    _fmt_pattern = re.compile('\{(\w+)\}')
+    _fmt_pattern = re.compile('\{([\w-]+)\}')
     _mri_loc = 'mri_dir'  # location of subject mri folders
     _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
     _subject_loc = 'meg_dir'  # location of subject folders
@@ -160,12 +160,19 @@ class mne_experiment(object):
                  subjects=[], mri_subjects={},
                  kit2fiff_args=_kit2fiff_args):
         """
+        Parameters
+        ----------
         root : str
-            the root directory for the experiment (i.e., the directory
+            the root directory for the experiment (usually the directory
             containing the 'meg' and 'mri' directories)
-
-        fwd : None | dict
-            dictionary specifying the forward model parameters
+        parse_subjects : bool
+            Find MEG subjects using :attr:`_subjects_loc`
+        parse_mri : bool
+            Find MRI subjects using :attr:`_mri_loc`
+        subjects : list of str
+            Provide additional MEG subjects.
+        mri_subjects : dict, {subject: mrisubject}
+            Provide additional MRI subjects.
 
         """
         if root:
@@ -188,7 +195,7 @@ class mne_experiment(object):
         self.var_values = {'hemi': ('lh', 'rh')}
         self.exclude = {}
 
-        self.add_to_state(root=root, raw='{raw_raw}', labeldir='label', hemi='lh')
+        self.add_to_state(root=root, labeldir='label', hemi='lh')
         self.parse_dirs(parse_subjects=parse_subjects, parse_mri=parse_mri,
                         subjects=subjects, mri_subjects=mri_subjects)
 
@@ -266,6 +273,7 @@ class mne_experiment(object):
         ds[key] = ndvar(np.array(x), dims=('case', time))
 
     def add_evoked_stc(self, ds, method='sLORETA', ori='free', depth=0.8,
+                       reg=False, snr=3.,
                        ind=True, morph=True, names={'evoked': 'stc'}):
         """
         Add an stc (ndvar) to a dataset with an evoked list.
@@ -286,6 +294,7 @@ class mne_experiment(object):
 
         inv_name = method + '-' + ori
         self.set(inv_name=inv_name)
+        lambda2 = 1. / snr ** 2
 
         # find vars to work on
         do = []
@@ -314,10 +323,10 @@ class mne_experiment(object):
                     inv = invs[subject]
                 else:
                     self.set(subject=subject)
-                    inv = self.get_inv(evoked, depth=depth)
+                    inv = self.get_inv(evoked, depth=depth, reg=reg)
                     invs[subject] = inv
 
-                stc = mne.minimum_norm.apply_inverse(evoked, inv, 1 / 9., method)
+                stc = apply_inverse(evoked, inv, lambda2, method)
                 if ind:
                     stcs[name].append(stc)
 
@@ -366,9 +375,11 @@ class mne_experiment(object):
              'mrk': os.path.join('{raw_sdir}', '{subject}_{experiment}_marker.txt'),
              'elp': os.path.join('{raw_sdir}', '{subject}_HS.elp'),
              'hsp': os.path.join('{raw_sdir}', '{subject}_HS.hsp'),
-             'rawtxt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
-             'raw_raw': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
-             'rawfif': '{raw}_raw.fif',  # for subp.kit2fiff
+             'raw': 'raw',
+             'raw-base': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
+             'raw-file': '{raw-base}_{raw}-raw.fif',
+             'raw-txt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
+
              'trans': os.path.join('{raw_sdir}', '{mrisubject}-trans.fif'),  # mne p. 196
 
              # eye-tracker
@@ -378,8 +389,8 @@ class mne_experiment(object):
              'proj': '',
              'proj_file': '{raw}_{proj}-proj.fif',
              'proj_plot': '{raw}_{proj}-proj.pdf',
-             'cov': '{raw}_{cov_name}-{proj}-cov.fif',
-             'fwd': '{raw}_{cov_name}-{proj}-fwd.fif',
+             'cov-file': '{raw}_{cov}-{proj}-cov.fif',
+             'fwd': '{raw}_{cov}-{proj}-fwd.fif',
 
              # fwd model
              'fid': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-fiducials.fif'),
@@ -390,7 +401,7 @@ class mne_experiment(object):
              # mne's stc.save() requires stub filename and will add '-?h.stc'
              'evoked_dir': os.path.join('{meg_sdir}', 'evoked_{experiment}_{model}'),
              'evoked': os.path.join('{evoked_dir}', '{epoch}_{proj}-evoked.pickled'),
-             'stc_dir': os.path.join('{meg_sdir}', 'stc_{cov_name}-{proj}_{inv_name}'),
+             'stc_dir': os.path.join('{meg_sdir}', 'stc_{cov}-{proj}_{inv_name}'),
              'stc': os.path.join('{stc_dir}', '{experiment}_{cell}_{epoch}'),
              'stc_morphed': os.path.join('{stc_dir}', '{experiment}_{cell}_{common_brain}'),
              'label_file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
@@ -404,6 +415,8 @@ class mne_experiment(object):
              # output files
              'plot_dir': os.path.join('{root}', 'plots'),
              'plot_png': os.path.join('{plot_dir}', '{analysis}', '{name}.png'),
+             'res_dir': os.path.join('{root}', 'res'),
+             'res': os.path.join('{res_dir}', '{analysis}', '{name}.{ext}'),
 
              # BESA
              'besa_triggers': os.path.join('{meg_sdir}', 'besa', '{subject}_{experiment}_{analysis}_triggers.txt'),
@@ -458,12 +471,12 @@ class mne_experiment(object):
         raw_txt = []
         for _ in self.iter_vars(['subject']):
             subject = self.get('subject')
-            temp = self.get('rawtxt', experiment='*', match=False)
+            temp = self.get('raw-txt', experiment='*', match=False)
             tdir, tname = os.path.split(temp)
             fnames = fnmatch.filter(os.listdir(tdir), tname)
             for fname in fnames:
                 fs, fexp, _ = fname.split('_', 2)
-                fifpath = self.get('rawfif', raw='{raw_raw}', subject=fs, experiment=fexp, match=False)
+                fifpath = self.get('raw-file', raw='raw', subject=fs, experiment=fexp, match=False)
                 if redo or not os.path.exists(fifpath):
                     raw_txt.append((subject, fexp, fname))
 
@@ -511,6 +524,31 @@ class mne_experiment(object):
                 print table
         else:
             return raw_txt
+
+    def expand_template(self, temp, values={}):
+        """
+        Expands a template so far as subtemplates are neither in
+        self.var_values nor in the collection provided through the ``values``
+        kwarg
+
+        values : container (implements __contains__)
+            values which should not be expanded (in addition to
+        """
+        temp = self.state.get(temp, temp)
+
+        while True:
+            stop = True
+            for var in self._fmt_pattern.findall(temp):
+                if (var in values) or (var in self.var_values):
+                    pass
+                else:
+                    temp = temp.replace('{%s}' % var, self.state[var])
+                    stop = False
+
+            if stop:
+                break
+
+        return temp
 
     def format(self, temp, vmatch=True, **kwargs):
         """
@@ -636,7 +674,7 @@ class mne_experiment(object):
             desc += '(%i)%i]' % (tmax * 1000, reject_tmax * 1000)
         return desc
 
-    def get_inv(self, fiff, depth=0.8, **kwargs):
+    def get_inv(self, fiff, depth=0.8, reg=False, **kwargs):
         self.set(**kwargs)
 
         inv_name = self.get('inv_name')
@@ -654,34 +692,11 @@ class mne_experiment(object):
             raise ValueError('ori=%r' % ori)
 
         fwd = mne.read_forward_solution(self.get('fwd'), **fwd_kwa)
-        cov = mne.read_cov(self.get('cov'))
+        cov = mne.read_cov(self.get('cov-file'))
+        if reg:
+            cov = mne.cov.regularize(cov, fiff.info, mag=reg)
         inv = make_inverse_operator(fiff.info, fwd, cov, **inv_kwa)
         return inv
-
-    def expand_template(self, temp, values={}):
-        """
-        Expands a template so far as subtemplates are neither in
-        self.var_values nor in the collection provided through the ``values``
-        kwarg
-
-        values : container (implements __contains__)
-            values which should not be expanded (in addition to
-        """
-        temp = self.state.get(temp, temp)
-
-        while True:
-            stop = True
-            for var in self._fmt_pattern.findall(temp):
-                if (var in values) or (var in self.var_values):
-                    pass
-                else:
-                    temp = temp.replace('{%s}' % var, self.state[var])
-                    stop = False
-
-            if stop:
-                break
-
-        return temp
 
     def iter_temp(self, temp, constants={}, values={}, exclude={}, prog=False):
         """
@@ -795,7 +810,7 @@ class mne_experiment(object):
 
         """
         self.set(subject=subject, experiment=experiment)
-        raw_file = self.get('rawfif')
+        raw_file = self.get('raw-file')
         if proj:
             proj = self.get('proj')
             if proj:
@@ -1034,11 +1049,47 @@ class mne_experiment(object):
                 continue
 
             s_from = self.get('common_brain')
-            raw = self.get('rawfif')
+            raw = self.get('raw-file')
             p = plot.coreg.mri_head_fitter(s_from, raw, s_to)
             p.fit()
             p.save()
             self.set_mri_subject(s_to, s_to)
+
+    def make_fwd_cmd(self, redo=False):
+        """
+        Returns the mne_do_forward_solution command.
+
+        Relevant templates:
+        - raw-file
+        - mrisubject
+        - src
+        - bem
+        - trans
+
+        Returns
+        -------
+        cmd : None | list of str
+            The command to run mne_do_forward_solution as it would be
+            submitted to subprocess.call(). None if redo=False and the target
+            file already exists.
+
+        """
+        fwd = self.get('fwd')
+        if os.path.exists(fwd):
+            if redo:
+                os.remove(fwd)
+            else:
+                return None
+
+        cmd = ["mne_do_forward_solution",
+               '--subject', self.get('mrisubject'),
+               '--src', self.get('src'),
+               '--bem', self.get('bem'),
+               '--mri', self.get('trans'),
+               '--meas', self.get('raw-file'),  # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
+               '--fwd', fwd,
+               '--megonly']
+        return cmd
 
     def make_proj_for_epochs(self, epochs, n_mag=5, save=True, save_plot=True):
         """
@@ -1124,6 +1175,11 @@ class mne_experiment(object):
                     isdir = os.path.isdir(os.path.join(sub_dir, fname))
                     if isdir and pattern.match(fname):
                         subjects.add(fname)
+            else:
+                err = ("MEG subjects directory not found: %r. Initialize with "
+                       "parse_subjects=False, or specifiy proper directory in "
+                       "experiment._subject_loc." % sub_dir)
+                raise IOError(err)
 
 
         # find MRIs
@@ -1138,29 +1194,35 @@ class mne_experiment(object):
                         mri_subjects[s] = s
                     else:
                         mri_subjects[s] = '{common_brain}'
+            else:
+                err = ("MRI subjects directory not found: %r. Initialize with "
+                       "parse_subjects=False, or specifiy proper directory in "
+                       "experiment._mri_loc." % sub_dir)
+                raise IOError(err)
 
         self.var_values['subject'] = list(subjects)
         self.var_values['mrisubject'] = list(mri_subjects.values())
         self.var_values['experiment'] = list(self._experiments)
-        has_mri = (s for s in subjects if mri_subjects[s] != '{common_brain}')
+        has_mri = (s for s in subjects
+                   if mri_subjects.get(s, '') != '{common_brain}')
         self.subjects_has_mri = tuple(has_mri)
 
     def plot_coreg(self, **kwargs):  # sens=True, mrk=True, fiduc=True, hs=False, hs_mri=True,
         self.set(**kwargs)
-        raw = mne.fiff.Raw(self.get('rawfif'))
+        raw = mne.fiff.Raw(self.get('raw-file'))
         return plot.coreg.dev_mri(raw)
 
     def plot_mrk(self, **kwargs):
         self.set(**kwargs)
         fname = self.get('mrk')
-        mf = load.kit.marker_avg_file(fname)
+        mf = load.kit.MarkerFile(fname)
         ax = mf.plot_mpl()
         return ax
 
     def plot_mrk_fix(self, **kwargs):
         self.set(**kwargs)
         mrk = self.get('mrk')
-        raw = self.get('rawfif')
+        raw = self.get('raw-file')
         fig = plot.sensors.mrk_fix(mrk, raw)
         return fig
 
@@ -1176,7 +1238,7 @@ class mne_experiment(object):
         pad = ' ' * (80 - name_len - path_len)
         print os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len) for n, p in nodes)
 
-    def pull(self, src_root, names=['rawfif', 'log_sdir'], **kwargs):
+    def pull(self, src_root, names=['raw-file', 'log_sdir'], **kwargs):
         """OK 12/8/12
         Copies all items matching a template from another root to the current
         root.
@@ -1189,7 +1251,7 @@ class mne_experiment(object):
             root of the source experiment
         names : list of str
             list of template names to copy.
-            tested for 'rawfif' and 'log_sdir'.
+            tested for 'raw-file' and 'log_sdir'.
             Should work for any template with an exact match; '*' is not
             implemented and will raise an error.
         **kwargs** :
@@ -1287,15 +1349,24 @@ class mne_experiment(object):
         else:
             print "No files found for %r" % temp
 
-    def rm_fake_mris(self, confirm=False):
+    def rm_fake_mris(self, exclude=[], confirm=False):
         """
         Remove all fake MRIs and trans files
 
+        Parameters
+        ----------
+        exclude : str | list of str
+            Exclude these subjects.
+
         """
+        if isinstance(exclude, basestring):
+            exclude = [exclude]
         rmd = []  # dirs
         rmf = []  # files
         sub = []
         for _ in self.iter_vars(['subject']):
+            if self.get('subject') in exclude:
+                continue
             mri_sdir = self.get('mri_sdir')
             if os.path.exists(mri_sdir):
                 if plot.coreg.is_fake_mri(mri_sdir):
@@ -1394,7 +1465,7 @@ class mne_experiment(object):
             kwargs['experiment'] = experiment
         if subject is not None:
             kwargs['subject'] = subject
-            kwargs['mrisubject'] = self._mri_subjects.get(subject, None)
+            kwargs['mrisubject'] = self._mri_subjects.get(subject, 'NO_MRI_SUBJECT')
 
         # test var_value
         for k, v in kwargs.iteritems():
@@ -1476,7 +1547,7 @@ class mne_experiment(object):
         lbl0.save(tgt0)
         lbl1.save(tgt1)
 
-    def summary(self, templates=['rawfif'], missing='-', link='>', count=True):
+    def summary(self, templates=['raw-file'], missing='-', link='>', count=True):
         if not isinstance(templates, (list, tuple)):
             templates = [templates]
 

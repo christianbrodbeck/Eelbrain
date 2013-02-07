@@ -59,7 +59,7 @@ def is_fake_mri(mri_dir):
 
     """
     items = os.listdir(mri_dir)
-    nc = [c for c in ['bem', 'label', 'surf', 'T.txt'] if c not in items]
+    nc = [c for c in ['bem', 'label', 'surf', 'MRI-scale-trans.fif'] if c not in items]
     c = [c for c in ['mri', 'src', 'stats'] if c in items]
     if c or nc:
         return False
@@ -115,8 +115,8 @@ class dev_head_viewer(traits.HasTraits):
 
         raw : mne.fiff.Raw | str(path)
             MNE Raw object, or path to a raw file.
-        mrk : load.kit.marker_avg_file | str(path)
-            marker_avg_file object, or path to a marker file.
+        mrk : load.kit.MarkerFile | str(path)
+            MarkerFile object, or path to a marker file.
         bem : None | str(path)
             Name of the bem model to load (optional, only for visualization
             purposes).
@@ -222,8 +222,8 @@ class dev_head_fitter:
 
         raw : mne.fiff.Raw | str(path)
             MNE Raw object, or path to a raw file.
-        mrk : load.kit.marker_avg_file | str(path)
-            marker_avg_file object, or path to a marker file.
+        mrk : load.kit.MarkerFile | str(path)
+            MarkerFile object, or path to a marker file.
         bem : None | str(path)
             Name of the bem model to load (optional, only for visualization
             purposes).
@@ -240,7 +240,7 @@ class dev_head_fitter:
 
         # interpret mrk
         if isinstance(mrk, basestring):
-            mrk = load.kit.marker_avg_file(mrk)
+            mrk = load.kit.MarkerFile(mrk)
 
         # interpret raw
         if isinstance(raw, basestring):
@@ -410,8 +410,8 @@ class dev_mri(object):
         Parameters
         ----------
 
-        raw : str(path)
-            Path to raw fiff file.
+        raw : str(path) | Raw
+            Path to raw fiff file, or the mne.fiff.Raw instance.
         subject : None | str
             Name of the mri subject. Can be None if the raw file-name starts
             with "{subject}_".
@@ -462,7 +462,8 @@ class dev_mri(object):
         self.sensors.plot_points(fig, scale=0.005, color=(0, 0, 1))
 
         # mri
-        bem = os.path.join(subjects_dir, subject, 'bem', '%s-%s.fif' % (subject, mri))
+        bemdir = os.path.join(subjects_dir, subject, 'bem')
+        bem = os.path.join(bemdir, '%s-%s.fif' % (subject, mri))
         self.mri = geom_bem(bem, unit='m')
         self.mri.set_T(mri_dev_t)
         self.mri.plot_solid(fig, color=(.8, .6, .5))
@@ -479,6 +480,19 @@ class dev_mri(object):
                 raise ValueError('hs kwarg can not be %r' % hs)
 
             self.hs.plot_solid(fig, opacity=1, rep='points', color=(1, .5, 0))
+
+            # Fiducials
+            fname = os.path.join(bemdir, subject + '-fiducials.fif')
+            if os.path.exists(fname):
+                dig, _ = read_fiducials(fname)
+                self.mri_fid = geom_fid(dig, unit='m')
+                self.mri_fid.set_T(mri_dev_t)
+                self.mri_fid.plot_points(fig, scale=0.005)
+
+            self.dig_fid = geom_fid(raw.info['dig'], unit='m')
+            self.dig_fid.set_T(head_dev_t)
+            self.dig_fid.plot_points(fig, scale=0.04, opacity=.25,
+                                     color=(.5, .5, 1))
 
         self.view()
 
@@ -1420,8 +1434,8 @@ class set_nasion(traits.HasTraits):
 
         raw : mne.fiff.Raw | str(path)
             MNE Raw object, or path to a raw file.
-        mrk : load.kit.marker_avg_file | str(path)
-            marker_avg_file object, or path to a marker file.
+        mrk : load.kit.MarkerFile | str(path)
+            MarkerFile object, or path to a marker file.
 
         """
         traits.HasTraits.__init__(self)
