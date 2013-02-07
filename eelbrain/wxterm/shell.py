@@ -1282,7 +1282,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
                     else:
                         ed.Close()
         if len(unsaved) == 1:
-            unsaved[0].OnClose(event)
+            ed = unsaved[0]
+            ed.Raise()
+            ed.OnClose(event)
         elif len(unsaved) > 0:
             txt = '\n'.join([u.Title for u in unsaved])
             msg = wx.MessageDialog(None, txt, "Review Unsaved Py-Docs?",
@@ -1294,7 +1296,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
             else:
                 for ed in unsaved:
                     if command == wx.ID_YES:
-#                        ed.bufferSave()
+                        ed.Raise()
                         ed.Close()
                     else:
                         ed.Destroy()

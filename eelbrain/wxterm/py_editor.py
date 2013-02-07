@@ -129,7 +129,7 @@ class Editor(wx.py.editor.EditorFrame):
         self.SetSize(size)
 
     def bufferCreate(self, filename=None):
-        wx.py.editor.EditorFrame.bufferCreate(self, filename=filename)
+        out = super(Editor, self).bufferCreate(filename=filename)
         self.shell.ApplyStyleTo(self.editor.window)
 
         zoom = self.shell.shell.GetZoom()
@@ -140,10 +140,12 @@ class Editor(wx.py.editor.EditorFrame):
         if filename:
             self.updateTitle()
 
+        return out
+
     def bufferSave(self):
         "subclassed to catch and display errors"
         try:
-            wx.py.editor.EditorFrame.bufferSave(self)
+            cancel = super(Editor, self).bufferSave()
         except Exception as exception:
             msg = str(exception) + "\n\n(Press OK and check console for full Exception)"
             dlg = wx.MessageDialog(self,
@@ -152,13 +154,14 @@ class Editor(wx.py.editor.EditorFrame):
                                    wx.OK | wx.CENTER | wx.ICON_ERROR)
             dlg.ShowModal()
             raise
-        else:
-            self.updateTitle()
+
+        self.updateTitle()
+        return cancel
 
     def bufferSaveAs(self):
         "subclass to catch and display errors"
         try:
-            wx.py.editor.EditorFrame.bufferSaveAs(self)
+            cancel = super(Editor, self).bufferSaveAs()
         except Exception as exception:
             msg = str(exception) + "\n\n(Check console for more information)"
             dlg = wx.MessageDialog(self,
@@ -167,8 +170,9 @@ class Editor(wx.py.editor.EditorFrame):
                                    wx.OK | wx.CENTER | wx.ICON_ERROR)
             dlg.ShowModal()
             raise
-        else:
-            self.updateTitle()
+
+        self.updateTitle()
+        return cancel
 
     def bufferOpen(self):
         """Subclassed from EditorFrame."""
