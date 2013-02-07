@@ -152,7 +152,7 @@ class mne_experiment(object):
     # method after __init__()):
     _common_brain = 'fsaverage'
     _experiments = []
-    _fmt_pattern = re.compile('\{(\w+)\}')
+    _fmt_pattern = re.compile('\{([\w-]+)\}')
     _mri_loc = 'mri_dir'  # location of subject mri folders
     _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
     _subject_loc = 'meg_dir'  # location of subject folders
