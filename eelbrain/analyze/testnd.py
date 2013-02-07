@@ -31,6 +31,7 @@ Created on Feb 22, 2012
 
 import numpy as np
 import scipy.stats
+from scipy.stats import percentileofscore
 import scipy.ndimage
 
 from eelbrain import fmtxt
@@ -160,13 +161,9 @@ class cluster_corr:
         tr = tt / np.sqrt(df + tt ** 2)
 
         cs = _cs.Colorspace(cmap=_cs.cm_xpolar, vmax=1, vmin= -1)
-        cdist = cluster_dist(Y, N=samples, threshold=tr, tstart=tstart,
-                             tstop=tstop, close_time=close_time, unit='r',
-                             pmax=pmax, name=name, cs=cs)
-
-        # store Y properties before manipulating it
-        dims = Y.dims[1:]
-        shape = Y.x.shape[1:]
+        cdist = cluster_dist(Y, N=samples, t_upper=tr, t_lower= -tr,
+                             tstart=tstart, tstop=tstop, close_time=close_time,
+                             unit='r', pmax=pmax, name=name, cs=cs)
 
         # normalization is done before the permutation b/c we are interested in the variance associated with each subject for the z-scoring.
         Y = Y.copy()
@@ -539,17 +536,19 @@ class cluster_anova:
 
 
 class cluster_dist:
-    def __init__(self, Y, N, threshold, tstart=None, tstop=None, close_time=0, unit='T', cs=None, pmax=.5, name=None):
+    def __init__(self, Y, N, t_upper, t_lower=None,
+                 tstart=None, tstop=None, close_time=0, unit='T', cs=None,
+                 pmax=.5, name=None):
         """
+        Parameters
+        ----------
         Y : ndvar
             Dependent variable.
-
         N : int
             Number of permutations.
-
-        threshold : scalar
-            Threshold for finding clusters.
-
+        t_upper, t_lower : None | scalar
+            Positive and negative thresholds for finding clusters. If None,
+            no clusters with the corresponding sign are counted.
         tstart, tstop : None | scalar
             Time window for clusters.
             **None**: use the whole epoch;
@@ -561,15 +560,25 @@ class cluster_dist:
         close_time : scalar
             Close gaps in clusters that are smaller than this interval. Assumes
             that Y is a uniform time series.
-
         unit : str
             Label for the parameter.
-
         pmax : scalar
             For the original data, only retain clusters with a p-value
             smaller than pmax.
 
         """
+        if t_lower is not None:
+            if t_lower >= 0:
+                raise ValueError("t_lower needs to be < 0; is %s" % t_lower)
+        if t_upper is not None:
+            if t_upper <= 0:
+                raise ValueError("t_upper needs to be > 0; is %s" % t_upper)
+        if (t_lower is not None) and (t_upper is not None):
+            if t_lower != -t_upper:
+                err = ("If t_upper and t_lower are defined, t_upp has to be "
+                       "-t_lower")
+                raise ValueError(err)
+
         # make sure we only get case by time data
         assert Y.ndim == 2
         assert Y.has_case
@@ -596,7 +605,8 @@ class cluster_dist:
 
         self.dist = np.zeros(N)
         self._i = 0
-        self.threshold = threshold
+        self.t_upper = t_upper
+        self.t_lower = t_lower
         self.unit = unit
         self.pmax = pmax
         self.name = name
@@ -604,8 +614,26 @@ class cluster_dist:
 
     def _find_clusters(self, P):
         "returns (clusters, n)"
-        cmap = (P > self.threshold)
+        if self.t_upper is None:
+            cmap_upper = None
+        else:
+            cmap_upper = (P > self.t_upper)
+            clusters, n = self._find_clusters_1tailed(cmap_upper)
 
+        if self.t_lower is not None:
+            cmap_lower = (P < self.t_lower)
+            if cmap_upper is None:
+                clusters, n = self._find_clusters_1tailed(cmap_lower)
+            else:
+                clusters_l, n_l = self._find_clusters_1tailed(cmap_lower)
+                clusters_l[cmap_lower] += n
+                clusters += clusters_l
+                n += n_l
+
+        return clusters, n
+
+    def _find_clusters_1tailed(self, cmap):
+        "returns (clusters, n)"
         # manipulate morphology
         if self.delim:
             cmap[self.delim_idx] = False
@@ -629,16 +657,18 @@ class cluster_dist:
 
         for i in xrange(n):
             v = clusters_v[i]
-            p = 1 - scipy.stats.percentileofscore(self.dist, v, 'mean') / 100
+            p = 1 - percentileofscore(self.dist, np.abs(v), 'mean') / 100
             if p <= self.pmax:
                 im = P * (clusters == i + 1)
                 name = 'p=%.3f' % p
-                properties = {'p': p, 'threshold': self.threshold, 'unit': self.unit}
+                threshold = self.t_upper if (v > 0) else self.t_lower
+                properties = {'p': p, 'unit': self.unit, 'threshold': threshold}
                 ndv = ndvar(im, dims=self.dims, name=name, properties=properties)
                 self.clusters.append(ndv)
 
-        props = {'tF': self.clusters, 'unit': self.unit, 'cs': self.cs,
-                 'threshold': self.threshold}
+        props = {'unit': self.unit, 'cs': self.cs,
+                 'threshold_lower': self.t_lower,
+                 'threshold_upper': self.t_upper}
         self.P = ndvar(P, dims=self.dims, name=self.name, properties=props)
 
     def add_perm(self, P):
@@ -651,7 +681,7 @@ class cluster_dist:
 
         if n:
             clusters_v = scipy.ndimage.measurements.sum(P, clusters, xrange(1, n + 1))
-            self.dist[self._i] = max(clusters_v)
+            self.dist[self._i] = np.max(np.abs(clusters_v))
 
         self._i += 1
 

@@ -495,12 +495,13 @@ class _ax_clusters:
                 title = title.format(name=Y.name)
             ax.set_title(title)
 
-        t = Y.properties.get('threshold', None)
-        if t is not None:
-            if tkwargs is not None:
-                ax.axhline(t, **tkwargs)
-            else:
-                ax.axhline(t)
+        if tkwargs is not None:
+            t_upper = Y.properties.get('threshold_upper', None)
+            t_lower = Y.properties.get('threshold_lower', None)
+            if t_upper is not None:
+                ax.axhline(t_upper, **tkwargs)
+            if t_lower is not None:
+                ax.axhline(t_lower, **tkwargs)
 
         ylabel = Y.properties.get('unit', None)
 
