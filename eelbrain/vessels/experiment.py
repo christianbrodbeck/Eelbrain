@@ -62,7 +62,7 @@ from threading import Thread
 import numpy as np
 
 import mne
-from mne.minimum_norm import make_inverse_operator
+from mne.minimum_norm import make_inverse_operator, apply_inverse
 
 from .. import fmtxt
 from .. import load
@@ -273,6 +273,7 @@ class mne_experiment(object):
         ds[key] = ndvar(np.array(x), dims=('case', time))
 
     def add_evoked_stc(self, ds, method='sLORETA', ori='free', depth=0.8,
+                       reg=False, snr=3.,
                        ind=True, morph=True, names={'evoked': 'stc'}):
         """
         Add an stc (ndvar) to a dataset with an evoked list.
@@ -293,6 +294,7 @@ class mne_experiment(object):
 
         inv_name = method + '-' + ori
         self.set(inv_name=inv_name)
+        lambda2 = 1. / snr ** 2
 
         # find vars to work on
         do = []
@@ -321,10 +323,10 @@ class mne_experiment(object):
                     inv = invs[subject]
                 else:
                     self.set(subject=subject)
-                    inv = self.get_inv(evoked, depth=depth)
+                    inv = self.get_inv(evoked, depth=depth, reg=reg)
                     invs[subject] = inv
 
-                stc = mne.minimum_norm.apply_inverse(evoked, inv, 1 / 9., method)
+                stc = apply_inverse(evoked, inv, lambda2, method)
                 if ind:
                     stcs[name].append(stc)
 
@@ -670,7 +672,7 @@ class mne_experiment(object):
             desc += '(%i)%i]' % (tmax * 1000, reject_tmax * 1000)
         return desc
 
-    def get_inv(self, fiff, depth=0.8, **kwargs):
+    def get_inv(self, fiff, depth=0.8, reg=False, **kwargs):
         self.set(**kwargs)
 
         inv_name = self.get('inv_name')
@@ -689,6 +691,8 @@ class mne_experiment(object):
 
         fwd = mne.read_forward_solution(self.get('fwd'), **fwd_kwa)
         cov = mne.read_cov(self.get('cov-file'))
+        if reg:
+            cov = mne.cov.regularize(cov, fiff.info, mag=reg)
         inv = make_inverse_operator(fiff.info, fwd, cov, **inv_kwa)
         return inv
 
