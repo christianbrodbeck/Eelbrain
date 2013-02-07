@@ -195,7 +195,7 @@ class mne_experiment(object):
         self.var_values = {'hemi': ('lh', 'rh')}
         self.exclude = {}
 
-        self.add_to_state(root=root, raw='{raw_raw}', labeldir='label', hemi='lh')
+        self.add_to_state(root=root, labeldir='label', hemi='lh')
         self.parse_dirs(parse_subjects=parse_subjects, parse_mri=parse_mri,
                         subjects=subjects, mri_subjects=mri_subjects)
 
@@ -375,9 +375,11 @@ class mne_experiment(object):
              'mrk': os.path.join('{raw_sdir}', '{subject}_{experiment}_marker.txt'),
              'elp': os.path.join('{raw_sdir}', '{subject}_HS.elp'),
              'hsp': os.path.join('{raw_sdir}', '{subject}_HS.hsp'),
-             'rawtxt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
-             'raw_raw': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
-             'rawfif': '{raw}_raw.fif',  # for subp.kit2fiff
+             'raw': 'raw',
+             'raw-base': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
+             'raw-file': '{raw-base}_{raw}-raw.fif',
+             'raw-txt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
+
              'trans': os.path.join('{raw_sdir}', '{mrisubject}-trans.fif'),  # mne p. 196
 
              # eye-tracker
@@ -469,12 +471,12 @@ class mne_experiment(object):
         raw_txt = []
         for _ in self.iter_vars(['subject']):
             subject = self.get('subject')
-            temp = self.get('rawtxt', experiment='*', match=False)
+            temp = self.get('raw-txt', experiment='*', match=False)
             tdir, tname = os.path.split(temp)
             fnames = fnmatch.filter(os.listdir(tdir), tname)
             for fname in fnames:
                 fs, fexp, _ = fname.split('_', 2)
-                fifpath = self.get('rawfif', raw='{raw_raw}', subject=fs, experiment=fexp, match=False)
+                fifpath = self.get('raw-file', raw='raw', subject=fs, experiment=fexp, match=False)
                 if redo or not os.path.exists(fifpath):
                     raw_txt.append((subject, fexp, fname))
 
@@ -808,7 +810,7 @@ class mne_experiment(object):
 
         """
         self.set(subject=subject, experiment=experiment)
-        raw_file = self.get('rawfif')
+        raw_file = self.get('raw-file')
         if proj:
             proj = self.get('proj')
             if proj:
@@ -1047,7 +1049,7 @@ class mne_experiment(object):
                 continue
 
             s_from = self.get('common_brain')
-            raw = self.get('rawfif')
+            raw = self.get('raw-file')
             p = plot.coreg.mri_head_fitter(s_from, raw, s_to)
             p.fit()
             p.save()
@@ -1058,7 +1060,7 @@ class mne_experiment(object):
         Returns the mne_do_forward_solution command.
 
         Relevant templates:
-        - rawfif
+        - raw-file
         - mrisubject
         - src
         - bem
@@ -1084,7 +1086,7 @@ class mne_experiment(object):
                '--src', self.get('src'),
                '--bem', self.get('bem'),
                '--mri', self.get('trans'),
-               '--meas', self.get('rawfif'),  # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
+               '--meas', self.get('raw-file'),  # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
                '--fwd', fwd,
                '--megonly']
         return cmd
@@ -1207,7 +1209,7 @@ class mne_experiment(object):
 
     def plot_coreg(self, **kwargs):  # sens=True, mrk=True, fiduc=True, hs=False, hs_mri=True,
         self.set(**kwargs)
-        raw = mne.fiff.Raw(self.get('rawfif'))
+        raw = mne.fiff.Raw(self.get('raw-file'))
         return plot.coreg.dev_mri(raw)
 
     def plot_mrk(self, **kwargs):
@@ -1220,7 +1222,7 @@ class mne_experiment(object):
     def plot_mrk_fix(self, **kwargs):
         self.set(**kwargs)
         mrk = self.get('mrk')
-        raw = self.get('rawfif')
+        raw = self.get('raw-file')
         fig = plot.sensors.mrk_fix(mrk, raw)
         return fig
 
@@ -1236,7 +1238,7 @@ class mne_experiment(object):
         pad = ' ' * (80 - name_len - path_len)
         print os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len) for n, p in nodes)
 
-    def pull(self, src_root, names=['rawfif', 'log_sdir'], **kwargs):
+    def pull(self, src_root, names=['raw-file', 'log_sdir'], **kwargs):
         """OK 12/8/12
         Copies all items matching a template from another root to the current
         root.
@@ -1249,7 +1251,7 @@ class mne_experiment(object):
             root of the source experiment
         names : list of str
             list of template names to copy.
-            tested for 'rawfif' and 'log_sdir'.
+            tested for 'raw-file' and 'log_sdir'.
             Should work for any template with an exact match; '*' is not
             implemented and will raise an error.
         **kwargs** :
@@ -1545,7 +1547,7 @@ class mne_experiment(object):
         lbl0.save(tgt0)
         lbl1.save(tgt1)
 
-    def summary(self, templates=['rawfif'], missing='-', link='>', count=True):
+    def summary(self, templates=['raw-file'], missing='-', link='>', count=True):
         if not isinstance(templates, (list, tuple)):
             templates = [templates]
 
