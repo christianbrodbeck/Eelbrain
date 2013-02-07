@@ -29,4 +29,6 @@ res = testnd.cluster_anova(Y, A*B*subject)
 plot.uts.clusters(res, title="Random Effects Model")
 
 # plot Y
-plot.uts.stat(Y, A%B, match=subject)
+p = plot.uts.stat(Y, A%B, match=subject)
+# show the clusters for the main effect of A
+p.plot_clusters(res.clusters[A])
