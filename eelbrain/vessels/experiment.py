@@ -789,7 +789,7 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_events(self, subject=None, experiment=None, proj=True, edf=True):
+    def load_events(self, subject=None, experiment=None, add_proj=True, edf=True):
         """
         Load events from a raw file.
 
@@ -800,28 +800,17 @@ class mne_experiment(object):
         ----------
         subject, experiment, raw : None | str
             Call self.set(...).
-        proj : bool
+        add_proj : bool
             Add the projections to the Raw object. This does *not* set the
             proj variable.
         edf : bool
             Loads edf and add it to the info dict.
 
         """
-        self.set(subject=subject, experiment=experiment)
-        raw_file = self.get('raw-file')
-        if proj:
-            proj = self.get('proj')
-            if proj:
-                proj = self.get('proj_file')
-            else:
-                proj = None
-        else:
-            proj = None
-        ds = load.fiff.events(raw_file, proj=proj)
+        raw = self.load_raw(add_proj=add_proj, subject=subject,
+                            experiment=experiment)
 
-        raw = ds.info['raw']
-        bad_chs = self.bad_channels[(self.state['subject'], self.state['experiment'])]
-        raw.info['bads'].extend(bad_chs)
+        ds = load.fiff.events(raw)
 
         if subject is None:
             subject = self._state['subject']
@@ -874,6 +863,35 @@ class mne_experiment(object):
         fname = self.get('label_file')
         return self._label_cache[fname]
 
+    def load_raw(self, add_proj=True, preload=False, **kwargs):
+        """
+        Load a raw file as mne Raw object.
+
+        Parameters
+        ----------
+        add_proj : bool
+            Add the projections to the Raw object. This does *not* set the
+            proj variable.
+        preload : bool
+            Mne Raw parameter.
+        """
+        self.set(**kwargs)
+
+        if add_proj:
+            proj = self.get('proj')
+            if proj:
+                proj = self.get('proj-file')
+            else:
+                proj = None
+        else:
+            proj = None
+
+        raw_file = self.get('raw-file')
+        raw = load.fiff.Raw(raw_file, proj, preload=preload)
+        bad_chs = self.bad_channels[(self.get('subject'), self.get('experiment'))]
+        raw.info['bads'].extend(bad_chs)
+        return raw
+
     def make_evoked(self, stimvar='stim', model='ref%side',
                     epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)],
                     decim=10, random=('subject',), redo=False):
@@ -917,10 +935,9 @@ class mne_experiment(object):
 
         # constants
         sub = self.get('subject')
-        proj = self.get('proj')
         model_name = self.get('model')
 
-        ds = self.load_events(proj=proj)
+        ds = self.load_events()
         edf = ds.info['edf']
         if model_name == '':
             model = None
