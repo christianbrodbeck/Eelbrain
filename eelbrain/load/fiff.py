@@ -204,12 +204,6 @@ def events(raw=None, merge= -1, proj=False, name=None,
     if len(events) == 0:
         raise ValueError("No events found!")
 
-    if any(events[:, 1] != 0):
-        raise NotImplementedError("Events starting with ID other than 0")
-        # this was the case in the raw-eve file, which contained all event
-        # offsets, but not in the raw file created by kit2fiff. For handling
-        # see :func:`fiff_event_file`
-
     if merge:
         index = np.ones(len(events), dtype=bool)
         diff = np.diff(events[:, 0])
