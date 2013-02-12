@@ -595,7 +595,7 @@ def setup_mri(subject, subjects_dir=None, ico=4, block=False, redo=False):
                '--subject', subject]
         _run(cmd)
 
-    # symlinks (MNE-manual 3.6, p. 24 / Gwyneth's Manual X)
+    # symlinks (MNE-manual 3.6, p. 24)
     for name in ['inner_skull', 'outer_skull', 'outer_skin']:
         src = os.path.join('watershed', '%s_%s_surface' % (subject, name))
         dest = os.path.join(bemdir, '%s.surf' % name)

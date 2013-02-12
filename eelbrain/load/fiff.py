@@ -70,13 +70,11 @@ def Raw(path=None, proj=False, **kwargs):
     """
     Returns a mne.fiff.Raw object with added projections if appropriate.
 
-    Arguments
-    ---------
-
+    Parameters
+    ----------
     path : None | str(path)
         path to the raw fiff file. If ``None``, a file can be chosen form a
         file dialog.
-
     proj : bool | str(path)
         Add projections from a separate file to the Raw object.
         **``False``**: No proj file will be added.
@@ -86,8 +84,7 @@ def Raw(path=None, proj=False, **kwargs):
         pattern, a ValueError will be raised.
         **``str``**: A custom path template can be provided, ``'{raw}'`` and
         ``'*'`` will be treated as with ``True``.
-
-    **kwargs**
+    kwargs
         Additional keyword arguments are forwarded to mne.fiff.Raw
         initialization.
 
@@ -101,8 +98,6 @@ def Raw(path=None, proj=False, **kwargs):
     if not os.path.isfile(path):
         raise IOError("%r is not a file" % path)
 
-    if 'verbose' not in kwargs:
-        kwargs['verbose'] = False
     raw = mne.fiff.Raw(path, **kwargs)
 
     if proj:
@@ -138,38 +133,46 @@ def events(raw=None, merge= -1, proj=False, name=None,
            stim_channel='STI 014',
            stim_channel_bl=0, verbose=False):
     """
-    Returns a dataset containing events from a raw fiff file. Use
-    :func:`fiff_epochs` to load MEG data corresponding to those events.
+    Read events from a raw fiff file.
 
+    Use :func:`fiff_epochs` to load MEG data corresponding to those events.
+
+    Parameters
+    ----------
     raw : str(path) | None | mne.fiff.Raw
         The raw fiff file from which to extract events (if ``None``, a file
         dialog will be displayed).
-
     merge : int
         use to merge events lying in neighboring samples. The integer value
         indicates over how many samples events should be merged, and the sign
         indicates in which direction they should be merged (negative means
         towards the earlier event, positive towards the later event).
-
     proj : bool | str
         Path to the projections file that will be loaded with the raw file.
         ``'{raw}'`` will be expanded to the raw file's path minus extension.
         With ``proj=True``, ``'{raw}_*proj.fif'`` will be used,
         looking for any projection file starting with the raw file's name.
         If multiple files match the pattern, a ValueError will be raised.
-
     name : str | None
         A name for the dataset. If ``None``, the raw filename will be used.
-
     stim_channel : str
         Name of the trigger channel.
-
     stim_channel_bl : int
         For corrupted event channels:
         After kit2fiff conversion of sqd files with unused trigger channels,
         the resulting fiff file's event channel can contain a baseline other
         than 0. This interferes with normal event extraction. If the baseline
         value is provided as parameter, the events can still be extracted.
+
+    Returns
+    -------
+    events : dataset
+        A dataset with the following variables:
+         - *i_start*: the index of the event in the raw file.
+         - *eventID*: the event value.
+        The dataset's info dictionary contains the following values:
+         - *raw*: the mne Raw object.
+         - *samplingrate*: the samplingrate of the raw file.
 
     """
     if raw is None or isinstance(raw, basestring):
