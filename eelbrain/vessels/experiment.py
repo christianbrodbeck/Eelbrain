@@ -70,6 +70,7 @@ from .. import plot
 from .. import save
 from .. import ui
 from ..utils import subp
+from ..utils.mne_utils import is_fake_mri
 from ..utils.print_funcs import printlist
 from ..utils.kit import split_label
 from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
@@ -1369,7 +1370,7 @@ class mne_experiment(object):
                 continue
             mri_sdir = self.get('mri_sdir')
             if os.path.exists(mri_sdir):
-                if plot.coreg.is_fake_mri(mri_sdir):
+                if is_fake_mri(mri_sdir):
                     rmd.append(mri_sdir)
                     sub.append(self.get('subject'))
                     trans = self.get('trans', match=False)
@@ -1560,7 +1561,7 @@ class mne_experiment(object):
             exp = self.get('experiment')
             mri_subject = self.get('mrisubject')
             if mri_subject == sub:
-                if plot.coreg.is_fake_mri(self.get('mri_sdir')):
+                if is_fake_mri(self.get('mri_sdir')):
                     mris[sub] = 'fake'
                 else:
                     mris[sub] = 'own'
