@@ -376,8 +376,8 @@ class mne_experiment(object):
              'elp': os.path.join('{raw_sdir}', '{subject}_HS.elp'),
              'hsp': os.path.join('{raw_sdir}', '{subject}_HS.hsp'),
              'raw': 'raw',
-             'raw-base': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
-             'raw-file': '{raw-base}_{raw}-raw.fif',
+             'raw-base': os.path.join('{raw_sdir}', '{subject}_{experiment}_{raw}'),
+             'raw-file': '{raw-base}-raw.fif',
              'raw-txt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
 
              'trans': os.path.join('{raw_sdir}', '{mrisubject}-trans.fif'),  # mne p. 196
@@ -387,10 +387,10 @@ class mne_experiment(object):
 
              # mne raw-derivatives analysis
              'proj': '',
-             'proj_file': '{raw}_{proj}-proj.fif',
-             'proj_plot': '{raw}_{proj}-proj.pdf',
-             'cov-file': '{raw}_{cov}-{proj}-cov.fif',
-             'fwd': '{raw}_{cov}-{proj}-fwd.fif',
+             'proj-file': '{raw-base}_{proj}-proj.fif',
+             'proj_plot': '{raw-base}_{proj}-proj.pdf',
+             'cov-file': '{raw-base}_{cov}-{proj}-cov.fif',
+             'fwd': '{raw-base}_{cov}-{proj}-fwd.fif',
 
              # fwd model
              'fid': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-fiducials.fif'),
