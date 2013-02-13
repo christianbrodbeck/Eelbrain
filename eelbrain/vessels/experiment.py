@@ -526,10 +526,11 @@ class mne_experiment(object):
 
     def expand_template(self, temp, values={}):
         """
-        Expands a template so far as subtemplates are neither in
-        self.var_values nor in the collection provided through the ``values``
-        kwarg
+        Expands a template until all its subtemplates are neither in
+        self.var_values nor in ``values``
 
+        Parameters
+        ----------
         values : container (implements __contains__)
             values which should not be expanded (in addition to
         """
@@ -537,11 +538,11 @@ class mne_experiment(object):
 
         while True:
             stop = True
-            for var in self._fmt_pattern.findall(temp):
-                if (var in values) or (var in self.var_values):
+            for name in self._fmt_pattern.findall(temp):
+                if (name in values) or (name in self.var_values):
                     pass
                 else:
-                    temp = temp.replace('{%s}' % var, self._state[var])
+                    temp = temp.replace('{%s}' % name, self._state[name])
                     stop = False
 
             if stop:
@@ -704,7 +705,6 @@ class mne_experiment(object):
         temp : str
             Name of a template in the mne_experiment.templates dictionary, or
             a path template with variables indicated as in ``'{var_name}'``
-
         """
         # if the name is an existing template, retrieve it
         temp = self.expand_template(temp, values=values)
@@ -1595,7 +1595,8 @@ class mne_experiment(object):
         fname = self.get(key, **kwargs)
         subprocess.call(["open", "-R", fname])
 
-    def split_label(self, src_label, new_name, redo=False, part0='post', part1='ant'):
+    def split_label(self, src_label, new_name, redo=False, part0='post',
+                    part1='ant'):
         """
         new_name : str
             name of the target label (``part0`` and ``part1`` are appended)
