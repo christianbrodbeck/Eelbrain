@@ -50,6 +50,7 @@ the interval form 0 to 500 ms used for rejection.
 from collections import defaultdict
 import cPickle as pickle
 import fnmatch
+from glob import iglob
 import itertools
 from operator import add
 import os
@@ -1321,27 +1322,47 @@ class mne_experiment(object):
                 elif missing == 'raise':
                     raise IOError("Missing: %r" % src)
 
-    def rename(self, old, new, constants={}, v=True, do=True):
+    def rename(self, old, new):
         """
+        Rename a files corresponding to a template.
+
         Parameters
         ----------
-        old, new : str
-            Template names (i.e., the corresponding template needs to be
-            present in e._state.
-        v : bool
-            Verbose mode
-        do : bool
-            Do actually perform the renaming (use ``v=True, do=False`` to
-            check the result without actually performing the operation)
-
+        old : str
+            Template for the files to be renamed.
+        new : str
+            Template for the new names.
         """
-        for old_name in self.iter_temp(old, constants=constants):
+        files = []
+        for old_name in self.iter_temp(old):
             if os.path.exists(old_name):
-                new_name = self.get(new)
-                if do:
-                    os.rename(old_name, new_name)
-                if v:
-                    print "%r\n  ->%r" % (old_name, new_name)
+                new_name = self.expand_template(new)
+                files.append((old_name, new_name))
+
+
+        if not files:
+            print "No files found for %r" % old
+            return
+
+        root = self.get('root')
+        n_skip = len(root)
+        table = fmtxt.Table('lll')
+        table.cells('Old', '', 'New')
+        table.midrule()
+        for old, new in files:
+            if old.startswith(root):
+                old = old[n_skip:]
+            if new.startswith(root):
+                new = new[n_skip:]
+            table.cells(old, '->', new)
+
+        print table
+        if raw_input("Delete (confirm with 'yes')? ") == 'yes':
+            for old, new in files:
+                dirname = os.path.dirname(new)
+                if not os.path.exists(dirname):
+                    os.makedirs(dirname)
+                os.rename(old, new)
 
     def reset(self, exclude=['subject', 'experiment']):
         """
@@ -1362,14 +1383,31 @@ class mne_experiment(object):
         self._state.update(state)
 
     def rm(self, temp, constants={}, values={}, exclude={}, **kwargs):
+        """
+        Remove all files corresponding to a template
+
+        Asks for confirmation before deleting anything. Uses glob, so
+        individual templates can be set to '*'.
+
+        Parameters
+        ----------
+        temp : str
+            The template.
+        """
         self.set(**kwargs)
         files = []
         for temp in self.iter_temp(temp, constants=constants, values=values,
                                    exclude=exclude):
-            if os.path.exists(temp):
-                files.append(temp)
+            files.extend(iglob(temp))
         if files:
-            printlist(files)
+            root = self.root
+            print "root: %s\n" % root
+            root_len = len(root)
+            for name in files:
+                if name.startswith(root):
+                    print name[root_len:]
+                else:
+                    print name
             if raw_input("Delete (confirm with 'yes')? ") == 'yes':
                 for path in files:
                     if os.path.isdir(path):
