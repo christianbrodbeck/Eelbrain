@@ -894,8 +894,9 @@ class mne_experiment(object):
         return raw
 
     def make_evoked(self, stimvar='stim', model='ref%side',
-                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)],
-                    decim=10, random=('subject',), redo=False):
+                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
+                                 tmax=0.6)],
+                    decim=5, random=('subject',), redo=False):
         """
         Creates datasets with evoked files for the current subject/experiment
         pair.
@@ -912,6 +913,9 @@ class mne_experiment(object):
         """
         epochs = self._process_epochs_arg(epochs)
         self.set(model=model)
+        dest_fname = self.get('evoked', mkdir=True)
+        if not redo and os.path.exists(dest_fname):
+            return
 
         stim_epochs = defaultdict(list)
         kwargs = {}
@@ -929,10 +933,6 @@ class mne_experiment(object):
                 if k in ep:
                     kw[k] = ep[k]
             kwargs[name] = kw
-
-        fname = self.get('evoked', mkdir=True)
-        if not redo and os.path.exists(fname):
-            return
 
         # constants
         sub = self.get('subject')
@@ -1037,7 +1037,7 @@ class mne_experiment(object):
         for name in e_names:
             ds_ev[name] = evokeds[name]
 
-        save.pickle(ds_ev, fname)
+        save.pickle(ds_ev, dest_fname)
 
     def make_fake_mris(self, subject=None, exclude=None, **kwargs):
         """
