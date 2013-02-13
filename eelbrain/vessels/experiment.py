@@ -550,13 +550,31 @@ class mne_experiment(object):
 
         return temp
 
+    def find_keys(self, temp):
+        """
+        Find all terminal keys that are relevant for a template.
+
+        Returns
+        -------
+        keys : set
+            All terminal keys that are relevant for foormatting temp.
+        """
+        keys = set()
+        temp = self._state.get(temp, temp)
+
+        for key in self._fmt_pattern.findall(temp):
+            value = self._state[key]
+            if self._fmt_pattern.findall(value):
+                keys = keys.union(self.find_keys(value))
+            else:
+                keys.add(key)
+
+        return keys
+
     def format(self, temp, vmatch=True, **kwargs):
         """
         Returns the template temp formatted with current values. Formatting
-        retrieves values from self._state and self.templates iteratively
-
-        TODO: finish
-
+        retrieves values from self._state iteratively
         """
         self.set(match=vmatch, **kwargs)
 
@@ -1640,16 +1658,32 @@ class mne_experiment(object):
         lbl0.save(tgt0)
         lbl1.save(tgt1)
 
-    def state(self):
+    def state(self, temp=None):
+        """
+        Examine the state of the experiment.
+
+        Parameters
+        ----------
+        temp : None | str
+            Only show variables relevant to this template.
+
+        Returns
+        -------
+        state : Table
+            Table of (relevant) variables and their values.
+        """
         table = fmtxt.Table('lll')
         table.cells('Key', '*', 'Value')
         table.caption('*: Value is modified from initialization state.')
         table.midrule()
-        for k in sorted(self._state):
-            v = self._state[k]
-            if '{' in v:
-                continue
 
+        if temp is None:
+            keys = (k for k in self._state if not '{' in self._state[k])
+        else:
+            keys = self.find_keys(temp)
+
+        for k in sorted(keys):
+            v = self._state[k]
             if v != self._initial_state[k]:
                 mod = '*'
             else:
