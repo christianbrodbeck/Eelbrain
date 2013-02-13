@@ -829,9 +829,18 @@ class mne_experiment(object):
         return ds
 
     def load_evoked(self, stimvar='stim', model='ref%side',
-                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)]):
+                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)],
+                    to_ndvar=False):
         """
         Load as dataset data created with :meth:`mne_experiment.make_evoked`.
+
+        Parameters
+        ----------
+        to_ndvar : bool | str
+            Convert the mne Evoked objects to an ndvar. If True, it is assumed
+            the relavent varibale is 'evoked'. If this is not the case, the
+            actual name can be supplied as a string instead. The target name
+            is always 'MEG'.
         """
         epochs = self._process_epochs_arg(epochs)
         self.set(model=model)
@@ -856,6 +865,12 @@ class mne_experiment(object):
                         idx = (lens == l)
                         err.append('%i: %r' % (l, subject[idx].cells))
                     raise DimensionMismatchError(os.linesep.join(err))
+
+        if to_ndvar:
+            if to_ndvar is True:
+                to_ndvar = 'evoked'
+            evoked = ds[to_ndvar]
+            ds['MEG'] = load.fiff.evoked_ndvar(evoked)
 
         return ds
 
