@@ -52,6 +52,27 @@ def ask_file(title="Pick File",
              ext=[('*', "all files")],
              directory='',
              mult=False):
+    """
+    Ask for an existing file.
+
+    Parameters
+    ----------
+    title, message : str
+        Title and message for the dialog.
+    ext : list
+        Allowed extensions.
+    directory : None | str
+        Path to initial directory.
+    mult : bool
+        Allow selecting multiple files.
+
+    Returns
+    -------
+    paths : False | str | list
+        If the user cancels: False. Otherwise, if mult=False a single path, and
+        if mult=True a list of paths.
+
+    """
     return get_ui().ask_file(title, message, ext, directory, mult)
 
 

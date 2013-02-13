@@ -38,34 +38,11 @@ from mne.fiff.constants import FIFF
 
 from eelbrain import load
 from eelbrain import ui
+from ..utils.mne_utils import is_fake_mri
 import _base
 
 __all__ = ['dev_head_viewer', 'dev_head_fitter', 'dev_mri', 'mri_head_viewer',
            'mri_head_fitter', 'set_nasion', 'is_fake_mri']
-
-
-
-def is_fake_mri(mri_dir):
-    """Check whether a directory is a fake MRI subject directory
-
-    Parameters
-    ----------
-    mri_dir : str(path)
-        Path to a directory.
-
-    Returns
-    -------
-    True is `mri_dir` is a fake MRI directory.
-
-    """
-    items = os.listdir(mri_dir)
-    nc = [c for c in ['bem', 'label', 'surf', 'MRI-scale-trans.fif'] if c not in items]
-    c = [c for c in ['mri', 'src', 'stats'] if c in items]
-    if c or nc:
-        return False
-    else:
-        return True
-
 
 
 def get_subjects_dir(subjects_dir):

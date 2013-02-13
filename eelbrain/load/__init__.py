@@ -7,12 +7,27 @@ brainvision:
 
 eyelink:
     Load eyelink ``.edf`` files to datasets. Requires eyelink api available from
-    SR Research 
+    SR Research
 
 fiff:
-    Load mne fiff files to datasets and as mne objects (requires mne-python)  
+    Load mne fiff files to datasets and as mne objects (requires mne-python)
 
 txt:
     Load datasets and vars from text files
 
 """
+
+import cPickle as pickle
+
+from .. import ui
+
+
+def unpickle(fname=None):
+    if fname is None:
+        ext = [('pickled', "Pickles"), ('*', "all files")]
+        fname = ui.ask_file("Select File to Unpickle", "Select a pickled file "
+                            "to unpickle", ext=ext)
+    if fname is False:
+        raise IOError("User canceled")
+
+    return pickle.load(open(fname))

@@ -50,6 +50,7 @@ the interval form 0 to 500 ms used for rejection.
 from collections import defaultdict
 import cPickle as pickle
 import fnmatch
+from glob import iglob
 import itertools
 from operator import add
 import os
@@ -70,6 +71,7 @@ from .. import plot
 from .. import save
 from .. import ui
 from ..utils import subp
+from ..utils.mne_utils import is_fake_mri
 from ..utils.print_funcs import printlist
 from ..utils.kit import split_label
 from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
@@ -190,12 +192,11 @@ class mne_experiment(object):
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
 
         # find experiment data structure
-        self.state = self.get_templates()
-        self.add_to_state(common_brain=self._common_brain)
+        self._state = self.get_templates()
+        self.set(root=root, add=True)
         self.var_values = {'hemi': ('lh', 'rh')}
         self.exclude = {}
 
-        self.add_to_state(root=root, labeldir='label', hemi='lh')
         self.parse_dirs(parse_subjects=parse_subjects, parse_mri=parse_mri,
                         subjects=subjects, mri_subjects=mri_subjects)
 
@@ -203,17 +204,19 @@ class mne_experiment(object):
         self._label_cache = LabelCache()
         for k, v in self.var_values.iteritems():
             if v:
-                self.state[k] = v[0]
+                self._state[k] = v[0]
 
         # set defaults for any existing templates
-        for k in self.state.keys():
-            temp = self.state[k]
+        for k in self._state.keys():
+            temp = self._state[k]
             for name in self._fmt_pattern.findall(temp):
-                if name not in self.state:
-                    self.state[name] = '<%s not set>' % name
+                if name not in self._state:
+                    self._state[name] = '<%s not set>' % name
+
+        self._initial_state = self._state.copy()
 
     def _process_epochs_arg(self, epochs):
-        "Fill in named epochs and set the 'epoch' template"
+        """Fill in named epochs and set the 'epoch' template"""
         epochs = list(epochs)
         e_descs = []  # full epoch descriptor
         for i in xrange(len(epochs)):
@@ -353,14 +356,7 @@ class mne_experiment(object):
             if morph:
                 ds[m_name] = load.fiff.stc_ndvar(mstcs[name], self._common_brain)
 
-    def add_to_state(self, **kv):
-        for k, v in kv.iteritems():
-            if k in self.state:
-                raise KeyError("%r already in state" % k)
-            self.state[k] = v
-
     def get_templates(self):
-        # rub: need to distinguish files from
         t = {
              # basic dir
              'meg_dir': os.path.join('{root}', 'meg'),  # contains subject-name folders for MEG data
@@ -376,8 +372,8 @@ class mne_experiment(object):
              'elp': os.path.join('{raw_sdir}', '{subject}_HS.elp'),
              'hsp': os.path.join('{raw_sdir}', '{subject}_HS.hsp'),
              'raw': 'raw',
-             'raw-base': os.path.join('{raw_sdir}', '{subject}_{experiment}'),
-             'raw-file': '{raw-base}_{raw}-raw.fif',
+             'raw-base': os.path.join('{raw_sdir}', '{subject}_{experiment}_{raw}'),
+             'raw-file': '{raw-base}-raw.fif',
              'raw-txt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
 
              'trans': os.path.join('{raw_sdir}', '{mrisubject}-trans.fif'),  # mne p. 196
@@ -387,23 +383,26 @@ class mne_experiment(object):
 
              # mne raw-derivatives analysis
              'proj': '',
-             'proj_file': '{raw}_{proj}-proj.fif',
-             'proj_plot': '{raw}_{proj}-proj.pdf',
-             'cov-file': '{raw}_{cov}-{proj}-cov.fif',
-             'fwd': '{raw}_{cov}-{proj}-fwd.fif',
+             'proj-file': '{raw-base}_{proj}-proj.fif',
+             'proj_plot': '{raw-base}_{proj}-proj.pdf',
+             'cov-file': '{raw-base}_{cov}-{proj}-cov.fif',
+             'fwd': '{raw-base}_{cov}-{proj}-fwd.fif',
 
              # fwd model
+             'common_brain': self._common_brain,
              'fid': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-fiducials.fif'),
              'bem': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-5120-bem-sol.fif'),
              'src': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-ico-4-src.fif'),
              'bem_head': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-head.fif'),
 
-             # mne's stc.save() requires stub filename and will add '-?h.stc'
-             'evoked_dir': os.path.join('{meg_sdir}', 'evoked_{experiment}_{model}'),
-             'evoked': os.path.join('{evoked_dir}', '{epoch}_{proj}-evoked.pickled'),
-             'stc_dir': os.path.join('{meg_sdir}', 'stc_{cov}-{proj}_{inv_name}'),
-             'stc': os.path.join('{stc_dir}', '{experiment}_{cell}_{epoch}'),
-             'stc_morphed': os.path.join('{stc_dir}', '{experiment}_{cell}_{common_brain}'),
+             # evoked
+             'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
+             'evoked': os.path.join('{evoked_dir}', '{raw}_{experiment}_{model}',
+                                    '{epoch}_{proj}_evoked.pickled'),
+
+             # Souce space
+             'labeldir': 'label',
+             'hemi': 'lh',
              'label_file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
              'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
 
@@ -527,22 +526,23 @@ class mne_experiment(object):
 
     def expand_template(self, temp, values={}):
         """
-        Expands a template so far as subtemplates are neither in
-        self.var_values nor in the collection provided through the ``values``
-        kwarg
+        Expands a template until all its subtemplates are neither in
+        self.var_values nor in ``values``
 
+        Parameters
+        ----------
         values : container (implements __contains__)
             values which should not be expanded (in addition to
         """
-        temp = self.state.get(temp, temp)
+        temp = self._state.get(temp, temp)
 
         while True:
             stop = True
-            for var in self._fmt_pattern.findall(temp):
-                if (var in values) or (var in self.var_values):
+            for name in self._fmt_pattern.findall(temp):
+                if (name in values) or (name in self.var_values):
                     pass
                 else:
-                    temp = temp.replace('{%s}' % var, self.state[var])
+                    temp = temp.replace('{%s}' % name, self._state[name])
                     stop = False
 
             if stop:
@@ -550,20 +550,38 @@ class mne_experiment(object):
 
         return temp
 
+    def find_keys(self, temp):
+        """
+        Find all terminal keys that are relevant for a template.
+
+        Returns
+        -------
+        keys : set
+            All terminal keys that are relevant for foormatting temp.
+        """
+        keys = set()
+        temp = self._state.get(temp, temp)
+
+        for key in self._fmt_pattern.findall(temp):
+            value = self._state[key]
+            if self._fmt_pattern.findall(value):
+                keys = keys.union(self.find_keys(value))
+            else:
+                keys.add(key)
+
+        return keys
+
     def format(self, temp, vmatch=True, **kwargs):
         """
         Returns the template temp formatted with current values. Formatting
-        retrieves values from self.state and self.templates iteratively
-
-        TODO: finish
-
+        retrieves values from self._state iteratively
         """
         self.set(match=vmatch, **kwargs)
 
         while True:
             variables = self._fmt_pattern.findall(temp)
             if variables:
-                temp = temp.format(**self.state)
+                temp = temp.format(**self._state)
             else:
                 break
 
@@ -626,7 +644,7 @@ class mne_experiment(object):
                     a = ui.ask("Launch mne_analyze for Coordinate-Coregistration?",
                                "The 'trans' file for %r, %r does not exist. Should "
                                "mne_analyzed be launched to create it?" %
-                               (self.state['subject'], self.state['experiment']),
+                               (self._state['subject'], self._state['experiment']),
                                cancel=False, default=True)
                 else:
                     a = bool(self.auto_launch_mne)
@@ -655,7 +673,7 @@ class mne_experiment(object):
                         raise IOError(err)
                 else:
                     err = ("No trans file for %r, %r" %
-                           (self.state['subject'], self.state['experiment']))
+                           (self._state['subject'], self._state['experiment']))
                     raise IOError(err)
 
         return path
@@ -705,7 +723,6 @@ class mne_experiment(object):
         temp : str
             Name of a template in the mne_experiment.templates dictionary, or
             a path template with variables indicated as in ``'{var_name}'``
-
         """
         # if the name is an existing template, retrieve it
         temp = self.expand_template(temp, values=values)
@@ -734,7 +751,7 @@ class mne_experiment(object):
             Show a progress dialog; str for dialog title.
 
         """
-        state_ = self.state.copy()
+        state_ = self._state.copy()
 
         # set constants
         self.set(**constants)
@@ -773,13 +790,13 @@ class mne_experiment(object):
                 if prog:
                     progm.message(' | '.join(map(str, v_list)))
                 self.set(**values)
-                yield self.state
+                yield self._state
                 if prog:
                     progm.advance()
         else:
-            yield self.state
+            yield self._state
 
-        self.state.update(state_)
+        self._state.update(state_)
 
     def label_events(self, ds, experiment, subject):
         ds['T'] = ds.eval('i_start / 1000')
@@ -791,7 +808,7 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_events(self, subject=None, experiment=None, proj=True, edf=True):
+    def load_events(self, subject=None, experiment=None, add_proj=True, edf=True):
         """
         Load events from a raw file.
 
@@ -802,33 +819,22 @@ class mne_experiment(object):
         ----------
         subject, experiment, raw : None | str
             Call self.set(...).
-        proj : bool
+        add_proj : bool
             Add the projections to the Raw object. This does *not* set the
             proj variable.
         edf : bool
             Loads edf and add it to the info dict.
 
         """
-        self.set(subject=subject, experiment=experiment)
-        raw_file = self.get('raw-file')
-        if proj:
-            proj = self.get('proj')
-            if proj:
-                proj = self.get('proj_file')
-            else:
-                proj = None
-        else:
-            proj = None
-        ds = load.fiff.events(raw_file, proj=proj)
+        raw = self.load_raw(add_proj=add_proj, subject=subject,
+                            experiment=experiment)
 
-        raw = ds.info['raw']
-        bad_chs = self.bad_channels[(self.state['subject'], self.state['experiment'])]
-        raw.info['bads'].extend(bad_chs)
+        ds = load.fiff.events(raw)
 
         if subject is None:
-            subject = self.state['subject']
+            subject = self._state['subject']
         if experiment is None:
-            experiment = self.state['experiment']
+            experiment = self._state['experiment']
 
         self.label_events(ds, experiment, subject)
 
@@ -841,9 +847,18 @@ class mne_experiment(object):
         return ds
 
     def load_evoked(self, stimvar='stim', model='ref%side',
-                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)]):
+                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)],
+                    to_ndvar=False):
         """
         Load as dataset data created with :meth:`mne_experiment.make_evoked`.
+
+        Parameters
+        ----------
+        to_ndvar : bool | str
+            Convert the mne Evoked objects to an ndvar. If True, it is assumed
+            the relavent varibale is 'evoked'. If this is not the case, the
+            actual name can be supplied as a string instead. The target name
+            is always 'MEG'.
         """
         epochs = self._process_epochs_arg(epochs)
         self.set(model=model)
@@ -869,6 +884,12 @@ class mne_experiment(object):
                         err.append('%i: %r' % (l, subject[idx].cells))
                     raise DimensionMismatchError(os.linesep.join(err))
 
+        if to_ndvar:
+            if to_ndvar is True:
+                to_ndvar = 'evoked'
+            evoked = ds[to_ndvar]
+            ds['MEG'] = load.fiff.evoked_ndvar(evoked)
+
         return ds
 
     def load_label(self, **kwargs):
@@ -876,9 +897,39 @@ class mne_experiment(object):
         fname = self.get('label_file')
         return self._label_cache[fname]
 
+    def load_raw(self, add_proj=True, preload=False, **kwargs):
+        """
+        Load a raw file as mne Raw object.
+
+        Parameters
+        ----------
+        add_proj : bool
+            Add the projections to the Raw object. This does *not* set the
+            proj variable.
+        preload : bool
+            Mne Raw parameter.
+        """
+        self.set(**kwargs)
+
+        if add_proj:
+            proj = self.get('proj')
+            if proj:
+                proj = self.get('proj-file')
+            else:
+                proj = None
+        else:
+            proj = None
+
+        raw_file = self.get('raw-file')
+        raw = load.fiff.Raw(raw_file, proj, preload=preload)
+        bad_chs = self.bad_channels[(self.get('subject'), self.get('experiment'))]
+        raw.info['bads'].extend(bad_chs)
+        return raw
+
     def make_evoked(self, stimvar='stim', model='ref%side',
-                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)],
-                    decim=10, random=('subject',), redo=False):
+                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
+                                 tmax=0.6)],
+                    decim=5, random=('subject',), redo=False):
         """
         Creates datasets with evoked files for the current subject/experiment
         pair.
@@ -895,6 +946,9 @@ class mne_experiment(object):
         """
         epochs = self._process_epochs_arg(epochs)
         self.set(model=model)
+        dest_fname = self.get('evoked', mkdir=True)
+        if not redo and os.path.exists(dest_fname):
+            return
 
         stim_epochs = defaultdict(list)
         kwargs = {}
@@ -913,16 +967,11 @@ class mne_experiment(object):
                     kw[k] = ep[k]
             kwargs[name] = kw
 
-        fname = self.get('evoked', mkdir=True)
-        if not redo and os.path.exists(fname):
-            return
-
         # constants
         sub = self.get('subject')
-        proj = self.get('proj')
         model_name = self.get('model')
 
-        ds = self.load_events(proj=proj)
+        ds = self.load_events()
         edf = ds.info['edf']
         if model_name == '':
             model = None
@@ -1021,39 +1070,25 @@ class mne_experiment(object):
         for name in e_names:
             ds_ev[name] = evokeds[name]
 
-        save.pickle(ds_ev, fname)
+        save.pickle(ds_ev, dest_fname)
 
-    def make_fake_mris(self, subject=None, exclude=None, **kwargs):
+    def make_filter(self, dest, hp=None, lp=40, n_jobs=3, src='raw',
+                    apply_proj=False, redo=False):
         """
-        ..warning::
-            This is a quick-and-dirty method. Coregistration should be
-            supervised using plot.coreg.mri_head_viewer.
-
+        dest, src : str
+            `raw` names for target and source raw file.
+        hp, lp : None | int
+            High-pass and low-pass parameters.
         """
-        self.set(**kwargs)
-        self.set_env()
-        kwargs = {}
-        if subject:
-            if isinstance(subject, str):
-                subject = [subject]
-            kwargs['values'] = {'subject': subject}
-        if exclude:
-            if isinstance(exclude, str):
-                exclude = [exclude]
-            kwargs['exclude'] = {'subjects': exclude}
+        dest_file = self.get('raw-file', raw=dest)
+        if (not redo) and os.path.exists(dest_file):
+            return
 
-        for _ in self.iter_vars(['subject'], **kwargs):
-            s_to = self.get('subject')
-            mri_sdir = self.get('mri_sdir', mrisubject=s_to, match=False)
-            if os.path.exists(mri_sdir):
-                continue
-
-            s_from = self.get('common_brain')
-            raw = self.get('raw-file')
-            p = plot.coreg.mri_head_fitter(s_from, raw, s_to)
-            p.fit()
-            p.save()
-            self.set_mri_subject(s_to, s_to)
+        raw = self.load_raw(add_proj=apply_proj, preload=True, raw=src)
+        if apply_proj:
+            raw.apply_projector()
+        raw.filter(hp, lp, n_jobs=n_jobs)
+        raw.save(dest_file)
 
     def make_fwd_cmd(self, redo=False):
         """
@@ -1110,34 +1145,56 @@ class mne_experiment(object):
             components
         save_plot : False | str(path)
             target path to save the plot
-
         """
-        proj = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
+        projs = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
+        self.ui_select_projs(projs, epochs, save=save, save_plot=save_plot)
 
-        picks = mne.epochs.pick_types(epochs.info)
-        sensor = load.fiff.sensor_net(epochs, picks=picks)
+    def ui_select_projs(self, projs, fif_obj, save=True, save_plot=True):
+        """
+        Plots proj, and asks the user which ones to save.
+
+        Parameters
+        ----------
+        proj : list
+            The projections.
+        fif_obj : mne fiff object
+            Provides info dictionary for extracting sensor locations.
+        save : False | True | tuple
+            False: don'r save proj fil; True: manuall pick componentws to
+            include in the proj file; tuple: automatically include these
+            components
+        save_plot : False | str(path)
+            target path to save the plot
+        """
+        picks = mne.epochs.pick_types(fif_obj.info, exclude='bads')
+        sensor = load.fiff.sensor_net(fif_obj, picks=picks)
 
         # plot PCA components
         PCA = []
-        for p in proj:
+        for p in projs:
             d = p['data']['data'][0]
             name = p['desc'][-5:]
             v = ndvar(d, (sensor,), name=name)
             PCA.append(v)
 
-        p = plot.topo.topomap(PCA, size=1, title=str(epochs.name))
+        proj_file = self.get('proj-file')
+        p = plot.topo.topomap(PCA, size=1, title=proj_file)
         if save_plot:
             dest = self.get('proj_plot')
             p.figure.savefig(dest)
         if save:
             rm = save
+            title = "Select Projections"
+            msg = ("which Projections do you want to select? (tuple / 'x' to "
+                   "abort)")
             while not isinstance(rm, tuple):
-                rm = input("which components to remove? (tuple / 'x'): ")
+                answer = ui.ask_str(msg, title, default='(0,)')
+                rm = eval(answer)
                 if rm == 'x': raise
+
             p.close()
-            proj = [proj[i] for i in rm]
-            dest = self.get('proj_file')
-            mne.write_proj(dest, proj)
+            projs = [projs[i] for i in rm]
+            mne.write_proj(proj_file, projs)
 
     def makeplt_coreg(self, redo=False, **kwargs):
         """
@@ -1228,10 +1285,10 @@ class mne_experiment(object):
 
     def print_tree(self):
         tree = {'.': 'root'}
-        for k, v in self.state.iteritems():
+        for k, v in self._state.iteritems():
             if str(v).startswith('{root}'):
                 tree[k] = {'.': v.replace('{root}', '')}
-        _etree_expand(tree, self.state)
+        _etree_expand(tree, self._state)
         nodes = _etree_node_repr(tree, 'root')
         name_len = max(len(n) for n, _ in nodes)
         path_len = max(len(p) for _, p in nodes)
@@ -1306,40 +1363,92 @@ class mne_experiment(object):
                 elif missing == 'raise':
                     raise IOError("Missing: %r" % src)
 
-    def rename(self, old, new, constants={}, v=True, do=True):
+    def rename(self, old, new):
         """
+        Rename a files corresponding to a template.
+
         Parameters
         ----------
-
-        old, new : str
-            Template names (i.e., the corresponding template needs to be
-            present in e.state.
-
-        v : bool
-            Verbose mode
-
-        do : bool
-            Do actually perform the renaming (use ``v=True, do=False`` to
-            check the result without actually performing the operation)
-
+        old : str
+            Template for the files to be renamed.
+        new : str
+            Template for the new names.
         """
-        for old_name in self.iter_temp(old, constants=constants):
+        files = []
+        for old_name in self.iter_temp(old):
             if os.path.exists(old_name):
-                new_name = self.get(new)
-                if do:
-                    os.rename(old_name, new_name)
-                if v:
-                    print "%r\n  ->%r" % (old_name, new_name)
+                new_name = self.expand_template(new)
+                files.append((old_name, new_name))
+
+
+        if not files:
+            print "No files found for %r" % old
+            return
+
+        root = self.get('root')
+        n_skip = len(root)
+        table = fmtxt.Table('lll')
+        table.cells('Old', '', 'New')
+        table.midrule()
+        for old, new in files:
+            if old.startswith(root):
+                old = old[n_skip:]
+            if new.startswith(root):
+                new = new[n_skip:]
+            table.cells(old, '->', new)
+
+        print table
+        if raw_input("Delete (confirm with 'yes')? ") == 'yes':
+            for old, new in files:
+                dirname = os.path.dirname(new)
+                if not os.path.exists(dirname):
+                    os.makedirs(dirname)
+                os.rename(old, new)
+
+    def reset(self, exclude=['subject', 'experiment']):
+        """
+        Reset the experiment to the state at the end of __init__.
+
+        Note that variables which were added to the experiment after __init__
+        are not affected.
+
+        Parameters
+        ----------
+        exclude : list
+            Exclude these variables from the reset (i.e., retain their current
+            value)
+        """
+        state = self._initial_state.copy()
+        for key in exclude:
+            del state[key]
+        self._state.update(state)
 
     def rm(self, temp, constants={}, values={}, exclude={}, **kwargs):
+        """
+        Remove all files corresponding to a template
+
+        Asks for confirmation before deleting anything. Uses glob, so
+        individual templates can be set to '*'.
+
+        Parameters
+        ----------
+        temp : str
+            The template.
+        """
         self.set(**kwargs)
         files = []
         for temp in self.iter_temp(temp, constants=constants, values=values,
                                    exclude=exclude):
-            if os.path.exists(temp):
-                files.append(temp)
+            files.extend(iglob(temp))
         if files:
-            printlist(files)
+            root = self.root
+            print "root: %s\n" % root
+            root_len = len(root)
+            for name in files:
+                if name.startswith(root):
+                    print name[root_len:]
+                else:
+                    print name
             if raw_input("Delete (confirm with 'yes')? ") == 'yes':
                 for path in files:
                     if os.path.isdir(path):
@@ -1369,7 +1478,7 @@ class mne_experiment(object):
                 continue
             mri_sdir = self.get('mri_sdir')
             if os.path.exists(mri_sdir):
-                if plot.coreg.is_fake_mri(mri_sdir):
+                if is_fake_mri(mri_sdir):
                     rmd.append(mri_sdir)
                     sub.append(self.get('subject'))
                     trans = self.get('trans', match=False)
@@ -1389,7 +1498,7 @@ class mne_experiment(object):
 
     def run_mne_analyze(self, subject=None, modal=False):
         mri_dir = self.get('mri_dir')
-        if (subject is None) and (self.state['subject'] is None):
+        if (subject is None) and (self._state['subject'] is None):
             fif_dir = self.get('meg_dir')
             mri_subject = None
         else:
@@ -1400,7 +1509,7 @@ class mne_experiment(object):
                              modal=modal)
 
     def run_mne_browse_raw(self, subject=None, modal=False):
-        if (subject is None) and (self.state['subject'] is None):
+        if (subject is None) and (self._state['subject'] is None):
             fif_dir = self.get('meg_dir')
         else:
             fif_dir = self.get('raw_sdir', subject=subject)
@@ -1468,21 +1577,22 @@ class mne_experiment(object):
             kwargs['mrisubject'] = self._mri_subjects.get(subject, 'NO_MRI_SUBJECT')
 
         # test var_value
-        for k, v in kwargs.iteritems():
-            if match and (k in self.var_values) and not ('*' in v):
-                if v not in self.var_values[k]:
+        if match:
+            for k, v in kwargs.iteritems():
+                if (v not in self.var_values.get(k, [])) and not ('*' in v):
                     raise ValueError("Variable %r has not value %r" % (k, v))
 
         # set state
         for k, v in kwargs.iteritems():
-            if add or k in self.state:
+            if add or k in self._state:
                 if v is not None:
-                    self.state[k] = v
+                    self._state[k] = v
             else:
                 raise KeyError("No variable named %r" % k)
 
     _cell_order = ()
     _cell_fullname = True  # whether or not to include factor name in cell
+
     def set_cell(self, cell):
         """
         cell : dict
@@ -1526,7 +1636,8 @@ class mne_experiment(object):
         fname = self.get(key, **kwargs)
         subprocess.call(["open", "-R", fname])
 
-    def split_label(self, src_label, new_name, redo=False, part0='post', part1='ant'):
+    def split_label(self, src_label, new_name, redo=False, part0='post',
+                    part1='ant'):
         """
         new_name : str
             name of the target label (``part0`` and ``part1`` are appended)
@@ -1547,7 +1658,43 @@ class mne_experiment(object):
         lbl0.save(tgt0)
         lbl1.save(tgt1)
 
-    def summary(self, templates=['raw-file'], missing='-', link='>', count=True):
+    def state(self, temp=None):
+        """
+        Examine the state of the experiment.
+
+        Parameters
+        ----------
+        temp : None | str
+            Only show variables relevant to this template.
+
+        Returns
+        -------
+        state : Table
+            Table of (relevant) variables and their values.
+        """
+        table = fmtxt.Table('lll')
+        table.cells('Key', '*', 'Value')
+        table.caption('*: Value is modified from initialization state.')
+        table.midrule()
+
+        if temp is None:
+            keys = (k for k in self._state if not '{' in self._state[k])
+        else:
+            keys = self.find_keys(temp)
+
+        for k in sorted(keys):
+            v = self._state[k]
+            if v != self._initial_state[k]:
+                mod = '*'
+            else:
+                mod = ''
+
+            table.cells(k, mod, repr(v))
+
+        return table
+
+    def summary(self, templates=['raw-file'], missing='-', link='>',
+                count=True):
         if not isinstance(templates, (list, tuple)):
             templates = [templates]
 
@@ -1560,7 +1707,7 @@ class mne_experiment(object):
             exp = self.get('experiment')
             mri_subject = self.get('mrisubject')
             if mri_subject == sub:
-                if plot.coreg.is_fake_mri(self.get('mri_sdir')):
+                if is_fake_mri(self.get('mri_sdir')):
                     mris[sub] = 'fake'
                 else:
                     mris[sub] = 'own'
