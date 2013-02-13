@@ -1039,37 +1039,23 @@ class mne_experiment(object):
 
         save.pickle(ds_ev, dest_fname)
 
-    def make_fake_mris(self, subject=None, exclude=None, **kwargs):
+    def make_filter(self, dest, hp=None, lp=40, n_jobs=3, src='raw',
+                    apply_proj=False, redo=False):
         """
-        ..warning::
-            This is a quick-and-dirty method. Coregistration should be
-            supervised using plot.coreg.mri_head_viewer.
-
+        dest, src : str
+            `raw` names for target and source raw file.
+        hp, lp : None | int
+            High-pass and low-pass parameters.
         """
-        self.set(**kwargs)
-        self.set_env()
-        kwargs = {}
-        if subject:
-            if isinstance(subject, str):
-                subject = [subject]
-            kwargs['values'] = {'subject': subject}
-        if exclude:
-            if isinstance(exclude, str):
-                exclude = [exclude]
-            kwargs['exclude'] = {'subjects': exclude}
+        dest_file = self.get('raw-file', raw=dest)
+        if (not redo) and os.path.exists(dest_file):
+            return
 
-        for _ in self.iter_vars(['subject'], **kwargs):
-            s_to = self.get('subject')
-            mri_sdir = self.get('mri_sdir', mrisubject=s_to, match=False)
-            if os.path.exists(mri_sdir):
-                continue
-
-            s_from = self.get('common_brain')
-            raw = self.get('raw-file')
-            p = plot.coreg.mri_head_fitter(s_from, raw, s_to)
-            p.fit()
-            p.save()
-            self.set_mri_subject(s_to, s_to)
+        raw = self.load_raw(add_proj=apply_proj, preload=True, raw=src)
+        if apply_proj:
+            raw.apply_projector()
+        raw.filter(hp, lp, n_jobs=n_jobs)
+        raw.save(dest_file)
 
     def make_fwd_cmd(self, redo=False):
         """
@@ -1126,34 +1112,56 @@ class mne_experiment(object):
             components
         save_plot : False | str(path)
             target path to save the plot
-
         """
-        proj = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
+        projs = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
+        self.ui_select_projs(projs, epochs, save=save, save_plot=save_plot)
 
-        picks = mne.epochs.pick_types(epochs.info)
-        sensor = load.fiff.sensor_net(epochs, picks=picks)
+    def ui_select_projs(self, projs, fif_obj, save=True, save_plot=True):
+        """
+        Plots proj, and asks the user which ones to save.
+
+        Parameters
+        ----------
+        proj : list
+            The projections.
+        fif_obj : mne fiff object
+            Provides info dictionary for extracting sensor locations.
+        save : False | True | tuple
+            False: don'r save proj fil; True: manuall pick componentws to
+            include in the proj file; tuple: automatically include these
+            components
+        save_plot : False | str(path)
+            target path to save the plot
+        """
+        picks = mne.epochs.pick_types(fif_obj.info, exclude='bads')
+        sensor = load.fiff.sensor_net(fif_obj, picks=picks)
 
         # plot PCA components
         PCA = []
-        for p in proj:
+        for p in projs:
             d = p['data']['data'][0]
             name = p['desc'][-5:]
             v = ndvar(d, (sensor,), name=name)
             PCA.append(v)
 
-        p = plot.topo.topomap(PCA, size=1, title=str(epochs.name))
+        proj_file = self.get('proj-file')
+        p = plot.topo.topomap(PCA, size=1, title=proj_file)
         if save_plot:
             dest = self.get('proj_plot')
             p.figure.savefig(dest)
         if save:
             rm = save
+            title = "Select Projections"
+            msg = ("which Projections do you want to select? (tuple / 'x' to "
+                   "abort)")
             while not isinstance(rm, tuple):
-                rm = input("which components to remove? (tuple / 'x'): ")
+                answer = ui.ask_str(msg, title, default='(0,)')
+                rm = eval(answer)
                 if rm == 'x': raise
+
             p.close()
-            proj = [proj[i] for i in rm]
-            dest = self.get('proj_file')
-            mne.write_proj(dest, proj)
+            projs = [projs[i] for i in rm]
+            mne.write_proj(proj_file, projs)
 
     def makeplt_coreg(self, redo=False, **kwargs):
         """
