@@ -395,12 +395,12 @@ class mne_experiment(object):
              'src': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-ico-4-src.fif'),
              'bem_head': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-head.fif'),
 
-             # mne's stc.save() requires stub filename and will add '-?h.stc'
-             'evoked_dir': os.path.join('{meg_sdir}', 'evoked_{experiment}_{model}'),
-             'evoked': os.path.join('{evoked_dir}', '{epoch}_{proj}-evoked.pickled'),
-             'stc_dir': os.path.join('{meg_sdir}', 'stc_{cov}-{proj}_{inv_name}'),
-             'stc': os.path.join('{stc_dir}', '{experiment}_{cell}_{epoch}'),
-             'stc_morphed': os.path.join('{stc_dir}', '{experiment}_{cell}_{common_brain}'),
+             # evoked
+             'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
+             'evoked': os.path.join('{evoked_dir}', '{raw}_{experiment}_{model}',
+                                    '{epoch}_{proj}_evoked.pickled'),
+
+             # Souce space
              'labeldir': 'label',
              'hemi': 'lh',
              'label_file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
