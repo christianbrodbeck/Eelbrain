@@ -50,7 +50,7 @@ the interval form 0 to 500 ms used for rejection.
 from collections import defaultdict
 import cPickle as pickle
 import fnmatch
-from glob import iglob
+from glob import glob, iglob
 import itertools
 from operator import add
 import os
@@ -590,29 +590,32 @@ class mne_experiment(object):
 
     def get(self, temp, fmatch=True, vmatch=True, match=True, mkdir=False, **kwargs):
         """
-        Retrieve a formatted path by template name.
+        Retrieve a formatted template
+
         With match=True, '*' are expanded to match a file,
         and if there is not a unique match, an error is raised. With
         mkdir=True, the directory containing the file is created if it does not
         exist.
 
-        name : str
-            name (code) of the requested file
-        subject : None | str
-            (MEG) subject for which to retrieve the path (if None, the current
-            subject is used)
-        experiment : None | str
-            experiment for which to retrieve the path (if None, the current
-            experiment is used)
-        analysis : str
-            ... (currently unused)
+        Parameters
+        ----------
+        temp : str
+            Name of the requested template.
+        fmatch : bool
+            "File-match":
+            If the template contains asterisk ('*'), use glob to fill it in.
+            An IOError is raised if the pattern fits 0 or >1 files.
+        vmatch : bool
+            "Value match":
+            Require existence of the assigned value (only applies for variables
+            in self.var_values)
         match : bool
-            require that the file exists. If the path cotains '*', the path is
-            extended to the actual file. If not file is found, an IOError is
-            raised.
+            Do any matching (i.e., match=False sets fmatch as well as vmatch
+            to False).
         mkdir : bool
-            if the directory containing the file does not exist, create it
-
+            If the directory containing the file does not exist, create it.
+        kwargs :
+            Set any state values.
         """
         if not match:
             fmatch = vmatch = False
@@ -620,22 +623,21 @@ class mne_experiment(object):
         path = self.format('{%s}' % temp, vmatch=vmatch, **kwargs)
 
         # assert the presence of the file
-        directory, fname = os.path.split(path)
-        if fmatch and ('*' in fname):
-            if not os.path.exists(directory):
-                err = ("Directory does not exist: %r" % directory)
-                raise IOError(err)
-
-            match = fnmatch.filter(os.listdir(directory), fname)
-            if len(match) == 1:
-                path = os.path.join(directory, match[0])
-            elif len(match) > 1:
-                err = "More than one files match %r: %r" % (path, match)
+        if fmatch and ('*' in path):
+            paths = glob(path)
+            if len(paths) == 1:
+                path = paths[0]
+            elif len(paths) > 1:
+                err = "More than one files match %r: %r" % (path, paths)
                 raise IOError(err)
             else:
                 raise IOError("No file found for %r" % path)
-        elif mkdir and not os.path.exists(directory):
-            os.makedirs(directory)
+
+        # create the directory
+        if mkdir:
+            dirname = os.path.dirname(path)
+            if not os.path.exists(dirname):
+                os.makedirs(dirname)
 
         # special cases that can create the file in question
         if match and temp == 'trans':
@@ -799,12 +801,16 @@ class mne_experiment(object):
         self._state.update(state_)
 
     def label_events(self, ds, experiment, subject):
-        ds['T'] = ds.eval('i_start / 1000')
+        raw = ds.info['raw']
+        sfreq = raw.info['sfreq']
+        ds['T'] = ds['i_start'] / sfreq
         ds['SOA'] = var(np.ediff1d(ds['T'].x, 0))
         return ds
 
-    def load_edf(self, subject=None, experiment=None):
-        src = self.get('edf', subject=subject, experiment=experiment)
+    def load_edf(self, **kwargs):
+        """Load the edf file ("edf" template)"""
+        kwargs['fmatch'] = False
+        src = self.get('edf', **kwargs)
         edf = load.eyelink.Edf(src)
         return edf
 
@@ -925,6 +931,84 @@ class mne_experiment(object):
         bad_chs = self.bad_channels[(self.get('subject'), self.get('experiment'))]
         raw.info['bads'].extend(bad_chs)
         return raw
+
+    def load_sensor_data(self, stimvar='stim',
+                         epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
+                                      tmax=0.6)],
+                         decim=5, random=('subject',), all_subjects=False):
+        """
+        Load sensor data in the form of an Epochs object contained in a dataset
+        """
+        if all_subjects:
+            ds = combine(self.load_sensor_data(stimvar=stimvar, model=model,
+                                               epochs=epochs, decim=decim,
+                                               random=random)
+                         for _ in self.iter_vars())
+            return ds
+
+        epochs = self._process_epochs_arg(epochs)
+
+        stim_epochs = defaultdict(list)
+        # {stim -> }
+        kwargs = {}
+        e_names = []  # all target epoch names
+        for ep in epochs:
+            name = ep['name']
+            stim = ep['stim']
+
+            e_names.append(name)
+            stim_epochs[stim].append(name)
+
+            kw = dict(reject={'mag': 3e-12}, baseline=None, decim=decim,
+                      preload=True)
+            for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax'):
+                if k in ep:
+                    kw[k] = ep[k]
+            kwargs[name] = kw
+
+        # constants
+        sub = self.get('subject')
+
+        ds = self.load_events()
+        edf = ds.info['edf']
+
+        dss = {}  # {tgt_epochs -> dataset}
+        for stim, names in stim_epochs.iteritems():
+            eds = ds.subset(ds[stimvar] == stim)
+            eds.index()
+            for name in names:
+                dss[name] = eds
+
+        for name in e_names:
+            ds = dss[name]
+            kw = kwargs[name]
+            tstart = kw.get('reject_tmin', kw['tmin'])
+            tstop = kw.get('reject_tmax', kw['tmax'])
+            ds = edf.filter(ds, tstart=tstart, tstop=tstop, use=['EBLINK'])
+            dss[name] = ds
+
+        idx = reduce(np.intersect1d, (ds['index'].x for ds in dss.values()))
+
+        for name in e_names:
+            ds = dss[name]
+            ds = align1(ds, idx)
+            ds = load.fiff.add_mne_epochs(ds, **kw)
+            ds.index()
+            dss[name] = ds
+
+        idx = reduce(np.intersect1d, (ds['index'].x for ds in dss.values()))
+
+        for name in e_names:
+            ds = dss[name]
+            ds = align1(ds, idx)
+            dss[name] = ds
+
+        ds = dss.pop(e_names.pop(0))
+        for name in e_names:
+            eds = dss[name]
+            ds[name] = eds[name]
+
+        return ds
 
     def make_evoked(self, stimvar='stim', model='ref%side',
                     epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
