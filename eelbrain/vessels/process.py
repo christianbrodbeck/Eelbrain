@@ -5,7 +5,11 @@ Created on Feb 24, 2012
 '''
 
 import numpy as _np
-import mdp as _mdp
+
+try:
+    import mdp as _mdp
+except:
+    pass
 
 import data as _data
 
