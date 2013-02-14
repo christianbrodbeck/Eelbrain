@@ -536,9 +536,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.global_namespace['attach'] = self.attach
         self.global_namespace['detach'] = self.detach
         self.global_namespace['help'] = self.help_lookup
-        self.global_namespace['curdir'] = self.curdir
-        if os.path.exists(dataDir):
-            self.curdir(dataDir)
+        self.global_namespace['cd'] = self.curdir
+        self.curdir(os.path.expanduser('~'))
 
 
         # other Bindings
