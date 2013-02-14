@@ -72,7 +72,6 @@ from .. import save
 from .. import ui
 from ..utils import subp
 from ..utils.mne_utils import is_fake_mri
-from ..utils.print_funcs import printlist
 from ..utils.kit import split_label
 from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
                    DimensionMismatchError)
@@ -217,7 +216,7 @@ class mne_experiment(object):
 
     def _process_epochs_arg(self, epochs):
         """Fill in named epochs and set the 'epoch' template"""
-        epochs = list(epochs)
+        epochs = list(epochs)  # make sure we don't modify the input object
         e_descs = []  # full epoch descriptor
         for i in xrange(len(epochs)):
             ep = epochs[i]
@@ -722,6 +721,8 @@ class mne_experiment(object):
         """
         Iterate through all paths conforming to a template given in ``temp``.
 
+        Parameters
+        ----------
         temp : str
             Name of a template in the mne_experiment.templates dictionary, or
             a path template with variables indicated as in ``'{var_name}'``
@@ -740,6 +741,10 @@ class mne_experiment(object):
     def iter_vars(self, variables=['subject'], constants={}, values={},
                   exclude={}, prog=False):
         """
+        Cycle the experiment's state through all values on the given variables
+
+        Parameters
+        ----------
         variables : list | str
             Variable(s) over which should be iterated.
         constants : dict(name -> value)
@@ -751,7 +756,6 @@ class mne_experiment(object):
             Values to exclude from the iteration.
         prog : bool | str
             Show a progress dialog; str for dialog title.
-
         """
         state_ = self._state.copy()
 
@@ -1159,10 +1163,16 @@ class mne_experiment(object):
     def make_filter(self, dest, hp=None, lp=40, n_jobs=3, src='raw',
                     apply_proj=False, redo=False):
         """
+        Make a filtered raw file
+
+        Parameters
+        ----------
         dest, src : str
             `raw` names for target and source raw file.
         hp, lp : None | int
             High-pass and low-pass parameters.
+        apply_proj : bool
+            Apply the projections to the Raw data before filtering.
         """
         dest_file = self.get('raw-file', raw=dest)
         if (not redo) and os.path.exists(dest_file):
