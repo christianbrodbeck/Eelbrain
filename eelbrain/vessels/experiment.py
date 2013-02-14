@@ -1161,7 +1161,7 @@ class mne_experiment(object):
         save.pickle(ds_ev, dest_fname)
 
     def make_filter(self, dest, hp=None, lp=40, n_jobs=3, src='raw',
-                    apply_proj=False, redo=False):
+                    apply_proj=False, redo=False, **kwargs):
         """
         Make a filtered raw file
 
@@ -1173,6 +1173,8 @@ class mne_experiment(object):
             High-pass and low-pass parameters.
         apply_proj : bool
             Apply the projections to the Raw data before filtering.
+        kwargs :
+            mne.fiff.Raw.filter() kwargs.
         """
         dest_file = self.get('raw-file', raw=dest)
         if (not redo) and os.path.exists(dest_file):
@@ -1181,7 +1183,7 @@ class mne_experiment(object):
         raw = self.load_raw(add_proj=apply_proj, preload=True, raw=src)
         if apply_proj:
             raw.apply_projector()
-        raw.filter(hp, lp, n_jobs=n_jobs)
+        raw.filter(hp, lp, n_jobs=n_jobs, **kwargs)
         raw.save(dest_file)
 
     def make_fwd_cmd(self, redo=False):
