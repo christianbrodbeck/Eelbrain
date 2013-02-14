@@ -801,7 +801,9 @@ class mne_experiment(object):
         self._state.update(state_)
 
     def label_events(self, ds, experiment, subject):
-        ds['T'] = ds.eval('i_start / 1000')
+        raw = ds.info['raw']
+        sfreq = raw.info['sfreq']
+        ds['T'] = ds['i_start'] / sfreq
         ds['SOA'] = var(np.ediff1d(ds['T'].x, 0))
         return ds
 
