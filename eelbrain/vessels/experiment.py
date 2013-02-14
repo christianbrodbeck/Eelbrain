@@ -932,6 +932,84 @@ class mne_experiment(object):
         raw.info['bads'].extend(bad_chs)
         return raw
 
+    def load_sensor_data(self, stimvar='stim',
+                         epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
+                                      tmax=0.6)],
+                         decim=5, random=('subject',), all_subjects=False):
+        """
+        Load sensor data in the form of an Epochs object contained in a dataset
+        """
+        if all_subjects:
+            ds = combine(self.load_sensor_data(stimvar=stimvar, model=model,
+                                               epochs=epochs, decim=decim,
+                                               random=random)
+                         for _ in self.iter_vars())
+            return ds
+
+        epochs = self._process_epochs_arg(epochs)
+
+        stim_epochs = defaultdict(list)
+        # {stim -> }
+        kwargs = {}
+        e_names = []  # all target epoch names
+        for ep in epochs:
+            name = ep['name']
+            stim = ep['stim']
+
+            e_names.append(name)
+            stim_epochs[stim].append(name)
+
+            kw = dict(reject={'mag': 3e-12}, baseline=None, decim=decim,
+                      preload=True)
+            for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax'):
+                if k in ep:
+                    kw[k] = ep[k]
+            kwargs[name] = kw
+
+        # constants
+        sub = self.get('subject')
+
+        ds = self.load_events()
+        edf = ds.info['edf']
+
+        dss = {}  # {tgt_epochs -> dataset}
+        for stim, names in stim_epochs.iteritems():
+            eds = ds.subset(ds[stimvar] == stim)
+            eds.index()
+            for name in names:
+                dss[name] = eds
+
+        for name in e_names:
+            ds = dss[name]
+            kw = kwargs[name]
+            tstart = kw.get('reject_tmin', kw['tmin'])
+            tstop = kw.get('reject_tmax', kw['tmax'])
+            ds = edf.filter(ds, tstart=tstart, tstop=tstop, use=['EBLINK'])
+            dss[name] = ds
+
+        idx = reduce(np.intersect1d, (ds['index'].x for ds in dss.values()))
+
+        for name in e_names:
+            ds = dss[name]
+            ds = align1(ds, idx)
+            ds = load.fiff.add_mne_epochs(ds, **kw)
+            ds.index()
+            dss[name] = ds
+
+        idx = reduce(np.intersect1d, (ds['index'].x for ds in dss.values()))
+
+        for name in e_names:
+            ds = dss[name]
+            ds = align1(ds, idx)
+            dss[name] = ds
+
+        ds = dss.pop(e_names.pop(0))
+        for name in e_names:
+            eds = dss[name]
+            ds[name] = eds[name]
+
+        return ds
+
     def make_evoked(self, stimvar='stim', model='ref%side',
                     epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
                                  tmax=0.6)],
