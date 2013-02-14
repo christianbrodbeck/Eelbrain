@@ -234,7 +234,7 @@ def asndvar(Y, sub=None, ds=None):
 
 def ascategorial(Y, sub=None, ds=None):
     if isinstance(Y, str):
-        Y = ds[Y]
+        Y = ds.eval(Y)
 
     if iscategorial(Y):
         pass
