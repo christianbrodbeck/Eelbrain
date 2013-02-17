@@ -317,7 +317,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
                               exclude=exclude, mult=mult, unit=unit,
                               properties=properties, sensors=sensors)
 
-    if len(epochs) == 0:
+    if len(epochs_var) == 0:
         raise RuntimeError("No events left in %r" % raw.info['filename'])
 
     if add:
