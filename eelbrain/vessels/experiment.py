@@ -944,10 +944,10 @@ class mne_experiment(object):
         Load sensor data in the form of an Epochs object contained in a dataset
         """
         if all_subjects:
-            ds = combine(self.load_sensor_data(stimvar=stimvar, model=model,
-                                               epochs=epochs, decim=decim,
-                                               random=random)
-                         for _ in self.iter_vars())
+            dss = (self.load_sensor_data(stimvar=stimvar, epochs=epochs,
+                                         decim=decim, random=random)
+                   for _ in self.iter_vars())
+            ds = combine(dss)
             return ds
 
         epochs = self._process_epochs_arg(epochs)
