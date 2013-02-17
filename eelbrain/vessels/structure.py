@@ -18,22 +18,16 @@ class celltable(object):
     """
     Divides Y into cells defined by X.
 
-
     Attributes
     ----------
-
     .Y, .X,
         Y and X after sub was applied
-
     .sub, .match:
         input arguments
-
     .cells : list of str
         list of all cells in X
-
     .data : dict(cell -> data)
         data in each cell
-
     .data_indexes : dict(cell -> index-array)
         for each cell, a boolean-array specifying the index for that cell in ``X``
 
@@ -44,12 +38,10 @@ class celltable(object):
         comparison is a repeated-measures or an independent measures
         comparison (only available when the input argument ``match`` is
         specified.
-
     .all_within : bool
         whether all comparison are repeated-measures comparisons or not
-
     .groups : dict(cell -> group)
-        group for each cell as ???
+        A slice of the match argument describing the group members for each cell.
 
     """
     def __init__(self, Y, X, match=None, sub=None, match_func=np.mean, ds=None):
