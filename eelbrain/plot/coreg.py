@@ -91,8 +91,8 @@ class dev_head_viewer(traits.HasTraits):
 
         raw : mne.fiff.Raw | str(path)
             MNE Raw object, or path to a raw file.
-        mrk : load.kit.MarkerFile | str(path)
-            MarkerFile object, or path to a marker file.
+        mrk : load.kit.MarkerFile | str(path) | array, shape = (5, 3)
+            MarkerFile object, or path to a marker file, or marker points.
         bem : None | str(path)
             Name of the bem model to load (optional, only for visualization
             purposes).
@@ -198,8 +198,8 @@ class dev_head_fitter:
 
         raw : mne.fiff.Raw | str(path)
             MNE Raw object, or path to a raw file.
-        mrk : load.kit.MarkerFile | str(path)
-            MarkerFile object, or path to a marker file.
+        mrk : load.kit.MarkerFile | str(path) | array, shape = (5, 3)
+            MarkerFile object, or path to a marker file, or marker points.
         bem : None | str(path)
             Name of the bem model to load (optional, only for visualization
             purposes).
@@ -217,6 +217,8 @@ class dev_head_fitter:
         # interpret mrk
         if isinstance(mrk, basestring):
             mrk = load.kit.MarkerFile(mrk)
+        if isinstance(mrk, load.kit.MarkerFile):
+            mrk = mrk.points
 
         # interpret raw
         if isinstance(raw, basestring):
@@ -258,7 +260,7 @@ class dev_head_fitter:
         self.sensors = geom(pts)
 
         # marker points
-        pts = mrk.points / 1000
+        pts = mrk / 1000
         pts = pts[:, [1, 0, 2]]
         pts[:, 0] *= -1
         self.mrk = geom(pts)
@@ -490,6 +492,8 @@ class dev_mri(object):
                       reset_roll=True, figure=self.fig)
         if view == 'left':
             kwargs.update(azimuth=180, roll=90)
+        elif view == 'right':
+            kwargs.update(azimuth=0, roll=270)
         elif view == 'top':
             kwargs.update(elevation=0)
         mlab.view(**kwargs)
