@@ -8,8 +8,8 @@ import numpy as np
 
 from eelbrain import fmtxt
 
-import eelbrain.vessels.data as _data
-import eelbrain.vessels.structure as _structure
+from ..vessels.data import ascategorial, asmodel, asvar, isfactor, isvar
+from ..vessels.structure import celltable
 
 __hide__ = ['division', 'fmtxt', 'scipy',
             'asmodel', 'isfactor', 'asfactor', 'isvar', 'celltable',
@@ -31,11 +31,11 @@ def frequencies(Y, X=None, of=None, sub=None, title="{Yname} Frequencies", ds=No
         in `of` once. (Compress Y and X before calculating frequencies.)
 
     """
-    Y = _data.ascategorial(Y, sub, ds)
+    Y = ascategorial(Y, sub, ds)
     if X is not None:
-        X = _data.ascategorial(X, sub, ds)
+        X = ascategorial(X, sub, ds)
     if of is not None:
-        of = _data.ascategorial(of, sub, ds)
+        of = ascategorial(of, sub, ds)
         Y = Y.compress(of)
         if X is not None:
             X = X.compress(of)
@@ -52,7 +52,7 @@ def frequencies(Y, X=None, of=None, sub=None, title="{Yname} Frequencies", ds=No
             table.cell(np.sum(Y == cell))
         return table
 
-    ct = _structure.celltable(Y, X)
+    ct = celltable(Y, X)
 
     Y_categories = ct.Y.cells
 
@@ -91,33 +91,50 @@ def frequencies(Y, X=None, of=None, sub=None, title="{Yname} Frequencies", ds=No
 
 
 
-def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean]):
+def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
+          ds=None):
     """
-    return a table with statistics per cell.
+    Make a table with statistics.
 
-    y : factor
-        model specifying columns
-
-    x : factor or ``None``
-        model specifying rows
-
+    Parameters
+    ----------
+    Y : var
+        Dependent variable.
+    y : categorial
+        Model specifying rows
+    x : categorial | None
+        Model specifying columns.
     funcs : list of callables
-        a list of statistics functions to show (all functions must return
-        scalars)
+        A list of statistics functions to show (all functions must take an
+        array argument and return a scalar).
+    ds : dataset
+        If a dataset is provided, Y, y, and x can be strings specifying
+        members.
 
 
-    **Example**::
+    Examples
+    --------
+    >>> ds = datasets.get_basic()
+    >>> table.stats('Y', 'A', 'B', ds=ds)
+                B
+         -----------------
+         b0        b1
+    ----------------------
+    a0   0.1668    -0.3646
+    a1   -0.4897   0.8746
 
-        >>> A.table.stats(Y, condition, funcs=[np.mean, np.std])
-        Condition   mean     std
-        ----------------------------
-        control     0.0512   0.08075
-        test        0.2253   0.2844
+    >>> A.table.stats(Y, condition, funcs=[np.mean, np.std])
+    Condition   mean     std
+    ----------------------------
+    control     0.0512   0.08075
+    test        0.2253   0.2844
 
     """
-    Y = _data.asvar(Y)
+    Y = asvar(Y, ds=ds)
+    y = ascategorial(y, ds=ds)
+
     if x is None:
-        ct = _structure.celltable(Y, y, sub=sub, match=match)
+        ct = celltable(Y, y, sub=sub, match=match)
 
         # table header
         n_disp = len(funcs)
@@ -134,7 +151,8 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean]):
             for func in funcs:
                 table.cell(fmt % func(data.x))
     else:
-        ct = _structure.celltable(Y, y % x, sub=sub, match=match)
+        x = ascategorial(x, ds=ds)
+        ct = celltable(Y, y % x, sub=sub, match=match)
 
         N = len(x.cells)
         table = fmtxt.Table('l' * (N + 1))
@@ -223,8 +241,8 @@ def rm_table(Y, X=None, match=None, cov=[], sub=None, fmt='%r', labels=True,
     """
     if hasattr(Y, '_items'):  # dataframe
         Y = Y._items
-    Y = _data.asmodel(Y)
-    if _data.isfactor(cov) or _data.isvar(cov):
+    Y = asmodel(Y)
+    if isfactor(cov) or isvar(cov):
         cov = [cov]
 
     data = []
@@ -233,7 +251,7 @@ def rm_table(Y, X=None, match=None, cov=[], sub=None, fmt='%r', labels=True,
     within_list = []
     for Yi in Y.effects:
         # FIXME: temporary _split_Y replacement
-        ct = _structure.celltable(Yi, X, match=match, sub=sub)
+        ct = celltable(Yi, X, match=match, sub=sub)
 
         data += ct.get_data()
         names_yname += ['({c})'.format(c=n) for n in ct.cells]

@@ -590,10 +590,11 @@ def setup_mri(subject, subjects_dir=None, ico=4, block=False, redo=False):
 
     # mne_watershed_bem
     tgt = os.path.join(bemdir, 'watershed', '%s_outer_skin_surface' % (subject))
-    if redo or not os.path.exists(tgt):
-        cmd = [get_bin('mne', 'mne_watershed_bem'),
-               '--subject', subject]
-        _run(cmd)
+    cmd = [get_bin('mne', 'mne_watershed_bem'),
+           '--subject', subject]
+    if redo:
+        cmd.append('--overwrite')
+    _run(cmd)
 
     # symlinks (MNE-manual 3.6, p. 24)
     for name in ['inner_skull', 'outer_skull', 'outer_skin']:

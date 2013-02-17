@@ -3,8 +3,12 @@ Created on Oct 21, 2012
 
 @author: christian
 '''
-import mdp
 import numpy as np
+
+try:
+    import mdp
+except:
+    pass
 
 import mne
 

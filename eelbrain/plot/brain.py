@@ -90,11 +90,19 @@ class stc:
         """
         Parameters
         ----------
-        v : ndvar [source [ x time]]
+        v : ndvar, dims = (source, [time])
             Ndvar to plot. Must contain a source dimension, and can optionally
             contain a time dimension.
+        colormap : str | array
+            Colormap name or look up table.
+        min, max : scalar
+            Endpoints of the colormap.
         surf : 'smoothwm' | ...
             Freesurfer surface.
+        figsize : tuple (int, int)
+            Size of the mayavi figure in pixels.
+        colorbar : bool
+            Add a colorbar to the figure.
         hemi : 'both' | 'l[eft]' | 'r[ight]'
             Only plot one hemisphere.
 
