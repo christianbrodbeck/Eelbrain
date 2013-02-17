@@ -6,6 +6,7 @@ Plot source estimates with mayavi/pysurfer.
 
 '''
 # author: Christian Brodbeck
+from __future__ import division
 
 import os
 
@@ -16,7 +17,61 @@ import surfer
 import _base
 
 
-__all__ = ['activation', 'stc', 'stat']
+__all__ = ['activation', 'dspm', 'stc', 'stat']
+
+
+def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm'):
+    """
+    Plot a source estimate with typical dSPM values.
+
+    Parameters
+    ----------
+    source_estimate : ndvar, dims = ([case,] source, [time])
+        The source estimates. If stc contains a case dimension, the average
+        across cases is taken.
+    fmin, fmid, fmax : scalar
+        Start-, mid- and endpoint for the color gradient.
+    surf : 'smoothwm' | ...
+        Freesurfer surface.
+    """
+    if not (fmin < fmid < fmax):
+        raise ValueError("Invalid colormap, we need fmin < fmid < fmax")
+
+    def idx(i):
+        return int(round(i))
+
+    n = 256
+    lut = np.zeros((n, 4), dtype=np.uint8)
+    i0 = idx(n / 2)
+    imin = idx((fmin / fmax) * i0)
+    min_n = i0 - imin
+    min_p = i0 + imin
+    imid = idx((fmid / fmax) * i0)
+    mid_n = i0 - imid
+    mid_p = i0 + imid
+
+    # red end
+    lut[i0:, 0] = 255
+    lut[mid_p:, 1] = np.linspace(0, 255, n - mid_p)
+
+    # blue end
+    lut[:i0, 2] = 255
+    lut[:mid_n, 0] = np.linspace(127, 0, mid_n)
+    lut[:mid_n, 1] = np.linspace(127, 0, mid_n)
+
+    # alpha
+    lut[:mid_n, 3] = 255
+    lut[mid_n:min_n, 3] = np.linspace(255, 0, min_n - mid_n)
+    lut[min_n:min_p, 3] = 0
+    lut[min_p:mid_p, 3] = np.linspace(0, 255, mid_p - min_p)
+    lut[mid_p:, 3] = 255
+
+    if source_estimate.has_case:
+        source_estimate = source_estimate.summary()
+
+    return stc(source_estimate, lut, min= -fmax, max=fmax, surf=surf)  # figsize, colorbar, hemi)
+
+
 
 
 def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, hemi='both'):
