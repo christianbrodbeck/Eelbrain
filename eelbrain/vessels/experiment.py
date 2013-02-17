@@ -979,8 +979,6 @@ class mne_experiment(object):
             kwargs[name] = kw
 
         # constants
-        sub = self.get('subject')
-
         ds = self.load_events()
         edf = ds.info['edf']
 
