@@ -43,7 +43,7 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, hemi='both'):
     return stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False, hemi=hemi)
 
 
-def activation(stc, a_thresh=None, act_max=None, hemi='both'):
+def activation(v, a_thresh=None, act_max=None, hemi='both'):
     """
     Plot activation in source space.
 
@@ -61,8 +61,8 @@ def activation(stc, a_thresh=None, act_max=None, hemi='both'):
         Which hemisphere to plot.
 
     """
-    x = stc.x.mean()
-    std = stc.x.std()
+    x = v.x.mean()
+    std = v.x.std()
 
     if a_thresh is None:
         a_thresh = x + std
@@ -70,9 +70,9 @@ def activation(stc, a_thresh=None, act_max=None, hemi='both'):
         act_max = x + 2 * std
 
     lut = colorize_activation(a_thresh=a_thresh, act_max=act_max)
-    if stc.has_case:
-        stc = stc.summary()
-    return stc(stc, colormap=lut, min= -act_max, max=act_max, colorbar=False, hemi=hemi)
+    if v.has_case:
+        v = v.summary()
+    return stc(v, colormap=lut, min= -act_max, max=act_max, colorbar=False, hemi=hemi)
 
 
 class stc:
