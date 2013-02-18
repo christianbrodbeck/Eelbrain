@@ -74,6 +74,7 @@ from .. import plot
 from .. import save
 from .. import ui
 from ..utils import subp
+from ..utils.com import send_email
 from ..utils.mne_utils import is_fake_mri
 from ..utils.kit import split_label
 from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
@@ -757,7 +758,7 @@ class mne_experiment(object):
             yield path
 
     def iter_vars(self, variables=['subject'], constants={}, values={},
-                  exclude={}, prog=False):
+                  exclude={}, prog=False, notify=False):
         """
         Cycle the experiment's state through all values on the given variables
 
@@ -775,6 +776,9 @@ class mne_experiment(object):
         prog : bool | str
             Show a progress dialog; str for dialog title.
         """
+        if notify is True:
+            notify = self.owner
+
         state_ = self._state.copy()
 
         # set constants
@@ -821,6 +825,10 @@ class mne_experiment(object):
             yield self._state
 
         self._state.update(state_)
+
+        if notify:
+            send_email(notify, "Eelbrain Task Done", "I did as you desired, "
+                       "my master.")
 
     def label_events(self, ds, experiment, subject):
         raw = ds.info['raw']
