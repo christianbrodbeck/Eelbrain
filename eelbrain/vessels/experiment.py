@@ -434,6 +434,16 @@ class mne_experiment(object):
             v = self.get(k)
             kwargs.append((k, repr(v)))
 
+        for k in sorted(self._state):
+            if '{' in self._state[k]:
+                continue
+            if k in self._repr_vars:
+                continue
+
+            v = self._state[k]
+            if v != self._initial_state[k]:
+                kwargs.append((k, repr(v)))
+
         args.extend('='.join(pair) for pair in kwargs)
         args = ', '.join(args)
         return "mne_experiment(%s)" % args
