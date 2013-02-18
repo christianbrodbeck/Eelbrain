@@ -43,13 +43,13 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, hemi='both'):
     return stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False, hemi=hemi)
 
 
-def activation(v, a_thresh=None, act_max=None, hemi='both'):
+def activation(source_estimate, a_thresh=None, act_max=None, hemi='both'):
     """
     Plot activation in source space.
 
     Parameters
     ----------
-    stc : ndvar
+    source_estimate : ndvar
         An ndvar describing activation in source space.
     a_thresh : scalar | None
         the point at which alpha transparency is 50%. When None,
@@ -61,8 +61,8 @@ def activation(v, a_thresh=None, act_max=None, hemi='both'):
         Which hemisphere to plot.
 
     """
-    x = v.x.mean()
-    std = v.x.std()
+    x = source_estimate.x.mean()
+    std = source_estimate.x.std()
 
     if a_thresh is None:
         a_thresh = x + std
@@ -70,9 +70,12 @@ def activation(v, a_thresh=None, act_max=None, hemi='both'):
         act_max = x + 2 * std
 
     lut = colorize_activation(a_thresh=a_thresh, act_max=act_max)
-    if v.has_case:
-        v = v.summary()
-    return stc(v, colormap=lut, min= -act_max, max=act_max, colorbar=False, hemi=hemi)
+    if source_estimate.has_case:
+        source_estimate = source_estimate.summary()
+
+    plot = stc(source_estimate, colormap=lut, min= -act_max, max=act_max,
+               colorbar=False, hemi=hemi)
+    return plot
 
 
 class stc:
