@@ -13,24 +13,29 @@ from eelbrain import ui
 
 
 class intervals:
-    """Iterator over each successive pair in a list.
-    
-    >> intervals([1,2,3, 45])
+    """Iterate over each successive pair in a sequence.
+
+    Examples
+    --------
+    >>> for i in intervals([1, 2, 3, 45]):
+    ...     print i
+    ...
     (1, 2)
     (2, 3)
-    (3, 45) """
-    def __init__(self, l):
-        self.l = l
-        self.i=0
-        if len(self.l) < 2:
+    (3, 45)
+    """
+    def __init__(self, seq):
+        self.seq = seq
+        self.i = 0
+        if len(self.seq) < 2:
             raise StopIteration
     def __iter__(self):
         return self
     def next(self):
         self.i += 1
-        if len(self.l)<=self.i:
+        if len(self.seq) <= self.i:
             raise StopIteration
-        return self.l[self.i-1],self.l[self.i]
+        return self.seq[self.i - 1], self.seq[self.i]
 
 
 def toTuple(items):
@@ -59,11 +64,11 @@ def toList(items):
 
 def add_ext(path, ext, multiple=False, ask_overwrite=True):
     """
-    Adds ext to path; 
-    
+    Adds ext to path;
+
     kwargs
     -----
-    multiple=False: 
+    multiple=False:
         =False: if path has an extension, nothing will be done
         ='r', 'replace': existing extension will be replaced.
         ='a', 'add': extension will be added independent of existing extension
@@ -80,32 +85,32 @@ def add_ext(path, ext, multiple=False, ask_overwrite=True):
             ext = os.path.extsep.join([old_ext, ext])
         else:
             ext = old_ext
-    
+
     path = os.path.extsep.join([name, ext])
     if ask_overwrite:
         if os.path.exists(path):
             if not ui.ask(title="Overwrite File?",
-                          message="The File '%s' already exists. Overwrite the existing file?"%path):
+                          message="The File '%s' already exists. Overwrite the existing file?" % path):
                 return None
     return path
-    
 
-def loadtable(path, d='\t', txt='"', dtype=float, txtcols=[], txtrows=[], 
+
+def loadtable(path, d='\t', txt='"', dtype=float, txtcols=[], txtrows=[],
               empty=np.NaN):
     """
-    loads a table from a file. If extension is '.pickled' or '.pickle', the 
+    loads a table from a file. If extension is '.pickled' or '.pickle', the
     file will simply be unpickled. Otherwise it will be read as a table-
     separated-values (TSV) file.
-    
+
     kwargs
     ------
     d: delimiter
     txt: string indicator
     dtype: data type for conversion if not string
-    textcols/textrows: columns and rows that should be interpreted as text 
+    textcols/textrows: columns and rows that should be interpreted as text
                        instead of dtype
     empty: replace empty strings with this value
-    
+
     """
     name, ext = os.path.splitext(path)
     if ext in ['.pickled', '.pickle']:
@@ -114,7 +119,7 @@ def loadtable(path, d='\t', txt='"', dtype=float, txtcols=[], txtrows=[],
     else:
         raw_table = []
         for line in open(path):
-            row = line.replace('\n','')
+            row = line.replace('\n', '')
             if len(row) > 0:
                 raw_table.append(row.split(d))
         # data conversion
@@ -145,11 +150,11 @@ def loadtable(path, d='\t', txt='"', dtype=float, txtcols=[], txtrows=[],
 def test_attr_name(name, printname=None):
     """
     Test whether name is a proper attribute name. Raises an Error if it is not.
-    
-    :arg printname: use this argument if the name that should be printed in 
+
+    :arg printname: use this argument if the name that should be printed in
         the error message diffes from the name to be tested (e.g. when name is
         formatted with dummy items)
-    
+
     """
     assert isinstance(name, str)
     if printname is None:
