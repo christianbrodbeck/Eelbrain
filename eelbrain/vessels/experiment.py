@@ -21,6 +21,9 @@ reject_tmin : scalar
     Alternate start time for rejection (amplitude and eye-tracker).
 reject_tmax : scalar
     Alternate end time for rejection (amplitude and eye-tracker).
+decim : int
+    Decimate the data by this factor (i.e., only keep every ``decim``'th
+    sample)
 
 
 Epochs can be specified directly in the relevant function, or they can be
@@ -680,18 +683,23 @@ class mne_experiment(object):
         return path
 
     def get_epoch_str(self, stim=None, tmin=None, tmax=None, reject_tmin=None,
-                      reject_tmax=None, name=None):
+                      reject_tmax=None, name=None, decim=None):
         "Produces a descriptor for a single epoch specification"
         desc = '%s[' % stim
         if reject_tmin is None:
-            desc += '%i,' % (tmin * 1000)
+            desc += '%i_' % (tmin * 1000)
         else:
-            desc += '(%i)%i,' % (tmin * 1000, reject_tmin * 1000)
+            desc += '(%i)%i_' % (tmin * 1000, reject_tmin * 1000)
+
         if reject_tmax is None:
-            desc += '%i]' % (tmax * 1000)
+            desc += '%i' % (tmax * 1000)
         else:
-            desc += '(%i)%i]' % (tmax * 1000, reject_tmax * 1000)
-        return desc
+            desc += '(%i)%i' % (tmax * 1000, reject_tmax * 1000)
+
+        if (decim is not None) and (decim != 1):
+            desc += '|%i' % decim
+
+        return desc + ']'
 
     def get_inv(self, fiff, depth=0.8, reg=False, **kwargs):
         self.set(**kwargs)
@@ -857,7 +865,8 @@ class mne_experiment(object):
         return ds
 
     def load_evoked(self, stimvar='stim', model='ref%side',
-                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1, tmax=0.6)],
+                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
+                                 tmax=0.6, decim=5)],
                     to_ndvar=False):
         """
         Load as dataset data created with :meth:`mne_experiment.make_evoked`.
@@ -938,14 +947,14 @@ class mne_experiment(object):
 
     def load_sensor_data(self, stimvar='stim',
                          epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
-                                      tmax=0.6)],
-                         decim=5, random=('subject',), all_subjects=False):
+                                      tmax=0.6, decim=5)],
+                         random=('subject',), all_subjects=False):
         """
         Load sensor data in the form of an Epochs object contained in a dataset
         """
         if all_subjects:
             dss = (self.load_sensor_data(stimvar=stimvar, epochs=epochs,
-                                         decim=decim, random=random)
+                                         random=random)
                    for _ in self.iter_vars())
             ds = combine(dss)
             return ds
@@ -963,16 +972,13 @@ class mne_experiment(object):
             e_names.append(name)
             stim_epochs[stim].append(name)
 
-            kw = dict(reject={'mag': 3e-12}, baseline=None, decim=decim,
-                      preload=True)
-            for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax'):
+            kw = dict(reject={'mag': 3e-12}, baseline=None, preload=True)
+            for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax', 'decim'):
                 if k in ep:
                     kw[k] = ep[k]
             kwargs[name] = kw
 
         # constants
-        sub = self.get('subject')
-
         ds = self.load_events()
         edf = ds.info['edf']
 
@@ -1016,8 +1022,8 @@ class mne_experiment(object):
 
     def make_evoked(self, stimvar='stim', model='ref%side',
                     epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
-                                 tmax=0.6)],
-                    decim=5, random=('subject',), redo=False):
+                                 tmax=0.6, decim=5)],
+                    random=('subject',), redo=False):
         """
         Creates datasets with evoked files for the current subject/experiment
         pair.
@@ -1048,9 +1054,8 @@ class mne_experiment(object):
             e_names.append(name)
             stim_epochs[stim].append(name)
 
-            kw = dict(reject={'mag': 3e-12}, baseline=None, decim=decim,
-                      preload=True)
-            for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax'):
+            kw = dict(reject={'mag': 3e-12}, baseline=None, preload=True)
+            for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax', 'decim'):
                 if k in ep:
                     kw[k] = ep[k]
             kwargs[name] = kw
