@@ -74,7 +74,8 @@ def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm'):
 
 
 
-def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, hemi='both'):
+def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, surf='smoothwm',
+         hemi='both'):
     """
     Plot a statistic in source space.
 
@@ -90,15 +91,19 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, hemi='both'):
     solid : bool
         Use solid color patches between p0 and p1 (else: blend transparency
         between p0 and p1)
+    surf : 'smoothwm' | ...
+        Freesurfer surface.
     hemi : 'lh' | 'rh' | 'both'
         Which hemisphere to plot.
-
     """
     pmap, lut, vmax = colorize_p(p_map, param_map, p0=p0, p1=p1, solid=solid)
-    return stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False, hemi=hemi)
+    plot = stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False,
+               surf=surf, hemi=hemi)
+    return plot
 
 
-def activation(source_estimate, a_thresh=None, act_max=None, hemi='both'):
+def activation(source_estimate, a_thresh=None, act_max=None, surf='smoothwm',
+               hemi='both'):
     """
     Plot activation in source space.
 
@@ -112,6 +117,8 @@ def activation(source_estimate, a_thresh=None, act_max=None, hemi='both'):
     act_max : scalar | None
         the upper range of activation values. values are clipped above this range.
         When None, act_max = two standard deviations above and below the mean.
+    surf : 'smoothwm' | ...
+        Freesurfer surface.
     hemi : 'lh' | 'rh' | 'both'
         Which hemisphere to plot.
 
@@ -129,7 +136,7 @@ def activation(source_estimate, a_thresh=None, act_max=None, hemi='both'):
         source_estimate = source_estimate.summary()
 
     plot = stc(source_estimate, colormap=lut, min= -act_max, max=act_max,
-               colorbar=False, hemi=hemi)
+               colorbar=False, surf=surf, hemi=hemi)
     return plot
 
 
