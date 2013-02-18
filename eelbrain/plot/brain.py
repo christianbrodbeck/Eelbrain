@@ -20,7 +20,8 @@ import _base
 __all__ = ['activation', 'dspm', 'stc', 'stat']
 
 
-def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm'):
+def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm',
+         hemi='both'):
     """
     Plot a source estimate with typical dSPM values.
 
@@ -33,6 +34,8 @@ def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm'):
         Start-, mid- and endpoint for the color gradient.
     surf : 'smoothwm' | ...
         Freesurfer surface.
+    hemi : 'lh' | 'rh' | 'both'
+        Which hemisphere to plot.
     """
     if not (fmin < fmid < fmax):
         raise ValueError("Invalid colormap, we need fmin < fmid < fmax")
@@ -69,8 +72,8 @@ def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm'):
     if source_estimate.has_case:
         source_estimate = source_estimate.summary()
 
-    return stc(source_estimate, lut, min= -fmax, max=fmax, surf=surf)  # figsize, colorbar, hemi)
-
+    return stc(source_estimate, lut, min= -fmax, max=fmax, surf=surf,
+               colorbar=False, hemi=hemi)
 
 
 
@@ -121,7 +124,6 @@ def activation(source_estimate, a_thresh=None, act_max=None, surf='smoothwm',
         Freesurfer surface.
     hemi : 'lh' | 'rh' | 'both'
         Which hemisphere to plot.
-
     """
     x = source_estimate.x.mean()
     std = source_estimate.x.std()
@@ -148,7 +150,6 @@ class stc:
     --------
     activation : plot activation in source space
     stat : plot statistics in source space
-
     """
     def __init__(self, v, colormap='hot', min=0, max=30, surf='smoothwm',
                  figsize=(500, 500), colorbar=True, hemi='both'):
@@ -170,7 +171,6 @@ class stc:
             Add a colorbar to the figure.
         hemi : 'both' | 'l[eft]' | 'r[ight]'
             Only plot one hemisphere.
-
         """
         hemi = hemi.lower()
         if hemi.startswith('l'):
@@ -224,20 +224,15 @@ class stc:
         cycle through time points and optionally save each image. Saving the
         animation (``save_mov``) requires `ffmpeg <http://ffmpeg.org>`_
 
-
         Parameters
         ----------
-
         tstart, tstop, tstep | scalar
             Start, end and step time for the animation.
-
         save_frames : str(path)
             Path to save frames to. Should contain '%s' for frame index.
             Extension determines format (mayavi supported formats).
-
         save_mov : str(path)
             save the movie
-
         """
         # find time points
         if tstep is None:
