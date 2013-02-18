@@ -337,7 +337,6 @@ class ImageTiler(object):
         t_fmt = '%%0%id' % (np.floor(np.log10(nt)) + 1)
         self._tile_fmt = 'tile_%s_%s_%s%s' % (row_fmt, col_fmt, t_fmt, ext)
         self._frame_fmt = 'frame_%s%s' % (t_fmt, ext)
-        self._frames_made = np.zeros(nt, dtype=bool)
 
         self.dest = dest
         self.ncol = ncol
@@ -372,28 +371,17 @@ class ImageTiler(object):
         fname = self._frame_fmt % (t,)
         return os.path.join(dirname, fname)
 
-    def make_frame(self, dest=None, t=0, overwrite=False):
-        """
-        Produce a single frame. With dest == None, the proper frame filename
-        is used.
+    def make_frame(self, t=0, redo=False):
+        """Produce a single frame."""
+        dest = self.get_frame_fname(t)
 
-        .. Note::
-           In order for
-           :method:`~eelbrain.plot._base.ImageTiler.make_movie` to work, all
-           frames have to be located in the proper location specified by
-           :method:`~eelbrain.plot._base.ImageTiler.get_frame_fname`.
-
-        """
-        if dest is None:
-            if self._frames_made[t]:
+        if os.path.exists(dest):
+            if redo:
+                os.remove(dest)
+            else:
                 return
-            dest = self.get_frame_fname(t)
-            self._frames_made[t] = True
 
-        if (not overwrite) and os.path.exists(dest):
-            raise IOError("File already exists: %r" % dest)
-
-        # finalize
+        # collect tiles
         images = []
         colw = [0] * self.ncol
         rowh = [0] * self.nrow
@@ -426,6 +414,7 @@ class ImageTiler(object):
             self.make_frame(t=t)
 
     def make_movie(self, dest, framerate=10, codec='mpeg4'):
+        """Make all frames and export a movie"""
         dest = os.path.expanduser(dest)
         dest = os.path.abspath(dest)
         root, ext = os.path.splitext(dest)
