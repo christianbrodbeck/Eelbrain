@@ -262,7 +262,8 @@ class Editor(wx.py.editor.EditorFrame):
 
     def OnExecFromDrive(self, event=None):
         "Save unsaved changes and execute file in shell."
-        self.bufferSave()
+        if self.bufferHasChanged():
+            self.bufferSave()
         shell_globals = self._exec_in_shell_namespace
         self.shell.ExecFile(self.buffer.doc.filepath,
                             shell_globals=shell_globals)
