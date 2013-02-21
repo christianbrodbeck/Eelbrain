@@ -30,7 +30,9 @@ import os
 import collections
 
 import numpy as np
+from numpy import dot
 import scipy.stats
+from scipy.linalg import inv
 
 from eelbrain import fmtxt
 from eelbrain import ui
@@ -2925,6 +2927,24 @@ class model(object):
     def as_effects(self):
         return np.hstack((e.as_effects for e in self.effects))
 
+    def fit(self, Y):
+        """
+        Find the beta weights by fitting the model to data
+
+        Parameters
+        ----------
+        Y : var | array, shape = (n_cases,)
+            Data to fit the model to.
+
+        Returns
+        -------
+        beta : array, shape = (n_regressors, )
+            The beta weights.
+        """
+        Y = asvar(Y)
+        beta = dot(self.Xsinv, Y.x)
+        return beta
+
     @LazyProperty
     def full(self):
         "returns the full model including an intercept"
@@ -3016,3 +3036,11 @@ class model(object):
         effects = [e.repeat(n) for e in self.effects]
         out = model(effects)
         return out
+
+    @LazyProperty
+    def Xsinv(self):
+        X = self.full
+        XT = X.T
+        Xsinv = dot(inv(dot(XT, X)), XT)
+        return Xsinv
+

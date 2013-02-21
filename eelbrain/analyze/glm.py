@@ -23,6 +23,8 @@ import logging, os
 from copy import deepcopy
 
 import numpy as np
+from numpy import dot
+from scipy.linalg import lstsq
 import scipy.stats
 
 from eelbrain import fmtxt
@@ -39,20 +41,11 @@ from eelbrain.vessels.data import (
 
 _max_array_size = 26  # constant for max array size in lm_fitter
 
-
-
-def _leastsq(Y, X):
-    Y = np.matrix(Y, copy=False).T
-    X = np.matrix(X, copy=False)
-    B = (X.T * X).I * X.T * Y
-    return np.ravel(B)
-
-def _leastsq_2(Y, X):
-    # same calculations
-    Xsinv = np.dot(np.matrix(np.dot(X.T, X)).I.A,
-                   X.T)
-    beta = np.dot(Xsinv, Y)
-    return beta
+# Method to use for least squares estimation:
+# (0) Use scipy.linalg.lstsq
+# (1) Use lstsq after Fox (2008) with caching of the model transformation
+_lmf_lsq = 1  # for the lm_fitter class
+_lm_lsq = 0  # for the lm class
 
 
 
@@ -152,7 +145,7 @@ class lm:
         significant amount of the variance in the dependent variable.
 
     """
-    def __init__(self, Y, X, sub=None, _lsq=0):
+    def __init__(self, Y, X, sub=None):
         """
         Fit the model X to the dependent variable Y.
 
@@ -175,22 +168,20 @@ class lm:
         assert X.df_error > 0
 
         # fit
-        if _lsq == 0:  # use numpy (faster)
-            beta, SS_res, _, _ = np.linalg.lstsq(X.full, Y.x)
-            if len(SS_res) == 1:
-                SS_res = SS_res[0]
-            else:
-                raise ValueError("Bad model")
-        elif _lsq == 1:  # Fox
+        if _lm_lsq == 0:  # use scipy (faster)
+            beta, SS_res, _, _ = lstsq(X.full, Y.x)
+        elif _lm_lsq == 1:  # Fox
             # estimate least squares approximation
-            beta = _leastsq(Y.x, X.full)
+            beta = X.fit(Y)
             # estimate
             values = beta * X.full
             Y_est = values.sum(1)
             self._residuals = residuals = Y.x - Y_est
             SS_res = np.sum(residuals ** 2)
             if not Y.mean() == Y_est.mean():
-                logging.warning("Y.mean()=%s != Y_est.mean()=%s" % (Y.mean(), Y_est.mean()))
+                msg = ("Y.mean() != Y_est.mean() (%s vs "
+                       "%s)" % (Y.mean(), Y_est.mean()))
+                logging.warning(msg)
         else:
             raise ValueError
 
@@ -371,8 +362,6 @@ class lm:
 
 
 
-_lm_version = 1
-
 class lm_fitter(object):
     """
     Object for efficiently fitting a model to multiple dependent variables.
@@ -399,14 +388,10 @@ class lm_fitter(object):
 
         self.max_len = int(2 ** _max_array_size // X.df ** 2)
 
-        if _lm_version == 0:
+        if _lmf_lsq == 0:
             pass
-        elif _lm_version == 1:
-            # invert X
-            # performance seems to be better with arrays than with matrices
-            X_ = np.matrix(X.full)
-#            self.Xinv = X_.I.A
-            self.Xsinv = np.array((X_.T * X_).I.A * X_.T)
+        elif _lmf_lsq == 1:
+            self.Xsinv = X.Xsinv
         else:
             raise ValueError('version')
 
@@ -466,17 +451,17 @@ class lm_fitter(object):
         else:  # do the actual estimation
             X_ = self.X_
             # beta: coefficient X test
-            if _lm_version == 0:
-                beta, SS_res, _, _ = np.linalg.lstsq(X_, Y)
-            elif _lm_version == 1:
-                beta = np.dot(self.Xsinv, Y)
+            if _lmf_lsq == 0:
+                beta, SS_res, _, _ = lstsq(X_, Y)
+            elif _lmf_lsq == 1:
+                beta = dot(self.Xsinv, Y)
 
             # values: case x effect-code x test
             values = beta[None, :, :] * X_[:, :, None]
 
             # MS of the residuals
             if not self.full_model:
-                if _lm_version == 1:
+                if _lmf_lsq == 1:
                     Yp = values.sum(1)  # case x test
                     SS_res = ((Y - Yp) ** 2).sum(0)
                 MS_res = SS_res / df_res
@@ -666,7 +651,7 @@ class anova(object):
             display source of E(MS) for F-Tests (True/False; None = use default)
         lsq : int
             least square fitter to use;
-            0 -> numpy.linalg.lstsq
+            0 -> scipy.linalg.lstsq
             1 -> after Fox
         showall : bool
             show SS, df and MS for effects without F test
