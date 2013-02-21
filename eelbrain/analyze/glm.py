@@ -20,7 +20,6 @@ Created on Oct 17, 2010
 from __future__ import division
 
 import logging, os
-from copy import deepcopy
 
 import numpy as np
 from numpy import dot
@@ -121,20 +120,9 @@ def is_higher_order(e1, e0):
 
 
 
-# def isbalanced(X):
-#    """
-#    tests whether a model is balanced
-#
-#    """
-#    # TODO
-# #    return False
-#    return True
-
-
-
 class lm:
     """
-    Fit a model to a dependent variable
+    Fit a linear model to a dependent variable
 
 
     Attributes
@@ -149,13 +137,14 @@ class lm:
         """
         Fit the model X to the dependent variable Y.
 
-        Y :
-            dependent variable
-        X :
-            model
+        Parameters
+        ----------
+        Y : var
+            Dependent variable.
+        X : model
+            Model.
         sub : None | index
             Only use part of the data
-
         """
         # prepare input
         Y = asvar(Y)
@@ -226,7 +215,6 @@ class lm:
         returns an ANOVA table for the linear model
 
         """
-        Y = self.Y
         X = self.X
         values = self.beta * self.X.full
 
@@ -622,14 +610,10 @@ class anova(object):
     attributes.
 
 
-    Methods
-    -------
-
-
     """
     def __init__(self, Y, X, sub=None,
                  title=None, empty=True, ems=None,
-                 showall=False):
+                 showall=False, ds=None):
         """
         Fits a univariate ANOVA model.
 
@@ -637,14 +621,12 @@ class anova(object):
         can be estimated according to Hopkins (1976)
 
 
-        Arguments
-        ---------
-
+        Parameters
+        ----------
         Y : var
             dependent variable
         X : model
             Model to fit to Y
-
         empty : bool
             include rows without F-Tests (True/False)
         ems : bool | None
@@ -655,28 +637,23 @@ class anova(object):
             1 -> after Fox
         showall : bool
             show SS, df and MS for effects without F test
-
-
-        TODO
-        ----
-
-          - sort model
-          - reuse lms which are used repeatedly
-          - provide threshold for including interaction effects when testing lower
-            level effects
-
-
-        Problem with unbalanced models
-        ------------------------------
-          - The SS of Effects which do not include the between-subject factor are
-            higher than in SPSS
-          - The SS of effects which include the between-subject factor agree with
-            SPSS
-
         """
+#  TODO:
+#         - sort model
+#          - reuse lms which are used repeatedly
+#          - provide threshold for including interaction effects when testing lower
+#            level effects
+#
+#        Problem with unbalanced models
+#        ------------------------------
+#          - The SS of Effects which do not include the between-subject factor are
+#            higher than in SPSS
+#          - The SS of effects which include the between-subject factor agree with
+#            SPSS
+
         # prepare kwargs
-        Y = asvar(Y, sub=sub)
-        X = asmodel(X, sub=sub)
+        Y = asvar(Y, sub=sub, ds=ds)
+        X = asmodel(X, sub=sub, ds=ds)
 
         if len(Y) != len(X):
             raise ValueError("Y and X must describe same number of cases")

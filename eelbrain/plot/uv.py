@@ -294,35 +294,37 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             bottom=None,
             title=True, ylabel='{unit}', xlabel=True, xtick_delim='\n',
             titlekwargs=defaults['title_kwargs'],
-            baseline=None,  # category for plot of difference values
-            # # pairwise kwargs
             test=True, par=True, trend=".", corr='Hochberg',
             pwcolors=None, hatch=False, colors=False,
             ds=None, **simple_kwargs
             ):
     """
-    Returns a matplotlib figure.
-
+    Make a boxplot.
 
     Parameters
     ----------
-
     Y : var
-        dependent variable
+        Dependent variable.
     X : factor or model
-        category definition
+        Category definition.
+    datalabels : scalar
+        Threshold for labeling outliers (in standard-deviation).
     test : bool | scalar
         True (default): perform pairwise tests;  False/None: no tests;
-        scalar: 1-sample tests against this value
-    datalabels : float
-        threshold for labeling outliers (in standard-deviation)
-    baseline : str
-        Use one condition in X as baseline for plotting and test other conditions
-        against this baseline (instead of pairwise)
+        scalar: 1-sample tests against this value.
     corr : str
-        method for multiple comparison correction
+        Method for multiple comparison correction.
 
+    Returns
+    -------
+    fig : matplotlib figure
+        Reference to the matplotlib figure.
     """
+    # get data
+    ct = celltable(Y, X, match=match, sub=sub, ds=ds)
+    Y = ct.Y
+    X = ct.X
+
     # kwargs
     if hatch == True:
         hatch = defaults['hatch']
@@ -352,20 +354,6 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     # get axes
     fig = _simple_fig(title, xlabel, ylabel, titlekwargs, **simple_kwargs)
     ax = fig.ax
-
-    # get data
-    ct = celltable(Y, X, match=match, sub=sub, ds=ds)
-
-    # diff (plot difference values instead of abs)
-    if baseline is not None:
-        raise NotImplementedError
-        if not ct.all_within:
-            raise NotImplementedError("baseline for between-design")
-        elif baseline not in ct.cells:
-            raise KeyError("baseline %r not in X" % baseline)
-
-        diff_data = ct.data[baseline]
-        data = {k: d - diff_data for k, d in ct.data.iteritems()}
 
     # determine ax lim
     if bottom == None:
@@ -411,11 +399,9 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     y_unit = (y_min - bottom) / 15
 
     # tests
-    if (test is True) and (not baseline):
+    if test is True:
         y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr=corr,
                                     x0=1, trend=trend)
-    elif baseline or (test is False) or (test is None):
-        y_top = y_min + y_unit
     else:
         P.axhline(test, color='black')
         y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit,

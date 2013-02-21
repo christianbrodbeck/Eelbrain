@@ -19,9 +19,11 @@ class Editor(wx.py.editor.EditorFrame):
     """
     def __init__(self, parent, shell, pos=(0, 0), size=(640, 840), pyfile=None):
         """
-        :arg pyfile: filename as string, or True in order to display an open
-            file dialog
-
+        Parameters
+        ----------
+        pyfile : bool | str
+            Filename, or True in order to display an open file dialog,
+            False/None in order to open a new buffer.
         """
         shell.active_editor = self
         self.shell = shell
