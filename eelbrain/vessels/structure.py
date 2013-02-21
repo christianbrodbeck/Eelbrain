@@ -80,13 +80,13 @@ class celltable(object):
 
         """
         if isinstance(Y, basestring):
-            Y = ds[Y]
+            Y = ds.eval(Y)
         if isinstance(X, basestring):
-            X = ds[X]
+            X = ds.eval(X)
         if isinstance(match, basestring):
             match = ds[match]
         if isinstance(sub, basestring):
-            sub = ds[sub]
+            sub = ds.eval(sub)
 
         if _data.iscategorial(Y) or _data.isndvar(Y):
             if sub is not None:
