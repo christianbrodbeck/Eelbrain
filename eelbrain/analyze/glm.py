@@ -31,12 +31,8 @@ from eelbrain.utils import LazyProperty
 from eelbrain.utils.print_funcs import strdict
 
 import test
-from eelbrain.vessels.data import (
-                                   find_factors,
-                                   isbalanced, isnestedin,
-                                   isvar, asvar,
-                                   model, asmodel,
-                                   )
+from eelbrain.vessels.data import (isvar, asvar, isbalanced, isnestedin,
+                                   hasrandom, find_factors, model, asmodel)
 
 _max_array_size = 26  # constant for max array size in lm_fitter
 
@@ -220,6 +216,10 @@ class lm:
 
         if X.df_error == 0:
             e_ms = hopkins_ems(X)
+        elif hasrandom(X):
+            err = ("Models containing random effects need to be fully "
+                   "specified.")
+            raise NotImplementedError(err)
         else:
             e_ms = False
 
@@ -373,6 +373,11 @@ class lm_fitter(object):
         self.full_model = fm = (X.df_error == 0)
         if fm:
             self.E_MS = hopkins_ems(X)
+        elif hasrandom(X):
+            err = ("Models containing random effects need to be fully "
+                   "specified.")
+            raise NotImplementedError(err)
+
 
         self.max_len = int(2 ** _max_array_size // X.df ** 2)
 
@@ -670,6 +675,10 @@ class anova(object):
             rfx = 1
             fx_desc = 'Mixed'
         elif X.df_error > 0:
+            if hasrandom(X):
+                err = ("Models containing random effects need to be fully "
+                       "specified.")
+                raise NotImplementedError(err)
             rfx = 0
             fx_desc = 'Fixed'
         else:

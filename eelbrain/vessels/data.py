@@ -176,6 +176,19 @@ def isvar(Y):
     return hasattr(Y, '_stype_') and Y._stype_ == "var"
 
 
+def hasrandom(Y):
+    """True if Y is or contains a random effect, False otherwise"""
+    if isfactor(Y):
+        return Y.random
+    elif isinteraction(Y):
+        for e in Y.base:
+            if isfactor(e) and e.random:
+                return True
+    elif ismodel(Y):
+        return any(map(hasrandom, Y.effects))
+    return False
+    
+    
 def asmodel(X, sub=None, ds=None):
     if isinstance(X, str):
         if ds is None:
