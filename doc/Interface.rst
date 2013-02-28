@@ -75,22 +75,10 @@ These shortcuts are relevant when entering text (in the shell or an editor)
 	* ``F3``:  Search next
 	* ``ctrl`` - ``H``:  "Hide" lines containing selection / "unhide"
 
-These work only in the Shell:
-
-* History:
-
-	* ``ctrl`` - ``Up Arrow``:  Retrieve previous history item.
-	* ``ctrl`` - ``Down Arrow``:  Retrieve next history item.
-	* ``shift`` - ``Up Arrow``:  Insert previous history item.
-	* ``shift`` - ``Down Arrow``:  Insert next history item.
-	* ``F8``:  Command-completion of history item. (Type a few characters of a previous 
-	  command and press F8.)
-
 * Auto Completion:
 
 	* ``ctrl``-``space``: Auto completion of attribute.
 	* ``shift``-``ctrl``-``space``: Auto completion inside call.
-	* ``shift`` - ``enter``: Choose command form history to add to the prompt.
 
 * Multi-Line Editing:
 
@@ -100,6 +88,16 @@ These work only in the Shell:
 
 Shell
 ^^^^^
+
+* History:
+
+    * ``ctrl`` - ``Up Arrow`` or ``alt`` - ``p``:  Retrieve previous history item.
+    * ``ctrl`` - ``Down Arrow`` or ``alt`` - ``n``:  Retrieve next history item.
+    * ``shift`` - ``Up Arrow``:  Insert previous history item.
+    * ``shift`` - ``Down Arrow``:  Insert next history item.
+    * ``shift`` - ``enter``: Choose command from history to add to the prompt.
+    * ``F8``:  Command-completion of history item. (Type a few characters of a previous 
+      command and press F8.)
 
 * Copying Text:
 
