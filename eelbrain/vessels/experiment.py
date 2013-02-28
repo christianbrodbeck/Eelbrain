@@ -934,7 +934,7 @@ class mne_experiment(object):
         fname = self.get('label_file')
         return self._label_cache[fname]
 
-    def load_raw(self, add_proj=True, preload=False, **kwargs):
+    def load_raw(self, add_proj=True, add_bads=True, preload=False, **kwargs):
         """
         Load a raw file as mne Raw object.
 
@@ -943,6 +943,10 @@ class mne_experiment(object):
         add_proj : bool
             Add the projections to the Raw object. This does *not* set the
             proj variable.
+        add_bads : False | True | list
+            Add bad channel information to the Raw. If True, bad channel
+            information is retrieved from self.bad_channels. Alternatively,
+            a list of bad channels can be sumbitted.
         preload : bool
             Mne Raw parameter.
         """
@@ -959,8 +963,15 @@ class mne_experiment(object):
 
         raw_file = self.get('raw-file')
         raw = load.fiff.Raw(raw_file, proj, preload=preload)
-        bad_chs = self.bad_channels[(self.get('subject'), self.get('experiment'))]
-        raw.info['bads'].extend(bad_chs)
+        if add_bads:
+            if add_bads is True:
+                key = (self.get('subject'), self.get('experiment'))
+                bad_chs = self.bad_channels[key]
+            else:
+                bad_chs = add_bads
+
+            raw.info['bads'].extend(bad_chs)
+
         return raw
 
     def load_sensor_data(self, stimvar='stim',
