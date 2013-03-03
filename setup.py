@@ -76,7 +76,7 @@ if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  ###
                 ]
     
     OPTIONS = {
-               'iconfile': 'icon/eelbrain.icns',
+               'iconfile': 'icons/eelbrain.icns',
                # py2app's iconfile option places the specified file
                # in the new app bundle's Resources directory
 #               'packages': 'wx',
