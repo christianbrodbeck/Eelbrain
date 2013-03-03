@@ -960,6 +960,14 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.shell.clear()
         self.shell.prompt()
 
+    def OnClose(self, event):
+        # http://stackoverflow.com/a/1055506/166700
+        if event.CanVeto():
+            self.Hide()
+            event.Veto()
+        else:
+            event.Skip()
+
     def OnDestroyIcon(self, evt):
         logging.debug("DESTROY ICON CALLED")
         self.eelbrain_icon.Destroy()
@@ -989,10 +997,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         """
         win = self.get_active_window()
         if win:
-            if win is self:
-                pass
-            else:
-                win.Close()
+            win.Close()
         else:
             event.Skip()
 
@@ -1300,7 +1305,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
                     else:
                         ed.Destroy()
         self.OnP_CloseAll()
-        self.Close()
+        self.Close(force=True)
 
     def OnRecentItemLoad(self, event):
         fileNum = event.GetId() - wx.ID_FILE1
@@ -1373,7 +1378,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnWindowMenuActivateWindow(self, event):
         ID = event.GetId()
         window = self.windowMenuWindows[ID]
-        window.SetFocus()
+        window.Show()
+        window.Raise()
 
     def pos_for_new_window(self, size=(200, 400)):
         x, y, w, h = self.GetRect().Get()
