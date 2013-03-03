@@ -536,6 +536,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.global_namespace['cd'] = self.curdir
         self.curdir(os.path.expanduser('~'))
 
+        for name in ('printdict', 'printlist', 'dicttree'):
+            self.global_namespace[name] = getattr(print_funcs, name)
 
         # other Bindings
         self.Bind(wx.EVT_MAXIMIZE, self.OnMaximize)

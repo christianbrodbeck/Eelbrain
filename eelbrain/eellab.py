@@ -75,5 +75,3 @@ import load.kit
 import save
 
 from .utils import statfuncs
-
-from utils.print_funcs import printdict, printlist, dicttree
