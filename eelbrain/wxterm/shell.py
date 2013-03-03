@@ -26,22 +26,19 @@ import wx.lib.colourselect
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-
-from eelbrain import __version__
-from eelbrain import ui
-_extension = 'jkldfsa'
-
-from eelbrain import wxutils
-from eelbrain.wxutils import Icon
-from eelbrain.wxutils import droptarget
-
-import ID
-import about_dialog
-import preferences_dialog
-from help import HelpViewer
-from table import TableFrame
-import py_editor
-import mpl_tools
+from .. import __version__
+from .. import ui
+from .. import wxutils
+from ..utils import print_funcs
+from ..wxutils import Icon
+from ..wxutils import droptarget
+from . import ID
+from .about_dialog import AboutFrame
+from .help import HelpViewer
+from .mpl_tools import PyplotManager
+from .preferences_dialog import PreferencesDialog
+from .py_editor import Editor as PyEditor
+from .table import TableFrame
 
 
 
@@ -303,7 +300,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     # child windows
         x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
-        self.P_mgr = mpl_tools.PyplotManager(self, pos=(x_max - 100, y_min + 22 + 4))
+        self.P_mgr = PyplotManager(self, pos=(x_max - 100, y_min + 22 + 4))
 
     # --- MENUS ---
         # wx 2.8 somehow does not manage to access the 'window' and 'help'
@@ -704,7 +701,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         y = area.top
         pos = (x, y)
 
-        editor = py_editor.Editor(self, self, pos=pos, size=size, pyfile=pyfile)
+        editor = PyEditor(self, self, pos=pos, size=size, pyfile=pyfile)
 
         editor.Show()
         self.editors.append(editor)
@@ -938,7 +935,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def OnAbout(self, event):
         """Display an About window."""
-        about = about_dialog.AboutFrame(self)
+        about = AboutFrame(self)
         if wx.__version__ >= '2.9':
             about.ShowWithEffect(wx.SHOW_EFFECT_BLEND)
         else:
@@ -1264,7 +1261,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 m.SetText(title)
 
     def OnPreferences(self, event=None):
-        dlg = preferences_dialog.PreferencesDialog(self)
+        dlg = PreferencesDialog(self)
 #        dlg = wx.MessageDialog(self, "Test", 'test', wx.OK)
         dlg.Show()
 #        dlg.Destroy()
@@ -1441,8 +1438,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
             text = item.GetItemLabelText()
             if text.endswith('.py'):
                 item.SetBitmap(py_icon)
-            elif text.endswith(_extension):
-                item.SetBitmap(e_icon)
 
     def RemovePyEditor(self, editor):
         if editor in self.editors:
