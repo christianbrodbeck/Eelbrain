@@ -187,8 +187,8 @@ def hasrandom(Y):
     elif ismodel(Y):
         return any(map(hasrandom, Y.effects))
     return False
-    
-    
+
+
 def asmodel(X, sub=None, ds=None):
     if isinstance(X, str):
         if ds is None:
@@ -563,7 +563,7 @@ class var(object):
         else:
             x = self.x + other
             if np.isscalar(other):
-                name = '+'.join((self.name, str(other)))
+                name = '%s+%s' % (self.name, other)
             else:
                 name = self.name
 
@@ -573,7 +573,7 @@ class var(object):
         "subtract: values are assumed to be ordered. Otherwise use .sub method."
         if np.isscalar(other):
             return var(self.x - other,
-                       name='-'.join((self.name, str(other))))
+                       name='%s-%s' % (self.name, other))
         else:
             assert len(other.x) == len(self.x)
             x = self.x - other.x
@@ -589,12 +589,12 @@ class var(object):
             return model(self, other, self % other)
         elif isvar(other):
             x = self.x * other.x
-            name = '*'.join((self.name, other.name))
+            name = '%s*%s' % (self.name, other.name)
         else:  #  np.isscalar(other)
             x = self.x * other
             other_name = str(other)
             if len(other_name) < 12:
-                name = '*'.join((self.name, other_name))
+                name = '%s*%s' % (self.name, other_name)
             else:
                 name = self.name
 
@@ -603,13 +603,13 @@ class var(object):
     def __floordiv__(self, other):
         if isvar(other):
             x = self.x // other.x
-            name = '//'.join((self.name, other.name))
+            name = '%s//%s' % (self.name, other.name)
         elif np.isscalar(other):
             x = self.x // other
-            name = '//'.join((self.name, str(other)))
+            name = '%s//%s' % (self.name, other)
         else:
             x = self.x // other
-            name = '//'.join((self.name, '?'))
+            name = '%s//%s' % (self.name, '?')
         return var(x, name=name)
 
     def __mod__(self, other):
@@ -660,10 +660,10 @@ class var(object):
         """
         if np.isscalar(other):
             return var(self.x / other,
-                       name='/'.join((self.name, str(other))))
+                       name='%s/%s' % (self.name, other))
         elif isvar(other):
             return var(self.x / other.x,
-                       name='/'.join((self.name, other.name)))
+                       name='%s/%s' % (self.name, other.name))
         else:
             categories = other
             if not hasattr(categories, 'as_dummy_complete'):
@@ -674,7 +674,7 @@ class var(object):
             means = codes.sum(0) / dummy_factor.sum(0)
             codes -= dummy_factor * means
             # create effect
-            name = ' per '.join([self.name, categories.name])
+            name = '%s per %s' % (self.name, categories.name)
             labels = categories.dummy_complete_labels
             out = nonbasic_effect(codes, [self, categories], name,
                                   beta_labels=labels)
@@ -1451,11 +1451,11 @@ class ndvar(object):
         if isscalar(other):
             dims, x_self, x_other = self._align(other)
             x = x_self + x_other
-            name = '+'.join((self.name, other.name))
+            name = '%s+%s' % (self.name, other.name)
         elif np.isscalar(other):
             x = self.x + other
             dims = self.dims
-            name = '+'.join((self.name, str(other)))
+            name = '%s+%s' % (self.name, str(other))
         else:
             raise ValueError("can't add %r" % other)
         return ndvar(x, dims=dims, name=name, properties=self.properties)
@@ -1468,11 +1468,11 @@ class ndvar(object):
         if isscalar(other):
             dims, x_self, x_other = self._align(other)
             x = x_self - x_other
-            name = '-'.join((self.name, other.name))
+            name = '%s-%s' % (self.name, other.name)
         elif np.isscalar(other):
             x = self.x - other
             dims = self.dims
-            name = '-'.join((self.name, str(other)))
+            name = '%s-%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
         return ndvar(x, dims=dims, name=name, properties=self.properties)
@@ -2484,7 +2484,7 @@ class interaction(_effect_):
         self.beta_labels = ['?'] * codes.shape[1]  # TODO:
 
     def __repr__(self):
-        names = [f.name for f in self.base]
+        names = [str(f.name) for f in self.base]
         if preferences['short_repr']:
             return ' % '.join(names)
         else:
