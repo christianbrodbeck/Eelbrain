@@ -20,10 +20,14 @@ import _base
 __all__ = ['activation', 'dspm', 'stc', 'stat']
 
 
+def idx(i):
+    return int(round(i))
+
+
 def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm',
          hemi='both'):
     """
-    Plot a source estimate with typical dSPM values.
+    Plot a source estimate with coloring for dSPM values.
 
     Parameters
     ----------
@@ -39,9 +43,6 @@ def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm',
     """
     if not (fmin < fmid < fmax):
         raise ValueError("Invalid colormap, we need fmin < fmid < fmax")
-
-    def idx(i):
-        return int(round(i))
 
     n = 256
     lut = np.zeros((n, 4), dtype=np.uint8)
@@ -99,7 +100,7 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, surf='smoothwm',
     hemi : 'lh' | 'rh' | 'both'
         Which hemisphere to plot.
     """
-    pmap, lut, vmax = colorize_p(p_map, param_map, p0=p0, p1=p1, solid=solid)
+    pmap, lut, vmax = p_lut(p_map, param_map, p0=p0, p1=p1, solid=solid)
     plot = stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False,
                surf=surf, hemi=hemi)
     return plot
@@ -449,31 +450,36 @@ class stc:
 
 
 
-def colorize_p(pmap, tmap, p0=0.05, p1=0.01, solid=False):
+def p_lut(pmap, tmap, p0=0.05, p1=0.01, n=256, solid=False):
+    """Creat a color look up table (lut) for p-values
+
+    Parameters
+    ----------
+    pmap : ndvar
+        Map of p-values.
+    tmap : ndvar
+        Map of signed statistic (only used to code the sign of each p-value).
+    p0 : scalar
+        Highest p-vale that should be visible.
+    p1 : scalar
+        P-value where the colormap changes from ramping alpha to ramping color.
+    n : int
+        Number of color categories in the lut.
+    solid : bool
+        Instead of ramping alpha/color hue, create steps at p0 and p1.
     """
+    if p1 >= p0:
+        raise ValueError("p1 needs to be smaller than p0.")
 
-    assuming
+    pstep = 2 * p0 / idx(n / 2 - 1)
 
-    look up table
-    -------------
-
-    index -> p-value
-    0 -> 0
-    .
-    126
-    .    -> p0
-    127
-    .    -> vmax
-    128
-    .    -> p0 (neg)
-    .
-    255
-
-    """
-    # modify pmap so that
-    pstep = 2 * p0 / 125.5  # d p / index
+    # max p-value that needs to be represented
     vmax = p0 + pstep
+
+    # bring interesting p-values to the range [pstep vmax]
     pmap = vmax - pmap
+
+    # set uninteresting values to zero
     pmap.x.clip(0, vmax, pmap.x)
 
     # add sign to p-values
@@ -481,28 +487,31 @@ def colorize_p(pmap, tmap, p0=0.05, p1=0.01, solid=False):
         pmap.x *= np.sign(tmap.x)
 
     # http://docs.enthought.com/mayavi/mayavi/auto/example_custom_colormap.html
-    lut = np.zeros((256, 4), dtype=np.uint8)
-    i0 = 1
-    i1 = int(p1 / pstep)
+    lut = np.zeros((n, 4), dtype=np.uint8)
 
-    # negative
-    lut[:128, 2] = 255
-    lut[:i1, 0] = 255
-    # positive
-    lut[128:, 0] = 255
-    lut[-i1:, 1] = 255
+    middle = n / 2
+    p0n = idx(p0 / pstep)
+    p0p = n - p0n
+    p1n = idx(p1 / pstep)
+    p1p = n - p1n
+
+    # negative colors
+    lut[:middle, 2] = 255
+    lut[:p1n, 0] = np.linspace(255, 0, p1n)
+
+    # positive colors
+    lut[middle:, 0] = 255
+    lut[p1p:, 1] = np.linspace(0, 255, n - p1p)
+
     # alpha
     if solid:
-        lut[:126, 3] = 255
-        lut[126, 3] = 127
-        lut[129, 3] = 127
-        lut[130:, 3] = 255
+        lut[:p0n, 3] = 255
+        lut[p0p:, 3] = 255
     else:
-        n = 127 - i1
-        lut[:i1, 3] = 255
-        lut[126:i1 - 1:-1, 3] = np.linspace(0, 255, n)
-        lut[129:-i1, 3] = np.linspace(0, 255, n)
-        lut[-i1:, 3] = 255
+        lut[:p1n, 3] = 255
+        lut[p1n:p0n, 3] = np.linspace(255, 0, p0n - p1n)
+        lut[p0p:p1p, 3] = np.linspace(0, 255, p1p - p0p)
+        lut[p1p:, 3] = 255
 
     return pmap, lut, vmax
 
