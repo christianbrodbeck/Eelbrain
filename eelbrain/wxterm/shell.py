@@ -1304,6 +1304,11 @@ class ShellFrame(wx.py.shell.ShellFrame):
                     else:
                         ed.Destroy()
         self.OnP_CloseAll()
+
+        # finally, clean up any remaining windows (e.g., mayavi)
+        for w in wx.GetTopLevelWindows():
+            w.Close()
+
         self.Close(force=True)
 
     def OnRecentItemLoad(self, event):
