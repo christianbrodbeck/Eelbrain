@@ -900,7 +900,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
         for c in self.Children:
             if hasattr(c, 'IsActive') and c.IsActive():
                 return c
-        return None
+        for w in  wx.GetTopLevelWindows():
+            if hasattr(w, 'IsActive') and w.IsActive():
+                return w
+        return wx.GetActiveWindow()
 
     def GetCurLine(self):
         return self.shell.GetCurLine()
