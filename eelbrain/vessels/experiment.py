@@ -1218,7 +1218,7 @@ class mne_experiment(object):
         if apply_proj:
             raw.apply_projector()
         raw.filter(hp, lp, n_jobs=n_jobs, **kwargs)
-        raw.save(dest_file)
+        raw.save(dest_file, overwrite=True)
 
     def make_fwd_cmd(self, redo=False):
         """
