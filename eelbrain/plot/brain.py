@@ -247,7 +247,10 @@ class stc:
                 tstart = self._time.x.min()
             if tstop is None:
                 tstop = self._time.x.max()
-            times = np.arange(tstart, tstop + tstep / 2, tstep)
+            # make range inclusive
+            if not (tstop - tstart) % tstep:
+                tstop += tstep / 2
+            times = np.arange(tstart, tstop, tstep)
 
         if view is None:
             pass
