@@ -9,6 +9,7 @@ experiment management
 
 """
 
+import inspect
 import logging
 import os
 import cPickle as pickle
@@ -352,6 +353,37 @@ class ShellFrame(wx.py.shell.ShellFrame):
                                  "the terminal's history as a new Python "
                                  "document")
         self.Bind(wx.EVT_MENU, self.OnHistory2PyDoc, id=ID.SHELL_History2PyDoc)
+
+    # MNE Menu
+        # (without requiring mne-python to be installed)
+        try:
+            import mne
+            m = self.mneMenu = wx.Menu()
+
+            self.mne_cmds = {}
+            for cmd in sorted(dir(mne.gui)):
+                if cmd.startswith('_'):
+                    continue
+
+                # check that the command has no obligatory parameters
+                func = getattr(mne.gui, cmd)
+                argspec = inspect.getargspec(func)
+                args = argspec.args
+                if args:
+                    defaults = argspec.defaults
+                    if (defaults is None) or (len(args) > len(defaults)):
+                        continue
+
+                # add menu item
+                Id = wx.NewId()
+                self.mne_cmds[Id] = cmd
+                name = cmd.capitalize()
+                m.Append(Id, name, "Open the mne %s GUI" % name)
+                self.Bind(wx.EVT_MENU, self.OnOpenMneGui, id=Id)
+
+            self.menuBar.Insert(4, m, "MNE")
+        except:
+            pass
 
     # WINDOW MENU
         Id = get_menu_Id("&Window")
@@ -1251,6 +1283,13 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnMaximize(self, event=None):
         logging.debug("SHELLFRAME Maximize received")
         self.OnResize_Max(event)
+
+    def OnOpenMneGui(self, event):
+        Id = event.GetId()
+        import mne
+        cmd = self.mne_cmds[Id]
+        func = getattr(mne.gui, cmd)
+        func()
 
     def OnOpenWindowMenu(self, event):
         "Updates open windows to the menu"
