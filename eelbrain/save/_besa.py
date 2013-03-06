@@ -1,7 +1,8 @@
 '''
-Created on Jun 12, 2012
+Export events for use in the Besa pipeline. Use :func:`meg160_triggers` to
+export a trigger list for MEG160, then reject unwanted events, and finally
+use :func:`besa_evt` to export a corresponding .evt file.
 
-@author: Christian M Brodbeck
 '''
 import numpy as np
 
@@ -16,12 +17,16 @@ __all__ = ['meg160_triggers', 'besa_evt']
 
 
 def meg160_triggers(ds, dest=None):
-    """
-    Saves the time of all events in ds, plus 5 padding trials, to a txt file
-    that can be used for epoching in MEG-160
+    """Export a list of event times used for epoching in MEG-160
 
+    For use together with :func:`besa_evt`. ``save.meg160_triggers(ds)`` adds
+    a variable called 'besa_index' which keeps track of the event sequence so
+    that the .evt file can be saved correctly after event rejection.
 
-
+    Parameters
+    ----------
+    ds : dataset
+        Dataset containing all the desired events.
     """
     T = ds['i_start'] / ds.info['samplingrate']
 
@@ -33,46 +38,62 @@ def meg160_triggers(ds, dest=None):
         if not dest:
             return
 
-    # export trigger list
-    a = np.ones(len(T) + 10) * 2
-    a[5:-5] = T.x
-    triggers = var(a, name='triggers')
-    _txt.txt(triggers, dest=dest)
+    # index the datafile to keep track of rejections
+    ds.index('besa_index')
+
+    _txt.txt(T, dest=dest)
 
 
+def besa_evt(ds, tstart= -0.1, tstop=0.6, pad=0.1, dest=None):
+    """Export an evt file for use with Besa
 
-def besa_evt(ds, dest=None, sub=None, tstart=-0.1, tstop=0.6, pad=0.1):
+    For use together with :func:`meg160_triggers`
+
+    Parameters
+    ----------
+    ds : dataset
+        Dataset containing the events.
+    tstart, tstop : scalar [sec]
+        start and stop of the actual epoch.
+    pad : scalar [sec]
+        Time interval added before and after every epoch for padding.
+    dest : None | str
+        Destination file name. If None, a save as dialog will be shown.
+
+    Notes
+    -----
+    ds needs to be the same dataset (i.e., same length) from which the MEG-160
+    triggers were created.
+
+    tstart, tstop and pad need to be the same values used for epoching in
+    MEG-160.
     """
-    ds needs to be the same dataset (i.e., same length) from which the MEG-160 
-    triggers were created
-    
-    tstart, tstop and pad need to be the same values used in MEG-160 epoching
-     
-    """
-    # destination
-    if dest is None:
-        dest = ui.ask_saveas("Save Besa Events", "Please pick a "
-                             "destination for the Besa Events",
-                             ('evt', 'Besa Events'))
-        if not dest:
-            return
+    idx = ds['besa_index']
+    N = idx.x.max() + 1
 
     # save trigger times in ds
     tstart2 = tstart - pad
     tstop2 = tstop + pad
     epoch_len = tstop2 - tstart2
-    start = epoch_len * 5 - tstart2
-    stop = epoch_len * (5 + ds.N)
+    start = -tstart2
+    stop = epoch_len * N
 
     # BESA events
     evts = dataset()
     evts['Tsec'] = var(np.arange(start, stop, epoch_len))
-    evts['Code'] = var(np.ones(ds.N))
+    evts['Code'] = var(np.ones(N))
+
+    # remove rejected trials
+    evts = evts.subset(idx)
+
     evts['TriNo'] = var(ds['eventID'].x)
 
-    if sub is not None:
-        if isinstance(sub, str):
-            sub = ds[sub]
-        evts = evts.subset(sub)
+    # destination
+    if dest is None:
+        dest = ui.ask_saveas("Save Besa Events", "Please pick a "
+                             "destination for the Besa events",
+                             ('evt', 'Besa Events'))
+        if not dest:
+            return
 
     evts.export(dest)
