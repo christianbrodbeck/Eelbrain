@@ -552,7 +552,7 @@ class mne_experiment(object):
         while True:
             stop = True
             for name in self._fmt_pattern.findall(temp):
-                if (name in values) or (name in self.var_values):
+                if (name in values) or (self.var_values.get(name, False)):
                     pass
                 else:
                     temp = temp.replace('{%s}' % name, self._state[name])
