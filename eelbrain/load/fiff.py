@@ -130,8 +130,7 @@ def Raw(path=None, proj=False, **kwargs):
 
 
 def events(raw=None, merge= -1, proj=False, name=None,
-           stim_channel='STI 014',
-           stim_channel_bl=0, verbose=False):
+           stim_channel=None):
     """
     Read events from a raw fiff file.
 
@@ -143,7 +142,7 @@ def events(raw=None, merge= -1, proj=False, name=None,
         The raw fiff file from which to extract events (if ``None``, a file
         dialog will be displayed).
     merge : int
-        use to merge events lying in neighboring samples. The integer value
+        Merge steps occurring in neighboring samples. The integer value
         indicates over how many samples events should be merged, and the sign
         indicates in which direction they should be merged (negative means
         towards the earlier event, positive towards the later event).
@@ -155,14 +154,12 @@ def events(raw=None, merge= -1, proj=False, name=None,
         If multiple files match the pattern, a ValueError will be raised.
     name : str | None
         A name for the dataset. If ``None``, the raw filename will be used.
-    stim_channel : str
-        Name of the trigger channel.
-    stim_channel_bl : int
-        For corrupted event channels:
-        After kit2fiff conversion of sqd files with unused trigger channels,
-        the resulting fiff file's event channel can contain a baseline other
-        than 0. This interferes with normal event extraction. If the baseline
-        value is provided as parameter, the events can still be extracted.
+    stim_channel : None | string | list of string
+        Name of the stim channel or all the stim channels
+        affected by the trigger. If None, the config variables
+        'MNE_STIM_CHANNEL', 'MNE_STIM_CHANNEL_1', 'MNE_STIM_CHANNEL_2',
+        etc. are read. If these are not found, it will default to
+        'STI 014'.
 
     Returns
     -------
@@ -176,59 +173,26 @@ def events(raw=None, merge= -1, proj=False, name=None,
 
     """
     if raw is None or isinstance(raw, basestring):
-        raw = Raw(raw, proj=proj, verbose=verbose)
+        raw = Raw(raw, proj=proj)
 
     if name is None:
         raw_file = raw.info['filename']
         name = os.path.basename(raw_file)
 
-    if stim_channel_bl:
-        pick = mne.event.pick_channels(raw.info['ch_names'], include=stim_channel)
-        data, _ = raw[pick, :]
-        idx = np.where(np.abs(np.diff(data[0])) > 0)[0]
+    # stim_channel_bl: see commit 52796ad1267b5ad4fba10f6ca5f2b7cfba65ba9b or earlier
+    evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
+    idx = np.nonzero(evts[:, 2])
+    evts = evts[idx]
 
-        # find baseline NULL-events
-        values = data[0, idx + 1]
-        valid_events = np.where(values != stim_channel_bl)[0]
-        idx = idx[valid_events]
-        values = values[valid_events]
-
-        N = len(values)
-        events = np.empty((N, 3), dtype=np.int32)
-        events[:, 0] = idx
-        events[:, 1] = np.zeros_like(idx)
-        events[:, 2] = values
-    else:
-        events = mne.find_events(raw, verbose=verbose, stim_channel=stim_channel)
-
-    if len(events) == 0:
+    if len(evts) == 0:
         raise ValueError("No events found!")
 
-    if merge:
-        index = np.ones(len(events), dtype=bool)
-        diff = np.diff(events[:, 0])
-        where = np.where(diff <= abs(merge))[0]
-
-        if merge > 0:
-            # drop the earlier event
-            index[where] = False
-        else:
-            # drop the later event
-            index[where + 1] = False
-            # move the trigger value to the earlier event
-            for w in reversed(where):
-                i1 = w
-                i2 = w + 1
-                events[i1, 2] = events[i2, 2]
-
-        events = events[index]
-
-    istart = var(events[:, 0], name='i_start')
-    event = var(events[:, 2], name='eventID')
+    i_start = var(evts[:, 0], name='i_start')
+    eventID = var(evts[:, 2], name='eventID')
     info = {'raw': raw,
             'samplingrate': raw.info['sfreq'],
             'info': raw.info}
-    return dataset(event, istart, name=name, info=info)
+    return dataset(eventID, i_start, name=name, info=info)
 
 
 def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
