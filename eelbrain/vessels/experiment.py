@@ -1507,9 +1507,8 @@ class mne_experiment(object):
         files = []
         for old_name in self.iter_temp(old):
             if os.path.exists(old_name):
-                new_name = self.expand_template(new)
+                new_name = self.format(new)
                 files.append((old_name, new_name))
-
 
         if not files:
             print "No files found for %r" % old
@@ -1528,7 +1527,7 @@ class mne_experiment(object):
             table.cells(old, '->', new)
 
         print table
-        if raw_input("Delete (confirm with 'yes')? ") == 'yes':
+        if raw_input("Rename (confirm with 'yes')? ") == 'yes':
             for old, new in files:
                 dirname = os.path.dirname(new)
                 if not os.path.exists(dirname):
