@@ -1709,7 +1709,7 @@ class mne_experiment(object):
         if match:
             for k, v in kwargs.iteritems():
                 if ((k in self.var_values) and (not '*' in v)
-                     and v not in self.var_values.get[k]):
+                     and v not in self.var_values[k]):
                     raise ValueError("Variable %r has not value %r" % (k, v))
 
         # set state
