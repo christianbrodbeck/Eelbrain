@@ -43,16 +43,6 @@ from .table import TableFrame
 
 
 
-
-
-# Attributes that are hidden from autocompletion. Should only be attributes
-# that the user never wants to retrieve from any module. Hence, at the moment
-# there are some top-level module names and their abbreviations.
-hidden_attr = [
-               'np', 'sp', 'scipy', 'mpl', 'P', 'plt',
-               'wx',
-               ]
-
 _punctuation = string.punctuation.replace('.', '').replace('_', '')
 
 
@@ -65,7 +55,6 @@ def is_py_varname(name):
     return a and b
 
 # modify wx.py introspection to take into account __wrapped__
-import inspect
 from wx.py.introspect import getConstructor
 def getBaseObject(object):
     """Return base object and dropSelf indicator for an object."""
@@ -128,7 +117,6 @@ class Shell(wx.py.shell.Shell):
         Display auto-completion popup list from wxPython, with an additional
         mechanism for filtering out unwanted names:
          - names listed in the object's __hide__ attribute
-         - names in hidden_attr (defined in this module)
 
         """
         ###### MY ADDITIONAL PRUNING MECHANISM
@@ -143,7 +131,7 @@ class Shell(wx.py.shell.Shell):
         if options:
             ###### MY ADDITIONAL PRUNING MECHANISM
             if command.endswith('.'):
-                if any(item in options for item in ['__all__', '__hide__']):
+                if ('__hide__' in options):  # or ('__all__' in options):
                     # strip command preceding module name
                     for c in _punctuation + ' ':
                         if c in command:
@@ -154,17 +142,13 @@ class Shell(wx.py.shell.Shell):
                         if name:
                             source = source[name].__dict__
 
-                    if '__all__' in options:
-                        options = sorted(source['__all__'], key=str.lower)
-                    elif '__hide__' in options:
+                    if '__hide__' in options:
                         for item in source['__hide__']:
                             if item in options:
                                 options.remove(item)
-            # logging.debug(" AutoComplete: %s"%str(options))
-            for item in hidden_attr:
-                if item in options:
-                    options.remove(item)
-            # options = [item for item in options if item not in hidden_attr]
+#                    elif '__all__' in options:
+#                        options = sorted(source['__all__'], key=str.lower)
+
             ###### MY end
             options = ' '.join(options)
             self.AutoCompShow(offset, options)
