@@ -12,15 +12,10 @@ import logging
 import math
 
 import numpy as np
-import scipy as sp
-# import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 import eelbrain.fmtxt as fmtxt
 import eelbrain.vessels.data as _dta
-
-from eelbrain.utils import _basic_ops_
-from eelbrain.vessels import colorspaces as _cs
 
 import _base
 

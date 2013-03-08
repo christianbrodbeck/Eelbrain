@@ -11,93 +11,91 @@ wx structure:
 
 import logging
 
-#import numpy as np
 import wx.combo
 
-from eelbrain.utils._basic_ops_ import toList
-from eelbrain.wxutils import Icon
+from ...utils.basic import toList
+from ...wxutils import Icon
 import ID
 
 import view_panels
 
 
 
-
 class PhysioViewerFrame(wx.Frame):
-    def __init__(self, parent, visualizers, i=0, id=-1, size=(800,600)):
-        title = self.title_stem = "Physio Viewer"#dataset.name
+    def __init__(self, parent, visualizers, i=0, id= -1, size=(800, 600)):
+        title = self.title_stem = "Physio Viewer"  # dataset.name
         wx.Frame.__init__(self, parent, id, title, size=size)
-        
+
         self.visualizers = visualizers = toList(visualizers)
         datasets = self.datasets = [v.dataset for v in visualizers]
         self.active_dataset = datasets[0]
 #        self.visualizers.reverse()
-                
-        
+
+
     # Toolbar
         tb = self.CreateToolBar(wx.TB_HORIZONTAL)
-        tb.SetToolBitmapSize(size=(32,32))
-        
+        tb.SetToolBitmapSize(size=(32, 32))
+
         # select file
         tb.AddLabelTool(wx.ID_BACKWARD, "Back", Icon("tango/actions/go-previous"))
         self.Bind(wx.EVT_TOOL, self.OnBack, id=wx.ID_BACKWARD)
         tb.AddLabelTool(wx.ID_FORWARD, "Next", Icon("tango/actions/go-next"))
         self.Bind(wx.EVT_TOOL, self.OnNext, id=wx.ID_FORWARD)
-        
+
         css = self.css = _ComboSegmentSelector(tb, datasets[0].segments, self)
         css.Bind(wx.EVT_TEXT, self.OnComboSegSel)
         tb.AddControl(css)
-        
+
         # Display
         tb.AddSeparator()
 #        checkbox = wx.CheckBox(tb, wx_base.ID_SHOW_SOURCE, "Show Source")
 #        tb.AddControl(checkbox)
 #        self.Bind(wx.EVT_CHECKBOX, self.OnCheckBox)
-        
+
         tb.AddLabelTool(wx.ID_ZOOM_IN, "Zoom In", Icon("actions/zoom-in"))
         tb.AddLabelTool(wx.ID_ZOOM_OUT, "Zoom Out", Icon("actions/zoom-out"))
         self.Bind(wx.EVT_TOOL, self.OnZoom, id=wx.ID_ZOOM_IN)
         self.Bind(wx.EVT_TOOL, self.OnZoom, id=wx.ID_ZOOM_OUT)
-        
+
         tb.AddLabelTool(wx.ID_UP, "Move Left", Icon("tango/actions/media-seek-backward"))
         tb.AddLabelTool(wx.ID_DOWN, "Move Left", Icon("tango/actions/media-seek-forward"))
         self.Bind(wx.EVT_TOOL, self.OnMove, id=wx.ID_UP)
         self.Bind(wx.EVT_TOOL, self.OnMove, id=wx.ID_DOWN)
-        
+
         tb.AddLabelTool(wx.ID_REFRESH, "Refresh", Icon("tango/actions/view-refresh"))
         self.Bind(wx.EVT_TOOL, self.OnReloadData, id=wx.ID_REFRESH)
-        
+
         tb.Realize()
-        
-        
+
+
     # EVTs
         self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
         self.Bind(wx.EVT_CLOSE, self.OnClose)
-        
+
     # Create Panels
-        s1 = self.splitter_1 = wx.SplitterWindow(self, -1)#, style=wx.SP_3DSASH) 
+        s1 = self.splitter_1 = wx.SplitterWindow(self, -1)  # , style=wx.SP_3DSASH)
         s1.SetSashGravity(1)
 #        s2 = self.splitter_2 = wx.SplitterWindow(s1, -1)
-        
+
         p1 = self.ZoomPanel = view_panels.ZoomPanel(s1)
         p2 = self.OverviewPanel = view_panels.OverviewPanel(s1)
-        
-        self.Bind(view_panels.EVT_FIGURE_POS, p1.OnFigurePosEvent, id=ID.CANVAS_PANEL_OVERVIEW)# source=p2)
-        self.Bind(view_panels.EVT_FIGURE_POS, p2.OnFigurePosEvent, id=ID.CANVAS_PANEL_ZOOM)#source=p1)
+
+        self.Bind(view_panels.EVT_FIGURE_POS, p1.OnFigurePosEvent, id=ID.CANVAS_PANEL_OVERVIEW)  # source=p2)
+        self.Bind(view_panels.EVT_FIGURE_POS, p2.OnFigurePosEvent, id=ID.CANVAS_PANEL_ZOOM)  # source=p1)
 #        p1 = self.detailview = _physio_view_panel_detailview(s1, self)
-#        p2a = self.overview  = _physio_view_panel_overview(s2, self) 
+#        p2a = self.overview  = _physio_view_panel_overview(s2, self)
 #        p2b = self.settings  = wx.Panel(s2, id=wx.ID_ANY)
 #        p2b = self.settings  = _dataset_settings_panel(datasets[0].p, s2, self)
         logging.debug("PHYSIO Panels created")
-        
+
         s1.SplitHorizontally(p1, p2, 300)
         self.set_segment(0)
         self.Show()
-        
+
 #        s2.SplitHorizontally(p2a, p2b, -50)
 #        s1.SetSashGravity(.8)
 #        s2.SetSashGravity(1.)
-    
+
     # GUI functions
     def OnKeyDown(self, event):
         key = event.GetKeyCode()
@@ -117,7 +115,7 @@ class PhysioViewerFrame(wx.Frame):
         else:
             raise ValueError("ID NOT GOOD!!")
     def OnMove(self, event=None):
-        if event.GetId() == wx.ID_UP: # left
+        if event.GetId() == wx.ID_UP:  # left
             self.ZoomPanel.relative_move(-.25)
         else:
             self.ZoomPanel.relative_move(.25)
@@ -139,7 +137,7 @@ class PhysioViewerFrame(wx.Frame):
 #            plotting = event.Checked()
 #            self.overview.plotter.set_preview_plotting(plotting)
 #            self.detailview.plotter.set_preview_plotting(plotting)
-    
+
     # manage data
     def set_segment(self, i):
         "call when changing segment"
@@ -157,7 +155,7 @@ class PhysioViewerFrame(wx.Frame):
         self.SetTitle("{0}: {1}".format(self.title_stem, seg.name))
         for v in self.visualizers:
             v.set_segment(self.i)
-        
+
         tmin = seg.tstart
         tmax = seg.tend
 #        if self.t_start < tmin:
@@ -165,7 +163,7 @@ class PhysioViewerFrame(wx.Frame):
 #        if self.t_end > tmax:
 #            self.set_end(tmax)
         self.t_lim = (tmin, tmax)
-        
+
         # plot the new data
         self.OverviewPanel.plot_overview(self.visualizers)
         self.OverviewPanel.Refresh()
@@ -177,17 +175,17 @@ class PhysioViewerFrame(wx.Frame):
 # Helpers
 
 class _ComboSegmentSelector(wx.combo.ComboCtrl):
-    def __init__(self, parent, segments, viewer, style=wx.CB_READONLY|wx.LEFT, 
-                 size=(250,-1)):
+    def __init__(self, parent, segments, viewer, style=wx.CB_READONLY | wx.LEFT,
+                 size=(250, -1)):
         wx.combo.ComboCtrl.__init__(self, parent, style=style, size=size)
         self.viewer = viewer
         self.popup_list = _ListCtrlComboPopup(self)
         self.SetPopupControl(self.popup_list)
         for seg in segments:
             self.popup_list.AddItem(seg.name)
-        #self.Bind(wx.EVT_CHOICE, self.OnSet)
-        #self.Bind(wx.EVT_LEFT_UP, self.OnSet)
-        #self.Bind(wx.EVT_COMBOBOX, self.OnSet)
+        # self.Bind(wx.EVT_CHOICE, self.OnSet)
+        # self.Bind(wx.EVT_LEFT_UP, self.OnSet)
+        # self.Bind(wx.EVT_COMBOBOX, self.OnSet)
     def SelectionChanged(self, i):
 #        logging.debug(" COMBO SLEECTION CHANGED to %s"%i)
         self.viewer.set_segment(i)
@@ -203,7 +201,7 @@ class _ComboSegmentSelector(wx.combo.ComboCtrl):
 class _ListCtrlComboPopup(wx.ListCtrl, wx.combo.ComboPopup):
     """
     popup for selection of segment out of dataset
-    
+
     """
     def __init__(self, combo_ctrl):
         self.combo_ctrl = combo_ctrl
@@ -245,7 +243,7 @@ class _ListCtrlComboPopup(wx.ListCtrl, wx.combo.ComboPopup):
     # Create the popup child control.  Return true for success.
     def Create(self, parent):
         wx.ListCtrl.Create(self, parent,
-                           style=wx.LC_LIST|wx.LC_SINGLE_SEL|wx.SIMPLE_BORDER)
+                           style=wx.LC_LIST | wx.LC_SINGLE_SEL | wx.SIMPLE_BORDER)
         self.Bind(wx.EVT_MOTION, self.OnMotion)
         self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
         self.Bind(wx.EVT_BUTTON, self.OnSet)
@@ -309,7 +307,7 @@ class _ListCtrlComboPopup(wx.ListCtrl, wx.combo.ComboPopup):
 
 
 class _dataset_settings_panel(wx.Panel):
-    def __init__(self, params, parent, viewer, id=-1):
+    def __init__(self, params, parent, viewer, id= -1):
         wx.Panel.__init__(self, parent, id)
         self.viewer = viewer
         # param controls
@@ -323,24 +321,24 @@ class _dataset_settings_panel(wx.Panel):
             else:
 #                if hasattr(param, '_get_repr'):
                 txt = par.__value_repr__()
-                ctrl = wx.TextCtrl(self, i, unicode(txt), 
-                                   style=wx.TE_PROCESS_ENTER) # |wx.TE_PROCESS_TAB)
-            gbs.Add(ctrl, (1,i), flag=wx.EXPAND)
+                ctrl = wx.TextCtrl(self, i, unicode(txt),
+                                   style=wx.TE_PROCESS_ENTER)  # |wx.TE_PROCESS_TAB)
+            gbs.Add(ctrl, (1, i), flag=wx.EXPAND)
             self.params[i] = par
         self.SetSizerAndFit(gbs)
         # Bindings
         self.Bind(wx.EVT_CHOICE, self.OnParamEnter)
 #        self.Bind(wx.EVT_CHAR, self.OnChar)
         self.Bind(wx.EVT_TEXT_ENTER, self.OnParamEnter)
-        #self.Bind(wx.EVT_TEXT, self.OnParamEnter)
+        # self.Bind(wx.EVT_TEXT, self.OnParamEnter)
     def OnChar(self, event):
-        logging.debug("ONCHAR: %s"%event.GetString())
+        logging.debug("ONCHAR: %s" % event.GetString())
         if event.GetKeyCode() == 9:
             self.OnParamEnter(event)
         event.Skip()
     def OnParamEnter(self, event):
         logging.debug("Param changed")
-        Id = event.GetId() # ID
+        Id = event.GetId()  # ID
         arg = event.GetString()
         par = self.params[Id]
         try:
@@ -348,7 +346,7 @@ class _dataset_settings_panel(wx.Panel):
         except:
             pass
         par(arg)
-        #except Exception, exc:
+        # except Exception, exc:
         #    print "DSVIEWER: PARAM {0} ERROR: {1}".format(param.name, arg)
         ds = self.viewer.active_dataset
         if ds['data_type'] == 'event':
@@ -356,4 +354,4 @@ class _dataset_settings_panel(wx.Panel):
             self.viewer.set_segment(self.viewer.i)
         else:
             self.viewer.update_data()
-        #print dir(event)
+        # print dir(event)

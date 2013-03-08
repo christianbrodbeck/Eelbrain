@@ -1,12 +1,12 @@
 """
-This module provides a simple user interface for tables. Tables can be sent 
-to the shell, saved as tab separated value (TSV) files and pickled.  
+This module provides a simple user interface for tables. Tables can be sent
+to the shell, saved as tab separated value (TSV) files and pickled.
 
 Classes
 -------
 TableFrame is the frame which contains the grid
 MyGrid_simple is the grid
-TableAttachDialog asks for output options 
+TableAttachDialog asks for output options
 
 """
 
@@ -16,26 +16,26 @@ import cPickle as pickle
 import numpy as np
 import wx
 import wx.grid
-#import wx.lib.mixins.grid
+# import wx.lib.mixins.grid
 
 import ID
-from eelbrain.wxutils import Icon
-from eelbrain.utils import _basic_ops_
+from ..wxutils import Icon
+from ..utils.basic import add_ext, loadtable
 
 
 
-class MyGrid_simple(wx.grid.Grid):#, wx.lib.mixins.grid.GridAutoEditMixin): #wx.grid.PyGridTableBase, 
+class MyGrid_simple(wx.grid.Grid):  # , wx.lib.mixins.grid.GridAutoEditMixin): #wx.grid.PyGridTableBase,
     def __init__(self, parent):
         wx.grid.Grid.__init__(self, parent)
         self.parent = parent
-        #wx.grid.PyGridTableBase.__init__(self) 
-        #wx.lib.mixins.grid.GridAutoEditMixin.__init__(self)
+        # wx.grid.PyGridTableBase.__init__(self)
+        # wx.lib.mixins.grid.GridAutoEditMixin.__init__(self)
         self.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
     def OnKeyDown(self, event=None):
         key = event.GetKeyCode()
-        logging.debug("MyGrid_simple.OnKeyDown: %s"%key)
+        logging.debug("MyGrid_simple.OnKeyDown: %s" % key)
         if key == wx.WXK_TAB:
-            if self.GetGridCursorCol() == self.GetNumberCols()-1:
+            if self.GetGridCursorCol() == self.GetNumberCols() - 1:
                 y = self.GetGridCursorRow() + 1
                 if y == self.GetNumberRows():
                     self.parent.AppendRow()
@@ -48,21 +48,21 @@ class MyGrid_simple(wx.grid.Grid):#, wx.lib.mixins.grid.GridAutoEditMixin): #wx.
             for r in rows:
                 self.DeleteRows(r, 1)
             if rows or cols:
-                return # do not select cell content if row/col is deleted
+                return  # do not select cell content if row/col is deleted
         event.Skip()
     def set(self, table):
         x = max(len(row) for row in table)
         y = len(table)
-        #self.ClearGrid() #NOTENOUGH
+        # self.ClearGrid() #NOTENOUGH
         self.parent.SetColsRows(x, y)
         for j, row in enumerate(table):
             for i, item in enumerate(row):
                 self.SetCellValue(j, i, unicode(item))
-        #self.AutoSize()
+        # self.AutoSize()
     def load(self, path):
-        table = _basic_ops_.loadtable(path)
+        table = loadtable(path)
         self.set(table)
-    def get(self, dt=unicode, 
+    def get(self, dt=unicode,
             asdict=False, kdt=unicode):
         x = self.GetNumberCols()
         y = self.GetNumberRows()
@@ -78,7 +78,7 @@ class MyGrid_simple(wx.grid.Grid):#, wx.lib.mixins.grid.GridAutoEditMixin): #wx.
                         try:
                             value = dt(value)
                         except:
-                            logging.warning(" MyGrid_simple could not convert %s to %s"%(value, dt))
+                            logging.warning(" MyGrid_simple could not convert %s to %s" % (value, dt))
                             value = np.NAN
                     row.append(value)
                 table.append(row)
@@ -114,20 +114,20 @@ class MyGrid_simple(wx.grid.Grid):#, wx.lib.mixins.grid.GridAutoEditMixin): #wx.
             pass
         else:
             self.AppendRows(rows - rows_now)
-        
+
 
 class TableAttachDialog(wx.Dialog):
     """
     Dialog to set options for attaching table
-    
+
     """
     dtypes_s = ['int', 'float', 'unicode']
     dtypes = [int, float, unicode]
     # built on wxPython Demo 'Dialog' Example
-    def __init__(self, parent, default_name, 
+    def __init__(self, parent, default_name,
                  title="Attach Table",
                  message="Settings for attaching table to global namespace",
-                 ID=-1, size=wx.DefaultSize, 
+                 ID= -1, size=wx.DefaultSize,
                  pos=wx.DefaultPosition, style=wx.DEFAULT_DIALOG_STYLE,
                  useMetal=False,):
         # Instead of calling wx.Dialog.__init__ we precreate the dialog
@@ -153,65 +153,65 @@ class TableAttachDialog(wx.Dialog):
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         label = wx.StaticText(self, -1, message)
-        sizer.Add(label, 0, wx.ALIGN_CENTRE|wx.ALL, 5)
-        
+        sizer.Add(label, 0, wx.ALIGN_CENTRE | wx.ALL, 5)
+
         ## CONTROLS #####   #####   #####   #####   #####   #####
-        
-        rb = self.dt_ctrl = wx.RadioBox(self, -1, "dtype", 
+
+        rb = self.dt_ctrl = wx.RadioBox(self, -1, "dtype",
                                   wx.DefaultPosition, wx.DefaultSize,
                                   self.dtypes_s, 2, wx.RA_SPECIFY_COLS)
-        sizer.Add(rb, 0, wx.ALIGN_CENTRE|wx.ALL, 5)
-        
+        sizer.Add(rb, 0, wx.ALIGN_CENTRE | wx.ALL, 5)
+
         # asdict
         cb = self.asdict_ctrl = wx.CheckBox(self, -1, "As Dictionary")
-        cb.SetHelpText("Instead of exporting the table, export {key:list} dict "+\
+        cb.SetHelpText("Instead of exporting the table, export {key:list} dict " + \
                        "with first row/coumn providing keys")
-        sizer.Add(cb, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5)
+        sizer.Add(cb, 0, wx.GROW | wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
         self.Bind(wx.EVT_CHECKBOX, self.EvtCheckBox, cb)
-         
+
         # asdict BOX
         sbox = wx.StaticBox(self, -1, "Dict Properties")
         bsizer = wx.StaticBoxSizer(sbox, wx.VERTICAL)
-        rb = self.keyloc_ctrl = wx.RadioBox(self, -1, "Key Location", 
+        rb = self.keyloc_ctrl = wx.RadioBox(self, -1, "Key Location",
                                     wx.DefaultPosition, wx.DefaultSize,
                                     ['Col 0', 'Row 0'], 2, wx.RA_SPECIFY_COLS)
-        bsizer.Add(rb, 0, wx.ALIGN_CENTRE|wx.ALL, 5)
-        rb = self.kdt_ctrl = wx.RadioBox(self, -1, "Key dtype", 
+        bsizer.Add(rb, 0, wx.ALIGN_CENTRE | wx.ALL, 5)
+        rb = self.kdt_ctrl = wx.RadioBox(self, -1, "Key dtype",
                                   wx.DefaultPosition, wx.DefaultSize,
                                   self.dtypes_s, 2, wx.RA_SPECIFY_COLS)
-        bsizer.Add(rb, 0, wx.ALIGN_CENTRE|wx.ALL, 5)
-        sizer.Add(bsizer, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5) #1, wx.EXPAND|wx.ALL, 25)
+        bsizer.Add(rb, 0, wx.ALIGN_CENTRE | wx.ALL, 5)
+        sizer.Add(bsizer, 0, wx.GROW | wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)  # 1, wx.EXPAND|wx.ALL, 25)
 
-        
+
         # name
         if default_name:
-            hlp = "The name in global namespace which the table will "+\
+            hlp = "The name in global namespace which the table will " + \
                   "be assigned"
             box = wx.BoxSizer(wx.HORIZONTAL)
-            
+
             label = wx.StaticText(self, -1, "Name:")
             label.SetHelpText(hlp)
-            box.Add(label, 0, wx.ALIGN_CENTRE|wx.ALL, 5)
+            box.Add(label, 0, wx.ALIGN_CENTRE | wx.ALL, 5)
 
-            text = self.name_ctrl = wx.TextCtrl(self, -1, default_name, size=(120,-1))
+            text = self.name_ctrl = wx.TextCtrl(self, -1, default_name, size=(120, -1))
             text.SetHelpText(hlp)
-            box.Add(text, 1, wx.ALIGN_CENTRE|wx.ALL, 5)
+            box.Add(text, 1, wx.ALIGN_CENTRE | wx.ALL, 5)
 
-            sizer.Add(box, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5)
+            sizer.Add(box, 0, wx.GROW | wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
         else:
             self.name_ctrl = False
 
 
         # bottom
-        line = wx.StaticLine(self, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
-        sizer.Add(line, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.TOP, 5)
+        line = wx.StaticLine(self, -1, size=(20, -1), style=wx.LI_HORIZONTAL)
+        sizer.Add(line, 0, wx.GROW | wx.ALIGN_CENTER_VERTICAL | wx.RIGHT | wx.TOP, 5)
 
         btnsizer = wx.StdDialogButtonSizer()
-        
+
 #        if wx.Platform != "__WXMSW__":
 #            btn = wx.ContextHelpButton(self)
 #            btnsizer.AddButton(btn)
-        
+
         btn = wx.Button(self, wx.ID_OK)
         btn.SetHelpText("Export the table to the shell")
         btn.SetDefault()
@@ -221,12 +221,12 @@ class TableAttachDialog(wx.Dialog):
         btn.SetHelpText("Return to the table view without exporting the table")
         btnsizer.AddButton(btn)
         btnsizer.Realize()
-        
-        sizer.Add(btnsizer, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5)
+
+        sizer.Add(btnsizer, 0, wx.ALIGN_CENTER_VERTICAL | wx.ALL, 5)
 
         self.SetSizer(sizer)
         sizer.Fit(self)
-    
+
     def EvtCheckBox(self, event):
         pass
     def GetName(self):
@@ -237,7 +237,7 @@ class TableAttachDialog(wx.Dialog):
             return False
     def GetKwargs(self):
         kwargs = {'dt': self.dtypes[self.dt_ctrl.GetSelection()],
-                  'kdt': self.dtypes[self.kdt_ctrl.GetSelection()],}
+                  'kdt': self.dtypes[self.kdt_ctrl.GetSelection()], }
         if self.asdict_ctrl.GetValue():
             if self.keyloc_ctrl.GetSelection() == 0:
                 kwargs['asdict'] = 'col'
@@ -256,21 +256,21 @@ class TableFrame(wx.Frame, wx.FileDropTarget):
         self.parent_shell = parent
         # toolbar
         tb = self.CreateToolBar(wx.TB_HORIZONTAL)
-        tb.SetToolBitmapSize(size=(32,32))
-        
+        tb.SetToolBitmapSize(size=(32, 32))
+
         tb.AddLabelTool(ID.PYDOC_LOAD, "Load", Icon("tango/actions/document-open"))
         self.Bind(wx.EVT_TOOL, self.OnFileOpen, id=ID.PYDOC_LOAD)
-        
-        #tb.AddLabelTool(ID.RESIZE, "resize", Icon("mine.table"))
-        #self.Bind(wx.EVT_TOOL, self.OnTableResize, id=ID.RESIZE)
+
+        # tb.AddLabelTool(ID.RESIZE, "resize", Icon("mine.table"))
+        # self.Bind(wx.EVT_TOOL, self.OnTableResize, id=ID.RESIZE)
         tb.AddLabelTool(ID.TABLE_SAVE, "Save", Icon("tango/actions/document-save"))
         self.Bind(wx.EVT_TOOL, self.OnTableSave, id=ID.TABLE_SAVE)
-        
+
         tb.AddSeparator()
         tb.AddLabelTool(ID.ATTACH, "attach", Icon("actions/attach"))
         self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
-        
-        #tb.AddSeparator()
+
+        # tb.AddSeparator()
         txt = wx.StaticText(tb, -1, "Columns:")
         sc = wx.SpinCtrl(tb, ID.TABLE_COL, "3", min=0, max=1000, initial=cols)
         tb.AddControl(txt)
@@ -281,24 +281,24 @@ class TableFrame(wx.Frame, wx.FileDropTarget):
         tb.AddControl(txt)
         tb.AddControl(sc)
         self.sc_r = sc
-        self.Bind(wx.EVT_SPINCTRL, self.OnSpinCtrl, id=-1)
-        
-        #tb.AddControl()
-        
+        self.Bind(wx.EVT_SPINCTRL, self.OnSpinCtrl, id= -1)
+
+        # tb.AddControl()
+
         tb.Realize()
-        
+
         # grid
         g = MyGrid_simple(self)
         g.CreateGrid(rows, cols)
         self.grid = g
         if table:
             g.set(table)
-        
+
         self.Sizer = wx.BoxSizer()
         self.Sizer.Add(g, 1, wx.EXPAND)
-        
+
         self.Show()
-            
+
     def OnSpinCtrl(self, event=None):
         id = event.GetId()
         n = event.GetInt()
@@ -328,42 +328,42 @@ class TableFrame(wx.Frame, wx.FileDropTarget):
         n = self.grid.GetNumberRows()
         self.sc_r.SetValue(n)
     def OnDropFiles(self, x, y, filenames):
-        logging.debug("OnDropFiles: %s"%str(filenames))
+        logging.debug("OnDropFiles: %s" % str(filenames))
         if type(filenames) == list:
             filename = filenames[0]
         else:
             filename = filenames
         self.load(filename)
     def OnTableResize(self, event=None):
-        #dialog = wx.Dialog(self)
+        # dialog = wx.Dialog(self)
         logging.debug("OnTableResize")
-        cols, rows = (5,5)
-        self.grid.resize(cols, rows) 
+        cols, rows = (5, 5)
+        self.grid.resize(cols, rows)
     def load(self, path):
-        table = _basic_ops_.loadtable(path)
+        table = loadtable(path)
         self.grid.set(table)
         self.SetTitle(path)
     def OnFileOpen(self, event=None):
-        dialog = wx.FileDialog(self, "Select Table File", 
-                               style = wx.FD_OPEN)
+        dialog = wx.FileDialog(self, "Select Table File",
+                               style=wx.FD_OPEN)
         if dialog.ShowModal() == wx.ID_OK:
             path = dialog.GetPath()
             self.load(path)
     def OnTableSave(self, event=None):
         dialog = wx.FileDialog(self, "Save Table",
-                               wildcard="Pickle (*.pickled)|*.pickled|" +\
+                               wildcard="Pickle (*.pickled)|*.pickled|" + \
                                         "Tab Separated Values (*.txt)|*.txt",
-                               style=wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
+                               style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
         path = None
         while path == None:
             if dialog.ShowModal() == wx.ID_OK:
                 path = dialog.GetPath()
                 file_type = dialog.GetFilterIndex()
-                path = _basic_ops_.add_ext(path, ['pickled', 'txt'][file_type])
+                path = add_ext(path, ['pickled', 'txt'][file_type])
             else:
                 return
 
-        if file_type == 0: # pickle
+        if file_type == 0:  # pickle
             dialog = TableAttachDialog(self, False, title="Pickle Table",
                                        message="Settings for pickling table:")
             dialog.CenterOnScreen()
@@ -371,19 +371,19 @@ class TableFrame(wx.Frame, wx.FileDropTarget):
                 table = self.grid.get(**dialog.GetKwargs())
                 with open(path, 'w') as file:
                     pickle.dump(table, file)
-        elif file_type == 1: # TSV
+        elif file_type == 1:  # TSV
             with open(path, 'w') as f:
                 for row in self.grid.get():
                     f.write('\t'.join(row) + '\n')
     def OnAttach(self, event=None, name=None):
         g = self.parent_shell.global_namespace
         if not name:
-            default_name = 't'; i=1
+            default_name = 't'; i = 1
             while default_name in g:
-                default_name = 't%s'%i; i += 1
+                default_name = 't%s' % i; i += 1
             dialog = TableAttachDialog(self, default_name)
             dialog.CenterOnScreen()
-#            dialog = wx.TextEntryDialog(self, "Name for Table", "Name", 
+#            dialog = wx.TextEntryDialog(self, "Name for Table", "Name",
 #                                        default_name)
             repeat = True
             while repeat:
@@ -392,15 +392,15 @@ class TableFrame(wx.Frame, wx.FileDropTarget):
                     repeat = False
                     name = dialog.GetName()
                     if name in g:
-                        dialog2 = wx.MessageDialog(self, "Name '%s' is already present in global namespace. Overwrite?"%name, 
-                                                   "uga", wx.YES_NO|wx.NO_DEFAULT)
+                        dialog2 = wx.MessageDialog(self, "Name '%s' is already present in global namespace. Overwrite?" % name,
+                                                   "uga", wx.YES_NO | wx.NO_DEFAULT)
                         overwrite = dialog2.ShowModal()
                         if not overwrite:
                             repeat = True
                 else:
                     return
-            self.parent_shell.shell_message('%s = <table>' % name, 
+            self.parent_shell.shell_message('%s = <table>' % name,
                                             internal_call=True)
             g[name] = self.grid.get(**dialog.GetKwargs())
             self.Close()
-            
+

@@ -9,7 +9,7 @@ Adding a derived dataset::
 kwargs: cache='hd'  - 'ram' 'hd' None
 
 
-TODO: better way to predict name (when I change the import script, e.d3 
+TODO: better way to predict name (when I change the import script, e.d3
 suddenly becomes e.d6, so analysis scripts don't match anymore).
 
 
@@ -30,12 +30,12 @@ segment.data
 
 
 """
-import cPickle as pickle 
+import cPickle as pickle
 import os, shutil
 
 from eelbrain import ui
 from vars import VarMothership
-from eelbrain.utils._basic_ops_ import test_attr_name
+from ..utils.basic import test_attr_name
 
 
 # extension used to save experiments
@@ -44,8 +44,8 @@ _extension = 'eelbrain'
 def isexperiment(item):
     return item.__class__.__name__ == 'Experiment'
 
-#def isDataset(item):
-#    return all(hasattr(item, attr) for attr in ('experiment', 'variables', 
+# def isDataset(item):
+#    return all(hasattr(item, attr) for attr in ('experiment', 'variables',
 #                                                'properties'))
 
 
@@ -53,7 +53,7 @@ class Experiment(object):
     def __init__(self, name="Experiment", path=None):
         """
         An Experiment instance is the central container for working with data.
-         
+
         """
         self.children = []
         self.variables = VarMothership()
@@ -71,7 +71,7 @@ class Experiment(object):
             raise ValueError("Experiment already has an attribute named %r" % name)
         else:
             test_attr_name(name)
-        
+
         delattr(self, item.name)
         setattr(self, name, item)
         setattr(item, 'name', name)
@@ -80,7 +80,7 @@ class Experiment(object):
         # check name
         test = name.format(i=0, c='x', p='x')
         test_attr_name(test)
-        
+
         # format name
         if '{c}' in name:
             name = name.format(i='{i}', c=item.__class__.__name__)
@@ -93,18 +93,18 @@ class Experiment(object):
             if hasattr(self, name):
                 raise ValueError("Experiment already has attribute named %r"
                                  % name)
-        
+
         setattr(self, name, item)
 
         # get ID
         ID = max(set([-1]).union(self._itemIDs)) + 1
         self._itemIDs.add(ID)
         self._item_names[ID] = name
-        
+
         return ID, name
     def _del_item(self, item):
         if len(item.children) > 0:
-            # this should not happen because items delete their children 
+            # this should not happen because items delete their children
             # before removing themselves from the experiment
             raise ValueError("Can only delete items at the bottom of the "
                              "hierarchy")
@@ -125,7 +125,7 @@ class Experiment(object):
         for c in self.children:
             lines += c._get_tree_repr_()
         return '\n'.join(lines)
-        
+
 #        lines = ["Eelbrain Experiment:", " > Variables:"]
 #        vstr = "    {n} ({dt})"
 #        for var in self.variables.commanders:
@@ -135,7 +135,7 @@ class Experiment(object):
 #        for i in self.children:
 #            lines.append(dstr.format(name=i.name, dt=i['data_type']))
 #        return '\n'.join(lines)
-        
+
         # DATASETS
 #        txt = ["Datasets:"]
 #        i = 0
@@ -156,9 +156,9 @@ class Experiment(object):
     # File Ops
     def save(self):
         """
-        save the experiment in the path used before (Experiment.path). If it 
+        save the experiment in the path used before (Experiment.path). If it
         has not been saved before, ask for a new path.
-        
+
         """
         if self.path is None:
             self.saveas()
@@ -170,22 +170,22 @@ class Experiment(object):
     def saveas(self, path=None):
         "Save the experiment. if path is None, a system file dialog is used."
         if not path:
-            msg = ("Pick a filename to pickle your data. A folder named"+\
+            msg = ("Pick a filename to pickle your data. A folder named" + \
                    " '<name>.cache' will be created to store data files.")
             path = ui.ask_saveas(title="Save Pickled EEG",
-                                 message=msg, 
-                                 ext = [(_extension, "pickled eelbrain experiment")])
+                                 message=msg,
+                                 ext=[(_extension, "pickled eelbrain experiment")])
         if path:
             if not path.endswith(os.path.extsep + _extension):
                 path = os.path.extsep.join((path, _extension))
-            
+
             # if the experiment already has a cache, copy it
             if self.path is not None:
                 old_cache = self._cache_path
                 new_cache = path + '.cache'
                 if os.path.exists(old_cache):
                     shutil.copytree(old_cache, new_cache)
-            
+
             # save the experiment
             self.path = path
             self.save()
@@ -203,7 +203,7 @@ class Experiment(object):
         if len(self._cacheIDs) == 0:
             ID = 0
         else:
-            ID = list( set(range(max(self._cacheIDs)+2)).difference(self._cacheIDs) )[0]
+            ID = list(set(range(max(self._cacheIDs) + 2)).difference(self._cacheIDs))[0]
         self._cacheIDs.add(ID)
         return ID
     def _free_memmap_id(self, ID):

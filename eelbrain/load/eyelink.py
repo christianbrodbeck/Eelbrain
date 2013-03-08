@@ -8,9 +8,9 @@ import os
 
 import numpy as np
 
-from eelbrain import ui
-from eelbrain.utils import subp
-from eelbrain.vessels.data import dataset, var
+from .. import ui
+from ..utils import subp
+from ..vessels.data import dataset, var
 
 __all__ = ['Edf']
 
