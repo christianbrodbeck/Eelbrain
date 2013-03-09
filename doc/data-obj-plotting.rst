@@ -15,25 +15,9 @@ Plotting
    :toctree: generated
 
    activation
+   dspm
    stat
    stc
-
-
-
-
-.. automodule:: eelbrain.plot.coreg
-
-.. seealso:: Info on coregistration procedure at :ref:`mne-coreg-info`.
-
-.. currentmodule:: eelbrain.plot.coreg
-
-.. autosummary::
-   :toctree: generated
-
-   dev_head_viewer
-   dev_mri
-   mri_head_viewer
-   set_nasion
 
 
 
@@ -107,3 +91,8 @@ Plotting
    multitimeplot
    regplot
    timeplot
+
+
+
+
+.. automodule:: eelbrain.plot._base

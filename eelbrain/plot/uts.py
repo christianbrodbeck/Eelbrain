@@ -31,6 +31,7 @@ __hide__ = ['plt', 'division', 'celltable']
 
 
 class stat(_base.subplot_figure):
+    "Plots statistics for a one-dimensional ndvar"
     def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
                  sub=None, match=None, ds=None, Xax=None, ncol=3,
                  width=6, height=3, dpi=90, legend='upper right',
@@ -347,13 +348,14 @@ def _ax_stat(ax, ct, colors, legend_h={},
 
 
 class clusters(_base.subplot_figure):
+    "Plotting of permutation cluster test results"
     def __init__(self, epochs, pmax=0.05, ptrend=0.1,
                  title="plot.uts.clusters", figtitle=None, axtitle='{name}',
                  cm=_cm.jet, width=6, height=3, frame=.1, dpi=90,
                  overlay=False, t={'linestyle': 'solid', 'color': 'k'}):
 
         """
-        Specialized plotting function for Permutation Cluster test results
+        Plotting of permutation cluster test results
 
         pmax : scalar
             Maximum p-value of clusters to plot as solid.

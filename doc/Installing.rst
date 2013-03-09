@@ -1,13 +1,12 @@
 .. highlight:: rst
 
-Installing Eelbrain
-===================
+Installing
+==========
 
 Eelbrain is a pure Python project and uses 
 `Distribute <http://packages.python.org/distribute/setuptools.html>`_, 
 so required dependencies are automatically installed from the Python Package
-Index. Since Eelbrain is still under development, it is not on the Python 
-Package Index yet. In order to run Eelbrain, 
+Index. In order to use Eelbrain, 
 
 #.  Depending on your purpose, install :ref:`optional dependencies 
     <dependencies>`
@@ -57,9 +56,10 @@ Install wxPython from source::
     $ cd wxPython-src-2.9.4.0/wxPython
     $ sudo python build-wxpython.py --build_dir=../bld --osx_cocoa --install
 
-EPD-64 7.3 seems to come with a deficient version of MDP, so we need to replace it; 
-this is easiest through `pip <http://www.pip-installer.org/>`_, so install pip
-(unless it is already installed)::
+EPD-64 7.3 seems to come with a deficient version of `MDP 
+<http://mdp-toolkit.sourceforge.net>`_. If MDP is required, it can be replaced 
+with `pip <http://www.pip-installer.org/>`_. 
+Install pip (unless it is already installed)::
 
     $ curl https://raw.github.com/pypa/pip/master/contrib/get-pip.py | sudo python
 

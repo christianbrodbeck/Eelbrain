@@ -1,4 +1,3 @@
-
 About
 =====
 
@@ -17,4 +16,10 @@ Modules:
 *   :py:mod:`vessels`: classes for representing data (containers for 
     :py:mod:`numpy` objects)
 *   :py:mod:`analyze`: basic statistics such as pairwise tests and ANOVAs
+ 
+
+ .. toctree::
+   :maxdepth: 2
+
+   Installing
  

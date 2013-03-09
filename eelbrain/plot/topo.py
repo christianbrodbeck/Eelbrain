@@ -25,11 +25,12 @@ __hide__ = ['cs', 'test', 'utsnd']
 
 
 class topomap(_base.eelfigure):
+    "Plot individual topogeraphies"
     def __init__(self, epochs, sensors=True, proj='default',
                  size=5, dpi=100, title="plot.topomap",
                  res=100, interpolation='nearest'):
         """
-        Plots individual topogeraphies.
+        Plot individual topogeraphies
 
         Parameters
         ----------

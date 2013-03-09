@@ -17,10 +17,8 @@ Contents:
    :maxdepth: 2
    
    About
-   Installing
    Interface
    data-obj
-   mne
    psyphys
    Various
 
@@ -33,4 +31,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

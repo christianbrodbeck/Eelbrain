@@ -1,45 +1,71 @@
 """
-Base Class
-==========
+Implementation
+==============
 
-The module defines a baseclass for eelbrain plots (:py:class:`eelfigure`).
-The figure and canvas are created either by a
-:py:class:`eelbrain.wxutils.mpl_canvas.CanvasFrame` (:py:class:`wx.Frame`
-subclass), or by a :py:class:`mpl_figure` which is based on standard
-:py:mod:`pylab` functionality.
+Plotting is implemented hierarchically in 3 different types of
+functions/classes:
+
+top-level (public names)
+    Top-level functions or classes have public names create an entire figure.
+    Some classes also retain the figure and provide methods for manipulating
+    it.
+
+_ax_
+    Functions beginning with _ax_ organize an axes object. They do not
+    create their own axes object (this is provided by the top-level function),
+    but change axes formatting such as labels and extent.
+
+_plt_
+    Functions beginning with _plt_ only plot data to a given axes object
+    without explicitly changing aspects of the axes themselves.
+
+
+Top-level plotters can be called with nested lists of data-objects (ndvar
+instances). They create a separate axes for each list element. Axes
+themselves can have multiple layers (e.g., a difference map visualized through
+a colormap, and significance levels indicated by contours).
+
+
+Example: t-test
+---------------
+
+For example, the default plot for testnd.ttest() results is the
+following list (assuming the test compares A and B):
+
+``[A, B, [diff(A,B), p(A, B)]]``
+
+where ``diff(...)`` is a difference map and ``p(...)`` is a map of p-values.
+The main plot function creates a separate axes object for each list element:
+
+- ``A``
+- ``B``
+- ``[diff(A,B), p(A, B)]``
+
+Each of these element is then plotted with the corresponding _ax_ function.
+The _ax_ function calls _plt_ for each of its input elements. Thus, the
+functions executed are:
+
+#. plot([A, B, [diff(A,B), p(A, B)]])
+#. -> _ax_(A)
+#. ----> _plt_(A)
+#. -> _ax_(B)
+#. ----> _plt_(B)
+#. -> _ax_([diff(A,B), p(A, B)])
+#. ----> _plt_(diff(A,B))
+#. ----> _plt_(p(A, B))
+
+
+Base Class
+----------
+
+:py:class:`eelfigure` is the baseclass for eelbrain plots. Based on
+availablility of wxPython, it selects between a general matplotlib backend and
+a wx backend allowing additional frame propertie4s such as custom toolbar
+items.
 
 If the mpl figure is used, pyplot.show() is called after the plot is done.
 The module attribute ``show_block_arg`` is submitted to
 ``plt.show(block=show_block_arg)``.
-
-
-Implementation
-==============
-
-Types of plotting functions:
-
-...
-    creates new figure
-_ax_...
-    creates the layout for one axes object (provided as the ``ax`` kwarg)
-    and plots a collection of data of a certain type.
-_plt_...
-    plots a collection of data of a certain type to an axes object, but does
-    not take care of the general axes layout
-
-
-OLD:
-
-_row_...
-    (row=?, nrows=?)     fill a whole row
-?col_...
-
-
-TODO
-----
-
-- generalized management of spacing
-
 
 """
 
