@@ -75,7 +75,7 @@ from .. import save
 from .. import ui
 from ..utils import subp
 from ..utils import keydefaultdict
-from ..utils.com import send_email
+from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri
 from ..utils.kit import split_label
 from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
@@ -220,6 +220,10 @@ class mne_experiment(object):
                     self._state[name] = '<%s not set>' % name
 
         self._initial_state = self._state.copy()
+
+        owner = getattr(self, 'owner', False)
+        if owner:
+            self.notification = Notifier(owner, 'mne_experiment task')
 
     def _process_epochs_arg(self, epochs):
         """Fill in named epochs and set the 'epoch' template"""
