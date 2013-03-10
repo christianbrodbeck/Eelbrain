@@ -73,8 +73,8 @@ from .. import load
 from .. import plot
 from .. import save
 from .. import ui
-from ..utils import subp
 from ..utils import keydefaultdict
+from ..utils import common_prefix, subp
 from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri
 from ..utils.kit import split_label
@@ -1489,17 +1489,34 @@ class mne_experiment(object):
 
     def rename(self, old, new):
         """
-        Rename a files corresponding to a template.
+        Rename a files corresponding to a pattern (or template)
 
         Parameters
         ----------
         old : str
-            Template for the files to be renamed.
+            Template for the files to be renamed. Can interpret '*', but will
+            raise an error in cases where more than one file fit the pattern.
         new : str
             Template for the new names.
+
+        Examples
+        --------
+        The following command will collect a specific file for each subject and
+        place it in a common folder:
+
+        >>> e.rename('{root}/{subject}/info.txt',
+                     '/some_other_place/{subject}s_info.txt'
         """
         files = []
         for old_name in self.iter_temp(old):
+            if '*' in old_name:
+                matches = glob(old_name)
+                if len(matches) == 1:
+                    old_name = matches[0]
+                elif len(matches) > 1:
+                    err = ("Several files fit the pattern %r" % old_name)
+                    raise ValueError(err)
+
             if os.path.exists(old_name):
                 new_name = self.format(new)
                 files.append((old_name, new_name))
@@ -1508,20 +1525,22 @@ class mne_experiment(object):
             print "No files found for %r" % old
             return
 
-        root = self.get('root')
-        n_skip = len(root)
+        old_pf = common_prefix([pair[0] for pair in files])
+        new_pf = common_prefix([pair[1] for pair in files])
+        n_pf_old = len(old_pf)
+        n_pf_new = len(new_pf)
+
         table = fmtxt.Table('lll')
         table.cells('Old', '', 'New')
         table.midrule()
+        table.caption("%s -> %s" % (old_pf, new_pf))
         for old, new in files:
-            if old.startswith(root):
-                old = old[n_skip:]
-            if new.startswith(root):
-                new = new[n_skip:]
-            table.cells(old, '->', new)
+            table.cells(old[n_pf_old:], '->', new[n_pf_new:])
 
         print table
-        if raw_input("Rename (confirm with 'yes')? ") == 'yes':
+
+        msg = "Rename %s files (confirm with 'yes')? " % len(files)
+        if raw_input(msg) == 'yes':
             for old, new in files:
                 dirname = os.path.dirname(new)
                 if not os.path.exists(dirname):
@@ -1565,6 +1584,7 @@ class mne_experiment(object):
         for temp in self.iter_temp(temp, constants=constants, values=values,
                                    exclude=exclude):
             files.extend(iglob(temp))
+
         if files:
             root = self.root
             print "root: %s\n" % root
@@ -1574,7 +1594,8 @@ class mne_experiment(object):
                     print name[root_len:]
                 else:
                     print name
-            if raw_input("Delete (confirm with 'yes')? ") == 'yes':
+            msg = "Delete %i files (confirm with 'yes')? " % len(files)
+            if raw_input(msg) == 'yes':
                 for path in files:
                     if os.path.isdir(path):
                         shutil.rmtree(path)
