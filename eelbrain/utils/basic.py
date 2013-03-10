@@ -4,6 +4,7 @@ A few basic operations needed throughout Eelbrain
 Created by Christian Brodbeck on 7/3/09.
 """
 
+from collections import defaultdict
 import os
 import cPickle as pickle
 
@@ -83,6 +84,17 @@ class LazyProperty(object):
         if obj is None: return None
         result = obj.__dict__[self.__name__] = self._func(obj)
         return result
+
+
+
+class keydefaultdict(defaultdict):
+    "http://stackoverflow.com/a/2912455/166700"
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key)
+        else:
+            ret = self[key] = self.default_factory(key)
+            return ret
 
 
 

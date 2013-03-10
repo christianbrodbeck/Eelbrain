@@ -74,6 +74,7 @@ from .. import plot
 from .. import save
 from .. import ui
 from ..utils import subp
+from ..utils import keydefaultdict
 from ..utils.com import send_email
 from ..utils.mne_utils import is_fake_mri
 from ..utils.kit import split_label
@@ -161,7 +162,7 @@ class mne_experiment(object):
     _mri_loc = 'mri_dir'  # location of subject mri folders
     _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
     _subject_loc = 'meg_dir'  # location of subject folders
-    def __init__(self, root=None, parse_subjects=True, parse_mri=True,
+    def __init__(self, root=None, parse_subjects=True,
                  subjects=[], mri_subjects={},
                  kit2fiff_args=_kit2fiff_args):
         """
@@ -196,12 +197,14 @@ class mne_experiment(object):
 
         # find experiment data structure
         self._state = self.get_templates()
+        self._mri_subjects = keydefaultdict(lambda k: k)
+        self._mri_subjects.update(mri_subjects)
         self.set(root=root, add=True)
         self.var_values = {'hemi': ('lh', 'rh')}
         self.exclude = {}
 
-        self.parse_dirs(parse_subjects=parse_subjects, parse_mri=parse_mri,
-                        subjects=subjects, mri_subjects=mri_subjects)
+        self.parse_dirs(parse_subjects=parse_subjects, subjects=subjects)
+        self._update_var_values()
 
         # set initial values
         self._label_cache = LabelCache()
@@ -233,6 +236,12 @@ class mne_experiment(object):
         ep_str = '(%s)' % ','.join(sorted(e_descs))
         self.set(epoch=ep_str)
         return epochs
+
+    def _update_var_values(self):
+        subjects = self.var_values['subject']
+        self.var_values.update(mrisubject=[self._mri_subjects[s]
+                                           for s in subjects],
+                               experiment=list(self._experiments))
 
     def add_evoked_label(self, ds, label, hemi='lh', src='stc'):
         """
@@ -1279,6 +1288,16 @@ class mne_experiment(object):
         projs = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
         self.ui_select_projs(projs, epochs, save=save, save_plot=save_plot)
 
+    def subjects_table(self):
+        """Print a table with the MRI subject corresponding to each subject"""
+        table = fmtxt.Table('ll')
+        table.cells('subject', 'mrisubject')
+        table.midrule()
+        for _ in self.iter_vars('subject'):
+            table.cell(self.get('subject'))
+            table.cell(self.get('mrisubject'))
+        return table
+
     def ui_select_projs(self, projs, fif_obj, save=True, save_plot=True):
         """
         Plots proj, and asks the user which ones to save.
@@ -1343,15 +1362,13 @@ class mne_experiment(object):
         p.save_views(fname, overwrite=True)
         mlab.close()
 
-    def parse_dirs(self, subjects=[], mri_subjects={}, parse_subjects=True,
-                   parse_mri=True):
+    def parse_dirs(self, subjects=[], parse_subjects=True):
         """
         find subject names by looking through the directory
         structure.
 
         """
         subjects = set(subjects)
-        self._mri_subjects = mri_subjects = dict(mri_subjects)
 
         # find subjects
         if parse_subjects:
@@ -1368,31 +1385,7 @@ class mne_experiment(object):
                        "experiment._subject_loc." % sub_dir)
                 raise IOError(err)
 
-
-        # find MRIs
-        if parse_mri:
-            mri_dir = self.get(self._mri_loc)
-            if os.path.exists(mri_dir):
-                mris = os.listdir(mri_dir)
-                for s in subjects:
-                    if s in mri_subjects:
-                        continue
-                    elif s in mris:
-                        mri_subjects[s] = s
-                    else:
-                        mri_subjects[s] = '{common_brain}'
-            else:
-                err = ("MRI subjects directory not found: %r. Initialize with "
-                       "parse_subjects=False, or specifiy proper directory in "
-                       "experiment._mri_loc." % sub_dir)
-                raise IOError(err)
-
         self.var_values['subject'] = list(subjects)
-        self.var_values['mrisubject'] = list(mri_subjects.values())
-        self.var_values['experiment'] = list(self._experiments)
-        has_mri = (s for s in subjects
-                   if mri_subjects.get(s, '') != '{common_brain}')
-        self.subjects_has_mri = tuple(has_mri)
 
     def plot_coreg(self, **kwargs):  # sens=True, mrk=True, fiduc=True, hs=False, hs_mri=True,
         self.set(**kwargs)
@@ -1548,9 +1541,11 @@ class mne_experiment(object):
             value)
         """
         state = self._initial_state.copy()
+        # dependent variables
+        exclude = set(exclude).union(('mrisubject',))
         for key in exclude:
             del state[key]
-        self._state.update(state)
+        self.set(**state)
 
     def rm(self, temp, constants={}, values={}, exclude={}, **kwargs):
         """
@@ -1703,7 +1698,8 @@ class mne_experiment(object):
             kwargs['experiment'] = experiment
         if subject is not None:
             kwargs['subject'] = subject
-            kwargs['mrisubject'] = self._mri_subjects.get(subject, 'NO_MRI_SUBJECT')
+            if not 'mrisubject' in kwargs:
+                kwargs['mrisubject'] = self._mri_subjects[subject]
 
         # test var_value
         if match:
@@ -1753,14 +1749,25 @@ class mne_experiment(object):
         """
         os.environ['SUBJECTS_DIR'] = self.get('mri_dir')
 
-    def set_mri_subject(self, subject, mri_subject):
+    def set_mri_subject(self, subject, mri_subject=None):
         """
-        Reassign a subject's MRI and make sure that var_values is
-        appropriately updated.
+        Reassign a subject's MRI
 
+        Parameters
+        ----------
+        subject : str
+            The (MEG) subject name.
+        mri_subject : None | str
+            The corresponding MRI subject. None resets to the default
+            (mri_subject = subject)
         """
-        self._mri_subjects[subject] = mri_subject
-        self.var_values['mrisubject'] = list(self._mri_subjects.values())
+        if mri_subject is None:
+            del self._mri_subjects[subject]
+        else:
+            self._mri_subjects[subject] = mri_subject
+        if subject == self.get('subject'):
+            self._state['mrisubject'] = mri_subject
+        self._update_var_values()
 
     def show_in_finder(self, key, **kwargs):
         fname = self.get(key, **kwargs)
