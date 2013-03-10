@@ -379,6 +379,7 @@ class mne_experiment(object):
              'meg_sdir': os.path.join('{meg_dir}', '{subject}'),
              'mri_dir': os.path.join('{root}', 'mri'),  # contains subject-name folders for MRI data
              'mri_sdir': os.path.join('{mri_dir}', '{mrisubject}'),
+             'bem_dir': os.path.join('{mri_sdir}', 'bem'),
              'raw_sdir': os.path.join('{meg_sdir}', 'raw'),
              'eeg_sdir': os.path.join('{meg_sdir}', 'raw_eeg'),
              'log_sdir': os.path.join('{meg_sdir}', 'logs', '{subject}_{experiment}'),
@@ -406,10 +407,10 @@ class mne_experiment(object):
 
              # fwd model
              'common_brain': self._common_brain,
-             'fid': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-fiducials.fif'),
-             'bem': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-*-bem-sol.fif'),  # inner_skull
-             'src': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-ico-4-src.fif'),
-             'bem_head': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-head.fif'),
+             'fid': os.path.join('{bem_dir}', '{mrisubject}-fiducials.fif'),
+             'bem': os.path.join('{bem_dir}', '{mrisubject}-*-bem-sol.fif'),
+             'src': os.path.join('{bem_dir}', '{mrisubject}-ico-4-src.fif'),
+             'bem_head': os.path.join('{bem_dir}', '{mrisubject}-head.fif'),
 
              # evoked
              'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
@@ -419,7 +420,7 @@ class mne_experiment(object):
              # Souce space
              'labeldir': 'label',
              'hemi': 'lh',
-             'label_file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
+             'label-file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
              'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
 
              # EEG
@@ -430,8 +431,8 @@ class mne_experiment(object):
              # output files
              'plot_dir': os.path.join('{root}', 'plots'),
              'plot_png': os.path.join('{plot_dir}', '{analysis}', '{name}.png'),
-             'res_dir': os.path.join('{root}', 'res'),
-             'res': os.path.join('{res_dir}', '{analysis}', '{name}.{ext}'),
+             'res': os.path.join('{root}', 'res_{kind}', '{analysis}', '{name}{suffix}.{ext}'),
+             'suffix': '',
 
              # BESA
              'besa_triggers': os.path.join('{meg_sdir}', 'besa', '{subject}_{experiment}_{analysis}_triggers.txt'),
@@ -470,7 +471,7 @@ class mne_experiment(object):
             names of the source labels.
 
         """
-        tgt = self.get('label_file', label=target)
+        tgt = self.get('label-file', label=target)
         if (not redo) and os.path.exists(tgt):
             return
 
@@ -944,7 +945,7 @@ class mne_experiment(object):
 
     def load_label(self, **kwargs):
         self.set(**kwargs)
-        fname = self.get('label_file')
+        fname = self.get('label-file')
         return self._label_cache[fname]
 
     def load_raw(self, add_proj=True, add_bads=True, preload=False, **kwargs):
@@ -1810,8 +1811,8 @@ class mne_experiment(object):
         """
         name0 = new_name + part0
         name1 = new_name + part1
-        tgt0 = self.get('label_file', label=name0)
-        tgt1 = self.get('label_file', label=name1)
+        tgt0 = self.get('label-file', label=name0)
+        tgt1 = self.get('label-file', label=name1)
         if (not redo) and os.path.exists(tgt0) and os.path.exists(tgt1):
             return
 
