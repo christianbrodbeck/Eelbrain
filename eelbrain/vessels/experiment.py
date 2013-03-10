@@ -66,7 +66,8 @@ from threading import Thread
 import numpy as np
 
 import mne
-from mne.minimum_norm import make_inverse_operator, apply_inverse
+from mne.minimum_norm import (make_inverse_operator, apply_inverse,
+                              apply_inverse_epochs)
 
 from .. import fmtxt
 from .. import load
@@ -246,6 +247,34 @@ class mne_experiment(object):
         self.var_values.update(mrisubject=[self._mri_subjects[s]
                                            for s in subjects],
                                experiment=list(self._experiments))
+
+    def add_epochs_stc(self, ds, method='sLORETA', ori='free', depth=None,
+                       reg=False, snr=2., pick_normal=False, src='epochs',
+                       dst='stc', asndvar=True):
+        """
+        Transform epochs to source space (adds a list of mne SourceEstimates
+        to the dataset)
+        """
+        subject = ds['subject']
+        if len(subject.cells) != 1:
+            err = ("ds must have a subject variable with exaclty one subject")
+            raise ValueError(err)
+        subject = subject.cells[0]
+
+        inv_name = method + '-' + ori
+        self.set(inv_name=inv_name, subject=subject)
+        lambda2 = 1. / snr ** 2
+
+        epochs = ds[src]
+        inv = self.get_inv(epochs, depth=depth, reg=reg)
+        stc = apply_inverse_epochs(epochs, inv, lambda2, method,
+                                   pick_normal=pick_normal)
+
+        if asndvar:
+            subject = self.get('mrisubject')
+            stc = load.fiff.stc_ndvar(stc, subject, 'stc')
+
+        ds[dst] = stc
 
     def add_evoked_label(self, ds, label, hemi='lh', src='stc'):
         """
@@ -857,6 +886,57 @@ class mne_experiment(object):
         src = self.get('edf', **kwargs)
         edf = load.eyelink.Edf(src)
         return edf
+
+    def load_epochs(self, stimvar='stim', epoch=dict(name='epochs', stim='adj',
+                    tmin= -0.1, tmax=0.6, decim=5), asndvar=False,
+                    subject=None):
+        """
+        Load a dataset with epochs for a given epoch definition
+
+        Parameters
+        ----------
+        stimvar : str
+            Name of the variable which defines the stimuli.
+        epoch : dict
+            Epoch definition.
+        asndvar : bool | str
+            Convert epochs to an ndvar with the given name (if True, 'MEG' is
+            uesed).
+        subject : None | str
+            Subject for which to load the data.
+        """
+        epoch = self._process_epochs_arg([epoch])[0]
+
+        stim = epoch['stim']
+        tmin = epoch.get('reject_tmin', epoch['tmin'])
+        tmax = epoch.get('reject_tmax', epoch['tmax'])
+
+        ds = self.load_events(subject)
+        stimvar = ds[stimvar]
+        if '|' in stim:
+            idx = stimvar.isin(stim.split('|'))
+        else:
+            idx = stimvar == stim
+        ds = ds.subset(idx)
+        edf = ds.info['edf']
+        ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=['EBLINK'], T='t_edf')
+
+        # load sensor space data
+        target = epoch['name']
+        tmin = epoch['tmin']
+        tmax = epoch['tmax']
+        decim = epoch['decim']
+        ds = load.fiff.add_mne_epochs(ds, target=target, tmin=tmin, tmax=tmax,
+                                      reject=dict(mag=3e-12), baseline=None,
+                                      decim=decim)
+        if asndvar:
+            if asndvar is True:
+                asndvar = 'MEG'
+            else:
+                asndvar = str(asndvar)
+            ds[asndvar] = load.fiff.epochs_ndvar(ds[target], name=asndvar)
+
+        return ds
 
     def load_events(self, subject=None, experiment=None, add_proj=True, edf=True):
         """
