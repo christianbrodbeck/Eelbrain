@@ -24,3 +24,49 @@ def send_email(to, subject, body):
 
     smtpserver.sendmail(gmail_user, to, msg.as_string())
     smtpserver.close()
+
+
+class Notifier(object):
+    """
+    A notification sender supporting ``with`` statements
+
+    Examples
+    --------
+    To receive a message after a task has been executed:
+
+    >>> notifier = Notifier('me@somewhere.com')
+    >>> with notification:
+    ...     do_task
+    ...
+
+    """
+    def __init__(self, to, name='job'):
+        """
+        Parameters
+        ----------
+        to : str
+            Email address of the recipient.
+        name : str
+            Name of the job (will be included in subject line).
+        """
+        self.to = to
+        self.name = name
+
+    def __enter__(self):
+        self.msg = []
+        return self
+
+    def add(self, note):
+        "Add a note to the notification"
+        self.msg.append(unicode(note))
+
+    def __exit__(self, type, value, traceback):
+        body = "\n\n".join(map(unicode, self.msg))
+        if isinstance(value, Exception):
+            result = 'failed'
+            body = '\n\n'.join(map(unicode, (body, type, value)))
+        else:
+            result = 'finished'
+        subject = '%s %s' % (self.name, result)
+        send_email(self.to, subject, body)
+
