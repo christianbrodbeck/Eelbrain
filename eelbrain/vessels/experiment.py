@@ -768,7 +768,7 @@ class mne_experiment(object):
             for exc in self.exclude.get(v, ()):
                 if exc in values:
                     values.remove(exc)
-            v_lists.append(values)
+            v_lists.append(sorted(values))
 
         if len(v_lists):
             if prog:
