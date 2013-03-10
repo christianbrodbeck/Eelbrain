@@ -87,10 +87,6 @@ __all__ = ['mne_experiment', 'LabelCache']
 
 
 
-_kit2fiff_args = {'sfreq':1000, 'lowpass':100, 'highpass':0,
-                  'stimthresh':2.5, 'stim':xrange(168, 160, -1)}
-
-
 class LabelCache(dict):
     def __getitem__(self, path):
         if path in self:
@@ -163,9 +159,8 @@ class mne_experiment(object):
     _mri_loc = 'mri_dir'  # location of subject mri folders
     _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
     _subject_loc = 'meg_dir'  # location of subject folders
-    def __init__(self, root=None, parse_subjects=True,
-                 subjects=[], mri_subjects={},
-                 kit2fiff_args=_kit2fiff_args):
+    def __init__(self, root=None, parse_subjects=True, subjects=[],
+                 mri_subjects={}):
         """
         Parameters
         ----------
@@ -192,7 +187,6 @@ class mne_experiment(object):
 
         # settings
         self.root = root
-        self._kit2fiff_args = kit2fiff_args
 
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
 
@@ -507,78 +501,6 @@ class mne_experiment(object):
         srcs = (self.load_label(label=name) for name in sources)
         label = reduce(add, srcs)
         label.save(tgt)
-
-    def do_kit2fiff(self, do='ask', aligntol=xrange(5, 40, 5), redo=False):
-        """OK 12/7/2
-        find any raw txt files that have not been converted
-
-        do : bool | 'ask',
-            whether to automatically convert raw txt files
-
-        **assumes:**
-
-         - all files in the subjects' raw folder
-         - filename of schema "<s>_<e>_raw.txt"
-
-        """
-        assert do in [True, False, 'ask']
-
-        raw_txt = []
-        for _ in self.iter_vars(['subject']):
-            subject = self.get('subject')
-            temp = self.get('raw-txt', experiment='*', match=False)
-            tdir, tname = os.path.split(temp)
-            fnames = fnmatch.filter(os.listdir(tdir), tname)
-            for fname in fnames:
-                fs, fexp, _ = fname.split('_', 2)
-                fifpath = self.get('raw-file', raw='raw', subject=fs, experiment=fexp, match=False)
-                if redo or not os.path.exists(fifpath):
-                    raw_txt.append((subject, fexp, fname))
-
-        if len(raw_txt) == 0:
-            print "No files found for conversion"
-            return
-
-        table = fmtxt.Table('lll')
-        table.cells("subject", "experiment", 'file')
-        for line in raw_txt:
-            table.cells(*line)
-
-        print table
-        if do == 'ask':
-            do = raw_input('convert missing (y)?') in ['y', 'Y', '\n']
-
-        if do:
-            aligntols = {}
-            failed = []
-            prog = ui.progress_monitor(len(raw_txt), "kit2fiff", "")
-            for subject, experiment, fname in raw_txt:
-                prog.message(subject + ' ' + experiment)
-                self.set(subject=subject, experiment=experiment)
-                key = '_'.join((subject, experiment))
-                for at in aligntol:
-                    try:
-                        subp.kit2fiff(self, aligntol=at, overwrite=redo,
-                                      **self._kit2fiff_args)
-                        aligntols[key] = at
-                    except RuntimeError:
-                        if at < max(aligntol):
-                            pass
-                        else:
-                            failed.append(fname)
-                    else:
-                        break
-                prog.advance()
-
-            print aligntols
-
-            if len(failed) > 0:
-                table = fmtxt.Table('l')
-                table.cell("Failed")
-                table.cells(*failed)
-                print table
-        else:
-            return raw_txt
 
     def expand_template(self, temp, values={}):
         """
@@ -1480,13 +1402,6 @@ class mne_experiment(object):
         mf = load.kit.MarkerFile(fname)
         ax = mf.plot_mpl()
         return ax
-
-    def plot_mrk_fix(self, **kwargs):
-        self.set(**kwargs)
-        mrk = self.get('mrk')
-        raw = self.get('raw-file')
-        fig = plot.sensors.mrk_fix(mrk, raw)
-        return fig
 
     def print_tree(self):
         tree = {'.': 'root'}
