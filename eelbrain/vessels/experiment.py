@@ -402,12 +402,12 @@ class mne_experiment(object):
              'proj-file': '{raw-base}_{proj}-proj.fif',
              'proj_plot': '{raw-base}_{proj}-proj.pdf',
              'cov-file': '{raw-base}_{cov}-{proj}-cov.fif',
-             'fwd': '{raw-base}_{cov}-{proj}-fwd.fif',
+             'fwd': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
 
              # fwd model
              'common_brain': self._common_brain,
              'fid': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-fiducials.fif'),
-             'bem': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-5120-bem-sol.fif'),
+             'bem': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-*-bem-sol.fif'),  # inner_skull
              'src': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-ico-4-src.fif'),
              'bem_head': os.path.join('{mri_sdir}', 'bem', '{mrisubject}-head.fif'),
 
@@ -1253,11 +1253,6 @@ class mne_experiment(object):
 
         """
         fwd = self.get('fwd')
-        if os.path.exists(fwd):
-            if redo:
-                os.remove(fwd)
-            else:
-                return None
 
         cmd = ["mne_do_forward_solution",
                '--subject', self.get('mrisubject'),
@@ -1267,6 +1262,8 @@ class mne_experiment(object):
                '--meas', self.get('raw-file'),  # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
                '--fwd', fwd,
                '--megonly']
+        if redo:
+            cmd.append('--overwrite')
         return cmd
 
     def make_proj_for_epochs(self, epochs, n_mag=5, save=True, save_plot=True):
@@ -1658,6 +1655,10 @@ class mne_experiment(object):
         workers : int
             The number of workers to create. This parameter is only used the
             first time the method is called.
+
+        Notes
+        -----
+        The task queue can be inspected in the :attr:`queue` attribute
         """
         if cmd is None:
             return
