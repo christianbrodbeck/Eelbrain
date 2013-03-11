@@ -1865,13 +1865,17 @@ class mne_experiment(object):
             sub = self.get('subject')
             exp = self.get('experiment')
             mri_subject = self.get('mrisubject')
-            if mri_subject == sub:
-                if is_fake_mri(self.get('mri_sdir')):
-                    mris[sub] = 'fake'
+            if sub not in mris:
+                if mri_subject == sub:
+                    mri_dir = self.get('mri_sdir')
+                    if not os.path.exists(mri_dir):
+                        mris[sub] = 'missing'
+                    elif is_fake_mri(mri_dir):
+                        mris[sub] = 'fake'
+                    else:
+                        mris[sub] = 'own'
                 else:
-                    mris[sub] = 'own'
-            else:
-                mris[sub] = mri_subject
+                    mris[sub] = mri_subject
 
             for temp in templates:
                 path = self.get(temp, match=False)
