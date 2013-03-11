@@ -68,14 +68,16 @@ def split_label(label, source_space, name1='{name}_post', name2='{name}_ant',
     else:
         pca = PCA(cpos_i)
         proj = pca.project(cpos)[:, 0]
+        if pca.Wt[0, 1] < 0:
+            proj *= -1
 
     div = divide(proj)
 
-    ip = proj < div
-    ia = proj >= div
+    idx_p = proj < div
+    idx_a = proj >= div
 
     out = []
-    for idx, name in [(ip, name1), (ia, name2)]:
+    for idx, name in [(idx_p, name1), (idx_a, name2)]:
         label_name = name.format(name=label.name)
         lblout = mne.label.Label(label.vertices[idx], label.pos[idx],
                                  label.values[idx], label.hemi,
