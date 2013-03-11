@@ -7,8 +7,10 @@ import numpy as np
 
 try:
     import mdp
+    _has_mdp = True
 except:
-    pass
+    from matplotlib.mlab import PCA
+    _has_mdp = False
 
 import mne
 
@@ -17,7 +19,7 @@ __all__ = ['split_label']
 
 
 
-def split_label(label, fwd_fname, name1='{name}_post', name2='{name}_ant',
+def split_label(label, source_space, name1='{name}_post', name2='{name}_ant',
                 divide=np.median):
     """
     Splits an mne Label object into two labels along its principal axis. The
@@ -30,10 +32,10 @@ def split_label(label, fwd_fname, name1='{name}_post', name2='{name}_ant',
 
     label : mne Label
         Source label, which is to be split.
-    fwd_fname : str(path)
-        Filename to a fwd file (used to load the source space which is needed
-        to constrain the label points to those that are relevant for the
-        source space).
+    source_space : dict | str(path)
+        Mne source space or a file containing a source space (*-src.fif,
+        *-fwd.fif). The source space is needed to constrain the label to
+        those points that are relevant for the source space.
     name1, name2 : str
         Name for the new labels. '{name}' will be formatted with the input
         label's name.
@@ -43,7 +45,8 @@ def split_label(label, fwd_fname, name1='{name}_post', name2='{name}_ant',
         split (default is the median).
 
     """
-    source_space = mne.read_source_spaces(fwd_fname)
+    if isinstance(source_space, basestring):
+        source_space = mne.read_source_spaces(source_space)
     if isinstance(label, basestring):
         label = mne.read_label(label)
 
@@ -56,13 +59,17 @@ def split_label(label, fwd_fname, name1='{name}_post', name2='{name}_ant',
 
     # project all label coords onto pca-0 of the label's source space coords
     cpos_i = cpos[idx]
-    node = mdp.nodes.PCANode(output_dim=1)
-    node.train(cpos_i)
-    proj = node.execute(cpos)[:, 0]
-    if node.v[1, 0] < 0:
-        proj *= -1
+    if _has_mdp:
+        node = mdp.nodes.PCANode(output_dim=1)
+        node.train(cpos_i)
+        proj = node.execute(cpos)[:, 0]
+        if node.v[1, 0] < 0:
+            proj *= -1
+    else:
+        pca = PCA(cpos_i)
+        proj = pca.project(cpos)[:, 0]
 
-    div = divide(proj[idx])
+    div = divide(proj)
 
     ip = proj < div
     ia = proj >= div
