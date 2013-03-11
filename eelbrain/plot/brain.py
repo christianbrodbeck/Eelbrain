@@ -276,6 +276,7 @@ class stc:
 
         tiler = _base.ImageTiler('.png', nrow, ncol, nt)
 
+        self.fig.scene.disable_render = True
         if view is None:
             self._make_view_frames(tiler, times)
         else:
@@ -291,6 +292,7 @@ class stc:
                     self._make_view_frames(tiler, times, r, c)
 
         tiler.make_movie(save_mov, framerate, codec)
+        self.fig.scene.disable_render = False
 
     def _make_view_frames(self, tiler, times, row=0, col=0):
         "Make all frames for a single view"
