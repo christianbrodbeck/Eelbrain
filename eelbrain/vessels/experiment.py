@@ -1795,8 +1795,8 @@ class mne_experiment(object):
         fname = self.get(key, **kwargs)
         subprocess.call(["open", "-R", fname])
 
-    def split_label(self, src_label, new_name, redo=False, part0='post',
-                    part1='ant'):
+    def split_label(self, src_label, new_name, redo=False, part0='p',
+                    part1='a'):
         """
         new_name : str
             name of the target label (``part0`` and ``part1`` are appended)
@@ -1804,16 +1804,16 @@ class mne_experiment(object):
             names of the source labels
 
         """
-        name0 = new_name + part0
-        name1 = new_name + part1
+        name0 = part0 + new_name
+        name1 = part1 + new_name
         tgt0 = self.get('label-file', label=name0)
         tgt1 = self.get('label-file', label=name1)
         if (not redo) and os.path.exists(tgt0) and os.path.exists(tgt1):
             return
 
         label = self.load_label(label=src_label)
-        fwd_fname = self.get('fwd')
-        lbl0, lbl1 = split_label(label, fwd_fname, name0, name1)
+        src = self.get('src')
+        lbl0, lbl1 = split_label(label, src, name0, name1)
         lbl0.save(tgt0)
         lbl1.save(tgt1)
 
