@@ -298,9 +298,9 @@ class ttest:
             if c0:
                 diff = c1_mean - c0
             else:
-                diff = None
+                diff = c1_mean
         else:
-            raise ValueError('invalid c0: %r' % c0)
+            raise ValueError('invalid c0: %r. Must be string or scalar.' % c0)
 
 #        direction = np.sign(diff.x)
 #        P = P * direction# + 1 # (1 - P)
@@ -330,15 +330,12 @@ class ttest:
         if c0_mean:
             self.c0_mean = c0_mean
 
-        if diff:
-            self.diff = diff
-            self.p_val = [[diff, P]]
-        else:
-            self.p_val = [[c1_mean, P]]
+        self.diff = diff
+        self.p_val = [[diff, P]]
 
         if c0_mean:
             self.all = [c1_mean, c0_mean] + self.p_val
-        elif diff:
+        elif c0:
             self.all = [c1_mean] + self.p_val
         else:
             self.all = self.p_val
