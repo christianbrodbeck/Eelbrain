@@ -483,7 +483,7 @@ class dev_mri(object):
             tile_fname = tiler.get_tile_fname(col=i)
             self.view(view)
             self.fig.scene.save(tile_fname)
-        tiler.make_frame(fname, overwrite=overwrite)
+        tiler.save_frame(fname, overwrite=overwrite)
 
     def view(self, view='front'):
         self.fig.scene.parallel_projection = True

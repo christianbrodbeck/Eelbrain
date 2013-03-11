@@ -477,3 +477,11 @@ class ImageTiler(object):
         stdout, stderr = sp.communicate()
         if not os.path.exists(dest):
             raise RuntimeError("ffmpeg failed:\n" + stderr)
+
+    def save_frame(self, dest, t=0, overwrite=False):
+        if not overwrite and os.path.exists(dest):
+            raise IOError("File already exists: %r" % dest)
+        self.make_frame(t=t)
+        fname = self.get_frame_fname(t)
+        im = PIL.Image.open(fname)
+        im.save(dest)
