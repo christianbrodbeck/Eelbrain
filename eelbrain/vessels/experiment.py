@@ -455,6 +455,9 @@ class mne_experiment(object):
              'plot_dir': os.path.join('{root}', 'plots'),
              'plot_png': os.path.join('{plot_dir}', '{analysis}', '{name}.png'),
              'res': os.path.join('{root}', 'res_{kind}', '{analysis}', '{name}{suffix}.{ext}'),
+             'kind': '',
+             'analysis': '',
+             'name': '',
              'suffix': '',
 
              # BESA
