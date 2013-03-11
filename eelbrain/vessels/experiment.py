@@ -316,7 +316,7 @@ class mne_experiment(object):
 
     def add_evoked_stc(self, ds, method='sLORETA', ori='free', depth=0.8,
                        reg=False, snr=3.,
-                       ind=True, morph=True, names={'evoked': 'stc'}):
+                       ind='stc', morph='stcm'):
         """
         Add an stc (ndvar) to a dataset with an evoked list.
 
@@ -325,10 +325,11 @@ class mne_experiment(object):
 
         Parameters
         ----------
-        ind: bool
-            Keep list of SourceEstimate objects on individual brains.
-        morph : bool
-            Add ndvar for data morphed to the common brain.
+        ind: False | str
+            Keep list of SourceEstimate objects on individual brains with that
+            name.
+        morph : False | bool
+            Add ndvar for data morphed to the common brain with this name.
 
         """
         if not (ind or morph):
@@ -346,8 +347,10 @@ class mne_experiment(object):
 
         invs = {}
         if ind:
+            ind = str(ind)
             stcs = defaultdict(list)
         if morph:
+            morph = str(morph)
             mstcs = defaultdict(list)
 
         for case in ds.itercases():
@@ -377,23 +380,18 @@ class mne_experiment(object):
                     mstcs[name].append(stc)
 
         for name in do:
-            if name in names:
-                s_name = names[name]
-                m_name = s_name + 'm'
-            else:
-                i = 0
-                while name + 's' + '_' * i in ds:
-                    i += 1
-                s_name = name + 's' + '_' * i
-                im = 0
-                while s_name + 'm' + '_' * im in ds:
-                    im += 1
-                m_name = s_name + 'm' + '_' * im
-
             if ind:
-                ds[s_name] = stcs[name]
+                if ind in ds:
+                    key = '%s_%s' % (ind, do)
+                else:
+                    key = ind
+                ds[key] = stcs[name]
             if morph:
-                ds[m_name] = load.fiff.stc_ndvar(mstcs[name], self._common_brain)
+                if morph in ds:
+                    key = '%s_%s' % (morph, do)
+                else:
+                    key = morph
+                ds[key] = load.fiff.stc_ndvar(mstcs[name], self._common_brain)
 
     def get_templates(self):
         t = {
