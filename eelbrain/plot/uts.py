@@ -33,28 +33,34 @@ __hide__ = ['plt', 'division', 'celltable']
 class stat(_base.subplot_figure):
     "Plots statistics for a one-dimensional ndvar"
     def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
-                 sub=None, match=None, ds=None, Xax=None, ncol=3,
+                 match=None, sub=None, ds=None, Xax=None, ncol=3,
                  width=6, height=3, dpi=90, legend='upper right',
                  title='plot.uts.stat - {name}', figtitle=None, axtitle='{name}',
                  ylabel=True, xlabel=True, invy=False,
-                 bottom=None, top=None,
+                 bottom=None, top=None, hline=None,
                  xdim='time', cm=_cm.jet, colors=None):
         """
-    Plots statistics for a one-dimensional ndvar
+    Plot statistics for a one-dimensional ndvar
 
+    Parameters
+    ----------
     Y : 1d-ndvar
-        dependent variable (one-dimensional ndvar)
+        Dependent variable (one-dimensional ndvar).
     X : categorial or None
-        conditions which should be plotted separately
-    main : func | None
-        central tendency (function that takes an ``axis`` argument).
+        Model: specification of conditions which should be plotted separately.
     dev : func | 'all' | float
         Measure for spread / deviation from the central tendency. Either a
         function that takes an ``axis`` argument, 'all' to plot all traces, or
-        a float to plot all traces with a certain alpha value
-    ds : dataset
-        if ``var`` or ``X`` is submitted as string, the ``ds`` argument
-        must provide a dataset containing those variables.
+        a float to plot all traces with a certain alpha value. The default is
+        numpy.stats.sem which plots the standard error of the mean.
+    main : func | None
+        Measure for the central tendency (function that takes an ``axis``
+        argument). The default is numpy.mean.
+    Xax : None | categorial
+        Make separate axes for each category in this categoral model.
+    ncol : int
+        In case more than one set of axes are plotted, ncol specifies the
+        number of columns in the layout.
 
     **plotting parameters:**
 
@@ -64,10 +70,18 @@ class stat(_base.subplot_figure):
         colormap from which colors for different categories in ``X`` are
         derived
     colors : None | list | dict
-        Override the default color assignment base on a colormap ``cm``:
+        Override the default color assignment based on the ``cm`` parameter.
+        Colors can be one of the following:
         **list**: map the sequence of colors on X.cells.
         **dict**: provide a color for each cell in X.
-
+    bottom, top | None | scalar
+        Set an absolute range for the plot's y axis.
+    invy : bool
+        invert the y axis
+    hline : None | scalar | (value, kwarg-dict) tuple
+        Add a horizontal line to each plot. If provided as a tuple, the second
+        element can include any keyword arguments that should be submitted to
+        the call to matplotlib axhline call.
 
     **figure parameters:**
 
@@ -75,10 +89,18 @@ class stat(_base.subplot_figure):
         matplotlib figure legend location argument
     title : str | False
         axes title; '{name}' will be formatted to ``Y.name``
-    invy : bool
-        invert the y axis
-    bottom, top | None | scalar
-        Set an absolute range for the plot's y axis.
+    width, height : scalar
+        Width and height of each axes.
+
+    **standard data parameters:**
+
+    match : factor
+        Identifier for repeated measures data.
+    sub : None | index array
+        Only use a subset of the data provided.
+    ds : dataset
+        if ``var`` or ``X`` is submitted as string, the ``ds`` argument
+        must provide a dataset containing those variables.
 
         """
         if Xax is None:
@@ -116,7 +138,7 @@ class stat(_base.subplot_figure):
 
         legend_h = {}
         kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
-                      invy=invy, bottom=bottom, top=top,
+                      invy=invy, bottom=bottom, top=top, hline=hline,
                       xlabel=xlabel, colors=colors, legend_h=legend_h)
 
         if '{name}' in title:
@@ -303,12 +325,11 @@ class uts(_base.subplot_figure):
 
 
 
-def _ax_stat(ax, ct, colors, legend_h={},
-             dev=scipy.stats.sem, main=np.mean,
+def _ax_stat(ax, ct, colors, legend_h={}, dev=scipy.stats.sem, main=np.mean,
              sub=None, match=None, ds=None,
-             figsize=(6, 3), dpi=90, legend='upper right', title=True, ylabel=True,
-             xdim='time', xlabel=True, invy=False, bottom=None, top=None):
-
+             figsize=(6, 3), dpi=90, legend='upper right', title=True,
+             ylabel=True, xdim='time', xlabel=True, invy=False, bottom=None,
+             top=None, hline=None):
     ax.x_fmt = "t = %.3f s"
 
     h = []
@@ -320,13 +341,27 @@ def _ax_stat(ax, ct, colors, legend_h={},
         if lbl not in legend_h:
             legend_h[lbl] = _h['main'][0]
 
-    dim = ct.Y.get_dim(xdim)
+    # hline
+    if hline is not None:
+        if isinstance(hline, tuple):
+            if len(hline) != 2:
+                raise ValueError("hline must be None, scalar or length 2 tuple")
+            hline, hline_kw = hline
+            hline_kw = dict(hline_kw)
+        else:
+            hline_kw = {'color': 'k'}
 
+        hline = float(hline)
+        ax.axhline(hline, **hline_kw)
+
+    # title
     if title:
         if title is True:
             title = ct.Y.name
         ax.set_title(title)
 
+    # axes labels
+    dim = ct.Y.get_dim(xdim)
     if xlabel:
         if xlabel is True:
             xlabel = dim.name
