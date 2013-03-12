@@ -258,7 +258,7 @@ class ttest:
 
         axis = ct.Y.get_axis('case')
 
-        if isinstance(c0, basestring):
+        if isinstance(c0, basestring):  # two samples
             c1_mean = ct.data[c1].summary(name=c1)
             c0_mean = ct.data[c0].summary(name=c0)
             diff = c1_mean - c0_mean
@@ -269,12 +269,18 @@ class ttest:
                     raise ValueError(err)
                 T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c0].x,
                                              axis=axis)
+                n = len(ct.data[c1])
+                df = n - 1
                 test_name = 'Related Samples t-Test'
             else:
                 T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c0].x,
                                              axis=axis)
+                n1 = len(ct.data[c1])
+                n0 = len(ct.data[c0])
+                n = (n1, n0)
+                df = n1 + n0 - 2
                 test_name = 'Independent Samples t-Test'
-        elif np.isscalar(c0):
+        elif np.isscalar(c0):  # one sample
             c1_data = ct.data[c1]
             x = c1_data.x
             c1_mean = c1_data.summary()
@@ -294,6 +300,8 @@ class ttest:
             else:
                 T, P = scipy.stats.ttest_1samp(x, popmean=c0, axis=axis)
 
+            n = len(c1_data)
+            df = n - 1
             test_name = '1-Sample t-Test'
             if c0:
                 diff = c1_mean - c0
@@ -301,11 +309,6 @@ class ttest:
                 diff = c1_mean
         else:
             raise ValueError('invalid c0: %r. Must be string or scalar.' % c0)
-
-#        direction = np.sign(diff.x)
-#        P = P * direction# + 1 # (1 - P)
-#        for k in contours.copy():
-#            contours[k+1] = contours.pop(k)
 
         dims = ct.Y.dims[1:]
         properties = ct.Y.properties.copy()
@@ -325,6 +328,8 @@ class ttest:
         # store attributes
         self.t = T
         self.p = P
+        self.n = n
+        self.df = df
         self.name = test_name
         self.c1_mean = c1_mean
         if c0_mean:
