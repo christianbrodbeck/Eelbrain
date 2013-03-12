@@ -212,7 +212,7 @@ class mne_experiment(object):
             temp = self._state[k]
             for name in self._fmt_pattern.findall(temp):
                 if name not in self._state:
-                    self._state[name] = '<%s not set>' % name
+                    self._state[name] = ''
 
         self._initial_state = self._state.copy()
 
@@ -1818,7 +1818,7 @@ class mne_experiment(object):
         lbl0.save(tgt0)
         lbl1.save(tgt1)
 
-    def state(self, temp=None):
+    def state(self, temp=None, empty=False):
         """
         Examine the state of the experiment.
 
@@ -1826,6 +1826,8 @@ class mne_experiment(object):
         ----------
         temp : None | str
             Only show variables relevant to this template.
+        empty : bool
+            Show empty variables (items whose value is the empty string '').
 
         Returns
         -------
@@ -1849,7 +1851,8 @@ class mne_experiment(object):
             else:
                 mod = ''
 
-            table.cells(k, mod, repr(v))
+            if empty or mod or v:
+                table.cells(k, mod, repr(v))
 
         return table
 
