@@ -78,7 +78,6 @@ from ..utils import keydefaultdict
 from ..utils import common_prefix, subp
 from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri
-from ..utils.kit import split_label
 from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
                    DimensionMismatchError)
 
@@ -1795,28 +1794,6 @@ class mne_experiment(object):
     def show_in_finder(self, key, **kwargs):
         fname = self.get(key, **kwargs)
         subprocess.call(["open", "-R", fname])
-
-    def split_label(self, src_label, new_name, redo=False, part0='p',
-                    part1='a'):
-        """
-        new_name : str
-            name of the target label (``part0`` and ``part1`` are appended)
-        sources : list of str
-            names of the source labels
-
-        """
-        name0 = part0 + new_name
-        name1 = part1 + new_name
-        tgt0 = self.get('label-file', label=name0)
-        tgt1 = self.get('label-file', label=name1)
-        if (not redo) and os.path.exists(tgt0) and os.path.exists(tgt1):
-            return
-
-        label = self.load_label(label=src_label)
-        src = self.get('src')
-        lbl0, lbl1 = split_label(label, src, name0, name1)
-        lbl0.save(tgt0)
-        lbl1.save(tgt1)
 
     def state(self, temp=None, empty=False):
         """

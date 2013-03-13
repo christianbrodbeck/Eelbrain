@@ -3,85 +3,96 @@ Created on Oct 21, 2012
 
 @author: christian
 '''
-import numpy as np
 
-try:
-    import mdp
-    _has_mdp = True
-except:
-    from matplotlib.mlab import PCA
-    _has_mdp = False
+import numpy as np
+from matplotlib.mlab import PCA
 
 import mne
+from mne import Label
+
+from . import intervals
 
 
 __all__ = ['split_label']
 
 
 
-def split_label(label, source_space, name1='{name}_post', name2='{name}_ant',
-                divide=np.median):
+def split_label(label, source_space, axis='pca', pieces=3):
     """
-    Splits an mne Label object into two labels along its principal axis. The
-    principle axis is determined using principal component analysis (PCA).
-    Returns 2 mne Label instances ``(label1, label2)``.
+    Split an mne Label object into several parts
 
+    Project all points included in a label onto a specified axis, and then
+    evenly divide the points along this axis into several Label objects.
 
     Parameters
     ----------
-
     label : mne Label
         Source label, which is to be split.
     source_space : dict | str(path)
         Mne source space or a file containing a source space (*-src.fif,
         *-fwd.fif). The source space is needed to constrain the label to
         those points that are relevant for the source space.
-    name1, name2 : str
-        Name for the new labels. '{name}' will be formatted with the input
-        label's name.
-    divide : func
-        Function that takes the one-dimensional array of point location among
-        the principal axis and returns the point at which the points should be
-        split (default is the median).
+    axis : 'pca' | 0 | 1 | 2
+        The axis along which to split the label. For axis='pca', use the first
+        component in a principal component analysis of all coordinates. The
+        integers 0, 1 and 2 specify axes in the right/anterior/superior
+        coordinate system. In each case, the actual axis will be determined as
+        the direction between the label's most extreme points along the given
+        dimension. For example, for axis=0, the projection axis will be the
+        vector from the left-most to the right-most point in the label.
+    pieces : int >= 2
+        Number of labels to create.
 
+    Returns
+    -------
+    labels : list of Label (len = pieces)
+        The labels, starting from the lowest to the highest end of the
+        projection axis.
     """
     if isinstance(source_space, basestring):
         source_space = mne.read_source_spaces(source_space)
     if isinstance(label, basestring):
         label = mne.read_label(label)
 
+    # find label coordinates that are in the source space
     hemi = (label.hemi == 'rh')
     ss_vert = source_space[hemi]['vertno']
-    idx = np.array(map(ss_vert.__contains__, label.vertices))
+    idx_in_src = np.array([v in ss_vert for v in label.vertices])
 
     # centered label coordinates
-    cpos = label.pos - np.mean(label.pos, 0)
+    cpos_all = label.pos - np.mean(label.pos, 0)
+    cpos_in_src = cpos_all[idx_in_src]
 
-    # project all label coords onto pca-0 of the label's source space coords
-    cpos_i = cpos[idx]
-    if _has_mdp:
-        node = mdp.nodes.PCANode(output_dim=1)
-        node.train(cpos_i)
-        proj = node.execute(cpos)[:, 0]
-        if node.v[1, 0] < 0:
-            proj *= -1
+    if axis == 'pca':
+        # project all label coords onto pca-0 of the label's source space coords
+        pca = PCA(cpos_in_src)
+        proj_in_src = pca.Y[:, 0]
+        proj_all = pca.project(cpos_all)[:, 0]
+    elif axis in (0, 1, 2):
+        idx_min = np.argmin(cpos_in_src[:, axis])
+        idx_max = np.argmax(cpos_in_src[:, axis])
+        ax_vect = cpos_in_src[idx_max] - cpos_in_src[idx_min]
+        ax_vect /= np.linalg.norm(ax_vect)
+        proj_in_src = np.sum(ax_vect * cpos_in_src, 1)
+        proj_all = np.sum(ax_vect * cpos_all, 1)
     else:
-        pca = PCA(cpos_i)
-        proj = pca.project(cpos)[:, 0]
-        if pca.Wt[0, 1] < 0:
-            proj *= -1
+        err = "The axis parameter must be 'pca' or 0, 1 or 2, not %s." % axis
+        raise ValueError(err)
 
-    div = divide(proj)
+    # find locations to cut the label
+    limits = np.linspace(proj_in_src.min(), proj_in_src.max(), pieces + 1)
+    limits[0] = proj_all.min() - 1
+    limits[-1] = proj_all.max() + 1
 
-    idx_p = proj < div
-    idx_a = proj >= div
+    labels = []
+    for i, j in intervals(limits):
+        idx = np.logical_and(proj_all >= i, proj_all < j)
+        vert = label.vertices[idx]
+        pos = label.pos[idx]
+        values = label.values[idx]
+        hemi = label.hemi
+        comment = label.comment
+        lbl = Label(vert, pos, values, hemi, comment=comment)
+        labels.append(lbl)
 
-    out = []
-    for idx, name in [(idx_p, name1), (idx_a, name2)]:
-        label_name = name.format(name=label.name)
-        lblout = mne.label.Label(label.vertices[idx], label.pos[idx],
-                                 label.values[idx], label.hemi,
-                                 comment=label.comment, name=label_name)
-        out.append(lblout)
-
-    return tuple(out)
+    return labels
