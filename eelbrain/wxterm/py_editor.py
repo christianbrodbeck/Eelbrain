@@ -12,7 +12,7 @@ from eelbrain.wxutils import Icon
 
 
 
-class Editor(wx.py.editor.EditorFrame):
+class PyEditor(wx.py.editor.EditorFrame):
     """
     Editor.editor.window is based on StyledTextCtrl
 
@@ -34,7 +34,7 @@ class Editor(wx.py.editor.EditorFrame):
         else:
             filename = None
 
-        super(Editor, self).__init__(parent, title="Script Editor", size=size,
+        super(PyEditor, self).__init__(parent, title="Script Editor", size=size,
                                      pos=pos, filename=filename)
 
     # toolbar ---
@@ -131,7 +131,7 @@ class Editor(wx.py.editor.EditorFrame):
         self.SetSize(size)
 
     def bufferCreate(self, filename=None):
-        out = super(Editor, self).bufferCreate(filename=filename)
+        out = super(PyEditor, self).bufferCreate(filename=filename)
         self.shell.ApplyStyleTo(self.editor.window)
 
         zoom = self.shell.shell.GetZoom()
@@ -147,7 +147,7 @@ class Editor(wx.py.editor.EditorFrame):
     def bufferSave(self):
         "subclassed to catch and display errors"
         try:
-            cancel = super(Editor, self).bufferSave()
+            cancel = super(PyEditor, self).bufferSave()
         except Exception as exception:
             msg = str(exception) + "\n\n(Press OK and check console for full Exception)"
             dlg = wx.MessageDialog(self,
@@ -163,7 +163,7 @@ class Editor(wx.py.editor.EditorFrame):
     def bufferSaveAs(self):
         "subclass to catch and display errors"
         try:
-            cancel = super(Editor, self).bufferSaveAs()
+            cancel = super(PyEditor, self).bufferSaveAs()
         except Exception as exception:
             msg = str(exception) + "\n\n(Check console for more information)"
             dlg = wx.MessageDialog(self,
@@ -226,11 +226,10 @@ class Editor(wx.py.editor.EditorFrame):
             self.SetStatusText(text)
             self._statusText = text
 
-
     def Destroy(self):
-        logging.debug("Editor.Destroy()")
+        logging.debug("WxTerm PyEditor.Destroy()")
         self.shell.RemovePyEditor(self)
-        wx.py.editor.EditorFrame.Destroy(self)
+        super(PyEditor, self).Destroy()
 
     def OnActivate(self, event=None):
         # logging.debug(" Shell Activate Event: {0}".format(event.Active))

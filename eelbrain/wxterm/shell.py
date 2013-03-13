@@ -38,7 +38,7 @@ from .about_dialog import AboutFrame
 from .help import HelpViewer
 from .mpl_tools import PyplotManager
 from .preferences_dialog import PreferencesDialog
-from .py_editor import Editor as PyEditor
+from .py_editor import PyEditor
 from .table import TableFrame
 
 
