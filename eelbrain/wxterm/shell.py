@@ -980,6 +980,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def OnClose(self, event):
         # http://stackoverflow.com/a/1055506/166700
+        logging.debug("WxTerm Shell OnClose")
         if event.CanVeto():
             self.Hide()
             event.Veto()
@@ -1290,50 +1291,26 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def OnPreferences(self, event=None):
         dlg = PreferencesDialog(self)
-#        dlg = wx.MessageDialog(self, "Test", 'test', wx.OK)
         dlg.Show()
-#        dlg.Destroy()
 
     def OnP_CloseAll(self, event=None):
         plt.close('all')
 
     def OnQuit(self, event=None):
-        logging.debug(" QUIT")
-        ui.kill_progress_monitors()
+        logging.debug("WxTerm Shell OnQuit (ca veto: %s)" % 6)  # event.CanVeto())
+
+        # close all windows
+        for w in wx.GetTopLevelWindows():
+            if w is not self:
+                if hasattr(w, 'OnClose'):
+                    w.OnClose(event)
+                else:
+                    w.Close()
+
         if self.help_viewer:
             self.help_viewer.Close()
-        unsaved = []
-        for ed in self.editors:
-            if hasattr(ed, 'editor'):  # check if alife
-                if hasattr (ed.editor, 'hasChanged'):  # editor without doc
-                    if ed.editor.hasChanged():
-                        unsaved.append(ed)
-                    else:
-                        ed.Close()
-        if len(unsaved) == 1:
-            ed = unsaved[0]
-            ed.Raise()
-            ed.OnClose(event)
-        elif len(unsaved) > 0:
-            txt = '\n'.join([u.Title for u in unsaved])
-            msg = wx.MessageDialog(None, txt, "Review Unsaved Py-Docs?",
-                                   wx.ICON_QUESTION | wx.YES_NO | wx.YES_DEFAULT | \
-                                   wx.CANCEL)
-            command = msg.ShowModal()
-            if command == wx.ID_CANCEL:
-                return
-            else:
-                for ed in unsaved:
-                    if command == wx.ID_YES:
-                        ed.Raise()
-                        ed.Close()
-                    else:
-                        ed.Destroy()
         self.OnP_CloseAll()
-
-        # finally, clean up any remaining windows (e.g., mayavi)
-        for w in wx.GetTopLevelWindows():
-            w.Close()
+        ui.kill_progress_monitors()
 
         self.Close(force=True)
 
