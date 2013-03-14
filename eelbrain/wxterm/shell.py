@@ -1,13 +1,4 @@
-"""
-supplies attach function to ui module
-
-
-TODO:
-management of attached items
- - keep dictionary that can be checked and restored
-experiment management
-
-"""
+"""Modified PyShell class"""
 
 import inspect
 import logging
@@ -56,38 +47,38 @@ def is_py_varname(name):
 
 # modify wx.py introspection to take into account __wrapped__
 from wx.py.introspect import getConstructor
-def getBaseObject(object):
+def getBaseObject(obj):
     """Return base object and dropSelf indicator for an object."""
-    if inspect.isbuiltin(object):
+    if inspect.isbuiltin(obj):
         # Builtin functions don't have an argspec that we can get.
         dropSelf = 0
-    elif inspect.ismethod(object):
+    elif inspect.ismethod(obj):
         # Get the function from the object otherwise
         # inspect.getargspec() complains that the object isn't a
         # Python function.
         try:
-            if object.im_self is None:
+            if obj.im_self is None:
                 # This is an unbound method so we do not drop self
                 # from the argspec, since an instance must be passed
                 # as the first arg.
                 dropSelf = 0
             else:
                 dropSelf = 1
-            object = object.im_func
+            obj = obj.im_func
         except AttributeError:
             dropSelf = 0
-    elif inspect.isclass(object):
+    elif inspect.isclass(obj):
         # Get the __init__ method function for the class.
-        constructor = getConstructor(object)
+        constructor = getConstructor(obj)
         if constructor is not None:
-            object = constructor
+            obj = constructor
             dropSelf = 1
         else:
             dropSelf = 0
-    elif callable(object):
+    elif callable(obj):
         # Get the __call__ method instead.
         try:
-            object = object.__call__.im_func
+            obj = obj.__call__.im_func
             dropSelf = 1
         except AttributeError:
             dropSelf = 0
@@ -95,10 +86,10 @@ def getBaseObject(object):
         dropSelf = 0
 
     #  MY MOD
-    object = getattr(object, '__wrapped__', object)
+    obj = getattr(obj, '__wrapped__', obj)
     # END MY MOD
 
-    return object, dropSelf
+    return obj, dropSelf
 wx.py.introspect.getBaseObject = getBaseObject
 
 
@@ -161,12 +152,9 @@ class Shell(wx.py.shell.Shell):
         ascommand = False: adds the prompt in front of the message to mimmick
                    command
         """
-#        logging.debug(" SHELL (%s): %s" % (['std','exec'][self.exec_mode], message))
         if self.exec_mode:
             message = unicode(message)
             message = self.fixLineEndings(message)
-#            logging.debug("WRITEOUT: '%s'"%message)
-
 
             start = self.promptPosStart  # start des prompt >>>
             end = self.promptPosEnd  # end   des prompt >>>
@@ -208,16 +196,6 @@ class Shell(wx.py.shell.Shell):
         if self.exec_mode == 0 and self.has_moved:
             self.prompt()
             self.has_moved = False
-
-#    TODO: catch crashing startup script
-#    def execStartupScript(self, startupScript):
-#        """Execute the user's PYTHONSTARTUP script if they have one."""
-#        if startupScript and os.path.isfile(startupScript):
-#            text = 'Startup script executed: ' + startupScript
-# #            self.push('print %r; execfile(%r)' % (text, startupScript))
-#            self.interp.startupScript = startupScript
-#        else:
-#            self.push('')
 
 
 
@@ -1297,7 +1275,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         plt.close('all')
 
     def OnQuit(self, event=None):
-        logging.debug("WxTerm Shell OnQuit (ca veto: %s)" % 6)  # event.CanVeto())
+        logging.debug("WxTerm Shell OnQuit")
 
         # close all windows
         for w in wx.GetTopLevelWindows():
@@ -1443,7 +1421,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
 #            pickle.dump(self.recent_files, file)
     def recent_menu_update_icons(self):
         py_icon = Icon('documents/pydoc')
-        e_icon = Icon('documents/experiment')
         for item in self.recent_menu.GetMenuItems():
             text = item.GetItemLabelText()
             if text.endswith('.py'):
