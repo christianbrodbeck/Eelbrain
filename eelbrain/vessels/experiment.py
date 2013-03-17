@@ -502,7 +502,7 @@ class mne_experiment(object):
         label = reduce(add, srcs)
         label.save(tgt)
 
-    def expand_template(self, temp, values={}):
+    def expand_template(self, temp, values=()):
         """
         Expands a template until all its subtemplates are neither in
         self.var_values nor in ``values``
@@ -712,7 +712,8 @@ class mne_experiment(object):
             a path template with variables indicated as in ``'{var_name}'``
         """
         # if the name is an existing template, retrieve it
-        temp = self.expand_template(temp, values=values)
+        keep = constants.keys() + values.keys()
+        temp = self.expand_template(temp, values=keep)
 
         # find variables for iteration
         variables = set(self._fmt_pattern.findall(temp))
@@ -1563,7 +1564,7 @@ class mne_experiment(object):
             del state[key]
         self.set(**state)
 
-    def rm(self, temp, constants={}, values={}, exclude={}, **kwargs):
+    def rm(self, temp, values={}, exclude={}, v=False, **kwargs):
         """
         Remove all files corresponding to a template
 
@@ -1574,12 +1575,19 @@ class mne_experiment(object):
         ----------
         temp : str
             The template.
+        v : bool
+            Verbose mode (print all filename patterns that are searched).
         """
-        self.set(**kwargs)
         files = []
-        for temp in self.iter_temp(temp, constants=constants, values=values,
-                                   exclude=exclude):
-            files.extend(iglob(temp))
+        for fname in self.iter_temp(temp, constants=kwargs, values=values,
+                                    exclude=exclude):
+            fnames = glob(fname)
+            if v:
+                print "%s -> %i" % (fname, len(fnames))
+            if fnames:
+                files.extend(fnames)
+            elif os.path.exists(fname):
+                files.append(fname)
 
         if files:
             root = self.root
