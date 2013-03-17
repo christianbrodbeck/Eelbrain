@@ -670,7 +670,7 @@ class mne_experiment(object):
         if reject_tmax is None:
             desc += '%i' % (tmax * 1000)
         else:
-            desc += '(%i)%i' % (tmax * 1000, reject_tmax * 1000)
+            desc += '(%i)%i' % (reject_tmax * 1000, tmax * 1000)
 
         if (decim is not None) and (decim != 1):
             desc += '|%i' % decim
