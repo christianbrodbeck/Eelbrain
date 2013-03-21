@@ -370,21 +370,17 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         # shell resizing
         m.AppendSeparator()
-        m.Append(ID.SHELL_Maximize, 'Maximize Shell',
-                 "Expand the Shell to use the full screen height.")
-        self.Bind(wx.EVT_MENU, self.OnResize_Max, id=ID.SHELL_Maximize)
+        m.Append(ID.SIZE_MAX, 'Maximize Shell',
+                 "Expand the shell to use the full screen height.")
+        self.Bind(wx.EVT_MENU, self.OnResize, id=ID.SIZE_MAX)
 
-        m.Append(ID.SHELL_HalfScreen, 'Half Screen Shell',
-                 "Expand Shell to use the left half of the screen")
-        self.Bind(wx.EVT_MENU, self.OnResize_HalfScreen, id=ID.SHELL_HalfScreen)
+        m.Append(ID.SIZE_MAX_NOTITLE, 'Maximize Hide Title',
+                 "Expand the shell and hide the title bar.")
+        self.Bind(wx.EVT_MENU, self.OnResize, id=ID.SIZE_MAX_NOTITLE)
 
-        m.Append(ID.SHELL_Window, 'Window Shell',
-                 "Resize the Shell to window with standard width.")
-        self.Bind(wx.EVT_MENU, self.OnResize_Win, id=ID.SHELL_Window)
-
-        m.Append(ID.SHELL_Mini, 'Mini-Shell', "Resize the Shell to a small "
+        m.Append(ID.SIZE_MIN, 'Mini-Shell', "Resize the Shell to a small "
                  "window (e.g. for use as pocket calculator).")
-        self.Bind(wx.EVT_MENU, self.OnResize_Min, id=ID.SHELL_Mini)
+        self.Bind(wx.EVT_MENU, self.OnResize, id=ID.SIZE_MIN)
 
         # section with all open windows
         m.AppendSeparator()
@@ -539,7 +535,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.shell.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
         # my shell customization
         self.ApplyStyle()
-        self.OnResize_HalfScreen(None)
+        self.Resize(ID.SIZE_MAX)
         # icon
         if sys.platform != 'darwin':
             self.eelbrain_icon = Icon('eelbrain', asicon=True)
@@ -1245,7 +1241,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def OnMaximize(self, event=None):
         logging.debug("SHELLFRAME Maximize received")
-        self.OnResize_Max(event)
+        self.Resize(ID.SIZE_MAX)
 
     def OnOpenMneGui(self, event):
         Id = event.GetId()
@@ -1299,29 +1295,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
         logging.debug("History Load: %s" % path)
         self.OnFileOpen(path=path)
 
-    def OnResize_Max(self, event):
-        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
-        x_size = min(x_max - x_min, 800) + x_min
-        self.SetPosition((x_min, y_min))
-        self.SetSize((x_size, y_max))
-
-    def OnResize_HalfScreen(self, event):
-        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
-        self.SetPosition((x_min, y_min))
-        x_size = min(x_max // 2, 800) - x_min
-        y_size = y_max - y_min
-        self.SetSize((x_size, y_size))
-
-    def OnResize_Win(self, event):
-        x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
-        self.SetPosition((x_min, y_min + 50))
-        x_size = 800 + x_min
-        y_size = y_max - y_min - 100
-        self.SetSize((x_size, y_size))
-
-    def OnResize_Min(self, event):
-        self.SetPosition((50, 200))
-        self.SetSize((350, 600))
+    def OnResize(self, event):
+        Id = event.GetId()
+        self.Resize(Id)
 
     def OnSelectColourAlt(self, event=None):
         if hasattr(self, 'c_dlg'):
@@ -1433,6 +1409,19 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.windowMenuWindows.pop(ID)
         self.windowMenuMenuItems.pop(ID)
         self.windowMenu.Remove(ID)
+
+    def Resize(self, Id=ID.SIZE_MAX):
+        display = wx.Display()
+        area = display.GetClientArea()
+        if Id == ID.SIZE_MAX:
+            width = min(area.width // 2, 700)
+            rect = wx.Rect(area.left, area.top, width, area.height)
+        elif Id == ID.SIZE_MAX_NOTITLE:
+            width = min(area.width // 2, 700)
+            rect = wx.Rect(area.left, 0, width, area.height + area.top)
+        elif Id == ID.SIZE_MIN:
+            rect = wx.Rect(area.left, 200, 350, 600)
+        self.SetRect(rect)
 
     def shell_message(self, message, sep=False, ascommand=False, endline=True,
                       internal_call=False):
