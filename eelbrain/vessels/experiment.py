@@ -133,17 +133,18 @@ def _etree_node_repr(node, name, indent=0):
 
 
 class mne_experiment(object):
-    """
+    """Class for managing data for an experiment
 
-    Option Attributes
-    -----------------
+    Methods
+    -------
+    Methods for getting information about the experiment:
 
-    auto_launch_mne : bool | None
-        If the requested file does not exist, open mne so the user can
-        create it. With
-        ``None``, the application asks each time.
-        Currently affects only "trans" files.
-
+    .print_tree()
+        see templates and their dependency
+    .state()
+        print variables with their current value
+    .summary()
+        check for the presence of files for a given templates
     """
     auto_launch_mne = False
     bad_channels = defaultdict(list)  # (sub, exp) -> list
@@ -456,10 +457,6 @@ class mne_experiment(object):
              'analysis': '',
              'name': '',
              'suffix': '',
-
-             # BESA
-             'besa_triggers': os.path.join('{meg_sdir}', 'besa', '{subject}_{experiment}_{analysis}_triggers.txt'),
-             'besa_evt': os.path.join('{meg_sdir}', 'besa', '{subject}_{experiment}_{analysis}.evt'),
              }
 
         return t
@@ -486,13 +483,18 @@ class mne_experiment(object):
         args = ', '.join(args)
         return "mne_experiment(%s)" % args
 
-    def combine_labels(self, target, sources=[], redo=False):
-        """
+    def combine_labels(self, target, sources=(), redo=False):
+        """Combine several freesurfer labels into one label
+
+        Parameters
+        ----------
         target : str
             name of the target label.
-        sources : list of str
+        sources : sequence of str
             names of the source labels.
-
+        redo : bool
+            If the target file already exists, redo the operation and replace
+            it.
         """
         tgt = self.get('label-file', label=target)
         if (not redo) and os.path.exists(tgt):
@@ -504,7 +506,7 @@ class mne_experiment(object):
 
     def expand_template(self, temp, values=()):
         """
-        Expands a template until all its subtemplates are neither in
+        Expand a template until all its subtemplates are neither in
         self.var_values nor in ``values``
 
         Parameters
@@ -659,8 +661,26 @@ class mne_experiment(object):
         return path
 
     def get_epoch_str(self, stim=None, tmin=None, tmax=None, reject_tmin=None,
-                      reject_tmax=None, name=None, decim=None):
-        "Produces a descriptor for a single epoch specification"
+                      reject_tmax=None, decim=None, name=None):
+        """Produces a descriptor for a single epoch specification
+
+        Parameters
+        ----------
+        stim : str
+            The stimulus name.
+        tmin : scalar
+            Start of the epoch data in seconds.
+        tmax : scalar
+            End of the epoch data in seconds.
+        reject_tmin : None | scalar
+            Set an alternate tmin for epoch rejection.
+        reject_tmax : None | scalar
+            Set an alternate tmax for epoch rejection.
+        decim : None | int
+            Decimate epoch data.
+        name : None | str
+            Name the epoch (not included in the label).
+        """
         desc = '%s[' % stim
         if reject_tmin is None:
             desc += '%i_' % (tmin * 1000)
@@ -1392,17 +1412,10 @@ class mne_experiment(object):
 
         self.var_values['subject'] = list(subjects)
 
-    def plot_coreg(self, **kwargs):  # sens=True, mrk=True, fiduc=True, hs=False, hs_mri=True,
+    def plot_coreg(self, **kwargs):
         self.set(**kwargs)
         raw = mne.fiff.Raw(self.get('raw-file'))
         return plot.coreg.dev_mri(raw)
-
-    def plot_mrk(self, **kwargs):
-        self.set(**kwargs)
-        fname = self.get('mrk')
-        mf = load.kit.MarkerFile(fname)
-        ax = mf.plot_mpl()
-        return ax
 
     def print_tree(self):
         tree = {'.': 'root'}
