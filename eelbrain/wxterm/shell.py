@@ -1096,6 +1096,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         logging.debug("Shell: help called for : %s (%i)" % (text, pos))
         self.OnHelpViewer(topic_str=text, pos=pos)
+        win.Raise()
 
     def OnHelpExternal(self, event):
         "Called from the Help menu to open external resources"
