@@ -146,7 +146,6 @@ class mne_experiment(object):
     .summary()
         check for the presence of files for a given templates
     """
-    auto_launch_mne = False
     bad_channels = defaultdict(list)  # (sub, exp) -> list
     epochs = {}
     subjects_has_own_mri = ()
@@ -618,45 +617,6 @@ class mne_experiment(object):
             dirname = os.path.dirname(path)
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
-
-        # special cases that can create the file in question
-        if match and temp == 'trans':
-            if not os.path.exists(path):
-                if self.auto_launch_mne is None:
-                    a = ui.ask("Launch mne_analyze for Coordinate-Coregistration?",
-                               "The 'trans' file for %r, %r does not exist. Should "
-                               "mne_analyzed be launched to create it?" %
-                               (self._state['subject'], self._state['experiment']),
-                               cancel=False, default=True)
-                else:
-                    a = bool(self.auto_launch_mne)
-                if a:
-                    # take snapshot of files in raw_sdir
-                    raw_sdir = self.get('raw_sdir')
-                    flist = os.listdir(raw_sdir)
-
-                    # allow the user to create the file
-                    ui.show_help(subp.run_mne_analyze)
-                    print "Opening mne_analyze for generating %r" % path
-                    subp.run_mne_analyze(self.get('mri_dir'),
-                                         raw_sdir,
-                                         mri_subject=self.get('mrisubject'),
-                                         modal=True)
-
-                    # rename the file if possible
-                    newf = set(os.listdir(raw_sdir)).difference(flist)
-                    newf = filter(lambda x: str.endswith(x, '-trans.fif'), newf)
-                    if len(newf) == 1:
-                        src = os.path.join(raw_sdir, newf[0])
-                        os.rename(src, path)
-
-                    if not os.path.exists(path):
-                        err = ("Error creating file; %r does not exist" % path)
-                        raise IOError(err)
-                else:
-                    err = ("No trans file for %r, %r" %
-                           (self._state['subject'], self._state['experiment']))
-                    raise IOError(err)
 
         return path
 
