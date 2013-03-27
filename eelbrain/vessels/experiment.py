@@ -28,6 +28,9 @@ reject_tmax : scalar
 decim : int
     Decimate the data by this factor (i.e., only keep every ``decim``'th
     sample)
+tag : str
+    Optional tag to identify epochs that differ in ways not captured by the
+    above.
 
 
 Epochs can be specified directly in the relevant function, or they can be
@@ -648,7 +651,7 @@ class mne_experiment(object):
 
     def get_epoch_str(self, stimvar=None, stim=None, tmin=None, tmax=None,
                       reject_tmin=None, reject_tmax=None, decim=None,
-                      name=None):
+                      name=None, tag=None):
         """Produces a descriptor for a single epoch specification
 
         Parameters
@@ -670,6 +673,8 @@ class mne_experiment(object):
             Decimate epoch data.
         name : None | str
             Name the epoch (not included in the label).
+        tag : None | str
+            Optional tag for epoch string.
         """
         desc = '%s[' % stim
         if reject_tmin is None:
@@ -684,6 +689,9 @@ class mne_experiment(object):
 
         if (decim is not None) and (decim != 1):
             desc += '|%i' % decim
+
+        if tag is not None:
+            desc += '|%s' % tag
 
         return desc + ']'
 
