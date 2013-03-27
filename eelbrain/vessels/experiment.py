@@ -143,6 +143,8 @@ class mne_experiment(object):
         see templates and their dependency
     .state()
         print variables with their current value
+    .subjects_table()
+        Each subject with corresponding MRI subject.
     .summary()
         check for the presence of files for a given templates
     """
@@ -777,6 +779,23 @@ class mne_experiment(object):
                        "my master.")
 
     def label_events(self, ds, experiment, subject):
+        """
+        Adds T (time) and SOA (stimulus onset asynchrony) to the dataset.
+
+        Parameters
+        ----------
+        ds : dataset
+            A dataset containing events (as returned by
+            :func:`load.fiff.events`).
+        experiment : str
+            Name of the experiment.
+        subject : str
+            Name of the subject.
+
+        Notes
+        -----
+        Subclass this method to specify events.
+        """
         raw = ds.info['raw']
         sfreq = raw.info['sfreq']
         ds['T'] = ds['i_start'] / sfreq
@@ -1272,16 +1291,6 @@ class mne_experiment(object):
         """
         projs = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
         self.ui_select_projs(projs, epochs, save=save, save_plot=save_plot)
-
-    def subjects_table(self):
-        """Print a table with the MRI subject corresponding to each subject"""
-        table = fmtxt.Table('ll')
-        table.cells('subject', 'mrisubject')
-        table.midrule()
-        for _ in self.iter_vars('subject'):
-            table.cell(self.get('subject'))
-            table.cell(self.get('mrisubject'))
-        return table
 
     def ui_select_projs(self, projs, fif_obj, save=True, save_plot=True):
         """
@@ -1814,8 +1823,32 @@ class mne_experiment(object):
 
         return table
 
-    def summary(self, templates=['raw-file'], missing='-', link='>',
+    def subjects_table(self):
+        """Print a table with the MRI subject corresponding to each subject"""
+        table = fmtxt.Table('ll')
+        table.cells('subject', 'mrisubject')
+        table.midrule()
+        for _ in self.iter_vars('subject'):
+            table.cell(self.get('subject'))
+            table.cell(self.get('mrisubject'))
+        return table
+
+    def summary(self, templates=['raw-file'], missing='-', link=' > ',
                 count=True):
+        """
+        Compile a table about the existence of files by subject
+
+        Parameters
+        ----------
+        templates : list of str
+            The names of the path templates whose existence to list
+        missing : str
+            The value to display for missing files.
+        link : str
+            String between file names.
+        count : bool
+            Add a column with a number for each subject.
+        """
         if not isinstance(templates, (list, tuple)):
             templates = [templates]
 
