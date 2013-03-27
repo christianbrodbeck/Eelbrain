@@ -8,6 +8,10 @@ Epochs
 Epochs are defined as dictionaries containing the following entries
 (**mandatory**/optional):
 
+**stimvar** : str
+    The name of the variable which defines the relevant stimuli (i.e., the
+    variable on which the stim value is chosen: the relevant events are
+    found by ``idx = (ds[stimvar] == stim)``.
 **stim** : str
     Value of the stimvar relative to which the epoch is defined.
 **name** : str
@@ -148,10 +152,23 @@ class mne_experiment(object):
     .summary()
         check for the presence of files for a given templates
     """
-    bad_channels = defaultdict(list)  # (sub, exp) -> list
-    epochs = {}
+    # Experiment Constants
+    # --------------------
+    # Bad channels dictionary: (sub, exp) -> list of int
+    bad_channels = defaultdict(list)
+    # Default values for epoch definitions
+    epoch_default = {'stimvar': 'stim', 'tmin':-0.1, 'tmax': 0.6, 'decim': 5,
+                     'name': 'epochs'}
+    epoch_default_arg = {'stim': 'adj'}
+    epochs_default_arg = [epoch_default_arg]
+
+    # named epochs
+    epochs = {'bl': {'stim': 'adj', 'tmin':-0.2, 'tmax':0}}
     subjects_has_own_mri = ()
     subject_re = re.compile('R\d{4}$')
+
+    # Constants that should not need to be modified
+    # ---------------------------------------------
     # the default value for the common_brain (can be overridden using the set
     # method after __init__()):
     _common_brain = 'fsaverage'
@@ -160,6 +177,7 @@ class mne_experiment(object):
     _mri_loc = 'mri_dir'  # location of subject mri folders
     _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
     _subject_loc = 'meg_dir'  # location of subject folders
+
     def __init__(self, root=None, parse_subjects=True, subjects=[],
                  mri_subjects={}):
         """
@@ -229,7 +247,12 @@ class mne_experiment(object):
             ep = epochs[i]
             if isinstance(ep, str):
                 ep = self.epochs[ep]
-                epochs[i] = ep
+            ep = ep.copy()
+            for k, v in self.epoch_default.iteritems():
+                if k not in ep:
+                    ep[k] = v
+            epochs[i] = ep
+
             desc = self.get_epoch_str(**ep)
             e_descs.append(desc)
 
@@ -426,6 +449,7 @@ class mne_experiment(object):
              'proj_plot': '{raw-base}_{proj}-proj.pdf',
              'cov-file': '{raw-base}_{cov}-{proj}-cov.fif',
              'fwd': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
+             'cov': 'bl',
 
              # fwd model
              'common_brain': self._common_brain,
@@ -622,12 +646,16 @@ class mne_experiment(object):
 
         return path
 
-    def get_epoch_str(self, stim=None, tmin=None, tmax=None, reject_tmin=None,
-                      reject_tmax=None, decim=None, name=None):
+    def get_epoch_str(self, stimvar=None, stim=None, tmin=None, tmax=None,
+                      reject_tmin=None, reject_tmax=None, decim=None,
+                      name=None):
         """Produces a descriptor for a single epoch specification
 
         Parameters
         ----------
+        stimvar : str
+            The name of the variable on which stim is defined (not included in
+            the label).
         stim : str
             The stimulus name.
         tmin : scalar
@@ -809,16 +837,13 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_epochs(self, stimvar='stim', epoch=dict(name='epochs', stim='adj',
-                    tmin= -0.1, tmax=0.6, decim=5), asndvar=False,
+    def load_epochs(self, epoch=epoch_default_arg, asndvar=False,
                     subject=None):
         """
         Load a dataset with epochs for a given epoch definition
 
         Parameters
         ----------
-        stimvar : str
-            Name of the variable which defines the stimuli.
         epoch : dict
             Epoch definition.
         asndvar : bool | str
@@ -829,6 +854,7 @@ class mne_experiment(object):
         """
         epoch = self._process_epochs_arg([epoch])[0]
 
+        stimvar = epoch['stimvar']
         stim = epoch['stim']
         tmin = epoch.get('reject_tmin', epoch['tmin'])
         tmax = epoch.get('reject_tmax', epoch['tmax'])
@@ -898,12 +924,12 @@ class mne_experiment(object):
 
         return ds
 
-    def load_evoked(self, stimvar='stim', model='ref%side',
-                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
-                                 tmax=0.6, decim=5)],
+    def load_evoked(self, model='ref%side', epochs=epochs_default_arg,
                     to_ndvar=False):
         """
-        Load as dataset data created with :meth:`mne_experiment.make_evoked`.
+        Load a dataset with evoked files for each subject.
+
+        Load data previously created with :meth:`mne_experiment.make_evoked`.
 
         Parameters
         ----------
@@ -990,32 +1016,32 @@ class mne_experiment(object):
 
         return raw
 
-    def load_sensor_data(self, stimvar='stim',
-                         epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
-                                      tmax=0.6, decim=5)],
-                         random=('subject',), all_subjects=False):
+    def load_sensor_data(self, epochs=epochs_default_arg, random=('subject',),
+                         all_subjects=False):
         """
         Load sensor data in the form of an Epochs object contained in a dataset
         """
         if all_subjects:
-            dss = (self.load_sensor_data(stimvar=stimvar, epochs=epochs,
-                                         random=random)
+            dss = (self.load_sensor_data(epochs=epochs, random=random)
                    for _ in self.iter_vars())
             ds = combine(dss)
             return ds
 
         epochs = self._process_epochs_arg(epochs)
+        if len(set(ep['name'] for ep in epochs)) < len(epochs):
+            raise ValueError("All epochs need a unique name")
 
         stim_epochs = defaultdict(list)
-        # {stim -> }
+        # {(stimvar, stim) -> [name1, ...]}
         kwargs = {}
         e_names = []  # all target epoch names
         for ep in epochs:
             name = ep['name']
+            stimvar = ep['stimvar']
             stim = ep['stim']
 
             e_names.append(name)
-            stim_epochs[stim].append(name)
+            stim_epochs[(stimvar, stim)].append(name)
 
             kw = dict(reject={'mag': 3e-12}, baseline=None, preload=True)
             for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax', 'decim'):
@@ -1028,7 +1054,7 @@ class mne_experiment(object):
         edf = ds.info['edf']
 
         dss = {}  # {tgt_epochs -> dataset}
-        for stim, names in stim_epochs.iteritems():
+        for (stimvar, stim), names in stim_epochs.iteritems():
             eds = ds.subset(ds[stimvar] == stim)
             eds.index()
             for name in names:
@@ -1065,9 +1091,44 @@ class mne_experiment(object):
 
         return ds
 
-    def make_evoked(self, stimvar='stim', model='ref%side',
-                    epochs=[dict(name='evoked', stim='adj', tmin= -0.1,
-                                 tmax=0.6, decim=5)],
+    def make_cov(self, cov=None, redo=False):
+        """Make a noise covariance (cov) file
+
+        Parameters
+        ----------
+        cov : None | str
+            The epoch used for estimating the covariance matrix (needs to be
+            a name in .epochs). If None, the experiment state cov is used.
+        """
+        if not isinstance(cov, str):
+            raise TypeError("")
+
+        cov = self.get('cov', cov=cov)
+        dest = self.get('cov-file')
+        if (not redo) and os.path.exists(dest):
+            return
+
+        epoch = self._process_epochs_arg([cov])[0]
+        stimvar = epoch['stimvar']
+        stim = epoch['stim']
+        tmin = epoch['tmin']
+        tmax = epoch['tmax']
+
+        ds = self.load_events()
+
+        # decimate events
+        ds = ds.subset(ds[stimvar] == stim)
+        edf = ds.info['edf']
+        ds = edf.filter(ds, use=['EBLINK'], tstart=tmin, tstop=tmax)
+
+        # create covariance matrix
+        epochs = load.fiff.mne_Epochs(ds, baseline=(None, 0), preload=True,
+                                      reject={'mag':3e-12}, tmin=tmin,
+                                      tmax=tmax)
+        cov = mne.cov.compute_covariance(epochs)
+        cov.save(dest)
+
+    def make_evoked(self, model='ref%side', epochs=epochs_default_arg,
                     random=('subject',), redo=False):
         """
         Creates datasets with evoked files for the current subject/experiment
