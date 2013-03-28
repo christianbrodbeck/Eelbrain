@@ -1216,7 +1216,7 @@ class factor(_effect_):
         return self.isin(values)
 
     def isin(self, values):
-        is_v = [self.x == self._codes[v] for v in values if v in self._codes]
+        is_v = [self.x == self._codes.get(v, np.nan) for v in values]
         return np.any(is_v, 0)
 
     def isnot(self, *values):
@@ -1225,7 +1225,7 @@ class factor(_effect_):
         of the values
 
         """
-        is_not_v = [self.x != self._codes[v] for v in values if v in self._codes]
+        is_not_v = [self.x != self._codes.get(v, np.nan) for v in values]
         if is_not_v:
             return np.all(is_not_v, axis=0)
         else:
