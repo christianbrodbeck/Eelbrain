@@ -1698,16 +1698,16 @@ class mne_experiment(object):
                 self.set_mri_subject(s, self._common_brain)
 
     def run_mne_analyze(self, subject=None, modal=False):
-        mri_dir = self.get('mri_dir')
+        subjects_dir = self.get('mri_dir')
         if (subject is None) and (self._state['subject'] is None):
             fif_dir = self.get('meg_dir')
-            mri_subject = None
+            subject = None
         else:
             fif_dir = self.get('raw_sdir', subject=subject)
-            mri_subject = self.get('{mrisubject}')
+            subject = self.get('{mrisubject}')
 
-        subp.run_mne_analyze(mri_dir, fif_dir, mri_subject=mri_subject,
-                             modal=modal)
+        subp.run_mne_analyze(fif_dir, subject=subject,
+                             subjects_dir=subjects_dir, modal=modal)
 
     def run_mne_browse_raw(self, subject=None, modal=False):
         if (subject is None) and (self._state['subject'] is None):

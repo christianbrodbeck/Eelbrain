@@ -629,24 +629,26 @@ def setup_mri(subject, subjects_dir=None, ico=4, block=False, redo=False):
 
 
 
-def run_mne_analyze(mri_dir, fif_dir, mri_subject=None, modal=True):
+def run_mne_analyze(fif_dir, subject=None, subjects_dir=None, modal=False):
     """
     invokes mne_analyze (e.g., for manual coregistration)
 
-    **Arguments:**
-
-    mri_dir : str(path)
-        the directory containing the mri data (subjects's mri directory, or
-        fsaverage)
-    fif_file : str(path)
-        the target fiff file
+    Parameters
+    ----------
+    fif_dir : str
+        the directory containing the fiff files.
+    subject : None | str
+        The name of the MRI subject.
+    subjects_dir : None | str
+        Override the SUBJECTS_DIR environment variable.
     modal : bool
-        causes the shell to be unresponsive until mne_analyze is closed
+        causes the shell to be unresponsive until mne_analyze is closed.
 
 
-    **Coregistration Procedure:**
-
-    (For more information see  MNE-manual 3.10 & 12.11)
+    Notes
+    -----
+    **Coregistration Procedure** (For more information see MNE-manual 3.10 &
+    12.11):
 
     #. File > Load Surface: select the subject`s directory and "Inflated"
     #. File > Load digitizer data: select the fiff file
@@ -666,15 +668,18 @@ def run_mne_analyze(mri_dir, fif_dir, mri_subject=None, modal=True):
     this creates a file next to the raw file with the '-trans.fif' extension.
 
     """
-    os.environ['SUBJECTS_DIR'] = mri_dir
+    env = os.environ.copy()
+    if subjects_dir is not None:
+        env['SUBJECTS_DIR'] = subjects_dir
+
     os.chdir(fif_dir)
     setup_path = get_bin('mne', 'mne_setup_sh')
     bin_path = get_bin('mne', 'mne_analyze')
     cmd = ['. %s;' % setup_path, bin_path]
-    if mri_subject:
-        cmd.extend(('--subject', mri_subject))
+    if subject:
+        cmd.extend(('--subject', subject))
 
-    p = subprocess.Popen(' '.join(cmd), shell=True)
+    p = subprocess.Popen(' '.join(cmd), shell=True, env=env)
     if modal:
         print "Waiting for mne_analyze to be closed..."
         p.wait()  # causes the shell to be unresponsive until mne_analyze is closed
