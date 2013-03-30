@@ -2,16 +2,15 @@ from nose.tools import ok_, eq_
 
 import numpy as np
 
-from eelbrain.vessels.design import (get_permutated_dataset, Variable,
-                                     random_factor)
+from eelbrain.vessels.design import (permute, Variable, random_factor)
 
 def test_random_factor():
     """Test the design module for creating an experiemnt design"""
-    ds = get_permutated_dataset((
-                                 Variable('A', '123456'),
-                                 Variable('Bin', '01'),
-                                 Variable('B', 'abcdef'),
-                                 ))
+    ds = permute((
+                  Variable('A', '123456'),
+                  Variable('Bin', '01'),
+                  Variable('B', 'abcdef'),
+                  ))
     n = ds.n_cases
 
     rand = random_factor(('1', '2', '3'), n, 'rand')

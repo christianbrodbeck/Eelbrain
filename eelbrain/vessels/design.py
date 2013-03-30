@@ -1,5 +1,5 @@
 '''
-Uses data vessels to construct an experimental design matrix.
+Use data vessels to construct an experiment trial list.
 
 Usage
 =====
@@ -9,8 +9,7 @@ Creating Design
 
 1) The first step is to construct a dataset from the variables that are
    permutated in the experiment. This is done by creating a list of `Variable`
-   objects (one for each variable) and submitting it to the
-   `get_permutated_dataset` function.
+   objects (one for each variable) and submitting it to the `permute` function.
 2) The second step is to add to the dataset additional variables that need
    randomization. The `random_factor` function does that.
 3) Finally, dummy variables which strictly depend on other variables already
@@ -105,7 +104,7 @@ class Variable(object):
 
 
 
-def get_permutated_dataset(variables, count='caseID', randomize=False):
+def permute(variables, count='caseID', randomize=False):
     # sort variables
     perm_rand = []  # permutated and randomized
     perm_nonrand = []  # permutated and not randomized
