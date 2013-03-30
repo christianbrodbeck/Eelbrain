@@ -162,28 +162,65 @@ def get_permutated_dataset(variables, count='caseID', randomize=False):
 
 
 
-def random_factor(name, values, ds, rand=True, balance=[], urn=[], 
-                  require_exact_balance=True):
+def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
+                  require_exact_balance=True, sub=None):
+    """Create a factor with random values
+
+    Parameters
+    ----------
+    values : list
+        Values (factor labels) from which to sample.
+    n : int
+        Length of the new factor.
+    name : None | str
+        Name of the factor.
+    rand : bool
+        Randomize sequence of values (instead of just iterating over the
+        range).
+    balance : None | list of factors
+        Factors over which the values in the new factor should be balanced.
+    urn : None | list of factors
+        Factors which have already drawn from the same urn. I.e., for each
+        index, the new factor should contain a value that is different from
+        the factors in urn.
+    require_exact_balance : bool
+        Raise an error if balancing exactly is not possible.
+    sub : None | index array
+        Only fill up part of the factor (the other cells will have the default
+        '' empty string value).
+    """
     i = 0
+    if sub is not None:
+        if balance:
+            balance = [f[sub] for f in balance]
+        if urn:
+            urn = [f[sub] for f in urn]
+        n_tgt = n
+        n = len(np.empty(n)[sub])
+
     while i < _max_iter:
         try:
-            f = _try_make_random_factor(name, values, ds, rand, balance, urn, 
+            f = _try_make_random_factor(name, values, n, rand, balance, urn,
                                         require_exact_balance)
         except RandomizationError:
             i += 1
         except:
             raise
         else:
+            if sub is not None:
+                f_sub = f
+                f = _data.factor([''], rep=n_tgt, name=name)
+                f[sub] = f_sub
             return f
 
     raise RandomizationError("Random list generation exceeded max-iter (%i)" % i)
 
 
 
-def _try_make_random_factor(name, values, ds, rand, balance, urn, 
+def _try_make_random_factor(name, values, n, rand, balance, urn,
                             require_exact_balance):
     N_values = len(values)
-    x = np.empty(ds.N, dtype=np.uint8)
+    x = np.empty(n, dtype=np.uint8)
     cells = dict(enumerate(values))
 
     if balance:
@@ -197,8 +234,8 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
 
         region_len = region_lens[0]
     else:
-        regions = _data.factor('?'*ds.N, "regions")
-        region_len = ds.N
+        regions = _data.factor('?' * n, "regions")
+        region_len = n
 
     # generate random values with equal number of each value
     exact_balance = not bool(region_len % N_values)
@@ -209,13 +246,13 @@ def _try_make_random_factor(name, values, ds, rand, balance, urn,
             raise ValueError("No exact balancing possible")
         _len = (region_len // N_values + 1) * N_values
         values = np.arange(_len, dtype=np.uint8) % N_values
-        
+
         # drop trailing values randomly
-        if rand:# and _randomize:
+        if rand:  # and _randomize:
             np.random.shuffle(values[-N_values:])
-        values = values[:ds.N]
-    
-    
+        values = values[:n]
+
+
     # cycle through values of the balance containers
     for region in regions.cells:
         if rand:  # and _randomize:
