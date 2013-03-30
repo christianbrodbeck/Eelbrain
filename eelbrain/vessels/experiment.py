@@ -59,8 +59,7 @@ the interval form 0 to 500 ms used for rejection.
 
 from collections import defaultdict
 import cPickle as pickle
-import fnmatch
-from glob import glob, iglob
+from glob import glob
 import itertools
 from operator import add
 import os
