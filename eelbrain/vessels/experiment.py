@@ -1108,8 +1108,8 @@ class mne_experiment(object):
             The epoch used for estimating the covariance matrix (needs to be
             a name in .epochs). If None, the experiment state cov is used.
         """
-        if not isinstance(cov, str):
-            raise TypeError("")
+        if (cov is not None) and not isinstance(cov, str):
+            raise TypeError("cov should be None or str, no %r" % cov)
 
         cov = self.get('cov', cov=cov)
         dest = self.get('cov-file')
@@ -1163,10 +1163,11 @@ class mne_experiment(object):
         e_names = []
         for ep in epochs:
             name = ep['name']
+            stimvar = ep['stimvar']
             stim = ep['stim']
 
             e_names.append(name)
-            stim_epochs[stim].append(name)
+            stim_epochs[(stimvar, stim)].append(name)
 
             kw = dict(reject={'mag': 3e-12}, baseline=None, preload=True)
             for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax', 'decim'):
@@ -1193,7 +1194,7 @@ class mne_experiment(object):
                 model_names = model.base_names
 
         dss = {}
-        for stim, names in stim_epochs.iteritems():
+        for (stimvar, stim), names in stim_epochs.iteritems():
             d = ds.subset(ds[stimvar] == stim)
             for name in names:
                 dss[name] = d
