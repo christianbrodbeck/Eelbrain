@@ -191,11 +191,7 @@ class texstr(object):
         return texstr([self, other])
 
     def __repr_items__(self):
-        items = []
-        if isstr(self.text):
-            items.append('"%s"' % self.text)
-        else:
-            items.append(self.text.__repr__())
+        items = [repr(self.text)]
 
         if self.property:
             items.append(repr(self.property))
@@ -213,6 +209,9 @@ class texstr(object):
         return "%s(%s)" % (name, args)
 
     def __str__(self):
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
         return self.get_str()
 
     def get_str(self, fmt=None):
@@ -431,6 +430,9 @@ class Row(list):
         return "Row(%s)" % list.__repr__(self)
 
     def __str__(self):
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
         return ' '.join([str(cell) for cell in self])
 
     def get_str(self, c_width, c_just, delimiter='   ',
@@ -641,6 +643,9 @@ class Table:
         return self.__str__()
 
     def __str__(self):
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
         return self.get_str()
 
     def get_str(self, fmt=None, row_delimiter='default'):
@@ -701,7 +706,9 @@ class Table:
         if self._title != None:
             out = ['', self._title.get_str(), ''] + out
 
-        if self._caption:
+        if isstr(self._caption):
+            out.append(self._caption)
+        elif self._caption:
             out.append(str(self._caption))
 
         return os.linesep.join(out)
@@ -782,8 +789,11 @@ class Table:
                 path += '.txt'
 
             with open(path, 'w') as f:
-                f.write(self.get_tsv(delimiter=delimiter, linesep=linesep,
-                                     fmt=fmt))
+                out = self.get_tsv(delimiter=delimiter, linesep=linesep,
+                                   fmt=fmt)
+                if isinstance(out, unicode):
+                    out = out.encode('utf-8')
+                f.write(out)
 
 
 

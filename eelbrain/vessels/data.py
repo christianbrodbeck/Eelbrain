@@ -883,7 +883,9 @@ class factor(_effect_):
         codes = {}  # {label -> code}
         x_ = np.empty(n_cases, dtype=np.uint16)
         for i, value in enumerate(x):
-            label = str(labels.get(value, value))
+            label = labels.get(value, value)
+            if not isinstance(label, unicode):
+                label = str(label)
             if label in codes:
                 code = codes.get(label)
             else:  # new code
@@ -934,7 +936,7 @@ class factor(_effect_):
             values = self.x.tolist()
 
         if full or len(self.x) <= n_cases:
-            x = str(values)
+            x = repr(values)
         else:
             x = [repr(v) for v in values[:n_cases]]
             x.append('<... N=%s>' % len(self.x))
@@ -1028,7 +1030,7 @@ class factor(_effect_):
         return self.x != self._encode_(other)
 
     def _encode_(self, Y):
-        if isinstance(Y, str):
+        if isinstance(Y, basestring):
             return self._codes.get(Y, -1)
         else:
             out = np.empty(len(Y), dtype=self.x.dtype)
@@ -2087,11 +2089,14 @@ class dataset(collections.OrderedDict):
             super(dataset, self).__setitem__(name, item)
 
     def __str__(self):
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
         if sum(map(isuv, self.values())) == 0:
             return self.__repr__()
 
         maxn = preferences['dataset_str_n_cases']
-        txt = str(self.as_table(cases=maxn, fmt='%.5g', midrule=True))
+        txt = unicode(self.as_table(cases=maxn, fmt='%.5g', midrule=True))
         if self.N > maxn:
             note = "... (use .as_table() method to see the whole dataset)"
             txt = os.linesep.join((txt, note))
