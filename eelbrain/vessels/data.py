@@ -1834,7 +1834,7 @@ class datalist(list):
             assert len(index) == N
             return datalist(self[i] for i in xrange(N) if index[i])
         elif issubclass(index.dtype.type, np.integer):
-            return dataset(self[i] for i in index)
+            return datalist(self[i] for i in index)
         else:
             err = ("Unsupported type of index for datalist: %r" % index)
             raise TypeError(err)
