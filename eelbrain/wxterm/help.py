@@ -142,18 +142,18 @@ class HelpViewer(wx.Frame):
         # FIXME: better implementation that returns the actual line!
         return self.help_panel.GetCurLine()
 
-    def Help_Lookup(self, topic=None, name=None):
+    def HelpLookup(self, topic=None, name=None):
         """
         Display help for a topic. Topic can be
          - None -> display default help
          - an object -> display help for the object based on its doc-string
 
         """
-        if topic is None:
-            name = 'Start Page'
-        else:
+        if topic:
             name = self.help_panel.add_object(topic)
-                
+        else:
+            name = 'Start Page'
+
         self.display(name)
 
         if name in self.history:
@@ -176,7 +176,7 @@ class HelpViewer(wx.Frame):
         self.Show(False)
 
     def OnHome(self, event=None):
-        self.Help_Lookup(topic=None)
+        self.HelpLookup(topic=None)
 #    def OnMaximize(self, event=None):
 #        logging.debug("help.OnMaximize")
 #        height = self.GetMaxHeight()
@@ -241,7 +241,7 @@ class HelpViewer(wx.Frame):
             dlg.ShowModal()
             dlg.Destroy()
         else:
-            self.Help_Lookup(obj, name=txt)
+            self.HelpLookup(obj, name=txt)
 
 
 
@@ -538,38 +538,7 @@ class HtmlHelpPanel(HelpPanel):
 
 
 _main_help = """
-Keyboard Shortcuts
-------------------
-
-* Shell:
-
-  * ``ctrl``-``d``: copy the selected commands to the topmost editor window
-
-* Editor:
-
-  * ``ctrl``-``/``: comment or uncomment selected lines
-  * ``alt``-arrow (up/down): move current line up or down (!!! uses copy-paste)
-
-
-Shell Commands
---------------
-
-help([object]):  
-    Display help about the object in the help viewer. If no object 
-    is provided, the main help page (this page) is displayed.
-
-clear():  
-    clear all text from the shell
-
-load([filename]):  
-    Load a pickled Experiment or a Python script. If no filename
-    is provided, a file dialog will be displayed
-
-attach(object):  
-    object can be dict/dataset/Experiment
-
-loadtable(file): 
-    ???
+Eelbrain online documentation: http://christianmbrodbeck.github.com/Eelbrain/html/index.html
 
 """
 

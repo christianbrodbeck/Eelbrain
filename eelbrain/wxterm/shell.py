@@ -1145,23 +1145,24 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.help_viewer = HelpViewer(self, size=wsize, pos=wpos)
             self.help_viewer.Show()
 
-        if topic_str:
-            if pos is not None:
-                # TODO: use RE
+        if topic_str and (pos is not None):
+            # TODO: use RE
 #                p = re.compile('')
-                # find the python command around pos in the line
-                topic_scan = topic_str.replace('.', 'a')
-                start = pos
-                n_max = len(topic_str)
-                end = min(pos, n_max)
-                while (end < n_max) and is_py_char(topic_scan[end]):
-                    end += 1
-                while is_py_char(topic_scan[start - 1]) and start > 0:
-                    start -= 1
-                topic_str = topic_str[start:end]
+            # find the python command around pos in the line
+            topic_scan = topic_str.replace('.', 'a')
+            start = pos
+            n_max = len(topic_str)
+            end = min(pos, n_max)
+            while (end < n_max) and is_py_char(topic_scan[end]):
+                end += 1
+            while is_py_char(topic_scan[start - 1]) and start > 0:
+                start -= 1
+            topic_str = topic_str[start:end]
+
+        if topic_str:
             self.help_viewer.text_lookup(topic_str)
         else:
-            self.help_viewer.Help_Lookup(topic)
+            self.help_viewer.HelpLookup(topic)
 
     def OnHistory2PyDoc(self, event=None):
         txt = os.linesep.join(reversed(self.shell.history))
