@@ -23,11 +23,12 @@ managed by
 
 from __future__ import division
 
+import collections
 import itertools
 import cPickle as pickle
 import operator
 import os
-import collections
+from warnings import warn
 
 import numpy as np
 from numpy import dot
@@ -1813,8 +1814,13 @@ class datalist(list):
     :py:class:`list` subclass for including lists in in a dataset.
 
     The subclass adds certain methods that makes indexing behavior more
-    similar to numpy and other data objects. The only method that is replaced
-    is __getitem__ to add support for list and aray indexes.
+    similar to numpy and other data objects. The following methods are
+    modified:
+
+    __getitem__:
+        Add support for list and array indexes.
+    __init__:
+        Store a name attribute.
 
     """
     def __init__(self, items=None, name=None):
@@ -1874,20 +1880,60 @@ class datalist(list):
 
 class dataset(collections.OrderedDict):
     """
-    A dataset is a dictionary that stores a collection of named variables
-    (``var``, ``factor``, and ``ndvar`` objects)
-    that describe the same underlying cases.
-    The dataset can be thought of as a data table in which each variable
-    constitutes one column.
-    Keys are enforced to be :py:class:`str` objects
-    and should preferably correspond to the variable names.
-    The dataset class inherits most of its behavior
-    from its superclass :py:class:`collections.OrderedDict`:
+    A dataset is a dictionary that represents a data table.
 
-    - The dataset's length is the number of variables (the number of cases/rows
-      is available in the :py:attr:`dataset.n_cases` attribute.
+    Attributes
+    ----------
+    n_cases : None | int
+        The number of cases in the dataset (corresponding to the number of
+        rows in the table representation). None if no variables have been
+        added.
+    n_items : int
+        The number of items (variables) in the dataset (corresponding to the
+        number of columns in the table representation).
 
-    In addition, the dataset provides an interface for working with cases/rows:
+    Methods
+    -------
+    add:
+        Add a variable to the dataset.
+    as_table:
+        Create a data table representation of the dataset.
+    compress:
+        For a given categorial description, reduce the number of cases in the
+        dataset per cell to one (e.g., average by subject and condition).
+    copy:
+        Create a shallow copy (i.e., return a new dataset containing the same
+        data objects).
+    export:
+        Save the dataset in different formats.
+    eval:
+        Evaluate an expression in the dataset's namespace.
+    index:
+        Add an index to the dataset (to keep track of cases when selecting
+        subsets).
+    itercases:
+        Iterate through each case as a dictionary.
+    subset:
+        Create a dataset form a subset of cases (slightly faster than normal
+        indexing).
+
+    See Also
+    --------
+    collections.OrderedDict: superclass
+
+    Notes
+    -----
+    A dataset represents a data table as a {variable_name: value_list}
+    dictionary. Each variable corresponds to a column, and each index in the
+    value list corresponds to a row, or case.
+
+    The dataset class inherits most of its behavior from its superclass
+    :py:class:`collections.OrderedDict`.
+    Dictionary keys are enforced to be :py:class:`str` objects and should
+    preferably correspond to the variable names.
+    An exception is the dataset's length, which reflects the number of cases
+    in the dataset (i.e., the number of rows; the number of items can be
+    retrieved as  :py:attr:`dataset.n_items`).
 
 
     **Accessing Data:**
@@ -1902,9 +1948,9 @@ class dataset(collections.OrderedDict):
     Standard indexing with *integers* can be used to retrieve a subset of cases
     (rows):
 
-    - ``ds[1]``
-    - ``ds[1:5]`` == ``ds[1,2,3,4]``
-    - ``ds[1, 5, 6, 9]`` == ``ds[[1, 5, 6, 9]]``
+    - ``ds[1]`` --> row 1
+    - ``ds[1:5]`` == ``ds[1,2,3,4]`` --> rows 1 through 4
+    - ``ds[1, 5, 6, 9]`` == ``ds[[1, 5, 6, 9]]`` --> rows 1, 5, 6 and 9
 
     .. Note::
         Case indexing is implemented by a call to the .subset() method, which
@@ -1969,6 +2015,7 @@ class dataset(collections.OrderedDict):
                     v.name = name
                 args.append(item)
 
+        self.n_cases = None
         super(dataset, self).__init__(args)
         self.__setstate__(kwargs)
 
@@ -2010,9 +2057,14 @@ class dataset(collections.OrderedDict):
         else:
             return super(dataset, self).__getitem__(name)
 
+    def __len__(self):
+        warn("The length of a dataset now reflects the number of cases (rows) "
+             "in the dataset (previously the number of items).")
+        return self.n_cases or 0
+
     def __repr__(self):
         class_name = self.__class__.__name__
-        if not hasattr(self, 'n_cases'):
+        if self.n_cases is None:
             items = []
             if self.name:
                 items.append('name=%r' % self.name)
@@ -2078,13 +2130,13 @@ class dataset(collections.OrderedDict):
                     else:
                         raise
 
-            if len(self) == 0:
+            if self.n_cases is None:
                 self.n_cases = N
-            else:
-                if self.n_cases != N:
-                    msg = ("The item`s length (%i) is different from the "
-                           "number of cases in the dataset (%i)." % (N, self.N))
-                    raise ValueError(msg)
+            elif self.n_cases != N:
+                msg = ("Can nor assign item to dataset. The item`s length "
+                       "(%i) is different from the number of cases in the "
+                       "dataset (%i)." % (N, self.N))
+                raise ValueError(msg)
 
             super(dataset, self).__setitem__(name, item)
 
@@ -2101,6 +2153,25 @@ class dataset(collections.OrderedDict):
             note = "... (use .as_table() method to see the whole dataset)"
             txt = os.linesep.join((txt, note))
         return txt
+
+    def _check_n_cases(self, X, empty_ok=True):
+        """Check that an input argument has the appropriate length.
+
+        Also raise an error if empty_ok is False and the dataset is empty.
+        """
+        if self.n_cases is None:
+            if empty_ok == True:
+                return
+            else:
+                err = ("Dataset is empty.")
+                raise RuntimeError(err)
+
+        n = len(X)
+        if self.n_cases != n:
+            name = getattr(X, 'name', "the argument")
+            err = ("The dataset has a different length (%i) than %s "
+                   "(%i)" % (self.n_cases, name, n))
+            raise ValueError(err)
 
     def add(self, item, replace=False):
         """
@@ -2297,7 +2368,9 @@ class dataset(collections.OrderedDict):
 
         """
         if not drop_empty:
-            raise NotImplementedError
+            raise NotImplementedError('drop_empty = False')
+
+        self._check_n_cases(X, empty_ok=False)
 
         ds = dataset(name=name.format(name=self.name))
 
@@ -2348,7 +2421,8 @@ class dataset(collections.OrderedDict):
 
     @property
     def N(self):
-        DeprecationWarning("dtaset.N s deprecated; use dataset.n_cases instead")
+        warn("dataset.N s deprecated; use dataset.n_cases instead",
+             DeprecationWarning)
         return self.n_cases
 
     @property
@@ -2368,7 +2442,7 @@ class dataset(collections.OrderedDict):
 
     @property
     def shape(self):
-        return (self.n_cases, len(self))
+        return (self.n_cases, self.n_items)
 
     def subset(self, index, name='{name}'):
         """
