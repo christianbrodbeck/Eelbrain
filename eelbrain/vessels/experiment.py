@@ -1162,6 +1162,8 @@ class mne_experiment(object):
         e_names = []
         for ep in epochs:
             name = ep['name']
+            if name in kwargs:
+                raise ValueError("Duplicate epoch name.")
             stimvar = ep['stimvar']
             stim = ep['stim']
 
@@ -1242,6 +1244,7 @@ class mne_experiment(object):
             for name in e_names:
                 ds = cell_dss[name]
                 ds = align1(ds, idx)
+                kw = kwargs[name]
                 ds = load.fiff.add_mne_epochs(ds, **kw)
                 cell_dss[name] = ds
 
