@@ -921,7 +921,7 @@ class mne_experiment(object):
         if experiment is None:
             experiment = self._state['experiment']
 
-        self.label_events(ds, experiment, subject)
+        ds = self.label_events(ds, experiment, subject)
 
         # add edf
         if edf:
