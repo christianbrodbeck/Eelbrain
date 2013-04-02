@@ -921,13 +921,13 @@ class mne_experiment(object):
         if experiment is None:
             experiment = self._state['experiment']
 
-        ds = self.label_events(ds, experiment, subject)
-
         # add edf
         if edf:
             edf = self.load_edf()
             edf.add_T_to(ds)
             ds.info['edf'] = edf
+
+        ds = self.label_events(ds, experiment, subject)
 
         return ds
 
