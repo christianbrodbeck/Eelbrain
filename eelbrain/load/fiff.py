@@ -196,7 +196,7 @@ def events(raw=None, merge= -1, proj=False, name=None,
 
 
 def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
-               downsample=1, mult=1, unit='T', proj=True,
+               decim=1, mult=1, unit='T', proj=True,
                data='mag', reject=None,
                raw=None, add=True,
                target="MEG", i_start='i_start',
@@ -216,7 +216,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
         baseline correction (default).
     dataset : dataset
         Dataset containing a variable (i_start) which defines epoch cues
-    downsample : int
+    decim : int
         Downsample the data by this factor when importing. ``1`` means no
         downsampling. Note that this function does not low-pass filter
         the data. The data is downsampled by picking out every
@@ -275,7 +275,7 @@ def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
 
     epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
                         proj=proj, i_start=i_start, raw=raw, picks=picks,
-                        reject=reject, preload=True, decim=downsample)
+                        reject=reject, preload=True, decim=decim)
 
     epochs_var = epochs_ndvar(epochs, name=target, meg=meg, eeg=eeg,
                               exclude=exclude, mult=mult, unit=unit,
@@ -453,7 +453,7 @@ def mne_Epochs(ds, i_start='i_start', raw=None,
 
     events = mne_events(ds=ds, i_start=i_start)
     # epochs with (event_id == None) does not use columns 1 and 2 of events
-    events[:, 2] = np.arange(len(events))
+    events[:, 1] = np.arange(len(events))
 
     epochs = mne.Epochs(raw, events, event_id=None, **kwargs)
 
@@ -632,7 +632,7 @@ def trim_ds(ds, epochs):
 
     """
     if len(epochs.events) < ds.n_cases:
-        index = epochs.events[:, 2]
+        index = epochs.events[:, 1]
         ds = ds.subset(index)
 
     return ds
