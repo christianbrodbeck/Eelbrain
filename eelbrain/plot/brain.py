@@ -426,10 +426,13 @@ class stc:
 
     def show_view(self, view):
         """
-
-        'lateral', 'medial' and 'parietal' need a hemisphere prefix (e.g., 'lh lateral')
-        for 'lateral' and 'medial', the opposite hemisphere will be hidden.
-
+        Parameters
+        ----------
+        view : str
+            PySurfer show_view argument.
+            'lateral', 'medial' and 'parietal' need a hemisphere prefix (e.g.,
+            'lh lateral') for 'lateral' and 'medial', the opposite hemisphere
+            will be hidden.
         """
         if view.endswith(('frontal', 'lateral', 'medial', 'parietal')):
             hemi, view = view.split()

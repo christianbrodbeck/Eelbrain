@@ -6,8 +6,8 @@ Created on Dec 2, 2012
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from ..data import align, align1
-from .. import datasets
+from eelbrain.vessels import datasets
+from eelbrain.vessels.data import align, align1, combine, factor, var_from_dict
 
 
 def test_print():
@@ -37,3 +37,19 @@ def test_align():
 
     dsa1, dsa2 = align(dsa, ds_sub)
     assert_array_equal(dsa1['index'].x, dsa2['index'].x, "align() failed")
+
+
+def test_combine():
+    "Test combine()"
+    ds1 = datasets.get_basic()
+    ds2 = datasets.get_basic()
+    ds = combine((ds1, ds2))
+    assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:])
+
+
+def test_var():
+    "Test var objects"
+    base = factor('aabbcde')
+    Y = var_from_dict(base, {'a': 5, 'e': 8}, default=0)
+    assert_array_equal(Y.x, [5, 5, 0, 0, 0, 0, 8])
+

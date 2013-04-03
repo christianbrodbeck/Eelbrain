@@ -381,16 +381,31 @@ def combine(items):
 
     Parameters
     ----------
-
     items : collection
         Collection (:py:class:`list`, :py:class:`tuple`, ...) of data objects
         of a single type (dataset, var, factor or ndvar).
+
+    Notes
+    -----
+    The first item always serves as a reference.
+
+    For vars and factors, the :attr:`name` attribute of the combined item is
+    the name of the first item.
+
+    For datasets, only the keys in the first dataset are retained, and if
+    any subsequent dataset is missing keys from the first dataset an error is
+    raised. If a subsequent dataset contains keys not contained in the first
+    dataset, the additional keys are simply ignored.
 
     """
     item0 = items[0]
     if isdataset(item0):
         out = dataset()
         for name in item0:
+            if not all(name in ds for ds in items):
+                err = ("Cannot combine datasets; At least one dataset is "
+                       "missing the key %r." % name)
+                raise KeyError(err)
             out[name] = combine([ds[name] for ds in items])
         return out
     elif isvar(item0):
@@ -2450,6 +2465,12 @@ class dataset(collections.OrderedDict):
             be evaluated in the dataset's namespace).
         name : str
             name for the new dataset
+
+        Notes
+        -----
+        Keep in mind that index is passed on to numpy objects, which means
+        that advanced indexing always returns a copy of the data, whereas
+        basic slicing (using slices) returns a view.
 
         """
         if isinstance(index, int):

@@ -218,9 +218,11 @@ class texstr(object):
         """
         Returns the string representation.
 
-        :kwarg str fmt: can be used to override the format string associated
-            with the texstr object
-
+        Parameters
+        ----------
+        fmt : str
+            can be used to override the format string associated with the
+            texstr object
         """
         if isstr(self.text):
             return self.text.replace('\\', '')
