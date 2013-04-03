@@ -1960,17 +1960,16 @@ class dataset(collections.OrderedDict):
     - ``ds['var1',]`` --> ``[var1]``.
     - ``ds['var1', 'var2']`` --> ``[var1, var2]``
 
-    Standard indexing with *integers* can be used to retrieve a subset of cases
-    (rows):
+    When indexing numerically, the first index defines cases (rows):
 
     - ``ds[1]`` --> row 1
     - ``ds[1:5]`` == ``ds[1,2,3,4]`` --> rows 1 through 4
     - ``ds[1, 5, 6, 9]`` == ``ds[[1, 5, 6, 9]]`` --> rows 1, 5, 6 and 9
 
-    .. Note::
-        Case indexing is implemented by a call to the .subset() method, which
-        should probably be used preferably for anything but interactive table
-        inspection.
+    The second index accesses columns, so case indexing can be combined with
+    column indexing:
+
+     - ``ds[:4, :2]`` --> first 4 rows,
 
     The ``.get_case()`` method or iteration over the dataset
     retrieve individual cases/rows as {name: value} dictionaries.
@@ -2043,7 +2042,7 @@ class dataset(collections.OrderedDict):
         kwargs = {'name': self.name, 'info': self.info}
         return self.__class__, args, kwargs
 
-    def __getitem__(self, name):
+    def __getitem__(self, index):
         """
         possible::
 
@@ -2054,23 +2053,37 @@ class dataset(collections.OrderedDict):
             >>> ds['MEG1', 'MEG2']  (list of strings) -> list of vars; can be nested!
 
         """
-        if isinstance(name, (int, slice)):
-            return self.subset(name)
+        if isinstance(index, (int, slice)):
+            return self.subset(index)
 
-        is_str = isinstance(name, basestring)
-        is_sequence = np.iterable(name) and not is_str
+        if isinstance(index, basestring):
+            return super(dataset, self).__getitem__(index)
 
-        if is_sequence:
-            all_str = all(isinstance(item, basestring) for item in name)
-            if all_str:
-                return [self[item] for item in name]
-            else:
-                if isinstance(name, tuple):
-                    name = list(name)
-                return self.subset(name)
+        if not np.iterable(index):
+            raise KeyError("Invalid index for dataset: %r" % index)
 
-        else:
-            return super(dataset, self).__getitem__(name)
+        if all(isinstance(item, basestring) for item in index):
+            return [self[item] for item in index]
+
+        if isinstance(index, tuple):
+            i0 = index[0]
+            if isinstance(i0, basestring):
+                return self[i0][index[1:]]
+
+            if len(index) != 2:
+                raise KeyError("Invalid index for dataset: %r" % index)
+            i1 = index[1]
+            if isinstance(i1, basestring):
+                return self[i1][i0]
+
+            keys = datalist(self.keys())[i1]
+            if isinstance(keys, basestring):
+                return self[i1][i0]
+
+            subds = dataset(*((k, self[k][i0]) for k in keys))
+            return subds
+
+        return self.subset(index)
 
     def __repr__(self):
         class_name = self.__class__.__name__
