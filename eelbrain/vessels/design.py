@@ -11,9 +11,8 @@ Creating Design
    permutated in the experiment. This is done by creating a list of `Variable`
    objects (one for each variable) and submitting it to the `permute` function.
 2) The second step is to add to the dataset additional variables that need
-   randomization. The `random_factor` function does that.
-3) Finally, dummy variables which strictly depend on other variables already
-   present in the dataste can be add using ...
+   randomization. A tool that can be used for this is the `random_factor`
+   function.
 
 
 Exporting to Matlab
@@ -27,17 +26,19 @@ are accessed as in::
     > var = 'varname'
     > trial(i).(var)
 
-for some things I will also want to export {name -> value} mappings (e.g.
-stimuli) with larger images.
+Some data associated with the experiment don't change across trials (color
+values, images, ...). Such values can be exported separately with the values
+parameter:
 
-    property.name
+    >>> export_mat(ds, values={'colors': {'red': [255, 0, 0]}}
 
-    e.g.
+Can be used in matlab as:
 
-    shapes.cross
+    >> colors.red
+    ans =
+             255           0           0
 
 
-    >>> export_mat(ds, values={varname -> {cellname -> value}}
 
 
 
