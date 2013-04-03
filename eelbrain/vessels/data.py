@@ -2446,10 +2446,8 @@ class dataset(collections.OrderedDict):
 
         index : array | str
             index selecting a subset of epochs. Can be an valid numpy index or
-            the name of a variable in dataset.
-            Keep in mind that index is passed on to numpy objects, which means
-            that advanced indexing always returns a copy of the data, whereas
-            basic slicing (using slices) returns a view.
+            a string (the name of a variable in dataset, or any expression to
+            be evaluated in the dataset's namespace).
         name : str
             name for the new dataset
 
@@ -2457,7 +2455,7 @@ class dataset(collections.OrderedDict):
         if isinstance(index, int):
             index = slice(index, index + 1)
         elif isinstance(index, str):
-            index = self[index]
+            index = self.eval(index)
 
         name = name.format(name=self.name)
         info = self.info.copy()
