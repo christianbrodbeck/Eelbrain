@@ -2669,17 +2669,31 @@ class diff(object):
         return np.sum(self.I1)
 
 
-def var_from_dict(name, base, values_dict, default=0):
+def var_from_dict(base, values, name=None, default=0):
     """
-    Creates a variable containing a value defined in values_dict for each
-    category in key_factor.
+    Create a var object by mapping ``base`` to ``values``.
+
+    Parameters
+    ----------
+    base : sequence
+        Sequence to be mapped to the new var.
+    values : dict
+        Mapping from values in base to values in the new var.
+    name : None | str
+        Name for the new var.
+    default : scalar
+        Default value to supply for entries in ``base`` that are not in
+        ``values``.
+
+    Examples
+    --------
+    >>> base = factor('aabbcde')
+    >>> var_from_dict(base, {'a': 5, 'e': 8}, default=0)
+    var([5, 5, 0, 0, 0, 0, 8])
 
     """
-    x = np.empty(len(base))
-    x.fill(default)
-    for k, v in values_dict.iteritems():
-        x[base == k] = v
-    return var(x, name=name)
+    Y = var([values.get(b, default) for b in base], name=name)
+    return Y
 
 
 def var_from_apply(source_var, function, apply_to_array=True):
