@@ -295,7 +295,7 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
     return _data.factor(x, name, labels=cells)
 
 
-def add_missing(base, name='missing', values=None):
+def add_missing(base, name=None, values=None):
     """
     returns a factor that contains the values that are not contained in a group
     of other factors.
