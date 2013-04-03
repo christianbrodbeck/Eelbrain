@@ -143,6 +143,9 @@ def iseffect(Y):
     effectnames = ["factor", "var", "interaction", "nonbasic", "nested"]
     return hasattr(Y, '_stype_') and  Y._stype_ in effectnames
 
+def isdatalist(Y):
+    return isinstance(Y, datalist)
+
 def isfactor(Y):
     return hasattr(Y, '_stype_') and Y._stype_ == "factor"
 
@@ -282,6 +285,23 @@ def ascategorial(Y, sub=None, ds=None):
         return Y
 
 
+def _empty_like(obj, n=None, name=None):
+    "Create an empty object of the same type as obj"
+    n = n or len(obj)
+    name = name or obj.name
+    if isfactor(obj):
+        return factor([''], rep=n, name=name)
+    elif isvar(obj):
+        return var(np.empty(n) * np.NaN, name=name)
+    elif isndvar(obj):
+        shape = (n,) + obj.shape[1:]
+        return ndvar(np.empty(shape) * np.NaN, dims=obj.dims, name=name)
+    elif isdatalist(obj):
+        return datalist([None] * n, name=name)
+    else:
+        err = "Type not supported: %s" % type(obj)
+
+
 def cell_label(cell, delim=' '):
     if isinstance(cell, tuple):
         return delim.join(cell)
@@ -383,30 +403,32 @@ def combine(items):
     ----------
     items : collection
         Collection (:py:class:`list`, :py:class:`tuple`, ...) of data objects
-        of a single type (dataset, var, factor or ndvar).
+        of a single type (dataset, var, factor, ndvar or datalist).
 
     Notes
     -----
-    The first item always serves as a reference.
-
     For vars and factors, the :attr:`name` attribute of the combined item is
     the name of the first item.
 
-    For datasets, only the keys in the first dataset are retained, and if
-    any subsequent dataset is missing keys from the first dataset an error is
-    raised. If a subsequent dataset contains keys not contained in the first
-    dataset, the additional keys are simply ignored.
+    For datasets, missing variables are filled in with empty values ('', NaN).
 
     """
     item0 = items[0]
     if isdataset(item0):
+        # find all keys and data types
+        keys = item0.keys()
+        sample = dict(item0)
+        for item in items:
+            for key in item.keys():
+                if key not in keys:
+                    keys.append(key)
+                    sample[key] = item[key]
+        # create new dataset
         out = dataset()
-        for name in item0:
-            if not all(name in ds for ds in items):
-                err = ("Cannot combine datasets; At least one dataset is "
-                       "missing the key %r." % name)
-                raise KeyError(err)
-            out[name] = combine([ds[name] for ds in items])
+        for key in keys:
+            pieces = [ds[key] if key in ds else
+                      _empty_like(sample[key], ds.n_cases) for ds in items]
+            out[key] = combine(pieces)
         return out
     elif isvar(item0):
         x = np.hstack(i.x for i in items)
@@ -419,7 +441,6 @@ def combine(items):
             x = sum((i.as_labels() for i in items), [])
             kwargs = dict(name=item0.name,
                           random=item0.random)
-    #                      colors = item0._colors, # FIXME: inherit colors
         return factor(x, **kwargs)
     elif isndvar(item0):
         dims = item0.dims
@@ -436,7 +457,8 @@ def combine(items):
     elif isinstance(item0, datalist):
         return sum(items[1:], item0)
     else:
-        raise ValueError("Unknown data-object: %r" % item0)
+        err = ("Objects of type %s can not be combined." % type(item0))
+        raise TypeError(err)
 
 
 

@@ -3,6 +3,7 @@ Created on Dec 2, 2012
 
 @author: christian
 '''
+from nose.tools import assert_true
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -44,7 +45,14 @@ def test_combine():
     ds1 = datasets.get_basic()
     ds2 = datasets.get_basic()
     ds = combine((ds1, ds2))
-    assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:])
+    assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:], "Basic combine")
+    del ds1['Y']
+    del ds2['Cat']
+    ds = combine((ds1, ds2))
+    assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:], "Combine with "
+                       "missing var")
+    assert_true(np.all(ds1['Cat'] == ds['Cat'][:ds1.n_cases]), "Combine with "
+                "missing factor")
 
 
 def test_var():
