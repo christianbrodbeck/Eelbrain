@@ -2057,11 +2057,6 @@ class dataset(collections.OrderedDict):
         else:
             return super(dataset, self).__getitem__(name)
 
-    def __len__(self):
-        warn("The length of a dataset now reflects the number of cases (rows) "
-             "in the dataset (previously the number of items).")
-        return self.n_cases or 0
-
     def __repr__(self):
         class_name = self.__class__.__name__
         if self.n_cases is None:
@@ -2078,7 +2073,7 @@ class dataset(collections.OrderedDict):
         rep_tmp = "<%(class_name)s %(name)s%(N)s{%(items)s}>"
         fmt = {'class_name': class_name}
         fmt['name'] = '%r ' % self.name if self.name else ''
-        fmt['N'] = 'N=%i ' % self.n_cases
+        fmt['N'] = 'n_cases=%i ' % self.n_cases
         items = []
         for key in self:
             v = self[key]
@@ -2133,9 +2128,9 @@ class dataset(collections.OrderedDict):
             if self.n_cases is None:
                 self.n_cases = N
             elif self.n_cases != N:
-                msg = ("Can nor assign item to dataset. The item`s length "
+                msg = ("Can not assign item to dataset. The item`s length "
                        "(%i) is different from the number of cases in the "
-                       "dataset (%i)." % (N, self.N))
+                       "dataset (%i)." % (N, self.n_cases))
                 raise ValueError(msg)
 
             super(dataset, self).__setitem__(name, item)
@@ -2149,7 +2144,7 @@ class dataset(collections.OrderedDict):
 
         maxn = preferences['dataset_str_n_cases']
         txt = unicode(self.as_table(cases=maxn, fmt='%.5g', midrule=True))
-        if self.N > maxn:
+        if self.n_cases > maxn:
             note = "... (use .as_table() method to see the whole dataset)"
             txt = os.linesep.join((txt, note))
         return txt
@@ -2223,11 +2218,11 @@ class dataset(collections.OrderedDict):
 
         """
         if cases < 1:
-            cases = self.N + cases
+            cases = self.n_cases + cases
             if cases < 0:
                 raise ValueError("Can't get table for fewer than 0 cases")
         else:
-            cases = min(cases, self.N)
+            cases = min(cases, self.n_cases)
 
         keys = [k for k, v in self.iteritems() if isuv(v)]
         if sort:
@@ -2412,9 +2407,9 @@ class dataset(collections.OrderedDict):
             start = 0
 
         if stop is None:
-            stop = self.N
+            stop = self.n_cases
         elif stop < 0:
-            stop = self.N - stop
+            stop = self.n_cases - stop
 
         for i in xrange(start, stop):
             yield self.get_case(i)
