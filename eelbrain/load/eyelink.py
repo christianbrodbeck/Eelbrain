@@ -5,14 +5,18 @@ Created on Jun 9, 2012
 '''
 import fnmatch
 import os
+import re
+import shutil
+from subprocess import Popen
+import tempfile
 
 import numpy as np
 
 from .. import ui
-from ..utils import subp
-from ..vessels.data import dataset, var
+from ..utils.subp import get_bin
+from ..vessels.data import dataset, datalist, var, NUTS
 
-__all__ = ['Edf']
+__all__ = ['Edf', 'read_edf', 'read_edf_events', 'read_edf_samples']
 
 
 
@@ -65,7 +69,7 @@ class Edf(object):
            >>> edf.mark(...)
 
     """
-    def __init__(self, path=None):
+    def __init__(self, path=None, samples=False):
         """
         Parameters
         ----------
@@ -95,15 +99,25 @@ class Edf(object):
 
         triggers = []
         artifacts = []
+        pos = []
         for path in self.paths:
-            edf = subp.edf_file(path)
-            triggers += edf.triggers
-            artifacts += edf.artifacts
+            edf_asc = read_edf(path)
+            triggers += find_edf_triggers(edf_asc)
+            artifacts += find_edf_artifacts(edf_asc)
+            if samples:
+                pos += find_edf_pos(edf_asc)
 
         dtype = [('T', np.uint32), ('Id', np.uint8)]
         self.triggers = np.array(triggers, dtype=dtype)
+
         dtype = np.dtype([('event', np.str_, 6), ('start', np.uint32), ('stop', np.uint32)])
         self.artifacts = np.array(artifacts, dtype=dtype)
+
+        if samples:
+            self.time = np.array([item[0] for item in pos], dtype=np.uint32)
+            self.xpos = np.array([item[1] for item in pos], dtype=np.float16)
+            self.ypos = np.array([item[2] for item in pos], dtype=np.float16)
+            self.pdia = np.array([item[3] for item in pos], dtype=np.float16)
 
     def __repr__(self):
         return "Edf(%r)" % self.path
@@ -189,7 +203,8 @@ class Edf(object):
         tstop : scalar
             End of the time window in which to look for artifacts
         use : list of str
-            Events which are to be treated as artifacts ('ESACC' and 'EBLINK')
+            List of events types which are to be treated as artifacts (possible
+            are 'ESACC' and 'EBLINK')
         T : str | var
             Variable describing edf-relative timing for the events in ``ds``.
             Usually this is a string key for a variable in ``ds``.
@@ -348,3 +363,196 @@ class Edf(object):
         T = self.get_T()
         self.mark(ds, tstart=tstart, tstop=tstop, good=good, bad=bad, use=use,
                   T=T, target=target)
+
+
+def events(fname, samples=False):
+    """Read events from an edf file
+
+    Parameters
+    ----------
+    fname : str
+        Filename.
+    samples : bool
+        Read samples as well as events.
+    """
+    edf = Edf(fname, samples=samples)
+    ds = dataset(info={'edf': edf})
+    ds['t_edf'] = var(edf.triggers['T'])
+    ds['eventID'] = var(edf.triggers['Id'])
+    return ds
+
+
+def add_artifact_epochs(ds, tmin= -0.2, tmax=0.6, crop=True, esacc='sacc',
+                        eblink='blink', t_edf='t_edf'):
+    """Add a datalist containing artifact information by event
+
+    Parameters
+    ----------
+    ds : dataset
+        Dataset with 'edf' entry in its info dictionary (usually a dataset
+        returned by ``load.eyelink.events()``)
+    tmin, tmax : scalar
+        Relative start and end points of the epoch (in seconds).
+    crop : bool
+        Crop events to epoch beginning and end (i.e., if an artifact starts
+        before the epoch, set its start to the first sample in the epoch).
+    esacc, eblink : None | str
+        Name for the variable containing the corresponding information. If
+        None, the corresponding variable is not added.
+    t_edf : str
+        Name of the ds variable containing edf times.
+
+    Returns
+    -------
+    ds : dataset
+        Returns the input dataset for consistency with similar functions; the
+        dataset is modified in place.
+    """
+    edf = ds.info['edf']
+    start = edf.artifacts['start']
+    stop = edf.artifacts['stop']
+    is_blink = (edf.artifacts['event'] == 'EBLINK')
+    is_sacc = (edf.artifacts['event'] == 'ESACC')
+
+    # edf times are in ms; convert them to s:
+    dtype = np.dtype([('event', np.str_, 6), ('start', np.float64), ('stop', np.float64)])
+    artifacts_s = edf.artifacts.astype(dtype)
+    artifacts_s['start'] /= 1000.
+    artifacts_s['stop'] /= 1000.
+
+    sacc = datalist(name=esacc)
+    blink = datalist(name=eblink)
+    for t in ds[t_edf]:
+        t_s = t / 1000.
+        epoch_idx = np.logical_and(stop > t + tmin, start < t + tmax)
+        if esacc:
+            idx = np.logical_and(epoch_idx, is_sacc)
+            epoch = artifacts_s[idx]
+            epoch['start'] -= t_s
+            epoch['stop'] -= t_s
+            if crop and len(epoch):
+                if epoch['start'][0] < tmin:
+                    epoch['start'][0] = tmin
+                if epoch['stop'][-1] > tmax:
+                    epoch['stop'][-1] = tmax
+            sacc.append(epoch)
+        if eblink:
+            idx = np.logical_and(epoch_idx, is_blink)
+            epoch = artifacts_s[idx]
+            epoch['start'] -= t_s
+            epoch['stop'] -= t_s
+            if crop and len(epoch):
+                if epoch['start'][0] < tmin:
+                    epoch['start'][0] = tmin
+                if epoch['stop'][-1] > tmax:
+                    epoch['stop'][-1] = tmax
+            blink.append(epoch)
+
+    if esacc:
+        ds.add(sacc)
+    if eblink:
+        ds.add(blink)
+    return ds
+
+
+def read_edf(fname, what='events'):
+    """
+    Read the content of an edf file as text using edf2asc
+
+    Convert an "eyelink data format" (.edf) file to a temporary directory
+    and parse its content.
+
+    Parameters
+    ----------
+    fname : str
+        Filename.
+    what : 'all' | 'events' | 'samples'
+        What type of information to read
+    """
+    if not os.path.exists(fname):
+        err = "File does not exist: %r" % fname
+        raise ValueError(err)
+
+    temp_dir = tempfile.mkdtemp()
+
+    # edf2asc does not seem to handle spaces in filenames?
+    if ' ' in fname:
+        dst = os.path.join(temp_dir, os.path.basename(fname).replace(' ', '_'))
+#         shutil.copy(fname, dst)
+        os.symlink(fname, dst)
+        fname = dst
+
+    # construct the conversion command
+    cmd = [get_bin('edfapi', 'edf2asc'),  # options in Manual p. 106
+           '-t', ]  # use only tabs as delimiters
+    if what == 'events':
+        cmd.append('-e')  # outputs event data only
+    elif what == 'samples':
+        cmd.append('-s')  # outputs sample data only
+    elif what == 'all':
+        raise NotImplementedError()
+    else:
+        raise ValueError("what must be 'events' or 'samples', not %r" % what)
+
+    cmd.extend(('-nst',  # blocks output of start events
+                '-p', temp_dir,  # writes output with same name to <path> directory
+                fname))
+
+    sp = Popen(cmd)
+    sp.communicate()
+#     out = check_output(cmd)
+
+    # find asc file
+    name, _ = os.path.splitext(os.path.basename(fname))
+    ascname = os.path.extsep.join((name, 'asc'))
+    asc_path = os.path.join(temp_dir, ascname)
+    with open(asc_path) as asc_file:
+        asc_str = asc_file.read()
+
+    # clean
+    shutil.rmtree(temp_dir)
+    return asc_str
+
+
+def find_edf_triggers(asc_str):
+    """Find artifacts in an edf asci representation
+
+    Parameters
+    ----------
+    asc_str : str
+        String with edf asci represenation as returned by read_edf.
+    """
+    re_trigger = re.compile(r'\bMSG\t(\d+)\tMEG Trigger: (\d+)')
+    triggers = re_trigger.findall(asc_str)
+    return triggers
+
+
+def find_edf_artifacts(asc_str, kind='EBLINK|ESACC'):
+    """Find artifacts in an edf asci representation
+
+    Parameters
+    ----------
+    asc_str : str
+        String with edf asci represenation as returned by read_edf.
+    kind : 'EBLINK|ESACC' | 'EBLINK' | 'ESACC'
+        Kind of artifact to search.
+    """
+    for kind_part in kind.split('|'):
+        if kind_part not in ['EBLINK', 'ESACC']:
+            raise ValueError("invalid kind parameter: %r" % kind)
+    re_artifact = re.compile(r'\b(%s)\t[LR]\t(\d+)\t(\d+)' % kind)
+    artifacts = re_artifact.findall(asc_str)
+    return artifacts
+
+
+def find_edf_pos(asc_str):
+    """Find position values in an edf asci representation
+
+    Parameters
+    ----------
+    asc_str : str
+        String with edf asci represenation as returned by read_edf.
+    """
+    re_pos = re.compile(r'\b(\d+)\t(\d+\.\d*)\t(\d+\.\d*)\t(\d+\.\d*)')
+    pos = re_pos.findall(asc_str)
+    return pos
