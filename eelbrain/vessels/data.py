@@ -854,8 +854,7 @@ class factor(_effect_):
 
     """
     _stype_ = "factor"
-    def __init__(self, x, name=None, random=False, rep=1, tile=1,
-                 labels={}, colors={}):
+    def __init__(self, x, name=None, random=False, rep=1, tile=1, labels={}):
         """
         Parameters
         ----------
@@ -879,11 +878,6 @@ class factor(_effect_):
             If provided, these labels are used to replace values in x when
             constructing the labels dictionary. All labels for values of
             x not in ``labels`` are constructed using ``str(value)``.
-
-        colors : dict {value: color, ...}
-            Provide a color for each value, which can be used by some plotting
-            functions. Colors should be matplotlib-readable. Values can be
-            values in x as well as labels.
 
 
         Examples
@@ -909,7 +903,6 @@ class factor(_effect_):
         """
         state = {'name': name, 'random': random}
         labels_ = state['labels'] = {}  # {code -> label}
-        colors_ = state['colors'] = {}
 
         try:
             n_cases = len(x)
@@ -933,11 +926,6 @@ class factor(_effect_):
 
             x_[i] = code
 
-        # convert colors keys to codes
-        for value in colors:
-            code = codes[value]
-            colors_[code] = colors[value]
-
         if rep > 1:
             x_ = x_.repeat(rep)
 
@@ -953,15 +941,13 @@ class factor(_effect_):
         self.random = state['random']
         self._labels = labels = state['labels']
         self._codes = {lbl: code for code, lbl in labels.iteritems()}
-        self._colors = state['colors']
         self._n_cases = len(x)
 
     def __getstate__(self):
         state = {'x': self.x,
                  'name': self.name,
                  'random': self.random,
-                 'labels': self._labels,
-                 'colors': self._colors}
+                 'labels': self._labels}
         return state
 
     def __repr__(self, full=False):
@@ -1087,8 +1073,7 @@ class factor(_effect_):
     def _child_kwargs(self, name='{name}'):
         kwargs = dict(labels=self._labels,
                       name=name.format(name=self.name),
-                      random=self.random,
-                      colors=self._colors)
+                      random=self.random)
         return kwargs
 
     def _interpret_y(self, Y, create=False):
@@ -1306,21 +1291,6 @@ class factor(_effect_):
     def repeat(self, repeats, name='{name}'):
         "Repeat elements of a factor (analogous to :py:func:`numpy.repeat`)"
         return factor(self.x.repeat(repeats), **self._child_kwargs(name))
-
-    def set_color(self, cell, color):
-        """
-        Parameters
-        ----------
-        cell : str
-            Cell name.
-        color : matplotlib compatible color
-            Color for cell.
-
-        """
-        if cell in self.cells:
-            self._colors[cell] = color
-        else:
-            raise ValueError("No cell named %r" % cell)
 
 
 
@@ -2603,7 +2573,6 @@ class interaction(_effect_):
         # determine cells:
         factors = effect_list(filter(isfactor, self.base))
         self.cells = list(itertools.product(*(f.cells for f in factors)))
-        self._colors = {}
 
         # effect coding
         codelist = [f.as_effects for f in self.base]
