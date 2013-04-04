@@ -71,9 +71,12 @@ class stat(_base.subplot_figure):
         derived
     colors : None | list | dict
         Override the default color assignment based on the ``cm`` parameter.
-        Colors can be one of the following:
-        **list**: map the sequence of colors on X.cells.
-        **dict**: provide a color for each cell in X.
+        Colors are always specified as `matplotlib compatible color arguments
+        <http://matplotlib.org/api/colors_api.html>`_. The correspondence
+        between cells and colors is determined by the type of the ``colors``
+        parameter:
+        **list**: A list of colors in the same sequence as X.cells.
+        **dict**: A dictionary mapping each cell in X to a color.
     bottom, top | None | scalar
         Set an absolute range for the plot's y axis.
     invy : bool

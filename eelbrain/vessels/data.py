@@ -858,22 +858,16 @@ class factor(_effect_):
         """
         Parameters
         ----------
-
         x : iterator
             Sequence of factor values (see also the ``labels`` kwarg).
-
         name : str
             Name of the factor.
-
         random : bool
             Treat factor as random factor (for ANOVA; default is False).
-
         rep : int
             Repeat each element in ``x`` ``rep`` many times.
-
         tile : int
             Repeat x as a whole ``tile`` many times.
-
         labels : dict or None
             If provided, these labels are used to replace values in x when
             constructing the labels dictionary. All labels for values of
@@ -882,7 +876,6 @@ class factor(_effect_):
 
         Examples
         --------
-
         The most obvious way to initialize a factor is a list of strings::
 
             >>> factor(['in', 'in', 'in', 'out', 'out', 'out'])
