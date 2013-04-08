@@ -13,14 +13,18 @@ ATTACH = wx.NewId()
 CLEAR_CACHE = wx.NewId()
 CLEAR_TERMINAL = wx.NewId()
 COLOUR_CHOOSER = wx.NewId()
+COMMENT = wx.NewId()
 
 DATASET_ATTACH = wx.NewId()
 DATASET_IMPORT = wx.NewId()
+DUPLICATE = wx.NewId()
+DUPLICATE_WITH_OUTPUT = wx.NewId()
 
 EXPERIMENT_LOAD = wx.NewId()
 EXPERIMENT_NEW = wx.NewId()
 
 FIG_TITLE = wx.NewId()
+FOCUS_SHELL = wx.NewId()
 
 HELP_EELBRAIN = wx.NewId()
 HELP_HIDE = wx.NewId()
@@ -40,8 +44,9 @@ PYDOC_EXEC = wx.NewId()
 PYDOC_EXEC_SEL = wx.NewId()
 PYDOC_EXEC_DRIVE = wx.NewId()
 PYDOC_EXEC_ISOLATE = wx.NewId()
-PYPLOT_CLOSEALL = wx.NewId()
 PYDOC_HASH = wx.NewId()
+PYPLOT_CLOSEALL = wx.NewId()
+PYPLOT_DRAW = wx.NewId()
 
 P_MGR = wx.NewId()
 

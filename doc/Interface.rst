@@ -25,7 +25,7 @@ If something crashes you can start the debugger with::
 
 	>>> import pdb
 	>>> pdb.pm()
-	
+
 To end the debugger use ``q`` for quit::
 
 	(Pdb) q
@@ -39,51 +39,48 @@ Keyboard Shortcuts
 
 Some keyboard shortcuts are available in all windows, others are available 
 depending on the type of the active window. On Os-X, for many system commands
-such as saving and opening files, replace ``ctrl`` with ``command``
+such as saving and opening files, replace ``Ctrl`` with ``command``
+
+Application Shortcuts
+^^^^^^^^^^^^^^^^^^^^^
+
+* ``Cmd`` - ``L``: Bring the shell window into focus and move the caret to the
+  end of the prompt.
+* ``Cmd`` - ``P``: Draw all plots (issue ``pyplot.draw()`` command)
 
 
-Display
-^^^^^^^
+Text Editor Shortcuts
+^^^^^^^^^^^^^^^^^^^^^
 
-* ``cmd`` - ``shift`` - ``L``: Show/hide line numbers. 
-* Font:
+(Valid in both shell and editor.)
 
-	* ``ctrl`` - ``]``: Increase font size.
-	* ``ctrl`` - ``[``: Decrease font size.
-	* ``ctrl`` - ``=``: Default font size.
+* Display options:
 
-* Plotting
+  * ``cmd`` - ``Shift`` - ``L``: Show/hide line numbers. 
+  * Font properties:
+    * ``Ctrl`` - ``]``: Increase font size.
+    * ``Ctrl`` - ``[``: Decrease font size.
+    * ``Ctrl`` - ``=``: Default font size.
 
-    * ``ctrl`` - ``p``: Draw plots (``pyplot.draw()``)
+
+* Moving the caret locally inside text:
+
+  * ``home``:  Move the caret to the beginning of the current line.
+  * ``Ctrl`` - ``Home``:  Move the caret to the beginning of the text.
+  * ``End``:  Move the caret to the end of the current line.
+  * ``Ctrl`` - ``End``:  Move the caret to the end of the text.
+  * ``Shift`` (- ``Ctrl``) - ``Home``/``End``:  Select the text between the 
+    current position and the target position.
+  * ``Ctrl`` - ``F``:  Search 
+  * ``F3``:  Search next
+  * ``Ctrl`` - ``H``:  "Hide" lines containing selection / "unhide"
 
 
-Entering Text
-^^^^^^^^^^^^^
+* Contextual Help:
 
-These shortcuts are relevant when entering text (in the shell or an editor)
-
-* ``F1``: Open help for the command under the caret; in the help viewer the whole 
-	object name must be selected.
-
-* Moving the caret (cursor):
-
-	* ``home``:  Go to the beginning of the command or line.
-	* ``shift`` - ``Home``:  Select to the beginning of the command or line.
-	* ``shift`` - ``End``:  Select to the end of the line.
-	* ``end``:  Go to the end of the line.
-	* ``ctrl`` - ``F``:  Search 
-	* ``F3``:  Search next
-	* ``ctrl`` - ``H``:  "Hide" lines containing selection / "unhide"
-
-* Auto Completion:
-
-	* ``ctrl``-``space``: Auto completion of attribute.
-	* ``shift``-``ctrl``-``space``: Auto completion inside call.
-
-* Multi-Line Editing:
-
-	* ``ctrl`` - ``Enter``: Insert new line into multiline command.
-	* ``F12``: Turn "free-edit" mode on/off.
+  * ``F1``: Open help for the command under the caret.
+  * ``Ctrl``-``space``: Bring up possible continuations for current command.
+  * ``Shift``-``Ctrl``-``space``: Bring up quick help inside a call.
 
 
 Shell
@@ -91,35 +88,44 @@ Shell
 
 * History:
 
-    * ``ctrl`` - ``Up Arrow`` or ``alt`` - ``p``:  Retrieve previous history item.
-    * ``ctrl`` - ``Down Arrow`` or ``alt`` - ``n``:  Retrieve next history item.
-    * ``shift`` - ``Up Arrow``:  Insert previous history item.
-    * ``shift`` - ``Down Arrow``:  Insert next history item.
-    * ``shift`` - ``enter``: Choose command from history to add to the prompt.
-    * ``F8``:  Command-completion of history item. (Type a few characters of a previous 
-      command and press F8.)
+  * ``Ctrl`` - ``Up Arrow`` or ``Alt`` - ``p``:  Retrieve previous history item.
+  * ``Ctrl`` - ``Down Arrow`` or ``Alt`` - ``n``:  Retrieve next history item.
+  * ``Shift`` - ``Up Arrow``:  Insert previous history item.
+  * ``Shift`` - ``Down Arrow``:  Insert next history item.
+  * ``Shift`` - ``enter``: Choose command from history to add to the prompt.
+  * ``F8``:  Command-completion of history item. (Type a few characters of a previous 
+    command and press F8.)
 
 * Copying Text:
 
-	* ``ctrl`` - ``d``:  Copy the selected commands to the topmost editor window
-	* ``ctrl`` - ``c``:  Copy selected text without prompts.
-	* ``ctrl`` - ``Shift`` - ``C``:  Copy selected text, retaining prompts.
-	* ``ctrl`` - ``X``:  Cut selected text.
-	* ``ctrl`` - ``V``:  Paste from clipboard.
-	* ``ctrl`` - ``Shift`` - ``V``:  Paste and run multiple commands from clipboard.
+  * ``Cmd`` - ``Return``:  Copy the command under the caret to the prompt.
+  * ``Cmd`` - ``D``:  Duplicate the selected commands to the topmost editor window.
+  * ``Cmd`` - ``Shift`` - ``D``:  Duplicate the selected text to the topmost 
+    editor window (including command prompts and output).
+  * ``Cmd`` - ``C``:  Copy selected text without prompts.
+  * ``Cmd`` - ``Shift`` - ``C``:  Copy selected text, including prompts.
+  * ``Cmd`` - ``X``:  Cut selected text.
+  * ``Cmd`` - ``V``:  Paste from clipboard.
+  * ``Cmd`` - ``Shift`` - ``V``:  Paste and run multiple commands from clipboard.
+
+* Multi-Line Editing:
+
+  * ``Ctrl`` - ``Enter``: Insert new line into multiline command.
+  * ``F12``: Turn "free-edit" mode on/off.
 
 
 Editor
 ^^^^^^
 
-* ``ctrl`` - ``/``:  Comment or uncomment selected lines
-* ``ctrl`` - ``s``:  Save current document
-* ``alt`` - ``arrow (up/down)``:  Move current line up or down (!!! uses copy-paste)
+* ``Cmd`` - ``/``:  Comment or uncomment selected lines
+* ``Cmd`` - ``D``:  Duplicate the selected command(s) to the shell prompt.
+* ``Cmd`` - ``S``:  Save current document
+* ``Alt`` - ``arrow (up/down)``:  Move current line up or down (!!! uses copy-paste)
 * Executing Code:
 
-	* ``ctrl`` - ``r``: Save the script and execute the whole script from disk. 
-	* ``ctrl`` - ``e``: Execute the selection. If nothing is selected, execute 
-	  the current line.
+  * ``Ctrl`` - ``r``: Save the script and execute the whole script from disk. 
+  * ``Ctrl`` - ``e``: Execute the selection. If nothing is selected, execute 
+    the current line.
 
 
 Shell
@@ -151,7 +157,7 @@ commands. For more information, use help(command):
     shell will keep track of any attached variables and
     :py:func:`detach` will remove any variables that were attached using 
     this function from the global namespace.  
-	 
+
 
 .. py:function:: detach()
 

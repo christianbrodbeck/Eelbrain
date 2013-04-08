@@ -360,6 +360,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
         # name is used below in OnOpenWindowMenu to recognize Window menu
         self.Bind(wx.EVT_MENU_OPEN, self.OnOpenWindowMenu)
 
+        m.Append(ID.PYPLOT_DRAW, '&Pyplot Draw  \tCtrl+P', 'Draw all figures.')
+        self.Bind(wx.EVT_MENU, self.OnPyplotDraw, id=ID.PYPLOT_DRAW)
+
         m.Append(ID.P_MGR, "Pyplot Manager",
                  "Toggle Pyplot Manager Panel.")  # , wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnTogglePyplotMgr, id=ID.P_MGR)
@@ -370,6 +373,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         # shell resizing
         m.AppendSeparator()
+        m.Append(ID.FOCUS_SHELL, "Focus Shell Prompt \tCtrl+L", "Raise the "
+                 "shell and bring the caret to the end of the prompt")
+        self.Bind(wx.EVT_MENU, self.OnFocusPrompt, id=ID.FOCUS_SHELL)
+
         m.Append(ID.SIZE_MAX, 'Maximize Shell',
                  "Expand the shell to use the full screen height.")
         self.Bind(wx.EVT_MENU, self.OnResize, id=ID.SIZE_MAX)
@@ -391,11 +398,25 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         # clear shell: this can be done with edit->empty buffer
 
+    # EDIT MENU
+        m = self.editMenu
+        m.AppendSeparator()
+        m.Append(ID.COMMENT, "Comment Line \tCtrl+/", "Comment in/out current "
+                 "line")
+        self.Bind(wx.EVT_MENU, self.OnComment, id=ID.COMMENT)
+        m.Append(ID.DUPLICATE, "Duplicate Commands \tCtrl-D")
+        self.Bind(wx.EVT_MENU, self.OnDuplicate, id=ID.DUPLICATE)
+        m.Append(ID.DUPLICATE_WITH_OUTPUT, "Duplicate Plus \tCtrl-Shift-D")
+        self.Bind(wx.EVT_MENU, self.OnDuplicate, id=ID.DUPLICATE_WITH_OUTPUT)
+
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.COMMENT)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.DUPLICATE)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.DUPLICATE_WITH_OUTPUT)
+
 
     # INSERT MENU
         m = self.insertMenu = wx.Menu()
-        m.Append(ID.INSERT_Color, "Color",
-                 "Insert color as (r, g, b)-tuple.")
+        m.Append(ID.INSERT_Color, "Color", "Insert color as (r, g, b)-tuple.")
 #        self.Bind(wx.EVT_MENU, self.OnInsertColor, id=ID.INSERT_Color)
 #        this function only works for the colorpicker linked to the button
 
@@ -416,6 +437,13 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.Bind(wx.EVT_MENU, self.OnInsertPath_File, id=ID.INSERT_Path_file)
         self.Bind(wx.EVT_MENU, self.OnInsertPath_Dir, id=ID.INSERT_Path_dir)
         self.Bind(wx.EVT_MENU, self.OnInsertPath_New, id=ID.INSERT_Path_new)
+
+    # OPTIONS menu
+        # remove the conflicting keyboard shortcut
+        m = self.optionsMenu.FindItemByPosition(0)
+        sm = m.GetSubMenu()
+        i = sm.FindItemByPosition(3)
+        i.SetItemLabel(i.ItemLabel[:-13])
 
     # HELP menu
         if wx.__version__ >= '2.9':
@@ -532,7 +560,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         # other Bindings
         self.Bind(wx.EVT_MAXIMIZE, self.OnMaximize)
         self.Bind(wx.EVT_ACTIVATE, self.OnActivate)
-        self.shell.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
         # my shell customization
         self.ApplyStyle()
         self.Resize(ID.SIZE_MAX)
@@ -745,6 +772,29 @@ class ShellFrame(wx.py.shell.ShellFrame):
         for k, v in detach.iteritems():
             if id(self.global_namespace[k]) == id(v):
                 del self.global_namespace[k]
+
+    def Duplicate(self, output=False):
+        # make sure we have a target editor
+        if not hasattr(self.active_editor, 'InsertLine'):
+            self.OnFileNew()
+            self.Raise()
+
+        editor = self.active_editor
+
+        # prepare text for transfer
+        text = self.shell.GetSelectedText()
+        lines = [line for line in text.split(os.linesep) if len(line) > 0]
+
+        for line in lines:
+            if output:
+                editor.InsertLine(line)
+            else:
+                line_stripped = self.shell.lstripPrompt(line)
+                if len(line_stripped) < len(line):
+                    editor.InsertLine(line_stripped)
+
+    def DuplicateFull(self):
+        self.Duplicate(True)
 
     def ExecFile(self, filename, shell_globals=True):
         """
@@ -961,6 +1011,18 @@ class ShellFrame(wx.py.shell.ShellFrame):
         else:
             event.Skip()
 
+    def OnComment(self, event):
+        win = self.get_active_window()
+        win.Comment()
+
+    def OnDuplicate(self, event):
+        win = self.get_active_window()
+        Id = event.GetId()
+        if Id == ID.DUPLICATE_WITH_OUTPUT:
+            win.DuplicateFull()
+        else:
+            win.Duplicate()
+
     def OnDestroyIcon(self, evt):
         logging.debug("DESTROY ICON CALLED")
         self.eelbrain_icon.Destroy()
@@ -1079,6 +1141,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
             else:
                 filenames = str(filenames)
             self.shell.ReplaceSelection(filenames)
+
+    def OnFocusPrompt(self, event):
+        self.shell.DocumentEnd()
+        self.Raise()
 
     def OnHelp(self, event):
         "Help invoked through the Shell Menu"
@@ -1201,46 +1267,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         if string:  # insert into terminal
             self.InsertStr(string)
 
-    def OnKeyDown(self, event):
-        key = event.GetKeyCode()
-        mod = wxutils.key_mod(event)
-#        logging.debug("app.shell.OnKeyDown(): key=%r, mod=%r" % (key, mod))
-
-        if key == 68:  # 'd'
-            if mod == [1, 0, 1]:  # alt -> also include output
-                mod = [1, 0, 0]
-                duplicate_output = True
-            else:
-                duplicate_output = False
-        # copy selection to first editor
-        if mod == [1, 0, 0]:  # [command]
-            if key == 80:  # 'p'
-                plt.draw()
-                if plt.get_backend() == 'WXAgg':
-                    plt.show()
-            elif key == 68:  # 'd'
-                # make sure we have a target editor
-                if not hasattr(self.active_editor, 'InsertLine'):
-                    self.OnFileNew(event)
-                    self.active_editor = self.editors[-1]
-                editor = self.active_editor
-                # prepare text for transfer
-                text = self.shell.GetSelectedText()
-                lines = [line for line in text.split(os.linesep) if len(line) > 0]
-                # FIXME: alt
-                for line in lines:
-                    line_stripped = self.shell.lstripPrompt(line)
-                    if duplicate_output or len(line_stripped) < len(line):
-                        try:
-                            editor.InsertLine(line_stripped)
-                        except:
-                            logging.debug("'Duplicate to Editor' failed")
-            else:
-                event.Skip()
-        else:
-#            logging.info("shell key: %s"%key)
-            event.Skip()
-
     def OnMaximize(self, event=None):
         logging.debug("SHELLFRAME Maximize received")
         self.Resize(ID.SIZE_MAX)
@@ -1268,6 +1294,11 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnPreferences(self, event=None):
         dlg = PreferencesDialog(self)
         dlg.Show()
+
+    def OnPyplotDraw(self, event=None):
+        plt.draw()
+        if plt.get_backend() == 'WXAgg':
+            plt.show()
 
     def OnP_CloseAll(self, event=None):
         plt.close('all')
@@ -1337,6 +1368,22 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.P_mgr.Show(False)
         else:
             self.P_mgr.Show()
+
+    def OnUpdateMenu(self, event):
+        """Update menu items based on current status and context."""
+        win = self.get_active_window()
+        Id = event.GetId()
+        event.Enable(True)
+        try:
+            if Id == ID.COMMENT:
+                event.Enable(hasattr(win, 'Comment'))
+            elif Id == ID.DUPLICATE:
+                event.Enable(hasattr(win, 'Duplicate'))
+            elif Id == ID.DUPLICATE_WITH_OUTPUT:
+                event.Enable(hasattr(win, 'DuplicateFull'))
+        except AttributeError:
+            # This menu option is not supported in the current context.
+            event.Enable(False)
 
     def OnWindowMenuActivateWindow(self, event):
         ID = event.GetId()

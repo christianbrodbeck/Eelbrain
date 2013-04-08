@@ -231,6 +231,28 @@ class PyEditor(wx.py.editor.EditorFrame):
         self.shell.RemovePyEditor(self)
         super(PyEditor, self).Destroy()
 
+    def Duplicate(self):
+        if not self.editor:
+            return
+
+        self.SelectFragment()
+        txt = self.editor.window.GetSelectedText()
+        txt = ''.join(txt.split('\r'))  # remove carriage returns
+        txt = fmtxt.unindent(txt)  # remove leading whitespaces
+
+        lines = txt.splitlines()
+        n = len(lines)
+        if n == 0:
+            return
+        elif n > 1:
+            for i in xrange(1, n):
+                lines[i] = '... ' + lines[i]
+
+        txt = os.linesep.join(lines)
+
+        self.shell.InsertStrToShell(txt)
+        self.shell.Raise()
+
     def OnActivate(self, event=None):
         # logging.debug(" Shell Activate Event: {0}".format(event.Active))
         if not self.editor:
@@ -245,6 +267,37 @@ class PyEditor(wx.py.editor.EditorFrame):
         else:
             self.editor.window.SetCaretForeground(wx.Colour(200, 200, 200))
             self.editor.window.SetCaretPeriod(0)
+
+    def Comment(self):
+        w = self.editor.window
+        start_pos, end_pos = w.GetSelection()
+        start = w.LineFromPosition(start_pos)
+        end = w.LineFromPosition(end_pos)
+        if start > end:
+            start, end = end, start
+        if start != end and end_pos == w.PositionFromLine(end):
+            end -= 1  # if no element in the last line is selected
+        lines = range(start, end + 1)
+        first = w.GetLine(lines[0])
+        if len(first) == 0 or first[0] != '#':  # de-activate
+            for i in lines:
+                line = w.GetLine(i)
+                pos = w.PositionFromLine(i)
+                if len(line) > 1 and line[:2] == '##':
+                    pass
+                elif len(line) > 0 and line[0] == '#':
+                    w.InsertText(pos, '#')
+                else:
+                    w.InsertText(pos, '##')
+        else:  # un-comment
+            for i in lines:
+                while w.GetLine(i)[0] == '#':
+                    pos = w.PositionFromLine(i) + 1
+                    w.SetSelection(pos, pos)
+                    w.DeleteBack()
+        start = w.PositionFromLine(start)
+        end = w.PositionFromLine(end + 1) - 1
+        w.SetSelection(start, end)
 
     def OnExec(self, event=None):
         "Execute the whole script in the shell."
@@ -329,41 +382,7 @@ class PyEditor(wx.py.editor.EditorFrame):
             logging.info("Editor OnKeyDown: {0} {1}".format(mod_str, key))
 
         if mod == [1, 0, 0]:  # [ctrl]
-            if key == 47:  # [/] --> comment
-                w = self.editor.window
-                start_pos, end_pos = w.GetSelection()
-                start = w.LineFromPosition(start_pos)
-                end = w.LineFromPosition(end_pos)
-                if start > end:
-                    start, end = end, start
-                if start != end and end_pos == w.PositionFromLine(end):
-                    end -= 1  # if no element in the last line is selected
-                lines = range(start, end + 1)
-                first = w.GetLine(lines[0])
-                if len(first) == 0 or first[0] != '#':  # de-activate
-                    for i in lines:
-                        line = w.GetLine(i)
-                        pos = w.PositionFromLine(i)
-                        if len(line) > 1 and line[:2] == '##':
-                            pass
-                        elif len(line) > 0 and line[0] == '#':
-                            w.InsertText(pos, '#')
-                        else:
-                            w.InsertText(pos, '##')
-                else:  # un-comment
-                    for i in lines:
-                        while w.GetLine(i)[0] == '#':
-                            pos = w.PositionFromLine(i) + 1
-                            w.SetSelection(pos, pos)
-#                                w.SetCurrentPos(pos)
-                            w.DeleteBack()
-                start = w.PositionFromLine(start)
-                end = w.PositionFromLine(end + 1) - 1
-                w.SetSelection(start, end)
-                return
-            elif key == 68:  # d
-                self.OnCopySelectionToShell(event)
-            elif key == 69:  # e -> execute excerpt
+            if key == 69:  # e -> execute excerpt
                 self.OnExecSelected(event)
             elif key == 82:  # r -> execute the script
                 self.OnExecFromDrive(event)
@@ -406,28 +425,6 @@ class PyEditor(wx.py.editor.EditorFrame):
             pos = w.GetCurrentPos() + 1
             w.SetSelection(pos, pos)
             w.InsertText(pos, line)
-
-    def OnCopySelectionToShell(self, event):
-        if not self.editor:
-            return
-
-        self.SelectFragment()
-        txt = self.editor.window.GetSelectedText()
-        txt = ''.join(txt.split('\r'))  # remove carriage returns
-        txt = fmtxt.unindent(txt)  # remove leading whitespaces
-
-        lines = txt.splitlines()
-        n = len(lines)
-        if n == 0:
-            return
-        elif n > 1:
-            for i in xrange(1, n):
-                lines[i] = '... ' + lines[i]
-
-        txt = os.linesep.join(lines)
-
-        self.shell.InsertStrToShell(txt)
-        self.shell.Raise()
 
     def OnUpdateNamespace(self, event=None):
         self.updateNamespace()
