@@ -3,12 +3,36 @@ Created on Dec 2, 2012
 
 @author: christian
 '''
-from nose.tools import assert_true
+import os
+import cPickle as pickle
+import shutil
+import tempfile
+
+from nose.tools import assert_equal, assert_true
 import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain.vessels import datasets
-from eelbrain.vessels.data import align, align1, combine, factor, var_from_dict
+from eelbrain.vessels.data import (align, align1, combine, factor, isdatalist,
+                                   isndvar, isuv, var_from_dict)
+
+
+def assert_dataset_equal(ds1, ds2):
+    assert_equal(ds1.keys(), ds2.keys(), "Datasets unequal: different keys")
+    for k in ds1.keys():
+        assert_dataobj_equal(ds1[k], ds2[k])
+
+
+def assert_dataobj_equal(d1, d2):
+    assert_equal(d1.name, d2.name, "Names unequal")
+    assert_equal(len(d1), len(d2), "Unequal length")
+    if isuv(d1):
+        assert_true(np.all(d1 == d2), "Values unequal")
+    elif isndvar(d1):
+        assert_true(np.all(d1.x == d2.x), "Values unequal")
+    elif isdatalist(d1):
+        for i in xrange(len(d1)):
+            assert_equal(d1[i], d2[i], "Values unequal")
 
 
 def test_print():
@@ -53,6 +77,23 @@ def test_combine():
                        "missing var")
     assert_true(np.all(ds1['Cat'] == ds['Cat'][:ds1.n_cases]), "Combine with "
                 "missing factor")
+
+
+def test_pickle_io():
+    "Test io by pickling"
+    ds = datasets.get_basic()
+    tempdir = tempfile.mkdtemp()
+    try:
+        dest = os.path.join(tempdir, 'test.pickled')
+        with open(dest, 'w') as fid:
+            pickle.dump(ds, fid, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(dest) as fid:
+            ds2 = pickle.load(fid)
+    finally:
+        shutil.rmtree(tempdir)
+
+    assert_dataset_equal(ds, ds2)
+
 
 
 def test_var():
