@@ -2060,10 +2060,13 @@ class dataset(collections.OrderedDict):
             i1 = index[1]
             if isinstance(i1, basestring):
                 return self[i1][i0]
-
-            keys = datalist(self.keys())[i1]
-            if isinstance(keys, basestring):
-                return self[i1][i0]
+            elif np.iterable(i1) and all(isinstance(item, basestring) for item
+                                         in i1):
+                keys = i1
+            else:
+                keys = datalist(self.keys())[i1]
+                if isinstance(keys, basestring):
+                    return self[i1][i0]
 
             subds = dataset(*((k, self[k][i0]) for k in keys))
             return subds
