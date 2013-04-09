@@ -2389,9 +2389,22 @@ class dataset(collections.OrderedDict):
             x = filter(None, (np.sum(X == cell) for cell in X.cells))
             ds[count] = var(x)
 
-        for k in self:
+        for k, v in self.iteritems():
             try:
-                ds[k] = self[k].compress(X)
+                if hasattr(v, 'compress'):
+                    ds[k] = v.compress(X)
+                else:
+                    from mne import Epochs
+                    if isinstance(v, Epochs):
+                        evokeds = []
+                        for cell in X.cells:
+                            idx = (X == cell)
+                            evoked = v[idx].average()
+                            evokeds.append(evoked)
+                        ds[k] = evokeds
+                    else:
+                        err = ("Unsupported value type: %s" % type(v))
+                        raise TypeError(err)
             except:
                 if drop_bad:
                     pass
