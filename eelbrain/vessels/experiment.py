@@ -268,12 +268,36 @@ class mne_experiment(object):
                                            for s in subjects],
                                experiment=list(self._experiments))
 
-    def add_epochs_stc(self, ds, method='sLORETA', ori='free', depth=None,
+    def add_epochs_stc(self, ds, method='dSPM', ori='free', depth=0.8,
                        reg=False, snr=2., pick_normal=False, src='epochs',
                        dst='stc', asndvar=True):
         """
-        Transform epochs to source space (adds a list of mne SourceEstimates
-        to the dataset)
+        Transform epochs contained in ds into source space (adds a list of mne
+        SourceEstimates to ds)
+
+        Parameters
+        ----------
+        ds : dataset
+            The dataset containing the mne Epochs for the desired trials.
+        method : 'MNE' | 'dSPM' | 'sLORETA'
+            MNE method.
+        ori : 'free' | ...
+            Orientation constraint.
+        depth : None | scalar
+            Depth weighting factor.
+        reg : bool
+            Regularize the noise covariance matrix.
+        snr : scalar
+            Estimated signal to noise ration (used for inverse tranformation).
+        pick_normal : bool
+            apply_inverse parameter.
+        src : str
+            Name of the source epochs in ds.
+        dst : str
+            Name of the source estimates to be created in ds.
+        asndvar : bool
+            Add the source estimates as ndvar instead of a list of
+            SourceEstimate objects.
         """
         subject = ds['subject']
         if len(subject.cells) != 1:
@@ -340,8 +364,8 @@ class mne_experiment(object):
         time = var(stc.times, name='time')
         ds[key] = ndvar(np.array(x), dims=('case', time))
 
-    def add_evoked_stc(self, ds, method='sLORETA', ori='free', depth=0.8,
                        reg=False, snr=3.,
+    def add_evoked_stc(self, ds, method='dSPM', ori='free', depth=0.8,
                        ind='stc', morph='stcm'):
         """
         Add an stc (ndvar) to a dataset with an evoked list.
