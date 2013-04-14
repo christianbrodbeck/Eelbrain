@@ -455,20 +455,20 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.menuBar.Insert(Id, m, "Online Help")
 
 
-        m.Append(ID.HELP_EELBRAIN, "Eelbrain",
-                 "Open the Eelbrain documentation pages in an external browser.")
+        m.Append(ID.HELP_EELBRAIN, "Eelbrain", "Open the Eelbrain "
+                 "documentation pages in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_EELBRAIN)
 
-        m.Append(ID.HELP_PYTHON, "Python",
-                 "Open the official Python documentation page in an external browser.")
+        m.Append(ID.HELP_PYTHON, "Python", "Open the official Python "
+                 "documentation page in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_PYTHON)
 
-        m.Append(ID.HELP_PDB, "   pdb (Python Debugger)",
-                 "Open the Python Debugger documentation page in an external browser.")
+        m.Append(ID.HELP_PDB, "   pdb (Python Debugger)", "Open the Python "
+                 "Debugger documentation page in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_PDB)
 
-        m.Append(ID.HELP_MPL, "Matplotlib",
-                 "Open the Matplotlib homepage in an external browser.")
+        m.Append(ID.HELP_MPL, "Matplotlib (Pyplot)", "Open the Matplotlib "
+                 "Pyplot reference page in an external browser.")
         self.Bind(wx.EVT_MENU, self.OnHelpExternal, id=ID.HELP_MPL)
 
         m.Append(ID.HELP_MDP, "mdp",
@@ -501,10 +501,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
                         shortHelp="Run an existing Python script (without "
                         "opening it in an editor)")
         self.Bind(wx.EVT_TOOL, self.OnExecFile, id=ID.PYDOC_EXEC)
-
-#        tb.AddLabelTool(ID.EXPERIMENT_NEW, "New", Icon("documents/experiment-new"),
-#                        shortHelp="Create a new experiment")
-#        self.Bind(wx.EVT_TOOL, self.OnNewExperiment, id=ID.EXPERIMENT_NEW)
 
         tb.AddLabelTool(wx.ID_NEW, "New .Py Document", Icon("documents/pydoc-new"),
                         shortHelp="Open a new Python script editor")
@@ -1170,7 +1166,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         if Id == ID.HELP_EELBRAIN:
             webbrowser.open("http://christianmbrodbeck.github.com/Eelbrain/")
         elif Id == ID.HELP_MPL:
-            webbrowser.open("http://matplotlib.sourceforge.net/")
+            webbrowser.open("http://matplotlib.org/api/pyplot_summary.html")
         elif Id == ID.HELP_MDP:
             webbrowser.open("http://mdp-toolkit.sourceforge.net/documentation.html")
         elif Id == ID.HELP_PDB:
