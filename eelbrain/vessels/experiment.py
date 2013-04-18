@@ -532,7 +532,7 @@ class mne_experiment(object):
 
         args.extend('='.join(pair) for pair in kwargs)
         args = ', '.join(args)
-        return "mne_experiment(%s)" % args
+        return "%s(%s)" % (self.__class__.__name__, args)
 
     def combine_labels(self, target, sources=(), redo=False):
         """Combine several freesurfer labels into one label
