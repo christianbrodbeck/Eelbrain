@@ -364,9 +364,8 @@ class mne_experiment(object):
         time = var(stc.times, name='time')
         ds[key] = ndvar(np.array(x), dims=('case', time))
 
-                       reg=False, snr=3.,
     def add_evoked_stc(self, ds, method='dSPM', ori='free', depth=0.8,
-                       ind='stc', morph='stcm'):
+                       reg=False, snr=3., ind='stc', morph='stcm'):
         """
         Add an stc (ndvar) to a dataset with an evoked list.
 
