@@ -1118,6 +1118,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
         win = self.get_active_window()
         if hasattr(win, 'bufferSave'):
             win.bufferSave()
+        elif hasattr(win, 'toolbar') and hasattr(win.toolbar, 'save_figure'):
+            # matplotlib figure
+            win.toolbar.save_figure()
         else:
             event.Skip()
 
