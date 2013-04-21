@@ -12,6 +12,22 @@ from eelbrain.wxutils import Icon
 
 
 
+# replace Document to allow unicode i/o
+from wx.py.document import Document as wxDocument
+class Document(wxDocument):
+
+    def read(self):
+        text = wxDocument.read(self)
+        return text
+
+    def write(self, text):
+        text = text.encode('utf-8')
+        wxDocument.write(self, text)
+
+wx.py.document.Document = Document
+
+
+
 class PyEditor(wx.py.editor.EditorFrame):
     """
     Editor.editor.window is based on StyledTextCtrl
@@ -306,7 +322,7 @@ class PyEditor(wx.py.editor.EditorFrame):
             txt = self.editor.getText()
 
             shell_globals = self._exec_in_shell_namespace
-            self.shell.ExecText(txt,
+            self.shell.ExecText(txt.encode('utf-8'),
                                 title=self.editor.getStatus()[0],
                                 comment=None,
                                 shell_globals=shell_globals,
