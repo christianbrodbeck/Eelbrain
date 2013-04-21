@@ -47,6 +47,8 @@ Application Shortcuts
 * ``Cmd`` - ``L``: Bring the shell window into focus and move the caret to the
   end of the prompt.
 * ``Cmd`` - ``P``: Draw all plots (issue ``pyplot.draw()`` command)
+* ``Cmd`` - ``S``:  Save the contents of the current window (works for Editor, 
+  Shell and Matplotlib Figures).
 
 
 Text Editor Shortcuts
@@ -56,7 +58,7 @@ Text Editor Shortcuts
 
 * Display options:
 
-  * ``cmd`` - ``Shift`` - ``L``: Show/hide line numbers. 
+  * ``Cmd`` - ``Shift`` - ``L``: Show/hide line numbers. 
   * Font properties:
     * ``Ctrl`` - ``]``: Increase font size.
     * ``Ctrl`` - ``[``: Decrease font size.
@@ -88,8 +90,8 @@ Shell
 
 * History:
 
-  * ``Ctrl`` - ``Up Arrow`` or ``Alt`` - ``p``:  Retrieve previous history item.
-  * ``Ctrl`` - ``Down Arrow`` or ``Alt`` - ``n``:  Retrieve next history item.
+  * ``Ctrl`` - ``Up Arrow`` or ``Alt`` - ``P``:  Retrieve previous history item.
+  * ``Ctrl`` - ``Down Arrow`` or ``Alt`` - ``N``:  Retrieve next history item.
   * ``Shift`` - ``Up Arrow``:  Insert previous history item.
   * ``Shift`` - ``Down Arrow``:  Insert next history item.
   * ``Shift`` - ``enter``: Choose command from history to add to the prompt.
@@ -119,12 +121,11 @@ Editor
 
 * ``Cmd`` - ``/``:  Comment or uncomment selected lines
 * ``Cmd`` - ``D``:  Duplicate the selected command(s) to the shell prompt.
-* ``Cmd`` - ``S``:  Save current document
 * ``Alt`` - ``arrow (up/down)``:  Move current line up or down (!!! uses copy-paste)
 * Executing Code:
 
-  * ``Ctrl`` - ``r``: Save the script and execute the whole script from disk. 
-  * ``Ctrl`` - ``e``: Execute the selection. If nothing is selected, execute 
+  * ``Ctrl`` - ``R``: Save the script and execute the whole script from disk. 
+  * ``Ctrl`` - ``E``: Execute the selection. If nothing is selected, execute 
     the current line.
 
 
