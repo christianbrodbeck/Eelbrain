@@ -156,7 +156,7 @@ def permute(variables, count='caseID', randomize=False):
         ds.add(f)
 
     if count:
-        ds.add(_data.var(np.arange(ds.N), count))
+        ds.add(_data.var(np.arange(ds.n_cases), count))
 
     return ds
 
@@ -337,7 +337,7 @@ def shuffle_cases(dataset, inplace=False, blocks=None):
         variables is returned and the original dataset is left unmodified.
 
     """
-    index = np.arange(dataset.N)
+    index = np.arange(dataset.n_cases)
     if blocks is None:
         np.random.shuffle(index)
     else:
