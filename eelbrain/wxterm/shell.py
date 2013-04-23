@@ -547,7 +547,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.global_namespace['attach'] = self.attach
         self.global_namespace['detach'] = self.detach
         self.global_namespace['help'] = self.help_lookup
-        self.global_namespace['cd'] = self.curdir
+        if wx.__version__ < '2.9':
+            self.global_namespace['cd'] = self.curdir
+
         self.curdir(os.path.expanduser('~'))
 
         for name in ('printdict', 'printlist', 'dicttree'):
