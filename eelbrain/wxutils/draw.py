@@ -44,9 +44,9 @@ def draw_text(text, face='Scheherazade', size=42, spo2=True, w=None, h=None):
 
     tw, th = dc.GetTextExtent(text)
     if w is None:
-        w = tw + 2
+        w = tw
     if h is None:
-        h = th + 2
+        h = th
 
     if spo2:
         x = 2
