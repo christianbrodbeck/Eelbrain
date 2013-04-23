@@ -34,6 +34,8 @@ def draw_text(text, face='Scheherazade', size=42, spo2=True, shape=None):
 
     dc = wx.MemoryDC()
     dc.SetFont(font)
+    res = 512
+    dc.SelectObject(wx.EmptyBitmap(res, res))
 
     tw, th = dc.GetTextExtent(text)
     if shape is None:
