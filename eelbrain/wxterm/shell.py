@@ -7,6 +7,7 @@ import cPickle as pickle
 import re
 import string
 import sys
+import tempfile
 import types
 import webbrowser
 
@@ -1012,6 +1013,25 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnComment(self, event):
         win = self.get_active_window()
         win.Comment()
+
+    def OnCopy(self, event):
+        win = wx.Window.FindFocus()
+        if hasattr(win, 'Copy'):
+            win.Copy()
+        elif hasattr(win, 'figure'):  # matplotlib figure
+            if wx.TheClipboard.Open():
+                try:
+                    # save temporary pdf file
+                    path = tempfile.mktemp('.pdf')
+                    win.figure.savefig(path)
+                    # copy path
+                    do = wx.FileDataObject()
+                    do.AddFile(path)
+                    wx.TheClipboard.SetData(do)
+                finally:
+                    wx.TheClipboard.Close()
+        else:
+            logging.debug("can't copy: %s" % win)
 
     def OnDuplicate(self, event):
         win = self.get_active_window()
