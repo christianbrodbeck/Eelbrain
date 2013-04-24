@@ -548,22 +548,41 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
     return ndvar(x, ('case', sensor, time), properties=props, name=name)
 
 
-def evoked(fname):
-    "Load an mne evoked file as ndvar"
-    evoked = mne.fiff.Evoked(fname)
-    return evoked_ndvar(evoked)
+def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
+    """
+    Convert an mne Evoked object or a list thereof to an ndvar.
 
+    Parameters
+    ----------
+    evoked : str | Evoked | list of Evoked
+        The Evoked to convert to ndvar. Can be a string designating a file
+        path to a evoked fiff file containing only one evoked.
+    name : str
+        Name of the ndvar.
+    meg : bool | 'mag' | 'grad'
+        What MEG data to keep.
+    eeg : bool
+        Whether to keep EEG data.
+    exclude : see mne documentation
+        Channels to exclude.
+    """
+    if isinstance(evoked, basestring):
+        evoked = mne.fiff.Evoked(evoked)
 
-def evoked_ndvar(evoked, name='MEG'):
-    "Convert an mne Evoked object of a list thereof to an ndvar"
     if isinstance(evoked, mne.fiff.Evoked):
+        info = evoked.info
         x = evoked.data
         dims = ()
     else:
+        info = evoked[0].info
         x = np.array([e.data for e in evoked])
         dims = ('case',)
         evoked = evoked[0]
-    sensor = sensor_net(evoked)
+
+    picks = mne.fiff.pick_types(info, meg=meg, eeg=eeg, exclude=exclude)
+
+    x = x[picks]
+    sensor = sensor_net(evoked, picks=picks)
     time = var(evoked.times, name='time')
     properties = {'colorspace': _cs.get_MEG(2e-13)}
     return ndvar(x, dims + (sensor, time), properties=properties, name=name)
