@@ -70,6 +70,46 @@ def draw_text(text, face='Scheherazade', size=42, spo2=True, w=None, h=None):
     return a
 
 
+def draw_paragraph(lines, face='Scheherazade', size=42, align='center'):
+    """
+    Parameters
+    ----------
+    lines : iterator
+        Iterator over unicode strings, each of which will be added as a
+        separate line.
+    face : str
+        The font name.
+    size : int
+        Font size.
+    align : 'left' | 'center' | 'right'
+        How to align lines
+    """
+    ims = [draw_text(line, face=face, size=size, spo2=False) for line in lines]
+    shape = np.array([im.shape for im in ims])
+    h = np.sum(shape[:, 0])
+    w = np.max(shape[:, 1])
+    out = np.zeros((h, w), dtype='uint8')
+    y = 0
+    for im in ims:
+        im_h, im_w = im.shape
+        y0 = y
+        y += im_h
+        if align == 'left':
+            x = 0
+            x1 = im_w
+        elif align == 'center':
+            x = (w - im_w) // 2
+            x1 = x + im_w
+        elif align == 'right':
+            x = w - im_w
+            x1 = w
+        else:
+            raise ValueError("align=%r" % align)
+
+        out[y0:y, x:x1] = im
+
+    return out
+
 
 class UnicodeImages(object):
     """
@@ -82,7 +122,7 @@ class UnicodeImages(object):
         ----------
         draw_text parameters
         """
-        self._arrays = {}
+        self.arrays = {}
         self._codes = {}
         self._face = face
         self._size = size
@@ -109,11 +149,11 @@ class UnicodeImages(object):
                            spo2=self._spo2)
             code = len(self._codes)
             str_code = 'i%i' % code
-            self._arrays[str_code] = im
+            self.arrays[str_code] = im
             self._codes[text] = code
 
         return code
 
     def save(self, fname):
         "Save as matlab *.m file."
-        savemat(fname, self._arrays, do_compression=True)
+        savemat(fname, self.arrays, do_compression=True)
