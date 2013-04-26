@@ -251,11 +251,11 @@ class texstr(object):
             return ''
 
     def get_tex(self, mat=False, fmt=None):
-        # print type(self.text)
         if isstr(self.text) or not np.iterable(self.text):
-            tex = texstr.get_str(self, fmt=fmt)
+            tex = self.get_str(fmt=fmt)
         else:
             tex = ''.join([tex_e.get_tex(mat=(self.mat or mat)) for tex_e in self.text])
+
         if self.property:
             tex = r"%s{%s}" % (self.property, tex)
         if (self.mat) and (not mat):
@@ -396,7 +396,7 @@ class Cell(texstr):
         return self.width
 
     def get_tex(self, fmt=None):
-        tex_repr = super(Cell, self).get_tex(self, fmt=fmt)
+        tex_repr = texstr.get_tex(self, fmt=fmt)
         if self.width > 1 or self.just:
             tex_repr = r"\multicolumn{%s}{%s}{%s}" % (self.width, self.just,
                                                       tex_repr)
