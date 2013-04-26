@@ -7,9 +7,8 @@ from __future__ import division
 import numpy as np
 
 from .. import fmtxt
-from .data_obj import (ascategorial, asmodel, asvar, assub, isfactor, isvar,
-                       isinteraction, Dataset, Factor, Var, Celltable,
-                       cellname, combine)
+from .data_obj import (ascategorial, asvar, assub, isfactor, isinteraction,
+                       Dataset, Factor, Var, Celltable, cellname, combine)
 
 __hide__ = ['division', 'fmtxt', 'scipy',
             'asmodel', 'isfactor', 'asfactor', 'isvar', 'Celltable',
@@ -266,126 +265,34 @@ def stats(Y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
 
 
 
-def rm_table(Y, X=None, match=None, cov=[], sub=None, fmt='%r', labels=True,
-             show_case=True):
+def repmeas(Y, X, match, sub=None, ds=None):
     """
-    returns a repeated-measures table
-
+    Create a repeated-measures table
 
     Parameters
     ----------
-
     Y :
-        variable to display (can be model with several dependents)
-
-    X :
-        categories defining cells (factorial model)
-
-    match :
-        Factor to match values on and return repeated-measures table
-
-    cov :
-        covariate to report (WARNING: only works with match, where each value
-        on the matching variable corresponds with one value in the covariate)
-
+        Dependent variable (can be model with several dependents).
+    X : categorial
+        Categories defining cells.
+    match : factor
+        Factor identifying the source of the measurement across repetitions.
     sub :
         boolean array specifying which values to include (generate e.g.
         with 'sub=T==[1,2]')
+    ds : None | Dataset
+        If a Dataset is specified other arguments can be str instead of
+        data-objects and will be retrieved from ds.
 
-    fmt :
-        Format string
-
-    labels :
-        display labels for nominal variables (otherwise display codes)
-
-    show_case : bool
-        add a column with the case identity
-
+    Returns
+    -------
+    rm_table : Dataset
+        Repeated measures table.
     """
-    if hasattr(Y, '_items'):  # dataframe
-        Y = Y._items
-    Y = asmodel(Y)
-    if isfactor(cov) or isvar(cov):
-        cov = [cov]
+    ct = Celltable(Y, X, match, sub, ds=ds)
+    out = Dataset()
+    out[ct.match.name] = ct.groups.values()[0]
+    for cell in ct.X.cells:
+        out[cellname(cell, '_')] = ct.data[cell]
 
-    data = []
-    names_yname = []  # names including Yi.name for matched table headers
-    ynames = []  # names of Yi for independent measures table headers
-    within_list = []
-    for Yi in Y.effects:
-        # FIXME: temporary _split_Y replacement
-        ct = Celltable(Yi, X, match=match, sub=sub)
-
-        data += ct.get_data()
-        names_yname += ['({c})'.format(c=n) for n in ct.cells]
-        ynames.append(Yi.name)
-        within_list.append(ct.all_within)
-    within = within_list[0]
-    assert all([w == within for w in within_list])
-
-    # table
-    n_dependents = len(Y.effects)
-    n_cells = int(len(data) / n_dependents)
-    if within:
-        n, k = len(data[0]), len(data)
-        table = fmtxt.Table('l' * (k + show_case + len(cov)))
-
-        # header line 1
-        if show_case:
-            table.cell(match.name)
-            case_labels = ct.matchlabels[ct.cells[0]]
-            assert all(np.all(case_labels == l) for l in ct.matchlabels.cells)
-        for i in range(n_dependents):
-            for name in ct.cells:
-                table.cell(name.replace(' ', '_'))
-        for c in cov:
-            table.cell(c.name)
-
-        # header line 2
-        if n_dependents > 1:
-            if show_case:
-                table.cell()
-            for name in ynames:
-                [table.cell('(%s)' % name) for i in range(n_cells)]
-            for c in cov:
-                table.cell()
-
-        # body
-        table.midrule()
-        for i in range(n):
-            case = case_labels[i]
-            if show_case:
-                table.cell(case)
-            for j in range(k):
-                table.cell(data[j][i], fmt=fmt)
-            # covariates
-            indexes = match == case
-            for c in cov:
-                # test it's all the same values
-                case_cov = c[indexes]
-                if len(np.unique(case_cov.x)) != 1:
-                    msg = 'covariate for case "%s" has several values' % case
-                    raise ValueError(msg)
-                # get value
-                first_i = np.nonzero(indexes)[0][0]
-                cov_value = c[first_i]
-                table.cell(cov_value, fmt=fmt)
-    else:
-        table = fmtxt.Table('l' * (1 + n_dependents))
-        table.cell(X.name)
-        [table.cell(y) for y in ynames]
-        table.midrule()
-        # data is now sorted: (cell_i within dependent_i)
-        # sort data as (X-cell, dependent_i)
-        data_sorted = []
-        for i_cell in range(n_cells):
-            data_sorted.append([data[i_dep * n_cells + i_cell] for i_dep in \
-                               range(n_dependents)])
-        # table
-        for name, cell_data in zip(ct.cells, data_sorted):
-            for i in range(len(cell_data[0])):
-                table.cell(name)
-                for dep_data in cell_data:
-                    v = dep_data[i]
-                    table.cell(v, fmt=fmt)
-    return table
+    return out

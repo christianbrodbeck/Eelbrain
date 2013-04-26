@@ -33,3 +33,10 @@ def test_frequencies():
     print table.frequencies(Cat, A)
     print table.frequencies(Cat, A % B)
     print table.frequencies(Cat % A, B)
+
+
+def test_repmeas():
+    "Test table.repmeas (repeated measures table)"
+    ds = datasets.get_uv()
+    print table.repmeas('fltvar', 'A', 'rm', ds=ds)
+    print table.repmeas('fltvar', 'A%B', 'rm', ds=ds)
