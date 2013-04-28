@@ -9,7 +9,7 @@ import wx
 
 
 
-def draw_text(text, face='Scheherazade', size=42, spo2=True, w=None, h=None):
+def draw_text(text, face='Scheherazade', size=42, spo2=False, w=None, h=None, color=None):
     """
     Use wxPython's text rendering engine to convert unicode text to an image
     in the form of a numpy array.
@@ -28,6 +28,11 @@ def draw_text(text, face='Scheherazade', size=42, spo2=True, w=None, h=None):
     w, h : None | int
         Specify the desired width and/or height for the output array.
         If None, the shape is determined based on the text size.
+    color : None | array, len = 3
+        Color of the text. If None (monochrome), an array of shape (h, w) is
+        returned. If an array of three numbers, they are interpreted as RGB
+        values and an array of shape (h, w, 3) is returned.
+        .
     """
     if (w is not None or h is not None) and spo2:
         err = ("spo2 can not be true when providing custom width and/ir "
@@ -66,8 +71,10 @@ def draw_text(text, face='Scheherazade', size=42, spo2=True, w=None, h=None):
 
     im = bmp.ConvertToImage()
     a = np.fromstring(im.GetData(), dtype='uint8').reshape((h, w, 3))
-    a = 255 - a[:, :, 0]
-    return a
+    if color is None:
+        return 255 - a[:, :, 0]
+    else:
+        return a * np.reshape(color, (1, 1, 3))
 
 
 def draw_paragraph(lines, face='Scheherazade', size=42, align='center'):
@@ -116,7 +123,7 @@ class UnicodeImages(object):
     Build a dictionary with image arrays depicting unicode strings, ensuring
     the same string is not stored twice.
     """
-    def __init__(self, face='Scheherazade', size=42, spo2=True):
+    def __init__(self, face='Scheherazade', size=42, spo2=False):
         """
         Parameters
         ----------
