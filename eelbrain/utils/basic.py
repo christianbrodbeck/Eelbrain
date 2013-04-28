@@ -73,6 +73,30 @@ class intervals:
 
 
 
+class IdDict(dict):
+    """
+    Dictionary to code a certain type of items to Ids; id_dict[item] returns
+    the Id for item if item has previously been added; otherwise it generates
+    a new Id (its length)
+    """
+    def __missing__(self, key):
+        new_id = len(self)
+        while new_id in self.values():
+            new_id += 1
+
+        super(IdDict, self).__setitem__(key, new_id)
+        return new_id
+
+    def __setitem__(self, key, value):
+        if value in self.values():
+            raise ValueError("Value already assigned: %r" % value)
+        elif key in self:
+            raise KeyError("Key already assigned: %r" % key)
+        else:
+            super(IdDict, self).__setitem__(key, value)
+
+
+
 class LazyProperty(object):
     "http://blog.pythonisito.com/2008/08/lazy-descriptors.html"
     def __init__(self, func):

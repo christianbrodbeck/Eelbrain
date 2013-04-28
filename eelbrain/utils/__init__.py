@@ -1,1 +1,2 @@
-from .basic import common_prefix, keydefaultdict, intervals, LazyProperty
+from .basic import (common_prefix, IdDict, intervals, LazyProperty,
+                    keydefaultdict)
