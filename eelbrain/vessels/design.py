@@ -177,8 +177,8 @@ def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
     rand : bool
         Randomize sequence of values (instead of just iterating over the
         range).
-    balance : None | list of factors
-        Factors over which the values in the new factor should be balanced.
+    balance : None | categorial
+        Cells over which the values in the new factor should be balanced.
     urn : None | list of factors
         Factors which have already drawn from the same urn. I.e., for each
         index, the new factor should contain a value that is different from
@@ -192,7 +192,7 @@ def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
     i = 0
     if sub is not None:
         if balance:
-            balance = [f[sub] for f in balance]
+            balance = balance[sub]
         if urn:
             urn = [f[sub] for f in urn]
         n_tgt = n
@@ -223,9 +223,8 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
     x = np.empty(n, dtype=np.uint8)
     cells = dict(enumerate(values))
 
-    if balance:
-        groups = _data.interaction(balance)
-        regions = groups.as_factor()
+    if balance is not None:
+        regions = balance
 
         # for now, they have to be of equal length
         region_lens = [np.sum(regions == cell) for cell in regions.cells]
