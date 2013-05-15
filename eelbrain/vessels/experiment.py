@@ -137,6 +137,76 @@ def _etree_node_repr(node, name, indent=0):
     return out
 
 
+_temp = {
+    'v0': {
+        # basic dir
+        'meg_dir': os.path.join('{root}', 'meg'),  # contains subject-name folders for MEG data
+        'meg_sdir': os.path.join('{meg_dir}', '{subject}'),
+        'mri_dir': os.path.join('{root}', 'mri'),  # contains subject-name folders for MRI data
+        'mri_sdir': os.path.join('{mri_dir}', '{mrisubject}'),
+        'bem_dir': os.path.join('{mri_sdir}', 'bem'),
+        'raw_sdir': os.path.join('{meg_sdir}', 'raw'),
+        'eeg_sdir': os.path.join('{meg_sdir}', 'raw_eeg'),
+        'log_sdir': os.path.join('{meg_sdir}', 'logs', '{subject}_{experiment}'),
+
+        # raw
+        'mrk': os.path.join('{raw_sdir}', '{subject}_{experiment}_marker.txt'),
+        'elp': os.path.join('{raw_sdir}', '{subject}_HS.elp'),
+        'hsp': os.path.join('{raw_sdir}', '{subject}_HS.hsp'),
+        'raw': 'raw',
+        'raw-base': os.path.join('{raw_sdir}', '{subject}_{experiment}_{raw}'),
+        'raw-file': '{raw-base}-raw.fif',
+        'raw-txt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
+
+        'trans': os.path.join('{raw_sdir}', '{mrisubject}-trans.fif'),  # mne p. 196
+
+        # eye-tracker
+        'edf': os.path.join('{log_sdir}', '*.edf'),
+
+        # mne raw-derivatives analysis
+        'proj': '',
+        'proj-file': '{raw-base}_{proj}-proj.fif',
+        'proj_plot': '{raw-base}_{proj}-proj.pdf',
+        'cov-file': '{raw-base}_{cov}-{proj}-cov.fif',
+        'fwd': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
+        'cov': 'bl',
+
+        # fwd model
+        'common_brain': self._common_brain,
+        'fid': os.path.join('{bem_dir}', '{mrisubject}-fiducials.fif'),
+        'bem': os.path.join('{bem_dir}', '{mrisubject}-*-bem-sol.fif'),
+        'src': os.path.join('{bem_dir}', '{mrisubject}-ico-4-src.fif'),
+        'bem_head': os.path.join('{bem_dir}', '{mrisubject}-head.fif'),
+
+        # evoked
+        'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
+        'evoked': os.path.join('{evoked_dir}', '{raw}_{experiment}_{model}',
+                               '{epoch}_{proj}_evoked.pickled'),
+
+        # Souce space
+        'labeldir': 'label',
+        'hemi': 'lh',
+        'label-file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
+        'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
+
+        # EEG
+        'vhdr': os.path.join('{eeg_sdir}', '{subject}_{experiment}.vhdr'),
+        'eegfif': os.path.join('{eeg_sdir}', '{subject}_{experiment}_raw.fif'),
+        'eegfilt': os.path.join('{eeg_sdir}', '{subject}_{experiment}_filt_raw.fif'),
+
+        # output files
+        'plot_dir': os.path.join('{root}', 'plots'),
+        'plot_png': os.path.join('{plot_dir}', '{analysis}', '{name}.png'),
+        'res': os.path.join('{root}', 'res_{kind}', '{analysis}', '{name}{suffix}.{ext}'),
+        'kind': '',
+        'analysis': '',
+        'name': '',
+        'suffix': '',
+        }
+    }
+
+
+
 
 class mne_experiment(object):
     """Class for managing data for an experiment
@@ -179,6 +249,11 @@ class mne_experiment(object):
     _mri_loc = 'mri_dir'  # location of subject mri folders
     _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
     _subject_loc = 'meg_dir'  # location of subject folders
+
+    # basic templates to use. Can be a string referring to a templates
+    # dictionary in the module level _temp dictionary, or a templates
+    # dictionary
+    _templates = 'v0'
 
     def __init__(self, root=None, parse_subjects=True, subjects=[],
                  mri_subjects={}):
@@ -443,71 +518,14 @@ class mne_experiment(object):
                 ds[key] = load.fiff.stc_ndvar(mstcs[name], self._common_brain)
 
     def get_templates(self):
-        t = {
-             # basic dir
-             'meg_dir': os.path.join('{root}', 'meg'),  # contains subject-name folders for MEG data
-             'meg_sdir': os.path.join('{meg_dir}', '{subject}'),
-             'mri_dir': os.path.join('{root}', 'mri'),  # contains subject-name folders for MRI data
-             'mri_sdir': os.path.join('{mri_dir}', '{mrisubject}'),
-             'bem_dir': os.path.join('{mri_sdir}', 'bem'),
-             'raw_sdir': os.path.join('{meg_sdir}', 'raw'),
-             'eeg_sdir': os.path.join('{meg_sdir}', 'raw_eeg'),
-             'log_sdir': os.path.join('{meg_sdir}', 'logs', '{subject}_{experiment}'),
+        if isinstance(self._templates, str):
+            t = _temp[self._templates]
+        else:
+            t = self._templates
 
-             # raw
-             'mrk': os.path.join('{raw_sdir}', '{subject}_{experiment}_marker.txt'),
-             'elp': os.path.join('{raw_sdir}', '{subject}_HS.elp'),
-             'hsp': os.path.join('{raw_sdir}', '{subject}_HS.hsp'),
-             'raw': 'raw',
-             'raw-base': os.path.join('{raw_sdir}', '{subject}_{experiment}_{raw}'),
-             'raw-file': '{raw-base}-raw.fif',
-             'raw-txt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
-
-             'trans': os.path.join('{raw_sdir}', '{mrisubject}-trans.fif'),  # mne p. 196
-
-             # eye-tracker
-             'edf': os.path.join('{log_sdir}', '*.edf'),
-
-             # mne raw-derivatives analysis
-             'proj': '',
-             'proj-file': '{raw-base}_{proj}-proj.fif',
-             'proj_plot': '{raw-base}_{proj}-proj.pdf',
-             'cov-file': '{raw-base}_{cov}-{proj}-cov.fif',
-             'fwd': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
-             'cov': 'bl',
-
-             # fwd model
-             'common_brain': self._common_brain,
-             'fid': os.path.join('{bem_dir}', '{mrisubject}-fiducials.fif'),
-             'bem': os.path.join('{bem_dir}', '{mrisubject}-*-bem-sol.fif'),
-             'src': os.path.join('{bem_dir}', '{mrisubject}-ico-4-src.fif'),
-             'bem_head': os.path.join('{bem_dir}', '{mrisubject}-head.fif'),
-
-             # evoked
-             'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
-             'evoked': os.path.join('{evoked_dir}', '{raw}_{experiment}_{model}',
-                                    '{epoch}_{proj}_evoked.pickled'),
-
-             # Souce space
-             'labeldir': 'label',
-             'hemi': 'lh',
-             'label-file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
-             'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
-
-             # EEG
-             'vhdr': os.path.join('{eeg_sdir}', '{subject}_{experiment}.vhdr'),
-             'eegfif': os.path.join('{eeg_sdir}', '{subject}_{experiment}_raw.fif'),
-             'eegfilt': os.path.join('{eeg_sdir}', '{subject}_{experiment}_filt_raw.fif'),
-
-             # output files
-             'plot_dir': os.path.join('{root}', 'plots'),
-             'plot_png': os.path.join('{plot_dir}', '{analysis}', '{name}.png'),
-             'res': os.path.join('{root}', 'res_{kind}', '{analysis}', '{name}{suffix}.{ext}'),
-             'kind': '',
-             'analysis': '',
-             'name': '',
-             'suffix': '',
-             }
+        if not isinstance(t, dict):
+            err = ("Templates mus be dictionary; got %s" % type(t))
+            raise TypeError(err)
 
         return t
 
