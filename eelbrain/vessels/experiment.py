@@ -172,7 +172,7 @@ _temp = {
         'cov': 'bl',
 
         # fwd model
-        'common_brain': self._common_brain,
+        'common_brain': 'fsaverage',
         'fid': os.path.join('{bem_dir}', '{mrisubject}-fiducials.fif'),
         'bem': os.path.join('{bem_dir}', '{mrisubject}-*-bem-sol.fif'),
         'src': os.path.join('{bem_dir}', '{mrisubject}-ico-4-src.fif'),
@@ -241,9 +241,6 @@ class mne_experiment(object):
 
     # Constants that should not need to be modified
     # ---------------------------------------------
-    # the default value for the common_brain (can be overridden using the set
-    # method after __init__()):
-    _common_brain = 'fsaverage'
     _experiments = []
     _fmt_pattern = re.compile('\{([\w-]+)\}')
     _mri_loc = 'mri_dir'  # location of subject mri folders
@@ -482,7 +479,7 @@ class mne_experiment(object):
             if subject in self.subjects_has_own_mri:
                 subject_from = subject
             else:
-                subject_from = self._common_brain
+                subject_from = self.get('common_brain')
 
             for name in do:
                 evoked = case[name]
@@ -500,7 +497,7 @@ class mne_experiment(object):
                     stcs[name].append(stc)
 
                 if morph:
-                    stc = mne.morph_data(subject_from, self._common_brain, stc, 4)
+                    stc = mne.morph_data(subject_from, self.get('common_brain'), stc, 4)
                     mstcs[name].append(stc)
 
         for name in do:
@@ -515,7 +512,7 @@ class mne_experiment(object):
                     key = '%s_%s' % (morph, do)
                 else:
                     key = morph
-                ds[key] = load.fiff.stc_ndvar(mstcs[name], self._common_brain)
+                ds[key] = load.fiff.stc_ndvar(mstcs[name], self.get('common_brain'))
 
     def get_templates(self):
         if isinstance(self._templates, str):
@@ -1739,7 +1736,7 @@ class mne_experiment(object):
             map(shutil.rmtree, rmd)
             map(os.remove, rmf)
             for s in sub:
-                self.set_mri_subject(s, self._common_brain)
+                self.set_mri_subject(s, self.get('common_brain'))
 
     def run_mne_analyze(self, subject=None, modal=False):
         subjects_dir = self.get('mri_dir')
