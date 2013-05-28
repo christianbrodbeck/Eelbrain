@@ -133,7 +133,8 @@ def iscategorial(Y):
         return False
 
 def isdataobject(Y):
-    dataob = ["model", "var", "ndvar", "factor", "interaction", "nonbasic", "nested"]
+    dataob = ["model", "var", "ndvar", "factor", "interaction", "nonbasic",
+              "nested", "list"]
     return hasattr(Y, '_stype_') and  Y._stype_ in dataob
 
 def isdataset(Y):
@@ -1823,6 +1824,7 @@ class datalist(list):
         Store a name attribute.
 
     """
+    _stype_ = 'list'
     def __init__(self, items=None, name=None):
         self.name = name
         if items:
