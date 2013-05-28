@@ -11,7 +11,7 @@ try:
 except:
     pass
 
-import data as _data
+from .data import isfactor, var, isvar, ndvar, isndvar, asndvar
 
 
 def rm_pca(ds, rm=[], source='MEG', target='MEG', baseline=None):
@@ -69,7 +69,7 @@ class PCA:
         dims = self.source.get_dims(('sensor',))
         data = self.node.v.T[i, ]
         name = 'comp_%i' % i
-        ndvar = _data.ndvar(data, dims, name=name)
+        ndvar = ndvar(data, dims, name=name)
         return ndvar
 
     def get_load(self, i):
@@ -78,7 +78,7 @@ class PCA:
         shape = (len(self.source), len(time))
         data = self._proj[:, i].reshape(shape)
         name = 'comp_%i_load' % i
-        ndvar = _data.ndvar(data, dims=dims, name=name)
+        ndvar = ndvar(data, dims=dims, name=name)
         return ndvar
 
     def subtract(self, components, baseline=(None, 0), name='{name}'):
@@ -114,7 +114,7 @@ class PCA:
         dims = ('case',) + self.source.get_dims(('time', 'sensor'))
         properties = self.source.properties
         name = name.format(name=self.source.name)
-        out = _data.ndvar(new_data, dims=dims, properties=properties, name=name)
+        out = ndvar(new_data, dims=dims, properties=properties, name=name)
         if baseline:
             tstart, tend = baseline
             out = rm_baseline(out, tstart, tend)
@@ -122,49 +122,47 @@ class PCA:
 
 
 
-def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=False, below=None,
-                      target='accept'):
+def mark_by_threshold(ds, DV='MEG', threshold=2e-12, above=False,
+                      below=None, target='accept'):
     """
     Marks epochs based on a threshold criterion (any sensor exceeding the
     threshold at any time)
 
-    above: True, False, None
-        How to mark segments that exceed the threshold: True->good;
-        False->bad; None->don't change
-
-    below:
-        Same as ``above`` but for segments that do not exceed the threshold
-
-    threshold : float
-        The threshold value.
-        1.25e-11: detect saturated channels
-        2e-12: conservative final rejection
-
-    target : factor or str
+    Parameters
+    ----------
+    ds : dataset
+        Dataset containing the data.
+    DV : ndvar
+        Dependent variable (data which should be thresholded).
+    threshold : scalar
+        The threshold value. Examples: 1.25e-11 to detect saturated channels;
+        2e-12: for conservative MEG rejection.
+    above, below: True, False, None
+        How to mark segments that do (above) or do not (below) exceed the
+        threshold: True->good; False->bad; None->don't change
+    target : factor | str
         Factor (or its name) in which the result is stored. If ``var`` is
         a string and the dataset does not contain that factor, it is
         created.
-
     """
-    if isinstance(DV, basestring):
-        DV = dataset[DV]
+    DV = asndvar(DV, ds=ds)
 
     # get the factor on which to store results
-    if _data.isfactor(target) or _data.isvar(target):
-        assert len(target) == dataset.N
+    if isfactor(target) or isvar(target):
+        assert len(target) == ds.n_cases
     elif isinstance(target, basestring):
-        if target in dataset:
-            target = dataset[target]
+        if target in ds:
+            target = ds[target]
         else:
-            x = _np.ones(dataset.N, dtype=bool)
-            target = _data.var(x, name=target)
-            dataset.add(target)
+            x = _np.ones(ds.n_cases, dtype=bool)
+            target = var(x, name=target)
+            ds.add(target)
     else:
         raise ValueError("target needs to be a factor")
 
     # do the thresholding
-    if _data.isndvar(DV):
-        for ID in xrange(dataset.N):
+    if isndvar(DV):
+        for ID in xrange(ds.n_cases):
             data = DV[ID]
             v = _np.max(_np.abs(data.x))
 
@@ -174,7 +172,7 @@ def mark_by_threshold(dataset, DV='MEG', threshold=2e-12, above=False, below=Non
             elif below is not None:
                 target[ID] = below
     else:
-        for ID in xrange(dataset.N):
+        for ID in xrange(ds.n_cases):
             v = DV[ID]
 
             if v > threshold:
@@ -209,6 +207,6 @@ def rm_baseline(ndvar, tstart=None, tend=0, name='{name}'):
     dims = ndvar.dims
     data = ndvar.x - bl_data
     name = name.format(name=ndvar.name)
-    return _data.ndvar(data, dims=dims, properties=ndvar.properties, name=name)
+    return ndvar(data, dims=dims, properties=ndvar.properties, name=name)
 
 

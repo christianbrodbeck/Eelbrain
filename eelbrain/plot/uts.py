@@ -21,8 +21,8 @@ try:
 except:
     pass
 
-from eelbrain.vessels import data as _data
-from eelbrain.vessels.structure import celltable
+from ..vessels.data import ascategorial, cellname
+from ..vessels.structure import celltable
 
 import _base
 
@@ -135,7 +135,7 @@ class stat(_base.subplot_figure):
                     if cell not in colors:
                         raise KeyError("%s not in colors" % repr(cell))
             else:
-                cells = _data.ascategorial(X, sub=sub, ds=ds).cells
+                cells = ascategorial(X, sub=sub, ds=ds).cells
                 N = len(cells)
                 colors = {cell:cm(i / N) for i, cell in enumerate(cells)}
 
@@ -168,7 +168,7 @@ class stat(_base.subplot_figure):
                 if match is not None:
                     match = matchct.data[cell]
                 cct = celltable(ct.data[cell], X, match=match)
-                title_ = axtitle.format(name=_data.cellname(cell))
+                title_ = axtitle.format(name=cellname(cell))
                 _ax_stat(ax, cct, title=title_, **kwargs)
                 self.axes.append(ax)
 
