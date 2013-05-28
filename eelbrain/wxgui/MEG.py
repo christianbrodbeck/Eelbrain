@@ -16,17 +16,17 @@ from eelbrain.vessels import data as _data
 from eelbrain.vessels import process
 
 import ID
-from eelbrain import ui
-from eelbrain.plot._base import eelfigure
-from eelbrain.wxutils import mpl_canvas
-from eelbrain.wxutils import Icon
+from .. import ui
+from ..plot._base import eelfigure
+from ..plot.nuts import _plt_bin_nuts
+from ..wxutils import mpl_canvas, Icon
 
 
-__all__ = ['select_cases_butterfly', 'pca']
+__all__ = ['SelectEpochs', 'pca']
 
 
 
-class select_cases_butterfly(eelfigure):
+class SelectEpochs(eelfigure):
     """
     Interfaces showing individual cases in an ndvar as butterfly plots, with
     the option to interactively manipulate a boolean list (i.e., select cases).
@@ -35,7 +35,7 @@ class select_cases_butterfly(eelfigure):
         (de-)select this case
 
     """
-    def __init__(self, dataset, data='MEG', target='accept',
+    def __init__(self, ds, data='MEG', target='accept', blink='blink',
                  nplots=(6, 6), plotsize=(3, 1.5),
                  mean=True, topo=True, ylim=None, fill=True, aa=False, dpi=50):
         """
@@ -43,45 +43,42 @@ class select_cases_butterfly(eelfigure):
         of cases. The selection can be retrieved through the get_selection
         Method.
 
-        Arguments
+        Parameters
         ----------
-
-        dataset : dataset
+        ds : dataset
             dataset on which to perform the selection.
-
         nplots : 1 | 2 | (i, j)
             Number of plots (including topo plots and mean).
-
         mean : bool
             Plot the page mean on each page.
-
         topo : bool
             Show a dynamically updated topographic plot at the bottom right.
-
         ylim : scalar
             y-limit of the butterfly plots.
-
         fill : bool
             Only show extrema in the butterfly plots, instead of all traces.
             This is faster for data with many channels.
-
         aa : bool
             Antialiasing (matplolibt parameter).
 
 
-        Example::
-
-            >>> select_cases_butterfly(my_dataset)
-            [... visual selection of cases ...]
-            >>> cases = my_dataset['reject'] == False
-            >>> pruned_dataset = my_dataset[cases]
+        Examples
+        --------
+        >>> SelectEpochs(my_dataset)
+        [... visual selection of cases ...]
+        >>> cases = my_dataset['reject'] == False
+        >>> pruned_dataset = my_dataset[cases]
 
         """
     # interpret plotting args
         # variable keeping track of selection
         if isinstance(data, basestring):
-            data = dataset[data]
+            data = ds[data]
         self._data = data
+
+        if isinstance(blink, basestring):
+            blink = ds.get(blink, None)
+        self._blink = blink
 
         if np.prod(nplots) == 1:
             nplots = (1, 1)
@@ -94,11 +91,11 @@ class select_cases_butterfly(eelfigure):
 
         if isinstance(target, basestring):
             try:
-                target = dataset[target]
+                target = ds[target]
             except KeyError:
-                x = np.ones(dataset.N, dtype=bool)
+                x = np.ones(ds.n_cases, dtype=bool)
                 target = _data.var(x, name=target)
-                dataset.add(target)
+                ds.add(target)
         self._target = target
         self._plot_mean = mean
         self._plot_topo = topo
@@ -106,18 +103,18 @@ class select_cases_butterfly(eelfigure):
     # prepare segments
         self._nplots = nplots
         n_per_page = self._n_per_page = np.prod(nplots) - bool(topo) - bool(mean)
-        n_pages = dataset.N // n_per_page + bool(dataset.N % n_per_page)
+        n_pages = ds.n_cases // n_per_page + bool(ds.n_cases % n_per_page)
         self._n_pages = n_pages
 
         # get a list of IDS for each page
         self._segs_by_page = []
         for i in xrange(n_pages):
             start = i * n_per_page
-            stop = min((i + 1) * n_per_page, dataset.N)
+            stop = min((i + 1) * n_per_page, ds.n_cases)
             self._segs_by_page.append(range(start, stop))
 
     # init wx frame
-        title = "select_cases_butterfly -> %r" % target.name
+        title = "SelectEpochs -> %r" % target.name
         figsize = (plotsize[0] * nplots[0], plotsize[1] * nplots[1])
         super(self.__class__, self).__init__(title=title, figsize=figsize, dpi=dpi)
 
@@ -137,7 +134,7 @@ class select_cases_butterfly(eelfigure):
             self._bfly_kwargs['ylim'] = ylim
 
     # finalize
-        self._dataset = dataset
+        self._dataset = ds
         self.show_page(0)
         self._frame.store_canvas()
         self._show()
@@ -175,7 +172,7 @@ class select_cases_butterfly(eelfigure):
 
     def _get_page_mean_seg(self):
         seg_IDs = self._segs_by_page[self._current_page_i]
-        index = np.zeros(self._dataset.N, dtype=bool)
+        index = np.zeros(self._dataset.n_cases, dtype=bool)
         index[seg_IDs] = True
         index *= self._target
         mseg = self._data[index].summary()
@@ -257,6 +254,9 @@ class select_cases_butterfly(eelfigure):
             h = plot.utsnd._ax_butterfly(ax, [case], color=color, antialiased=False,
                                          title=False, xlabel=None, ylabel=None,
                                          **self._bfly_kwargs)[0]
+            if self._blink is not None:
+                _plt_bin_nuts(ax, self._blink[ID])
+
             ax.ID = i
             ax.segID = ID
             self._case_handles.append(h)
@@ -365,21 +365,13 @@ class select_cases_butterfly(eelfigure):
         prog.terminate()
 
     def _OnThreshold(self, event):
-        """
-        above: True, False, None
-            how to mark segments that exceed the threshold: True->good;
-            False->bad; None->don't change
-        below:
-            same as ``above`` but for segments that do not exceed the threshold
-
-        """
         threshold = None
         above = False
         below = True
 
         msg = "What value should be used to threshold the data?"
         while threshold is None:
-            dlg = wx.TextEntryDialog(self, msg, "Choose Threshold", "2e-12")
+            dlg = wx.TextEntryDialog(self._frame, msg, "Choose Threshold", "2e-12")
             if dlg.ShowModal() == wx.ID_OK:
                 value = dlg.GetValue()
                 try:
