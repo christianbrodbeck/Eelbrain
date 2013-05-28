@@ -12,7 +12,7 @@ import numpy as np
 
 import _base
 import utsnd
-import sensors as _plt_sensors
+from .sensors import _plt_map2d
 
 # try:
 #    from _topo3d import *
@@ -57,7 +57,7 @@ class topomap(_base.eelfigure):
                            sensors=sensors,
                            )
 
-        self.axes = []
+        self._subplots = []
         for i, layers in enumerate(epochs):
             # axes coordinates
             left = (i + frame) / n_plots
@@ -68,11 +68,23 @@ class topomap(_base.eelfigure):
             ax_rect = [left, bottom, width, height]
             ax = self.figure.add_axes(ax_rect)
             ax.ID = i
-            self.axes.append(ax)
 
-            _ax_topomap(ax, layers, title=True, **topo_kwargs)
+            h = _ax_topomap(ax, layers, title=True, **topo_kwargs)
+            self._subplots.append(h)
 
         self._show()
+
+    def show_labels(self, text='id'):
+        """Add/remove sensor labels
+
+        Parameters
+        ----------
+        labels : None | 'id' | 'name'
+            Kind of sensor labels to plot.
+        """
+        for p in self._subplots:
+            p.sensors.show_labels(text)
+        self.draw()
 
 
 
@@ -317,62 +329,64 @@ def _plt_topomap(ax, epoch, proj='default', res=100,
 
 
 
-def _ax_topomap(ax, layers, title=True,
-                sensors=None, ROI=None, ROIcolor=True,
-                proj='default', xlabel=None,
-                im_frame=0.02, **im_kwargs):
-    """
-    sensors : bool | str
-        plot sensor markers (str to add label:
-    ROI : list of IDs
-        highlight a subset of the sensors
+class _ax_topomap:
+    def __init__(self, ax, layers, title=True,
+                 sensors=None, ROI=None, ROIcolor=True,
+                 proj='default', xlabel=None,
+                 im_frame=0.02, **im_kwargs):
+        """
+        Parameters
+        ----------
+        sensors : bool | str
+            plot sensor markers (str to add label:
+        ROI : list of IDs
+            highlight a subset of the sensors
 
-    """
-    ax.set_axis_off()
-    handles = {}
-    for layer in layers:
-        handles[layer.name] = _plt_topomap(ax, layer, im_frame=im_frame,
-                                           proj=proj, **im_kwargs)
-        if title is True:
-            title = getattr(layer, 'name', True)
+        """
+        self.ax = ax
+        self.layers = []
 
-    # plot sensors
-    if sensors:
-        sensor_net = layers[0].sensor
-        _plt_sensors._plt_map2d(ax, sensor_net, proj=proj)
+        ax.set_axis_off()
+        for layer in layers:
+            h = _plt_topomap(ax, layer, im_frame=im_frame, proj=proj, **im_kwargs)
+            self.layers.append(h)
+            if title is True:
+                title = getattr(layer, 'name', True)
 
-        if isinstance(sensors, str):
-            _plt_sensors._plt_map2d_labels(ax, sensor_net, proj=proj, text=sensors)
+        # plot sensors
+        if sensors:
+            sensor_net = layers[0].sensor
+            self.sensors = _plt_map2d(ax, sensor_net, proj=proj)
+            if isinstance(sensors, str):
+                text = sensors
+            else:
+                text = None
+            self.sensors.show_labels(text=text)
 
-    if ROI is not None:
-        sensor_net = layers[0].sensor
-        kw = dict(marker='.',  # symbol
-                ms=3,  # marker size
-                markeredgewidth=1,
-                ls='')
+        if ROI is not None:
+            sensor_net = layers[0].sensor
+            kw = dict(marker='.',  # symbol
+                    ms=3,  # marker size
+                    markeredgewidth=1,
+                    ls='')
 
-        if ROIcolor is not True:
-            kw['color'] = ROIcolor
+            if ROIcolor is not True:
+                kw['color'] = ROIcolor
 
-        _plt_sensors._plt_map2d(ax, sensor_net, proj=proj, ROI=ROI, kwargs=kw)
-
-
-    ax.set_xlim(-im_frame, 1 + im_frame)
-    ax.set_ylim(-im_frame, 1 + im_frame)
-
-    if isinstance(xlabel, str):
-        ax.set_xlabel(xlabel)
-
-    if isinstance(title, str):
-        handles['title'] = ax.set_title(title)
-
-    return handles
+            _plt_map2d(ax, sensor_net, proj=proj, ROI=ROI, kwargs=kw)
 
 
+        ax.set_xlim(-im_frame, 1 + im_frame)
+        ax.set_ylim(-im_frame, 1 + im_frame)
 
+        if isinstance(xlabel, str):
+            ax.set_xlabel(xlabel)
 
+        if isinstance(title, str):
+            self.title = ax.set_title(title)
+        else:
+            self.title = None
 
-# MARK: XBYX plots (ANOVA results plots)
 
 
 class _Window_Topo:

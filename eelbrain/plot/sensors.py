@@ -12,6 +12,8 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+from ..vessels.data import datalist
+
 try:
     import wx
     _ID_label_Ids = wx.NewId()
@@ -66,63 +68,73 @@ def _ax_map2d(ax, sensor_net, proj='default', extent=1,
 
 
 
-def _plt_map2d(ax, sensor_net, proj='default', extent=1, ROI=None,
-               kwargs=dict(
-                           marker='.',  # symbol
-                           color='k',  # mpl plot kwargs ...
-                           ms=1,  # marker size
-                           markeredgewidth=.5,
-                           ls='',
-                           ),
-               ):
-    locs = sensor_net.getLocs2d(proj=proj, extent=extent)
-    if ROI is not None:
-        locs = locs[ROI]
+class _plt_map2d:
+    def __init__(self, ax, sensors, proj='default', extent=1, ROI=None,
+                 kwargs=dict(
+                             marker='.',  # symbol
+                             color='k',  # mpl plot kwargs ...
+                             ms=1,  # marker size
+                             markeredgewidth=.5,
+                             ls='',
+                             ),
+                 ):
+        self.ax = ax
+        self.sensors = sensors
+        locs = sensors.getLocs2d(proj=proj, extent=extent)
+        self.ROI = ROI
+        if ROI is not None:
+            locs = locs[ROI]
+        self.locs = locs
 
-    if 'color' in kwargs:
-        h = ax.plot(locs[:, 0], locs[:, 1], **kwargs)
-    else:
-        h = []
-        colors = mpl.rcParams['axes.color_cycle']
-        nc = len(colors)
-        for i in xrange(len(locs)):
-            kwargs['color'] = kwargs['mec'] = colors[i % nc]
-            hi = ax.plot(locs[i, 0], locs[i, 1], **kwargs)
-            h.append(hi)
-    return h
+        self.markers = []
+        self.labels = []
 
+        if 'color' in kwargs:
+            h = ax.plot(locs[:, 0], locs[:, 1], **kwargs)
+            self.markers.append(h)
+        else:
+            colors = mpl.rcParams['axes.color_cycle']
+            nc = len(colors)
+            for i in xrange(len(locs)):
+                kwargs['color'] = kwargs['mec'] = colors[i % nc]
+                h = ax.plot(locs[i, 0], locs[i, 1], **kwargs)
+                self.markers.append(h)
 
+    def show_labels(self, text='id',  # 'id', 'name'
+                    xpos=0,  # horizontal distance from marker
+                    ypos=.01,  # vertical distance from marker
+                    kwargs=dict(# mpl text kwargs ...
+                                color='k',
+                                fontsize=8,
+                                horizontalalignment='center',
+                                verticalalignment='bottom',
+                                ),
+                    ):
+        # remove existing labels
+        while self.labels:
+            h = self.labels.pop()
+            h.remove()
 
-def _plt_map2d_labels(ax, sensor_net, proj='default',
-                      text='id',  # 'id', 'name'
-                      xpos=0,  # horizontal distance from marker
-                      ypos=.01,  # vertical distance from marker
-                      kwargs=dict(# mpl text kwargs ...
-                                  color='k',
-                                  fontsize=8,
-                                  horizontalalignment='center',
-                                  verticalalignment='bottom',
-                                  ),
-                      ):
-    if text == 'id':
-        labels = map(str, xrange(len(sensor_net)))
-    elif text == 'name':
-        labels = sensor_net.names
-    else:
-        err = "text has to be 'id' or 'name', can't be %r" % text
-        raise NotImplementedError(err)
+        if not text:
+            return
 
-    locs = sensor_net.getLocs2d(proj=proj)
+        sensors = self.sensors
+        if text == 'id':
+            labels = map(str, xrange(len(sensors)))
+        elif text == 'name':
+            labels = sensors.names
+        else:
+            err = "text has to be 'id' or 'name', can't be %r" % text
+            raise NotImplementedError(err)
 
-    handles = []
-    for i in xrange(len(labels)):
-        x = locs[i, 0] + xpos
-        y = locs[i, 1] + ypos
-        lbl = labels[i]
-        h = ax.text(x, y, lbl, **kwargs)
-        handles.append(h)
+        if self.ROI is not None:
+            labels = datalist(labels)[self.ROI]
 
-    return handles
+        locs = self.locs + [[xpos, ypos]]
+        for loc, txt in zip(locs, labels):
+            x , y = loc
+            h = self.ax.text(x, y, txt, **kwargs)
+            self.labels.append(h)
 
 
 
@@ -394,9 +406,7 @@ class map2d(_base.eelfigure):
         if ROI is not None:
             self.plot_ROI(ROI)
 
-        self._label_h = None
-        if labels:
-            self.plot_labels(labels=labels)
+        self._labels = self.plot_labels(labels=labels)
 
         self._show()
 
@@ -430,16 +440,7 @@ class map2d(_base.eelfigure):
             sensor names
 
         """
-        if self._label_h:
-            for h in self._label_h:
-                h.remove()
-
-        if labels:
-            h = _plt_map2d_labels(self.axes, self._sensor_net, proj=self._proj,
-                                  text=labels)
-        else:
-            h = None
-        self._label_h = h
+        self._labels.set_labels(labels)
         self.canvas.draw()
 
     def plot_ROI(self, ROI, kwargs=dict(marker='o',  # symbol
