@@ -2506,6 +2506,38 @@ class dataset(collections.OrderedDict):
 
         return ds
 
+    def update(self, ds, replace=False, info=True):
+        """Update the dtaset with all variables in ds.
+
+        If a key is present in both the dataset and ds, and the corresponding
+        variables are not equal on all cases, a ValueError is raised.
+
+        Parameters
+        ----------
+        ds : dict-like
+            A dictionary like object whose keys are strings and whose values
+            are data-objects.
+        replace : bool
+            If a variable in ds is already present, replace it. If False,
+            duplicates raise a ValueError (unless they are equivalent).
+        info : bool
+            Also update the info dictionary.
+        """
+        if not replace:
+            unequal = []
+            for key in set(self).intersection(ds):
+                if not np.all(self[key] == ds[key]):
+                    unequal.append(key)
+            if unequal:
+                err = ("The following variables are present twice but are not "
+                       "equal: %s" % unequal)
+                raise ValueError(err)
+
+        super(dataset, self).update(ds)
+
+        if info:
+            self.info.update(ds.info)
+
 
 
 class interaction(_effect_):
