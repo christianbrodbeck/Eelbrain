@@ -169,7 +169,6 @@ def events(raw=None, merge= -1, proj=False, name=None,
          - *eventID*: the event value.
         The dataset's info dictionary contains the following values:
          - *raw*: the mne Raw object.
-         - *samplingrate*: the samplingrate of the raw file.
 
     """
     if raw is None or isinstance(raw, basestring):
@@ -189,9 +188,7 @@ def events(raw=None, merge= -1, proj=False, name=None,
 
     i_start = var(evts[:, 0], name='i_start')
     eventID = var(evts[:, 2], name='eventID')
-    info = {'raw': raw,
-            'samplingrate': raw.info['sfreq'],
-            'info': raw.info}
+    info = {'raw': raw}
     return dataset(eventID, i_start, name=name, info=info)
 
 

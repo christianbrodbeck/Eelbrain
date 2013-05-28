@@ -54,7 +54,6 @@ def events(vhdr_path=None):
     ds['channel'] = var(np.array(m[:, 6], dtype=int))
 
     ds.info['hdr'] = hdr
-    ds.info['samplingrate'] = hdr.samplingrate
     return ds
 
 
