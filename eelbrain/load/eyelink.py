@@ -14,7 +14,7 @@ import numpy as np
 
 from .. import ui
 from ..utils.subp import get_bin
-from ..vessels.data import dataset, datalist, var, NUTS
+from ..vessels.data import dataset, datalist, var
 
 __all__ = ['Edf', 'read_edf', 'read_edf_events', 'read_edf_samples']
 
