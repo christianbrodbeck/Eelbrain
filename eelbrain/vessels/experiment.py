@@ -869,10 +869,11 @@ class mne_experiment(object):
         -----
         Subclass this method to specify events.
         """
-        raw = ds.info['raw']
-        sfreq = raw.info['sfreq']
-        ds['T'] = ds['i_start'] / sfreq
-        ds['SOA'] = var(np.ediff1d(ds['T'].x, 0))
+        if 'raw' in ds.info:
+            raw = ds.info['raw']
+            sfreq = raw.info['sfreq']
+            ds['T'] = ds['i_start'] / sfreq
+            ds['SOA'] = var(np.ediff1d(ds['T'].x, 0))
         return ds
 
     def load_edf(self, **kwargs):
