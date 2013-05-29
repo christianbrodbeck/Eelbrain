@@ -1294,10 +1294,22 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def OnOpenMneGui(self, event):
         Id = event.GetId()
+        target = 'g'
+        if target in self.global_namespace:
+            i = 0
+            name = 'g%i'
+            while name % i in self.global_namespace:
+                i += 1
+            target = name % i
+
         import mne
+        if (('mne' not in self.global_namespace) or
+            (self.global_namespace['mne'] is not mne)):
+            self.shell.run('import mne')
+
         cmd = self.mne_cmds[Id]
-        func = getattr(mne.gui, cmd)
-        func()
+        cmd = "%s = mne.gui.%s()" % (target, cmd)
+        self.shell.run(cmd)
 
     def OnOpenWindowMenu(self, event):
         "Updates open windows to the menu"
