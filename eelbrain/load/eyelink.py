@@ -122,7 +122,7 @@ class Edf(object):
     def __repr__(self):
         return "Edf(%r)" % self.path
 
-    def assert_Id_match(self, ds=None, Id='eventId'):
+    def assert_Id_match(self, ds=None, Id='eventID'):
         """
         Make sure the Edf and another event list describe the same events.
 
