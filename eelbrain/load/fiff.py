@@ -129,8 +129,8 @@ def Raw(path=None, proj=False, **kwargs):
     return raw
 
 
-def events(raw=None, merge= -1, proj=False, name=None,
-           stim_channel=None):
+def events(raw=None, merge=-1, proj=False, name=None,
+           bads=None, stim_channel=None):
     """
     Read events from a raw fiff file.
 
@@ -154,6 +154,9 @@ def events(raw=None, merge= -1, proj=False, name=None,
         If multiple files match the pattern, a ValueError will be raised.
     name : str | None
         A name for the dataset. If ``None``, the raw filename will be used.
+    bads : None | list
+        Specify additional bad channels in the raw data file (these are added
+        to the ones that are already defined in the raw file).
     stim_channel : None | string | list of string
         Name of the stim channel or all the stim channels
         affected by the trigger. If None, the config variables
@@ -174,6 +177,9 @@ def events(raw=None, merge= -1, proj=False, name=None,
     if raw is None or isinstance(raw, basestring):
         raw = Raw(raw, proj=proj)
 
+    if bads is not None:
+        raw.info['bads'].extend(bads)
+
     if name is None:
         raw_file = raw.info['filename']
         name = os.path.basename(raw_file)
@@ -192,7 +198,7 @@ def events(raw=None, merge= -1, proj=False, name=None,
     return dataset(eventID, i_start, name=name, info=info)
 
 
-def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
+def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
                decim=1, mult=1, unit='T', proj=True,
                data='mag', reject=None,
                raw=None, add=True,
@@ -332,7 +338,7 @@ def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
 
 
 def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None,
-             tstart= -0.1, tstop=0.6, baseline=(None, 0)):
+             tstart=-0.1, tstop=0.6, baseline=(None, 0)):
     """
     adds data from one label as
 
