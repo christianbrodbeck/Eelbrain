@@ -559,6 +559,7 @@ class UTS(Dimension):
         self.times = np.arange(tmin, tmin + tstep * nsamples, tstep)
         self.tmin = tmin
         self.tstep = tstep
+        self.tmax = self.times[-1]
 
     def __repr__(self):
         return "UTS(%s, %s, %s)" % (self.tmin, self.tstep, self.nsamples)

@@ -5,4 +5,6 @@ CANVAS_PANEL_OVERVIEW = wx.NewId()
 
 PCA_REMOVE = wx.NewId()
 
+SAVE_REJECTION = wx.NewId()
+
 THRESHOLD = wx.NewId()

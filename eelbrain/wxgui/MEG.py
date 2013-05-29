@@ -7,18 +7,20 @@ Created on Feb 17, 2012
 
 import logging
 import os
+import time
 
 import numpy as np
 import wx
 
-from eelbrain import plot
-from eelbrain.vessels import data as _data
-from eelbrain.vessels import process
 
 import ID
-from .. import ui
+from .. import plot
 from ..plot._base import eelfigure
+from ..plot.utsnd import _ax_bfly_epoch
 from ..plot.nuts import _plt_bin_nuts
+from .. import load, save, ui
+from ..vessels.data import dataset, var
+from ..vessels import process
 from ..wxutils import mpl_canvas, Icon
 
 
@@ -32,12 +34,14 @@ class SelectEpochs(eelfigure):
     the option to interactively manipulate a boolean list (i.e., select cases).
 
     LMB on any butterfly plot:
-        (de-)select this case
-
+        (de-)select this case.
+    't' on any butterfly plot:
+        Open a topomap for the current time point.
     """
-    def __init__(self, ds, data='MEG', target='accept', blink='blink',
-                 nplots=(6, 6), plotsize=(3, 1.5),
-                 mean=True, topo=True, ylim=None, fill=True, aa=False, dpi=50):
+    def __init__(self, ds, data='MEG', target='accept', blink=True,
+                 path=None,
+                 nplots=(6, 6), plotsize=(3, 1.5), fill=True, ROI=None,
+                 mean=True, topo=True, ylim=None, aa=False, dpi=50):
         """
         Plots all cases in the collection segment and allows visual selection
         of cases. The selection can be retrieved through the get_selection
@@ -47,17 +51,37 @@ class SelectEpochs(eelfigure):
         ----------
         ds : dataset
             dataset on which to perform the selection.
+        data : str | ndvar
+            Epoch data as case by sensor by time ndvar (or its name in ds).
+        target : str | var
+            Boolean variable indicating for each epoch whether it is accepted
+            (True) or rejected (False). If a str with no corresponding variable
+            in ds, a new variable is created.
+        blink : bool | str | blink epochs (see load.eyelink)
+            Overlay eye tracker blink data on the epoch plots. If
+            True and ds contains eyetracker information ('t_edf' variable and
+            .info['edf'], as added by ``load.eyelink.events(path, ds=ds)``),
+            the blink epochs are extracted automatically. Can also be str (name
+            in dataset) or blink epochs directly.
+        path : None | str
+            Path to the rejection file. If the file already exists, its values
+            are read and applied immediately. If the file does not exist, this
+            will be the default path for saving the file (valid extensions are
+            .txt and .pickled).
         nplots : 1 | 2 | (i, j)
             Number of plots (including topo plots and mean).
+        fill : bool
+            Only show the range in the butterfly plots, instead of all traces.
+            This is faster for data with many channels.
+        ROI : None | index for sensor dim
+            Sensors to plot as individual traces over the range (ignored if
+            range==False).
         mean : bool
             Plot the page mean on each page.
         topo : bool
             Show a dynamically updated topographic plot at the bottom right.
         ylim : scalar
             y-limit of the butterfly plots.
-        fill : bool
-            Only show extrema in the butterfly plots, instead of all traces.
-            This is faster for data with many channels.
         aa : bool
             Antialiasing (matplolibt parameter).
 
@@ -78,6 +102,11 @@ class SelectEpochs(eelfigure):
 
         if isinstance(blink, basestring):
             blink = ds.get(blink, None)
+        elif (blink is True) and ('edf' in ds.info):
+            tmin = data.time.tmin
+            tmax = data.time.tmax
+            _, blink = load.eyelink.artifact_epochs(ds, tmin=tmin, tmax=tmax,
+                                                    esacc=False)
         self._blink = blink
 
         if np.prod(nplots) == 1:
@@ -90,15 +119,20 @@ class SelectEpochs(eelfigure):
                 nplots = (1, 2)
 
         if isinstance(target, basestring):
-            try:
+            self._target_name = target
+            if target in ds:
                 target = ds[target]
-            except KeyError:
+            else:
                 x = np.ones(ds.n_cases, dtype=bool)
-                target = _data.var(x, name=target)
+                target = var(x, name=target)
                 ds.add(target)
+        else:
+            self._target_name = target.name
         self._target = target
         self._plot_mean = mean
         self._plot_topo = topo
+        self._topo_fig = None
+        self._path = path
 
     # prepare segments
         self._nplots = nplots
@@ -123,18 +157,22 @@ class SelectEpochs(eelfigure):
                                     hspace=.5)
         # connect canvas
         self.canvas.mpl_connect('button_press_event', self._on_click)
+        self.canvas.mpl_connect('key_release_event', self._on_key)
         if self._is_wx:
             self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
 
     # compile plot kwargs:
-        self._bfly_kwargs = {'extrema': fill}
+        self._bfly_kwargs = {'plot_range': fill, 'plot_traces': ROI}
         if ylim is None:
             ylim = data.properties.get('ylim', None)
         if ylim:
             self._bfly_kwargs['ylim'] = ylim
 
     # finalize
-        self._dataset = ds
+        self._ds = ds
+        if path and os.path.exists(path):
+            self._load_selection(path)
+
         self.show_page(0)
         self._frame.store_canvas()
         self._show()
@@ -170,44 +208,67 @@ class SelectEpochs(eelfigure):
         tb.AddControl(btn)
         btn.Bind(wx.EVT_BUTTON, self._OnThreshold)
 
+        # save rejection
+        btn = wx.Button(tb, ID.SAVE_REJECTION, "Save")
+        btn.SetHelpText("Save the epoch selection to a file.")
+        tb.AddControl(btn)
+        btn.Bind(wx.EVT_BUTTON, self._OnSaveRejection)
+
     def _get_page_mean_seg(self):
         seg_IDs = self._segs_by_page[self._current_page_i]
-        index = np.zeros(self._dataset.n_cases, dtype=bool)
+        index = np.zeros(self._ds.n_cases, dtype=bool)
         index[seg_IDs] = True
         index *= self._target
         mseg = self._data[index].summary()
         return mseg
 
+    def _get_statusbar_text(self, event):
+        "called by parent class to get figure-specific status bar text"
+        ax = event.inaxes
+        if ax and (ax.ID > -2):  # topomap ID is -2
+            t = event.xdata
+            tseg = self._get_topo_seg(ax, t)
+            if ax.ID >= 0:  # single trial plot
+                txt = 'Segment %i,   ' % ax.segID + '%s'
+            elif  ax.ID == -1:  # mean plot
+                txt = "Page average,   %s"
+            # update internal topomap plot
+            plot.topo._ax_topomap(self._topo_ax, [tseg])
+            self._frame.redraw(axes=[self._topo_ax])
+            # update external topomap plot
+            if self._topo_fig:
+                pass
+
+            return txt
+        else:
+            return '%s'
+
+    def _get_topo_seg(self, ax, t):
+        name = '%%s, %.3f s' % t
+        ax_id = ax.ID
+        if ax_id == -1:
+            tseg = self._mean_seg.subdata(time=t, name=name % 'Page Average')
+        elif ax_id >= 0:
+            seg = self._case_segs[ax_id]
+            tseg = seg.subdata(time=t, name=name % 'Segment %i' % ax.segID)
+        else:
+            raise IndexError("ax_id needs to be >= -1, not %i" % ax_id)
+
+        self._tseg = tseg
+        return tseg
+
     def _update_mean(self):
         mseg = self._get_page_mean_seg()
-        data = mseg.get_data(('time', 'sensor'))
-        T = mseg.time
-        T_len = len(T)
-        Ylen = T_len * 2 + 1
-        Y = np.empty((Ylen, 2))
-        # data
-        Y[:T_len, 1] = data.min(1)
-        Y[2 * T_len:T_len:-1, 1] = data.max(1)
-        # T
-        Y[:T_len, 0] = T
-        Y[2 * T_len:T_len:-1, 0] = T
-        # border regions
-        Y[T_len, :] = Y[T_len + 1, :]
-        self._mean_handle[0].set_paths([Y])
-
-        # update figure
+        self._mean_handle.update_data(mseg)
         self._frame.redraw(axes=[self._mean_ax])
 
     def set_ax_state(self, axID, state):
         ax = self._case_axes[axID]
         h = self._case_handles[axID]
-        if state:
-            h.set_facecolors('k')
-        else:
-            h.set_facecolors('r')
+        h.set_state(state)
         ax._epoch_state = state
 
-        self._frame.redraw(artists=[h])
+        self._frame.redraw(artists=[h.ax])
         self._update_mean()
 
     def invert_selection(self, axID):
@@ -221,6 +282,57 @@ class SelectEpochs(eelfigure):
         # update plot
         self.set_ax_state(axID, state)
 
+    def load_selection(self, path):
+        self._load_selection(path)
+        self._Refresh(None)
+
+    def _load_selection(self, path):
+        _, ext = os.path.splitext(path)
+        if ext == '.pickled':
+            ds = load.unpickle(path)
+            if np.all(ds['eventID'] == self._ds['eventID']):
+                self._target[:] = ds['accept']
+            else:
+                err = ("Event IDs don't match")
+                raise ValueError(err)
+        elif ext == '.txt':
+            self._target[:] = load.txt.var(path)
+        else:
+            raise ValueError("Unknown file extension for rejections: %r" % ext)
+
+    def open_topomap(self):
+        if self._topo_fig:
+            pass
+        else:
+            fig = plot.topo.topomap(self._tseg, sensors='name')
+            self._topo_fig = fig
+
+    def save_rejection(self, path):
+        """Save the rejection list as a file
+
+        path : str
+            The extension def
+
+        """
+        # find dest path
+        root, ext = os.path.splitext(path)
+        if ext == '':
+            ext = '.pickled'
+        path = root + ext
+
+        # create dataset to save
+        accept = self._target
+        if accept.name != 'accept':
+            accept = accept.copy('accept')
+        ds = dataset(self._ds['eventID'], accept)
+
+        if ext == '.pickled':
+            save.pickle(ds, path)
+        elif ext == '.txt':
+            ds.export(path, fmt='%s')
+        else:
+            raise ValueError("Unsupported extension: %r" % ext)
+
     def set_ylim(self, y):
         for ax in self._case_axes:
             ax.set_ylim(-y, y)
@@ -230,6 +342,7 @@ class SelectEpochs(eelfigure):
 
     def show_page(self, page):
         "Dislay a specific page (start counting with 0)"
+        t0 = time.time()
         self._current_page_i = page
         self._page_choice.Select(page)
 
@@ -244,16 +357,11 @@ class SelectEpochs(eelfigure):
         for i, ID in enumerate(seg_IDs):
             case = self._data[ID]
             state = self._target[ID]
-            if state:
-                color = 'k'
-            else:
-                color = 'r'
             ax = self.figure.add_subplot(nx, ny, i + 1, xticks=[0], yticks=[])  # , 'axis_off')
             ax._epoch_state = state
 #            ax.set_axis_off()
-            h = plot.utsnd._ax_butterfly(ax, [case], color=color, antialiased=False,
-                                         title=False, xlabel=None, ylabel=None,
-                                         **self._bfly_kwargs)[0]
+            h = _ax_bfly_epoch(ax, case, xlabel=None, ylabel=None, state=state,
+                               **self._bfly_kwargs)
             if self._blink is not None:
                 _plt_bin_nuts(ax, self._blink[ID])
 
@@ -270,7 +378,7 @@ class SelectEpochs(eelfigure):
             ax.ID = -1
 
             mseg = self._mean_seg = self._get_page_mean_seg()
-            self._mean_handle = plot.utsnd._ax_butterfly(ax, [mseg], color='k', **self._bfly_kwargs)
+            self._mean_handle = _ax_bfly_epoch(ax, mseg, **self._bfly_kwargs)
 
         # topomap
         if self._plot_topo:
@@ -279,6 +387,8 @@ class SelectEpochs(eelfigure):
             ax.set_axis_off()
 
         self.canvas.draw()
+        dt = time.time() - t0
+        logging.debug('Page draw took %.1f seconds.', dt)
 
     def _OnBackward(self, event):
         "turns the page backward"
@@ -291,8 +401,21 @@ class SelectEpochs(eelfigure):
         "called by mouse clicks"
         logging.debug('click: ')
         ax = event.inaxes
-        if ax and ax.ID >= 0:
-            self.invert_selection(ax.ID)
+        if ax:
+            if ax.ID >= 0:
+                self.invert_selection(ax.ID)
+            elif ax.ID == -2:
+                self.open_topomap()
+
+    def _on_key(self, event):
+        logging.debug('\n'.join(map(str, (event, dir(event)))))
+        ax = event.inaxes
+        ax_id = getattr(ax, 'ID', None)
+        if (event.key == 't'):
+            if (ax_id < 0) and (ax_id != -2):
+                return
+            tseg = self._get_topo_seg(ax, t=event.xdata)
+            plot.topo.topomap(tseg, sensors='name')
 
     def _OnForward(self, event):
         "turns the page forward"
@@ -305,30 +428,24 @@ class SelectEpochs(eelfigure):
         sb = self.GetStatusBar()
         sb.SetStatusText("", 0)
 
-    def _get_statusbar_text(self, event):
-        "called by parent class to get figure-specific status bar text"
-        ax = event.inaxes
-        if ax and (ax.ID > -2):  # topomap ID is -2
-            t = event.xdata
-            if ax.ID >= 0:  # single trial plot
-                seg = self._case_segs[ax.ID]
-                tseg = seg.subdata(time=t)
-                txt = 'Segment %i,   ' % ax.segID + '%s'
-            elif  ax.ID == -1:  # mean plot
-                tseg = self._mean_seg.subdata(time=t)
-                txt = "Page average,   %s"
-            # update topomap plot
-            plot.topo._ax_topomap(self._topo_ax, [tseg])
-            self._frame.redraw(axes=[self._topo_ax])
-            return txt
-        else:
-            return '%s'
-
-
     def _OnPageChoice(self, event):
         "called by the page Choice control"
         page = self._page_choice.GetSelection()
         self.show_page(page)
+
+    def _OnSaveRejection(self, event):
+        msg = ("Save the epoch selection to a file.")
+        if self._path:
+            default_dir, default_name = os.path.split(self._path)
+        else:
+            default_dir = ''
+            default_name = ''
+        wildcard = "Pickle (*.pickled)|*.pickled|Text (*.txt)|*.txt"
+        dlg = wx.FileDialog(self._frame, msg, default_dir, default_name,
+                            wildcard, wx.FD_SAVE)
+        if dlg.ShowModal() == wx.ID_OK:
+            path = dlg.GetPath()
+            self.save_rejection(path)
 
     def _Refresh(self, event):
         "updates the states of the segments on the current page"
@@ -382,7 +499,7 @@ class SelectEpochs(eelfigure):
             else:
                 return
 
-        process.mark_by_threshold(self._dataset, DV=self._data,
+        process.mark_by_threshold(self._ds, DV=self._data,
                                   threshold=threshold, above=above,
                                   below=below, target=self._target)
 

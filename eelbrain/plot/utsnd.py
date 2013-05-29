@@ -243,12 +243,12 @@ def _plt_uts(ax, epoch,
              plotLabel=False,
              **plot_kwargs):
     """
-    plots a uts plot for a single epoch
+    uts plot for a single epoch
 
-
-    Arguments
-    ---------
-
+    Parameters
+    ----------
+    sensors : None | True | numpy index
+        The sensors to plot (None or True -> all sensors).
     lp: dictionary (line-properties)
         any keyword-arguments for matplotlib plot
     sem: = None or float
@@ -419,38 +419,102 @@ class butterfly(_base.eelfigure):
 
 
 
+class _ax_bfly_epoch:
+    def __init__(self, ax, epoch, xlabel=True, ylabel=True, ylim=None,
+                 plot_range=True, plot_traces=False, state=True):
+        """Specific plot for showing a single sensor by time epoch
 
+        Parameters
+        ----------
+        epoch : ndvar
+            Sensor by time epoch.
+        """
+        self.ax = ax
+        self.epoch = epoch
+        self._traces = None
+        self._range = None
+        self._state_h = []
 
-def _ax_sensor(segments, sensor, labelVar=None, **kwargs):
-    """
-    NOT MAINTAINED
-    plots one sensor (index) for a list of segments
-    return plot
-    """
-    # make sure segment and sensors are iterable
-    if type(segments) != list:
-        segments = [segments]
-    if labelVar == None:
-        labelVar = segments[0].experiment.subjectVariable
-    print "ndim:", segments[0].ndim
-    if segments[0].hasStatistics:
-        return plotSensorStats(segments, sensor, **kwargs)
-    elif segments[0].ndim == 1:
-        plots = []
-        for s in segments:
-            try:
-                label = s[labelVar]
-            except:
-                label = "no name"
-            print "plotting segment", s
-            plots.append(plt.plot(s[:, sensor], label=label, **kwargs))
-        return plots
-    elif segments[0].ndim == 2:
-        raise NotImplementedError("ndim 2 not implemented")
+        self._tmin = epoch.time[0]
+        self._tmax = epoch.time[-1]
+        self._ylim = ylim or epoch.properties.get('ylim', None)
 
+        self.ax.x_fmt = "t = %.3f s"
 
+        # ax decoration
+        if xlabel is True:
+            xlabel = 'Time [s]'
+        if ylabel is True:
+            ylabel = epoch.properties.get('unit', None)
 
+        if xlabel not in [False, None]:
+            self.ax.set_xlabel(xlabel)
+        if ylabel not in [False, None]:
+            self.ax.set_ylabel(ylabel)
+            self.ax.yaxis.offsetText.set_va('top')
 
+        # create initial plots
+        if plot_range and (plot_traces is not True):
+            self.plot_range()
+        if plot_traces:
+            self.plot_traces(plot_traces)
 
+        self.set_state(state)
 
+    def plot_range(self, color='k', alpha=0.5):
+        "plot the range between sensors"
+        self.rm_range()
+        self._range = _plt_extrema(self.ax, self.epoch, color=color,
+                                   alpha=alpha, antialiased=False)
+        self.set_ax_lim()
 
+    def plot_traces(self, ROI=None, color='b'):
+        "Plot traces for individual sensors"
+        self.rm_traces()
+        self._traces = _plt_uts(self.ax, self.epoch, color=color, sensors=ROI,
+                                antialiased=False)
+        self.set_ax_lim()
+
+    def rm_range(self):
+        "Remove the range from the plot"
+        if self._range:
+            self._range.remove()
+        self._range = None
+
+    def rm_traces(self):
+        "Remove the traces from the plot"
+        while self._traces:
+            trace = self._traces.pop()
+            trace.remove()
+        self._traces = None
+
+    def set_ax_lim(self):
+        self.ax.set_xlim(self._tmin, self._tmax)
+        ylim = self._ylim
+        if ylim:
+            if np.isscalar(ylim):
+                self.ax.set_ylim(-ylim, ylim)
+            else:
+                y_min, y_max = ylim
+                self.ax.set_ylim(y_min, y_max)
+
+    def set_state(self, state):
+        "Set the state (True=accept / False=reject)"
+        if state:
+            while self._state_h:
+                h = self._state_h.pop()
+                h.remove()
+        else:
+            if not self._state_h:
+                h1 = self.ax.plot([0, 1], [0, 1], color='r', linewidth=1,
+                                  transform=self.ax.transAxes)
+                h2 = self.ax.plot([0, 1], [1, 0], color='r', linewidth=1,
+                                  transform=self.ax.transAxes)
+                self._state_h.extend(h1 + h2)
+
+    def update_data(self, epoch):
+        self.epoch = epoch
+        if self._range:
+            self.plot_range()
+        if self._traces:
+            self.plot_traces()
