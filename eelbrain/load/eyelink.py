@@ -1,7 +1,7 @@
 '''
-Created on Jun 9, 2012
+Tools for loading data form eyelink edf files.
 
-@author: christian
+
 '''
 import fnmatch
 import os
@@ -365,7 +365,7 @@ class Edf(object):
                   T=T, target=target)
 
 
-def events(fname, samples=False):
+def events(fname, samples=False, ds=None):
     """Read events from an edf file
 
     Parameters
@@ -373,12 +373,25 @@ def events(fname, samples=False):
     fname : str
         Filename.
     samples : bool
-        Read samples as well as events.
+        Read continuous eye position data as well as events. This is needed to
+        extract eye position data later.
+    ds : dataset
+        Existing dataset to which the edf-triggers should be added. If the
+        dataset contains a variable called 'eventID' whose content does not
+        match the edf triggers, a ValueError is raised. ds is always modified
+        in place, but returned for consistency.
     """
     edf = Edf(fname, samples=samples)
-    ds = dataset(info={'edf': edf})
+    if ds is None:
+        ds = dataset(info={'edf': edf})
+    else:
+        if 'eventID' in ds:
+            edf.assert_Id_match(ds)
+        else:
+            ds['eventID'] = var(edf.triggers['Id'])
+        ds.info['edf'] = edf
+
     ds['t_edf'] = var(edf.triggers['T'])
-    ds['eventID'] = var(edf.triggers['Id'])
     return ds
 
 
