@@ -251,6 +251,9 @@ class mne_experiment(object):
     # dictionary in the module level _temp dictionary, or a templates
     # dictionary
     _templates = 'v0'
+    # modify certain template entries from the outset (e.g. specify the initial
+    # subject name)
+    _defaults = {}
 
     def __init__(self, root=None, parse_subjects=True, subjects=[],
                  mri_subjects={}):
@@ -524,6 +527,7 @@ class mne_experiment(object):
             err = ("Templates mus be dictionary; got %s" % type(t))
             raise TypeError(err)
 
+        t.update(self._defaults)
         return t
 
     def __repr__(self):
