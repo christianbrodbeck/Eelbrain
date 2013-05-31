@@ -1756,7 +1756,10 @@ class ndvar(object):
         returns a slice containing all values for times .2 seconds to .6
         seconds.
 
+        The name of the new ndvar can be set with a ``name`` parameter. The
+        default is the name of the current ndvar.
         """
+        var_name = kwargs.pop('name', self.name)
         properties = self.properties.copy()
         dims = list(self.dims)
         index = [slice(None)] * len(dims)
@@ -1806,7 +1809,7 @@ class ndvar(object):
         # create subdata object
         x = self.x[index]
         dims = tuple(dim for dim in dims if dim is not None)
-        return ndvar(x, dims=dims, name=self.name, properties=properties)
+        return ndvar(x, dims=dims, name=var_name, properties=properties)
 
 
 
