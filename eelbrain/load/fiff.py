@@ -484,7 +484,7 @@ def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
 
 
 def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
-                 mult=1, unit='T', properties=None, sensors=None):
+                 mult=1, unit='T', properties=None, sensors=None, vmax=None):
     """
     Convert an mne.Epochs object to an ndvar.
 
@@ -522,14 +522,17 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
         The default (``None``) reads the sensor locations from the fiff file.
         If the fiff file contains incorrect sensor locations, a different
         Sensor can be supplied through this kwarg.
+    vmax : None | scalar
+        The default range for plotting (the default is 2e-12 T).
 
     """
+    vmax = vmax or 2e-12 * mult
     props = {'proj': 'z root',
              'unit': unit,
-             'ylim': 2e-12 * mult,
-             'summary_ylim': 3.5e-13 * mult,
-             'colorspace': _cs.get_MEG(2e-12 * mult),
-             'summary_colorspace': _cs.get_MEG(2e-13 * mult),
+             'ylim': vmax,
+             'summary_ylim': .1 * vmax,
+             'colorspace': _cs.get_MEG(vmax),
+             'summary_colorspace': _cs.get_MEG(.1 * vmax),
              'samplingrate': epochs.info['sfreq'],
              }
 

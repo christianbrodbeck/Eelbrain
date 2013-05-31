@@ -26,7 +26,7 @@ __hide__ = ['cs', 'test', 'utsnd']
 
 class topomap(_base.eelfigure):
     "Plot individual topogeraphies"
-    def __init__(self, epochs, sensors=True, proj='default',
+    def __init__(self, epochs, sensors=True, proj='default', vmax=None,
                  size=5, dpi=100, title="plot.topomap",
                  res=100, interpolation='nearest'):
         """
@@ -55,6 +55,7 @@ class topomap(_base.eelfigure):
                            interpolation=interpolation,
                            proj=proj,
                            sensors=sensors,
+                           vmax=max,
                            )
 
         self._subplots = []
@@ -123,9 +124,10 @@ class butterfly(_base.eelfigure):
     def __init__(self, epochs, size=2, bflywidth=3, dpi=90,
                  proj='default', res=100, interpolation='nearest',
                  title=True, xlabel=True, ylabel=True,
-                 color=True, sensors=True, ROI=None, ylim=None):
+                 color=True, sensors=True, ROI=None, vmax=None):
         """
-        **Plot atributes:**
+        Parameters
+        ----------
 
         ROI : list of indices
             plot a subset of sensors
@@ -143,6 +145,8 @@ class butterfly(_base.eelfigure):
             resolution of the topomap plots (res x res pixels)
         interpolation : 'nearest' | ...
             matplotlib imshow kwargs
+        vmax : None | scalar
+            Override the default plot limits.
 
         """
         frame_title = "plot.topo.butterfly: %r"
@@ -185,7 +189,8 @@ class butterfly(_base.eelfigure):
                             'sensors': sensors,
                             'ROI': ROI,
                             'ROIcolor': color,
-                            'title': False}
+                            'title': False,
+                            'vmax': vmax}
 
         t = 0
         self.topo_axes = []
@@ -217,7 +222,7 @@ class butterfly(_base.eelfigure):
 
             show_x_axis = (i == n_plots - 1)
 
-            utsnd._ax_butterfly(ax1, layers, sensors=ROI, ylim=ylim,
+            utsnd._ax_butterfly(ax1, layers, sensors=ROI, ylim=vmax,
                                 title=False, xlabel=show_x_axis, ylabel=ylabel,
                                 color=color)
 
@@ -303,28 +308,37 @@ class butterfly(_base.eelfigure):
         if self._realtime_topo and ax and hasattr(ax, 'ID'):
             self._draw_topo(event.xdata)
 
-    def set_ylim(self, *ylim):
+    def set_vmax(self, vmax):
         """
         Change the range of values displayed in butterfly-plots.
 
         """
-        if len(ylim) == 1:
-            ymin, ymax = -ylim[0], ylim[0]
-        elif len(ylim) == 2:
-            ymin, ymax = ylim
+        if np.isscalar(vmax):
+            ymin, ymax = -vmax, vmax
+        elif len(vmax) == 2:
+            ymin, ymax = vmax
         else:
-            raise ValueError("Wrong number of values for ylim (need 1 or 2)")
+            err = ("Invalid vmax parameter. Need scalar or tuple of length 2")
+            raise ValueError(err)
 
         for i, ax in enumerate(self.figure.axes):
             if i % 2 == 0:
                 ax.set_ylim(ymin, ymax)
+
+        self.topo_kwargs['vmax'] = ymax
         self.canvas.draw()
 
 
 def _plt_topomap(ax, epoch, proj='default', res=100,
                  im_frame=0.02,  # empty space around sensors in the im
-                 colorspace=None,
+                 colorspace=None, vmax=None,
                  **im_kwargs):
+    """
+    Parameters
+    ----------
+    vmax : scalar
+        Override the colorspace vmax.
+    """
     colorspace = _base.read_cs_arg(epoch, colorspace)
     handles = {}
 
@@ -338,7 +352,7 @@ def _plt_topomap(ax, epoch, proj='default', res=100,
 
     if colorspace.cmap:
         im_kwargs.update(map_kwargs)
-        im_kwargs.update(colorspace.get_imkwargs())
+        im_kwargs.update(colorspace.get_imkwargs(vmax=vmax))
         handles['im'] = ax.imshow(Ymap, **im_kwargs)
 
     # contours

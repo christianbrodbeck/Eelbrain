@@ -86,10 +86,21 @@ class Colorspace:
 
         return temp % ', '.join(args)
 
-    def get_imkwargs(self):
-        kwargs = {'vmin': self.vmin,
-                  'vmax': self.vmax,
-                  'cmap': self.cmap}
+    def get_imkwargs(self, vmax=None):
+        """
+        Parameters
+        ----------
+        vmax : None | scalar
+            Override the vmax and vmin values.
+        """
+        if vmax is None:
+            kwargs = {'vmin': self.vmin,
+                      'vmax': self.vmax,
+                      'cmap': self.cmap}
+        else:
+            kwargs = {'vmin':-vmax,
+                      'vmax': vmax,
+                      'cmap': self.cmap}
         return kwargs
 
     def get_contour_kwargs(self):
