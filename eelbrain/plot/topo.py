@@ -72,7 +72,26 @@ class topomap(_base.eelfigure):
             h = _ax_topomap(ax, layers, title=True, **topo_kwargs)
             self._subplots.append(h)
 
+        if isinstance(sensors, str):
+            self.show_labels(sensors)
         self._show()
+
+    def _fill_toolbar(self, tb):
+        import wx
+        tb.AddSeparator()
+
+        # sensor labels
+        lbl = wx.StaticText(tb, -1, "Labels:")
+        tb.AddControl(lbl)
+        choice = wx.Choice(tb, -1, choices=['None', 'Index', 'Name'])
+        tb.AddControl(choice)
+        self._SensorLabelChoice = choice
+        tb.Bind(wx.EVT_CHOICE, self._OnSensorLabelChoice)
+
+    def _OnSensorLabelChoice(self, event):
+        sel = event.GetSelection()
+        text = [None, 'id', 'name'][sel]
+        self.show_labels(text)
 
     def show_labels(self, text='id'):
         """Add/remove sensor labels
@@ -82,6 +101,10 @@ class topomap(_base.eelfigure):
         labels : None | 'id' | 'name'
             Kind of sensor labels to plot.
         """
+        if hasattr(self, '_SensorLabelChoice'):
+            sel = [None, 'id', 'name'].index(text)
+            self._SensorLabelChoice.SetSelection(sel)
+
         for p in self._subplots:
             p.sensors.show_labels(text)
         self.draw()
