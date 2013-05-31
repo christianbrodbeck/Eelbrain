@@ -35,11 +35,10 @@ from numpy import dot
 import scipy.stats
 from scipy.linalg import inv
 
-from eelbrain import fmtxt
-from eelbrain import ui
-from eelbrain.utils import LazyProperty
-from dimensions import find_time_point
-
+from .. import fmtxt
+from .. import ui
+from ..utils import LazyProperty
+from .dimensions import DimensionMismatchError, SourceSpace, UTS
 
 
 
@@ -1295,7 +1294,6 @@ class ndvar(object):
         """
         Parameters
         ----------
-
         x : array
             The data
         dims : tuple
@@ -1308,7 +1306,6 @@ class ndvar(object):
 
         Notes
         -----
-
         ``x`` and ``dims`` are stored without copying. A shallow
         copy of ``properties`` is stored. Make sure the relevant objects
         are not modified externally later.
@@ -1316,14 +1313,13 @@ class ndvar(object):
 
         Examples
         --------
-
         Importing 600 epochs of data for 80 time points:
 
-            >>> time = var('time', range(-.2, .6, .01))
-            >>> dims = ('case', time)
-            >>> data.shape
-            (600, 80)
-            >>> Y = ndvar(data, dims=dims)
+        >>> data.shape
+        (600, 80)
+        >>> time = UTS(-.2, .01, 80)
+        >>> dims = ('case', time)
+        >>> Y = ndvar(data, dims=dims)
 
         """
         # check data shape
@@ -1503,7 +1499,10 @@ class ndvar(object):
             index = int(index)
             x = self.x[index]
             dims = self.dims[1:]
-            name = '%s_%i' % (self.name, index)
+            if self.name:
+                name = '%s_%i' % (self.name, index)
+            else:
+                name = None
             return ndvar(x, dims=dims, name=name, properties=self.properties)
 
     def __len__(self):
@@ -1515,10 +1514,11 @@ class ndvar(object):
             dims = [(self._len, 'case')]
         else:
             dims = []
-        dims.extend([(len(dim), dim.name) for dim in self._truedims])
+        dims.extend([(len(dim), dim._dimrepr_()) for dim in self._truedims])
 
-        dims = ' X '.join('%i (%r)' % fmt for fmt in dims)
-        args = dict(name=self.name, dims=dims)
+        dims = ' X '.join('%i (%s)' % fmt for fmt in dims)
+        args = dict(dims=dims)
+        args['name'] = repr(self.name) if self.name else ''
         return rep % args
 
     def assert_dims(self, dims):
@@ -1532,7 +1532,6 @@ class ndvar(object):
 
         Parameters
         ----------
-
         X : categorial
             Categorial whose cells are used to compress the ndvar.
         func : function with axis argument
@@ -1590,9 +1589,12 @@ class ndvar(object):
         dims : sequence of str and None
             List of dimension names. The array that is returned will have axes
             in this order. None can be used to increase the insert a dimension
-            with size 1.
-
+            with size 1. Accessing a single dimension can be abbreviated by
+            providing a str.
         """
+        if isinstance(dims, str):
+            dims = (dims,)
+
         if set(dims).difference([None]) != set(self.dimnames):
             err = "Requested dimensions %r from %r" % (dims, self)
             raise DimensionMismatchError(err)
@@ -1618,18 +1620,20 @@ class ndvar(object):
         return x[index]
 
     def get_dim(self, name):
-        "Returns the dimension var named ``name``"
+        "Returns the Dimension object named ``name``"
         if self.has_dim(name):
             i = self._dim_2_ax[name]
-            return self.dims[i]
-        elif name == 'epoch':
-            return var(np.arange(len(self)), 'epoch')
+            dim = self.dims[i]
+            if isinstance(dim, str) and dim == 'case':
+                dim = var(np.arange(len(self)), 'case')
         else:
             msg = "%r has no dimension named %r" % (self, name)
             raise DimensionMismatchError(msg)
 
+        return dim
+
     def get_dims(self, names):
-        "Returns a tuple with the requested dimension vars"
+        "Returns a tuple with the requested Dimension objects"
         return tuple(self.get_dim(name) for name in names)
 
     def has_dim(self, name):
@@ -1683,14 +1687,14 @@ class ndvar(object):
         Examples
         --------
 
-        Assuming UTS is a normal time series. Get the average in a time
+        Assuming ``data`` is a normal time series. Get the average in a time
         window::
 
-            >>> Y = UTS.summary(time=(.1, .2))
+            >>> Y = data.summary(time=(.1, .2))
 
         Get the peak in a time window::
 
-            >>> Y = UTS.summary(time=(.1, .2), func=np.max)
+            >>> Y = data.summary(time=(.1, .2), func=np.max)
 
         Assuming MEG is an ndvar with dimensions time and sensor. Get the
         average across sensors 5, 6, and 8 in a time window::
@@ -1764,7 +1768,7 @@ class ndvar(object):
         dims = list(self.dims)
         index = [slice(None)] * len(dims)
 
-        for name, args in kwargs.iteritems():
+        for name, arg in kwargs.iteritems():
             try:
                 dimax = self._dim_2_ax[name]
                 dim = self.dims[dimax]
@@ -1773,38 +1777,16 @@ class ndvar(object):
                 raise DimensionMismatchError(err)
 
             if hasattr(dim, 'dimindex'):
-                args = dim.dimindex(args)
-
-            if np.isscalar(args):
-                if name == 'sensor':
-                    i, value = args, args
-                else:
-                    i, value = find_time_point(dim, args)
-                index[dimax] = i
-                dims[dimax] = None
-                properties[name] = value
-            elif isinstance(args, tuple) and len(args) == 2:
-                start, end = args
-                if start is None:
-                    i0 = None
-                else:
-                    i0, _ = find_time_point(dim, start)
-
-                if end is None:
-                    i1 = None
-                else:
-                    i1, _ = find_time_point(dim, end)
-
-                s = slice(i0, i1)
-                dims[dimax] = dim[s]
-                index[dimax] = s
+                idx = dim.dimindex(arg)
             else:
-                index[dimax] = args
-                if name == 'sensor':
-                    dims[dimax] = dim.get_subnet(args)
-                else:
-                    dims[dimax] = dim[args]
-                properties[name] = args
+                idx = arg
+
+            index[dimax] = idx
+            if np.isscalar(idx):
+                dims[dimax] = None
+                properties[name] = arg
+            else:
+                dims[dimax] = dim[idx]
 
         # create subdata object
         x = self.x[index]
@@ -3214,3 +3196,33 @@ class model(object):
         Xsinv = dot(inv(dot(XT, X)), XT)
         return Xsinv
 
+
+
+# ---ndvar functions---
+
+def resample(data, sfreq, npad=100, window='boxcar'):
+    """Resample an ndvar with 'time' dimension after properly filtering it
+
+    Parameters
+    ----------
+    data : ndvar
+        Ndvar which should be resampled.
+    sfreq : scalar
+        New sampling frequency.
+    npad : int
+        Number of samples to use at the beginning and end for padding.
+    window : string | tuple
+        See scipy.signal.resample for description.
+
+    Notes
+    -----
+    requires mne-python
+    """
+    import mne
+    axis = data.get_axis('time')
+    old_sfreq = 1.0 / data.time.tstep
+    x = mne.filter.resample(data.x, sfreq, old_sfreq, npad, axis, window)
+    tstep = 1. / sfreq
+    time = UTS(data.time.tmin, tstep, x.shape[axis])
+    dims = data.dims[:axis] + (time,) + data.dims[axis + 1:]
+    return ndvar(x, dims=dims, info=data.info, name=data.name)

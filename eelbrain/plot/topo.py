@@ -355,8 +355,8 @@ class _ax_topomap:
 
         # plot sensors
         if sensors:
-            sensor_net = layers[0].sensor
-            self.sensors = _plt_map2d(ax, sensor_net, proj=proj)
+            sensor_dim = layers[0].sensor
+            self.sensors = _plt_map2d(ax, sensor_dim, proj=proj)
             if isinstance(sensors, str):
                 text = sensors
             else:
@@ -364,7 +364,7 @@ class _ax_topomap:
             self.sensors.show_labels(text=text)
 
         if ROI is not None:
-            sensor_net = layers[0].sensor
+            sensor_dim = layers[0].sensor
             kw = dict(marker='.',  # symbol
                     ms=3,  # marker size
                     markeredgewidth=1,
@@ -373,7 +373,7 @@ class _ax_topomap:
             if ROIcolor is not True:
                 kw['color'] = ROIcolor
 
-            _plt_map2d(ax, sensor_net, proj=proj, ROI=ROI, kwargs=kw)
+            _plt_map2d(ax, sensor_dim, proj=proj, ROI=ROI, kwargs=kw)
 
 
         ax.set_xlim(-im_frame, 1 + im_frame)

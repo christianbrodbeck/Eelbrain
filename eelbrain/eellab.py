@@ -42,12 +42,14 @@ from .vessels.data import (factor,
                            var_from_dict,
                            var_from_apply,
                            ndvar,
+                           resample,
                            dataset,
                            combine,
                            align,
                            interaction,
                            )
 
+from .vessels.dimensions import (Sensor, SourceSpace, UTS)
 from .vessels.structure import celltable
 
 from .vessels import process, datasets

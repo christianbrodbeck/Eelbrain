@@ -86,6 +86,7 @@ from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri
 from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
                    DimensionMismatchError)
+from .dimensions import UTS
 
 
 __all__ = ['mne_experiment', 'LabelCache']
@@ -436,7 +437,7 @@ class mne_experiment(object):
             stc = case[src]
             x.append(stc.in_label(lbl).data.mean(0))
 
-        time = var(stc.times, name='time')
+        time = UTS(stc.tmin, stc.tstep, stc.shape[1])
         ds[key] = ndvar(np.array(x), dims=('case', time))
 
     def add_evoked_stc(self, ds, method='dSPM', ori='free', depth=0.8,
@@ -1425,7 +1426,7 @@ class mne_experiment(object):
             target path to save the plot
         """
         picks = mne.epochs.pick_types(fif_obj.info, exclude='bads')
-        sensor = load.fiff.sensor_net(fif_obj, picks=picks)
+        sensor = load.fiff.sensors(fif_obj, picks=picks)
 
         # plot PCA components
         PCA = []

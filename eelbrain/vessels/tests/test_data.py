@@ -95,7 +95,6 @@ def test_pickle_io():
     assert_dataset_equal(ds, ds2)
 
 
-
 def test_var():
     "Test var objects"
     base = factor('aabbcde')

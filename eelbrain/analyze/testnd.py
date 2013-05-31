@@ -590,20 +590,19 @@ class cluster_dist:
 
         # prepare cluster merging
         if close_time:
-            T = Y.get_dim('time')
-            dT = np.mean(np.diff(T.x))
-            self.close_time_structure = np.ones(round(close_time / dT))
+            time = Y.get_dim('time')
+            self.close_time_structure = np.ones(round(close_time / time.tstep))
         self.close_time = bool(close_time)
 
         # prepare morphology manipulation
         self.delim = (tstart is not None) or (tstop is not None)
         if self.delim:
-            T = Y.get_dim('time')
-            self.delim_idx = np.zeros(len(T), dtype=bool)
+            time = Y.get_dim('time')
+            self.delim_idx = np.zeros(len(time), dtype=bool)
             if tstart is not None:
-                self.delim_idx[T < tstart] = True
+                self.delim_idx[time.times < tstart] = True
             if tstop is not None:
-                self.delim_idx[T >= tstop] = True
+                self.delim_idx[time.times >= tstop] = True
 
         self.dist = np.zeros(N)
         self._i = 0

@@ -186,7 +186,7 @@ class stc:
                         time_label='%.3g s', min=min, max=max,
                         colorbar=colorbar)
         if v.has_dim('time'):
-            d_kwargs['time'] = v.time.x
+            d_kwargs['time'] = v.time.times
 
         if v.source.lh_n:
             self.lh = self._hemi(v, 'lh', b_kwargs, d_kwargs)

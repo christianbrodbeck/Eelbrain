@@ -2,7 +2,7 @@
 plot.sensors
 ============
 
-Plotting functions for sensor_net instances.
+Plotting functions for Sensor dimension objects.
 
 '''
 # author: Christian Brodbeck
@@ -39,15 +39,15 @@ kwargs_mono = dict(mc='k',
                    strlc='k')
 
 
-def _ax_map2d_fast(ax, sensor_net, proj='default',
+def _ax_map2d_fast(ax, sensors, proj='default',
                    m='x', mew=.5, mc='b', ms=3,):
-    locs = sensor_net.getLocs2d(proj=proj)
+    locs = sensors.getLocs2d(proj=proj)
     h = plt.plot(locs[:, 0], locs[:, 1], m, color=mc, ms=ms, markeredgewidth=mew)
 
     return h
 
 
-def _ax_map2d(ax, sensor_net, proj='default', extent=1,
+def _ax_map2d(ax, sensors, proj='default', extent=1,
               frame=.02,
               kwargs=dict(
                           marker='x',  # symbol
@@ -61,7 +61,7 @@ def _ax_map2d(ax, sensor_net, proj='default', extent=1,
     ax.set_frame_on(False)
     ax.set_axis_off()
 
-    h = _plt_map2d(ax, sensor_net, proj=proj, extent=extent, kwargs=kwargs)
+    h = _plt_map2d(ax, sensors, proj=proj, extent=extent, kwargs=kwargs)
 
     ax.set_xlim(-frame, 1 + frame)
     return h
@@ -157,7 +157,7 @@ class multi(_base.eelfigure):
         """
         Parameters
         ----------
-        sensors : sensor_net | ndvar
+        sensors : Sensor | ndvar
             The sensors to use, or an ndvar with a sensor dimension.
         ROI : list of int
             Initial ROI.
@@ -165,10 +165,10 @@ class multi(_base.eelfigure):
             Sensor projection for the fourth plot.
 
         """
-        title = "Sensor Net: %s" % getattr(sensors, 'name', '')
+        title = "Sensors: %s" % getattr(sensors, 'sysname', '')
         super(multi, self).__init__(title=title, figsize=(size, size), dpi=dpi)
 
-        # in case sensor_net parent is submitted
+        # in case Sensors parent is submitted
         if hasattr(sensors, 'sensors'):
             sensors = sensors.sensors
         elif hasattr(sensors, 'sensor'):
@@ -371,12 +371,12 @@ class map2d(_base.eelfigure):
     Plot a 2d Sensor Map.
 
     """
-    def __init__(self, sensor_net, labels='id', proj='default', ROI=None,
+    def __init__(self, sensors, labels='id', proj='default', ROI=None,
                  size=6, dpi=100, frame=.05, **kwargs):
         """
         Parameters
         ----------
-        sensor_net :
+        sensors : ndvar | Sensor
             sensor-net object or object containing sensor-net
         labels : 'id' | 'name'
             how the sensors should be labelled
@@ -385,24 +385,24 @@ class map2d(_base.eelfigure):
             locations in a plane
 
         """
-        title = "Sensor Net: %s" % getattr(sensor_net, 'name', '')
+        title = "Sensors: %s" % getattr(sensors, 'sysname', '')
         super(map2d, self).__init__(title=title, figsize=(size, size), dpi=dpi)
 
-        # in case sensor_net parent is submitted
-        if hasattr(sensor_net, 'sensors'):
-            sensor_net = sensor_net.sensors
-        elif hasattr(sensor_net, 'sensor'):
-            sensor_net = sensor_net.sensor
+        # in case Sensors parent is submitted
+        if hasattr(sensors, 'sensors'):
+            sensors = sensors.sensors
+        elif hasattr(sensors, 'sensor'):
+            sensors = sensors.sensor
 
         # store args
-        self._sensor_net = sensor_net
+        self._sensors = sensors
         self._proj = proj
         self._ROIs = []
 
         self.figure.set_facecolor('w')
         ax = self.figure.add_axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
         self.axes = ax
-        self._marker_h = _ax_map2d(ax, sensor_net, proj=proj, **kwargs)
+        self._marker_h = _ax_map2d(ax, sensors, proj=proj, **kwargs)
         if ROI is not None:
             self.plot_ROI(ROI)
 
@@ -460,7 +460,7 @@ class map2d(_base.eelfigure):
             Dict with kwargs for customizing the sensor plot (matplotlib plot
             kwargs).
         """
-        h = _plt_map2d(self.axes, self._sensor_net, proj=self._proj, ROI=ROI, kwargs=kwargs)
+        h = _plt_map2d(self.axes, self._sensors, proj=self._proj, ROI=ROI, kwargs=kwargs)
         self._ROIs.extend(h)
         self.canvas.draw()
 
@@ -473,11 +473,14 @@ class map2d(_base.eelfigure):
 
 
 
-def map3d(sensor_net, marker='c*', labels=False, head=0):
-    """3d plot of a sensor_net"""
-    if hasattr(sensor_net, 'sensors'):
-        sensor_net = sensor_net.sensors
-    locs = sensor_net.locs
+def map3d(sensors, marker='c*', labels=False, head=0):
+    """3d plot of a Sensors instance"""
+    if hasattr(sensors, 'sensors'):
+        sensors = sensors.sensors
+    elif hasattr(sensors, 'sensor'):
+        sensors = sensors.sensor
+
+    locs = sensors.locs
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(locs[:, 0], locs[:, 1], locs[:, 2])

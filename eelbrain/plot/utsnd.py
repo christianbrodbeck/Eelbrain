@@ -265,11 +265,11 @@ def _plt_uts(ax, epoch,
     NOT IMPLEMENTED epochs: submit mean epochs
 
     """
-    Y = epoch.get_data(('time', 'sensor'))
-    if sensors is not None:
-        Y = Y[:, sensors]
-    T = epoch.time  # .x[...,None]
+    if sensors not in [None, True]:
+        epoch = epoch.subdata(sensor=sensors)
 
+    Y = epoch.get_data(('time', 'sensor'))
+    T = epoch.time  # .x[...,None]
     handles = ax.plot(T, Y, label=epoch.name, **plot_kwargs)
 
     if plotLabel:

@@ -4,9 +4,13 @@ Defines some basic example datasets that are used in testing.
 import numpy as np
 
 from .data import dataset, factor, var, ndvar
+from .dimensions import Sensor, UTS
 
 
 def get_basic():
+    """
+    Create a sample dataset with 60 cases and random data.
+    """
     np.random.seed(0)
 
     ds = dataset()
@@ -21,12 +25,31 @@ def get_basic():
     ds['Y'] = var(Y)
 
     # add an ndvar
-    T = var(np.arange(-.2, .8, .01), name='time')
+    time = UTS(-.2, .01, 100)
 
-    y = np.random.normal(0, .5, (60, len(T)))
+    y = np.random.normal(0, .5, (60, len(time)))
     y[:15, 20:60] += np.hanning(40) * 1  # interaction
     y[:30, 50:80] += np.hanning(30) * 1  # main effect
-    ds['Ynd'] = ndvar(y, dims=('case', T))
+    ds['Ynd'] = ndvar(y, dims=('case', time))
+
+    # add sensor ndvar
+    locs = np.array([[-1.0, 0.0, 0.0],
+                     [ 0.0, 1.0, 0.0],
+                     [ 1.0, 0.0, 0.0],
+                     [ 0.0, -1.0, 0.0],
+                     [ 0.0, 0.0, 1.0]])
+    sensor = Sensor(locs, sysname='test_sens')
+
+    Y = np.random.normal(0, 1, (60, 5, len(time)))
+    for i in xrange(15):
+        phi = np.random.uniform(0, 2 * np.pi, 1)
+        x = np.sin(10 * 2 * np.pi * (time.times + phi))
+        x *= np.hanning(len(time))
+        Y[i, 0] += x
+
+    dims = ('case', sensor, time)
+    EEG = ndvar(Y, dims=dims, name='EEG')
+    ds.add(EEG)
 
     return ds
 

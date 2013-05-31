@@ -53,13 +53,12 @@ import mne.minimum_norm as _mn
 
 from eelbrain.vessels.data import var, ndvar, dataset
 import eelbrain.vessels.colorspaces as _cs
-import eelbrain.vessels.sensors as _sensors
-from eelbrain.vessels.dimensions import source_space
+from eelbrain.vessels.dimensions import Sensor, SourceSpace, UTS
 from eelbrain import ui
 
 __all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
            'mne_events', 'mne_Raw', 'mne_Epochs',  # get mne objects
-           'sensor_net',
+           'sensor_dim',
            'epochs_ndvar', 'evoked', 'evoked_ndvar', 'stc', 'stc_ndvar',
            'brainvision_events_to_fiff',
            ]
@@ -129,7 +128,7 @@ def Raw(path=None, proj=False, **kwargs):
     return raw
 
 
-def events(raw=None, merge=-1, proj=False, name=None,
+def events(raw=None, merge= -1, proj=False, name=None,
            bads=None, stim_channel=None):
     """
     Read events from a raw fiff file.
@@ -198,7 +197,7 @@ def events(raw=None, merge=-1, proj=False, name=None,
     return dataset(eventID, i_start, name=name, info=info)
 
 
-def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
+def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
                decim=1, mult=1, unit='T', proj=True,
                data='mag', reject=None,
                raw=None, add=True,
@@ -245,10 +244,10 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
         mne-python which implements the Epochs.model['index'] variable.
     raw : None | mne.fiff.Raw
         Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
-    sensors : None | eelbrain.vessels.sensors.sensor_net
+    sensors : None | Sensor
         The default (``None``) reads the sensor locations from the fiff file.
         If the fiff file contains incorrect sensor locations, a different
-        sensor_net can be supplied through this kwarg.
+        Sensor instance can be supplied through this kwarg.
     exclude : list of string | str
         Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
@@ -338,7 +337,7 @@ def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
 
 
 def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None,
-             tstart=-0.1, tstop=0.6, baseline=(None, 0)):
+             tstart= -0.1, tstop=0.6, baseline=(None, 0)):
     """
     adds data from one label as
 
@@ -392,7 +391,7 @@ def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None
 
     x = np.vstack(s.data.mean(0) for s in stcs)
     s = stcs[0]
-    dims = ('case', var(s.times, 'time'),)
+    dims = ('case', UTS(s.tmin, s.tstep, s.shape[1]))
     ds[name] = ndvar(x, dims, properties=None, info='')
 
     return stcs
@@ -463,9 +462,9 @@ def mne_Epochs(ds, i_start='i_start', raw=None,
     return epochs
 
 
-def sensor_net(fiff, picks=None, name='fiff-sensors'):
+def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
     """
-    returns a sensor_net object based on the info in a fiff file.
+    returns a Sensor object based on the info in a fiff object.
 
     """
     info = fiff.info
@@ -481,7 +480,7 @@ def sensor_net(fiff, picks=None, name='fiff-sensors'):
         ch_name = ch['ch_name']
         ch_locs.append((x, y, z))
         ch_names.append(ch_name)
-    return _sensors.sensor_net(ch_locs, ch_names, name=name)
+    return Sensor(ch_locs, ch_names, sysname=sysname)
 
 
 def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
@@ -519,10 +518,10 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
         mne-python which implements the Epochs.model['index'] variable.
     raw : None | mne.fiff.Raw
         Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
-    sensors : None | eelbrain.vessels.sensors.sensor_net
+    sensors : None | Sensor
         The default (``None``) reads the sensor locations from the fiff file.
         If the fiff file contains incorrect sensor locations, a different
-        sensor_net can be supplied through this kwarg.
+        Sensor can be supplied through this kwarg.
 
     """
     props = {'proj': 'z root',
@@ -543,11 +542,8 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
     if mult != 1:
         x *= mult
 
-    if sensors is None:
-        sensor = sensor_net(epochs, picks=picks)
-    else:
-        sensor = sensors
-    time = var(epochs.times, name='time')
+    sensor = sensors or sensor_dim(epochs, picks=picks)
+    time = UTS(epochs.tmin, 1. / epochs.info['sfreq'], len(epochs.times))
     return ndvar(x, ('case', sensor, time), properties=props, name=name)
 
 
@@ -585,7 +581,7 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
     picks = mne.fiff.pick_types(info, meg=meg, eeg=eeg, exclude=exclude)
 
     x = x[picks]
-    sensor = sensor_net(evoked, picks=picks)
+    sensor = sensor_dim(evoked, picks=picks)
     time = var(evoked.times, name='time')
     properties = {'colorspace': _cs.get_MEG(2e-13)}
     return ndvar(x, dims + (sensor, time), properties=properties, name=name)
@@ -630,7 +626,7 @@ def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
         x = np.array([s.data for s in stcs])
 
     time = var(stc.times, name='time')
-    ss = source_space(stc.vertno, subject=subject)
+    ss = SourceSpace(stc.vertno, subject=subject)
     if case:
         dims = ('case', ss, time)
     else:
