@@ -103,17 +103,6 @@ class LabelCache(dict):
             return label
 
 
-class Labels(object):
-    _acro = {}
-    def __init__(self, lbl_dir):
-        for lbl in os.listdir(lbl_dir):
-            name, ext = os.path.splitext(lbl)
-            if ext == '.label':
-                name = name.replace('-', '_')
-                path = os.path.join(lbl_dir, lbl)
-                setattr(self, name, path)
-
-
 def _etree_expand(node, state):
     for tk, tv in node.iteritems():
         if tk == '.':

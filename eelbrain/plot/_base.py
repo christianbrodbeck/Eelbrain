@@ -84,7 +84,7 @@ from eelbrain import vessels as _vsl
 from eelbrain.vessels import data as _dt
 
 try:
-    from eelbrain.wxutils.mpl_canvas import CanvasFrame
+    from ..wxutils.mpl_canvas import CanvasFrame
     backend = 'wx'
 except:
     backend = 'mpl'

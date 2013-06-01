@@ -1,20 +1,20 @@
 """
 Colorspace objects provide settings for plotting functions.
 
-Besides the :py:class:`Colorspace` class, this module also provides functions 
-to create some default colorspaces (the ``get_...`` functions), and the 
+Besides the :py:class:`Colorspace` class, this module also provides functions
+to create some default colorspaces (the ``get_...`` functions), and the
 colormaps `cm_polar` and `cm_xpolar`:
 
 cm_polar
     white at 0, red for positive and blue for negative values.
 cm_xpolar
-    like cm_polar, but extends the range by fading red and blue into black at 
+    like cm_polar, but extends the range by fading red and blue into black at
     extremes
 
 """
 
 import numpy as np
-#import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 
@@ -26,25 +26,25 @@ class Colorspace:
     - can plot a colorbar for the legend with toax(ax) method
     """
     def __init__(self, cmap=None, vmax=None, vmin=None,
-                 # contours: {v -> color} 
+                 # contours: {v -> color}
                  contours={}, ps={},
                  # decoration
                  sensor_color='k', sensor_marker='x', cbar_data='vrange',
                  unit=None, ticks=None, ticklabels=None):
         """
-        cmap: matplotlib colormap 
-            colormap for image plot, default is ``mpl.cm.jet``. See `mpl 
+        cmap: matplotlib colormap
+            colormap for image plot, default is ``mpl.cm.jet``. See `mpl
             colormap documentation <http://matplotlib.sourceforge.net/api/cm_api.html>`_
         contours : {value: color} dict
             contours are drawn as lines on top of the im
         ps : {value: p-value} dict
-            Mappings from parameter value to p-value. Used for labeling contours. 
+            Mappings from parameter value to p-value. Used for labeling contours.
         unit: str
             the unit of measurement (only used for labels)
         vmax, vmin:
-            max and min values that the colormap should be mapped to. If 
+            max and min values that the colormap should be mapped to. If
             vmin is not specified, it defaults to -vmax.
-        
+
         """
         # sort out arguments
         self.cmap = cmap
@@ -55,8 +55,8 @@ class Colorspace:
             self.vmin = vmin
 
         self.unit = unit
-        self.ticks = ticks # = r_[0.:length:samplingrate/testWindowFreq ]
-        self.ticklabels = ticklabels # = (ticks/samplingrate)-start
+        self.ticks = ticks  # = r_[0.:length:samplingrate/testWindowFreq ]
+        self.ticklabels = ticklabels  # = (ticks/samplingrate)-start
         self.sensor_color = sensor_color
         self.sensor_marker = sensor_marker
 
@@ -106,12 +106,12 @@ class Colorspace:
     def get_contour_kwargs(self):
         """
         Example::
-        
-            >>> map_kwargs = {'origin': "lower", 
+
+            >>> map_kwargs = {'origin': "lower",
                               'extent': (emin, emax, emin, emax)}
             >>> map_kwargs.update(colorspace.get_contour_kwargs())
             >>> ax.contour(im, **map_kwargs)
-        
+
         """
         levels = sorted(self.contours)
         d = {'levels': levels,
@@ -120,17 +120,17 @@ class Colorspace:
         d.update(self.contour_kwargs)
         return d
 
-    def toax(self, ax, data='auto', num=1001):   # NEW !!
+    def toax(self, ax, data='auto', num=1001):  # NEW !!
         "kwarg data: data to use for plot (array)"
         if data == 'auto':
             num_part = num / len(self.cbar_data)
             data = np.hstack([np.linspace(x1, x2, num=num_part) for x1, x2 in self.cbar_data])
         if data.ndim == 1:
             data = data[None, :]
-        #print data[:,::20]
-        #print self.vmin, self.vmax
+        # print data[:,::20]
+        # print self.vmin, self.vmax
         ax.imshow(data, cmap=self.cmap, aspect='auto', extent=(0, num, 0, 1), vmin=self.vmin, vmax=self.vmax)
-        #labelling
+        # labelling
         ax.set_xlabel(self.unit)
         if self.ticks == None:
             ticks = ax.xaxis.get_ticklocs()
@@ -163,10 +163,10 @@ def colorbars_toFig_row_(cspaces, fig, row, nRows=None):
     xmin = np.r_[0.:len(cspaces)] / len(cspaces) + .1 / len(cspaces)
     width = .8 / len(cspaces)
     for i, c in enumerate(cspaces):
-        #ax = fig.add_subplot(nRows, nCols, nCols*(row-1)+i+1)
+        # ax = fig.add_subplot(nRows, nCols, nCols*(row-1)+i+1)
         ax = fig.add_axes([xmin[i], ymin, width, height])
         c.toax(ax)
-        #c.toAxes_(ax)
+        # c.toAxes_(ax)
 
 
 
@@ -233,13 +233,13 @@ def phaseCmap():
     cmap.set_bad('w', alpha=0.)
     return cmap
 #def phaseColorspace():
-#    return Colorspace( phaseCmap(), 
+#    return Colorspace( phaseCmap(),
 '''
 
 
 # black, red-yellow for significant
 def get_sig(p=.05, contours={.01: '.5', .001: '0'},
-            vmax='unused', **kwargs): #intercept vmin/vmax aras
+            vmax='unused', **kwargs):  # intercept vmin/vmax aras
         pstr = str(p)[1:]
         kwargs['ticks'] = [0, p]
         kwargs['ticklabels'] = ['0', pstr]
