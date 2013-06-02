@@ -91,25 +91,27 @@ class _plt_map2d:
 
         if 'color' in kwargs:
             h = ax.plot(locs[:, 0], locs[:, 1], **kwargs)
-            self.markers.append(h)
+            self.markers += h
         else:
             colors = mpl.rcParams['axes.color_cycle']
             nc = len(colors)
             for i in xrange(len(locs)):
                 kwargs['color'] = kwargs['mec'] = colors[i % nc]
                 h = ax.plot(locs[i, 0], locs[i, 1], **kwargs)
-                self.markers.append(h)
+                self.markers += h
 
-    def show_labels(self, text='id',  # 'id', 'name'
-                    xpos=0,  # horizontal distance from marker
-                    ypos=.01,  # vertical distance from marker
-                    kwargs=dict(# mpl text kwargs ...
-                                color='k',
-                                fontsize=8,
-                                horizontalalignment='center',
-                                verticalalignment='bottom',
-                                ),
-                    ):
+    def show_labels(self, text='idx', xpos=0, ypos=.01, **text_kwargs):
+        """Plot labels for the sensors
+
+        Parameters
+        ----------
+        text : None | 'idx' | 'name'
+            Kind of label: sensor index
+        xpos, ypos : scalar
+            The position offset of the labels from the sensor markers.
+        text_kwargs : **
+            Matplotlib text parameters.
+        """
         # remove existing labels
         while self.labels:
             h = self.labels.pop()
@@ -118,13 +120,17 @@ class _plt_map2d:
         if not text:
             return
 
+        kwargs = dict(color='k', fontsize=8, horizontalalignment='center',
+                      verticalalignment='bottom')
+        kwargs.update(text_kwargs)
+
         sensors = self.sensors
-        if text == 'id':
+        if text == 'idx':
             labels = map(str, xrange(len(sensors)))
         elif text == 'name':
             labels = sensors.names
         else:
-            err = "text has to be 'id' or 'name', can't be %r" % text
+            err = "text has to be 'idx' or 'name', can't be %r" % text
             raise NotImplementedError(err)
 
         if self.ROI is not None:
@@ -135,6 +141,17 @@ class _plt_map2d:
             x , y = loc
             h = self.ax.text(x, y, txt, **kwargs)
             self.labels.append(h)
+
+    def set_label_color(self, color='k'):
+        """Change the color of all sensor labels
+
+        Parameters
+        ----------
+        color : matplotlib color
+            New color for the sensor labels.
+        """
+        for h in self.labels:
+            h.set_color(color)
 
 
 
@@ -371,19 +388,19 @@ class map2d(_base.eelfigure):
     Plot a 2d Sensor Map.
 
     """
-    def __init__(self, sensors, labels='id', proj='default', ROI=None,
+    def __init__(self, sensors, labels='idx', proj='default', ROI=None,
                  size=6, dpi=100, frame=.05, **kwargs):
-        """
+        """Plot sensor positions in 2 dimensions
+
         Parameters
         ----------
         sensors : ndvar | Sensor
             sensor-net object or object containing sensor-net
-        labels : 'id' | 'name'
+        labels : 'idx' | 'name'
             how the sensors should be labelled
         proj:
             Transform to apply to 3 dimensional sensor coordinates for plotting
             locations in a plane
-
         """
         title = "Sensors: %s" % getattr(sensors, 'sysname', '')
         super(map2d, self).__init__(title=title, figsize=(size, size), dpi=dpi)
@@ -428,17 +445,14 @@ class map2d(_base.eelfigure):
                   _ID_label_names: "name"}[Id]
         self.plot_labels(labels)
 
-    def plot_labels(self, labels='id'):
+    def plot_labels(self, labels='idx'):
         """
         Add labels to all sensors.
 
-        Possible values:
-
-        'id':
-            sensor indexes
-        'name':
-            sensor names
-
+        Parameters
+        ----------
+        labels : None | 'idx' | 'name'
+            Content of the labels.
         """
         self._labels.set_labels(labels)
         self.canvas.draw()

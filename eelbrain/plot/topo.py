@@ -34,9 +34,10 @@ class topomap(_base.eelfigure):
 
         Parameters
         ----------
-
-        sensors : bool | 'id' | 'name'
-
+        epochs : ndvar | list of ndvar, dims = ([case,] sensor,)
+            Data to plot.
+        sensors : bool | 'idx' | 'name'
+            Plot sensor labels.
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
 
@@ -73,8 +74,9 @@ class topomap(_base.eelfigure):
             h = _ax_topomap(ax, layers, title=True, **topo_kwargs)
             self._subplots.append(h)
 
+        self._label_color = 'k'
         if isinstance(sensors, str):
-            self.show_labels(sensors)
+            self.set_label_text(sensors)
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -87,27 +89,52 @@ class topomap(_base.eelfigure):
         choice = wx.Choice(tb, -1, choices=['None', 'Index', 'Name'])
         tb.AddControl(choice)
         self._SensorLabelChoice = choice
-        tb.Bind(wx.EVT_CHOICE, self._OnSensorLabelChoice)
+        choice.Bind(wx.EVT_CHOICE, self._OnSensorLabelChoice)
+
+        # sensor label color
+        choices = ['black', 'white', 'blue', 'green', 'red', 'cyan', 'magenta',
+                   'yellow']
+        choice = wx.Choice(tb, -1, choices=choices)
+        tb.AddControl(choice)
+        self._SensorLabelColorChoice = choice
+        choice.Bind(wx.EVT_CHOICE, self._OnSensorLabelColorChoice)
+
+    def _OnSensorLabelColorChoice(self, event):
+        sel = event.GetSelection()
+        color = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y'][sel]
+        self.set_label_color(color)
 
     def _OnSensorLabelChoice(self, event):
         sel = event.GetSelection()
-        text = [None, 'id', 'name'][sel]
-        self.show_labels(text)
+        text = [None, 'idx', 'name'][sel]
+        self.set_label_text(text)
 
-    def show_labels(self, text='id'):
+    def set_label_color(self, color='w'):
+        if hasattr(self, '_SensorLabelChoice'):
+            sels = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y']
+            if color in sels:
+                sel = sels.index(color)
+                self._SensorLabelColorChoice.SetSelection(sel)
+
+        self._label_color = color
+        for p in self._subplots:
+            p.sensors.set_label_color(color)
+        self.draw()
+
+    def set_label_text(self, text='idx'):
         """Add/remove sensor labels
 
         Parameters
         ----------
-        labels : None | 'id' | 'name'
+        labels : None | 'idx' | 'name'
             Kind of sensor labels to plot.
         """
         if hasattr(self, '_SensorLabelChoice'):
-            sel = [None, 'id', 'name'].index(text)
+            sel = [None, 'idx', 'name'].index(text)
             self._SensorLabelChoice.SetSelection(sel)
 
         for p in self._subplots:
-            p.sensors.show_labels(text)
+            p.sensors.show_labels(text, color=self._label_color)
         self.draw()
 
 
