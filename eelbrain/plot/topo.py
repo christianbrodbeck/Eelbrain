@@ -55,7 +55,7 @@ class topomap(_base.eelfigure):
                            interpolation=interpolation,
                            proj=proj,
                            sensors=sensors,
-                           vmax=max,
+                           vmax=vmax,
                            )
 
         self._subplots = []
