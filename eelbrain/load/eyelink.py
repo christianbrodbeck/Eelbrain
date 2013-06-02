@@ -395,6 +395,96 @@ def events(fname, samples=False, ds=None):
     return ds
 
 
+def add_edf(ds, path, eventID='eventID', t_edf='t_edf'):
+    """Add an edf file to a dataset
+
+    Parameters
+    ----------
+    ds : dataset
+        Dataset to which the edf file should be added (needs to contain an
+        eventID variable).
+    path : str
+        Path to the edf file.
+    """
+    if 'edf' in ds.info:
+        raise ValueError("ds.info already contains 'edf' entry.")
+    edf = Edf(path, False)
+    edf.add_T_to(ds, eventID, t_edf)
+    ds.info['edf'] = edf
+    return ds
+
+
+def artifact_epochs(ds, tmin= -0.2, tmax=0.6, crop=True, esacc='sacc',
+                    eblink='blink', t_edf='t_edf'):
+    """find blink and saccade artifact information by event
+
+    Parameters
+    ----------
+    ds : dataset
+        Dataset with 'edf' entry in its info dictionary (usually a dataset
+        returned by ``load.eyelink.events()``)
+    tmin, tmax : scalar
+        Relative start and end points of the epoch (in seconds).
+    crop : bool
+        Crop events to epoch beginning and end (i.e., if an artifact starts
+        before the epoch, set its start to the first sample in the epoch).
+    esacc, eblink : None | str
+        Name for the variable containing the corresponding information. If
+        None, the corresponding variable is not added.
+    t_edf : str
+        Name of the ds variable containing edf times.
+
+    Returns
+    -------
+    sacc : datalist
+        Saccade periods.
+    blink : datalist
+        Blink periods.
+    """
+    edf = ds.info['edf']
+    start = edf.artifacts['start']
+    stop = edf.artifacts['stop']
+    is_blink = (edf.artifacts['event'] == 'EBLINK')
+    is_sacc = (edf.artifacts['event'] == 'ESACC')
+
+    # edf times are in ms; convert them to s:
+    dtype = np.dtype([('event', np.str_, 6), ('start', np.float64), ('stop', np.float64)])
+    artifacts_s = edf.artifacts.astype(dtype)
+    artifacts_s['start'] /= 1000.
+    artifacts_s['stop'] /= 1000.
+
+    sacc = datalist(name=esacc) if esacc else None
+    blink = datalist(name=eblink) if eblink else None
+    for t in ds[t_edf]:
+        t_s = t / 1000.
+        epoch_idx = np.logical_and(stop > t + tmin, start < t + tmax)
+        if esacc:
+            idx = np.logical_and(epoch_idx, is_sacc)
+            epoch = artifacts_s[idx]
+            epoch['start'] -= t_s
+            epoch['stop'] -= t_s
+            if crop and len(epoch):
+                if epoch['start'][0] < tmin:
+                    epoch['start'][0] = tmin
+                if epoch['stop'][-1] > tmax:
+                    epoch['stop'][-1] = tmax
+            sacc.append(epoch)
+        if eblink:
+            idx = np.logical_and(epoch_idx, is_blink)
+            epoch = artifacts_s[idx]
+            epoch['start'] -= t_s
+            epoch['stop'] -= t_s
+            if crop and len(epoch):
+                if epoch['start'][0] < tmin:
+                    epoch['start'][0] = tmin
+                if epoch['stop'][-1] > tmax:
+                    epoch['stop'][-1] = tmax
+            blink.append(epoch)
+
+    return sacc, blink
+
+
+
 def add_artifact_epochs(ds, tmin= -0.2, tmax=0.6, crop=True, esacc='sacc',
                         eblink='blink', t_edf='t_edf'):
     """Add a datalist containing artifact information by event
@@ -421,45 +511,7 @@ def add_artifact_epochs(ds, tmin= -0.2, tmax=0.6, crop=True, esacc='sacc',
         Returns the input dataset for consistency with similar functions; the
         dataset is modified in place.
     """
-    edf = ds.info['edf']
-    start = edf.artifacts['start']
-    stop = edf.artifacts['stop']
-    is_blink = (edf.artifacts['event'] == 'EBLINK')
-    is_sacc = (edf.artifacts['event'] == 'ESACC')
-
-    # edf times are in ms; convert them to s:
-    dtype = np.dtype([('event', np.str_, 6), ('start', np.float64), ('stop', np.float64)])
-    artifacts_s = edf.artifacts.astype(dtype)
-    artifacts_s['start'] /= 1000.
-    artifacts_s['stop'] /= 1000.
-
-    sacc = datalist(name=esacc)
-    blink = datalist(name=eblink)
-    for t in ds[t_edf]:
-        t_s = t / 1000.
-        epoch_idx = np.logical_and(stop > t + tmin, start < t + tmax)
-        if esacc:
-            idx = np.logical_and(epoch_idx, is_sacc)
-            epoch = artifacts_s[idx]
-            epoch['start'] -= t_s
-            epoch['stop'] -= t_s
-            if crop and len(epoch):
-                if epoch['start'][0] < tmin:
-                    epoch['start'][0] = tmin
-                if epoch['stop'][-1] > tmax:
-                    epoch['stop'][-1] = tmax
-            sacc.append(epoch)
-        if eblink:
-            idx = np.logical_and(epoch_idx, is_blink)
-            epoch = artifacts_s[idx]
-            epoch['start'] -= t_s
-            epoch['stop'] -= t_s
-            if crop and len(epoch):
-                if epoch['start'][0] < tmin:
-                    epoch['start'][0] = tmin
-                if epoch['stop'][-1] > tmax:
-                    epoch['stop'][-1] = tmax
-            blink.append(epoch)
+    sacc, blink = artifact_epochs(ds, tmin, tmax, crop, esacc, eblink, t_edf)
 
     if esacc:
         ds.add(sacc)
