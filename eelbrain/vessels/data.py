@@ -3272,6 +3272,12 @@ class Dimension(object):
     """
     name = 'Dimension'
 
+    def __getstate__(self):
+        raise NotImplementedError
+
+    def __setstate__(self, state):
+        raise NotImplementedError
+
     def __len__(self):
         raise NotImplementedError
 
@@ -3291,6 +3297,8 @@ class Sensor(Dimension):
 
     Attributes
     ----------
+    channel_idx : dict
+        Dictionary mapping channel names to indexes.
     names : list of str
         Ordered list of sensor names.
 
@@ -3311,7 +3319,8 @@ class Sensor(Dimension):
     """
     name = 'sensor'
 
-    def __init__(self, locs, names=None, groups=None, sysname=None, transform_2d='z root'):
+    def __init__(self, locs, names=None, groups=None, sysname=None,
+                 proj2d='z root'):
         """
         Parameters
         ----------
@@ -3326,9 +3335,8 @@ class Sensor(Dimension):
             Named sensor groups.
         sysname : None | str
             Name of the sensor system (only used for information purposes).
-        transform_2d:
-            default transform that is applied when the getLocs2d method is
-            called. For options, see the class documentation.
+        proj2d:
+            default 2d projection. For options, see the class documentation.
 
 
         Examples
@@ -3340,25 +3348,40 @@ class Sensor(Dimension):
 
         """
         self.sysname = sysname
-        self.default_transform_2d = transform_2d
+        self.default_proj2d = proj2d
 
         # 'z root' transformation fails with 32-bit floats
-        self.locs = locs = np.array(locs, dtype=np.float64)
-        self.n = n = len(locs)
+        self.locs = locs = np.asarray(locs, dtype=np.float64)
+        self.n = len(locs)
 
         if names is None:
-            self.names_dist = names = [str(i) for i in xrange(n)]
+            self.names_dist = names = [str(i) for i in xrange(self.n)]
         self.names = datalist(names)
+        self.channel_idx = {i: name for i, name in enumerate(self.names)}
 
-        # transformed locations
+        # cache for transformed locations
         self._transformed = {}
         self._triangulations = {}
 
         # groups
-        if groups:
-            self.groups = groups
-        else:
-            self.groups = {}
+        self.groups = groups
+
+    def __getstate__(self):
+        state = {'proj2d': self.default_proj2d,
+                 'groups': self.groups,
+                 'locs': self.locs,
+                 'names': self.names,
+                 'sysname': self.sysname}
+        return state
+
+    def __setstate__(self, state):
+        locs = state['locs']
+        names = state['names']
+        groups = state['groups']
+        sysname = state['sysname']
+        proj2d = state['proj2d']
+
+        self.__init__(locs, names, groups, sysname, proj2d)
 
     def __repr__(self):
         return "<Sensor n=%i, name=%r>" % (self.n, self.sysname)
@@ -3374,20 +3397,23 @@ class Sensor(Dimension):
             locs = self.locs[index]
             names = self.names[index]
             # TODO: groups
-            return Sensor(locs, names, transform_2d=self.default_transform_2d,
-                          sysname=self.sysname)
+            return Sensor(locs, names, sysname=self.sysname,
+                          proj2d=self.default_proj2d)
 
     def dimindex(self, arg):
+        "Convert dimension indexes into numpy indexes"
         if isinstance(arg, str):
-            idx = self.label2idx(arg)
+            idx = self.channel_idx[arg]
         elif np.iterable(arg) and isinstance(arg[0], str):
-            idx = [self.label2idx(name) for name in arg]
+            idx = [self.channel_idx[name] for name in arg]
         else:
             idx = arg
         return idx
 
     @classmethod
     def from_xyz(cls, path=None, **kwargs):
+        """Create a Sensor instance from a text file with xyz coordinates
+        """
         locs = []
         names = []
         with open(path) as f:
@@ -3407,6 +3433,8 @@ class Sensor(Dimension):
 
     @classmethod
     def from_sfp(cls, path=None, **kwargs):
+        """Create a Sensor instance from an sfp file
+        """
         locs = []
         names = []
         for line in open(path):
@@ -3422,6 +3450,8 @@ class Sensor(Dimension):
 
     @classmethod
     def from_lout(cls, path=None, transform_2d=None, **kwargs):
+        """Create a Sensor instance from a *.lout file
+        """
         kwargs['transform_2d'] = transform_2d
         locs = []
         names = []
@@ -3435,7 +3465,7 @@ class Sensor(Dimension):
                 names.append(name)
         return cls(locs, names, **kwargs)
 
-    def getLocs2d(self, proj='default', extent=1):
+    def get_locs_2d(self, proj='default', extent=1):
         """
         returns a sensor X location array, the first column reflecting the x,
         and the second column containing the y coordinate of each sensor.
@@ -3453,7 +3483,7 @@ class Sensor(Dimension):
 
         """
         if proj == 'default':
-            proj = self.default_transform_2d
+            proj = self.default_proj2d
 
         if proj is None:
             proj = 'z+'
@@ -3543,7 +3573,7 @@ class Sensor(Dimension):
 
         Based on matplotlib.mlab.griddata function
         """
-        locs = self.getLocs2d(proj)
+        locs = self.get_locs_2d(proj)
         from matplotlib.delaunay import Triangulation
         tri = Triangulation(locs[:, 0], locs[:, 1])
 
@@ -3561,7 +3591,7 @@ class Sensor(Dimension):
         Based on matplotlib.mlab.griddata function
         """
         if proj == 'default':
-            proj = self.default_transform_2d
+            proj = self.default_proj2d
 
         index = (proj, res, frame)
 
@@ -3653,25 +3683,13 @@ class Sensor(Dimension):
         index = np.ones(len(self), dtype=bool)
         for idx in exclude:
             if isinstance(idx, str):
-                idx = self.label2idx(idx)
+                idx = self.channel_idx[idx]
             else:
                 idx = int(idx)
 
             index[idx] = False
 
         return index
-
-    def label2idx(self, label):
-        """
-        Returns the index of the sensor with the given label. Raises a
-        KeyError if no sensor with that label exists or if several sensors with
-        that label exist.
-
-        """
-        try:
-            return self.names.index(label)
-        except ValueError:
-            raise KeyError("No sensor named %r" % label)
 
     def neighbors(self, mult=1.5):
         """Find neighboring sensors.
@@ -3703,7 +3721,6 @@ class Sensor(Dimension):
 
 
 class SourceSpace(Dimension):
-    name = 'source'
     """
     Indexing
     --------
@@ -3714,6 +3731,8 @@ class SourceSpace(Dimension):
      - 'lh' or 'rh' to select an entire hemisphere
 
     """
+    name = 'source'
+
     def __init__(self, vertno, subject='fsaverage'):
         """
         Parameters
@@ -3730,6 +3749,15 @@ class SourceSpace(Dimension):
         self.lh_n = len(self.lh_vertno)
         self.rh_n = len(self.rh_vertno)
         self.subject = subject
+
+    def __getstate__(self):
+        state = {'vertno': self.vertno, 'subject': self.subject}
+        return state
+
+    def __setstate__(self, state):
+        vertno = state['vertno']
+        subject = state['subject']
+        self.__init__(vertno, subject)
 
     def __repr__(self):
         return "<dim SourceSpace: %i (lh), %i (rh)>" % (self.lh_n, self.rh_n)
@@ -3816,12 +3844,26 @@ class UTS(Dimension):
 
     """
     name = 'time'
+
     def __init__(self, tmin, tstep, nsamples):
-        self.nsamples = nsamples = int(nsamples)
-        self.times = np.arange(tmin, tmin + tstep * nsamples, tstep)
         self.tmin = tmin
         self.tstep = tstep
+        self.nsamples = int(nsamples)
+        self.times = np.arange(tmin, tmin + tstep * nsamples, tstep)
         self.tmax = self.times[-1]
+
+    def __getstate__(self):
+        state = {'tmin': self.tmin,
+                 'tstep': self.tstep,
+                 'nsamples': self.nsamples}
+        return state
+
+    def __setstate__(self, state):
+        tmin = state['tmin']
+        tstep = state['tstep']
+        nsamples = state['nsamples']
+
+        self.__init__(tmin, tstep, nsamples)
 
     def __repr__(self):
         return "UTS(%s, %s, %s)" % (self.tmin, self.tstep, self.nsamples)

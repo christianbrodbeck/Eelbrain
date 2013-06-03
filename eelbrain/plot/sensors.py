@@ -41,7 +41,7 @@ kwargs_mono = dict(mc='k',
 
 def _ax_map2d_fast(ax, sensors, proj='default',
                    m='x', mew=.5, mc='b', ms=3,):
-    locs = sensors.getLocs2d(proj=proj)
+    locs = sensors.get_locs_2d(proj=proj)
     h = plt.plot(locs[:, 0], locs[:, 1], m, color=mc, ms=ms, markeredgewidth=mew)
 
     return h
@@ -80,7 +80,7 @@ class _plt_map2d:
                  ):
         self.ax = ax
         self.sensors = sensors
-        locs = sensors.getLocs2d(proj=proj, extent=extent)
+        locs = sensors.get_locs_2d(proj=proj, extent=extent)
         self.ROI = ROI
         if ROI is not None:
             locs = locs[ROI]
@@ -315,7 +315,7 @@ class multi(_base.eelfigure):
         ymax = max(y)
 
         ax = self._drag_ax
-        locs = self._sensors.getLocs2d(ax.proj, extent=ax.extent)
+        locs = self._sensors.get_locs_2d(ax.proj, extent=ax.extent)
         x = locs[:, 0]
         y = locs[:, 1]
         sel = (x > xmin) & (x < xmax) & (y > ymin) & (y < ymax)
