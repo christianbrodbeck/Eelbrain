@@ -506,7 +506,7 @@ class SelectEpochs(eelfigure):
             else:
                 return
 
-        process.mark_by_threshold(self._ds, DV=self._data,
+        process.mark_by_threshold(self._ds, x=self._data,
                                   threshold=threshold, above=above,
                                   below=below, target=self._target)
 

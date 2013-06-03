@@ -122,8 +122,8 @@ class PCA:
 
 
 
-def mark_by_threshold(ds, DV='MEG', threshold=2e-12, above=False,
-                      below=None, target='accept'):
+def mark_by_threshold(ds, x='MEG', threshold=2e-12, above=False,
+                      below=None, target='accept', bad_chs=None):
     """
     Marks epochs based on a threshold criterion (any sensor exceeding the
     threshold at any time)
@@ -132,7 +132,7 @@ def mark_by_threshold(ds, DV='MEG', threshold=2e-12, above=False,
     ----------
     ds : dataset
         Dataset containing the data.
-    DV : ndvar
+    x : ndvar
         Dependent variable (data which should be thresholded).
     threshold : scalar
         The threshold value. Examples: 1.25e-11 to detect saturated channels;
@@ -144,8 +144,13 @@ def mark_by_threshold(ds, DV='MEG', threshold=2e-12, above=False,
         Factor (or its name) in which the result is stored. If ``var`` is
         a string and the dataset does not contain that factor, it is
         created.
+    bad_chs : None | list of str, int
+        Channels to ignore when thresholding.
     """
-    DV = asnumeric(DV, ds=ds)
+    x = asnumeric(x, ds=ds)
+    if bad_chs:
+        idx = x.sensor.index(bad_chs)
+        x = x.subdata(sensor=idx)
 
     # get the factor on which to store results
     if isfactor(target) or isvar(target):
@@ -154,16 +159,16 @@ def mark_by_threshold(ds, DV='MEG', threshold=2e-12, above=False,
         if target in ds:
             target = ds[target]
         else:
-            x = _np.ones(ds.n_cases, dtype=bool)
-            target = var(x, name=target)
+            target_x = _np.ones(ds.n_cases, dtype=bool)
+            target = var(target_x, name=target)
             ds.add(target)
     else:
         raise ValueError("target needs to be a factor")
 
     # do the thresholding
-    if isndvar(DV):
+    if isndvar(x):
         for ID in xrange(ds.n_cases):
-            data = DV[ID]
+            data = x[ID]
             v = _np.max(_np.abs(data.x))
 
             if v > threshold:
@@ -173,7 +178,7 @@ def mark_by_threshold(ds, DV='MEG', threshold=2e-12, above=False,
                 target[ID] = below
     else:
         for ID in xrange(ds.n_cases):
-            v = DV[ID]
+            v = x[ID]
 
             if v > threshold:
                 if above is not None:
