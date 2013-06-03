@@ -3,8 +3,7 @@ Defines some basic example datasets that are used in testing.
 '''
 import numpy as np
 
-from .data import dataset, factor, var, ndvar
-from .dimensions import Sensor, UTS
+from .data import dataset, factor, var, ndvar, Sensor, UTS
 
 
 def get_basic():

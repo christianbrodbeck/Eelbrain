@@ -49,7 +49,6 @@ from .vessels.data import (factor,
                            interaction,
                            )
 
-from .vessels.dimensions import (Sensor, SourceSpace, UTS)
 from .vessels.structure import celltable
 
 from .vessels import process, datasets

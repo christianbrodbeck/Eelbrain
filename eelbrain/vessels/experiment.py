@@ -85,8 +85,7 @@ from ..utils import common_prefix, subp
 from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri
 from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
-                   DimensionMismatchError)
-from .dimensions import UTS
+                   DimensionMismatchError, UTS)
 
 
 __all__ = ['mne_experiment', 'LabelCache']

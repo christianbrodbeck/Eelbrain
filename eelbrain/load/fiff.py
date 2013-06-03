@@ -51,9 +51,8 @@ import numpy as np
 import mne
 import mne.minimum_norm as _mn
 
-from eelbrain.vessels.data import var, ndvar, dataset
+from eelbrain.vessels.data import var, ndvar, dataset, Sensor, SourceSpace, UTS
 import eelbrain.vessels.colorspaces as _cs
-from eelbrain.vessels.dimensions import Sensor, SourceSpace, UTS
 from eelbrain import ui
 
 __all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
