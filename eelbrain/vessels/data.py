@@ -169,7 +169,7 @@ def isnestedin(item, item2):
 def isndvar(Y):
     return hasattr(Y, '_stype_') and Y._stype_ == "ndvar"
 
-def isscalar(Y):
+def isnumeric(Y):
     "var, ndvar"
     return hasattr(Y, '_stype_') and Y._stype_ in ["ndvar", "var"]
 
@@ -194,37 +194,18 @@ def hasrandom(Y):
     return False
 
 
-def asmodel(X, sub=None, ds=None):
-    if isinstance(X, str):
-        if ds is None:
-            err = ("Model was specified as string, but no dataset was "
-                   "specified")
-            raise TypeError(err)
-        X = ds.eval(X)
-
-    if ismodel(X):
-        pass
-    elif isinstance(X, (list, tuple)):
-        X = model(*X)
-    else:
-        X = model(X)
-
-    if sub is not None:
-        return X[sub]
-    else:
-        return X
-
-def asvar(Y, sub=None, ds=None):
+def ascategorial(Y, sub=None, ds=None):
     if isinstance(Y, str):
         if ds is None:
-            err = ("Var was specified as string, but no dataset was specified")
+            err = ("Parameter was specified as string, but no dataset was "
+                   "specified")
             raise TypeError(err)
         Y = ds.eval(Y)
 
-    if isvar(Y):
+    if iscategorial(Y):
         pass
     else:
-        Y = var(Y)
+        Y = asfactor(Y)
 
     if sub is not None:
         return Y[sub]
@@ -251,6 +232,26 @@ def asfactor(Y, sub=None, ds=None):
     else:
         return Y
 
+def asmodel(X, sub=None, ds=None):
+    if isinstance(X, str):
+        if ds is None:
+            err = ("Model was specified as string, but no dataset was "
+                   "specified")
+            raise TypeError(err)
+        X = ds.eval(X)
+
+    if ismodel(X):
+        pass
+    elif isinstance(X, (list, tuple)):
+        X = model(*X)
+    else:
+        X = model(X)
+
+    if sub is not None:
+        return X[sub]
+    else:
+        return X
+
 def asndvar(Y, sub=None, ds=None):
     if isinstance(Y, str):
         if ds is None:
@@ -267,18 +268,34 @@ def asndvar(Y, sub=None, ds=None):
     else:
         return Y
 
-def ascategorial(Y, sub=None, ds=None):
+def asnumeric(Y, sub=None, ds=None):
+    "var, ndvar"
     if isinstance(Y, str):
         if ds is None:
-            err = ("Parameter was specified as string, but no dataset was "
-                   "specified")
+            err = ("Numeric argument was specified as string, but no dataset "
+                   "was specified")
             raise TypeError(err)
         Y = ds.eval(Y)
 
-    if iscategorial(Y):
+    if not isnumeric(Y):
+        raise TypeError("Numeric argument required (var or ndvar)")
+
+    if sub is not None:
+        return Y[sub]
+    else:
+        return Y
+
+def asvar(Y, sub=None, ds=None):
+    if isinstance(Y, str):
+        if ds is None:
+            err = ("Var was specified as string, but no dataset was specified")
+            raise TypeError(err)
+        Y = ds.eval(Y)
+
+    if isvar(Y):
         pass
     else:
-        Y = asfactor(Y)
+        Y = var(Y)
 
     if sub is not None:
         return Y[sub]
@@ -1449,7 +1466,7 @@ class ndvar(object):
             raise TypeError
 
     def __add__(self, other):
-        if isscalar(other):
+        if isnumeric(other):
             dims, x_self, x_other = self._align(other)
             x = x_self + x_other
             name = '%s+%s' % (self.name, other.name)
@@ -1466,7 +1483,7 @@ class ndvar(object):
         return self
 
     def __sub__(self, other):  # TODO: use dims
-        if isscalar(other):
+        if isnumeric(other):
             dims, x_self, x_other = self._align(other)
             x = x_self - x_other
             name = '%s-%s' % (self.name, other.name)

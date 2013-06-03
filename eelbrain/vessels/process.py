@@ -11,7 +11,7 @@ try:
 except:
     pass
 
-from .data import isfactor, var, isvar, ndvar, isndvar, asndvar
+from .data import isfactor, var, isvar, ndvar, isndvar, asnumeric
 
 
 def rm_pca(ds, rm=[], source='MEG', target='MEG', baseline=None):
@@ -145,7 +145,7 @@ def mark_by_threshold(ds, DV='MEG', threshold=2e-12, above=False,
         a string and the dataset does not contain that factor, it is
         created.
     """
-    DV = asndvar(DV, ds=ds)
+    DV = asnumeric(DV, ds=ds)
 
     # get the factor on which to store results
     if isfactor(target) or isvar(target):
