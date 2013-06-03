@@ -81,23 +81,24 @@ class Dimension(object):
 
 
 class Sensor(Dimension):
-    """
-    Class for representing topographic sensor locations.
+    """Dimension class for representing sensor information
 
-
-    Transforms
+    Attributes
     ----------
+    names : list of str
+        Ordered list of sensor names.
+
+    Notes
+    -----
+    The following are possible 2d-projections:
 
     ``None``:
         Just use horizontal coordinates
-
     ``'z root'``:
         the radius of each sensor is set to equal the root of the vertical
         distance from the top of the net.
-
     ``'cone'``:
         derive x/y coordinate from height based on a cone transformation
-
     ``'lower cone'``:
         only use cone for sensors with z < 0
 
@@ -106,8 +107,8 @@ class Sensor(Dimension):
 
     def __init__(self, locs, names=None, groups=None, sysname=None, transform_2d='z root'):
         """
-        Arguments
-        ---------
+        Parameters
+        ----------
         locs : array-like
             list of (x, y, z) coordinates;
             ``x``: anterior - posterior,
@@ -140,8 +141,9 @@ class Sensor(Dimension):
         self.n = n = len(locs)
 
         if names is None:
-            names = [str(i) for i in xrange(n)]
-        self.names = np.array(names)
+            self.names_dist = names = [str(i) for i in xrange(n)]
+        from .data import datalist
+        self.names = datalist(names)
 
         # transformed locations
         self._transformed = {}
@@ -426,6 +428,33 @@ class Sensor(Dimension):
 
         return Sensor(locs, names, sysname=self.sysname)
 
+    def index(self, exclude=None):
+        """Construct an index for specified sensors
+
+        Parameters
+        ----------
+        exclude : None | list of str, int
+            Sensors to exclude (by name or index).
+
+        Returns
+        -------
+        index : numpy index
+            Numpy index indexing good channels.
+        """
+        if exclude is None:
+            return slice(None)
+
+        index = np.ones(len(self), dtype=bool)
+        for idx in exclude:
+            if isinstance(idx, str):
+                idx = self.label2idx(idx)
+            else:
+                idx = int(idx)
+
+            index[idx] = False
+
+        return index
+
     def label2idx(self, label):
         """
         Returns the index of the sensor with the given label. Raises a
@@ -433,13 +462,11 @@ class Sensor(Dimension):
         that label exist.
 
         """
-        idxs = np.where(self.names == label)[0]
-        if len(idxs) == 0:
+        try:
+            return self.names.index(label)
+        except ValueError:
             raise KeyError("No sensor named %r" % label)
-        elif len(idxs) == 1:
-            return idxs[0]
-        else:
-            raise KeyError("More than one index named %r" % label)
+
 
     def neighbors(self, mult=1.5):
         """Find neighboring sensors.

@@ -1770,6 +1770,9 @@ class ndvar(object):
         index = [slice(None)] * len(dims)
 
         for name, arg in kwargs.iteritems():
+            if arg is None:
+                continue
+
             try:
                 dimax = self._dim_2_ax[name]
                 dim = self.dims[dimax]
