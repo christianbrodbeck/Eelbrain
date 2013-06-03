@@ -8,6 +8,7 @@ import re
 import numpy as np
 import matplotlib.delaunay as delaunay
 from scipy.optimize import leastsq
+from scipy.spatial.distance import pdist, squareform
 
 import mne
 
@@ -439,6 +440,34 @@ class Sensor(Dimension):
             return idxs[0]
         else:
             raise KeyError("More than one index named %r" % label)
+
+    def neighbors(self, mult=1.5):
+        """Find neighboring sensors.
+
+        Parameters
+        ----------
+        mult : scalar
+            Multiplicator. For each point, neighbors are defined as those
+            sensors within mult times the distance of the closest neighbor.
+
+        Returns
+        -------
+        neighbors : dict
+            Dictionaries whose keys are sensor indices, and whose values are
+            lists of neighbors represented as sensor indices.
+        """
+        nb = {}
+        pd = pdist(self.locs)
+        pd = squareform(pd)
+        n = len(self)
+        for i in xrange(n):
+            d = pd[i, np.arange(n)]
+            d[i] = d.max()
+            idx = np.nonzero(d < d.min() * mult)
+            nb[i] = idx
+
+        return nb
+
 
 
 class SourceSpace(Dimension):

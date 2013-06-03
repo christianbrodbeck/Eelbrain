@@ -38,6 +38,7 @@ from scipy.linalg import inv
 from .. import fmtxt
 from .. import ui
 from ..utils import LazyProperty
+from .colorspaces import Colorspace
 from .dimensions import DimensionMismatchError, SourceSpace, UTS
 
 
@@ -3199,6 +3200,24 @@ class model(object):
 
 
 # ---ndvar functions---
+
+def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}'):
+    dim_obj = x.get_dim(dim)
+    neighbors = neighbors or dim_obj.neighbors()
+
+    data = x.get_data((dim, obs))
+    cc = np.corrcoef(data)
+    y = np.zeros(len(dim_obj))
+    for i in xrange(len(dim_obj)):
+        y[i] = np.mean(cc[i, neighbors[i]])
+
+    xname = x.name or ''
+    name = name.format(name=xname)
+    properties = x.properties.copy()
+    properties['colorspace'] = Colorspace('PRGn', vmax=1, unit="RMS corr coeff")
+    out = ndvar(y, (dim_obj,), properties=properties, name=name)
+    return out
+
 
 def resample(data, sfreq, npad=100, window='boxcar'):
     """Resample an ndvar with 'time' dimension after properly filtering it

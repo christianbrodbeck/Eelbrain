@@ -19,7 +19,7 @@ from ..plot._base import eelfigure
 from ..plot.utsnd import _ax_bfly_epoch
 from ..plot.nuts import _plt_bin_nuts
 from .. import load, save, ui
-from ..vessels.data import dataset, var
+from ..vessels.data import dataset, var, corr
 from ..vessels import process
 from ..wxutils import mpl_canvas, Icon
 
@@ -37,6 +37,8 @@ class SelectEpochs(eelfigure):
         (de-)select this case.
     't' on any butterfly plot:
         Open a topomap for the current time point.
+    'c' on any epoch butterfly plot:
+        Open a plot with the correlation of each channel with its neighbors.
     """
     def __init__(self, ds, data='MEG', target='accept', blink=True,
                  path=None,
@@ -408,7 +410,6 @@ class SelectEpochs(eelfigure):
                 self.open_topomap()
 
     def _on_key(self, event):
-        logging.debug('\n'.join(map(str, (event, dir(event)))))
         ax = event.inaxes
         ax_id = getattr(ax, 'ID', None)
         if (event.key == 't'):
@@ -416,6 +417,12 @@ class SelectEpochs(eelfigure):
                 return
             tseg = self._get_topo_seg(ax, t=event.xdata)
             plot.topo.topomap(tseg, sensors='name')
+        elif (event.key == 'c'):
+            if (ax_id < 0) and (ax_id != -2):
+                return
+            seg = self._case_segs[ax_id]
+            cseg = corr(seg, name='Epoch %i Neighbor Correlation' % ax.segID)
+            plot.topo.topomap(cseg)
 
     def _OnForward(self, event):
         "turns the page forward"
