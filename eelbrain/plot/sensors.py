@@ -419,11 +419,11 @@ class map2d(_base.eelfigure):
         self.figure.set_facecolor('w')
         ax = self.figure.add_axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
         self.axes = ax
-        self._marker_h = _ax_map2d(ax, sensors, proj=proj, **kwargs)
+        self._markers = _ax_map2d(ax, sensors, proj=proj, **kwargs)
+        if labels:
+            self._markers.show_labels(labels)
         if ROI is not None:
             self.plot_ROI(ROI)
-
-        self._labels = self.plot_labels(labels=labels)
 
         self._show()
 
@@ -432,7 +432,7 @@ class map2d(_base.eelfigure):
 
         # plot labels
         for Id, name in [(_ID_label_None, "No Labels"),
-                         (_ID_label_Ids, "Ids"),
+                         (_ID_label_Ids, "Indexes"),
                          (_ID_label_names, "Names"), ]:
             btn = wx.Button(tb, Id, name)
             tb.AddControl(btn)
@@ -441,7 +441,7 @@ class map2d(_base.eelfigure):
     def _OnPlotLabels(self, event):
         Id = event.GetId()
         labels = {_ID_label_None: None,
-                  _ID_label_Ids: "id",
+                  _ID_label_Ids: "idx",
                   _ID_label_names: "name"}[Id]
         self.plot_labels(labels)
 
@@ -454,7 +454,7 @@ class map2d(_base.eelfigure):
         labels : None | 'idx' | 'name'
             Content of the labels.
         """
-        self._labels.set_labels(labels)
+        self._markers.show_labels(labels)
         self.canvas.draw()
 
     def plot_ROI(self, ROI, kwargs=dict(marker='o',  # symbol
