@@ -8,6 +8,8 @@ Plotting functions for Sensor dimension objects.
 # author: Christian Brodbeck
 
 
+import os
+
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -105,8 +107,9 @@ class _plt_map2d:
 
         Parameters
         ----------
-        text : None | 'idx' | 'name'
-            Kind of label: sensor index
+        text : None | 'idx' | 'name' | 'fullname'
+            Content of the labels. For 'name', any prefix common to all names
+            is removed; with 'fullname', the full name is shown.
         xpos, ypos : scalar
             The position offset of the labels from the sensor markers.
         text_kwargs : **
@@ -128,6 +131,11 @@ class _plt_map2d:
         if text == 'idx':
             labels = map(str, xrange(len(sensors)))
         elif text == 'name':
+            labels = sensors.names
+            prefix = os.path.commonprefix(labels)
+            pf_len = len(prefix)
+            labels = [label[pf_len:] for label in labels]
+        elif text == 'fullname':
             labels = sensors.names
         else:
             err = "text has to be 'idx' or 'name', can't be %r" % text
@@ -396,8 +404,9 @@ class map2d(_base.eelfigure):
         ----------
         sensors : ndvar | Sensor
             sensor-net object or object containing sensor-net
-        labels : 'idx' | 'name'
-            how the sensors should be labelled
+        labels : None | 'idx' | 'name' | 'fullname'
+            Content of the labels. For 'name', any prefix common to all names
+            is removed; with 'fullname', the full name is shown.
         proj:
             Transform to apply to 3 dimensional sensor coordinates for plotting
             locations in a plane
@@ -451,8 +460,9 @@ class map2d(_base.eelfigure):
 
         Parameters
         ----------
-        labels : None | 'idx' | 'name'
-            Content of the labels.
+        labels : None | 'idx' | 'name' | 'fullname'
+            Content of the labels. For 'name', any prefix common to all names
+            is removed; with 'fullname', the full name is shown.
         """
         self._markers.show_labels(labels)
         self.canvas.draw()

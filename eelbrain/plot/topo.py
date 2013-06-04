@@ -36,8 +36,9 @@ class topomap(_base.eelfigure):
         ----------
         epochs : ndvar | list of ndvar, dims = ([case,] sensor,)
             Data to plot.
-        sensors : bool | 'idx' | 'name'
-            Plot sensor labels.
+        sensors : None | 'idx' | 'name' | 'fullname'
+            Show sensor labels. For 'name', any prefix common to all names
+            is removed; with 'fullname', the full name is shown.
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
 
@@ -126,8 +127,9 @@ class topomap(_base.eelfigure):
 
         Parameters
         ----------
-        labels : None | 'idx' | 'name'
-            Kind of sensor labels to plot.
+        labels : None | 'idx' | 'name' | 'fullname'
+            Content of the labels. For 'name', any prefix common to all names
+            is removed; with 'fullname', the full name is shown.
         """
         if hasattr(self, '_SensorLabelChoice'):
             sel = [None, 'idx', 'name'].index(text)
