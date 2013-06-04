@@ -1415,7 +1415,7 @@ class mne_experiment(object):
             target path to save the plot
         """
         picks = mne.epochs.pick_types(fif_obj.info, exclude='bads')
-        sensor = load.fiff.sensors(fif_obj, picks=picks)
+        sensor = load.fiff.sensor_dim(fif_obj, picks=picks)
 
         # plot PCA components
         PCA = []
