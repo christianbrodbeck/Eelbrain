@@ -160,6 +160,10 @@ _temp = {
         'fwd': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
         'cov': 'bl',
 
+        # epochs
+        'epoch-sel-file': os.path.join('{meg_sdir}', 'epoch_sel', '{raw}_'
+                                       '{experiment}_{epoch}_sel.pickled'),
+
         # fwd model
         'common_brain': 'fsaverage',
         'fid': os.path.join('{bem_dir}', '{mrisubject}-fiducials.fif'),
@@ -225,6 +229,23 @@ class mne_experiment(object):
 
     # named epochs
     epochs = {'bl': {'stim': 'adj', 'tmin':-0.2, 'tmax':0}}
+    # how to reject data epochs. See the  explanation accompanying the values
+    # below:
+    epoch_rejection = {
+                       # Whether to use manual supervision. If True, each epoch
+                       # needs a rejection file which can be created using
+                       # .make_epoch_selection(). If False, epoch are rejected
+                       # automatically.
+                       'manual': False,
+                       # The sensors to plot separately in the rejection GUI.
+                       # The default is the two MEG sensors closest to the eyes
+                       # for Abu Dhabi KIT data.
+                       'eog_sns': ['MEG 087', 'MEG 130'],
+                       # the reject argument when loading epochs:
+                       'threshold': dict(mag=3e-12),
+                       # How to use eye tracker information:
+                       'edf': ['EBLINK']}
+
     subjects_has_own_mri = ()
     subject_re = re.compile('R\d{4}$')
 
@@ -873,8 +894,8 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_epochs(self, epoch=epoch_default_arg, asndvar=False,
-                    subject=None):
+    def load_epochs(self, epoch=_epoch_default_arg, asndvar=False,
+                    subject=None, reject=True):
         """
         Load a dataset with epochs for a given epoch definition
 
@@ -887,6 +908,9 @@ class mne_experiment(object):
             uesed).
         subject : None | str
             Subject for which to load the data.
+        reject : bool
+            Whether to apply epoch rejection or not. The kind of rejection
+            employed depends on the ``.epoch_rejection`` class attribute.
         """
         epoch = self._process_epochs_arg([epoch])[0]
 
@@ -902,8 +926,27 @@ class mne_experiment(object):
         else:
             idx = stimvar == stim
         ds = ds.subset(idx)
-        edf = ds.info['edf']
-        ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=['EBLINK'], T='t_edf')
+        reject_arg = None
+        if reject:
+            if self.epoch_rejection.get('manual', False):
+                reject_arg = None
+                path = self.get('epoch-sel-file')
+                if not os.path.exists(path):
+                    err = ("The rejection file at %r does not exist. Run "
+                           ".make_epoch_selection() first.")
+                    raise RuntimeError(err)
+                ds_sel = load.unpickle(path)
+                if not np.all(ds['eventID'] == ds_sel['eventID']):
+                    err = ("The epoch selection file contains different "
+                           "events than the data. Something went wrong...")
+                    raise RuntimeError(err)
+                ds = ds.subset(ds_sel['accept'])
+            else:
+                reject_arg = self.epoch_rejection.get('threshold', None)
+                use = self.epoch_rejection.get('edf', False)
+                if use:
+                    edf = ds.info['edf']
+                    ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=use)
 
         # load sensor space data
         target = epoch['name']
@@ -911,7 +954,7 @@ class mne_experiment(object):
         tmax = epoch['tmax']
         decim = epoch['decim']
         ds = load.fiff.add_mne_epochs(ds, target=target, tmin=tmin, tmax=tmax,
-                                      reject=dict(mag=3e-12), baseline=None,
+                                      reject=reject_arg, baseline=None,
                                       decim=decim)
         if asndvar:
             if asndvar is True:
@@ -1163,6 +1206,30 @@ class mne_experiment(object):
                                       tmax=tmax)
         cov = mne.cov.compute_covariance(epochs)
         cov.save(dest)
+
+    def make_epoch_selection(self, epoch=_epoch_default_arg, **kwargs):
+        """Show the SelectEpochs GUI to do manual epoch selection for a given epoch
+
+        The GUI is opened with the correct file name; if the corresponding
+        file exists, it is loaded, and upon saving the correct path is
+        the default.
+
+        Parameters
+        ----------
+        epoch : epoch specification
+            The epoch for which to perform manual rejection.
+        """
+        if not self.epoch_rejection.get('manual', False):
+            err = ("Epoch rejection is automatic. See the .epoch_rejection "
+                   "class attribute.")
+            raise RuntimeError(err)
+
+        ds = self.load_epochs(epoch, asndvar=True, reject=False)
+        path = self.get('epoch-sel-file', mkdir=True)
+
+        from ..wxgui.MEG import SelectEpochs
+        ROI = self.epoch_rejection.get('eog_sns', None)
+        gui = SelectEpochs(ds, path=path, ROI=ROI, **kwargs)  # nplots, plotsize,
 
     def make_evoked(self, model='ref%side', epochs=epochs_default_arg,
                     random=('subject',), redo=False):
