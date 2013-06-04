@@ -3285,7 +3285,7 @@ class Dimension(object):
         raise NotImplementedError
 
     def _dimrepr_(self):
-        return repr(self.name)
+        return str(self.name)
 
     def dimindex(self, arg):
         raise NotImplementedError
@@ -3357,7 +3357,12 @@ class Sensor(Dimension):
         if names is None:
             self.names_dist = names = [str(i) for i in xrange(self.n)]
         self.names = datalist(names)
-        self.channel_idx = {i: name for i, name in enumerate(self.names)}
+        self.channel_idx = {name: i for i, name in enumerate(self.names)}
+        pf = os.path.commonprefix(self.names)
+        if pf:
+            n_pf = len(pf)
+            short_names = {name[n_pf:]: i for i, name in enumerate(self.names)}
+            self.channel_idx.update(short_names)
 
         # cache for transformed locations
         self._transformed = {}
@@ -3402,13 +3407,24 @@ class Sensor(Dimension):
 
     def dimindex(self, arg):
         "Convert dimension indexes into numpy indexes"
-        if isinstance(arg, str):
+        if isinstance(arg, basestring):
             idx = self.channel_idx[arg]
-        elif np.iterable(arg) and isinstance(arg[0], str):
-            idx = [self.channel_idx[name] for name in arg]
+        elif np.iterable(arg):
+            if (isinstance(arg, np.ndarray) and
+                        issubclass(arg.dtype.type, (np.bool_, np.integer))):
+                idx = arg
+            else:
+                idx = map(self._dimindex_map, arg)
         else:
             idx = arg
         return idx
+
+    def _dimindex_map(self, name):
+        "Convert any index to a proper int"
+        if isinstance(name, basestring):
+            return self.channel_idx[name]
+        else:
+            return int(name)
 
     @classmethod
     def from_xyz(cls, path=None, **kwargs):
