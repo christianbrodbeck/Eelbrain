@@ -326,7 +326,7 @@ class PyEditor(wx.py.editor.EditorFrame):
                                 title=self.editor.getStatus()[0],
                                 comment=None,
                                 shell_globals=shell_globals,
-                                filedir=self.buffer.doc.filedir,
+                                filepath=self.buffer.doc.filepath,
                                 internal_call=True)
             self.updateNamespace()
 
@@ -365,7 +365,7 @@ class PyEditor(wx.py.editor.EditorFrame):
                                     title=self.editor.getStatus()[0],
                                     comment=comment,
                                     shell_globals=shell_globals,
-                                    filedir=self.buffer.doc.filedir,
+                                    filepath=self.buffer.doc.filepath,
                                     internal_call=True)
                 self.updateNamespace()
             else:

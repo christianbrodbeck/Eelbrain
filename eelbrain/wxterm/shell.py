@@ -799,15 +799,13 @@ class ShellFrame(wx.py.shell.ShellFrame):
         """
         Execute a file in the shell.
 
-        shell_globals determines wheter the shell's globals are submitted to
-        the call to execfile or not.
-
-
-        (!)
-        A problem currently (also with the commented-out version below) is that
-        __file__ and sys.argv[0] point to eelbrain.__main__ instead of the
-        executed file.
-
+        Parameters
+        ----------
+        filename : str
+            File to execute.
+        shell_globals : bool
+            Wheter the file should be executed in the shell's global namespace
+            (or in a separate namespace).
         """
         if filename and os.path.exists(filename):
             # set paths in environment
@@ -847,14 +845,16 @@ class ShellFrame(wx.py.shell.ShellFrame):
             logging.error("shell.ExecFile: invalid filename (%r)" % filename)
 
     def ExecText(self, txt, out=False, title="unknown source", comment=None,
-                 shell_globals=True, filedir=None, internal_call=False):
+                 shell_globals=True, filepath=None, internal_call=False):
         """
         Compile txt and Execute it in the shell.
 
-        **kwargs**
-
-        out:
-            shell.Execute
+        Parameters
+        ----------
+        txt : str
+            Code to execute.
+        out : bool
+            Use shell.Execute
         title:
             is displayed in the shell and should identify the source of the
             code.
@@ -863,9 +863,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
         shell_globals:
             determines wheter the shell's globals are submitted to
             the call to execfile or not.
-        filedir:
-            perform os.chdir before executing
-
+        filepath:
+            Perform os.chdir and set __file__ before executing.
         """
         if comment is None:
             msg = '<exec %r>' % title
@@ -873,8 +872,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
             msg = '<exec %r, %s>' % (title, comment)
         self.shell_message(msg, ascommand=False, internal_call=internal_call)
 
-        if filedir:
-            self.curdir(filedir)
+        if filepath:
+            self.curdir(os.path.dirname(filepath))
+            if out or shell_globals:
+                self.global_namespace['__file__'] = filepath
 
         if out:
             self.shell.Execute(txt)
@@ -908,7 +909,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
             if shell_globals:
                 exec_globals = "globals()"
             else:
-                exec_globals = '{}'
+                exec_globals = "{'__file__': %r}" % filepath
 
             code = cmd.format(txt=txt, title=os.path.split(title)[-1],
                               globals=exec_globals)
