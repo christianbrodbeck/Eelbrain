@@ -124,16 +124,18 @@ def _ax_im_array(ax, layers, x='time',  # vmax=None,
 def array(epochs, xlabel=True, ylabel=True,
           w=4, h=3, dpi=50):
     """
-    plots uts data to a rectangular grid. I data has only 1 dimension, the
-    x-axis defines epochs.
+    Plot uts data to a rectangular grid.
 
-    **Arguments:**
-
-    h : scalar
-        plot height in inches
-    w : scalar
-        plot width in inches
-
+    Parameters
+    ----------
+    epochs : ndvar
+        If data has only 1 dimension, the x-axis defines epochs.
+    xlabel, ylabel : bool | str
+        I True, determine from the data.
+    w, h : scalar
+        Width per plot and height in inches.
+    dpi : int
+        Dpi of the figure.
     """
     epochs = _base.unpack_epochs_arg(epochs, 2)
 
@@ -247,6 +249,10 @@ def _plt_uts(ax, epoch,
 
     Parameters
     ----------
+    ax : matplotlib axes
+        Target axes.
+    epoch : ndvar (sensor by time)
+        Epoch to plot.
     sensors : None | True | numpy index
         The sensors to plot (None or True -> all sensors).
     lp: dictionary (line-properties)
@@ -257,13 +263,6 @@ def _plt_uts(ax, epoch,
     test_epoch:
         submit a test_epoch to add to plot (efficient because usually
         _ax_utsStats is called more than once for several epochs
-    plottype:
-        ``'mean'``: plots the mean for each stats epoch
-        ``'all'``:  plots all data traces contained in the stats, colors mark the
-        epoch NOT MAINTAINED
-
-    NOT IMPLEMENTED epochs: submit mean epochs
-
     """
     if sensors not in [None, True]:
         epoch = epoch.subdata(sensor=sensors)
@@ -374,20 +373,24 @@ class butterfly(_base.eelfigure):
         """
         Parameters
         ----------
-
+        epochs : (list of) ndvar
+            Data to plot.
         sensors: None or list of sensor IDs
             sensors to plot (``None`` = all)
+        ylim : scalar | (min, max) tuple of scalars
+            The y-axis limits (the default ``None`` leaves matplotlib's default
+            limits unaffected).
         w, h : scalar
-            width and height of the individual aces in inches
-        color: (mpl color)
+            width and height of the individual axes in inches.
+        dpi : int
+            Dpi of the figure.
+        ncol : int
+            Maximum number of columns when plotting multiple epochs.
+        title : bool | string
+            Title for the axes. If ``True``, the segment's name is used.
+        color : matplotlib color
             default (``None``): use segment color if available, otherwise
             black; ``True``: alternate colors (mpl default)
-        title: bool or string
-            Title for the axes. If ``True``, the segment's name is used.
-        ylim:
-            scalar or (min, max) tuple specifying the y-axis limits (the
-            default ``None`` leaves mpl's default limits unaffected)
-
         """
         epochs = _base.unpack_epochs_arg(epochs, 2)
 
