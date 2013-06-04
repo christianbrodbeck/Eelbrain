@@ -200,7 +200,6 @@ _temp = {
 
 
 
-
 class mne_experiment(object):
     """Class for managing data for an experiment
 
@@ -224,11 +223,10 @@ class mne_experiment(object):
     # Default values for epoch definitions
     epoch_default = {'stimvar': 'stim', 'tmin':-0.1, 'tmax': 0.6, 'decim': 5,
                      'name': 'epochs'}
-    epoch_default_arg = {'stim': 'adj'}
-    epochs_default_arg = [epoch_default_arg]
 
     # named epochs
-    epochs = {'bl': {'stim': 'adj', 'tmin':-0.2, 'tmax':0}}
+    epochs = {'bl': {'stim': 'adj', 'tmin':-0.2, 'tmax':0},
+              'epoch': {'stim': 'adj'}}
     # how to reject data epochs. See the  explanation accompanying the values
     # below:
     epoch_rejection = {
@@ -263,7 +261,10 @@ class mne_experiment(object):
     _templates = 'v0'
     # modify certain template entries from the outset (e.g. specify the initial
     # subject name)
-    _defaults = {}
+    _defaults = {
+                 # this should be a key in the epochs class attribute (see
+                 # above)
+                 'epoch': 'epoch'}
 
     def __init__(self, root=None, parse_subjects=True, subjects=[],
                  mri_subjects={}):
@@ -296,8 +297,11 @@ class mne_experiment(object):
 
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
 
+        self._state = self.get_templates(root=root)
+        epoch = self._state.get('epoch', None)
+        self.set(epoch=epoch)
+
         # find experiment data structure
-        self._state = self.get_templates()
         self._mri_subjects = keydefaultdict(lambda k: k)
         self._mri_subjects.update(mri_subjects)
         self.set(root=root, add=True)
@@ -327,10 +331,12 @@ class mne_experiment(object):
             self.notification = Notifier(owner, 'mne_experiment task')
 
     def _process_epochs_arg(self, epochs):
-        """Fill in named epochs and set the 'epoch' template"""
+        """Fill in named epochs and set the 'epoch' and 'stim' templates"""
         epochs = list(epochs)  # make sure we don't modify the input object
         e_descs = []  # full epoch descriptor
+        stims = set()  # all relevant stims
         for i in xrange(len(epochs)):
+            # expand epoch description
             ep = epochs[i]
             if isinstance(ep, str):
                 ep = self.epochs[ep]
@@ -338,14 +344,24 @@ class mne_experiment(object):
             for k, v in self.epoch_default.iteritems():
                 if k not in ep:
                     ep[k] = v
-            epochs[i] = ep
 
+            # make sure stim is ordered
+            stim = ep['stim']
+            if '|' in stim:
+                stim = '|'.join(sorted(set(stim.split('|'))))
+
+            # store expanded epoch
+            stims.update(stim.split('|'))
+            epochs[i] = ep
             desc = self.get_epoch_str(**ep)
             e_descs.append(desc)
 
         ep_str = '(%s)' % ','.join(sorted(e_descs))
-        self.set(epoch=ep_str)
-        return epochs
+        stim = '|'.join(sorted(stims))
+
+        self.set(stim=stim, add=True)
+        self._state['epoch'] = ep_str
+        self._epochs_state = epochs
 
     def _update_var_values(self):
         subjects = self.var_values['subject']
@@ -894,8 +910,7 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_epochs(self, epoch=_epoch_default_arg, asndvar=False,
-                    subject=None, reject=True):
+    def load_epochs(self, epoch=None, asndvar=False, subject=None, reject=True):
         """
         Load a dataset with epochs for a given epoch definition
 
@@ -912,7 +927,8 @@ class mne_experiment(object):
             Whether to apply epoch rejection or not. The kind of rejection
             employed depends on the ``.epoch_rejection`` class attribute.
         """
-        epoch = self._process_epochs_arg([epoch])[0]
+        self.set(subject=subject, epoch=epoch)
+        epoch = self._epochs_state[0]
 
         stimvar = epoch['stimvar']
         stim = epoch['stim']
@@ -1003,8 +1019,7 @@ class mne_experiment(object):
 
         return ds
 
-    def load_evoked(self, model='ref%side', epochs=epochs_default_arg,
-                    to_ndvar=False):
+    def load_evoked(self, model='ref%side', epochs=None, to_ndvar=False):
         """
         Load a dataset with evoked files for each subject.
 
@@ -1018,8 +1033,8 @@ class mne_experiment(object):
             actual name can be supplied as a string instead. The target name
             is always 'MEG'.
         """
-        epochs = self._process_epochs_arg(epochs)
-        self.set(model=model)
+        self.set(model=model, epochs=epochs)
+        epochs = self._epochs_state
 
         dss = []
         for _ in self.iter_vars(['subject']):
@@ -1095,7 +1110,7 @@ class mne_experiment(object):
 
         return raw
 
-    def load_sensor_data(self, epochs=epochs_default_arg, random=('subject',),
+    def load_sensor_data(self, epochs=None, random=('subject',),
                          all_subjects=False):
         """
         Load sensor data in the form of an Epochs object contained in a dataset
@@ -1106,7 +1121,8 @@ class mne_experiment(object):
             ds = combine(dss)
             return ds
 
-        epochs = self._process_epochs_arg(epochs)
+        self.set(epochs=epochs)
+        epochs = self._epochs_state
         if len(set(ep['name'] for ep in epochs)) < len(epochs):
             raise ValueError("All epochs need a unique name")
 
@@ -1187,7 +1203,8 @@ class mne_experiment(object):
         if (not redo) and os.path.exists(dest):
             return
 
-        epoch = self._process_epochs_arg([cov])[0]
+        self.set(epoch=cov)
+        epoch = self._epochs_state[0]
         stimvar = epoch['stimvar']
         stim = epoch['stim']
         tmin = epoch['tmin']
@@ -1207,7 +1224,7 @@ class mne_experiment(object):
         cov = mne.cov.compute_covariance(epochs)
         cov.save(dest)
 
-    def make_epoch_selection(self, epoch=_epoch_default_arg, **kwargs):
+    def make_epoch_selection(self, **kwargs):
         """Show the SelectEpochs GUI to do manual epoch selection for a given epoch
 
         The GUI is opened with the correct file name; if the corresponding
@@ -1216,23 +1233,23 @@ class mne_experiment(object):
 
         Parameters
         ----------
-        epoch : epoch specification
-            The epoch for which to perform manual rejection.
+        kwargs :
+            Kwargs for SelectEpochs
         """
         if not self.epoch_rejection.get('manual', False):
             err = ("Epoch rejection is automatic. See the .epoch_rejection "
                    "class attribute.")
             raise RuntimeError(err)
 
-        ds = self.load_epochs(epoch, asndvar=True, reject=False)
+        ds = self.load_epochs(asndvar=True, reject=False)
         path = self.get('epoch-sel-file', mkdir=True)
 
         from ..wxgui.MEG import SelectEpochs
         ROI = self.epoch_rejection.get('eog_sns', None)
         gui = SelectEpochs(ds, path=path, ROI=ROI, **kwargs)  # nplots, plotsize,
 
-    def make_evoked(self, model='ref%side', epochs=epochs_default_arg,
-                    random=('subject',), redo=False):
+    def make_evoked(self, model='ref%side', epochs=None, random=('subject',),
+                    redo=False):
         """
         Creates datasets with evoked files for the current subject/experiment
         pair.
@@ -1247,8 +1264,8 @@ class mne_experiment(object):
             See the module documentation.
 
         """
-        epochs = self._process_epochs_arg(epochs)
-        self.set(model=model)
+        self.set(epochs=epochs, model=model)
+        epochs = self._epochs_state
         dest_fname = self.get('evoked', mkdir=True)
         if not redo and os.path.exists(dest_fname):
             return
@@ -1700,20 +1717,23 @@ class mne_experiment(object):
         Reset the experiment to the state at the end of __init__.
 
         Note that variables which were added to the experiment after __init__
-        are not affected.
+        are lost. 'epoch' is always excluded (can not be reset).
 
         Parameters
         ----------
-        exclude : list
+        exclude : collection
             Exclude these variables from the reset (i.e., retain their current
             value)
         """
-        state = self._initial_state.copy()
+        exclude = set(exclude)
+        exclude.update(('epoch', 'stim'))
         # dependent variables
-        exclude = set(exclude).union(('mrisubject',))
-        for key in exclude:
-            del state[key]
-        self.set(**state)
+        if 'subject' in exclude:
+            exclude.add('mrisubject')
+
+        save = {k:self._state[k] for k in exclude}
+        self._state = self._initial_state.copy()
+        self._state.update(save)
 
     def rm(self, temp, values={}, exclude={}, v=False, **kwargs):
         """
@@ -1882,6 +1902,10 @@ class mne_experiment(object):
             if not 'mrisubject' in kwargs:
                 kwargs['mrisubject'] = self._mri_subjects[subject]
 
+        # remove epoch(s)
+        epoch = kwargs.pop('epoch', None)
+        epochs = kwargs.pop('epochs', None)
+
         # test var_value
         if match:
             for k, v in kwargs.iteritems():
@@ -1896,6 +1920,14 @@ class mne_experiment(object):
                     self._state[k] = v
             else:
                 raise KeyError("No variable named %r" % k)
+
+        if epoch and epochs:
+            err = "Can's set 'epoch' and 'epochs' at the same time"
+            raise RuntimeError(err)
+        elif epoch:
+            self._process_epochs_arg([epoch])
+        elif epochs:
+            self._process_epochs_arg(epochs)
 
     _cell_order = ()
     _cell_fullname = True  # whether or not to include factor name in cell
