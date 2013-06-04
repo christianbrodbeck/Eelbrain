@@ -11,6 +11,7 @@ import time
 
 import numpy as np
 import wx
+from wx.lib.dialogs import ScrolledMessageDialog
 
 
 import ID
@@ -41,9 +42,9 @@ class SelectEpochs(eelfigure):
         Open a plot with the correlation of each channel with its neighbors.
     """
     def __init__(self, ds, data='MEG', target='accept', blink=True,
-                 path=None,
+                 path=None, bad_chs=None,
                  nplots=(6, 6), plotsize=(3, 1.5), fill=True, ROI=None,
-                 mean=True, topo=True, ylim=None, aa=False, dpi=50):
+                 mean=True, topo=True, ylim=None, dpi=50):
         """
         Plots all cases in the collection segment and allows visual selection
         of cases. The selection can be retrieved through the get_selection
@@ -70,6 +71,9 @@ class SelectEpochs(eelfigure):
             are read and applied immediately. If the file does not exist, this
             will be the default path for saving the file (valid extensions are
             .txt and .pickled).
+        bad_chs : None | list
+            Bad channels (are excluded from plotting and automatic rejection,
+            and saved in ds.info['bad_chs'] when the selection is pickled).
         nplots : 1 | 2 | (i, j)
             Number of plots (including topo plots and mean).
         fill : bool
@@ -84,8 +88,6 @@ class SelectEpochs(eelfigure):
             Show a dynamically updated topographic plot at the bottom right.
         ylim : scalar
             y-limit of the butterfly plots.
-        aa : bool
-            Antialiasing (matplolibt parameter).
 
 
         Examples
@@ -171,6 +173,7 @@ class SelectEpochs(eelfigure):
             self._bfly_kwargs['ylim'] = ylim
 
     # finalize
+        self._set_bad_chs(bad_chs, reset=True)
         self._ds = ds
         if path and os.path.exists(path):
             self._load_selection(path)
@@ -188,7 +191,10 @@ class SelectEpochs(eelfigure):
         pages = []
         for i in xrange(self._n_pages):
             istart = self._segs_by_page[i][0]
-            pages.append('%i: %i...' % (i, istart))
+            if i == self._n_pages - 1:
+                pages.append('%i: %i..%i' % (i, istart, len(self._data)))
+            else:
+                pages.append('%i: %i...' % (i, istart))
         c = self._page_choice = wx.Choice(tb, -1, choices=pages)
         tb.AddControl(c)
         tb.Bind(wx.EVT_CHOICE, self._OnPageChoice)
@@ -201,8 +207,6 @@ class SelectEpochs(eelfigure):
         if self._n_pages < 2:
             tb.EnableTool(wx.ID_FORWARD, False)
             tb.EnableTool(wx.ID_BACKWARD, False)
-        tb.AddLabelTool(wx.ID_REFRESH, "Refresh", Icon("tango/actions/view-refresh"))
-        tb.Bind(wx.EVT_TOOL, self._Refresh, id=wx.ID_REFRESH)
         tb.AddSeparator()
 
         # Thresholding
@@ -210,11 +214,16 @@ class SelectEpochs(eelfigure):
         tb.AddControl(btn)
         btn.Bind(wx.EVT_BUTTON, self._OnThreshold)
 
+        # exclude channels
+        btn = wx.Button(tb, ID.EXCLUDE_CHANNELS, "Exclude Channel")
+        tb.AddControl(btn)
+        btn.Bind(wx.EVT_BUTTON, self._OnExcludeChannel)
+
         # save rejection
         btn = wx.Button(tb, ID.SAVE_REJECTION, "Save")
         btn.SetHelpText("Save the epoch selection to a file.")
         tb.AddControl(btn)
-        btn.Bind(wx.EVT_BUTTON, self._OnSaveRejection)
+        btn.Bind(wx.EVT_BUTTON, self._OnSaveSelection)
 
     def _get_page_mean_seg(self):
         seg_IDs = self._segs_by_page[self._current_page_i]
@@ -231,7 +240,7 @@ class SelectEpochs(eelfigure):
             t = event.xdata
             tseg = self._get_topo_seg(ax, t)
             if ax.ID >= 0:  # single trial plot
-                txt = 'Segment %i,   ' % ax.segID + '%s'
+                txt = 'Epoch %i,   ' % ax.segID + '%s'
             elif  ax.ID == -1:  # mean plot
                 txt = "Page average,   %s"
             # update internal topomap plot
@@ -252,7 +261,7 @@ class SelectEpochs(eelfigure):
             tseg = self._mean_seg.subdata(time=t, name=name % 'Page Average')
         elif ax_id >= 0:
             seg = self._case_segs[ax_id]
-            tseg = seg.subdata(time=t, name=name % 'Segment %i' % ax.segID)
+            tseg = seg.subdata(time=t, name=name % 'Epoch %i' % ax.segID)
         else:
             raise IndexError("ax_id needs to be >= -1, not %i" % ax_id)
 
@@ -265,6 +274,15 @@ class SelectEpochs(eelfigure):
         self._frame.redraw(axes=[self._mean_ax])
 
     def set_ax_state(self, axID, state):
+        """Set the state (accept/reject) of one axis.
+
+        Parameters
+        ----------
+        axID : int
+            Axis ID (index of the axis on the current page)
+        state : bool
+            Accept (True) or reject (False).
+        """
         ax = self._case_axes[axID]
         h = self._case_handles[axID]
         h.set_state(state)
@@ -272,6 +290,24 @@ class SelectEpochs(eelfigure):
 
         self._frame.redraw(artists=[h.ax])
         self._update_mean()
+
+    def get_bad_chs(self, name=True):
+        """Get the channels currently set as bad
+
+        Parameters
+        ----------
+        name : bool
+            Return channel names (otherwise the channel index is returned).
+
+        Returns
+        -------
+        bad_chs : None | list of int, str
+            Channels currenty excluded.
+        """
+        if name:
+            return [self._data.sensor.names[i] for i in self._bad_chs]
+        else:
+            return self._bad_chs[:]
 
     def invert_selection(self, axID):
         "ID refers to ax-ID in the display"
@@ -285,22 +321,31 @@ class SelectEpochs(eelfigure):
         self.set_ax_state(axID, state)
 
     def load_selection(self, path):
-        self._load_selection(path)
-        self._Refresh(None)
+        try:
+            self._load_selection(path)
+        except Exception as ex:
+            msg = str(ex)
+            title = "Error Loading Rejections"
+            dlg = ScrolledMessageDialog(self, msg, title)
+            dlg.ShowModal()
+        self._refresh()
 
     def _load_selection(self, path):
         _, ext = os.path.splitext(path)
         if ext == '.pickled':
             ds = load.unpickle(path)
-            if np.all(ds['eventID'] == self._ds['eventID']):
-                self._target[:] = ds['accept']
-            else:
-                err = ("Event IDs don't match")
-                raise ValueError(err)
         elif ext == '.txt':
-            self._target[:] = load.txt.var(path)
+            ds = load.txt.tsv(path)
         else:
             raise ValueError("Unknown file extension for rejections: %r" % ext)
+
+        if np.all(ds['eventID'] == self._ds['eventID']):
+            self._target[:] = ds['accept']
+            if 'bad_chs' in ds.info:
+                self._bad_chs = ds.info['bad_chs']
+        else:
+            err = ("Event IDs don't match")
+            raise ValueError(err)
 
     def open_topomap(self):
         if self._topo_fig:
@@ -312,9 +357,11 @@ class SelectEpochs(eelfigure):
     def save_rejection(self, path):
         """Save the rejection list as a file
 
+        Parameters
+        ----------
         path : str
-            The extension def
-
+            Path under which to save. The extension determines the way file
+            (*.pickled -> pickled dataset; *.txt -> tsv)
         """
         # find dest path
         root, ext = os.path.splitext(path)
@@ -326,7 +373,8 @@ class SelectEpochs(eelfigure):
         accept = self._target
         if accept.name != 'accept':
             accept = accept.copy('accept')
-        ds = dataset(self._ds['eventID'], accept)
+        ds = dataset(self._ds['eventID'], accept,
+                     info={'bad_chs': self._bad_chs})
 
         if ext == '.pickled':
             save.pickle(ds, path)
@@ -335,6 +383,34 @@ class SelectEpochs(eelfigure):
         else:
             raise ValueError("Unsupported extension: %r" % ext)
 
+    def _set_bad_chs(self, bad_chs, reset=False):
+        "Set the self._bad_chs value, but don't refresh the plot"
+        if reset:
+            self._bad_chs = []
+
+        if bad_chs is None:
+            return
+
+        bad_chs = self._data.sensor.dimindex(bad_chs)
+        for ch in bad_chs:
+            if ch in self._bad_chs:
+                continue
+
+            self._bad_chs.append(ch)
+
+    def set_bad_chs(self, bad_chs=None, reset=False):
+        """Set the channels to treat as bad (i.e., exclude)
+
+        Parameters
+        ----------
+        bad_chs : None | list of str, int
+            List of channels to treat as bad (as name or index).
+        reset : bool
+            Reset previously set bad channels to good.
+        """
+        self._set_bad_chs(bad_chs, reset=reset)
+        self._refresh()
+
     def set_ylim(self, y):
         for ax in self._case_axes:
             ax.set_ylim(-y, y)
@@ -342,22 +418,31 @@ class SelectEpochs(eelfigure):
         self.canvas.draw()
         self._bfly_kwargs['ylim'] = y
 
-    def show_page(self, page):
+    def show_page(self, page=None):
         "Dislay a specific page (start counting with 0)"
         t0 = time.time()
-        self._current_page_i = page
-        self._page_choice.Select(page)
+        if page is None:
+            page = self._current_page_i
+        else:
+            self._current_page_i = page
+            self._page_choice.Select(page)
 
         self.figure.clf()
         nx, ny = self._nplots
         seg_IDs = self._segs_by_page[page]
+
+        self._current_bad_chs = self._bad_chs[:]
+        if self._bad_chs:
+            sens_idx = self._data.sensor.index(self._bad_chs)
+        else:
+            sens_idx = None
 
         # segment plots
         self._case_handles = []
         self._case_axes = []
         self._case_segs = []
         for i, ID in enumerate(seg_IDs):
-            case = self._data[ID]
+            case = self._data.subdata(case=ID, sensor=sens_idx)
             state = self._target[ID]
             ax = self.figure.add_subplot(nx, ny, i + 1, xticks=[0], yticks=[])  # , 'axis_off')
             ax._epoch_state = state
@@ -365,7 +450,7 @@ class SelectEpochs(eelfigure):
             h = _ax_bfly_epoch(ax, case, xlabel=None, ylabel=None, state=state,
                                **self._bfly_kwargs)
             if self._blink is not None:
-                _plt_bin_nuts(ax, self._blink[ID])
+                _plt_bin_nuts(ax, self._blink[ID], color=(0.99, 0.76, 0.21))
 
             ax.ID = i
             ax.segID = ID
@@ -424,6 +509,31 @@ class SelectEpochs(eelfigure):
             cseg = corr(seg, name='Epoch %i Neighbor Correlation' % ax.segID)
             plot.topo.topomap(cseg)
 
+    def _OnExcludeChannel(self, event):
+        chs = ', '.join(self.get_bad_chs()) or 'None'
+        msg = ("Currently excluded: %s\n"
+               "Exclude a channels by name; exclude several channels\n"
+               "separated by comma." % chs)
+        dlg = wx.TextEntryDialog(self._frame, msg, "Exclude Channels")
+        if dlg.ShowModal() != wx.ID_OK:
+            return
+
+        chs = map(unicode.strip, dlg.GetValue().split(','))
+        bads = [ch for ch in chs if ch not in self._data.sensor.channel_idx]
+        if bads:
+            names = ', '.join(map(repr, map(str, bads)))
+            if len(bads) > 1:
+                name_form = 'names'
+            else:
+                name_form = 'name'
+            msg = ("Invalid channel %s: %s. Use full name (including "
+                   "leading '0's)" % (name_form, names))
+            title = "Error Excluding Channels"
+            dlg = wx.MessageDialog(self._frame, msg, title, wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+        else:
+            self.set_bad_chs(chs)
+
     def _OnForward(self, event):
         "turns the page forward"
         if self._current_page_i < self._n_pages - 1:
@@ -440,7 +550,7 @@ class SelectEpochs(eelfigure):
         page = self._page_choice.GetSelection()
         self.show_page(page)
 
-    def _OnSaveRejection(self, event):
+    def _OnSaveSelection(self, event):
         msg = ("Save the epoch selection to a file.")
         if self._path:
             default_dir, default_name = os.path.split(self._path)
@@ -449,17 +559,20 @@ class SelectEpochs(eelfigure):
             default_name = ''
         wildcard = "Pickle (*.pickled)|*.pickled|Text (*.txt)|*.txt"
         dlg = wx.FileDialog(self._frame, msg, default_dir, default_name,
-                            wildcard, wx.FD_SAVE)
+                            wildcard, wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
         if dlg.ShowModal() == wx.ID_OK:
             path = dlg.GetPath()
             self.save_rejection(path)
 
-    def _Refresh(self, event):
+    def _refresh(self, event=None):
         "updates the states of the segments on the current page"
-        for ax in self._case_axes:
-            state = self._target[ax.segID]
-            if state != ax._epoch_state:
-                self.set_ax_state(ax.ID, state)
+        if self._current_bad_chs == self._bad_chs:
+            for ax in self._case_axes:
+                state = self._target[ax.segID]
+                if state != ax._epoch_state:
+                    self.set_ax_state(ax.ID, state)
+        else:
+            self.show_page()
 
     def save_all_pages(self, fname=None):
         if fname is None:
@@ -508,9 +621,10 @@ class SelectEpochs(eelfigure):
 
         process.mark_by_threshold(self._ds, x=self._data,
                                   threshold=threshold, above=above,
-                                  below=below, target=self._target)
+                                  below=below, target=self._target,
+                                  bad_chs=self._bad_chs)
 
-        self._Refresh(event)
+        self._refresh()
 
 
 
@@ -619,7 +733,3 @@ class pca(mpl_canvas.CanvasFrame):
         self._dataset[target] = self.pca.subtract(rm, name=target)
 
         self.Close()
-
-
-
-
