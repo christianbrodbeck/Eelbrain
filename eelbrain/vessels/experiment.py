@@ -934,44 +934,16 @@ class mne_experiment(object):
             Whether to apply epoch rejection or not. The kind of rejection
             employed depends on the ``.epoch_rejection`` class attribute.
         """
-        self.set(subject=subject, epoch=epoch)
-        epoch = self._epochs_state[0]
+        self.set(subject=subject)
+        ds = self.load_selected_events(epoch=epoch, reject=reject)
 
-        stimvar = epoch['stimvar']
-        stim = epoch['stim']
-        tmin = epoch.get('reject_tmin', epoch['tmin'])
-        tmax = epoch.get('reject_tmax', epoch['tmax'])
-
-        ds = self.load_events(subject)
-        stimvar = ds[stimvar]
-        if '|' in stim:
-            idx = stimvar.isin(stim.split('|'))
+        if not reject or self.epoch_rejection.get('manual', False):
+            reject_arg = None
         else:
-            idx = stimvar == stim
-        ds = ds.subset(idx)
-        reject_arg = None
-        if reject:
-            if self.epoch_rejection.get('manual', False):
-                reject_arg = None
-                path = self.get('epoch-sel-file')
-                if not os.path.exists(path):
-                    err = ("The rejection file at %r does not exist. Run "
-                           ".make_epoch_selection() first.")
-                    raise RuntimeError(err)
-                ds_sel = load.unpickle(path)
-                if not np.all(ds['eventID'] == ds_sel['eventID']):
-                    err = ("The epoch selection file contains different "
-                           "events than the data. Something went wrong...")
-                    raise RuntimeError(err)
-                ds = ds.subset(ds_sel['accept'])
-            else:
-                reject_arg = self.epoch_rejection.get('threshold', None)
-                use = self.epoch_rejection.get('edf', False)
-                if use:
-                    edf = ds.info['edf']
-                    ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=use)
+            reject_arg = self.epoch_rejection.get('threshold', None)
 
         # load sensor space data
+        epoch = self._epochs_state[0]
         target = epoch['name']
         tmin = epoch['tmin']
         tmax = epoch['tmax']
@@ -1016,7 +988,7 @@ class mne_experiment(object):
             experiment = self._state['experiment']
 
         # add edf
-        if edf:
+        if edf and self.epoch_rejection.get('edf', None):
             edf = self.load_edf()
             edf.add_T_to(ds)
             ds.info['edf'] = edf
@@ -1115,6 +1087,72 @@ class mne_experiment(object):
             raw.info['bads'].extend(bad_chs)
 
         return raw
+
+    def load_selected_events(self, reject=True, add_proj=True, epoch=None,
+                             subject=None):
+        """
+        Load events and return a subset based on epoch and rejection
+
+        Parameters
+        ----------
+        reject : bool | 'keep'
+            Reject bad trials. For True, bad trials are removed from the
+            dataset. For 'keep', the 'accept' variable is added to the dataset
+            and bad trials are kept.
+        add_proj : bool
+            Add the projections to the Raw object.
+        epoch : None | str | dict
+            Epoch specification.
+        subject : None | str
+            Set the template.
+
+        Warning
+        -------
+        For automatic rejection (``not self.epoch_rejection.get('manual',
+        False)``): Since no epochs are loaded, no rejection based on
+        thresholding is performed.
+        """
+        self.set(epoch=epoch, subject=subject)
+        epoch = self._epochs_state[0]
+
+        ds = self.load_events(add_proj=add_proj)
+        stimvar = epoch['stimvar']
+        stim = epoch['stim']
+        tmin = epoch.get('reject_tmin', epoch['tmin'])
+        tmax = epoch.get('reject_tmax', epoch['tmax'])
+        stimvar = ds[stimvar]
+        if '|' in stim:
+            idx = stimvar.isin(stim.split('|'))
+        else:
+            idx = stimvar == stim
+        ds = ds.subset(idx)
+        if reject:
+            if self.epoch_rejection.get('manual', False):
+                path = self.get('epoch-sel-file')
+                if not os.path.exists(path):
+                    err = ("The rejection file at %r does not exist. Run "
+                           ".make_epoch_selection() first.")
+                    raise RuntimeError(err)
+                ds_sel = load.unpickle(path)
+                if not np.all(ds['eventID'] == ds_sel['eventID']):
+                    err = ("The epoch selection file contains different "
+                           "events than the data. Something went wrong...")
+                    raise RuntimeError(err)
+                if reject == 'keep':
+                    ds['accept'] = ds_sel['accept']
+                elif reject == True:
+                    ds = ds.subset(ds_sel['accept'])
+                else:
+                    err = ("reject parameter must be bool or 'keep', not "
+                           "%r" % reject)
+                    raise ValueError(err)
+            else:
+                use = self.epoch_rejection.get('edf', False)
+                if use:
+                    edf = ds.info['edf']
+                    ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=use)
+
+        return ds
 
     def load_sensor_data(self, epochs=None, random=('subject',),
                          all_subjects=False):
