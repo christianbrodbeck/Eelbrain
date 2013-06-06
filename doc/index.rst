@@ -17,6 +17,7 @@ Contents:
    :maxdepth: 2
    
    About
+   changes
    Interface
    data-obj
    psyphys

@@ -1,6 +1,6 @@
 """
- 
-  "The human brain is like an enormous fish. It's flat 
+
+  "The human brain is like an enormous fish. It's flat
    and slimy, and has gills through which it can see."
                                                - Dr. Qwatt
 
@@ -10,9 +10,9 @@ Module Hierarchy
 
 'a < b' means a imports from b, so b can not import from a:
 
-wxterm < wxgui < wxutils 
+wxterm < wxgui < wxutils
                < plot < analyze < vessels < fmtxt
-    
+
 
 
 
@@ -22,4 +22,4 @@ Copyright (c) 2012. All rights reserved.
 
 """
 
-__version__ = '0.0.4dev'
+__version__ = '0.0.5dev'
