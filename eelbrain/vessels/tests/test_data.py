@@ -8,7 +8,7 @@ import cPickle as pickle
 import shutil
 import tempfile
 
-from nose.tools import assert_equal, assert_true
+from nose.tools import assert_equal, assert_true, eq_, ok_
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -77,6 +77,17 @@ def test_combine():
                        "missing var")
     assert_true(np.all(ds1['Cat'] == ds['Cat'][:ds1.n_cases]), "Combine with "
                 "missing factor")
+
+
+def test_ndvar_op():
+    "Test ndvar operations"
+    ds = datasets.get_basic()
+    Ynd = ds['Ynd']
+    Ynd_bl = Ynd - Ynd.summary(time=(None, 0))
+
+    # assert that the baseline is 0
+    bl = Ynd_bl.summary('case', time=(None, 0))
+    ok_(np.abs(bl) < 1e-10, "Baseline correction")
 
 
 def test_pickle_io():

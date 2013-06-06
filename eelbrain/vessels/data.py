@@ -3896,7 +3896,18 @@ class UTS(Dimension):
     def __getitem__(self, index):
         if isinstance(index, int):
             return self.times[index]
-        elif isinstance(index, slice):
+        elif not isinstance(index, slice):
+            # convert index to slice
+            index = np.arange(len(self))[index]
+            start = index[0]
+            steps = np.unique(np.diff(index))
+            if len(steps) > 1:
+                raise NotImplementedError("non-uniform time series")
+            step = steps[0]
+            stop = index[-1] + step
+            index = slice(start, stop, step)
+
+        if isinstance(index, slice):
             if index.start is None:
                 start = 0
             else:
@@ -3908,22 +3919,17 @@ class UTS(Dimension):
                 stop = index.stop
 
             tmin = self.times[start]
-            nsteps = stop - start - 1
+            nsamples = stop - start
 
             if index.step is None:
                 tstep = self.tstep
             else:
                 tstep = self.tstep * index.step
         else:
-            times = self.times[index]
-            tmin = times[0]
-            nsteps = len(times)
-            steps = np.unique(np.diff(times))
-            if len(steps) > 1:
-                raise NotImplementedError("non-uniform time series")
-            tstep = steps[0]
+            err = ("Unupported index: %r" % index)
+            raise TypeError(err)
 
-        return UTS(tmin, tstep, nsteps)
+        return UTS(tmin, tstep, nsamples)
 
     def dimindex(self, arg):
         if np.isscalar(arg):
