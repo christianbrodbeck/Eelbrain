@@ -270,7 +270,7 @@ class mne_experiment(object):
         """
         Parameters
         ----------
-        root : str
+        root : str | None
             the root directory for the experiment (usually the directory
             containing the 'meg' and 'mri' directories)
         parse_subjects : bool
@@ -279,19 +279,7 @@ class mne_experiment(object):
             Provide additional MEG subjects.
         mri_subjects : dict, {subject: mrisubject}
             Provide additional MRI subjects.
-
         """
-        if root:
-            root = os.path.expanduser(root)
-            if not os.path.exists(root):
-                raise IOError("Path does not exist: %r" % root)
-        else:
-            msg = "Please select the meg directory of your experiment"
-            root = ui.ask_dir("Select Root Directory", msg, True)
-
-        # settings
-        self.root = root
-
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
 
         self._state = self.get_templates(root=root)
@@ -540,7 +528,7 @@ class mne_experiment(object):
                     key = morph
                 ds[key] = load.fiff.stc_ndvar(mstcs[name], self.get('common_brain'))
 
-    def get_templates(self):
+    def get_templates(self, root=None, **kwargs):
         if isinstance(self._templates, str):
             t = _temp[self._templates]
         else:
@@ -551,10 +539,23 @@ class mne_experiment(object):
             raise TypeError(err)
 
         t.update(self._defaults)
+        t.update(kwargs)
+
+        # make sure we have a valid root
+        if root is not None:
+            t['root'] = os.path.expanduser(root)
+        elif 'root' not in t:
+            msg = "Please select the meg directory of your experiment"
+            root = ui.ask_dir("Select Root Directory", msg, True)
+            t['root'] = root
+
+        if not os.path.exists(t['root']):
+            raise IOError("Specified root path does not exist: %r" % root)
+
         return t
 
     def __repr__(self):
-        args = [repr(self.root)]
+        args = [repr(self.get('root'))]
         kwargs = []
 
         for k in self._repr_vars:
@@ -1604,7 +1605,7 @@ class mne_experiment(object):
         subjects = self.var_values['subjects']
         e = self.__class__(src_root, subjects=subjects,
                            mri_subjects=self._mri_subjects)
-        e.push(self.root, names=names, **kwargs)
+        e.push(self.get('root'), names=names, **kwargs)
 
     def push(self, dst_root, names=[], overwrite=False, missing='warn'):
         """OK 12/8/12
@@ -1632,7 +1633,7 @@ class mne_experiment(object):
 
                 if os.path.exists(src):
                     dst = self.get(name, root=dst_root, match=False, mkdir=True)
-                    self.set(root=self.root)
+                    self.set(root=self.get('root'))
                     if os.path.isdir(src):
                         if os.path.exists(dst):
                             if overwrite:
@@ -1758,7 +1759,7 @@ class mne_experiment(object):
                 files.append(fname)
 
         if files:
-            root = self.root
+            root = self.get('root')
             print "root: %s\n" % root
             root_len = len(root)
             for name in files:
