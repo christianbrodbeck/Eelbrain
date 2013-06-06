@@ -249,7 +249,6 @@ class mne_experiment(object):
                        # automatically.
                        'edf': ['EBLINK']}
 
-    subjects_has_own_mri = ()
     owner = None  # email address as string (for notification)
 
     # Pattern for subject names
@@ -500,10 +499,10 @@ class mne_experiment(object):
 
         for case in ds.itercases():
             subject = case['subject']
-            if subject in self.subjects_has_own_mri:
-                subject_from = subject
-            else:
+            if is_fake_mri(self.get('mri_sdir')):
                 subject_from = self.get('common_brain')
+            else:
+                subject_from = subject
 
             for name in do:
                 evoked = case[name]
