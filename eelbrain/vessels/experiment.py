@@ -13,7 +13,8 @@ Epochs are defined as dictionaries containing the following entries
     variable on which the stim value is chosen: the relevant events are
     found by ``idx = (ds[stimvar] == stim)``.
 **stim** : str
-    Value of the stimvar relative to which the epoch is defined.
+    Value of the stimvar relative to which the epoch is defined. Can combine
+    multiple names with '|'.
 **name** : str
     A name for the epoch; when the resulting data is added to a dataset, this
     name is used.
@@ -218,8 +219,10 @@ class mne_experiment(object):
     """
     # Experiment Constants
     # --------------------
-    # Bad channels dictionary: (sub, exp) -> list of int
+
+    # Bad channels dictionary: (sub, exp) -> list of str
     bad_channels = defaultdict(list)
+
     # Default values for epoch definitions
     epoch_default = {'stimvar': 'stim', 'tmin':-0.1, 'tmax': 0.6, 'decim': 5,
                      'name': 'epochs'}
@@ -241,18 +244,25 @@ class mne_experiment(object):
                        'eog_sns': ['MEG 087', 'MEG 130'],
                        # the reject argument when loading epochs:
                        'threshold': dict(mag=3e-12),
-                       # How to use eye tracker information:
+                       # How to use eye tracker information in rejection. True
+                       # causes edf files to be loaded but not used
+                       # automatically.
                        'edf': ['EBLINK']}
 
     subjects_has_own_mri = ()
+    owner = None  # email address as string (for notification)
+
+    # Pattern for subject names
     subject_re = re.compile('R\d{4}$')
 
-    # Constants that should not need to be modified
-    # ---------------------------------------------
     _experiments = []
     _fmt_pattern = re.compile('\{([\w-]+)\}')
     _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
-    _subject_loc = 'meg_dir'  # location of subject folders
+
+    # Where to search for subjects. If the experiment searches for subjects
+    # automatically, it scans this directory for subfolders matching
+    # subject_re.
+    _subject_loc = 'meg_dir'
 
     # basic templates to use. Can be a string referring to a templates
     # dictionary in the module level _temp dictionary, or a templates
@@ -988,14 +998,13 @@ class mne_experiment(object):
 
         Parameters
         ----------
-        subject, experiment, raw : None | str
+        subject, experiment : None | str
             Call self.set(...).
         add_proj : bool
-            Add the projections to the Raw object. This does *not* set the
-            proj variable.
+            Add the projections to the Raw object.
         edf : bool
-            Loads edf and add it to the info dict.
-
+            Loads edf and add it as ``ds.info['edf']``. Edf will only be added
+            if ``bool(self.epoch_rejection['edf']) == True``.
         """
         raw = self.load_raw(add_proj=add_proj, subject=subject,
                             experiment=experiment)
@@ -1880,7 +1889,7 @@ class mne_experiment(object):
 
         Parameters
         ----------
-        subject: str
+        subject : str
             Set the `subject` value. The corresponding `mrisubject` is
             automatically set to the corresponding mri subject.
         match : bool
@@ -1891,7 +1900,6 @@ class mne_experiment(object):
             (default), a non-existent key will raise a KeyError.
         all other : str
             All other keywords can be used to set templates.
-
         """
         if experiment is not None:
             kwargs['experiment'] = experiment
@@ -1929,8 +1937,11 @@ class mne_experiment(object):
 
     def set_env(self):
         """
-        Set environment variables for free for freesurfer etc.
+        Set environment variables
 
+        for mne/freesurfer:
+
+         - SUBJECTS_DIR
         """
         os.environ['SUBJECTS_DIR'] = self.get('mri_dir')
 
@@ -1955,6 +1966,7 @@ class mne_experiment(object):
         self._update_var_values()
 
     def show_in_finder(self, key, **kwargs):
+        "Reveals the file corresponding to the ``key`` template in the Finder."
         fname = self.get(key, **kwargs)
         subprocess.call(["open", "-R", fname])
 
