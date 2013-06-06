@@ -251,7 +251,6 @@ class mne_experiment(object):
     # ---------------------------------------------
     _experiments = []
     _fmt_pattern = re.compile('\{([\w-]+)\}')
-    _mri_loc = 'mri_dir'  # location of subject mri folders
     _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
     _subject_loc = 'meg_dir'  # location of subject folders
 
@@ -276,8 +275,6 @@ class mne_experiment(object):
             containing the 'meg' and 'mri' directories)
         parse_subjects : bool
             Find MEG subjects using :attr:`_subjects_loc`
-        parse_mri : bool
-            Find MRI subjects using :attr:`_mri_loc`
         subjects : list of str
             Provide additional MEG subjects.
         mri_subjects : dict, {subject: mrisubject}
@@ -1555,10 +1552,10 @@ class mne_experiment(object):
             pattern = self.subject_re
             sub_dir = self.get(self._subject_loc)
             if os.path.exists(sub_dir):
-                for fname in os.listdir(sub_dir):
-                    isdir = os.path.isdir(os.path.join(sub_dir, fname))
-                    if isdir and pattern.match(fname):
-                        subjects.add(fname)
+                for dirname in os.listdir(sub_dir):
+                    isdir = os.path.isdir(os.path.join(sub_dir, dirname))
+                    if isdir and pattern.match(dirname):
+                        subjects.add(dirname)
             else:
                 err = ("MEG subjects directory not found: %r. Initialize with "
                        "parse_subjects=False, or specifiy proper directory in "
@@ -1928,32 +1925,6 @@ class mne_experiment(object):
             self._process_epochs_arg([epoch])
         elif epochs:
             self._process_epochs_arg(epochs)
-
-    _cell_order = ()
-    _cell_fullname = True  # whether or not to include factor name in cell
-
-    def set_cell(self, cell):
-        """
-        cell : dict
-            a {factor: cell} dictionary. Uses self._cell_order to determine te
-            order of factors.
-
-        """
-        parts = []
-        for k in cell:
-            if k not in self._cell_order:
-                err = ("Cell name not specified in self._cell_order: "
-                       "%r" % k)
-                raise ValueError(err)
-
-        for f in self._cell_order:
-            if f in cell:
-                if self._cell_fullname:
-                    parts.append('%s=%s' % (f, cell[f]))
-                else:
-                    parts.append(cell[f])
-        name = '-'.join(parts)
-        self.set(cell=name, add=True)
 
     def set_env(self):
         """
