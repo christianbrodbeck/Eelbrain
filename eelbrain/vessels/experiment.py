@@ -196,6 +196,13 @@ _temp = {
         'analysis': '',
         'name': '',
         'suffix': '',
+
+         # besa
+         'besa-root': os.path.join('{root}', 'besa'),
+         'besa-trig': os.path.join('{besa-root}', '{subject}', '{subject}_'
+                                   '{experiment}_{epoch-nodecim}_triggers.txt'),
+         'besa-evt': os.path.join('{besa-root}', '{subject}', '{subject}_'
+                                  '{experiment}_{epoch-nodecim}.evt'),
         }
     }
 
@@ -323,39 +330,6 @@ class mne_experiment(object):
         owner = getattr(self, 'owner', False)
         if owner:
             self.notification = Notifier(owner, 'mne_experiment task')
-
-    def _process_epochs_arg(self, epochs):
-        """Fill in named epochs and set the 'epoch' and 'stim' templates"""
-        epochs = list(epochs)  # make sure we don't modify the input object
-        e_descs = []  # full epoch descriptor
-        stims = set()  # all relevant stims
-        for i in xrange(len(epochs)):
-            # expand epoch description
-            ep = epochs[i]
-            if isinstance(ep, str):
-                ep = self.epochs[ep]
-            ep = ep.copy()
-            for k, v in self.epoch_default.iteritems():
-                if k not in ep:
-                    ep[k] = v
-
-            # make sure stim is ordered
-            stim = ep['stim']
-            if '|' in stim:
-                stim = '|'.join(sorted(set(stim.split('|'))))
-
-            # store expanded epoch
-            stims.update(stim.split('|'))
-            epochs[i] = ep
-            desc = self.get_epoch_str(**ep)
-            e_descs.append(desc)
-
-        ep_str = '(%s)' % ','.join(sorted(e_descs))
-        stim = '|'.join(sorted(stims))
-
-        self.set(stim=stim, add=True)
-        self._state['epoch'] = ep_str
-        self._epochs_state = epochs
 
     def _update_var_values(self):
         subjects = self.var_values['subject']
@@ -1230,6 +1204,54 @@ class mne_experiment(object):
 
         return ds
 
+    def make_besa_evt(self, epoch=None, redo=False):
+        """Make the trigger and event files needed for besa
+
+        Parameters
+        ----------
+        epoch : epoch definition (see module documentation)
+            name of the epoch for which to produce the evt files.
+        redo : bool
+            If besa files already exist, overwrite them.
+
+        Notes
+        -----
+        Ignores the *decim* epoch parameter.
+
+        Target files are saved relative to the *besa-root* location.
+        """
+        self.set(epoch=epoch)
+        epoch = self._epochs_state[0]
+
+        stim = epoch['stim']
+        tmin = epoch['tmin']
+        tmax = epoch['tmax']
+
+        evt_dest = self.get('besa-evt', mkdir=True)
+        trig_dest = self.get('besa-trig', mkdir=True)
+
+        if not redo and os.path.exists(evt_dest) and os.path.exists(trig_dest):
+            return
+
+        # load events
+        ds = self.load_selected_events(reject='keep')
+        idx = ds['stim'] == stim
+        ds = ds.subset(idx)
+
+        # save triggers
+        if redo or not os.path.exists(trig_dest):
+            save.meg160_triggers(ds, trig_dest, pad=1)
+            if not redo and os.path.exists(evt_dest):
+                return
+        else:
+            ds.index('besa_index', 1)
+
+        # reject bad trials
+        ds = ds.subset('accept')
+
+        # save evt
+        save.besa_evt(ds, tstart=tmin, tstop=tmax, dest=evt_dest)
+
     def make_cov(self, cov=None, redo=False):
         """Make a noise covariance (cov) file
 
@@ -1966,9 +1988,9 @@ class mne_experiment(object):
             err = "Can's set 'epoch' and 'epochs' at the same time"
             raise RuntimeError(err)
         elif epoch:
-            self._process_epochs_arg([epoch])
+            self._set_epochs_arg([epoch])
         elif epochs:
-            self._process_epochs_arg(epochs)
+            self._set_epochs_arg(epochs)
 
     def set_env(self):
         """
@@ -1979,6 +2001,46 @@ class mne_experiment(object):
          - SUBJECTS_DIR
         """
         os.environ['SUBJECTS_DIR'] = self.get('mri_dir')
+
+    def _set_epochs_arg(self, epochs):
+        """Fill in named epochs and set the 'epoch' and 'stim' templates"""
+        epochs = list(epochs)  # make sure we don't modify the input object
+        e_descs = []  # full epoch descriptor
+        e_descs_nodecim = []  # epoch description without decim
+        stims = set()  # all relevant stims
+        for i in xrange(len(epochs)):
+            # expand epoch description
+            ep = epochs[i]
+            if isinstance(ep, str):
+                ep = self.epochs[ep]
+            ep = ep.copy()
+            for k, v in self.epoch_default.iteritems():
+                if k not in ep:
+                    ep[k] = v
+
+            # make sure stim is ordered
+            stim = ep['stim']
+            if '|' in stim:
+                stim = '|'.join(sorted(set(stim.split('|'))))
+
+            # store expanded epoch
+            stims.update(stim.split('|'))
+            epochs[i] = ep
+
+            # epoch name
+            desc = self.get_epoch_str(**ep)
+            e_descs.append(desc)
+
+            # epoch name without decim
+            ep_nd = ep.copy()
+            ep_nd['decim'] = None
+            desc_nd = self.get_epoch_str(**ep_nd)
+            e_descs_nodecim.append(desc_nd)
+
+        self._state['stim'] = '|'.join(sorted(stims))
+        self._state['epoch'] = '(%s)' % ','.join(sorted(e_descs))
+        self._state['epoch-nodecim'] = '(%s)' % ','.join(sorted(e_descs_nodecim))
+        self._epochs_state = epochs
 
     def set_mri_subject(self, subject, mri_subject=None):
         """

@@ -16,7 +16,7 @@ import _txt
 __all__ = ['meg160_triggers', 'besa_evt']
 
 
-def meg160_triggers(ds, dest=None):
+def meg160_triggers(ds, dest=None, pad=1):
     """Export a list of event times used for epoching in MEG-160
 
     For use together with :func:`besa_evt`. ``save.meg160_triggers(ds)`` adds
@@ -27,8 +27,13 @@ def meg160_triggers(ds, dest=None):
     ----------
     ds : dataset
         Dataset containing all the desired events.
+    dest : None | str
+        Path where to save the triggers (if None, a dialog will be displayed).
+    pad : int
+        Number of epochs to pad with at the beginning and end of the file.
     """
-    T = ds['i_start'] / ds.info['samplingrate']
+    sfreq = ds.info['raw'].info['sfreq']
+    times = ds['i_start'] / sfreq
 
     # destination
     if dest is None:
@@ -38,10 +43,16 @@ def meg160_triggers(ds, dest=None):
         if not dest:
             return
 
-    # index the datafile to keep track of rejections
-    ds.index('besa_index')
+    # make trigger list with padding
+    a = np.ones(len(times) + pad * 2) * times[0]
+    a[pad:-pad] = times.x
+    triggers = var(a, name='triggers')
 
-    _txt.txt(T, dest=dest)
+    # export trigger list
+    _txt.txt(triggers, dest=dest)
+
+    # index the datafile to keep track of rejections
+    ds.index('besa_index', pad)
 
 
 def besa_evt(ds, tstart= -0.1, tstop=0.6, pad=0.1, dest=None):

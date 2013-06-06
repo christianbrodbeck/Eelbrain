@@ -2429,16 +2429,19 @@ class dataset(collections.OrderedDict):
         ds.update(self)
         return ds
 
-    def index(self, name='index'):
+    def index(self, name='index', start=0):
         """
         Add an index to the dataset (i.e., `range(n_cases)`), e.g. for later
         alignment.
 
+        Parameters
+        ----------
         name : str
             Name of the new index variable.
-
+        start : int
+            Number at which to start the index.
         """
-        self[name] = var(np.arange(self.n_cases))
+        self[name] = var(np.arange(start, self.n_cases + start))
 
     def itercases(self, start=None, stop=None):
         "iterate through cases (each case represented as a dict)"
