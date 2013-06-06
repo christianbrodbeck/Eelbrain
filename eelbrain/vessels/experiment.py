@@ -308,7 +308,7 @@ class mne_experiment(object):
         # set initial values
         self._label_cache = LabelCache()
         for k, v in self.var_values.iteritems():
-            if v:
+            if (k not in self._state) and v:
                 self._state[k] = v[0]
 
         # set defaults for any existing templates
@@ -1571,7 +1571,7 @@ class mne_experiment(object):
                        "experiment._subject_loc." % sub_dir)
                 raise IOError(err)
 
-        self.var_values['subject'] = list(subjects)
+        self.var_values['subject'] = sorted(subjects)
 
     def plot_coreg(self, **kwargs):
         self.set(**kwargs)
@@ -1881,8 +1881,7 @@ class mne_experiment(object):
 
         self.queue.put(cmd)
 
-    def set(self, subject=None, experiment=None, match=False, add=False,
-            **kwargs):
+    def set(self, subject=None, match=False, add=False, **kwargs):
         """
         Set variable values.
 
@@ -1900,8 +1899,7 @@ class mne_experiment(object):
         all other : str
             All other keywords can be used to set templates.
         """
-        if experiment is not None:
-            kwargs['experiment'] = experiment
+        # subject var
         if subject is not None:
             kwargs['subject'] = subject
             if not 'mrisubject' in kwargs:
