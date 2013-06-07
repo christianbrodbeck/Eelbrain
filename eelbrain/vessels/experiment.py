@@ -219,6 +219,9 @@ class mne_experiment(object):
         see templates and their dependency
     .state()
         print variables with their current value
+    .list_values()
+        print a table for all iterable varibales, i.e., those variables for
+        which the experiment stores multiple values.
     .subjects_table()
         Each subject with corresponding MRI subject.
     .summary()
@@ -883,6 +886,41 @@ class mne_experiment(object):
             ds['T'] = ds['i_start'] / sfreq
             ds['SOA'] = var(np.ediff1d(ds['T'].x, 0))
         return ds
+
+    def list_values(self, str_out=False):
+        """
+        Generate a table for all iterable varibales
+
+        i.e., those variables for which the experiment stores multiple values.
+
+        Parameters
+        ----------
+        str_out : bool
+            Return the table as a string (instead of printing it).
+        """
+        lines = []
+        for key in self.var_values:
+            values = sorted(self.var_values[key])
+            line = '%s:' % key
+            head_len = len(line) + 1
+            while values:
+                v = repr(values.pop(0))
+                if values:
+                    v += ','
+                if len(v) < 80 - head_len:
+                    line += ' ' + v
+                else:
+                    lines.append(line)
+                    line = ' ' * head_len + v
+
+                if not values:
+                    lines.append(line)
+
+        table = os.linesep.join(lines)
+        if str_out:
+            return table
+        else:
+            print table
 
     def load_edf(self, **kwargs):
         """Load the edf file ("edf" template)"""
