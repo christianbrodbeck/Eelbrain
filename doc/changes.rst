@@ -14,3 +14,5 @@ Since 0.0.4
 * The ``'root'`` is now treated like a normal templates entry, i.e., it can
   be specified through the :attr:`_templates` and :attr:`_defaults` class 
   attributes as well as in :meth:`__init__`.
+* Template names are more consistent: all template names now use '-' instead of 
+  '_'.

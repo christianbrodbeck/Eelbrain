@@ -130,67 +130,67 @@ def _etree_node_repr(node, name, indent=0):
 _temp = {
     'v0': {
         # basic dir
-        'meg_dir': os.path.join('{root}', 'meg'),  # contains subject-name folders for MEG data
-        'meg_sdir': os.path.join('{meg_dir}', '{subject}'),
-        'mri_dir': os.path.join('{root}', 'mri'),  # contains subject-name folders for MRI data
-        'mri_sdir': os.path.join('{mri_dir}', '{mrisubject}'),
-        'bem_dir': os.path.join('{mri_sdir}', 'bem'),
-        'raw_sdir': os.path.join('{meg_sdir}', 'raw'),
-        'eeg_sdir': os.path.join('{meg_sdir}', 'raw_eeg'),
-        'log_sdir': os.path.join('{meg_sdir}', 'logs', '{subject}_{experiment}'),
+        'meg-dir': os.path.join('{root}', 'meg'),  # contains subject-name folders for MEG data
+        'meg-sdir': os.path.join('{meg-dir}', '{subject}'),
+        'mri-dir': os.path.join('{root}', 'mri'),  # contains subject-name folders for MRI data
+        'mri-sdir': os.path.join('{mri-dir}', '{mrisubject}'),
+        'bem-dir': os.path.join('{mri-sdir}', 'bem'),
+        'raw-sdir': os.path.join('{meg-sdir}', 'raw'),
+        'eeg-sdir': os.path.join('{meg-sdir}', 'raw_eeg'),
+        'log-sdir': os.path.join('{meg-sdir}', 'logs', '{subject}_{experiment}'),
 
         # raw
-        'mrk': os.path.join('{raw_sdir}', '{subject}_{experiment}_marker.txt'),
-        'elp': os.path.join('{raw_sdir}', '{subject}_HS.elp'),
-        'hsp': os.path.join('{raw_sdir}', '{subject}_HS.hsp'),
+        'mrk': os.path.join('{raw-sdir}', '{subject}_{experiment}_marker.txt'),
+        'elp': os.path.join('{raw-sdir}', '{subject}_HS.elp'),
+        'hsp': os.path.join('{raw-sdir}', '{subject}_HS.hsp'),
         'raw': 'raw',
-        'raw-base': os.path.join('{raw_sdir}', '{subject}_{experiment}_{raw}'),
+        'raw-base': os.path.join('{raw-sdir}', '{subject}_{experiment}_{raw}'),
         'raw-file': '{raw-base}-raw.fif',
-        'raw-txt': os.path.join('{raw_sdir}', '{subject}_{experiment}_*raw.txt'),
+        'raw-txt': os.path.join('{raw-sdir}', '{subject}_{experiment}_*raw.txt'),
 
-        'trans': os.path.join('{raw_sdir}', '{mrisubject}-trans.fif'),  # mne p. 196
+        'trans': os.path.join('{raw-sdir}', '{mrisubject}-trans.fif'),  # mne p. 196
 
         # eye-tracker
-        'edf': os.path.join('{log_sdir}', '*.edf'),
+        'edf': os.path.join('{log-sdir}', '*.edf'),
 
         # mne raw-derivatives analysis
         'proj': '',
         'proj-file': '{raw-base}_{proj}-proj.fif',
-        'proj_plot': '{raw-base}_{proj}-proj.pdf',
+        'proj-plot': '{raw-base}_{proj}-proj.pdf',
         'cov-file': '{raw-base}_{cov}-{proj}-cov.fif',
         'fwd': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
         'cov': 'bl',
 
         # epochs
-        'epoch-sel-file': os.path.join('{meg_sdir}', 'epoch_sel', '{raw}_'
+        'epoch-sel-file': os.path.join('{meg-sdir}', 'epoch_sel', '{raw}_'
                                        '{experiment}_{epoch}_sel.pickled'),
 
         # fwd model
         'common_brain': 'fsaverage',
-        'fid': os.path.join('{bem_dir}', '{mrisubject}-fiducials.fif'),
-        'bem': os.path.join('{bem_dir}', '{mrisubject}-*-bem-sol.fif'),
-        'src': os.path.join('{bem_dir}', '{mrisubject}-ico-4-src.fif'),
-        'bem_head': os.path.join('{bem_dir}', '{mrisubject}-head.fif'),
+        'fid': os.path.join('{bem-dir}', '{mrisubject}-fiducials.fif'),
+        'bem': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
+        'src': os.path.join('{bem-dir}', '{mrisubject}-ico-4-src.fif'),
+        'bem_head': os.path.join('{bem-dir}', '{mrisubject}-head.fif'),
 
         # evoked
-        'evoked_dir': os.path.join('{meg_sdir}', 'evoked'),
-        'evoked': os.path.join('{evoked_dir}', '{raw}_{experiment}_{model}',
+        'evoked-dir': os.path.join('{meg-sdir}', 'evoked'),
+        'evoked': os.path.join('{evoked-dir}', '{raw}_{experiment}_{model}',
                                '{epoch}_{proj}_evoked.pickled'),
 
         # Souce space
         'labeldir': 'label',
         'hemi': 'lh',
-        'label-file': os.path.join('{mri_sdir}', '{labeldir}', '{hemi}.{label}.label'),
-        'morphmap': os.path.join('{mri_dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
+        'label-file': os.path.join('{mri-sdir}', '{labeldir}', '{hemi}.{label}.label'),
+        'morphmap': os.path.join('{mri-dir}', 'morph-maps', '{subject}-{common_brain}-morph.fif'),
 
         # EEG
-        'vhdr': os.path.join('{eeg_sdir}', '{subject}_{experiment}.vhdr'),
-        'eegfif': os.path.join('{eeg_sdir}', '{subject}_{experiment}_raw.fif'),
-        'eegfilt': os.path.join('{eeg_sdir}', '{subject}_{experiment}_filt_raw.fif'),
+        'vhdr': os.path.join('{eeg-sdir}', '{subject}_{experiment}.vhdr'),
+        'eegfif': os.path.join('{eeg-sdir}', '{subject}_{experiment}_raw.fif'),
+        'eegfilt': os.path.join('{eeg-sdir}', '{subject}_{experiment}_filt_raw.fif'),
 
         # output files
-        'plot_dir': os.path.join('{root}', 'plots'),
-        'plot_png': os.path.join('{plot_dir}', '{analysis}', '{name}.png'),
+        'plot-dir': os.path.join('{root}', 'plots'),
+        'plot_png': os.path.join('{plot-dir}', '{analysis}', '{name}.png'),
         'res': os.path.join('{root}', 'res_{kind}', '{analysis}', '{name}{suffix}.{ext}'),
         'kind': '',
         'analysis': '',
@@ -271,7 +271,7 @@ class mne_experiment(object):
     # Where to search for subjects. If the experiment searches for subjects
     # automatically, it scans this directory for subfolders matching
     # subject_re.
-    _subject_loc = 'meg_dir'
+    _subject_loc = 'meg-dir'
 
     # basic templates to use. Can be a string referring to a templates
     # dictionary in the module level _temp dictionary, or a templates
@@ -476,7 +476,7 @@ class mne_experiment(object):
 
         for case in ds.itercases():
             subject = case['subject']
-            if is_fake_mri(self.get('mri_sdir')):
+            if is_fake_mri(self.get('mri-sdir')):
                 subject_from = self.get('common_brain')
             else:
                 subject_from = subject
@@ -1613,7 +1613,7 @@ class mne_experiment(object):
         proj_file = self.get('proj-file')
         p = plot.topo.topomap(PCA, size=1, title=proj_file)
         if save_plot:
-            dest = self.get('proj_plot')
+            dest = self.get('proj-plot')
             p.figure.savefig(dest)
         if save:
             rm = save
@@ -1688,7 +1688,7 @@ class mne_experiment(object):
         pad = ' ' * (80 - name_len - path_len)
         print os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len) for n, p in nodes)
 
-    def pull(self, src_root, names=['raw-file', 'log_sdir'], **kwargs):
+    def pull(self, src_root, names=['raw-file', 'log-sdir'], **kwargs):
         """OK 12/8/12
         Copies all items matching a template from another root to the current
         root.
@@ -1701,7 +1701,7 @@ class mne_experiment(object):
             root of the source experiment
         names : list of str
             list of template names to copy.
-            tested for 'raw-file' and 'log_sdir'.
+            tested for 'raw-file' and 'log-sdir'.
             Should work for any template with an exact match; '*' is not
             implemented and will raise an error.
         **kwargs** :
@@ -1901,7 +1901,7 @@ class mne_experiment(object):
         for _ in self.iter_vars(['subject']):
             if self.get('subject') in exclude:
                 continue
-            mri_sdir = self.get('mri_sdir')
+            mri_sdir = self.get('mri-sdir')
             if os.path.exists(mri_sdir):
                 if is_fake_mri(mri_sdir):
                     rmd.append(mri_sdir)
@@ -1922,12 +1922,12 @@ class mne_experiment(object):
                 self.set_mri_subject(s, self.get('common_brain'))
 
     def run_mne_analyze(self, subject=None, modal=False):
-        subjects_dir = self.get('mri_dir')
+        subjects_dir = self.get('mri-dir')
         if (subject is None) and (self._state['subject'] is None):
-            fif_dir = self.get('meg_dir')
+            fif_dir = self.get('meg-dir')
             subject = None
         else:
-            fif_dir = self.get('raw_sdir', subject=subject)
+            fif_dir = self.get('raw-sdir', subject=subject)
             subject = self.get('{mrisubject}')
 
         subp.run_mne_analyze(fif_dir, subject=subject,
@@ -1935,9 +1935,9 @@ class mne_experiment(object):
 
     def run_mne_browse_raw(self, subject=None, modal=False):
         if (subject is None) and (self._state['subject'] is None):
-            fif_dir = self.get('meg_dir')
+            fif_dir = self.get('meg-dir')
         else:
-            fif_dir = self.get('raw_sdir', subject=subject)
+            fif_dir = self.get('raw-sdir', subject=subject)
 
         subp.run_mne_browse_raw(fif_dir, modal)
 
@@ -2038,7 +2038,7 @@ class mne_experiment(object):
 
          - SUBJECTS_DIR
         """
-        os.environ['SUBJECTS_DIR'] = self.get('mri_dir')
+        os.environ['SUBJECTS_DIR'] = self.get('mri-dir')
 
     def _set_epochs_arg(self, epochs):
         """Fill in named epochs and set the 'epoch' and 'stim' templates"""
@@ -2182,7 +2182,7 @@ class mne_experiment(object):
             mri_subject = self.get('mrisubject')
             if sub not in mris:
                 if mri_subject == sub:
-                    mri_dir = self.get('mri_sdir')
+                    mri_dir = self.get('mri-sdir')
                     if not os.path.exists(mri_dir):
                         mris[sub] = 'missing'
                     elif is_fake_mri(mri_dir):
