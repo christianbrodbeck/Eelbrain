@@ -106,7 +106,7 @@ class SelectEpochs(eelfigure):
 
         if isinstance(blink, basestring):
             blink = ds.get(blink, None)
-        elif (blink is True) and ('edf' in ds.info):
+        elif (blink == True) and ('edf' in ds.info):
             tmin = data.time.tmin
             tmax = data.time.tmax
             _, blink = load.eyelink.artifact_epochs(ds, tmin=tmin, tmax=tmax,
