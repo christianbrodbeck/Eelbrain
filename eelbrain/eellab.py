@@ -58,6 +58,7 @@ from .analyze import (test,
                       table)
 
 import ui
+import gui
 import plot
 try:  # mayavi
     import plot.brain
