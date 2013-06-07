@@ -106,11 +106,19 @@ class SelectEpochs(eelfigure):
 
         if isinstance(blink, basestring):
             blink = ds.get(blink, None)
-        elif (blink == True) and ('edf' in ds.info):
-            tmin = data.time.tmin
-            tmax = data.time.tmax
-            _, blink = load.eyelink.artifact_epochs(ds, tmin=tmin, tmax=tmax,
-                                                    esacc=False)
+        elif blink == True:
+            if 'edf' in ds.info:
+                tmin = data.time.tmin
+                tmax = data.time.tmax
+                _, blink = load.eyelink.artifact_epochs(ds, tmin=tmin, tmax=tmax,
+                                                        esacc=False)
+            else:
+                msg = ("No eye tracker data was found in ds.info['edf']. Use "
+                       "load.eyelink.add_edf(ds) to add an eye tracker file "
+                       "to a dataset ds.")
+                wx.MessageBox(msg, "Eye Tracker Data Not Found")
+                blink = False
+
         self._blink = blink
 
         if np.prod(nplots) == 1:
