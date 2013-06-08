@@ -5,11 +5,13 @@ import os
 import smtplib
 
 
+_pwd_fname = os.path.expanduser('~/.eelbrain_n00b')
+
+
 def send_email(to, subject, body):
     """Send an email notification"""
     gmail_user = 'n00b.eelbrain@gmail.com'
-    pwd_fname = os.path.expanduser('~/.eelbrain_n00b')
-    with open(pwd_fname) as f:
+    with open(_pwd_fname) as f:
         pwd = bz2.decompress(f.read())
 
     msg = MIMEText(body)
@@ -49,6 +51,10 @@ class Notifier(object):
         name : str
             Name of the job (will be included in subject line).
         """
+        if not os.path.exists(_pwd_fname):
+            err = "File required for notification not found: %r" % _pwd_fname
+            raise IOError(err)
+
         self.to = to
         self.name = name
 
