@@ -498,16 +498,21 @@ class SelectEpochs(eelfigure):
         ax = event.inaxes
         ax_id = getattr(ax, 'ID', None)
         if (event.key == 't'):
-            if (ax_id < 0) and (ax_id != -2):
+            if ax_id == -2:
                 return
             tseg = self._get_topo_seg(ax, t=event.xdata)
             plot.topo.topomap(tseg, sensors='name')
         elif (event.key == 'c'):
-            if (ax_id < 0) and (ax_id != -2):
+            if ax_id == -2:
                 return
-            seg = self._case_segs[ax_id]
-            cseg = corr(seg, name='Epoch %i Neighbor Correlation' % ax.segID)
-            plot.topo.topomap(cseg)
+            elif ax_id == -1:
+                seg = self._mean_seg
+                name = 'Page Mean Neighbor Correlation'
+            else:
+                seg = self._case_segs[ax_id]
+                name = 'Epoch %i Neighbor Correlation' % ax.segID
+            cseg = corr(seg, name=name)
+            plot.topo.topomap(cseg, sensors='name')
 
     def _OnExcludeChannel(self, event):
         chs = ', '.join(self.get_bad_chs()) or 'None'
