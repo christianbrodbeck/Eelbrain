@@ -341,6 +341,7 @@ class SelectEpochs(eelfigure):
             title = "Error Loading Rejections"
             dlg = ScrolledMessageDialog(self, msg, title)
             dlg.ShowModal()
+            dlg.Destroy()
         self._refresh()
 
     def _load_selection(self, path):
@@ -359,8 +360,10 @@ class SelectEpochs(eelfigure):
             self._path = path
             self._saved_target[:] = ds['accept']
         else:
-            err = ("Event IDs don't match")
-            raise ValueError(err)
+            err = ("Event IDs of the file don't match the current data's "
+                   "event IDs")
+            cap = "Error Loading Rejection"
+            wx.MessageBox(err, cap, wx.ICON_ERROR)
 
     def open_topomap(self):
         if self._topo_fig:
@@ -579,6 +582,7 @@ class SelectEpochs(eelfigure):
             title = "Error Excluding Channels"
             dlg = wx.MessageDialog(self._frame, msg, title, wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
+            dlg.Destroy()
         else:
             self.set_bad_chs(chs)
 
@@ -613,6 +617,7 @@ class SelectEpochs(eelfigure):
             path = dlg.GetPath()
             self.save_rejection(path)
 
+        dlg.Destroy()
         return rcode
 
     def _refresh(self, event=None):
