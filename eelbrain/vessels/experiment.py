@@ -813,10 +813,7 @@ class mne_experiment(object):
         # pick out the variables to iterate, but drop excluded cases:
         v_lists = []
         for v in variables:
-            values = var_values[v]
-            for exc in self.exclude.get(v, ()):
-                if exc in values:
-                    values.remove(exc)
+            values = set(var_values[v]).difference(self.exclude.get(v, ()))
             v_lists.append(sorted(values))
 
         if len(v_lists):
