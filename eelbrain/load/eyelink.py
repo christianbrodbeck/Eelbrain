@@ -113,11 +113,24 @@ class Edf(object):
         dtype = np.dtype([('event', np.str_, 6), ('start', np.uint32), ('stop', np.uint32)])
         self.artifacts = np.array(artifacts, dtype=dtype)
 
+        self.has_samples = bool(samples)
         if samples:
             self.time = np.array([item[0] for item in pos], dtype=np.uint32)
             self.xpos = np.array([item[1] for item in pos], dtype=np.float16)
             self.ypos = np.array([item[2] for item in pos], dtype=np.float16)
             self.pdia = np.array([item[3] for item in pos], dtype=np.float16)
+
+    def __getstate__(self):
+        state = {'path': self.path, 'paths': self.paths,
+                 'triggers': self.triggers, 'artifacts': self.artifacts,
+                 'has_samples': self.has_samples}
+        if self.has_samples:
+            state.update(time=self.time, xpos=self.xpos, ypos=self.ypos,
+                         pdia=self.pdia)
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
 
     def __repr__(self):
         return "Edf(%r)" % self.path
