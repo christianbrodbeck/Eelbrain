@@ -38,6 +38,8 @@ class SelectEpochs(eelfigure):
         (de-)select this case.
     't' on any butterfly plot:
         Open a topomap for the current time point.
+    'b' on any butterfly plot:
+        Open a full butterfly plot for the current epoch.
     'c' on any epoch butterfly plot:
         Open a plot with the correlation of each channel with its neighbors.
     """
@@ -510,6 +512,14 @@ class SelectEpochs(eelfigure):
                 return
             tseg = self._get_topo_seg(ax, t=event.xdata)
             plot.topo.topomap(tseg, sensors='name')
+        elif (event.key == 'b'):
+            if ax_id == -1:
+                seg = self._mean_seg
+            elif ax_id >= 0:
+                seg = self._case_segs[ax_id]
+            else:
+                return
+            plot.topo.butterfly(seg)
         elif (event.key == 'c'):
             if ax_id == -2:
                 return
