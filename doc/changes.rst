@@ -14,5 +14,9 @@ Since 0.0.4
 * The ``'root'`` is now treated like a normal templates entry, i.e., it can
   be specified through the :attr:`_templates` and :attr:`_defaults` class 
   attributes as well as in :meth:`__init__`.
-* Template names are more consistent: all template names now use '-' instead of 
-  '_'.
+* More consistent template names:
+
+  * all template names now use '-' instead of '_' for name-kind sequences.
+  * all paths to files are called '*-file'.
+  * all paths to directories are called '*-dir'.
+  * all paths to directories containing subjects are called '*-sdir'.
