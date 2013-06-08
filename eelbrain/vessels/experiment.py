@@ -293,6 +293,9 @@ class mne_experiment(object):
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
 
         self._state = self.get_templates(root=root)
+        self.var_values = {'hemi': ('lh', 'rh')}
+
+        # initial epoch
         epoch = self._state.get('epoch', None)
         self.set(epoch=epoch)
 
@@ -300,7 +303,6 @@ class mne_experiment(object):
         self._mri_subjects = keydefaultdict(lambda k: k)
         self._mri_subjects.update(mri_subjects)
         self.set(root=root, add=True)
-        self.var_values = {'hemi': ('lh', 'rh')}
         self.exclude = {}
 
         self.parse_dirs(parse_subjects=parse_subjects, subjects=subjects)
@@ -1994,7 +1996,7 @@ class mne_experiment(object):
 
         self.queue.put(cmd)
 
-    def set(self, subject=None, match=False, add=False, **kwargs):
+    def set(self, subject=None, match=True, add=False, **kwargs):
         """
         Set variable values.
 
@@ -2005,7 +2007,7 @@ class mne_experiment(object):
             automatically set to the corresponding mri subject.
         match : bool
             Require existence of the assigned value (only applies for variables
-            in self.var_values)
+            for which values are defined in self.var_values).
         add : bool
             If the template name does not exist, add a new key. If False
             (default), a non-existent key will raise a KeyError.
@@ -2015,8 +2017,6 @@ class mne_experiment(object):
         # subject var
         if subject is not None:
             kwargs['subject'] = subject
-            if not 'mrisubject' in kwargs:
-                kwargs['mrisubject'] = self._mri_subjects[subject]
 
         # remove epoch(s)
         epoch = kwargs.pop('epoch', None)
@@ -2025,9 +2025,17 @@ class mne_experiment(object):
         # test var_value
         if match:
             for k, v in kwargs.iteritems():
-                if ((k in self.var_values) and (not '*' in v)
-                     and v not in self.var_values[k]):
-                    raise ValueError("Variable %r has not value %r" % (k, v))
+                if ((v is not None) and (k in self.var_values)
+                    and ('*' not in v) and (v not in self.var_values[k])):
+                    err = ("Variable {k!r} has no value {v!r}. In order to "
+                           "see valid values use e.list_values(); In order to "
+                           "set a non-existent value, use e.set({k!s}={v!r}, "
+                           "match=False).".format(k=k, v=v))
+                    raise ValueError(err)
+
+        # add derived values
+        if (subject is not None) and ('mrisubject' not in kwargs):
+            kwargs['mrisubject'] = self._mri_subjects[subject]
 
         # set state
         for k, v in kwargs.iteritems():
