@@ -462,7 +462,8 @@ class SelectEpochs(eelfigure):
         self._case_axes = []
         self._case_segs = []
         for i, ID in enumerate(seg_IDs):
-            case = self._data.subdata(case=ID, sensor=sens_idx)
+            case = self._data.subdata(case=ID, sensor=sens_idx,
+                                      name='Epoch %i' % ID)
             state = self._target[ID]
             ax = self.figure.add_subplot(nx, ny, i + 1, xticks=[0], yticks=[])  # , 'axis_off')
             ax._epoch_state = state
