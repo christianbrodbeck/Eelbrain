@@ -143,6 +143,7 @@ class SelectEpochs(eelfigure):
         else:
             self._target_name = target.name
         self._target = target
+        self._saved_target = target.copy()
         self._plot_mean = mean
         self._plot_topo = topo
         self._topo_fig = None
@@ -162,9 +163,9 @@ class SelectEpochs(eelfigure):
             self._segs_by_page.append(range(start, stop))
 
     # init wx frame
-        title = "SelectEpochs -> %r" % target.name
         figsize = (plotsize[0] * nplots[0], plotsize[1] * nplots[1])
-        super(self.__class__, self).__init__(title=title, figsize=figsize, dpi=dpi)
+        super(self.__class__, self).__init__(figsize=figsize, dpi=dpi)
+        self._frame.Bind(wx.EVT_CLOSE, self._OnClose)  # , source=None, id=-1, id2=-1
 
     # setup figure
         self.figure.subplots_adjust(left=.01, right=.99, bottom=.05, top=.95,
@@ -191,6 +192,7 @@ class SelectEpochs(eelfigure):
         self.show_page(0)
         self._frame.store_canvas()
         self._show()
+        self._UpdateTitle()
 
     def _fill_toolbar(self, tb):
         tb.AddSeparator()
@@ -329,6 +331,7 @@ class SelectEpochs(eelfigure):
 
         # update plot
         self.set_ax_state(axID, state)
+        self._UpdateTitle()
 
     def load_selection(self, path):
         try:
@@ -353,6 +356,8 @@ class SelectEpochs(eelfigure):
             self._target[:] = ds['accept']
             if 'bad_chs' in ds.info:
                 self._bad_chs = ds.info['bad_chs']
+            self._path = path
+            self._saved_target[:] = ds['accept']
         else:
             err = ("Event IDs don't match")
             raise ValueError(err)
@@ -392,6 +397,8 @@ class SelectEpochs(eelfigure):
             ds.export(path, fmt='%s')
         else:
             raise ValueError("Unsupported extension: %r" % ext)
+        self._saved_target[:] = self._target
+        self._UpdateTitle()
 
     def _set_bad_chs(self, bad_chs, reset=False):
         "Set the self._bad_chs value, but don't refresh the plot"
@@ -504,6 +511,24 @@ class SelectEpochs(eelfigure):
             elif ax.ID == -2:
                 self.open_topomap()
 
+    def _OnClose(self, event):
+        "Ask to save unsaved changes"
+        if event.CanVeto() and self._has_unsaved_changes:
+            msg = ("The current document has unsaved changes. Would you like "
+                   "to save them?")
+            cap = ("Saved Unsaved Changes?")
+            cmd = wx.MessageBox(msg, cap,
+                                wx.YES | wx.NO | wx.CANCEL | wx.YES_DEFAULT)
+            if cmd == wx.YES:
+                if self._OnSaveSelection(event) != wx.ID_OK:
+                    return
+            elif cmd == wx.CANCEL:
+                return
+            elif cmd != wx.NO:
+                raise RuntimeError("Unknown answer: %r" % cmd)
+
+        event.Skip()
+
     def _on_key(self, event):
         ax = event.inaxes
         ax_id = getattr(ax, 'ID', None)
@@ -583,9 +608,12 @@ class SelectEpochs(eelfigure):
         wildcard = "Pickle (*.pickled)|*.pickled|Text (*.txt)|*.txt"
         dlg = wx.FileDialog(self._frame, msg, default_dir, default_name,
                             wildcard, wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
-        if dlg.ShowModal() == wx.ID_OK:
+        rcode = dlg.ShowModal()
+        if rcode == wx.ID_OK:
             path = dlg.GetPath()
             self.save_rejection(path)
+
+        return rcode
 
     def _refresh(self, event=None):
         "updates the states of the segments on the current page"
@@ -596,6 +624,8 @@ class SelectEpochs(eelfigure):
                     self.set_ax_state(ax.ID, state)
         else:
             self.show_page()
+
+        self._UpdateTitle()
 
     def save_all_pages(self, fname=None):
         if fname is None:
@@ -648,6 +678,22 @@ class SelectEpochs(eelfigure):
                                   bad_chs=self._bad_chs)
 
         self._refresh()
+        self._UpdateTitle()
+
+    def _UpdateTitle(self):
+        if self._path:
+            fname = os.path.basename(self._path)
+            if np.all(self._saved_target == self._target):
+                title = '%s' % fname
+                self._has_unsaved_changes = False
+            else:
+                title = '* %s' % fname
+                self._has_unsaved_changes = True
+        else:
+            title = 'Untitled'
+            self._has_unsaved_changes = True
+
+        self._frame.SetTitle(title)
 
 
 
