@@ -210,6 +210,8 @@ class mne_experiment(object):
         see templates and their dependency
     .state()
         print variables with their current value
+    .list_files()
+        List the presence or absence of files for a list of file templates.
     .list_values()
         print a table for all iterable varibales, i.e., those variables for
         which the experiment stores multiple values.
@@ -894,6 +896,48 @@ class mne_experiment(object):
             ds['T'] = ds['i_start'] / sfreq
             ds['SOA'] = var(np.ediff1d(ds['T'].x, 0))
         return ds
+
+    def list_files(self, files=['raw-file'], count=True, vars=['subject']):
+        """
+        Compile a table about the existence of files by subject
+
+        Parameters
+        ----------
+        files : str | list of str
+            The names of the path templates whose existence to list.
+        count : bool
+            Add a column with a number for each subject.
+        vars : str | list of str
+            The names of the variables for which to list files (i.e., for each
+            unique combination of ``vars``, list ``files``).
+        """
+        if not isinstance(files, (list, tuple)):
+            files = [files]
+        if not isinstance(vars, (list, tuple)):
+            vars = [vars]
+
+        table = fmtxt.Table('r' * bool(count) + 'l' * (len(vars) + len(files)))
+        if count:
+            table.cell()
+        for name in vars + files:
+            table.cell(name.capitalize())
+        table.midrule()
+
+        for i, _ in enumerate(self.iter_vars(vars)):
+            if count:
+                table.cell(i)
+
+            for var in vars:
+                table.cell(self.get(var))
+
+            for temp in files:
+                path = self.get(temp)
+                if os.path.exists(path):
+                    table.cell(temp)
+                else:
+                    table.cell('-')
+
+        return table
 
     def list_values(self, str_out=False):
         """
