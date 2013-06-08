@@ -141,6 +141,7 @@ _temp = {
         'raw': 'raw',
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
         'raw-file': '{raw-base}-raw.fif',
+        'raw-evt-file': '{raw-base}-evts.pickled',
         'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),  # mne p. 196
 
         # log-files (eye-tracker etc.)
@@ -551,6 +552,21 @@ class mne_experiment(object):
         args.extend('='.join(pair) for pair in kwargs)
         args = ', '.join(args)
         return "%s(%s)" % (self.__class__.__name__, args)
+
+    def cache_events(self, redo=False):
+        """Create the 'raw-evt-file'.
+
+        This is done automatically the first time the events are loaded, but
+        caching them will allow faster loading times form the beginning.
+        """
+        evt_file = self.get('raw-evt-file')
+        exists = os.path.exists(evt_file)
+        if exists and redo:
+            os.remove(evt_file)
+        elif exists:
+            return
+
+        self.load_events(add_proj=False)
 
     def combine_labels(self, target, sources=(), redo=False):
         """Combine several freesurfer labels into one label
@@ -982,21 +998,30 @@ class mne_experiment(object):
         raw = self.load_raw(add_proj=add_proj, subject=subject,
                             experiment=experiment)
 
-        ds = load.fiff.events(raw)
+        evt_file = self.get('raw-evt-file')
+        if os.path.exists(evt_file):
+            ds = load.unpickle(evt_file)
+        else:
+            ds = load.fiff.events(raw)
+
+            # add edf
+            if self.epoch_rejection.get('edf', None):
+                edf = self.load_edf()
+                edf.add_T_to(ds)
+                ds.info['edf'] = edf
+
+            # cache
+            del ds.info['raw']
+            save.pickle(ds, evt_file)
+
+        ds.info['raw'] = raw
 
         if subject is None:
             subject = self._state['subject']
         if experiment is None:
             experiment = self._state['experiment']
 
-        # add edf
-        if edf and self.epoch_rejection.get('edf', None):
-            edf = self.load_edf()
-            edf.add_T_to(ds)
-            ds.info['edf'] = edf
-
         ds = self.label_events(ds, experiment, subject)
-
         return ds
 
     def load_evoked(self, model='ref%side', epochs=None, to_ndvar=False):
