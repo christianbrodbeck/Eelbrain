@@ -1737,13 +1737,22 @@ class mne_experiment(object):
         raw = mne.fiff.Raw(self.get('raw-file'))
         return plot.coreg.dev_mri(raw)
 
-    def print_tree(self):
-        tree = {'.': 'root'}
+    def print_tree(self, root='root'):
+        """
+        Print a tree of the filehierarchy implicit in the templates
+
+        Parameters
+        ----------
+        root : str
+            Name of the root template (e.g., 'besa-root').
+        """
+        tree = {'.': root}
+        root_temp = '{%s}' % root
         for k, v in self._state.iteritems():
-            if str(v).startswith('{root}'):
-                tree[k] = {'.': v.replace('{root}', '')}
+            if str(v).startswith(root_temp):
+                tree[k] = {'.': v.replace(root_temp, '')}
         _etree_expand(tree, self._state)
-        nodes = _etree_node_repr(tree, 'root')
+        nodes = _etree_node_repr(tree, root)
         name_len = max(len(n) for n, _ in nodes)
         path_len = max(len(p) for _, p in nodes)
         pad = ' ' * (80 - name_len - path_len)
