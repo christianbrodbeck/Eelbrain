@@ -981,7 +981,8 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_epochs(self, epoch=None, asndvar=False, subject=None, reject=True):
+    def load_epochs(self, epoch=None, asndvar=False, subject=None,
+                    add_bads=True, reject=True):
         """
         Load a dataset with epochs for a given epoch definition
 
@@ -994,12 +995,17 @@ class mne_experiment(object):
             uesed).
         subject : None | str
             Subject for which to load the data.
+        add_bads : False | True | list
+            Add bad channel information to the Raw. If True, bad channel
+            information is retrieved from self.bad_channels. Alternatively,
+            a list of bad channels can be sumbitted.
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
             employed depends on the ``.epoch_rejection`` class attribute.
         """
         self.set(subject=subject)
-        ds = self.load_selected_events(epoch=epoch, reject=reject)
+        ds = self.load_selected_events(epoch=epoch, add_bads=add_bads,
+                                       reject=reject)
 
         if not reject or self.epoch_rejection.get('manual', False):
             reject_arg = None
@@ -1024,7 +1030,8 @@ class mne_experiment(object):
 
         return ds
 
-    def load_events(self, subject=None, experiment=None, add_proj=True, edf=True):
+    def load_events(self, subject=None, experiment=None, add_proj=True,
+                    add_bads=True, edf=True):
         """
         Load events from a raw file.
 
@@ -1037,12 +1044,16 @@ class mne_experiment(object):
             Call self.set(...).
         add_proj : bool
             Add the projections to the Raw object.
+        add_bads : False | True | list
+            Add bad channel information to the Raw. If True, bad channel
+            information is retrieved from self.bad_channels. Alternatively,
+            a list of bad channels can be sumbitted.
         edf : bool
             Loads edf and add it as ``ds.info['edf']``. Edf will only be added
             if ``bool(self.epoch_rejection['edf']) == True``.
         """
-        raw = self.load_raw(add_proj=add_proj, subject=subject,
-                            experiment=experiment)
+        raw = self.load_raw(add_proj=add_proj, add_bads=add_bads,
+                            subject=subject, experiment=experiment)
 
         evt_file = self.get('raw-evt-file')
         if os.path.exists(evt_file):
@@ -1161,8 +1172,8 @@ class mne_experiment(object):
 
         return raw
 
-    def load_selected_events(self, reject=True, add_proj=True, epoch=None,
-                             subject=None):
+    def load_selected_events(self, reject=True, add_proj=True, add_bads=True,
+                             epoch=None, subject=None):
         """
         Load events and return a subset based on epoch and rejection
 
@@ -1174,6 +1185,10 @@ class mne_experiment(object):
             and bad trials are kept.
         add_proj : bool
             Add the projections to the Raw object.
+        add_bads : False | True | list
+            Add bad channel information to the Raw. If True, bad channel
+            information is retrieved from self.bad_channels. Alternatively,
+            a list of bad channels can be sumbitted.
         epoch : None | str | dict
             Epoch specification.
         subject : None | str
@@ -1188,7 +1203,7 @@ class mne_experiment(object):
         self.set(epoch=epoch, subject=subject)
         epoch = self._epochs_state[0]
 
-        ds = self.load_events(add_proj=add_proj)
+        ds = self.load_events(add_proj=add_proj, add_bads=add_bads)
         stimvar = epoch['stimvar']
         stim = epoch['stim']
         tmin = epoch.get('reject_tmin', epoch['tmin'])
@@ -1406,7 +1421,7 @@ class mne_experiment(object):
                    "class attribute.")
             raise RuntimeError(err)
 
-        ds = self.load_epochs(asndvar=True, reject=False)
+        ds = self.load_epochs(asndvar=True, add_bads=False, reject=False)
         path = self.get('epoch-sel-file', mkdir=True)
 
         from ..wxgui.MEG import SelectEpochs
