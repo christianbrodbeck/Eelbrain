@@ -139,6 +139,8 @@ _temp = {
 
         # raw
         'raw': 'raw',
+        # key necessary for identifying raw file info (used for bad channels):
+        'raw-key': '{subject}',
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
         'raw-file': '{raw-base}-raw.fif',
         'raw-evt-file': '{raw-base}-evts.pickled',
@@ -1163,7 +1165,7 @@ class mne_experiment(object):
         raw = load.fiff.Raw(raw_file, proj, preload=preload)
         if add_bads:
             if add_bads is True:
-                key = (self.get('subject'), self.get('experiment'))
+                key = self.get('raw-key')
                 bad_chs = self.bad_channels[key]
             else:
                 bad_chs = add_bads

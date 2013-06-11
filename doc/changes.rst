@@ -20,3 +20,9 @@ Since 0.0.4
   * all paths to files are called '*-file'.
   * all paths to directories are called '*-dir'.
   * all paths to directories containing subjects are called '*-sdir'.
+
+* Per-file settings (such as bad channel definition) are now stored with custom 
+  keys. ``bad_chs = e.bad_channels[e.get('badch-key')]``. By default, the key
+  is just ``'{subject}'``, but if for example multiple experiments are 
+  processed with the same experiment class, the key can be changed to something 
+  like ``'{subject}_{experimnt}'``.
