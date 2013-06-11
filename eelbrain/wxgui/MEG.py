@@ -356,7 +356,8 @@ class SelectEpochs(eelfigure):
         if np.all(ds['eventID'] == self._ds['eventID']):
             self._target[:] = ds['accept']
             if 'bad_chs' in ds.info:
-                self._bad_chs = ds.info['bad_chs']
+                bad_chs = ds.info['bad_chs']
+                self._set_bad_chs(bad_chs, reset=True)
             self._path = path
             self._saved_target[:] = ds['accept']
         else:
@@ -392,7 +393,7 @@ class SelectEpochs(eelfigure):
         if accept.name != 'accept':
             accept = accept.copy('accept')
         ds = dataset(self._ds['eventID'], accept,
-                     info={'bad_chs': self._bad_chs})
+                     info={'bad_chs': self.get_bad_chs()})
 
         if ext == '.pickled':
             save.pickle(ds, path)
