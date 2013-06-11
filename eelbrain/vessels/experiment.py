@@ -261,7 +261,8 @@ class mne_experiment(object):
 
     _experiments = []
     _fmt_pattern = re.compile('\{([\w-]+)\}')
-    _repr_vars = ['subject', 'experiment']  # state variables that are shown in self.__repr__()
+    # state variables that are always shown in self.__repr__():
+    _repr_vars = ['subject']
 
     # Where to search for subjects. If the experiment searches for subjects
     # automatically, it scans this directory for subfolders matching
@@ -280,7 +281,7 @@ class mne_experiment(object):
                  'epoch': 'epoch'}
 
     def __init__(self, root=None, parse_subjects=True, subjects=[],
-                 mri_subjects={}):
+                 mri_subjects={}, **kwargs):
         """
         Parameters
         ----------
@@ -330,6 +331,8 @@ class mne_experiment(object):
         owner = getattr(self, 'owner', False)
         if owner:
             self.notification = Notifier(owner, 'mne_experiment task')
+
+        self.set(**kwargs)
 
     def _update_var_values(self):
         subjects = self.var_values['subject']
@@ -545,7 +548,10 @@ class mne_experiment(object):
             v = self.get(k)
             kwargs.append((k, repr(v)))
 
+        proper_mrisubject = self._mri_subjects[self._state['subject']]
         for k in sorted(self._state):
+            if k == 'mrisubject' and self._state[k] == proper_mrisubject:
+                continue
             if '{' in self._state[k]:
                 continue
             if k in self._repr_vars:
