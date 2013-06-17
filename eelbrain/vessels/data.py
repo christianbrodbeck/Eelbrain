@@ -318,6 +318,7 @@ def _empty_like(obj, n=None, name=None):
         return datalist([None] * n, name=name)
     else:
         err = "Type not supported: %s" % type(obj)
+        raise TypeError(err)
 
 
 def cell_label(cell, delim=' '):
