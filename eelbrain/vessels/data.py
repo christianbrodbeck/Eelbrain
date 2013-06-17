@@ -17,8 +17,6 @@ managed by
 
     * dataset
 
-
-
 '''
 
 from __future__ import division
@@ -816,6 +814,61 @@ class var(object):
                                        x1=X.cells[v1],
                                        x2=X.cells[v2])
         return var(y, name)
+
+    @classmethod
+    def from_dict(cls, base, values, name=None, default=0):
+        """
+        Construct a var object by mapping ``base`` to ``values``.
+
+        Parameters
+        ----------
+        base : sequence
+            Sequence to be mapped to the new var.
+        values : dict
+            Mapping from values in base to values in the new var.
+        name : None | str
+            Name for the new var.
+        default : scalar
+            Default value to supply for entries in ``base`` that are not in
+            ``values``.
+
+        Examples
+        --------
+        >>> base = factor('aabbcde')
+        >>> var.from_dict(base, {'a': 5, 'e': 8}, default=0)
+        var([5, 5, 0, 0, 0, 0, 8])
+
+        """
+        Y = cls([values.get(b, default) for b in base], name=name)
+        return Y
+
+    @classmethod
+    def from_apply(cls, base, func, name='{func}({name})'):
+        """
+        Construct a var instance by applying a function to each value in a base
+
+        Parameters
+        ----------
+        base : sequence, len = n
+            Base for the new var. Can be an ndvar, if ``func`` is a
+            dimensionality reducing function such as :func:`numpy.mean`.
+        func : callable
+            A function that when applied to each element in ``base`` returns
+            the desired value for the resulting var.
+        """
+        base_name = getattr(base, 'name', 'x')
+        if isvar(base) or isndvar(base):
+            base = base.x
+
+        if isinstance(func, np.ufunc):
+            x = func(base)
+        elif getattr(base, 'ndim', 1) > 1:
+            x = func(base.reshape((len(base), -1)), axis=1)
+        else:
+            x = np.array([func(val) for val in base])
+
+        name = name.format(func=func.__name__, name=base_name)
+        return cls(x, name=name)
 
     def index(self, *values):
         """
@@ -2518,7 +2571,7 @@ class dataset(collections.OrderedDict):
         return ds
 
     def update(self, ds, replace=False, info=True):
-        """Update the dtaset with all variables in ds.
+        """Update the dataset with all variables in ``ds``.
 
         If a key is present in both the dataset and ds, and the corresponding
         variables are not equal on all cases, a ValueError is raised.
@@ -2744,43 +2797,6 @@ class diff(object):
     @property
     def N(self):
         return np.sum(self.I1)
-
-
-def var_from_dict(base, values, name=None, default=0):
-    """
-    Create a var object by mapping ``base`` to ``values``.
-
-    Parameters
-    ----------
-    base : sequence
-        Sequence to be mapped to the new var.
-    values : dict
-        Mapping from values in base to values in the new var.
-    name : None | str
-        Name for the new var.
-    default : scalar
-        Default value to supply for entries in ``base`` that are not in
-        ``values``.
-
-    Examples
-    --------
-    >>> base = factor('aabbcde')
-    >>> var_from_dict(base, {'a': 5, 'e': 8}, default=0)
-    var([5, 5, 0, 0, 0, 0, 8])
-
-    """
-    Y = var([values.get(b, default) for b in base], name=name)
-    return Y
-
-
-def var_from_apply(source_var, function, apply_to_array=True):
-    if apply_to_array:
-        x = function(source_var.x)
-    else:
-        x = np.array([function(val) for val in source_var.x])
-    name = "%s(%s)" % (function.__name__, source_var.name)
-    return var(x, name=name)
-
 
 
 def box_cox_transform(X, p, name=True):

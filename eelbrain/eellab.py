@@ -14,8 +14,6 @@ factor
     standard class for categorial data
 var
     standard class for univariate scalar data
-var_from_dict
-    construct a var from a dictionary
 
 ...
 
@@ -39,8 +37,6 @@ Created on Mar 27, 2012
 from .vessels.data import (factor,
                            cellname,
                            var,
-                           var_from_dict,
-                           var_from_apply,
                            ndvar,
                            resample,
                            dataset,

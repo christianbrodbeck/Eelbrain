@@ -13,8 +13,8 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain.vessels import datasets
-from eelbrain.vessels.data import (align, align1, combine, factor, isdatalist,
-                                   isndvar, isuv, var_from_dict)
+from eelbrain.vessels.data import (var, factor, align, align1, combine,
+                                   isdatalist, isndvar, isuv)
 
 
 def assert_dataset_equal(ds1, ds2):
@@ -109,6 +109,6 @@ def test_pickle_io():
 def test_var():
     "Test var objects"
     base = factor('aabbcde')
-    Y = var_from_dict(base, {'a': 5, 'e': 8}, default=0)
+    Y = var.from_dict(base, {'a': 5, 'e': 8}, default=0)
     assert_array_equal(Y.x, [5, 5, 0, 0, 0, 0, 8])
 
