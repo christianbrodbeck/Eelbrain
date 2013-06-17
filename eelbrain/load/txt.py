@@ -14,16 +14,13 @@ from eelbrain.vessels import data as _data
 __all__ = ['tsv', 'var']
 
 
-
 def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
-        skiprows=0):
+        skiprows=0, start_tag=None):
     """
-    returns a ``dataset`` with data from a tab-separated values file.
-
+    Load a :class:`dataset` from a tab-separated values file.
 
     Parameters
     ----------
-
     names : list of str | bool
         * ``['name1', ...]`` use these names
         * ``True``: look for names on the first line of the file
@@ -41,34 +38,48 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
         Skip so many rows at the beginning of the file (for tsv files with
         headers). Column names (if names==True) are expected to come after
         the skipped rows.
-
+    start_tag : None | str
+        Alternative way to skip header rows. The table is assumed to start
+        on the line following the last line in the file that starts with
+        ``start_tag``.
     """
     if path is None:
-        path = ui.ask_file("Select file to import as dataframe",
-                           "Select file to import as dataframe")
+        path = ui.ask_file("Load TSV", "Select tsv file to import as dataset")
         if not path:
             return
 
-    with open(path) as f:
-        for i in xrange(skiprows):
-            f.readline()
+    with open(path) as fid:
+        lines = fid.readlines()
 
-        # read / create names
-        if names == True:
-            names = f.readline().split(delimiter)
-            names = [n.strip().strip('"') for n in names]
+    # find start position
+    if skiprows:
+        lines = lines[skiprows:]
+    if start_tag:
+        start = 0
+        for i, line in enumerate(lines, 1):
+            if line.startswith(start_tag):
+                start = i
+        if start:
+            lines = lines[start:]
 
-        lines = []
-        for line in f:
-            values = []
-            for v in line.split(delimiter):
-                v = v.strip()
-                if not v:
-                    v = empty
-                values.append(v)
-            lines.append(values)
+    # read / create names
+    if names == True:
+        head_line = lines.pop(0)
+        names = head_line.split(delimiter)
+        names = [n.strip().strip('"') for n in names]
 
-    n_vars = len(lines[0])
+    # read table body
+    rows = []
+    for line in lines:
+        values = []
+        for v in line.split(delimiter):
+            v = v.strip()
+            if not v:
+                v = empty
+            values.append(v)
+        rows.append(values)
+
+    n_vars = len(rows[0])
 
     if not names:
         names = ['v%i' % i for i in xrange(n_vars)]
@@ -93,7 +104,7 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
         data.append([])
 
     # read rest of the data
-    for line in lines:
+    for line in rows:
         for i, v in enumerate(line[start:]):
             for str_del in ["'", '"']:
                 if v[0] == str_del:
@@ -108,12 +119,12 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
         if force_type in [0, 2]:
             try:
                 v = v.astype(float)
-                f = _data.var(v, name=name)
+                fid = _data.var(v, name=name)
             except:
-                f = _data.factor(v, name=name)
+                fid = _data.factor(v, name=name)
         else:
-            f = _data.factor(v, name=name)
-        ds.add(f)
+            fid = _data.factor(v, name=name)
+        ds.add(fid)
 
     return ds
 
