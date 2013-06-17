@@ -5,6 +5,7 @@ Since 0.0.4
 -----------
 
 :class:`~eelbrain.vessels.experiment.mne_experiment`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 * Ability to use manual epoch rejection instead of the automatic procedure.
   The ``epoch_rejection`` class attribute specifies how epochs should be 
@@ -26,3 +27,12 @@ Since 0.0.4
   is just ``'{subject}'``, but if for example multiple experiments are 
   processed with the same experiment class, the key can be changed to something 
   like ``'{subject}_{experimnt}'``.
+
+
+:class:`~eelbrain.vessels.data.dataset`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* Idexing with sequence of strings now returns a :class:`dataset` (previously 
+  a :class:`list`). Example: ``new_ds = ds['var1', 'factor3']``. This is 
+  consistent with numerical indexing, such as ``new_ds = ds[:10, ('var1', 
+  'factor3')]``.

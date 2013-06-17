@@ -2112,7 +2112,7 @@ class dataset(collections.OrderedDict):
             raise KeyError("Invalid index for dataset: %r" % index)
 
         if all(isinstance(item, basestring) for item in index):
-            return [self[item] for item in index]
+            return dataset(*(self[item] for item in index))
 
         if isinstance(index, tuple):
             i0 = index[0]
