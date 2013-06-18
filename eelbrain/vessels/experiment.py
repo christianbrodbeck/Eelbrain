@@ -280,8 +280,7 @@ class mne_experiment(object):
                  # above)
                  'epoch': 'epoch'}
 
-    def __init__(self, root=None, parse_subjects=True, subjects=[],
-                 mri_subjects={}, **kwargs):
+    def __init__(self, root=None, parse_subjects=True, **kwargs):
         """
         Parameters
         ----------
@@ -290,10 +289,6 @@ class mne_experiment(object):
             containing the 'meg' and 'mri' directories)
         parse_subjects : bool
             Find MEG subjects using :attr:`_subjects_loc`
-        subjects : list of str
-            Provide additional MEG subjects.
-        mri_subjects : dict, {subject: mrisubject}
-            Provide additional MRI subjects.
         """
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
 
@@ -306,12 +301,8 @@ class mne_experiment(object):
 
         # find experiment data structure
         self._mri_subjects = keydefaultdict(lambda k: k)
-        self._mri_subjects.update(mri_subjects)
-        self.set(root=root, add=True)
+        self.set(root=root, match=parse_subjects, add=True)
         self.exclude = {}
-
-        self.parse_dirs(parse_subjects=parse_subjects, subjects=subjects)
-        self._update_var_values()
 
         # set initial values
         self._label_cache = LabelCache()
@@ -550,6 +541,8 @@ class mne_experiment(object):
 
         proper_mrisubject = self._mri_subjects[self._state['subject']]
         for k in sorted(self._state):
+            if k == 'root':
+                continue
             if k == 'mrisubject' and self._state[k] == proper_mrisubject:
                 continue
             if '{' in self._state[k]:
@@ -1754,6 +1747,7 @@ class mne_experiment(object):
                 raise IOError(err)
 
         self.var_values['subject'] = sorted(subjects)
+        self._update_var_values()
 
     def plot_coreg(self, **kwargs):
         self.set(**kwargs)
@@ -2083,13 +2077,20 @@ class mne_experiment(object):
             automatically set to the corresponding mri subject.
         match : bool
             Require existence of the assigned value (only applies for variables
-            for which values are defined in self.var_values).
+            for which values are defined in self.var_values). When setting
+            root, find subjects by looking through folder structure.
         add : bool
             If the template name does not exist, add a new key. If False
             (default), a non-existent key will raise a KeyError.
         all other : str
             All other keywords can be used to set templates.
         """
+        root = kwargs.get('root', None)
+        if root:
+            self._state['root'] = root
+            if match:
+                self.parse_dirs()
+
         # subject var
         if subject is not None:
             kwargs['subject'] = subject
