@@ -916,6 +916,33 @@ class _effect_(object):
     def __mod__(self, other):
         return interaction((self, other))
 
+    def count(self, value, start=-1):
+        """Cumulative count of the occurrences of ``value``
+
+        Parameters
+        ----------
+        value : str | tuple  (value in .cells)
+            Cell value which is to be counted.
+        start : int
+            Value at which to start counting (with the default of -1, the first
+            occurrence will be 0).
+
+        Returns
+        -------
+        count : array of int,  len = len(self)
+            Cumulative count of value in self.
+
+        Examples
+        --------
+        >>> a = factor('abc', tile=3)
+        >>> a
+        factor(['a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c'])
+        >>> a.count('a')
+        array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+        """
+        count = np.cumsum(self == value) + start
+        return count
+
     def index(self, cell):
         "``e.index(cell)`` returns an array of indices where e equals cell"
         return np.nonzero(self == cell)[0]
@@ -1322,6 +1349,29 @@ class factor(_effect_):
             return np.all(is_not_v, axis=0)
         else:
             return np.ones(len(self), dtype=bool)
+
+    def startswith(self, substr):
+        """Create an index that is true for all cases whose name starts with
+        ``substr``
+
+        Parameters
+        ----------
+        substr : str
+            String for selecting cells that start with substr.
+
+        Returns
+        -------
+        idx : boolean array,  len = len(self)
+            Index that is true wherever the value starts with ``substr``.
+
+        Examples
+        --------
+        >>> a = factor(['a1', 'a2', 'b1', 'b2'])
+        >>> a.startswith('b')
+        array([False, False,  True,  True], dtype=bool)
+        """
+        values = [v for v in self.cells if v.startswith(substr)]
+        return self.isin(values)
 
     def table_categories(self):
         "returns a table containing information about categories"
