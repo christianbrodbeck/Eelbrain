@@ -2504,24 +2504,33 @@ class dataset(collections.OrderedDict):
                 out[cell] = self.subset(index, setname)
         return out
 
-    def compress(self, X, drop_empty=True, name='{name}', count='n', drop_bad=False):
+    def compress(self, X, drop_empty=True, name='{name}', count='n',
+                 drop_bad=False):
         """
         Return a dataset with one case for each cell in X.
 
-        drop_empty : True
+        Parameters
+        ----------
+        X : categorial
+            Model defining cells to which to reduce cases.
+        drop_empty : bool
             Drops empty cells in X from the dataset. This is currently the only
             option.
-
-        count : str
+        name : str
+            Name of the new dataset.
+        count : None | str
             Add a variable with this name to the new dataset, containing the
             number of cases in each cell in X.
-
         drop_bad : bool
             Drop bad items: silently drop any items for which compression
             raises an error. This concerns primarily factors with non-unique
             values for cells in X (if drop_bad is False, an error is raised
             when such a factor is encountered)
 
+        Notes
+        -----
+        Handle mne Epoch objects by creating a list with an mne Evoked object
+        for each cell.
         """
         if not drop_empty:
             raise NotImplementedError('drop_empty = False')
@@ -3654,17 +3663,14 @@ class Sensor(Dimension):
         returns a sensor X location array, the first column reflecting the x,
         and the second column containing the y coordinate of each sensor.
 
-
-        Arguments
-        ---------
-
-        ``proj``:
+        Parameters
+        ----------
+        proj : str
             How to transform 3d coordinates into a 2d map; see class
             documentation for options.
-        ``extent``:
+        extent : int
             coordinates will be scaled with minimum value 0 and maximum value
             defined by the value of ``extent``.
-
         """
         if proj == 'default':
             proj = self.default_proj2d

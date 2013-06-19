@@ -39,6 +39,20 @@ class topomap(_base.eelfigure):
         sensors : None | 'idx' | 'name' | 'fullname'
             Show sensor labels. For 'name', any prefix common to all names
             is removed; with 'fullname', the full name is shown.
+        proj : str
+            The sensor projection to use for topomaps.
+        vmax : scalar
+            Vmax for plots.
+        size : scalar
+            Side length in inches of individual axes.
+        dpi : scalar
+            Dpi of the figure.
+        title : str
+            Title (shown in the window, not figure title).
+        res : int
+            Resolution of the topomaps (width = height = ``res``).
+        interpolation : str
+            Matplotlib imshow() parameter for topomaps.
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
 
@@ -531,13 +545,22 @@ class array(_base.eelfigure):
         Channel by sample array-plots with topomaps corresponding to
         individual time points.
 
-        kwargs
-        ------
+        Parameters
+        ----------
+        epochs :
+            Epoch(s) to plot.
         title : str | None
-            title
+            Figure title.
+        height, width : scalar
+            Axes height and width in inches.
         ntopo | int
-            number of topomaps per array-plot
-
+            number of topomaps per array-plot.
+        dpi : scalar
+            Figure dpi.
+        ylim : None | scalar
+            Limit of the y-axis.
+        t : list of scalar (len <= ntopo)
+            Time points for topomaps.
         """
         frame_title = "plot.topo.array: %r"
         if isinstance(title, basestring):
