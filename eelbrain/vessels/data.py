@@ -414,24 +414,27 @@ def align1(d, idx, d_idx='index', out='data'):
         ValueError("Invalid value for out parameter: %r" % out)
 
 
-def combine(items):
-    """
-    combine a list of items of the same type into one item
+def combine(items, name=None):
+    """Combine a list of items of the same type into one item.
 
     Parameters
     ----------
     items : collection
         Collection (:py:class:`list`, :py:class:`tuple`, ...) of data objects
         of a single type (dataset, var, factor, ndvar or datalist).
+    name : None | str
+        Name for the resulting data-object. If None, the name of the combined
+        item is the common prefix of all items.
 
     Notes
     -----
-    For vars and factors, the :attr:`name` attribute of the combined item is
-    the name of the first item.
-
-    For datasets, missing variables are filled in with empty values ('', NaN).
-
+    For datasets, missing variables are filled in with empty values ('' for
+    factors, NaN for variables).
     """
+    if name is None:
+        names = filter(None, (item.name for item in items))
+        name = os.path.commonprefix(names) or None
+
     item0 = items[0]
     if isdataset(item0):
         # find all keys and data types
@@ -443,7 +446,7 @@ def combine(items):
                     keys.append(key)
                     sample[key] = item[key]
         # create new dataset
-        out = dataset()
+        out = dataset(name=name)
         for key in keys:
             pieces = [ds[key] if key in ds else
                       _empty_like(sample[key], ds.n_cases) for ds in items]
@@ -451,15 +454,14 @@ def combine(items):
         return out
     elif isvar(item0):
         x = np.hstack(i.x for i in items)
-        return var(x, name=item0.name)
+        return var(x, name=name)
     elif isfactor(item0):
         if all(f._labels == item0._labels for f in items[1:]):
             x = np.hstack(f.x for f in items)
-            kwargs = item0._child_kwargs()
+            kwargs = item0._child_kwargs(name=name)
         else:
             x = sum((i.as_labels() for i in items), [])
-            kwargs = dict(name=item0.name,
-                          random=item0.random)
+            kwargs = dict(name=name, random=item0.random)
         return factor(x, **kwargs)
     elif isndvar(item0):
         dims = item0.dims
@@ -472,9 +474,11 @@ def combine(items):
         else:
             err = ("Some items have a 'case' dimension, others do not")
             raise DimensionMismatchError(err)
-        return ndvar(x, dims=dims, name=item0.name, properties=item0.properties)
-    elif isinstance(item0, datalist):
-        return sum(items[1:], item0)
+        return ndvar(x, dims=dims, name=name, properties=item0.properties)
+    elif isdatalist(item0):
+        out = sum(items[1:], item0)
+        out.name = name
+        return out
     else:
         err = ("Objects of type %s can not be combined." % type(item0))
         raise TypeError(err)
@@ -2278,13 +2282,7 @@ class dataset(collections.OrderedDict):
             if isndvar(item) and not item.has_case:
                 N = 0
             else:
-                try:
-                    N = len(item)
-                except:
-                    if hasattr(item, '_data'):  # mne epochs
-                        N = len(item._data)
-                    else:
-                        raise
+                N = len(item)
 
             if self.n_cases is None:
                 self.n_cases = N
@@ -2490,7 +2488,7 @@ class dataset(collections.OrderedDict):
 
         Parameters
         ----------
-        X : categorial
+        X : str | categorial
             Model defining cells to which to reduce cases.
         drop_empty : bool
             Drops empty cells in X from the dataset. This is currently the only
@@ -2513,6 +2511,7 @@ class dataset(collections.OrderedDict):
         """
         if not drop_empty:
             raise NotImplementedError('drop_empty = False')
+        X = ascategorial(X, ds=self)
 
         self._check_n_cases(X, empty_ok=False)
 
@@ -2987,7 +2986,7 @@ class interaction(_effect_):
         return factor(x, name)
 
     def as_cells(self):
-        [case for case in self]
+        return [case for case in self]
 
     def as_labels(self, delim=' '):
         return map(delim.join, self)
