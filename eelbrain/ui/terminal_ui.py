@@ -9,10 +9,10 @@ import os
 
 
 
-def ask_saveas(title = "Save File",
-               message = "Please Pick a File Name", 
+def ask_saveas(title="Save File",
+               message="Please Pick a File Name",
                ext=[('eelbrain', "pickled eelbrain experiment")],
-               default=None):
+               defaultDir=None, defaultFile=None):
     """
     ext: list of (extension, description) tuples
          or None

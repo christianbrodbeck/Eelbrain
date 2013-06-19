@@ -28,8 +28,8 @@ def pickle(obj, dest=None, protocol=cPickle.HIGHEST_PROTOCOL):
 
     """
     if dest is None:
-        dest = ui.ask_saveas("Pickle Destination", '',
-                             ext=[('pickled', "Pickled Python Object")])
+        ext = [('pickled', "Pickled Python Object")]
+        dest = ui.ask_saveas("Pickle Destination", "", ext=ext)
         if dest:
             print 'dest=%r' % dest
         else:

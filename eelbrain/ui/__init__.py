@@ -32,11 +32,32 @@ def get_ui():
         return tk_ui
 
 
-def ask_saveas(title="Save File",
-               message="Please Pick a File Name",
+def ask_saveas(title="Save File", message="Please Pick a File Name",
                ext=[('pickled', "pickled Python object")],
-               default=None):
-    return get_ui().ask_saveas(title, message, ext, default=default)
+               defaultDir=None, defaultFile=False):
+    """Display a save-as dialog
+
+    Parameters
+    ----------
+    title : str
+        Title of the dialog.
+    message : str
+        Message in the dialog.
+    ext: list of (extension, description) tuples
+         or None.
+    defaultDir : None | str
+        Default directory to save at.
+    defaultFile : None | str
+        Default file name.
+
+    Returns
+    -------
+    result : False | str
+        The path as str if the user selects a dialog, otherwise ``False``.
+    """
+    result = get_ui().ask_saveas(title, message, ext, defaultDir=defaultDir,
+                                 defaultFile=defaultFile)
+    return result
 
 
 

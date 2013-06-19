@@ -39,7 +39,7 @@ def meg160_triggers(ds, dest=None, pad=1):
     if dest is None:
         dest = ui.ask_saveas("Save MEG-160 Triggers", "Please pick a "
                              "destination for the MEG-160 triggers",
-                             ('txt', 'trigger-list'))
+                             ext=('txt', 'trigger-list'))
         if not dest:
             return
 

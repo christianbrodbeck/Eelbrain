@@ -429,7 +429,7 @@ def save(dataset, destination=None, values=None, pickle_values=False):
     if destination is None:
         msg = ("Pick a name to save the dataset (without extension; '.mat', "
                "'.pickled' and '.tsv' will be appended")
-        destination = ui.ask_saveas("Save Dataset", msg, [])
+        destination = ui.ask_saveas("Save Dataset", msg, None)
 
     if not destination:
         return

@@ -363,8 +363,9 @@ class dev_head_fitter:
         if fname is None:
             msg = "Destination for the modified raw file"
             ext = [('fif', 'MNE Fiff File')]
+            dirname, fname = os.path.split(self._raw_fname)
             fname = ui.ask_saveas("Save Raw File", msg, ext,
-                                  default=self._raw_fname)
+                                  defaultDir=dirname, defaultFile=fname)
         if not fname:
             return
 

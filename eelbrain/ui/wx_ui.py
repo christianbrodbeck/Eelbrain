@@ -16,25 +16,19 @@ def _wildcard_from_ext(ext):
         return ""
 
 
-def ask_saveas(title, message, ext, default=None):
-    """
-    ext: list of (extension, description) tuples
-         or None
-
-    """
+def ask_saveas(title, message, ext, defaultDir=None, defaultFile=None):
+    """See eelbrain.ui documentation"""
     if not ext:  # allow for []
         ext = None
 
     dialog = wx.FileDialog(GetWxParent(), message,
                            wildcard=_wildcard_from_ext(ext),
                            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
-    dialog.SetMessage(message)
-#    dialog.SetWildcard(wildcard)
     dialog.SetTitle(title)
-    if default:
-        dirname, fname = os.path.split(default)
-        dialog.SetDirectory(dirname)
-        dialog.SetFilename(fname)
+    if defaultDir:
+        dialog.SetDirectory(defaultDir)
+    if defaultFile:
+        dialog.SetFilename(defaultFile)
     if dialog.ShowModal() == wx.ID_OK:
         path = dialog.GetPath()
         if ext is not None:
