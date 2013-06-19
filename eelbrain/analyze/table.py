@@ -8,7 +8,8 @@ import numpy as np
 
 from eelbrain import fmtxt
 
-from ..vessels.data import ascategorial, asmodel, asvar, isfactor, isvar
+from ..vessels.data import (ascategorial, asmodel, asvar, isfactor, isvar,
+                            isinteraction, dataset, factor, var)
 from ..vessels.structure import celltable
 
 __hide__ = ['division', 'fmtxt', 'scipy',
@@ -17,20 +18,31 @@ __hide__ = ['division', 'fmtxt', 'scipy',
 
 
 
-def frequencies(Y, X=None, of=None, sub=None, title="{Yname} Frequencies", ds=None):
-    """
-    Display frequency of occurrence of all categories in Y in the cells
-    defined by X.
+def frequencies(Y, X=None, of=None, sub=None, ds=None):
+    """Calculate frequency of occurrence of the categories in Y
 
+    Parameters
+    ----------
     Y : categorial
         Factor with values whose frequencies are of interest.
     X : None | categorial
-        Model defining cells for which frequencies are displayed.
-    of : categorial
-        If `X` is constant within `of`, only count frequencies for each value
+        Optional model defining cells for which frequencies are displayed
+        separately.
+    of : None | categorial
+        With `X` constant within `of`, only count frequencies for each value
         in `of` once. (Compress Y and X before calculating frequencies.)
+    sub : None | index
+        Only use a subset of the data.
+    ds : dataset
+        If ds is specified, other parameters can be strings naming for
+        variables in ds.
 
+    Returns
+    -------
+    freq : dataset
+        Dataset with frequencies.
     """
+    # convert args
     Y = ascategorial(Y, sub, ds)
     if X is not None:
         X = ascategorial(X, sub, ds)
@@ -40,54 +52,41 @@ def frequencies(Y, X=None, of=None, sub=None, title="{Yname} Frequencies", ds=No
         if X is not None:
             X = X.compress(of)
 
+    # find name
+    if getattr(Y, 'name', None):
+        name = "Frequencies of %s" % Y.name
+    else:
+        name = "Frequencies"
+
+    # special case
     if X is None:
-        table = fmtxt.Table('ll')
-        if hasattr(Y, 'name'):
-            table.title("Frequencies of %s" % Y.name)
-        table.cell()
-        table.cell('n')
-        table.midrule()
-        for cell in Y.cells:
-            table.cell(cell)
-            table.cell(np.sum(Y == cell))
-        return table
-
-    ct = celltable(Y, X)
-
-    Y_categories = ct.Y.cells
+        out = dataset(name=name)
+        out['cell'] = factor(Y.cells, random=Y.random)
+        n = np.fromiter((np.sum(Y == cell) for cell in Y.cells), int,
+                        len(Y.cells))
+        out['n'] = var(n)
+        return out
 
     # header
-    n_Y_categories = len(Y_categories)
-    table = fmtxt.Table('l' * (n_Y_categories + 1))
-    # header line 1
-    table.cell()
-    table.cell(Y.name, width=n_Y_categories, just='c')
-    table.midrule(span=(2, n_Y_categories + 1))
-    # header line 2
-    table.cell(X.name)
-    for Ycell in Y_categories:
-        table.cell(Ycell)
-    table.midrule()
+    if getattr(X, 'name', None):
+        name += ' by %s' % X.name
+    out = dataset(name=name)
 
-    # body
-    for cell in ct.cells:
-        table.cell(ct.cell_label(cell))
-        data = ct.data[cell]
-        for Ycell in Y_categories:
-            n = np.sum(data == Ycell)
-            table.cell(n)
+    if isinteraction(X):
+        for i, f in enumerate(X.base):
+            random = getattr(f, 'random', False)
+            out[f.name] = factor((c[i] for c in X.cells), random=random)
+    else:
+        out[X.name] = factor(X.cells)
 
-    # title
-    if title:
-        if '{Yname}' in title:
-            try:
-                Yname = Y.name.capitalize()
-            except:
-                Yname = '[unnamed]'
-            title = title.format(Yname=Yname)
-        table.title(title)
+    y_idx = {cell: Y == cell for cell in Y.cells}
+    x_idx = {cell: X == cell for cell in X.cells}
+    for y_cell in Y.cells:
+        n = (np.sum(np.logical_and(y_idx[y_cell], x_idx[x_cell]))
+             for x_cell in X.cells)
+        out[y_cell] = var(np.fromiter(n, int, len(X.cells)))
 
-    return table
+    return out
 
 
 
