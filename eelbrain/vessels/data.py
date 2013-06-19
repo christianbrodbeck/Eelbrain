@@ -899,6 +899,20 @@ class var(object):
         "Analogous to :py:func:`numpy.repeat`"
         return var(self.x.repeat(repeats), name=name.format(name=self.name))
 
+    def sort_idx(self, descending=False):
+        """Create an index that could be used to sort the var.
+
+        Parameters
+        ----------
+        descending : bool
+            Sort in descending instead of an ascending order.
+        """
+        idx = np.argsort(self.x)
+        if descending:
+            idx -= np.max(idx)
+            idx *= -1
+        return idx
+
     @property
     def values(self):
         return np.unique(self.x)
@@ -947,6 +961,23 @@ class _effect_(object):
         "``e.index(cell)`` returns an array of indices where e equals cell"
         return np.nonzero(self == cell)[0]
 
+    def sort_idx(self, descending=False):
+        """Create an index that could be used to sort the effect.
+
+        Parameters
+        ----------
+        descending : bool
+            Sort in descending instead of an ascending order.
+        """
+        idx = np.empty(len(self), dtype=np.int32)
+        for i, cell in enumerate(self.cells):
+            idx[self == cell] = i
+
+        idx = np.argsort(idx)
+        if descending:
+            idx -= np.max(idx)
+            idx *= -1
+        return idx
 
 
 class factor(_effect_):
@@ -2584,6 +2615,73 @@ class dataset(collections.OrderedDict):
     @property
     def shape(self):
         return (self.n_cases, self.n_items)
+
+    def sort(self, order, descending=False):
+        """Sort the dataset in place.
+
+        Parameters
+        ----------
+        order : str | data-object
+            Data object (var, factor or interactions) according to whose values
+            to sort the dataset, or its name in the dataset.
+        descending : bool
+            Sort in descending instead of an ascending order.
+
+        See Also
+        --------
+        .sort_idx : Create an index that could be used to sort the dataset
+        .sorted : Create a sorted copy of the dataset
+        """
+        idx = self.sort_idx(order, descending)
+        for k in self:
+            self[k] = self[k][idx]
+
+    def sort_idx(self, order, descending=False):
+        """Create an index that could be used to sort the dataset.
+
+        Parameters
+        ----------
+        order : str | data-object
+            Data object (var, factor or interactions) according to whose values
+            to sort the dataset, or its name in the dataset.
+        descending : bool
+            Sort in descending instead of an ascending order.
+
+        See Also
+        --------
+        .sort : sort the dataset in place
+        .sorted : Create a sorted copy of the dataset
+        """
+        if isinstance(order, basestring):
+            order = self.eval(order)
+
+        if not len(order) == self.n_cases:
+            err = ("Order must be of same length as dataset; got length "
+                   "%i." % len(order))
+            raise ValueError(err)
+
+        idx = order.sort_idx(descending=descending)
+        return idx
+
+    def sorted(self, order, descending=False):
+        """Create an sorted copy of the dataset.
+
+        Parameters
+        ----------
+        order : str | data-object
+            Data object (var, factor or interactions) according to whose values
+            to sort the dataset, or its name in the dataset.
+        descending : bool
+            Sort in descending instead of an ascending order.
+
+        See Also
+        --------
+        .sort : sort the dataset in place
+        .sort_idx : Create an index that could be used to sort the dataset
+        """
+        idx = self.sort_idx(order, descending)
+        ds = self[idx]
+        return ds
 
     def subset(self, index, name='{name}'):
         """
