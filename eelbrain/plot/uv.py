@@ -14,23 +14,18 @@ import logging
 import numpy as np
 import scipy as sp
 import scipy.stats  # without this sp.stats is not available
-import matplotlib.pyplot as P
+import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-from eelbrain import fmtxt as textab
-
-from eelbrain.analyze import test
-
-from eelbrain.vessels.data import (isfactor, asfactor, isvar, asvar, ismodel,
-                                   asmodel, cell_label)
-from eelbrain.vessels.structure import celltable
+from ..analyze import test
+from ..vessels.data import isfactor, asfactor, isvar, asvar, cell_label
+from ..vessels.structure import celltable
+from ._base import str2tex
 
 
-__hide__ = ['division', 'scipy',
-            'textab', 'test',
-            'isfactor', 'asfactor', 'isvar', 'asvar', 'ismodel', 'asmodel',
-            'celltable',
-            ]
+__hide__ = ['division', 'logging', 'np', 'sp', 'scipy', 'plt', 'mpl',
+            'test', 'isfactor', 'asfactor', 'isvar', 'asvar', 'cell_label',
+            'celltable', 'str2tex']
 
 
 
@@ -64,7 +59,7 @@ defaults = dict(title_kwargs={'size': 14,
 
 def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, x0=0,
                         corr='Hochberg', levels=True, trend=".", pwcolors=None,
-                        font_size=P.rcParams['font.size'] * 1.5
+                        font_size=plt.rcParams['font.size'] * 1.5
                         ):
     "returns y_max"
     if levels is not True:  # to avoid test.star() conflict
@@ -110,7 +105,7 @@ def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, x0=0,
 def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0,
                         levels=True, trend=".", pwcolors=None,
                         popmean=0,  # <- mod
-                        font_size=P.rcParams['font.size'] * 1.5
+                        font_size=plt.rcParams['font.size'] * 1.5
                         ):
     "returns y_max"
     if levels is not True:  # to avoid test.star() conflict
@@ -152,13 +147,13 @@ class _simple_fig():
                  xtick_rotation=0, ytick_rotation=0):
         # axes
         if ax is None:
-            self.fig = P.figure(figsize=figsize)
+            self.fig = plt.figure(figsize=figsize)
             ax_x0 = .025 + .07 * bool(ylabel)
             ax_y0 = .065 + .055 * bool(xlabel)
             ax_dx = .975 - ax_x0
             ax_dy = .95 - ax_y0 - .08 * bool(title)
             self.rect = [ax_x0, ax_y0, ax_dx, ax_dy]
-            ax = self.ax = P.axes(self.rect)
+            ax = self.ax = plt.axes(self.rect)
             self.owns_axes = True
         else:
             self.ax = ax
@@ -193,15 +188,15 @@ class _simple_fig():
                 self._handles.append(handle)
     def legend_has_label(self, label):
             return any(label == h.get_label() for h in self._handles)
-    def legend(self, loc=0, fig=False, zorder= -1, ncol=1):
+    def legend(self, loc=0, fig=False, zorder=-1, ncol=1):
         "add a legend to the plot"
         if fig:
-            l = P.figlegend(self._handles,
+            l = plt.figlegend(self._handles,
                             (h.get_label() for h in self._handles), loc,
                             ncol=ncol)
             self._legend = l
         else:
-            l = P.legend(loc=loc, ncol=ncol)
+            l = plt.legend(loc=loc, ncol=ncol)
             if l:
                 l.set_zorder(-1)
             else:
@@ -228,9 +223,9 @@ class _simple_fig():
 
         if self.owns_axes:
             # adjust the position of the aces to show all labels
-            P.draw()
-            if P.get_backend() == 'WXAgg':
-                P.show()
+            plt.draw()
+            if plt.get_backend() == 'WXAgg':
+                plt.show()
             x_in, y_in = self.fig.get_size_inches()
             dpi = self.fig.get_dpi()
             border_x0 = 0.05  # in inches
@@ -285,7 +280,7 @@ class _simple_fig():
             p.y1 -= ymax
             self.ax.set_position(p)
 
-            P.draw()
+            plt.draw()
 
 
 
@@ -335,7 +330,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
             colors = defaults['c']['colors']
 
     if title is True:
-        title = getattr(Y, 'name', None)  # textab.texify(Y.name)
+        title = str2tex(getattr(Y, 'name', None))
 
     # ylabel
     if hasattr(Y, 'properties'):
@@ -345,11 +340,8 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     ylabel = ylabel.format(unit=unit)
 
     # xlabel
-    if (xlabel is True):
-        if X.name:
-            xlabel = textab.texify(X.name)
-        else:
-            xlabel = False
+    if xlabel is True:
+        xlabel = str2tex(X.name or False)
 
     # get axes
     fig = _simple_fig(title, xlabel, ylabel, titlekwargs, **simple_kwargs)
@@ -387,14 +379,14 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
                 h = hatch[i]
             else:
                 h = ''
-            boxPolygon = mpl.patches.Polygon(boxCoords, facecolor=c, hatch=h, zorder= -999)
+            boxPolygon = mpl.patches.Polygon(boxCoords, facecolor=c, hatch=h, zorder=-999)
             ax.add_patch(boxPolygon)
     if defaults['mono']:
         for itemname in bp:
-            P.setp(bp[itemname], color='black')
+            plt.setp(bp[itemname], color='black')
 
     # labelling
-    P.xticks(np.arange(len(ct.cells)) + 1, ct.cell_labels(xtick_delim))
+    plt.xticks(np.arange(len(ct.cells)) + 1, ct.cell_labels(xtick_delim))
     y_min = np.max(np.hstack(all_data))
     y_unit = (y_min - bottom) / 15
 
@@ -403,7 +395,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
         y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr=corr,
                                     x0=1, trend=trend)
     else:
-        P.axhline(test, color='black')
+        plt.axhline(test, color='black')
         y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit,
                                    x0=1, popmean=test, trend=trend, corr=corr)
 
@@ -540,7 +532,7 @@ def barplot(Y, X=None, match=None, sub=None,
     ax.set_ylim(y0, y1)
 
     # figure decoration
-    P.xticks(np.arange(len(ct.cells)), ct.cell_labels(xtick_delim))
+    plt.xticks(np.arange(len(ct.cells)), ct.cell_labels(xtick_delim))
 
     fig.finish()
     return fig
@@ -610,7 +602,7 @@ def _barplot(ax, ct,
     elif (test is False) or (test is None):
         y_top = y_min + y_unit
     else:
-        P.axhline(test, color='black')
+        plt.axhline(test, color='black')
         y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit,
                                    popmean=test, corr=corr, trend=trend)
 
@@ -722,13 +714,11 @@ def timeplot(Y, categories, time, match=None, sub=None,
 
     # ylabel
     if ylabel is True:
-        if hasattr(Y, 'name'):
-            ylabel = textab.texify(Y.name)
-        else:
-            ylabel = False
+        ylabel = str2tex(getattr(Y, 'name', None))
+
     # xlabel
     if xlabel is True:
-        xlabel = textab.texify(time.name)
+        xlabel = str2tex(time.name)
 
     # get axes
     fig = _simple_fig(ax=ax, xlabel=xlabel, ylabel=ylabel, **simple_kwargs)
@@ -795,12 +785,12 @@ def timeplot(Y, categories, time, match=None, sub=None,
                     h = hatch[i]
                 except:
                     h = ''
-                boxPolygon = mpl.patches.Polygon(boxCoords, facecolor=c, hatch=h, zorder= -999)
+                boxPolygon = mpl.patches.Polygon(boxCoords, facecolor=c, hatch=h, zorder=-999)
                 ax.add_patch(boxPolygon)
 
             if True:  # defaults['mono']:
                 for itemname in bp:
-                    P.setp(bp[itemname], color='black')
+                    plt.setp(bp[itemname], color='black')
         elif local_plot == 'bar':
             lim = _barplot(ax, ct, test=False, err=spread,  # ec=ec,
                            # bar settings:
@@ -1014,11 +1004,12 @@ class multitimeplot:
 
         # labels
         if self._ylabel is True:
-            if hasattr(Y, 'name'):
-                ax.set_ylabel(textab.texify(Y.name))
+            ylabel = str2tex(getattr(Y, 'name', None))
+            if ylabel:
+                ax.set_ylabel(ylabel)
                 self._ylabel = False
         if self._xlabel is True:
-            ax.set_xlabel(textab.texify(time.name))
+            ax.set_xlabel(str2tex(time.name))
             self._xlabel = False
 
         ### same as timeplot() #####  #####  #####  #####  #####  #####
@@ -1124,12 +1115,12 @@ class multitimeplot:
                         h = hatch[i]
                     except:
                         h = ''
-                    boxPolygon = mpl.patches.Polygon(boxCoords, facecolor=c, hatch=h, zorder= -999)
+                    boxPolygon = mpl.patches.Polygon(boxCoords, facecolor=c, hatch=h, zorder=-999)
                     ax.add_patch(boxPolygon)
 
                 if True:  # defaults['mono']:
                     for itemname in bp:
-                        P.setp(bp[itemname], color='black')
+                        plt.setp(bp[itemname], color='black')
             elif local_plot == 'bar':
                 lim = _barplot(ax, ct, test=False, err=spread,  # ec=ec,
                                # bar settings:
@@ -1246,11 +1237,11 @@ class multitimeplot:
         ax.set_xticklabels(self._xticklabels)
 
         self.fig.finish()
-    def add_legend(self, fig=False, loc=0, zorder= -1, **kwargs):
+    def add_legend(self, fig=False, loc=0, zorder=-1, **kwargs):
         if fig:
             self.fig.figlegend(loc, **kwargs)
         else:
-#            l = P.legend(loc=loc, **kwargs)
+#            l = plt.legend(loc=loc, **kwargs)
             l = self.fig.ax.legend(loc=loc, **kwargs)
             l.set_zorder(zorder)
 
@@ -1269,11 +1260,10 @@ def _reg_line(Y, reg):
 
 def corrplot(Y, X, cat=None, ax=None, sub=None,
              title=None, c=['b', 'r', 'k', 'c', 'p', 'y', 'g'], delim=' ',
-             lloc='lower center', lncol=2, figlegend=True, texify=True,
-             xlabel=True, ylabel=True, rinxlabel=True):
+             lloc='lower center', lncol=2, figlegend=True, xlabel=True,
+             ylabel=True, rinxlabel=True):
     """
     Plot the correlation between two variables.
-
 
     Parameters
     ----------
@@ -1281,17 +1271,12 @@ def corrplot(Y, X, cat=None, ax=None, sub=None,
         categories
     rinxlabel :
         print the correlation in the xlabel
-
     """
     # LABELS
     if xlabel is True:
-        xlabel = X.name
-        if texify:
-            xlabel = textab.texify(xlabel)
+        xlabel = str2tex(X.name)
     if ylabel is True:
-        ylabel = Y.name
-        if texify:
-            ylabel = textab.texify(ylabel)
+        ylabel = str2tex(Y.name)
     if rinxlabel:
         temp = "\n(r={r:.3f}{s}, p={p:.4f}, n={n})"
         if cat is None:
@@ -1303,12 +1288,12 @@ def corrplot(Y, X, cat=None, ax=None, sub=None,
     #
     if ax is None:
         if cat is None:
-            fig = P.figure(figsize=(3.5, 3.5))
-            ax = P.axes([.2, .15,
+            fig = plt.figure(figsize=(3.5, 3.5))
+            ax = plt.axes([.2, .15,
                          .75, .95 - .1 * bool(title) - .15 * figlegend])
         else:
-            fig = P.figure(figsize=(3.5, 4))
-            ax = P.axes([.2, .12 + .15 * figlegend,
+            fig = plt.figure(figsize=(3.5, 4))
+            ax = plt.axes([.2, .12 + .15 * figlegend,
                          .75, .85 - .06 * bool(title) - .15 * figlegend])
     if xlabel:
         ax.set_xlabel(xlabel)
@@ -1328,12 +1313,10 @@ def corrplot(Y, X, cat=None, ax=None, sub=None,
             idx = (cat == cell)
             Xi = X[idx]
             Yi = Y[idx]
-            cell = cell_label(cell)
+            cell = str2tex(cell_label(cell))
 
-            if texify:
-                cell = textab.texify(cell)
-
-            handles.append(ax.scatter(Xi.x, Yi.x, c=color, label=cell, alpha=.5))
+            h = ax.scatter(Xi.x, Yi.x, c=color, label=cell, alpha=.5)
+            handles.append(h)
             labels.append(cell)
 
         if figlegend:
@@ -1397,8 +1380,8 @@ def regplot(Y, regressor, categories=None, match=None, sub=None,
             ylabel_space = .07 * bool(ylabel)
         else:
             ylabel_space = .04 * bool(ylabel)
-        fig = P.figure(figsize=(3, 3))
-        ax = P.axes([.1 + ylabel_space * bool(ylabel),
+        fig = plt.figure(figsize=(3, 3))
+        ax = plt.axes([.1 + ylabel_space * bool(ylabel),
                      .125,
                      .85 - ylabel_space / 2 * bool(ylabel),
                      .85 - .06 * bool(title) - .025])
@@ -1481,9 +1464,9 @@ def _normality_plot(ax, data, **kwargs):
     ax.set_xlabel(r"$D=%.3f$, $p_{est}=%.2f$" % n_test)  # \chi ^{2}
     # make sure ticks display int values
     # ax.yaxis.set_major_formatter(ticker.MaxNLocator(nbins=8, integer=True))
-    ticks, labels = P.yticks()
+    ticks, labels = plt.yticks()
     labels = ticks = [int(l) for l in ticks]
-    P.yticks(ticks, labels)
+    plt.yticks(ticks, labels)
 
 
 def histogram(Y, X=None, match=None, sub=None, pooled=True,
@@ -1511,10 +1494,7 @@ def histogram(Y, X=None, match=None, sub=None, pooled=True,
 
     # ylabel
     if ylabel is True:
-        if hasattr(Y, 'name'):
-            ylabel = textab.texify(Y.name)
-        else:
-            ylabel = False
+        ylabel = str2tex(getattr(Y, 'name', False))
 
     if X is None:
         fig = _simple_fig(title=title, ylabel=ylabel)
@@ -1532,10 +1512,10 @@ def histogram(Y, X=None, match=None, sub=None, pooled=True,
         data = ct.get_data()
         names = ct.cells
 
-        P.figure(figsize=(7, 7))
-        P.subplots_adjust(hspace=.5)
+        plt.figure(figsize=(7, 7))
+        plt.subplots_adjust(hspace=.5)
 
-        P.suptitle("Tests for Normality of the Differences", **titlekwargs)
+        plt.suptitle("Tests for Normality of the Differences", **titlekwargs)
         nPlots = len(ct.cells) - 1
         pooled = []
         # i: row
@@ -1544,7 +1524,7 @@ def histogram(Y, X=None, match=None, sub=None, pooled=True,
             for j in range(i + 1, nPlots + 1):
                 difference = data[i] - data[j]
                 pooled.append(sp.stats.zscore(difference))  # z transform?? (sp.stats.zs())
-                ax = P.subplot(nPlots, nPlots, nPlots * i + (nPlots + 1 - j))
+                ax = plt.subplot(nPlots, nPlots, nPlots * i + (nPlots + 1 - j))
                 _normality_plot(ax, difference)
                 if i == 0:
                     ax.set_title(names[j], size=12)
@@ -1552,10 +1532,10 @@ def histogram(Y, X=None, match=None, sub=None, pooled=True,
                     ax.set_ylabel(names[i], size=12)
         # pooled diffs
         if len(names) > 2:
-            ax = P.subplot(nPlots, nPlots, nPlots ** 2)
+            ax = plt.subplot(nPlots, nPlots, nPlots ** 2)
             _normality_plot(ax, pooled, facecolor='g')
-            P.title("Pooled Differences (n=%s)" % len(pooled), weight='bold')
-            P.figtext(.99, .01,
+            plt.title("Pooled Differences (n=%s)" % len(pooled), weight='bold')
+            plt.figtext(.99, .01,
                       "$^{*}$ Anderson and Darling test thresholded at $[ .15,   .10,    .05,    .025,   .01 ]$.",
                       color='r',
                       verticalalignment='bottom',
@@ -1573,10 +1553,10 @@ def histogram(Y, X=None, match=None, sub=None, pooled=True,
 
 
 #        fig = mpl.figure.Figure(figsize=(ax_size*ncols, ax_size*nrows))
-        fig = P.figure(figsize=(ax_size * ncols, ax_size * nrows))
+        fig = plt.figure(figsize=(ax_size * ncols, ax_size * nrows))
         if title:
-            P.suptitle(title, size=13, weight='bold')
-        P.subplots_adjust(hspace=.5, left=.1, right=.9, bottom=.1, top=.8)
+            plt.suptitle(title, size=13, weight='bold')
+        plt.subplots_adjust(hspace=.5, left=.1, right=.9, bottom=.1, top=.8)
 
         for i, index in enumerate(ct.indexes):
             ax = fig.add_subplot(nrows, ncols, i + 1)
@@ -1588,16 +1568,16 @@ def histogram(Y, X=None, match=None, sub=None, pooled=True,
         #### NON FUNCTIONAL #############
 #        print "\n__Test for Normality:".ljust(70, '_')
 #        u = np.sqrt(len(names))
-#        P.suptitle("Test for Normality")
+#        plt.suptitle("Test for Normality")
 #        for i,(name,d) in enumerate(zip(names, dataC)):
 #            test=sp.stats.normaltest(d)
 #            print "%s: Chi^2=%.3f, p=%.3f (2-tailed)"%((name,)+test)
-#            P.subplot(u,u,i+1); P.title(name)
-#            P.hist(d)
-#            P.xlabel("Chi^2=%.3f, p=%.3f"%test)
+#            plt.subplot(u,u,i+1); plt.title(name)
+#            plt.hist(d)
+#            plt.xlabel("Chi^2=%.3f, p=%.3f"%test)
         #################################
 #    if save:
-#        P.savefig(save+'normality_test.'+figformat)
+#        plt.savefig(save+'normality_test.'+figformat)
 
 
 def boxcox_explore(Y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=True):
@@ -1646,8 +1626,8 @@ def boxcox_explore(Y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=Tru
         y.append(xi)
 
     if not ax:
-        P.figure()
-        ax = P.subplot(111)
+        plt.figure()
+        ax = plt.subplot(111)
 
     ax.boxplot(y)
     ax.set_xticks(range(1, 1 + len(params)))

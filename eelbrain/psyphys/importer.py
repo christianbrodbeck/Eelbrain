@@ -74,23 +74,20 @@ import os, time
 import logging
 
 import numpy as np
-import scipy as sp
-import scipy.io.wavfile
-import scipy.io
+from scipy.io import loadmat, wavfile
 import matplotlib.pylab as P
 
-from eelbrain import ui
-from eelbrain import fmtxt
+from .. import ui
+from ..plot._base import str2tex
 
-import param
-import fileio
-import segments as _seg
-from datasets_op_events import _evts_from_data
-from datasets_base import ExperimentItem, Slave_Dataset, Slave_Event_Dataset
+from . import param
+from . import segments as _seg
+from .datasets_op_events import _evts_from_data
+from .datasets_base import ExperimentItem, Slave_Dataset, Slave_Event_Dataset
 
 
 __hide__ = ['Importer', 'uts_importer', 'eeg_importer',
-            'scipy', 'fmtxt',
+            'loadmat', 'wavfile',
             'Slave_Dataset', 'Slave_Event_Dataset',
             'bioread', 'division',
             'UTS_Segment', 'Event_Segment', 'ExperimentItem', ]
@@ -551,9 +548,8 @@ class uts_importer(Importer):
         prog_i = 0
         prog_ttl = "Importing {n} Files".format(n=n)
         prog_msg = "{i} of {n} files done...".format(n=n, i='{i}')
-        prog = ui.progress(i_max=n,
-                           title=prog_ttl,
-                           message=prog_msg.format(i=0))
+        prog = ui.progress_monitor(i_max=n, title=prog_ttl,
+                                   message=prog_msg.format(i=0))
 
         for path in files:
             filename = os.path.basename(path)
@@ -671,7 +667,7 @@ class uts_importer(Importer):
         # start plot
         P.figure(fig_num)
         P.subplots_adjust(.2, .05, .99, .9)
-        P.suptitle("Example: %s" % fmtxt.texify(name))
+        P.suptitle("Example: %s" % str2tex(name))
         ax = P.axes()
         lines = [ax.plot(data[:, i], c='.75', antialiased=False)[0] for i in xrange(n)]
         y_ticks = np.arange(n - 1, -1, -1) + .45
@@ -766,56 +762,55 @@ class txt(uts_importer):
         data = np.loadtxt(path)
         return data, {}
 
-try:
-    import bioread
 
-
-    class acq(uts_importer):
-        """
+class acq(uts_importer):
+    """
     Biopac Acq Importer
     -------------------
     TODO: make use of channel names
 
+    """
+    _default_ext = 'acq'
+    def __init__(self, experiment, source=None, name='importer', samplingrate=250):
         """
-        _default_ext = 'acq'
-        def __init__(self, experiment, source=None, name='importer', samplingrate=250):
-            """
-            Currently the acq importer can only handle channels of a single
-            samplingrate. The samplingrate argument specifies which
-            channels are available.
+        Currently the acq importer can only handle channels of a single
+        samplingrate. The samplingrate argument specifies which
+        channels are available.
 
-            """
-            self._samplingrate = samplingrate
-            super(uts_importer, self).__init__(experiment, source=source, name=name)
-            self.p.samplingrate.set(samplingrate)
+        """
+        # make sure the required bioread is available
+        import bioread
 
-        def get_file(self, path):
-            ACQ = bioread.read_file(str(path))  # can't handle unicode
+        self._samplingrate = samplingrate
+        super(uts_importer, self).__init__(experiment, source=source, name=name)
+        self.p.samplingrate.set(samplingrate)
 
-            # filter channels to those of matching samplingrate
-            channels = [c for c in ACQ.channels if c.samples_per_second == self._samplingrate]
+    def get_file(self, path):
+        import bioread
+        ACQ = bioread.read_file(str(path))  # can't handle unicode
 
-            # read data
-            n_channels = len(channels)
-            if n_channels == 0:
-                srs = np.unique([c.samples_per_second for c in ACQ.channels])
-                err = ("No channels found. Change self._samplingrate to one of "
-                       "%s?" % srs)
-                raise ValueError(err)
+        # filter channels to those of matching samplingrate
+        channels = [c for c in ACQ.channels if c.samples_per_second == self._samplingrate]
 
-            c0 = channels[0]
-            length = c0.point_count
-            if n_channels > 1:
-                assert all(c.point_count == length for c in channels[1:])
-            data = np.empty((length, n_channels))
-            for i, c in enumerate(channels):
-                data[:, i] = c.data
-            # properties
-            properties = dict(samplingrate=self._samplingrate,
-                              )
-            return data, properties
-except:
-    print "to enable acq import, install bioread module"
+        # read data
+        n_channels = len(channels)
+        if n_channels == 0:
+            srs = np.unique([c.samples_per_second for c in ACQ.channels])
+            err = ("No channels found. Change self._samplingrate to one of "
+                   "%s?" % srs)
+            raise ValueError(err)
+
+        c0 = channels[0]
+        length = c0.point_count
+        if n_channels > 1:
+            assert all(c.point_count == length for c in channels[1:])
+        data = np.empty((length, n_channels))
+        for i, c in enumerate(channels):
+            data[:, i] = c.data
+        # properties
+        properties = dict(samplingrate=self._samplingrate,
+                          )
+        return data, properties
 
 
 class wav(uts_importer):
@@ -831,7 +826,7 @@ class wav(uts_importer):
                   }
     _default_ext = 'wav'
     def get_file(self, path):
-        samplingrate, data = sp.io.wavfile.read(path)
+        samplingrate, data = wavfile.read(path)
         properties = {'samplingrate':samplingrate}
         return data[:, None], properties
 
@@ -847,7 +842,7 @@ class mat(uts_importer):
                   }
     _default_ext = 'mat'
     def get_file(self, path):
-        m_file = scipy.io.loadmat(path)
+        m_file = loadmat(path)
         data_blocks = []
         i = 1
         while 'data_block%s' % i in m_file.keys():

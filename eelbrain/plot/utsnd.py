@@ -14,10 +14,8 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-import eelbrain.fmtxt as fmtxt
-import eelbrain.vessels.data as _dta
-
-import _base
+from ..vessels import data as _dta
+from . import _base
 
 
 __hide__ = ['plt', 'math']
@@ -112,10 +110,7 @@ def _ax_im_array(ax, layers, x='time',  # vmax=None,
 
     # title
     if title is None:
-        if plt.rcParams['text.usetex']:
-            title = fmtxt.texify(epoch.name)
-        else:
-            title = epoch.name
+        title = _base.str2tex(epoch.name)
     ax.set_title(title)
 
     return handles

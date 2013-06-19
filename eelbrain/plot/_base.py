@@ -80,8 +80,9 @@ import numpy as np
 import PIL
 
 from ..utils.subp import cmd_exists
-from eelbrain import vessels as _vsl
-from eelbrain.vessels import data as _dt
+from ..fmtxt import texify
+from .. import vessels as _vsl
+from ..vessels import data as _dt
 
 try:
     from ..wxutils.mpl_canvas import CanvasFrame
@@ -143,6 +144,14 @@ def read_cs_arg(epoch, colorspace=None):
     return colorspace
 
 
+def str2tex(txt):
+    """If matplotlib usetex is enabled, replace tex sensitive characters in the
+    string.
+    """
+    if txt and plt.rcParams['text.usetex']:
+        return texify(txt)
+    else:
+        return txt
 
 
 class mpl_figure:
