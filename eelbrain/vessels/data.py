@@ -2418,34 +2418,13 @@ class dataset(collections.OrderedDict):
         return table
 
     def export(self, fn=None, fmt='%.10g', header=True, sort=False):
+        """This method is deprecated. Use .save(), .save_pickled(),
+        .save_txt() or .save_tex() instead.
         """
-        Writes the dataset to a file. The file extesion is used to determine
-        the format:
+        msg = ("The dataset.export() method is deprecated. Use .save(), "
+               ".save_pickled(), .save_txt() or .save_tex() instead.")
+        warn(msg, DeprecationWarning)
 
-        - '.txt' or '.tsv':  tsv
-        - '.tex':  as TeX table
-        - '.pickled':  use pickle.dump
-        - a filename with any other extension is exported as tsv
-
-        Text and tex export use the :py:meth:`.as_table` method. You can use
-        :py:meth:`.as_table` directly for more control over the output.
-
-
-        Parameters
-        ----------
-
-        fn : str(path) | None
-            target file name (if ``None`` is supplied, a save file dialog is
-            displayed). the extesion is used to determine the format (see
-            above)
-        fmt : format str
-            format for scalar values
-        header : bool
-            write the variables' names in the first line
-        sort : bool
-            Sort variables alphabetically according to their name
-
-        """
         if not isinstance(fn, basestring):
             fn = ui.ask_saveas(ext=[('txt', "Tab-separated values"),
                                     ('tex', "Tex table"),
@@ -2671,6 +2650,125 @@ class dataset(collections.OrderedDict):
 
         idx = order.sort_idx(descending=descending)
         return idx
+
+    def save(self):
+        """Shortcut to save the dataset, will display a system file dialog
+
+        Notes
+        -----
+        Use specific save methods for more options.
+
+        See Also
+        --------
+        .save_pickled : Pickle the dataset
+        .save_txt : Save as text file
+        .save_tex : Save as teX table
+        .as_table : Create a table with more control over formatting
+        """
+        title = "Save Dataset"
+        if self.name:
+            title += ' %s' % self.name
+        msg = ""
+        ext = [('pickled', "Pickled Dataset"), ('txt', "Tab-Separated Values"),
+               ('tex', "TeX Table")]
+        path = ui.ask_saveas(title, message=msg, ext=ext,
+                             defaultFile=self.name)
+        _, ext = os.path.splitext(path)
+        if ext == '.pickled':
+            self.save_pickled(path)
+        elif ext == '.txt':
+            self.save_txt(path)
+        elif ext == '.tex':
+            self.save_tex(path)
+        else:
+            err = ("Unrecognized extension: %r. Needs to be .pickled, .txt or "
+                   ".tex." % ext)
+            raise ValueError(err)
+
+    def save_tex(self, path=None, fmt='%.3g'):
+        """Save the dataset as TeX table.
+
+        Parameters
+        ----------
+        path : None | str
+            Target file name (if ``None`` is supplied, a save file dialog is
+            displayed). If no extension is specified, '.tex' is appended.
+        fmt : format string
+            Formatting for scalar values.
+        """
+        if not isinstance(path, basestring):
+            title = "Save Dataset"
+            if self.name:
+                title += ' %s' % self.name
+            title += " as TeX Table"
+            msg = ""
+            ext = [('tex', "TeX File")]
+            path = ui.ask_saveas(title, message=msg, ext=ext,
+                                 defaultFile=self.name)
+
+        _, ext = os.path.splitext(path)
+        if not ext:
+            path += '.tex'
+
+        table = self.as_table(fmt=fmt, header=True)
+        table.save_tex(path)
+
+    def save_txt(self, path=None, fmt='%s', delim='\t', header=True):
+        """Save the dataset as text file.
+
+        Parameters
+        ----------
+        path : None | str
+            Target file name (if ``None`` is supplied, a save file dialog is
+            displayed). If no extension is specified, '.txt' is appended.
+        fmt : format string
+            Formatting for scalar values.
+        delim : str
+            Column delimiter (default is tab).
+        header : bool
+            write the variables' names in the first line
+        """
+        if not isinstance(path, basestring):
+            title = "Save Dataset"
+            if self.name:
+                title += ' %s' % self.name
+            title += " as Text"
+            msg = ""
+            ext = ('txt', "Text File"),
+            path = ui.ask_saveas(title, message=msg, ext=ext,
+                                 defaultFile=self.name)
+
+        _, ext = os.path.splitext(path)
+        if not ext:
+            path += '.txt'
+
+        table = self.as_table(fmt=fmt, header=True)
+        table.save_tsv(path, fmt=fmt, delimiter=delim)
+
+    def save_pickled(self, path=None):
+        """Pickle the dataset.
+
+        Parameters
+        ----------
+        path : None | str
+            Target file name (if ``None`` is supplied, a save file dialog is
+            displayed). If no extension is specified, '.pickled' is appended.
+        """
+        if not isinstance(path, basestring):
+            title = "Pickle Dataset"
+            if self.name:
+                title += ' %s' % self.name
+            msg = ""
+            ext = ('pickled', "Pickled File"),
+            path = ui.ask_saveas(title, message=msg, ext=ext,
+                                 defaultFile=self.name)
+
+        _, ext = os.path.splitext(path)
+        if not ext:
+            path += '.pickled'
+
+        with open(path, 'w') as fid:
+            pickle.dump(self, fid, pickle.HIGHEST_PROTOCOL)
 
     def sorted(self, order, descending=False):
         """Create an sorted copy of the dataset.

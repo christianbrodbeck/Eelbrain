@@ -107,4 +107,4 @@ def besa_evt(ds, tstart= -0.1, tstop=0.6, pad=0.1, dest=None):
         if not dest:
             return
 
-    evts.export(dest)
+    evts.save_txt(dest)

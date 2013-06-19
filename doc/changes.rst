@@ -7,6 +7,8 @@ Since 0.0.4
 :class:`~eelbrain.vessels.experiment.mne_experiment`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. currentmodule:: eelbrain.vessels.mne_experiment
+
 * Ability to use manual epoch rejection instead of the automatic procedure.
   The ``epoch_rejection`` class attribute specifies how epochs should be 
   rejected.
@@ -32,7 +34,10 @@ Since 0.0.4
 :class:`~eelbrain.vessels.data.dataset`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. currentmodule:: eelbrain.vessels.data
+
 * Idexing with sequence of strings now returns a :class:`dataset` (previously 
   a :class:`list`). Example: ``new_ds = ds['var1', 'factor3']``. This is 
   consistent with numerical indexing, such as ``new_ds = ds[:10, ('var1', 
   'factor3')]``.
+* New save methods replace :meth:`dataset.export`. See :meth:`dataset.save`.

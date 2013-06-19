@@ -398,7 +398,7 @@ class SelectEpochs(eelfigure):
         if ext == '.pickled':
             save.pickle(ds, path)
         elif ext == '.txt':
-            ds.export(path, fmt='%s')
+            ds.save_txt(path)
         else:
             raise ValueError("Unsupported extension: %r" % ext)
         self._saved_target[:] = self._target

@@ -455,5 +455,5 @@ def save(dataset, destination=None, values=None, pickle_values=False):
 
         dest = os.path.extsep.join((destination, 'tsv'))
         print msg_temp % dest
-        dataset.export(dest)
+        dataset.save_txt(dest)
 
