@@ -33,14 +33,13 @@ except:
 
 import numpy as np
 
-from eelbrain import ui
+from . import ui
 
 
 preferences = dict(
                    table_delim='   ',  # delimiter for tables' string representation
                    keep_recent=3,  # number of recent tables to keep in memory
                    )
-
 
 
 # to keep track of recent tex out and allow copying
@@ -53,9 +52,9 @@ def _add_to_recent(tex_obj):
         _recent_texout.append(tex_obj)
 
 
-
 def isstr(obj):
     return isinstance(obj, basestring)
+
 
 def get_pdf(tex_obj):
     "creates a pdf from a textab object (using tex)"
@@ -70,6 +69,7 @@ def get_pdf(tex_obj):
     pdf = tex.latex2pdf(document)
     return pdf
 
+
 def save_pdf(tex_obj, path=None):
     "saves a textab object as a pdf"
     pdf = get_pdf(tex_obj)
@@ -78,6 +78,7 @@ def save_pdf(tex_obj, path=None):
     if path:
         with open(path, 'w') as f:
             f.write(pdf)
+
 
 def save_tex(tex_obj, path=None):
     "saves a textab object as a pdf"
@@ -88,7 +89,8 @@ def save_tex(tex_obj, path=None):
         with open(path, 'w') as f:
             f.write(txt)
 
-def copy_pdf(tex_obj= -1):
+
+def copy_pdf(tex_obj=-1):
     """
     copies a textab object to the clipboard as pdf. `tex_obj` can be an object
     with a `.get_tex` method or an int, in which case the item is retrieved from
@@ -234,7 +236,7 @@ class texstr(object):
             return 'NaN'
         elif isinstance(self.text, (bool, np.bool_, np.bool8)):
             return '%s' % self.text
-        elif np.isscalar(self.text):
+        elif np.isscalar(self.text) or getattr(self.text, 'ndim', None) == 0:
             if int(self.text) == self.text:
                 return str(int(self.text))
             else:
@@ -266,7 +268,7 @@ class texstr(object):
 
 class symbol(texstr):
     def __init__(self, symbol, df=None):
-        assert np.isscalar(df) or isstr(df) or np.iterable(df)
+        assert (df is None) or np.isscalar(df) or isstr(df) or np.iterable(df)
         self._df = df
         texstr.__init__(self, symbol)
 
@@ -296,7 +298,6 @@ class symbol(texstr):
             return out.join(('$', '$'))
 
 
-## convenience texstr generators ######   ######   ######   ######   ######
 def p(p, digits=3, stars=None, of=3):
     """
     returns a texstr with properties set for p-values
@@ -326,12 +327,11 @@ def stat(x, fmt="%.2f", stars=None, of=3, drop0=False):
         return texstr((ts_stat, ts_s), mat=True)
 
 
-def eq(name, result, eq='=', df=None, fmt='%.2f', drop0=False,
-       stars=None, of=3):
-    return texstr([symbol(name, df=df),
-                   eq,
-                   stat(result, fmt=fmt, drop0=drop0, stars=stars, of=of)],
-                  mat=True)
+def eq(name, result, eq='=', df=None, fmt='%.2f', drop0=False, stars=None,
+       of=3):
+    symbol_ = symbol(name, df=df)
+    stat_ = stat(result, fmt=fmt, drop0=drop0, stars=stars, of=of)
+    return texstr([symbol_, eq, stat_], mat=True)
 
 
 def bold(txt):
@@ -367,7 +367,7 @@ class Stars(texstr):
         return ''.join(txtlist)
 
 
-##############################################################################
+# Table ---
 
 class Cell(texstr):
     def __init__(self, text=None, property=None, width=1, just=False,
@@ -464,8 +464,6 @@ class Row(list):
                 txt = txt.rjust(rj).ljust(strlen)
             out.append(txt)
         return delimiter.join(out)
-
-
 
 
 class Table:
@@ -796,7 +794,6 @@ class Table:
                 if isinstance(out, unicode):
                     out = out.encode('utf-8')
                 f.write(out)
-
 
 
 def unindent(text, skip1=False):
