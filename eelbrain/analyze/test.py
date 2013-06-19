@@ -178,7 +178,7 @@ def star(p_list, out=str, levels=True, trend=False, corr='Hochberg',
                   .01 : '**',
                   .001: '***'}
         if trend is True:
-            levels[.1] = "'"  # "`"
+            levels[.1] = "`"  # "`"
         elif fmtxt.isstr(trend):
             levels[.1] = trend
     elif trend:
