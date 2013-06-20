@@ -456,6 +456,7 @@ class mne_experiment(object):
             mstcs = defaultdict(list)
 
         common_brain = self.get('common_brain')
+        mri_sdir = self.get('mri-sdir')
         for case in ds.itercases():
             subject = case['subject']
             if is_fake_mri(self.get('mri-dir')):
@@ -479,7 +480,8 @@ class mne_experiment(object):
                     stcs[name].append(stc)
 
                 if morph:
-                    stc = mne.morph_data(subject_from, common_brain, stc, 4)
+                    stc = mne.morph_data(subject_from, common_brain, stc, 4,
+                                         subjects_dir=mri_sdir)
                     mstcs[name].append(stc)
 
         for name in do:
