@@ -144,8 +144,24 @@ def iseffect(Y):
     effectnames = ["factor", "var", "interaction", "nonbasic", "nested"]
     return hasattr(Y, '_stype_') and  Y._stype_ in effectnames
 
-def isdatalist(Y):
-    return isinstance(Y, datalist)
+def isdatalist(Y, contains=None, test_all=True):
+    """Test whether Y is a datalist instance
+
+    Parameters
+    ----------
+    contains : None | class
+        Test whether the content is instances of a specific class.
+    test_all : bool
+        If contains is provided, test all items' class (otherwise just test the
+        first item).
+    """
+    is_dl = isinstance(Y, datalist)
+    if is_dl and contains:
+        if test_all:
+            is_dl = all(isinstance(item, contains) for item in self)
+        else:
+            is_dl = isinstance(self[0], contains)
+    return is_dl
 
 def isfactor(Y):
     return hasattr(Y, '_stype_') and Y._stype_ == "factor"

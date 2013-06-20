@@ -59,7 +59,6 @@ the interval form 0 to 500 ms used for rejection.
 '''
 
 from collections import defaultdict
-import cPickle as pickle
 from glob import glob
 import itertools
 from operator import add
@@ -85,8 +84,8 @@ from ..utils import keydefaultdict
 from ..utils import common_prefix, subp
 from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri
-from .data import (dataset, factor, var, ndvar, combine, isfactor, align1,
-                   DimensionMismatchError, UTS)
+from .data import (dataset, factor, var, ndvar, combine, isfactor, isdatalist,
+                   align1, DimensionMismatchError, UTS)
 
 
 __all__ = ['mne_experiment', 'LabelCache']
@@ -161,6 +160,14 @@ _temp = {
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-ico-4-src.fif'),
         'fwd-file': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
+        # inv:
+        # 1) 'free' | 'fixed' | float
+        # 2) depth weighting (optional)
+        # 3) regularization 'reg' (optional)
+        # 4) snr
+        # 5) method
+        # 6) pick_normal:  'pick_normal' (optional)
+        'inv': 'free-0.8-2-dSPM',
 
         # epochs
         'epoch-sel-file': os.path.join('{meg-dir}', 'epoch_sel', '{raw}_'
@@ -295,9 +302,10 @@ class mne_experiment(object):
         self._state = self.get_templates(root=root)
         self.var_values = {'hemi': ('lh', 'rh')}
 
-        # initial epoch
+        # variables with derived settings
         epoch = self._state.get('epoch', None)
-        self.set(epoch=epoch)
+        inv = self._state.get('inv', None)
+        self.set(epoch=epoch, inv=inv)
 
         # find experiment data structure
         self._mri_subjects = keydefaultdict(lambda k: k)
@@ -331,9 +339,7 @@ class mne_experiment(object):
                                            for s in subjects],
                                experiment=list(self._experiments))
 
-    def add_epochs_stc(self, ds, method='dSPM', ori='free', depth=0.8,
-                       reg=False, snr=2., pick_normal=False, src='epochs',
-                       dst='stc', asndvar=True):
+    def add_epochs_stc(self, ds, src='epochs', dst='stc', asndvar=True):
         """
         Transform epochs contained in ds into source space (adds a list of mne
         SourceEstimates to ds)
@@ -342,18 +348,6 @@ class mne_experiment(object):
         ----------
         ds : dataset
             The dataset containing the mne Epochs for the desired trials.
-        method : 'MNE' | 'dSPM' | 'sLORETA'
-            MNE method.
-        ori : 'free' | ...
-            Orientation constraint.
-        depth : None | scalar
-            Depth weighting factor.
-        reg : bool
-            Regularize the noise covariance matrix.
-        snr : scalar
-            Estimated signal to noise ration (used for inverse tranformation).
-        pick_normal : bool
-            apply_inverse parameter.
         src : str
             Name of the source epochs in ds.
         dst : str
@@ -367,15 +361,11 @@ class mne_experiment(object):
             err = ("ds must have a subject variable with exaclty one subject")
             raise ValueError(err)
         subject = subject.cells[0]
-
-        inv_name = method + '-' + ori
-        self.set(inv_name=inv_name, subject=subject)
-        lambda2 = 1. / snr ** 2
+        self.set(subject=subject)
 
         epochs = ds[src]
-        inv = self.get_inv(epochs, depth=depth, reg=reg)
-        stc = apply_inverse_epochs(epochs, inv, lambda2, method,
-                                   pick_normal=pick_normal)
+        inv = self.load_inv(epochs)
+        stc = apply_inverse_epochs(epochs, inv, **self._apply_inv_kw)
 
         if asndvar:
             subject = self.get('mrisubject')
@@ -427,8 +417,7 @@ class mne_experiment(object):
         time = UTS(stc.tmin, stc.tstep, stc.shape[1])
         ds[key] = ndvar(np.array(x), dims=('case', time))
 
-    def add_evoked_stc(self, ds, method='dSPM', ori='free', depth=0.8,
-                       reg=False, snr=3., ind='stc', morph='stcm'):
+    def add_evoked_stc(self, ds, ind='stc', morph='stcm', ndvar=False):
         """
         Add an stc (ndvar) to a dataset with an evoked list.
 
@@ -437,19 +426,20 @@ class mne_experiment(object):
 
         Parameters
         ----------
-        ind: False | str
-            Keep list of SourceEstimate objects on individual brains with that
-            name.
-        morph : False | bool
-            Add ndvar for data morphed to the common brain with this name.
-
+        ds : dataset
+            The dataset containing the Evoked objects.
+        ind: bool | str
+            Add stcs on individual brains (with str as name, otherwise 'stc').
+        morph : bool | str
+            Add stcs for data morphed to the common brain (with str as name,
+            otherwise 'stcm').
+        ndvar : bool
+            Add stcs as ndvar (default is list of mne SourceEstimate objects).
+            For individual brain stcs, this option only applies for datasets
+            with a single subject.
         """
         if not (ind or morph):
             return
-
-        inv_name = method + '-' + ori
-        self.set(inv_name=inv_name)
-        lambda2 = 1. / snr ** 2
 
         # find vars to work on
         do = []
@@ -459,16 +449,17 @@ class mne_experiment(object):
 
         invs = {}
         if ind:
-            ind = str(ind)
+            ind = 'stc' if (ind == True) else str(ind)
             stcs = defaultdict(list)
         if morph:
-            morph = str(morph)
+            morph = 'stcm' if (morph == True) else str(morph)
             mstcs = defaultdict(list)
 
+        common_brain = self.get('common_brain')
         for case in ds.itercases():
             subject = case['subject']
             if is_fake_mri(self.get('mri-dir')):
-                subject_from = self.get('common_brain')
+                subject_from = common_brain
             else:
                 subject_from = subject
 
@@ -479,31 +470,40 @@ class mne_experiment(object):
                 if subject in invs:
                     inv = invs[subject]
                 else:
-                    self.set(subject=subject)
-                    inv = self.get_inv(evoked, depth=depth, reg=reg)
+                    inv = self.load_inv(evoked, subject=subject)
                     invs[subject] = inv
 
-                stc = apply_inverse(evoked, inv, lambda2, method)
+                # apply inv
+                stc = apply_inverse(evoked, inv, **self._apply_inv_kw)
                 if ind:
                     stcs[name].append(stc)
 
                 if morph:
-                    stc = mne.morph_data(subject_from, self.get('common_brain'), stc, 4)
+                    stc = mne.morph_data(subject_from, common_brain, stc, 4)
                     mstcs[name].append(stc)
 
         for name in do:
             if ind:
-                if ind in ds:
+                if len(do) > 1:
                     key = '%s_%s' % (ind, do)
                 else:
                     key = ind
-                ds[key] = stcs[name]
+
+                if ndvar and (len(ds['subject'].cells) == 1):
+                    subject = ds['subject'].cells[0]
+                    ds[key] = load.fiff.stc_ndvar(stcs[name], subject)
+                else:
+                    ds[key] = stcs[name]
             if morph:
-                if morph in ds:
+                if len(do) > 1:
                     key = '%s_%s' % (morph, do)
                 else:
                     key = morph
-                ds[key] = load.fiff.stc_ndvar(mstcs[name], self.get('common_brain'))
+
+                if ndvar:
+                    ds[key] = load.fiff.stc_ndvar(mstcs[name], common_brain)
+                else:
+                    ds[key] = mstcs[name]
 
     def get_templates(self, root=None, **kwargs):
         if isinstance(self._templates, str):
@@ -756,30 +756,6 @@ class mne_experiment(object):
             desc += '|%s' % tag
 
         return desc + ']'
-
-    def get_inv(self, fiff, depth=0.8, reg=False, **kwargs):
-        self.set(**kwargs)
-
-        inv_name = self.get('inv_name')
-        method, ori = inv_name.split('-')
-        if ori == 'free':
-            fwd_kwa = dict(surf_ori=True)
-            inv_kwa = dict(loose=None, depth=depth)
-        elif ori == 'loose':
-            fwd_kwa = dict(surf_ori=True)
-            inv_kwa = dict(loose=0.2, depth=depth)
-        elif ori == 'fixed':
-            fwd_kwa = dict(force_fixed=True)
-            inv_kwa = dict(fixed=True, loose=None, depth=depth)
-        else:
-            raise ValueError('ori=%r' % ori)
-
-        fwd = mne.read_forward_solution(self.get('fwd-file'), **fwd_kwa)
-        cov = mne.read_cov(self.get('cov-file'))
-        if reg:
-            cov = mne.cov.regularize(cov, fiff.info, mag=reg)
-        inv = make_inverse_operator(fiff.info, fwd, cov, **inv_kwa)
-        return inv
 
     def iter_temp(self, temp, constants={}, values={}, exclude={}, prog=False):
         """
@@ -1082,7 +1058,7 @@ class mne_experiment(object):
         ds = self.label_events(ds, experiment, subject)
         return ds
 
-    def load_evoked(self, model='ref%side', epochs=None, to_ndvar=False):
+    def load_evoked(self, subject=None, ndvar=False, model=None, **kwargs):
         """
         Load a dataset with evoked files for each subject.
 
@@ -1090,43 +1066,99 @@ class mne_experiment(object):
 
         Parameters
         ----------
-        to_ndvar : bool | str
-            Convert the mne Evoked objects to an ndvar. If True, it is assumed
-            the relavent varibale is 'evoked'. If this is not the case, the
-            actual name can be supplied as a string instead. The target name
-            is always 'MEG'.
+        subject : 'all' | str
+            With 'all', a dataset with all subjects is loaded, otherwise a
+            single subject.
+        ndvar : bool | str
+            Convert the mne Evoked objects to an ndvar. If True, the target
+            name is 'meg'.
+        others :
+            State parameters.
         """
-        self.set(model=model, epochs=epochs)
-        epochs = self._epochs_state
+        if subject == 'all':
+            self.set(model=model, **kwargs)
+            dss = []
+            for _ in self.iter_vars(['subject']):
+                ds = self.load_evoked(ndvar=ndvar)
+                dss.append(ds)
 
-        dss = []
-        for _ in self.iter_vars(['subject']):
-            fname = self.get('evoked-file')
-            ds = pickle.load(open(fname))
-            dss.append(ds)
+            ds = combine(dss)
 
-        ds = combine(dss)
+            # check consistency
+            for name in ds:
+                if isinstance(ds[name][0], (mne.fiff.Evoked, mne.SourceEstimate)):
+                    lens = np.array([len(e.times) for e in ds[name]])
+                    ulens = np.unique(lens)
+                    if len(ulens) > 1:
+                        err = ["Unequel time axis sampling (len):"]
+                        subject = ds['subject']
+                        for l in ulens:
+                            idx = (lens == l)
+                            err.append('%i: %r' % (l, subject[idx].cells))
+                        raise DimensionMismatchError(os.linesep.join(err))
 
-        # check consistency
-        for name in ds:
-            if isinstance(ds[name][0], (mne.fiff.Evoked, mne.SourceEstimate)):
-                lens = np.array([len(e.times) for e in ds[name]])
-                ulens = np.unique(lens)
-                if len(ulens) > 1:
-                    err = ["Unequel time axis sampling (len):"]
-                    subject = ds['subject']
-                    for l in ulens:
-                        idx = (lens == l)
-                        err.append('%i: %r' % (l, subject[idx].cells))
-                    raise DimensionMismatchError(os.linesep.join(err))
+            return ds
 
-        if to_ndvar:
-            if to_ndvar is True:
-                to_ndvar = 'evoked'
-            evoked = ds[to_ndvar]
-            ds['MEG'] = load.fiff.evoked_ndvar(evoked)
+        self.set(subject=subject, model=model, **kwargs)
+        path = self.get('evoked-file')
+        ds = load.unpickle(path)
+
+        # convert to ndvar
+        if ndvar:
+            if ndvar is True:
+                ndvar = 'meg'
+
+            keys = [k for k in ds if isdatalist(ds[k], mne.fiff.Evoked, False)]
+            for k in keys:
+                if len(keys) > 1:
+                    ndvar_key = '_'.join((k, ndvar))
+                else:
+                    ndvar_key = ndvar
+                ds[ndvar_key] = load.fiff.evoked_ndvar(ds[k])
 
         return ds
+
+    def load_evoked_stc(self, subject=None, ind=True, morph=False, ndvar=False,
+                        model=None):
+        """
+        Parameters
+        ----------
+        subject : 'all' | str
+            With 'all', a dataset with all subjects is loaded, otherwise a
+            single subject.
+        ind: bool | str
+            Add stcs on individual brains (with str as name, otherwise 'stc').
+        morph : bool | str
+            Add stcs for data morphed to the common brain (with str as name,
+            otherwise 'stcm').
+        ndvar : bool
+            Add stcs as ndvar (default is list of mne SourceEstimate objects).
+            For individual brain stcs, this option only applies for datasets
+            with a single subject.
+        others : str
+            State parameters.
+        """
+        ds = self.load_evoked(subject=subject, ndvar=False, model=model)
+        self.add_evoked_stc(ds, ind=ind, morph=morph, ndvar=ndvar)
+        return ds
+
+    def load_inv(self, fiff, **kwargs):
+        """Load the inverse operator
+
+        Parameters
+        ----------
+        fiff : Raw | Epochs | Evoked | ...
+            Object for which to make the inverse operator (provides the mne
+            info dictionary).
+        """
+        self.set(**kwargs)
+
+        fwd = mne.read_forward_solution(self.get('fwd-file'), surf_ori=True)
+        cov = mne.read_cov(self.get('cov-file'))
+        if self._regularize_inv:
+            cov = mne.cov.regularize(cov, fiff.info)
+        inv = make_inverse_operator(fiff.info, fwd, cov, **self._make_inv_kw)
+        return inv
 
     def load_label(self, **kwargs):
         self.set(**kwargs)
@@ -2085,15 +2117,76 @@ class mne_experiment(object):
         all other : str
             All other keywords can be used to set templates.
         """
+        # set root first to update subjects (otherwise don't change the state
+        # until all values are evaluated)
         root = kwargs.get('root', None)
         if root:
             self._state['root'] = root
             if match:
                 self.parse_dirs()
 
-        # subject var
+        # other vars
         if subject is not None:
             kwargs['subject'] = subject
+
+        model = kwargs.get('model', None)
+        if model is not None:
+            kwargs['model'] = '%'.join(sorted(model.split('%')))
+
+        inv = kwargs.get('inv', None)
+        if inv is not None:
+            make_kw = {}
+            apply_kw = {}
+            args = inv.split('-')
+            # 1) 'free' | 'fixed' | float
+            # 2) depth weighting (optional)
+            # 3) regularization 'reg' (optional)
+            # 4) snr
+            # 5) method
+            # 6) pick_normal:  'pick_normal' | nothing
+            ori = args.pop(0)
+            if ori == 'fixed':
+                make_kw['fixed'] = True
+            elif ori == 'free':
+                make_kw['loose'] = 1
+            else:
+                ori = float(ori)
+                if not 0 <= ori <= 1:
+                    err = ('First value of inv (loose parameter) needs to be '
+                           'in [0, 1]')
+                    raise ValueError(err)
+                make_kw['loose'] = ori
+
+            method = args.pop(-1)
+            if method == 'pick_normal':
+                apply_kw['pick_normal'] = True
+                method = args.pop(-1)
+            if method in ("MNE", "dSPM", "sLORETA"):
+                apply_kw['method'] = method
+            else:
+                err = ('Setting inv with invalid method: %r' % method)
+                raise ValueError(err)
+
+            snr = float(args.pop(-1))
+            apply_kw['lambda2'] = 1. / snr ** 2
+
+            regularize_inv = False
+            if args:
+                arg = args.pop(-1)
+                if arg == 'reg':
+                    regularize_inv = True
+                    if args:
+                        depth = args.pop(-1)
+                    else:
+                        depth = None
+                else:
+                    depth = arg
+
+                if depth is not None:
+                    make_kw['depth'] = float(depth)
+
+            if args:
+                raise ValueError("Too many parameters in inv %r" % inv)
 
         # remove epoch(s)
         epoch = kwargs.pop('epoch', None)
@@ -2122,6 +2215,11 @@ class mne_experiment(object):
             else:
                 raise KeyError("No variable named %r" % k)
 
+        if inv:
+            self._make_inv_kw = make_kw
+            self._apply_inv_kw = apply_kw
+            self._regularize_inv = regularize_inv
+
         if epoch and epochs:
             err = "Can's set 'epoch' and 'epochs' at the same time"
             raise RuntimeError(err)
@@ -2139,6 +2237,15 @@ class mne_experiment(object):
          - SUBJECTS_DIR
         """
         os.environ['SUBJECTS_DIR'] = self.get('mri-sdir')
+
+    def set_inv(self, ori='free', depth=0.8, reg=False, snr=2, method='dSPM',
+                pick_normal=False):
+        """Alternative method to set the ``inv`` state.
+        """
+        items = [ori, depth if depth else None, 'reg' if reg else None, snr,
+                 method, 'pick_normal' if pick_normal else None]
+        inv = '-'.join(map(str, filter(None, items)))
+        self.set(inv=inv)
 
     def _set_epochs_arg(self, epochs):
         """Fill in named epochs and set the 'epoch' and 'stim' templates"""
