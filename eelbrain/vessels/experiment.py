@@ -507,9 +507,9 @@ class mne_experiment(object):
 
     def get_templates(self, root=None, **kwargs):
         if isinstance(self._templates, str):
-            t = _temp[self._templates]
+            t = _temp[self._templates].copy()
         else:
-            t = self._templates
+            t = self._templates.copy()
 
         if not isinstance(t, dict):
             err = ("Templates mus be dictionary; got %s" % type(t))
