@@ -327,7 +327,7 @@ class mne_experiment(object):
 
         self._initial_state = self._state.copy()
 
-        owner = getattr(self, 'owner', False)
+        owner = getattr(self, 'owner', None)
         if owner:
             self.notification = Notifier(owner, 'mne_experiment task')
 
@@ -1440,7 +1440,8 @@ class mne_experiment(object):
         cov.save(dest)
 
     def make_epoch_selection(self, **kwargs):
-        """Show the SelectEpochs GUI to do manual epoch selection for a given epoch
+        """Show the SelectEpochs GUI to do manual epoch selection for a given
+        epoch
 
         The GUI is opened with the correct file name; if the corresponding
         file exists, it is loaded, and upon saving the correct path is
@@ -1461,7 +1462,7 @@ class mne_experiment(object):
 
         from ..wxgui.MEG import SelectEpochs
         ROI = self.epoch_rejection.get('eog_sns', None)
-        gui = SelectEpochs(ds, path=path, ROI=ROI, **kwargs)  # nplots, plotsize,
+        SelectEpochs(ds, path=path, ROI=ROI, **kwargs)  # nplots, plotsize,
 
     def make_evoked(self, model='ref%side', epochs=None, random=('subject',),
                     redo=False):
