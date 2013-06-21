@@ -13,39 +13,6 @@ import numpy as np
 from eelbrain import ui
 
 
-def common_prefix(names):
-    """Find the longest common prefix of a list of strings
-
-    Parameters
-    ----------
-    names : list of str
-        List with strings.
-
-    Returns
-    -------
-    prefix : str
-        Longest common prefix.
-
-    Notes
-    -----
-    Should work with other sequence types than :class:`str` as long as they
-    support indexing and comparison (as in ``a[:i] == b[:i]``).
-    """
-    if len(names) == 0:
-        return None
-    elif len(names) == 1:
-        return names[0]
-
-    N = min(len(n) for n in names)
-    ref = names[0]
-    comp = names[1:]
-
-    for i in xrange(1, N + 1):
-        if not all(c[:i] == ref[:i] for c in comp):
-            return ref[:i - 1]
-
-
-
 class intervals:
     """Iterate over each successive pair in a sequence.
 

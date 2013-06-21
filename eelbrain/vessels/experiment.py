@@ -77,7 +77,7 @@ from .. import plot
 from .. import save
 from .. import ui
 from ..utils import keydefaultdict
-from ..utils import common_prefix, subp
+from ..utils import subp
 from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri
 from .data import (var, ndvar, combine, isdatalist, align1,
@@ -1884,6 +1884,7 @@ class mne_experiment(object):
         >>> e.rename('{root}/{subject}/info.txt',
                      '/some_other_place/{subject}s_info.txt'
         """
+        new = self.expand_template(new)
         files = []
         for old_name in self.iter_temp(old):
             if '*' in old_name:
@@ -1902,8 +1903,8 @@ class mne_experiment(object):
             print "No files found for %r" % old
             return
 
-        old_pf = common_prefix([pair[0] for pair in files])
-        new_pf = common_prefix([pair[1] for pair in files])
+        old_pf = os.path.commonprefix([pair[0] for pair in files])
+        new_pf = os.path.commonprefix([pair[1] for pair in files])
         n_pf_old = len(old_pf)
         n_pf_new = len(new_pf)
 
