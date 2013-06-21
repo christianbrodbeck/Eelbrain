@@ -9,8 +9,20 @@ import sys
 
 import wx
 
-import shell
+from .shell import ShellFrame
 
+
+class ModalDummyDialog(wx.Dialog):
+    """Modal Dialog to show in wxPython 2.9.x on startup which makes invisible
+    windows visible.
+    """
+    def __init__(self, message, title):
+        wx.Dialog.__init__(self, None, -1, title, size=(200, 200))
+        self.CenterOnScreen(wx.BOTH)
+
+    def CloseAndDestroy(self):
+        self.Close()
+        self.Destroy()
 
 
 class MainApp(wx.App):
@@ -33,13 +45,14 @@ class MainApp(wx.App):
         wx.App.__init__(self, redirect=redirect, filename=filename)
 
     def OnInit(self):
-        self.shell = shell.ShellFrame(None, title='Eelbrain Shell',
-                                      **self.shell_kwargs)
+        self.shell = ShellFrame(None, title='Eelbrain Shell',
+                                **self.shell_kwargs)
         self.SetTopWindow(self.shell)
+        self.shell.Show()
         if wx.__version__ >= '2.9':
-            self.shell.ShowWithEffect(wx.SHOW_EFFECT_ROLL_TO_BOTTOM)
-        else:
-            self.shell.Show()
+            dlg = ModalDummyDialog('dsa', 'dsa')
+            wx.CallLater(200, dlg.CloseAndDestroy)
+            dlg.ShowModal()
 
         if len(sys.argv) > 1:
             for arg in sys.argv[1:]:
