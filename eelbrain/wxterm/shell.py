@@ -21,10 +21,8 @@ import matplotlib.pyplot as plt
 
 from .. import __version__
 from .. import ui
-from .. import wxutils
 from ..utils import print_funcs
-from ..wxutils import Icon
-from ..wxutils import droptarget
+from ..wxutils import Icon, droptarget
 from . import ID
 from .about_dialog import AboutFrame
 from .help import HelpViewer
@@ -34,17 +32,18 @@ from .py_editor import PyEditor
 from .table import TableFrame
 
 
-
 _punctuation = string.punctuation.replace('.', '').replace('_', '')
 
 
 def is_py_char(char):
     return (char.isalnum() or char == '_')
 
+
 def is_py_varname(name):
     a = re.match('^[a-zA-Z_]', name)
     b = re.match('[a-zA-Z0-9_]', name)
     return a and b
+
 
 # modify wx.py introspection to take into account __wrapped__
 from wx.py.introspect import getConstructor
@@ -92,8 +91,6 @@ def getBaseObject(obj):
 
     return obj, dropSelf
 wx.py.introspect.getBaseObject = getBaseObject
-
-
 
 
 # subclass Shell in order to set some custom properties

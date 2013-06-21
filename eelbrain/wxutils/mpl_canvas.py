@@ -61,7 +61,7 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
             try:
                 if wx.TheClipboard.Open():
                     # same code in mpl_tools
-                    path = tempfile.mktemp('.pdf')#, text=True)
+                    path = tempfile.mktemp('.pdf')  # , text=True)
                     logging.debug("Temporary file created at: %s" % path)
                     self.figure.savefig(path)
                     # copy path
@@ -85,8 +85,8 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         FIXME: maybe start search at wx.py.frame.Frame.OnUpdateMenu()
 
         """
-        path = ui.ask_saveas("Save Figure", "Save the current figure. The format is "
-                             "determined from the extension.", None)
+        path = ui.ask_saveas("Save Figure", "Save the current figure. The "
+                             "format is determined from the extension.", None)
         if path:
             self.figure.savefig(path)
 
@@ -199,7 +199,7 @@ class CanvasFrame(wx.Frame):
     def add_mpl_toolbar(self):
         self.toolbar = backend_wx.NavigationToolbar2Wx(self.canvas)
         self.toolbar.Realize()
-        if 0:#wx.Platform == '__WXMAC__':
+        if 0:  # wx.Platform == '__WXMAC__':
             # Mac platform (OSX 10.3, MacPython) does not seem to cope with
             # having a toolbar in a sizer. This work-around gets the buttons
             # back, but at the expense of having the toolbar at the top
