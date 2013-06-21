@@ -34,7 +34,7 @@ tag : str
     above.
 
 
-Epochs can be specified directly in the relevant function, or they can be
+Epochs can be
 specified in the :attr:`mne_experiment.epochs` dictionary. All keys in this
 dictionary have to be of type :class:`str`, values have to be :class:`dict`s
 containing the epoch specification. If an epoch is specified in
@@ -45,10 +45,6 @@ argument to various methods. Example::
     class experiment(mne_experiment):
         epochs = {'adjbl': dict(name='bl', stim='adj', tstart=-0.1, tstop=0)}
         ...
-
-    # use as argument:
-    epochs=[dict(name=evoked', stim='noun', tmin=-0.1, tmax=0.5,
-                 reject_tmin=0), 'adjbl']
 
 The :meth:`mne_experiment.get_epoch_str` method produces A label for each
 epoch specification, which is used for filenames. Data which is excluded from
@@ -84,8 +80,8 @@ from ..utils import keydefaultdict
 from ..utils import common_prefix, subp
 from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri
-from .data import (dataset, factor, var, ndvar, combine, isfactor, isdatalist,
-                   align1, DimensionMismatchError, UTS)
+from .data import (var, ndvar, combine, isdatalist, align1,
+                   DimensionMismatchError, UTS)
 
 
 __all__ = ['mne_experiment', 'LabelCache']
@@ -170,19 +166,26 @@ _temp = {
         'inv': 'free-0.8-2-dSPM',
 
         # epochs
+        'epoch': 'epoch',  # epoch name
+        'rej': 'man',  # rejection
+        'epoch-stim': None,  # the stimulus/i selected by the epoch
+        'epoch-desc': None,  # epoch description
+        'epoch-bare': None,  # epoch description without decim or rej
+        'epoch-nodecim': None,  # epoch description without decim parameter
         'epoch-sel-file': os.path.join('{meg-dir}', 'epoch_sel', '{raw}_'
-                                       '{experiment}_{epoch}_sel.pickled'),
+                                       '{experiment}_{epoch-desc}_sel.'
+                                       'pickled'),
 
         'common_brain': 'fsaverage',
 
         # evoked
         'evoked-dir': os.path.join('{meg-dir}', 'evoked_{raw}_{proj}'),
-        'evoked-file': os.path.join('{evoked-dir}', '{experiment}_{epoch}_'
-                                    '{model}_evoked.pickled'),
+        'evoked-file': os.path.join('{evoked-dir}', '{experiment}_'
+                                    '{epoch-desc}_{model}_evoked.pickled'),
 
         # Source space
         'labeldir': os.path.join('label', 'aparc'),
-        'hemi': 'lh',
+        'hemi': ('lh', 'rh'),
         'label-file': os.path.join('{mri-dir}', '{labeldir}',
                                    '{hemi}.{label}.label'),
 
@@ -200,7 +203,7 @@ _temp = {
          # besa
          'besa-root': os.path.join('{root}', 'besa'),
          'besa-trig': os.path.join('{besa-root}', '{subject}', '{subject}_'
-                                   '{experiment}_{epoch-nodecim}_triggers.txt'),
+                                   '{experiment}_{epoch-bare}_triggers.txt'),
          'besa-evt': os.path.join('{besa-root}', '{subject}', '{subject}_'
                                   '{experiment}_{epoch-nodecim}.evt'),
         }
@@ -236,30 +239,50 @@ class mne_experiment(object):
     bad_channels = defaultdict(list)
 
     # Default values for epoch definitions
-    epoch_default = {'stimvar': 'stim', 'tmin':-0.1, 'tmax': 0.6, 'decim': 5,
-                     'name': 'epochs'}
+    epoch_default = {'stimvar': 'stim', 'tmin':-0.1, 'tmax': 0.6, 'decim': 5}
 
     # named epochs
     epochs = {'bl': {'stim': 'adj', 'tmin':-0.2, 'tmax':0},
               'epoch': {'stim': 'adj'}}
-    # how to reject data epochs. See the  explanation accompanying the values
-    # below:
-    epoch_rejection = {
-                       # Whether to use manual supervision. If True, each epoch
-                       # needs a rejection file which can be created using
-                       # .make_epoch_selection(). If False, epoch are rejected
-                       # automatically.
-                       'manual': False,
-                       # The sensors to plot separately in the rejection GUI.
-                       # The default is the two MEG sensors closest to the eyes
-                       # for Abu Dhabi KIT data.
-                       'eog_sns': ['MEG 087', 'MEG 130'],
-                       # the reject argument when loading epochs:
-                       'threshold': dict(mag=3e-12),
-                       # How to use eye tracker information in rejection. True
-                       # causes edf files to be loaded but not used
-                       # automatically.
-                       'edf': ['EBLINK']}
+    # Rejection
+    # =========
+    # how to reject data epochs.
+    # manual : bool
+    #     Whether to use manual supervision. If True, each epoch needs a
+    #     rejection file which can be created using .make_epoch_selection(),
+    #     and no automatic rejection is preformed. If False, epoch are rejected
+    #     automatically.
+    #
+    # For manual rejection
+    # --------------------
+    # eog_sns : list of str
+    #     The sensors to plot separately in the rejection GUI.
+    #     The default is the two MEG sensors closest to the eyes
+    #     for Abu Dhabi KIT data. For NY KIT data those are
+    #     ['MEG 143', 'MEG 151'].
+    #
+    # For automatic rejection
+    # -----------------------
+    # threshod : None | dict
+    #     the reject argument when loading epochs:
+    # edf : list of str
+    #     How to use eye tracker information in rejection. True
+    #     causes edf files to be loaded but not used
+    #     automatically.
+    _epoch_rejection = {'': {},
+                        'man': {
+                                'manual': True,
+                                'eog_sns': ['MEG 087', 'MEG 130'],
+                                },
+                        'et': {
+                               'manual': False,
+                               'threshold': dict(mag=3e-12),
+                               'edf': ['EBLINK'],
+                               }
+                        }
+    epoch_rejection = {}
+
+    exclude = {}  # field_values to exclude (e.g. subjects)
 
     owner = None  # email address as string (for notification)
 
@@ -298,32 +321,55 @@ class mne_experiment(object):
             Find MEG subjects using :attr:`_subjects_loc`
         """
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
+        self._parse_subjects = parse_subjects
 
-        self._state = self.get_templates(root=root)
-        self.var_values = {'hemi': ('lh', 'rh')}
+        temps = self.get_templates(root=root)
 
-        # variables with derived settings
-        epoch = self._state.get('epoch', None)
-        inv = self._state.get('inv', None)
-        self.set(epoch=epoch, inv=inv)
+        # epoch rejection settings
+        epoch_rejection = self._epoch_rejection.copy()
+        epoch_rejection.update(self.epoch_rejection)
+        self.epoch_rejection = epoch_rejection
+
+        # find special template values:
+        field_values = {}
+        field_values['rej'] = tuple(self.epoch_rejection.keys())
+        secondary = []
+        for k in temps:
+            v = temps[k]
+            if v is None:
+                secondary.append(k)
+            elif isinstance(v, tuple):
+                field_values[k] = v
+                temps[k] = v[0]
+            elif not isinstance(v, basestring):
+                err = ("Invalid templates field value: %r. Need None, tuple "
+                       "or string" % v)
+                raise TypeError(err)
+
+        self.field_values = field_values
+        self._secondary_fields = tuple(secondary)
+        self._state = temps
+
+        # set variables with derived settings
+        epoch = temps.get('epoch', None)
+        inv = temps.get('inv', None)
+        rej = temps.get('rej', self.epoch_rejection.keys()[0])
+        self.set(epoch=epoch, inv=inv, rej=rej)
 
         # find experiment data structure
         self._mri_subjects = keydefaultdict(lambda k: k)
         self.set(root=root, match=parse_subjects, add=True)
-        self.exclude = {}
+        self.exclude = self.exclude.copy()
 
         # set initial values
         self._label_cache = LabelCache()
-        for k, v in self.var_values.iteritems():
-            if (k not in self._state) and v:
-                self._state[k] = v[0]
 
-        # set defaults for any existing templates
+        # set defaults for any existing field names
         for k in self._state.keys():
             temp = self._state[k]
-            for name in self._fmt_pattern.findall(temp):
-                if name not in self._state:
-                    self._state[name] = ''
+            for field in self._fmt_pattern.findall(temp):
+                if field not in self._state:
+                    self._state[field] = ''
 
         self._initial_state = self._state.copy()
 
@@ -333,9 +379,18 @@ class mne_experiment(object):
 
         self.set(**kwargs)
 
-    def _update_var_values(self):
-        subjects = self.var_values['subject']
-        self.var_values.update(mrisubject=[self._mri_subjects[s]
+    @property
+    def _epoch_state(self):
+        epochs = self._epochs_state
+        if len(epochs) != 1:
+            err = ("This function is only implemented for single epochs (got "
+                   "%s)" % self.get('epoch'))
+            raise NotImplementedError(err)
+        return epochs[0]
+
+    def _update_field_values(self):
+        subjects = self.field_values['subject']
+        self.field_values.update(mrisubject=[self._mri_subjects[s]
                                            for s in subjects],
                                experiment=list(self._experiments))
 
@@ -599,7 +654,7 @@ class mne_experiment(object):
     def expand_template(self, temp, values=()):
         """
         Expand a template until all its subtemplates are neither in
-        self.var_values nor in ``values``
+        self.field_values nor in ``values``
 
         Parameters
         ----------
@@ -611,7 +666,7 @@ class mne_experiment(object):
         while True:
             stop = True
             for name in self._fmt_pattern.findall(temp):
-                if (name in values) or (self.var_values.get(name, False)):
+                if (name in values) or (self.field_values.get(name, False)):
                     pass
                 else:
                     temp = temp.replace('{%s}' % name, self._state[name])
@@ -680,7 +735,7 @@ class mne_experiment(object):
         vmatch : bool
             "Value match":
             Require existence of the assigned value (only applies for variables
-            in self.var_values)
+            in self.field_values)
         match : bool
             Do any matching (i.e., match=False sets fmatch as well as vmatch
             to False).
@@ -754,6 +809,8 @@ class mne_experiment(object):
         if (decim is not None) and (decim != 1):
             desc += '|%i' % decim
 
+        desc += '{rej}'
+
         if tag is not None:
             desc += '|%s' % tag
 
@@ -794,7 +851,7 @@ class mne_experiment(object):
             Variables with constant values throughout the iteration.
         values : dict(name -> (list of values))
             Variables with values to iterate over instead of the corresponding
-            `mne_experiment.var_values`.
+            `mne_experiment.field_values`.
         exclude : dict(name -> (list of values))
             Values to exclude from the iteration.
         prog : bool | str
@@ -813,17 +870,17 @@ class mne_experiment(object):
         variables = list(set(variables).difference(constants).union(values))
 
         # gather possible values to iterate over
-        var_values = self.var_values.copy()
-        var_values.update(values)
+        field_values = self.field_values.copy()
+        field_values.update(values)
 
         # exclude values
         for k in exclude:
-            var_values[k] = set(var_values[k]).difference(exclude[k])
+            field_values[k] = set(field_values[k]).difference(exclude[k])
 
         # pick out the variables to iterate, but drop excluded cases:
         v_lists = []
         for v in variables:
-            values = set(var_values[v]).difference(self.exclude.get(v, ()))
+            values = set(field_values[v]).difference(self.exclude.get(v, ()))
             v_lists.append(sorted(values))
 
         if len(v_lists):
@@ -930,8 +987,8 @@ class mne_experiment(object):
             Return the table as a string (instead of printing it).
         """
         lines = []
-        for key in self.var_values:
-            values = sorted(self.var_values[key])
+        for key in self.field_values:
+            values = sorted(self.field_values[key])
             line = '%s:' % key
             head_len = len(line) + 1
             while values:
@@ -980,20 +1037,20 @@ class mne_experiment(object):
             a list of bad channels can be sumbitted.
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
-            employed depends on the ``.epoch_rejection`` class attribute.
+            employed depends on the :attr:`.epoch_rejection` class attribute.
         """
         self.set(subject=subject)
         ds = self.load_selected_events(epoch=epoch, add_bads=add_bads,
                                        reject=reject)
 
-        if not reject or self.epoch_rejection.get('manual', False):
-            reject_arg = None
+        if reject and not self._rej_args.get('manual', False):
+            reject_arg = self._rej_args.get('threshold', None)
         else:
-            reject_arg = self.epoch_rejection.get('threshold', None)
+            reject_arg = None
 
         # load sensor space data
-        epoch = self._epochs_state[0]
-        target = epoch['name']
+        epoch = self._epoch_state
+        target = 'epochs'
         tmin = epoch['tmin']
         tmax = epoch['tmax']
         decim = epoch['decim']
@@ -1041,10 +1098,9 @@ class mne_experiment(object):
             ds = load.fiff.events(raw)
 
             # add edf
-            if self.epoch_rejection.get('edf', None):
-                edf = self.load_edf()
-                edf.add_T_to(ds)
-                ds.info['edf'] = edf
+            edf = self.load_edf()
+            edf.add_T_to(ds)
+            ds.info['edf'] = edf
 
             # cache
             del ds.info['raw']
@@ -1208,7 +1264,7 @@ class mne_experiment(object):
         return raw
 
     def load_selected_events(self, reject=True, add_proj=True, add_bads=True,
-                             epoch=None, subject=None):
+                             index=True, **kwargs):
         """
         Load events and return a subset based on epoch and rejection
 
@@ -1224,10 +1280,10 @@ class mne_experiment(object):
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from self.bad_channels. Alternatively,
             a list of bad channels can be sumbitted.
-        epoch : None | str | dict
-            Epoch specification.
-        subject : None | str
-            Set the template.
+        index : bool | str
+            Index the dataset before rejection (provide index name as str).
+        others :
+            Update the experiment state.
 
         Warning
         -------
@@ -1235,22 +1291,28 @@ class mne_experiment(object):
         False)``): Since no epochs are loaded, no rejection based on
         thresholding is performed.
         """
-        self.set(epoch=epoch, subject=subject)
-        epoch = self._epochs_state[0]
+        self.set(**kwargs)
+        epoch = self._epoch_state
 
         ds = self.load_events(add_proj=add_proj, add_bads=add_bads)
         stimvar = epoch['stimvar']
         stim = epoch['stim']
-        tmin = epoch.get('reject_tmin', epoch['tmin'])
-        tmax = epoch.get('reject_tmax', epoch['tmax'])
         stimvar = ds[stimvar]
         if '|' in stim:
             idx = stimvar.isin(stim.split('|'))
         else:
             idx = stimvar == stim
         ds = ds.subset(idx)
+
+        if index:
+            idx_name = index if isinstance(index, str) else 'index'
+            ds.index(idx_name)
+
         if reject:
-            if self.epoch_rejection.get('manual', False):
+            if reject not in (True, 'keep'):
+                raise ValueError("Invalie reject value: %r" % reject)
+
+            if self._rej_args.get('manual', False):
                 path = self.get('epoch-sel-file')
                 if not os.path.exists(path):
                     err = ("The rejection file at %r does not exist. Run "
@@ -1270,25 +1332,30 @@ class mne_experiment(object):
                            "%r" % reject)
                     raise ValueError(err)
             else:
-                use = self.epoch_rejection.get('edf', False)
+                use = self._rej_args.get('edf', False)
                 if use:
                     edf = ds.info['edf']
-                    ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=use)
+                    tmin = epoch.get('reject_tmin', epoch['tmin'])
+                    tmax = epoch.get('reject_tmax', epoch['tmax'])
+                    if reject == 'keep':
+                        edf.mark(ds, tstart=tmin, tstop=tmax, use=use)
+                    else:
+                        ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=use)
 
         return ds
 
-    def load_sensor_data(self, epochs=None, random=('subject',),
+    def load_sensor_data(self, epoch=None, random=('subject',),
                          all_subjects=False):
         """
         Load sensor data in the form of an Epochs object contained in a dataset
         """
+        self.set(epoch=epoch)
         if all_subjects:
-            dss = (self.load_sensor_data(epochs=epochs, random=random)
+            dss = (self.load_sensor_data(random=random)
                    for _ in self.iter_vars())
             ds = combine(dss)
             return ds
 
-        self.set(epochs=epochs)
         epochs = self._epochs_state
         if len(set(ep['name'] for ep in epochs)) < len(epochs):
             raise ValueError("All epochs need a unique name")
@@ -1370,14 +1437,15 @@ class mne_experiment(object):
         Target files are saved relative to the *besa-root* location.
         """
         self.set(epoch=epoch)
-        epoch = self._epochs_state[0]
+        epoch = self._epoch_state
 
         stim = epoch['stim']
         tmin = epoch['tmin']
         tmax = epoch['tmax']
+        rej = self.get('rej')
 
-        evt_dest = self.get('besa-evt', mkdir=True)
-        trig_dest = self.get('besa-trig', mkdir=True)
+        trig_dest = self.get('besa-trig', rej='', mkdir=True)
+        evt_dest = self.get('besa-evt', rej=rej, mkdir=True)
 
         if not redo and os.path.exists(evt_dest) and os.path.exists(trig_dest):
             return
@@ -1419,7 +1487,7 @@ class mne_experiment(object):
             return
 
         self.set(epoch=cov)
-        epoch = self._epochs_state[0]
+        epoch = self._epoch_state
         stimvar = epoch['stimvar']
         stim = epoch['stim']
         tmin = epoch['tmin']
@@ -1452,20 +1520,19 @@ class mne_experiment(object):
         kwargs :
             Kwargs for SelectEpochs
         """
-        if not self.epoch_rejection.get('manual', False):
-            err = ("Epoch rejection is automatic. See the .epoch_rejection "
-                   "class attribute.")
+        if not self._rej_args.get('manual', False):
+            err = ("Epoch rejection for rej=%r is automatic. See the "
+                   ".epoch_rejection class attribute." % self.get('rej'))
             raise RuntimeError(err)
 
         ds = self.load_epochs(asndvar=True, add_bads=False, reject=False)
         path = self.get('epoch-sel-file', mkdir=True)
 
         from ..wxgui.MEG import SelectEpochs
-        ROI = self.epoch_rejection.get('eog_sns', None)
+        ROI = self._rej_args.get('eog_sns', None)
         SelectEpochs(ds, path=path, ROI=ROI, **kwargs)  # nplots, plotsize,
 
-    def make_evoked(self, model='ref%side', epochs=None, random=('subject',),
-                    redo=False):
+    def make_evoked(self, redo=False, **kwargs):
         """
         Creates datasets with evoked files for the current subject/experiment
         pair.
@@ -1476,140 +1543,45 @@ class mne_experiment(object):
             Name of the variable containing the stimulus.
         model : str
             Name of the model. No spaces, order matters.
-        epochs : list of epoch specifications
+        epoch : epoch specifications
             See the module documentation.
 
         """
-        self.set(epochs=epochs, model=model)
-        epochs = self._epochs_state
-        dest_fname = self.get('evoked-file', mkdir=True)
-        if not redo and os.path.exists(dest_fname):
+        dest = self.get('evoked-file', mkdir=True, **kwargs)
+        if not redo and os.path.exists(dest):
             return
 
-        stim_epochs = defaultdict(list)
-        kwargs = {}
-        e_names = []
-        for ep in epochs:
-            name = ep['name']
-            if name in kwargs:
-                raise ValueError("Duplicate epoch name.")
-            stimvar = ep['stimvar']
-            stim = ep['stim']
+        epoch_names = [ep['name'] for ep in self._epochs_state]
 
-            e_names.append(name)
-            stim_epochs[(stimvar, stim)].append(name)
+        # load the epochs
+        epoch = self.get('epoch')
+        dss = [self.load_epochs(epoch=name) for name in epoch_names]
+        self.set(epoch=epoch)
 
-            kw = dict(reject={'mag': 3e-12}, baseline=None, preload=True)
-            for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax', 'decim'):
-                if k in ep:
-                    kw[k] = ep[k]
-            kwargs[name] = kw
+        # find the events common to all epochs
+        idx = reduce(np.intersect1d, (ds['index'] for ds in dss))
 
-        # constants
-        sub = self.get('subject')
-        model_name = self.get('model')
+        # reduce datasets to common events and compress
+        model = self.get('model')
+        drop = ('i_start', 't_edf', 'T', 'index')
+        for i in xrange(len(dss)):
+            ds = dss[i]
+            index = ds['index']
+            ds_idx = index.isin(idx)
+            if ds_idx.sum() < len(ds_idx):
+                ds = ds[ds_idx]
 
-        ds = self.load_events()
-        edf = ds.info['edf']
-        if model_name == '':
-            model = None
-            cells = ((),)
-            model_names = []
+            dss[i] = ds.compress(model, drop_bad=True, drop=drop)
+
+        if len(dss) == 1:
+            ds = dss[0]
+            ds.rename('epochs', 'evoked')
         else:
-            model = ds.eval(model_name)
-            cells = model.cells
-            if isfactor(model):
-                model_names = model.name
-            else:
-                model_names = model.base_names
+            for name, ds in zip(epoch_names, dss):
+                ds.rename('epochs', name)
+            ds = combine(dss)
 
-        dss = {}
-        for (stimvar, stim), names in stim_epochs.iteritems():
-            d = ds.subset(ds[stimvar] == stim)
-            for name in names:
-                dss[name] = d
-
-        evokeds = defaultdict(list)
-        factors = defaultdict(list)
-        ns = []
-
-        for cell in cells:
-            cell_dss = {}
-            if model is None:
-                for name, ds in dss.iteritems():
-                    ds.index()
-                    cell_dss[name] = ds
-            else:
-                n = None
-                for name, ds in dss.iteritems():
-                    idx = (ds.eval(model_name) == cell)
-                    if idx.sum() == 0:
-                        break
-                    cds = ds.subset(idx)
-                    cds.index()
-                    cell_dss[name] = cds
-                    if n is None:
-                        n = cds.n_cases
-                    else:
-                        if cds.n_cases != n:
-                            err = "Can't index due to unequal trial counts"
-                            raise RuntimeError(err)
-
-                if len(cell_dss) < len(dss):
-                    continue
-
-            for name in e_names:
-                ds = cell_dss[name]
-                kw = kwargs[name]
-                tstart = kw.get('reject_tmin', kw['tmin'])
-                tstop = kw.get('reject_tmax', kw['tmax'])
-                ds = edf.filter(ds, tstart=tstart, tstop=tstop, use=['EBLINK'])
-                cell_dss[name] = ds
-
-            idx = reduce(np.intersect1d, (ds['index'].x for ds in cell_dss.values()))
-            if idx.sum() == 0:
-                continue
-
-            for name in e_names:
-                ds = cell_dss[name]
-                ds = align1(ds, idx)
-                kw = kwargs[name]
-                ds = load.fiff.add_mne_epochs(ds, **kw)
-                cell_dss[name] = ds
-
-            idx = reduce(np.intersect1d, (ds['index'].x for ds in cell_dss.values()))
-            n = len(idx)
-            if n == 0:
-                continue
-
-            for name in e_names:
-                ds = cell_dss[name]
-                ds = align1(ds, idx)
-                epochs = ds['epochs']
-                evoked = epochs.average()
-                assert evoked.nave == n
-                evokeds[name].append(evoked)
-
-            # store values
-            if isinstance(model_names, str):
-                factors[model_names].append(cell)
-            else:
-                for name, v in zip(model_names, cell):
-                    factors[name].append(v)
-            factors['subject'].append(sub)
-            ns.append(n)
-
-        ds_ev = dataset()
-        ds_ev['n'] = var(ns)
-        for name, values in factors.iteritems():
-            if name in random:
-                ds_ev[name] = factor(values, random=True)
-            else:
-                ds_ev[name] = factor(values)
-        for name in e_names:
-            ds_ev[name] = evokeds[name]
-
-        save.pickle(ds_ev, dest_fname)
+        save.pickle(ds, dest)
 
     def make_filter(self, dest='lp40', hp=None, lp=40, n_jobs=3, src='raw',
                     apply_proj=False, redo=False, **kwargs):
@@ -1758,11 +1730,19 @@ class mne_experiment(object):
         p.save_views(fname, overwrite=True)
         mlab.close()
 
-    def parse_dirs(self, subjects=[], parse_subjects=True):
-        """
-        find subject names by looking through the directory
-        structure.
+    def parse_dirs(self, subjects=[], parse_subjects=True, subject=None):
+        """Find subject names by looking through the directory structure.
 
+        Parameters
+        ----------
+        subjects : list of str
+            Subjects to add initially.
+        parse_subjects : bool
+            Look for subjects as folders in the directory specified in
+            :attr:`._subject_loc`.
+        subject : str
+            Proposed subject state value (if the new value is not found in the
+            new subjects, an error is raised and nothing is changed.
         """
         subjects = set(subjects)
 
@@ -1781,8 +1761,14 @@ class mne_experiment(object):
                        "experiment._subject_loc." % sub_dir)
                 raise IOError(err)
 
-        self.var_values['subject'] = sorted(subjects)
-        self._update_var_values()
+        self.field_values['subject'] = sorted(subjects)
+        self._update_field_values()
+
+        if (subject is not None) and (subject not in subjects):
+            err = ("Subject not found: %r" % subject)
+            raise ValueError(err)
+        else:
+            self.set(subject=subject)
 
     def plot_coreg(self, **kwargs):
         self.set(**kwargs)
@@ -1817,7 +1803,7 @@ class mne_experiment(object):
 
         .. warning:: Implemented by creating a new instance of the same class with
             ``src_root`` as root and calling its ``.push()`` method.
-            This determines available templates and var_values.
+            This determines available templates and field_values.
 
         src_root : str(path)
             root of the source experiment
@@ -1830,7 +1816,7 @@ class mne_experiment(object):
             see :py:meth:`push`
 
         """
-        subjects = self.var_values['subjects']
+        subjects = self.field_values['subjects']
         e = self.__class__(src_root, subjects=subjects,
                            mri_subjects=self._mri_subjects)
         e.push(self.get('root'), names=names, **kwargs)
@@ -1952,7 +1938,7 @@ class mne_experiment(object):
             value)
         """
         exclude = set(exclude)
-        exclude.update(('epoch', 'stim'))
+        exclude.update(self._secondary_fields)
         # dependent variables
         if 'subject' in exclude:
             exclude.add('mrisubject')
@@ -2112,7 +2098,7 @@ class mne_experiment(object):
             automatically set to the corresponding mri subject.
         match : bool
             Require existence of the assigned value (only applies for variables
-            for which values are defined in self.var_values). When setting
+            for which values are defined in self.field_values). When setting
             root, find subjects by looking through folder structure.
         add : bool
             If the template name does not exist, add a new key. If False
@@ -2120,22 +2106,75 @@ class mne_experiment(object):
         all other : str
             All other keywords can be used to set templates.
         """
-        # set root first to update subjects (otherwise don't change the state
-        # until all values are evaluated)
+        # If not changing root, update subject.
+        # If changing root, delay updating subjects to take into account
+        # changes in field_value['subject']
         root = kwargs.get('root', None)
-        if root:
-            self._state['root'] = root
-            if match:
-                self.parse_dirs()
-
-        # other vars
         if subject is not None:
-            kwargs['subject'] = subject
+            if (root is not None) and self._parse_subjects:
+                pass  # set subject with root
+            else:
+                kwargs['subject'] = subject
+                if 'mrisubject' not in kwargs:
+                    kwargs['mrisubject'] = self._mri_subjects[subject]
 
-        model = kwargs.get('model', None)
-        if model is not None:
-            kwargs['model'] = '%'.join(sorted(model.split('%')))
+        # extract fields that need special treatment
+        epoch = kwargs.pop('epoch', None)
+        if epoch:
+            epochs = sorted(epoch.split('|'))
+            kwargs['epoch'] = epoch = '|'.join(epochs)
 
+            e_descs = []  # full epoch descriptor
+            e_descs_nodecim = []  # epoch description without decim
+            e_descs_bare = []  # epoch description without decim or rejection
+            epoch_dicts = []
+            stims = set()  # all relevant stims
+            for name in epochs:
+                # expand epoch description
+                ep = self.epoch_default.copy()
+                ep.update(self.epochs[name])
+                ep['name'] = name
+
+                # make sure stim is ordered
+                stim = ep['stim']
+                if '|' in stim:
+                    stim = '|'.join(sorted(set(stim.split('|'))))
+
+                # store expanded epoch
+                stims.update(stim.split('|'))
+                epoch_dicts.append(ep)
+
+                # epoch desc
+                desc = self.get_epoch_str(**ep)
+                e_descs.append(desc)
+
+                # epoch desc without decim
+                ep_nd = ep.copy()
+                ep_nd['decim'] = None
+                desc_nd = self.get_epoch_str(**ep_nd)
+                e_descs_nodecim.append(desc_nd)
+
+                # bare epoch desc
+                ep_nd['reject_tmin'] = None
+                ep_nd['reject_tmax'] = None
+                desc_b = self.get_epoch_str(**ep_nd)
+                desc_b = desc_b.format(rej='')
+                e_descs_bare.append(desc_b)
+
+
+            epoch_stim = '|'.join(sorted(stims))
+            epoch_desc = '(%s)' % ','.join(sorted(e_descs))
+            epoch_nodecim = '(%s)' % ','.join(sorted(e_descs_nodecim))
+            epoch_bare = '(%s)' % ','.join(sorted(e_descs_bare))
+
+        rej = kwargs.get('rej', None)
+        if rej:
+            if rej not in self.epoch_rejection:
+                err = ("No settings for rej=%r in self.epoch_rejection" % rej)
+                raise ValueError(err)
+            rej_args = self.epoch_rejection[rej]
+
+        # special attributes derived from inv
         inv = kwargs.get('inv', None)
         if inv is not None:
             make_kw = {}
@@ -2191,26 +2230,23 @@ class mne_experiment(object):
             if args:
                 raise ValueError("Too many parameters in inv %r" % inv)
 
-        # remove epoch(s)
-        epoch = kwargs.pop('epoch', None)
-        epochs = kwargs.pop('epochs', None)
-
-        # test var_value
+        # test fields with entries in field_values
         if match:
             for k, v in kwargs.iteritems():
-                if ((v is not None) and (k in self.var_values)
-                    and ('*' not in v) and (v not in self.var_values[k])):
+                if ((v is not None) and (k in self.field_values)
+                    and ('*' not in v) and (v not in self.field_values[k])):
                     err = ("Variable {k!r} has no value {v!r}. In order to "
                            "see valid values use e.list_values(); In order to "
                            "set a non-existent value, use e.set({k!s}={v!r}, "
                            "match=False).".format(k=k, v=v))
                     raise ValueError(err)
 
-        # add derived values
-        if (subject is not None) and ('mrisubject' not in kwargs):
-            kwargs['mrisubject'] = self._mri_subjects[subject]
+        # clean model
+        model = kwargs.get('model', None)
+        if model is not None:
+            kwargs['model'] = '%'.join(sorted(model.split('%')))
 
-        # set state
+        # update state ---
         for k, v in kwargs.iteritems():
             if add or k in self._state:
                 if v is not None:
@@ -2218,18 +2254,23 @@ class mne_experiment(object):
             else:
                 raise KeyError("No variable named %r" % k)
 
+        # set subject after updating root
+        if (root is not None) and self._parse_subjects:
+            self.parse_dirs(subject=subject)
+
+        # store secondary settings
+        if epoch:
+            self._state['epoch-stim'] = epoch_stim
+            self._state['epoch-desc'] = epoch_desc
+            self._state['epoch-nodecim'] = epoch_nodecim
+            self._state['epoch-bare'] = epoch_bare
+            self._epochs_state = epoch_dicts
+        if rej:
+            self._rej_args = rej_args
         if inv:
             self._make_inv_kw = make_kw
             self._apply_inv_kw = apply_kw
             self._regularize_inv = regularize_inv
-
-        if epoch and epochs:
-            err = "Can's set 'epoch' and 'epochs' at the same time"
-            raise RuntimeError(err)
-        elif epoch:
-            self._set_epochs_arg([epoch])
-        elif epochs:
-            self._set_epochs_arg(epochs)
 
     def set_env(self):
         """
@@ -2250,46 +2291,6 @@ class mne_experiment(object):
         inv = '-'.join(map(str, filter(None, items)))
         self.set(inv=inv)
 
-    def _set_epochs_arg(self, epochs):
-        """Fill in named epochs and set the 'epoch' and 'stim' templates"""
-        epochs = list(epochs)  # make sure we don't modify the input object
-        e_descs = []  # full epoch descriptor
-        e_descs_nodecim = []  # epoch description without decim
-        stims = set()  # all relevant stims
-        for i in xrange(len(epochs)):
-            # expand epoch description
-            ep = epochs[i]
-            if isinstance(ep, str):
-                ep = self.epochs[ep]
-            ep = ep.copy()
-            for k, v in self.epoch_default.iteritems():
-                if k not in ep:
-                    ep[k] = v
-
-            # make sure stim is ordered
-            stim = ep['stim']
-            if '|' in stim:
-                stim = '|'.join(sorted(set(stim.split('|'))))
-
-            # store expanded epoch
-            stims.update(stim.split('|'))
-            epochs[i] = ep
-
-            # epoch name
-            desc = self.get_epoch_str(**ep)
-            e_descs.append(desc)
-
-            # epoch name without decim
-            ep_nd = ep.copy()
-            ep_nd['decim'] = None
-            desc_nd = self.get_epoch_str(**ep_nd)
-            e_descs_nodecim.append(desc_nd)
-
-        self._state['stim'] = '|'.join(sorted(stims))
-        self._state['epoch'] = '(%s)' % ','.join(sorted(e_descs))
-        self._state['epoch-nodecim'] = '(%s)' % ','.join(sorted(e_descs_nodecim))
-        self._epochs_state = epochs
-
     def set_mri_subject(self, subject, mri_subject=None):
         """
         Reassign a subject's MRI
@@ -2308,7 +2309,7 @@ class mne_experiment(object):
             self._mri_subjects[subject] = mri_subject
         if subject == self.get('subject'):
             self._state['mrisubject'] = mri_subject
-        self._update_var_values()
+        self._update_field_values()
 
     def show_in_finder(self, key, **kwargs):
         "Reveals the file corresponding to the ``key`` template in the Finder."
