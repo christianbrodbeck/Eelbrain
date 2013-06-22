@@ -1925,7 +1925,7 @@ class mne_experiment(object):
                     os.makedirs(dirname)
                 os.rename(old, new)
 
-    def reset(self, exclude=['subject', 'experiment']):
+    def reset(self, exclude=['subject', 'experiment', 'root']):
         """
         Reset the experiment to the state at the end of __init__.
 
