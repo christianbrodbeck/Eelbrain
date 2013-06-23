@@ -21,6 +21,7 @@ def assert_dataset_equal(ds1, ds2):
     assert_equal(ds1.keys(), ds2.keys(), "Datasets unequal: different keys")
     for k in ds1.keys():
         assert_dataobj_equal(ds1[k], ds2[k])
+    assert_equal(ds1.info.keys(), ds2.info.keys())
 
 
 def assert_dataobj_equal(d1, d2):
@@ -93,6 +94,7 @@ def test_ndvar_op():
 def test_pickle_io():
     "Test io by pickling"
     ds = datasets.get_basic()
+    ds.info['info'] = "Some very useful information about the dataset"
     tempdir = tempfile.mkdtemp()
     try:
         dest = os.path.join(tempdir, 'test.pickled')
