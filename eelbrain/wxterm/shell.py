@@ -1094,8 +1094,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
                     with open(path) as FILE:
                         dinnerplate = pickle.load(FILE)
                 except Exception as exc:
-                    wx.MessageBox('%s: %s' % (type(exc).__name__, exc), "Unplicking Failed",
-                                  style=wx.OK | wx.ICON_ERROR)
+                    msg = '%s: %s' % (type(exc).__name__, exc)
+                    sty = wx.OK | wx.ICON_ERROR
+                    wx.MessageBox(msg, "Unplicking Failed", style=sty)
+                    raise exc
 
                 typename = dinnerplate.__class__.__name__
                 msg = ("What name should the unpickled data of\ntype %r be assigned "
