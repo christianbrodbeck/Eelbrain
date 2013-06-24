@@ -1995,6 +1995,9 @@ class datalist(list):
         else:
             super(datalist, self).__init__()
 
+    def __repr__(self):
+        return "datalist(%s)" % super(datalist, self).__repr__()
+
     def __getitem__(self, index):
         if isinstance(index, (int, slice)):
             return list.__getitem__(self, index)
@@ -2009,6 +2012,10 @@ class datalist(list):
         else:
             err = ("Unsupported type of index for datalist: %r" % index)
             raise TypeError(err)
+
+    def __add__(self, other):
+        lst = super(datalist, self).__add__(other)
+        return datalist(lst, name=self.name)
 
     def compress(self, X, merge='mean'):
         """
