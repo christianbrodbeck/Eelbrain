@@ -2502,7 +2502,7 @@ class dataset(collections.OrderedDict):
         return out
 
     def compress(self, X, drop_empty=True, name='{name}', count='n',
-                 drop_bad=False):
+                 drop_bad=False, drop=()):
         """
         Return a dataset with one case for each cell in X.
 
@@ -2524,6 +2524,8 @@ class dataset(collections.OrderedDict):
             raises an error. This concerns primarily factors with non-unique
             values for cells in X (if drop_bad is False, an error is raised
             when such a factor is encountered)
+        drop : sequence of str
+            Additional data-objects to drop.
 
         Notes
         -----
@@ -2545,6 +2547,8 @@ class dataset(collections.OrderedDict):
             ds[count] = var(x)
 
         for k, v in self.iteritems():
+            if k in drop:
+                continue
             try:
                 if hasattr(v, 'compress'):
                     ds[k] = v.compress(X)
