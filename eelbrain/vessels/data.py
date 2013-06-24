@@ -2604,6 +2604,36 @@ class dataset(collections.OrderedDict):
     def n_items(self):
         return super(dataset, self).__len__()
 
+    def rename(self, old, new):
+        """Shortcut to rename a data-object in the dataset.
+
+        Parameters
+        ----------
+        old : str
+            Current name of the data-object.
+        new : str
+            New name for the data-object.
+        """
+        if old not in self:
+            raise KeyError("No item named %r" % old)
+        if new in self:
+            raise ValueError("Dataset already has variable named %r" % new)
+
+        # update map
+        node = self._OrderedDict__map.pop(old)
+        node[2] = new
+        self._OrderedDict__map[new] = node
+
+        # update dict entry
+        obj = self[old]
+        dict.__delitem__(self, old)
+        dict.__setitem__(self, new, obj)
+
+        # update object name
+        if hasattr(obj, 'name'):
+            obj.name = new
+        self[new] = obj
+
     def repeat(self, n, name='{name}'):
         """
         Analogous to :py:func:`numpy.repeat`. Returns a new dataset with each
