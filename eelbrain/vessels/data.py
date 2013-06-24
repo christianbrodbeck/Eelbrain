@@ -2508,8 +2508,9 @@ class dataset(collections.OrderedDict):
 
         Parameters
         ----------
-        X : str | categorial
-            Model defining cells to which to reduce cases.
+        X : None | str | categorial
+            Model defining cells to which to reduce cases. For None, the
+            dataset is reduced to a single case.
         drop_empty : bool
             Drops empty cells in X from the dataset. This is currently the only
             option.
@@ -2531,9 +2532,11 @@ class dataset(collections.OrderedDict):
         """
         if not drop_empty:
             raise NotImplementedError('drop_empty = False')
-        X = ascategorial(X, ds=self)
-
-        self._check_n_cases(X, empty_ok=False)
+        if X:
+            X = ascategorial(X, ds=self)
+            self._check_n_cases(X, empty_ok=False)
+        else:
+            X = factor('a' * self.n_cases)
 
         ds = dataset(name=name.format(name=self.name))
 
