@@ -2474,6 +2474,10 @@ class dataset(collections.OrderedDict):
             A % B
 
         """
+        if not isinstance(expression, basestring):
+            err = ("Eval needs expression of type unicode or str. Got "
+                   "%s" % type(expression))
+            raise TypeError(err)
         return eval(expression, self)
 
     def get_case(self, i):
