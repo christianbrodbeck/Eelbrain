@@ -114,6 +114,25 @@ class topomap(_base.eelfigure):
         self._SensorLabelColorChoice = choice
         choice.Bind(wx.EVT_CHOICE, self._OnSensorLabelColorChoice)
 
+        btn = wx.Button(tb, label="Mark")  # , style=wx.BU_EXACTFIT)
+        btn.Bind(wx.EVT_BUTTON, self._OnMarkSensor)
+        tb.AddControl(btn)
+
+    def _OnMarkSensor(self, event):
+        import wx
+        msg = "Channels to mark, separated by comma"
+        dlg = wx.TextEntryDialog(self._frame, msg, "Mark Sensor")
+        if dlg.ShowModal() != wx.ID_OK:
+            return
+
+        chs = filter(None, map(unicode.strip, dlg.GetValue().split(',')))
+        try:
+            self.mark_sensors(chs)
+        except Exception as exc:
+            msg = '%s: %s' % (type(exc).__name__, exc)
+            sty = wx.OK | wx.ICON_ERROR
+            wx.MessageBox(msg, "Mark Sensors Failed for %r" % chs, style=sty)
+
     def _OnSensorLabelColorChoice(self, event):
         sel = event.GetSelection()
         color = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y'][sel]
@@ -123,6 +142,11 @@ class topomap(_base.eelfigure):
         sel = event.GetSelection()
         text = [None, 'idx', 'name'][sel]
         self.set_label_text(text)
+
+    def mark_sensors(self, sensors, marker='bo'):
+        for p in self._subplots:
+            p.sensors.mark_sensors(sensors, marker)
+        self.draw()
 
     def set_label_color(self, color='w'):
         if hasattr(self, '_SensorLabelChoice'):

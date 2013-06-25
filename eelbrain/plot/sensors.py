@@ -82,11 +82,14 @@ class _plt_map2d:
                  ):
         self.ax = ax
         self.sensors = sensors
-        locs = sensors.get_locs_2d(proj=proj, extent=extent)
+        self.locs = sensors.get_locs_2d(proj=proj, extent=extent)
         self.ROI = ROI
+        self._mark_handles = None
+
         if ROI is not None:
-            locs = locs[ROI]
-        self.locs = locs
+            locs = self.locs[ROI]
+        else:
+            locs = self.locs
 
         self.markers = []
         self.labels = []
@@ -101,6 +104,26 @@ class _plt_map2d:
                 kwargs['color'] = kwargs['mec'] = colors[i % nc]
                 h = ax.plot(locs[i, 0], locs[i, 1], **kwargs)
                 self.markers += h
+
+    def mark_sensors(self, sensors, marker='bo'):
+        """Mark specific sensors
+
+        Parameters
+        ----------
+        sensors : None | Sensor dimension index
+            Sensors which should be marked
+        marker : str
+            Matplotlib marker specification for the marked sensors.
+        """
+        while self._mark_handles:
+            self._mark_handles.pop().remove()
+
+        if not sensors:
+            return
+
+        idx = self.sensors.dimindex(sensors)
+        locs = self.locs[idx]
+        self._mark_handles = self.ax.plot(locs[:, 0], locs[:, 1], marker)
 
     def show_labels(self, text='idx', xpos=0, ypos=.01, **text_kwargs):
         """Plot labels for the sensors
@@ -141,10 +164,12 @@ class _plt_map2d:
             err = "text has to be 'idx' or 'name', can't be %r" % text
             raise NotImplementedError(err)
 
+        locs = self.locs
         if self.ROI is not None:
             labels = datalist(labels)[self.ROI]
+            locs = locs[self.ROI]
 
-        locs = self.locs + [[xpos, ypos]]
+        locs = locs + [[xpos, ypos]]
         for loc, txt in zip(locs, labels):
             x , y = loc
             h = self.ax.text(x, y, txt, **kwargs)
