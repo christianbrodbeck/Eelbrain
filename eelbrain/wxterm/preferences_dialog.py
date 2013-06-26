@@ -8,11 +8,7 @@ import os
 
 import wx
 
-import ID
-
-Help_dataDir = ("DataDir is used by the pyShell. A file called 'startup' in the dataDir is "
-                "executed as startup script (restart Eelbrain for changes to take effect)")
-
+from . import ID
 
 
 class PreferencesDialog(wx.Frame):
@@ -29,48 +25,56 @@ class PreferencesDialog(wx.Frame):
 
         pref_sizer = wx.BoxSizer(wx.VERTICAL)
 
-    # Data Dir ---
-        panel_dataDir = wx.Panel(self, -1)  # , size=(500,300))
-        panel_dataDir.SetBackgroundColour("BLUE")
-        dataDir = self.config.Read("dataDir")
+    # Startup Script ---
+        panel = wx.Panel(self, -1)  # , size=(500,300))
+        panel.SetBackgroundColour("BLUE")
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        ID_DATADIR = wx.NewId()
-        button = wx.Button(panel_dataDir, ID_DATADIR, "set dataDir")
-        self.Bind(wx.EVT_BUTTON, self.SetDataDir, id=ID_DATADIR)
-        sizer.Add(button, 0, wx.ALIGN_LEFT | wx.EXPAND)
-        # path
-        txt = self.dataDirTxt = wx.TextCtrl(panel_dataDir, -1, dataDir,
-                                            size=(400, 0), style=wx.TE_READONLY)
-        sizer.Add(txt, 1, wx.EXPAND | wx.ALIGN_RIGHT)
-        # edit startup script
-        ID_EDIT = wx.NewId()
-        button = wx.Button(panel_dataDir, ID_EDIT, "Edit Startup Script")
-        self.Bind(wx.EVT_BUTTON, self.EditStartupScript, id=ID_EDIT)
-        sizer.Add(button, 0, wx.ALIGN_LEFT | wx.EXPAND)
-        # help btn
-        btn = wx.Button(panel_dataDir, wx.ID_HELP)
+
+        txt = wx.StaticText(panel, label="Startup Script:")
+        sizer.Add(txt, 0, wx.ALIGN_LEFT)
+
+        btn = wx.Button(panel, label="Show File")
+        btn.Bind(wx.EVT_BUTTON, self.OnShowStartupScript)
+        sizer.Add(btn, 0, wx.ALIGN_LEFT)
+
+        btn = wx.Button(panel, label="Edit")
+        btn.Bind(wx.EVT_BUTTON, self.OnEditStartupScript)
+        sizer.Add(btn, 0, wx.ALIGN_LEFT)
+
+        btn = wx.Button(panel, wx.ID_HELP)
+        btn.Bind(wx.EVT_BUTTON, self.OnHelpStartupScript)
         sizer.Add(btn, 0, wx.ALIGN_RIGHT)
-        self.Bind(wx.EVT_BUTTON, self.OnHelpDataDir, btn)
 
         pref_sizer.Add(sizer, 0)
 
-
-        # Font ---
+    # Font ---
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        button = wx.Button(panel_dataDir, ID.SET_FONT, "Font")
+        button = wx.Button(panel, ID.SET_FONT, "Font")
         self.Bind(wx.EVT_BUTTON, self.OnSetFont, id=ID.SET_FONT)
         sizer.Add(button, 0, wx.ALIGN_LEFT | wx.EXPAND)
         pref_sizer.Add(sizer, 0)
 
-        panel_dataDir.SetSizer(pref_sizer)
+        panel.SetSizer(pref_sizer)
 
         pref_sizer.Fit(self)
 
-    def OnHelpDataDir(self, event=None):
-        dlg = wx.MessageDialog(self, Help_dataDir, "Help: dataDir",
+    def OnHelpStartupScript(self, event):
+        msg = ("The startup script is executed every time the Eelbrain "
+               "application is opened. If the PYTHONSTARTUP environment "
+               "variable is defined, the file designated by the path stored "
+               "in this variable is used instead of Eelbrain's startup "
+               "script.")
+        dlg = wx.MessageDialog(self, msg, "Help: Startup Script",
                                wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
         dlg.Destroy()
+
+    def OnEditStartupScript(self, event):
+        path = self.Parent.startupScript
+        if not os.path.exists(path):
+            with open(path, 'w') as fid:
+                fid.write("# Eelbrain startup script\n")
+        self.Parent.create_py_editor(pyfile=path)
 
     def OnSetFont(self, event):
         try:
@@ -106,21 +110,9 @@ class PreferencesDialog(wx.Frame):
 
         dlg.Destroy()
 
-    def SetDataDir(self, event=None):
-        dlg = wx.DirDialog(self, "Select user dataDir directory")
-        if dlg.ShowModal() == wx.ID_OK:
-            dataDir = dlg.GetPath()
-            self.config.Write("dataDir", dataDir)
-            self.dataDirTxt.SetValue(dataDir)
-        dlg.Destroy()
-
-    def EditStartupScript(self, event=None):
-        dataDir = self.config.Read("dataDir")
-        path = os.path.join(dataDir, 'startup')
-        if not os.path.exists(path):
-            with open(path, 'w') as f:
-                f.write("# Eelbrain startup script")
-        self.Parent.create_py_editor(pyfile=path)
+    def OnShowStartupScript(self, event):
+        path = os.path.dirname(self.Parent.startupScript)
+        os.system('open %s' % path)
 
 
 

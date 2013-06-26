@@ -208,32 +208,23 @@ class ShellFrame(wx.py.shell.ShellFrame):
     # --- set up PREFERENCES ---
         # http://wiki.wxpython.org/FileHistory
         self.wx_config = wx.Config("eelbrain", style=wx.CONFIG_USE_LOCAL_FILE)
-        """
-        Options
-        -------
+        std_paths = wx.StandardPaths_Get()
 
-        use: config.Read(name, default_value)
-             config.Write(name, value)
-        """
+        config_dir = os.path.join(std_paths.GetUserConfigDir(), 'Eelbrain')
+        kwargs['dataDir'] = config_dir
+        if not os.path.exists(config_dir):
+            os.mkdir(config_dir)
+        startup_file = os.path.join(config_dir, 'startup')
+        if not os.path.exists(startup_file):
+            with open(startup_file, 'w') as fid:
+                fid.write("# Eelbrain startup script\n")
+
         self.filehistory = wx.FileHistory(10)
         self.filehistory.Load(self.wx_config)
-
-#        stdp = wx.StandardPaths.Get()
-#        pref_p = wx.StandardPaths.GetUserConfigDir(stdp)
-
 
     # SHELL initialization
         # put my Shell subclass into wx.py.shell
         wx.py.shell.Shell = Shell
-
-        dataDir = self.wx_config.Read("dataDir")
-        if os.path.exists(dataDir):
-            kwargs['dataDir'] = dataDir
-        else:
-            title = "warning: dataDir does not exist"
-            msg = ("dataDir at %r does not exist and will not be set. See "
-                   "preferences to change the dataDir." % dataDir)
-            ui.message(title, msg, '!')
 
         wx.py.shell.ShellFrame.__init__(self, *args, **kwargs)
         self.SetStatusText('Eelbrain %s' % __version__)
@@ -1327,6 +1318,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnPreferences(self, event=None):
         dlg = PreferencesDialog(self)
         dlg.Show()
+        dlg.CenterOnScreen()
 
     def OnPyplotDraw(self, event=None):
         plt.draw()
