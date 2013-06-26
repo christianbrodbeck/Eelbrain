@@ -1,5 +1,6 @@
 """Modified PyShell class"""
 
+from datetime import datetime
 import inspect
 import logging
 import os
@@ -13,8 +14,9 @@ import webbrowser
 
 import wx
 import wx.stc
-import wx.py.shell
 import wx.lib.colourselect
+import wx.py.shell
+from wx.py.frame import ID_SAVEHISTORY, ID_AUTO_SAVESETTINGS
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -203,42 +205,40 @@ class ShellFrame(wx.py.shell.ShellFrame):
     bufferClose = 1  # same for Close menu command (handled by OnFileClose)
     def __init__(self, *args, **kwargs):
 
-        app = wx.GetApp()
-
     # --- set up PREFERENCES ---
-        # http://wiki.wxpython.org/FileHistory
-        self.wx_config = wx.Config("eelbrain", style=wx.CONFIG_USE_LOCAL_FILE)
+        config = wx.Config("eelbrain", style=wx.CONFIG_USE_LOCAL_FILE)
         std_paths = wx.StandardPaths_Get()
 
+        # override pyshell defaults
+        if not config.HasEntry('Options/AutoSaveSettings'):
+            config.WriteBool('Options/AutoSaveSettings', True)
+        if not config.HasEntry('Options/AutoSaveHistory'):
+            config.WriteBool('Options/AutoSaveHistory', True)
+
+        # get pyshell dataDir
         config_dir = os.path.join(std_paths.GetUserConfigDir(), 'Eelbrain')
-        kwargs['dataDir'] = config_dir
+        kwargs.update(dataDir=config_dir, config=config)
         if not os.path.exists(config_dir):
             os.mkdir(config_dir)
+
+        # make sure startup file exists
         startup_file = os.path.join(config_dir, 'startup')
         if not os.path.exists(startup_file):
             with open(startup_file, 'w') as fid:
                 fid.write("# Eelbrain startup script\n")
 
+        # http://wiki.wxpython.org/FileHistory
         self.filehistory = wx.FileHistory(10)
-        self.filehistory.Load(self.wx_config)
+        self.filehistory.Load(config)
 
     # SHELL initialization
         # put my Shell subclass into wx.py.shell
         wx.py.shell.Shell = Shell
-
         wx.py.shell.ShellFrame.__init__(self, *args, **kwargs)
+
         self.SetStatusText('Eelbrain %s' % __version__)
 
         droptarget.set_for_strings(self.shell)
-
-        # config
-#        stdout = wx.py.shell.PseudoFileOut(self.shell_message)
-#        wx.py.shell.sys.stdout = stdout
-#        sys.stdout = stdout
-#        self.shell.stdout = stdout
-#        self.shell.autoCompleteIncludeSingle = False
-#        self.shell.autoCompleteIncludeDouble = False
-#        self.shell.autoCompleteIncludeMagic = True
 
         # attr
         self.global_namespace = self.shell.interp.locals
@@ -248,7 +248,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.experiments = []  # keep track of ExperimentFrames
         self._attached_items = {}
         self.help_viewer = None
-
 
     # child windows
         x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
@@ -273,7 +272,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         recent_menu = self.recent_menu = wx.Menu()
         self.filehistory.UseMenu(recent_menu)
         self.filehistory.AddFilesToMenu()
-        # add icons
         self.recent_menu_update_icons()
 
         self.Bind(wx.EVT_MENU_RANGE, self.OnRecentItemLoad, id=wx.ID_FILE1, id2=wx.ID_FILE9)
@@ -284,6 +282,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     # preferences menu
         if wx.Platform == '__WXMAC__':
+            app = wx.GetApp()
             ID_PREFERENCES = app.GetMacPreferencesMenuItemId()
         else:  # although these seem to be the same -- 5022
             ID_PREFERENCES = wx.ID_PREFERENCES
@@ -532,6 +531,14 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     # --- Finalize ---
 
+        # load history/configuration
+        if len(self.shell.history):
+            self.shell.history.pop(-1)
+        self.LoadSettings()
+        now = datetime.now()
+        info = "# Eelbrain Session:  %s" % now.isoformat(' ')
+        self.shell.history.append(info)
+
         # add commands to the shell
         self.global_namespace['attach'] = self.attach
         self.global_namespace['detach'] = self.detach
@@ -561,16 +568,18 @@ class ShellFrame(wx.py.shell.ShellFrame):
         text = wx.py.shell.HELP_TEXT
         self.__doc__ = text
 
+        self.preferencesDialog = None
+
     def ApplyStyle(self):
         "reapply the layout to all editwindows"
 #        if 'wxMac' in wx.PlatformInfo:
         self._style = {'times'     : 'Lucida Grande',
-                       'mono'      : self.wx_config.Read('font', 'Monaco'),  # 'Courier New'
+                       'mono'      : self.config.Read('font', 'Monaco'),  # 'Courier New'
                        'helv'      : 'Geneva',
                        'other'     : 'new century schoolbook',
-                       'size'      : int(self.wx_config.Read('font size', '13')),
+                       'size'      : int(self.config.Read('font size', '13')),
                        'lnsize'    : 16,
-                       'forecol'   : self.wx_config.Read('font color', '#FFFF00'),
+                       'forecol'   : self.config.Read('font color', '#FFFF00'),
                        'backcol'   : '#F0F0F0',  # '#000010',
                        'calltipbg' : '#101010',
                        'calltipfg' : '#BBDDFF',
@@ -997,6 +1006,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.Hide()
             event.Veto()
         else:
+            self.SaveSettings()
             event.Skip()
 
     def OnComment(self, event):
@@ -1316,9 +1326,13 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 m.SetText(title)
 
     def OnPreferences(self, event=None):
-        dlg = PreferencesDialog(self)
-        dlg.Show()
-        dlg.CenterOnScreen()
+        if self.preferencesDialog:
+            self.preferencesDialog.Raise()
+        else:
+            dlg = PreferencesDialog(self)
+            dlg.Show()
+            dlg.CenterOnScreen()
+            self.preferencesDialog = dlg
 
     def OnPyplotDraw(self, event=None):
         plt.draw()
@@ -1395,20 +1409,25 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.P_mgr.Show()
 
     def OnUpdateMenu(self, event):
-        """Update menu items based on current status and context."""
+        """Replace form wx.py.frame.Frame to update new menu items and
+        preferences dialog.
+        """
+        super(ShellFrame, self).OnUpdateMenu(event)
         win = self.get_active_window()
-        Id = event.GetId()
-        event.Enable(True)
-        try:
-            if Id == ID.COMMENT:
-                event.Enable(hasattr(win, 'Comment'))
-            elif Id == ID.DUPLICATE:
-                event.Enable(hasattr(win, 'Duplicate'))
-            elif Id == ID.DUPLICATE_WITH_OUTPUT:
-                event.Enable(hasattr(win, 'DuplicateFull'))
-        except AttributeError:
-            # This menu option is not supported in the current context.
-            event.Enable(False)
+        id_ = event.GetId()
+        if id_ == ID.COMMENT:
+            event.Enable(hasattr(win, 'Comment'))
+        elif id_ == ID.DUPLICATE:
+            event.Enable(hasattr(win, 'Duplicate'))
+        elif id_ == ID.DUPLICATE_WITH_OUTPUT:
+            event.Enable(hasattr(win, 'DuplicateFull'))
+        elif ((id_ == ID_SAVEHISTORY or id_ == ID_AUTO_SAVESETTINGS) and
+                                                    self.preferencesDialog):
+            state = event.IsChecked()
+            if id_ == ID_SAVEHISTORY:
+                self.preferencesDialog.checkboxSaveHistory.SetValue(state)
+            elif id_ == ID_AUTO_SAVESETTINGS:
+                self.preferencesDialog.checkboxSaveSettings.SetValue(state)
 
     def OnWindowMenuActivateWindow(self, event):
         ID = event.GetId()
@@ -1434,8 +1453,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def recent_item_add(self, path, t):
         "t is 'e' or 'pydoc'"
         self.filehistory.AddFileToHistory(path)
-        self.filehistory.Save(self.wx_config)
-        self.wx_config.Flush()
+        self.filehistory.Save(self.config)
+        self.config.Flush()
         self.recent_menu_update_icons()
 
 #        path_list = self.recent_files[t]

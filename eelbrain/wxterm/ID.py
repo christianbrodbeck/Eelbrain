@@ -22,6 +22,7 @@ DUPLICATE_WITH_OUTPUT = wx.NewId()
 
 EXPERIMENT_LOAD = wx.NewId()
 EXPERIMENT_NEW = wx.NewId()
+ENABLE_STARTUP_SCRIPT = wx.NewId()
 
 FIG_TITLE = wx.NewId()
 FOCUS_SHELL = wx.NewId()
@@ -50,10 +51,9 @@ PYPLOT_DRAW = wx.NewId()
 
 P_MGR = wx.NewId()
 
-RESIZE = wx.NewId()
-
 RECENT_LOAD_E = wx.NewId()
 RECENT_LOAD_PYDOC = wx.NewId()
+RESIZE = wx.NewId()
 
 SET_FONT = wx.NewId()
 SET_TEND = wx.NewId()

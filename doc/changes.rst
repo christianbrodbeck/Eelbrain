@@ -4,6 +4,14 @@ Changes
 Since 0.0.4
 -----------
 
+WxTerm interface
+^^^^^^^^^^^^^^^^
+
+* The startup script is now managed by Eelbrain and the dataDir setting has 
+  been removed (See the preferences to modify the startup script).
+* Command history can now be saved (see the preferences to enable/disable).
+
+
 :class:`~eelbrain.vessels.experiment.mne_experiment`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -7,6 +7,7 @@ import logging
 import os
 
 import wx
+from wx.py.frame import ID_SAVEHISTORY, ID_AUTO_SAVESETTINGS
 
 from . import ID
 
@@ -21,29 +22,60 @@ class PreferencesDialog(wx.Frame):
         """
         title = "Eelbrain Preferences"
         wx.Frame.__init__(self, shell, Id, title, pos, size, style)
-        self.config = shell.wx_config
+        self.config = shell.config
 
         pref_sizer = wx.BoxSizer(wx.VERTICAL)
+        border = 3
+        ALIGN_LEFT = wx.ALIGN_LEFT | wx.ALL
+        ALIGN_RIGHT = wx.ALIGN_RIGHT | wx.ALL
 
     # Startup Script ---
         panel = wx.Panel(self, -1)  # , size=(500,300))
-        panel.SetBackgroundColour("BLUE")
+#         panel.SetBackgroundColour("BLUE")
         sizer = wx.BoxSizer(wx.HORIZONTAL)
 
         txt = wx.StaticText(panel, label="Startup Script:")
-        sizer.Add(txt, 0, wx.ALIGN_LEFT)
+        sizer.Add(txt, 0, ALIGN_LEFT, border)
+
+        chk = wx.CheckBox(panel, ID.ENABLE_STARTUP_SCRIPT, "Enable")
+        state = self.config.ReadBool('Options/ExecStartupScript', True)
+        chk.SetValue(state)
+        chk.Bind(wx.EVT_CHECKBOX, self.OnConfigCheckbox)
+        sizer.Add(chk, 0, ALIGN_LEFT, border)
 
         btn = wx.Button(panel, label="Show File")
         btn.Bind(wx.EVT_BUTTON, self.OnShowStartupScript)
-        sizer.Add(btn, 0, wx.ALIGN_LEFT)
+        sizer.Add(btn, 0, ALIGN_LEFT, border)
 
         btn = wx.Button(panel, label="Edit")
         btn.Bind(wx.EVT_BUTTON, self.OnEditStartupScript)
-        sizer.Add(btn, 0, wx.ALIGN_LEFT)
+        sizer.Add(btn, 0, ALIGN_LEFT, border)
 
         btn = wx.Button(panel, wx.ID_HELP)
         btn.Bind(wx.EVT_BUTTON, self.OnHelpStartupScript)
-        sizer.Add(btn, 0, wx.ALIGN_RIGHT)
+        sizer.Add(btn, 0, ALIGN_RIGHT, border)
+
+        pref_sizer.Add(sizer, 0, border)
+
+    # Autosave ---
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        txt = wx.StaticText(panel, label='Autosave:')
+        sizer.Add(txt, 0, ALIGN_LEFT, border)
+
+        chk = wx.CheckBox(panel, ID_SAVEHISTORY, "History")
+        state = self.config.ReadBool('Options/AutoSaveHistory', True)
+        chk.SetValue(state)
+        chk.Bind(wx.EVT_CHECKBOX, shell.OnSaveHistory)
+        self.checkboxSaveHistory = chk
+        sizer.Add(chk, 0, ALIGN_LEFT, border)
+
+        chk = wx.CheckBox(panel, ID_AUTO_SAVESETTINGS, "Settings")
+        state = self.config.ReadBool('Options/AutoSaveSettings', True)
+        chk.SetValue(state)
+        chk.Bind(wx.EVT_CHECKBOX, shell.OnAutoSaveSettings)
+        self.checkboxSaveSettings = chk
+        sizer.Add(chk, 0, ALIGN_LEFT, border)
 
         pref_sizer.Add(sizer, 0)
 
@@ -51,12 +83,20 @@ class PreferencesDialog(wx.Frame):
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(panel, ID.SET_FONT, "Font")
         self.Bind(wx.EVT_BUTTON, self.OnSetFont, id=ID.SET_FONT)
-        sizer.Add(button, 0, wx.ALIGN_LEFT | wx.EXPAND)
+        sizer.Add(button, 0, ALIGN_LEFT, border)
         pref_sizer.Add(sizer, 0)
 
         panel.SetSizer(pref_sizer)
 
         pref_sizer.Fit(self)
+
+    def OnConfigCheckbox(self, event):
+        id_ = event.GetId()
+        state = event.IsChecked()
+        if id_ == ID.ENABLE_STARTUP_SCRIPT:
+            self.config.WriteBool('Options/ExecStartupScript', state)
+            self.Parent.execStartupScript = state
+        self.config.Flush()
 
     def OnHelpStartupScript(self, event):
         msg = ("The startup script is executed every time the Eelbrain "
@@ -106,6 +146,7 @@ class PreferencesDialog(wx.Frame):
             self.config.Write("font", font)
             self.config.Write("font size", str(size))
             self.config.Write("font color", color)
+            self.config.Flush()
             self.Parent.ApplyStyle()
 
         dlg.Destroy()
@@ -113,6 +154,3 @@ class PreferencesDialog(wx.Frame):
     def OnShowStartupScript(self, event):
         path = os.path.dirname(self.Parent.startupScript)
         os.system('open %s' % path)
-
-
-
