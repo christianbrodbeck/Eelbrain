@@ -1585,8 +1585,8 @@ class mne_experiment(object):
 
         save.pickle(ds, dest)
 
-    def make_filter(self, dest='lp40', hp=None, lp=40, n_jobs=3, src='raw',
-                    apply_proj=False, redo=False, **kwargs):
+    def make_filter(self, dest='lp40', hp=None, lp=40, src='raw',
+                    apply_proj=False, redo=False, n_jobs=1, **kwargs):
         """
         Make a filtered raw file
 
@@ -1598,6 +1598,11 @@ class mne_experiment(object):
             High-pass and low-pass parameters.
         apply_proj : bool
             Apply the projections to the Raw data before filtering.
+        redo : bool
+            If the target file already exists, redo and overwrite it.
+        n_jobs : int
+            Number of processes. Warning: PyShell does not support
+            multiprocessing and will crash with values > 1.
         kwargs :
             mne.fiff.Raw.filter() kwargs.
         """
