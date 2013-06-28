@@ -65,17 +65,17 @@ if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  ###
                 {"CFBundleTypeExtensions": ["py"],
                  "CFBundleTypeName": "Python Script",
                  "CFBundleTypeRole": "Editor",
-#                 "CFBundleTypeIconFile": "../icons/system-icons/pydoc.icns",
+                 "CFBundleTypeIconFile": "icons/system-icons/pydoc.icns",
                  },
                 {"CFBundleTypeExtensions": ["pickled"],
                  "CFBundleTypeName": "Pickled Python Object",
                  "CFBundleTypeRole": "Editor",
-#                 "CFBundleTypeIconFile": "../icons/system-icons/pydoc.icns",
+                 "CFBundleTypeIconFile": "icons/system-icons/pickled.icns",
                  },
                 ]
 
     OPTIONS = {
-               'iconfile': 'icons/eelbrain.icns',
+               'iconfile': 'icons/system-icons/eelbrain.icns',
                # py2app's iconfile option places the specified file
                # in the new app bundle's Resources directory
 #               'packages': 'wx',

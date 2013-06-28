@@ -1,0 +1,17 @@
+Eelbrain Icons
+==============
+
+
+Eelbrain Internal Icons
+-----------------------
+
+ - add a png to the corresponding folder
+ - run makeicons.py, which adds all icon files to the eelbrain project
+
+
+System Icons
+------------
+
+ - export png(s) of different resolutions
+ - use conversion app (e.g., picture2icon)
+ 
