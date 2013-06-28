@@ -289,7 +289,6 @@ class mne_experiment(object):
     # Pattern for subject names
     subject_re = re.compile('R\d{4}$')
 
-    _experiments = []
     _fmt_pattern = re.compile('\{([\w-]+)\}')
     # state variables that are always shown in self.__repr__():
     _repr_vars = ['subject']
@@ -306,6 +305,7 @@ class mne_experiment(object):
     # modify certain template entries from the outset (e.g. specify the initial
     # subject name)
     _defaults = {
+                 'experiment': 'experiment_name',
                  # this should be a key in the epochs class attribute (see
                  # above)
                  'epoch': 'epoch'}
@@ -390,9 +390,8 @@ class mne_experiment(object):
 
     def _update_field_values(self):
         subjects = self.field_values['subject']
-        self.field_values.update(mrisubject=[self._mri_subjects[s]
-                                           for s in subjects],
-                               experiment=list(self._experiments))
+        mrisubjects = set(self._mri_subjects[s] for s in subjects)
+        self.field_values.update(mrisubject=mrisubjects)
 
     def add_epochs_stc(self, ds, src='epochs', dst='stc', asndvar=True):
         """
@@ -2387,7 +2386,7 @@ class mne_experiment(object):
         results = {}
         experiments = set()
         mris = {}
-        for _ in self.iter_vars(['subject', 'experiment']):
+        for _ in self.iter_temp('raw-key'):
             items = []
             sub = self.get('subject')
             exp = self.get('experiment')
