@@ -56,11 +56,11 @@ kwargs = dict(
 #                                'wxPython',
 # Does not install properly from pypi (http://stackoverflow.com/q/477573/166700)
                                   ],
-              package_data={'eelbrain': ['Resources/sns/*.txt']}
+#               package_data={'eelbrain': ['Resources/sns/*.txt']},
               )
 
 # py2app -----------------------------------------------------------------------
-if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  #####  #####
+if arg == 'py2app':
     doctypes = [
                 {"CFBundleTypeExtensions": ["py"],
                  "CFBundleTypeName": "Python Script",
@@ -95,17 +95,16 @@ if arg == 'py2app':  #####  #####  #####  #####  #####  #####  #####  #####  ###
 
     kwargs.update(
                   app=['eelbrain.py'],
-#                  data_files=[('.', ['icons/system-icons/eelbrain.icns'])],
-#                  app=['scripts/eelbrain'], # tries relative import of eelbrain
                   options={'py2app': OPTIONS},
                   setup_requires=['py2app'])
-#elif arg =='build':  #####  #####  #####  #####  #####  #####  #####  #####  #####  #####
+# cx_freeze??? ---
+# elif arg =='build':
 #    from cx_Freeze import setup, Executable
 #    kwargs.update(executables = [Executable("scripts/eelbrain")])
 else:
-    # normal & py2exe -----------------------------------------------------------------------
+    # normal & py2exe ---
     kwargs['packages'] = find_packages()
-    # py2exe -----------------------------------------------------------------------
+    # py2exe ---
     if arg == 'py2exe':
         # http://wiki.wxpython.org/DistributingYourApplication
         import py2exe, matplotlib
