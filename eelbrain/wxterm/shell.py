@@ -208,8 +208,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def __init__(self, *args, **kwargs):
 
     # --- set up PREFERENCES ---
-        config = wx.Config("eelbrain", style=wx.CONFIG_USE_LOCAL_FILE)
-        std_paths = wx.StandardPaths_Get()
+        config = wx.Config("eelbrain")
+        std_paths = wx.StandardPaths.Get()
 
         # override pyshell defaults
         if not config.HasEntry('Options/AutoSaveSettings'):
@@ -296,7 +296,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         for _ in xrange(3):
             ex_root, _ = os.path.split(ex_root)
         self._examples_root = os.path.join(ex_root, 'examples')
-        print __file__, self._examples_root
         self.fileMenu.Insert(3, ID.SHOW_EXAMPLES, "Open Example...")
         self.Bind(wx.EVT_MENU, self.OnShowExamples, id=ID.SHOW_EXAMPLES)
 
