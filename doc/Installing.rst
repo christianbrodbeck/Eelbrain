@@ -5,8 +5,7 @@ Installing
 
 Eelbrain is a pure Python project and uses 
 `Distribute <http://packages.python.org/distribute/setuptools.html>`_, 
-so required dependencies are automatically installed from the Python Package
-Index. In order to use Eelbrain, 
+so most dependencies are automatically installed. In order to use Eelbrain, 
 
 #.  Depending on your purpose, install :ref:`optional dependencies 
     <dependencies>`
@@ -25,47 +24,16 @@ Optional Dependencies
 
 The following modules provide additional functionality if they are installed:
     
-* `wxPython <http://www.wxpython.org>`_ 
-  for using the GUI based on pyshell.
-  It `seems <http://stackoverflow.com/q/477573/166700>`_ that currently 
-  wxPython can not be installed through distutils. 
-  Installers are provided
-  `here <http://www.wxpython.org/download.php>`_. 
-  For installing on EPD-64 bit on OS X, see :ref:`below <EPD64>`.
+* `wxPython <http://www.wxpython.org>`_ for using the GUI based on pyshell. 
+  WxPython can be installed through the `EPD <https://www.enthought.com>`_. 
+  `Currently it can not be installed through distutils 
+  <http://stackoverflow.com/q/477573/166700>`_. 
+  Installers are provided `here <http://www.wxpython.org/download.php>`_. 
 * `mne <https://github.com/mne-tools/mne-python>`_
-* `tex <http://pypi.python.org/pypi/tex>`_ Enables exporting tables as pdf 
-  (also requires a working `LaTeX <http://www.latex-project.org/>`_ installation)
+* A working `LaTeX <http://www.latex-project.org/>`_ installation (enables 
+  exporting tables as pdf).
 * `bioread <http://pypi.python.org/pypi/bioread>`_ Enables an importer for 
   ``.acq`` files.
-
-
-.. _EPD64:
-
-EPD-64 bit on OS X
-------------------
-
-EPD-64 bit comes without wxPython, but the latest development version of
-wxPython can be installed manually.
-First, make sure the right Python distribution (and *only* the right one) is 
-added to the ``PATH`` in ``~/.bash_profile``. 
-
-Install wxPython from source::
-
-    $ wget http://downloads.sourceforge.net/wxpython/wxPython-src-2.9.4.0.tar.bz2
-    $ open wxPython-src-2.9.4.0.tar.bz2 
-    $ cd wxPython-src-2.9.4.0/wxPython
-    $ sudo python build-wxpython.py --build_dir=../bld --osx_cocoa --install
-
-EPD-64 7.3 seems to come with a deficient version of `MDP 
-<http://mdp-toolkit.sourceforge.net>`_. If MDP is required, it can be replaced 
-with `pip <http://www.pip-installer.org/>`_. 
-Install pip (unless it is already installed)::
-
-    $ curl https://raw.github.com/pypa/pip/master/contrib/get-pip.py | sudo python
-
-Then, install MDP from github::
-
-    $ sudo pip install -e git://github.com/mdp-toolkit/mdp-toolkit#egg=MDP
 
 
 .. _obtain-source:
@@ -133,12 +101,15 @@ B. Create Eelbrian.app on OS X
 ------------------------------
 
 .. note::
-    Invoking ``$ python setup.py py2app`` does not seem to properly
-    take care of dependencies. For this reason, Eelbrain should
-    be :ref:`installed as package <install-package>` before invoking the 
-    ``py2app`` build command.
+    This step requires wxPython (see :ref:`optional dependencies 
+    <dependencies>` above).
 
-The application can be generated with::
+Invoking ``$ python setup.py py2app`` does not seem to properly
+take care of dependencies. For this reason, Eelbrain should
+be :ref:`installed as package <install-package>` before invoking the 
+``py2app`` build command.
+
+The application can then be generated with::
 
     $ cd /target/directory/Eelbrain
     $ python setup.py py2app -A
@@ -151,4 +122,3 @@ so you must leave the source folder intact.
 The advantage of this method is that any 
 changes in the source (such as ``$ git pull``) will be 
 reflected as soon as you restart the application.
-

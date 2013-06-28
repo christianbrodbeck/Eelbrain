@@ -16,16 +16,16 @@ __hide__ = ['ui', 'cPickle', 'os']
 
 
 def pickle(obj, dest=None, protocol=cPickle.HIGHEST_PROTOCOL):
-    """
-    Pickle an object.
+    """Pickle a Python object.
 
+    Parameters
+    ----------
     dest : None | str
         Path to destination where to save the  file. If no destination is
         provided, a file dialog opens. If a destination without extension is
         provided, '.pickled' is appended.
     protocol : int
         Pickle protocol (default is HIGHEST_PROTOCOL).
-
     """
     if dest is None:
         ext = [('pickled', "Pickled Python Object")]

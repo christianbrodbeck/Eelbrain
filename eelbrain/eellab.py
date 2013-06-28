@@ -34,15 +34,10 @@ Created on Mar 27, 2012
 
 @author: christian
 '''
-from .vessels.data import (factor,
-                           cellname,
-                           var,
-                           ndvar,
+from .vessels.data import (dataset, factor, var, ndvar, interaction,
+                           combine, align, align1,
                            resample,
-                           dataset,
-                           combine,
-                           align,
-                           interaction,
+                           cellname,
                            )
 
 from .vessels.structure import celltable

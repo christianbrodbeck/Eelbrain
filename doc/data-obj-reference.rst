@@ -54,7 +54,8 @@ Write
 -----
 
 * `Pickling <http://docs.python.org/library/pickle.html>`_: 
-  All data-objects can be pickled. 
+  All data-objects can be pickled. :func:`eelbrain.save.pickle` provides a 
+  shortcut for pickling objects.
 * ``txt`` export: Save a dataset using it's 
   :py:meth:`~eelbrain.vessels.data.dataset.export` method. 
   Save any iterator with 
@@ -63,4 +64,5 @@ Write
 .. autosummary::
    :toctree: generated
 
+   save.pickle
    save.txt
