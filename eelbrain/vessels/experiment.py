@@ -354,7 +354,7 @@ class mne_experiment(object):
         epoch = temps.get('epoch', None)
         inv = temps.get('inv', None)
         rej = temps.get('rej', self.epoch_rejection.keys()[0])
-        self.set(epoch=epoch, inv=inv, rej=rej)
+        self.set(epoch=epoch, inv=inv, rej=rej, add=True)
 
         # find experiment data structure
         self._mri_subjects = keydefaultdict(lambda k: k)
