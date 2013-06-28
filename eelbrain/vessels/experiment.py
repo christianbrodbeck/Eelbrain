@@ -64,6 +64,7 @@ import re
 import shutil
 import subprocess
 from threading import Thread
+from warnings import warn
 
 import numpy as np
 
@@ -378,6 +379,11 @@ class mne_experiment(object):
             self.notification = Notifier(owner, 'mne_experiment task')
 
         self.set(**kwargs)
+
+    def __iter__(self):
+        "Iterate state through subjects and yield each subject name."
+        for state in self.iter():
+            yield state['subject']
 
     @property
     def _epoch_state(self):
@@ -818,56 +824,39 @@ class mne_experiment(object):
 
         return desc + ']'
 
-    def iter_temp(self, temp, constants={}, values={}, exclude={}, prog=False):
-        """
-        Iterate through all paths conforming to a template given in ``temp``.
-
-        Parameters
-        ----------
-        temp : str
-            Name of a template in the mne_experiment.templates dictionary, or
-            a path template with variables indicated as in ``'{var_name}'``
-        """
-        # if the name is an existing template, retrieve it
-        keep = constants.keys() + values.keys()
-        temp = self.expand_template(temp, values=keep)
-
-        # find variables for iteration
-        variables = set(self._fmt_pattern.findall(temp))
-
-        for state in self.iter_vars(variables, constants=constants,
-                                    values=values, exclude=exclude, prog=prog):
-            path = temp.format(**state)
-            yield path
-
-    def iter_vars(self, variables=['subject'], constants={}, values={},
-                  exclude={}, prog=False, notify=False):
+    def iter(self, variables=['subject'], exclude={}, values={}, mail=False,
+             prog=False, **constants):
         """
         Cycle the experiment's state through all values on the given variables
 
         Parameters
         ----------
         variables : list | str
-            Variable(s) over which should be iterated.
-        constants : dict(name -> value)
-            Variables with constant values throughout the iteration.
-        values : dict(name -> (list of values))
-            Variables with values to iterate over instead of the corresponding
-            `mne_experiment.field_values`.
-        exclude : dict(name -> (list of values))
-            Values to exclude from the iteration.
+            Field(s) over which should be iterated.
+        exclude : dict  {str: str, str: iterator over str, ...}
+            Values to exclude from the iteration with {name: value} and/or
+            {name: (sequence of values, )} entries.
+        values : dict  {str: iterator over str}
+            Variables with custom values to iterate over (instead of the
+            corresponding values in :attr:`.field_values`) with {name:
+            (sequence of values)} entries
         prog : bool | str
             Show a progress dialog; str for dialog title.
+        mail : bool | str
+            Send an email when iteration is finished. Can be True or an email
+            address. If True, the notification is sent to :attr:`.owner`.
+        others :
+            Fields with constant values throughout the iteration.
         """
-        if notify is True:
-            notify = self.owner
+        if mail is True:
+            mail = self.owner
 
         state_ = self._state.copy()
 
         # set constants
         self.set(**constants)
 
-        if isinstance(variables, str):
+        if isinstance(variables, basestring):
             variables = [variables]
         variables = list(set(variables).difference(constants).union(values))
 
@@ -877,7 +866,10 @@ class mne_experiment(object):
 
         # exclude values
         for k in exclude:
-            field_values[k] = set(field_values[k]).difference(exclude[k])
+            ex = exclude[k]
+            if isinstance(ex, basestring):
+                ex = (ex,)
+            field_values[k] = set(field_values[k]).difference(ex)
 
         # pick out the variables to iterate, but drop excluded cases:
         v_lists = []
@@ -906,9 +898,40 @@ class mne_experiment(object):
 
         self._state.update(state_)
 
-        if notify:
-            send_email(notify, "Eelbrain Task Done", "I did as you desired, "
+        if mail:
+            send_email(mail, "Eelbrain Task Done", "I did as you desired, "
                        "my master.")
+
+    def iter_temp(self, temp, exclude={}, values={}, mail=False, prog=False,
+                  **constants):
+        """
+        Iterate through all paths conforming to a template given in ``temp``.
+
+        Parameters
+        ----------
+        temp : str
+            Name of a template in the mne_experiment.templates dictionary, or
+            a path template with variables indicated as in ``'{var_name}'``
+        """
+        # if the name is an existing template, retrieve it
+        keep = constants.keys() + values.keys()
+        temp = self.expand_template(temp, values=keep)
+
+        # find variables for iteration
+        variables = set(self._fmt_pattern.findall(temp))
+
+        for state in self.iter(variables, exclude=exclude, values=values,
+                               mail=mail, prog=prog, **constants):
+            path = temp.format(**state)
+            yield path
+
+    def iter_vars(self, *args, **kwargs):
+        """Deprecated. Use :attr:`.iter()`"""
+        warn("mne_experiment.iter_vars() is deprecated. Use .iter()",
+             DeprecationWarning)
+        kwargs['mail'] = kwargs.get('notify', False)
+        self.iter(*args, **kwargs)
+
 
     def label_events(self, ds, experiment, subject):
         """
@@ -961,7 +984,7 @@ class mne_experiment(object):
             table.cell(name.capitalize())
         table.midrule()
 
-        for i, _ in enumerate(self.iter_vars(vars)):
+        for i, _ in enumerate(self.iter(vars)):
             if count:
                 table.cell(i)
 
@@ -1138,7 +1161,7 @@ class mne_experiment(object):
         if subject == 'all':
             self.set(model=model, **kwargs)
             dss = []
-            for _ in self.iter_vars(['subject']):
+            for _ in self.iter(['subject']):
                 ds = self.load_evoked(ndvar=ndvar)
                 dss.append(ds)
 
@@ -1354,7 +1377,7 @@ class mne_experiment(object):
         self.set(epoch=epoch)
         if all_subjects:
             dss = (self.load_sensor_data(random=random)
-                   for _ in self.iter_vars())
+                   for _ in self.iter())
             ds = combine(dss)
             return ds
 
@@ -1956,7 +1979,7 @@ class mne_experiment(object):
         self._state = self._initial_state.copy()
         self._state.update(save)
 
-    def rm(self, temp, values={}, exclude={}, v=False, **kwargs):
+    def rm(self, temp, exclude={}, values={}, v=False, **constants):
         """
         Remove all files corresponding to a template
 
@@ -1967,12 +1990,18 @@ class mne_experiment(object):
         ----------
         temp : str
             The template.
+        exclude : dict
+            Exclude specific values by field.
+        values : dict
+            Provide specific values by field.
         v : bool
             Verbose mode (print all filename patterns that are searched).
+        others :
+            Set fields.
         """
         files = []
-        for fname in self.iter_temp(temp, constants=kwargs, values=values,
-                                    exclude=exclude):
+        for fname in self.iter_temp(temp, exclude=exclude, values=values,
+                                    **constants):
             fnames = glob(fname)
             if v:
                 print "%s -> %i" % (fname, len(fnames))
@@ -2015,7 +2044,7 @@ class mne_experiment(object):
         rmd = []  # dirs
         rmf = []  # files
         sub = []
-        for _ in self.iter_vars(['subject']):
+        for _ in self.iter(['subject']):
             if self.get('subject') in exclude:
                 continue
             mri_sdir = self.get('mri-dir')
@@ -2368,7 +2397,7 @@ class mne_experiment(object):
         table = fmtxt.Table('ll')
         table.cells('subject', 'mrisubject')
         table.midrule()
-        for _ in self.iter_vars('subject'):
+        for _ in self.iter('subject'):
             table.cell(self.get('subject'))
             table.cell(self.get('mrisubject'))
         return table
