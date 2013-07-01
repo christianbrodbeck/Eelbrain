@@ -293,9 +293,9 @@ class mne_experiment(object):
     # state variables that are always shown in self.__repr__():
     _repr_vars = ['subject']
 
-    # Where to search for subjects. If the experiment searches for subjects
-    # automatically, it scans this directory for subfolders matching
-    # subject_re.
+    # Where to search for subjects (defined as a template name). If the
+    # experiment searches for subjects automatically, it scans this directory
+    # for subfolders matching subject_re.
     _subject_loc = 'meg-sdir'
 
     # basic templates to use. Can be a string referring to a templates
