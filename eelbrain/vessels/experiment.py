@@ -323,7 +323,7 @@ class mne_experiment(object):
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
         self._parse_subjects = parse_subjects
 
-        temps = self.get_templates(root=root)
+        temps = self._get_templates(root=root)
 
         # epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
@@ -561,7 +561,7 @@ class mne_experiment(object):
                 else:
                     ds[key] = mstcs[name]
 
-    def get_templates(self, root=None, **kwargs):
+    def _get_templates(self, root=None, **kwargs):
         if isinstance(self._templates, str):
             t = _temp[self._templates].copy()
         else:
