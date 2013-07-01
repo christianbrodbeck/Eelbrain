@@ -119,7 +119,7 @@ class SelectEpochs(eelfigure):
                        "load.eyelink.add_edf(ds) to add an eye tracker file "
                        "to a dataset ds.")
                 wx.MessageBox(msg, "Eye Tracker Data Not Found")
-                blink = False
+                blink = None
 
         self._blink = blink
 
