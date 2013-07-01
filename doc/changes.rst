@@ -10,6 +10,10 @@ WxTerm interface
 * The startup script is now managed by Eelbrain and the dataDir setting has 
   been removed (See the preferences to modify the startup script).
 * Command history can now be saved (see the preferences to enable/disable).
+* Executing code is now handled through the new "Exec" Menu with new keyboard 
+  shortcuts. In the editor, ``cmd-Enter`` when nothing is selected executes 
+  the current line and moves the caret to the next line. This makes it 
+  possible to step through a script line by line.
 
 
 :class:`~eelbrain.vessels.experiment.mne_experiment`

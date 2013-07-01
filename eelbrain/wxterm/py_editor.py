@@ -1,3 +1,4 @@
+import ast
 import os
 import logging
 
@@ -263,21 +264,14 @@ class PyEditor(wx.py.editor.EditorFrame):
         if not self.editor:
             return
 
-        self.SelectFragment()
-        txt = self.editor.window.GetSelectedText()
-        txt = ''.join(txt.split('\r'))  # remove carriage returns
+        win = self.editor.window
+        start_pos, end_pos = win.GetSelection()
+        if start_pos == end_pos:  # use current line
+            txt, _ = win.GetCurLine()
+        else:
+            txt = win.GetSelectedText()
+
         txt = fmtxt.unindent(txt)  # remove leading whitespaces
-
-        lines = txt.splitlines()
-        n = len(lines)
-        if n == 0:
-            return
-        elif n > 1:
-            for i in xrange(1, n):
-                lines[i] = '... ' + lines[i]
-
-        txt = os.linesep.join(lines)
-
         self.shell.InsertStrToShell(txt)
         self.shell.Raise()
 
@@ -354,19 +348,58 @@ class PyEditor(wx.py.editor.EditorFrame):
         self.updateNamespace()
 
     def ExecSelection(self):
-        self.SelectFragment()
+        """Execute the current selection, or the current line if nothing is
+        selected.
+        """
+        win = self.editor.window
+        start_pos, end_pos = win.GetSelection()
+        if start_pos == end_pos:  # run current line
+            # extended selection including hierarchically subordinate lines
+            i_first = win.GetCurrentLine()
+            indent = win.GetLineIndentation(i_first)
+            i_last = i_first
+            n_lines = win.GetLineCount()
+            while True:
+                if i_last + 1 >= n_lines:
+                    break
+                elif win.GetLineIndentation(i_last + 1) > indent:
+                    pass
+                elif not win.GetLine(i_last + 1).strip():
+                    pass
+                else:
+                    start_pos = win.PositionFromLine(i_first)
+                    end_pos = win.GetLineEndPosition(i_last)
+                    code = win.GetTextRange(start_pos, end_pos)
+                    try:
+                        ast.parse(code, mode='single')
+                    except SyntaxError:
+                        pass
+                    else:
+                        break
+                i_last += 1
 
-        # execute the selection
-        txt = self.editor.window.GetSelectedText()
-        if txt:
-            # find line numbers
-            w = self.editor.window
-            start_pos, end_pos = w.GetSelection()
+            start_pos = win.PositionFromLine(i_first)
+            end_pos = win.GetLineEndPosition(i_last)
+
+            # execute the code
+            cmd = win.GetTextRange(start_pos, end_pos)
+            self.shell.ExecCommand(cmd)
+
+            # move the caret to the next line
+            win.SetSelection(end_pos, end_pos)
+            self.MoveCaretToNextLine()
+        else:  # execute the selection
+            txt = self.editor.window.GetSelectedText()
+            if not txt:
+                return
+
+            # fix selection
+            start_pos, end_pos = win.GetSelection()
             if start_pos > end_pos:
                 start_pos, end_pos = end_pos, start_pos
 
-            start = w.LineFromPosition(start_pos + 1)
-            end = w.LineFromPosition(end_pos)
+            start = win.LineFromPosition(start_pos + 1)
+            end = win.LineFromPosition(end_pos)
             if start == end:
                 comment = "line %s" % start
             else:
@@ -379,9 +412,34 @@ class PyEditor(wx.py.editor.EditorFrame):
                                 shell_globals=shell_globals,
                                 filepath=self.buffer.doc.filepath,
                                 internal_call=True)
-            self.updateNamespace()
+        self.updateNamespace()
+
+    def MoveCaretToNextLine(self):
+        """Move the caret to the next non-empty line
+
+        Returns
+        -------
+        pos : int
+            New caret position.
+        """
+        win = self.editor.window
+        cur_line = win.GetCurrentLine()
+        if cur_line == win.GetLineCount() - 1:
+            pos = win.PositionFromLine(cur_line)
         else:
-            pass
+            next_line = cur_line + 1
+            while True:
+                if next_line == win.GetLineCount() - 1:
+                    break
+                elif win.GetLine(next_line).strip():
+                    break
+                else:
+                    next_line += 1
+
+            pos = win.PositionFromLine(next_line)
+
+        win.SetSelection(pos, pos)
+        return pos
 
     def OnExecDocument(self, event=None):
         if self.CanExec():
@@ -496,22 +554,6 @@ class PyEditor(wx.py.editor.EditorFrame):
     def OnSearchCancel(self, event=None):
         self.search_ctrl.Clear()
         self._search_string = None
-
-    def SelectFragment(self):
-        "if nothing is selected select the current line"
-        start, stop = self.editor.window.GetSelection()
-        if start == stop:
-            win = self.editor.window
-            pos = win.GetCurrentLine()
-            if pos == 0:
-                start = 0
-            else:
-                start = win.GetLineEndPosition(pos - 1) + 1
-                while win.GetText()[start] in ('\n', '\r'):
-                    start += 1
-
-            stop = self.editor.window.GetLineEndPosition(pos)
-            self.editor.window.SetSelection(start, stop)
 
     def updateNamespace(self):
         if self._exec_in_shell_namespace:

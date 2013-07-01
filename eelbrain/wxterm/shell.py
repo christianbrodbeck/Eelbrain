@@ -22,6 +22,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from .. import __version__
+from .. import fmtxt
 from .. import ui
 from ..utils import print_funcs
 from ..wxutils import Icon, droptarget
@@ -312,12 +313,12 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     # Exec Menu
         m = self.execMenu = wx.Menu()
-        m.Append(ID.EXEC_SELECTION, "Current Selection  \tCtrl+E", "Execute "
-                 "the currently selected code.")
+        m.Append(ID.EXEC_SELECTION, "Selection or Line  \tCtrl+Enter",
+                 "Execute the currently selected code or the current line.")
         m.Append(ID.EXEC_DOCUMENT, "Document", "Execute the front most Python "
                  "document.")
-        m.Append(ID.EXEC_DOCUMENT_FROM_DISK, "Document from Disk  \tCtrl+R",
-                 "Save and execute the front most Python document from disk.")
+        m.Append(ID.EXEC_DOCUMENT_FROM_DISK, "Document from Disk  \tCtrl+E",
+                 "Save and execute the Python document from disk.")
         self.menuBar.Insert(get_menu_Id('&Help'), m, "Exec")
 
         self.Bind(wx.EVT_MENU, self.OnExecSelection, id=ID.EXEC_SELECTION)
@@ -818,6 +819,19 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def DuplicateFull(self):
         self.Duplicate(True)
 
+    def ExecCommand(self, cmd):
+        """Execute a single command in the shell. Can be multiline command."""
+        # clean command
+        cmd = fmtxt.unindent(cmd.rstrip())
+        multiline = '\n' in cmd
+
+        # insert cmd into shell and process
+        self.shell.clearCommand()
+        self.InsertStrToShell(cmd)
+        self.shell.processLine()
+        if multiline:
+            self.shell.processLine()
+
     def ExecFile(self, filename=None, shell_globals=True):
         """
         Execute a file in the shell.
@@ -995,6 +1009,18 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def InsertStrToShell(self, text):
         "Insert text into the shell's command prompt"
+        # clean text
+        text = text.rstrip().replace('\r', '')
+
+        lines = text.splitlines()
+        n = len(lines)
+        if n == 0:
+            return
+        elif n > 1:
+            for i in xrange(1, n):
+                lines[i] = '... ' + lines[i]
+        text = os.linesep.join(lines)
+
         if not self.shell.CanEdit():
             pos = self.shell.GetLastPosition()
             self.shell.SetSelectionStart(pos)
@@ -1340,11 +1366,11 @@ class ShellFrame(wx.py.shell.ShellFrame):
         import mne
         if (('mne' not in self.global_namespace) or
             (self.global_namespace['mne'] is not mne)):
-            self.shell.run('import mne')
+            self.ExecCommand('import mne')
 
         cmd = self.mne_cmds[Id]
         cmd = "%s = mne.gui.%s()" % (target, cmd)
-        self.shell.run(cmd)
+        self.ExecCommand(cmd)
 
     def OnOpenWindowMenu(self, event):
         "Updates open windows to the menu"
