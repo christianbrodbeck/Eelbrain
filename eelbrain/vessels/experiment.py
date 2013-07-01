@@ -902,6 +902,38 @@ class mne_experiment(object):
             send_email(mail, "Eelbrain Task Done", "I did as you desired, "
                        "my master.")
 
+    def iter_range(self, start=None, stop=None, field='subject'):
+        """Iterate through a range on a field with ordered values.
+
+        Parameters
+        ----------
+        start : None | str
+            Start value (inclusive). With ``None``, begin at the first value.
+        stop : None | str
+            Stop value (inclusive). With ``None``, end with the last value.
+        field : str
+            Name of the field.
+
+        Yields
+        ------
+        value : str
+            Current field value.
+        """
+        initial_value = self.get(field)
+
+        values = sorted(self.field_values[field])
+        if start is not None:
+            start = values.index(start)
+        if stop is not None:
+            stop = values.index(stop) + 1
+        idx = slice(start, stop)
+        values = values[idx]
+        for value in values:
+            self.set(**{field: value})
+            yield value
+
+        self.set(**{field: initial_value})
+
     def iter_temp(self, temp, exclude={}, values={}, mail=False, prog=False,
                   **constants):
         """
