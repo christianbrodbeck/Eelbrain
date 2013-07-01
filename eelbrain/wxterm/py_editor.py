@@ -59,20 +59,21 @@ class PyEditor(wx.py.editor.EditorFrame):
 
 
         # script execution
-        tb.AddLabelTool(ID.PYDOC_EXEC, "Exec", Icon("actions/python-run"),
+        tb.AddLabelTool(ID.EXEC_DOCUMENT, "Exec", Icon("actions/python-run"),
                         shortHelp="Execute script in shell")
-        self.Bind(wx.EVT_TOOL, self.OnExec, id=ID.PYDOC_EXEC)
-        tb.AddLabelTool(ID.PYDOC_EXEC_SEL, "Exec_sel", Icon("actions/python-run-selection"),
+        self.Bind(wx.EVT_TOOL, self.OnExecDocument, id=ID.EXEC_DOCUMENT)
+        tb.AddLabelTool(ID.EXEC_SELECTION, "Exec_sel",
+                        Icon("actions/python-run-selection"),
                         shortHelp="Execute selection in shell")
-        self.Bind(wx.EVT_TOOL, self.OnExecSelected, id=ID.PYDOC_EXEC_SEL)
-        tb.AddLabelTool(ID.PYDOC_EXEC_DRIVE, "Exec_drive",
+        self.Bind(wx.EVT_TOOL, self.OnExecSelection, id=ID.EXEC_SELECTION)
+        tb.AddLabelTool(ID.EXEC_DOCUMENT_FROM_DISK, "Exec_drive",
                         Icon("actions/python-run-drive"),
                         shortHelp="Execute the whole script in the shell from "
-                                  "the disk. Saves unsaved changes without "
-                                  "asking. Warning: __file__ and sys.argv cur"
-                                  "rently point to eelbrain.__main__ instead of"
-                                  " the executed file.")
-        self.Bind(wx.EVT_TOOL, self.OnExecFromDrive, id=ID.PYDOC_EXEC_DRIVE)
+                        "the disk. Saves unsaved changes without asking. "
+                        "Warning: __file__ and sys.argv currently point to "
+                        "eelbrain.__main__ instead of the executed file.")
+        self.Bind(wx.EVT_TOOL, self.OnExecDocumentFromDisk,
+                  id=ID.EXEC_DOCUMENT_FROM_DISK)
 
         if self._exec_in_shell_namespace:
             icon = Icon("actions/terminal-on")
@@ -161,7 +162,13 @@ class PyEditor(wx.py.editor.EditorFrame):
         return out
 
     def bufferSave(self):
-        "subclassed to catch and display errors"
+        """subclassed to catch and display errors
+
+        Returns
+        -------
+        cancel : bool
+            True if the save operation was canceled, False otherwise.
+        """
         try:
             cancel = super(PyEditor, self).bufferSave()
         except Exception as exception:
@@ -289,6 +296,9 @@ class PyEditor(wx.py.editor.EditorFrame):
             self.editor.window.SetCaretForeground(wx.Colour(200, 200, 200))
             self.editor.window.SetCaretPeriod(0)
 
+    def CanExec(self):
+        return bool(self.editor)
+
     def Comment(self):
         w = self.editor.window
         start_pos, end_pos = w.GetSelection()
@@ -320,61 +330,71 @@ class PyEditor(wx.py.editor.EditorFrame):
         end = w.PositionFromLine(end + 1) - 1
         w.SetSelection(start, end)
 
-    def OnExec(self, event=None):
+    def ExecDocument(self):
         "Execute the whole script in the shell."
-        if self.editor:
-            txt = self.editor.window.GetSelectedText()
-            txt = self.editor.getText()
+        txt = self.editor.getText()
 
-            shell_globals = self._exec_in_shell_namespace
-            self.shell.ExecText(txt.encode('utf-8'),
-                                title=self.editor.getStatus()[0],
-                                comment=None,
-                                shell_globals=shell_globals,
-                                filepath=self.buffer.doc.filepath,
-                                internal_call=True)
-            self.updateNamespace()
+        shell_globals = self._exec_in_shell_namespace
+        self.shell.ExecText(txt.encode('utf-8'),
+                            title=self.editor.getStatus()[0],
+                            comment=None,
+                            shell_globals=shell_globals,
+                            filepath=self.buffer.doc.filepath,
+                            internal_call=True)
+        self.updateNamespace()
 
-    def OnExecFromDrive(self, event=None):
+    def ExecDocumentFromDisk(self):
         "Save unsaved changes and execute file in shell."
         if self.bufferHasChanged():
-            self.bufferSave()
+            if self.bufferSave():
+                return  # user canceled
         shell_globals = self._exec_in_shell_namespace
         self.shell.ExecFile(self.buffer.doc.filepath,
                             shell_globals=shell_globals)
         self.updateNamespace()
 
-    def OnExecSelected(self, event=None):
-        "Execute the selection in the shell."
-        if self.editor:
-            self.SelectFragment()
+    def ExecSelection(self):
+        self.SelectFragment()
 
-            # execute the selection
-            txt = self.editor.window.GetSelectedText()
-            if txt:
-                # find line numbers
-                w = self.editor.window
-                start_pos, end_pos = w.GetSelection()
-                if start_pos > end_pos:
-                    start_pos, end_pos = end_pos, start_pos
+        # execute the selection
+        txt = self.editor.window.GetSelectedText()
+        if txt:
+            # find line numbers
+            w = self.editor.window
+            start_pos, end_pos = w.GetSelection()
+            if start_pos > end_pos:
+                start_pos, end_pos = end_pos, start_pos
 
-                start = w.LineFromPosition(start_pos + 1)
-                end = w.LineFromPosition(end_pos)
-                if start == end:
-                    comment = "line %s" % start
-                else:
-                    comment = "lines %s - %s" % (start, end)
-
-                shell_globals = self._exec_in_shell_namespace
-                self.shell.ExecText(txt,
-                                    title=self.editor.getStatus()[0],
-                                    comment=comment,
-                                    shell_globals=shell_globals,
-                                    filepath=self.buffer.doc.filepath,
-                                    internal_call=True)
-                self.updateNamespace()
+            start = w.LineFromPosition(start_pos + 1)
+            end = w.LineFromPosition(end_pos)
+            if start == end:
+                comment = "line %s" % start
             else:
-                pass
+                comment = "lines %s - %s" % (start, end)
+
+            shell_globals = self._exec_in_shell_namespace
+            self.shell.ExecText(txt,
+                                title=self.editor.getStatus()[0],
+                                comment=comment,
+                                shell_globals=shell_globals,
+                                filepath=self.buffer.doc.filepath,
+                                internal_call=True)
+            self.updateNamespace()
+        else:
+            pass
+
+    def OnExecDocument(self, event=None):
+        if self.CanExec():
+            self.ExecDocument()
+
+    def OnExecDocumentFromDisk(self, event=None):
+        if self.CanExec():
+            self.ExecDocumentFromDisk()
+
+    def OnExecSelection(self, event=None):
+        "Execute the selection in the shell."
+        if self.CanExec():
+            self.ExecSelection()
 
     def OnExec_ToggleIsolate(self, event=None):
         """
@@ -403,13 +423,7 @@ class PyEditor(wx.py.editor.EditorFrame):
             logging.info("Editor OnKeyDown: {0} {1}".format(mod_str, key))
 
         if mod == [1, 0, 0]:  # [ctrl]
-            if key == 69:  # e -> execute excerpt
-                self.OnExecSelected(event)
-            elif key == 82:  # r -> execute the script
-                self.OnExecFromDrive(event)
-            else:
-                event.Skip()
-
+            event.Skip()
         elif mod == [0, 0, 1]:  # alt down
             if key in [315, 317]:  # arrow
                 # FIXME: when last line without endline is selected, someting

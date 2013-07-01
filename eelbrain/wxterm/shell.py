@@ -310,6 +310,26 @@ class ShellFrame(wx.py.shell.ShellFrame):
             item = self.editMenu.FindItemById(id_)
             item.SetItemLabel('Redo \tctrl-shift-z')
 
+    # Exec Menu
+        m = self.execMenu = wx.Menu()
+        m.Append(ID.EXEC_SELECTION, "Current Selection  \tCtrl+E", "Execute "
+                 "the currently selected code.")
+        m.Append(ID.EXEC_DOCUMENT, "Document", "Execute the front most Python "
+                 "document.")
+        m.Append(ID.EXEC_DOCUMENT_FROM_DISK, "Document from Disk  \tCtrl+R",
+                 "Save and execute the front most Python document from disk.")
+        self.menuBar.Insert(get_menu_Id('&Help'), m, "Exec")
+
+        self.Bind(wx.EVT_MENU, self.OnExecSelection, id=ID.EXEC_SELECTION)
+        self.Bind(wx.EVT_MENU, self.OnExecDocument, id=ID.EXEC_DOCUMENT)
+        self.Bind(wx.EVT_MENU, self.OnExecDocumentFromDisk,
+                  id=ID.EXEC_DOCUMENT_FROM_DISK)
+
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.EXEC_SELECTION)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.EXEC_DOCUMENT)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu,
+                  id=ID.EXEC_DOCUMENT_FROM_DISK)
+
     # MNE Menu
         # (without requiring mne-python to be installed)
         try:
@@ -337,7 +357,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 m.Append(Id, name, "Open the mne %s GUI" % name)
                 self.Bind(wx.EVT_MENU, self.OnOpenMneGui, id=Id)
 
-            self.menuBar.Insert(4, m, "MNE")
+            self.menuBar.Insert(get_menu_Id("&Help"), m, "MNE")
         except:
             pass
 
@@ -491,10 +511,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
                         Icon("tango/actions/document-open"), shortHelp="Load "
                         "a Python document (*.py)")
 
-        tb.AddLabelTool(ID.PYDOC_EXEC, "Exec", Icon("documents/pydoc-openrun"),
+        tb.AddLabelTool(ID.EXEC_FILE, "Exec", Icon("documents/pydoc-openrun"),
                         shortHelp="Run an existing Python script (without "
                         "opening it in an editor)")
-        self.Bind(wx.EVT_TOOL, self.OnExecFile, id=ID.PYDOC_EXEC)
+        self.Bind(wx.EVT_TOOL, self.OnExecFile, id=ID.EXEC_FILE)
 
         tb.AddLabelTool(wx.ID_NEW, "New .Py Document", Icon("documents/pydoc-new"),
                         shortHelp="Open a new Python script editor")
@@ -798,54 +818,55 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def DuplicateFull(self):
         self.Duplicate(True)
 
-    def ExecFile(self, filename, shell_globals=True):
+    def ExecFile(self, filename=None, shell_globals=True):
         """
         Execute a file in the shell.
 
         Parameters
         ----------
-        filename : str
-            File to execute.
+        filename : None | str
+            File to execute. If None, an open file dialog is used.
         shell_globals : bool
             Wheter the file should be executed in the shell's global namespace
             (or in a separate namespace).
         """
-        if filename and os.path.exists(filename):
-            # set paths in environment
-            dirname = os.path.dirname(filename)
-            self.curdir(dirname)
-
-            if shell_globals:
-                self.global_namespace['__file__'] = filename
-                self.shell.Execute("execfile(%r)" % filename)
+        if filename is None:
+            dialog = wx.FileDialog(self, style=wx.FD_OPEN)
+            dialog.SetMessage("Select Python File")
+            dialog.SetWildcard("Python files (*.py)|*.py")
+            if dialog.ShowModal() == wx.ID_OK:
+                filename = dialog.GetPath()
             else:
-                if float(sys.version[:3]) >= 2.7:
-                    if 'runpy' not in self.global_namespace:
-                        self.shell.Execute("import runpy")
-                    self.shell.Execute("out_globals = runpy.run_path(%r)" % filename)
-                else:
-                    command = "execfile(%r, dict(__file__=%r))"
-                    self.shell.Execute(command % (filename, filename))
+                return
 
-            self.pyplot_draw()
-#            save_stdout = sys.stdout
-#            save_stderr = sys.stderr
-#            save_stdin = sys.stdin
-#
-#            sys.stdout = self.shell.interp.stdout
-#            sys.stderr = self.shell.interp.stderr
-#            sys.stdin = self.shell.interp.stdin
-#
-#            self.shell.start_exec()
-#            execfile(filename)
-#            self.shell.end_exec()
-#
-#            sys.stdout = save_stdout
-#            sys.stderr = save_stderr
-#            sys.stdin = save_stdin
-#            self.shell.setFocus()
+        if not isinstance(filename, basestring):
+            err = ("Invalid filename type:  needs to be str or unicode, not "
+                   "%s" % repr(filename))
+            logging.error("shell.ExecFile - " + err)
+            raise TypeError(err)
+
+        if not os.path.exists(filename):
+            msg = "Trying to execute non-existing file: %r" % filename
+            wx.MessageBox(msg, "Error Executing File", wx.ICON_ERROR | wx.OK)
+            return
+
+        # set paths in environment
+        dirname = os.path.dirname(filename)
+        self.curdir(dirname)
+
+        if shell_globals:
+            self.global_namespace['__file__'] = filename
+            self.shell.Execute("execfile(%r)" % filename)
         else:
-            logging.error("shell.ExecFile: invalid filename (%r)" % filename)
+            if float(sys.version[:3]) >= 2.7:
+                if 'runpy' not in self.global_namespace:
+                    self.shell.Execute("import runpy")
+                self.shell.Execute("out_globals = runpy.run_path(%r)" % filename)
+            else:
+                command = "execfile(%r, dict(__file__=%r))"
+                self.shell.Execute(command % (filename, filename))
+
+        self.pyplot_draw()
 
     def ExecText(self, txt, out=False, title="unknown source", comment=None,
                  shell_globals=True, filepath=None, internal_call=False):
@@ -1060,12 +1081,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
                  globals
 
         """
-        dialog = wx.FileDialog(self, style=wx.FD_OPEN)
-        dialog.SetMessage("Select Python File")
-        dialog.SetWildcard("Python files (*.py)|*.py")
-        if dialog.ShowModal():
-            filename = dialog.GetPath()
-        self.ExecFile(filename)
+        self.ExecFile()
 
     def OnFileClose(self, event):
         """
@@ -1078,6 +1094,18 @@ class ShellFrame(wx.py.shell.ShellFrame):
             win.Close()
         else:
             event.Skip()
+
+    def OnExecDocument(self, event):
+        win = self.get_active_window()
+        win.ExecDocument()
+
+    def OnExecDocumentFromDisk(self, event):
+        win = self.get_active_window()
+        win.ExecDocumentFromDisk()
+
+    def OnExecSelection(self, event):
+        win = self.get_active_window()
+        win.ExecSelection()
 
     def OnFileNew(self, event=None):
         self.create_py_editor()
@@ -1418,7 +1446,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         """Replace form wx.py.frame.Frame to update new menu items and
         preferences dialog.
         """
-        super(ShellFrame, self).OnUpdateMenu(event)
         win = self.get_active_window()
         id_ = event.GetId()
         if id_ == ID.COMMENT:
@@ -1427,13 +1454,29 @@ class ShellFrame(wx.py.shell.ShellFrame):
             event.Enable(hasattr(win, 'Duplicate'))
         elif id_ == ID.DUPLICATE_WITH_OUTPUT:
             event.Enable(hasattr(win, 'DuplicateFull'))
-        elif ((id_ == ID_SAVEHISTORY or id_ == ID_AUTO_SAVESETTINGS) and
-                                                    self.preferencesDialog):
-            state = event.IsChecked()
-            if id_ == ID_SAVEHISTORY:
+        elif id_ == ID.EXEC_SELECTION:
+            if not isinstance(event.GetEventObject(), wx.Menu):
+                return
+            canexec = win.CanExec() if hasattr(win, 'CanExec') else True
+            event.Enable(canexec and hasattr(win, 'ExecSelection'))
+        elif id_ == ID.EXEC_DOCUMENT:
+            if not isinstance(event.GetEventObject(), wx.Menu):
+                return
+            canexec = win.CanExec() if hasattr(win, 'CanExec') else True
+            event.Enable(canexec and hasattr(win, 'ExecDocument'))
+        elif id_ == ID.EXEC_DOCUMENT_FROM_DISK:
+            if not isinstance(event.GetEventObject(), wx.Menu):
+                return
+            canexec = win.CanExec() if hasattr(win, 'CanExec') else True
+            event.Enable(canexec and hasattr(win, 'ExecDocumentFromDisk'))
+        else:
+            if id_ == ID_SAVEHISTORY and self.preferencesDialog:
+                state = event.IsChecked()
                 self.preferencesDialog.checkboxSaveHistory.SetValue(state)
-            elif id_ == ID_AUTO_SAVESETTINGS:
+            elif id_ == ID_AUTO_SAVESETTINGS and self.preferencesDialog:
+                state = event.IsChecked()
                 self.preferencesDialog.checkboxSaveSettings.SetValue(state)
+            super(ShellFrame, self).OnUpdateMenu(event)
 
     def OnWindowMenuActivateWindow(self, event):
         ID = event.GetId()
