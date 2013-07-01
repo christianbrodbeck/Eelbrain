@@ -536,8 +536,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.shell.history.pop(-1)
         self.LoadSettings()
         now = datetime.now()
-        info = "# Eelbrain Session:  %s" % now.isoformat(' ')
-        self.shell.history.append(info)
+        info = "#  Eelbrain Session:  %s" % now.isoformat(' ')
+        self.shell.history.insert(0, info)
 
         # add commands to the shell
         self.global_namespace['attach'] = self.attach
