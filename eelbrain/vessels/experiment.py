@@ -1770,9 +1770,10 @@ class mne_experiment(object):
             self.set(subject=subject)
 
     def plot_coreg(self, **kwargs):
+        from ..plot.coreg import dev_mri
         self.set(**kwargs)
         raw = mne.fiff.Raw(self.get('raw-file'))
-        return plot.coreg.dev_mri(raw)
+        return dev_mri(raw)
 
     def print_tree(self, root='root'):
         """
