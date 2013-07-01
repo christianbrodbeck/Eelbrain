@@ -121,7 +121,7 @@ class SelectEpochs(eelfigure):
                 wx.MessageBox(msg, "Eye Tracker Data Not Found")
                 blink = None
 
-        self._blink = blink
+        self._blink = blink if blink else None
 
         if np.prod(nplots) == 1:
             nplots = (1, 1)
