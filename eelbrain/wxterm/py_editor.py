@@ -179,6 +179,11 @@ class PyEditor(wx.py.editor.EditorFrame):
     def bufferSaveAs(self):
         "subclass to catch and display errors"
         try:
+            if not hasattr(self.buffer, 'confirmed'):
+                # this caused an exception when saving a new document an
+                # replacing an existing file
+                self.buffer.confirmed = True
+
             cancel = super(PyEditor, self).bufferSaveAs()
         except Exception as exception:
             msg = str(exception) + "\n\n(Check console for more information)"
