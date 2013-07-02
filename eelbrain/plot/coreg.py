@@ -7,13 +7,7 @@ Coregistration for :mod:`mne`.
 '''
 # author: Christian Brodbeck
 
-from copy import deepcopy
-import fnmatch
-import logging
 import os
-import shutil
-import subprocess
-import time
 
 import numpy as np
 from numpy import sin, cos
@@ -32,17 +26,15 @@ from mayavi.core.ui.mayavi_scene import MayaviScene
 
 import mne
 from mne import fiff
-from mne import write_trans
 from mne.fiff import write
 from mne.fiff.constants import FIFF
 
 from .. import load
 from .. import ui
-from ..utils.mne_utils import is_fake_mri
 import _base
 
 __all__ = ['dev_head_viewer', 'dev_head_fitter', 'dev_mri', 'mri_head_viewer',
-           'mri_head_fitter', 'set_nasion', 'is_fake_mri']
+           'mri_head_fitter', 'set_nasion']
 
 
 def get_subjects_dir(subjects_dir):
@@ -272,7 +264,7 @@ class dev_head_fitter:
 
         # HPI points
         pts = filter(lambda d: d['kind'] == FIFF.FIFFV_POINT_HPI, raw.info['dig'])
-        assert [d['ident'] for d in pts] == range(1, 6)
+#         assert [d['ident'] for d in pts] == range(1, 6)
         pts = np.array([d['r'] for d in pts])
         self.HPI = geom(pts)
 
