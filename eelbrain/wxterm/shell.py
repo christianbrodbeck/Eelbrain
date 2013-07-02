@@ -1489,11 +1489,14 @@ class ShellFrame(wx.py.shell.ShellFrame):
 #        with open(self.recent_files_path, 'w') as file:
 #            pickle.dump(self.recent_files, file)
     def recent_menu_update_icons(self):
-        py_icon = Icon('documents/pydoc')
         for item in self.recent_menu.GetMenuItems():
             text = item.GetItemLabelText()
             if text.endswith('.py'):
-                item.SetBitmap(py_icon)
+                item.SetBitmap(Icon('documents/pydoc'))
+            elif text.endswith('startup'):
+                item.SetBitmap(Icon('documents/pydoc-startup'))
+            else:
+                item.SetBitmap(Icon('documents/unknown'))
 
     def RemovePyEditor(self, editor):
         if editor in self.editors:
