@@ -1787,6 +1787,25 @@ class mne_experiment(object):
         src_path = self.get(temp, **{field: src})
         os.link(src_path, dst_path)
 
+    def make_morph_map(self, redo=False, workers=2):
+        """Run the mne_make_morph_map utility
+
+        Parameters
+        ----------
+        redo : bool
+            Redo existing files.
+        workers : int
+            See :meth:`.run_subp()`
+        """
+        cmd = ["mne_make_morph_maps",
+               '--to', self.get('common_brain'),
+               '--from', self.get('mrisubject')]
+
+        if redo:
+            cmd.appen('--redo')
+
+        self.run_subp(cmd, workers=workers)
+
     def make_proj_for_epochs(self, epochs, n_mag=5, save=True, save_plot=True):
         """
         computes the first ``n_mag`` PCA components, plots them, and asks for
