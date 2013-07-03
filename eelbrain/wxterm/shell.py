@@ -35,6 +35,7 @@ from .py_editor import PyEditor
 from .table import TableFrame
 
 
+history_session_hdr = "#  Eelbrain Session:  %s"
 _punctuation = string.punctuation.replace('.', '').replace('_', '')
 
 
@@ -299,11 +300,15 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.fileMenu.Insert(3, ID.SHOW_EXAMPLES, "Open Example...")
         self.Bind(wx.EVT_MENU, self.OnShowExamples, id=ID.SHOW_EXAMPLES)
 
-    # Options > History > Open As Script
-        self.historyMenu.Prepend(ID.SHELL_History2PyDoc, "Open As Script", "Open"
-                                 "the terminal's history as a new Python "
-                                 "document")
-        self.Bind(wx.EVT_MENU, self.OnHistory2PyDoc, id=ID.SHELL_History2PyDoc)
+    # Options > History
+        m = self.historyMenu
+        m.PrependSeparator()
+        m.Prepend(ID.OPEN_HISTORY_CURRENT, "Open Current Session", "Open the "
+                  "history for the current session in a Python document.")
+        m.Prepend(ID.OPEN_HISTORY, "Open As Script", "Openthe terminal's "
+                  "history as a new Python document")
+        self.Bind(wx.EVT_MENU, self.OnOpenHistory, id=ID.OPEN_HISTORY_CURRENT)
+        self.Bind(wx.EVT_MENU, self.OnOpenHistory, id=ID.OPEN_HISTORY)
 
     # edit menu
         if wx.Platform == '__WXMAC__':
@@ -563,7 +568,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.shell.history.pop(-1)
         self.LoadSettings()
         now = datetime.now()
-        info = "#  Eelbrain Session:  %s" % now.isoformat(' ')
+        info = history_session_hdr % now.isoformat(' ')
         self.shell.history.insert(0, info)
 
         # add commands to the shell
@@ -1312,11 +1317,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         else:
             self.help_viewer.HelpLookup(topic)
 
-    def OnHistory2PyDoc(self, event=None):
-        txt = os.linesep.join(reversed(self.shell.history))
-        editor = self.create_py_editor()
-        editor.editor.window.ReplaceSelection(txt)
-
     def OnInsertColor(self, event=None):
         ctup = event.GetValue()
         mplc = tuple([round(c / 256., 3) for c in ctup[:3]])
@@ -1352,6 +1352,19 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnMaximize(self, event=None):
         logging.debug("SHELLFRAME Maximize received")
         self.Resize(ID.SIZE_MAX)
+
+    def OnOpenHistory(self, event):
+        id_ = event.GetId()
+        history = self.shell.history
+        if id_ == ID.OPEN_HISTORY_CURRENT:
+            for i, item in enumerate(history):
+                if item.startswith(history_session_hdr % ""):
+                    history = history[:i + 1]
+                    break
+
+        txt = os.linesep.join(reversed(history))
+        editor = self.create_py_editor()
+        editor.editor.window.ReplaceSelection(txt)
 
     def OnOpenMneGui(self, event):
         Id = event.GetId()
