@@ -152,7 +152,7 @@ _temp = {
         'cov': 'bl',
         'proj-file': '{raw-base}_{proj}-proj.fif',
         'proj-plot': '{raw-base}_{proj}-proj.pdf',
-        'cov-file': '{raw-base}_{cov}-{proj}-cov.fif',
+        'cov-file': '{raw-base}_{cov}-{rej}-{proj}-cov.fif',
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-ico-4-src.fif'),
         'fwd-file': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
