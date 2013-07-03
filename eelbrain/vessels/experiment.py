@@ -71,6 +71,7 @@ import numpy as np
 import mne
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
+from mne.transforms.coreg import scale_labels
 
 from .. import fmtxt
 from .. import load
@@ -80,13 +81,12 @@ from .. import ui
 from ..utils import keydefaultdict
 from ..utils import subp
 from ..utils.com import send_email, Notifier
-from ..utils.mne_utils import is_fake_mri
+from ..utils.mne_utils import is_fake_mri, split_label
 from .data import (var, ndvar, combine, isdatalist, align1,
                    DimensionMismatchError, UTS)
 
 
 __all__ = ['mne_experiment', 'LabelCache']
-
 
 
 class LabelCache(dict):
@@ -185,10 +185,10 @@ _temp = {
                                     '{epoch-desc}_{model}_evoked.pickled'),
 
         # Source space
-        'labeldir': os.path.join('label', 'aparc'),
+        'annot': 'aparc',
+        'label-dir': os.path.join('{mri-dir}', 'label', '{annot}'),
         'hemi': ('lh', 'rh'),
-        'label-file': os.path.join('{mri-dir}', '{labeldir}',
-                                   '{hemi}.{label}.label'),
+        'label-file': os.path.join('{label-dir}', '{hemi}.{label}.label'),
 
         # result output files
         'kind': '',  # analysis kind
@@ -637,27 +637,6 @@ class mne_experiment(object):
             return
 
         self.load_events(add_proj=False)
-
-    def combine_labels(self, target, sources=(), redo=False):
-        """Combine several freesurfer labels into one label
-
-        Parameters
-        ----------
-        target : str
-            name of the target label.
-        sources : sequence of str
-            names of the source labels.
-        redo : bool
-            If the target file already exists, redo the operation and replace
-            it.
-        """
-        tgt = self.get('label-file', label=target)
-        if (not redo) and os.path.exists(tgt):
-            return
-
-        srcs = (self.load_label(label=name) for name in sources)
-        label = reduce(add, srcs)
-        label.save(tgt)
 
     def expand_template(self, temp, values=()):
         """
@@ -1718,6 +1697,81 @@ class mne_experiment(object):
             cmd.append('--overwrite')
         return cmd
 
+    def make_labels(self, redo=False, **kwargs):
+        """
+
+        Notes
+        -----
+        Specific to aparc and will set the
+
+        """
+        mrisubject = self.get('mrisubject', **kwargs)
+        mri_sdir = self.get('mri-sdir')
+        mri_dir = self.get('mri-dir')
+
+        # scaled MRI
+        if is_fake_mri(mri_dir):
+            common_brain = self.get('common_brain')
+            scale_labels(mrisubject, common_brain, overwrite=redo,
+                         subjects_dir=mri_sdir)
+            return
+
+        # original MRI
+        label_dir = self.get('label-dir')
+        if not os.path.exists(label_dir):
+            annot = self.get('annot')
+            subp.mri_annotation2label(mrisubject, annot=annot,
+                                      subjects_dir=mri_sdir)
+
+        # split:  (src, axis, (dst1, ...))
+        # merge:  (dst, (src1, ...))
+        labels = (
+                  # split:
+                  ('superiortemporal', 1, ('pSTG', 'mSTG', 'aSTG')),
+                  ('middletemporal', 1, ('pMTG', 'mMTG', 'aMTG')),
+                  ('inferiortemporal', 1, ('pITG', 'mITG', 'aITG')),
+                  ('fusiform', 1, ('pFFG', 'mFFG', 'aFFG')),
+
+                  # merge:
+                  ('OFC', ('medialorbitofrontal', 'lateralorbitofrontal')),
+                  ('IFG', ('parsopercularis', 'parstriangularis',
+                           'parsorbitalis')),
+                  ('V', ('pericalcarine', 'cuneus', 'lingual',
+                         'lateraloccipital')),
+                  ('LTL', ('superiortemporal', 'middletemporal',
+                           'inferiortemporal')),
+                  ('aTL', ('aSTG', 'aMTG', 'aITG')),
+                  ('mTL', ('mSTG', 'mMTG', 'mITG')),
+                  ('pTL', ('pSTG', 'pMTG', 'pITG')),
+                  ('amTL', ('aTL', 'mTL')),
+                  ('PTL', ('pSTG', 'bankssts', 'pMTG', 'pITG')))
+
+        for item in labels:
+            if len(item) == 3:
+                src, axis, dst_names = item
+                for _ in self.iter('hemi'):
+                    dst_paths = [self.get('label-file', label=name) for name
+                                 in dst_names]
+                    if (not redo) and all(os.path.exists(pth)
+                                          for pth in dst_paths):
+                        continue
+
+                    src_label = self.load_label(label=src)
+
+                    labels = split_label(src_label, axis=axis)
+                    for name, label, path in zip(dst_names, labels, dst_paths):
+                        label.name = name
+                        label.save(path)
+            else:
+                dst, srcs = item
+                dst_file = self.get('label-file', label=dst)
+                if (not redo) and os.path.exists(dst_file):
+                    continue
+
+                src_labels = (self.load_label(label=name) for name in srcs)
+                label = reduce(add, src_labels)
+                label.save(dst_file)
+
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link at the file with the dst value on field, linking to
         the file with the src value of field
@@ -1859,6 +1913,35 @@ class mne_experiment(object):
             raise ValueError(err)
         else:
             self.set(subject=subject)
+
+    def plot_annot(self, annot=None, surf='smoothwm', mrisubject=None,
+                   borders=True, label=True):
+        mrisubject = self.get('mrisubject', mrisubject=mrisubject, match=False)
+        brain = self.plot_brain(surf=surf)
+        brain.add_annotation(self.get('annot', annot=annot), borders=borders)
+
+        if label:
+            if label is True:
+                label = '%s: %s' % (mrisubject, annot)
+            from mayavi import mlab
+            mlab.text(.05, .05, label, color=(0, 0, 0), figure=brain._f)
+
+        return brain
+
+    def plot_brain(self, surf='smoothwm', mrisubject=None, new=True):
+        from mayavi import mlab
+        import surfer
+        self.set_env()
+
+        mrisubject = self.get('mrisubject', mrisubject=mrisubject, match=False)
+        hemi = self.get('hemi')
+
+        opts = dict(background=(1, 1, 1), foreground=(0, 0, 0))
+        figure = mlab.figure()
+        brain = surfer.Brain(mrisubject, hemi, surf, config_opts=opts,
+                             figure=figure)
+        self.brain = brain
+        return brain
 
     def plot_coreg(self, **kwargs):
         from ..plot.coreg import dev_mri
