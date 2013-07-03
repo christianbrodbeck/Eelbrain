@@ -391,6 +391,9 @@ class mne_experiment(object):
     def _update_field_values(self):
         subjects = self.field_values['subject']
         mrisubjects = set(self._mri_subjects[s] for s in subjects)
+        common_brain = self.get('common_brain')
+        if common_brain:
+            mrisubjects.add(common_brain)
         self.field_values.update(mrisubject=mrisubjects)
 
     def add_epochs_stc(self, ds, src='epochs', dst='stc', asndvar=True):
