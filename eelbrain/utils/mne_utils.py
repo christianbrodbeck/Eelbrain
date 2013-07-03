@@ -39,7 +39,7 @@ def is_fake_mri(mri_dir):
         return True
 
 
-def split_label(label, source_space, axis='pca', pieces=3):
+def split_label(label, source_space=None, axis='pca', pieces=3):
     """
     Split an mne Label object into several parts
 
@@ -50,7 +50,7 @@ def split_label(label, source_space, axis='pca', pieces=3):
     ----------
     label : mne Label
         Source label, which is to be split.
-    source_space : dict | str(path)
+    source_space : None | dict | str(path)
         Mne source space or a file containing a source space (*-src.fif,
         *-fwd.fif). The source space is needed to constrain the label to
         those points that are relevant for the source space.
@@ -76,14 +76,18 @@ def split_label(label, source_space, axis='pca', pieces=3):
     if isinstance(label, basestring):
         label = mne.read_label(label)
 
-    # find label coordinates that are in the source space
-    hemi = (label.hemi == 'rh')
-    ss_vert = source_space[hemi]['vertno']
-    idx_in_src = np.array([v in ss_vert for v in label.vertices])
-
     # centered label coordinates
     cpos_all = label.pos - np.mean(label.pos, 0)
-    cpos_in_src = cpos_all[idx_in_src]
+
+    # find label coordinates that are in the source space (if given)
+    if source_space is None:
+        cpos_in_src = cpos_all
+    else:
+        hemi = (label.hemi == 'rh')
+        ss_vert = source_space[hemi]['vertno']
+        idx_in_src = np.array([v in ss_vert for v in label.vertices])
+        cpos_in_src = cpos_all[idx_in_src]
+
 
     if axis == 'pca':
         # project all label coords onto pca-0 of the label's source space coords
