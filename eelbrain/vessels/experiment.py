@@ -1672,6 +1672,19 @@ class mne_experiment(object):
         raw.filter(hp, lp, n_jobs=n_jobs, **kwargs)
         raw.save(dest_file, overwrite=True)
 
+    def make_fwd(self, thread=False):
+        """Make the forward model
+
+        Parameters
+        ----------
+        thread : bool
+            Process files in the background. Warning: nothing will prevent the
+            user from destroying the ongoing process by terminating the Python
+            interpreter. Check :attr:`.queue.unfinished_tasks`.
+        """
+        cmd = self.make_fwd_cmd()
+        self.run_subp(cmd, workers=int(thread))
+
     def make_fwd_cmd(self, redo=False):
         """
         Returns the mne_do_forward_solution command.
@@ -2131,7 +2144,8 @@ class mne_experiment(object):
         cmd : list of str
             The command.
         workers : int
-            The number of workers to create. This parameter is only used the
+            The number of workers to create. For 0, the process is executed in
+            interpreter's thread. If > 0, the parameter is only used the
             first time the method is called.
 
         Notes
@@ -2139,6 +2153,10 @@ class mne_experiment(object):
         The task queue can be inspected in the :attr:`queue` attribute
         """
         if cmd is None:
+            return
+
+        if workers == 0:
+            subprocess.call(cmd)
             return
 
         if not hasattr(self, 'queue'):
