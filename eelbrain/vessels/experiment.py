@@ -1318,7 +1318,7 @@ class mne_experiment(object):
                 path = self.get('epoch-sel-file')
                 if not os.path.exists(path):
                     err = ("The rejection file at %r does not exist. Run "
-                           ".make_epoch_selection() first.")
+                           ".make_epoch_selection() first." % path)
                     raise RuntimeError(err)
                 ds_sel = load.unpickle(path)
                 if not np.all(ds['eventID'] == ds_sel['eventID']):
