@@ -1718,6 +1718,21 @@ class mne_experiment(object):
             cmd.append('--overwrite')
         return cmd
 
+    def make_link(self, temp, field, src, dst, redo=False):
+        """Make a hard link at the file with the dst value on field, linking to
+        the file with the src value of field
+
+        Parameters
+        ----------
+        temp :
+        """
+        dst_path = self.get(temp, **{field: dst})
+        if not redo and os.path.exists(dst_path):
+            return
+
+        src_path = self.get(temp, **{field: src})
+        os.link(src_path, dst_path)
+
     def make_proj_for_epochs(self, epochs, n_mag=5, save=True, save_plot=True):
         """
         computes the first ``n_mag`` PCA components, plots them, and asks for
