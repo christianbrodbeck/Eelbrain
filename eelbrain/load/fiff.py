@@ -49,11 +49,10 @@ import fnmatch
 import numpy as np
 
 import mne
-import mne.minimum_norm as _mn
 
-from eelbrain.vessels.data import var, ndvar, dataset, Sensor, SourceSpace, UTS
-import eelbrain.vessels.colorspaces as _cs
-from eelbrain import ui
+from ..vessels.data import var, ndvar, dataset, Sensor, SourceSpace, UTS
+from ..vessels import colorspaces as _cs
+from .. import ui
 
 __all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
            'mne_events', 'mne_Raw', 'mne_Epochs',  # get mne objects
@@ -61,7 +60,6 @@ __all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
            'epochs_ndvar', 'evoked', 'evoked_ndvar', 'stc', 'stc_ndvar',
            'brainvision_events_to_fiff',
            ]
-
 
 
 def Raw(path=None, proj=False, **kwargs):
@@ -127,7 +125,7 @@ def Raw(path=None, proj=False, **kwargs):
     return raw
 
 
-def events(raw=None, merge= -1, proj=False, name=None,
+def events(raw=None, merge=-1, proj=False, name=None,
            bads=None, stim_channel=None):
     """
     Read events from a raw fiff file.
@@ -196,7 +194,7 @@ def events(raw=None, merge= -1, proj=False, name=None,
     return dataset(eventID, i_start, name=name, info=info)
 
 
-def add_epochs(ds, tstart= -0.1, tstop=0.6, baseline=None,
+def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
                decim=1, mult=1, unit='T', proj=True,
                data='mag', reject=None,
                raw=None, add=True,
@@ -333,67 +331,6 @@ def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
         raw = Raw(raw, proj=proj)
 
     ds.info['raw'] = raw
-
-
-def fiff_mne(ds, fwd='{fif}*fwd.fif', cov='{fif}*cov.fif', label=None, name=None,
-             tstart= -0.1, tstop=0.6, baseline=(None, 0)):
-    """
-    adds data from one label as
-
-    """
-    if name is None:
-        if label:
-            _, lbl = os.path.split(label)
-            lbl, _ = os.path.splitext(lbl)
-            name = lbl.replace('-', '_')
-        else:
-            name = 'stc'
-
-    info = ds.info['info']
-
-    raw = ds.info['raw']
-    fif_name = raw.info['filename']
-    fif_name, _ = os.path.splitext(fif_name)
-    if fif_name.endswith('raw'):
-        fif_name = fif_name[:-3]
-
-    fwd = fwd.format(fif=fif_name)
-    if '*' in fwd:
-        d, n = os.path.split(fwd)
-        names = fnmatch.filter(os.listdir(d), n)
-        if len(names) == 1:
-            fwd = os.path.join(d, names[0])
-        else:
-            raise IOError("No unique fwd file matching %r" % fwd)
-
-    cov = cov.format(fif=fif_name)
-    if '*' in cov:
-        d, n = os.path.split(cov)
-        names = fnmatch.filter(os.listdir(d), n)
-        if len(names) == 1:
-            cov = os.path.join(d, names[0])
-        else:
-            raise IOError("No unique cov file matching %r" % cov)
-
-    fwd = mne.read_forward_solution(fwd, force_fixed=False, surf_ori=True)
-    cov = mne.Covariance(cov)
-    inv = _mn.make_inverse_operator(info, fwd, cov, loose=0.2, depth=0.8)
-    epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline)
-
-    # mne example:
-    snr = 3.0
-    lambda2 = 1.0 / snr ** 2
-
-    if label is not None:
-        label = mne.read_label(label)
-    stcs = _mn.apply_inverse_epochs(epochs, inv, lambda2, dSPM=False, label=label)
-
-    x = np.vstack(s.data.mean(0) for s in stcs)
-    s = stcs[0]
-    dims = ('case', UTS(s.tmin, s.tstep, s.shape[1]))
-    ds[name] = ndvar(x, dims, properties=None, info='')
-
-    return stcs
 
 
 def mne_events(ds=None, i_start='i_start', eventID='eventID'):
@@ -615,18 +552,12 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
     return ndvar(x, dims, properties=properties, name=name)
 
 
-def stc(fname, subject='fsaverage'):
-    "Load an stc as ndvar from a file"
-    stc = mne.read_source_estimate(fname)
-    return stc_ndvar(stc, subject=subject)
-
-
 def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
     """
     create an ndvar object from an mne SourceEstimate object
 
-    stc : SourceEstimate | list of SourceEstimates
-        The source estimate object(s).
+    stc : SourceEstimate | list of SourceEstimates | str
+        The source estimate object(s) or a path to an stc file.
     subject : str
         MRI subject (used for loading MRI in PySurfer plotting)
     name : str | None
@@ -636,6 +567,9 @@ def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
         and vertices.
 
     """
+    if isinstance(stc, basestring):
+        stc = mne.read_source_estimate(stc)
+
     if isinstance(stc, mne.SourceEstimate):
         case = False
         x = stc.data
