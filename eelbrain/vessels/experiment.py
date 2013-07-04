@@ -203,12 +203,12 @@ _temp = {
         'res-sdir': os.path.join('{res-dir}', '{subject}'),
         'res-sfile': os.path.join('{res-sdir}', '{name}'),
 
-         # besa
-         'besa-root': os.path.join('{root}', 'besa'),
-         'besa-trig': os.path.join('{besa-root}', '{subject}', '{subject}_'
-                                   '{experiment}_{epoch-bare}_triggers.txt'),
-         'besa-evt': os.path.join('{besa-root}', '{subject}', '{subject}_'
-                                  '{experiment}_{epoch-nodecim}.evt'),
+        # besa
+        'besa-root': os.path.join('{root}', 'besa'),
+        'besa-trig': os.path.join('{besa-root}', '{subject}', '{subject}_'
+                                  '{experiment}_{epoch-bare}_triggers.txt'),
+        'besa-evt': os.path.join('{besa-root}', '{subject}', '{subject}_'
+                                 '{experiment}_{epoch-nodecim}.evt'),
         }
     }
 
@@ -236,7 +236,7 @@ class mne_experiment(object):
         check for the presence of files for a given templates
     """
     # Experiment Constants
-    # --------------------
+    # ====================
 
     # Bad channels dictionary: (sub, exp) -> list of str
     bad_channels = defaultdict(list)
@@ -325,7 +325,6 @@ class mne_experiment(object):
         parse_subjects : bool
             Find MEG subjects using :attr:`_subjects_loc`
         """
-        self._log_path = os.path.join(root, 'mne-experiment.pickle')
         self._parse_subjects = parse_subjects
 
         # copy class attributes
@@ -401,7 +400,7 @@ class mne_experiment(object):
             raise NotImplementedError(err)
         return epochs[0]
 
-    def add_epochs_stc(self, ds, src='epochs', dst='stc', asndvar=True):
+    def add_epochs_stc(self, ds, src='epochs', dst='stc', ndvar=True):
         """
         Transform epochs contained in ds into source space (adds a list of mne
         SourceEstimates to ds)
@@ -414,7 +413,7 @@ class mne_experiment(object):
             Name of the source epochs in ds.
         dst : str
             Name of the source estimates to be created in ds.
-        asndvar : bool
+        ndvar : bool
             Add the source estimates as ndvar instead of a list of
             SourceEstimate objects.
         """
@@ -429,7 +428,7 @@ class mne_experiment(object):
         inv = self.load_inv(epochs)
         stc = apply_inverse_epochs(epochs, inv, **self._apply_inv_kw)
 
-        if asndvar:
+        if ndvar:
             subject = self.get('mrisubject')
             stc = load.fiff.stc_ndvar(stc, subject, 'stc')
 
@@ -509,6 +508,7 @@ class mne_experiment(object):
             if isinstance(ds[name][0], mne.fiff.Evoked):
                 do.append(name)
 
+        # prepare data containers
         invs = {}
         if ind:
             ind = 'stc' if (ind == True) else str(ind)
@@ -517,6 +517,7 @@ class mne_experiment(object):
             morph = 'stcm' if (morph == True) else str(morph)
             mstcs = defaultdict(list)
 
+        # convert evoked objects
         common_brain = self.get('common_brain')
         mri_sdir = self.get('mri-sdir')
         for case in ds.itercases():
@@ -546,6 +547,7 @@ class mne_experiment(object):
                                          subjects_dir=mri_sdir)
                     mstcs[name].append(stc)
 
+        # add to dataset
         for name in do:
             if ind:
                 if len(do) > 1:
@@ -1100,16 +1102,16 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_epochs(self, epoch=None, asndvar=False, subject=None,
+    def load_epochs(self, epoch=None, ndvar=False, subject=None,
                     add_bads=True, reject=True):
         """
         Load a dataset with epochs for a given epoch definition
 
         Parameters
         ----------
-        epoch : dict
+        epoch : str
             Epoch definition.
-        asndvar : bool | str
+        ndvar : bool | str
             Convert epochs to an ndvar with the given name (if True, 'MEG' is
             uesed).
         subject : None | str
@@ -1140,17 +1142,17 @@ class mne_experiment(object):
         ds = load.fiff.add_mne_epochs(ds, target=target, tmin=tmin, tmax=tmax,
                                       reject=reject_arg, baseline=None,
                                       decim=decim)
-        if asndvar:
-            if asndvar is True:
-                asndvar = 'MEG'
+        if ndvar:
+            if ndvar is True:
+                ndvar = 'meg'
             else:
-                asndvar = str(asndvar)
-            ds[asndvar] = load.fiff.epochs_ndvar(ds[target], name=asndvar)
+                ndvar = str(ndvar)
+            ds[ndvar] = load.fiff.epochs_ndvar(ds[target], name=ndvar)
 
         return ds
 
-    def load_events(self, subject=None, experiment=None, add_proj=True,
-                    add_bads=True, edf=True):
+    def load_events(self, subject=None, add_proj=True, add_bads=True, edf=True,
+                    **kwargs):
         """
         Load events from a raw file.
 
@@ -1159,8 +1161,8 @@ class mne_experiment(object):
 
         Parameters
         ----------
-        subject, experiment : None | str
-            Call self.set(...).
+        subject : str (state)
+            Subject for which to load events.
         add_proj : bool
             Add the projections to the Raw object.
         add_bads : False | True | list
@@ -1170,9 +1172,11 @@ class mne_experiment(object):
         edf : bool
             Loads edf and add it as ``ds.info['edf']``. Edf will only be added
             if ``bool(self.epoch_rejection['edf']) == True``.
+        others :
+            Update state.
         """
         raw = self.load_raw(add_proj=add_proj, add_bads=add_bads,
-                            subject=subject, experiment=experiment)
+                            subject=subject, **kwargs)
 
         evt_file = self.get('raw-evt-file')
         if os.path.exists(evt_file):
@@ -1193,8 +1197,7 @@ class mne_experiment(object):
 
         if subject is None:
             subject = self._state['subject']
-        if experiment is None:
-            experiment = self._state['experiment']
+        experiment = self.get('experiment')
 
         ds = self.label_events(ds, experiment, subject)
         return ds
@@ -1213,6 +1216,8 @@ class mne_experiment(object):
         ndvar : bool | str
             Convert the mne Evoked objects to an ndvar. If True, the target
             name is 'meg'.
+        model : str (state)
+            Model according to which epochs are grouped into evoked responses.
         others :
             State parameters.
         """
@@ -1608,7 +1613,7 @@ class mne_experiment(object):
                    ".epoch_rejection class attribute." % self.get('rej'))
             raise RuntimeError(err)
 
-        ds = self.load_epochs(asndvar=True, add_bads=False, reject=False)
+        ds = self.load_epochs(ndvar=True, add_bads=False, reject=False)
         path = self.get('epoch-sel-file', mkdir=True)
 
         from ..wxgui.MEG import SelectEpochs
