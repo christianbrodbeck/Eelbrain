@@ -566,27 +566,53 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
         Whether to keep EEG data.
     exclude : see mne documentation
         Channels to exclude.
+
+    Notes
+    -----
+    If evoked objects have different channels, the intersection is used (i.e.,
+    only the channels present in all objects are retained).
     """
     if isinstance(evoked, basestring):
         evoked = mne.fiff.Evoked(evoked)
 
     if isinstance(evoked, mne.fiff.Evoked):
-        info = evoked.info
-        x = evoked.data
-        dims = ()
+        picks = mne.fiff.pick_types(evoked.info, meg=meg, eeg=eeg,
+                                    exclude=exclude)
+        x = evoked.data[picks]
+        sensor = sensor_dim(evoked, picks=picks)
+        time = UTS.from_int(evoked.first, evoked.last, evoked.info['sfreq'])
+        dims = (sensor, time)
     else:
-        info = evoked[0].info
-        x = np.array([e.data for e in evoked])
-        dims = ('case',)
-        evoked = evoked[0]
+        e0 = evoked[0]
 
-    picks = mne.fiff.pick_types(info, meg=meg, eeg=eeg, exclude=exclude)
+        # find common channels
+        all_chs = set(e0.info['ch_names'])
+        exclude = set(e0.info['bads'])
+        times = e0.times
+        for e in evoked[1:]:
+            chs = set(e.info['ch_names'])
+            all_chs.update(chs)
+            exclude.update(e.info['bads'])
+            missing = all_chs.difference(chs)
+            exclude.update(missing)
+            if not np.all(e.times == times):
+                raise ValueError("Not all evoked have the same time points.")
 
-    x = x[picks]
-    sensor = sensor_dim(evoked, picks=picks)
-    time = var(evoked.times, name='time')
+        # get data
+        x = []
+        sensor = None
+        for e in evoked:
+            picks = mne.fiff.pick_types(e.info, meg=meg, eeg=eeg,
+                                        exclude=list(exclude))
+            x.append(e.data[picks])
+            if sensor is None:
+                sensor = sensor_dim(e, picks=picks)
+
+        time = UTS.from_int(e0.first, e0.last, e0.info['sfreq'])
+        dims = ('case', sensor, time)
+
     properties = {'colorspace': _cs.get_MEG(2e-13)}
-    return ndvar(x, dims + (sensor, time), properties=properties, name=name)
+    return ndvar(x, dims, properties=properties, name=name)
 
 
 def stc(fname, subject='fsaverage'):
