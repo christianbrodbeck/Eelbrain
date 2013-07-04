@@ -158,9 +158,9 @@ def isdatalist(Y, contains=None, test_all=True):
     is_dl = isinstance(Y, datalist)
     if is_dl and contains:
         if test_all:
-            is_dl = all(isinstance(item, contains) for item in self)
+            is_dl = all(isinstance(item, contains) for item in Y)
         else:
-            is_dl = isinstance(self[0], contains)
+            is_dl = isinstance(Y[0], contains)
     return is_dl
 
 def isfactor(Y):
