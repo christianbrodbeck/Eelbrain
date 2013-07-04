@@ -347,7 +347,7 @@ class mne_experiment(object):
                        "or string" % v)
                 raise TypeError(err)
 
-        self.field_values = field_values
+        self._field_values = field_values
         self._secondary_fields = tuple(secondary)
         self._state = temps
 
@@ -393,14 +393,6 @@ class mne_experiment(object):
                    "%s)" % self.get('epoch'))
             raise NotImplementedError(err)
         return epochs[0]
-
-    def _update_field_values(self):
-        subjects = self.field_values['subject']
-        mrisubjects = sorted(self._mri_subjects[s] for s in subjects)
-        common_brain = self.get('common_brain')
-        if common_brain:
-            mrisubjects.insert(0, common_brain)
-        self.field_values.update(mrisubject=mrisubjects)
 
     def add_epochs_stc(self, ds, src='epochs', dst='stc', asndvar=True):
         """
@@ -641,7 +633,7 @@ class mne_experiment(object):
     def expand_template(self, temp, values=()):
         """
         Expand a template until all its subtemplates are neither in
-        self.field_values nor in ``values``
+        field names or in ``values``
 
         Parameters
         ----------
@@ -653,7 +645,7 @@ class mne_experiment(object):
         while True:
             stop = True
             for name in self._fmt_pattern.findall(temp):
-                if (name in values) or (self.field_values.get(name, False)):
+                if (name in values) or (self._field_values.get(name, False)):
                     pass
                 else:
                     temp = temp.replace('{%s}' % name, self._state[name])
@@ -722,7 +714,7 @@ class mne_experiment(object):
         vmatch : bool
             "Value match":
             Require existence of the assigned value (only applies for variables
-            in self.field_values)
+            with field values)
         match : bool
             Do any matching (i.e., match=False sets fmatch as well as vmatch
             to False).
@@ -803,22 +795,48 @@ class mne_experiment(object):
 
         return desc + ']'
 
-    def iter(self, variables=['subject'], exclude={}, values={}, mail=False,
-             prog=False, **constants):
-        """
-        Cycle the experiment's state through all values on the given variables
+    def get_field_values(self, field, exclude=True):
+        """Find values for a field taking into account exclusion
 
         Parameters
         ----------
-        variables : list | str
+        field : str
+            Field for which to find values.
+        exclude : bool
+            Exclude values based on experiment.exclude.
+        """
+        if field == 'mrisubject':
+            subjects = self.get_field_values('subject', exclude=exclude)
+            mrisubjects = sorted(self._mri_subjects[s] for s in subjects)
+            common_brain = self.get('common_brain')
+            if common_brain:
+                mrisubjects.insert(0, common_brain)
+            return mrisubjects
+
+        values = self._field_values[field]
+        if exclude:
+            exclude = self.exclude.get(field, None)
+        if exclude:
+            values = [v for v in values if not v in exclude]
+
+        return values
+
+    def iter(self, fields=['subject'], exclude={}, values={}, mail=False,
+             prog=False, **constants):
+        """
+        Cycle the experiment's state through all values on the given fields
+
+        Parameters
+        ----------
+        fields : list | str
             Field(s) over which should be iterated.
         exclude : dict  {str: str, str: iterator over str, ...}
             Values to exclude from the iteration with {name: value} and/or
             {name: (sequence of values, )} entries.
         values : dict  {str: iterator over str}
-            Variables with custom values to iterate over (instead of the
-            corresponding values in :attr:`.field_values`) with {name:
-            (sequence of values)} entries
+            Fields with custom values to iterate over (instead of the
+            corresponding field values) with {name: (sequence of values)}
+            entries.
         prog : bool | str
             Show a progress dialog; str for dialog title.
         mail : bool | str
@@ -835,12 +853,12 @@ class mne_experiment(object):
         # set constants
         self.set(**constants)
 
-        if isinstance(variables, basestring):
-            variables = [variables]
-        variables = list(set(variables).difference(constants).union(values))
+        if isinstance(fields, basestring):
+            fields = [fields]
+        fields = list(set(fields).difference(constants).union(values))
 
         # gather possible values to iterate over
-        field_values = self.field_values.copy()
+        field_values = {k: self.get_field_values(k) for k in fields}
         field_values.update(values)
 
         # exclude values
@@ -848,13 +866,12 @@ class mne_experiment(object):
             ex = exclude[k]
             if isinstance(ex, basestring):
                 ex = (ex,)
-            field_values[k] = set(field_values[k]).difference(ex)
+            field_values[k] = [v for v in field_values[k] if not v in ex]
 
-        # pick out the variables to iterate, but drop excluded cases:
+        # pick out the fields to iterate, but drop excluded cases:
         v_lists = []
-        for v in variables:
-            values = set(field_values[v]).difference(self.exclude.get(v, ()))
-            v_lists.append(sorted(values))
+        for field in fields:
+            v_lists.append(field_values[field])
 
         if len(v_lists):
             if prog:
@@ -865,7 +882,7 @@ class mne_experiment(object):
                 prog = True
 
             for v_list in itertools.product(*v_lists):
-                values = dict(zip(variables, v_list))
+                values = dict(zip(fields, v_list))
                 if prog:
                     progm.message(' | '.join(map(str, v_list)))
                 self.set(**values)
@@ -900,7 +917,7 @@ class mne_experiment(object):
         """
         initial_value = self.get(field)
 
-        values = sorted(self.field_values[field])
+        values = self.get_field_values(field)
         if start is not None:
             start = values.index(start)
         if stop is not None:
@@ -1023,8 +1040,8 @@ class mne_experiment(object):
             Return the table as a string (instead of printing it).
         """
         lines = []
-        for key in self.field_values:
-            values = sorted(self.field_values[key])
+        for key in self._field_values:
+            values = self.get_field_values(key)
             line = '%s:' % key
             head_len = len(line) + 1
             while values:
@@ -1924,8 +1941,14 @@ class mne_experiment(object):
                        "experiment._subject_loc." % sub_dir)
                 raise IOError(err)
 
-        self.field_values['subject'] = sorted(subjects)
-        self._update_field_values()
+        subjects = sorted(subjects)
+        self._field_values['subject'] = subjects
+
+        mrisubjects = [self._mri_subjects[s] for s in subjects]
+        common_brain = self.get('common_brain')
+        if common_brain:
+            mrisubjects.insert(0, common_brain)
+        self._field_values['mrisubject'] = mrisubjects
 
         if (subject is not None) and (subject not in subjects):
             err = ("Subject not found: %r" % subject)
@@ -2009,7 +2032,7 @@ class mne_experiment(object):
             see :py:meth:`push`
 
         """
-        subjects = self.field_values['subjects']
+        subjects = self.get_field_values('subjects')
         e = self.__class__(src_root, subjects=subjects,
                            mri_subjects=self._mri_subjects)
         e.push(self.get('root'), names=names, **kwargs)
@@ -2303,7 +2326,7 @@ class mne_experiment(object):
             automatically set to the corresponding mri subject.
         match : bool
             Require existence of the assigned value (only applies for variables
-            for which values are defined in self.field_values). When setting
+            for which values are defined as field values). When setting
             root, find subjects by looking through folder structure.
         add : bool
             If the template name does not exist, add a new key. If False
@@ -2438,8 +2461,8 @@ class mne_experiment(object):
         # test fields with entries in field_values
         if match:
             for k, v in kwargs.iteritems():
-                if ((v is not None) and (k in self.field_values)
-                    and ('*' not in v) and (v not in self.field_values[k])):
+                if ((v is not None) and (k in self._field_values)
+                    and ('*' not in v) and (v not in self._field_values[k])):
                     err = ("Variable {k!r} has no value {v!r}. In order to "
                            "see valid values use e.list_values(); In order to "
                            "set a non-existent value, use e.set({k!s}={v!r}, "
@@ -2514,7 +2537,6 @@ class mne_experiment(object):
             self._mri_subjects[subject] = mri_subject
         if subject == self.get('subject'):
             self._state['mrisubject'] = mri_subject
-        self._update_field_values()
 
     def show_in_finder(self, key, **kwargs):
         "Reveals the file corresponding to the ``key`` template in the Finder."
