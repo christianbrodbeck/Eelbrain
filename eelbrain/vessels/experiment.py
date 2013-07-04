@@ -2296,16 +2296,20 @@ class mne_experiment(object):
             return
 
         if workers == 0:
-            subprocess.call(cmd)
+            env = os.environ.copy()
+            self.set_env(env)
+            subprocess.call(cmd, env=env)
             return
 
         if not hasattr(self, 'queue'):
             self.queue = Queue()
+            env = os.environ.copy()
+            self.set_env(env)
 
             def worker():
                 while True:
                     cmd = self.queue.get()
-                    subprocess.call(cmd)
+                    subprocess.call(cmd, env=env)
                     self.queue.task_done()
 
             for _ in xrange(workers):
@@ -2500,7 +2504,7 @@ class mne_experiment(object):
             self._apply_inv_kw = apply_kw
             self._regularize_inv = regularize_inv
 
-    def set_env(self):
+    def set_env(self, env=os.environ):
         """
         Set environment variables
 
@@ -2508,7 +2512,7 @@ class mne_experiment(object):
 
          - SUBJECTS_DIR
         """
-        os.environ['SUBJECTS_DIR'] = self.get('mri-sdir')
+        env['SUBJECTS_DIR'] = self.get('mri-sdir')
 
     def set_inv(self, ori='free', depth=0.8, reg=False, snr=2, method='dSPM',
                 pick_normal=False):
