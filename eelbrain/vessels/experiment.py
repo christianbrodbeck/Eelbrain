@@ -69,6 +69,7 @@ from warnings import warn
 import numpy as np
 
 import mne
+from mne.baseline import rescale
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
 from mne.transforms.coreg import scale_labels
@@ -83,8 +84,8 @@ from ..utils import keydefaultdict
 from ..utils import subp
 from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri, split_label
-from .data import (var, ndvar, combine, isdatalist, align1,
-                   DimensionMismatchError, UTS)
+from .data import (var, ndvar, combine, isdatalist, DimensionMismatchError,
+                   UTS)
 
 
 __all__ = ['mne_experiment', 'LabelCache']
@@ -483,7 +484,8 @@ class mne_experiment(object):
         time = UTS(stc.tmin, stc.tstep, stc.shape[1])
         ds[key] = ndvar(np.array(x), dims=('case', time))
 
-    def add_evoked_stc(self, ds, ind='stc', morph='stcm', ndvar=False):
+    def add_evoked_stc(self, ds, ind='stc', morph='stcm', baseline=None,
+                       ndvar=False):
         """
         Add an stc (ndvar) to a dataset with an evoked list.
 
@@ -499,6 +501,8 @@ class mne_experiment(object):
         morph : bool | str
             Add stcs for data morphed to the common brain (with str as name,
             otherwise 'stcm').
+        baseline : None | str | tuple
+            Baseline correction in source space.
         ndvar : bool
             Add stcs as ndvar (default is list of mne SourceEstimate objects).
             For individual brain stcs, this option only applies for datasets
@@ -506,6 +510,9 @@ class mne_experiment(object):
         """
         if not (ind or morph):
             return
+
+        if isinstance(baseline, str):
+            raise NotImplementedError
 
         # find vars to work on
         do = []
@@ -544,6 +551,11 @@ class mne_experiment(object):
 
                 # apply inv
                 stc = apply_inverse(evoked, inv, **self._apply_inv_kw)
+
+                # baseline correction
+                if baseline:
+                    rescale(stc._data, stc.times, baseline, 'mean', copy=False)
+
                 if ind:
                     stcs[name].append(stc)
 
@@ -1107,20 +1119,22 @@ class mne_experiment(object):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_epochs(self, epoch=None, ndvar=False, subject=None,
-                    add_bads=True, reject=True):
+    def load_epochs(self, subject=None, baseline=None, ndvar=False,
+                    add_bads=True, reject=True, cat=None, decim=None,
+                    **kwargs):
         """
         Load a dataset with epochs for a given epoch definition
 
         Parameters
         ----------
+        subject : str
+            Subject(s) for which to load evoked files. Can be 'all'a group name
+            or a single subject.
         epoch : str
             Epoch definition.
         ndvar : bool | str
             Convert epochs to an ndvar with the given name (if True, 'MEG' is
             uesed).
-        subject : None | str
-            Subject for which to load the data.
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from self.bad_channels. Alternatively,
@@ -1128,25 +1142,44 @@ class mne_experiment(object):
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
             employed depends on the :attr:`.epoch_rejection` class attribute.
+        cat : list of str or tuple
+            Only load evoked for a certain category (cells on model).
+        decim : None | int
+            override the epoch decim factor.
         """
-        self.set(subject=subject)
-        ds = self.load_selected_events(epoch=epoch, add_bads=add_bads,
-                                       reject=reject)
+        if subject in self.get_field_values('group'):
+            self.set(**kwargs)
+            dss = []
+            for _ in self.iter(group=subject):
+                ds = self.load_epochs(baseline=baseline, ndvar=False,
+                                      add_bads=add_bads, reject=reject,
+                                      cat=cat)
+                dss.append(ds)
 
-        if reject and not self._rej_args.get('manual', False):
-            reject_arg = self._rej_args.get('threshold', None)
-        else:
-            reject_arg = None
+            ds = combine(dss)
+        else:  # single subject
+            self.set(subject=subject, **kwargs)
+            ds = self.load_selected_events(add_bads=add_bads, reject=reject)
+            if reject and not self._rej_args.get('manual', False):
+                reject_arg = self._rej_args.get('threshold', None)
+            else:
+                reject_arg = None
 
-        # load sensor space data
-        epoch = self._epoch_state
-        target = 'epochs'
-        tmin = epoch['tmin']
-        tmax = epoch['tmax']
-        decim = epoch['decim']
-        ds = load.fiff.add_mne_epochs(ds, target=target, tmin=tmin, tmax=tmax,
-                                      reject=reject_arg, baseline=None,
-                                      decim=decim)
+            if cat:
+                model = ds.eval(self.get('model'))
+                idx = model.isin(cat)
+                ds = ds.subset(idx)
+
+            # load sensor space data
+            epoch = self._epoch_state
+            target = 'epochs'
+            tmin = epoch['tmin']
+            tmax = epoch['tmax']
+            decim = decim or epoch['decim']
+            ds = load.fiff.add_mne_epochs(ds, target=target, tmin=tmin,
+                                          tmax=tmax, reject=reject_arg,
+                                          baseline=baseline, decim=decim)
+
         if ndvar:
             if ndvar is True:
                 ndvar = 'meg'
@@ -1154,6 +1187,19 @@ class mne_experiment(object):
                 ndvar = str(ndvar)
             ds[ndvar] = load.fiff.epochs_ndvar(ds[target], name=ndvar)
 
+        return ds
+
+    def load_epochs_stc(self, subject=None, sns_baseline=None,
+                        src_baseline=None, ndvar=False, cat=None):
+        """Load a dataset with stcs for single epochs
+
+        Parameters
+        ----------
+
+        """
+        ds = self.load_epochs(subject, baseline=sns_baseline, ndvar=False,
+                              cat=cat)
+        self.add_epochs_stc(ds, baseline=src_baseline, ndvar=ndvar)
         return ds
 
     def load_events(self, subject=None, add_proj=True, add_bads=True, edf=True,
@@ -1207,7 +1253,8 @@ class mne_experiment(object):
         ds = self.label_events(ds, experiment, subject)
         return ds
 
-    def load_evoked(self, subject=None, ndvar=False, model=None, **kwargs):
+    def load_evoked(self, subject=None, ndvar=False, baseline=None, cat=None,
+                    **kwargs):
         """
         Load a dataset with evoked files for each subject.
 
@@ -1230,7 +1277,7 @@ class mne_experiment(object):
             self.set(**kwargs)
             dss = []
             for _ in self.iter(group=subject):
-                ds = self.load_evoked(ndvar=ndvar)
+                ds = self.load_evoked(ndvar=False, baseline=baseline, cat=cat)
                 dss.append(ds)
 
             ds = combine(dss)
@@ -1248,11 +1295,24 @@ class mne_experiment(object):
                             err.append('%i: %r' % (l, subject[idx].cells))
                         raise DimensionMismatchError(os.linesep.join(err))
 
-            return ds
+        else:  # single subject
+            self.set(subject=subject, **kwargs)
+            path = self.get('evoked-file')
+            ds = load.unpickle(path)
 
-        self.set(subject=subject, model=model, **kwargs)
-        path = self.get('evoked-file')
-        ds = load.unpickle(path)
+            if cat:
+                model = ds.eval(self.get('model'))
+                idx = model.isin(cat)
+                ds = ds.subset(idx)
+
+            # baseline correction
+            if isinstance(baseline, str):
+                raise NotImplementedError
+            elif baseline:
+                if ds.info.get('evoked', ('evoked',)) != ('evoked',):
+                    raise NotImplementedError
+                for e in ds['evoked']:
+                    rescale(e.data, e.times, baseline, 'mean', copy=False)
 
         # convert to ndvar
         if ndvar:
@@ -1270,7 +1330,8 @@ class mne_experiment(object):
         return ds
 
     def load_evoked_stc(self, subject=None, ind=True, morph=False, ndvar=False,
-                        model=None):
+                        sns_baseline=None, src_baseline=None, cat=None,
+                        **kwargs):
         """
         Parameters
         ----------
@@ -1286,11 +1347,17 @@ class mne_experiment(object):
             Add stcs as ndvar (default is list of mne SourceEstimate objects).
             For individual brain stcs, this option only applies for datasets
             with a single subject.
+        sns_baseline : None | str | tuple
+            Sensor space baseline correction.
+        src_baseline : None | str | tuple
+            Source space baseline correctoin.
         others : str
             State parameters.
         """
-        ds = self.load_evoked(subject=subject, ndvar=False, model=model)
-        self.add_evoked_stc(ds, ind=ind, morph=morph, ndvar=ndvar)
+        ds = self.load_evoked(subject=subject, baseline=sns_baseline,
+                              ndvar=False, cat=cat, **kwargs)
+        self.add_evoked_stc(ds, ind=ind, morph=morph, baseline=src_baseline,
+                            ndvar=ndvar)
         return ds
 
     def load_inv(self, fiff, **kwargs):
@@ -1437,82 +1504,6 @@ class mne_experiment(object):
 
         return ds
 
-    def load_sensor_data(self, epoch=None, random=('subject',),
-                         all_subjects=False):
-        """
-        Load sensor data in the form of an Epochs object contained in a dataset
-        """
-        self.set(epoch=epoch)
-        if all_subjects:
-            dss = (self.load_sensor_data(random=random)
-                   for _ in self.iter())
-            ds = combine(dss)
-            return ds
-
-        epochs = self._epochs_state
-        if len(set(ep['name'] for ep in epochs)) < len(epochs):
-            raise ValueError("All epochs need a unique name")
-
-        stim_epochs = defaultdict(list)
-        # {(stimvar, stim) -> [name1, ...]}
-        kwargs = {}
-        e_names = []  # all target epoch names
-        for ep in epochs:
-            name = ep['name']
-            stimvar = ep['stimvar']
-            stim = ep['stim']
-
-            e_names.append(name)
-            stim_epochs[(stimvar, stim)].append(name)
-
-            kw = dict(reject={'mag': 3e-12}, baseline=None, preload=True)
-            for k in ('tmin', 'tmax', 'reject_tmin', 'reject_tmax', 'decim'):
-                if k in ep:
-                    kw[k] = ep[k]
-            kwargs[name] = kw
-
-        # constants
-        ds = self.load_events()
-        edf = ds.info['edf']
-
-        dss = {}  # {tgt_epochs -> dataset}
-        for (stimvar, stim), names in stim_epochs.iteritems():
-            eds = ds.subset(ds[stimvar] == stim)
-            eds.index()
-            for name in names:
-                dss[name] = eds
-
-        for name in e_names:
-            ds = dss[name]
-            kw = kwargs[name]
-            tstart = kw.get('reject_tmin', kw['tmin'])
-            tstop = kw.get('reject_tmax', kw['tmax'])
-            ds = edf.filter(ds, tstart=tstart, tstop=tstop, use=['EBLINK'])
-            dss[name] = ds
-
-        idx = reduce(np.intersect1d, (ds['index'].x for ds in dss.values()))
-
-        for name in e_names:
-            ds = dss[name]
-            ds = align1(ds, idx)
-            ds = load.fiff.add_mne_epochs(ds, **kw)
-            ds.index()
-            dss[name] = ds
-
-        idx = reduce(np.intersect1d, (ds['index'].x for ds in dss.values()))
-
-        for name in e_names:
-            ds = dss[name]
-            ds = align1(ds, idx)
-            dss[name] = ds
-
-        ds = dss.pop(e_names.pop(0))
-        for name in e_names:
-            eds = dss[name]
-            ds[name] = eds[name]
-
-        return ds
-
     def load_ttest(self, group=None, c1=None, c0=0, blc='sns', **kwargs):
         """Load a ttest result.
 
@@ -1648,7 +1639,7 @@ class mne_experiment(object):
 
         from ..wxgui.MEG import SelectEpochs
         ROI = self._rej_args.get('eog_sns', None)
-        SelectEpochs(ds, path=path, ROI=ROI, **kwargs)  # nplots, plotsize,
+        SelectEpochs(ds, data='meg', path=path, ROI=ROI, **kwargs)  # nplots, plotsize,
 
     def make_evoked(self, redo=False, **kwargs):
         """
@@ -1694,10 +1685,12 @@ class mne_experiment(object):
         if len(dss) == 1:
             ds = dss[0]
             ds.rename('epochs', 'evoked')
+            ds.info['evoked'] = ('evoked',)
         else:
             for name, ds in zip(epoch_names, dss):
                 ds.rename('epochs', name)
             ds = combine(dss)
+            ds.info['evoked'] = tuple(epoch_names)
 
         save.pickle(ds, dest)
 
@@ -1837,15 +1830,22 @@ class mne_experiment(object):
         sns_baseline = (None, 0) if blc == 'sns' else None
         src_baseline = (None, 0) if blc == 'src' else None
         model = self.get('model') or None
+        if c1 is None:
+            cat = None
+        elif isinstance(c0, (basestring, tuple)):
+            cat = (c1, c0)
+        else:
+            cat += (c1,)
+        cat = cat or None
         if group in self.get_field_values('group'):
             ds = self.load_evoked_stc(group, ind=False, morph=True, ndvar=True,
                                       sns_baseline=sns_baseline,
-                                      src_baseline=src_baseline)
+                                      src_baseline=src_baseline, cat=cat)
             res = testnd.ttest('stcm', model, c1, c0, match='subject', ds=ds)
         elif group in self.get_field_values('subject'):
             ds = self.load_epochs_stc(group, ndvar=True,
                                       sns_baseline=sns_baseline,
-                                      src_baseline=src_baseline)
+                                      src_baseline=src_baseline, cat=cat)
             res = testnd.ttest('stc', model, c1, c0, ds=ds)
         else:
             err = ("Group %r is neiter a group nor a subject." % group)

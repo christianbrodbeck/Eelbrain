@@ -587,7 +587,7 @@ def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
                 assert np.all(vert_rh == rh)
         x = np.array([s.data for s in stcs])
 
-    time = var(stc.times, name='time')
+    time = UTS(stc.tmin, stc.tstep, stc.shape[1])
     ss = SourceSpace(stc.vertno, subject=subject)
     if case:
         dims = ('case', ss, time)
