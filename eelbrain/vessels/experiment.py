@@ -191,8 +191,10 @@ _temp = {
         'label-file': os.path.join('{label-dir}', '{hemi}.{label}.label'),
 
         # result output files
-        'kind': '',  # analysis kind
-        'analysis': '',  # analysis name
+        # group/subject
+        'group': 'all',  # analysis performed over (can be single subject)
+        'kind': '',  # analysis kind (movie, plot, ...)
+        'analysis': '',  # analysis name (source, ...)
         'name': '',  # file name
         'plot-dir': os.path.join('{root}', 'plots'),
         'png-file': os.path.join('{plot-dir}', '{analysis}', '{name}.png'),
@@ -285,6 +287,8 @@ class mne_experiment(object):
 
     exclude = {}  # field_values to exclude (e.g. subjects)
 
+    groups = {}
+
     owner = None  # email address as string (for notification)
 
     # Pattern for subject names
@@ -324,17 +328,21 @@ class mne_experiment(object):
         self._log_path = os.path.join(root, 'mne-experiment.pickle')
         self._parse_subjects = parse_subjects
 
-        temps = self._get_templates(root=root)
+        # copy class attributes
+        self.groups = self.groups.copy()
+        self.exclude = self.exclude.copy()
 
         # epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
         epoch_rejection.update(self.epoch_rejection)
         self.epoch_rejection = epoch_rejection
 
-        # find special template values:
+        # find template values:
+        temps = self._get_templates(root=root)
         field_values = {}
         field_values['rej'] = tuple(self.epoch_rejection.keys())
-        secondary = []
+        field_values['group'] = self.groups.keys()
+        secondary = []  # exclude when resetting
         for k in temps:
             v = temps[k]
             if v is None:
@@ -360,7 +368,6 @@ class mne_experiment(object):
         # find experiment data structure
         self._mri_subjects = keydefaultdict(lambda k: k)
         self.set(root=root, match=parse_subjects, add=True)
-        self.exclude = self.exclude.copy()
 
         # set initial values
         self._label_cache = LabelCache()
@@ -812,6 +819,10 @@ class mne_experiment(object):
             if common_brain:
                 mrisubjects.insert(0, common_brain)
             return mrisubjects
+        elif field == 'group':
+            values = ['all']
+            values.extend(self.groups.keys())
+            return values
 
         values = self._field_values[field]
         if exclude:
@@ -821,8 +832,8 @@ class mne_experiment(object):
 
         return values
 
-    def iter(self, fields=['subject'], exclude={}, values={}, mail=False,
-             prog=False, **constants):
+    def iter(self, fields=['subject'], exclude={}, values={}, group=None,
+             mail=False, prog=False, **constants):
         """
         Cycle the experiment's state through all values on the given fields
 
@@ -837,6 +848,9 @@ class mne_experiment(object):
             Fields with custom values to iterate over (instead of the
             corresponding field values) with {name: (sequence of values)}
             entries.
+        group : None | str
+            If iterating over subjects, use this group ('all' or a name defined
+            in experiment.groups).
         prog : bool | str
             Show a progress dialog; str for dialog title.
         mail : bool | str
@@ -859,6 +873,10 @@ class mne_experiment(object):
 
         # gather possible values to iterate over
         field_values = {k: self.get_field_values(k) for k in fields}
+        if group and (group != 'all') and ('subject' in field_values):
+            subjects = field_values['subject']
+            group = self.groups[group]
+            field_values['subject'] = [s for s in subjects if s in group]
         field_values.update(values)
 
         # exclude values
@@ -985,6 +1003,18 @@ class mne_experiment(object):
             ds['T'] = ds['i_start'] / sfreq
             ds['SOA'] = var(np.ediff1d(ds['T'].x, 0))
         return ds
+
+    def label_subjects(self, ds):
+        """Label the subjects in ds based on .groups
+
+        Parameters
+        ----------
+        ds : dataset
+            A dataset with 'subject' entry.
+        """
+        subject = ds['subject']
+        for name, subjects in self.groups.iteritems():
+            ds[name] = var(subject.isin(subjects))
 
     def list_files(self, files=['raw-file'], count=True, vars=['subject']):
         """
@@ -1177,19 +1207,19 @@ class mne_experiment(object):
 
         Parameters
         ----------
-        subject : 'all' | str
-            With 'all', a dataset with all subjects is loaded, otherwise a
-            single subject.
+        subject : str
+            Subject(s) for which to load evoked files. Can be 'all'a group name
+            or a single subject.
         ndvar : bool | str
             Convert the mne Evoked objects to an ndvar. If True, the target
             name is 'meg'.
         others :
             State parameters.
         """
-        if subject == 'all':
-            self.set(model=model, **kwargs)
+        if subject in self.get_field_values('group'):
+            self.set(**kwargs)
             dss = []
-            for _ in self.iter(['subject']):
+            for _ in self.iter(group=subject):
                 ds = self.load_evoked(ndvar=ndvar)
                 dss.append(ds)
 
@@ -2465,8 +2495,15 @@ class mne_experiment(object):
         # test fields with entries in field_values
         if match:
             for k, v in kwargs.iteritems():
-                if ((v is not None) and (k in self._field_values)
-                    and ('*' not in v) and (v not in self._field_values[k])):
+                if v is None:
+                    pass
+                elif k not in self._field_values:
+                    pass
+                elif '*' in v:
+                    pass
+                elif (k == 'group') and (v in self.get_field_values('subject')):
+                    pass
+                elif v not in self.get_field_values(k):
                     err = ("Variable {k!r} has no value {v!r}. In order to "
                            "see valid values use e.list_values(); In order to "
                            "set a non-existent value, use e.set({k!s}={v!r}, "
