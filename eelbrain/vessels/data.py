@@ -558,7 +558,7 @@ class var(object):
         """
         Parameters
         ----------
-        x : array-like
+        x : array_like
             Data; is converted with ``np.asarray(x)``
         name : str | None
             Name of the variable
@@ -1465,18 +1465,21 @@ class factor(_effect_):
 class ndvar(object):
     "Container for n-dimensional data."
     _stype_ = "ndvar"
-    def __init__(self, x, dims=('case',), properties=None, name=None):
+    def __init__(self, x, dims=('case',), properties={}, name=None):
         """
         Parameters
         ----------
-        x : array
-            The data
+        x : array_like
+            The data.
         dims : tuple
             The dimensions characterizing the axes of the data. If present,
             ``'case'`` should be provided as a :py:class:`str`, and should
             always occupy the first position.
         properties : dict
-            A dictionary with data properties.
+            A dictionary with data properties (can contain arbitrary
+            information that will be accessible in the properties attribute).
+        name : None | str
+            Name for the ndvar.
 
 
         Notes
@@ -1500,6 +1503,7 @@ class ndvar(object):
         # check data shape
         dims = tuple(dims)
         ndim = len(dims)
+        x = np.asarray(x)
         if ndim != x.ndim:
             err = ("Unequal number of dimensions (data: %i, dims: %i)" %
                    (x.ndim, ndim))
@@ -1528,16 +1532,8 @@ class ndvar(object):
                        "%i in dimension %r" % (dim.name, n, n_dim, dim.name))
                 raise DimensionMismatchError(err)
 
-        state = {'dims': dims,
-                 'x': x,
+        state = {'x': x, 'dims': dims, 'properties': dict(properties),
                  'name': name}
-
-        # store attributes
-        if properties is None:
-            state['properties'] = {}
-        else:
-            state['properties'] = properties.copy()
-
         self.__setstate__(state)
 
     def __setstate__(self, state):
