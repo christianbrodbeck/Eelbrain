@@ -190,18 +190,22 @@ _temp = {
         'hemi': ('lh', 'rh'),
         'label-file': os.path.join('{label-dir}', '{hemi}.{label}.label'),
 
+        # (method) plots
+        'plot-dir': os.path.join('{root}', 'plots'),
+        'plot-file': os.path.join('{plot-dir}', '{analysis}', '{name}.{ext}'),
+
         # result output files
         # group/subject
         'group': 'all',  # analysis performed over (can be single subject)
         'kind': '',  # analysis kind (movie, plot, ...)
         'analysis': '',  # analysis name (source, ...)
         'name': '',  # file name
-        'plot-dir': os.path.join('{root}', 'plots'),
-        'png-file': os.path.join('{plot-dir}', '{analysis}', '{name}.png'),
-        'res-dir': os.path.join('{root}', 'res_{kind}', '{analysis}'),
-        'res-file': os.path.join('{res-dir}', '{name}'),
-        'res-sdir': os.path.join('{res-dir}', '{subject}'),
-        'res-sfile': os.path.join('{res-sdir}', '{name}'),
+        'ext': 'pickled',  # file extension
+
+        'res-gdir': os.path.join('{root}', 'res_{kind}_{experiment}',
+                                 '{analysis}'),
+        'res-dir': os.path.join('{res-gdir}', '{group}'),
+        'res-file': os.path.join('{res-dir}', '{name}.{ext}'),
 
         # besa
         'besa-root': os.path.join('{root}', 'besa'),
@@ -1935,8 +1939,8 @@ class mne_experiment(object):
         """
         self.set(**kwargs)
 
-        fname = self.get('png-file', name='{subject}_{experiment}',
-                         analysis='coreg', mkdir=True)
+        fname = self.get('plot-file', name='{subject}_{experiment}',
+                         analysis='coreg', ext='png', mkdir=True)
         if not redo and os.path.exists(fname):
             return
 
