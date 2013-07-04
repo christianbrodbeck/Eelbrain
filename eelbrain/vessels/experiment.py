@@ -78,6 +78,7 @@ from .. import load
 from .. import plot
 from .. import save
 from .. import ui
+from ..analyze import testnd
 from ..utils import keydefaultdict
 from ..utils import subp
 from ..utils.com import send_email, Notifier
@@ -1512,6 +1513,31 @@ class mne_experiment(object):
 
         return ds
 
+    def load_ttest(self, group=None, c1=None, c0=0, blc='sns', **kwargs):
+        """Load a ttest result.
+
+        Parameters
+        ----------
+        group : str (state)
+            The group to use (group name, or subject name for single subject
+            ttest)
+        c1 : None | str | tuple
+            Test condition (cell in model). If None, the grand average is
+            used and c0 has to be a scalar.
+        c0 : str | scalar
+            Control condition (cell on model) or scalar against which to
+            compare c1.
+        blc : 'sns' | 'src' | None
+            Whether to perform baseline correction in sensor space, source
+            space, or not at all.
+        """
+        group = self.get('group', group=group, **kwargs)
+        name = self._get_ttest_name(c1, c0, blc)
+        src = self.get('res-file', kind='data', analysis='source', name=name,
+                       ext='pickled')
+        res = load.unpickle(src)
+        return res
+
     def make_besa_evt(self, epoch=None, redo=False):
         """Make the trigger and event files needed for besa
 
@@ -1752,6 +1778,133 @@ class mne_experiment(object):
         if redo:
             cmd.append('--overwrite')
         return cmd
+
+    def _get_ttest_name(self, c1, c0, blc):
+        blc = blc or ''
+        if blc not in ('', 'sns', 'src'):
+            raise ValueError("blc = %r" % blc)
+
+        name = '{epoch}_'
+        if c1 is None:
+            self.set(model='')
+            if not np.isscalar(c0):
+                err = ("For tests of the grand average (c1=None), the control "
+                       "condition (c0) needs to be a scalar. Got %r." % c0)
+                raise TypeError(err)
+            name += 'gav'
+        elif isinstance(c1, basestring):
+            name += c1 + '>' + str(c0)
+        elif isinstance(c1, tuple):
+            if not isinstance(c0, tuple):
+                err = "If c1 is a tuple, c0 must also be a tuple (got %r)" % c0
+                raise TypeError(err)
+            name += ','.join(c1) + '>' + ','.join(c0)
+        else:
+            raise TypeError("c1 needs to be None, str or tuple, got %r" % c1)
+
+        if blc:
+            name += '_%s-blc' % blc
+
+        name += '_{raw}_{proj}_{inv}'
+        return name
+
+    def make_ttest(self, group=None, c1=None, c0=0, blc='sns', redo=False,
+                   **kwargs):
+        """Make a t-test movie
+
+        Parameters
+        ----------
+        group : str (state)
+            The group to use (group name, or subject name for single subject
+            ttest)
+        c1 : None | str | tuple
+            Test condition (cell in model). If None, the grand average is
+            used and c0 has to be a scalar.
+        c0 : str | scalar
+            Control condition (cell on model) or scalar against which to
+            compare c1.
+        blc : 'sns' | 'src' | None
+            Whether to perform baseline correction in sensor space, source
+            space, or not at all.
+        """
+        group = self.get('group', group=group, **kwargs)
+        name = self._get_ttest_name(c1, c0, blc)
+        dst = self.get('res-file', kind='data', analysis='source', name=name,
+                       ext='pickled', mkdir=True)
+        if not redo and os.path.exists(dst):
+            return
+
+        sns_baseline = (None, 0) if blc == 'sns' else None
+        src_baseline = (None, 0) if blc == 'src' else None
+        model = self.get('model') or None
+        if group in self.get_field_values('group'):
+            ds = self.load_evoked_stc(group, ind=False, morph=True, ndvar=True,
+                                      sns_baseline=sns_baseline,
+                                      src_baseline=src_baseline)
+            res = testnd.ttest('stcm', model, c1, c0, match='subject', ds=ds)
+        elif group in self.get_field_values('subject'):
+            ds = self.load_epochs_stc(group, ndvar=True,
+                                      sns_baseline=sns_baseline,
+                                      src_baseline=src_baseline)
+            res = testnd.ttest('stc', model, c1, c0, ds=ds)
+        else:
+            err = ("Group %r is neiter a group nor a subject." % group)
+            raise ValueError(err)
+
+        save.pickle(res, dst)
+
+    def make_ttest_movie(self, group=None, c1=None, c0=0, blc='sns', p0=.01,
+                         p1=0.001, view=1, surf=None, redo=False, **kwargs):
+        """
+        Parameters
+        ----------
+        group : str (state)
+            The group to use (group name, or subject name for single subject
+            ttest)
+        c1 : None | str | tuple
+            Test condition (cell in model). If None, the grand average is
+            used and c0 has to be a scalar.
+        c0 : str | scalar
+            Control condition (cell on model) or scalar against which to
+            compare c1.
+        blc : 'sns' | 'src' | None
+            Whether to perform baseline correction in sensor space, source
+            space, or not at all.
+        p0, p1 : scalar, 0 < p < 1
+            P thresholds for color map.
+        view : int
+            View preset for the movie.
+        surf : None | str
+            Surface to use (with None, use the view preset).
+        """
+        group = self.get('group', group=group, **kwargs)
+        name = self._get_ttest_name(c1, c0, blc)
+        plt_name = '_%s' % str(view)
+        if surf:
+            plt_name += surf
+        plt_name += '-{}|{}'.format(str(p0)[2:], str(p1)[2:])
+        dst = self.get('res-file', kind='movie', analysis='source',
+                       name=name + plt_name, ext='mov', mkdir=True)
+        if not redo and os.path.exists(dst):
+            return
+
+        src = self.get('res-file', kind='data', analysis='source', name=name,
+                       ext='pickled')
+        if not os.path.exists(src):
+            self.make_ttest(c1=c1, c0=c0, blc=blc)
+
+        res = load.unpickle(src)
+
+        if surf is None:
+            if view == 1:
+                surf = 'inflated'
+            elif view == 2:
+                surf = 'smoothwm'
+            else:
+                surf = 'inflated'
+
+        p = plot.brain.stat(res.p, res.t, p0=p0, p1=p1, surf=surf)
+        p.save_movie(dst, view=view)
 
     def make_labels(self, redo=False, **kwargs):
         """
