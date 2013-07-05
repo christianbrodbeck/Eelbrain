@@ -2133,6 +2133,9 @@ class mne_experiment(object):
                        "experiment._subject_loc." % sub_dir)
                 raise IOError(err)
 
+        if len(subjects) == 0:
+            err = "No subjects found in %r" % sub_dir
+            raise IOError(err)
         subjects = sorted(subjects)
         self._field_values['subject'] = subjects
 
@@ -2142,11 +2145,14 @@ class mne_experiment(object):
             mrisubjects.insert(0, common_brain)
         self._field_values['mrisubject'] = mrisubjects
 
-        if (subject is not None) and (subject not in subjects):
+        if subject is None:
+            subject = self._state.get('subject', None)
+            if subject not in subjects:
+                subject = subjects[0]
+        elif subject not in subjects:
             err = ("Subject not found: %r" % subject)
             raise ValueError(err)
-        else:
-            self.set(subject=subject)
+        self.set(subject, add=True)  # allow setting mrisubject the first time
 
     def plot_annot(self, annot=None, surf='smoothwm', mrisubject=None,
                    borders=True, label=True):
