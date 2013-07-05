@@ -14,7 +14,8 @@ import numpy as np
 from mayavi import mlab
 import surfer
 
-import _base
+from .. import ui
+from . import _base
 
 
 __all__ = ['activation', 'dspm', 'stc', 'stat']
@@ -73,7 +74,7 @@ def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm',
     if source_estimate.has_case:
         source_estimate = source_estimate.summary()
 
-    return stc(source_estimate, lut, min= -fmax, max=fmax, surf=surf,
+    return stc(source_estimate, lut, min=-fmax, max=fmax, surf=surf,
                colorbar=False, hemi=hemi)
 
 
@@ -101,7 +102,7 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, surf='smoothwm',
         Which hemisphere to plot.
     """
     pmap, lut, vmax = p_lut(p_map, param_map, p0=p0, p1=p1, solid=solid)
-    plot = stc(pmap, colormap=lut, min= -vmax, max=vmax, colorbar=False,
+    plot = stc(pmap, colormap=lut, min=-vmax, max=vmax, colorbar=False,
                surf=surf, hemi=hemi)
     return plot
 
@@ -138,7 +139,7 @@ def activation(source_estimate, a_thresh=None, act_max=None, surf='smoothwm',
     if source_estimate.has_case:
         source_estimate = source_estimate.summary()
 
-    plot = stc(source_estimate, colormap=lut, min= -act_max, max=act_max,
+    plot = stc(source_estimate, colormap=lut, min=-act_max, max=act_max,
                colorbar=False, surf=surf, hemi=hemi)
     return plot
 
