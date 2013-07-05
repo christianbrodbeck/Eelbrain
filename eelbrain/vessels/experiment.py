@@ -2102,6 +2102,31 @@ class mne_experiment(object):
         p.save_views(fname, overwrite=True)
         mlab.close()
 
+    def next(self, field='subject'):
+        """Change field to the next value
+
+        Parameters
+        ----------
+        field :
+        """
+        current = self.get(field)
+        values = self.get_field_values(field)
+        if current in values:
+            idx = values.index(current) + 1
+            if idx == len(values):
+                next_ = values[0]
+                print("The last %s was reached; rewinding to "
+                      "%r" % (field, next_))
+            else:
+                next_ = values[idx]
+                print("%s: %r -> %r" % (field, current, next_))
+        else:
+            err = ("The current %s %r is not in %s "
+                   "values." % (field, current, field))
+            raise RuntimeError(err)
+
+        self.set(**{field: next_})
+
     def parse_dirs(self, subjects=[], parse_subjects=True, subject=None):
         """Find subject names by looking through the directory structure.
 
