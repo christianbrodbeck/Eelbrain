@@ -233,7 +233,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.filehistory = wx.FileHistory(10)
         self.filehistory.Load(config)
 
-    # SHELL initialization
+    # --- SHELL initialization ---
         # put my Shell subclass into wx.py.shell
         wx.py.shell.Shell = Shell
         wx.py.shell.ShellFrame.__init__(self, *args, **kwargs)
@@ -250,6 +250,14 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.experiments = []  # keep track of ExperimentFrames
         self._attached_items = {}
         self.help_viewer = None
+
+        # load history/configuration
+        if len(self.shell.history):
+            self.shell.history.pop(-1)
+        self.LoadSettings()
+        now = datetime.now()
+        info = history_session_hdr % now.isoformat(' ')[:16]
+        self.shell.history.insert(0, info)
 
     # child windows
         x_min, y_min, x_max, y_max = wx.Display().GetGeometry()
@@ -299,13 +307,37 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.fileMenu.Insert(3, ID.SHOW_EXAMPLES, "Open Example...")
         self.Bind(wx.EVT_MENU, self.OnShowExamples, id=ID.SHOW_EXAMPLES)
 
-    # Options > History
-        m = self.historyMenu
+    # add "Open History" to file menu
+        m = self.historyFileMenu = wx.Menu()
+
+        # collect history by date
+        self._history_items = {}
+        i_stop = 0
+        header = history_session_hdr % ""
+        header_len = len(header)
+        for i, line in enumerate(self.shell.history[1:], 1):
+            if line.startswith(header):
+                i_start = i - 1
+                n_items = i_start - i_stop
+                if n_items:
+                    history = self.shell.history[i_start:i_stop:-1]
+                    txt = os.linesep.join(history)
+                    n_lines = txt.count(os.linesep) + 1
+                    name = line[header_len:]
+                    label = name + ' (%i lines)' % n_lines
+                    id_ = wx.NewId()
+                    m.Append(id_, label, "Open history from %s." % label)
+                    self.Bind(wx.EVT_MENU, self.OnOpenHistory, id=id_)
+                    self._history_items[id_] = (name, txt)
+                i_stop = i
+
         m.PrependSeparator()
-        m.Prepend(ID.OPEN_HISTORY_CURRENT, "Open Current Session", "Open the "
+        m.Prepend(ID.OPEN_HISTORY_CURRENT, "Current Session", "Open the "
                   "history for the current session in a Python document.")
-        m.Prepend(ID.OPEN_HISTORY, "Open As Script", "Openthe terminal's "
-                  "history as a new Python document")
+        m.Prepend(ID.OPEN_HISTORY, "Entire History", "Open the entire history "
+                  "as a new Python document.")
+        self.fileMenu.InsertMenu(1, ID.OPEN_HISTORY, "History", m, "Open the "
+                                 "command history in a Python script editor.")
         self.Bind(wx.EVT_MENU, self.OnOpenHistory, id=ID.OPEN_HISTORY_CURRENT)
         self.Bind(wx.EVT_MENU, self.OnOpenHistory, id=ID.OPEN_HISTORY)
 
@@ -562,14 +594,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     # --- Finalize ---
 
-        # load history/configuration
-        if len(self.shell.history):
-            self.shell.history.pop(-1)
-        self.LoadSettings()
-        now = datetime.now()
-        info = history_session_hdr % now.isoformat(' ')
-        self.shell.history.insert(0, info)
-
         # add commands to the shell
         self.global_namespace['attach'] = self.attach
         self.global_namespace['detach'] = self.detach
@@ -723,7 +747,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 if e.IsActive():
                     e.bufferSaveAs()
 
-    def create_py_editor(self, pyfile=None):
+    def create_py_editor(self, pyfile=None, name="Script Editor"):
         """
         Creates and returns a new py_editor object.
 
@@ -747,7 +771,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
         y = area.top
         pos = (x, y)
 
-        editor = PyEditor(self, self, pos=pos, size=size, pyfile=pyfile)
+        editor = PyEditor(self, self, pos=pos, size=size, pyfile=pyfile,
+                          name=name)
 
         editor.Show()
         self.editors.append(editor)
@@ -1360,9 +1385,15 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 if item.startswith(history_session_hdr % ""):
                     history = history[:i + 1]
                     break
+            txt = os.linesep.join(reversed(history))
+            name = "Current Session History"
+        elif id_ == ID.OPEN_HISTORY:
+            txt = os.linesep.join(reversed(history))
+            name = "History"
+        else:
+            name, txt = self._history_items[id_]
 
-        txt = os.linesep.join(reversed(history))
-        editor = self.create_py_editor()
+        editor = self.create_py_editor(name=name)
         editor.editor.window.ReplaceSelection(txt)
 
     def OnOpenMneGui(self, event):

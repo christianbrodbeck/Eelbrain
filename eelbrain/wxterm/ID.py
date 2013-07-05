@@ -45,6 +45,7 @@ INSERT_Path_new = wx.NewId()
 
 OPEN_HISTORY = wx.NewId()
 OPEN_HISTORY_CURRENT = wx.NewId()
+OPEN_HISTORY_PAST = wx.NewId()
 
 PYDOC_NEW = wx.NewId()
 PYDOC_LOAD = wx.NewId()

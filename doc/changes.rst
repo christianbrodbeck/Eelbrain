@@ -9,9 +9,9 @@ WxTerm interface
 
 * The startup script is now managed by Eelbrain and the dataDir setting has 
   been removed (See the preferences to modify the startup script).
-* Command history can now be saved (see the preferences to enable/disable).
-  The *Options/History* menu can now open the complete history as well as the 
-  history for only the current session.
+* Command history is now saved automatically (see the preferences to 
+  enable/disable). The history for saved sessions can be opened from the 
+  *File/History* menu.
 * Executing code is now handled through the new "Exec" Menu with new keyboard 
   shortcuts. In the editor, ``cmd-Enter`` when nothing is selected executes 
   the current line and moves the caret to the next line. This makes it 

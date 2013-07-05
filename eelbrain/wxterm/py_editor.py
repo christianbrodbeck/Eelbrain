@@ -34,13 +34,16 @@ class PyEditor(wx.py.editor.EditorFrame):
     Editor.editor.window is based on StyledTextCtrl
 
     """
-    def __init__(self, parent, shell, pos=(0, 0), size=(640, 840), pyfile=None):
+    def __init__(self, parent, shell, pos=(0, 0), size=(640, 840), pyfile=None,
+                 name=None):
         """
         Parameters
         ----------
         pyfile : bool | str
             Filename, or True in order to display an open file dialog,
             False/None in order to open a new buffer.
+        name : None | str
+            Name for the new buffer.
         """
         shell.active_editor = self
         self.shell = shell
@@ -51,8 +54,8 @@ class PyEditor(wx.py.editor.EditorFrame):
         else:
             filename = None
 
-        super(PyEditor, self).__init__(parent, title="Script Editor", size=size,
-                                     pos=pos, filename=filename)
+        super(PyEditor, self).__init__(parent, title=name or "Script Editor",
+                                       size=size, pos=pos, filename=filename)
 
     # toolbar ---
         tb = self.CreateToolBar(wx.TB_HORIZONTAL)
@@ -141,6 +144,8 @@ class PyEditor(wx.py.editor.EditorFrame):
             self.bufferOpen()
         elif not pyfile:
             self.bufferCreate()
+            if name is not None:
+                self.buffer.name = name
 
         # set icon
         if hasattr(parent, 'eelbrain_icon'):
