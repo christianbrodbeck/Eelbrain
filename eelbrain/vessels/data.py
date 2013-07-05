@@ -4199,8 +4199,8 @@ class UTS(Dimension):
     def __init__(self, tmin, tstep, nsamples):
         self.tmin = tmin
         self.tstep = tstep
-        self.nsamples = int(nsamples)
-        self.times = np.arange(tmin, tmin + tstep * nsamples, tstep)
+        self.nsamples = nsamples = int(nsamples)
+        self.times = tmin + np.arange(nsamples) * tstep
         self.tmax = self.times[-1]
 
     def __getstate__(self):
