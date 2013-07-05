@@ -4197,11 +4197,40 @@ class UTS(Dimension):
     name = 'time'
 
     def __init__(self, tmin, tstep, nsamples):
+        """UTS dimension
+
+        Parameters
+        ----------
+        tmin : scalar
+            First time point (inclusive).
+        tstep : scalar
+            Time step between samples.
+        nsamples : int
+            Number of samples.
+        """
         self.tmin = tmin
         self.tstep = tstep
         self.nsamples = nsamples = int(nsamples)
         self.times = tmin + np.arange(nsamples) * tstep
         self.tmax = self.times[-1]
+
+    @classmethod
+    def from_int(cls, first, last, sfreq):
+        """Create a UTS dimension from sample index and sampling frequency
+
+        Parameters
+        ----------
+        first : int
+            Index of the first sample, relative to 0.
+        last : int
+            Index of the last sample, relative to 0.
+        sfreq : scalar
+            Sampling frequency, in Hz.
+        """
+        tmin = first / sfreq
+        nsamples = last - first + 1
+        tstep = 1. / sfreq
+        return cls(tmin, tstep, nsamples)
 
     def __getstate__(self):
         state = {'tmin': self.tmin,
@@ -4213,7 +4242,6 @@ class UTS(Dimension):
         tmin = state['tmin']
         tstep = state['tstep']
         nsamples = state['nsamples']
-
         self.__init__(tmin, tstep, nsamples)
 
     def __repr__(self):
