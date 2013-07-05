@@ -354,6 +354,43 @@ class stc:
 
         im.make_frame(fname, redo=True)
 
+    def save_movie(self, fname=None, view=1, tstep=0.01, tstart=None,
+                   tstop=None):
+        """Save a movie
+
+        Parameters
+        ----------
+        fname : str | None
+            Path where to save the file (if None, open a save-as dialog).
+        view : list | int
+            list of view names, or an int describing a preset (see below).
+
+        Notes
+        -----
+        View presets:
+
+        1. lateral and medial for both hemispheres, for inflated surface
+        2. lateral and medial for both hemispheres, plus caudal and ventral,
+           for smoothwm surface
+        """
+        if not fname:
+            fname = ui.ask_saveas("Save Movie", "Save Movie",
+                                  [('mov', 'Movie file')])
+            if not fname:
+                return
+
+        if isinstance(view, int):
+            if view == 1:
+                view = [['lh lateral', 'rh lateral'],
+                        ['rh medial', 'lh medial']]
+            elif view == 2:
+                view = [['lh lateral', 'rh lateral', 'caudal'],
+                        ['rh medial', 'lh medial', 'ventral']]
+            else:
+                raise ValueError("Unknown view code: %i" % view)
+
+        self.animate(tstart, tstop, tstep, view, save_mov=fname)
+
     def set_time(self, time):
         "set the time frame displayed (in seconds)"
         if self._lh_visible:
