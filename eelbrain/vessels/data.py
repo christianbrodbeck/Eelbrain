@@ -3059,11 +3059,30 @@ class interaction(_effect_):
         return factor(x, name)
 
     def as_cells(self):
+        """All values as a list of tuples."""
         return [case for case in self]
 
     def as_labels(self, delim=' '):
+        """All values as a list of strings.
+
+        Parameters
+        ----------
+        delim : str
+            Delimiter with which to join the elements of cells.
+        """
         return map(delim.join, self)
 
+    def isin(self, cells):
+        """An index that is true where the interaction equals any of the cells.
+
+        Parameters
+        ----------
+        cells : sequence of tuples
+            Cells for which the index will be true. Cells described as tuples
+            of strings.
+        """
+        is_v = [self == cell for cell in cells]
+        return np.any(is_v, 0)
 
 
 class diff(object):
