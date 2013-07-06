@@ -258,9 +258,9 @@ class ttest:
 
         axis = ct.Y.get_axis('case')
 
-        if isinstance(c0, basestring):  # two samples
-            c1_mean = ct.data[c1].summary(name=c1)
-            c0_mean = ct.data[c0].summary(name=c0)
+        if isinstance(c0, (basestring, tuple)):  # two samples
+            c1_mean = ct.data[c1].summary(name=str(c1))
+            c0_mean = ct.data[c0].summary(name=str(c0))
             diff = c1_mean - c0_mean
             if match:
                 if not ct.within[(c1, c0)]:
