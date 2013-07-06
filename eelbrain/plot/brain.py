@@ -14,6 +14,7 @@ import numpy as np
 from mayavi import mlab
 import surfer
 
+from ..analyze import  testnd
 from .. import ui
 from . import _base
 
@@ -80,7 +81,7 @@ def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm',
 
 
 def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, surf='smoothwm',
-         hemi='both'):
+         hemi='both', dtmin=0.01):
     """
     Plot a statistic in source space.
 
@@ -100,7 +101,11 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, surf='smoothwm',
         Freesurfer surface.
     hemi : 'lh' | 'rh' | 'both'
         Which hemisphere to plot.
+    dtmin : scalar | None
+        Temporal cutoff: minimum duration of p < p0 to display.
     """
+    if dtmin:
+        p_map = testnd.clean_time_axis(p_map, dtmin, below=p0, null=1)
     pmap, lut, vmax = p_lut(p_map, param_map, p0=p0, p1=p1, solid=solid)
     plot = stc(pmap, colormap=lut, min=-vmax, max=vmax, colorbar=False,
                surf=surf, hemi=hemi)

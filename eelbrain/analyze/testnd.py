@@ -28,12 +28,13 @@ Created on Feb 22, 2012
 
 @author: christian
 '''
+from math import ceil
 
 import numpy as np
 import scipy.stats
 from scipy.stats import percentileofscore
 from scipy import ndimage
-from scipy.ndimage import binary_closing
+from scipy.ndimage import binary_closing, binary_erosion, binary_dilation
 
 from .. import fmtxt
 from ..vessels.structure import celltable
@@ -47,6 +48,53 @@ from test import _resample
 __all__ = ['anova', 'cluster_anova', 'cluster_corr', 'corr', 'ttest',
            'f_oneway']
 __test__ = False
+
+
+def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
+    """Clean a parameter map by requiring a threshold value for a minimum time
+    window.
+
+    Parameters
+    ----------
+    pmap : ndvar
+        Parameter map with time axis.
+    dtmin : scalar
+        Minimum duration required
+    below : scalar | None
+        Threshold value for finding clusters: find clusters of values below
+        this threshold.
+    above : scalar | None
+        As ``below``, but for finding clusters above a threshold.
+    null : scalar
+        Value to substitute outside of clusters.
+
+    Returns
+    -------
+    cleaned_map : ndvar
+        A copy of pmap with all values that do not belong to a cluster set to
+        null.
+    """
+    if below is None and above is None:
+        raise TypeError("Need to specify either above or below.")
+    elif below is None:
+        passes_t = pmap.x >= above
+    elif above is None:
+        passes_t = pmap.x <= below
+    else:
+        passes_t = np.logical_and(pmap.x >= above, pmap.x <= below)
+
+    ax = pmap.get_axis('time')
+    di_min = int(ceil(dtmin / pmap.time.tstep))
+    struct_shape = (1,) * ax + (di_min,) + (1,) * (pmap.ndim - ax - 1)
+    struct = np.ones(struct_shape, dtype=int)
+
+    cores = binary_erosion(passes_t, struct)
+    keep = binary_dilation(cores, struct)
+    x = np.where(keep, pmap.x, null)
+
+    properties = pmap.properties.copy()
+    cleaned = ndvar(x, pmap.dims, properties, pmap.name)
+    return cleaned
 
 
 
