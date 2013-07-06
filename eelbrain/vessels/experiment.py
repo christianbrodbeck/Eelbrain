@@ -721,7 +721,8 @@ class mne_experiment(object):
         path = os.path.expanduser(temp)
         return path
 
-    def get(self, temp, fmatch=True, vmatch=True, match=True, mkdir=False, **kwargs):
+    def get(self, temp, fmatch=True, vmatch=True, match=True, mkdir=False,
+            make=False, **kwargs):
         """
         Retrieve a formatted template
 
@@ -747,6 +748,8 @@ class mne_experiment(object):
             to False).
         mkdir : bool
             If the directory containing the file does not exist, create it.
+        make : bool
+            If a requested file does not exists, make it if possible.
         kwargs :
             Set any state values.
         """
@@ -771,6 +774,14 @@ class mne_experiment(object):
             dirname = os.path.dirname(path)
             if not os.path.exists(dirname):
                 os.makedirs(dirname)
+
+        if make and not os.path.exists(path):
+            if temp == 'evoked-file':
+                self.make_evoked()
+            elif temp == 'fwd-file':
+                self.make_fwd()
+            elif temp == 'cov-file':
+                self.make_cov()
 
         return path
 
@@ -1300,7 +1311,7 @@ class mne_experiment(object):
 
         else:  # single subject
             self.set(subject=subject, **kwargs)
-            path = self.get('evoked-file')
+            path = self.get('evoked-file', make=True)
             ds = load.unpickle(path)
 
             if cat:
@@ -1374,8 +1385,9 @@ class mne_experiment(object):
         """
         self.set(**kwargs)
 
-        fwd = mne.read_forward_solution(self.get('fwd-file'), surf_ori=True)
-        cov = mne.read_cov(self.get('cov-file'))
+        fwd_file = self.get('fwd-file', make=True)
+        fwd = mne.read_forward_solution(fwd_file, surf_ori=True)
+        cov = mne.read_cov(self.get('cov-file', make=True))
         if self._regularize_inv:
             cov = mne.cov.regularize(cov, fiff.info)
         inv = make_inverse_operator(fiff.info, fwd, cov, **self._make_inv_kw)
@@ -2062,6 +2074,10 @@ class mne_experiment(object):
         elif raw == 'hp1-lp40':
             self.make_filter(raw, hp=1, lp=40, n_jobs=n_jobs, src='clm',
                              redo=redo)
+        elif raw == 'hp.2-lp40':
+            self.make_filter(raw, hp=0.2, lp=40, n_jobs=n_jobs, src='clm',
+                             redo=redo, l_trans_bandwidth=0.05,
+                             filter_length='20s')
         elif raw == 'hp.1-lp40':
             self.make_filter(raw, hp=0.1, lp=40, n_jobs=n_jobs, src='clm',
                              redo=redo, l_trans_bandwidth=0.05,
