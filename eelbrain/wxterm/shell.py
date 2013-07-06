@@ -304,6 +304,12 @@ class ShellFrame(wx.py.shell.ShellFrame):
                                  "document")
         self.Bind(wx.EVT_MENU, self.OnHistory2PyDoc, id=ID.SHELL_History2PyDoc)
 
+    # edit menu
+        if wx.Platform == '__WXMAC__':
+            id_ = self.editMenu.FindItem('Redo \t')
+            item = self.editMenu.FindItemById(id_)
+            item.SetItemLabel('Redo \tctrl-shift-z')
+
     # MNE Menu
         # (without requiring mne-python to be installed)
         try:
