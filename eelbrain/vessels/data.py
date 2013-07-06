@@ -1669,6 +1669,9 @@ class ndvar(object):
         else:
             index = int(index)
             x = self.x[index]
+            if self.ndim == 1:
+                return x
+
             dims = self.dims[1:]
             if self.name:
                 name = '%s_%i' % (self.name, index)
