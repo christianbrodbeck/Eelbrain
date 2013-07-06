@@ -32,10 +32,10 @@ Created on Feb 22, 2012
 import numpy as np
 import scipy.stats
 from scipy.stats import percentileofscore
-import scipy.ndimage
+from scipy import ndimage
+from scipy.ndimage import binary_closing
 
-from eelbrain import fmtxt
-from eelbrain import vessels as _vsl
+from .. import fmtxt
 from ..vessels.structure import celltable
 from ..vessels import colorspaces as _cs
 from eelbrain.vessels.data import ascategorial, asmodel, asndvar, asvar, ndvar
@@ -115,7 +115,7 @@ class corr:
         dims = Y.dims[1:]
         shape = Y.x.shape[1:]
         properties = Y.properties.copy()
-        cs = _cs.Colorspace(cmap=_cs.cm_xpolar, vmax=1, vmin= -1, contours=pcont, ps=r_ps)
+        cs = _cs.Colorspace(cmap=_cs.cm_xpolar, vmax=1, vmin=-1, contours=pcont, ps=r_ps)
         properties['colorspace'] = cs
         r = ndvar(r.reshape(shape), dims=dims, properties=properties)
 
@@ -160,8 +160,8 @@ class cluster_corr:
         tt = scipy.stats.distributions.t.isf(tp, df)
         tr = tt / np.sqrt(df + tt ** 2)
 
-        cs = _cs.Colorspace(cmap=_cs.cm_xpolar, vmax=1, vmin= -1)
-        cdist = cluster_dist(Y, N=samples, t_upper=tr, t_lower= -tr,
+        cs = _cs.Colorspace(cmap=_cs.cm_xpolar, vmax=1, vmin=-1)
+        cdist = cluster_dist(Y, N=samples, t_upper=tr, t_lower=-tr,
                              tstart=tstart, tstop=tstop, close_time=close_time,
                              unit='r', pmax=pmax, name=name, cs=cs)
 
@@ -315,10 +315,10 @@ class ttest:
 
         properties['colorspace'] = _cs.Colorspace(contours=contours)
         properties['test'] = test_name
-        P = _vsl.data.ndvar(P, dims, properties=properties, name='p')
+        P = ndvar(P, dims, properties=properties, name='p')
 
         properties['colorspace'] = _cs.get_default()
-        T = _vsl.data.ndvar(T, dims, properties=properties, name='T')
+        T = ndvar(T, dims, properties=properties, name='T')
 
         # add Y.name to dataset name
         Yname = getattr(Y, 'name', None)
@@ -639,10 +639,10 @@ class cluster_dist:
         if self.delim:
             cmap[self.delim_idx] = False
         if self.close_time:
-            cmap = cmap | scipy.ndimage.binary_closing(cmap, self.close_time_structure)
+            cmap = cmap | binary_closing(cmap, self.close_time_structure)
 
         # find clusters
-        return scipy.ndimage.label(cmap)
+        return ndimage.label(cmap)
 
     def add_original(self, P):
         """
@@ -654,7 +654,7 @@ class cluster_dist:
 
         # find clusters
         clusters, n = self._find_clusters(P)
-        clusters_v = scipy.ndimage.measurements.sum(P, clusters, xrange(1, n + 1))
+        clusters_v = ndimage.measurements.sum(P, clusters, xrange(1, n + 1))
 
         for i in xrange(n):
             v = clusters_v[i]
@@ -681,7 +681,7 @@ class cluster_dist:
         clusters, n = self._find_clusters(P)
 
         if n:
-            clusters_v = scipy.ndimage.measurements.sum(P, clusters, xrange(1, n + 1))
+            clusters_v = ndimage.measurements.sum(P, clusters, xrange(1, n + 1))
             self.dist[self._i] = np.max(np.abs(clusters_v))
 
         self._i += 1
