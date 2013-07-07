@@ -1962,11 +1962,21 @@ class ndvar(object):
             if np.isscalar(idx):
                 dims[dimax] = None
                 properties[name] = arg
+            elif isinstance(dim, str):
+                dims[dimax] = dim
             else:
                 dims[dimax] = dim[idx]
 
+        # slice the data
+        x = self.x
+        i_max = len(index) - 1
+        for i, idx in enumerate(reversed(index)):
+            if isinstance(idx, slice) and idx == slice(None):
+                continue
+            i_cur = i_max - i
+            x = x[(slice(None),) * i_cur + (idx,)]
+
         # create subdata object
-        x = self.x[index]
         dims = tuple(dim for dim in dims if dim is not None)
         return ndvar(x, dims=dims, name=var_name, properties=properties)
 
