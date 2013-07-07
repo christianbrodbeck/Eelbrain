@@ -176,7 +176,7 @@ _temp = {
         'epoch-bare': None,  # epoch description without decim or rej
         'epoch-nodecim': None,  # epoch description without decim parameter
         'epoch-sel-file': os.path.join('{meg-dir}', 'epoch_sel', '{raw}_'
-                                       '{experiment}_{epoch-desc}_sel.'
+                                       '{experiment}_{epoch-nodecim}_sel.'
                                        'pickled'),
 
         'common_brain': 'fsaverage',
@@ -256,35 +256,36 @@ class mne_experiment(object):
     # Rejection
     # =========
     # how to reject data epochs.
-    # manual : bool
-    #     Whether to use manual supervision. If True, each epoch needs a
-    #     rejection file which can be created using .make_epoch_selection(),
-    #     and no automatic rejection is preformed. If False, epoch are rejected
-    #     automatically.
+    # kind : 'auto', 'manual', 'make'
+    #     How the rejection is derived; 'auto': use the parameters to do the
+    #     selection on the fly; 'manual': manually create a rejection file (use
+    #     the selection GUI .make_epoch_selection()); 'make' a rejection file
+    #     is created by the user
     #
     # For manual rejection
-    # --------------------
+    # ^^^^^^^^^^^^^^^^^^^^
     # eog_sns : list of str
     #     The sensors to plot separately in the rejection GUI.
     #     The default is the two MEG sensors closest to the eyes
     #     for Abu Dhabi KIT data. For NY KIT data those are
     #     ['MEG 143', 'MEG 151'].
+    # decim : int
+    #     Decim factor for the rejection GUI (default is 5).
     #
     # For automatic rejection
-    # -----------------------
+    # ^^^^^^^^^^^^^^^^^^^^^^^
     # threshod : None | dict
     #     the reject argument when loading epochs:
     # edf : list of str
     #     How to use eye tracker information in rejection. True
     #     causes edf files to be loaded but not used
     #     automatically.
-    _epoch_rejection = {'': {},
-                        'man': {
-                                'manual': True,
+    _epoch_rejection = {'': {'kind': None},
+                        'man': {'kind': 'manual',
                                 'eog_sns': ['MEG 087', 'MEG 130'],
+                                'decim': 5,
                                 },
-                        'et': {
-                               'manual': False,
+                        'et': {'kind': 'auto',
                                'threshold': dict(mag=3e-12),
                                'edf': ['EBLINK'],
                                }
@@ -1160,7 +1161,7 @@ class mne_experiment(object):
         else:  # single subject
             self.set(subject=subject, **kwargs)
             ds = self.load_selected_events(add_bads=add_bads, reject=reject)
-            if reject and not self._rej_args.get('manual', False):
+            if reject and self._rej_args['kind'] == 'auto':
                 reject_arg = self._rej_args.get('threshold', None)
             else:
                 reject_arg = None
@@ -1447,9 +1448,8 @@ class mne_experiment(object):
 
         Warning
         -------
-        For automatic rejection (``not self.epoch_rejection.get('manual',
-        False)``): Since no epochs are loaded, no rejection based on
-        thresholding is performed.
+        For automatic rejection: Since no epochs are loaded, no rejection
+        based on thresholding is performed.
         """
         self.set(**kwargs)
         epoch = self._epoch_state
@@ -1472,7 +1472,7 @@ class mne_experiment(object):
             if reject not in (True, 'keep'):
                 raise ValueError("Invalie reject value: %r" % reject)
 
-            if self._rej_args.get('manual', False):
+            if self._rej_args['kind'] in ('manual', 'make'):
                 path = self.get('epoch-sel-file')
                 if not os.path.exists(path):
                     err = ("The rejection file at %r does not exist. Run "
@@ -1629,12 +1629,13 @@ class mne_experiment(object):
         kwargs :
             Kwargs for SelectEpochs
         """
-        if not self._rej_args.get('manual', False):
-            err = ("Epoch rejection for rej=%r is automatic. See the "
+        if not self._rej_args['kind'] == 'manual':
+            err = ("Epoch rejection kind for rej=%r is not manual. See the "
                    ".epoch_rejection class attribute." % self.get('rej'))
             raise RuntimeError(err)
 
-        ds = self.load_epochs(ndvar=True, add_bads=False, reject=False)
+        ds = self.load_epochs(ndvar=True, add_bads=False, reject=False,
+                              decim=self._rej_args.get('decim', 5))
         path = self.get('epoch-sel-file', mkdir=True)
 
         from ..wxgui.MEG import SelectEpochs
