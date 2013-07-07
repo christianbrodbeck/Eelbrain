@@ -1642,7 +1642,9 @@ class mne_experiment(object):
 
         from ..wxgui.MEG import SelectEpochs
         ROI = self._rej_args.get('eog_sns', None)
-        SelectEpochs(ds, data='meg', path=path, ROI=ROI, **kwargs)  # nplots, plotsize,
+        bad_chs = self.bad_channels[self.get('raw-key')]
+        SelectEpochs(ds, data='meg', path=path, ROI=ROI, bad_chs=bad_chs,
+                     **kwargs)  # nplots, plotsize,
 
     def make_evoked(self, redo=False, **kwargs):
         """
