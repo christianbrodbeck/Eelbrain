@@ -1036,7 +1036,8 @@ class mne_experiment(object):
         for name, subjects in self.groups.iteritems():
             ds[name] = var(subject.isin(subjects))
 
-    def list_files(self, files=['raw-file'], count=True, vars=['subject']):
+    def list_files(self, files=['raw-file'], count=True, fields=['subject'],
+                   **kwargs):
         """
         Compile a table about the existence of files by subject
 
@@ -1046,28 +1047,29 @@ class mne_experiment(object):
             The names of the path templates whose existence to list.
         count : bool
             Add a column with a number for each subject.
-        vars : str | list of str
+        fields : str | list of str
             The names of the variables for which to list files (i.e., for each
-            unique combination of ``vars``, list ``files``).
+            unique combination of ``fields``, list ``files``).
         """
         if not isinstance(files, (list, tuple)):
             files = [files]
-        if not isinstance(vars, (list, tuple)):
-            vars = [vars]
+        if not isinstance(fields, (list, tuple)):
+            fields = [fields]
 
-        table = fmtxt.Table('r' * bool(count) + 'l' * (len(vars) + len(files)))
+        ncol = (len(fields) + len(files))
+        table = fmtxt.Table('r' * bool(count) + 'l' * ncol)
         if count:
             table.cell()
-        for name in vars + files:
+        for name in fields + files:
             table.cell(name.capitalize())
         table.midrule()
 
-        for i, _ in enumerate(self.iter(vars)):
+        for i, _ in enumerate(self.iter(fields, **kwargs)):
             if count:
                 table.cell(i)
 
-            for var in vars:
-                table.cell(self.get(var))
+            for field in fields:
+                table.cell(self.get(field))
 
             for temp in files:
                 path = self.get(temp)
