@@ -237,12 +237,13 @@ class SelectEpochs(eelfigure):
         tb.AddControl(btn)
         btn.Bind(wx.EVT_BUTTON, self._OnSaveSelection)
 
-    def _get_page_mean_seg(self):
+    def _get_page_mean_seg(self, sensor=None):
         seg_IDs = self._segs_by_page[self._current_page_i]
         index = np.zeros(self._ds.n_cases, dtype=bool)
         index[seg_IDs] = True
-        index *= self._target
-        mseg = self._data[index].summary()
+        index = np.logical_and(index, self._target)
+        mseg = self._data.summary(case=index)
+        mseg = mseg.subdata(sensor=sensor)
         return mseg
 
     def _get_statusbar_text(self, event):
@@ -486,7 +487,7 @@ class SelectEpochs(eelfigure):
             ax = self._mean_ax = self.figure.add_subplot(nx, ny, nx * ny)
             ax.ID = -1
 
-            mseg = self._mean_seg = self._get_page_mean_seg()
+            mseg = self._mean_seg = self._get_page_mean_seg(sensor=sens_idx)
             self._mean_handle = _ax_bfly_epoch(ax, mseg, **self._bfly_kwargs)
 
         # topomap
