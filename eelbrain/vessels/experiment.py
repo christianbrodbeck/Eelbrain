@@ -2041,6 +2041,32 @@ class mne_experiment(object):
         projs = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
         self.ui_select_projs(projs, epochs, save=save, save_plot=save_plot)
 
+    def make_raw(self, raw='hp1-lp40', redo=False, n_jobs=1):
+        """Make a raw file
+
+        Parameters
+        ----------
+        raw : str
+            Name of the raw file to make.
+        redo : bool
+            If the file already exists, recreate it.
+        n_jobs : int
+            Number of processes for multiprocessing.
+        """
+        self.reset()
+        if raw == 'lp40':
+            self.make_filter(raw, hp=None, lp=40, n_jobs=n_jobs, src='clm',
+                             redo=redo)
+        elif raw == 'hp1-lp40':
+            self.make_filter(raw, hp=1, lp=40, n_jobs=n_jobs, src='clm',
+                             redo=redo)
+        elif raw == 'hp.1-lp40':
+            self.make_filter(raw, hp=0.1, lp=40, n_jobs=n_jobs, src='clm',
+                             redo=redo, l_trans_bandwidth=0.05,
+                             filter_length='20s')
+        else:
+            raise ValueError('raw = %r' % raw)
+
     def ui_select_projs(self, projs, fif_obj, save=True, save_plot=True):
         """
         Plots proj, and asks the user which ones to save.
