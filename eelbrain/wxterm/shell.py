@@ -1176,7 +1176,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 return
 
         if isinstance(path, basestring) and os.path.isfile(path):
-            _, ext = os.path.splitext(path.lower())
+            _, ext = os.path.splitext(path)
+            ext = ext.lower()
             if ext == '.py':
                 self.create_py_editor(pyfile=path)
             elif ext == '.pickled':
@@ -1217,9 +1218,16 @@ class ShellFrame(wx.py.shell.ShellFrame):
                         return
 
             else:
-                msg = "Error: %r is no known file extension." % ext
-                dlg = wx.MessageDialog(self, msg, "Error", wx.OK | wx.ICON_ERROR)
-                dlg.ShowModal()
+                statinfo = os.stat(path)
+                if statinfo.st_size < 100000:
+                    self.create_py_editor(path)
+                else:
+                    msg = ("Error: %r is no known file extension. Since the "
+                           "file is bigger than 100 kb, it was not read as "
+                           "plain text." % ext)
+                    dlg = wx.MessageDialog(self, msg, "Error LOoding File",
+                                           wx.OK | wx.ICON_ERROR)
+                    dlg.ShowModal()
         else:
             msg = "No valid file path: %r" % path
             dlg = wx.MessageDialog(self, msg, "Error", wx.OK | wx.ICON_ERROR)
