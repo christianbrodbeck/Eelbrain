@@ -232,9 +232,11 @@ class SelectEpochs(eelfigure):
         tb.Bind(wx.EVT_CHOICE, self._OnPageChoice)
 
         # forward / backward
-        tb.AddLabelTool(wx.ID_BACKWARD, "Back", Icon("tango/actions/go-previous"))
+        self._backTool = tb.AddLabelTool(wx.ID_BACKWARD, "Back",
+                                         Icon("tango/actions/go-previous"))
         tb.Bind(wx.EVT_TOOL, self._OnBackward, id=wx.ID_BACKWARD)
-        tb.AddLabelTool(wx.ID_FORWARD, "Next", Icon("tango/actions/go-next"))
+        self._nextTool = tb.AddLabelTool(wx.ID_FORWARD, "Next",
+                                         Icon("tango/actions/go-next"))
         tb.Bind(wx.EVT_TOOL, self._OnForward, id=wx.ID_FORWARD)
         if self._n_pages < 2:
             tb.EnableTool(wx.ID_FORWARD, False)
@@ -468,6 +470,8 @@ class SelectEpochs(eelfigure):
         else:
             self._current_page_i = page
             self._page_choice.Select(page)
+            self._nextTool.Enable(page < self._n_pages - 1)
+            self._backTool.Enable(page > 0)
 
         self.figure.clf()
         nrow, ncol = self._nplots
