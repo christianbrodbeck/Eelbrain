@@ -6,6 +6,7 @@ Created on Feb 17, 2012
 
 
 import logging
+import math
 import os
 import time
 
@@ -45,8 +46,8 @@ class SelectEpochs(eelfigure):
     """
     def __init__(self, ds, data='MEG', target='accept', blink=True,
                  path=None, bad_chs=None,
-                 nplots=(6, 6), plotsize=(3, 1.5), fill=True, ROI=None,
-                 mean=True, topo=True, ylim=None, dpi=50):
+                 nplots=16, plotw=3, ploth=1.5, fill=True, ROI=None,
+                 mean=True, topo=True, ylim=None, dpi=60):
         """
         Plots all cases in the collection segment and allows visual selection
         of cases. The selection can be retrieved through the get_selection
@@ -76,8 +77,12 @@ class SelectEpochs(eelfigure):
         bad_chs : None | list
             Bad channels (are excluded from plotting and automatic rejection,
             and saved in ds.info['bad_chs'] when the selection is pickled).
-        nplots : 1 | 2 | (i, j)
-            Number of plots (including topo plots and mean).
+        nplots : int | tuple  (n_row, n_col)
+            Number of plots (including topo plots and mean). If an int n, a
+            square arrangement of n plots is produced. Alternatively, an
+            (n_row, n_col) tuple can be specified.
+        plotw, ploth : scalar
+            Width and height of each plot in inches.
         fill : bool
             Only show the range in the butterfly plots, instead of all traces.
             This is faster for data with many channels.
@@ -90,6 +95,8 @@ class SelectEpochs(eelfigure):
             Show a dynamically updated topographic plot at the bottom right.
         ylim : scalar
             y-limit of the butterfly plots.
+        dpi : scalar
+            Figure DPI (determines figure size).
 
 
         Examples
@@ -123,14 +130,28 @@ class SelectEpochs(eelfigure):
 
         self._blink = blink if blink else None
 
-        if np.prod(nplots) == 1:
-            nplots = (1, 1)
-            mean = False
-            topo = False
-        elif np.prod(nplots) == 2:
-            mean = False
-            if nplots == 2:
-                nplots = (1, 2)
+        if isinstance(nplots, int):
+            if nplots == 1:
+                mean = False
+            elif nplots < 1:
+                raise ValueError("nplots needs to be >= 1; got %r" % nplots)
+            nax = nplots + bool(mean) + bool(topo)
+            nrow = math.ceil(math.sqrt(nax))
+            ncol = int(math.ceil(nax / nrow))
+            nrow = int(nrow)
+            n_per_page = nplots
+        else:
+            nrow, ncol = nplots
+            nax = ncol * nrow
+            if nax == 1:
+                mean = False
+                topo = False
+            elif nax == 2:
+                mean = False
+            elif nax < 1:
+                err = ("nplots=%s: Need at least one plot." % str(nplots))
+                raise ValueError(err)
+            n_per_page = nax - bool(topo) - bool(mean)
 
         if isinstance(target, basestring):
             self._target_name = target
@@ -150,10 +171,9 @@ class SelectEpochs(eelfigure):
         self._path = path
 
     # prepare segments
-        self._nplots = nplots
-        n_per_page = self._n_per_page = np.prod(nplots) - bool(topo) - bool(mean)
-        n_pages = ds.n_cases // n_per_page + bool(ds.n_cases % n_per_page)
-        self._n_pages = n_pages
+        self._nplots = (nrow, ncol)
+        self._n_per_page = n_per_page
+        self._n_pages = n_pages = int(math.ceil(ds.n_cases / n_per_page))
 
         # get a list of IDS for each page
         self._segs_by_page = []
@@ -163,7 +183,7 @@ class SelectEpochs(eelfigure):
             self._segs_by_page.append(range(start, stop))
 
     # init wx frame
-        figsize = (plotsize[0] * nplots[0], plotsize[1] * nplots[1])
+        figsize = (plotw * ncol, ploth * nrow)
         super(self.__class__, self).__init__(figsize=figsize, dpi=dpi)
         self._frame.Bind(wx.EVT_CLOSE, self._OnClose)  # , source=None, id=-1, id2=-1
 
@@ -450,7 +470,7 @@ class SelectEpochs(eelfigure):
             self._page_choice.Select(page)
 
         self.figure.clf()
-        nx, ny = self._nplots
+        nrow, ncol = self._nplots
         seg_IDs = self._segs_by_page[page]
 
         self._current_bad_chs = self._bad_chs[:]
@@ -467,7 +487,7 @@ class SelectEpochs(eelfigure):
             case = self._data.subdata(case=ID, sensor=sens_idx,
                                       name='Epoch %i' % ID)
             state = self._target[ID]
-            ax = self.figure.add_subplot(nx, ny, i + 1, xticks=[0], yticks=[])  # , 'axis_off')
+            ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0], yticks=[])  # , 'axis_off')
             ax._epoch_state = state
 #            ax.set_axis_off()
             h = _ax_bfly_epoch(ax, case, xlabel=None, ylabel=None, state=state,
@@ -484,7 +504,8 @@ class SelectEpochs(eelfigure):
 
         # mean plot
         if self._plot_mean:
-            ax = self._mean_ax = self.figure.add_subplot(nx, ny, nx * ny)
+            plot_i = nrow * ncol
+            ax = self._mean_ax = self.figure.add_subplot(nrow, ncol, plot_i)
             ax.ID = -1
 
             mseg = self._mean_seg = self._get_page_mean_seg(sensor=sens_idx)
@@ -492,7 +513,8 @@ class SelectEpochs(eelfigure):
 
         # topomap
         if self._plot_topo:
-            ax = self._topo_ax = self.figure.add_subplot(nx, ny, nx * ny - self._plot_mean)
+            plot_i = nrow * ncol - self._plot_mean
+            ax = self._topo_ax = self.figure.add_subplot(nrow, ncol, plot_i)
             ax.ID = -2
             ax.set_axis_off()
 
