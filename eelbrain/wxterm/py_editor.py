@@ -28,6 +28,17 @@ class Document(wxDocument):
 wx.py.document.Document = Document
 
 
+# fix Editor class
+class Editor(wx.py.editor.Editor):
+
+    def CallTipShow(self, pos, tip):
+        self.window.CallTipShow(pos, tip)
+
+    def GetColumn(self, pos):
+        return self.window.GetColumn(pos)
+
+wx.py.editor.Editor = Editor
+
 
 class PyEditor(wx.py.editor.EditorFrame):
     """
