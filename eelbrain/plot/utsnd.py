@@ -116,8 +116,8 @@ def _ax_im_array(ax, layers, x='time',  # vmax=None,
     return handles
 
 
-def array(epochs, xlabel=True, ylabel=True,
-          w=4, h=3, dpi=50):
+def array(epochs, Xax=None, xlabel=True, ylabel=True, w=4, h=3, dpi=50,
+          ds=None):
     """
     Plot uts data to a rectangular grid.
 
@@ -132,7 +132,7 @@ def array(epochs, xlabel=True, ylabel=True,
     dpi : int
         Dpi of the figure.
     """
-    epochs = _base.unpack_epochs_arg(epochs, 2)
+    epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
     n_plots = len(epochs)
 #    n = round(np.sqrt(n_plots))
@@ -362,14 +362,16 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
 
 class butterfly(_base.eelfigure):
     "Plot data in a butterfly plot."
-    def __init__(self, epochs, sensors=None, ylim=None, w=4, h=2, dpi=90,
+    def __init__(self, epochs, Xax=None, sensors=None, ylim=None, w=4, h=2, dpi=90,
                  ncol=3, title=None, axtitle='{name}',
-                 xlabel=True, ylabel=True, color=None):
+                 xlabel=True, ylabel=True, color=None, ds=None):
         """
         Parameters
         ----------
         epochs : (list of) ndvar
             Data to plot.
+        Xax : None | categorial
+            Create a separate plot for each cell in this model.
         sensors: None or list of sensor IDs
             sensors to plot (``None`` = all)
         ylim : scalar | (min, max) tuple of scalars
@@ -387,7 +389,7 @@ class butterfly(_base.eelfigure):
             default (``None``): use segment color if available, otherwise
             black; ``True``: alternate colors (mpl default)
         """
-        epochs = _base.unpack_epochs_arg(epochs, 2)
+        epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
         n_plots = len(epochs)
         nrow = math.ceil(n_plots / ncol)

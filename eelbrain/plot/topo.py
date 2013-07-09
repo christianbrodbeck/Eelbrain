@@ -26,9 +26,9 @@ __hide__ = ['cs', 'test', 'utsnd']
 
 class topomap(_base.eelfigure):
     "Plot individual topogeraphies"
-    def __init__(self, epochs, sensors=True, proj='default', vmax=None,
-                 size=5, dpi=100, title="plot.topomap",
-                 res=100, interpolation='nearest'):
+    def __init__(self, epochs, Xax=None, sensors=True, proj='default',
+                 vmax=None, size=5, dpi=100, title="plot.topomap",
+                 res=100, interpolation='nearest', ds=None):
         """
         Plot individual topogeraphies
 
@@ -54,7 +54,7 @@ class topomap(_base.eelfigure):
         interpolation : str
             Matplotlib imshow() parameter for topomaps.
         """
-        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
+        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
 
         # create figure
         n_plots = len(epochs)
@@ -188,10 +188,10 @@ class butterfly(_base.eelfigure):
        the mouse pointer.
 
     """
-    def __init__(self, epochs, size=2, bflywidth=3, dpi=90,
+    def __init__(self, epochs, Xax=None, size=2, bflywidth=3, dpi=90,
                  proj='default', res=100, interpolation='nearest',
                  title=True, xlabel=True, ylabel=True,
-                 color=True, sensors=True, ROI=None, vmax=None):
+                 color=True, sensors=True, ROI=None, vmax=None, ds=None):
         """
         Parameters
         ----------
@@ -222,7 +222,7 @@ class butterfly(_base.eelfigure):
         else:
             frame_title = frame_title % getattr(epochs, 'name', '')
 
-        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 2)
+        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         n_plots = len(epochs)
 
         # create figure
@@ -563,8 +563,8 @@ class array(_base.eelfigure):
      - RMB on a topomap removes the topomap
 
     """
-    def __init__(self, epochs, title=None, height=3, width=2.5, ntopo=3, dpi=100,
-                 ylim=None, t=[]):
+    def __init__(self, epochs, Xax=None, title=None, height=3, width=2.5,
+                 ntopo=3, dpi=100, ylim=None, t=[], ds=None):
         """
         Channel by sample array-plots with topomaps corresponding to
         individual time points.
@@ -593,7 +593,7 @@ class array(_base.eelfigure):
             frame_title = frame_title % getattr(epochs, 'name', '')
 
         # convenience for single segment
-        epochs = _base.unpack_epochs_arg(epochs, 2)
+        epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
         # figure properties
         n_epochs = len(epochs)

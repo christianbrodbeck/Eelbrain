@@ -299,9 +299,9 @@ class stat(_base.subplot_figure):
 
 class uts(_base.subplot_figure):
     "Value by time plot for uts data."
-    def __init__(self, epochs, ncol=3, width=6, height=3, dpi=90,
+    def __init__(self, epochs, Xax=None, ncol=3, width=6, height=3, dpi=90,
                  title='plot.uts.uts', figtitle=None, axtitle='{name}',
-                 ):
+                 ds=None):
         """
         Parameters
         ----------
@@ -311,7 +311,7 @@ class uts(_base.subplot_figure):
             number of columns when plotting multiple axes.
 
         """
-        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
+        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
 
         nplot = len(epochs)
         ncol = min(nplot, ncol)

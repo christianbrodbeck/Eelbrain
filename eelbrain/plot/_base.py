@@ -82,7 +82,7 @@ import PIL
 from ..utils.subp import cmd_exists
 from ..fmtxt import texify
 from .. import vessels as _vsl
-from ..vessels import data as _dt
+from ..vessels.data import ascategorial, asndvar, DimensionMismatchError
 
 try:
     from ..wxutils.mpl_canvas import CanvasFrame
@@ -100,21 +100,64 @@ figs = []  # store callback figures (they need to be preserved)
 show_block_arg = True  # if the mpl figure is used, this is submitted to plt.show(block=show_block_arg)
 
 
-def unpack_epochs_arg(ndvars, ndim, dataset=None, levels=1):
+def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
+    """Unpack the first argument to top-level ndvar plotting functions
+
+    low level functions (``_plt_...``) work with two levels:
+
+     - list of lists axes
+     - list of layers
+
+    Ndvar plotting functions above 1-d UTS level should support the following
+    API:
+
+     - simple ndvar: summary ``plot(meg)``
+     - list of ndvars: summary for each ``plot(meg.as_list())``
+     - ndvar and Xax argument: summary for each  ``plot(meg, Xax=subject)
+     - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
+
+    Parameters
+    ----------
+    Y : ndvar | list
+        the first argument.
+    ndim : int
+        The number of dimensions needed for the plotting function.
+    Xax : None | categorial
+        A model to divide Y into different axes. Xax is currently applied on
+        the first level, i.e., it assumes that Y's first dimension is cases.
+    ds : None | dataset
+        Dataset containing data objects which are provided as str.
+    levels : int
+        Current levels of nesting (0 is the lowest level where the output is a
+        list of layers).
+
+    Returns
+    -------
+    data : list of list of ndvar
+        The processed data to plot.
     """
-    Returns a nested list of epochs (through the summary method)
-    """
-    ndvars = getattr(ndvars, '_default_plot_obj', getattr(ndvars, 'all', ndvars))
-    if not isinstance(ndvars, (tuple, list)):
-        ndvars = [ndvars]
+    if Xax is not None:
+        Xax = ascategorial(Xax, ds=ds)
+        if isinstance(Y, basestring):
+            Y = ds.eval(Y)
+        Ys = []
+        for cell in Xax.cells:
+            v = Y[Xax == cell]
+            v.name = cell
+            Ys.append(v)
+        Y = Ys
+    else:
+        Y = getattr(Y, '_default_plot_obj', getattr(Y, 'all', Y))
+        if not isinstance(Y, (tuple, list)):
+            Y = [Y]
 
     if levels > 0:
-        return [unpack_epochs_arg(v, ndim, dataset, levels - 1) for v in ndvars]
+        return [unpack_epochs_arg(v, ndim, None, ds, levels - 1) for v in Y]
     else:
+        # every value needs to be a ndvar
         out = []
-        for ndvar in ndvars:
-            if isinstance(ndvar, basestring):
-                ndvar = dataset[ndvar]
+        for ndvar in Y:
+            ndvar = asndvar(ndvar, ds=ds)
 
             if ndvar.ndim == ndim + 1:
                 if ndvar.has_case:
@@ -123,15 +166,13 @@ def unpack_epochs_arg(ndvars, ndim, dataset=None, levels=1):
                     else:
                         ndvar = ndvar.summary()
 
-            if ndvar.ndim == ndim:
-                pass
-            else:
+            if ndvar.ndim != ndim:
                 err = ("Plot requires ndim=%i; %r ndim==%i" %
                        (ndim, ndvar, ndvar.ndim))
-                raise _dt.DimensionMismatchError(err)
+                raise DimensionMismatchError(err)
+
             out.append(ndvar)
         return out
-
 
 
 def read_cs_arg(epoch, colorspace=None):
