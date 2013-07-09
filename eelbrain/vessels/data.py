@@ -3666,8 +3666,12 @@ class Sensor(Dimension):
     ----------
     channel_idx : dict
         Dictionary mapping channel names to indexes.
+    locs : array, shape = (n_sensors, 3)
+        Spatial position of all sensors.
     names : list of str
         Ordered list of sensor names.
+    x, y, z : array, len = n_sensors
+        X, y and z positions of the sensors.
 
     Notes
     -----
@@ -4097,6 +4101,18 @@ class Sensor(Dimension):
             nb[i] = idx
 
         return nb
+
+    @property
+    def x(self):
+        return self.locs[:, 0]
+
+    @property
+    def y(self):
+        return self.locs[:, 1]
+
+    @property
+    def z(self):
+        return self.locs[:, 2]
 
 
 
