@@ -31,22 +31,14 @@ class MainApp(wx.App):
     instance.
 
     """
-    def __init__(self, redirect=False, filename=None, **shell_kwargs):
-        """
-        redirect : bool
-            Redirect sys.stdout and sys.stderr; Redirects the output of
-            internal ``print`` commands
-
-        filename :
-            Target for redirected
-
-        """
-        self.shell_kwargs = shell_kwargs
+    def __init__(self):
+        self.config = config = wx.Config("eelbrain")
+        redirect = config.ReadBool('Debug/Redirect', False)
+        filename = config.Read('Debug/Logfile') or None
         wx.App.__init__(self, redirect=redirect, filename=filename)
 
     def OnInit(self):
-        self.shell = ShellFrame(None, title='Eelbrain Shell',
-                                **self.shell_kwargs)
+        self.shell = ShellFrame()
         self.SetTopWindow(self.shell)
         self.shell.Show()
         if wx.__version__ >= '2.9':
@@ -60,6 +52,14 @@ class MainApp(wx.App):
 
         return True
 
+    def BringWindowToFront(self):
+        win = self.shell.get_active_window()
+        if win is None:
+            self.shell.Show()
+            self.shell.Raise()
+        else:
+            win.Raise()
+
     def MacOpenFile(self, fname):
         if not fname.endswith('eelbrain_run.py'):
             self.MacOpenFiles([fname])
@@ -69,3 +69,13 @@ class MainApp(wx.App):
         for filename in filenames:
             if os.path.isfile(filename):
                 self.shell.OnFileOpen(path=filename)
+
+    def MacReopenApp(self):
+        """Called when the doc icon is clicked"""
+        self.BringWindowToFront()
+
+    def OnActivate(self, event):
+        # if this is an activate event, rather than something else, like iconize.
+        if event.GetActive():
+            self.BringWindowToFront()
+        event.Skip()

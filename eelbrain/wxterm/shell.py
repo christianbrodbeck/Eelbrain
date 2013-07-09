@@ -205,7 +205,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
     bufferOpen = 1  # Dummy attr so that py.frame enables Open menu
     bufferNew = 1  # same for New menu command
     bufferClose = 1  # same for Close menu command (handled by OnFileClose)
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parent=None, title='Eelbrain Shell'):
 
     # --- set up PREFERENCES ---
         config = wx.Config("eelbrain")
@@ -219,7 +219,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         # get pyshell dataDir
         config_dir = os.path.join(std_paths.GetUserConfigDir(), 'Eelbrain')
-        kwargs.update(dataDir=config_dir, config=config)
         if not os.path.exists(config_dir):
             os.mkdir(config_dir)
 
@@ -236,7 +235,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
     # --- SHELL initialization ---
         # put my Shell subclass into wx.py.shell
         wx.py.shell.Shell = Shell
-        wx.py.shell.ShellFrame.__init__(self, *args, **kwargs)
+        wx.py.shell.ShellFrame.__init__(self, parent=parent, title=title,
+                                        config=config, dataDir=config_dir)
 
         self.SetStatusText('Eelbrain %s' % __version__)
 
