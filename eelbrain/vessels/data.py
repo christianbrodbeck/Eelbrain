@@ -1551,6 +1551,7 @@ class ndvar(object):
         self.properties = state['properties']
         # derived
         self.ndim = len(dims)
+        self.shape = x.shape
         self._len = len(x)
         self._dim_2_ax = dict(zip(self.dimnames, xrange(self.ndim)))
         # attr
