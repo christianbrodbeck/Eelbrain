@@ -163,7 +163,7 @@ class corr:
         dims = Y.dims[1:]
         shape = Y.x.shape[1:]
         properties = Y.properties.copy()
-        cs = _cs.Colorspace(cmap=_cs.cm_xpolar, vmax=1, vmin=-1, contours=pcont, ps=r_ps)
+        cs = _cs.Colorspace('xpolar', vmax=1, vmin=-1, contours=pcont, ps=r_ps)
         properties['colorspace'] = cs
         r = ndvar(r.reshape(shape), dims=dims, properties=properties)
 
@@ -208,7 +208,7 @@ class cluster_corr:
         tt = scipy.stats.distributions.t.isf(tp, df)
         tr = tt / np.sqrt(df + tt ** 2)
 
-        cs = _cs.Colorspace(cmap=_cs.cm_xpolar, vmax=1, vmin=-1)
+        cs = _cs.Colorspace('xpolar', vmax=1, vmin=-1)
         cdist = cluster_dist(Y, N=samples, t_upper=tr, t_lower=-tr,
                              tstart=tstart, tstop=tstop, close_time=close_time,
                              unit='r', pmax=pmax, name=name, cs=cs)
@@ -420,7 +420,7 @@ class f_oneway:
         Ps = np.reshape(Ps, tuple(len(dim) for dim in dims))
 
         properties = Y.properties.copy()
-        properties['colorspace'] = _cs.get_sig(p=p, contours=contours)
+        properties['colorspace'] = _cs.SigColorspace(p=p, contours=contours)
         properties['test'] = test_name
         p = ndvar(Ps, dims, properties=properties, name=X.name)
 
@@ -455,7 +455,7 @@ class anova:
         fitter = _glm.lm_fitter(X)
 
         properties = Y.properties.copy()
-        properties['colorspace'] = _cs.get_sig(p=p, contours=contours)
+        properties['colorspace'] = _cs.SigColorspace(p=p, contours=contours)
         kwargs = dict(dims=Y.dims[1:], properties=properties)
 
         self.all = []

@@ -2,25 +2,96 @@
 Colorspace objects provide settings for plotting functions.
 
 Besides the :py:class:`Colorspace` class, this module also provides functions
-to create some default colorspaces (the ``get_...`` functions), and the
-colormaps `cm_polar` and `cm_xpolar`:
+to create some default colorspaces (the ``get_...`` functions).
 
-cm_polar
+In addition to matplotlib colormaps, the following names can be used:
+
+"polar"
     white at 0, red for positive and blue for negative values.
-cm_xpolar
+"xpolar"
     like cm_polar, but extends the range by fading red and blue into black at
     extremes
 
 """
 
 import numpy as np
-# import matplotlib.pyplot as plt
 import matplotlib as mpl
+from mpl_toolkits.axisartist.axis_artist import Ticks
 
 
+def colorbars_toFig_row_(cspaces, fig, row, nRows=None):
+    """plots several colorbars into one row of a figure"""
+    # interpret / prepare arguments
+    if nRows == None:
+        nRows = row
+    if not np.iterable(cspaces):
+        cspaces = [cspaces]
+#    nCols = len(cspaces)
+    # plot
+    ysize = 1. / nRows
+    ymin = ysize * (nRows - row + .5)
+    height = ysize / 5
+    xmin = np.r_[0.:len(cspaces)] / len(cspaces) + .1 / len(cspaces)
+    width = .8 / len(cspaces)
+    for i, c in enumerate(cspaces):
+        # ax = fig.add_subplot(nRows, nCols, nCols*(row-1)+i+1)
+        ax = fig.add_axes([xmin[i], ymin, width, height])
+        c.toax(ax)
+        # c.toAxes_(ax)
 
 
-class Colorspace:
+def _make_cmaps():
+    "Create some local colormaps"
+    _cdict = {'red':  [(.0, .0, .0),
+                       (.5, 1., 1.),
+                       (1., 1., 1.)],
+              'green':[(.0, .0, .0),
+                       (.5, 1., 1.),
+                       (1., .0, .0)],
+              'blue': [(.0, 1., 1.),
+                       (.5, 1., 1.),
+                       (1., .0, .0)]}
+    cm_polar = mpl.colors.LinearSegmentedColormap("polar", _cdict)
+    cm_polar.set_bad('w', alpha=0.)
+
+    x = .3
+    _cdict = {'red':  [(0, 0., 0.),
+                       (0 + x, 0., 0.),
+                       (.5, 1., 1.),
+                       (1 - x, 1., 1.),
+                       (1, 0., 0.)],
+              'green':[(0, 0., 0.),
+                       (0 + x, 0., 0.),
+                       (.5, 1., 1.),
+                       (1 - x, 0., 0.),
+                       (1., 0., 0.)],
+              'blue': [(0, 0., 0.),
+                       (0 + x, 1., 1.),
+                       (.5, 1., 1.),
+                       (1 - x, 0., 0.),
+                       (1, .0, .0)]}
+    cm_xpolar = mpl.colors.LinearSegmentedColormap("extended polar", _cdict)
+    cm_xpolar.set_bad('w', alpha=0.)
+
+    cdict = {'red':   [(0.0, 0., 0.),
+                       (0.5, 1., 1.),
+                       (1.0, 0., 0.)],
+             'green': [(0.0, 0., 0.),
+                       (0.5, 0., 0.),
+                       (1.0, 0., 0.)],
+             'blue':  [(0.0, 1., 1.),
+                       (0.5, 0., 0.),
+                       (1.0, 1., 1.)]}
+    cm_phase = mpl.colors.LinearSegmentedColormap("phaseCmap", cdict)
+    cm_phase.set_bad('w', alpha=0.)
+
+    cmaps = {'polar': cm_polar, 'xpolar': cm_xpolar, 'phase': cm_phase}
+    return cmaps
+
+cmaps = _make_cmaps()
+
+
+class Colorspace(object):
     """
     - Stores information for mapping segment data to colors
     - can plot a colorbar for the legend with toax(ax) method
@@ -46,35 +117,57 @@ class Colorspace:
             vmin is not specified, it defaults to -vmax.
 
         """
-        # sort out arguments
-        self.cmap = cmap
-        if cmap:
-            self.vmax = vmax
-            if (vmin is None) and (vmax is not None):
-                vmin = -vmax
-            self.vmin = vmin
+        if (cmap is not None) and not isinstance(cmap, str):
+            raise TypeError("cmap must be None or str, got %r" % cmap)
+        self._cmap_arg = cmap
 
-        self.unit = unit
-        self.ticks = ticks  # = r_[0.:length:samplingrate/testWindowFreq ]
-        self.ticklabels = ticklabels  # = (ticks/samplingrate)-start
-        self.sensor_color = sensor_color
-        self.sensor_marker = sensor_marker
+        # save state attributes that differ from instance
+        self._cbar_data = cbar_data
+
+        # adjust instance attributes
+        if (vmin is None) and (vmax is not None):
+            vmin = -vmax
 
         if cbar_data == 'vrange':
-            self.cbar_data = [(vmin, vmax)]
-        else:
-            self.cbar_data = cbar_data
+            cbar_data = [(vmin, vmax)]
 
-        # contour
+        # save instance attributes
+        self.vmax = vmax
+        self.vmin = vmin
+        self.unit = unit
+        self.ticks = ticks
+        self.ticklabels = ticklabels
+        self.sensor_color = sensor_color
+        self.sensor_marker = sensor_marker
+        self.cbar_data = cbar_data
         self.contours = contours
         self.ps = ps
+
         self.contour_kwargs = {'linestyles': 'solid'}
 
+    def __setstate__(self, state):
+        self.__init__(**state)
+
+    def __getstate__(self):
+        state = dict(cmap=self._cmap_arg, vmax=self.vmax, vmin=self.vmin,
+                     unit=self.unit, ticks=self.ticks,
+                     ticklabels=self.ticklabels,
+                     sensor_color=self.sensor_color,
+                     sensor_marker=self.sensor_marker,
+                     cbar_data=self._cbar_data, contours=self.contours,
+                     ps=self.ps)
+        return state
+
     def __repr__(self):
-        temp = "Colorspace(%s)"
+        temp = "%s(%s)"
+        name = self.__class__.__name__
+        args = self._repr_args()
+        return temp % (name, ', '.join(args))
+
+    def _repr_args(self):
         args = []
-        if self.cmap:
-            args.append("cmap=<%r>" % getattr(self.cmap, 'name', '???'))
+        if self._cmap_arg:
+            args.insert(0, repr(self._cmap_arg))
         if self.vmax is not None:
             args.append("vmax=%s" % self.vmax)
             if self.vmin not in [-self.vmax, None]:
@@ -83,8 +176,19 @@ class Colorspace:
             args.append("contours=%s" % self.contours)
         if self.ps:
             args.append("ps=%s" % self.ps)
+        return args
 
-        return temp % ', '.join(args)
+    @property
+    def cmap(self):
+        if not hasattr(self, '_cmap'):
+            self._cmap = self._make_cmap()
+        return self._cmap
+
+    def _make_cmap(self):
+        if self._cmap_arg is None:
+            return None
+        else:
+            return cmaps.get(self._cmap_arg, self._cmap_arg)
 
     def get_imkwargs(self, vmax=None):
         """
@@ -147,105 +251,27 @@ class Colorspace:
         ax.yaxis.set_visible(False)
 
 
+class SigColorspace(Colorspace):
+    def __init__(self, p=0.5, contours={.01: '.5', .001: '0'}):
+        self._p = p
 
-def colorbars_toFig_row_(cspaces, fig, row, nRows=None):
-    """plots several colorbars into one row of a figure"""
-    # interpret / prepare arguments
-    if nRows == None:
-        nRows = row
-    if not np.iterable(cspaces):
-        cspaces = [cspaces]
-#    nCols = len(cspaces)
-    # plot
-    ysize = 1. / nRows
-    ymin = ysize * (nRows - row + .5)
-    height = ysize / 5
-    xmin = np.r_[0.:len(cspaces)] / len(cspaces) + .1 / len(cspaces)
-    width = .8 / len(cspaces)
-    for i, c in enumerate(cspaces):
-        # ax = fig.add_subplot(nRows, nCols, nCols*(row-1)+i+1)
-        ax = fig.add_axes([xmin[i], ymin, width, height])
-        c.toax(ax)
-        # c.toAxes_(ax)
-
-
-
-
-
-_cdict = {'red':  [(.0, .0, .0),
-                   (.5, 1., 1.),
-                   (1., 1., 1.)],
-          'green':[(.0, .0, .0),
-                   (.5, 1., 1.),
-                   (1., .0, .0)],
-          'blue': [(.0, 1., 1.),
-                   (.5, 1., 1.),
-                   (1., .0, .0)]}
-cm_polar = mpl.colors.LinearSegmentedColormap("polar", _cdict)
-cm_polar.set_bad('w', alpha=0.)
-
-x = .3
-_cdict = {'red':  [(0, 0., 0.),
-                   (0 + x, 0., 0.),
-                   (.5, 1., 1.),
-                   (1 - x, 1., 1.),
-                   (1, 0., 0.)],
-          'green':[(0, 0., 0.),
-                   (0 + x, 0., 0.),
-                   (.5, 1., 1.),
-                   (1 - x, 0., 0.),
-                   (1., 0., 0.)],
-          'blue': [(0, 0., 0.),
-                   (0 + x, 1., 1.),
-                   (.5, 1., 1.),
-                   (1 - x, 0., 0.),
-                   (1, .0, .0)]}
-cm_xpolar = mpl.colors.LinearSegmentedColormap("extended polar", _cdict)
-cm_xpolar.set_bad('w', alpha=0.)
-del x, _cdict
-
-
-def get_default():
-    return Colorspace(cmap=mpl.cm.jet)
-
-
-def get_EEG(vmax=1.5, unit=r'$\mu V$', p='unused', **kwargs):
-    kwargs['cmap'] = cm_xpolar
-    return Colorspace(vmax=vmax, unit=unit, **kwargs)
-
-def get_MEG(vmax=2e-12, unit='Tesla', p='unused', **kwargs):
-    kwargs['cmap'] = cm_xpolar
-    return Colorspace(vmax=vmax, unit=unit, **kwargs)
-
-
-'''
-def phaseCmap():
-    cdict = {'red':[(0.,  .0,  .0),
-                    (.5, 1.,  1.),
-                    (1.,  .0,  .0)],
-         'green':  [(0.0,  0.,  0.),
-                    (.5, 0.,  0.),
-                    (1.0,  0.,   0.)],
-         'blue':   [(0.0,  1.0,  1.0),
-                    (.5,  0.,  0.),
-                    (1.0,  1.,  1.)]}
-    cmap = colors.LinearSegmentedColormap("phaseCmap", cdict)
-    cmap.set_bad('w', alpha=0.)
-    return cmap
-#def phaseColorspace():
-#    return Colorspace( phaseCmap(),
-'''
-
-
-# black, red-yellow for significant
-def get_sig(p=.05, contours={.01: '.5', .001: '0'},
-            vmax='unused', **kwargs):  # intercept vmin/vmax aras
         pstr = str(p)[1:]
-        kwargs['ticks'] = [0, p]
-        kwargs['ticklabels'] = ['0', pstr]
-        kwargs['sensor_color'] = '.5'
-        kwargs['cbar_data'] = [(0, 1.5 * p)]
+        cbar_data = [(0, 1.5 * p)]
+        ticks = [0, p]
+        ticklabels = ['0', pstr]
+        Colorspace.__init__(self, None, 1, 0, contours, sensor_color='.5',
+                            cbar_data=cbar_data, unit='p', ticks=ticks,
+                            ticklabels=ticklabels)
 
+    def __getstate__(self):
+        state = dict(p=self._p, contours=self.contours)
+        return state
+
+    def _repr_args(self):
+        return ['p=%s' % self._p, 'contours=%s' % self.contours]
+
+    def _make_cmap(self):
+        p = self._p
         cdict = {'red':[(0.0, 1., 1.),
                         (p, 1., 0.),
                         (1.0, 0., 0.)],
@@ -257,59 +283,61 @@ def get_sig(p=.05, contours={.01: '.5', .001: '0'},
                         (1.0, 0., 0.)]}
         cmap = mpl.colors.LinearSegmentedColormap("sigCmap", cdict, N=1000)
         cmap.set_bad('w', alpha=0.)
-
-        return Colorspace(vmax=1, vmin=0, unit='p', cmap=cmap, contours=contours,
-                          **kwargs)
+        return cmap
 
 
-# white, red-yellow for significant
-def get_sig_white(p=.05, vmax='unused', **kwargs):
-    pstr = str(p)[1:]
-
-    cdict = {'red':[(0.0, 1., 1.),
-                    (p, 1., 1.),
-                    (1.0, 1., 1.)],
-         'green':  [(0.0, 1., 1.),
-                    (p, .0, 1.),
-                    (1.0, 1., 1.)],
-         'blue':   [(0.0, 0., 0.),
-                    (p, 0., 1.),
-                    (1.0, 1., 1.)]}
-    cmap = mpl.colors.LinearSegmentedColormap("sig White", cdict, N=1000)
-    cmap.set_bad('w', alpha=0.)
-    kwargs['cmap'] = cmap
-
-    return Colorspace(vmax=1, vmin=0, unit='p',
-                      ticks=[0, p], ticklabels=['0', pstr],
-                      sensor_color='.5', cbar_data=[(0, 1.5 * p)],
-                      **kwargs)
+class SigWhiteColorspace(SigColorspace):
+    def _make_cmap(self):
+        p = self._p
+        cdict = {'red':[(0.0, 1., 1.),
+                        (p, 1., 1.),
+                        (1.0, 1., 1.)],
+             'green':  [(0.0, 1., 1.),
+                        (p, .0, 1.),
+                        (1.0, 1., 1.)],
+             'blue':   [(0.0, 0., 0.),
+                        (p, 0., 1.),
+                        (1.0, 1., 1.)]}
+        cmap = mpl.colors.LinearSegmentedColormap("sig White", cdict, N=1000)
+        cmap.set_bad('w', alpha=0.)
+        return cmap
 
 
-def get_symsig(p=.05, contours={.99: '.5', -.99: '.5', .999: '1', -.999: '1'},
-               vmax='unused', **kwargs):
-    pstr = str(p)[1:]
-    cs_kwargs = {'ticks': [-1, -1 + p, 1 - p, 1],
-                 'ticklabels': ['0', pstr, pstr, '0'],
-                 'sensor_color': '.5',
-                 'cbar_data': [(-1, -1 + 2 * p), (1 - 2 * p, 1)],
-                 }
-    cs_kwargs.update(kwargs)
-    if contours:
-        cs_kwargs['contours'] = contours
+class SymSigColorspace(SigColorspace):
+    def __init__(self, p=.05, contours={.99: '.5', -.99: '.5', .999: '1',
+                                        - .999: '1'}):
+        self._p = p
 
-    cdict = {'red':   [(0., 1., 1.),
-                       (p / 2, .25, 0.),
-                       (1. - p / 2, 0., 1.),
-                       (1., 1., 1.)],
-             'green': [(0.0, 0., 0.),
-                       (1. - p / 2, 0., 0.),
-                       (1., 1., 1.)],
-             'blue':  [(.0, 1., 1.),
-                       (p / 2, 1., 0.),
-                       (1.0, 0., 0.)]}
-    cmap = mpl.colors.LinearSegmentedColormap("sigCmapSym", cdict, N=2000)
-    cmap.set_bad('w', alpha=0.)
+        pstr = str(p)[1:]
+        ticks = [-1, -1 + p, 1 - p, 1]
+        ticklabels = ['0', pstr, pstr, '0']
+        cbar_data = [(-1, -1 + 2 * p), (1 - 2 * p, 1)]
+        Colorspace.__init__(self, None, 1, 0, contours, sensor_color='.5',
+                            cbar_data=cbar_data, unit='p', ticks=ticks,
+                            ticklabels=ticklabels)
 
-    return Colorspace(vmax=1, vmin= -1, unit='$p$', cmap=cmap, **cs_kwargs)
+    def _make_cmap(self):
+        p = self._p
+        cdict = {'red':   [(0., 1., 1.),
+                           (p / 2, .25, 0.),
+                           (1. - p / 2, 0., 1.),
+                           (1., 1., 1.)],
+                 'green': [(0.0, 0., 0.),
+                           (1. - p / 2, 0., 0.),
+                           (1., 1., 1.)],
+                 'blue':  [(.0, 1., 1.),
+                           (p / 2, 1., 0.),
+                           (1.0, 0., 0.)]}
+        cmap = mpl.colors.LinearSegmentedColormap("sigCmapSym", cdict, N=2000)
+        cmap.set_bad('w', alpha=0.)
+        return cmap
 
 
+def get_default():
+    return Colorspace('jet')
+
+def get_EEG(vmax=1.5, unit=r'$\mu V$', **kwargs):
+    return Colorspace('xpolar', vmax=vmax, unit=unit, **kwargs)
+
+def get_MEG(vmax=2e-12, unit='Tesla', **kwargs):
+    return Colorspace('xpolar', vmax=vmax, unit=unit, **kwargs)
