@@ -1815,7 +1815,7 @@ class mne_experiment(object):
         if blc:
             name += '_%s-blc' % blc
 
-        name += '_{raw}_{proj}_{inv}'
+        name += '_{raw}_{proj}_{inv}_{cov}'
         return name
 
     def make_ttest(self, group=None, c1=None, c0=0, blc='sns', redo=False,
