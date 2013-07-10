@@ -149,10 +149,10 @@ class HelpViewer(wx.Frame):
          - an object -> display help for the object based on its doc-string
 
         """
-        if topic:
-            name = self.help_panel.add_object(topic)
-        else:
+        if topic is None:
             name = 'Start Page'
+        else:
+            name = self.help_panel.add_object(topic)
 
         self.display(name)
 
