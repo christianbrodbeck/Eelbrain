@@ -26,6 +26,7 @@ from .. import fmtxt
 from .. import ui
 from ..utils import print_funcs
 from ..wxutils import Icon, droptarget
+from ..wxutils.mpl_canvas import CanvasFrame
 from . import ID
 from .about_dialog import AboutFrame
 from .help import HelpViewer
@@ -420,7 +421,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         m.Append(ID.PYPLOT_CLOSEALL, "Close All Plots",
                  "Closes all Matplotlib plots.")
-        self.Bind(wx.EVT_MENU, self.OnP_CloseAll, id=ID.PYPLOT_CLOSEALL)
+        self.Bind(wx.EVT_MENU, self.OnCloseAllPlots, id=ID.PYPLOT_CLOSEALL)
 
         # shell resizing
         m.AppendSeparator()
@@ -746,6 +747,12 @@ class ShellFrame(wx.py.shell.ShellFrame):
             for e in self.editors:
                 if e.IsActive():
                     e.bufferSaveAs()
+
+    def CloseAllPlots(self):
+        plt.close('all')
+        for frame in self.Children:
+            if isinstance(frame, CanvasFrame):
+                frame.Close()
 
     def create_py_editor(self, pyfile=None, name="Script Editor"):
         """
@@ -1090,6 +1097,9 @@ class ShellFrame(wx.py.shell.ShellFrame):
         else:
             self.SaveSettings()
             event.Skip()
+
+    def OnCloseAllPlots(self, event):
+        self.CloseAllPlots()
 
     def OnComment(self, event):
         win = self.get_active_window()
@@ -1450,9 +1460,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         if plt.get_backend() == 'WXAgg':
             plt.show()
 
-    def OnP_CloseAll(self, event=None):
-        plt.close('all')
-
     def OnQuit(self, event=None):
         logging.debug("WxTerm Shell OnQuit")
 
@@ -1466,7 +1473,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
         if self.help_viewer:
             self.help_viewer.Close()
-        self.OnP_CloseAll()
+        self.CloseAllPlots()
         ui.kill_progress_monitors()
 
         self.Close(force=True)
