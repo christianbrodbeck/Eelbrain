@@ -219,7 +219,7 @@ class CanvasFrame(wx.Frame):
 
     def OnClose(self, event):
         # remove circular reference
-        if self._eelfigure:
+        if hasattr(self, '_eelfigure') and self._eelfigure:
             del self._eelfigure._frame
             del self._eelfigure
         event.Skip()

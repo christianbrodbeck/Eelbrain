@@ -6,8 +6,6 @@ import wx
 from eelbrain import fmtxt
 from eelbrain import ui
 from eelbrain.wxutils import Icon
-from eelbrain.wxutils.mpl_canvas import CanvasFrame
-
 
 
 class PyplotManager(wx.MiniFrame):
@@ -144,10 +142,7 @@ class PyplotManager(wx.MiniFrame):
 
     def OnCloseAll(self, event):
         "Close all open figures"
-        P.close('all')
-        for frame in self.Parent.Children:
-            if isinstance(frame, CanvasFrame):
-                frame.Close()
+        self.Parent.CloseAllPlots()
 
     def OnCloseWindow(self, event):
         "Hides the window instead of destroying it"
