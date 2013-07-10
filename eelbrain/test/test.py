@@ -10,21 +10,13 @@ import numpy as np
 import scipy.stats
 from matplotlib import pyplot as P
 
-from eelbrain import fmtxt
-from eelbrain.vessels.data import (isvar, isndvar, asvar, isfactor, asfactor,
-                                   ismodel, iscategorial, cell_label)
-from eelbrain.vessels.structure import celltable
-
-# these should be available here
-from glm import anova, ancova
+from .. import fmtxt
+from ..vessels.data import (isvar, isndvar, asvar, isfactor, asfactor, ismodel,
+                            iscategorial, cell_label)
+from ..vessels.structure import celltable
 
 
-__hide__ = ['division', 'random', 'itertools', 'scipy',
-            'fmtxt', 'texstr',
-            'var', 'isvar', 'asvar', 'isfactor', 'asfactor', 'ismodel', 'celltable',
-            ]
 __test__ = False
-
 
 
 def lilliefors(data, formatted=False, **kwargs):
@@ -274,22 +266,28 @@ def _oneway(ct, parametric=True):
 
 
 
-def test(Y, X=None, against=0, match=None, sub=None,
-         par=True, corr='Hochberg',
-         title='{desc}'):
+def ttests(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
+           title='{desc}', ds=None):
+    """T tests for one or more samples.
+
+    parameters
+    ----------
+    Y : var
+        Dependent variable
+    X : None | categorial
+        Perform tests separately for all categories in X.
+    against : scalar | str
+        Baseline against which to test (scalar or category in X).
+    sub : index
+        Only use part of the data.
+    corr : str
+        Multiple comparison correction method.
+    title : str
+        Title for the table.
     """
-    One-sample tests.
+    ct = celltable(Y, X, match, sub, ds=ds)
 
-    kwargs
-    ------
-    X: perform tests separately for all categories in X.
-    Against: can be
-             - value
-             - string (category in X)
-
-    """
-    ct = celltable(Y, X, match, sub)
-
+    par = True
     if par:
         title_desc = "t-tests against %s" % against
         statistic_name = 't'

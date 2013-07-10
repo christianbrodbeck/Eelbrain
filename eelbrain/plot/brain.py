@@ -14,7 +14,7 @@ import numpy as np
 from mayavi import mlab
 import surfer
 
-from ..analyze import  testnd
+from .. import testnd
 from .. import ui
 from . import _base
 

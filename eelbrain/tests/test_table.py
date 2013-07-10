@@ -3,8 +3,8 @@ Created on Dec 2, 2012
 
 @author: christian
 '''
-from ...vessels import datasets
-from .. import table
+from eelbrain.vessels import datasets
+from eelbrain import table
 
 
 def test_frequencies():

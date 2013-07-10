@@ -1,33 +1,5 @@
-'''
-Statistical tests for ndvar objects.
+'''Statistical tests for ndvars'''
 
-Tests are defined as classes that provide aspects of their results as
-attributes and methods::
-
-    >>> res = testnd.ttest(Y, X, 'test', 'control')
-    >>> res.p  # an ndvar object with an uncorrected p-value for each sample
-
-Test result objects can be directly submitted to plotting functions. To plot
-only part of the results, specific attributes can be submitted (for a
-description of the attributes see the relevant class documentation)::
-
-    >>> plot.uts.uts(res)  # plots values in both conditions as well as
-    ... difference values with p-value thresholds
-    >>> plot.uts.uts(res.p)  # plots only p-values
-
-The way this is implemented is that plotting functions test for the presence
-of a ``._default_plot_obj`` and a ``.all`` attribute (in that order) which
-is expected to provide a default object for plotting. This is implemented in
-:py:mod:`plot._base.unpack_epochs_arg`.
-
-
-
-
-
-Created on Feb 22, 2012
-
-@author: christian
-'''
 from math import ceil
 
 import numpy as np
@@ -39,14 +11,14 @@ from scipy.ndimage import binary_closing, binary_erosion, binary_dilation
 from .. import fmtxt
 from ..vessels.structure import celltable
 from ..vessels import colorspaces as _cs
-from eelbrain.vessels.data import ascategorial, asmodel, asndvar, asvar, ndvar
+from ..vessels.data import ascategorial, asmodel, asndvar, asvar, ndvar
 
-import glm as _glm
-from test import _resample
+from ..test import glm as _glm
+from ..test.test import _resample
 
 
-__all__ = ['anova', 'cluster_anova', 'cluster_corr', 'corr', 'ttest',
-           'f_oneway']
+__all__ = ['ttest', 'f_oneway', 'anova', 'cluster_anova', 'corr',
+           'cluster_corr', 'clean_time_axis']
 __test__ = False
 
 

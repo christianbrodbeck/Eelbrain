@@ -44,13 +44,10 @@ from .vessels.structure import celltable
 
 from .vessels import process, datasets
 
-from .analyze import (test,
-                      testnd,
-                      table)
-
-import ui
-import gui
-import plot
+from . import test, testnd, table
+from . import ui
+from . import gui
+from . import plot
 try:  # mayavi
     import plot.brain
     import plot.coreg

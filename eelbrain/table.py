@@ -1,5 +1,5 @@
 '''
-Creating tables for data objects.
+Create tables for data objects.
 
 '''
 from __future__ import division
@@ -8,9 +8,9 @@ import numpy as np
 
 from eelbrain import fmtxt
 
-from ..vessels.data import (ascategorial, asmodel, asvar, isfactor, isvar,
+from .vessels.data import (ascategorial, asmodel, asvar, isfactor, isvar,
                             isinteraction, dataset, factor, var)
-from ..vessels.structure import celltable
+from .vessels.structure import celltable
 
 __hide__ = ['division', 'fmtxt', 'scipy',
             'asmodel', 'isfactor', 'asfactor', 'isvar', 'celltable',

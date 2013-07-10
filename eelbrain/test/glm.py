@@ -26,13 +26,13 @@ from numpy import dot
 from scipy.linalg import lstsq
 import scipy.stats
 
-from eelbrain import fmtxt
-from eelbrain.utils import LazyProperty
-from eelbrain.utils.print_funcs import strdict
+from .. import fmtxt
+from ..utils import LazyProperty
+from ..utils.print_funcs import strdict
+from ..vessels.data import (isvar, asvar, isbalanced, isnestedin, hasrandom,
+                            find_factors, model, asmodel)
+from . import test
 
-import test
-from eelbrain.vessels.data import (isvar, asvar, isbalanced, isnestedin,
-                                   hasrandom, find_factors, model, asmodel)
 
 _max_array_size = 26  # constant for max array size in lm_fitter
 

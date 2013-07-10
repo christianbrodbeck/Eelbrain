@@ -1,7 +1,7 @@
 from nose.tools import assert_raises
 
-from ...vessels import datasets
-from ..glm import anova
+from eelbrain.vessels import datasets
+from eelbrain.test.glm import anova
 
 
 def test_anova():

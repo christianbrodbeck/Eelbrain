@@ -78,8 +78,8 @@ from .. import fmtxt
 from .. import load
 from .. import plot
 from .. import save
+from .. import testnd
 from .. import ui
-from ..analyze import testnd
 from ..utils import keydefaultdict
 from ..utils import subp
 from ..utils.com import send_email, Notifier

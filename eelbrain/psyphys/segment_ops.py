@@ -11,7 +11,7 @@ import time, logging
 import numpy as np
 import scipy as sp
 
-from eelbrain.analyze import glm
+from ..test import glm
 
 import segments as _seg
 import mat
