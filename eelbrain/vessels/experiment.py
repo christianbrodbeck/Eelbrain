@@ -90,6 +90,9 @@ from .data import (var, ndvar, combine, isdatalist, DimensionMismatchError,
 
 __all__ = ['mne_experiment', 'LabelCache']
 
+analysis_source = 'source_{raw}_{proj}_{rej}_{inv}'
+analysis_sensor = 'sensor_{raw}_{proj}_{rej}'
+
 
 class LabelCache(dict):
     def __getitem__(self, path):
@@ -1537,9 +1540,9 @@ class mne_experiment(object):
             space, or not at all.
         """
         group = self.get('group', group=group, **kwargs)
-        name = self._get_ttest_name(c1, c0, blc)
-        src = self.get('res-file', kind='data', analysis='source', name=name,
-                       ext='pickled')
+        name = self._get_ttest_name(c1, c0, blc, True)
+        src = self.get('res-file', kind='data', analysis=analysis_source,
+                       name=name, ext='pickled')
         res = load.unpickle(src)
         return res
 
@@ -1789,9 +1792,9 @@ class mne_experiment(object):
             cmd.append('--overwrite')
         return cmd
 
-    def _get_ttest_name(self, c1, c0, blc):
+    def _get_ttest_name(self, c1, c0, blc, cov=False):
         blc = blc or ''
-        if blc not in ('', 'sns', 'src'):
+        if blc not in ('', 'sns', 'src', 'sns-src'):
             raise ValueError("blc = %r" % blc)
 
         name = '{epoch}_'
@@ -1815,7 +1818,9 @@ class mne_experiment(object):
         if blc:
             name += '_%s-blc' % blc
 
-        name += '_{raw}_{proj}_{inv}_{cov}'
+        if cov:
+            name += '_{cov}'
+
         return name
 
     def make_ttest(self, group=None, c1=None, c0=0, blc='sns', redo=False,
@@ -1833,22 +1838,25 @@ class mne_experiment(object):
         c0 : str | scalar
             Control condition (cell on model) or scalar against which to
             compare c1.
-        blc : 'sns' | 'src' | None
+        blc : 'sns' | 'src' | 'sns-src' | None
             Whether to perform baseline correction in sensor space, source
             space, or not at all.
         """
         group = self.get('group', group=group, **kwargs)
-        name = self._get_ttest_name(c1, c0, blc)
-        dst = self.get('res-file', kind='data', analysis='source', name=name,
-                       ext='pickled', mkdir=True)
+        name = self._get_ttest_name(c1, c0, blc, True)
+        dst = self.get('res-file', kind='data', analysis=analysis_source,
+                       name=name, ext='pickled', mkdir=True)
         if not redo and os.path.exists(dst):
             return
 
-        sns_baseline = (None, 0) if blc == 'sns' else None
-        src_baseline = (None, 0) if blc == 'src' else None
+        sns_baseline = (None, 0) if blc.startswith('sns') else None
+        src_baseline = (None, 0) if blc.endswith('src') else None
         model = self.get('model') or None
         if c1 is None:
             cat = None
+            if not src_baseline and not self.get('inv').startswith('fixed'):
+                raise ValueError("Grand average test without source space "
+                                 "baseline correction")
         elif isinstance(c0, (basestring, tuple)):
             cat = (c1, c0)
         else:
@@ -1871,7 +1879,8 @@ class mne_experiment(object):
         save.pickle(res, dst)
 
     def make_ttest_movie(self, group=None, c1=None, c0=0, blc='sns', p0=.01,
-                         p1=0.001, view=1, surf=None, redo=False, **kwargs):
+                         p1=0.001, view=1, surf=None, redo=False, dtmin=.005,
+                         **kwargs):
         """
         Parameters
         ----------
@@ -1884,7 +1893,7 @@ class mne_experiment(object):
         c0 : str | scalar
             Control condition (cell on model) or scalar against which to
             compare c1.
-        blc : 'sns' | 'src' | None
+        blc : 'sns' | 'src' | 'sns-src' | None
             Whether to perform baseline correction in sensor space, source
             space, or not at all.
         p0, p1 : scalar, 0 < p < 1
@@ -1895,20 +1904,20 @@ class mne_experiment(object):
             Surface to use (with None, use the view preset).
         """
         group = self.get('group', group=group, **kwargs)
-        name = self._get_ttest_name(c1, c0, blc)
+        name = self._get_ttest_name(c1, c0, blc, True)
         plt_name = '_%s' % str(view)
         if surf:
             plt_name += surf
         plt_name += '-{}|{}'.format(str(p0)[2:], str(p1)[2:])
-        dst = self.get('res-file', kind='movie', analysis='source',
+        if dtmin:
+            plt_name += '>%ims' % (dtmin * 1000)
+        dst = self.get('res-file', kind='movie', analysis=analysis_source,
                        name=name + plt_name, ext='mov', mkdir=True)
         if not redo and os.path.exists(dst):
             return
 
-        src = self.get('res-file', kind='data', analysis='source', name=name,
-                       ext='pickled')
-        if not os.path.exists(src):
-            self.make_ttest(c1=c1, c0=c0, blc=blc)
+        src = self.get('res-file', kind='data', analysis=analysis_source,
+                       name=name, ext='pickled')
 
         res = load.unpickle(src)
 
@@ -1920,8 +1929,9 @@ class mne_experiment(object):
             else:
                 surf = 'inflated'
 
-        p = plot.brain.stat(res.p, res.t, p0=p0, p1=p1, surf=surf)
+        p = plot.brain.stat(res.p, res.t, p0=p0, p1=p1, surf=surf, dtmin=dtmin)
         p.save_movie(dst, view=view)
+        p.close()
 
     def make_labels(self, redo=False, **kwargs):
         """
@@ -2691,6 +2701,7 @@ class mne_experiment(object):
             ori = args.pop(0)
             if ori == 'fixed':
                 make_kw['fixed'] = True
+                make_kw['loose'] = None
             elif ori == 'free':
                 make_kw['loose'] = 1
             else:
