@@ -2815,7 +2815,7 @@ class dataset(collections.OrderedDict):
         if not ext:
             path += '.txt'
 
-        table = self.as_table(fmt=fmt, header=True)
+        table = self.as_table(fmt=fmt, header=header)
         table.save_tsv(path, fmt=fmt, delimiter=delim)
 
     def save_pickled(self, path=None):
