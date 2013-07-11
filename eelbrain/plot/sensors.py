@@ -105,7 +105,7 @@ class _plt_map2d:
                 h = ax.plot(locs[i, 0], locs[i, 1], **kwargs)
                 self.markers += h
 
-    def mark_sensors(self, sensors, marker='bo'):
+    def mark_sensors(self, sensors, *args, **kwargs):
         """Mark specific sensors
 
         Parameters
@@ -118,12 +118,13 @@ class _plt_map2d:
         while self._mark_handles:
             self._mark_handles.pop().remove()
 
-        if not sensors:
+        if not np.count_nonzero(sensors):
             return
 
         idx = self.sensors.dimindex(sensors)
         locs = self.locs[idx]
-        self._mark_handles = self.ax.plot(locs[:, 0], locs[:, 1], marker)
+        self._mark_handles = self.ax.plot(locs[:, 0], locs[:, 1], *args,
+                                          **kwargs)
 
     def show_labels(self, text='idx', xpos=0, ypos=.01, **text_kwargs):
         """Plot labels for the sensors
@@ -140,8 +141,7 @@ class _plt_map2d:
         """
         # remove existing labels
         while self.labels:
-            h = self.labels.pop()
-            h.remove()
+            self.labels.pop().remove()
 
         if not text:
             return
@@ -276,8 +276,8 @@ class multi(_base.eelfigure):
         self.ax3.set_xlim(-frame, 1 + frame)
         self.ax3.set_ylim(-frame, 1 + frame)
 
-        self.axes = [self.ax0, self.ax1, self.ax2, self.ax3]
         self._show()
+        self._sensor_maps = (self._h0, self._h1, self._h2, self._h3)
 
         # ROI
         self.ROI_kwargs = dict(marker='o',  # symbol
@@ -399,17 +399,8 @@ class multi(_base.eelfigure):
         self.update_ROI_plot()
 
     def update_ROI_plot(self):
-        # remove old plots
-        while self._ROI_h:
-            self._ROI_h.pop(0).remove()
-
-        # plot
-        if self.ROI is not None:
-            for ax in self.axes:
-                h = _plt_map2d(ax, self._sensors, proj=ax.proj, extent=ax.extent,
-                               ROI=self.ROI, kwargs=self.ROI_kwargs)
-                self._ROI_h.extend(h)
-
+        for h in self._sensor_maps:
+            h.mark_sensors(self.ROI, **self.ROI_kwargs)
         self.canvas.draw()
 
 
