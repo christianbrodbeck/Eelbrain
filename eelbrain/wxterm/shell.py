@@ -1091,10 +1091,17 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnClose(self, event):
         # http://stackoverflow.com/a/1055506/166700
         logging.debug("WxTerm Shell OnClose")
-        if event.CanVeto():
+        if hasattr(event, 'CanVeto') and event.CanVeto():
             self.Hide()
             event.Veto()
         else:
+            # make sure pdb is dectivated
+            n = self.shell.GetLineCount()
+            line = self.shell.GetLine(n - 1)
+            if line.startswith('(Pdb) '):
+                self.ExecCommand('exit')
+
+            # shut down
             self.SaveSettings()
             event.Skip()
 
