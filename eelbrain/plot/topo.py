@@ -171,10 +171,10 @@ class butterfly(_base.eelfigure):
        the mouse pointer.
 
     """
-    def __init__(self, epochs, Xax=None, size=2, bflywidth=3, proj='default',
-                 res=100, interpolation='nearest', title=True, xlabel=True,
-                 ylabel=True, color=True, sensors=True, ROI=None, vmax=None,
-                 ds=None, **fig_kwa):
+    def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
+                 proj='default', res=100, interpolation='nearest', color=True,
+                 sensors=True, ROI=None, vmax=None, ds=None, axh=3,
+                 ax_aspect=2, **fig_kwa):
         """
         Parameters
         ----------
@@ -189,7 +189,7 @@ class butterfly(_base.eelfigure):
         size : scalar
             in inches: height of the butterfly axes as well as side length of
             the topomap axes
-        bflywidth : scalar
+        ax_aspect : scalar
             multiplier for the width of butterfly plots based on their height
         res : int
             resolution of the topomap plots (res x res pixels)
@@ -203,12 +203,12 @@ class butterfly(_base.eelfigure):
         n_plots = len(epochs)
 
         # create figure
-        x_size = size * (1 + bflywidth)
-        y_size = size * n_plots
+        x_size = axh * (1 + ax_aspect)
+        y_size = axh * n_plots
 
         fig_kwa.update(figsize=(x_size, y_size))
         super(butterfly, self).__init__("plot.topo.butterfly", None,
-                                        fig_kwa=fig_kwa)
+                                        fig_kwa=fig_kwa, figtitle=title)
 
         # axes sizes
         frame = .05  # in inches; .4
@@ -218,9 +218,9 @@ class butterfly(_base.eelfigure):
         x_left_title = 0.5 / x_size
         x_text = x_left_title / 3
         ax1_left = xframe + x_left_title + x_left_ylabel
-        ax1_width = bflywidth / (bflywidth + 1) - ax1_left - xframe / 2
-        ax2_left = bflywidth / (bflywidth + 1) + xframe / 2
-        ax2_width = 1 / (bflywidth + 1) - 1.5 * xframe
+        ax1_width = ax_aspect / (ax_aspect + 1) - ax1_left - xframe / 2
+        ax2_left = ax_aspect / (ax_aspect + 1) + xframe / 2
+        ax2_width = 1 / (ax_aspect + 1) - 1.5 * xframe
 
         yframe = frame / y_size
         y_bottomframe = 0.5 / y_size
@@ -541,7 +541,7 @@ class array(_base.eelfigure):
      - RMB on a topomap removes the topomap
 
     """
-    def __init__(self, epochs, Xax=None, title=None, height=3, width=2.5,
+    def __init__(self, epochs, Xax=None, title=None, axh=6, axw=5,
                  ntopo=3, ylim=None, t=[], ds=None, **fig_kwa):
         """
         Channel by sample array-plots with topomaps corresponding to
@@ -569,12 +569,12 @@ class array(_base.eelfigure):
         # figure properties
         n_epochs = len(epochs)
         n_topo_total = ntopo * n_epochs
-        left_rim = width / 4
-        fig_width, fig_height = n_epochs * width + left_rim, height
+        left_rim = axw / 4
+        fig_width, fig_height = n_epochs * axw + left_rim, axh
         fig_kwa.update(figsize=(fig_width, fig_height))
 
         # fig coordinates
-        x_frame_l = .6 / width / n_epochs
+        x_frame_l = .6 / axw / n_epochs
         x_frame_r = .025 / n_epochs
         x_sep = .01 / n_epochs
 
@@ -701,12 +701,12 @@ class array(_base.eelfigure):
     def _pick_handler(self, pickevent):
         mouseevent = pickevent.mouseevent
         ax = pickevent.artist
-        button = {1:'l', 2:'r', 3:'r'}[mouseevent.button]
         if ax.type == 'window':
+            button = mouseevent.button  # 1: Left
             window = self.windows[ax.ID]
-            if button == 'l':
+            if button == 1:
                 self._selected_window = window
-            elif button == 'r':
+            elif button in (2, 3):
                 Id = window.ax.ID % self._ntopo
                 self.set_topowin(Id, None)
             else:
