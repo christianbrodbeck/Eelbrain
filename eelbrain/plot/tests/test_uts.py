@@ -3,9 +3,24 @@ Created on Dec 2, 2012
 
 @author: christian
 '''
-from ...vessels  import datasets
-from ...eellab import *
+from eelbrain import testnd, plot
+from eelbrain.vessels import datasets
+from eelbrain.vessels.data import factor
 
+
+def test_stat():
+    "test plot.uts.stat plotting function"
+    ds = datasets.get_rand()
+    plot.uts.stat('uts', ds=ds)
+    plot.uts.stat('uts', 'A%B', ds=ds)
+    plot.uts.stat('uts', 'A', Xax='B', ds=ds)
+
+
+def test_uts():
+    "test plot.uts.uts plotting function"
+    ds = datasets.get_rand()
+    plot.uts.uts('uts', ds=ds)
+    plot.uts.uts('uts', 'A%B', ds=ds)
 
 
 def test_clusters():

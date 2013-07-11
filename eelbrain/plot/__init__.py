@@ -19,6 +19,34 @@ Modules that provide data-specific plotting functions.
 :mod:`~eelbrain.plot.uv` (univariate):
     plots for univariate data (such as boxplots, ...)
 
+
+Module General Parameters
+-------------------------
+
+Xax
+^^^
+
+Many plots have an ``Xax`` parameter. This parameter takes a categorial data
+object. The data of the plotted variable will be split into the catories in
+``Xax``, and for every cell in ``Xax`` a separate subplot will be plotted.
+
+For example, while
+
+    >>> plot.utsnd.butterfly('meg', ds=ds)
+
+will create a single butterfly plot of the average response,
+
+    >>> plot.utsnd.butterfly('meg', 'subject', ds=ds)
+
+where ``'subject'`` is the ``Xax`` parameter, will create a separate subplot
+for every subject with its average response.
+
+
+Layout
+^^^^^^
+
+All plots xxx ``**layout`` in their function signature.
+
 """
 
 # import _base

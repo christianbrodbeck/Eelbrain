@@ -68,7 +68,9 @@ The module attribute ``show_block_arg`` is submitted to
 ``plt.show(block=show_block_arg)``.
 
 """
+from __future__ import division
 
+import math
 import os
 import shutil
 import subprocess
@@ -91,9 +93,8 @@ except:
     backend = 'mpl'
 
 
-defaults = {
-          'figsize':(6, -1),  # was 7
-        }
+defaults = {'DPI': 72, 'maxw': 16, 'maxh': 10}
+
 title_kwargs = {'size': 18,
                 'family': 'serif'}
 figs = []  # store callback figures (they need to be preserved)
@@ -280,23 +281,56 @@ class eelfigure(object):
 
 
     """
-    def __init__(self, title="Eelbrain Figure", **fig_kwargs):
+    def __init__(self, title="Eelbrain Figure", nax=None, layout_kwa={},
+                 ax_aspect=2, axh_default=2, fig_kwa={}, ax_kwa={},
+                 figtitle=None):
+        """
+
+        Parameters
+        ----------
+        title : str
+            Frame title.
+        nax : None | int
+            Number of axes to produce layout for. If None, no layout is
+            produced.
+        layout_kwargs : dict
+            Arguments to produce a layout (optional).
+        """
+        if figtitle:
+            title = '%s: %s' % (title, figtitle)
+
+        # layout
+        if nax is not None:
+            layout = dict(ax_aspect=ax_aspect, axh_default=axh_default)
+            layout.update(layout_kwa)
+            self._layout = Layout(nax, **layout)
+            fig_kwa = fig_kwa.copy()
+            fig_kwa.update(self._layout.fig_kwa)
+        else:
+            self._layout = None
+
         # find the right frame
         frame = None
         self._is_wx = False
         if backend == 'wx':
             try:
-                frame = CanvasFrame(title=title, eelfigure=self, **fig_kwargs)
+                frame = CanvasFrame(title=title, eelfigure=self, **fig_kwa)
                 self._is_wx = True
             except:
                 pass
         if frame is None:
-            frame = mpl_figure(**fig_kwargs)
+            frame = mpl_figure(**fig_kwa)
+
+        figure = frame.figure
+        if figtitle:
+            figure.suptitle(figtitle)
 
         # store attributes
         self._frame = frame
-        self.figure = frame.figure
+        self.figure = figure
         self.canvas = frame.canvas
+        self._subplots = None
+        self._ax_kwa = ax_kwa
 
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
         self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
@@ -304,6 +338,27 @@ class eelfigure(object):
     def _get_statusbar_text(self, event):
         "subclass to add figure-specific content"
         return '%s'
+
+    def _get_subplot(self, i):
+        return self._get_subplots()[i - 1]
+
+    def _get_subplots(self):
+        if self._layout is None:
+            raise RuntimeError("Can't create subplots without layout")
+
+        if self._subplots is None:
+            ncol = self._layout.ncol
+            nrow = self._layout.nrow
+            kw = self._ax_kwa
+            self._subplots = [self.figure.add_subplot(nrow, ncol, i + 1, **kw)
+                              for i in xrange(self._layout.nax)]
+        return tuple(self._subplots)
+
+    def _iter_ax(self, data):
+        "Iterate through (i, ax, layers)"
+        nax = self._layout.nax
+        subplots = self._get_subplots()
+        return zip(xrange(nax), subplots, data)
 
     def _on_leave_axes(self, event):
         "update the status bar when the cursor leaves axes"
@@ -323,7 +378,10 @@ class eelfigure(object):
             txt = self._get_statusbar_text(event)
             self._frame.SetStatusText(txt % pos_txt)
 
-    def _show(self):
+    def _show(self, tight=True):
+        if tight:
+            self.figure.tight_layout()
+
         self.draw()
         self._frame.Show()
 
@@ -358,6 +416,151 @@ class subplot_figure(eelfigure):
 
         super(subplot_figure, self)._show()
 
+
+class Layout():
+    """Create layouts for figures with several axes of the same size
+    """
+    def __init__(self, nax, h=None, w=None, axh=None, axw=None, nrow=None,
+                 ncol=None, ax_aspect=1.5, axh_default=1, dpi=None):
+        """Create a grid of axes based on variable parameters.
+
+        Parameters
+        ----------
+        nax : int
+            Number of axes required.
+        h, w : scalar
+            Height and width of the figure.
+        axh, axw : scalar
+            Height and width of the axes.
+        nrow, ncol : None | int
+            Limit number of rows/columns. If both are  None, a square layout is
+            produced
+        ax_aspect : scalar
+            Width / height aspect of the axes.
+        axh_default : scalar
+            The default axes height if it can not be determined from the other
+            parameters.
+        """
+        if h and axh:
+            if h < axh:
+                raise ValueError("h < axh")
+        if w and axw:
+            if w < axw:
+                raise ValueError("w < axw")
+
+        if nrow is None and ncol is None:
+            if w and axw:
+                ncol = math.floor(w / axw)
+                nrow = math.ceil(nax / ncol)
+                if h:
+                    axh = axh or h / nrow
+                elif axh:
+                    h = axh * nrow
+                else:
+                    axh = axw / ax_aspect
+                    h = axh * nrow
+            elif h and axh:
+                nrow = math.floor(h / axh)
+                ncol = math.ceil(nax / nrow)
+                if w:
+                    axw = axw or w / ncol
+                elif axw:
+                    w = axw * ncol
+                else:
+                    axw = axh * ax_aspect
+                    w = axw * ncol
+            elif w:
+                if axh:
+                    ncol = round(w / (axh * ax_aspect))
+                else:
+                    ncol = round(w / (axh_default * ax_aspect))
+                ncol = min(nax, ncol)
+                axw = w / ncol
+                nrow = math.ceil(nax / ncol)
+                if h:
+                    axh = h / nrow
+                else:
+                    if not axh:
+                        axh = axw / ax_aspect
+                    h = nrow * axh
+            elif h:
+                if axw:
+                    nrow = round(h / (axw / ax_aspect))
+                else:
+                    nrow = round(h / (axh_default))
+                nrow = min(nax, nrow)
+                axh = h / nrow
+                ncol = math.ceil(nrow / nax)
+                if w:
+                    axw = w / ncol
+                else:
+                    if not axw:
+                        axw = axh * ax_aspect
+                    w = ncol * axw
+            elif axh or axw:
+                axh = axh or axw / ax_aspect
+                axw = axw or axh * ax_aspect
+                ncol = min(nax, math.floor(defaults['maxw'] / axw))
+                nrow = math.ceil(nax / ncol)
+                h = nrow * axh
+                w = ncol * axw
+            else:
+                maxh = defaults['maxh']
+                maxw = defaults['maxw']
+
+                # try default
+                axh = axh_default
+                axw = axh_default * ax_aspect
+                ncol = min(nax, maxw / axw)
+                nrow = math.ceil(nax / ncol)
+                h = axh * nrow
+                if h > maxh:
+                    col_to_row_ratio = maxw / (ax_aspect * maxh)
+                    # nax = ncol * nrow
+                    # nax = (col_to_row * nrow) * nrow
+                    nrow = math.ceil(math.sqrt(nax / col_to_row_ratio))
+                    ncol = math.ceil(nax / nrow)
+                    h = maxh
+                    axh = h / nrow
+                    w = maxw
+                    axw = w / ncol
+                else:
+                    w = axw * ncol
+        else:
+            if nrow is None:
+                ncol = min(nax, ncol)
+                nrow = int(math.ceil(nax / ncol))
+            elif ncol is None:
+                nrow = min(nax, nrow)
+                ncol = int(math.ceil(nax / nrow))
+
+            if h:
+                axh = axh or h / nrow
+            else:
+                if not axh:
+                    axh = min(axh_default, defaults['maxh'] / nrow)
+
+            if w:
+                axw = axw or w / ncol
+            else:
+                if not axw:
+                    axw = axh * ax_aspect
+                    axw_max = defaults['maxw'] / ncol
+                    if axw > axw_max:
+                        axw = axw_max
+                        axh = axw / ax_aspect
+
+        w = w or axw * ncol
+        h = h or axh * nrow
+
+        self.nax = nax
+        self.h = h
+        self.w = w
+        self.axh = axh
+        self.axw = axw
+        self.nrow = int(nrow)
+        self.ncol = int(ncol)
+        self.fig_kwa = dict(figsize=(w, h), dpi=dpi or defaults['DPI'])
 
 
 class legend(eelfigure):

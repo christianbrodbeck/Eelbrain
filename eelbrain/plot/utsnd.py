@@ -116,45 +116,39 @@ def _ax_im_array(ax, layers, x='time',  # vmax=None,
     return handles
 
 
-def array(epochs, Xax=None, xlabel=True, ylabel=True, w=4, h=3, dpi=50,
-          ds=None):
-    """
-    Plot uts data to a rectangular grid.
+class array(_base.eelfigure):
+    def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
+                 ds=None, **layout):
+        """
+        Plot uts data to a rectangular grid.
 
-    Parameters
-    ----------
-    epochs : ndvar
-        If data has only 1 dimension, the x-axis defines epochs.
-    xlabel, ylabel : bool | str
-        I True, determine from the data.
-    w, h : scalar
-        Width per plot and height in inches.
-    dpi : int
-        Dpi of the figure.
-    """
-    epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
+        Parameters
+        ----------
+        epochs : ndvar
+            If data has only 1 dimension, the x-axis defines epochs.
+        xlabel, ylabel : bool | str
+            I True, determine from the data.
+        w, h : scalar
+            Width per plot and height in inches.
+        dpi : int
+            Dpi of the figure.
+        """
+        epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
-    n_plots = len(epochs)
-#    n = round(np.sqrt(n_plots))
-    figsize = (n_plots * w, h)
-    fig = plt.figure(figsize=figsize, dpi=dpi)
-    plt.subplots_adjust(.1, .1, .95, .95, .1, .4)
+        nax = len(epochs)
+        _base.eelfigure.__init__(self, "plot.utsnd.array", nax, layout,
+                                 figtitle=title)
 
-    for i, layers in enumerate(epochs):
-        ax = fig.add_subplot(1, n_plots, i + 1)
+        for i, ax, layers in self._iter_ax(epochs):
+            _ylabel = ylabel if i == 1 else None
+            _xlabel = xlabel if i == nax - 1 else None
 
-        _ylabel = ylabel if i == 1 else None
-        _xlabel = xlabel if i == n_plots - 1 else None
+            _ax_im_array(ax, layers, xlabel=_xlabel, ylabel=ylabel)
 
-        _ax_im_array(ax, layers, xlabel=_xlabel, ylabel=ylabel)
-
-    fig.tight_layout()
-    fig.show()
-    return fig
+        self._show()
 
 
-
-def _t_axes(rect, xmin= -.5, xmax=1., vmax=1.5, vbar=1., markevery=.5, ticks=False):
+def _t_axes(rect, xmin=-.5, xmax=1., vmax=1.5, vbar=1., markevery=.5, ticks=False):
     """
     creates and returns a new t-axes using rect
 
@@ -185,7 +179,7 @@ def _t_axes(rect, xmin= -.5, xmax=1., vmax=1.5, vbar=1., markevery=.5, ticks=Fal
 
 
 
-def _axgrid_sensors(sensorLocs2d, figsize=_base.defaults['figsize'],
+def _axgrid_sensors(sensorLocs2d, figsize=(8, 8),
                     spacing=.2, frame=.01, figvstretch=1,
                     header=0, footer=0,  # in inches
                     axes_legend_loc='lower left', **axkwargs):
@@ -362,9 +356,9 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
 
 class butterfly(_base.eelfigure):
     "Plot data in a butterfly plot."
-    def __init__(self, epochs, Xax=None, sensors=None, ylim=None, w=4, h=2, dpi=90,
-                 ncol=3, title=None, axtitle='{name}',
-                 xlabel=True, ylabel=True, color=None, ds=None):
+    def __init__(self, epochs, Xax=None, sensors=None, ylim=None, title=None,
+                 axtitle='{name}', xlabel=True, ylabel=True, color=None,
+                 ds=None, **layout):
         """
         Parameters
         ----------
@@ -390,31 +384,14 @@ class butterfly(_base.eelfigure):
             black; ``True``: alternate colors (mpl default)
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
+        super(butterfly, self).__init__('plot.utsnd.butterfly', len(epochs),
+                                        layout, figtitle=title)
 
-        n_plots = len(epochs)
-        nrow = math.ceil(n_plots / ncol)
-        ncol = min(n_plots, ncol)
-
-        figsize = (w * ncol, h * nrow)
-        win_title = title if isinstance(title, str) else 'plot.butterfly'
-        super(butterfly, self).__init__(title=win_title, figsize=figsize, dpi=dpi)
-        fig = self.figure
-
-        for i, layers in enumerate(epochs):
-            ax = fig.add_subplot(nrow, ncol, i + 1)
-
-            if i == n_plots - 1:
-                _xlabel = xlabel
-            else:
-                _xlabel = None
-
+        for ax, layers in zip(self._get_subplots(), epochs):
             _ax_butterfly(ax, layers, sensors=sensors, ylim=ylim, title=axtitle,
-                          xlabel=_xlabel, ylabel=ylabel, color=color)
+                          xlabel=xlabel, ylabel=ylabel, color=color)
+            xlabel = None
 
-        if title:
-            fig.suptitle(title)
-
-        fig.tight_layout()
         self._show()
 
 

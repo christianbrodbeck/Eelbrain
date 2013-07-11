@@ -55,3 +55,10 @@ WxTerm interface
   consistent with numerical indexing, such as ``new_ds = ds[:10, ('var1', 
   'factor3')]``.
 * New save methods replace :meth:`dataset.export`. See :meth:`dataset.save`.
+
+
+Plotting Functions
+^^^^^^^^^^^^^^^^^^
+
+* New uniform layout arguments for all plots with subplots of the same type
+  (see ).

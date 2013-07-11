@@ -27,8 +27,8 @@ __hide__ = ['cs', 'test', 'utsnd']
 class topomap(_base.eelfigure):
     "Plot individual topogeraphies"
     def __init__(self, epochs, Xax=None, sensors=True, proj='default',
-                 vmax=None, size=5, dpi=100, title="plot.topomap",
-                 res=100, interpolation='nearest', ds=None):
+                 vmax=None, title=None, res=100, interpolation='nearest',
+                 ds=None, **layout):
         """
         Plot individual topogeraphies
 
@@ -55,43 +55,26 @@ class topomap(_base.eelfigure):
             Matplotlib imshow() parameter for topomaps.
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
-
-        # create figure
-        n_plots = len(epochs)
-        x_size = size * n_plots
-        y_size = size
-        figsize = (x_size, y_size)
-
-        super(topomap, self).__init__(title=title, figsize=figsize, dpi=dpi)
-
-        # plot epochs (x/y are in figure coordinates)
-        frame = .05
+        nax = len(epochs)
+        super(topomap, self).__init__("plot.topo.topomap", nax, layout, 1, 7,
+                                      figtitle=title)
 
         topo_kwargs = dict(res=res,
                            interpolation=interpolation,
                            proj=proj,
                            sensors=sensors,
-                           vmax=vmax,
-                           )
+                           vmax=vmax)
 
-        self._subplots = []
-        for i, layers in enumerate(epochs):
-            # axes coordinates
-            left = (i + frame) / n_plots
-            bottom = frame
-            width = (1 - 2 * frame) / n_plots
-            height = 1 - 3 * frame
-
-            ax_rect = [left, bottom, width, height]
-            ax = self.figure.add_axes(ax_rect)
+        self._topomaps = []
+        for i, ax, layers in self._iter_ax(epochs):
             ax.ID = i
-
             h = _ax_topomap(ax, layers, title=True, **topo_kwargs)
-            self._subplots.append(h)
+            self._topomaps.append(h)
 
         self._label_color = 'k'
         if isinstance(sensors, str):
             self.set_label_text(sensors)
+
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -144,7 +127,7 @@ class topomap(_base.eelfigure):
         self.set_label_text(text)
 
     def mark_sensors(self, sensors, marker='bo'):
-        for p in self._subplots:
+        for p in self._topomaps:
             p.sensors.mark_sensors(sensors, marker)
         self.draw()
 
@@ -156,7 +139,7 @@ class topomap(_base.eelfigure):
                 self._SensorLabelColorChoice.SetSelection(sel)
 
         self._label_color = color
-        for p in self._subplots:
+        for p in self._topomaps:
             p.sensors.set_label_color(color)
         self.draw()
 
@@ -173,7 +156,7 @@ class topomap(_base.eelfigure):
             sel = [None, 'idx', 'name'].index(text)
             self._SensorLabelChoice.SetSelection(sel)
 
-        for p in self._subplots:
+        for p in self._topomaps:
             p.sensors.show_labels(text, color=self._label_color)
         self.draw()
 
@@ -188,10 +171,10 @@ class butterfly(_base.eelfigure):
        the mouse pointer.
 
     """
-    def __init__(self, epochs, Xax=None, size=2, bflywidth=3, dpi=90,
-                 proj='default', res=100, interpolation='nearest',
-                 title=True, xlabel=True, ylabel=True,
-                 color=True, sensors=True, ROI=None, vmax=None, ds=None):
+    def __init__(self, epochs, Xax=None, size=2, bflywidth=3, proj='default',
+                 res=100, interpolation='nearest', title=True, xlabel=True,
+                 ylabel=True, color=True, sensors=True, ROI=None, vmax=None,
+                 ds=None, **fig_kwa):
         """
         Parameters
         ----------
@@ -216,21 +199,16 @@ class butterfly(_base.eelfigure):
             Override the default plot limits.
 
         """
-        frame_title = "plot.topo.butterfly: %r"
-        if isinstance(title, basestring):
-            frame_title = frame_title % title
-        else:
-            frame_title = frame_title % getattr(epochs, 'name', '')
-
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         n_plots = len(epochs)
 
         # create figure
         x_size = size * (1 + bflywidth)
         y_size = size * n_plots
-        figsize = (x_size, y_size)
 
-        super(butterfly, self).__init__(title=frame_title, figsize=figsize, dpi=dpi)
+        fig_kwa.update(figsize=(x_size, y_size))
+        super(butterfly, self).__init__("plot.topo.butterfly", None,
+                                        fig_kwa=fig_kwa)
 
         # axes sizes
         frame = .05  # in inches; .4
@@ -312,7 +290,7 @@ class butterfly(_base.eelfigure):
         self._realtime_topo = True
         self._frame.store_canvas()
         self._draw_topo(0, draw=False)
-        self._show()
+        self._show(tight=False)
 
     def _draw_topo(self, t, draw=True):
         self._current_t = t
@@ -564,7 +542,7 @@ class array(_base.eelfigure):
 
     """
     def __init__(self, epochs, Xax=None, title=None, height=3, width=2.5,
-                 ntopo=3, dpi=100, ylim=None, t=[], ds=None):
+                 ntopo=3, ylim=None, t=[], ds=None, **fig_kwa):
         """
         Channel by sample array-plots with topomaps corresponding to
         individual time points.
@@ -586,13 +564,6 @@ class array(_base.eelfigure):
         t : list of scalar (len <= ntopo)
             Time points for topomaps.
         """
-        frame_title = "plot.topo.array: %r"
-        if isinstance(title, basestring):
-            frame_title = frame_title % title
-        else:
-            frame_title = frame_title % getattr(epochs, 'name', '')
-
-        # convenience for single segment
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
         # figure properties
@@ -600,7 +571,7 @@ class array(_base.eelfigure):
         n_topo_total = ntopo * n_epochs
         left_rim = width / 4
         fig_width, fig_height = n_epochs * width + left_rim, height
-        figsize = (fig_width, fig_height)
+        fig_kwa.update(figsize=(fig_width, fig_height))
 
         # fig coordinates
         x_frame_l = .6 / width / n_epochs
@@ -610,7 +581,7 @@ class array(_base.eelfigure):
         x_per_ax = (1 - x_frame_l - x_frame_r) / n_epochs
 
         # create figure
-        super(array, self).__init__(title=frame_title, dpi=dpi, figsize=figsize)
+        super(array, self).__init__('plot.topo.array', None, fig_kwa=fig_kwa)
         fig = self.figure
 
         fig.subplots_adjust(left=x_frame_l,
@@ -665,7 +636,7 @@ class array(_base.eelfigure):
         self.canvas.mpl_connect('pick_event', self._pick_handler)
         self.canvas.mpl_connect('motion_notify_event', self._motion_handler)
         self._frame.store_canvas()
-        self._show()
+        self._show(tight=False)
 
     def __repr__(self):
         e_repr = []

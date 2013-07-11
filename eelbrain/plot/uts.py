@@ -33,12 +33,10 @@ __hide__ = ['plt', 'division', 'celltable']
 class stat(_base.subplot_figure):
     "Plots statistics for a one-dimensional ndvar"
     def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
-                 match=None, sub=None, ds=None, Xax=None, ncol=3,
-                 width=6, height=3, dpi=90, legend='upper right',
-                 title='plot.uts.stat - {name}', figtitle=None, axtitle='{name}',
-                 ylabel=True, xlabel=True, invy=False,
-                 bottom=None, top=None, hline=None,
-                 xdim='time', cm=_cm.jet, colors=None):
+                 match=None, sub=None, ds=None, Xax=None, legend='upper right',
+                 title=None, axtitle='{name}', ylabel=True, xlabel=True,
+                 invy=False, bottom=None, top=None, hline=None,
+                 xdim='time', cm=_cm.jet, colors=None, **layout):
         """
     Plot statistics for a one-dimensional ndvar
 
@@ -107,7 +105,7 @@ class stat(_base.subplot_figure):
 
         """
         if Xax is None:
-            figsize = (width, height)
+            nax = None
             ct = celltable(Y, X, sub=sub, match=match, ds=ds)
         else:
             ct = celltable(Y, Xax, sub=sub, ds=ds)
@@ -115,10 +113,7 @@ class stat(_base.subplot_figure):
                 Xct = celltable(X, Xax, sub=sub, ds=ds)
             if match is not None:
                 matchct = celltable(match, Xax, sub=sub, ds=ds)
-            nplot = len(ct.cells)
-            ncol = min(nplot, ncol)
-            nrow = round(nplot / ncol + .49)
-            figsize = (ncol * width, nrow * height)
+            nax = len(ct.cells)
 
         # assemble colors
         if X is None:
@@ -144,9 +139,10 @@ class stat(_base.subplot_figure):
                       invy=invy, bottom=bottom, top=top, hline=hline,
                       xlabel=xlabel, colors=colors, legend_h=legend_h)
 
-        if '{name}' in title:
+        if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
-        super(stat, self).__init__(title=title, figsize=figsize, dpi=dpi)
+        super(stat, self).__init__("plot.uts.stat", nax, layout,
+                                   figtitle=title)
 
         self.axes = []
         if Xax is None:
@@ -160,9 +156,8 @@ class stat(_base.subplot_figure):
             if len(ct) < 2:
                 legend = False
         else:
-            for i, cell in enumerate(ct.cells):
+            for i, ax, cell in zip(xrange(nax), self._get_subplots(), ct.cells):
                 kwargs['xlabel'] = xlabel if i == len(ct) - 1 else False
-                ax = self.figure.add_subplot(nrow, ncol, i + 1)
                 if X is not None:
                     X = Xct.data[cell]
                 if match is not None:
@@ -179,7 +174,7 @@ class stat(_base.subplot_figure):
         self._cluster_h = []
         self.cluster_info = []
 
-        self._show(figtitle=figtitle)
+        self._show()
 
     def _fill_toolbar(self, tb):
         btn = self._cluster_btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
@@ -234,7 +229,7 @@ class stat(_base.subplot_figure):
                 i1 = np.nonzero(c.x)[0][-1]
                 t0 = c.time[i0]
                 t1 = c.time[i1]
-                h = ax.axvspan(t0, t1, zorder= -1, color=color)
+                h = ax.axvspan(t0, t1, zorder=-1, color=color)
                 self._cluster_h.append(h)
         self.draw()
 
@@ -299,9 +294,8 @@ class stat(_base.subplot_figure):
 
 class uts(_base.subplot_figure):
     "Value by time plot for uts data."
-    def __init__(self, epochs, Xax=None, ncol=3, width=6, height=3, dpi=90,
-                 title='plot.uts.uts', figtitle=None, axtitle='{name}',
-                 ds=None):
+    def __init__(self, epochs, Xax=None, title='plot.uts.uts', figtitle=None,
+                 axtitle='{name}', ds=None, ax_aspect=2, **layout):
         """
         Parameters
         ----------
@@ -312,20 +306,12 @@ class uts(_base.subplot_figure):
 
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
+        super(uts, self).__init__(title, len(epochs), layout, 1.5, 2)
 
-        nplot = len(epochs)
-        ncol = min(nplot, ncol)
-        nrow = round(nplot / ncol + .49)
-        figsize = (ncol * width, nrow * height)
-
-        super(uts, self).__init__(title=title, figsize=figsize, dpi=dpi)
-
-        for i, epoch in enumerate(epochs):
-            ax = self.figure.add_subplot(nrow, ncol, i + 1)
+        for ax, epoch in zip(self._get_subplots(), epochs):
             _ax_uts(ax, epoch, title=axtitle)
 
         self._show(figtitle=figtitle)
-
 
 
 def _ax_stat(ax, ct, colors, legend_h={}, dev=scipy.stats.sem, main=np.mean,
@@ -383,15 +369,11 @@ def _ax_stat(ax, ct, colors, legend_h={}, dev=scipy.stats.sem, main=np.mean,
         ax.set_ylim(bottom, top)
 
 
-
-
 class clusters(_base.subplot_figure):
     "Plotting of permutation cluster test results"
-    def __init__(self, epochs, pmax=0.05, ptrend=0.1,
-                 title="plot.uts.clusters", figtitle=None, axtitle='{name}',
-                 cm=_cm.jet, width=6, height=3, frame=.1, dpi=90,
-                 overlay=False, t={'linestyle': 'solid', 'color': 'k'}):
-
+    def __init__(self, epochs, pmax=0.05, ptrend=0.1, title=None,
+                 axtitle='{name}', cm=_cm.jet, overlay=False,
+                 t={'linestyle': 'solid', 'color': 'k'}, **layout):
         """
         Plotting of permutation cluster test results
 
@@ -425,35 +407,26 @@ class clusters(_base.subplot_figure):
 
         # create figure
         N = len(epochs)
-        Nax = 1 if overlay else N
-        x_size = width
-        y_size = height * Nax
-        figsize = (x_size, y_size)
+        nax = None if overlay else N
+        super(clusters, self).__init__("plot.uts.clusters", nax, layout,
+                                       figtitle=title)
 
         self._caxes = []
-        title = unicode(title)
+        if overlay:
+            ax = self.figure.add_subplot(1, 1, 1)
+            for i, layers in enumerate(epochs):
+                color = cm(i / N)
+                cax = _ax_clusters(ax, layers, color=color, pmax=pmax,
+                                   title=None, ptrend=ptrend, tkwargs=t)
+                self._caxes.append(cax)
+        else:
+            for i, ax, layers in self._iter_ax(epochs):
+                color = cm(i / N)
+                cax = _ax_clusters(ax, layers, color=color, pmax=pmax,
+                                   title=axtitle, ptrend=ptrend, tkwargs=t)
+                self._caxes.append(cax)
 
-        super(clusters, self).__init__(title=title, figsize=figsize, dpi=dpi)
-        self.figure.subplots_adjust(hspace=.2, top=.95, bottom=.05)
-
-        width = .85
-        height = .95 / Nax
-
-        for i, layers in enumerate(epochs):
-            if i < Nax:  # create axes
-                ax = self.figure.add_subplot(Nax, 1, i + 1)
-                title_ = axtitle
-            else:
-                title_ = None
-
-            # color
-            color = cm(i / N)
-            cax = _ax_clusters(ax, layers, color=color, pmax=pmax,
-                               title=title_, ptrend=ptrend, tkwargs=t)
-            self._caxes.append(cax)
-
-        self._show(figtitle=figtitle)
-
+        self._show()
 
     def _fill_toolbar(self, tb):
         btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")

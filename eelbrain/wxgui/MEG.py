@@ -183,8 +183,9 @@ class SelectEpochs(eelfigure):
             self._segs_by_page.append(range(start, stop))
 
     # init wx frame
-        figsize = (plotw * ncol, ploth * nrow)
-        super(self.__class__, self).__init__(figsize=figsize, dpi=dpi)
+        fig_kwa = dict(figsize=(plotw * ncol, ploth * nrow), dpi=dpi)
+        super(self.__class__, self).__init__("SelectEpochs", None,
+                                             fig_kwa=fig_kwa)
         self._frame.Bind(wx.EVT_CLOSE, self._OnClose)  # , source=None, id=-1, id2=-1
 
     # setup figure
@@ -211,7 +212,7 @@ class SelectEpochs(eelfigure):
 
         self.show_page(0)
         self._frame.store_canvas()
-        self._show()
+        self._show(tight=False)
         self._UpdateTitle()
 
     def _fill_toolbar(self, tb):

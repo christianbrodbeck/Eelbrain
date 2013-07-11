@@ -203,7 +203,8 @@ class multi(_base.eelfigure):
      - The 'Clear' button (or :meth:`clear`) removes the ROI.
 
     """
-    def __init__(self, sensors, size=7, dpi=100, frame=.05, ROI=[], proj='default'):
+    def __init__(self, sensors, ROI=[], proj='default', frame=0.05,
+                 title=None, **layout):
         """
         Parameters
         ----------
@@ -215,21 +216,28 @@ class multi(_base.eelfigure):
             Sensor projection for the fourth plot.
 
         """
-        title = "Sensors: %s" % getattr(sensors, 'sysname', '')
-        super(multi, self).__init__(title=title, figsize=(size, size), dpi=dpi)
-
         # in case Sensors parent is submitted
         if hasattr(sensors, 'sensors'):
             sensors = sensors.sensors
         elif hasattr(sensors, 'sensor'):
             sensors = sensors.sensor
 
-        # store args
-        self._sensors = sensors
+        # layout figure
+        layout.update(ncol=2, nrow=2)
+        ftitle = 'plot.sensors.multi'
+        sens_name = getattr(sensors, 'sysname', None)
+        if sens_name:
+            ftitle = '%s: %s' % (ftitle, sens_name)
 
-        self.figure.set_facecolor('w')
+        self._drag_ax = None
+        self._drag_x = None
+        self._drag_y = None
+        super(multi, self).__init__(ftitle, 4, layout, 1, 3)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)
+
+        # store args
+        self._sensors = sensors
 
         ext = np.vstack((sensors.locs.min(0), sensors.locs.max(0)))
         aframe = np.array([-frame, frame])
@@ -276,8 +284,8 @@ class multi(_base.eelfigure):
         self.ax3.set_xlim(-frame, 1 + frame)
         self.ax3.set_ylim(-frame, 1 + frame)
 
-        self._show()
         self._sensor_maps = (self._h0, self._h1, self._h2, self._h3)
+        self._show(tight=False)
 
         # ROI
         self.ROI_kwargs = dict(marker='o',  # symbol
@@ -294,9 +302,6 @@ class multi(_base.eelfigure):
         # setup mpl event handling
         self.canvas.mpl_connect("button_press_event", self._on_button_press)
         self.canvas.mpl_connect("button_release_event", self._on_button_release)
-        self._drag_ax = None
-        self._drag_x = None
-        self._drag_y = None
 
     def _fill_toolbar(self, tb):
         tb.AddSeparator()
@@ -413,7 +418,7 @@ class map2d(_base.eelfigure):
 
     """
     def __init__(self, sensors, labels='idx', proj='default', ROI=None,
-                 size=6, dpi=100, frame=.05, **kwargs):
+                 frame=.05, **layout):
         """Plot sensor positions in 2 dimensions
 
         Parameters
@@ -427,30 +432,33 @@ class map2d(_base.eelfigure):
             Transform to apply to 3 dimensional sensor coordinates for plotting
             locations in a plane
         """
-        title = "Sensors: %s" % getattr(sensors, 'sysname', '')
-        super(map2d, self).__init__(title=title, figsize=(size, size), dpi=dpi)
-
         # in case Sensors parent is submitted
         if hasattr(sensors, 'sensors'):
             sensors = sensors.sensors
         elif hasattr(sensors, 'sensor'):
             sensors = sensors.sensor
 
+        ftitle = 'plot.sensors.map2d'
+        sens_name = getattr(sensors, 'sysname', None)
+        if sens_name:
+            ftitle = '%s: %s' % (ftitle, sens_name)
+        fig_kwa = dict(facecolor='w')
+        super(map2d, self).__init__(ftitle, 1, layout, 1, 3, fig_kwa=fig_kwa)
+
         # store args
         self._sensors = sensors
         self._proj = proj
         self._ROIs = []
 
-        self.figure.set_facecolor('w')
         ax = self.figure.add_axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
         self.axes = ax
-        self._markers = _ax_map2d(ax, sensors, proj=proj, **kwargs)
+        self._markers = _ax_map2d(ax, sensors, proj=proj)
         if labels:
             self._markers.show_labels(labels)
         if ROI is not None:
             self.plot_ROI(ROI)
 
-        self._show()
+        self._show(tight=False)
 
     def _fill_toolbar(self, tb):
         tb.AddSeparator()
