@@ -149,6 +149,7 @@ _temp = {
 
         # log-files (eye-tracker etc.)
         'log-dir': os.path.join('{meg-dir}', 'logs'),
+        'log-rnd': '{log-dir}/rand_seq.mat',
         'log-data-file': '{log-dir}/data.txt',
         'log-file': '{log-dir}/log.txt',
         'edf-file': os.path.join('{log-dir}', '*.edf'),
