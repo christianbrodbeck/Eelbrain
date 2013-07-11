@@ -1109,12 +1109,15 @@ class ShellFrame(wx.py.shell.ShellFrame):
         win = wx.Window.FindFocus()
         if hasattr(win, 'Copy'):
             win.Copy()
-        elif hasattr(win, 'figure'):  # matplotlib figure
+            return
+
+        win = self.get_active_window()
+        if hasattr(win, 'canvas'):  # matplotlib figure
             if wx.TheClipboard.Open():
                 try:
                     # save temporary pdf file
                     path = tempfile.mktemp('.pdf')
-                    win.figure.savefig(path)
+                    win.canvas.figure.savefig(path)
                     # copy path
                     do = wx.FileDataObject()
                     do.AddFile(path)
@@ -1560,6 +1563,11 @@ class ShellFrame(wx.py.shell.ShellFrame):
             elif id_ == ID_AUTO_SAVESETTINGS and self.preferencesDialog:
                 state = event.IsChecked()
                 self.preferencesDialog.checkboxSaveSettings.SetValue(state)
+            elif (id_ == wx.ID_COPY and hasattr(win, 'canvas') and
+                  hasattr(win.canvas, 'figure') and
+                  hasattr(win.canvas.figure, 'savefig')):  # matplotlib figure
+                event.Enable(True)
+                return
             super(ShellFrame, self).OnUpdateMenu(event)
 
     def OnWindowMenuActivateWindow(self, event):
