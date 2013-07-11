@@ -38,7 +38,7 @@ def assert_dataobj_equal(d1, d2):
 
 def test_print():
     "Run the string representation methods"
-    ds = datasets.get_basic()
+    ds = datasets.get_rand()
     print ds
     print repr(ds)
     A = ds['A']
@@ -47,14 +47,14 @@ def test_print():
     Y = ds['Y']
     print Y
     print repr(Y)
-    Ynd = ds['Ynd']
+    Ynd = ds['uts']
     print Ynd
     print repr(Ynd)
 
 
 def test_align():
     "Testing align() and align1() functions"
-    ds = datasets.get_basic()
+    ds = datasets.get_rand()
     ds.index()
     idx = np.arange(0, ds.n_cases, 4)
     ds_sub = ds.subset(np.arange(0, ds.n_cases, 2))
@@ -67,23 +67,23 @@ def test_align():
 
 def test_combine():
     "Test combine()"
-    ds1 = datasets.get_basic()
-    ds2 = datasets.get_basic()
+    ds1 = datasets.get_rand()
+    ds2 = datasets.get_rand()
     ds = combine((ds1, ds2))
     assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:], "Basic combine")
     del ds1['Y']
-    del ds2['Cat']
+    del ds2['YCat']
     ds = combine((ds1, ds2))
     assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:], "Combine with "
                        "missing var")
-    assert_true(np.all(ds1['Cat'] == ds['Cat'][:ds1.n_cases]), "Combine with "
-                "missing factor")
+    assert_true(np.all(ds1['YCat'] == ds['YCat'][:ds1.n_cases]), "Combine "
+                "with missing factor")
 
 
 def test_ndvar_op():
     "Test ndvar operations"
-    ds = datasets.get_basic()
-    Ynd = ds['Ynd']
+    ds = datasets.get_rand()
+    Ynd = ds['uts']
     Ynd_bl = Ynd - Ynd.summary(time=(None, 0))
 
     # assert that the baseline is 0
@@ -93,7 +93,7 @@ def test_ndvar_op():
 
 def test_pickle_io():
     "Test io by pickling"
-    ds = datasets.get_basic()
+    ds = datasets.get_rand()
     ds.info['info'] = "Some very useful information about the dataset"
     tempdir = tempfile.mkdtemp()
     try:

@@ -6,9 +6,9 @@ from eelbrain.test.glm import anova
 
 def test_anova():
     "Test univariate ANOVA"
-    ds = datasets.get_rm()
-    aov = anova('Y', 'A*B*random', ds=ds)
+    ds = datasets.get_rand()
+    aov = anova('Y', 'A*B*rm', ds=ds)
     print aov
 
     # not fully specified model with random effects
-    assert_raises(NotImplementedError, anova, 'Y', 'A*random', ds=ds)
+    assert_raises(NotImplementedError, anova, 'Y', 'A*rm', ds=ds)

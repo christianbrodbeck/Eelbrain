@@ -9,12 +9,12 @@ from ...eellab import *
 
 
 def test_clusters():
-    "test plot.uts plotting functions"
-    ds = datasets.get_basic()
+    "test plot.uts cluster plotting functions"
+    ds = datasets.get_rand()
 
     A = ds['A']
     B = ds['B']
-    Y = ds['Ynd']
+    Y = ds['uts']
 
     # fixed effects model
     res = testnd.cluster_anova(Y, A * B)

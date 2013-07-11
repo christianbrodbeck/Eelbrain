@@ -113,7 +113,7 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
 
     Examples
     --------
-    >>> ds = datasets.get_basic()
+    >>> ds = datasets.get_rand()
     >>> table.stats('Y', 'A', 'B', ds=ds)
                 B
          -----------------
