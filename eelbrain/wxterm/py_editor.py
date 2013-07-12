@@ -221,6 +221,11 @@ class PyEditor(wx.py.editor.EditorFrame):
         self.updateTitle()
         return cancel
 
+    def bufferSuggestSave(self):
+        """Suggest saving changes.  Return True if user selected Cancel."""
+        self.Raise()
+        return wx.py.editor.EditorFrame.bufferSuggestSave(self)
+
     def bufferOpen(self):
         """Subclassed from EditorFrame."""
         cancel = wx.py.editor.EditorFrame.bufferOpen(self)

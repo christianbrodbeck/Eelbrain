@@ -1091,7 +1091,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def OnClose(self, event):
         # http://stackoverflow.com/a/1055506/166700
         logging.debug("WxTerm Shell OnClose")
-        if hasattr(event, 'CanVeto') and event.CanVeto():
+        if event.CanVeto():
             self.Hide()
             event.Veto()
         else:
@@ -1476,10 +1476,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         # close all windows
         for w in wx.GetTopLevelWindows():
             if w is not self:
-                if hasattr(w, 'OnClose'):
-                    w.OnClose(event)
-                else:
-                    w.Close()
+                w.Close()
 
         if self.help_viewer:
             self.help_viewer.Close()
