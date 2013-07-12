@@ -465,6 +465,7 @@ class SelectEpochs(eelfigure):
 
     def show_page(self, page=None):
         "Dislay a specific page (start counting with 0)"
+        wx.BeginBusyCursor()
         t0 = time.time()
         if page is None:
             page = self._current_page_i
@@ -526,6 +527,7 @@ class SelectEpochs(eelfigure):
         self.canvas.draw()
         dt = time.time() - t0
         logging.debug('Page draw took %.1f seconds.', dt)
+        wx.EndBusyCursor()
 
     def _OnBackward(self, event):
         "turns the page backward"
@@ -589,6 +591,10 @@ class SelectEpochs(eelfigure):
                 name = 'Epoch %i Neighbor Correlation' % ax.segID
             cseg = corr(seg, name=name)
             plot.topo.topomap(cseg, sensors='name')
+        elif event.key == 'right' and self._current_page_i < self._n_pages - 1:
+            self.show_page(self._current_page_i + 1)
+        elif event.key == 'left' and self._current_page_i > 0:
+            self.show_page(self._current_page_i - 1)
 
     def _OnExcludeChannel(self, event):
         chs = ', '.join(self.get_bad_chs()) or 'None'
