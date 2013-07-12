@@ -2062,12 +2062,11 @@ class mne_experiment(object):
         PCA = []
         for p in projs:
             d = p['data']['data'][0]
-            name = p['desc'][-5:]
+            name = p['desc'][-6:]
             v = ndvar(d, (sensor,), name=name)
             PCA.append(v)
 
-        proj_file = self.get('proj-file')
-        p = plot.topo.topomap(PCA, size=1, title=proj_file)
+        p = plot.topo.topomap(PCA, size=1, title=name)
         if save_plot:
             dest = self.get('proj-plot')
             p.figure.savefig(dest)
@@ -2083,6 +2082,7 @@ class mne_experiment(object):
 
             p.close()
             projs = [projs[i] for i in rm]
+            proj_file = self.get('proj-file')
             mne.write_proj(proj_file, projs)
 
     def makeplt_coreg(self, redo=False, **kwargs):
