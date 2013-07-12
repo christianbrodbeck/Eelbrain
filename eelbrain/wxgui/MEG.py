@@ -260,6 +260,15 @@ class SelectEpochs(eelfigure):
         tb.AddControl(btn)
         btn.Bind(wx.EVT_BUTTON, self._OnSaveSelection)
 
+    def auto_reject(self, threshold=2e-12, above=False, below=True):
+        process.mark_by_threshold(self._ds, x=self._data,
+                                  threshold=threshold, above=above,
+                                  below=below, target=self._target,
+                                  bad_chs=self._bad_chs)
+
+        self._refresh()
+        self._UpdateTitle()
+
     def _get_page_mean_seg(self, sensor=None):
         seg_IDs = self._segs_by_page[self._current_page_i]
         index = np.zeros(self._ds.n_cases, dtype=bool)
@@ -713,13 +722,7 @@ class SelectEpochs(eelfigure):
             else:
                 return
 
-        process.mark_by_threshold(self._ds, x=self._data,
-                                  threshold=threshold, above=above,
-                                  below=below, target=self._target,
-                                  bad_chs=self._bad_chs)
-
-        self._refresh()
-        self._UpdateTitle()
+        self.auto_reject(threshold, above, below)
 
     def _UpdateTitle(self):
         if self._path:
