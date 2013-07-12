@@ -555,18 +555,24 @@ class var(object):
     """
     _stype_ = "var"
     def __init__(self, x, name=None):
-        """
+        """Represents a univariate variable.
+
         Parameters
         ----------
         x : array_like
-            Data; is converted with ``np.asarray(x)``
+            Data; is converted with ``np.asarray(x)``. Multidimensional arrays
+            are flattened as long as only 1 dimension is longer than 1.
         name : str | None
             Name of the variable
-
         """
         x = np.asarray(x)
         if x.ndim > 1:
-            raise ValueError("Use ndvar class for data with more than one dimension")
+            if np.count_nonzero(i > 1 for i in x.shape) <= 1:
+                x = np.ravel(x)
+            else:
+                err = ("X needs to be one-dimensional. Use ndvar class for "
+                       "data with more than one dimension.")
+                raise ValueError(err)
         self.__setstate__((x, name))
 
     def __setstate__(self, state):
