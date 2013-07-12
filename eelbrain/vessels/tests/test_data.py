@@ -13,27 +13,31 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain.vessels import datasets
-from eelbrain.vessels.data import (var, factor, align, align1, combine,
-                                   isdatalist, isndvar, isuv)
+from eelbrain.vessels.data import (var, factor, dataset, isdatalist, isndvar,
+                                   isuv, align, align1, combine)
 
 
-def assert_dataset_equal(ds1, ds2):
-    assert_equal(ds1.keys(), ds2.keys(), "Datasets unequal: different keys")
+def assert_dataset_equal(ds1, ds2, msg="Datasets unequal"):
+    assert_equal(ds1.keys(), ds2.keys(), "%s: different keys" % msg)
     for k in ds1.keys():
-        assert_dataobj_equal(ds1[k], ds2[k])
-    assert_equal(ds1.info.keys(), ds2.info.keys())
+        assert_dataobj_equal(ds1[k], ds2[k], msg=msg)
+    assert_equal(ds1.info.keys(), ds2.info.keys(), "%s: keys in info" % msg)
 
 
-def assert_dataobj_equal(d1, d2):
-    assert_equal(d1.name, d2.name, "Names unequal")
-    assert_equal(len(d1), len(d2), "Unequal length")
+def assert_dataobj_equal(d1, d2, msg="Data-objects unequal"):
+    msg = "%s:" % msg
+    assert_equal(d1.name, d2.name, "%s unequal names (%r vs %r"
+                 ")" % (msg, d1.name, d2.name))
+    msg += ' %r have' % d1.name
+    assert_equal(len(d1), len(d2), "%s unequal length" % msg)
     if isuv(d1):
-        assert_true(np.all(d1 == d2), "Values unequal")
+        assert_true(np.all(d1 == d2), "%s unequal values: %r vs "
+                    "%r" % (msg, d1, d2))
     elif isndvar(d1):
-        assert_true(np.all(d1.x == d2.x), "Values unequal")
+        assert_true(np.all(d1.x == d2.x), "%s unequal values" % msg)
     elif isdatalist(d1):
         for i in xrange(len(d1)):
-            assert_equal(d1[i], d2[i], "Values unequal")
+            assert_equal(d1[i], d2[i], "%s unequal values" % msg)
 
 
 def test_print():
@@ -78,6 +82,28 @@ def test_combine():
                        "missing var")
     assert_true(np.all(ds1['YCat'] == ds['YCat'][:ds1.n_cases]), "Combine "
                 "with missing factor")
+
+
+def test_dataset_sorting():
+    "Test dataset sorting methods"
+    test_array = np.arange(10)
+    ds = dataset()
+    ds['v'] = var(test_array)
+    ds['f'] = factor(test_array)
+
+    # shuffle the dataset
+    rand_idx = test_array.copy()
+    np.random.shuffle(rand_idx)
+    ds_shuffled = ds[rand_idx]
+
+    # ascending, var, copy
+    dsa = ds_shuffled.sorted('v')
+    assert_dataset_equal(dsa, ds, "Copy sorted by var, ascending")
+
+    # descending, factor, in-place
+    ds_shuffled.sort('f', descending=True)
+    assert_dataset_equal(ds_shuffled, ds[::-1], "In-place sorted by factor, "
+                         "descending")
 
 
 def test_ndvar_op():

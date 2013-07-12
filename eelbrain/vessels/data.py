@@ -935,8 +935,7 @@ class var(object):
         """
         idx = np.argsort(self.x)
         if descending:
-            idx -= np.max(idx)
-            idx *= -1
+            idx = idx[::-1]
         return idx
 
     @property
@@ -1001,8 +1000,7 @@ class _effect_(object):
 
         idx = np.argsort(idx)
         if descending:
-            idx -= np.max(idx)
-            idx *= -1
+            idx = idx[::-1]
         return idx
 
 
