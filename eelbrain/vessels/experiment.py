@@ -1146,8 +1146,8 @@ class mne_experiment(object):
         Parameters
         ----------
         subject : str
-            Subject(s) for which to load evoked files. Can be 'all'a group name
-            or a single subject.
+            Subject(s) for which to load evoked files. Can be a group name
+            such as 'all' or a single subject.
         epoch : str
             Epoch definition.
         ndvar : bool | str
@@ -1281,8 +1281,8 @@ class mne_experiment(object):
         Parameters
         ----------
         subject : str
-            Subject(s) for which to load evoked files. Can be 'all'a group name
-            or a single subject.
+            Subject(s) for which to load evoked files. Can be a group name
+            such as 'all' or a single subject.
         ndvar : bool | str
             Convert the mne Evoked objects to an ndvar. If True, the target
             name is 'meg'.
@@ -1353,9 +1353,9 @@ class mne_experiment(object):
         """
         Parameters
         ----------
-        subject : 'all' | str
-            With 'all', a dataset with all subjects is loaded, otherwise a
-            single subject.
+        subject : str
+            Subject(s) for which to load evoked files. Can be a group name
+            such as 'all' or a single subject.
         ind: bool | str
             Add stcs on individual brains (with str as name, otherwise 'stc').
         morph : bool | str
@@ -1386,6 +1386,8 @@ class mne_experiment(object):
         fiff : Raw | Epochs | Evoked | ...
             Object for which to make the inverse operator (provides the mne
             info dictionary).
+        others :
+            State parameters.
         """
         self.set(**kwargs)
 
@@ -1398,6 +1400,7 @@ class mne_experiment(object):
         return inv
 
     def load_label(self, **kwargs):
+        """Load an mne label file."""
         self.set(**kwargs)
         fname = self.get('label-file')
         return self._label_cache[fname]
@@ -1442,13 +1445,16 @@ class mne_experiment(object):
 
         return raw
 
-    def load_selected_events(self, reject=True, add_proj=True, add_bads=True,
-                             index=True, **kwargs):
+    def load_selected_events(self, subject=None, reject=True, add_proj=True,
+                             add_bads=True, index=True, **kwargs):
         """
         Load events and return a subset based on epoch and rejection
 
         Parameters
         ----------
+        subject : str
+            Subject(s) for which to load evoked files. Can be a group name
+            such as 'all' or a single subject.
         reject : bool | 'keep'
             Reject bad trials. For True, bad trials are removed from the
             dataset. For 'keep', the 'accept' variable is added to the dataset
@@ -1470,6 +1476,14 @@ class mne_experiment(object):
         based on thresholding is performed.
         """
         self.set(**kwargs)
+        if subject in self.get_field_values('group'):
+            dss = [self.load_selected_events(reject=reject, add_proj=add_proj,
+                                             add_bads=add_bads, index=index)
+                   for _ in self.iter(group=subject)]
+            ds = combine(dss)
+            return ds
+
+        self.set(subject=subject)
         epoch = self._epoch_state
 
         ds = self.load_events(add_proj=add_proj, add_bads=add_bads)
