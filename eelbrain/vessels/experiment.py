@@ -940,7 +940,7 @@ class mne_experiment(object):
 
         return values
 
-    def iter(self, fields=['subject'], exclude={}, values={}, group=None,
+    def iter(self, fields='subject', exclude={}, values={}, group=None,
              mail=False, prog=False, **constants):
         """
         Cycle the experiment's state through all values on the given fields
@@ -974,7 +974,8 @@ class mne_experiment(object):
         self.set(**constants)
         level = self._state.increase_depth()
 
-        if isinstance(fields, basestring):
+        yield_str = isinstance(fields, basestring)
+        if yield_str:
             fields = [fields]
         fields = list(set(fields).difference(constants).union(values))
 
@@ -1012,7 +1013,12 @@ class mne_experiment(object):
                 self._state.reset()
                 values = dict(zip(fields, v_list))
                 self.set(**values)
-                yield v_list
+
+                if yield_str:
+                    yield v_list[0]
+                else:
+                    yield v_list
+
                 if prog:
                     progm.advance()
         else:
