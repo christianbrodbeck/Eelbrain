@@ -2110,7 +2110,7 @@ class mne_experiment(object):
         ----------
         temp :
         """
-        dst_path = self.get(temp, **{field: dst})
+        dst_path = self.get(temp, rescan=False, **{field: dst})
         if not redo and os.path.exists(dst_path):
             return
 
@@ -2682,7 +2682,7 @@ class mne_experiment(object):
 
         self.queue.put(cmd)
 
-    def set(self, subject=None, match=True, add=False, **kwargs):
+    def set(self, subject=None, match=True, rescan=None, add=False, **kwargs):
         """
         Set variable values.
 
@@ -2695,6 +2695,10 @@ class mne_experiment(object):
             Require existence of the assigned value (only applies for variables
             for which values are defined as field values). When setting
             root, find subjects by looking through folder structure.
+        rescan : None | bool
+            If setting root, update the subjects values by scanning the new
+            directory containing subjects. If None, use the experiment default
+            (set on initialization).
         add : bool
             If the template name does not exist, add a new key. If False
             (default), a non-existent key will raise a KeyError.
@@ -2858,8 +2862,9 @@ class mne_experiment(object):
                 raise KeyError("No variable named %r" % k)
 
         # set subject after updating root
-        if (root is not None) and self._parse_subjects:
-            self.parse_dirs(subject=subject)
+        if root is not None:
+            if rescan or (rescan is None and self._parse_subjects):
+                self.parse_dirs(subject=subject)
 
         # store secondary settings
         if epoch:
