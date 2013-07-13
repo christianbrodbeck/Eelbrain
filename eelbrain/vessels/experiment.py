@@ -223,6 +223,70 @@ _temp = {
     }
 
 
+class State(object):
+    """Modify dictionary entries while keeping a history for resetting
+    """
+    def __init__(self, fields, field_values, params):
+        self.fields = fields
+        self.field_values = field_values
+        self.params = params
+        self._fields = []
+        self._field_values = []
+        self._params = []
+        self._level = 0
+
+    def __repr__(self):
+        return "<State at level %i>" % self._level
+
+    def get_field(self, key, level=-1):
+        """Retrieve a field value from any level
+
+        Parameters
+        ----------
+        key : str
+            the field name (dicitonary key).
+        level : int
+            The level from which to retrieve the value. -1 = the current level.
+        """
+        if level == self._level or level < 0:
+            return self.fields[key]
+        elif level < self._level:
+            ldict = self._fields[level]
+            return ldict[key]
+        else:
+            raise ValueError("Level %i > max level %i" % (level, self._level))
+
+    def increase_depth(self):
+        "Returns new level"
+        self._fields.append(self.fields.copy())
+        self._field_values.append(self.field_values.copy())
+        self._params.append(self.params.copy())
+        self._level += 1
+        return self._level
+
+    def reset(self, level=None):
+        if level is not None:
+            self.set_level(level)
+
+        self.fields = self._fields[-1].copy()
+        self.field_values = self._field_values[-1].copy()
+        self.params = self._params[-1].copy()
+
+    def set_level(self, level):
+        level = int(level)
+        if level > self._level:
+            err = ("Requested level (%i) higher than current level "
+                   "(%i)" % (level, self._level))
+            raise RuntimeError(err)
+        elif level < 1:
+            raise RuntimeError("Level can't be < 1 (got %i)" % level)
+
+        while level < self._level:
+            self.fields = self._fields.pop()
+            self.field_values = self._field_values.pop()
+            self.params = self._params.pop()
+            self._level -= 1
+
 
 class mne_experiment(object):
     """Class for managing data for an experiment
@@ -352,11 +416,9 @@ class mne_experiment(object):
         field_values = {}
         field_values['rej'] = tuple(self.epoch_rejection.keys())
         field_values['group'] = self.groups.keys()
-        secondary = []  # exclude when resetting
-        for k in temps:
-            v = temps[k]
-            if v is None:
-                secondary.append(k)
+        for k, v in temps.iteritems():
+            if v is None:  # secondary field
+                pass
             elif isinstance(v, tuple):
                 field_values[k] = v
                 temps[k] = v[0]
@@ -365,9 +427,7 @@ class mne_experiment(object):
                        "or string" % v)
                 raise TypeError(err)
 
-        self._field_values = field_values
-        self._secondary_fields = tuple(secondary)
-        self._state = temps
+        self._state = State(temps, field_values, {})
 
         # set variables with derived settings
         epoch = temps.get('epoch', None)
@@ -377,19 +437,20 @@ class mne_experiment(object):
 
         # find experiment data structure
         self._mri_subjects = keydefaultdict(lambda k: k)
-        self.set(root=root, match=parse_subjects, add=True)
+        self.set(root=root, add=True)
 
         # set initial values
         self._label_cache = LabelCache()
 
         # set defaults for any existing field names
-        for k in self._state.keys():
-            temp = self._state[k]
+        for k in self._state.fields.keys():
+            temp = self._state.fields[k]
             for field in self._fmt_pattern.findall(temp):
-                if field not in self._state:
-                    self._state[field] = ''
+                if field not in self._state.fields:
+                    self._state.fields[field] = ''
 
-        self._initial_state = self._state.copy()
+#         self._initial_state = self._state.copy()
+        self._state.increase_depth()
 
         owner = getattr(self, 'owner', None)
         if owner:
@@ -399,12 +460,12 @@ class mne_experiment(object):
 
     def __iter__(self):
         "Iterate state through subjects and yield each subject name."
-        for state in self.iter():
-            yield state['subject']
+        for subject in self.iter():
+            yield subject
 
     @property
     def _epoch_state(self):
-        epochs = self._epochs_state
+        epochs = self._state.params['epochs']
         if len(epochs) != 1:
             err = ("This function is only implemented for single epochs (got "
                    "%s)" % self.get('epoch'))
@@ -437,7 +498,7 @@ class mne_experiment(object):
 
         epochs = ds[src]
         inv = self.load_inv(epochs)
-        stc = apply_inverse_epochs(epochs, inv, **self._apply_inv_kw)
+        stc = apply_inverse_epochs(epochs, inv, **self._state.params['apply_inv_kw'])
 
         if ndvar:
             subject = self.get('mrisubject')
@@ -555,7 +616,7 @@ class mne_experiment(object):
                     invs[subject] = inv
 
                 # apply inv
-                stc = apply_inverse(evoked, inv, **self._apply_inv_kw)
+                stc = apply_inverse(evoked, inv, **self._state.params['apply_inv_kw'])
 
                 # baseline correction
                 if baseline:
@@ -627,19 +688,19 @@ class mne_experiment(object):
             v = self.get(k)
             kwargs.append((k, repr(v)))
 
-        proper_mrisubject = self._mri_subjects[self._state['subject']]
-        for k in sorted(self._state):
+        proper_mrisubject = self._mri_subjects[self._state.fields['subject']]
+        for k in sorted(self._state.fields):
             if k == 'root':
                 continue
-            if k == 'mrisubject' and self._state[k] == proper_mrisubject:
+            elif k == 'mrisubject' and self._state.fields[k] == proper_mrisubject:
                 continue
-            if '{' in self._state[k]:
+            elif '{' in self._state.fields[k]:
                 continue
-            if k in self._repr_vars:
+            elif k in self._repr_vars:
                 continue
 
-            v = self._state[k]
-            if v != self._initial_state[k]:
+            v = self._state.fields[k]
+            if v != self._state.get_field(k, level=0):
                 kwargs.append((k, repr(v)))
 
         args.extend('='.join(pair) for pair in kwargs)
@@ -671,15 +732,15 @@ class mne_experiment(object):
         values : container (implements __contains__)
             values which should not be expanded (in addition to
         """
-        temp = self._state.get(temp, temp)
+        temp = self._state.fields.get(temp, temp)
 
         while True:
             stop = True
             for name in self._fmt_pattern.findall(temp):
-                if (name in values) or (self._field_values.get(name, False)):
+                if (name in values) or (self._state.field_values.get(name, False)):
                     pass
                 else:
-                    temp = temp.replace('{%s}' % name, self._state[name])
+                    temp = temp.replace('{%s}' % name, self._state.fields[name])
                     stop = False
 
             if stop:
@@ -697,10 +758,10 @@ class mne_experiment(object):
             All terminal keys that are relevant for foormatting temp.
         """
         keys = set()
-        temp = self._state.get(temp, temp)
+        temp = self._state.fields.get(temp, temp)
 
         for key in self._fmt_pattern.findall(temp):
-            value = self._state[key]
+            value = self._state.fields[key]
             if self._fmt_pattern.findall(value):
                 keys = keys.union(self.find_keys(value))
             else:
@@ -708,21 +769,33 @@ class mne_experiment(object):
 
         return keys
 
-    def format(self, temp, vmatch=True, **kwargs):
-        """
-        Returns the template temp formatted with current values. Formatting
-        retrieves values from self._state iteratively
+    def format(self, string, vmatch=True, **kwargs):
+        """Format a string (i.e., replace any '{xxx}' fields with their values)
+
+        Parameters
+        ----------
+        string : str
+            Template string.
+        vmatch : bool
+            For fields with known names, only allow existing field names.
+        others :
+            State parameters.
+
+        Returns
+        -------
+        formatted_string : str
+            The template temp formatted with current state values.
         """
         self.set(match=vmatch, **kwargs)
 
         while True:
-            variables = self._fmt_pattern.findall(temp)
+            variables = self._fmt_pattern.findall(string)
             if variables:
-                temp = temp.format(**self._state)
+                string = string.format(**self._state.fields)
             else:
                 break
 
-        path = os.path.expanduser(temp)
+        path = os.path.expanduser(string)
         return path
 
     def get(self, temp, fmatch=True, vmatch=True, match=True, mkdir=False,
@@ -859,7 +932,7 @@ class mne_experiment(object):
             values.extend(self.groups.keys())
             return values
 
-        values = self._field_values[field]
+        values = self._state.field_values[field]
         if exclude:
             exclude = self.exclude.get(field, None)
         if exclude:
@@ -897,10 +970,9 @@ class mne_experiment(object):
         if mail is True:
             mail = self.owner
 
-        state_ = self._state.copy()
-
         # set constants
         self.set(**constants)
+        level = self._state.increase_depth()
 
         if isinstance(fields, basestring):
             fields = [fields]
@@ -935,18 +1007,18 @@ class mne_experiment(object):
                 prog = True
 
             for v_list in itertools.product(*v_lists):
-                values = dict(zip(fields, v_list))
                 if prog:
                     progm.message(' | '.join(map(str, v_list)))
+                self._state.reset()
+                values = dict(zip(fields, v_list))
                 self.set(**values)
-                yield self._state
+                yield v_list
                 if prog:
                     progm.advance()
         else:
-            yield self._state
+            yield ()
 
-        self._state.update(state_)
-
+        self._state.set_level(level - 1)
         if mail:
             send_email(mail, "Eelbrain Task Done", "I did as you desired, "
                        "my master.")
@@ -1001,9 +1073,9 @@ class mne_experiment(object):
         # find variables for iteration
         variables = set(self._fmt_pattern.findall(temp))
 
-        for state in self.iter(variables, exclude=exclude, values=values,
-                               mail=mail, prog=prog, **constants):
-            path = temp.format(**state)
+        for _ in self.iter(variables, exclude=exclude, values=values,
+                           mail=mail, prog=prog, **constants):
+            path = temp.format(**self._state.fields)
             yield path
 
     def iter_vars(self, *args, **kwargs):
@@ -1107,8 +1179,8 @@ class mne_experiment(object):
             Return the table as a string (instead of printing it).
         """
         lines = []
-        for key in self._field_values:
-            values = self.get_field_values(key)
+        for key in self._state.field_values:
+            values = list(self.get_field_values(key))
             line = '%s:' % key
             head_len = len(line) + 1
             while values:
@@ -1178,8 +1250,8 @@ class mne_experiment(object):
         else:  # single subject
             self.set(subject=subject, **kwargs)
             ds = self.load_selected_events(add_bads=add_bads, reject=reject)
-            if reject and self._rej_args['kind'] == 'auto':
-                reject_arg = self._rej_args.get('threshold', None)
+            if reject and self._state.params['rej']['kind'] == 'auto':
+                reject_arg = self._state.params['rej'].get('threshold', None)
             else:
                 reject_arg = None
 
@@ -1264,8 +1336,7 @@ class mne_experiment(object):
 
         ds.info['raw'] = raw
 
-        if subject is None:
-            subject = self._state['subject']
+        subject = subject or self.get('subject')
         experiment = self.get('experiment')
 
         ds = self.label_events(ds, experiment, subject)
@@ -1394,9 +1465,10 @@ class mne_experiment(object):
         fwd_file = self.get('fwd-file', make=True)
         fwd = mne.read_forward_solution(fwd_file, surf_ori=True)
         cov = mne.read_cov(self.get('cov-file', make=True))
-        if self._regularize_inv:
+        if self._state.params['reg_inv']:
             cov = mne.cov.regularize(cov, fiff.info)
-        inv = make_inverse_operator(fiff.info, fwd, cov, **self._make_inv_kw)
+        inv = make_inverse_operator(fiff.info, fwd, cov,
+                                    **self._state.params['make_inv_kw'])
         return inv
 
     def load_label(self, **kwargs):
@@ -1504,7 +1576,7 @@ class mne_experiment(object):
             if reject not in (True, 'keep'):
                 raise ValueError("Invalie reject value: %r" % reject)
 
-            if self._rej_args['kind'] in ('manual', 'make'):
+            if self._state.params['rej']['kind'] in ('manual', 'make'):
                 path = self.get('epoch-sel-file')
                 if not os.path.exists(path):
                     err = ("The rejection file at %r does not exist. Run "
@@ -1524,7 +1596,7 @@ class mne_experiment(object):
                            "%r" % reject)
                     raise ValueError(err)
             else:
-                use = self._rej_args.get('edf', False)
+                use = self._state.params['rej'].get('edf', False)
                 if use:
                     edf = ds.info['edf']
                     tmin = epoch.get('reject_tmin', epoch['tmin'])
@@ -1661,17 +1733,18 @@ class mne_experiment(object):
         kwargs :
             Kwargs for SelectEpochs
         """
-        if not self._rej_args['kind'] == 'manual':
+        rej_args = self._state.params['rej']
+        if not rej_args['kind'] == 'manual':
             err = ("Epoch rejection kind for rej=%r is not manual. See the "
                    ".epoch_rejection class attribute." % self.get('rej'))
             raise RuntimeError(err)
 
         ds = self.load_epochs(ndvar=True, add_bads=False, reject=False,
-                              decim=self._rej_args.get('decim', 5))
+                              decim=rej_args.get('decim', 5))
         path = self.get('epoch-sel-file', mkdir=True)
 
         from ..wxgui.MEG import SelectEpochs
-        ROI = self._rej_args.get('eog_sns', None)
+        ROI = rej_args.get('eog_sns', None)
         bad_chs = self.bad_channels[self.get('raw-key')]
         SelectEpochs(ds, data='meg', path=path, ROI=ROI, bad_chs=bad_chs,
                      **kwargs)  # nplots, plotsize,
@@ -1695,7 +1768,7 @@ class mne_experiment(object):
         if not redo and os.path.exists(dest):
             return
 
-        epoch_names = [ep['name'] for ep in self._epochs_state]
+        epoch_names = [ep['name'] for ep in self._state.params['epochs']]
 
         # load the epochs
         epoch = self.get('epoch')
@@ -2234,16 +2307,17 @@ class mne_experiment(object):
             err = "No subjects found in %r" % sub_dir
             raise IOError(err)
         subjects = sorted(subjects)
-        self._field_values['subject'] = subjects
+        self._state.field_values['subject'] = subjects
 
         mrisubjects = [self._mri_subjects[s] for s in subjects]
         common_brain = self.get('common_brain')
         if common_brain:
             mrisubjects.insert(0, common_brain)
-        self._field_values['mrisubject'] = mrisubjects
+        self._state.field_values['mrisubject'] = mrisubjects
 
         if subject is None:
-            subject = self._state.get('subject', None)
+            # on init, subject is not in fields
+            subject = self._state.fields.get('subject', None)
             if subject not in subjects:
                 subject = subjects[0]
         elif subject not in subjects:
@@ -2297,10 +2371,10 @@ class mne_experiment(object):
         """
         tree = {'.': root}
         root_temp = '{%s}' % root
-        for k, v in self._state.iteritems():
+        for k, v in self._state.fields.iteritems():
             if str(v).startswith(root_temp):
                 tree[k] = {'.': v.replace(root_temp, '')}
-        _etree_expand(tree, self._state)
+        _etree_expand(tree, self._state.fields)
         nodes = _etree_node_repr(tree, root)
         name_len = max(len(n) for n, _ in nodes)
         path_len = max(len(p) for _, p in nodes)
@@ -2450,14 +2524,11 @@ class mne_experiment(object):
             value)
         """
         exclude = set(exclude)
-        exclude.update(self._secondary_fields)
-        # dependent variables
         if 'subject' in exclude:
             exclude.add('mrisubject')
-
-        save = {k:self._state[k] for k in exclude}
-        self._state = self._initial_state.copy()
-        self._state.update(save)
+        store = {key: self.get(key) for key in exclude}
+        self._state.reset(1)
+        self.set(**store)
 
     def rm(self, temp, exclude={}, values={}, v=False, **constants):
         """
@@ -2549,22 +2620,13 @@ class mne_experiment(object):
 
     def run_mne_analyze(self, subject=None, modal=False):
         subjects_dir = self.get('mri-sdir')
-        if (subject is None) and (self._state['subject'] is None):
-            fif_dir = self.get('meg-sdir')
-            subject = None
-        else:
-            fif_dir = self.get('raw-dir', subject=subject)
-            subject = self.get('{mrisubject}')
-
+        subject = subject or self.get('mrisubject')
+        fif_dir = self.get('raw-dir', subject=subject)
         subp.run_mne_analyze(fif_dir, subject=subject,
                              subjects_dir=subjects_dir, modal=modal)
 
     def run_mne_browse_raw(self, subject=None, modal=False):
-        if (subject is None) and (self._state['subject'] is None):
-            fif_dir = self.get('meg-sdir')
-        else:
-            fif_dir = self.get('raw-dir', subject=subject)
-
+        fif_dir = self.get('raw-dir', subject=subject)
         subp.run_mne_browse_raw(fif_dir, modal)
 
     def run_subp(self, cmd, workers=2):
@@ -2763,7 +2825,7 @@ class mne_experiment(object):
             for k, v in kwargs.iteritems():
                 if v is None:
                     pass
-                elif k not in self._field_values:
+                elif k not in self._state.field_values:
                     pass
                 elif '*' in v:
                     pass
@@ -2783,9 +2845,9 @@ class mne_experiment(object):
 
         # update state ---
         for k, v in kwargs.iteritems():
-            if add or k in self._state:
+            if add or k in self._state.fields:
                 if v is not None:
-                    self._state[k] = v
+                    self._state.fields[k] = v
             else:
                 raise KeyError("No variable named %r" % k)
 
@@ -2795,17 +2857,17 @@ class mne_experiment(object):
 
         # store secondary settings
         if epoch:
-            self._state['epoch-stim'] = epoch_stim
-            self._state['epoch-desc'] = epoch_desc
-            self._state['epoch-nodecim'] = epoch_nodecim
-            self._state['epoch-bare'] = epoch_bare
-            self._epochs_state = epoch_dicts
+            self._state.fields['epoch-stim'] = epoch_stim
+            self._state.fields['epoch-desc'] = epoch_desc
+            self._state.fields['epoch-nodecim'] = epoch_nodecim
+            self._state.fields['epoch-bare'] = epoch_bare
+            self._state.params['epochs'] = epoch_dicts
         if rej:
-            self._rej_args = rej_args
+            self._state.params['rej'] = rej_args
         if inv:
-            self._make_inv_kw = make_kw
-            self._apply_inv_kw = apply_kw
-            self._regularize_inv = regularize_inv
+            self._state.params['make_inv_kw'] = make_kw
+            self._state.params['apply_inv_kw'] = apply_kw
+            self._state.params['reg_inv'] = regularize_inv
 
     def set_env(self, env=os.environ):
         """
@@ -2872,13 +2934,14 @@ class mne_experiment(object):
         table.midrule()
 
         if temp is None:
-            keys = (k for k in self._state if not '{' in self._state[k])
+            keys = (k for k, v in self._state.fields.iteritems()
+                    if not '{' in v)
         else:
             keys = self.find_keys(temp)
 
         for k in sorted(keys):
-            v = self._state[k]
-            if v != self._initial_state[k]:
+            v = self._state.fields[k]
+            if v != self._state.get_field(k, level=0):
                 mod = '*'
             else:
                 mod = ''
