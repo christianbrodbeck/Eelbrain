@@ -17,17 +17,17 @@ txt:
 
 """
 
-import cPickle as pickle
+import cPickle as _pickle
 
-from .. import ui
+from .. import ui as _ui
 
 
 def unpickle(fname=None):
     if fname is None:
         ext = [('pickled', "Pickles"), ('*', "all files")]
-        fname = ui.ask_file("Select File to Unpickle", "Select a pickled file "
-                            "to unpickle", ext=ext)
+        fname = _ui.ask_file("Select File to Unpickle", "Select a pickled "
+                             "file to unpickle", ext=ext)
     if fname is False:
         raise IOError("User canceled")
 
-    return pickle.load(open(fname))
+    return _pickle.load(open(fname))
