@@ -1,3 +1,4 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 '''
 Data Representation
 ===================
@@ -4422,6 +4423,15 @@ class UTS(Dimension):
 # ---ndvar functions---
 
 def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}'):
+    """Calculate Neighbor correlation
+
+    Parameter
+    ---------
+    x : ndvar
+        The data.
+    dim : str
+        Dimension over which to correlate neighbors.
+    """
     dim_obj = x.get_dim(dim)
     neighbors = neighbors or dim_obj.neighbors()
 
