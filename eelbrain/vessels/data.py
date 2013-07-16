@@ -1696,8 +1696,7 @@ class ndvar(object):
         dims.extend([(len(dim), dim._dimrepr_()) for dim in self._truedims])
 
         dims = ' X '.join('%i (%s)' % fmt for fmt in dims)
-        args = dict(dims=dims)
-        args['name'] = repr(self.name) if self.name else ''
+        args = dict(dims=dims, name=self.name or '')
         return rep % args
 
     def assert_dims(self, dims):
