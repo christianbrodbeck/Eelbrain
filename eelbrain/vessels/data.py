@@ -481,16 +481,25 @@ def combine(items, name=None):
             kwargs = dict(name=name, random=item0.random)
         return factor(x, **kwargs)
     elif isndvar(item0):
-        dims = item0.dims
         has_case = np.array([v.has_case for v in items])
-        if all(has_case):
-            x = np.concatenate([v.x for v in items], axis=0)
-        elif all(has_case == False):
-            x = np.array([v.x for v in items])
-            dims = ('case',) + dims
+        if np.all(has_case):
+            has_case = True
+            all_dims = (item.dims[1:] for item in items)
+        elif np.all(has_case == False):
+            has_case = False
+            all_dims = (item.dims for item in items)
         else:
             err = ("Some items have a 'case' dimension, others do not")
             raise DimensionMismatchError(err)
+
+        dims = reduce(intersect_dims, all_dims)
+        idx = {d.name: d for d in dims}
+        items = [item.subdata(**idx) for item in items]
+        if has_case:
+            x = np.concatenate([v.x for v in items], axis=0)
+        else:
+            x = np.array([v.x for v in items])
+        dims = ('case',) + dims
         return ndvar(x, dims=dims, name=name, properties=item0.properties)
     elif isdatalist(item0):
         out = sum(items[1:], item0)
@@ -3661,10 +3670,16 @@ class Dimension(object):
     def dimindex(self, arg):
         raise NotImplementedError
 
+    def intersect(self, dim):
+        "Create a dimension object that is the intersection with dim"
+        raise NotImplementedError
+
 
 class Scalar(Dimension):
     def __init__(self, name, values):
         "Simple scalar dimension"
+        if len(np.unique(values)) < len(values):
+            raise ValueError("Dimension can not have duplicate values")
         self.name = name
         self.values = np.asarray(values)
 
@@ -3697,11 +3712,36 @@ class Scalar(Dimension):
         return Scalar(self.name, values)
 
     def dimindex(self, arg):
+        if isinstance(arg, self.__class__):
+            s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
+            arg = s_idx[np.argsort(a_idx)]
         return arg
+
+    def intersect(self, dim):
+        """Find the intersection with dim
+
+        Returns
+        -------
+        dim : type(self)
+            The intersection with dim (returns itself if dim and self are
+            equal)
+        """
+        if self.name != dim.name:
+            raise DimensionMismatchError("Dimensions don't match")
+
+        if np.all(self.values == dim.values):
+            return self
+        values = np.intersect1d(self.values, dim.values)
+        if np.all(self.values == values):
+            return self
+        elif np.all(dim.values == values):
+            return dim
+
+        return self.__class__(self.name, values)
 
 
 class Ordered(Scalar):
-    """"""
+    """Scalar with guarantee that values are ordered"""
     def __init__(self, name, values):
         values = np.sort(values)
         Scalar.__init__(self, name, values)
@@ -3710,6 +3750,8 @@ class Ordered(Scalar):
         if isinstance(arg, tuple):
             start, stop = tuple
             arg = np.logical_and(self.values >= start, self.values < stop)
+        else:
+            arg = super(Ordered, self).dimindex(arg)
         return arg
 
 
@@ -3834,6 +3876,8 @@ class Sensor(Dimension):
         "Convert dimension indexes into numpy indexes"
         if isinstance(arg, basestring):
             idx = self.channel_idx[arg]
+        elif isinstance(arg, Sensor):
+            idx = np.array([self.names.index(name) for name in arg.names])
         elif np.iterable(arg):
             if (isinstance(arg, np.ndarray) and
                         issubclass(arg.dtype.type, (np.bool_, np.integer))):
@@ -4129,6 +4173,48 @@ class Sensor(Dimension):
 
         return index
 
+    def intersect(self, dim, ignore_locs=False):
+        """Find the intersection with dim
+
+        Parameters
+        ----------
+        dim : Sensor
+            Sensor dimension to intersect with.
+        ignore_locs : bool
+            Intersect channels based on names only and ignore mismatch between
+            locations for channels with the same same.
+
+        Returns
+        -------
+        sensor : Sensor
+            The intersection with dim (returns itself if dim and self are
+            equal)
+        """
+        if self.name != dim.name:
+            raise DimensionMismatchError("Dimensions don't match")
+
+        n_self = len(self)
+        names = set(self.names)
+        names.intersection_update(dim.names)
+        n_intersection = len(names)
+        if n_intersection == n_self:
+            return self
+        elif n_intersection == len(dim.names):
+            return dim
+
+        names = sorted(names)
+        idx = map(self.names.index, names)
+        locs = self.locs[idx]
+        if not ignore_locs:
+            idxd = map(dim.names.index, names)
+            if not np.all(locs == dim.locs[idxd]):
+                err = "Sensor locations don't match between dimension objects"
+                raise ValueError(err)
+
+        new = Sensor(locs, names, sysname=self.sysname,
+                     proj2d=self.default_proj2d)
+        return new
+
     def neighbors(self, mult=1.5):
         """Find neighboring sensors.
 
@@ -4244,6 +4330,9 @@ class SourceSpace(Dimension):
                     raise IndexError("rh is empty")
             else:
                 raise IndexError('%r' % obj)
+        elif isinstance(obj, SourceSpace):
+            self_idx, other_idx = np.nonzero(self.vertno[:, None] == obj.vertno)
+            obj = self_idx[np.argsort(other_idx)]
         else:
             return obj
 
@@ -4397,7 +4486,17 @@ class UTS(Dimension):
         if np.isscalar(arg):
             i, _ = find_time_point(self.times, arg)
             return i
-        if isinstance(arg, tuple) and len(arg) == 2:
+        elif isinstance(arg, UTS):
+            idxs = (self.times[:, None] == arg.times)
+            if not np.all(np.any(idxs, 0)):
+                err = ("The index dimension has time values not in self")
+                raise DimensionMismatchError(err)
+            start = self.dimindex(arg.tmin)
+            step = int(round(arg.tstep / self.tstep))
+            stop = start + len(arg) * step
+            arg = slice(start, stop, step)
+            return arg
+        elif isinstance(arg, tuple) and len(arg) == 2:
             tstart, tstop = arg
             if tstart is None:
                 start = None
@@ -4414,10 +4513,41 @@ class UTS(Dimension):
         else:
             return arg
 
+    def intersect(self, dim):
+        idx = self.times[:, None] == dim.times
+        if np.all(np.any(idx, 0)):
+            return dim
+        elif np.all(np.any(idx, 1)):
+            return self
+
+        times = np.intersect1d(self.times, dim.times)
+        tmin = times[0]
+        # guess tstep :(
+        tstep_est = np.mean(np.unique(np.diff(times)))
+        x = int(round(tstep_est / self.tstep))
+        tstep = self.tstep * x
+        nsamples = len(times)
+        return UTS(tmin, tstep, nsamples)
+
     @property
     def x(self):
         return self.times
 
+
+def intersect_dims(dims1, dims2):
+    """Find the intersection between two multidimensional spaces
+
+    Parameters
+    ----------
+    dims1, dims2 : tuple of dimension objects
+        Two spaces involving the same dimensions with overlapping values.
+
+    Returns
+    -------
+    dims : tuple of Dimension objects
+        Intersection of dims1 and dims2.
+    """
+    return tuple(d1.intersect(d2) for d1, d2 in zip(dims1, dims2))
 
 
 # ---ndvar functions---

@@ -83,6 +83,21 @@ def test_combine():
     assert_true(np.all(ds1['YCat'] == ds['YCat'][:ds1.n_cases]), "Combine "
                 "with missing factor")
 
+    # combine ndvar with unequel dimensions
+    ds = datasets.get_rand(utsnd=True)
+    y = ds['utsnd']
+    y1 = y.subdata(sensor=['0', '1', '2', '3'])
+    y2 = y.subdata(sensor=['1', '2', '3', '4'])
+    ds1 = dataset(y1)
+    ds2 = dataset(y2)
+    dsc = combine((ds1, ds2))
+    y = dsc['utsnd']
+    assert_equal(y.sensor.names, ['1', '2', '3'], "Sensor dimension "
+                 "intersection failed.")
+    dims = ('case', 'sensor', 'time')
+    ref = np.concatenate((y1.get_data(dims)[:, 1:], y2.get_data(dims)[:, :3]))
+    assert_array_equal(y.get_data(dims), ref, "combine utsnd")
+
 
 def test_dataset_sorting():
     "Test dataset sorting methods"
