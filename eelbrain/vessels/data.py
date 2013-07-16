@@ -3661,6 +3661,56 @@ class Dimension(object):
         raise NotImplementedError
 
 
+class Scalar(Dimension):
+    def __init__(self, name, values):
+        "Simple scalar dimension"
+        self.name = name
+        self.values = np.asarray(values)
+
+    def __getstate__(self):
+        state = {'name': self.name,
+                 'values': self.values}
+        return state
+
+    def __setstate__(self, state):
+        name = state['name']
+        values = state['values']
+        self.__init__(name, values)
+
+    def __repr__(self):
+        return "Scalar(%r, %s)" % (self.name, self.values)
+
+    def _dimrepr_(self):
+        values = str(list(self.values))
+        r = '%r: %s' % (self.name, values)
+        return r
+
+    def __len__(self):
+        return len(self.values)
+
+    def __getitem__(self, index):
+        if isinstance(index, int):
+            return self.values[index]
+
+        values = self.values[index]
+        return Scalar(self.name, values)
+
+    def dimindex(self, arg):
+        return arg
+
+
+class Ordered(Scalar):
+    """"""
+    def __init__(self, name, values):
+        values = np.sort(values)
+        Scalar.__init__(self, name, values)
+
+    def dimindex(self, arg):
+        if isinstance(arg, tuple):
+            start, stop = tuple
+            arg = np.logical_and(self.values >= start, self.values < stop)
+        return arg
+
 
 class Sensor(Dimension):
     """Dimension class for representing sensor information
@@ -4386,6 +4436,66 @@ def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}'):
     properties = x.properties.copy()
     properties['colorspace'] = Colorspace('PRGn', vmax=1, unit="RMS corr coeff")
     out = ndvar(y, (dim_obj,), properties=properties, name=name)
+    return out
+
+
+def cwt_morlet(Y, freqs, use_fft=True, n_cycles=7.0, zero_mean=False,
+               out='magnitude'):
+    """Time frequency decomposition with Morlet wavelets (mne-python)
+
+    Parameters
+    ----------
+    Y : ndvar with time dimension
+        Signal.
+    freqs : scalar | array
+        Frequency/ies of interest. For a scalar, the output will not contain a
+        frequency dimension.
+    use_fft : bool
+        Compute convolution with FFT or temoral convolution.
+    n_cycles: float | array of float
+        Number of cycles. Fixed number or one per frequency.
+    zero_mean : bool
+        Make sure the wavelets are zero mean.
+    out : 'complex' | 'magnitude' | 'phase'
+        xxx
+
+    Returns
+    -------
+    tfr : 3D array
+        Time Frequency Decompositions (n_signals x n_frequencies x n_times)
+    """
+    from mne.time_frequency.tfr import cwt_morlet
+
+    if not Y.get_axis('time') == Y.ndim - 1:
+        raise NotImplementedError
+    x = Y.x
+    x = x.reshape((np.prod(x.shape[:-1]), x.shape[-1]))
+    Fs = 1. / Y.time.tstep
+    if np.isscalar(freqs):
+        freqs = [freqs]
+        fdim = None
+    else:
+        fdim = Ordered("frequency", freqs)
+        freqs = fdim.values
+    x = cwt_morlet(x, Fs, freqs, use_fft, n_cycles, zero_mean)
+    if out == 'magnitude':
+        x = np.abs(x)
+    elif out == 'complex':
+        pass
+    else:
+        raise ValueError("out = %r" % out)
+
+    new_shape = Y.x.shape[:-1]
+    dims = Y.dims[:-1]
+    if fdim is not None:
+        new_shape += (len(freqs),)
+        dims += (fdim,)
+    new_shape += Y.x.shape[-1:]
+    dims += Y.dims[-1:]
+
+    x = x.reshape(new_shape)
+    properties = Y.properties.copy()
+    out = ndvar(x, dims, properties, Y.name)
     return out
 
 

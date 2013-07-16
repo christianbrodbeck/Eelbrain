@@ -36,7 +36,7 @@ Created on Mar 27, 2012
 '''
 from .vessels.data import (dataset, factor, var, ndvar, interaction,
                            combine, align, align1,
-                           resample,
+                           cwt_morlet, resample,
                            cellname,
                            )
 
