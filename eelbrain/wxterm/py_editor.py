@@ -259,16 +259,16 @@ class PyEditor(wx.py.editor.EditorFrame):
 #        logging.debug('OnClose')
     def _updateStatus(self):
         """
-        Update Information in status bar. Copied from baseclass except for
-        adding Pos information.
-
+        Update Information in status bar. Replaces from baseclass to add
+        position info and change order.
         """
         if self.editor and hasattr(self.editor, 'getStatus'):
-            status = self.editor.getStatus()
-            text = 'File: %s  |  Line: %d  |  Column: %d' % status
-            # mod: adding pos info
+            temp = 'Line: %d  |  Column: %d  |  Pos: %d  |  File: %s'
+            fpath, line, col = self.editor.getStatus()
+            if not self.editor.buffer.doc.filepath:
+                fpath = "* unsaved"
             pos = self.editor.window.GetCurrentPos()
-            text += '  |  Pos: %d' % pos
+            text = temp % (line, col, pos, fpath)
             # end mod
         else:
             text = self._defaultText
