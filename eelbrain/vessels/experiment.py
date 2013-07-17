@@ -2947,7 +2947,7 @@ class mne_experiment(object):
 
         if temp is None:
             keys = (k for k, v in self._state.fields.iteritems()
-                    if not '{' in v)
+                    if (not '{' in v) and len(v) < 60)
         else:
             keys = self.find_keys(temp)
 
