@@ -22,98 +22,104 @@ __hide__ = ['plt', 'math']
 
 
 # MARK: im arrays
-def _plt_im_array(ax, epoch, dims=('time', 'sensor'), colorspace=None,
-                  **kwargs):
-    handles = []
-    colorspace = _base.read_cs_arg(epoch, colorspace)
-    data = epoch.get_data(dims)
-    if data.ndim > 2:
-#        print data.shape
-        assert data.shape[0] == 1
-        data = data[0]
+class _plt_im_array(object):
+    def __init__(self, ax, epoch, dims=('time', 'sensor'), colorspace=None,
+                 **kwargs):
+        colorspace = _base.read_cs_arg(epoch, colorspace)
+        data = epoch.get_data(dims)
+        if data.ndim > 2:
+            assert data.shape[0] == 1
+            data = data[0]
 
-    if colorspace.cmap:
-        im_kwargs = kwargs.copy()
-        im_kwargs.update(colorspace.get_imkwargs())
-        h = ax.imshow(data, origin='lower', **im_kwargs)
-        handles.append(h)
+        if colorspace.cmap:
+            im_kwargs = kwargs.copy()
+            im_kwargs.update(colorspace.get_imkwargs())
+            self.im = ax.imshow(data, origin='lower', **im_kwargs)
+        else:
+            self.im = None
 
-    if colorspace.contours:
-        c_kwargs = kwargs.copy()
-        c_kwargs.update(colorspace.get_contour_kwargs())
-        h = ax.contour(data, **c_kwargs)
-        handles.append(h)
+        if colorspace.contours:
+            c_kwargs = kwargs.copy()
+            c_kwargs.update(colorspace.get_contour_kwargs())
+            self.cont = ax.contour(data, **c_kwargs)
+        else:
+            self.cont = None
 
-    return handles
+    def set_vlim(self, vmin=None, vmax=None):
+        if self.im is not None:
+            self.im.set_clim(vmin, vmax)
 
 
-
-def _ax_im_array(ax, layers, x='time',  # vmax=None,
+class _ax_im_array(object):
+    def __init__(self, ax, layers, x='time',  # vmax=None,
                  xlabel=True, ylabel=True, title=None, tick_spacing=.3):
-    """
-    plots segment data as im
+        """
+        plots segment data as im
 
-    define a colorspace by supplying one of those kwargs: ``colorspace`` OR
-    ``p`` OR ``vmax``
+        define a colorspace by supplying one of those kwargs: ``colorspace`` OR
+        ``p`` OR ``vmax``
 
-    """
-    handles = []
-    epoch = layers[0]
+        """
+        self.ax = ax
+        handles = []
+        epoch = layers[0]
 
-    xdim = epoch.get_dim(x)
-    if epoch.ndim == 2:
-        xdim_i = epoch.dimnames.index(x)
-        ydim_i = {1:0, 0:1}[xdim_i]
-        y = epoch.dimnames[ydim_i]
-    else:
-        err = ("Need 2 dimensions, got %i" % epoch.ndim)
-        raise ValueError(err)
+        xdim = epoch.get_dim(x)
+        if epoch.ndim == 2:
+            xdim_i = epoch.dimnames.index(x)
+            ydim_i = {1:0, 0:1}[xdim_i]
+            y = epoch.dimnames[ydim_i]
+        else:
+            err = ("Need 2 dimensions, got %i" % epoch.ndim)
+            raise ValueError(err)
 
-    ydim = epoch.get_dim(y)
-    if y == 'sensor':
-        ydim = _dta.var(np.arange(len(ydim)), y)
+        ydim = epoch.get_dim(y)
+        if y == 'sensor':
+            ydim = _dta.var(np.arange(len(ydim)), y)
 
-    map_kwargs = {'extent': [xdim[0], xdim[-1], ydim[0], ydim[-1]],
-                  'aspect': 'auto'}
+        map_kwargs = {'extent': [xdim[0], xdim[-1], ydim[0], ydim[-1]],
+                      'aspect': 'auto'}
 
-    # plot
-    for l in layers:
-        h = _plt_im_array(ax, l, dims=(y, x), **map_kwargs)
-        handles.append(h)
+        # plot
+        self.plots = [_plt_im_array(ax, l, dims=(y, x), **map_kwargs)
+                      for l in layers]
 
-    if xlabel:
-        if xlabel is True:
-            xlabel = xdim.name
-        ax.set_xlabel(xlabel)
+        if xlabel:
+            if xlabel is True:
+                xlabel = xdim.name
+            ax.set_xlabel(xlabel)
 
-    if ylabel:
-        if ylabel is True:
-            ylabel = ydim.name
-        ax.set_ylabel(ylabel)
+        if ylabel:
+            if ylabel is True:
+                ylabel = ydim.name
+            ax.set_ylabel(ylabel)
 
-    # x-ticks
-    tickstart = math.ceil(xdim[0] / tick_spacing) * tick_spacing
-    tickend = xdim[-1] + tick_spacing / 1e4
-    ticklabels = np.arange(tickstart, tickend, tick_spacing)
-    ax.xaxis.set_ticks(ticklabels)
-    ax.x_fmt = "t = %.3f s"
+        # x-ticks
+        tickstart = math.ceil(xdim[0] / tick_spacing) * tick_spacing
+        tickend = xdim[-1] + tick_spacing / 1e4
+        ticklabels = np.arange(tickstart, tickend, tick_spacing)
+        ax.xaxis.set_ticks(ticklabels)
+        if xdim.name == 'time':
+            ax.x_fmt = "t = %.3f s"
 
-    # y-ticks
-    if y == 'sensor':  # make sure y-ticklabels are all integers
-        locs = ax.yaxis.get_ticklocs()
-        if any(locs != locs.round()):
-            idx = np.where(locs == locs.round())[0]
-            locs = locs[idx]
-            labels = map(lambda x: str(int(x)), locs)
-            ax.yaxis.set_ticks(locs)
-            ax.yaxis.set_ticklabels(labels)
+        # y-ticks
+        if y == 'sensor':  # make sure y-ticklabels are all integers
+            locs = ax.yaxis.get_ticklocs()
+            if any(locs != locs.round()):
+                idx = np.where(locs == locs.round())[0]
+                locs = locs[idx]
+                labels = map(lambda x: str(int(x)), locs)
+                ax.yaxis.set_ticks(locs)
+                ax.yaxis.set_ticklabels(labels)
 
-    # title
-    if title is None:
-        title = _base.str2tex(epoch.name)
-    ax.set_title(title)
+        # title
+        if title is None:
+            title = _base.str2tex(epoch.name)
+        ax.set_title(title)
 
-    return handles
+    def set_vlim(self, vmin=None, vmax=None):
+        for p in self.plots:
+            p.set_vlim(vmin, vmax)
 
 
 class array(_base.eelfigure):
@@ -138,14 +144,20 @@ class array(_base.eelfigure):
         nax = len(epochs)
         _base.eelfigure.__init__(self, "plot.utsnd.array", nax, layout,
                                  figtitle=title)
-
+        
+        self.subplots = []
         for i, ax, layers in self._iter_ax(epochs):
             _ylabel = ylabel if i == 1 else None
             _xlabel = xlabel if i == nax - 1 else None
-
-            _ax_im_array(ax, layers, xlabel=_xlabel, ylabel=ylabel)
+            p = _ax_im_array(ax, layers, xlabel=_xlabel, ylabel=ylabel)
+            self.subplots.append(p)
 
         self._show()
+        
+    def set_vlim(self, vmin=None, vmax=None):
+        for p in self.subplots:
+            p.set_vlim(vmin, vmax)
+        self.draw()
 
 
 def _t_axes(rect, xmin=-.5, xmax=1., vmax=1.5, vbar=1., markevery=.5, ticks=False):
