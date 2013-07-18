@@ -14,7 +14,7 @@ def launch():
     import logging
     logging.basicConfig(level=logging.DEBUG)
 
-    import app
-    app = app.MainApp()  # globals())
+    from .app import MainApp
 
+    app = MainApp()
     app.MainLoop()
