@@ -157,11 +157,13 @@ _temp = {
         # mne secondary/forward modeling
         'proj': '',
         'cov': 'bl',
+        'src': ('ico-4', 'vol-10', 'vol-7'),
         'proj-file': '{raw-base}_{proj}-proj.fif',
         'proj-plot': '{raw-base}_{proj}-proj.pdf',
         'cov-file': '{raw-base}_{cov}-{rej}-{proj}-cov.fif',
-        'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
-        'src-file': os.path.join('{bem-dir}', '{mrisubject}-ico-4-src.fif'),
+        'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
+        'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
+        'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
         'fwd-file': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
         # inv:
         # 1) 'free' | 'fixed' | float
@@ -1851,37 +1853,25 @@ class mne_experiment(object):
             user from destroying the ongoing process by terminating the Python
             interpreter. Check :attr:`.queue.unfinished_tasks`.
         """
-        cmd = self.make_fwd_cmd()
+        cmd = self._make_fwd_cmd()
         self.run_subp(cmd, workers=int(thread))
 
-    def make_fwd_cmd(self, redo=False):
-        """
-        Returns the mne_do_forward_solution command.
-
-        Relevant templates:
-        - raw-file
-        - mrisubject
-        - src
-        - bem
-        - trans
+    def _make_fwd_cmd(self, redo=False):
+        """Create the mne_do_forward_solution command.
 
         Returns
         -------
-        cmd : None | list of str
+        cmd : list of str
             The command to run mne_do_forward_solution as it would be
-            submitted to subprocess.call(). None if redo=False and the target
-            file already exists.
-
+            submitted to subprocess.call().
         """
-        fwd = self.get('fwd-file')
-
         cmd = ["mne_do_forward_solution",
                '--subject', self.get('mrisubject'),
                '--src', self.get('src-file'),
-               '--bem', self.get('bem-file'),
+               '--bem', self.get('bem-sol-file'),
                '--mri', self.get('trans-file'),
                '--meas', self.get('raw-file'),  # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
-               '--fwd', fwd,
+               '--fwd', self.get('fwd-file'),
                '--megonly']
         if redo:
             cmd.append('--overwrite')
@@ -2189,6 +2179,38 @@ class mne_experiment(object):
                              filter_length='20s')
         else:
             raise ValueError('raw = %r' % raw)
+
+    def make_src(self, thread=False, redo=False):
+        """Make the source space
+
+        Parameters
+        ----------
+        thread : bool
+            Process files in the background. Warning: nothing will prevent the
+            user from destroying the ongoing process by terminating the Python
+            interpreter. Check :attr:`.queue.unfinished_tasks`.
+        redo : bool
+            Recreate the source space even if the corresponding file already
+            exists.
+        """
+        dst = self.get('src-file')
+        if not redo and os.path.exists(dst):
+            return
+
+        src = self.get('src')
+        kind, param = src.split('-')
+        if kind == 'vol':
+            cmd = ['mne_volume_source_space',
+                   '--bem', self.get('bem-file'),
+                   '--grid', param,
+                   '--all',
+                   '--src', dst]
+        elif kind == 'ico':
+            cmd = ['mne_setup_source_space',
+                   '--subject', self.get('mrisubject'),
+                   '--ico', param,
+                   '--overwrite']
+        self.run_subp(cmd, workers=int(thread))
 
     def ui_select_projs(self, projs, fif_obj, save=True, save_plot=True):
         """
@@ -2662,7 +2684,7 @@ class mne_experiment(object):
         if workers == 0:
             env = os.environ.copy()
             self.set_env(env)
-            subprocess.call(cmd, env=env)
+            mne.utils.run_subprocess(cmd, env=env)
             return
 
         if not hasattr(self, 'queue'):
