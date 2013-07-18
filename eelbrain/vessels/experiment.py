@@ -1752,11 +1752,11 @@ class mne_experiment(object):
                               decim=rej_args.get('decim', 5))
         path = self.get('epoch-sel-file', mkdir=True)
 
-        from ..wxgui.MEG import SelectEpochs
+        from ..wxgui import MEG
         ROI = rej_args.get('eog_sns', None)
         bad_chs = self.bad_channels[self.get('raw-key')]
-        SelectEpochs(ds, data='meg', path=path, ROI=ROI, bad_chs=bad_chs,
-                     **kwargs)  # nplots, plotsize,
+        MEG.SelectEpochs(ds, data='meg', path=path, ROI=ROI, bad_chs=bad_chs,
+                         **kwargs)  # nplots, plotsize,
 
     def make_evoked(self, redo=False, **kwargs):
         """
