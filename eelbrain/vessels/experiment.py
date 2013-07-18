@@ -2435,48 +2435,78 @@ class mne_experiment(object):
                            mri_subjects=self._mri_subjects)
         e.push(self.get('root'), names=names, **kwargs)
 
-    def push(self, dst_root, names=[], overwrite=False, missing='warn'):
-        """OK 12/8/12
-        Copy certain branches of the directory tree.
+    def push(self, dst_root, names, overwrite=False, **kwargs):
+        """Copy files to another experiment root folder.
 
-        name : str | list of str
-            name(s) of the template(s) of the files that should be copied
+        Before copying any files the user is asked for confirmation.
+
+        Parameters
+        ----------
+        dst_root : str
+            Path to the root to which the files should be copied.
+        names : str | sequence of str
+            Name(s) of the template(s) of the files that should be copied.
         overwrite : bool
-            What to do if the target file already exists (overwrite it with the
-            source file or keep it)
-        missing : 'raise' | 'warn' | 'ignor'
-            What to do about missing source files(raise an error, print a
-            warning, or ignore them)
+            What to do if the target file already exists.
+        others :
+            Update experiment state.
 
+        Notes
+        -----
+        Use ``e.print_tree()`` to find out which element(s) to copy.
         """
-        assert missing in ['raise', 'warn', 'ignore']
-
         if isinstance(names, basestring):
             names = [names]
 
+        # find files
+        files = []
         for name in names:
-            for src in self.iter_temp(name):
+            for src in self.iter_temp(name, **kwargs):
                 if '*' in src:
                     raise NotImplementedError("Can't fnmatch here yet")
 
                 if os.path.exists(src):
-                    dst = self.get(name, root=dst_root, match=False, mkdir=True)
-                    self.set(root=self.get('root'))
-                    if os.path.isdir(src):
-                        if os.path.exists(dst):
-                            if overwrite:
-                                shutil.rmtree(dst)
-                                shutil.copytree(src, dst)
-                            else:
-                                pass
-                        else:
-                            shutil.copytree(src, dst)
-                    elif overwrite or not os.path.exists(dst):
-                        shutil.copy(src, dst)
-                elif missing == 'warn':
-                    print "Skipping (missing): %r" % src
-                elif missing == 'raise':
-                    raise IOError("Missing: %r" % src)
+                    dst = self.get(name, root=dst_root, rescan=False)
+                    if src == dst:
+                        raise ValueError("Source == destination (%r)"%src)
+                    
+                    if os.path.exists(dst):
+                        flag = 'o' if overwrite else 'e'
+                    else:
+                        flag = ' '
+                else:
+                    dst = None
+                    flag = 'm'
+                files.append((src, dst, flag))
+        
+        # prompt for confirmation
+        root = self.get('root')
+        n_root = len(root)
+        for src, dst, flag in files:
+            if src.startswith(root):
+                src = src[n_root:]
+            print(' '.join((flag, src[-78:])))
+        print("Flags: o=overwrite, e=skip, it exists, m=skip, source is "
+              "missing")
+        msg = "Proceed? (confirm with 'yes'): "
+        if raw_input(msg) != 'yes':
+            return
+        
+        # copy the files
+        for src, dst, flag in files:
+            if flag in ('e', 'm'):
+                continue
+
+            dirpath = os.path.dirname(dst)
+            if not os.path.exists(dirpath):
+                os.makedirs(dirpath)
+
+            if os.path.isdir(src):
+                if flag == 'o':
+                    shutil.rmtree(dst)
+                shutil.copytree(src, dst)
+            else:
+                shutil.copy(src, dst)
 
     def rename(self, old, new):
         """
