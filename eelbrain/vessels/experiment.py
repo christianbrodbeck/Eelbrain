@@ -457,6 +457,7 @@ class mne_experiment(object):
             self.notification = Notifier(owner, 'mne_experiment task')
 
         self.set(**kwargs)
+        self.set_env()
 
     def __iter__(self):
         "Iterate state through subjects and yield each subject name."
