@@ -404,6 +404,8 @@ class PyEditor(wx.py.editor.EditorFrame):
 
             # execute the code
             cmd = win.GetTextRange(start_pos, end_pos)
+            if not cmd.strip():
+                return
             self.shell.ExecCommand(cmd)
 
             # move the caret to the next line
@@ -452,10 +454,12 @@ class PyEditor(wx.py.editor.EditorFrame):
             while True:
                 if next_line == win.GetLineCount() - 1:
                     break
-                elif win.GetLine(next_line).strip():
-                    break
                 else:
-                    next_line += 1
+                    line = win.GetLine(next_line).strip()
+                    if line and not line.startswith('#'):
+                        break
+                    else:
+                        next_line += 1
 
             pos = win.PositionFromLine(next_line)
 
