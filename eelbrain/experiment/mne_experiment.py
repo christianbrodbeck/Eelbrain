@@ -84,8 +84,8 @@ from ..utils import keydefaultdict
 from ..utils import subp
 from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri, split_label
-from .data import (var, ndvar, combine, isdatalist, DimensionMismatchError,
-                   UTS)
+from ..vessels.data import (var, ndvar, combine, isdatalist, UTS,
+                            DimensionMismatchError)
 
 
 __all__ = ['mne_experiment', 'LabelCache']
