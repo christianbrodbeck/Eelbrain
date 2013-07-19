@@ -3715,6 +3715,14 @@ class Scalar(Dimension):
         if isinstance(arg, self.__class__):
             s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
             arg = s_idx[np.argsort(a_idx)]
+        elif np.isscalar(arg):
+            nz = np.nonzero(self.values == arg)[0]
+            if len(nz):
+                arg = nz[0]
+            else:
+                raise ValueError("%s has no value %s" % (self.name, arg))
+        else:
+            arg = [self.dimindex(a) for a in arg]
         return arg
 
     def intersect(self, dim):
@@ -4634,7 +4642,7 @@ def cwt_morlet(Y, freqs, use_fft=True, n_cycles=7.0, zero_mean=False,
     dims += Y.dims[-1:]
 
     x = x.reshape(new_shape)
-    properties = Y.properties.copy()
+    properties = {}
     out = ndvar(x, dims, properties, Y.name)
     return out
 
