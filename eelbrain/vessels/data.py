@@ -3681,7 +3681,7 @@ class Scalar(Dimension):
         if len(np.unique(values)) < len(values):
             raise ValueError("Dimension can not have duplicate values")
         self.name = name
-        self.values = np.asarray(values)
+        self.x = self.values = np.asarray(values)
 
     def __getstate__(self):
         state = {'name': self.name,
@@ -3827,6 +3827,10 @@ class Sensor(Dimension):
 
         # 'z root' transformation fails with 32-bit floats
         self.locs = locs = np.asarray(locs, dtype=np.float64)
+        self.x = locs[:, 0]
+        self.y = locs[:, 1]
+        self.z = locs[:, 2]
+
         self.n = len(locs)
 
         if names is None:
@@ -4250,19 +4254,6 @@ class Sensor(Dimension):
 
         return nb
 
-    @property
-    def x(self):
-        return self.locs[:, 0]
-
-    @property
-    def y(self):
-        return self.locs[:, 1]
-
-    @property
-    def z(self):
-        return self.locs[:, 2]
-
-
 
 class SourceSpace(Dimension):
     """
@@ -4378,7 +4369,6 @@ class SourceSpace(Dimension):
         return idx
 
 
-
 class UTS(Dimension):
     """Dimension object for representing uniform time series
 
@@ -4407,7 +4397,7 @@ class UTS(Dimension):
         self.tmin = tmin
         self.tstep = tstep
         self.nsamples = nsamples = int(nsamples)
-        self.times = tmin + np.arange(nsamples) * tstep
+        self.x = self.times = tmin + np.arange(nsamples) * tstep
         self.tmax = self.times[-1]
 
     @classmethod
@@ -4536,10 +4526,6 @@ class UTS(Dimension):
         tstep = self.tstep * x
         nsamples = len(times)
         return UTS(tmin, tstep, nsamples)
-
-    @property
-    def x(self):
-        return self.times
 
 
 def intersect_dims(dims1, dims2):

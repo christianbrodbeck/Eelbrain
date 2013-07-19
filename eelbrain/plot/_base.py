@@ -137,10 +137,15 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
     data : list of list of ndvar
         The processed data to plot.
     """
-    if Xax is not None:
+    if isinstance(Y, basestring):
+        Y = ds.eval(Y)
+
+    if isinstance(Xax, str) and Xax.startswith('.'):
+        dimname = Xax[1:]
+        dim = Y.get_dim(dimname)
+        Y = [Y.subdata(**{dimname: v}) for v in dim.values]
+    elif Xax is not None:
         Xax = ascategorial(Xax, ds=ds)
-        if isinstance(Y, basestring):
-            Y = ds.eval(Y)
         Ys = []
         for cell in Xax.cells:
             v = Y[Xax == cell]
