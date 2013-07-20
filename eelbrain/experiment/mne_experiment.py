@@ -2097,7 +2097,19 @@ class MneExperiment(FileTree):
 
         FileTree.set(self, **state)
 
-    def set_epoch(self, epoch):
+    def set_epoch(self, epoch, pad=None):
+        """Set the current epoch
+
+        Parameters
+        ----------
+        epoch : str
+            An epoch name for an epoch defined in self.epochs. Several epochs
+            can be combined with '|' (but not all functions support linked
+            epochs).
+        pad : None | scalar
+            Pad epochs with this this amount of data (in seconds). Padding is
+            not reflected in the epoch descriptors.
+        """
         epochs = epoch.split('|')
         epochs.sort()
         epoch = '|'.join(epochs)
@@ -2121,20 +2133,27 @@ class MneExperiment(FileTree):
 
             # store expanded epoch
             stims.update(stim.split('|'))
+            ep_desc = ep.copy()
+            if pad:
+                if not 'reject_tmin' in ep:
+                    ep['reject_tmin'] = ep['tmin']
+                ep['tmin'] -= pad
+                if not 'reject_tmax' in ep:
+                    ep['reject_tmax'] = ep['tmax']
+                ep['tmax'] += pad
             epoch_dicts.append(ep)
 
             # epoch desc
-            desc = self.get_epoch_str(**ep)
+            desc = self.get_epoch_str(**ep_desc)
             e_descs.append(desc)
 
             # epoch desc without decim
-            ep_nd = ep.copy()
-            ep_nd['decim'] = None
-            desc_nd = self.get_epoch_str(**ep_nd)
+            ep_desc['decim'] = None
+            desc_nd = self.get_epoch_str(**ep_desc)
             e_descs_nodecim.append(desc_nd)
 
             # epoch for rejection
-            ep_rej = ep_nd.copy()
+            ep_rej = ep_desc.copy()
             if 'reject_tmin' in ep_rej:
                 ep_rej['tmin'] = ep_rej.pop('reject_tmin')
             if 'reject_tmax' in ep_rej:
@@ -2143,9 +2162,9 @@ class MneExperiment(FileTree):
             e_descs_rej.append(desc_rej)
 
             # bare epoch desc
-            ep_nd['reject_tmin'] = None
-            ep_nd['reject_tmax'] = None
-            desc_b = self.get_epoch_str(**ep_nd)
+            ep_desc['reject_tmin'] = None
+            ep_desc['reject_tmax'] = None
+            desc_b = self.get_epoch_str(**ep_desc)
             desc_b = desc_b.format(rej='')
             e_descs_bare.append(desc_b)
 
