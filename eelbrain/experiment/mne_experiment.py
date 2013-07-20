@@ -147,9 +147,9 @@ temp = {
         'epoch-desc': None,  # epoch description
         'epoch-bare': None,  # epoch description without decim or rej
         'epoch-nodecim': None,  # epoch description without decim parameter
-        'epoch-sel-file': os.path.join('{meg-dir}', 'epoch_sel', '{raw}_'
-                                       '{experiment}_{epoch-nodecim}_sel.'
-                                       'pickled'),
+        'epoch-rej': None,  # epoch description for rejection purposes
+        'rej-file': os.path.join('{meg-dir}', 'epoch_sel', '{raw}_'
+                                 '{experiment}_{epoch-rej}_sel.pickled'),
 
         'common_brain': 'fsaverage',
 
@@ -1160,7 +1160,7 @@ class MneExperiment(FileTree):
                 raise ValueError("Invalie reject value: %r" % reject)
 
             if self._params['rej']['kind'] in ('manual', 'make'):
-                path = self.get('epoch-sel-file')
+                path = self.get('rej-file')
                 if not os.path.exists(path):
                     err = ("The rejection file at %r does not exist. Run "
                            ".make_epoch_selection() first." % path)
@@ -1324,7 +1324,7 @@ class MneExperiment(FileTree):
 
         ds = self.load_epochs(ndvar=True, add_bads=False, reject=False,
                               decim=rej_args.get('decim', 5))
-        path = self.get('epoch-sel-file', mkdir=True)
+        path = self.get('rej-file', mkdir=True)
 
         from ..wxgui import MEG
         ROI = rej_args.get('eog_sns', None)
@@ -2105,6 +2105,7 @@ class MneExperiment(FileTree):
         e_descs = []  # full epoch descriptor
         e_descs_nodecim = []  # epoch description without decim
         e_descs_bare = []  # epoch description without decim or rejection
+        e_descs_rej = []
         epoch_dicts = []
         stims = set()  # all relevant stims
         for name in epochs:
@@ -2132,6 +2133,15 @@ class MneExperiment(FileTree):
             desc_nd = self.get_epoch_str(**ep_nd)
             e_descs_nodecim.append(desc_nd)
 
+            # epoch for rejection
+            ep_rej = ep_nd.copy()
+            if 'reject_tmin' in ep_rej:
+                ep_rej['tmin'] = ep_rej.pop('reject_tmin')
+            if 'reject_tmax' in ep_rej:
+                ep_rej['tmax'] = ep_rej.pop('reject_tmax')
+            desc_rej = self.get_epoch_str(**ep_rej)
+            e_descs_rej.append(desc_rej)
+
             # bare epoch desc
             ep_nd['reject_tmin'] = None
             ep_nd['reject_tmax'] = None
@@ -2143,7 +2153,8 @@ class MneExperiment(FileTree):
         fields = {'epoch-stim': '|'.join(sorted(stims)),
                   'epoch-desc': '(%s)' % ','.join(sorted(e_descs)),
                   'epoch-nodecim': '(%s)' % ','.join(sorted(e_descs_nodecim)),
-                  'epoch-bare': '(%s)' % ','.join(sorted(e_descs_bare))}
+                  'epoch-bare': '(%s)' % ','.join(sorted(e_descs_bare)),
+                  'epoch-rej': '(%s)' % ','.join(sorted(e_descs_rej))}
         self._fields.update(fields)
         self._params['epochs'] = epoch_dicts
 
