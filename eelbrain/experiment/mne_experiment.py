@@ -1,5 +1,6 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 '''
-mne_experiment is a base class for managing an mne experiment.
+MneExperiment is a base class for managing an mne experiment.
 
 
 Epochs
@@ -35,18 +36,18 @@ tag : str
 
 
 Epochs can be
-specified in the :attr:`mne_experiment.epochs` dictionary. All keys in this
+specified in the :attr:`MneExperiment.epochs` dictionary. All keys in this
 dictionary have to be of type :class:`str`, values have to be :class:`dict`s
 containing the epoch specification. If an epoch is specified in
-:attr:`mne_experiment.epochs`, its name (key) can be used in the epochs
+:attr:`MneExperiment.epochs`, its name (key) can be used in the epochs
 argument to various methods. Example::
 
-    # in mne_experiment subclass definition
-    class experiment(mne_experiment):
+    # in MneExperiment subclass definition
+    class experiment(MneExperiment):
         epochs = {'adjbl': dict(name='bl', stim='adj', tstart=-0.1, tstop=0)}
         ...
 
-The :meth:`mne_experiment.get_epoch_str` method produces A label for each
+The :meth:`MneExperiment.get_epoch_str` method produces A label for each
 epoch specification, which is used for filenames. Data which is excluded from
 artifact rejection is parenthesized. For example, ``"noun[(-100)0,500]"``
 designates data form -100 to 500 ms relative to the stimulus 'noun', with only
@@ -55,8 +56,6 @@ the interval form 0 to 500 ms used for rejection.
 '''
 
 from collections import defaultdict
-from glob import glob
-import itertools
 from operator import add
 import os
 from Queue import Queue
@@ -82,13 +81,13 @@ from .. import testnd
 from .. import ui
 from ..utils import keydefaultdict
 from ..utils import subp
-from ..utils.com import send_email, Notifier
 from ..utils.mne_utils import is_fake_mri, split_label
 from ..vessels.data import (var, ndvar, combine, isdatalist, UTS,
                             DimensionMismatchError)
+from .experiment import FileTree
 
 
-__all__ = ['mne_experiment', 'LabelCache']
+__all__ = ['MneExperiment', 'LabelCache']
 
 analysis_source = 'source_{raw}_{proj}_{rej}_{inv}'
 analysis_sensor = 'sensor_{raw}_{proj}_{rej}'
@@ -104,32 +103,7 @@ class LabelCache(dict):
             return label
 
 
-def _etree_expand(node, state):
-    for tk, tv in node.iteritems():
-        if tk == '.':
-            continue
-
-        for k, v in state.iteritems():
-            name = '{%s}' % tk
-            if str(v).startswith(name):
-                tv[k] = {'.': v.replace(name, '')}
-        if len(tv) > 1:
-            _etree_expand(tv, state)
-
-
-def _etree_node_repr(node, name, indent=0):
-    head = ' ' * indent
-    out = [(name, head + node['.'])]
-    for k, v in node.iteritems():
-        if k == '.':
-            continue
-
-        out.extend(_etree_node_repr(v, k, indent=indent + 3))
-    return out
-
-
-_temp = {
-    'v0': {
+temp = {
         # basic dir
         'meg-sdir': os.path.join('{root}', 'meg'),  # contains subject-name folders for MEG data
         'meg-dir': os.path.join('{meg-sdir}', '{subject}'),
@@ -139,7 +113,7 @@ _temp = {
         'raw-dir': os.path.join('{meg-dir}', 'raw'),
 
         # raw
-        'raw': 'raw',
+        'raw': ('clm', 'lp40', 'hp.1-lp40', 'hp.2-lp40', 'hp1-lp40'),
         # key necessary for identifying raw file info (used for bad channels):
         'raw-key': '{subject}',
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
@@ -165,14 +139,6 @@ _temp = {
         'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
         'fwd-file': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
-        # inv:
-        # 1) 'free' | 'fixed' | float
-        # 2) depth weighting (optional)
-        # 3) regularization 'reg' (optional)
-        # 4) snr
-        # 5) method
-        # 6) pick_normal:  'pick_normal' (optional)
-        'inv': 'free-0.8-2-dSPM',
 
         # epochs
         'epoch': 'epoch',  # epoch name
@@ -221,76 +187,10 @@ _temp = {
                                   '{experiment}_{epoch-bare}_triggers.txt'),
         'besa-evt': os.path.join('{besa-root}', '{subject}', '{subject}_'
                                  '{experiment}_{epoch-nodecim}.evt'),
-        }
-    }
+         }
 
 
-class State(object):
-    """Modify dictionary entries while keeping a history for resetting
-    """
-    def __init__(self, fields, field_values, params):
-        self.fields = fields
-        self.field_values = field_values
-        self.params = params
-        self._fields = []
-        self._field_values = []
-        self._params = []
-        self._level = 0
-
-    def __repr__(self):
-        return "<State at level %i>" % self._level
-
-    def get_field(self, key, level=-1):
-        """Retrieve a field value from any level
-
-        Parameters
-        ----------
-        key : str
-            the field name (dicitonary key).
-        level : int
-            The level from which to retrieve the value. -1 = the current level.
-        """
-        if level == self._level or level < 0:
-            return self.fields[key]
-        elif level < self._level:
-            ldict = self._fields[level]
-            return ldict[key]
-        else:
-            raise ValueError("Level %i > max level %i" % (level, self._level))
-
-    def increase_depth(self):
-        "Returns new level"
-        self._fields.append(self.fields.copy())
-        self._field_values.append(self.field_values.copy())
-        self._params.append(self.params.copy())
-        self._level += 1
-        return self._level
-
-    def reset(self, level=None):
-        if level is not None:
-            self.set_level(level)
-
-        self.fields = self._fields[-1].copy()
-        self.field_values = self._field_values[-1].copy()
-        self.params = self._params[-1].copy()
-
-    def set_level(self, level):
-        level = int(level)
-        if level > self._level:
-            err = ("Requested level (%i) higher than current level "
-                   "(%i)" % (level, self._level))
-            raise RuntimeError(err)
-        elif level < 1:
-            raise RuntimeError("Level can't be < 1 (got %i)" % level)
-
-        while level < self._level:
-            self.fields = self._fields.pop()
-            self.field_values = self._field_values.pop()
-            self.params = self._params.pop()
-            self._level -= 1
-
-
-class mne_experiment(object):
+class MneExperiment(FileTree):
     """Class for managing data for an experiment
 
     Methods
@@ -366,14 +266,11 @@ class mne_experiment(object):
 
     groups = {}
 
-    owner = None  # email address as string (for notification)
-
     # Pattern for subject names
     subject_re = re.compile('R\d{4}$')
 
-    _fmt_pattern = re.compile('\{([\w-]+)\}')
     # state variables that are always shown in self.__repr__():
-    _repr_vars = ['subject']
+    _repr_kwargs = ('subject', 'rej')
 
     # Where to search for subjects (defined as a template name). If the
     # experiment searches for subjects automatically, it scans this directory
@@ -383,7 +280,7 @@ class mne_experiment(object):
     # basic templates to use. Can be a string referring to a templates
     # dictionary in the module level _temp dictionary, or a templates
     # dictionary
-    _templates = 'v0'
+    _templates = temp
     # modify certain template entries from the outset (e.g. specify the initial
     # subject name)
     _defaults = {
@@ -392,7 +289,7 @@ class mne_experiment(object):
                  # above)
                  'epoch': 'epoch'}
 
-    def __init__(self, root=None, parse_subjects=True, **kwargs):
+    def __init__(self, root=None, **state):
         """
         Parameters
         ----------
@@ -402,63 +299,37 @@ class mne_experiment(object):
         parse_subjects : bool
             Find MEG subjects using :attr:`_subjects_loc`
         """
-        self._parse_subjects = parse_subjects
-
-        # copy class attributes
+        # create attributes
         self.groups = self.groups.copy()
         self.exclude = self.exclude.copy()
+        self._mri_subjects = keydefaultdict(lambda k: k)
+        self._label_cache = LabelCache()
 
-        # epoch rejection settings
+        # store epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
         epoch_rejection.update(self.epoch_rejection)
         self.epoch_rejection = epoch_rejection
 
-        # find template values:
-        temps = self._get_templates(root=root)
-        field_values = {}
-        field_values['rej'] = tuple(self.epoch_rejection.keys())
-        field_values['group'] = self.groups.keys()
-        for k, v in temps.iteritems():
-            if v is None:  # secondary field
-                pass
-            elif isinstance(v, tuple):
-                field_values[k] = v
-                temps[k] = v[0]
-            elif not isinstance(v, basestring):
-                err = ("Invalid templates field value: %r. Need None, tuple "
-                       "or string" % v)
-                raise TypeError(err)
+        FileTree.__init__(self, root=root, **state)
 
-        self._state = State(temps, field_values, {})
+        # regiser variables with complex behavior
+        self._register_field('rej', self.epoch_rejection.keys(),
+                             post_set_handler=self._post_set_rej)
+        self._register_field('group', self.groups.keys(),
+                             eval_handler=self._eval_group)
+        self._register_field('epoch', self.epochs.keys(),
+                             set_handler=self.set_epoch)
+        self._register_field('inv', default='free-2-dSPM',
+                             set_handler=self._set_inv_as_str)
+        self._register_field('model', default='',
+                             eval_handler=self._eval_model)
 
-        # set variables with derived settings
-        epoch = temps.get('epoch', None)
-        inv = temps.get('inv', None)
-        rej = temps.get('rej', self.epoch_rejection.keys()[0])
-        self.set(epoch=epoch, inv=inv, rej=rej, add=True)
-
-        # find experiment data structure
-        self._mri_subjects = keydefaultdict(lambda k: k)
-        self.set(root=root, add=True)
+        # Define make handlers
+        self._bind_make('evoked-file', self.make_evoked)
+        self._bind_make('raw-file', self.make_raw)
 
         # set initial values
-        self._label_cache = LabelCache()
-
-        # set defaults for any existing field names
-        for k in self._state.fields.keys():
-            temp = self._state.fields[k]
-            for field in self._fmt_pattern.findall(temp):
-                if field not in self._state.fields:
-                    self._state.fields[field] = ''
-
-#         self._initial_state = self._state.copy()
-        self._state.increase_depth()
-
-        owner = getattr(self, 'owner', None)
-        if owner:
-            self.notification = Notifier(owner, 'mne_experiment task')
-
-        self.set(**kwargs)
+        self._increase_depth()
         self.set_env()
 
     def __iter__(self):
@@ -468,7 +339,7 @@ class mne_experiment(object):
 
     @property
     def _epoch_state(self):
-        epochs = self._state.params['epochs']
+        epochs = self._params['epochs']
         if len(epochs) != 1:
             err = ("This function is only implemented for single epochs (got "
                    "%s)" % self.get('epoch'))
@@ -501,7 +372,7 @@ class mne_experiment(object):
 
         epochs = ds[src]
         inv = self.load_inv(epochs)
-        stc = apply_inverse_epochs(epochs, inv, **self._state.params['apply_inv_kw'])
+        stc = apply_inverse_epochs(epochs, inv, **self._params['apply_inv_kw'])
 
         if ndvar:
             subject = self.get('mrisubject')
@@ -619,7 +490,7 @@ class mne_experiment(object):
                     invs[subject] = inv
 
                 # apply inv
-                stc = apply_inverse(evoked, inv, **self._state.params['apply_inv_kw'])
+                stc = apply_inverse(evoked, inv, **self._params['apply_inv_kw'])
 
                 # baseline correction
                 if baseline:
@@ -657,59 +528,6 @@ class mne_experiment(object):
                 else:
                     ds[key] = mstcs[name]
 
-    def _get_templates(self, root=None, **kwargs):
-        if isinstance(self._templates, str):
-            t = _temp[self._templates].copy()
-        else:
-            t = self._templates.copy()
-
-        if not isinstance(t, dict):
-            err = ("Templates mus be dictionary; got %s" % type(t))
-            raise TypeError(err)
-
-        t.update(self._defaults)
-        t.update(kwargs)
-
-        # make sure we have a valid root
-        if root is not None:
-            t['root'] = os.path.expanduser(root)
-        elif 'root' not in t:
-            msg = "Please select the meg directory of your experiment"
-            root = ui.ask_dir("Select Root Directory", msg, True)
-            t['root'] = root
-
-        if not os.path.exists(t['root']):
-            raise IOError("Specified root path does not exist: %r" % root)
-
-        return t
-
-    def __repr__(self):
-        args = [repr(self.get('root'))]
-        kwargs = []
-
-        for k in self._repr_vars:
-            v = self.get(k)
-            kwargs.append((k, repr(v)))
-
-        proper_mrisubject = self._mri_subjects[self._state.fields['subject']]
-        for k in sorted(self._state.fields):
-            if k == 'root':
-                continue
-            elif k == 'mrisubject' and self._state.fields[k] == proper_mrisubject:
-                continue
-            elif '{' in self._state.fields[k]:
-                continue
-            elif k in self._repr_vars:
-                continue
-
-            v = self._state.fields[k]
-            if v != self._state.get_field(k, level=0):
-                kwargs.append((k, repr(v)))
-
-        args.extend('='.join(pair) for pair in kwargs)
-        args = ', '.join(args)
-        return "%s(%s)" % (self.__class__.__name__, args)
-
     def cache_events(self, redo=False):
         """Create the 'raw-evt-file'.
 
@@ -724,146 +542,6 @@ class mne_experiment(object):
             return
 
         self.load_events(add_proj=False)
-
-    def expand_template(self, temp, values=()):
-        """
-        Expand a template until all its subtemplates are neither in
-        field names or in ``values``
-
-        Parameters
-        ----------
-        values : container (implements __contains__)
-            values which should not be expanded (in addition to
-        """
-        temp = self._state.fields.get(temp, temp)
-
-        while True:
-            stop = True
-            for name in self._fmt_pattern.findall(temp):
-                if (name in values) or (self._state.field_values.get(name, False)):
-                    pass
-                else:
-                    temp = temp.replace('{%s}' % name, self._state.fields[name])
-                    stop = False
-
-            if stop:
-                break
-
-        return temp
-
-    def find_keys(self, temp):
-        """
-        Find all terminal keys that are relevant for a template.
-
-        Returns
-        -------
-        keys : set
-            All terminal keys that are relevant for foormatting temp.
-        """
-        keys = set()
-        temp = self._state.fields.get(temp, temp)
-
-        for key in self._fmt_pattern.findall(temp):
-            value = self._state.fields[key]
-            if self._fmt_pattern.findall(value):
-                keys = keys.union(self.find_keys(value))
-            else:
-                keys.add(key)
-
-        return keys
-
-    def format(self, string, vmatch=True, **kwargs):
-        """Format a string (i.e., replace any '{xxx}' fields with their values)
-
-        Parameters
-        ----------
-        string : str
-            Template string.
-        vmatch : bool
-            For fields with known names, only allow existing field names.
-        others :
-            State parameters.
-
-        Returns
-        -------
-        formatted_string : str
-            The template temp formatted with current state values.
-        """
-        self.set(match=vmatch, **kwargs)
-
-        while True:
-            variables = self._fmt_pattern.findall(string)
-            if variables:
-                string = string.format(**self._state.fields)
-            else:
-                break
-
-        path = os.path.expanduser(string)
-        return path
-
-    def get(self, temp, fmatch=True, vmatch=True, match=True, mkdir=False,
-            make=False, **kwargs):
-        """
-        Retrieve a formatted template
-
-        With match=True, '*' are expanded to match a file,
-        and if there is not a unique match, an error is raised. With
-        mkdir=True, the directory containing the file is created if it does not
-        exist.
-
-        Parameters
-        ----------
-        temp : str
-            Name of the requested template.
-        fmatch : bool
-            "File-match":
-            If the template contains asterisk ('*'), use glob to fill it in.
-            An IOError is raised if the pattern fits 0 or >1 files.
-        vmatch : bool
-            "Value match":
-            Require existence of the assigned value (only applies for variables
-            with field values)
-        match : bool
-            Do any matching (i.e., match=False sets fmatch as well as vmatch
-            to False).
-        mkdir : bool
-            If the directory containing the file does not exist, create it.
-        make : bool
-            If a requested file does not exists, make it if possible.
-        kwargs :
-            Set any state values.
-        """
-        if not match:
-            fmatch = vmatch = False
-
-        path = self.format('{%s}' % temp, vmatch=vmatch, **kwargs)
-
-        # assert the presence of the file
-        if fmatch and ('*' in path):
-            paths = glob(path)
-            if len(paths) == 1:
-                path = paths[0]
-            elif len(paths) > 1:
-                err = "More than one files match %r: %r" % (path, paths)
-                raise IOError(err)
-            else:
-                raise IOError("No file found for %r" % path)
-
-        # create the directory
-        if mkdir:
-            dirname = os.path.dirname(path)
-            if not os.path.exists(dirname):
-                os.makedirs(dirname)
-
-        if make and not os.path.exists(path):
-            if temp == 'evoked-file':
-                self.make_evoked()
-            elif temp == 'fwd-file':
-                self.make_fwd()
-            elif temp == 'cov-file':
-                self.make_cov()
-
-        return path
 
     def get_epoch_str(self, stimvar=None, stim=None, tmin=None, tmax=None,
                       reject_tmin=None, reject_tmax=None, decim=None,
@@ -934,17 +612,16 @@ class mne_experiment(object):
             values = ['all']
             values.extend(self.groups.keys())
             return values
-
-        values = self._state.field_values[field]
-        if exclude:
-            exclude = self.exclude.get(field, None)
-        if exclude:
-            values = [v for v in values if not v in exclude]
+        else:
+            values = list(FileTree.get_field_values(self, field))
+            if exclude:
+                exclude = self.exclude.get(field, None)
+            if exclude:
+                values = [v for v in values if not v in exclude]
 
         return values
 
-    def iter(self, fields='subject', exclude={}, values={}, group=None,
-             mail=False, prog=False, **constants):
+    def iter(self, fields='subject', group=None, **kwargs):
         """
         Cycle the experiment's state through all values on the given fields
 
@@ -970,67 +647,13 @@ class mne_experiment(object):
         others :
             Fields with constant values throughout the iteration.
         """
-        if mail is True:
-            mail = self.owner
-
-        # set constants
-        self.set(**constants)
-        level = self._state.increase_depth()
-
-        yield_str = isinstance(fields, basestring)
-        if yield_str:
-            fields = [fields]
-        fields = list(set(fields).difference(constants).union(values))
-
-        # gather possible values to iterate over
-        field_values = {k: self.get_field_values(k) for k in fields}
-        if group and (group != 'all') and ('subject' in field_values):
-            subjects = field_values['subject']
+        if group and (group != 'all') and ('subject' in fields):
+            subjects = self.get_field_values['subject']
             group = self.groups[group]
-            field_values['subject'] = [s for s in subjects if s in group]
-        field_values.update(values)
+            group_subjects = [s for s in subjects if s in group]
+            kwargs.setdefault('values', {})['subject'] = group_subjects
 
-        # exclude values
-        for k in exclude:
-            ex = exclude[k]
-            if isinstance(ex, basestring):
-                ex = (ex,)
-            field_values[k] = [v for v in field_values[k] if not v in ex]
-
-        # pick out the fields to iterate, but drop excluded cases:
-        v_lists = []
-        for field in fields:
-            v_lists.append(field_values[field])
-
-        if len(v_lists):
-            if prog:
-                i_max = np.prod(map(len, v_lists))
-                if not isinstance(prog, str):
-                    prog = "MNE Experiment Iterator"
-                progm = ui.progress_monitor(i_max, prog, "")
-                prog = True
-
-            for v_list in itertools.product(*v_lists):
-                if prog:
-                    progm.message(' | '.join(map(str, v_list)))
-                self._state.reset()
-                values = dict(zip(fields, v_list))
-                self.set(**values)
-
-                if yield_str:
-                    yield v_list[0]
-                else:
-                    yield v_list
-
-                if prog:
-                    progm.advance()
-        else:
-            yield ()
-
-        self._state.set_level(level - 1)
-        if mail:
-            send_email(mail, "Eelbrain Task Done", "I did as you desired, "
-                       "my master.")
+        return FileTree.iter(self, fields, **kwargs)
 
     def iter_range(self, start=None, stop=None, field='subject'):
         """Iterate through a range on a field with ordered values.
@@ -1049,8 +672,6 @@ class mne_experiment(object):
         value : str
             Current field value.
         """
-        initial_value = self.get(field)
-
         values = self.get_field_values(field)
         if start is not None:
             start = values.index(start)
@@ -1058,42 +679,20 @@ class mne_experiment(object):
             stop = values.index(stop) + 1
         idx = slice(start, stop)
         values = values[idx]
+
+        level = self._increase_depth()
         for value in values:
+            self.reset()
             self.set(**{field: value})
             yield value
-
-        self.set(**{field: initial_value})
-
-    def iter_temp(self, temp, exclude={}, values={}, mail=False, prog=False,
-                  **constants):
-        """
-        Iterate through all paths conforming to a template given in ``temp``.
-
-        Parameters
-        ----------
-        temp : str
-            Name of a template in the mne_experiment.templates dictionary, or
-            a path template with variables indicated as in ``'{var_name}'``
-        """
-        # if the name is an existing template, retrieve it
-        keep = constants.keys() + values.keys()
-        temp = self.expand_template(temp, values=keep)
-
-        # find variables for iteration
-        variables = set(self._fmt_pattern.findall(temp))
-
-        for _ in self.iter(variables, exclude=exclude, values=values,
-                           mail=mail, prog=prog, **constants):
-            path = temp.format(**self._state.fields)
-            yield path
+        self.reset(level - 1)
 
     def iter_vars(self, *args, **kwargs):
         """Deprecated. Use :attr:`.iter()`"""
-        warn("mne_experiment.iter_vars() is deprecated. Use .iter()",
+        warn("MneExperiment.iter_vars() is deprecated. Use .iter()",
              DeprecationWarning)
         kwargs['mail'] = kwargs.get('notify', False)
         self.iter(*args, **kwargs)
-
 
     def label_events(self, ds, experiment, subject):
         """
@@ -1176,40 +775,15 @@ class mne_experiment(object):
 
         return table
 
-    def list_values(self, str_out=False):
-        """
-        Generate a table for all iterable varibales
-
-        i.e., those variables for which the experiment stores multiple values.
-
-        Parameters
-        ----------
-        str_out : bool
-            Return the table as a string (instead of printing it).
-        """
-        lines = []
-        for key in self._state.field_values:
-            values = list(self.get_field_values(key))
-            line = '%s:' % key
-            head_len = len(line) + 1
-            while values:
-                v = repr(values.pop(0))
-                if values:
-                    v += ','
-                if len(v) < 80 - head_len:
-                    line += ' ' + v
-                else:
-                    lines.append(line)
-                    line = ' ' * head_len + v
-
-                if not values:
-                    lines.append(line)
-
-        table = os.linesep.join(lines)
-        if str_out:
-            return table
-        else:
-            print table
+    def list_subjects(self):
+        """Print a table with the MRI subject corresponding to each subject"""
+        table = fmtxt.Table('ll')
+        table.cells('subject', 'mrisubject')
+        table.midrule()
+        for _ in self.iter('subject'):
+            table.cell(self.get('subject'))
+            table.cell(self.get('mrisubject'))
+        return table
 
     def load_edf(self, **kwargs):
         """Load the edf file ("edf-file" template)"""
@@ -1259,8 +833,8 @@ class mne_experiment(object):
         else:  # single subject
             self.set(subject=subject, **kwargs)
             ds = self.load_selected_events(add_bads=add_bads, reject=reject)
-            if reject and self._state.params['rej']['kind'] == 'auto':
-                reject_arg = self._state.params['rej'].get('threshold', None)
+            if reject and self._params['rej']['kind'] == 'auto':
+                reject_arg = self._params['rej'].get('threshold', None)
             else:
                 reject_arg = None
 
@@ -1356,7 +930,7 @@ class mne_experiment(object):
         """
         Load a dataset with evoked files for each subject.
 
-        Load data previously created with :meth:`mne_experiment.make_evoked`.
+        Load data previously created with :meth:`MneExperiment.make_evoked`.
 
         Parameters
         ----------
@@ -1474,10 +1048,10 @@ class mne_experiment(object):
         fwd_file = self.get('fwd-file', make=True)
         fwd = mne.read_forward_solution(fwd_file, surf_ori=True)
         cov = mne.read_cov(self.get('cov-file', make=True))
-        if self._state.params['reg_inv']:
+        if self._params['reg_inv']:
             cov = mne.cov.regularize(cov, fiff.info)
         inv = make_inverse_operator(fiff.info, fwd, cov,
-                                    **self._state.params['make_inv_kw'])
+                                    **self._params['make_inv_kw'])
         return inv
 
     def load_label(self, **kwargs):
@@ -1585,7 +1159,7 @@ class mne_experiment(object):
             if reject not in (True, 'keep'):
                 raise ValueError("Invalie reject value: %r" % reject)
 
-            if self._state.params['rej']['kind'] in ('manual', 'make'):
+            if self._params['rej']['kind'] in ('manual', 'make'):
                 path = self.get('epoch-sel-file')
                 if not os.path.exists(path):
                     err = ("The rejection file at %r does not exist. Run "
@@ -1605,7 +1179,7 @@ class mne_experiment(object):
                            "%r" % reject)
                     raise ValueError(err)
             else:
-                use = self._state.params['rej'].get('edf', False)
+                use = self._params['rej'].get('edf', False)
                 if use:
                     edf = ds.info['edf']
                     tmin = epoch.get('reject_tmin', epoch['tmin'])
@@ -1742,7 +1316,7 @@ class mne_experiment(object):
         kwargs :
             Kwargs for SelectEpochs
         """
-        rej_args = self._state.params['rej']
+        rej_args = self._params['rej']
         if not rej_args['kind'] == 'manual':
             err = ("Epoch rejection kind for rej=%r is not manual. See the "
                    ".epoch_rejection class attribute." % self.get('rej'))
@@ -1777,7 +1351,7 @@ class mne_experiment(object):
         if not redo and os.path.exists(dest):
             return
 
-        epoch_names = [ep['name'] for ep in self._state.params['epochs']]
+        epoch_names = [ep['name'] for ep in self._params['epochs']]
 
         # load the epochs
         epoch = self.get('epoch')
@@ -2301,58 +1875,43 @@ class mne_experiment(object):
 
         self.set(**{field: next_})
 
-    def parse_dirs(self, subjects=[], parse_subjects=True, subject=None):
-        """Find subject names by looking through the directory structure.
+    def set_root(self, root, rescan=True):
+        root = os.path.expanduser(root)
+        self._fields['root'] = root
+        if not rescan:
+            return
 
-        Parameters
-        ----------
-        subjects : list of str
-            Subjects to add initially.
-        parse_subjects : bool
-            Look for subjects as folders in the directory specified in
-            :attr:`._subject_loc`.
-        subject : str
-            Proposed subject state value (if the new value is not found in the
-            new subjects, an error is raised and nothing is changed.
-        """
-        subjects = set(subjects)
-
-        # find subjects
-        if parse_subjects:
-            pattern = self.subject_re
-            sub_dir = self.get(self._subject_loc)
-            if os.path.exists(sub_dir):
-                for dirname in os.listdir(sub_dir):
-                    isdir = os.path.isdir(os.path.join(sub_dir, dirname))
-                    if isdir and pattern.match(dirname):
-                        subjects.add(dirname)
-            else:
-                err = ("MEG subjects directory not found: %r. Initialize with "
-                       "parse_subjects=False, or specifiy proper directory in "
-                       "experiment._subject_loc." % sub_dir)
-                raise IOError(err)
+        subjects = set()
+        sub_dir = self.get(self._subject_loc)
+        if os.path.exists(sub_dir):
+            for dirname in os.listdir(sub_dir):
+                isdir = os.path.isdir(os.path.join(sub_dir, dirname))
+                if isdir and self.subject_re.match(dirname):
+                    subjects.add(dirname)
+        else:
+            err = ("Subjects directory not found: %r. Initialize with "
+                   "parse_subjects=False, or specifiy proper directory in "
+                   "experiment._subject_loc." % sub_dir)
+            raise IOError(err)
 
         if len(subjects) == 0:
             err = "No subjects found in %r" % sub_dir
             raise IOError(err)
+
         subjects = sorted(subjects)
-        self._state.field_values['subject'] = subjects
+        self._field_values['subject'] = subjects
 
         mrisubjects = [self._mri_subjects[s] for s in subjects]
         common_brain = self.get('common_brain')
         if common_brain:
             mrisubjects.insert(0, common_brain)
-        self._state.field_values['mrisubject'] = mrisubjects
+        self._field_values['mrisubject'] = mrisubjects
 
-        if subject is None:
-            # on init, subject is not in fields
-            subject = self._state.fields.get('subject', None)
-            if subject not in subjects:
-                subject = subjects[0]
-        elif subject not in subjects:
-            err = ("Subject not found: %r" % subject)
-            raise ValueError(err)
-        self.set(subject, add=True)  # allow setting mrisubject the first time
+        # on init, subject is not in fields
+        subject = self._fields.get('subject', None)
+        if subject not in subjects:
+            subject = subjects[0]
+        self.set(subject=subject, add=True)
 
     def plot_annot(self, annot=None, surf='smoothwm', mrisubject=None,
                    borders=True, label=True):
@@ -2389,28 +1948,8 @@ class mne_experiment(object):
         raw = mne.fiff.Raw(self.get('raw-file'))
         return dev_mri(raw)
 
-    def print_tree(self, root='root'):
-        """
-        Print a tree of the filehierarchy implicit in the templates
-
-        Parameters
-        ----------
-        root : str
-            Name of the root template (e.g., 'besa-root').
-        """
-        tree = {'.': root}
-        root_temp = '{%s}' % root
-        for k, v in self._state.fields.iteritems():
-            if str(v).startswith(root_temp):
-                tree[k] = {'.': v.replace(root_temp, '')}
-        _etree_expand(tree, self._state.fields)
-        nodes = _etree_node_repr(tree, root)
-        name_len = max(len(n) for n, _ in nodes)
-        path_len = max(len(p) for _, p in nodes)
-        pad = ' ' * (80 - name_len - path_len)
-        print os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len) for n, p in nodes)
-
-    def pull(self, src_root, names=['raw-file', 'log-dir'], **kwargs):
+    def pull(self, src_root, names=['raw-file', 'log-dir'], scan=True,
+             **kwargs):
         """OK 12/8/12
         Copies all items matching a template from another root to the current
         root.
@@ -2426,218 +1965,19 @@ class mne_experiment(object):
             tested for 'raw-file' and 'log-dir'.
             Should work for any template with an exact match; '*' is not
             implemented and will raise an error.
+        scan : bool
+            Use src location to find subjects as opposed to subjects in self.
         **kwargs** :
             see :py:meth:`push`
 
         """
-        subjects = self.get_field_values('subjects')
-        e = self.__class__(src_root, subjects=subjects,
-                           mri_subjects=self._mri_subjects)
+        e = self.__class__()
+        e.set_root(rescan=scan)
+        if not scan:
+            e._mri_subjects = self._mri_subjects
+            subjects = self.get_field_values('subjects')
+            e._field_values['subject'] = subjects
         e.push(self.get('root'), names=names, **kwargs)
-
-    def push(self, dst_root, names, overwrite=False, **kwargs):
-        """Copy files to another experiment root folder.
-
-        Before copying any files the user is asked for confirmation.
-
-        Parameters
-        ----------
-        dst_root : str
-            Path to the root to which the files should be copied.
-        names : str | sequence of str
-            Name(s) of the template(s) of the files that should be copied.
-        overwrite : bool
-            What to do if the target file already exists.
-        others :
-            Update experiment state.
-
-        Notes
-        -----
-        Use ``e.print_tree()`` to find out which element(s) to copy.
-        """
-        if isinstance(names, basestring):
-            names = [names]
-
-        # find files
-        files = []
-        for name in names:
-            for src in self.iter_temp(name, **kwargs):
-                if '*' in src:
-                    raise NotImplementedError("Can't fnmatch here yet")
-
-                if os.path.exists(src):
-                    dst = self.get(name, root=dst_root, rescan=False)
-                    if src == dst:
-                        raise ValueError("Source == destination (%r)"%src)
-                    
-                    if os.path.exists(dst):
-                        flag = 'o' if overwrite else 'e'
-                    else:
-                        flag = ' '
-                else:
-                    dst = None
-                    flag = 'm'
-                files.append((src, dst, flag))
-        
-        # prompt for confirmation
-        root = self.get('root')
-        n_root = len(root)
-        for src, dst, flag in files:
-            if src.startswith(root):
-                src = src[n_root:]
-            print(' '.join((flag, src[-78:])))
-        print("Flags: o=overwrite, e=skip, it exists, m=skip, source is "
-              "missing")
-        msg = "Proceed? (confirm with 'yes'): "
-        if raw_input(msg) != 'yes':
-            return
-        
-        # copy the files
-        for src, dst, flag in files:
-            if flag in ('e', 'm'):
-                continue
-
-            dirpath = os.path.dirname(dst)
-            if not os.path.exists(dirpath):
-                os.makedirs(dirpath)
-
-            if os.path.isdir(src):
-                if flag == 'o':
-                    shutil.rmtree(dst)
-                shutil.copytree(src, dst)
-            else:
-                shutil.copy(src, dst)
-
-    def rename(self, old, new):
-        """
-        Rename a files corresponding to a pattern (or template)
-
-        Parameters
-        ----------
-        old : str
-            Template for the files to be renamed. Can interpret '*', but will
-            raise an error in cases where more than one file fit the pattern.
-        new : str
-            Template for the new names.
-
-        Examples
-        --------
-        The following command will collect a specific file for each subject and
-        place it in a common folder:
-
-        >>> e.rename('{root}/{subject}/info.txt',
-                     '/some_other_place/{subject}s_info.txt'
-        """
-        new = self.expand_template(new)
-        files = []
-        for old_name in self.iter_temp(old):
-            if '*' in old_name:
-                matches = glob(old_name)
-                if len(matches) == 1:
-                    old_name = matches[0]
-                elif len(matches) > 1:
-                    err = ("Several files fit the pattern %r" % old_name)
-                    raise ValueError(err)
-
-            if os.path.exists(old_name):
-                new_name = self.format(new)
-                files.append((old_name, new_name))
-
-        if not files:
-            print "No files found for %r" % old
-            return
-
-        old_pf = os.path.commonprefix([pair[0] for pair in files])
-        new_pf = os.path.commonprefix([pair[1] for pair in files])
-        n_pf_old = len(old_pf)
-        n_pf_new = len(new_pf)
-
-        table = fmtxt.Table('lll')
-        table.cells('Old', '', 'New')
-        table.midrule()
-        table.caption("%s -> %s" % (old_pf, new_pf))
-        for old, new in files:
-            table.cells(old[n_pf_old:], '->', new[n_pf_new:])
-
-        print table
-
-        msg = "Rename %s files (confirm with 'yes')? " % len(files)
-        if raw_input(msg) == 'yes':
-            for old, new in files:
-                dirname = os.path.dirname(new)
-                if not os.path.exists(dirname):
-                    os.makedirs(dirname)
-                os.rename(old, new)
-
-    def reset(self, exclude=['subject', 'experiment', 'root']):
-        """
-        Reset the experiment to the state at the end of __init__.
-
-        Note that variables which were added to the experiment after __init__
-        are lost. 'epoch' is always excluded (can not be reset).
-
-        Parameters
-        ----------
-        exclude : collection
-            Exclude these variables from the reset (i.e., retain their current
-            value)
-        """
-        exclude = set(exclude)
-        if 'subject' in exclude:
-            exclude.add('mrisubject')
-        store = {key: self.get(key) for key in exclude}
-        self._state.reset(1)
-        self.set(**store)
-
-    def rm(self, temp, exclude={}, values={}, v=False, **constants):
-        """
-        Remove all files corresponding to a template
-
-        Asks for confirmation before deleting anything. Uses glob, so
-        individual templates can be set to '*'.
-
-        Parameters
-        ----------
-        temp : str
-            The template.
-        exclude : dict
-            Exclude specific values by field.
-        values : dict
-            Provide specific values by field.
-        v : bool
-            Verbose mode (print all filename patterns that are searched).
-        others :
-            Set fields.
-        """
-        files = []
-        for fname in self.iter_temp(temp, exclude=exclude, values=values,
-                                    **constants):
-            fnames = glob(fname)
-            if v:
-                print "%s -> %i" % (fname, len(fnames))
-            if fnames:
-                files.extend(fnames)
-            elif os.path.exists(fname):
-                files.append(fname)
-
-        if files:
-            root = self.get('root')
-            print "root: %s\n" % root
-            root_len = len(root)
-            for name in files:
-                if name.startswith(root):
-                    print name[root_len:]
-                else:
-                    print name
-            msg = "Delete %i files (confirm with 'yes')? " % len(files)
-            if raw_input(msg) == 'yes':
-                for path in files:
-                    if os.path.isdir(path):
-                        shutil.rmtree(path)
-                    else:
-                        os.remove(path)
-        else:
-            print "No files found for %r" % temp
 
     def rm_fake_mris(self, exclude=[], confirm=False):
         """
@@ -2735,7 +2075,7 @@ class mne_experiment(object):
 
         self.queue.put(cmd)
 
-    def set(self, subject=None, match=True, rescan=None, add=False, **kwargs):
+    def set(self, subject=None, **state):
         """
         Set variable values.
 
@@ -2744,194 +2084,149 @@ class mne_experiment(object):
         subject : str
             Set the `subject` value. The corresponding `mrisubject` is
             automatically set to the corresponding mri subject.
-        match : bool
-            Require existence of the assigned value (only applies for variables
-            for which values are defined as field values). When setting
-            root, find subjects by looking through folder structure.
-        rescan : None | bool
-            If setting root, update the subjects values by scanning the new
-            directory containing subjects. If None, use the experiment default
-            (set on initialization).
         add : bool
             If the template name does not exist, add a new key. If False
             (default), a non-existent key will raise a KeyError.
-        all other : str
+        other : str
             All other keywords can be used to set templates.
         """
-        # If not changing root, update subject.
-        # If changing root, delay updating subjects to take into account
-        # changes in field_value['subject']
-        root = kwargs.get('root', None)
         if subject is not None:
-            if (root is not None) and self._parse_subjects:
-                pass  # set subject with root
-            else:
-                kwargs['subject'] = subject
-                if 'mrisubject' not in kwargs:
-                    kwargs['mrisubject'] = self._mri_subjects[subject]
+            state['subject'] = subject
+            if 'mrisubject' not in state:
+                state['mrisubject'] = self._mri_subjects[subject]
 
-        # extract fields that need special treatment
-        epoch = kwargs.pop('epoch', None)
-        if epoch:
-            epochs = sorted(epoch.split('|'))
-            kwargs['epoch'] = epoch = '|'.join(epochs)
+        FileTree.set(self, **state)
 
-            e_descs = []  # full epoch descriptor
-            e_descs_nodecim = []  # epoch description without decim
-            e_descs_bare = []  # epoch description without decim or rejection
-            epoch_dicts = []
-            stims = set()  # all relevant stims
-            for name in epochs:
-                # expand epoch description
-                ep = self.epoch_default.copy()
-                ep.update(self.epochs[name])
-                ep['name'] = name
+    def set_epoch(self, epoch):
+        epochs = epoch.split('|')
+        epochs.sort()
+        epoch = '|'.join(epochs)
 
-                # make sure stim is ordered
-                stim = ep['stim']
-                if '|' in stim:
-                    stim = '|'.join(sorted(set(stim.split('|'))))
+        e_descs = []  # full epoch descriptor
+        e_descs_nodecim = []  # epoch description without decim
+        e_descs_bare = []  # epoch description without decim or rejection
+        epoch_dicts = []
+        stims = set()  # all relevant stims
+        for name in epochs:
+            # expand epoch description
+            ep = self.epoch_default.copy()
+            ep.update(self.epochs[name])
+            ep['name'] = name
 
-                # store expanded epoch
-                stims.update(stim.split('|'))
-                epoch_dicts.append(ep)
+            # make sure stim is ordered
+            stim = ep['stim']
+            if '|' in stim:
+                stim = '|'.join(sorted(set(stim.split('|'))))
 
-                # epoch desc
-                desc = self.get_epoch_str(**ep)
-                e_descs.append(desc)
+            # store expanded epoch
+            stims.update(stim.split('|'))
+            epoch_dicts.append(ep)
 
-                # epoch desc without decim
-                ep_nd = ep.copy()
-                ep_nd['decim'] = None
-                desc_nd = self.get_epoch_str(**ep_nd)
-                e_descs_nodecim.append(desc_nd)
+            # epoch desc
+            desc = self.get_epoch_str(**ep)
+            e_descs.append(desc)
 
-                # bare epoch desc
-                ep_nd['reject_tmin'] = None
-                ep_nd['reject_tmax'] = None
-                desc_b = self.get_epoch_str(**ep_nd)
-                desc_b = desc_b.format(rej='')
-                e_descs_bare.append(desc_b)
+            # epoch desc without decim
+            ep_nd = ep.copy()
+            ep_nd['decim'] = None
+            desc_nd = self.get_epoch_str(**ep_nd)
+            e_descs_nodecim.append(desc_nd)
 
-
-            epoch_stim = '|'.join(sorted(stims))
-            epoch_desc = '(%s)' % ','.join(sorted(e_descs))
-            epoch_nodecim = '(%s)' % ','.join(sorted(e_descs_nodecim))
-            epoch_bare = '(%s)' % ','.join(sorted(e_descs_bare))
-
-        rej = kwargs.get('rej', None)
-        if rej:
-            if rej not in self.epoch_rejection:
-                err = ("No settings for rej=%r in self.epoch_rejection" % rej)
-                raise ValueError(err)
-            rej_args = self.epoch_rejection[rej]
-
-        # special attributes derived from inv
-        inv = kwargs.get('inv', None)
-        if inv is not None:
-            make_kw = {}
-            apply_kw = {}
-            args = inv.split('-')
-            # 1) 'free' | 'fixed' | float
-            # 2) depth weighting (optional)
-            # 3) regularization 'reg' (optional)
-            # 4) snr
-            # 5) method
-            # 6) pick_normal:  'pick_normal' | nothing
-            ori = args.pop(0)
-            if ori == 'fixed':
-                make_kw['fixed'] = True
-                make_kw['loose'] = None
-            elif ori == 'free':
-                make_kw['loose'] = 1
-            else:
-                ori = float(ori)
-                if not 0 <= ori <= 1:
-                    err = ('First value of inv (loose parameter) needs to be '
-                           'in [0, 1]')
-                    raise ValueError(err)
-                make_kw['loose'] = ori
-
-            method = args.pop(-1)
-            if method == 'pick_normal':
-                apply_kw['pick_normal'] = True
-                method = args.pop(-1)
-            if method in ("MNE", "dSPM", "sLORETA"):
-                apply_kw['method'] = method
-            else:
-                err = ('Setting inv with invalid method: %r' % method)
-                raise ValueError(err)
-
-            snr = float(args.pop(-1))
-            apply_kw['lambda2'] = 1. / snr ** 2
-
-            regularize_inv = False
-            if args:
-                arg = args.pop(-1)
-                if arg == 'reg':
-                    regularize_inv = True
-                    if args:
-                        depth = args.pop(-1)
-                    else:
-                        depth = None
-                else:
-                    depth = arg
-
-                if depth is not None:
-                    make_kw['depth'] = float(depth)
-
-            if args:
-                raise ValueError("Too many parameters in inv %r" % inv)
-
-        # test fields with entries in field_values
-        if match:
-            for k, v in kwargs.iteritems():
-                if v is None:
-                    pass
-                elif k not in self._state.field_values:
-                    pass
-                elif '*' in v:
-                    pass
-                elif (k == 'group') and (v in self.get_field_values('subject')):
-                    pass
-                elif v not in self.get_field_values(k):
-                    err = ("Variable {k!r} has no value {v!r}. In order to "
-                           "see valid values use e.list_values(); In order to "
-                           "set a non-existent value, use e.set({k!s}={v!r}, "
-                           "match=False).".format(k=k, v=v))
-                    raise ValueError(err)
-
-        # clean model
-        model = kwargs.get('model', None)
-        if model is not None:
-            kwargs['model'] = '%'.join(sorted(model.split('%')))
-
-        # update state ---
-        for k, v in kwargs.iteritems():
-            if add or k in self._state.fields:
-                if v is not None:
-                    self._state.fields[k] = v
-            else:
-                raise KeyError("No variable named %r" % k)
-
-        # set subject after updating root
-        if root is not None:
-            if rescan or (rescan is None and self._parse_subjects):
-                self.parse_dirs(subject=subject)
+            # bare epoch desc
+            ep_nd['reject_tmin'] = None
+            ep_nd['reject_tmax'] = None
+            desc_b = self.get_epoch_str(**ep_nd)
+            desc_b = desc_b.format(rej='')
+            e_descs_bare.append(desc_b)
 
         # store secondary settings
-        if epoch:
-            self._state.fields['epoch-stim'] = epoch_stim
-            self._state.fields['epoch-desc'] = epoch_desc
-            self._state.fields['epoch-nodecim'] = epoch_nodecim
-            self._state.fields['epoch-bare'] = epoch_bare
-            self._state.params['epochs'] = epoch_dicts
-        if rej:
-            self._state.params['rej'] = rej_args
-        if inv:
-            self._state.params['make_inv_kw'] = make_kw
-            self._state.params['apply_inv_kw'] = apply_kw
-            self._state.params['reg_inv'] = regularize_inv
+        fields = {'epoch-stim': '|'.join(sorted(stims)),
+                  'epoch-desc': '(%s)' % ','.join(sorted(e_descs)),
+                  'epoch-nodecim': '(%s)' % ','.join(sorted(e_descs_nodecim)),
+                  'epoch-bare': '(%s)' % ','.join(sorted(e_descs_bare))}
+        self._fields.update(fields)
+        self._params['epochs'] = epoch_dicts
+
+    def _eval_group(self, group):
+        if group not in self.get_field_values('group'):
+            if group not in self.get_field_values('subject'):
+                raise ValueError("No group or subject named %r" % group)
+        return group
+
+    def _set_inv_as_str(self, inv):
+        """
+        Notes
+        -----
+        inv composed of the following elements, delimited with '-':
+
+         1) 'free' | 'fixed' | float
+         2) depth weighting (optional)
+         3) regularization 'reg' (optional)
+         4) snr
+         5) method
+         6) pick_normal:  'pick_normal' (optional)
+        """
+        make_kw = {}
+        apply_kw = {}
+        args = inv.split('-')
+        ori = args.pop(0)
+        if ori == 'fixed':
+            make_kw['fixed'] = True
+            make_kw['loose'] = None
+        elif ori == 'free':
+            make_kw['loose'] = 1
+        else:
+            ori = float(ori)
+            if not 0 <= ori <= 1:
+                err = ('First value of inv (loose parameter) needs to be '
+                       'in [0, 1]')
+                raise ValueError(err)
+            make_kw['loose'] = ori
+
+        method = args.pop(-1)
+        if method == 'pick_normal':
+            apply_kw['pick_normal'] = True
+            method = args.pop(-1)
+        if method in ("MNE", "dSPM", "sLORETA"):
+            apply_kw['method'] = method
+        else:
+            err = ('Setting inv with invalid method: %r' % method)
+            raise ValueError(err)
+
+        snr = float(args.pop(-1))
+        apply_kw['lambda2'] = 1. / snr ** 2
+
+        regularize_inv = False
+        if args:
+            arg = args.pop(-1)
+            if arg == 'reg':
+                regularize_inv = True
+                if args:
+                    depth = args.pop(-1)
+                else:
+                    depth = None
+            else:
+                depth = arg
+
+            if depth is not None:
+                make_kw['depth'] = float(depth)
+
+        if args:
+            raise ValueError("Too many parameters in inv %r" % inv)
+
+        self._fields['inv'] = inv
+        self._params['make_inv_kw'] = make_kw
+        self._params['apply_inv_kw'] = apply_kw
+        self._params['reg_inv'] = regularize_inv
+
+    def _eval_model(self, model):
+        model = model.split('%')
+        model.sort()
+        return '%'.join(model)
+
+    def _post_set_rej(self, rej):
+        rej_args = self.epoch_rejection[rej]
+        self._params['rej'] = rej_args
 
     def set_env(self, env=os.environ):
         """
@@ -2975,55 +2270,6 @@ class mne_experiment(object):
         "Reveals the file corresponding to the ``key`` template in the Finder."
         fname = self.get(key, **kwargs)
         subprocess.call(["open", "-R", fname])
-
-    def state(self, temp=None, empty=False):
-        """
-        Examine the state of the experiment.
-
-        Parameters
-        ----------
-        temp : None | str
-            Only show variables relevant to this template.
-        empty : bool
-            Show empty variables (items whose value is the empty string '').
-
-        Returns
-        -------
-        state : Table
-            Table of (relevant) variables and their values.
-        """
-        table = fmtxt.Table('lll')
-        table.cells('Key', '*', 'Value')
-        table.caption('*: Value is modified from initialization state.')
-        table.midrule()
-
-        if temp is None:
-            keys = (k for k, v in self._state.fields.iteritems()
-                    if (not '{' in v) and len(v) < 60)
-        else:
-            keys = self.find_keys(temp)
-
-        for k in sorted(keys):
-            v = self._state.fields[k]
-            if v != self._state.get_field(k, level=0):
-                mod = '*'
-            else:
-                mod = ''
-
-            if empty or mod or v:
-                table.cells(k, mod, repr(v))
-
-        return table
-
-    def subjects_table(self):
-        """Print a table with the MRI subject corresponding to each subject"""
-        table = fmtxt.Table('ll')
-        table.cells('subject', 'mrisubject')
-        table.midrule()
-        for _ in self.iter('subject'):
-            table.cell(self.get('subject'))
-            table.cell(self.get('mrisubject'))
-        return table
 
     def summary(self, templates=['raw-file'], missing='-', link=' > ',
                 count=True):
