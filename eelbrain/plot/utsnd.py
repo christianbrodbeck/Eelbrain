@@ -314,7 +314,7 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
             continue
 
         if color is None:
-            plot_kwargs['color'] = l.properties.get('color', 'k')
+            plot_kwargs['color'] = l.info.get('color', 'k')
         elif color is True:
             pass  # no color kwarg to use mpl's color_cycle
         else:
@@ -338,9 +338,9 @@ def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
     if xlabel is True:
         xlabel = 'Time [s]'
     if ylabel is True:
-        ylabel = l.properties.get('unit', None)
+        ylabel = l.info.get('unit', None)
     if ylim is None:
-        ylim = l.properties.get('ylim', None)
+        ylim = l.info.get('ylim', None)
 
     ax.set_xlim(min(xmin), max(xmax))
 
@@ -426,7 +426,7 @@ class _ax_bfly_epoch:
 
         self._tmin = epoch.time[0]
         self._tmax = epoch.time[-1]
-        self._ylim = ylim or epoch.properties.get('ylim', None)
+        self._ylim = ylim or epoch.info.get('ylim', None)
 
         self.ax.x_fmt = "t = %.3f s"
 
@@ -434,7 +434,7 @@ class _ax_bfly_epoch:
         if xlabel is True:
             xlabel = 'Time [s]'
         if ylabel is True:
-            ylabel = epoch.properties.get('unit', None)
+            ylabel = epoch.info.get('unit', None)
 
         if xlabel not in [False, None]:
             self.ax.set_xlabel(xlabel)

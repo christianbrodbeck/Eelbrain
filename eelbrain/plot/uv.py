@@ -333,8 +333,8 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
         title = str2tex(getattr(Y, 'name', None))
 
     # ylabel
-    if hasattr(Y, 'properties'):
-        unit = Y.properties.get('unit', '')
+    if hasattr(Y, 'info'):
+        unit = Y.info.get('unit', '')
     else:
         unit = ''
     ylabel = ylabel.format(unit=unit)
@@ -495,8 +495,8 @@ def barplot(Y, X=None, match=None, sub=None,
 
     # ylabel
     if ylabel:
-        if hasattr(Y, 'properties'):
-            unit = Y.properties.get('unit', '')
+        if hasattr(Y, 'info'):
+            unit = Y.info.get('unit', '')
         else:
             unit = ''
 

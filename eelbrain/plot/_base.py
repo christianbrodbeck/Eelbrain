@@ -183,8 +183,8 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
 
 def read_cs_arg(epoch, colorspace=None):
     if (colorspace is None):
-        if 'colorspace' in epoch.properties:
-            colorspace = epoch.properties['colorspace']
+        if 'colorspace' in epoch.info:
+            colorspace = epoch.info['colorspace']
         else:
             colorspace = _vsl.colorspaces.get_default()
 

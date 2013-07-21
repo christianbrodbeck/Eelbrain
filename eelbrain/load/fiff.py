@@ -199,7 +199,7 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
                data='mag', reject=None,
                raw=None, add=True,
                target="MEG", i_start='i_start',
-               properties=None, sensors=None, exclude='bads'):
+               info=None, sensors=None, exclude='bads'):
     """
     Adds data from individual epochs as a ndvar to the dataset ``ds`` and
     returns the dataset. Unless the ``reject`` argument is specified, ``ds``
@@ -278,7 +278,7 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
 
     epochs_var = epochs_ndvar(epochs, name=target, meg=meg, eeg=eeg,
                               exclude=exclude, mult=mult, unit=unit,
-                              properties=properties, sensors=sensors)
+                              info=info, sensors=sensors)
 
     if len(epochs_var) == 0:
         raise RuntimeError("No events left in %r" % raw.info['filename'])
@@ -420,7 +420,7 @@ def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
 
 
 def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
-                 mult=1, unit='T', properties=None, sensors=None, vmax=None):
+                 mult=1, unit='T', info=None, sensors=None, vmax=None):
     """
     Convert an mne.Epochs object to an ndvar.
 
@@ -463,7 +463,7 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
 
     """
     vmax = vmax or 2e-12 * mult
-    props = {'proj': 'z root',
+    info_ = {'proj': 'z root',
              'unit': unit,
              'ylim': vmax,
              'summary_ylim': .1 * vmax,
@@ -472,8 +472,8 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
              'samplingrate': epochs.info['sfreq'],
              }
 
-    if properties:
-        props.update(properties)
+    if info:
+        info_.update(info)
 
     picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False,
                                 eog=False, include=[], exclude=exclude)
@@ -483,7 +483,7 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
 
     sensor = sensors or sensor_dim(epochs, picks=picks)
     time = UTS(epochs.tmin, 1. / epochs.info['sfreq'], len(epochs.times))
-    return ndvar(x, ('case', sensor, time), properties=props, name=name)
+    return ndvar(x, ('case', sensor, time), info=info_, name=name)
 
 
 def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
@@ -548,8 +548,8 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
         time = UTS.from_int(e0.first, e0.last, e0.info['sfreq'])
         dims = ('case', sensor, time)
 
-    properties = {'colorspace': _cs.get_MEG(2e-13)}
-    return ndvar(x, dims, properties=properties, name=name)
+    info = {'colorspace': _cs.get_MEG(2e-13)}
+    return ndvar(x, dims, info=info, name=name)
 
 
 def stc_ndvar(stc, subject='fsaverage', name=None, check=True):

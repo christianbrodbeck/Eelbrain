@@ -224,7 +224,7 @@ class stat(_base.subplot_figure):
 
         ax = self.axes[ax]
         for c in clusters:
-            if c.properties['p'] <= p:
+            if c.info['p'] <= p:
                 i0 = np.nonzero(c.x)[0][0]
                 i1 = np.nonzero(c.x)[0][-1]
                 t0 = c.time[i0]
@@ -358,7 +358,7 @@ def _ax_stat(ax, ct, colors, legend_h={}, dev=scipy.stats.sem, main=np.mean,
     ax.set_xlim(min(dim), max(dim))
 
     if ylabel is True:
-        ylabel = ct.Y.properties.get('unit', None)
+        ylabel = ct.Y.info.get('unit', None)
     if ylabel:
         ax.set_ylabel(ylabel)
     if invy:
@@ -479,7 +479,7 @@ def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
 
 #    if ylabel:
 #        if ylabel is True:
-#            ylabel = l.properties.get('unit', None)
+#            ylabel = l.info.get('unit', None)
 #        ax.set_ylabel(ylabel)
 
     if invy:
@@ -509,14 +509,14 @@ class _ax_clusters:
             ax.set_title(title)
 
         if tkwargs is not None:
-            t_upper = Y.properties.get('threshold_upper', None)
-            t_lower = Y.properties.get('threshold_lower', None)
+            t_upper = Y.info.get('threshold_upper', None)
+            t_lower = Y.info.get('threshold_lower', None)
             if t_upper is not None:
                 ax.axhline(t_upper, **tkwargs)
             if t_lower is not None:
                 ax.axhline(t_lower, **tkwargs)
 
-        ylabel = Y.properties.get('unit', None)
+        ylabel = Y.info.get('unit', None)
 
         _plt_uts(ax, Y, color=color, xdim=xdim)
         if ylabel:
@@ -537,11 +537,11 @@ class _ax_clusters:
         ax = self.ax
 
         for c in self.clusters:
-            if c.properties['p'] <= self.pmax:
+            if c.info['p'] <= self.pmax:
                 if c not in self.cluster_hs:
                     h = _plt_cluster(ax, c, **self.sig_kwargs)
                     self.cluster_hs[c] = h
-            elif c.properties['p'] <= self.ptrend:
+            elif c.info['p'] <= self.ptrend:
                 if c not in self.cluster_hs:
                     h = _plt_cluster(ax, c, **self.trend_kwargs)
                     self.cluster_hs[c] = h

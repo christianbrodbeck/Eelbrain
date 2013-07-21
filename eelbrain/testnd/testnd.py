@@ -64,8 +64,8 @@ def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
     keep = binary_dilation(cores, struct)
     x = np.where(keep, pmap.x, null)
 
-    properties = pmap.properties.copy()
-    cleaned = ndvar(x, pmap.dims, properties, pmap.name)
+    info = pmap.info.copy()
+    cleaned = ndvar(x, pmap.dims, info, pmap.name)
     return cleaned
 
 
@@ -134,10 +134,10 @@ class corr:
 
         dims = Y.dims[1:]
         shape = Y.x.shape[1:]
-        properties = Y.properties.copy()
+        info = Y.info.copy()
         cs = _cs.Colorspace('xpolar', vmax=1, vmin=-1, contours=pcont, ps=r_ps)
-        properties['colorspace'] = cs
-        r = ndvar(r.reshape(shape), dims=dims, properties=properties)
+        info['colorspace'] = cs
+        r = ndvar(r.reshape(shape), dims=dims, info=info)
 
         # store results
         self.name = "%s corr %s" % (Y.name, X.name)
@@ -331,14 +331,14 @@ class ttest:
             raise ValueError('invalid c0: %r. Must be string or scalar.' % c0)
 
         dims = ct.Y.dims[1:]
-        properties = ct.Y.properties.copy()
+        info = ct.Y.info.copy()
 
-        properties['colorspace'] = _cs.Colorspace(contours=contours)
-        properties['test'] = test_name
-        P = ndvar(P, dims, properties=properties, name='p')
+        info['colorspace'] = _cs.Colorspace(contours=contours)
+        info['test'] = test_name
+        P = ndvar(P, dims, info=info, name='p')
 
-        properties['colorspace'] = _cs.get_default()
-        T = ndvar(T, dims, properties=properties, name='T')
+        info['colorspace'] = _cs.get_default()
+        T = ndvar(T, dims, info=info, name='T')
 
         # add Y.name to dataset name
         Yname = getattr(Y, 'name', None)
@@ -391,10 +391,10 @@ class f_oneway:
         dims = Y.dims[1:]
         Ps = np.reshape(Ps, tuple(len(dim) for dim in dims))
 
-        properties = Y.properties.copy()
-        properties['colorspace'] = _cs.SigColorspace(p=p, contours=contours)
-        properties['test'] = test_name
-        p = ndvar(Ps, dims, properties=properties, name=X.name)
+        info = Y.info.copy()
+        info['colorspace'] = _cs.SigColorspace(p=p, contours=contours)
+        info['test'] = test_name
+        p = ndvar(Ps, dims, info=info, name=X.name)
 
         # store results
         self.name = "anova"
@@ -426,9 +426,9 @@ class anova:
 
         fitter = _glm.lm_fitter(X)
 
-        properties = Y.properties.copy()
-        properties['colorspace'] = _cs.SigColorspace(p=p, contours=contours)
-        kwargs = dict(dims=Y.dims[1:], properties=properties)
+        info = Y.info.copy()
+        info['colorspace'] = _cs.SigColorspace(p=p, contours=contours)
+        kwargs = dict(dims=Y.dims[1:], info=info)
 
         self.all = []
         self.p_maps = {}
@@ -683,14 +683,14 @@ class cluster_dist:
                 im = P * (clusters == i + 1)
                 name = 'p=%.3f' % p
                 threshold = self.t_upper if (v > 0) else self.t_lower
-                properties = {'p': p, 'unit': self.unit, 'threshold': threshold}
-                ndv = ndvar(im, dims=self.dims, name=name, properties=properties)
+                info = {'p': p, 'unit': self.unit, 'threshold': threshold}
+                ndv = ndvar(im, dims=self.dims, name=name, info=info)
                 self.clusters.append(ndv)
 
-        props = {'unit': self.unit, 'cs': self.cs,
+        info = {'unit': self.unit, 'cs': self.cs,
                  'threshold_lower': self.t_lower,
                  'threshold_upper': self.t_upper}
-        self.P = ndvar(P, dims=self.dims, name=self.name, properties=props)
+        self.P = ndvar(P, dims=self.dims, name=self.name, info=info)
 
     def add_perm(self, P):
         """
@@ -720,7 +720,7 @@ class cluster_dist:
 
         i = 0
         for c in self.clusters:
-            p = c.properties['p']
+            p = c.info['p']
             if p <= pmax:
                 table.cell(i)
                 i += 1

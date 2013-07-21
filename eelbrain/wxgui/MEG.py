@@ -200,7 +200,7 @@ class SelectEpochs(eelfigure):
     # compile plot kwargs:
         self._bfly_kwargs = {'plot_range': fill, 'plot_traces': ROI}
         if ylim is None:
-            ylim = data.properties.get('ylim', None)
+            ylim = data.info.get('ylim', None)
         if ylim:
             self._bfly_kwargs['ylim'] = ylim
 

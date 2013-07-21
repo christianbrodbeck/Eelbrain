@@ -500,7 +500,7 @@ def combine(items, name=None):
         else:
             x = np.array([v.x for v in items])
         dims = ('case',) + dims
-        return ndvar(x, dims=dims, name=name, properties=item0.properties)
+        return ndvar(x, dims=dims, name=name, info=item0.info)
     elif isdatalist(item0):
         out = sum(items[1:], item0)
         out.name = name
@@ -1479,7 +1479,7 @@ class factor(_effect_):
 class ndvar(object):
     "Container for n-dimensional data."
     _stype_ = "ndvar"
-    def __init__(self, x, dims=('case',), properties={}, name=None):
+    def __init__(self, x, dims=('case',), info={}, name=None):
         """
         Parameters
         ----------
@@ -1489,9 +1489,9 @@ class ndvar(object):
             The dimensions characterizing the axes of the data. If present,
             ``'case'`` should be provided as a :py:class:`str`, and should
             always occupy the first position.
-        properties : dict
+        info : dict
             A dictionary with data properties (can contain arbitrary
-            information that will be accessible in the properties attribute).
+            information that will be accessible in the info attribute).
         name : None | str
             Name for the ndvar.
 
@@ -1499,7 +1499,7 @@ class ndvar(object):
         Notes
         -----
         ``x`` and ``dims`` are stored without copying. A shallow
-        copy of ``properties`` is stored. Make sure the relevant objects
+        copy of ``info`` is stored. Make sure the relevant objects
         are not modified externally later.
 
 
@@ -1546,7 +1546,7 @@ class ndvar(object):
                        "%i in dimension %r" % (dim.name, n, n_dim, dim.name))
                 raise DimensionMismatchError(err)
 
-        state = {'x': x, 'dims': dims, 'properties': dict(properties),
+        state = {'x': x, 'dims': dims, 'info': dict(info),
                  'name': name}
         self.__setstate__(state)
 
@@ -1562,7 +1562,10 @@ class ndvar(object):
 
         self.x = x = state['x']
         self.name = state['name']
-        self.properties = state['properties']
+        if 'info' in state:
+            self.info = state['info']
+        else:
+            self.info = state['properties']
         # derived
         self.ndim = len(dims)
         self.shape = x.shape
@@ -1581,7 +1584,7 @@ class ndvar(object):
         state = {'dims': self.dims,
                  'x': self.x,
                  'name': self.name,
-                 'properties': self.properties}
+                 'info': self.info}
         return state
 
     # numeric ---
@@ -1644,7 +1647,7 @@ class ndvar(object):
             name = '%s+%s' % (self.name, str(other))
         else:
             raise ValueError("can't add %r" % other)
-        return ndvar(x, dims=dims, name=name, properties=self.properties)
+        return ndvar(x, dims=dims, name=name, info=self.info)
 
     def __iadd__(self, other):
         self.x += self._ialign(other)
@@ -1661,7 +1664,7 @@ class ndvar(object):
             name = '%s-%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
-        return ndvar(x, dims=dims, name=name, properties=self.properties)
+        return ndvar(x, dims=dims, name=name, info=self.info)
 
     def __isub__(self, other):
         self.x -= self._ialign(other)
@@ -1669,7 +1672,7 @@ class ndvar(object):
 
     def __rsub__(self, other):
         x = other - self.x
-        return ndvar(x, self.dims, self.properties, name=self.name)
+        return ndvar(x, self.dims, self.info, name=self.name)
 
     # container ---
     def __getitem__(self, index):
@@ -1680,7 +1683,7 @@ class ndvar(object):
             x = self.x[index]
             if x.shape[1:] != self.x.shape[1:]:
                 raise NotImplementedError("Use subdata method when dims are affected")
-            return ndvar(x, dims=self.dims, name=self.name, properties=self.properties)
+            return ndvar(x, dims=self.dims, name=self.name, info=self.info)
         else:
             index = int(index)
             x = self.x[index]
@@ -1692,7 +1695,7 @@ class ndvar(object):
                 name = '%s_%i' % (self.name, index)
             else:
                 name = None
-            return ndvar(x, dims=dims, name=name, properties=self.properties)
+            return ndvar(x, dims=dims, name=name, info=self.info)
 
     def __len__(self):
         return self._len
@@ -1745,24 +1748,24 @@ class ndvar(object):
                 x_cell = self.x[idx]
                 x.append(func(x_cell, axis=0))
 
-        # update properties for summary
-        properties = self.properties.copy()
-        for key in self.properties:
+        # update info for summary
+        info = self.info.copy()
+        for key in self.info:
             if key.startswith('summary_') and (key != 'summary_func'):
-                properties[key[8:]] = properties.pop(key)
+                info[key[8:]] = info.pop(key)
 
         x = np.array(x)
         name = name.format(name=self.name)
-        out = ndvar(x, self.dims, properties=properties, name=name)
+        out = ndvar(x, self.dims, info=info, name=name)
         return out
 
     def copy(self, name='{name}'):
         "returns a deep copy of itself"
         x = self.x.copy()
         name = name.format(name=self.name)
-        properties = self.properties.copy()
+        info = self.info.copy()
         return self.__class__(x, dims=self.dims, name=name,
-                              properties=properties)
+                              info=info)
 
     def get_axis(self, dim):
         return self._dim_2_ax[dim]
@@ -1840,9 +1843,9 @@ class ndvar(object):
             repdim = repdim.repeat(repeats)
 
         dims = self.dims[:ax] + (repdim,) + self.dims[ax + 1:]
-        properties = self.properties.copy()
+        info = self.info.copy()
         name = name.format(name=self.name)
-        return ndvar(x, dims, properties=properties, name=name)
+        return ndvar(x, dims, info=info, name=name)
 
     def summary(self, *dims, **regions):
         r"""
@@ -1900,7 +1903,7 @@ class ndvar(object):
             >>> MEG_RMS = MEG.summary('sensor', func=statfuncs.RMS)
 
         """
-        func = regions.pop('func', self.properties.get('summary_func', np.mean))
+        func = regions.pop('func', self.info.get('summary_func', np.mean))
         name = regions.pop('name', '{func}({name})')
         name = name.format(func=func.__name__, name=self.name)
         if len(dims) + len(regions) == 0:
@@ -1919,18 +1922,18 @@ class ndvar(object):
                 x = func(x, axis=axis)
                 dims.pop(axis)
 
-            # update properties for summary
-            properties = self.properties.copy()
-            for key in self.properties:
+            # update info for summary
+            info = self.info.copy()
+            for key in self.info:
                 if key.startswith('summary_') and (key != 'summary_func'):
-                    properties[key[8:]] = properties.pop(key)
+                    info[key[8:]] = info.pop(key)
 
             if len(dims) == 0:
                 return x
             elif dims == ['case']:
                 return var(x, name=name)
             else:
-                return ndvar(x, dims=dims, name=name, properties=properties)
+                return ndvar(x, dims=dims, name=name, info=info)
 
     def subdata(self, **kwargs):
         """
@@ -1952,7 +1955,7 @@ class ndvar(object):
         default is the name of the current ndvar.
         """
         var_name = kwargs.pop('name', self.name)
-        properties = self.properties.copy()
+        info = self.info.copy()
         dims = list(self.dims)
         index = [slice(None)] * len(dims)
 
@@ -1975,7 +1978,7 @@ class ndvar(object):
             index[dimax] = idx
             if np.isscalar(idx):
                 dims[dimax] = None
-                properties[name] = arg
+                info[name] = arg
             elif isinstance(dim, str):
                 dims[dimax] = dim
             else:
@@ -1992,7 +1995,7 @@ class ndvar(object):
 
         # create subdata object
         dims = tuple(dim for dim in dims if dim is not None)
-        return ndvar(x, dims=dims, name=var_name, properties=properties)
+        return ndvar(x, dims=dims, name=var_name, info=info)
 
 
 
@@ -4570,9 +4573,9 @@ def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}'):
 
     xname = x.name or ''
     name = name.format(name=xname)
-    properties = x.properties.copy()
-    properties['colorspace'] = Colorspace('PRGn', vmax=1, unit="RMS corr coeff")
-    out = ndvar(y, (dim_obj,), properties=properties, name=name)
+    info = x.info.copy()
+    info['colorspace'] = Colorspace('PRGn', vmax=1, unit="RMS corr coeff")
+    out = ndvar(y, (dim_obj,), info=info, name=name)
     return out
 
 
@@ -4631,8 +4634,8 @@ def cwt_morlet(Y, freqs, use_fft=True, n_cycles=7.0, zero_mean=False,
     dims += Y.dims[-1:]
 
     x = x.reshape(new_shape)
-    properties = {}
-    out = ndvar(x, dims, properties, Y.name)
+    info = {}
+    out = ndvar(x, dims, info, Y.name)
     return out
 
 

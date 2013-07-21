@@ -92,7 +92,7 @@ class PCA:
             list of components to remove
         baseline : True | False | (int|None, int|None)
             Baseline correction after subtracting the components. True -> use the
-            settings stored in the ndvar.properties; False -> do not apply any
+            settings stored in the ndvar.info; False -> do not apply any
             baseline correction; a new baseline can be specified with a tuple of
             two time values or None (use all values until the end of the epoch).
 
@@ -112,9 +112,9 @@ class PCA:
 
         # create the output new ndvar
         dims = ('case',) + self.source.get_dims(('time', 'sensor'))
-        properties = self.source.properties
+        info = self.source.info
         name = name.format(name=self.source.name)
-        out = ndvar(new_data, dims=dims, properties=properties, name=name)
+        out = ndvar(new_data, dims=dims, info=info, name=name)
         if baseline:
             tstart, tend = baseline
             out = rm_baseline(out, tstart, tend)
@@ -212,6 +212,6 @@ def rm_baseline(ndvar, tstart=None, tend=0, name='{name}'):
     dims = ndvar.dims
     data = ndvar.x - bl_data
     name = name.format(name=ndvar.name)
-    return ndvar(data, dims=dims, properties=ndvar.properties, name=name)
+    return ndvar(data, dims=dims, info=ndvar.info, name=name)
 
 
