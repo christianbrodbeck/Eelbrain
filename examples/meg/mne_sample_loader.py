@@ -57,11 +57,11 @@ if __name__ == '__main__':
 
     ds = load_evts(raw_path)
     print EL.table.frequencies('condition', ds=ds)
-    ds = ds.subset('condition == "LA"')
+    ds = ds.subset('modality == "A"')
 
     ds = EL.load.fiff.add_epochs(ds, tstart=-0.1, tstop=0.3, 
                                  baseline=(None, 0), proj=False, data='mag', 
                                  reject={'mag': 2e-12}, target='meg')
 
-    p = plot.topo.butterfly('meg', ds=ds)
+    p = plot.topo.butterfly('meg', 'side', ds=ds)
     p.set_vmax(1e-12)
