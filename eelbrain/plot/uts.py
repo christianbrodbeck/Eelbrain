@@ -36,7 +36,7 @@ class stat(_base.subplot_figure):
                  match=None, sub=None, ds=None, Xax=None, legend='upper right',
                  title=None, axtitle='{name}', ylabel=True, xlabel=True,
                  invy=False, bottom=None, top=None, hline=None,
-                 xdim='time', cm=_cm.jet, colors=None, **layout):
+                 xdim='time', cm='jet', colors=None, **layout):
         """
     Plot statistics for a one-dimensional ndvar
 
@@ -130,9 +130,10 @@ class stat(_base.subplot_figure):
                     if cell not in colors:
                         raise KeyError("%s not in colors" % repr(cell))
             else:
+                cm = _cm.get_cmap(cm)
                 cells = ascategorial(X, sub=sub, ds=ds).cells
                 N = len(cells)
-                colors = {cell:cm(i / N) for i, cell in enumerate(cells)}
+                colors = {cell: cm(i / N) for i, cell in enumerate(cells)}
 
         legend_h = {}
         kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
@@ -372,8 +373,7 @@ def _ax_stat(ax, ct, colors, legend_h={}, dev=scipy.stats.sem, main=np.mean,
 class clusters(_base.subplot_figure):
     "Plotting of permutation cluster test results"
     def __init__(self, epochs, pmax=0.05, ptrend=0.1, title=None,
-                 axtitle='{name}', cm=_cm.jet, overlay=False,
-                 t={'linestyle': 'solid', 'color': 'k'}, **layout):
+                 axtitle='{name}', cm='jet', overlay=False, **layout):
         """
         Plotting of permutation cluster test results
 
@@ -404,6 +404,7 @@ class clusters(_base.subplot_figure):
             self.cluster_info = "No Cluster Info"
 
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
+        cm = _cm.get_cmap(cm)
 
         # create figure
         N = len(epochs)
@@ -417,13 +418,13 @@ class clusters(_base.subplot_figure):
             for i, layers in enumerate(epochs):
                 color = cm(i / N)
                 cax = _ax_clusters(ax, layers, color=color, pmax=pmax,
-                                   title=None, ptrend=ptrend, tkwargs=t)
+                                   title=None, ptrend=ptrend)
                 self._caxes.append(cax)
         else:
             for i, ax, layers in self._iter_ax(epochs):
                 color = cm(i / N)
                 cax = _ax_clusters(ax, layers, color=color, pmax=pmax,
-                                   title=axtitle, ptrend=ptrend, tkwargs=t)
+                                   title=axtitle, ptrend=ptrend)
                 self._caxes.append(cax)
 
         self._show()
@@ -453,14 +454,20 @@ class clusters(_base.subplot_figure):
 def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
             xlabel=True, ylabel=True, color=None, xdim='time'):
     contours = {}
+    overlay = False
     for l in layers:
-        colorspace = _base.read_cs_arg(l, None)
-        if colorspace.cmap:
-            _plt_uts(ax, l, color=color, xdim=xdim)
-        for v, color in colorspace.contours.iteritems():
-            if v in contours:
-                continue
-            contours[v] = ax.axhline(v, color=color)
+        args = _base.find_uts_args(l, overlay, color)
+        overlay = True
+        if args is None:
+            continue
+
+        _plt_uts(ax, l, xdim=xdim, **args)
+        contours = l.info.get('contours', None)
+        if contours:
+            for v, color in contours.iteritems():
+                if v in contours:
+                    continue
+                contours[v] = ax.axhline(v, color=color)
 
     l0 = layers[0]
     x = l0.get_dim(xdim)
@@ -490,35 +497,34 @@ def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
         ax.set_ylim(bottom, top)
 
 
-def _plt_uts(ax, layer, color=None, xdim='time', kwargs={}):
-    x = layer.get_dim(xdim).x
-    y = layer.get_data((xdim,))
+def _plt_uts(ax, ndvar, color=None, xdim='time', kwargs={}):
+    x = ndvar.get_dim(xdim).x
+    y = ndvar.get_data((xdim,))
     if color is not None:
         kwargs['color'] = color
     ax.plot(x, y, **kwargs)
 
+    for y, kwa in _base.find_uts_hlines(ndvar):
+        if color is not None:
+            kwa['color'] = color
+        ax.axhline(y, **kwa)
+
 
 class _ax_clusters:
     def __init__(self, ax, layers, color=None, pmax=0.05, ptrend=0.1,
-                 tkwargs={}, xdim='time', title=None):
+                 xdim='time', title=None):
         Y = layers[0]
+        uts_args = _base.find_uts_args(Y, False, color)
+        self._bottom, self._top = _base.find_vlim_args(Y)
 
         if title:
             if '{name}' in title:
                 title = title.format(name=Y.name)
             ax.set_title(title)
 
-        if tkwargs is not None:
-            t_upper = Y.info.get('threshold_upper', None)
-            t_lower = Y.info.get('threshold_lower', None)
-            if t_upper is not None:
-                ax.axhline(t_upper, **tkwargs)
-            if t_lower is not None:
-                ax.axhline(t_lower, **tkwargs)
-
         ylabel = Y.info.get('unit', None)
 
-        _plt_uts(ax, Y, color=color, xdim=xdim)
+        _plt_uts(ax, Y, xdim=xdim, **uts_args)
         if ylabel:
             ax.set_ylabel(ylabel)
         if np.any(Y.x < 0) and np.any(Y.x > 0):
@@ -529,7 +535,8 @@ class _ax_clusters:
         self.xlim = (x[0], x[-1])
         self.clusters = layers[1:]
         self.cluster_hs = {}
-        self.sig_kwargs = dict(color=color, xdim=xdim, y=Y)
+        self.sig_kwargs = dict(color=uts_args.get('color', None), xdim=xdim,
+                               y=Y)
         self.trend_kwargs = dict(color=(.7, .7, .7), xdim=xdim, y=Y)
         self.set_pmax(pmax=pmax, ptrend=ptrend)
 
@@ -551,7 +558,7 @@ class _ax_clusters:
                     h.remove()
 
         ax.set_xlim(*self.xlim)
-#        ax.set_ylim(bottom=0)
+        ax.set_ylim(bottom=self._bottom, top=self._top)
 
     def set_pmax(self, pmax=0.05, ptrend=0.1):
         self.pmax = pmax
@@ -559,8 +566,7 @@ class _ax_clusters:
         self.draw()
 
 
-def _plt_cluster(ax, ndvar, color=None, y=None, xdim='time',
-                 hatch='/'):
+def _plt_cluster(ax, ndvar, color=None, y=None, xdim='time', hatch='/'):
     x = ndvar.get_dim(xdim).x
     v = ndvar.get_data((xdim,))
     where = np.nonzero(v)[0]

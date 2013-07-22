@@ -650,19 +650,6 @@ class UTS_Segment(Segment):
     @property
     def sensors(self):
         return self['sensors']
-    def defaultColorspace(self, vmax='auto', vmin='auto', **kwargs):
-        "When symmetric, vmax is more important"
-        if vmax == 'auto':
-            vmax = np.max(np.abs(self.data))
-        kwargs['vmax'] = vmax
-
-        if vmin != 'auto':
-            kwargs['vmin'] = vmin
-
-        if self.ndim == 'wavelet':
-            raise NotImplementedError
-        else:
-            return _cs.get_MEG(**kwargs)
     # # operations
     # TODO: operations on VarColonies
     def _get_name(self, other, bracket=[], maxlen=20):
@@ -1099,8 +1086,6 @@ class UTS_Segment(Segment):
             if plotType=='e':
                 eegplot.ax_eArray(self)
             elif plotType=='im':
-                if 'colorspace' not in kwargs:
-                    kwargs['colorspace']=self.defaultColorspace()
                 eegplot.ax_imArray(self)
         elif self.ndim == 'wavelet':
             eegplot.fig_waveletArray(self, **kwargs)
@@ -1333,12 +1318,6 @@ class StatsTestSegment(UTS_Segment):
     @property
     def dirP(self):
         return (1 - self.P) * self.dir
-    def defaultColorspace(self, p=.05, **kwargs):
-        # print "segment.defaultColorspace", kwargs
-        if self.dir == None:
-            return _cs.SigColorspace(p, **kwargs)
-        else:
-            return _cs.SigColorspace(p, **kwargs)
     def subdata(self, **kwargs):
         if any(kw in kwargs for kw in ('downsample', 'samplingrate', 'ref')):
             raise KeyError("Invalid argument for p-field subdata")

@@ -463,14 +463,9 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
 
     """
     vmax = vmax or 2e-12 * mult
-    info_ = {'proj': 'z root',
-             'unit': unit,
-             'ylim': vmax,
-             'summary_ylim': .1 * vmax,
-             'colorspace': _cs.get_MEG(vmax),
-             'summary_colorspace': _cs.get_MEG(.1 * vmax),
-             'samplingrate': epochs.info['sfreq'],
-             }
+    info_ = _cs.meg_info(vmax, unit)
+    info_.update(proj='z root', samplingrate=epochs.info['sfreq'],
+                 summary_info=_cs.meg_info(0.1 * vmax))
 
     if info:
         info_.update(info)
@@ -548,7 +543,7 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
         time = UTS.from_int(e0.first, e0.last, e0.info['sfreq'])
         dims = ('case', sensor, time)
 
-    info = {'colorspace': _cs.get_MEG(2e-13)}
+    info = _cs.meg_info(2e-13)
     return ndvar(x, dims, info=info, name=name)
 
 

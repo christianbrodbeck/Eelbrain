@@ -40,8 +40,7 @@ from scipy.spatial.distance import pdist, squareform
 from .. import fmtxt
 from .. import ui
 from ..utils import LazyProperty
-from .colorspaces import Colorspace
-
+from . import colorspaces as cs
 
 
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
@@ -1750,9 +1749,8 @@ class ndvar(object):
 
         # update info for summary
         info = self.info.copy()
-        for key in self.info:
-            if key.startswith('summary_') and (key != 'summary_func'):
-                info[key[8:]] = info.pop(key)
+        if 'summary_info' in info:
+            info.update(info.pop('summary_info'))
 
         x = np.array(x)
         name = name.format(name=self.name)
@@ -1924,9 +1922,8 @@ class ndvar(object):
 
             # update info for summary
             info = self.info.copy()
-            for key in self.info:
-                if key.startswith('summary_') and (key != 'summary_func'):
-                    info[key[8:]] = info.pop(key)
+            if 'summary_info' in info:
+                info.update(info.pop('summary_info'))
 
             if len(dims) == 0:
                 return x
@@ -4552,7 +4549,7 @@ def intersect_dims(dims1, dims2):
 
 # ---ndvar functions---
 
-def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}'):
+def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}_r_nbr'):
     """Calculate Neighbor correlation
 
     Parameter
@@ -4573,8 +4570,7 @@ def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}'):
 
     xname = x.name or ''
     name = name.format(name=xname)
-    info = x.info.copy()
-    info['colorspace'] = Colorspace('PRGn', vmax=1, unit="RMS corr coeff")
+    info = cs.set_info_cs(x.info, cs.stat_info('r'))
     out = ndvar(y, (dim_obj,), info=info, name=name)
     return out
 
@@ -4634,7 +4630,7 @@ def cwt_morlet(Y, freqs, use_fft=True, n_cycles=7.0, zero_mean=False,
     dims += Y.dims[-1:]
 
     x = x.reshape(new_shape)
-    info = {}
+    info = cs.set_info_cs(Y.info, cs.default_info('A'))
     out = ndvar(x, dims, info, Y.name)
     return out
 

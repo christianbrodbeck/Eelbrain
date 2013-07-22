@@ -122,21 +122,17 @@ class corr:
         # p-value calculation
         # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
         pcont = {}
-        r_ps = {}
         df = n - 2
         for p, color in contours.iteritems():
             t = scipy.stats.distributions.t.isf(p, df)
             r_p = t / np.sqrt(n - 2 + t ** 2)
             pcont[r_p] = color
-            r_ps[r_p] = p
             pcont[-r_p] = color
-            r_ps[-r_p] = p
 
         dims = Y.dims[1:]
         shape = Y.x.shape[1:]
         info = Y.info.copy()
-        cs = _cs.Colorspace('xpolar', vmax=1, vmin=-1, contours=pcont, ps=r_ps)
-        info['colorspace'] = cs
+        info.update(cmap='xpolar', vmax=1, contours=pcont)
         r = ndvar(r.reshape(shape), dims=dims, info=info)
 
         # store results
@@ -180,10 +176,9 @@ class cluster_corr:
         tt = scipy.stats.distributions.t.isf(tp, df)
         tr = tt / np.sqrt(df + tt ** 2)
 
-        cs = _cs.Colorspace('xpolar', vmax=1, vmin=-1)
         cdist = cluster_dist(Y, N=samples, t_upper=tr, t_lower=-tr,
                              tstart=tstart, tstop=tstop, close_time=close_time,
-                             unit='r', pmax=pmax, name=name, cs=cs)
+                             meas='r', pmax=pmax, name=name)
 
         # normalization is done before the permutation b/c we are interested in the variance associated with each subject for the z-scoring.
         Y = Y.copy()
@@ -238,8 +233,8 @@ class ttest:
 
     """
     def __init__(self, Y='MEG', X=None, c1=None, c0=0,
-                 match=None, sub=None, ds=None,
-                 contours={.05: (.8, .2, .0), .01: (1., .6, .0), .001: (1., 1., .0)}):
+                 match=None, sub=None, ds=None, contours=None):
+#                  contours={.05: (.8, .2, .0), .01: (1., .6, .0), .001: (1., 1., .0)}):
         """
 
         Y : var
@@ -331,14 +326,17 @@ class ttest:
             raise ValueError('invalid c0: %r. Must be string or scalar.' % c0)
 
         dims = ct.Y.dims[1:]
-        info = ct.Y.info.copy()
 
-        info['colorspace'] = _cs.Colorspace(contours=contours)
+        info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
         info['test'] = test_name
         P = ndvar(P, dims, info=info, name='p')
 
-        info['colorspace'] = _cs.get_default()
+        info = _cs.set_info_cs(ct.Y.info, _cs.default_info('T', vmin=0))
         T = ndvar(T, dims, info=info, name='T')
+
+        # diff
+        if np.any(diff < 0):
+            diff.info['cmap'] = 'xpolar'
 
         # add Y.name to dataset name
         Yname = getattr(Y, 'name', None)
@@ -391,8 +389,7 @@ class f_oneway:
         dims = Y.dims[1:]
         Ps = np.reshape(Ps, tuple(len(dim) for dim in dims))
 
-        info = Y.info.copy()
-        info['colorspace'] = _cs.SigColorspace(p=p, contours=contours)
+        info = _cs.set_info_cs(Y.info, _cs.sig_info(p, contours))
         info['test'] = test_name
         p = ndvar(Ps, dims, info=info, name=X.name)
 
@@ -426,8 +423,7 @@ class anova:
 
         fitter = _glm.lm_fitter(X)
 
-        info = Y.info.copy()
-        info['colorspace'] = _cs.SigColorspace(p=p, contours=contours)
+        info = _cs.set_info_cs(Y.info, _cs.sig_info(p, contours))
         kwargs = dict(dims=Y.dims[1:], info=info)
 
         self.all = []
@@ -521,7 +517,7 @@ class cluster_anova:
             tF = {e: scipy.stats.distributions.f.isf(t, e.df, df_d) for e in X.effects}
 
         # Estimate statistic distributions from permuted Ys
-        kwargs = dict(tstart=tstart, tstop=tstop, close_time=close_time, unit='F')
+        kwargs = dict(tstart=tstart, tstop=tstop, close_time=close_time, meas='F')
         dists = {e: cluster_dist(Y, samples, tF[e], name=e.name, **kwargs) for e in tF}
         self.cluster_dists = dists
         for _, Yrs in _resample(Y, replacement=replacement, samples=samples):
@@ -559,7 +555,7 @@ class cluster_anova:
 
 class cluster_dist:
     def __init__(self, Y, N, t_upper, t_lower=None,
-                 tstart=None, tstop=None, close_time=0, unit='T', cs=None,
+                 tstart=None, tstop=None, close_time=0, meas='?',
                  pmax=.5, name=None):
         """
         Parameters
@@ -584,6 +580,8 @@ class cluster_dist:
             that Y is a uniform time series.
         unit : str
             Label for the parameter.
+        cs : None | dict
+            Plotting parameters for info dict.
         pmax : scalar
             For the original data, only retain clusters with a p-value
             smaller than pmax.
@@ -628,10 +626,9 @@ class cluster_dist:
         self._i = 0
         self.t_upper = t_upper
         self.t_lower = t_lower
-        self.unit = unit
+        self.meas = meas
         self.pmax = pmax
         self.name = name
-        self.cs = cs
 
     def _find_clusters(self, P):
         "returns (clusters, n)"
@@ -683,13 +680,12 @@ class cluster_dist:
                 im = P * (clusters == i + 1)
                 name = 'p=%.3f' % p
                 threshold = self.t_upper if (v > 0) else self.t_lower
-                info = {'p': p, 'unit': self.unit, 'threshold': threshold}
+                info = _cs.cluster_info(self.meas, threshold, p)
                 ndv = ndvar(im, dims=self.dims, name=name, info=info)
                 self.clusters.append(ndv)
 
-        info = {'unit': self.unit, 'cs': self.cs,
-                 'threshold_lower': self.t_lower,
-                 'threshold_upper': self.t_upper}
+        contours = {self.t_lower: (0.7, 0, 0.7), self.t_upper: (0.7, 0.7, 0)}
+        info = _cs.stat_info(self.meas, contours=contours)
         self.P = ndvar(P, dims=self.dims, name=self.name, info=info)
 
     def add_perm(self, P):

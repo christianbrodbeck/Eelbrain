@@ -21,38 +21,60 @@ from . import _base
 __hide__ = ['plt', 'math']
 
 
-# MARK: im arrays
 class _plt_im_array(object):
-    def __init__(self, ax, epoch, dims=('time', 'sensor'), colorspace=None,
-                 **kwargs):
-        colorspace = _base.read_cs_arg(epoch, colorspace)
-        data = epoch.get_data(dims)
+    def __init__(self, ax, ndvar, overlay, dims=('time', 'sensor'),
+                 extent=None, aspect='auto', vlims={}):
+        im_kwa = _base.find_im_args(ndvar, overlay, vlims)
+        ct_kwa = _base.find_ct_args(ndvar, overlay)
+        self._meas = ndvar.info.get('meas', _base.default_meas)
+        data = ndvar.get_data(dims)
         if data.ndim > 2:
             assert data.shape[0] == 1
             data = data[0]
 
-        if colorspace.cmap:
-            im_kwargs = kwargs.copy()
-            im_kwargs.update(colorspace.get_imkwargs())
-            self.im = ax.imshow(data, origin='lower', **im_kwargs)
+        if im_kwa is not None:
+            self.im = ax.imshow(data, origin='lower', aspect=aspect,
+                                extent=extent, **im_kwa)
+            self._cmap = im_kwa['cmap']
         else:
             self.im = None
 
-        if colorspace.contours:
-            c_kwargs = kwargs.copy()
-            c_kwargs.update(colorspace.get_contour_kwargs())
-            self.cont = ax.contour(data, **c_kwargs)
+        if ct_kwa is not None:
+            self.cont = ax.contour(data, aspect=aspect, extent=extent, **ct_kwa)
         else:
             self.cont = None
 
-    def set_vlim(self, vmin=None, vmax=None):
-        if self.im is not None:
-            self.im.set_clim(vmin, vmax)
+    def get_kwargs(self):
+        "Get the arguments required for plotting the im"
+        if self.im:
+            vmin, vmax = self.im.get_clim()
+            args = dict(cmap=self._cmap, vmin=vmin, vmax=vmax)
+        else:
+            args = {}
+        return args
+
+    def set_cmap(self, cmap, meas=None):
+        if self.im is None:
+            return
+        self.im.set_cmap(cmap)
+        self._cmap = cmap
+
+    def set_vlim(self, vmax, meas, vmin):
+        if self.im is None:
+            return
+        elif (meas is not None) and (self._meas != meas):
+            return
+
+        if vmax is None:
+            _, vmax = self.im.get_clim()
+
+        vmin, vmax = _base.fix_vlim_for_cmap(vmin, vmax, self._cmap)
+        self.im.set_clim(vmin, vmax)
 
 
 class _ax_im_array(object):
-    def __init__(self, ax, layers, x='time',  # vmax=None,
-                 xlabel=True, ylabel=True, title=None, tick_spacing=.3):
+    def __init__(self, ax, layers, x='time', xlabel=True, ylabel=True,
+                 title=None, tick_spacing=.3, vlims={}):
         """
         plots segment data as im
 
@@ -61,6 +83,8 @@ class _ax_im_array(object):
 
         """
         self.ax = ax
+        self.data = layers
+        self.layers = []
         epoch = layers[0]
 
         xdim = epoch.get_dim(x)
@@ -76,12 +100,14 @@ class _ax_im_array(object):
         if y == 'sensor':
             ydim = _dta.var(np.arange(len(ydim)), y)
 
-        map_kwargs = {'extent': [xdim[0], xdim[-1], ydim[0], ydim[-1]],
-                      'aspect': 'auto'}
-
         # plot
-        self.layers = [_plt_im_array(ax, l, dims=(y, x), **map_kwargs)
-                       for l in layers]
+        overlay = False
+        extent = (xdim[0], xdim[-1], ydim[0], ydim[-1])
+        for l in layers:
+            p = _plt_im_array(ax, l, overlay, dims=(y, x), extent=extent,
+                              vlims=vlims)
+            self.layers.append(p)
+            overlay = True
 
         if xlabel:
             if xlabel is True:
@@ -116,7 +142,11 @@ class _ax_im_array(object):
             title = _base.str2tex(epoch.name)
         ax.set_title(title)
 
-    def set_cmap(self, cmap, base=True, overlays=False):
+    @property
+    def kwargs(self):
+        return self.layers[0].get_kwargs()
+
+    def set_cmap(self, cmap, base=True, overlays=False, **kwa):
         """Change the colormap in the array plot
 
         Parameters
@@ -128,7 +158,6 @@ class _ax_im_array(object):
         overlays : bool
             Apply the new colormap to the layers above the first layer.
         """
-        cmap = _base.get_cmap(cmap)
         if base and overlays:
             layers = self.layers
         elif base:
@@ -141,9 +170,9 @@ class _ax_im_array(object):
         for l in layers:
             l.set_cmap(cmap)
 
-    def set_vlim(self, vmin=None, vmax=None):
+    def set_vlim(self, vmax=None, meas=None, vmin=None):
         for l in self.layers:
-            l.set_vlim(vmin, vmax)
+            l.set_vlim(vmax, meas, vmin)
 
 
 class array(_base.eelfigure):
@@ -168,17 +197,19 @@ class array(_base.eelfigure):
         nax = len(epochs)
         _base.eelfigure.__init__(self, "plot.utsnd.array", nax, layout,
                                  figtitle=title)
-        
-        self.subplots = []
+
+        self.plots = []
+        vlims = _base.find_fig_vlims(epochs)
         for i, ax, layers in self._iter_ax(epochs):
             _ylabel = ylabel if i == 1 else None
             _xlabel = xlabel if i == nax - 1 else None
-            p = _ax_im_array(ax, layers, xlabel=_xlabel, ylabel=ylabel)
-            self.subplots.append(p)
+            p = _ax_im_array(ax, layers, xlabel=_xlabel, ylabel=ylabel,
+                             vlims=vlims)
+            self.plots.append(p)
 
         self._show()
-        
-    def set_cmap(self, cmap, base=True, overlays=False):
+
+    def set_cmap(self, cmap, base=True, overlays=False, **kwa):
         """Change the colormap in the array plots
 
         Parameters
@@ -190,14 +221,13 @@ class array(_base.eelfigure):
         overlays : bool
             Apply the new colormap to the layers above the first layer.
         """
-        cmap = _base.get_cmap(cmap)
-        for p in self.subplots:
+        for p in self.plots:
             p.set_cmap(cmap, base, overlays)
         self.draw()
 
-    def set_vlim(self, vmin=None, vmax=None):
+    def set_vlim(self, vmax=None, meas=None, vmin=None):
         for p in self.subplots:
-            p.set_vlim(vmin, vmax)
+            p.set_vlim(vmax, meas, vmin)
         self.draw()
 
 
@@ -313,6 +343,9 @@ def _plt_uts(ax, epoch,
     T = epoch.time  # .x[...,None]
     handles = ax.plot(T, Y, label=epoch.name, **plot_kwargs)
 
+    for y, kwa in _base.find_uts_hlines(epoch):
+        ax.axhline(y, **kwa)
+
     if plotLabel:
         Ymax = np.max(Y)
         ax.text(T[0] / 2, Ymax / 2, plotLabel, horizontalalignment='center')
@@ -333,83 +366,78 @@ def _plt_extrema(ax, epoch, **plot_kwargs):
     return handle
 
 
-def _ax_butterfly(ax, layers, sensors=None, ylim=None, extrema=False,
-                  title='{name}', xlabel=True, ylabel=True, color=None,
-                  **plot_kwargs):
-    """
-    Arguments
-    ---------
+class _ax_butterfly(object):
+    def __init__(self, ax, layers, sensors=None, extrema=False, title='{name}',
+                xlabel=True, ylabel=True, color=None, vlims={}):
+        """
+        Parameters
+        ----------
+        vmin, vmax: None | scalar
+            Y axis limits.
+        """
+        self.ax = ax
+        self.data = layers
+        self.layers = []
+        self._meas = None
 
-    ylim:
-        y axis limits (scalar or (min, max) tuple)
+        vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
 
-    """
-    handles = []
+        xmin = []
+        xmax = []
+        name = ''
+        overlay = False
+        for l in layers:
+            uts_args = _base.find_uts_args(l, overlay, color)
+            if uts_args is None:
+                continue
+            overlay = True
 
-    xmin = []
-    xmax = []
-    name = ''
-    for l in layers:
-        colorspace = _base.read_cs_arg(l)
-        if not colorspace.cmap:
-            continue
+            # plot
+            if extrema:
+                h = _plt_extrema(ax, l, **uts_args)
+            else:
+                h = _plt_uts(ax, l, sensors=sensors, **uts_args)
 
-        if color is None:
-            plot_kwargs['color'] = l.info.get('color', 'k')
-        elif color is True:
-            pass  # no color kwarg to use mpl's color_cycle
-        else:
-            plot_kwargs['color'] = color
+            self.layers.append(h)
+            xmin.append(l.time[0])
+            xmax.append(l.time[-1])
 
-        # plot
-        if extrema:
-            h = _plt_extrema(ax, l, **plot_kwargs)
-        else:
-            h = _plt_uts(ax, l, sensors=sensors, **plot_kwargs)
+            if not name:
+                name = getattr(l, 'name', '')
 
-        handles.append(h)
-        xmin.append(l.time[0])
-        xmax.append(l.time[-1])
+        # axes decoration
+        l = layers[0]
+        if xlabel is True:
+            xlabel = 'Time [s]'
+        if ylabel is True:
+            ylabel = l.info.get('unit', None)
 
-        if not name:
-            name = getattr(l, 'name', '')
+        ax.set_xlim(min(xmin), max(xmax))
 
-    # axes decoration
-    l = layers[0]
-    if xlabel is True:
-        xlabel = 'Time [s]'
-    if ylabel is True:
-        ylabel = l.info.get('unit', None)
-    if ylim is None:
-        ylim = l.info.get('ylim', None)
+        if xlabel not in [False, None]:
+            ax.set_xlabel(xlabel)
+        if ylabel not in [False, None]:
+            ax.set_ylabel(ylabel)
 
-    ax.set_xlim(min(xmin), max(xmax))
+    #    ax.yaxis.set_offset_position('right')
+        ax.yaxis.offsetText.set_va('top')
 
-    if ylim:
-        if np.isscalar(ylim):
-            ax.set_ylim(-ylim, ylim)
-        else:
-            y_min, y_max = ylim
-            ax.set_ylim(y_min, y_max)
+        ax.x_fmt = "t = %.3f s"
+        if isinstance(title, str):
+            ax.set_title(title.format(name=name))
 
-    if xlabel not in [False, None]:
-        ax.set_xlabel(xlabel)
-    if ylabel not in [False, None]:
-        ax.set_ylabel(ylabel)
+        self.set_vlim(vmin, vmax)
 
-#    ax.yaxis.set_offset_position('right')
-    ax.yaxis.offsetText.set_va('top')
-
-    ax.x_fmt = "t = %.3f s"
-    if isinstance(title, str):
-        ax.set_title(title.format(name=name))
-
-    return handles
+    def set_vlim(self, vmin=None, vmax=None):
+        self.ax.set_ylim(vmin, vmax)
+        vmin, vmax = self.ax.get_ylim()
+        self.vmin = vmin
+        self.vmax = vmax
 
 
 class butterfly(_base.eelfigure):
     "Plot data in a butterfly plot."
-    def __init__(self, epochs, Xax=None, sensors=None, ylim=None, title=None,
+    def __init__(self, epochs, Xax=None, sensors=None, title=None,
                  axtitle='{name}', xlabel=True, ylabel=True, color=None,
                  ds=None, **layout):
         """
@@ -421,9 +449,6 @@ class butterfly(_base.eelfigure):
             Create a separate plot for each cell in this model.
         sensors: None or list of sensor IDs
             sensors to plot (``None`` = all)
-        ylim : scalar | (min, max) tuple of scalars
-            The y-axis limits (the default ``None`` leaves matplotlib's default
-            limits unaffected).
         w, h : scalar
             width and height of the individual axes in inches.
         dpi : int
@@ -440,13 +465,21 @@ class butterfly(_base.eelfigure):
         super(butterfly, self).__init__('plot.utsnd.butterfly', len(epochs),
                                         layout, figtitle=title)
 
+        self.plots = []
+        vlims = _base.find_fig_vlims(epochs, True)
         for ax, layers in zip(self._get_subplots(), epochs):
-            _ax_butterfly(ax, layers, sensors=sensors, ylim=ylim, title=axtitle,
-                          xlabel=xlabel, ylabel=ylabel, color=color)
+            h = _ax_butterfly(ax, layers, sensors=sensors, vlims=vlims,
+                              title=axtitle, xlabel=xlabel, ylabel=ylabel,
+                              color=color)
+            self.plots.append(h)
             xlabel = None
 
         self._show()
 
+    def set_vlim(self, vmin=None, vmax=None):
+        for p in self.plots:
+            p.set_vlim(vmin, vmax)
+        self.draw()
 
 
 class _ax_bfly_epoch:

@@ -70,6 +70,7 @@ The module attribute ``show_block_arg`` is submitted to
 """
 from __future__ import division
 
+from itertools import chain
 import math
 import os
 import shutil
@@ -83,9 +84,9 @@ import PIL
 
 from ..utils.subp import cmd_exists
 from ..fmtxt import texify
-from .. import vessels as _vsl
-from ..vessels import colorspaces
+from ..vessels.colorspaces import symmetric_cmaps, zerobased_cmaps
 from ..vessels.data import ascategorial, asndvar, DimensionMismatchError
+from bsdiff4.format import diff
 
 try:
     from ..wxutils.mpl_canvas import CanvasFrame
@@ -101,12 +102,294 @@ title_kwargs = {'size': 18,
 figs = []  # store callback figures (they need to be preserved)
 show_block_arg = True  # if the mpl figure is used, this is submitted to plt.show(block=show_block_arg)
 
+default_cmap = None
+default_meas = '?'
 
-def get_cmap(cmap):
-    "Look for a colormap in eelbrain custom colormaps before mpl"
-    if isinstance(cmap, str):
-        cmap = colorspaces.cmaps.get(cmap, cmap)
-    return cmap
+
+def find_ct_args(ndvar, overlay):
+    """Construct a dict with kwargs for a contour plot
+
+    Parameters
+    ----------
+    ndvar : ndvar
+        Data to be plotted.
+    overlay : bool
+        Whether the ndvar is plotted as a first layer or as an overlay.
+
+    Returns
+    -------
+    ct_args : dict
+        Arguments for the contour plot (levels, colors).
+
+    Notes
+    -----
+    The ndvar's info dict contains default arguments that determine how the
+    ndvar is plotted as base and as overlay. In case of insufficient
+    information, defaults apply. On the other hand, defaults can be overridden
+    by providing specific arguments to plotting functions.
+    """
+    if overlay:
+        kind = ndvar.info.get('overlay', ('contours',))
+    else:
+        kind = ndvar.info.get('base', ())
+
+    if 'contours' in kind:
+        ct_args = {}
+        contours = ndvar.info.get('contours', None)
+        if overlay:
+            contours = ndvar.info.get('overlay_contours', contours)
+        else:
+            contours = ndvar.info.get('base_contours', contours)
+
+        if contours:
+            levels = sorted(contours)
+            colors = [contours[l] for l in levels]
+            ct_args.update(levels=levels, colors=colors)
+    else:
+        ct_args = None
+
+    return ct_args
+
+
+def find_im_args(ndvar, overlay, vlims={}):
+    """Construct a dict with kwargs for an im plot
+
+    Parameters
+    ----------
+    ndvar : ndvar
+        Data to be plotted.
+    overlay : bool
+        Whether the ndvar is plotted as a first layer or as an overlay.
+    vlims : dict
+        Vmax and vmin values by (meas, cmap).
+
+    Returns
+    -------
+    im_args : dict
+        Arguments for the im plot (cmap, vmin, vmax).
+
+    Notes
+    -----
+    The ndvar's info dict contains default arguments that determine how the
+    ndvar is plotted as base and as overlay. In case of insufficient
+    information, defaults apply. On the other hand, defaults can be overridden
+    by providing specific arguments to plotting functions.
+    """
+    if overlay:
+        kind = ndvar.info.get('overlay', ('contours',))
+    else:
+        kind = ndvar.info.get('base', ('im',))
+
+    if 'im' in kind:
+        meas = ndvar.info.get('meas', default_meas)
+        cmap = ndvar.info.get('cmap', default_cmap)
+        key = (meas, cmap)
+        if key in vlims:
+            vmin, vmax = vlims[key]
+        else:
+            vmin, vmax = find_vlim_args(ndvar)
+            vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
+        im_args = dict(cmap=cmap, vmin=vmin, vmax=vmax)
+    else:
+        im_args = None
+
+    return im_args
+
+
+def find_uts_args(ndvar, overlay, color=None):
+    """Construct a dict with kwargs for a uts plot
+
+    Parameters
+    ----------
+    ndvar : ndvar
+        Data to be plotted.
+    overlay : bool
+        Whether the ndvar is plotted as a first layer or as an overlay.
+    vlims : dict
+        Vmax and vmin values by (meas, cmap).
+
+    Returns
+    -------
+    uts_args : dict
+        Arguments for a uts plot (color).
+
+    Notes
+    -----
+    The ndvar's info dict contains default arguments that determine how the
+    ndvar is plotted as base and as overlay. In case of insufficient
+    information, defaults apply. On the other hand, defaults can be overridden
+    by providing specific arguments to plotting functions.
+    """
+    if overlay:
+        kind = ndvar.info.get('overlay', ())
+    else:
+        kind = ndvar.info.get('base', ('trace',))
+
+    if 'trace' in kind:
+        args = {}
+        color = color or ndvar.info.get('color', None)
+        if color is not None:
+            args['color'] = color
+    else:
+        args = None
+
+    return args
+
+
+def find_uts_hlines(ndvar):
+    """Find horizontal lines for uts plots (based on contours)
+
+    Parameters
+    ----------
+    ndvar : ndvar
+        Data to be plotted.
+
+    Returns
+    -------
+    h_lines : iterator
+        Iterator over (y, kwa) tuples.
+    """
+    contours = ndvar.info.get('contours', None)
+    if contours:
+        for level in sorted(contours):
+            args = contours[level]
+            if isinstance(args, dict):
+                yield level, args.copy()
+            else:
+                yield level, {'color': args}
+
+
+def find_uts_ax_vlim(layers, vlims={}):
+    """Find y axis limits for uts axes
+
+    Parameters
+    ----------
+    layers : list of ndvar
+        Data to be plotted.
+    vlims : dict
+        Vmax and vmin values by (meas, cmap).
+
+    Returns
+    -------
+    bottom : None | scalar
+        Lowest value on y axis.
+    top : None | scalar
+        Highest value on y axis.
+    """
+    bottom = None
+    top = None
+    overlay = False
+    for ndvar in layers:
+        if overlay:
+            kind = ndvar.info.get('overlay', ())
+        else:
+            kind = ndvar.info.get('base', ('trace',))
+        overlay = True
+
+        if 'trace' not in kind:
+            continue
+
+        meas = ndvar.info.get('meas', default_meas)
+        cmap = ndvar.info.get('cmap', default_cmap)
+        key = (meas, cmap)
+        if key in vlims:
+            bottom_, top_ = vlims[key]
+            if bottom is None:
+                bottom = bottom_
+            elif bottom_ != bottom:
+                raise RuntimeError("Double vlim specification")
+            if top is None:
+                top = top_
+            elif top_ != top:
+                raise RuntimeError("Double vlim specification")
+
+    return bottom, top
+
+
+def find_fig_vlims(plots, range_by_measure=False):
+    """Find vmin and vmax parameters for every (meas, cmap) combination
+
+    Parameters
+    ----------
+    plots : nested list of ndvar
+        Unpacked plot data.
+    range_by_measure : bool
+        Constrain the vmax - vmin range such that the range is constant within
+        measure (for uts plots).
+
+    Returns
+    -------
+    vlims : dict
+        Dictionary of im limits: {(meas, cmap): (vmin, vmax)}.
+    """
+    vlims = {}  # (meas, cmap): (vmin, vmax)
+    for ndvar in chain(*plots):
+        vmin, vmax = find_vlim_args(ndvar)
+        meas = ndvar.info.get('meas', '?')
+        cmap = ndvar.info.get('cmap', None)
+        key = (meas, cmap)
+        if key in vlims:
+            vmin_, vmax_ = vlims[key]
+            vmin = min(vmin, vmin_)
+            vmax = max(vmax, vmax_)
+        vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
+        vlims[key] = (vmin, vmax)
+
+    if range_by_measure:
+        range_ = {}
+        for (meas, cmap), (vmin, vmax) in vlims.iteritems():
+            r = vmax - vmin
+            range_[meas] = max(range_.get(meas, 0), r)
+        for key in vlims.keys():
+            meas, cmap = key
+            vmin, vmax = vlims[key]
+            diff = range_[meas] - (vmax - vmin)
+            if diff:
+                if cmap in zerobased_cmaps:
+                    vmax += diff
+                else:
+                    diff /= 2
+                    vmax += diff
+                    vmin -= diff
+                vlims[key] = vmin, vmax
+
+    return vlims
+
+
+def find_vlim_args(ndvar, vmin=None, vmax=None):
+    if vmax is None:
+        vmax = ndvar.info.get('vmax', None)
+        if vmin is None:
+            vmin = ndvar.info.get('vmin', None)
+
+    if vmax is None:
+        xmax = ndvar.x.max()
+        xmin = ndvar.x.min()
+        abs_max = max(abs(xmax), abs(xmin)) or 1e-14
+        scale = math.floor(np.log10(abs_max))
+        vmax = math.ceil(xmax * 10 ** -scale) * 10 ** scale
+        vmin = math.floor(xmin * 10 ** -scale) * 10 ** scale
+
+    return vmin, vmax
+
+
+def fix_vlim_for_cmap(vmin, vmax, cmap):
+    "Fix the vmin value to yield an appropriate range for the cmap"
+    if cmap in symmetric_cmaps:
+        if vmax is None and vmin is None:
+            pass
+        elif vmin is None:
+            vmax = abs(vmax)
+            vmin = -vmax
+        elif vmax is None:
+            vmax = abs(vmin)
+            vmin = -vmax
+        else:
+            vmax = max(abs(vmax), abs(vmin))
+            vmin = -vmax
+    elif cmap in zerobased_cmaps:
+        vmin = 0
+    return vmin, vmax
 
 
 def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
@@ -187,16 +470,6 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
 
             out.append(ndvar)
         return out
-
-
-def read_cs_arg(epoch, colorspace=None):
-    if (colorspace is None):
-        if 'colorspace' in epoch.info:
-            colorspace = epoch.info['colorspace']
-        else:
-            colorspace = _vsl.colorspaces.get_default()
-
-    return colorspace
 
 
 def str2tex(txt):
