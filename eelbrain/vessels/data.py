@@ -4496,6 +4496,9 @@ class UTS(Dimension):
             return arg
         elif isinstance(arg, tuple) and len(arg) == 2:
             tstart, tstop = arg
+            if (tstart is not None) and (tstop is not None) and (tstart >= tstop):
+                raise ValueError("tstart must be smaller than tstop")
+
             if tstart is None:
                 start = None
             else:
