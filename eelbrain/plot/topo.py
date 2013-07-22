@@ -131,6 +131,23 @@ class topomap(_base.eelfigure):
             p.sensors.mark_sensors(sensors, marker)
         self.draw()
 
+    def set_cmap(self, cmap, base=True, overlays=False):
+        """Change the colormap in the topomaps
+
+        Parameters
+        ----------
+        cmap : str | colormap
+            New colormap.
+        base : bool
+            Apply the new colormap in the lowest layer of each plot.
+        overlays : bool
+            Apply the new colormap to the layers above the first layer.
+        """
+        cmap = _base.get_cmap(cmap)
+        for p in self._topomaps:
+            p.set_cmap(cmap, base, overlays)
+        self.draw()
+
     def set_label_color(self, color='w'):
         if hasattr(self, '_SensorLabelChoice'):
             sels = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y']
@@ -160,6 +177,11 @@ class topomap(_base.eelfigure):
             p.sensors.show_labels(text, color=self._label_color)
         self.draw()
 
+    def set_vlim(self, vmin=None, vmax=None):
+        "Change the range of the data shown in he colormap"
+        for p in self._topomaps:
+            p.set_vlim(vmin, vmax)
+        self.draw()
 
 
 class butterfly(_base.eelfigure):
@@ -238,9 +260,11 @@ class butterfly(_base.eelfigure):
                             'vmax': vmax}
 
         t = 0
-        self.topo_axes = []
         self.bfly_axes = []
-        self.topos = []
+        self.topo_axes = []
+        self.bfly_plots = []
+        self.topo_plots = []
+        self._topoax_data = []
         self.t_markers = []
 
         # plot epochs (x/y are in figure coordinates)
@@ -257,22 +281,20 @@ class butterfly(_base.eelfigure):
 
             # t - label
             if len(self.topo_axes) == n_plots - 1:
-#                ax2.set_title('t = %.3f' % t)
-#                self._t_title = ax2.title
                 self._t_title = ax2.text(.0, 0, 't = %.3f' % t, ha='center')
 
             self.bfly_axes.append(ax1)
             self.topo_axes.append(ax2)
-            self.topos.append((ax2, layers))
+            self._topoax_data.append((ax2, layers))
 
             show_x_axis = (i == n_plots - 1)
 
-            utsnd._ax_butterfly(ax1, layers, sensors=ROI, ylim=vmax,
-                                title=False, xlabel=show_x_axis, ylabel=ylabel,
-                                color=color)
+            p = utsnd._ax_butterfly(ax1, layers, sensors=ROI, ylim=vmax,
+                                    title=False, xlabel=show_x_axis,
+                                    ylabel=ylabel, color=color)
+            self.bfly_plots.append(p)
 
             if not show_x_axis:
-#                ax1.xaxis.set_visible(False)
                 ax1.xaxis.set_ticklabels([])
 
             # find and print epoch title
@@ -294,10 +316,12 @@ class butterfly(_base.eelfigure):
 
     def _draw_topo(self, t, draw=True):
         self._current_t = t
-        for topo_ax, layers in self.topos:
+        del self.topo_plots[:]
+        for topo_ax, layers in self._topoax_data:
             topo_ax.cla()
             layers = [l.subdata(time=t) for l in layers]
-            _ax_topomap(topo_ax, layers, **self.topo_kwargs)
+            p = _ax_topomap(topo_ax, layers, **self.topo_kwargs)
+            self.topo_plots.append(p)
 
         if draw:
             self._frame.redraw(axes=self.topo_axes)  # , artists=self.t_markers)
@@ -353,62 +377,91 @@ class butterfly(_base.eelfigure):
         if self._realtime_topo and ax and hasattr(ax, 'ID'):
             self._draw_topo(event.xdata)
 
-    def set_vmax(self, vmax):
+    def set_cmap(self, cmap, base=True, overlays=False):
+        "Change the colormap"
+        cmap = _base.get_cmap(cmap)
+        for p in self.topo_plots:
+            p.set_cmap(cmap, base, overlays)
+        self.topo_kwargs['cmap'] = cmap
+        self.draw()
+
+
+    def set_vlim(self, vmin=None, vmax=None):
+        """Change the range of values displayed in butterfly-plots.
         """
-        Change the range of values displayed in butterfly-plots.
+        for ax in self.bfly_axes:
+            ax.set_ylim(vmin, vmax)
 
-        """
-        if np.isscalar(vmax):
-            ymin, ymax = -vmax, vmax
-        elif len(vmax) == 2:
-            ymin, ymax = vmax
-        else:
-            err = ("Invalid vmax parameter. Need scalar or tuple of length 2")
-            raise ValueError(err)
+        for p in self.topo_plots:
+            p.set_vlim(vmin, vmax)
 
-        for i, ax in enumerate(self.figure.axes):
-            if i % 2 == 0:
-                ax.set_ylim(ymin, ymax)
+        if vmin is not None:
+            self.topo_kwargs['vmin'] = vmin
+        if vmax is not None:
+            self.topo_kwargs['vmax'] = vmax
 
-        self.topo_kwargs['vmax'] = ymax
         self.canvas.draw()
 
+    def set_vmax(self, vmax):
+        """Change the range of values displayed in butterfly-plots (symmetric
+        around zero).
 
-def _plt_topomap(ax, epoch, proj='default', res=100,
-                 im_frame=0.02,  # empty space around sensors in the im
+        Parameters
+        ----------
+        vmax : scalar
+            The absolute of the maximum value to show.
+        """
+        vmax = abs(vmax)
+        self.set_vlim(-vmax, vmax)
+
+
+class _plt_topomap(object):
+    def __init__(self, ax, epoch, proj='default', res=100,
+                 im_frame=0.02,
                  colorspace=None, vmax=None,
                  **im_kwargs):
-    """
-    Parameters
-    ----------
-    vmax : scalar
-        Override the colorspace vmax.
-    """
-    colorspace = _base.read_cs_arg(epoch, colorspace)
-    handles = {}
+        """
+        Parameters
+        ----------
+        im_frame : scalar
+            Empty space beyond outmost sensors in the im plot.
+        vmax : scalar
+            Override the colorspace vmax.
+        """
+        colorspace = _base.read_cs_arg(epoch, colorspace)
+        self.ax = ax
+    
+        Y = epoch.get_data(('sensor',))
+        Ymap = epoch.sensor.get_im_for_topo(Y, proj=proj, res=res, frame=im_frame)
+    
+        emin = -im_frame
+        emax = 1 + im_frame
+        map_kwargs = {'origin': "lower",
+                      'extent': (emin, emax, emin, emax)}
+    
+        if colorspace.cmap:
+            im_kwargs.update(map_kwargs)
+            im_kwargs.update(colorspace.get_imkwargs(vmax=vmax))
+            self.im = ax.imshow(Ymap, **im_kwargs)
+        else:
+            self.im = None
+    
+        # contours
+        if colorspace.contours:
+            # print "contours: {0}".format(colorspace.contours)
+            map_kwargs.update(colorspace.get_contour_kwargs())
+            self.contour = ax.contour(Ymap, **map_kwargs)
+        else:
+            self.contour = None
 
-    Y = epoch.get_data(('sensor',))
-    Ymap = epoch.sensor.get_im_for_topo(Y, proj=proj, res=res, frame=im_frame)
+    def set_cmap(self, cmap):
+        cmap = _base.get_cmap(cmap)
+        if self.im is not None:
+            self.im.set_cmap(cmap)
 
-    emin = -im_frame
-    emax = 1 + im_frame
-    map_kwargs = {'origin': "lower",
-                  'extent': (emin, emax, emin, emax)}
-
-    if colorspace.cmap:
-        im_kwargs.update(map_kwargs)
-        im_kwargs.update(colorspace.get_imkwargs(vmax=vmax))
-        handles['im'] = ax.imshow(Ymap, **im_kwargs)
-
-    # contours
-    if colorspace.contours:
-        # print "contours: {0}".format(colorspace.contours)
-        map_kwargs.update(colorspace.get_contour_kwargs())
-        h = ax.contour(Ymap, **map_kwargs)
-        handles['contour'] = h
-
-    return handles
-
+    def set_vlim(self, vmin=None, vmax=None):
+        if self.im is not None:
+            self.im.set_clim(vmin, vmax)
 
 
 class _ax_topomap:
@@ -469,6 +522,34 @@ class _ax_topomap:
         else:
             self.title = None
 
+    def set_cmap(self, cmap, base=True, overlays=False):
+        """Change the colormap in the topomap
+
+        Parameters
+        ----------
+        cmap : str | colormap
+            New colormap.
+        base : bool
+            Apply the new colormap in the lowest layer of each plot.
+        overlays : bool
+            Apply the new colormap to the layers above the first layer.
+        """
+        cmap = _base.get_cmap(cmap)
+        if base and overlays:
+            layers = self.layers
+        elif base:
+            layers = self.layers[:1]
+        elif overlays:
+            layers = self.layers[1:]
+        else:
+            return
+
+        for l in layers:
+            l.set_cmap(cmap)
+
+    def set_vlim(self, vmin=None, vmax=None):
+        for l in self.layers:
+            l.set_vlim(vmin, vmax)
 
 
 class _Window_Topo:

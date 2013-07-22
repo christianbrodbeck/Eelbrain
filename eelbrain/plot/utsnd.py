@@ -61,7 +61,6 @@ class _ax_im_array(object):
 
         """
         self.ax = ax
-        handles = []
         epoch = layers[0]
 
         xdim = epoch.get_dim(x)
@@ -81,8 +80,8 @@ class _ax_im_array(object):
                       'aspect': 'auto'}
 
         # plot
-        self.plots = [_plt_im_array(ax, l, dims=(y, x), **map_kwargs)
-                      for l in layers]
+        self.layers = [_plt_im_array(ax, l, dims=(y, x), **map_kwargs)
+                       for l in layers]
 
         if xlabel:
             if xlabel is True:
@@ -117,9 +116,34 @@ class _ax_im_array(object):
             title = _base.str2tex(epoch.name)
         ax.set_title(title)
 
+    def set_cmap(self, cmap, base=True, overlays=False):
+        """Change the colormap in the array plot
+
+        Parameters
+        ----------
+        cmap : str | colormap
+            New colormap.
+        base : bool
+            Apply the new colormap in the lowest layer of each plot.
+        overlays : bool
+            Apply the new colormap to the layers above the first layer.
+        """
+        cmap = _base.get_cmap(cmap)
+        if base and overlays:
+            layers = self.layers
+        elif base:
+            layers = self.layers[:1]
+        elif overlays:
+            layers = self.layers[1:]
+        else:
+            return
+
+        for l in layers:
+            l.set_cmap(cmap)
+
     def set_vlim(self, vmin=None, vmax=None):
-        for p in self.plots:
-            p.set_vlim(vmin, vmax)
+        for l in self.layers:
+            l.set_vlim(vmin, vmax)
 
 
 class array(_base.eelfigure):
@@ -154,6 +178,23 @@ class array(_base.eelfigure):
 
         self._show()
         
+    def set_cmap(self, cmap, base=True, overlays=False):
+        """Change the colormap in the array plots
+
+        Parameters
+        ----------
+        cmap : str | colormap
+            New colormap.
+        base : bool
+            Apply the new colormap in the lowest layer of each plot.
+        overlays : bool
+            Apply the new colormap to the layers above the first layer.
+        """
+        cmap = _base.get_cmap(cmap)
+        for p in self.subplots:
+            p.set_cmap(cmap, base, overlays)
+        self.draw()
+
     def set_vlim(self, vmin=None, vmax=None):
         for p in self.subplots:
             p.set_vlim(vmin, vmax)

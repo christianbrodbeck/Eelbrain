@@ -84,6 +84,7 @@ import PIL
 from ..utils.subp import cmd_exists
 from ..fmtxt import texify
 from .. import vessels as _vsl
+from ..vessels import colorspaces
 from ..vessels.data import ascategorial, asndvar, DimensionMismatchError
 
 try:
@@ -99,6 +100,13 @@ title_kwargs = {'size': 18,
                 'family': 'serif'}
 figs = []  # store callback figures (they need to be preserved)
 show_block_arg = True  # if the mpl figure is used, this is submitted to plt.show(block=show_block_arg)
+
+
+def get_cmap(cmap):
+    "Look for a colormap in eelbrain custom colormaps before mpl"
+    if isinstance(cmap, str):
+        cmap = colorspaces.cmaps.get(cmap, cmap)
+    return cmap
 
 
 def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
