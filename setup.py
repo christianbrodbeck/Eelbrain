@@ -77,7 +77,6 @@ if arg == 'py2app':
     OPTIONS = {
                'argv_emulation': True,
                'site_packages': True,
-               'arch': 'i386',
                'iconfile': 'icons/system-icons/eelbrain.icns',
                # py2app's iconfile option places the specified file
                # in the new app bundle's Resources directory
