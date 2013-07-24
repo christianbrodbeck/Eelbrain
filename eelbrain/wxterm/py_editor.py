@@ -391,6 +391,7 @@ class PyEditor(wx.py.editor.EditorFrame):
                     start_pos = win.PositionFromLine(i_first)
                     end_pos = win.GetLineEndPosition(i_last)
                     code = win.GetTextRange(start_pos, end_pos)
+                    code = fmtxt.unindent(code)
                     try:
                         ast.parse(code, mode='single')
                     except SyntaxError:
