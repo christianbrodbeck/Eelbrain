@@ -3676,25 +3676,31 @@ class Dimension(object):
 
 
 class Scalar(Dimension):
-    def __init__(self, name, values):
+    def __init__(self, name, values, unit=None):
         "Simple scalar dimension"
         if len(np.unique(values)) < len(values):
             raise ValueError("Dimension can not have duplicate values")
         self.name = name
         self.x = self.values = np.asarray(values)
+        self.unit = unit
 
     def __getstate__(self):
         state = {'name': self.name,
-                 'values': self.values}
+                 'values': self.values,
+                 'unit': self.unit}
         return state
 
     def __setstate__(self, state):
         name = state['name']
         values = state['values']
-        self.__init__(name, values)
+        unit = state.get('unit', None)
+        self.__init__(name, values, unit)
 
     def __repr__(self):
-        return "Scalar(%r, %s)" % (self.name, self.values)
+        args = [repr(self.name), str(self.values)]
+        if self.unit is not None:
+            args.append(repr(self.unit))
+        return "%s(%s)" % (self.__class__.__name__, ', '.join(args))
 
     def _dimrepr_(self):
         values = str(list(self.values))
@@ -3750,9 +3756,9 @@ class Scalar(Dimension):
 
 class Ordered(Scalar):
     """Scalar with guarantee that values are ordered"""
-    def __init__(self, name, values):
+    def __init__(self, name, values, unit=None):
         values = np.sort(values)
-        Scalar.__init__(self, name, values)
+        Scalar.__init__(self, name, values, unit=unit)
 
     def dimindex(self, arg):
         if isinstance(arg, tuple):
@@ -4381,6 +4387,7 @@ class UTS(Dimension):
 
     """
     name = 'time'
+    unit = 's'
 
     def __init__(self, tmin, tstep, nsamples):
         """UTS dimension
@@ -4611,7 +4618,7 @@ def cwt_morlet(Y, freqs, use_fft=True, n_cycles=7.0, zero_mean=False,
         freqs = [freqs]
         fdim = None
     else:
-        fdim = Ordered("frequency", freqs)
+        fdim = Ordered("frequency", freqs, 'Hz')
         freqs = fdim.values
     x = cwt_morlet(x, Fs, freqs, use_fft, n_cycles, zero_mean)
     if out == 'magnitude':

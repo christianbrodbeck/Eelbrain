@@ -434,7 +434,11 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
     if isinstance(Xax, str) and Xax.startswith('.'):
         dimname = Xax[1:]
         dim = Y.get_dim(dimname)
-        Y = [Y.subdata(**{dimname: v}) for v in dim.values]
+        unit = getattr(dim, 'unit', '')
+        name = dimname.capitalize() + ' = %s'
+        if unit:
+            name += ' ' + unit
+        Y = [Y.subdata(name=name % v, **{dimname: v}) for v in dim.values]
     elif Xax is not None:
         Xax = ascategorial(Xax, ds=ds)
         Ys = []
