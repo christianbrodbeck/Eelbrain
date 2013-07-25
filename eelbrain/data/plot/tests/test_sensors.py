@@ -21,3 +21,5 @@ def test_multi():
     test_range = np.arange(3)
     assert_array_equal(test_range[ROI2], test_range[ROI], "ROI changed after "
                        "set/get")
+
+    p.close()
