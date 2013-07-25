@@ -153,7 +153,7 @@ class cluster_corr:
     def __init__(self, Y, X, norm=None, sub=None, ds=None,
                  contours={.05: (.8, .2, .0), .01: (1., .6, .0), .001: (1., 1., .0)},
                  tp=.1, samples=1000, replacement=False,
-                 tstart=None, tstop=None, close_time=0, pmax=1):
+                 tstart=None, tstop=None, close_time=0):
         """
 
         Y : ndvar
@@ -176,9 +176,9 @@ class cluster_corr:
         tt = scipy.stats.distributions.t.isf(tp, df)
         tr = tt / np.sqrt(df + tt ** 2)
 
-        cdist = cluster_dist(Y, N=samples, t_upper=tr, t_lower=-tr,
-                             tstart=tstart, tstop=tstop, close_time=close_time,
-                             meas='r', pmax=pmax, name=name)
+        cdist = ClusterDist(Y, samples, t_upper=tr, t_lower=-tr,
+                            tstart=tstart, tstop=tstop, close_time=close_time,
+                            meas='r', name=name)
 
         # normalization is done before the permutation b/c we are interested in the variance associated with each subject for the z-scoring.
         Y = Y.copy()
@@ -223,42 +223,38 @@ class cluster_corr:
 
 
 class ttest:
-    """
-    **Attributes:**
+    """Element-wise t-test
 
+    Attributes
+    ----------
     all :
         c1, c0, [c0 - c1, P]
-    diff :
+    p_val :
         [c0 - c1, P]
-
     """
-    def __init__(self, Y='MEG', X=None, c1=None, c0=0,
-                 match=None, sub=None, ds=None, contours=None):
-#                  contours={.05: (.8, .2, .0), .01: (1., .6, .0), .001: (1., 1., .0)}):
-        """
+    def __init__(self, Y='meg', X=None, c1=None, c0=0, match=None, sub=None,
+                 ds=None):
+        """Element-wise t-test
 
-        Y : var
-            dependent variable
+        Parameters
+        ----------
+        Y : ndvar
+            Dependent variable.
         X : categorial | None
             Model; None if the grand average should be tested against a
             constant.
         c1 : str | None
-            Test condition (cell of X)
+            Test condition (cell of X).
         c0 : str | scalar
-            Control condition (cell of X or constant to test against)
+            Control condition (cell of X or constant to test against).
         match : factor
-            Match cases for a repeated measures t-test
+            Match cases for a repeated measures t-test.
         sub : index-array
             perform test with a subset of the data
         ds : dataset
             If a dataset is specified, all data-objects can be specified as
             names of dataset variables
-
         """
-#        contours = { .05: (.8, .2, .0),  .01: (1., .6, .0),  .001: (1., 1., .0),
-#                    -.05: (0., .2, 1.), -.01: (.4, .8, 1.), -.001: (.5, 1., 1.),
-#                    }
-#                    (currently, p values are not directional)
         ct = celltable(Y, X, match, sub, ds=ds)
 
         if len(ct) == 1:
@@ -453,30 +449,22 @@ class cluster_anova:
 
     """
     def __init__(self, Y, X, t=.1, samples=1000, replacement=False,
-                 tstart=None, tstop=None, close_time=0,
-                 pmax=1, sub=None, ds=None,
-                 ):
-        """
+                 tstart=None, tstop=None, close_time=0, sub=None, ds=None):
+        """ANOVA with cluster permutation test
 
-        Arguments
-        ---------
-
+        Parameters
+        ----------
         Y : ndvar
             Measurements (dependent variable)
-
         X : categorial
             Model
-
         t : scalar
             Threshold (uncorrected p-value) to use for finding clusters
-
         samples : int
             Number of samples to estimate parameter distributions
-
         replacement : bool
             whether random samples should be drawn with replacement or
             without
-
         tstart, tstop : None | scalar
             Time window for clusters.
             **None**: use the whole epoch;
@@ -488,12 +476,8 @@ class cluster_anova:
         close_time : scalar
             Close gaps in clusters that are smaller than this interval. Assumes
             that Y is a uniform time series.
-
         sub : index
             Apply analysis to a subset of cases in Y, X
-
-        pmax : scalar <= 1
-            Maximum cluster p-values to keep cluster.
 
 
         .. FIXME:: connectivity for >2 dimensional data. Currently, adjacent
@@ -518,7 +502,7 @@ class cluster_anova:
 
         # Estimate statistic distributions from permuted Ys
         kwargs = dict(tstart=tstart, tstop=tstop, close_time=close_time, meas='F')
-        dists = {e: cluster_dist(Y, samples, tF[e], name=e.name, **kwargs) for e in tF}
+        dists = {e: ClusterDist(Y, samples, tF[e], name=e.name, **kwargs) for e in tF}
         self.cluster_dists = dists
         for _, Yrs in _resample(Y, replacement=replacement, samples=samples):
             for e, F in lm.map(Yrs.x, p=False):
@@ -553,10 +537,9 @@ class cluster_anova:
 
 
 
-class cluster_dist:
+class ClusterDist:
     def __init__(self, Y, N, t_upper, t_lower=None,
-                 tstart=None, tstop=None, close_time=0, meas='?',
-                 pmax=.5, name=None):
+                 tstart=None, tstop=None, close_time=0, meas='?', name=None):
         """
         Parameters
         ----------
@@ -582,10 +565,6 @@ class cluster_dist:
             Label for the parameter.
         cs : None | dict
             Plotting parameters for info dict.
-        pmax : scalar
-            For the original data, only retain clusters with a p-value
-            smaller than pmax.
-
         """
         if t_lower is not None:
             if t_lower >= 0:
@@ -627,7 +606,6 @@ class cluster_dist:
         self.t_upper = t_upper
         self.t_lower = t_lower
         self.meas = meas
-        self.pmax = pmax
         self.name = name
 
     def _find_clusters(self, P):
@@ -671,18 +649,17 @@ class cluster_dist:
 
         # find clusters
         clusters, n = self._find_clusters(P)
-        clusters_v = ndimage.measurements.sum(P, clusters, xrange(1, n + 1))
+        clusters_v = ndimage.sum(P, clusters, xrange(1, n + 1))
 
         for i in xrange(n):
             v = clusters_v[i]
             p = 1 - percentileofscore(self.dist, np.abs(v), 'mean') / 100
-            if p <= self.pmax:
-                im = P * (clusters == i + 1)
-                name = 'p=%.3f' % p
-                threshold = self.t_upper if (v > 0) else self.t_lower
-                info = _cs.cluster_info(self.meas, threshold, p)
-                ndv = ndvar(im, dims=self.dims, name=name, info=info)
-                self.clusters.append(ndv)
+            im = P * (clusters == i + 1)
+            name = 'p=%.3f' % p
+            threshold = self.t_upper if (v > 0) else self.t_lower
+            info = _cs.cluster_info(self.meas, threshold, p)
+            ndv = ndvar(im, dims=self.dims, name=name, info=info)
+            self.clusters.append(ndv)
 
         contours = {self.t_lower: (0.7, 0, 0.7), self.t_upper: (0.7, 0.7, 0)}
         info = _cs.stat_info(self.meas, contours=contours)
@@ -697,7 +674,7 @@ class cluster_dist:
         clusters, n = self._find_clusters(P)
 
         if n:
-            clusters_v = ndimage.measurements.sum(P, clusters, xrange(1, n + 1))
+            clusters_v = ndimage.sum(P, clusters, xrange(1, n + 1))
             self.dist[self._i] = np.max(np.abs(clusters_v))
 
         self._i += 1
