@@ -26,10 +26,11 @@ import shutil
 import subprocess
 import tempfile
 
-from eelbrain import ui
-from eelbrain.load.brainvision import vhdr as _vhdr
-from eelbrain.load.kit import MarkerFile
 from mne.utils import get_subjects_dir
+
+from .. import ui
+from ..data.load.brainvision import vhdr as _vhdr
+from .kit import MarkerFile
 
 
 __hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch', 'pickle',

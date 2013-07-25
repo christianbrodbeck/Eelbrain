@@ -14,20 +14,18 @@ import numpy as np
 import wx
 from wx.lib.dialogs import ScrolledMessageDialog
 
-
-import ID
-from .. import plot
-from ..plot._base import eelfigure
-from ..plot.utsnd import _ax_bfly_epoch
-from ..plot.nuts import _plt_bin_nuts
-from .. import load, save, ui
-from ..vessels.data import dataset, var, corr
-from ..vessels import process
+from ..data.data_obj import dataset, var, corr
+from ..data import load, save
+from ..data import plot
+from ..data import process
+from ..data.plot._base import eelfigure
+from ..data.plot.utsnd import _ax_bfly_epoch
+from ..data.plot.nuts import _plt_bin_nuts
+from .. import ui
 from ..wxutils import mpl_canvas, Icon
-
+from . import ID
 
 __all__ = ['SelectEpochs', 'pca']
-
 
 
 class SelectEpochs(eelfigure):

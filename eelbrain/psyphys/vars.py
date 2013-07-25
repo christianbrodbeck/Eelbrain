@@ -32,7 +32,7 @@ import numpy as np
 import matplotlib.pyplot as P
 # from sympy import Interval
 
-from eelbrain import fmtxt
+from .. import fmtxt
 from ..utils.basic import loadtable
 
 
@@ -77,7 +77,7 @@ class _Aset(object):
 
     """
     def __init__(self, include=[], exclude=[],
-                 g= -np.inf, geq=True,
+                 g=-np.inf, geq=True,
                  l=np.inf, leq=False,):
         """
         var:    variable

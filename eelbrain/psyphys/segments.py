@@ -18,10 +18,8 @@ from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as P
 
-from eelbrain import fmtxt
-from eelbrain.vessels import colorspaces as _cs
-
-from vars import isvar, asaddress, isaddress
+from .. import fmtxt
+from .vars import isvar, asaddress, isaddress
 
 
 def _get_data(other):

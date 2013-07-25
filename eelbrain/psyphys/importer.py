@@ -78,7 +78,6 @@ from scipy.io import loadmat, wavfile
 import matplotlib.pylab as P
 
 from .. import ui
-from ..plot._base import str2tex
 
 from . import param
 from . import segments as _seg
@@ -667,7 +666,7 @@ class uts_importer(Importer):
         # start plot
         P.figure(fig_num)
         P.subplots_adjust(.2, .05, .99, .9)
-        P.suptitle("Example: %s" % str2tex(name))
+        P.suptitle("Example: %s" % name)
         ax = P.axes()
         lines = [ax.plot(data[:, i], c='.75', antialiased=False)[0] for i in xrange(n)]
         y_ticks = np.arange(n - 1, -1, -1) + .45

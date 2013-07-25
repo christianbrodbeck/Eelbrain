@@ -34,34 +34,18 @@ Created on Mar 27, 2012
 
 @author: christian
 '''
-from .vessels.data import (dataset, factor, var, ndvar, interaction,
-                           combine, align, align1,
-                           cwt_morlet, resample,
-                           cellname,
-                           )
+from .data import *
 
-from .vessels.structure import celltable
+# mne
+import eelbrain.data.load.fiff
+from .utils.mne_utils import split_label
 
-from .vessels import process, datasets
-
-from . import test, testnd, table
-from . import ui
-from . import gui
-from . import plot
-try:  # mayavi
-    import plot.brain
-    import plot.coreg
+# mayavi
+try:
+    import eelbrain.data.plot.brain
+    import eelbrain.data.plot.coreg
 except:
     globals().setdefault('err', []).append('plot.brain (mayavi)')
 
-import load.txt
-import load.eyelink
-try:
-    import load.fiff
-except:
-    globals().setdefault('err', []).append('load.fiff (mne)')
-import load.kit
-
-import save
-
-from .utils import statfuncs
+from . import ui
+from . import gui

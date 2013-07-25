@@ -74,16 +74,16 @@ from mne.minimum_norm import (make_inverse_operator, apply_inverse,
 from mne.transforms.coreg import scale_labels
 
 from .. import fmtxt
-from .. import load
-from .. import plot
-from .. import save
-from .. import testnd
+from ..data import load
+from ..data import plot
+from ..data import save
+from ..data import testnd
+from ..data import var, ndvar, combine
+from ..data.data_obj import isdatalist, UTS, DimensionMismatchError
 from .. import ui
 from ..utils import keydefaultdict
 from ..utils import subp
 from ..utils.mne_utils import is_fake_mri, split_label
-from ..vessels.data import (var, ndvar, combine, isdatalist, UTS,
-                            DimensionMismatchError)
 from .experiment import FileTree
 
 
@@ -1905,7 +1905,7 @@ class MneExperiment(FileTree):
         return brain
 
     def plot_coreg(self, **kwargs):
-        from ..plot.coreg import dev_mri
+        from ..data.plot.coreg import dev_mri
         self.set(**kwargs)
         raw = mne.fiff.Raw(self.get('raw-file'))
         return dev_mri(raw)
