@@ -2016,44 +2016,39 @@ class ndvar(object):
         return self._dim_2_ax[dim]
 
     def get_data(self, dims):
-        """
-        returns the data with a specific ordering of dimension as indicated in
-        ``dims``.
+        """Retrieve the ndvar's data with a specific axes order.
 
         Parameters
         ----------
-        dims : sequence of str and None
-            List of dimension names. The array that is returned will have axes
-            in this order. None can be used to increase the insert a dimension
-            with size 1. Accessing a single dimension can be abbreviated by
-            providing a str.
+        dims : str | sequence of str
+            Sequence of dimension names (or single dimension name). The array
+            that is returned will have axes in this order. To insert a new
+            axis with size 1 use ``numpy.newaxis``/``None``.
+
+        Notes
+        -----
+        A shallow copy of the data is returned. To retrieve the data with the
+        stored axes order use the .x attribute.
         """
         if isinstance(dims, str):
             dims = (dims,)
 
-        if set(dims).difference([None]) != set(self.dimnames):
+        dims_ = tuple(d for d in dims if d is not np.newaxis)
+        if set(dims_) != set(self.dimnames) or len(dims_) != len(self.dimnames):
             err = "Requested dimensions %r from %r" % (dims, self)
             raise DimensionMismatchError(err)
 
-        dimnames = list(self.dimnames)
-        x = self.x
+        # transpose
+        axes = tuple(self.dimnames.index(d) for d in dims_)
+        x = self.x.transpose(axes)
 
-        index = []
-        dim_seq = []
-        for dim in dims:
-            if dim is None:
-                index.append(None)
-            else:
-                index.append(slice(None))
-                dim_seq.append(dim)
+        # insert axes
+        if len(dims) > len(dims_):
+            for ax, dim in enumerate(dims):
+                if dim is np.newaxis:
+                    x = np.expand_dims(x, ax)
 
-        for i_tgt, dim in enumerate(dim_seq):
-            i_src = dimnames.index(dim)
-            if i_tgt != i_src:
-                x = x.swapaxes(i_src, i_tgt)
-                dimnames[i_src], dimnames[i_tgt] = dimnames[i_tgt], dimnames[i_src]
-
-        return x[index]
+        return x
 
     def get_dim(self, name):
         "Returns the Dimension object named ``name``"

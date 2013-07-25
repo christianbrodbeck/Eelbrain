@@ -123,12 +123,12 @@ def test_dataset_sorting():
 
 def test_ndvar_op():
     "Test ndvar operations"
-    ds = datasets.get_rand()
-    Ynd = ds['uts']
+    ds = datasets.get_rand(utsnd=True)
+    Ynd = ds['utsnd']
     Ynd_bl = Ynd - Ynd.summary(time=(None, 0))
 
     # assert that the baseline is 0
-    bl = Ynd_bl.summary('case', time=(None, 0))
+    bl = Ynd_bl.summary('case', 'sensor', time=(None, 0))
     ok_(np.abs(bl) < 1e-10, "Baseline correction")
 
 
