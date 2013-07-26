@@ -531,62 +531,61 @@ class Celltable(object):
             assert len(match) == len(Y)
             self.groups = {}
 
+        # make sure the cases are sorted
+        if match is None:
+            if X is not None:
+                idx = X.sort_idx()
+                if not np.all(np.diff(idx) == 1):
+                    Y = Y[idx]
+                    X = X[idx]
+        else:
+            cell_model = match if X is None else X % match
+            if len(cell_model) > len(cell_model.cells):
+                Y = Y.compress(cell_model)
+                match = match.compress(cell_model)
+                if X is not None:
+                    X = X.compress(cell_model)
+            else:
+                idx = cell_model.sort_idx()
+                if np.any(np.diff(idx) != 1):
+                    Y = Y[idx]
+                    match = match[idx]
+                    if X is not None:
+                        X = X[idx]
+
         # save args
         self.X = X
         self.Y = Y
         self.sub = sub
         self.match = match
 
-        # extract cells and cell data
+        # extract cell data
         self.data = {}
         self.data_indexes = {}
         if X is None:
             self.data[None] = Y
-            self.data_indexes[None] = np.ones(len(Y), dtype=bool)
+            self.data_indexes[None] = slice(None)
             self.cells = [None]
             return
-
         self.cells = X.cells
-
-        for cell in self.cells:
-            self.data_indexes[cell] = cell_index = (X == cell)
-            newdata = Y[cell_index]
+        for cell in X.cells:
+            idx = X.index_opt(cell)
+            self.data_indexes[cell] = idx
+            self.data[cell] = Y[idx]
             if match:
-                group = match[cell_index]
-                values = group.cells
+                self.groups[cell] = match[idx]
 
-                # sort
-                if len(values) < len(group):
-                    newdata = newdata.compress(group, func=match_func)
-                    group = factor(values, name=group.name)
-                else:
-                    group_ids = [group == v for v in values]
-                    sort_arg = np.sum(group_ids * np.arange(len(values)), axis=0)
-                    newdata = newdata[sort_arg]
-                    group = group[sort_arg]
-
-                self.groups[cell] = group
-
-            self.data[cell] = newdata
-
+        # determine which comparisons are within subject comparisons
         if match:
-            # determine which cells compare values for dependent values on
-            # match_variable
-#            n_cells = len(self.indexes)
-#            self.within = np.empty((n_cells, n_cells), dtype=bool)
             self.within = {}
-            for cell1 in self.cells:
-                for cell2 in self.cells:
-                    if cell1 == cell2:
-                        pass
-                    else:
-                        v = self.groups[cell1] == self.groups[cell2]
-                        if v is not False:
-                            v = all(v)
-                        self.within[cell1, cell2] = v
-                        self.within[cell2, cell1] = v
-            self.all_within = np.all(self.within.values())
+            for cell1, cell2 in itertools.combinations(X.cells, 2):
+                within = np.all(self.groups[cell1] == self.groups[cell2])
+                self.within[cell1, cell2] = within
+                self.within[cell2, cell1] = within
+            self.any_within = any(self.within.values())
+            self.all_within = all(self.within.values())
         else:
+            self.any_within = False
             self.all_within = False
 
     def __repr__(self):
@@ -1205,7 +1204,7 @@ class var(object):
         descending : bool
             Sort in descending instead of an ascending order.
         """
-        idx = np.argsort(self.x)
+        idx = np.argsort(self.x, kind='mergesort')
         if descending:
             idx = idx[::-1]
         return idx
@@ -1258,6 +1257,28 @@ class _effect_(object):
         "``e.index(cell)`` returns an array of indices where e equals cell"
         return np.nonzero(self == cell)[0]
 
+    def index_opt(self, cell):
+        """Find an optimized index for a given cell.
+
+        Returns
+        -------
+        index : slice | array
+            If possible, a ``slice`` object is returned. Otherwise, an array
+            of indices (as with ``e.index(cell)``).
+        """
+        index = self.index(cell)
+        d_values = np.unique(np.diff(index))
+        if len(d_values) == 1:
+            start = index.min() or None
+            step = d_values[0]
+            stop = index.max() + 1
+            if stop > len(self) - step:
+                stop = None
+            if step == 1:
+                step = None
+            index = slice(start, stop, step)
+        return index
+
     def sort_idx(self, descending=False):
         """Create an index that could be used to sort the effect.
 
@@ -1270,7 +1291,7 @@ class _effect_(object):
         for i, cell in enumerate(self.cells):
             idx[self == cell] = i
 
-        idx = np.argsort(idx)
+        idx = np.argsort(idx, kind='mergesort')
         if descending:
             idx = idx[::-1]
         return idx
@@ -3343,6 +3364,9 @@ class interaction(_effect_):
             Delimiter with which to join the elements of cells.
         """
         return map(delim.join, self)
+
+    def compress(self, X):
+        return interaction(f.compress(X) for f in self.base)
 
     def isin(self, cells):
         """An index that is true where the interaction equals any of the cells.
