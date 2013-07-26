@@ -242,7 +242,7 @@ def asfactor(Y, sub=None, ds=None):
 
     if isfactor(Y):
         pass
-    elif isvar(Y):
+    elif hasattr(Y, 'as_factor'):
         Y = Y.as_factor()
     else:
         Y = factor(Y)
