@@ -18,7 +18,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 from ..test import test
-from ..data_obj import isfactor, asfactor, isvar, asvar, cellname, Celltable
+from ..data_obj import (isfactor, asfactor, isvar, asvar, ascategorial, assub,
+                        cellname, Celltable)
 from ._base import str2tex
 
 
@@ -223,8 +224,6 @@ class _simple_fig():
         if self.owns_axes:
             # adjust the position of the aces to show all labels
             plt.draw()
-            if plt.get_backend() == 'WXAgg':
-                plt.show()
             x_in, y_in = self.fig.get_size_inches()
             dpi = self.fig.get_dpi()
             border_x0 = 0.05  # in inches
@@ -611,7 +610,7 @@ def _barplot(ax, ct,
         return lim
 
 
-def timeplot(Y, categories, time, match=None, sub=None,
+def timeplot(Y, categories, time, match=None, sub=None, ds=None,
              # data plotting
              main=np.mean,
              spread='box', x_jitter=False,
@@ -665,7 +664,12 @@ def timeplot(Y, categories, time, match=None, sub=None,
         Reference to the matplotlib figure
 
     """
-    categories = asfactor(categories)
+    sub = assub(sub, ds)
+    Y = asvar(Y, sub, ds)
+    categories = ascategorial(categories, sub, ds)
+    time = asvar(time, sub, ds)
+    if match is not None:
+        match = ascategorial(match, sub, ds)
 
     # transform to 3 kwargs:
     # - local_plot ('bar' or 'box')
@@ -696,14 +700,13 @@ def timeplot(Y, categories, time, match=None, sub=None,
     # colors: {category index -> color, ...}
     colors_arg = colors
     if defaults['mono']:
-        colors = dict(zip(categories.indexes, defaults['cm']['colors']))
+        colors = dict(zip(categories.cells, defaults['cm']['colors']))
     else:
-        colors = dict(zip(categories.indexes, defaults['c']['colors']))
-    colors.update(categories.colors)
+        colors = dict(zip(categories.cells, defaults['c']['colors']))
     if isinstance(colors_arg, dict):
         colors.update(colors_arg)
     elif isinstance(colors_arg, (tuple, list)):
-        colors.update(dict(zip(categories.indexes, colors_arg)))
+        colors.update(dict(zip(categories.cells, colors_arg)))
 
     for c in categories.cells:
         if c not in colors:
@@ -722,13 +725,6 @@ def timeplot(Y, categories, time, match=None, sub=None,
     # get axes
     fig = _simple_fig(ax=ax, xlabel=xlabel, ylabel=ylabel, **simple_kwargs)
     ax = fig.ax
-
-    # sub
-    if sub is not None:
-        Y = Y[sub]
-        categories = categories[sub]
-        time = time[sub]
-        match = match[sub]
 
     # categories
     n_cat = len(categories.cells)
@@ -773,13 +769,13 @@ def timeplot(Y, categories, time, match=None, sub=None,
             # Now fill the boxes with desired colors
 #            if hatch or colors:
 #                numBoxes = len(bp['boxes'])
-            for i, cat in enumerate(ct.indexes):
+            for i, cell in enumerate(ct.cells):
                 box = bp['boxes'][i]
                 boxX = box.get_xdata()[:5]
                 boxY = box.get_ydata()[:5]
                 boxCoords = zip(boxX, boxY)
 
-                c = colors[cat]
+                c = colors[cell]
                 try:
                     h = hatch[i]
                 except:
@@ -801,11 +797,10 @@ def timeplot(Y, categories, time, match=None, sub=None,
     if line_plot:
         # plot means
         x = time_points
-        for i, cat in enumerate(categories.cells):
+        for i, cell in enumerate(categories.cells):
             y = line_values[i]
-            name = categories.cells[cat]
-
-            color = colors[cat]
+            name = cellname(cell)
+            color = colors[cell]
 
             if hatch:
                 ls = defaults['linestyle'][i]
@@ -1257,7 +1252,7 @@ def _reg_line(Y, reg):
 
 
 
-def corrplot(Y, X, cat=None, ax=None, sub=None,
+def corrplot(Y, X, cat=None, ax=None, sub=None, ds=None,
              title=None, c=['b', 'r', 'k', 'c', 'p', 'y', 'g'], delim=' ',
              lloc='lower center', lncol=2, figlegend=True, xlabel=True,
              ylabel=True, rinxlabel=True):
@@ -1271,6 +1266,12 @@ def corrplot(Y, X, cat=None, ax=None, sub=None,
     rinxlabel :
         print the correlation in the xlabel
     """
+    sub = assub(sub, ds)
+    Y = asvar(Y, sub, ds)
+    X = asvar(X, sub, ds)
+    if cat is not None:
+        cat = ascategorial(cat, sub, ds)
+
     # LABELS
     if xlabel is True:
         xlabel = str2tex(X.name)
@@ -1279,7 +1280,7 @@ def corrplot(Y, X, cat=None, ax=None, sub=None,
     if rinxlabel:
         temp = "\n(r={r:.3f}{s}, p={p:.4f}, n={n})"
         if cat is None:
-            r, p, n = test._corr(Y, X, sub)
+            r, p, n = test._corr(Y, X)
             s = test.star(p)
             xlabel += temp.format(r=r, s=s, p=p, n=n)
         else:
@@ -1299,14 +1300,9 @@ def corrplot(Y, X, cat=None, ax=None, sub=None,
     if ylabel:
         ax.set_ylabel(ylabel)
 
-    # SUB
-    if sub is not None:
-        Y = Y[sub]
-        X = X[sub]
-        if cat is not None:
-            cat = cat[sub]
-
-    if isfactor(cat):
+    if cat is None:
+        ax.scatter(X.x, Y.x, alpha=.5)
+    else:
         labels = []; handles = []
         for color, cell in zip(c, cat.cells):
             idx = (cat == cell)
@@ -1322,21 +1318,17 @@ def corrplot(Y, X, cat=None, ax=None, sub=None,
             ax.figure.legend(handles, labels, lloc, ncol=lncol)
         else:
             ax.legend(lloc, ncol=lncol)
-    elif cat is None:
-        ax.scatter(X.x, Y.x, alpha=.5)
-    else:
-        ax.scatter(X[cat].x, Y[cat].x, alpha=.5)
 
     return ax
 
 
 
-def regplot(Y, regressor, categories=None, match=None, sub=None,
+def regplot(Y, X, cat=None, match=None, sub=None, ds=None,
             ax=None, ylabel=True, title=None, alpha=.2, legend=True, delim=' ',
             c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3']):
     # TODO: merge with corrplot
     """
-    Plot the regression of Y on a regressor.
+    Plot the regression of Y on a regressor X.
 
 
     parameters
@@ -1346,33 +1338,21 @@ def regplot(Y, regressor, categories=None, match=None, sub=None,
         alpha for individual data points (to control visualization of
         overlap)
     legend : bool | str
-        applies if categories != None: can be mpl ax.legend() loc kwarg
+        applies if cat != None: can be mpl ax.legend() loc kwarg
         http://matplotlib.sourceforge.net/api/axes_api.html#matplotlib.axes.Axes.legend
 
     """
-    # data types
-    Y = asvar(Y)
-    if isfactor(regressor):
-        assert len(regressor.cells) == 2
-    else:
-        regressor = asvar(regressor)
+    sub = assub(sub, ds)
+    Y = asvar(Y, sub, ds)
+    X = asvar(X, sub, ds)
+    if cat is not None:
+        cat = ascategorial(cat, sub, ds)
+    if match is not None:
+        raise NotImplementedError("match kwarg")
 
     if ylabel is True:
         ylabel = Y.name
 
-    if sub != None:
-        Y = Y[sub]
-        regressor = regressor[sub]
-        if categories is not None:
-            categories = categories[sub]
-        if match != None:
-            match = match[sub]
-    # match
-    if match != None:
-#        Y = Y[match]
-#        regressor = regressor[match]
-#        if categories != None:
-        raise NotImplementedError("match kwarg")
     # get axes
     if ax == None:
         if np.min(Y.x) < 0:
@@ -1387,7 +1367,7 @@ def regplot(Y, regressor, categories=None, match=None, sub=None,
     # labels
     if ylabel:
         ax.set_ylabel(ylabel)
-    ax.set_xlabel(regressor.name)
+    ax.set_xlabel(X.name)
     if title:
         ax.set_title(title, **defaults['title_kwargs'])
     # regplot
@@ -1395,22 +1375,22 @@ def regplot(Y, regressor, categories=None, match=None, sub=None,
                       'alpha': alpha,
                        'marker': 'o',
                        'label': '_nolegend_'}
-    if categories is None:
+    if cat is None:
         if type(c) in [list, tuple]:
             color = c[0]
         else:
             color = c
         y = Y.x
-        reg = regressor.x
+        reg = X.x
         ax.scatter(reg, y, edgecolor=color, facecolor=color, **scatter_kwargs)
         x, y = _reg_line(y, reg)
         ax.plot(x, y, c=color)
     else:
-        for i, cell in enumerate(categories.cells):
-            idx = (categories == cell)
+        for i, cell in enumerate(cat.cells):
+            idx = (cat == cell)
             # scatter
             y = Y.x[idx]
-            reg = regressor.x[idx]
+            reg = X.x[idx]
             color = c[i % len(c)]
             ax.scatter(reg, y, edgecolor=color, facecolor=color, **scatter_kwargs)
             # regression line
@@ -1468,50 +1448,41 @@ def _normality_plot(ax, data, **kwargs):
     plt.yticks(ticks, labels)
 
 
-def histogram(Y, X=None, match=None, sub=None, pooled=True,
+def histogram(Y, X=None, match=None, sub=None, ds=None, pooled=True,
               title=None, ylabel=True,
               titlekwargs=defaults['title_kwargs'],
               # layout
               ncols=3, ax_size=2.5
               ):
-    """
-    Make histogram plots and test normality.
-
+    """Make histogram plots and test normality.
 
     Parameters
     ----------
-
     pooled : bool
         Add one plot with all values/differences pooled.
     title : None | str
         Figure title.
     titlekwargs : dict
         Forwarded to :py:func:`pyplot.suptitle`.
-
     """
-    assert isvar(Y)
+    ct = Celltable(Y, X, match=match, sub=sub, ds=ds)
 
     # ylabel
     if ylabel is True:
-        ylabel = str2tex(getattr(Y, 'name', False))
+        ylabel = str2tex(getattr(ct.Y, 'name', False))
 
     if X is None:
         fig = _simple_fig(title=title, ylabel=ylabel)
-        _normality_plot(fig.ax, Y.x)
-#        fig.ax.hist(Y.x)
+        _normality_plot(fig.ax, ct.Y.x)
         fig.finish()
         return
 
-    ct = Celltable(Y, X, match=match, sub=sub)
-
     if ct.all_within:
-        # TODO: use Celltable properly
-        ct = Celltable(Y, X, match=match, sub=sub)
         # temporary:
         data = ct.get_data()
-        names = ct.cells
+        names = ct.cellnames()
 
-        plt.figure(figsize=(7, 7))
+        fig = plt.figure(figsize=(7, 7))
         plt.subplots_adjust(hspace=.5)
 
         plt.suptitle("Tests for Normality of the Differences", **titlekwargs)
@@ -1540,7 +1511,7 @@ def histogram(Y, X=None, match=None, sub=None, pooled=True,
                       verticalalignment='bottom',
                       horizontalalignment='right')
     else:  # independent measures
-        k = len(ct.indexes)
+        k = len(ct.cells)
         if ncols >= k:
             ncols = k
             nrows = 1
@@ -1548,19 +1519,17 @@ def histogram(Y, X=None, match=None, sub=None, pooled=True,
             nrows = k // ncols + (k % ncols > 0)
 
         # find bins
-        unique = np.unique(Y.x)
+        unique = np.unique(ct.Y.x)
 
-
-#        fig = mpl.figure.Figure(figsize=(ax_size*ncols, ax_size*nrows))
         fig = plt.figure(figsize=(ax_size * ncols, ax_size * nrows))
         if title:
             plt.suptitle(title, size=13, weight='bold')
         plt.subplots_adjust(hspace=.5, left=.1, right=.9, bottom=.1, top=.8)
 
-        for i, index in enumerate(ct.indexes):
+        for i, cell in enumerate(ct.cells):
             ax = fig.add_subplot(nrows, ncols, i + 1)
-            ax.set_title(ct.cells[index])
-            _normality_plot(ax, ct.data[index])
+            ax.set_title(cellname(cell))
+            _normality_plot(ax, ct.data[cell])
 
 
 #        TODO: normality for independent data
