@@ -10,7 +10,8 @@ from scipy.ndimage import binary_closing, binary_erosion, binary_dilation
 
 from ... import fmtxt
 from .. import colorspaces as _cs
-from ..data_obj import ascategorial, asmodel, asndvar, asvar, ndvar, Celltable
+from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, ndvar,
+                        Celltable)
 from ..test import glm as _glm
 from ..test.test import _resample
 
@@ -89,8 +90,11 @@ class corr:
             Categories in which to normalize (z-score) X.
 
         """
+        sub = assub(sub, ds)
         Y = asndvar(Y, sub=sub, ds=ds)
         X = asvar(X, sub=sub, ds=ds)
+        if norm is not None:
+            norm = ascategorial(norm, sub, ds)
 
         if not Y.has_case:
             msg = ("Dependent variable needs case dimension")
@@ -162,8 +166,11 @@ class cluster_corr:
             Categories in which to normalize (z-score) X.
 
         """
+        sub = assub(sub, ds)
         Y = asndvar(Y, sub=sub, ds=ds)
         X = asvar(X, sub=sub, ds=ds)
+        if norm is not None:
+            norm = ascategorial(norm, sub, ds)
 
         self.name = name = "%s corr %s" % (Y.name, X.name)
 
@@ -366,8 +373,9 @@ class f_oneway:
         uses scipy.stats.f_oneway
 
         """
-        Y = asndvar(Y, sub=sub, ds=ds)
-        X = ascategorial(X, sub=sub, ds=ds)
+        sub = assub(sub, ds)
+        Y = asndvar(Y, sub, ds)
+        X = ascategorial(X, sub, ds)
 
         Ys = [Y[X == c] for c in X.cells]
         Ys = [y.x.reshape((y.x.shape[0], -1)) for y in Ys]
@@ -409,11 +417,13 @@ class anova:
         List of all p-maps.
 
     """
-    def __init__(self, Y='MEG', X='condition', sub=None, ds=None,
-                 p=.05, contours={.01: '.5', .001: '0'}):
+    def __init__(self, Y, X, sub=None, ds=None, p=.05,
+                 contours={.01: '.5', .001: '0'}):
+        sub = assub(sub, ds)
+        Y = self.Y = asndvar(Y, sub, ds)
+        X = self.X = asmodel(X, sub, ds)
+
         self.name = "anova"
-        Y = self.Y = asndvar(Y, sub=sub, ds=ds)
-        X = self.X = asmodel(X, sub=sub, ds=ds)
 
         fitter = _glm.lm_fitter(X)
 
@@ -482,8 +492,10 @@ class cluster_anova:
             samples are connected.
 
         """
-        Y = self.Y = asndvar(Y, sub=sub, ds=ds)
-        X = self.X = asmodel(X, sub=sub, ds=ds)
+        sub = assub(sub, ds)
+        Y = self.Y = asndvar(Y, sub, ds)
+        X = self.X = asmodel(X, sub, ds)
+
         lm = _glm.lm_fitter(X)
 
         # get F-thresholds from p-threshold

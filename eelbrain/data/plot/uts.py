@@ -21,7 +21,7 @@ try:
 except:
     pass
 
-from ..data_obj import ascategorial, cellname, Celltable
+from ..data_obj import ascategorial, cellname, Celltable, assub
 from . import _base
 
 
@@ -129,6 +129,7 @@ class stat(_base.subplot_figure):
                         raise KeyError("%s not in colors" % repr(cell))
             else:
                 cm = _cm.get_cmap(cm)
+                sub = assub(sub, ds)
                 cells = ascategorial(X, sub=sub, ds=ds).cells
                 N = len(cells)
                 colors = {cell: cm(i / N) for i, cell in enumerate(cells)}

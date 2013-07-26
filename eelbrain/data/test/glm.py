@@ -29,7 +29,7 @@ import scipy.stats
 from ... import fmtxt
 from ...utils import LazyProperty
 from ...utils.print_funcs import strdict
-from ..data_obj import (isvar, asvar, isbalanced, isnestedin, hasrandom,
+from ..data_obj import (isvar, asvar, assub, isbalanced, isnestedin, hasrandom,
                         find_factors, model, asmodel)
 from . import test
 
@@ -129,7 +129,7 @@ class lm:
         significant amount of the variance in the dependent variable.
 
     """
-    def __init__(self, Y, X, sub=None):
+    def __init__(self, Y, X, sub=None, ds=None):
         """
         Fit the model X to the dependent variable Y.
 
@@ -143,11 +143,9 @@ class lm:
             Only use part of the data
         """
         # prepare input
-        Y = asvar(Y)
-        X = asmodel(X)  # .sorted()
-        if sub is not None:
-            Y = Y[sub]
-            X = X[sub]
+        sub = assub(sub, ds)
+        Y = asvar(Y, sub, ds)
+        X = asmodel(X, sub, ds)
 
         assert len(Y) == len(X)
         assert X.df_error > 0

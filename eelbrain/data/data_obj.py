@@ -232,6 +232,26 @@ def ascategorial(Y, sub=None, ds=None):
     else:
         return Y
 
+def asdataobject(Y, sub=None, ds=None):
+    "Convert to any data object or numpy array."
+    if isinstance(Y, str):
+        if ds is None:
+            err = ("Data object was specified as string, but no dataset was "
+                   "specified")
+            raise TypeError(err)
+        Y = ds.eval(Y)
+
+    if isdataobject(Y):
+        pass
+    elif isinstance(Y, np.ndarray):
+        pass
+    else:
+        Y = datalist(Y)
+
+    if sub is not None:
+        Y = Y[sub]
+    return Y
+
 def asfactor(Y, sub=None, ds=None):
     if isinstance(Y, str):
         if ds is None:
@@ -304,6 +324,16 @@ def asnumeric(Y, sub=None, ds=None):
         return Y[sub]
     else:
         return Y
+
+def assub(sub, ds=None):
+    "Interpret the sub argument."
+    if isinstance(sub, str):
+        if ds is None:
+            err = ("the sub parameter was specified as string, but no dataset "
+                   "was specified")
+            raise TypeError(err)
+        sub = ds.eval(sub)
+    return sub
 
 def asvar(Y, sub=None, ds=None):
     if isinstance(Y, str):
@@ -492,26 +522,12 @@ class Celltable(object):
             >>> c = Celltable(Y, A % B, match=subject)
 
         """
-        if isinstance(Y, basestring):
-            Y = ds.eval(Y)
-        if isinstance(X, basestring):
-            X = ds.eval(X)
-        if isinstance(match, basestring):
-            match = ds[match]
-        if isinstance(sub, basestring):
-            sub = ds.eval(sub)
-
-        if iscategorial(Y) or isndvar(Y):
-            if sub is not None:
-                Y = Y[sub]
-        else:
-            Y = asvar(Y, sub)
-
+        sub = assub(sub, ds)
+        Y = asdataobject(Y, sub, ds)
         if X is not None:
-            X = ascategorial(X, sub)
-
-        if match:
-            match = asfactor(match, sub)
+            X = ascategorial(X, sub, ds)
+        if match is not None:
+            match = asfactor(match, sub, ds)
             assert len(match) == len(Y)
             self.groups = {}
 

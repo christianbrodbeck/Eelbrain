@@ -7,7 +7,7 @@ from __future__ import division
 import numpy as np
 
 from .. import fmtxt
-from .data_obj import (ascategorial, asmodel, asvar, isfactor, isvar,
+from .data_obj import (ascategorial, asmodel, asvar, assub, isfactor, isvar,
                        isinteraction, dataset, factor, var, Celltable)
 
 __hide__ = ['division', 'fmtxt', 'scipy',
@@ -40,7 +40,7 @@ def frequencies(Y, X=None, of=None, sub=None, ds=None):
     freq : dataset
         Dataset with frequencies.
     """
-    # convert args
+    sub = assub(sub, ds)
     Y = ascategorial(Y, sub, ds)
     if X is not None:
         X = ascategorial(X, sub, ds)

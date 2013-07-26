@@ -11,8 +11,9 @@ import scipy.stats
 from matplotlib import pyplot as P
 
 from ... import fmtxt
-from ..data_obj import (isvar, isndvar, asvar, isfactor, asfactor, ismodel,
-                        iscategorial, cellname, Celltable)
+from ..data_obj import (isvar, isndvar, asvar, isfactor, asfactor, assub,
+                        ismodel, iscategorial, ascategorial, cellname,
+                        Celltable)
 
 
 __test__ = False
@@ -210,9 +211,9 @@ def star(p_list, out=str, levels=True, trend=False, corr='Hochberg',
 
 
 
-def oneway(Y, X, match=None, sub=None, par=True, title=None):
+def oneway(Y, X, match=None, sub=None, par=True, title=None, ds=None):
     "data: for should iter over groups/treatments"
-    ct = Celltable(Y, X, match=match, sub=sub)
+    ct = Celltable(Y, X, match=match, sub=sub, ds=ds)
     test = _oneway(ct, parametric=par)
     template = "{test}: {statistic}={value}{stars}, p={p}"
     out = template.format(**test)
@@ -374,7 +375,7 @@ def ttests(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
 
 
 
-def pairwise(Y, X, match=None, sub=None,  # data in
+def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
              par=True, corr='Hochberg', trend=True,  # stats
              title='{desc}', mirror=False,  # layout
              ):
@@ -382,7 +383,7 @@ def pairwise(Y, X, match=None, sub=None,  # data in
     pairwise comparison according to factor structure
 
     """
-    ct = Celltable(Y, X, match=match, sub=sub)
+    ct = Celltable(Y, X, match=match, sub=sub, ds=ds)
     test = _pairwise(ct.get_data(), within=ct.all_within, parametric=par, corr=corr,  # levels=levels,
                      trend=trend)
 
@@ -535,8 +536,8 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
 
 
 
-def correlations(Y, Xs, cat=None, levels=[.05, .01, .001], diff=None, sub=None,
-         pmax=None, nan=True):  # , match=None):
+def correlations(Y, Xs, cat=None, sub=None, ds=None, levels=[.05, .01, .001],
+                 diff=None, pmax=None, nan=True):  # , match=None):
     """
     :arg var Y: first variable
     :arg var X: second variable (or list of variables)
@@ -555,17 +556,15 @@ def correlations(Y, Xs, cat=None, levels=[.05, .01, .001], diff=None, sub=None,
     :rtype: Table
 
     """
-    levels = np.array(levels)
-
-    if isvar(Xs):
+    sub = assub(sub, ds)
+    Y = asvar(Y, sub, ds)
+    if isvar(Xs):  # FIXME: better way to specify Xs
         Xs = [Xs]
+    Xs = [asvar(X, sub, ds) for X in Xs]
+    if cat is not None:
+        cat = ascategorial(cat, sub, ds)
 
-    # SUB
-    if sub is not None:
-        Y = Y[sub]
-        Xs = [X[sub] for X in Xs]
-        if ismodel(cat) or isfactor(cat):
-            cat = cat[sub]
+    levels = np.array(levels)
 
     if diff is not None:
         raise NotImplementedError
@@ -574,7 +573,6 @@ def correlations(Y, Xs, cat=None, levels=[.05, .01, .001], diff=None, sub=None,
         table = fmtxt.Table('l' * 4)
         table.cells('Variable', 'r', 'p', 'n')
     else:
-        assert iscategorial(cat)
         table = fmtxt.Table('l' * 5)
         table.cells('Variable', 'Category', 'r', 'p', 'n')
 
@@ -616,14 +614,14 @@ def correlations(Y, Xs, cat=None, levels=[.05, .01, .001], diff=None, sub=None,
 
 
 
-def _corr(Y, X, index):
+def _corr(Y, X, sub=None):
     """
     index has to be bool array; returns r, p, n
 
     """
-    if index is not None:
-        Y = Y[index]
-        X = X[index]
+    if sub is not None:
+        Y = Y[sub]
+        X = X[sub]
     n = len(Y)
     assert n == len(X)
     df = n - 2
@@ -655,15 +653,14 @@ def _corr_to_table(table, Y, X, categories, levels, printXname=True, label=False
 class bootstrap_pairwise(object):
     def __init__(self, Y, X, match=None, sub=None,
                  samples=1000, replacement=True,
-                 title="Bootstrapped Pairwise Tests"):
-        Y = asvar(Y, sub)
-        X = asfactor(X, sub)
-        assert len(Y) == len(X), "dataset length mismatch"
-
-        if match:
-            if sub is not None:
-                match = match[sub]
-            assert len(match) == len(Y), "dataset length mismatch"
+                 title="Bootstrapped Pairwise Tests", ds=None):
+        sub = assub(sub, ds)
+        Y = asvar(Y, sub, ds)
+        X = asfactor(X, sub, ds)
+        assert len(Y) == len(X), "data length mismatch"
+        if match is not None:
+            match = ascategorial(match, sub, ds)
+            assert len(match) == len(Y), "data length mismatch"
 
         # prepare data container
         resampled = np.empty((samples + 1, len(Y)))  # sample X subject within category
@@ -677,7 +674,7 @@ class bootstrap_pairwise(object):
         cells = X.cells
         n_groups = len(cells)
 
-        if match:
+        if match is not None:
             # if there are several values per X%match cell, take the average
             # T: indexes to transform Y.x to [X%match, value]-array
             match_cell_ids = match.cells
