@@ -3844,15 +3844,19 @@ class model(object):
 
 # ---ndvar dimensions---
 
-def find_time_point(times, time):
+def find_time_point(times, time, rnd='closest'):
     """
     Returns (index, time) for the closest point to ``time`` in ``times``
 
+    Parameters
+    ----------
     times : array, 1d
         Monotonically increasing time values.
     time : scalar
         Time point for which to find a match.
-
+    rnd : 'down' | 'closest' | 'up'
+        Rounding: how to handle time values that do not have an exact match in
+        times. Round 'up', 'down', or to the 'closest' value.
     """
     if time in times:
         i = np.where(times == time)[0][0]
@@ -3865,17 +3869,27 @@ def find_time_point(times, time):
                 name = repr(times.name) if hasattr(times, 'name') else ''
                 raise ValueError("time=%s lies outside array %r" % (time, name))
         elif np.any(gr):
-            i_next = np.where(gr)[0][0]
+            pass
         elif times[-1] - times[-2] > time - times[-1]:
             return len(times) - 1, times[-1]
         else:
             name = repr(times.name) if hasattr(times, 'name') else ''
             raise ValueError("time=%s lies outside array %r" % (time, name))
+
+        i_next = np.where(gr)[0][0]
         t_next = times[i_next]
+
+        if rnd == 'up':
+            return i_next, t_next
 
         sm = times < time
         i_prev = np.where(sm)[0][-1]
         t_prev = times[i_prev]
+
+        if rnd == 'down':
+            return i_prev, t_prev
+        elif rnd != 'closest':
+            raise ValueError("Invalid argument snap=%r" % snap)
 
         if (t_next - time) < (time - t_prev):
             i = i_next
@@ -4750,12 +4764,12 @@ class UTS(Dimension):
             if tstart is None:
                 start = None
             else:
-                start, _ = find_time_point(self.times, tstart)
+                start, _ = find_time_point(self.times, tstart, 'up')
 
             if tstop is None:
                 stop = None
             else:
-                stop, _ = find_time_point(self.times, tstop)
+                stop, _ = find_time_point(self.times, tstop, 'up')
 
             s = slice(start, stop)
             return s
