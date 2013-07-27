@@ -11,7 +11,7 @@ from scipy.ndimage import binary_closing, binary_erosion, binary_dilation
 from ... import fmtxt
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, ndvar,
-                        Celltable)
+                        Celltable, cellname)
 from ..test import glm as _glm
 from ..test.test import resample
 
@@ -248,9 +248,9 @@ class ttest:
         X : categorial | None
             Model; None if the grand average should be tested against a
             constant.
-        c1 : str | None
+        c1 : str | tuple | None
             Test condition (cell of X).
-        c0 : str | scalar
+        c0 : str | tuple | scalar
             Control condition (cell of X or constant to test against).
         match : factor
             Match cases for a repeated measures t-test.
@@ -260,23 +260,32 @@ class ttest:
             If a dataset is specified, all data-objects can be specified as
             names of dataset variables
         """
-        ct = Celltable(Y, X, match, sub, ds=ds)
-
-        if len(ct) == 1:
-            pass
+        if len(X.cells) == 1:
+            if c1 is None:
+                c1 = X.cells[0]
+            elif c1 != X.cells[0]:
+                raise KeyError("No cell %s" % str(c1))
+            elif not np.isscalar(c0):
+                raise TypeError("If X only has one cell, c0 must be scalar")
         elif c1 is None:
-            if len(ct) == 2:
-                c1, c0 = ct.cellnames()
+            if len(X.cells) == 2:
+                c1, c0 = X.cells
             else:
-                err = ("If X does not have exactly 2 categories (has %s), c1 and c0 "
-                       "must be explicitly specified." % len(ct))
+                err = ("If X has more than 2 categories (it has %s), c1 and "
+                       "c0 must be explicitly specified." % len(X.cells))
                 raise ValueError(err)
+
+        if isinstance(c0, (str, tuple)):
+            cat = (c1, c0)
+        else:
+            cat = (c1,)
+        ct = Celltable(Y, X, match, sub, cat=cat, ds=ds)
 
         axis = ct.Y.get_axis('case')
 
         if isinstance(c0, (basestring, tuple)):  # two samples
-            c1_mean = ct.data[c1].summary(name=str(c1))
-            c0_mean = ct.data[c0].summary(name=str(c0))
+            c1_mean = ct.data[c1].summary(name=cellname(c1))
+            c0_mean = ct.data[c0].summary(name=cellname(c0))
             diff = c1_mean - c0_mean
             if match:
                 if not ct.within[(c1, c0)]:

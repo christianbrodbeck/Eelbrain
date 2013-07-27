@@ -488,7 +488,8 @@ class Celltable(object):
         A slice of the match argument describing the group members for each cell.
 
     """
-    def __init__(self, Y, X, match=None, sub=None, match_func=np.mean, ds=None):
+    def __init__(self, Y, X, match=None, sub=None, match_func=np.mean,
+                 cat=None, ds=None):
         """Divide Y into cells defined by X.
 
         Parameters
@@ -508,6 +509,8 @@ class Celltable(object):
             Bool array of length N specifying which cases to include
         match_func : callable
             see match
+        cat : None | list of cells of X
+            Only retain data for these cells.
         ds : dataset
             If a dataset is specified, input items (Y / X / match / sub) can
             be str instead of data-objects, in which case they will be
@@ -530,6 +533,14 @@ class Celltable(object):
             match = asfactor(match, sub, ds)
             assert len(match) == len(Y)
             self.groups = {}
+
+        if cat is not None:
+            if not all(c in cat for c in X.cells):
+                catsub = X.isin(cat)
+                Y = Y[catsub]
+                X = X[catsub]
+                if match is not None:
+                    match = match[catsub]
 
         # make sure the cases are sorted
         if match is None:
