@@ -4561,7 +4561,7 @@ class Sensor(Dimension):
         for i in xrange(n):
             d = pd[i, np.arange(n)]
             d[i] = d.max()
-            idx = np.nonzero(d < d.min() * mult)
+            idx = np.nonzero(d < d.min() * mult)[0]
             nb[i] = idx
 
         return nb
