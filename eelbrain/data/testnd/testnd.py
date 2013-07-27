@@ -13,7 +13,7 @@ from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, ndvar,
                         Celltable)
 from ..test import glm as _glm
-from ..test.test import _resample
+from ..test.test import resample
 
 
 __all__ = ['ttest', 'f_oneway', 'anova', 'cluster_anova', 'corr',
@@ -199,7 +199,7 @@ class cluster_corr:
             raise ValueError("np.mean(x) is nan")
         self.x = x - m_x
 
-        for _, Yrs in _resample(Y, replacement=replacement, samples=samples):
+        for Yrs in resample(Y, samples, replacement=replacement):
             r = self._corr(Yrs)
             cdist.add_perm(r)
 
@@ -514,8 +514,8 @@ class cluster_anova:
         kwargs = dict(tstart=tstart, tstop=tstop, close_time=close_time, meas='F')
         dists = {e: ClusterDist(Y, samples, tF[e], name=e.name, **kwargs) for e in tF}
         self.cluster_dists = dists
-        for _, Yrs in _resample(Y, replacement=replacement, samples=samples):
-            for e, F in lm.map(Yrs.x, p=False):
+        for Y_ in resample(Y, samples, replacement=replacement):
+            for e, F in lm.map(Y_.x, p=False):
                 dists[e].add_perm(F)
 
         # Find clusters in the actual data

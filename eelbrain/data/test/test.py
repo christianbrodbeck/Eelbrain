@@ -666,9 +666,8 @@ class bootstrap_pairwise(object):
         resampled = np.empty((samples + 1, len(Y)))  # sample X subject within category
         resampled[0] = Y.x
         # fill resampled
-        for i, Y_resampled in _resample(Y, unit=match, samples=samples,
-                                        replacement=replacement):
-            resampled[i + 1] = Y_resampled.x
+        for i, Y_ in enumerate(resample(Y, samples, match, replacement), 1):
+            resampled[i] = Y_.x
         self.resampled = resampled
 
         cells = X.cells
@@ -804,27 +803,29 @@ class bootstrap_pairwise(object):
 
 
 
-def _resample(Y, unit=None, replacement=True, samples=1000):
+def resample(Y, samples=10000, unit=None, replacement=True):
     """
     Generator function to resample a dependent variable (Y) multiple times
 
+    Parameters
+    ----------
     Y : var | ndvar
-        Variable which is to be resampled; a copy of ``Y`` is yielded in each
-        iteration.
-
+        Variable which is to be resampled.
+    samples : int
+        number of samples to yield.
     unit : categorial
         factor specifying unit of measurement (e.g. subject). If unit is
         specified, resampling proceeds by first resampling the categories of
         unit (with or without replacement) and then shuffling the values
-        within unites (no replacement).
-
+        within units (no replacement).
     replacement : bool
         whether random samples should be drawn with replacement or
-        without
+        without.
 
-    samples : int
-        number of samples to yield
-
+    Returns
+    -------
+    Iterator over Y_resampled. The same copy of ``Y`` is yielded in each
+    iteration with different data.
     """
     if isvar(Y):
         pass
@@ -836,37 +837,16 @@ def _resample(Y, unit=None, replacement=True, samples=1000):
 
     Yout = Y.copy('{name}_resampled')
 
-    if unit:  # not implemented
-        ct = Celltable(Y, unit)
-        unit_data = ct.get_data(out=list)
-        unit_indexes = ct.data_indexes.values()
-        x_out = Yout.x
-
-        if replacement:
-            n = len(ct.indexes)
-            for i in xrange(samples):
-                source_ids = np.random.randint(n, size=n)
-                for index, source_index in zip(unit_indexes, source_ids):
-                    data = unit_data[source_index]
-                    np.random.shuffle(data)
-                    x_out[index] = data
-                yield i, Yout
-
-        else:
-            for i in xrange(samples):
-                random.shuffle(unit_data)
-                for index, data in zip(unit_indexes, unit_data):
-                    np.random.shuffle(data)
-                    x_out[index] = data
-                yield i, Yout
-    else:  # OK
+    if unit:
+        raise NotImplementedError("Check implementation")
+    else:
         if replacement:
             N = len(Y)
-            for i in xrange(samples):
+            for _ in xrange(samples):
                 index = np.random.randint(N, N)
                 Yout.x = Y.x[index]
-                yield i, Yout
+                yield Yout
         else:  # OK
-            for i in xrange(samples):
+            for _ in xrange(samples):
                 np.random.shuffle(Yout.x)
-                yield i, Yout
+                yield Yout
