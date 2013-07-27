@@ -226,7 +226,7 @@ class array(_base.eelfigure):
         self.draw()
 
     def set_vlim(self, vmax=None, meas=None, vmin=None):
-        for p in self.subplots:
+        for p in self.plots:
             p.set_vlim(vmax, meas, vmin)
         self.draw()
 
@@ -426,9 +426,11 @@ class _ax_butterfly(object):
         if isinstance(title, str):
             ax.set_title(title.format(name=name))
 
-        self.set_vlim(vmin, vmax)
+        self.set_vlim(vmax, vmin)
 
-    def set_vlim(self, vmin=None, vmax=None):
+    def set_vlim(self, vmax=None, vmin=None):
+        if vmin is None and vmax is not None:
+            vmin = -vmax
         self.ax.set_ylim(vmin, vmax)
         vmin, vmax = self.ax.get_ylim()
         self.vmin = vmin
@@ -476,9 +478,9 @@ class butterfly(_base.eelfigure):
 
         self._show()
 
-    def set_vlim(self, vmin=None, vmax=None):
+    def set_vlim(self, vmax=None, vmin=None):
         for p in self.plots:
-            p.set_vlim(vmin, vmax)
+            p.set_vlim(vmax, vmin)
         self.draw()
 
 

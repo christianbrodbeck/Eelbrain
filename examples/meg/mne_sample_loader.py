@@ -64,4 +64,4 @@ if __name__ == '__main__':
                                  reject={'mag': 2e-12}, target='meg')
 
     p = plot.topo.butterfly('meg', 'side', ds=ds)
-    p.set_vmax(1e-12)
+    p.set_vlim(1e-12)

@@ -176,10 +176,10 @@ class topomap(_base.eelfigure):
             p.sensors.show_labels(text, color=self._label_color)
         self.draw()
 
-    def set_vlim(self, vmin=None, vmax=None):
+    def set_vlim(self, vmax=None, meas=None, vmin=None):
         "Change the range of the data shown in he colormap"
         for p in self._topomaps:
-            p.set_vlim(vmin, vmax)
+            p.set_vlim(vmax, meas, vmin)
         self.draw()
 
 
@@ -387,25 +387,15 @@ class butterfly(_base.eelfigure):
         self.draw()
 
 
-    def set_vlim(self, vmin=None, vmax=None):
+    def set_vlim(self, vmax=None, vmin=None):
         """Change the range of values displayed in butterfly-plots.
         """
-        for p in chain(self.bfly_plots, self.topo_plots):
-            p.set_vlim(vmin, vmax)
+        for topo, bfly in zip(self.topo_plots, self.bfly_plots):
+            topo.set_vlim(vmax, vmin=vmin)
+            kwa = topo.layers[0].get_kwargs()
+            bfly.set_vlim(kwa['vmax'], vmin=kwa['vmin'])
 
         self.canvas.draw()
-
-    def set_vmax(self, vmax):
-        """Change the range of values displayed in butterfly-plots (symmetric
-        around zero).
-
-        Parameters
-        ----------
-        vmax : scalar
-            The absolute of the maximum value to show.
-        """
-        vmax = abs(vmax)
-        self.set_vlim(-vmax, vmax)
 
 
 class _plt_topomap(_utsnd._plt_im_array):
@@ -531,9 +521,9 @@ class _ax_topomap:
         for l in layers:
             l.set_cmap(cmap)
 
-    def set_vlim(self, vmin=None, vmax=None):
+    def set_vlim(self, vmax=None, meas=None, vmin=None):
         for l in self.layers:
-            l.set_vlim(vmin, vmax)
+            l.set_vlim(vmax, meas, vmin)
 
 
 class _Window_Topo:
