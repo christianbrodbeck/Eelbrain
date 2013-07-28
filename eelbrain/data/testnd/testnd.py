@@ -1,4 +1,5 @@
 '''Statistical tests for ndvars'''
+from __future__ import division
 
 from math import ceil
 
@@ -7,11 +8,13 @@ import scipy.stats
 from scipy.stats import percentileofscore
 from scipy import ndimage
 from scipy.ndimage import binary_closing, binary_erosion, binary_dilation
+from scipy.sparse import coo_matrix
+from scipy.sparse.csgraph import connected_components
 
 from ... import fmtxt
 from .. import colorspaces as _cs
-from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, ndvar,
-                        Celltable, cellname)
+from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, dataset,
+                        factor, ndvar, var, Celltable, cellname, combine)
 from ..test import glm as _glm
 from ..test.test import resample
 
@@ -181,11 +184,8 @@ class cluster_corr:
         tt = scipy.stats.distributions.t.isf(tp, df)
         tr = tt / np.sqrt(df + tt ** 2)
 
-        cdist = ClusterDist(Y, samples, t_upper=tr, t_lower=-tr,
-                            tstart=tstart, tstop=tstop, close_time=close_time,
-                            meas='r', name=name)
-
-        # normalization is done before the permutation b/c we are interested in the variance associated with each subject for the z-scoring.
+        # normalization is done before the permutation b/c we are interested in
+        # the variance associated with each subject for the z-scoring.
         Y = Y.copy()
         Y.x = Y.x.reshape((n, -1))
         if norm is not None:
@@ -199,16 +199,21 @@ class cluster_corr:
             raise ValueError("np.mean(x) is nan")
         self.x = x - m_x
 
-        for Yrs in resample(Y, samples, replacement=replacement):
-            r = self._corr(Yrs)
-            cdist.add_perm(r)
-
+        cdist = _ClusterDist(Y, samples, t_upper=tr, t_lower=-tr,
+                            tstart=tstart, tstop=tstop, close_time=close_time,
+                            meas='r', name=name)
         r = self._corr(Y)
         cdist.add_original(r)
 
-        self.r_map = cdist.P
-        self.all = [[self.r_map] + cdist.clusters]
-        self.clusters = cdist
+        if cdist.n_clusters:
+            for Yrs in resample(Y, samples, replacement=replacement):
+                r = self._corr(Yrs)
+                cdist.add_perm(r)
+
+        self.cdist = cdist
+        self.r_map = cdist.pmap
+        self.all = [[self.r_map, cdist.cpmap]]
+        self.clusters = cdist.clusters
 
     def _corr(self, Y):
         n = self.n
@@ -223,7 +228,7 @@ class cluster_corr:
         return r
 
     def as_table(self, pmax=1.):
-        table = self.clusters.as_table(pmax=pmax)
+        table = self.cdist.as_table(pmax=pmax)
         return table
 
 
@@ -238,7 +243,7 @@ class ttest:
         [c0 - c1, P]
     """
     def __init__(self, Y='meg', X=None, c1=None, c0=0, match=None, sub=None,
-                 ds=None):
+                 ds=None, samples=None, pmin=0.1, tstart=None, tstop=None,):
         """Element-wise t-test
 
         Parameters
@@ -259,20 +264,22 @@ class ttest:
         ds : dataset
             If a dataset is specified, all data-objects can be specified as
             names of dataset variables
+        samples : None | int
+            Number of samples for permutation cluster test. For None, no
+            clusters are formed.
+        pmin : scalar (0 < pmin < 1)
+            Threshold p value for forming clusters in permutation cluster test.
+        tstart, tstop : None | scalar
+            Restrict time window for permutation cluster test.
         """
-        if len(X.cells) == 1:
-            if c1 is None:
+        if c1 is None:
+            if len(X.cells) == 1:
                 c1 = X.cells[0]
-            elif c1 != X.cells[0]:
-                raise KeyError("No cell %s" % str(c1))
-            elif not np.isscalar(c0):
-                raise TypeError("If X only has one cell, c0 must be scalar")
-        elif c1 is None:
-            if len(X.cells) == 2:
+            elif len(X.cells) == 2:
                 c1, c0 = X.cells
             else:
-                err = ("If X has more than 2 categories (it has %s), c1 and "
-                       "c0 must be explicitly specified." % len(X.cells))
+                err = ("If X has more than 2 categories, c1 and c0 must be "
+                       "explicitly specified.")
                 raise ValueError(err)
 
         if isinstance(c0, (str, tuple)):
@@ -281,30 +288,43 @@ class ttest:
             cat = (c1,)
         ct = Celltable(Y, X, match, sub, cat=cat, ds=ds)
 
-        axis = ct.Y.get_axis('case')
-
         if isinstance(c0, (basestring, tuple)):  # two samples
             c1_mean = ct.data[c1].summary(name=cellname(c1))
             c0_mean = ct.data[c0].summary(name=cellname(c0))
             diff = c1_mean - c0_mean
-            if match:
-                if not ct.within[(c1, c0)]:
-                    err = ("match kwarg: Conditions have different values on"
-                           " <%r>" % ct.match.name)
-                    raise ValueError(err)
-                T, P = scipy.stats.ttest_rel(ct.data[c1].x, ct.data[c0].x,
-                                             axis=axis)
-                n = len(ct.data[c1])
-                df = n - 1
+            if ct.all_within:
                 test_name = 'Related Samples t-Test'
+                n = len(ct.Y) / 2
+                df = n - 1
+                T = _t_rel(ct.Y)
+                P = _ttest_p(T, df)
+                if samples:
+                    tmin = _ttest_t(pmin, df)
+                    cdist = _ClusterDist(ct.Y, samples, tmin, -tmin, 't', test_name,
+                                        tstart, tstop)
+                    cdist.add_original(T)
+                    if cdist.n_clusters:
+                        for Y_ in resample(cdist.Y_perm, samples, replacement=False):
+                            tmap = _t_rel(Y_.x)
+                            cdist.add_perm(tmap)
             else:
-                T, P = scipy.stats.ttest_ind(ct.data[c1].x, ct.data[c0].x,
-                                             axis=axis)
-                n1 = len(ct.data[c1])
-                n0 = len(ct.data[c0])
-                n = (n1, n0)
-                df = n1 + n0 - 2
                 test_name = 'Independent Samples t-Test'
+                n1 = len(ct.data[c1])
+                N = len(ct.Y)
+                n2 = N - n1
+                df = N - 2
+                T = _t_ind(ct.Y.x, n1, n2)
+                P = _ttest_p(T, df)
+                if samples:
+                    tmin = _ttest_t(pmin, df)
+                    cdist = _ClusterDist(ct.Y, samples, tmin, -tmin, 't', test_name,
+                                        tstart, tstop)
+                    cdist.add_original(T)
+                    if cdist.n_clusters:
+                        for Y_ in resample(cdist.Y_perm, samples, replacement=False):
+                            tmap = _t_ind(Y_.x, n1, n2)
+                            cdist.add_perm(tmap)
+                n = (n1, n2)
         elif np.isscalar(c0):  # one sample
             c1_data = ct.data[c1]
             x = c1_data.x
@@ -318,12 +338,12 @@ class ttest:
                 mod_len = x.shape[1]
                 fix_shape = x.shape[0:1] + x.shape[2:]
                 N = 2 ** 25 // np.prod(fix_shape)
-                res = [scipy.stats.ttest_1samp(x[:, i:i + N], popmean=c0, axis=axis)
+                res = [scipy.stats.ttest_1samp(x[:, i:i + N], popmean=c0, axis=0)
                        for i in xrange(0, mod_len, N)]
                 T = np.vstack((v[0].swapaxes(ax, 1) for v in res))
                 P = np.vstack((v[1].swapaxes(ax, 1) for v in res))
             else:
-                T, P = scipy.stats.ttest_1samp(x, popmean=c0, axis=axis)
+                T, P = scipy.stats.ttest_1samp(x, popmean=c0, axis=0)
 
             n = len(c1_data)
             df = n - 1
@@ -367,12 +387,83 @@ class ttest:
         self.p_val = [[diff, P]]
 
         if c0_mean:
-            self.all = [c1_mean, c0_mean] + self.p_val
+            all_uncorrected = [c1_mean, c0_mean] + self.p_val
         elif c0:
-            self.all = [c1_mean] + self.p_val
+            all_uncorrected = [c1_mean] + self.p_val
         else:
-            self.all = self.p_val
+            all_uncorrected = self.p_val
 
+        if samples:
+            self.diff_cl = [diff, cdist.cpmap]
+            self.all = [c1_mean, c0_mean, self.diff_cl]
+            self.cdist = cdist
+            self.clusters = cdist.clusters
+        else:
+            self.all = all_uncorrected
+
+
+def _t_ind(x, n1, n2, equal_var=True):
+    "Based on scipy.stats.ttest_ind"
+    a = x[:n1]
+    b = x[n1:]
+    v1 = np.var(a, 0, ddof=1)
+    v2 = np.var(b, 0, ddof=1)
+
+    if equal_var:
+        df = n1 + n2 - 2
+        svar = ((n1 - 1) * v1 + (n2 - 1) * v2) / float(df)
+        denom = np.sqrt(svar * (1.0 / n1 + 1.0 / n2))
+    else:
+        vn1 = v1 / n1
+        vn2 = v2 / n2
+        denom = np.sqrt(vn1 + vn2)
+
+    d = np.mean(a, 0) - np.mean(b, 0)
+    t = np.divide(d, denom)
+    return t
+
+
+def _t_rel(Y):
+    """
+    Calculates the T statistic on two related samples.
+
+    Parameters
+    ----------
+    Y : array
+        Dependent variable in right input format: The first half and second
+        half of the data represent the two samples; in each subjects
+
+    Returns
+    -------
+    t : array
+        t-statistic
+
+    Notes
+    -----
+    Based on scipy.stats.ttest_rel
+    df = n - 1
+    """
+    n = len(Y) / 2
+    a = Y[:n]
+    b = Y[n:]
+    d = (a - b).astype(np.float64)
+    v = np.var(d, 0, ddof=1)
+    dm = np.mean(d, 0)
+    denom = np.sqrt(v / n)
+    t = np.divide(dm, denom)
+    return t
+
+
+def _ttest_p(t, df):
+    "Two tailed probability"
+    p = scipy.stats.t.sf(np.abs(t), df) * 2
+    return p
+
+
+def _ttest_t(p, df):
+    "Positive t value for two tailed probability"
+    t = scipy.stats.distributions.t.isf(p / 2, df)
+    return t
 
 
 class f_oneway:
@@ -517,49 +608,66 @@ class cluster_anova:
                     tF[e] = scipy.stats.distributions.f.isf(t, e.df, df_d)
         else:
             df_d = X.df_error
-            tF = {e: scipy.stats.distributions.f.isf(t, e.df, df_d) for e in X.effects}
+            tF = {e: scipy.stats.distributions.f.isf(t, e.df, df_d)
+                  for e in X.effects}
 
         # Estimate statistic distributions from permuted Ys
-        kwargs = dict(tstart=tstart, tstop=tstop, close_time=close_time, meas='F')
-        dists = {e: ClusterDist(Y, samples, tF[e], name=e.name, **kwargs) for e in tF}
-        self.cluster_dists = dists
-        for Y_ in resample(Y, samples, replacement=replacement):
-            for e, F in lm.map(Y_.x, p=False):
-                dists[e].add_perm(F)
+        kwargs = dict(meas='F', tstart=tstart, tstop=tstop,
+                      close_time=close_time)
+        cdists = {e: _ClusterDist(Y, samples, tF[e], name=e.name, **kwargs)
+                  for e in tF}
 
         # Find clusters in the actual data
         test0 = lm.map(Y.x, p=False)
         self.effects = []
-        self.clusters = {}
         self.F_maps = {}
         for e, F in test0:
             self.effects.append(e)
-            dist = dists[e]
+            dist = cdists[e]
             dist.add_original(F)
-            self.clusters[e] = dist
             self.F_maps[e] = dist.P
+
+        for Y_ in resample(Y, samples, replacement=replacement):
+            for e, F in lm.map(Y_.x, p=False):
+                cdists[e].add_perm(F)
 
         self.name = "ANOVA Permutation Cluster Test"
         self.tF = tF
+        self.cdists = cdists
 
-        self.all = [[self.F_maps[e]] + self.clusters[e].clusters
+        dss = []
+        for e in self.effects:
+            name = e.name
+            ds = cdists[e].clusters
+            ds['effect'] = factor([name], rep=ds.n_cases)
+            dss.append(ds)
+        ds = combine(dss)
+        self.clusters = ds
+
+        self.all = [[self.F_maps[e]] + self.cdists[e].clusters
                     for e in self.X.effects if e in self.F_maps]
 
-    def as_table(self, pmax=1.):
-        tables = []
-        for e in self.effects:
-            dist = self.cluster_dists[e]
-            table = dist.as_table(pmax=pmax)
-            table.title(e.name)
-            tables.append(table)
-        return tables
 
+class _ClusterDist:
+    """Accumulate information on a cluster statistic.
 
+    Notes
+    -----
+    Use of the _ClusterDist proceeds in 3 steps:
 
-class ClusterDist:
-    def __init__(self, Y, N, t_upper, t_lower=None,
-                 tstart=None, tstop=None, close_time=0, meas='?', name=None):
-        """
+    - initialize the _ClusterDist object: ``cdist = _ClusterDist(...)``
+    - use a copy of Y cropped to the time window of interest:
+      ``Y = cdist.Y_perm``
+    - add the actual statistical map with ``cdist.add_original(pmap)``
+    - if any clusters are found (``if cdist.n_clusters``):
+
+      - proceed to add statistical maps from permuted data with
+        ``cdist.add_perm(pmap)``.
+    """
+    def __init__(self, Y, N, t_upper, t_lower=None, meas='?', name=None,
+                 tstart=None, tstop=None, close_time=0):
+        """Accumulate information on a cluster statistic.
+
         Parameters
         ----------
         Y : ndvar
@@ -569,22 +677,18 @@ class ClusterDist:
         t_upper, t_lower : None | scalar
             Positive and negative thresholds for finding clusters. If None,
             no clusters with the corresponding sign are counted.
+        meas : str
+            Label for the parameter measurement (e.g., 't' for t-values).
+        name : None | str
+            Name for the comparison.
         tstart, tstop : None | scalar
-            Time window for clusters.
-            **None**: use the whole epoch;
-            **scalar**: use only a part of the epoch
-
-            .. Note:: implementation is not optimal: F-values are still
-                computed but ignored.
-
+            Restrict the time window for finding clusters (None: use the whole
+            epoch).
         close_time : scalar
             Close gaps in clusters that are smaller than this interval. Assumes
             that Y is a uniform time series.
-        unit : str
-            Label for the parameter.
-        cs : None | dict
-            Plotting parameters for info dict.
         """
+        assert Y.has_case
         if t_lower is not None:
             if t_lower >= 0:
                 raise ValueError("t_lower needs to be < 0; is %s" % t_lower)
@@ -597,112 +701,299 @@ class ClusterDist:
                        "-t_lower")
                 raise ValueError(err)
 
-        # make sure we only get case by time data
-        assert Y.ndim == 2
-        assert Y.has_case
-        assert Y.get_axis('time') == 1
-        self._time_ax = Y.get_axis('time') - 1
-        self.dims = Y.dims[1:]
-
-        # prepare cluster merging
+        # prepare gap closing
         if close_time:
+            raise NotImplementedError
             time = Y.get_dim('time')
-            self.close_time_structure = np.ones(round(close_time / time.tstep))
-        self.close_time = bool(close_time)
+            self._close = np.ones(round(close_time / time.tstep))
+        else:
+            self._close = None
 
-        # prepare morphology manipulation
-        self.delim = (tstart is not None) or (tstop is not None)
-        if self.delim:
-            time = Y.get_dim('time')
-            self.delim_idx = np.zeros(len(time), dtype=bool)
-            if tstart is not None:
-                self.delim_idx[time.times < tstart] = True
-            if tstop is not None:
-                self.delim_idx[time.times >= tstop] = True
+        # prepare cropping
+        if (tstart is None) and (tstop is None):
+            self.crop = False
+            Y_perm = Y
+        else:
+            self.crop = True
+            Y_perm = Y.subdata(time=(tstart, tstop))
+            istart = 0 if tstart is None else Y.time.index(tstart, 'up')
+            istop = istart + len(Y_perm.time)
+            t_ax = Y.get_axis('time') - 1
+            self._crop_idx = (slice(None),) * t_ax + (slice(istart, istop),)
+            self._uncropped_shape = Y.shape[1:]
 
+        # prepare adjacency
+        adjacent = [d.adjacent for d in Y_perm.dims[1:]]
+        self._all_adjacent = all_adjacent = all(adjacent)
+        if not all_adjacent:
+            if sum(adjacent) < len(adjacent) - 1:
+                err = ("more than one non-adjacent dimension")
+                raise NotImplementedError(err)
+            self._nad_ax = ax = adjacent.index(False)
+            self._conn = Y_perm.dims[ax + 1].connectivity()
+            struct = ndimage.generate_binary_structure(2, 1)
+            struct[::2] = False
+            self._struct = struct
+            # flattening and reshaping pmaps with swapped axes
+            shape = Y_perm.shape[1:]
+            if ax:
+                shape = list(shape)
+                shape[0], shape[ax] = shape[ax], shape[0]
+                shape = tuple(shape)
+            self._orig_shape = shape
+            self._flat_shape = (shape[0], -1)
+
+        self.Y = Y
+        self.Y_perm = Y_perm
         self.dist = np.zeros(N)
-        self._i = 0
+        self._i = int(N)
         self.t_upper = t_upper
         self.t_lower = t_lower
+        self.tstart = tstart
+        self.tstop = tstop
         self.meas = meas
         self.name = name
 
-    def _find_clusters(self, P):
-        "returns (clusters, n)"
-        if self.t_upper is None:
-            cmap_upper = None
+    def _crop(self, im):
+        if self.crop:
+            return im[self._crop_idx]
         else:
-            cmap_upper = (P > self.t_upper)
-            clusters, n = self._find_clusters_1tailed(cmap_upper)
+            return im
+
+    def _finalize(self):
+        if self._i < 0:
+            raise RuntimeError("Too many permutations added to _ClusterDist")
+
+        # retrieve original clusters
+        pmap = self._original_pmap
+        pmap_ = self._crop(pmap)
+        cmap = self._cluster_im
+        cids = self._cids
+
+        if not self.n_clusters:
+            self.clusters = None
+            return
+
+        # measure original clusters
+        cluster_v = ndimage.sum(pmap_, cmap, cids)
+        cluster_p = np.array([1 - percentileofscore(self.dist, abs(v), 'mean')
+                              / 100 for v in cluster_v])
+        sort_idx = np.argsort(cluster_p)
+
+        # prepare container for clusters
+        ds = dataset()
+        ds['p'] = var(cluster_p[sort_idx])
+        ds['v'] = var(cluster_v[sort_idx])
+
+        # time window
+        time = self.Y_perm.get_dim('time') if self.Y.has_dim('time') else None
+        if time is not None:
+            time_ax = self.Y.get_axis('time') - 1
+            tstart = []
+            tstop = []
+
+        # create cluster ndvars
+        cpmap = np.ones_like(pmap_)
+        cmaps = np.empty((self.n_clusters,) + pmap.shape, dtype=pmap.dtype)
+        boundaries = ndimage.find_objects(cmap)
+        for i, ci in enumerate(sort_idx):
+            v = cluster_v[ci]
+            p = cluster_p[ci]
+            cid = cids[ci]
+
+            # update cluster maps
+            c_mask = (cmap == cid)
+            cpmap[c_mask] = p
+            cmaps[i] = self._uncrop(pmap_ * c_mask)
+
+            # extract cluster properties
+            bounds = boundaries[cid - 1]
+            if time is not None:
+                t_slice = bounds[time_ax]
+                tstart.append(time.times[t_slice.start])
+                if t_slice.stop == len(time):
+                    tstop.append(time.times[-1] + time.tstep)
+                else:
+                    tstop.append(time.times[t_slice.stop])
+
+        dims = self.Y.dims
+        contours = {self.t_lower: (0.7, 0, 0.7), self.t_upper: (0.7, 0.7, 0)}
+        info = _cs.stat_info(self.meas, contours=contours, summary_func=np.sum)
+        ds['cluster'] = ndvar(cmaps, dims=dims, info=info)
+
+        if time is not None:
+            ds['tstart'] = var(tstart)
+            ds['tstop'] = var(tstop)
+        self.clusters = ds
+
+        # cluster probability map
+        cpmap = self._uncrop(cpmap, 1)
+        info = _cs.cluster_pmap_info()
+        self.cpmap = ndvar(cpmap, dims=dims[1:], name=self.name, info=info)
+
+        # statistic parameter map
+        info = _cs.stat_info(self.meas, contours=contours)
+        self.pmap = ndvar(pmap, dims=dims[1:], name=self.name, info=info)
+
+        self.all = [[self.pmap, self.cpmap]]
+
+    def _label_clusters(self, pmap):
+        """Find clusters on a statistical parameter map
+
+        Parameters
+        ----------
+        pmap : array
+            Statistical parameter map (flattened if the data contains
+            non-adjacent dimensions).
+
+        Returns
+        -------
+        cluster_map : array
+            Array of same shape as pmap with clusters labeled.
+        clusters : tuple
+            Identifiers of the clusters.
+        """
+        if self.t_upper is not None:
+            bin_map_above = (pmap > self.t_upper)
+            cmap, cids = self._label_clusters_1tailed(bin_map_above)
 
         if self.t_lower is not None:
-            cmap_lower = (P < self.t_lower)
-            if cmap_upper is None:
-                clusters, n = self._find_clusters_1tailed(cmap_lower)
+            bin_map_below = (pmap < self.t_lower)
+            if self.t_upper is None:
+                cmap, cids = self._label_clusters_1tailed(bin_map_below)
             else:
-                clusters_l, n_l = self._find_clusters_1tailed(cmap_lower)
-                clusters_l[cmap_lower] += n
-                clusters += clusters_l
-                n += n_l
+                cmap_l, cids_l = self._label_clusters_1tailed(bin_map_below)
+                x = cmap.max()
+#                 cmap_l += x * bin_map_below  # faster?
+                cmap_l[bin_map_below] += x
+                cmap += cmap_l
+                cids.update(c + x for c in cids_l)
 
-        return clusters, n
+        return cmap, tuple(cids)
 
-    def _find_clusters_1tailed(self, cmap):
-        "returns (clusters, n)"
+    def _label_clusters_1tailed(self, bin_map):
+        """
+        Parameters
+        ----------
+        bin_map : array
+            Binary map of where the parameter map exceeds the threshold for a
+            cluster.
+
+        Returns
+        -------
+        cluster_map : array
+            Array of same shape as bin_map with clusters labeled.
+        cluster_ids : iterator over int
+            Identifiers of the clusters.
+        """
         # manipulate morphology
-        if self.delim:
-            cmap[self.delim_idx] = False
-        if self.close_time:
-            cmap = cmap | binary_closing(cmap, self.close_time_structure)
+        if self._close is not None:
+            bin_map = bin_map | binary_closing(bin_map, self._close)
 
         # find clusters
-        return ndimage.label(cmap)
+        if self._all_adjacent:
+            cmap, n = ndimage.label(bin_map)
+            return cmap, set(xrange(1, n + 1))
+        else:
+            c = self._conn
+            cmap, n = ndimage.label(bin_map, self._struct)
+            cids = set(xrange(1, n + 1))
+            n_chan = len(cmap)
 
-    def add_original(self, P):
+            for i in xrange(bin_map.shape[1]):
+                if len(np.setdiff1d(cmap[:, i], np.zeros(1), False)) <= 1:
+                    continue
+
+                idx = np.flatnonzero(cmap[:, i])
+                c_idx = np.logical_and(np.in1d(c.row, idx), np.in1d(c.col, idx))
+                row = c.row[c_idx]
+                col = c.col[c_idx]
+                data = c.data[c_idx]
+                n = np.max(idx)
+                c_ = coo_matrix((data, (row, col)), shape=c.shape)
+                n_, lbl_map = connected_components(c_, False)
+                if n_ == n_chan:
+                    continue
+                labels_ = np.flatnonzero(np.bincount(lbl_map) > 1)
+                for lbl in labels_:
+                    idx_ = lbl_map == lbl
+                    merge = np.unique(cmap[idx_, i])
+
+                    # merge labels
+                    idx_ = reduce(np.logical_or, (cmap == m for m in merge))
+                    cmap[idx_] = merge[0]
+                    cids.difference_update(merge[1:])
+
+                if len(cids) == 1:
+                    break
+
+            return cmap, cids
+
+    def _uncrop(self, im, background=0):
+        if self.crop:
+            im_ = np.empty(self._uncropped_shape, dtype=im.dtype)
+            im_[:] = background
+            im_[self._crop_idx] = im
+            return im_
+        else:
+            return im
+
+    def add_original(self, pmap):
+        """Add the originl statistical parameter map.
+
+        Parameters
+        ----------
+        pmap : array
+            Parameter map of the statistic of interest (uncropped).
         """
-        P : array
+        if hasattr(self, '_cluster_im'):
+            raise RuntimeError("Original pmap already added")
+
+        pmap_ = self._crop(pmap)
+        if not self._all_adjacent:
+            pmap_ = pmap_.swapaxes(0, self._nad_ax)
+            pmap_ = pmap_.reshape(self._flat_shape)
+        cmap, cids = self._label_clusters(pmap_)
+        if not self._all_adjacent:  # return cmap to proper shape
+            cmap = cmap.reshape(self._orig_shape)
+            cmap = cmap.swapaxes(0, self._nad_ax)
+
+        self._cluster_im = cmap
+        self._original_pmap = pmap
+        self._cids = cids
+        self.n_clusters = len(cids)
+        if self.n_clusters == 0:
+            self._finalize()
+
+    def add_perm(self, pmap):
+        """Add the statistical parameter map from permuted data.
+
+        Parameters
+        ----------
+        pmap : array
             Parameter map of the statistic of interest.
-
         """
-        self.clusters = []
+        self._i -= 1
 
-        # find clusters
-        clusters, n = self._find_clusters(P)
-        clusters_v = ndimage.sum(P, clusters, xrange(1, n + 1))
+        if not self._all_adjacent:
+            pmap = pmap.swapaxes(0, self._nad_ax)
+            pmap = pmap.reshape(self._flat_shape)
 
-        for i in xrange(n):
-            v = clusters_v[i]
-            p = 1 - percentileofscore(self.dist, np.abs(v), 'mean') / 100
-            im = P * (clusters == i + 1)
-            name = 'p=%.3f' % p
-            threshold = self.t_upper if (v > 0) else self.t_lower
-            info = _cs.cluster_info(self.meas, threshold, p)
-            ndv = ndvar(im, dims=self.dims, name=name, info=info)
-            self.clusters.append(ndv)
-
-        contours = {self.t_lower: (0.7, 0, 0.7), self.t_upper: (0.7, 0.7, 0)}
-        info = _cs.stat_info(self.meas, contours=contours)
-        self.P = ndvar(P, dims=self.dims, name=self.name, info=info)
-
-    def add_perm(self, P):
-        """
-        P : array
-            Parameter map of the statistic of interest.
-
-        """
-        clusters, n = self._find_clusters(P)
-
-        if n:
-            clusters_v = ndimage.sum(P, clusters, xrange(1, n + 1))
+        cmap, cids = self._label_clusters(pmap)
+        if cids:
+            clusters_v = ndimage.sum(pmap, cmap, cids)
             self.dist[self._i] = np.max(np.abs(clusters_v))
 
-        self._i += 1
+        if self._i == 0:
+            self._finalize()
 
     def as_table(self, pmax=1.):
         cols = 'll'
         headings = ('#', 'p')
-        if self._time_ax is not None:
-            time = self.dims[self._time_ax]
+        time = self.Y.get_dim('time') if self.Y.has_dim('time') else None
+        if time is not None:
+            time_ax = self.Y.get_axis('time') - 1
+            any_axes = tuple(i for i in xrange(self.Y.ndim - 1) if i != time_ax)
             cols += 'l'
             headings += ('time interval',)
 
@@ -718,8 +1009,8 @@ class ClusterDist:
                 i += 1
                 table.cell(p)
 
-                if self._time_ax is not None:
-                    nz = c.x.nonzero()[self._time_ax]
+                if time is not None:
+                    nz = np.flatnonzero(np.any(c.x, axis=any_axes))
                     tstart = time[nz.min()]
                     tstop = time[nz.max()]
                     interval = '%.3f - %.3f s' % (tstart, tstop)

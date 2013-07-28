@@ -144,10 +144,9 @@ def default_info(meas, **kwargs):
     return kwargs
 
 
-def cluster_info(meas, threshold, p, color='g'):
-    "Info dict for clusters"
-    contours = {threshold: color}
-    info = {'meas': meas, 'threshold': threshold, 'p': p, 'contours': contours}
+def cluster_pmap_info():
+    contours = {0.05: (0., 0., 0.)}
+    info = {'meas': 'p', 'contours': contours, 'cmap': 'sig', 'vmax': 0.05}
     return info
 
 

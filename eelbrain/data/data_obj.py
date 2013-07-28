@@ -35,6 +35,7 @@ from numpy import dot
 import scipy.stats
 from scipy.linalg import inv
 from scipy.optimize import leastsq
+from scipy.sparse import coo_matrix
 from scipy.spatial.distance import pdist, squareform
 
 from .. import fmtxt
@@ -3982,6 +3983,7 @@ class Dimension(object):
     Base class for dimensions.
     """
     name = 'Dimension'
+    adjacent = True
 
     def __getstate__(self):
         raise NotImplementedError
@@ -4130,6 +4132,7 @@ class Sensor(Dimension):
 
     """
     name = 'sensor'
+    adjacent = False
 
     def __init__(self, locs, names=None, groups=None, sysname=None,
                  proj2d='z root'):
@@ -4243,6 +4246,30 @@ class Sensor(Dimension):
             return self.channel_idx[name]
         else:
             return int(name)
+
+    def connectivity(self):
+        nb = self.neighbors()
+
+        # sparse representation (remove duplicate connections)
+        nbs = collections.defaultdict(set)
+        for k, vals in nb.iteritems():
+            for v in vals:
+                if k < v:
+                    nbs[k].add(v)
+                else:
+                    nbs[v].add(k)
+
+        # sparse matrix
+        row = []
+        col = []
+        for k in sorted(nbs):
+            v = sorted(nbs[k])
+            row.extend([k] * len(v))
+            col.extend(sorted(v))
+        data = np.ones(len(row))
+        N = len(self)
+        connectivity = coo_matrix((data, (row, col)), shape=(N, N))
+        return connectivity
 
     @classmethod
     def from_xyz(cls, path=None, **kwargs):
@@ -4604,6 +4631,7 @@ class SourceSpace(Dimension):
 
     """
     name = 'source'
+    adjacent = False
 
     def __init__(self, vertno, subject='fsaverage'):
         """
@@ -4851,6 +4879,20 @@ class UTS(Dimension):
             return s
         else:
             return arg
+
+    def index(self, time, rnd='closest'):
+        """Find the index for a time point
+
+        Parameters
+        ----------
+        time : scalar
+            Time point for which to find an index.
+        rnd : 'down' | 'closest' | 'up'
+            Rounding: how to handle time values that do not have an exact
+            match. Round 'up', 'down', or to the 'closest' neighbor.
+        """
+        i, _ = find_time_point(self.times, time, rnd)
+        return i
 
     def intersect(self, dim):
         idx = self.times[:, None] == dim.times

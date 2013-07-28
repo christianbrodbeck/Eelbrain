@@ -827,6 +827,7 @@ def resample(Y, samples=10000, unit=None, replacement=True):
     Iterator over Y_resampled. The same copy of ``Y`` is yielded in each
     iteration with different data.
     """
+    samples = int(samples)
     if isvar(Y):
         pass
     elif isndvar(Y):
