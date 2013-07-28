@@ -1875,44 +1875,6 @@ class MneExperiment(FileTree):
 
         self.set(**{field: next_})
 
-    def set_root(self, root, rescan=True):
-        root = os.path.expanduser(root)
-        self._fields['root'] = root
-        if not rescan:
-            return
-
-        subjects = set()
-        sub_dir = self.get(self._subject_loc)
-        if os.path.exists(sub_dir):
-            for dirname in os.listdir(sub_dir):
-                isdir = os.path.isdir(os.path.join(sub_dir, dirname))
-                if isdir and self.subject_re.match(dirname):
-                    subjects.add(dirname)
-        else:
-            err = ("Subjects directory not found: %r. Initialize with "
-                   "parse_subjects=False, or specifiy proper directory in "
-                   "experiment._subject_loc." % sub_dir)
-            raise IOError(err)
-
-        if len(subjects) == 0:
-            err = "No subjects found in %r" % sub_dir
-            raise IOError(err)
-
-        subjects = sorted(subjects)
-        self._field_values['subject'] = subjects
-
-        mrisubjects = [self._mri_subjects[s] for s in subjects]
-        common_brain = self.get('common_brain')
-        if common_brain:
-            mrisubjects.insert(0, common_brain)
-        self._field_values['mrisubject'] = mrisubjects
-
-        # on init, subject is not in fields
-        subject = self._fields.get('subject', None)
-        if subject not in subjects:
-            subject = subjects[0]
-        self.set(subject=subject, add=True)
-
     def plot_annot(self, annot=None, surf='smoothwm', mrisubject=None,
                    borders=True, label=True):
         mrisubject = self.get('mrisubject', mrisubject=mrisubject, match=False)
@@ -2183,6 +2145,34 @@ class MneExperiment(FileTree):
                 raise ValueError("No group or subject named %r" % group)
         return group
 
+    def _eval_model(self, model):
+        model = model.split('%')
+        model.sort()
+        return '%'.join(model)
+
+    def _post_set_rej(self, rej):
+        rej_args = self.epoch_rejection[rej]
+        self._params['rej'] = rej_args
+
+    def set_env(self, env=os.environ):
+        """
+        Set environment variables
+
+        for mne/freesurfer:
+
+         - SUBJECTS_DIR
+        """
+        env['SUBJECTS_DIR'] = self.get('mri-sdir')
+
+    def set_inv(self, ori='free', depth=0.8, reg=False, snr=2, method='dSPM',
+                pick_normal=False):
+        """Alternative method to set the ``inv`` state.
+        """
+        items = [ori, depth if depth else None, 'reg' if reg else None, snr,
+                 method, 'pick_normal' if pick_normal else None]
+        inv = '-'.join(map(str, filter(None, items)))
+        self.set(inv=inv)
+
     def _set_inv_as_str(self, inv):
         """
         Notes
@@ -2249,34 +2239,6 @@ class MneExperiment(FileTree):
         self._params['apply_inv_kw'] = apply_kw
         self._params['reg_inv'] = regularize_inv
 
-    def _eval_model(self, model):
-        model = model.split('%')
-        model.sort()
-        return '%'.join(model)
-
-    def _post_set_rej(self, rej):
-        rej_args = self.epoch_rejection[rej]
-        self._params['rej'] = rej_args
-
-    def set_env(self, env=os.environ):
-        """
-        Set environment variables
-
-        for mne/freesurfer:
-
-         - SUBJECTS_DIR
-        """
-        env['SUBJECTS_DIR'] = self.get('mri-sdir')
-
-    def set_inv(self, ori='free', depth=0.8, reg=False, snr=2, method='dSPM',
-                pick_normal=False):
-        """Alternative method to set the ``inv`` state.
-        """
-        items = [ori, depth if depth else None, 'reg' if reg else None, snr,
-                 method, 'pick_normal' if pick_normal else None]
-        inv = '-'.join(map(str, filter(None, items)))
-        self.set(inv=inv)
-
     def set_mri_subject(self, subject, mri_subject=None):
         """
         Reassign a subject's MRI
@@ -2295,6 +2257,44 @@ class MneExperiment(FileTree):
             self._mri_subjects[subject] = mri_subject
         if subject == self.get('subject'):
             self._state['mrisubject'] = mri_subject
+
+    def set_root(self, root, rescan=True):
+        root = os.path.expanduser(root)
+        self._fields['root'] = root
+        if not rescan:
+            return
+
+        subjects = set()
+        sub_dir = self.get(self._subject_loc)
+        if os.path.exists(sub_dir):
+            for dirname in os.listdir(sub_dir):
+                isdir = os.path.isdir(os.path.join(sub_dir, dirname))
+                if isdir and self.subject_re.match(dirname):
+                    subjects.add(dirname)
+        else:
+            err = ("Subjects directory not found: %r. Initialize with "
+                   "parse_subjects=False, or specifiy proper directory in "
+                   "experiment._subject_loc." % sub_dir)
+            raise IOError(err)
+
+        if len(subjects) == 0:
+            err = "No subjects found in %r" % sub_dir
+            raise IOError(err)
+
+        subjects = sorted(subjects)
+        self._field_values['subject'] = subjects
+
+        mrisubjects = [self._mri_subjects[s] for s in subjects]
+        common_brain = self.get('common_brain')
+        if common_brain:
+            mrisubjects.insert(0, common_brain)
+        self._field_values['mrisubject'] = mrisubjects
+
+        # on init, subject is not in fields
+        subject = self._fields.get('subject', None)
+        if subject not in subjects:
+            subject = subjects[0]
+        self.set(subject=subject, add=True)
 
     def show_in_finder(self, key, **kwargs):
         "Reveals the file corresponding to the ``key`` template in the Finder."
