@@ -2277,10 +2277,6 @@ class MneExperiment(FileTree):
                    "experiment._subject_loc." % sub_dir)
             raise IOError(err)
 
-        if len(subjects) == 0:
-            err = "No subjects found in %r" % sub_dir
-            raise IOError(err)
-
         subjects = sorted(subjects)
         self._field_values['subject'] = subjects
 
@@ -2289,6 +2285,10 @@ class MneExperiment(FileTree):
         if common_brain:
             mrisubjects.insert(0, common_brain)
         self._field_values['mrisubject'] = mrisubjects
+
+        if len(subjects) == 0:
+            print("Warning: no subjects found in %r" % sub_dir)
+            return
 
         # on init, subject is not in fields
         subject = self._fields.get('subject', None)
