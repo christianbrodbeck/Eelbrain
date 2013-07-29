@@ -1290,22 +1290,41 @@ class _effect_(object):
             index = slice(start, stop, step)
         return index
 
-    def sort_idx(self, descending=False):
-        """Create an index that could be used to sort the effect.
+    def sort_idx(self, descending=False, order=None):
+        """Create an index that could be used to sort this data_object.
 
         Parameters
         ----------
         descending : bool
-            Sort in descending instead of an ascending order.
+            Sort in descending instead of the default ascending order.
+        order : None | sequence
+            Sequence of cells to define a custom order. Any cells that are not
+            present in ``order`` will be omitted in the sort_index, i.e. the
+            sort_index will be shorter than its source.
+
+        Returns
+        -------
+        sort_index : array of int
+            Array which can be used to sort a data_object in the desired order.
         """
-        idx = np.empty(len(self), dtype=np.int32)
-        for i, cell in enumerate(self.cells):
+        if order is None:
+            cells = self.cells
+            idx = np.empty(len(self), dtype=np.uint32)
+        else:
+            cells = order
+            idx = -np.ones(len(self), dtype=np.uint32)
+
+        for i, cell in enumerate(cells):
             idx[self == cell] = i
 
-        idx = np.argsort(idx, kind='mergesort')
+        sort_idx = np.argsort(idx, kind='mergesort')
+        if order is not None:
+            i_cut = -np.count_nonzero(idx == np.uint32(-1))
+            if i_cut:
+                sort_idx = sort_idx[:i_cut]
         if descending:
-            idx = idx[::-1]
-        return idx
+            sort_idx = sort_idx[::-1]
+        return sort_idx
 
 
 class factor(_effect_):
