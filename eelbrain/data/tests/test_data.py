@@ -12,7 +12,7 @@ from nose.tools import assert_equal, assert_true, eq_, ok_
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from eelbrain.data import datasets, var, factor, dataset
+from eelbrain.data import datasets, var, factor, dataset, Celltable
 from eelbrain.data.data_obj import (isdatalist, isndvar, isuv, align, align1,
                                     combine)
 
@@ -67,6 +67,34 @@ def test_align():
 
     dsa1, dsa2 = align(dsa, ds_sub)
     assert_array_equal(dsa1['index'].x, dsa2['index'].x, "align() failed")
+
+
+def test_celltable():
+    "Test the Celltable class."
+    ds = datasets.get_rand()
+    ds['cat'] = factor('abcd', rep=15)
+
+    ct = Celltable('Y', 'A', ds=ds)
+    eq_(ct.n_cases, 60)
+    eq_(ct.n_cells, 2)
+
+    ct = Celltable('Y', 'A', match='rm', ds=ds)
+    eq_(ct.n_cases, 30)
+    eq_(ct.n_cells, 2)
+
+    ct = Celltable('Y', 'cat', cat=('c', 'b'), ds=ds)
+    eq_(ct.n_cases, 30)
+    eq_(ct.X[0], 'c')
+    eq_(ct.X[-1], 'b')
+
+    ct = Celltable('Y', 'A', match='rm', ds=ds)
+    eq_(ct.n_cases, 30)
+    assert np.all(ct.groups['a0'] == ct.groups['a1'])
+
+    ct = Celltable('Y', 'cat', match='rm', cat=('c', 'b'), ds=ds)
+    eq_(ct.n_cases, 30)
+    eq_(ct.X[0], 'c')
+    eq_(ct.X[-1], 'b')
 
 
 def test_combine():

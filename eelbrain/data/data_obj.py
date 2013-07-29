@@ -510,7 +510,8 @@ class Celltable(object):
         match_func : callable
             see match
         cat : None | list of cells of X
-            Only retain data for these cells.
+            Only retain data for these cells. Data will be sorted in the order
+            of cells occuring in cat.
         ds : dataset
             If a dataset is specified, input items (Y / X / match / sub) can
             be str instead of data-objects, in which case they will be
@@ -525,50 +526,52 @@ class Celltable(object):
             >>> c = Celltable(Y, A % B, match=subject)
 
         """
+        self.sub = sub
+        self.cat = cat
+
         sub = assub(sub, ds)
-        Y = asdataobject(Y, sub, ds)
         if X is not None:
             X = ascategorial(X, sub, ds)
+            if cat is not None:
+                sort_idx = X.sort_idx(order=cat)
+                X = X[sort_idx]
+                if sub is None:
+                    sub = sort_idx
+                else:
+                    sub = sort_idx[sub]
+
+        Y = asdataobject(Y, sub, ds)
+
         if match is not None:
             match = asfactor(match, sub, ds)
-            assert len(match) == len(Y)
-            self.groups = {}
-
-        if cat is not None:
-            if not all(c in cat for c in X.cells):
-                catsub = X.isin(cat)
-                Y = Y[catsub]
-                X = X[catsub]
-                if match is not None:
-                    match = match[catsub]
-
-        # make sure the cases are sorted
-        if match is None:
-            if X is not None:
-                idx = X.sort_idx()
-                if not np.all(np.diff(idx) == 1):
-                    Y = Y[idx]
-                    X = X[idx]
-        else:
             cell_model = match if X is None else X % match
+            sort_idx = None
             if len(cell_model) > len(cell_model.cells):
+                # need to compress
                 Y = Y.compress(cell_model)
                 match = match.compress(cell_model)
                 if X is not None:
                     X = X.compress(cell_model)
+                    if cat is not None:
+                        sort_idx = X.sort_idx(order=cat)
             else:
-                idx = cell_model.sort_idx()
-                if np.any(np.diff(idx) != 1):
-                    Y = Y[idx]
-                    match = match[idx]
-                    if X is not None:
-                        X = X[idx]
+                sort_idx = cell_model.sort_idx()
+                if X is not None and cat is not None:
+                    X_ = X[sort_idx]
+                    sort_X_idx = X_.sort_idx(order=cat)
+                    sort_idx = sort_idx[sort_X_idx]
+
+            if (sort_idx is not None) and (not np.all(np.diff(sort_idx) == 1)):
+                Y = Y[sort_idx]
+                match = match[sort_idx]
+                if X is not None:
+                    X = X[sort_idx]
 
         # save args
         self.X = X
         self.Y = Y
-        self.sub = sub
         self.match = match
+        self.n_cases = len(Y)
 
         # extract cell data
         self.data = {}
@@ -577,8 +580,11 @@ class Celltable(object):
             self.data[None] = Y
             self.data_indexes[None] = slice(None)
             self.cells = [None]
+            self.n_cells = 1
             return
         self.cells = X.cells
+        self.n_cells = len(self.cells)
+        self.groups = {}
         for cell in X.cells:
             idx = X.index_opt(cell)
             self.data_indexes[cell] = idx
@@ -613,7 +619,7 @@ class Celltable(object):
         return rpr % (', '.join(args))
 
     def __len__(self):
-        return len(self.cells)
+        return self.n_cells
 
     def cellname(self, cell, delim=' '):
         """Produce a str label for a cell.
