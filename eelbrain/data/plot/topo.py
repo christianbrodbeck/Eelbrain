@@ -379,13 +379,12 @@ class butterfly(_base.eelfigure):
         if self._realtime_topo and ax and hasattr(ax, 'ID'):
             self._draw_topo(event.xdata)
 
-    def set_cmap(self, cmap, base=True, overlays=False, **kwa):
+    def set_cmap(self, cmap):
         "Change the colormap"
         for p in self.topo_plots:
-            p.set_cmap(cmap, base, overlays)
+            p.set_cmap(cmap)
         self.topo_kwargs['cmap'] = cmap
         self.draw()
-
 
     def set_vlim(self, vmax=None, vmin=None):
         """Change the range of values displayed in butterfly-plots.
@@ -437,7 +436,7 @@ class _plt_topomap(_utsnd._plt_im_array):
             self.contour = None
 
 
-class _ax_topomap:
+class _ax_topomap(_utsnd._ax_im_array):
     def __init__(self, ax, layers, title=True, sensors=None, ROI=None,
                  ROIcolor=True, proj='default', xlabel=None, im_frame=0.02,
                  vlims={}, **im_kwargs):
@@ -496,34 +495,6 @@ class _ax_topomap:
             self.title = ax.set_title(title)
         else:
             self.title = None
-
-    def set_cmap(self, cmap, base=True, overlays=False, **kwa):
-        """Change the colormap in the topomap
-
-        Parameters
-        ----------
-        cmap : str | colormap
-            New colormap.
-        base : bool
-            Apply the new colormap in the lowest layer of each plot.
-        overlays : bool
-            Apply the new colormap to the layers above the first layer.
-        """
-        if base and overlays:
-            layers = self.layers
-        elif base:
-            layers = self.layers[:1]
-        elif overlays:
-            layers = self.layers[1:]
-        else:
-            return
-
-        for l in layers:
-            l.set_cmap(cmap)
-
-    def set_vlim(self, vmax=None, meas=None, vmin=None):
-        for l in self.layers:
-            l.set_vlim(vmax, meas, vmin)
 
 
 class _Window_Topo:
@@ -707,6 +678,24 @@ class array(_base.eelfigure):
                   't': ' %r' % self.title if self.title else ''}
         txt = "<plot.topo.array{t} ({s})>".format(**kwargs)
         return txt
+
+    def set_cmap(self, cmap, meas=None):
+        """Change the colormap
+
+        Parameters
+        ----------
+        cmap : str | colormap
+            New colormap.
+        meas : None | str
+            Measurement to which to apply the colormap. With None, it is
+            applied to all.
+        """
+        for p in self.array_plots:
+            p.set_cmap(cmap, meas)
+        for w in self.topo_windows:
+            if w.plot is not None:
+                w.plot.set_cmap(cmap, meas)
+        self.draw()
 
     def set_topo_single(self, topo, t, parent_im_id='auto'):
         """

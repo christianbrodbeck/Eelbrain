@@ -54,10 +54,9 @@ class _plt_im_array(object):
         return args
 
     def set_cmap(self, cmap, meas=None):
-        if self.im is None:
-            return
-        self.im.set_cmap(cmap)
-        self._cmap = cmap
+        if (self.im is not None) and (meas is None or meas == self._meas):
+            self.im.set_cmap(cmap)
+            self._cmap = cmap
 
     def set_vlim(self, vmax, meas, vmin):
         if self.im is None:
@@ -146,29 +145,19 @@ class _ax_im_array(object):
     def kwargs(self):
         return self.layers[0].get_kwargs()
 
-    def set_cmap(self, cmap, base=True, overlays=False, **kwa):
+    def set_cmap(self, cmap, meas=None):
         """Change the colormap in the array plot
 
         Parameters
         ----------
         cmap : str | colormap
             New colormap.
-        base : bool
-            Apply the new colormap in the lowest layer of each plot.
-        overlays : bool
-            Apply the new colormap to the layers above the first layer.
+        meas : None | str
+            Measurement to which to apply the colormap. With None, it is
+            applied to all.
         """
-        if base and overlays:
-            layers = self.layers
-        elif base:
-            layers = self.layers[:1]
-        elif overlays:
-            layers = self.layers[1:]
-        else:
-            return
-
-        for l in layers:
-            l.set_cmap(cmap)
+        for l in self.layers:
+            l.set_cmap(cmap, meas)
 
     def set_vlim(self, vmax=None, meas=None, vmin=None):
         for l in self.layers:
@@ -209,20 +198,19 @@ class array(_base.eelfigure):
 
         self._show()
 
-    def set_cmap(self, cmap, base=True, overlays=False, **kwa):
+    def set_cmap(self, cmap, meas=None):
         """Change the colormap in the array plots
 
         Parameters
         ----------
         cmap : str | colormap
             New colormap.
-        base : bool
-            Apply the new colormap in the lowest layer of each plot.
-        overlays : bool
-            Apply the new colormap to the layers above the first layer.
+        meas : None | str
+            Measurement to which to apply the colormap. With None, it is
+            applied to all.
         """
         for p in self.plots:
-            p.set_cmap(cmap, base, overlays)
+            p.set_cmap(cmap, meas)
         self.draw()
 
     def set_vlim(self, vmax=None, meas=None, vmin=None):
