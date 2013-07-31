@@ -9,6 +9,18 @@ from numpy.testing import assert_array_equal
 from eelbrain.data import datasets, plot
 
 
+def test_map2d():
+    "Test plot.sensors.map2d"
+    ds = datasets.get_rand(utsnd=True)
+    Y = ds['utsnd']
+    p = plot.sensors.map2d(Y)
+    p.set_label_color('g')
+    p.set_label_text('idx')
+    p.show_connectivity()
+    p.show_connectivity(None)
+    p.close()
+
+
 def test_multi():
     "Test plot.sensors.multi"
     ds = datasets.get_rand(utsnd=True)
