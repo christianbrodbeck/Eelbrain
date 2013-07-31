@@ -1,7 +1,7 @@
 '''Statistical tests for ndvars'''
 from __future__ import division
 
-from math import ceil
+from math import ceil, floor
 
 import numpy as np
 import scipy.stats
@@ -19,8 +19,8 @@ from ..test import glm as _glm
 from ..test.test import resample
 
 
-__all__ = ['ttest', 'f_oneway', 'anova', 'cluster_anova', 'corr',
-           'cluster_corr', 'clean_time_axis']
+__all__ = ['ttest_1samp', 'ttest_ind', 'ttest_rel', 'f_oneway', 'anova',
+           'cluster_anova', 'corr', 'cluster_corr', 'clean_time_axis']
 __test__ = False
 
 
@@ -232,7 +232,211 @@ class cluster_corr:
         return table
 
 
-class ttest:
+class ttest_1samp:
+    """Element-wise one sample t-test
+
+    Attributes
+    ----------
+    all :
+        c1, c0, [c0 - c1, P]
+    p_val :
+        [c0 - c1, P]
+    """
+    def __init__(self, Y, popmean=0, match=None, sub=None, ds=None):
+        """Element-wise one sample t-test
+
+        Parameters
+        ----------
+        Y : ndvar
+            Dependent variable.
+        popmean : scalar
+            Value to compare Y against (default is 0).
+        match : None | factor
+            Combine data for these categories before testing.
+        sub : None | index-array
+            Perform test with a subset of the data.
+        ds : None | dataset
+            If a dataset is specified, all data-objects can be specified as
+            names of dataset variables
+        """
+        ct = Celltable(Y, match=match, sub=sub, ds=ds)
+
+        n = len(ct.Y)
+        df = n - 1
+        tmap = _t_1samp(ct.Y.x, popmean)
+        pmap = _ttest_p(tmap, df)
+
+        test_name = '1-Sample t-Test'
+        y = ct.Y.summary()
+        if popmean:
+            diff = y - popmean
+            if np.any(diff < 0):
+                diff.info['cmap'] = 'xpolar'
+        else:
+            diff = y
+
+        dims = ct.Y.dims[1:]
+
+        info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
+        info['test'] = test_name
+        pmap = ndvar(pmap, dims, info=info, name='p')
+
+        info = _cs.set_info_cs(ct.Y.info, _cs.default_info('T', vmin=0))
+        tmap = ndvar(tmap, dims, info=info, name='T')
+
+        # store attributes
+        self.popmean = popmean
+        self.n = n
+        self.df = df
+        self.name = test_name
+
+        self.y = y
+        self.diff = diff
+        self.t = tmap
+        self.p = pmap
+
+        self.diffp = [[diff, pmap]]
+        self.all = [y, [diff, pmap]] if popmean else [[diff, pmap]]
+
+    def __repr__(self):
+        r = "<%s against %g, n=%i>" % (self.name, self.popmean, self.n)
+        return r
+
+
+class ttest_ind:
+    """Element-wise independent samples t-test
+
+    Attributes
+    ----------
+    all :
+        c1, c0, [c0 - c1, P]
+    p_val :
+        [c0 - c1, P]
+    """
+    def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
+                 samples=None, pmin=0.1, tstart=None, tstop=None,):
+        """Element-wise t-test
+
+        Parameters
+        ----------
+        Y : ndvar
+            Dependent variable.
+        X : categorial
+            Model containing the cells which should be compared.
+        c1 : str | tuple | None
+            Test condition (cell of X). Can be None is X only contains two
+            cells.
+        c0 : str | tuple | None
+            Control condition (cell of X). Can be None if X only contains two
+            cells.
+        match : None | categorial
+            Combine cases with the same cell on X % match for testing.
+        sub : None | index-array
+            Perform the test with a subset of the data.
+        ds : None | dataset
+            If a dataset is specified, all data-objects can be specified as
+            names of dataset variables.
+        samples : None | int
+            Number of samples for permutation cluster test. For None, no
+            clusters are formed.
+        pmin : scalar (0 < pmin < 1)
+            Threshold p value for forming clusters in permutation cluster test.
+        tstart, tstop : None | scalar
+            Restrict time window for permutation cluster test.
+        """
+        # determine c1 and c0
+        if c1 is None or c0 is None:
+            if len(X.cells) == 2:
+                if c1 is None and c0 is None:
+                    c1, c0 = X.cells
+                elif c0 is None:
+                    i = abs(X.cells.index(c1) - 1)
+                    c0 = X.cells[i]
+                else:
+                    i = abs(X.cells.index(c0) - 1)
+                    c1 = X.cells[i]
+            else:
+                err = ("If X has more than 2 categories, c1 and c0 must be "
+                       "explicitly specified.")
+                raise ValueError(err)
+
+        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds)
+
+        test_name = 'Independent Samples t-Test'
+        n1 = len(ct.data[c1])
+        N = len(ct.Y)
+        n0 = N - n1
+        df = N - 2
+        tmap = _t_ind(ct.Y.x, n1, n0)
+        pmap = _ttest_p(tmap, df)
+        if samples:
+            tmin = _ttest_t(pmin, df)
+            cdist = _ClusterDist(ct.Y, samples, tmin, -tmin, 't', test_name,
+                                 tstart, tstop)
+            cdist.add_original(tmap)
+            if cdist.n_clusters:
+                for Y_ in resample(cdist.Y_perm, samples, replacement=False):
+                    tmap_ = _t_ind(Y_.x, n1, n0)
+                    cdist.add_perm(tmap_)
+
+        dims = ct.Y.dims[1:]
+
+        info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
+        info['test'] = test_name
+        pmap = ndvar(pmap, dims, info=info, name='p')
+
+        info = _cs.set_info_cs(ct.Y.info, _cs.default_info('T', vmin=0))
+        tmap = ndvar(tmap, dims, info=info, name='T')
+
+        c1_mean = ct.data[c1].summary(name=cellname(c1))
+        c0_mean = ct.data[c0].summary(name=cellname(c0))
+        diff = c1_mean - c0_mean
+        if np.any(diff < 0):
+            diff.info['cmap'] = 'xpolar'
+
+        # store attributes
+        self.n1 = n1
+        self.n0 = n0
+        self.df = df
+        self.name = test_name
+        self._c0 = c0
+        self._c1 = c1
+        self._samples = samples
+        self._ct = ct
+
+        self.c1 = c1_mean
+        self.c0 = c0_mean
+        self.diff = diff
+        self.t = tmap
+        self.p = pmap
+
+        self.diffp = [[diff, pmap]]
+        self.uncorected = [c1_mean, c0_mean] + self.diffp
+        if samples:
+            self.diff_cl = [diff, cdist.cpmap]
+            self.all = [c1_mean, c0_mean, self.diff_cl]
+            self._cdist = cdist
+            self.clusters = cdist.clusters
+        else:
+            self.all = self.uncorrected
+            self._cdist = None
+
+    def __repr__(self):
+        parts = ["<%s %r-%r" % (self.name, self._c1, self._c0)]
+        if self.n1 == self.n0:
+            parts.append(", n1=n0=%i" % self.n1)
+        else:
+            parts.append(", n1=%i, n0=%i" % (self.n1, self.n0))
+        if self._samples:
+            n = self._cdist.n_clusters
+            parts.append(", %i samples: %i clusters" % (self._samples, n))
+            if n:
+                parts.append(", p >= %.3f" % np.min(self.clusters['p'].x.min()))
+        parts.append('>')
+        return ''.join(parts)
+
+
+class ttest_rel:
     """Element-wise t-test
 
     Attributes
@@ -242,7 +446,7 @@ class ttest:
     p_val :
         [c0 - c1, P]
     """
-    def __init__(self, Y='meg', X=None, c1=None, c0=0, match=None, sub=None,
+    def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None,
                  ds=None, samples=None, pmin=0.1, tstart=None, tstop=None,):
         """Element-wise t-test
 
@@ -250,20 +454,21 @@ class ttest:
         ----------
         Y : ndvar
             Dependent variable.
-        X : categorial | None
-            Model; None if the grand average should be tested against a
-            constant.
+        X : categorial
+            Model containing the cells which should be compared.
         c1 : str | tuple | None
-            Test condition (cell of X).
-        c0 : str | tuple | scalar
-            Control condition (cell of X or constant to test against).
+            Test condition (cell of X). Can be None is X only contains two
+            cells.
+        c0 : str | tuple | None
+            Control condition (cell of X). Can be None if X only contains two
+            cells.
         match : factor
-            Match cases for a repeated measures t-test.
-        sub : index-array
-            perform test with a subset of the data
-        ds : dataset
+            Match cases for a repeated measures test.
+        sub : None | index-array
+            Perform the test with a subset of the data.
+        ds : None | dataset
             If a dataset is specified, all data-objects can be specified as
-            names of dataset variables
+            names of dataset variables.
         samples : None | int
             Number of samples for permutation cluster test. For None, no
             clusters are formed.
@@ -282,124 +487,97 @@ class ttest:
                        "explicitly specified.")
                 raise ValueError(err)
 
-        if isinstance(c0, (str, tuple)):
-            cat = (c1, c0)
-        else:
-            cat = (c1,)
+        cat = (c1, c0)
         ct = Celltable(Y, X, match, sub, cat=cat, ds=ds)
+        if not ct.all_within:
+            raise ValueError("XXX")
 
-        if isinstance(c0, (basestring, tuple)):  # two samples
-            c1_mean = ct.data[c1].summary(name=cellname(c1))
-            c0_mean = ct.data[c0].summary(name=cellname(c0))
-            diff = c1_mean - c0_mean
-            if ct.all_within:
-                test_name = 'Related Samples t-Test'
-                n = len(ct.Y) / 2
-                df = n - 1
-                T = _t_rel(ct.Y)
-                P = _ttest_p(T, df)
-                if samples:
-                    tmin = _ttest_t(pmin, df)
-                    cdist = _ClusterDist(ct.Y, samples, tmin, -tmin, 't', test_name,
-                                        tstart, tstop)
-                    cdist.add_original(T)
-                    if cdist.n_clusters:
-                        for Y_ in resample(cdist.Y_perm, samples, replacement=False):
-                            tmap = _t_rel(Y_.x)
-                            cdist.add_perm(tmap)
-            else:
-                test_name = 'Independent Samples t-Test'
-                n1 = len(ct.data[c1])
-                N = len(ct.Y)
-                n2 = N - n1
-                df = N - 2
-                T = _t_ind(ct.Y.x, n1, n2)
-                P = _ttest_p(T, df)
-                if samples:
-                    tmin = _ttest_t(pmin, df)
-                    cdist = _ClusterDist(ct.Y, samples, tmin, -tmin, 't', test_name,
-                                        tstart, tstop)
-                    cdist.add_original(T)
-                    if cdist.n_clusters:
-                        for Y_ in resample(cdist.Y_perm, samples, replacement=False):
-                            tmap = _t_ind(Y_.x, n1, n2)
-                            cdist.add_perm(tmap)
-                n = (n1, n2)
-        elif np.isscalar(c0):  # one sample
-            c1_data = ct.data[c1]
-            x = c1_data.x
-            c1_mean = c1_data.summary()
-            c0_mean = None
-
-            # compute T and P
-            if np.prod(x.shape) > 2 ** 25:
-                ax = np.argmax(x.shape[1:]) + 1
-                x = x.swapaxes(ax, 1)
-                mod_len = x.shape[1]
-                fix_shape = x.shape[0:1] + x.shape[2:]
-                N = 2 ** 25 // np.prod(fix_shape)
-                res = [scipy.stats.ttest_1samp(x[:, i:i + N], popmean=c0, axis=0)
-                       for i in xrange(0, mod_len, N)]
-                T = np.vstack((v[0].swapaxes(ax, 1) for v in res))
-                P = np.vstack((v[1].swapaxes(ax, 1) for v in res))
-            else:
-                T, P = scipy.stats.ttest_1samp(x, popmean=c0, axis=0)
-
-            n = len(c1_data)
-            df = n - 1
-            test_name = '1-Sample t-Test'
-            if c0:
-                diff = c1_mean - c0
-            else:
-                diff = c1_mean
-        else:
-            raise ValueError('invalid c0: %r. Must be string or scalar.' % c0)
+        test_name = 'Related Samples t-Test'
+        n = len(ct.Y) / 2
+        df = n - 1
+        tmap = _t_rel(ct.Y.x)
+        pmap = _ttest_p(tmap, df)
+        if samples:
+            tmin = _ttest_t(pmin, df)
+            cdist = _ClusterDist(ct.Y, samples, tmin, -tmin, 't', test_name,
+                                tstart, tstop)
+            cdist.add_original(tmap)
+            if cdist.n_clusters:
+                for Y_ in resample(cdist.Y_perm, samples, replacement=False):
+                    tmap_ = _t_rel(Y_.x)
+                    cdist.add_perm(tmap_)
 
         dims = ct.Y.dims[1:]
 
         info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
         info['test'] = test_name
-        P = ndvar(P, dims, info=info, name='p')
+        pmap = ndvar(pmap, dims, info=info, name='p')
 
         info = _cs.set_info_cs(ct.Y.info, _cs.default_info('T', vmin=0))
-        T = ndvar(T, dims, info=info, name='T')
+        tmap = ndvar(tmap, dims, info=info, name='T')
 
-        # diff
+        c1_mean = ct.data[c1].summary(name=cellname(c1))
+        c0_mean = ct.data[c0].summary(name=cellname(c0))
+        diff = c1_mean - c0_mean
         if np.any(diff < 0):
             diff.info['cmap'] = 'xpolar'
 
-        # add Y.name to dataset name
-        Yname = getattr(Y, 'name', None)
-        if Yname:
-            test_name = ' of '.join((test_name, Yname))
-
         # store attributes
-        self.t = T
-        self.p = P
         self.n = n
         self.df = df
         self.name = test_name
-        self.c1_mean = c1_mean
-        if c0_mean:
-            self.c0_mean = c0_mean
+        self._c0 = c0
+        self._c1 = c1
+        self._samples = samples
+        self._ct = ct
 
+        self.c1 = c1_mean
+        self.c0 = c0_mean
         self.diff = diff
-        self.p_val = [[diff, P]]
+        self.t = tmap
+        self.p = pmap
 
-        if c0_mean:
-            all_uncorrected = [c1_mean, c0_mean] + self.p_val
-        elif c0:
-            all_uncorrected = [c1_mean] + self.p_val
-        else:
-            all_uncorrected = self.p_val
-
+        self.diffp = [[diff, pmap]]
+        self.uncorrected = [c1_mean, c0_mean] + self.diffp
         if samples:
             self.diff_cl = [diff, cdist.cpmap]
             self.all = [c1_mean, c0_mean, self.diff_cl]
-            self.cdist = cdist
+            self._cdist = cdist
             self.clusters = cdist.clusters
         else:
-            self.all = all_uncorrected
+            self.all = self.uncorrected
+            self._cdist = None
+
+    def __repr__(self):
+        parts = ["<%s %r-%r" % (self.name, self._c1, self._c0)]
+        parts.append(", n=%i" % self.n)
+        if self._samples:
+            n = self._cdist.n_clusters
+            parts.append(", %i samples: %i clusters" % (self._samples, n))
+            if n:
+                parts.append(", p >= %.3f" % np.min(self.clusters['p'].x.min()))
+        parts.append('>')
+        return ''.join(parts)
+
+
+def _t_1samp(a, popmean):
+    "Based on scipy.stats.ttest_1samp"
+    n = len(a)
+    if np.prod(a.shape) > 2 ** 25:
+        a_flat = a.reshape((n, -1))
+        n_samp = a_flat.shape[1]
+        step = int(floor(2 ** 25 / n))
+        t_flat = np.empty(n_samp)
+        for i in xrange(0, n_samp, step):
+            t_flat[i:i + step] = _t_1samp(a_flat[i:i + step], popmean)
+        t = t_flat.reshape(a.shape[1:])
+        return t
+
+    d = np.mean(a, 0) - popmean
+    v = np.var(a, 0, ddof=1)
+    denom = np.sqrt(v / n)
+    t = np.divide(d, denom)
+    return t
 
 
 def _t_ind(x, n1, n2, equal_var=True):
@@ -462,7 +640,7 @@ def _ttest_p(t, df):
 
 def _ttest_t(p, df):
     "Positive t value for two tailed probability"
-    t = scipy.stats.distributions.t.isf(p / 2, df)
+    t = scipy.stats.t.isf(p / 2, df)
     return t
 
 
