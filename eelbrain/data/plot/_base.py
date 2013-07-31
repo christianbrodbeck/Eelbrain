@@ -87,11 +87,13 @@ from ...fmtxt import texify
 from ..colorspaces import symmetric_cmaps, zerobased_cmaps
 from ..data_obj import ascategorial, asndvar, DimensionMismatchError
 
-try:
-    from ...wxutils.mpl_canvas import CanvasFrame
-    backend = 'wx'
-except:
-    backend = 'mpl'
+backend = 'mpl'
+if mpl.get_backend().lower().startswith('wx'):
+    try:
+        from ...wxutils.mpl_canvas import CanvasFrame
+        backend = 'wx'
+    except:
+        pass
 
 
 defaults = {'DPI': 72, 'maxw': 16, 'maxh': 10}
@@ -602,12 +604,9 @@ class eelfigure(object):
         frame = None
         self._is_wx = False
         if backend == 'wx':
-            try:
-                frame = CanvasFrame(title=title, eelfigure=self, **fig_kwa)
-                self._is_wx = True
-            except:
-                pass
-        if frame is None:
+            frame = CanvasFrame(title=title, eelfigure=self, **fig_kwa)
+            self._is_wx = True
+        else:
             frame = mpl_figure(**fig_kwa)
 
         figure = frame.figure
