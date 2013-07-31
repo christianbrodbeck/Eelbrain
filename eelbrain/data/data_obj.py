@@ -4135,7 +4135,7 @@ class Sensor(Dimension):
     adjacent = False
 
     def __init__(self, locs, names=None, groups=None, sysname=None,
-                 proj2d='z root'):
+                 proj2d='z root', connect_dist=1.75):
         """
         Parameters
         ----------
@@ -4152,11 +4152,12 @@ class Sensor(Dimension):
             Name of the sensor system (only used for information purposes).
         proj2d:
             default 2d projection. For options, see the class documentation.
-
+        connect_dist : None | scalar
+            For each sensor, neighbors are defined as those sensors within
+            ``connect_dist`` times the distance of the closest neighbor.
 
         Examples
         --------
-
         >>> sensors = [(0,  0,   0),
                        (0, -.25, -.45)]
         >>> sensor_dim = Sensor(sensors, names=["Cz", "Pz"])
@@ -4164,6 +4165,7 @@ class Sensor(Dimension):
         """
         self.sysname = sysname
         self.default_proj2d = proj2d
+        self._connect_dist = connect_dist
 
         # 'z root' transformation fails with 32-bit floats
         self.locs = locs = np.asarray(locs, dtype=np.float64)
@@ -4247,8 +4249,27 @@ class Sensor(Dimension):
         else:
             return int(name)
 
-    def connectivity(self):
-        nb = self.neighbors()
+    def connectivity(self, connect_dist=None):
+        """Construct a connectivity matrix in COOrdinate format
+
+        Parameters
+        ----------
+        connect_dist : None | scalar
+            For each sensor, neighbors are defined as those sensors within
+            ``connect_dist`` times the distance of the closest neighbor. If
+            None, the default specified on initialization is used.
+
+        Returns
+        -------
+        connectivity : scipy.sparse.coo_matrix
+            Connectivity.
+
+        See Also
+        --------
+        .neighbors() : Neighboring sensors for each sensor in a dictionary.
+        """
+        mult = connect_dist or self._connect_dist
+        nb = self.neighbors(mult)
 
         # sparse representation (remove duplicate connections)
         nbs = collections.defaultdict(set)
@@ -4591,21 +4612,27 @@ class Sensor(Dimension):
                      proj2d=self.default_proj2d)
         return new
 
-    def neighbors(self, mult=1.5):
+    def neighbors(self, connect_dist=None):
         """Find neighboring sensors.
 
         Parameters
         ----------
-        mult : scalar
-            Multiplicator. For each point, neighbors are defined as those
-            sensors within mult times the distance of the closest neighbor.
+        connect_dist : None | scalar
+            For each sensor, neighbors are defined as those sensors within
+            ``connect_dist`` times the distance of the closest neighbor. If
+            None, the default specified on initialization is used.
 
         Returns
         -------
         neighbors : dict
             Dictionaries whose keys are sensor indices, and whose values are
             lists of neighbors represented as sensor indices.
+
+        See Also
+        --------
+        .connectivity() : neighbor connectivity as sparse matrix
         """
+        connect_dist = connect_dist or self._connect_dist
         nb = {}
         pd = pdist(self.locs)
         pd = squareform(pd)
@@ -4613,7 +4640,7 @@ class Sensor(Dimension):
         for i in xrange(n):
             d = pd[i, np.arange(n)]
             d[i] = d.max()
-            idx = np.nonzero(d < d.min() * mult)[0]
+            idx = np.nonzero(d < d.min() * connect_dist)[0]
             nb[i] = idx
 
         return nb
