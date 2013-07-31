@@ -96,6 +96,19 @@ def test_celltable():
     eq_(ct.X[0], 'c')
     eq_(ct.X[-1], 'b')
 
+    # test rm sorting
+    ds = dataset()
+    ds['rm'] = factor('abc', rep=4)
+    ds['Y'] = var(np.arange(3.).repeat(4))
+    ds['X'] = factor('ab', rep=2, tile=3)
+    idx = np.arange(12)
+    np.random.shuffle(idx)
+    ds = ds[idx]
+    ct = Celltable('Y', 'X', 'rm', ds=ds)
+    assert_array_equal(ct.match, factor('abc', tile=2))
+    assert_array_equal(ct.Y, np.tile(np.arange(3.), 2))
+    assert_array_equal(ct.X, factor('ab', rep=3))
+
 
 def test_combine():
     "Test combine()"
