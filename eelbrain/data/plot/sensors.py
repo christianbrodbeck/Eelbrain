@@ -41,6 +41,28 @@ kwargs_mono = dict(mc='k',
                    strlc='k')
 
 
+class _plt_connectivity:
+    def __init__(self, ax, locs, connectivity, linestyle={}):
+        self.ax = ax
+        self.locs = locs
+        self._h = []
+        self.show(connectivity, linestyle)
+
+    def show(self, connectivity, linestyle={}):
+        while self._h:
+            self._h.pop().remove()
+
+        if connectivity is None:
+            return
+
+        for c, r in zip(connectivity.col, connectivity.row):
+            x = self.locs[[c, r], 0]
+            y = self.locs[[c, r], 1]
+            line = plt.Line2D(x, y, **linestyle)
+            self.ax.add_line(line)
+            self._h.append(line)
+
+
 def _ax_map2d_fast(ax, sensors, proj='default',
                    m='x', mew=.5, mc='b', ms=3,):
     locs = sensors.get_locs_2d(proj=proj)
@@ -49,25 +71,30 @@ def _ax_map2d_fast(ax, sensors, proj='default',
     return h
 
 
-def _ax_map2d(ax, sensors, proj='default', extent=1,
-              frame=.02,
-              kwargs=dict(
-                          marker='x',  # symbol
-                          color='b',  # mpl plot kwargs ...
-                          ms=3,  # marker size
-                          markeredgewidth=.5,
-                          ls='',
-                          ),
-              ):
-    ax.set_aspect('equal')
-    ax.set_frame_on(False)
-    ax.set_axis_off()
+class _ax_map2d:
+    def __init__(self, ax, sensors, proj='default', extent=1,
+                 frame=.02,
+                 kwargs=dict(
+                             marker='x',  # symbol
+                             color='b',  # mpl plot kwargs ...
+                             ms=3,  # marker size
+                             markeredgewidth=.5,
+                             ls='',
+                             ),
+                 ):
+        self.ax = ax
 
-    h = _plt_map2d(ax, sensors, proj=proj, extent=extent, kwargs=kwargs)
+        ax.set_aspect('equal')
+        ax.set_frame_on(False)
+        ax.set_axis_off()
 
-    ax.set_xlim(-frame, 1 + frame)
-    return h
+        h = _plt_map2d(ax, sensors, proj=proj, extent=extent, kwargs=kwargs)
+        self.sensors = h
 
+        locs = sensors.get_locs_2d(proj=proj, extent=extent)
+        self.connectivity = _plt_connectivity(ax, locs, None)
+
+        ax.set_xlim(-frame, 1 + frame)
 
 
 class _plt_map2d:
@@ -186,6 +213,94 @@ class _plt_map2d:
         for h in self.labels:
             h.set_color(color)
 
+
+class _tb_sensors_mixin:
+    # expects self._sensor_plots to be list of _plt_map2d
+    def __init__(self):
+        self._label_color = 'k'
+
+    def _fill_toolbar(self, tb):
+        import wx
+        tb.AddSeparator()
+
+        # sensor labels
+        lbl = wx.StaticText(tb, -1, "Labels:")
+        tb.AddControl(lbl)
+        choice = wx.Choice(tb, -1, choices=['None', 'Index', 'Name'])
+        tb.AddControl(choice)
+        self._SensorLabelChoice = choice
+        choice.Bind(wx.EVT_CHOICE, self._OnSensorLabelChoice)
+
+        # sensor label color
+        choices = ['black', 'white', 'blue', 'green', 'red', 'cyan', 'magenta',
+                   'yellow']
+        choice = wx.Choice(tb, -1, choices=choices)
+        tb.AddControl(choice)
+        self._SensorLabelColorChoice = choice
+        choice.Bind(wx.EVT_CHOICE, self._OnSensorLabelColorChoice)
+
+        btn = wx.Button(tb, label="Mark")  # , style=wx.BU_EXACTFIT)
+        btn.Bind(wx.EVT_BUTTON, self._OnMarkSensor)
+        tb.AddControl(btn)
+
+    def _OnMarkSensor(self, event):
+        import wx
+        msg = "Channels to mark, separated by comma"
+        dlg = wx.TextEntryDialog(self._frame, msg, "Mark Sensor")
+        if dlg.ShowModal() != wx.ID_OK:
+            return
+
+        chs = filter(None, map(unicode.strip, dlg.GetValue().split(',')))
+        try:
+            self.mark_sensors(chs)
+        except Exception as exc:
+            msg = '%s: %s' % (type(exc).__name__, exc)
+            sty = wx.OK | wx.ICON_ERROR
+            wx.MessageBox(msg, "Mark Sensors Failed for %r" % chs, style=sty)
+
+    def _OnSensorLabelChoice(self, event):
+        sel = event.GetSelection()
+        text = [None, 'idx', 'name'][sel]
+        self.set_label_text(text)
+
+    def _OnSensorLabelColorChoice(self, event):
+        sel = event.GetSelection()
+        color = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y'][sel]
+        self.set_label_color(color)
+
+    def mark_sensors(self, sensors, marker='bo'):
+        for p in self._sensor_plots:
+            p.mark_sensors(sensors, marker)
+        self.draw()
+
+    def set_label_color(self, color='w'):
+        if hasattr(self, '_SensorLabelChoice'):
+            sels = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y']
+            if color in sels:
+                sel = sels.index(color)
+                self._SensorLabelColorChoice.SetSelection(sel)
+
+        self._label_color = color
+        for p in self._sensor_plots:
+            p.set_label_color(color)
+        self.draw()
+
+    def set_label_text(self, text='idx'):
+        """Add/remove sensor labels
+
+        Parameters
+        ----------
+        labels : None | 'idx' | 'name' | 'fullname'
+            Content of the labels. For 'name', any prefix common to all names
+            is removed; with 'fullname', the full name is shown.
+        """
+        if hasattr(self, '_SensorLabelChoice'):
+            sel = [None, 'idx', 'name'].index(text)
+            self._SensorLabelChoice.SetSelection(sel)
+
+        for p in self._sensor_plots:
+            p.show_labels(text, color=self._label_color)
+        self.draw()
 
 
 class multi(_base.eelfigure):
@@ -405,19 +520,19 @@ class multi(_base.eelfigure):
 
     def update_ROI_plot(self):
         for h in self._sensor_maps:
-            h.mark_sensors(self.ROI, **self.ROI_kwargs)
+            h.sensors.mark_sensors(self.ROI, **self.ROI_kwargs)
         self.canvas.draw()
 
 
 
 
 
-class map2d(_base.eelfigure):
+class map2d(_tb_sensors_mixin, _base.eelfigure):
     """
     Plot a 2d Sensor Map.
 
     """
-    def __init__(self, sensors, labels='idx', proj='default', ROI=None,
+    def __init__(self, sensors, labels='name', proj='default', ROI=None,
                  frame=.05, **layout):
         """Plot sensor positions in 2 dimensions
 
@@ -442,54 +557,25 @@ class map2d(_base.eelfigure):
         sens_name = getattr(sensors, 'sysname', None)
         if sens_name:
             ftitle = '%s: %s' % (ftitle, sens_name)
-        fig_kwa = dict(facecolor='w')
-        super(map2d, self).__init__(ftitle, 1, layout, 1, 3, fig_kwa=fig_kwa)
+        _base.eelfigure.__init__(self, ftitle, 1, layout, 1, 7)
+        _tb_sensors_mixin.__init__(self)
 
         # store args
         self._sensors = sensors
         self._proj = proj
         self._ROIs = []
+        self._connectivity = None
 
         ax = self.figure.add_axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
         self.axes = ax
         self._markers = _ax_map2d(ax, sensors, proj=proj)
+        self._sensor_plots = [self._markers.sensors]
         if labels:
-            self._markers.show_labels(labels)
+            self.set_label_text(labels)
         if ROI is not None:
             self.plot_ROI(ROI)
 
         self._show(tight=False)
-
-    def _fill_toolbar(self, tb):
-        tb.AddSeparator()
-
-        # plot labels
-        for Id, name in [(_ID_label_None, "No Labels"),
-                         (_ID_label_Ids, "Indexes"),
-                         (_ID_label_names, "Names"), ]:
-            btn = wx.Button(tb, Id, name)
-            tb.AddControl(btn)
-            btn.Bind(wx.EVT_BUTTON, self._OnPlotLabels)
-
-    def _OnPlotLabels(self, event):
-        Id = event.GetId()
-        labels = {_ID_label_None: None,
-                  _ID_label_Ids: "idx",
-                  _ID_label_names: "name"}[Id]
-        self.plot_labels(labels)
-
-    def plot_labels(self, labels='idx'):
-        """
-        Add labels to all sensors.
-
-        Parameters
-        ----------
-        labels : None | 'idx' | 'name' | 'fullname'
-            Content of the labels. For 'name', any prefix common to all names
-            is removed; with 'fullname', the full name is shown.
-        """
-        self._markers.show_labels(labels)
-        self.canvas.draw()
 
     def plot_ROI(self, ROI, kwargs=dict(marker='o',  # symbol
                                         color='r',  # mpl plot kwargs ...
@@ -497,8 +583,7 @@ class map2d(_base.eelfigure):
                                         markeredgewidth=.9,
                                         ls='',
                                         )):
-        """
-        Mark sensors in a ROI.
+        """Mark sensors in a ROI.
 
         Parameters
         ----------
@@ -507,6 +592,10 @@ class map2d(_base.eelfigure):
         kwargs : dict
             Dict with kwargs for customizing the sensor plot (matplotlib plot
             kwargs).
+
+        See Also
+        --------
+        .remove_ROIs() : Remove the plotted ROIs
         """
         h = _plt_map2d(self.axes, self._sensors, proj=self._proj, ROI=ROI, kwargs=kwargs)
         self._ROIs.extend(h)
@@ -519,6 +608,26 @@ class map2d(_base.eelfigure):
             h.remove()
         self.canvas.draw()
 
+    def show_connectivity(self, show=True):
+        """Show the sensor connectivity as lines connecting sensors.
+
+        Parameters
+        ----------
+        show : None | True | scalar
+            True to show the default connectivity.
+            None to remove the connectivity lines.
+            Scalar to plot connectivity for a different connect_dist parameter
+            (see Sensor.connectivity()).
+        """
+        if not show:
+            self._markers.connectivity.show(None)
+        else:
+            if show is True:
+                conn = self._sensors.connectivity()
+            else:
+                conn = self._sensors.connectivity(show)
+            self._markers.connectivity.show(conn)
+        self.draw()
 
 
 def map3d(sensors, marker='c*', labels=False, head=0):

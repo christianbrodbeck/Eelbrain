@@ -12,6 +12,7 @@ import numpy as np
 
 from . import _base
 from . import utsnd as _utsnd
+from .sensors import _tb_sensors_mixin
 from .sensors import _plt_map2d
 
 # try:
@@ -24,10 +25,10 @@ __hide__ = ['cs', 'test', 'utsnd']
 
 
 
-class topomap(_base.eelfigure):
+class topomap(_tb_sensors_mixin, _base.eelfigure):
     "Plot individual topogeraphies"
     def __init__(self, epochs, Xax=None, sensors=True, proj='default',
-                 vmax=None, title=None, res=100, interpolation='nearest',
+                 vmax=None, title=None, res=200, interpolation='nearest',
                  ds=None, **layout):
         """
         Plot individual topogeraphies
@@ -56,8 +57,9 @@ class topomap(_base.eelfigure):
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
-        super(topomap, self).__init__("plot.topo.topomap", nax, layout, 1, 7,
-                                      figtitle=title)
+        _base.eelfigure.__init__(self, "plot.topo.topomap", nax, layout, 1, 7,
+                                 figtitle=title)
+        _tb_sensors_mixin.__init__(self)
 
         topo_kwargs = {'res': res,
                        'interpolation': interpolation,
@@ -66,70 +68,17 @@ class topomap(_base.eelfigure):
                        'vlims': _base.find_fig_vlims(epochs)}
 
         self._topomaps = []
+        self._sensor_plots = []
         for i, ax, layers in self._iter_ax(epochs):
             ax.ID = i
             h = _ax_topomap(ax, layers, title=True, **topo_kwargs)
             self._topomaps.append(h)
+            self._sensor_plots.append(h.sensors)
 
-        self._label_color = 'k'
         if isinstance(sensors, str):
             self.set_label_text(sensors)
 
         self._show()
-
-    def _fill_toolbar(self, tb):
-        import wx
-        tb.AddSeparator()
-
-        # sensor labels
-        lbl = wx.StaticText(tb, -1, "Labels:")
-        tb.AddControl(lbl)
-        choice = wx.Choice(tb, -1, choices=['None', 'Index', 'Name'])
-        tb.AddControl(choice)
-        self._SensorLabelChoice = choice
-        choice.Bind(wx.EVT_CHOICE, self._OnSensorLabelChoice)
-
-        # sensor label color
-        choices = ['black', 'white', 'blue', 'green', 'red', 'cyan', 'magenta',
-                   'yellow']
-        choice = wx.Choice(tb, -1, choices=choices)
-        tb.AddControl(choice)
-        self._SensorLabelColorChoice = choice
-        choice.Bind(wx.EVT_CHOICE, self._OnSensorLabelColorChoice)
-
-        btn = wx.Button(tb, label="Mark")  # , style=wx.BU_EXACTFIT)
-        btn.Bind(wx.EVT_BUTTON, self._OnMarkSensor)
-        tb.AddControl(btn)
-
-    def _OnMarkSensor(self, event):
-        import wx
-        msg = "Channels to mark, separated by comma"
-        dlg = wx.TextEntryDialog(self._frame, msg, "Mark Sensor")
-        if dlg.ShowModal() != wx.ID_OK:
-            return
-
-        chs = filter(None, map(unicode.strip, dlg.GetValue().split(',')))
-        try:
-            self.mark_sensors(chs)
-        except Exception as exc:
-            msg = '%s: %s' % (type(exc).__name__, exc)
-            sty = wx.OK | wx.ICON_ERROR
-            wx.MessageBox(msg, "Mark Sensors Failed for %r" % chs, style=sty)
-
-    def _OnSensorLabelColorChoice(self, event):
-        sel = event.GetSelection()
-        color = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y'][sel]
-        self.set_label_color(color)
-
-    def _OnSensorLabelChoice(self, event):
-        sel = event.GetSelection()
-        text = [None, 'idx', 'name'][sel]
-        self.set_label_text(text)
-
-    def mark_sensors(self, sensors, marker='bo'):
-        for p in self._topomaps:
-            p.sensors.mark_sensors(sensors, marker)
-        self.draw()
 
     def set_cmap(self, cmap, base=True, overlays=False, **kwa):
         """Change the colormap in the topomaps
@@ -145,35 +94,6 @@ class topomap(_base.eelfigure):
         """
         for p in self._topomaps:
             p.set_cmap(cmap, base, overlays)
-        self.draw()
-
-    def set_label_color(self, color='w'):
-        if hasattr(self, '_SensorLabelChoice'):
-            sels = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y']
-            if color in sels:
-                sel = sels.index(color)
-                self._SensorLabelColorChoice.SetSelection(sel)
-
-        self._label_color = color
-        for p in self._topomaps:
-            p.sensors.set_label_color(color)
-        self.draw()
-
-    def set_label_text(self, text='idx'):
-        """Add/remove sensor labels
-
-        Parameters
-        ----------
-        labels : None | 'idx' | 'name' | 'fullname'
-            Content of the labels. For 'name', any prefix common to all names
-            is removed; with 'fullname', the full name is shown.
-        """
-        if hasattr(self, '_SensorLabelChoice'):
-            sel = [None, 'idx', 'name'].index(text)
-            self._SensorLabelChoice.SetSelection(sel)
-
-        for p in self._topomaps:
-            p.sensors.show_labels(text, color=self._label_color)
         self.draw()
 
     def set_vlim(self, vmax=None, meas=None, vmin=None):
