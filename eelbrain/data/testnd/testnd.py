@@ -2,6 +2,7 @@
 from __future__ import division
 
 from math import ceil, floor
+from time import time as current_time
 
 import numpy as np
 import scipy.stats
@@ -1014,6 +1015,7 @@ class _ClusterDist:
         self.pmap = ndvar(pmap, dims=dims[1:], name=self.name, info=info)
 
         self.all = [[self.pmap, self.cpmap]]
+        self._dt = current_time() - self._t0
 
     def _label_clusters(self, pmap):
         """Find clusters on a statistical parameter map
@@ -1140,6 +1142,7 @@ class _ClusterDist:
         self._original_pmap = pmap
         self._cids = cids
         self.n_clusters = len(cids)
+        self._t0 = current_time()
         if self.n_clusters == 0:
             self._finalize()
 
