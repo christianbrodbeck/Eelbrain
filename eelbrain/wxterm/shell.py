@@ -16,7 +16,7 @@ import wx
 import wx.stc
 import wx.lib.colourselect
 import wx.py.shell
-from wx.py.frame import ID_SAVEHISTORY, ID_AUTO_SAVESETTINGS
+from wx.py.frame import ID_AUTO_SAVESETTINGS, ID_COPY_PLUS, ID_SAVEHISTORY
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -1134,6 +1134,26 @@ class ShellFrame(wx.py.shell.ShellFrame):
         else:
             logging.debug("can't copy: %s" % win)
 
+    def OnCopyPlus(self, event):
+        win = wx.Window.FindFocus()
+        if hasattr(win, 'CopyWithPrompts'):
+            win.CopyWithPrompts()
+            return
+
+        win = self.get_active_window()
+        if hasattr(win, 'canvas'):  # matplotlib figure
+            if wx.TheClipboard.Open():
+                try:
+                    # save temporary pdf file
+                    path = tempfile.mktemp('.png')
+                    win.canvas.figure.savefig(path)
+                    # copy path
+                    do = wx.FileDataObject()
+                    do.AddFile(path)
+                    wx.TheClipboard.SetData(do)
+                finally:
+                    wx.TheClipboard.Close()
+
     def OnDuplicate(self, event):
         win = self.get_active_window()
         Id = event.GetId()
@@ -1572,6 +1592,14 @@ class ShellFrame(wx.py.shell.ShellFrame):
                   hasattr(win.canvas.figure, 'savefig')):  # matplotlib figure
                 event.Enable(True)
                 return
+            elif id_ == ID_COPY_PLUS:
+                if (hasattr(win, 'canvas') and hasattr(win.canvas, 'figure')
+                    and hasattr(win.canvas.figure, 'savefig')):  # matplotlib figure
+                    event.Enable(True)
+                    event.SetText("Cop&y as PNG \tCtrl+Shift+C")
+                    return
+                else:
+                    event.SetText("Cop&y Plus \tCtrl+Shift+C")
             super(ShellFrame, self).OnUpdateMenu(event)
 
     def OnWindowMenuActivateWindow(self, event):
