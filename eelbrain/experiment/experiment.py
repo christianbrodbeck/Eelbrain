@@ -657,6 +657,61 @@ class FileTree(TreeModel):
 
         return path
 
+    def show_file_status(self, temp, row, col=None, count=True, present='X',
+                         absent='-', **kwargs):
+        """
+        Compile a table about the existence of files
+
+        Parameters
+        ----------
+        temp : str
+            The names of the path template for te files to examine.
+        row : str
+            Field over which to alternate rows.
+        col : None | str
+            Field over which to alternate columns.
+        count : bool
+            Add a column with a number for each subject.
+        """
+        if col is None:
+            ncol = 1
+        else:
+            col_v = self.get_field_values(col)
+            ncol = len(col_v)
+
+        # table header
+        table = fmtxt.Table('r' * bool(count) + 'l' * (ncol + 1))
+        if count:
+            table.cell()
+        table.cell(row.capitalize())
+        if col is None:
+            table.cell(temp.capitalize())
+        else:
+            for name in col_v:
+                table.cell(name.capitalize())
+        table.midrule()
+
+        # body
+        for i, row_v in enumerate(self.iter(row, **kwargs)):
+            if count:
+                table.cell(i)
+            table.cell(row_v)
+            exist = []
+            if col is None:
+                path = self.get(temp)
+                exist.append(os.path.exists(path))
+            else:
+                for v in col_v:
+                    path = self.get(temp, **{col: v})
+                    exist.append(os.path.exists(path))
+
+            for exists in exist:
+                if exists:
+                    table.cell(present)
+                else:
+                    table.cell(absent)
+
+        return table
 
     def push(self, dst_root, names, overwrite=False, **kwargs):
         """Copy files to another experiment root folder.
