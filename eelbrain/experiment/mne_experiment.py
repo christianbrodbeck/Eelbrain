@@ -229,7 +229,7 @@ class MneExperiment(FileTree):
     # kind : 'auto', 'manual', 'make'
     #     How the rejection is derived; 'auto': use the parameters to do the
     #     selection on the fly; 'manual': manually create a rejection file (use
-    #     the selection GUI .make_epoch_selection()); 'make' a rejection file
+    #     the selection GUI .make_rej()); 'make' a rejection file
     #     is created by the user
     #
     # For manual rejection
@@ -1163,7 +1163,7 @@ class MneExperiment(FileTree):
                 path = self.get('rej-file')
                 if not os.path.exists(path):
                     err = ("The rejection file at %r does not exist. Run "
-                           ".make_epoch_selection() first." % path)
+                           ".make_rej() first." % path)
                     raise RuntimeError(err)
                 ds_sel = load.unpickle(path)
                 if not np.all(ds['eventID'] == ds_sel['eventID']):
@@ -1302,35 +1302,6 @@ class MneExperiment(FileTree):
                                       tmax=tmax)
         cov = mne.cov.compute_covariance(epochs)
         cov.save(dest)
-
-    def make_epoch_selection(self, **kwargs):
-        """Show the SelectEpochs GUI to do manual epoch selection for a given
-        epoch
-
-        The GUI is opened with the correct file name; if the corresponding
-        file exists, it is loaded, and upon saving the correct path is
-        the default.
-
-        Parameters
-        ----------
-        kwargs :
-            Kwargs for SelectEpochs
-        """
-        rej_args = self._params['rej']
-        if not rej_args['kind'] == 'manual':
-            err = ("Epoch rejection kind for rej=%r is not manual. See the "
-                   ".epoch_rejection class attribute." % self.get('rej'))
-            raise RuntimeError(err)
-
-        ds = self.load_epochs(ndvar=True, add_bads=False, reject=False,
-                              decim=rej_args.get('decim', 5))
-        path = self.get('rej-file', mkdir=True)
-
-        from ..wxgui import MEG
-        ROI = rej_args.get('eog_sns', None)
-        bad_chs = self.bad_channels[self.get('raw-key')]
-        MEG.SelectEpochs(ds, data='meg', path=path, ROI=ROI, bad_chs=bad_chs,
-                         **kwargs)  # nplots, plotsize,
 
     def make_evoked(self, redo=False, **kwargs):
         """
@@ -1749,6 +1720,35 @@ class MneExperiment(FileTree):
             raw.apply_projector()
         raw.filter(hp, lp, n_jobs=n_jobs, **kwargs)
         raw.save(dst, overwrite=True)
+
+    def make_rej(self, **kwargs):
+        """Show the SelectEpochs GUI to do manual epoch selection for a given
+        epoch
+
+        The GUI is opened with the correct file name; if the corresponding
+        file exists, it is loaded, and upon saving the correct path is
+        the default.
+
+        Parameters
+        ----------
+        kwargs :
+            Kwargs for SelectEpochs
+        """
+        rej_args = self._params['rej']
+        if not rej_args['kind'] == 'manual':
+            err = ("Epoch rejection kind for rej=%r is not manual. See the "
+                   ".epoch_rejection class attribute." % self.get('rej'))
+            raise RuntimeError(err)
+
+        ds = self.load_epochs(ndvar=True, add_bads=False, reject=False,
+                              decim=rej_args.get('decim', 5))
+        path = self.get('rej-file', mkdir=True)
+
+        from ..wxgui import MEG
+        ROI = rej_args.get('eog_sns', None)
+        bad_chs = self.bad_channels[self.get('raw-key')]
+        MEG.SelectEpochs(ds, data='meg', path=path, ROI=ROI, bad_chs=bad_chs,
+                         **kwargs)  # nplots, plotsize,
 
     def make_src(self, thread=False, redo=False):
         """Make the source space
