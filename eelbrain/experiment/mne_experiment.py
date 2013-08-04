@@ -1385,38 +1385,6 @@ class MneExperiment(FileTree):
 
         save.pickle(ds, dest)
 
-    def make_filter(self, dest='lp40', hp=None, lp=40, src='raw',
-                    apply_proj=False, redo=False, n_jobs=1, **kwargs):
-        """
-        Make a filtered raw file
-
-        Parameters
-        ----------
-        dest, src : str
-            `raw` names for target and source raw file.
-        hp, lp : None | int
-            High-pass and low-pass parameters.
-        apply_proj : bool
-            Apply the projections to the Raw data before filtering.
-        redo : bool
-            If the target file already exists, redo and overwrite it.
-        n_jobs : int
-            Number of processes. Warning: PyShell does not support
-            multiprocessing and will crash with values > 1.
-        kwargs :
-            mne.fiff.Raw.filter() kwargs.
-        """
-        dest_file = self.get('raw-file', raw=dest)
-        if (not redo) and os.path.exists(dest_file):
-            return
-
-        raw = self.load_raw(add_proj=apply_proj, add_bads=False, preload=True,
-                            raw=src)
-        if apply_proj:
-            raw.apply_projector()
-        raw.filter(hp, lp, n_jobs=n_jobs, **kwargs)
-        raw.save(dest_file, overwrite=True)
-
     def make_fwd(self, thread=False):
         """Make the forward model
 
@@ -1724,7 +1692,7 @@ class MneExperiment(FileTree):
         projs = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
         self.ui_select_projs(projs, epochs, save=save, save_plot=save_plot)
 
-    def make_raw(self, raw='hp1-lp40', redo=False, n_jobs=1):
+    def make_raw(self, redo=False, n_jobs=1, **kwargs):
         """Make a raw file
 
         Parameters
@@ -1736,23 +1704,51 @@ class MneExperiment(FileTree):
         n_jobs : int
             Number of processes for multiprocessing.
         """
-        self.reset()
+        dst = self.get('raw-file', **kwargs)
+        if not redo and os.path.exists(dst):
+            return
+
+        raw = self.get('raw')
         if raw == 'lp40':
-            self.make_filter(raw, hp=None, lp=40, n_jobs=n_jobs, src='clm',
-                             redo=redo)
+            self._make_raw_filter(dst, hp=None, lp=40, n_jobs=n_jobs, src='clm')
         elif raw == 'hp1-lp40':
-            self.make_filter(raw, hp=1, lp=40, n_jobs=n_jobs, src='clm',
-                             redo=redo)
+            self._make_raw_filter(dst, hp=1, lp=40, n_jobs=n_jobs, src='clm')
         elif raw == 'hp.2-lp40':
-            self.make_filter(raw, hp=0.2, lp=40, n_jobs=n_jobs, src='clm',
-                             redo=redo, l_trans_bandwidth=0.05,
-                             filter_length='20s')
+            self._make_raw_filter(dst, hp=0.2, lp=40, n_jobs=n_jobs, src='clm',
+                                  l_trans_bandwidth=0.05, filter_length='20s')
         elif raw == 'hp.1-lp40':
-            self.make_filter(raw, hp=0.1, lp=40, n_jobs=n_jobs, src='clm',
-                             redo=redo, l_trans_bandwidth=0.05,
-                             filter_length='20s')
+            self._make_raw_filter(dst, hp=0.1, lp=40, n_jobs=n_jobs, src='clm',
+                                  l_trans_bandwidth=0.05, filter_length='20s')
         else:
             raise ValueError('raw = %r' % raw)
+
+    def _make_raw_filter(self, dst, src='clm', hp=None, lp=40,
+                         apply_proj=False, n_jobs=1, **kwargs):
+        """
+        Make a filtered raw file
+
+        Parameters
+        ----------
+        dst : str
+            Path under which to save the raw.
+        src : str
+            `raw` field value for the source raw file.
+        hp, lp : None | int
+            High-pass and low-pass parameters.
+        apply_proj : bool
+            Apply the projections to the Raw data before filtering.
+        n_jobs : int
+            Number of processes. Warning: PyShell does not support
+            multiprocessing and will crash with values > 1.
+        kwargs :
+            mne.fiff.Raw.filter() kwargs.
+        """
+        raw = self.load_raw(raw=src, add_proj=apply_proj, add_bads=False,
+                            preload=True)
+        if apply_proj:
+            raw.apply_projector()
+        raw.filter(hp, lp, n_jobs=n_jobs, **kwargs)
+        raw.save(dst, overwrite=True)
 
     def make_src(self, thread=False, redo=False):
         """Make the source space
