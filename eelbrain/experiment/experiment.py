@@ -744,7 +744,7 @@ class FileTree(TreeModel):
                     raise NotImplementedError("Can't fnmatch here yet")
 
                 if os.path.exists(src):
-                    dst = self.get(name, root=dst_root, rescan=False)
+                    dst = self.get(name, root=dst_root)
                     if src == dst:
                         raise ValueError("Source == destination (%r)" % src)
 
