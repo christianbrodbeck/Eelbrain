@@ -345,23 +345,8 @@ class ttest_ind:
         tstart, tstop : None | scalar
             Restrict time window for permutation cluster test.
         """
-        # determine c1 and c0
-        if c1 is None or c0 is None:
-            if len(X.cells) == 2:
-                if c1 is None and c0 is None:
-                    c1, c0 = X.cells
-                elif c0 is None:
-                    i = abs(X.cells.index(c1) - 1)
-                    c0 = X.cells[i]
-                else:
-                    i = abs(X.cells.index(c0) - 1)
-                    c1 = X.cells[i]
-            else:
-                err = ("If X has more than 2 categories, c1 and c0 must be "
-                       "explicitly specified.")
-                raise ValueError(err)
-
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds)
+        c1, c0 = ct.cat
 
         test_name = 'Independent Samples t-Test'
         n1 = len(ct.data[c1])
@@ -478,18 +463,8 @@ class ttest_rel:
         tstart, tstop : None | scalar
             Restrict time window for permutation cluster test.
         """
-        if c1 is None:
-            if len(X.cells) == 1:
-                c1 = X.cells[0]
-            elif len(X.cells) == 2:
-                c1, c0 = X.cells
-            else:
-                err = ("If X has more than 2 categories, c1 and c0 must be "
-                       "explicitly specified.")
-                raise ValueError(err)
-
-        cat = (c1, c0)
-        ct = Celltable(Y, X, match, sub, cat=cat, ds=ds)
+        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds)
+        c1, c0 = ct.cat
         if not ct.all_within:
             raise ValueError("XXX")
 

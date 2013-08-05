@@ -510,7 +510,7 @@ class Celltable(object):
             Bool array of length N specifying which cases to include
         match_func : callable
             see match
-        cat : None | list of cells of X
+        cat : None | sequence of cells of X
             Only retain data for these cells. Data will be sorted in the order
             of cells occuring in cat.
         ds : dataset
@@ -528,12 +528,30 @@ class Celltable(object):
 
         """
         self.sub = sub
-        self.cat = cat
-
         sub = assub(sub, ds)
         if X is not None:
             X = ascategorial(X, sub, ds)
             if cat is not None:
+                # determine cat
+                is_none = list(c is None for c in cat)
+                if any(is_none):
+                    if len(cat) == len(X.cells):
+                        if all(is_none):
+                            cat = X.cells
+                        else:
+                            cells = [c for c in X.cells if c not in cat]
+                            cat = list(cat)
+                            for i in xrange(len(cat)):
+                                if cat[i] is None:
+                                    cat[i] = cells.pop(0)
+                            cat = tuple(cat)
+                    else:
+                        err = ("Categories can only be specified as None if X "
+                               "contains exactly as many cells as categories are "
+                               "required (%i)." % len(cat))
+                        raise ValueError(err)
+
+                # apply cat
                 sort_idx = X.sort_idx(order=cat)
                 X = X[sort_idx]
                 if sub is None:
@@ -569,8 +587,9 @@ class Celltable(object):
                     X = X[sort_idx]
 
         # save args
-        self.X = X
         self.Y = Y
+        self.X = X
+        self.cat = cat
         self.match = match
         self.n_cases = len(Y)
 
