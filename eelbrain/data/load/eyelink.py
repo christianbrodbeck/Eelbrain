@@ -3,11 +3,11 @@ Tools for loading data form eyelink edf files.
 
 
 '''
-import fnmatch
+from glob import glob
 import os
 import re
 import shutil
-from subprocess import Popen
+import subprocess
 import tempfile
 
 import numpy as np
@@ -86,14 +86,7 @@ class Edf(object):
         # find all paths from which to read
         self.path = path
         if '*' in path:
-            head, tail = os.path.split(path)
-            if '*' in head:
-                err = ("Invalid path: %r. All edf files need to be in the same "
-                       "directory." % path)
-                raise ValueError(err)
-
-            fnames = sorted(fnmatch.filter(os.listdir(head), tail))
-            self.paths = [os.path.join(head, fname) for fname in fnames]
+            self.paths = glob(path)
         else:
             self.paths = [path]
 
@@ -547,8 +540,8 @@ def read_edf(fname, what='events'):
     what : 'all' | 'events' | 'samples'
         What type of information to read
     """
-    if not os.path.exists(fname):
-        err = "File does not exist: %r" % fname
+    if not os.path.isfile(fname):
+        err = "%r is not a file." % fname
         raise ValueError(err)
 
     temp_dir = tempfile.mkdtemp()
@@ -576,14 +569,19 @@ def read_edf(fname, what='events'):
                 '-p', temp_dir,  # writes output with same name to <path> directory
                 fname))
 
-    sp = Popen(cmd)
-    sp.communicate()
-#     out = check_output(cmd)
+    # run the subprocess
+    p = subprocess.Popen(cmd)
+    stdout, stderr = p.communicate()
+    # Don't check return code because it always return 255
 
     # find asc file
     name, _ = os.path.splitext(os.path.basename(fname))
     ascname = os.path.extsep.join((name, 'asc'))
     asc_path = os.path.join(temp_dir, ascname)
+    if not os.path.exists(asc_path):
+        print("======\nstdout\n======\n%s" % stdout)
+        print("======\nstderr\n======\n%s" % stderr)
+        raise subprocess.CalledProcessError(p.returncode, cmd, (stdout, stderr))
     with open(asc_path) as asc_file:
         asc_str = asc_file.read()
 

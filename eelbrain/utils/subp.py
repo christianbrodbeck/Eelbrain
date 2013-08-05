@@ -26,7 +26,7 @@ import shutil
 import subprocess
 import tempfile
 
-from mne.utils import get_subjects_dir
+from mne.utils import get_subjects_dir, run_subprocess
 
 from .. import ui
 from ..data.load.brainvision import vhdr as _vhdr
