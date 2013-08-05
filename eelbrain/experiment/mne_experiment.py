@@ -1458,18 +1458,26 @@ class MneExperiment(FileTree):
         elif isinstance(c0, (basestring, tuple)):
             cat = (c1, c0)
         else:
-            cat += (c1,)
+            cat = (c1,)
         cat = cat or None
         if group in self.get_field_values('group'):
             ds = self.load_evoked_stc(group, ind=False, morph=True, ndvar=True,
                                       sns_baseline=sns_baseline,
                                       src_baseline=src_baseline, cat=cat)
-            res = testnd.ttest('stcm', model, c1, c0, match='subject', ds=ds)
+            if isinstance(c0, (basestring, tuple)):
+                res = testnd.ttest_rel('stcm', model, c1, c0, match='subject',
+                                       ds=ds)
+            else:
+                res = testnd.ttest_1samp('stcm', model, c1, c0, match='subject',
+                                         ds=ds)
         elif group in self.get_field_values('subject'):
             ds = self.load_epochs_stc(group, ndvar=True,
                                       sns_baseline=sns_baseline,
                                       src_baseline=src_baseline, cat=cat)
-            res = testnd.ttest('stc', model, c1, c0, ds=ds)
+            if isinstance(c0, (basestring, tuple)):
+                res = testnd.ttest_ind('stc', model, c1, c0, ds=ds)
+            else:
+                res = testnd.ttest_1samp('stc', model, c1, c0, ds=ds)
         else:
             err = ("Group %r is neiter a group nor a subject." % group)
             raise ValueError(err)
