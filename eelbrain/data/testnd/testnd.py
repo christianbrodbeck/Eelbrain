@@ -21,7 +21,7 @@ from ..test.test import resample
 
 
 __all__ = ['ttest_1samp', 'ttest_ind', 'ttest_rel', 'f_oneway', 'anova',
-           'cluster_anova', 'corr', 'cluster_corr', 'clean_time_axis']
+           'cluster_anova', 'corr', 'clean_time_axis']
 __test__ = False
 
 
@@ -72,7 +72,6 @@ def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
     return cleaned
 
 
-
 class corr:
     """
     Attributes
@@ -80,157 +79,120 @@ class corr:
 
     r : ndvar
         Correlation (with threshold contours).
-
-    """
-    def __init__(self, Y, X, norm=None, sub=None, ds=None,
-                 contours={.05: (.8, .2, .0), .01: (1., .6, .0), .001: (1., 1., .0)}):
-        """
-
-        Y : ndvar
-            Dependent variable.
-        X : continuous | None
-            The continuous predictor variable.
-        norm : None | categorial
-            Categories in which to normalize (z-score) X.
-
-        """
-        sub = assub(sub, ds)
-        Y = asndvar(Y, sub=sub, ds=ds)
-        X = asvar(X, sub=sub, ds=ds)
-        if norm is not None:
-            norm = ascategorial(norm, sub, ds)
-
-        if not Y.has_case:
-            msg = ("Dependent variable needs case dimension")
-            raise ValueError(msg)
-
-        y = Y.x.reshape((len(Y), -1))
-        if norm is not None:
-            y = y.copy()
-            for cell in norm.cells:
-                idx = (norm == cell)
-                y[idx] = scipy.stats.mstats.zscore(y[idx])
-
-        n = len(X)
-        x = X.x.reshape((n, -1))
-
-        # covariance
-        m_x = np.mean(x)
-        if np.isnan(m_x):
-            raise ValueError("np.mean(x) is nan")
-        x -= m_x
-        y -= np.mean(y, axis=0)
-        cov = np.sum(x * y, axis=0) / (n - 1)
-
-        # correlation
-        r = cov / (np.std(x, axis=0) * np.std(y, axis=0))
-
-        # p-value calculation
-        # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
-        pcont = {}
-        df = n - 2
-        for p, color in contours.iteritems():
-            t = scipy.stats.distributions.t.isf(p, df)
-            r_p = t / np.sqrt(n - 2 + t ** 2)
-            pcont[r_p] = color
-            pcont[-r_p] = color
-
-        dims = Y.dims[1:]
-        shape = Y.x.shape[1:]
-        info = Y.info.copy()
-        info.update(cmap='xpolar', vmax=1, contours=pcont)
-        r = ndvar(r.reshape(shape), dims=dims, info=info)
-
-        # store results
-        self.name = "%s corr %s" % (Y.name, X.name)
-        self.r = r
-        self.all = r
-
-
-class cluster_corr:
-    """
-    Attributes
-    ----------
-
-    r : ndvar
-        Correlation (with threshold contours).
-
     """
     def __init__(self, Y, X, norm=None, sub=None, ds=None,
                  contours={.05: (.8, .2, .0), .01: (1., .6, .0), .001: (1., 1., .0)},
-                 tp=.1, samples=1000, replacement=False,
-                 tstart=None, tstop=None, close_time=0):
+                 tp=.1, samples=0, pmin=0.1, tstart=None, tstop=None):
         """
 
+        Parameters
+        ----------
         Y : ndvar
             Dependent variable.
         X : continuous | None
             The continuous predictor variable.
         norm : None | categorial
             Categories in which to normalize (z-score) X.
-
         """
         sub = assub(sub, ds)
         Y = asndvar(Y, sub=sub, ds=ds)
+        if not Y.has_case:
+            msg = ("Dependent variable needs case dimension")
+            raise ValueError(msg)
         X = asvar(X, sub=sub, ds=ds)
         if norm is not None:
             norm = ascategorial(norm, sub, ds)
 
-        self.name = name = "%s corr %s" % (Y.name, X.name)
+        name = "%s corr %s" % (Y.name, X.name)
 
-        # calculate threshold
-        # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
-        self.n = n = len(X)
-        df = n - 2
-        tt = scipy.stats.distributions.t.isf(tp, df)
-        tr = tt / np.sqrt(df + tt ** 2)
-
+        # Normalize by z-scoring the data for each subject
         # normalization is done before the permutation b/c we are interested in
         # the variance associated with each subject for the z-scoring.
         Y = Y.copy()
-        Y.x = Y.x.reshape((n, -1))
         if norm is not None:
+#             Y.x = Y.x.reshape((n, -1))
             for cell in norm.cells:
                 idx = (norm == cell)
-                Y.x[idx] = scipy.stats.mstats.zscore(Y.x[idx])
+                Y.x[idx] = scipy.stats.zscore(Y.x[idx], None)
 
-        x = X.x.reshape((n, -1))
-        m_x = np.mean(x)
-        if np.isnan(m_x):
-            raise ValueError("np.mean(x) is nan")
-        self.x = x - m_x
+        # subtract the mean from Y and X so that this can be omitted during
+        # permutation
+        Y -= Y.summary('case')
+        X = X - X.mean()
 
-        cdist = _ClusterDist(Y, samples, t_upper=tr, t_lower=-tr,
-                            tstart=tstart, tstop=tstop, close_time=close_time,
-                            meas='r', name=name)
-        r = self._corr(Y)
-        cdist.add_original(r)
+        n = len(Y)
+        df = n - 2
 
-        if cdist.n_clusters:
-            for Yrs in resample(Y, samples, replacement=replacement):
-                r = self._corr(Yrs)
-                cdist.add_perm(r)
+        rmap = _corr(Y.x, X.x)
 
-        self.cdist = cdist
-        self.r_map = cdist.pmap
-        self.all = [[self.r_map, cdist.cpmap]]
-        self.clusters = cdist.clusters
+        if samples:
+            # calculate r threshold for clusters
+            threshold = _rtest_r(pmin, df)
 
-    def _corr(self, Y):
-        n = self.n
-        x = self.x
+            cdist = _ClusterDist(Y, samples, threshold, -threshold, meas='r',
+                                 name=name, tstart=tstart, tstop=tstop)
+            cdist.add_original(rmap)
+            if cdist.n_clusters:
+                for Y_ in resample(cdist.Y_perm, samples, replacement=False):
+                    rmap_ = _corr(Y_.x, X.x)
+                    cdist.add_perm(rmap_)
 
-        # covariance
-        y = Y.x - np.mean(Y.x, axis=0)
-        cov = np.sum(x * y, axis=0) / (n - 1)
+        # compile results
+        dims = Y.dims[1:]
+        r0, r1, r2 = _rtest_r((.05, .01, .001), df)
+        info = _cs.stat_info('r', r0, r1, r2)
+        r = ndvar(rmap, dims, info, name)
 
-        # correlation
-        r = cov / (np.std(x, axis=0) * np.std(y, axis=0))
-        return r
+        # store attributes
+        self.name = name
+        self.df = df
+        self.r = r
+        self.r_p = [[r, r]]
+        if samples:
+            self.cdist = cdist
+            self.clusters = cdist.clusters
+            self.r_cl = [[r, cdist.cpmap]]
+            self.all = [[r, cdist.cpmap]]
+        else:
+            self.all = [[r, r]]
 
-    def as_table(self, pmax=1.):
-        table = self.cdist.as_table(pmax=pmax)
-        return table
+
+def _corr(y, x):
+    """Correlation parameter map
+
+    Parameters
+    ----------
+    y : array_like, shape = (n_cases, ...)
+        Dependent variable with case in the first axis and case mean zero.
+    x : array_like, shape = (n_cases, )
+        Covariate.
+    """
+    x = x.reshape((len(x),) + (1,) * (y.ndim - 1))
+    r = np.sum(y * x, axis=0) / (np.sqrt(np.sum(y ** 2, axis=0)) *
+                                 np.sqrt(np.sum(x ** 2, axis=0)))
+    return r
+
+def _corr_alt(y, x):
+    n = len(y)
+    cov = np.sum(x * y, axis=0) / (n - 1)
+    r = cov / (np.std(x, axis=0) * np.std(y, axis=0))
+    return r
+
+
+def _rtest_p(r, df):
+    # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
+    r = np.asanyarray(r)
+    t = r * np.sqrt(df / (1 - r ** 2))
+    p = _ttest_p(t, df)
+    return p
+
+
+def _rtest_r(p, df):
+    # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
+    p = np.asanyarray(p)
+    t = _ttest_t(p, df)
+    r = t / np.sqrt(df + t ** 2)
+    return r
 
 
 class ttest_1samp:
