@@ -280,10 +280,12 @@ class ttest_1samp:
 
         info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
         info['test'] = test_name
-        pmap = ndvar(pmap, dims, info=info, name='p')
+        p = ndvar(pmap, dims, info=info, name='p')
 
-        info = _cs.set_info_cs(ct.Y.info, _cs.default_info('T', vmin=0))
-        tmap = ndvar(tmap, dims, info=info, name='T')
+        t0, t1, t2 = _ttest_t((.05, .01, .001), df)
+        info = _cs.stat_info('T', t0, t1, t2)
+        info = _cs.set_info_cs(ct.Y.info, info)
+        t = ndvar(tmap, dims, info=info, name='T')
 
         # store attributes
         self.popmean = popmean
@@ -293,11 +295,11 @@ class ttest_1samp:
 
         self.y = y
         self.diff = diff
-        self.t = tmap
-        self.p = pmap
+        self.t = t
+        self.p = p
 
-        self.diffp = [[diff, pmap]]
-        self.all = [y, [diff, pmap]] if popmean else [[diff, pmap]]
+        self.diffp = [[diff, t]]
+        self.all = [y, [diff, t]] if popmean else [[diff, t]]
 
     def __repr__(self):
         r = "<%s against %g, n=%i>" % (self.name, self.popmean, self.n)
@@ -369,10 +371,12 @@ class ttest_ind:
 
         info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
         info['test'] = test_name
-        pmap = ndvar(pmap, dims, info=info, name='p')
+        p = ndvar(pmap, dims, info=info, name='p')
 
-        info = _cs.set_info_cs(ct.Y.info, _cs.default_info('T', vmin=0))
-        tmap = ndvar(tmap, dims, info=info, name='T')
+        t0, t1, t2 = _ttest_t((.05, .01, .001), df)
+        info = _cs.stat_info('T', t0, t1, t2)
+        info = _cs.set_info_cs(ct.Y.info, info)
+        t = ndvar(tmap, dims, info=info, name='T')
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
         c0_mean = ct.data[c0].summary(name=cellname(c0))
@@ -393,10 +397,10 @@ class ttest_ind:
         self.c1 = c1_mean
         self.c0 = c0_mean
         self.diff = diff
-        self.t = tmap
-        self.p = pmap
+        self.t = t
+        self.p = p
 
-        self.diffp = [[diff, pmap]]
+        self.diffp = [[diff, t]]
         self.uncorected = [c1_mean, c0_mean] + self.diffp
         if samples:
             self.diff_cl = [diff, cdist.cpmap]
@@ -487,10 +491,12 @@ class ttest_rel:
 
         info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
         info['test'] = test_name
-        pmap = ndvar(pmap, dims, info=info, name='p')
+        p = ndvar(pmap, dims, info=info, name='p')
 
-        info = _cs.set_info_cs(ct.Y.info, _cs.default_info('T', vmin=0))
-        tmap = ndvar(tmap, dims, info=info, name='T')
+        t0, t1, t2 = _ttest_t((.05, .01, .001), df)
+        info = _cs.stat_info('T', t0, t1, t2)
+        info = _cs.set_info_cs(ct.Y.info, info)
+        t = ndvar(tmap, dims, info=info, name='T')
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
         c0_mean = ct.data[c0].summary(name=cellname(c0))
@@ -510,10 +516,10 @@ class ttest_rel:
         self.c1 = c1_mean
         self.c0 = c0_mean
         self.diff = diff
-        self.t = tmap
-        self.p = pmap
+        self.t = t
+        self.p = p
 
-        self.diffp = [[diff, pmap]]
+        self.diffp = [[diff, t]]
         self.uncorrected = [c1_mean, c0_mean] + self.diffp
         if samples:
             self.diff_cl = [diff, cdist.cpmap]
@@ -610,12 +616,14 @@ def _t_rel(Y):
 
 def _ttest_p(t, df):
     "Two tailed probability"
+    t = np.asanyarray(t)
     p = scipy.stats.t.sf(np.abs(t), df) * 2
     return p
 
 
 def _ttest_t(p, df):
     "Positive t value for two tailed probability"
+    p = np.asanyarray(p)
     t = scipy.stats.t.isf(p / 2, df)
     return t
 

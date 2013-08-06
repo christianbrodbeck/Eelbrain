@@ -156,7 +156,19 @@ def sig_info(p=.05, contours={.01: '.5', .001: '0'}):
     return info
 
 
-def stat_info(meas, **kwargs):
+def stat_info(meas, c0=None, c1=None, c2=None, **kwargs):
+    if 'contours' not in kwargs:
+        contours = kwargs['contours'] = {}
+        if c0 is not None:
+            contours[ c0] = (1.0, 0.5, 0.1)
+            contours[-c0] = (0.5, 0.1, 1.0)
+        if c1 is not None:
+            contours[ c1] = (1.0, 0.9, 0.2)
+            contours[-c1] = (0.9, 0.2, 1.0)
+        if c2 is not None:
+            contours[ c2] = (1.0, 1.0, 0.8)
+            contours[-c2] = (1.0, 0.8, 1.0)
+
     if meas == 'r':
         info = {'meas': meas, 'cmap': 'RdBu_r', 'vmax': 1}
     elif meas == 't':
@@ -164,14 +176,15 @@ def stat_info(meas, **kwargs):
     elif meas == 'f':
         info = {'meas': meas, 'cmap': 'BuPu_r', 'vmin': 0}
     else:
-        return default_info(meas, **kwargs)
+        info = default_info(meas)
     info.update(kwargs)
     return info
 
 
-def sym_sig_info(p=.05, contours={.01: '.5', -.01: '.5', .001: '1', -.001: '1'}):
+def sym_sig_info(meas='p'):
     "Info dict for bipolar, symmetric significance map"
-    info = {'meas': 'p', 'cmap': 'symsig', 'vmax': p, 'contours': contours}
+    p = 0.05
+    info = {'meas': meas, 'cmap': 'symsig', 'vmax': p}
     return info
 
 
