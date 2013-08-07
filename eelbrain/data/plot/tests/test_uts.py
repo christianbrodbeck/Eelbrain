@@ -8,6 +8,7 @@ from eelbrain.data import factor, datasets, plot, testnd
 
 def test_stat():
     "test plot.uts.stat plotting function"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand()
     p = plot.uts.stat('uts', ds=ds)
     p.close()
@@ -19,6 +20,7 @@ def test_stat():
 
 def test_uts():
     "test plot.uts.uts plotting function"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand()
     p = plot.uts.uts('uts', ds=ds)
     p.close()
@@ -28,6 +30,7 @@ def test_uts():
 
 def test_clusters():
     "test plot.uts cluster plotting functions"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand()
 
     A = ds['A']

@@ -125,17 +125,6 @@ class CanvasFrame(wx.Frame):
                  figsize=(8, 6), dpi=50, eelfigure=None,
                  statusbar=True, toolbar=True, mpl_toolbar=False):
         size = (figsize[0] * dpi, figsize[1] * dpi + 45)
-        if parent is None:
-            app = wx.GetApp()
-            if app is None:
-                err = ("This plot needs to be created from within a wxPython "
-                       "application.")
-                raise RuntimeError(err)
-            if hasattr(app, 'shell'):
-                parent = app.shell
-            else:
-                parent = app.GetTopWindow()
-
         wx.Frame.__init__(self, parent, -1, title=title, size=size)
 #        self.SetBackgroundColour(wx.NamedColour("WHITE"))
 

@@ -7,6 +7,7 @@ from eelbrain.data import var, datasets, plot
 
 def test_barplot():
     "Test plot.uv.barplot"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand()
     plot.uv.barplot('Y', 'A%B', match='rm', ds=ds)
     plt.close('all')
@@ -14,6 +15,7 @@ def test_barplot():
 
 def test_boxplot():
     "Test plot.uv.boxplot"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand()
     plot.uv.boxplot('Y', 'A%B', match='rm', ds=ds)
     plt.close('all')
@@ -21,6 +23,7 @@ def test_boxplot():
 
 def test_histogram():
     "Test plot.uv.histogram"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand()
     plot.uv.histogram('Y', 'A%B', ds=ds)
     plot.uv.histogram('Y', 'A%B', match='rm', ds=ds)
@@ -29,6 +32,7 @@ def test_histogram():
 
 def test_scatterplot():
     "Test plot.uv.corrplot and lot.uv.regplot"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand()
     ds['cov'] = ds['Y'] + np.random.normal(0, 1, (60,))
 
@@ -43,6 +47,7 @@ def test_scatterplot():
 
 def test_timeplot():
     "Test plot.uv.timeplot"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand()
     ds['seq'] = var(np.arange(2).repeat(30))
     plot.uv.timeplot('Y', 'B', 'seq', match='rm', ds=ds)

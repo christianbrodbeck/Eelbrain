@@ -53,3 +53,5 @@ from . import topo
 from . import uts
 from . import utsnd
 from . import uv
+
+from ._base import configure_backend

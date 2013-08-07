@@ -5,6 +5,7 @@ from eelbrain.data import datasets, testnd, plot
 
 def test_corr():
     "Test testnd.corr()"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand(True)
 
     # add correlation

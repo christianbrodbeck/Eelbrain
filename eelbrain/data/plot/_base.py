@@ -1,4 +1,23 @@
 """
+Matplotlib and Backends
+=======================
+
+Some Eelbrain figures come with a toolbar with additional functionality. This
+toolbar requires a running wxPython application. This is automatically
+available if the plot is created from within a wxPython application such as
+PyShell or Eelbrain's WxTerm. In IPython, the wx gui can be made available by
+invoking it with::
+
+    $ ipython --gui=wx
+
+In order to use a different matplotlib backend (or the wx backend with the
+matplotlib toolbar), a call to::
+
+    >>> plot.configure_backend(False)
+
+determines the frame used for any subsequently created plots.
+
+
 Implementation
 ==============
 
@@ -54,19 +73,6 @@ functions executed are:
 #. ----> _plt_(diff(A,B))
 #. ----> _plt_(p(A, B))
 
-
-Base Class
-----------
-
-:py:class:`eelfigure` is the baseclass for eelbrain plots. Based on
-availablility of wxPython, it selects between a general matplotlib backend and
-a wx backend allowing additional frame propertie4s such as custom toolbar
-items.
-
-If the mpl figure is used, pyplot.show() is called after the plot is done.
-The module attribute ``show_block_arg`` is submitted to
-``plt.show(block=show_block_arg)``.
-
 """
 from __future__ import division
 
@@ -87,24 +93,40 @@ from ...fmtxt import texify
 from ..colorspaces import symmetric_cmaps, zerobased_cmaps
 from ..data_obj import ascategorial, asndvar, DimensionMismatchError
 
-backend = 'mpl'
+
+# defaults
+defaults = {'DPI': 72, 'maxw': 16, 'maxh': 10}
+backend = {'block': False,  # plt.show() parameter for mpl_figure
+           'frame': 'mpl'}
 if mpl.get_backend().lower().startswith('wx'):
     try:
         from ...wxutils.mpl_canvas import CanvasFrame
-        backend = 'wx'
+        backend['frame'] = 'wx'
     except:
         pass
 
+# store callback figures (they need to be preserved)
+figs = []
 
-defaults = {'DPI': 72, 'maxw': 16, 'maxh': 10}
-
-title_kwargs = {'size': 18,
-                'family': 'serif'}
-figs = []  # store callback figures (they need to be preserved)
-show_block_arg = True  # if the mpl figure is used, this is submitted to plt.show(block=show_block_arg)
-
+# constants
 default_cmap = None
 default_meas = '?'
+
+
+def configure_backend(frame=True, block=False):
+    """Set basic configuration parameters
+
+    Parameters
+    ----------
+    frame : bool
+        Use a custom frame with a different toolbar from matplotlib.
+    block : bool
+        pyplot.show() parameters: Block the interpreter when showing a figure.
+        This parameter only applies when using the Matplotlib wx-backend and
+        frame.
+    """
+    backend['frame'] = 'wx' if frame else 'mpl'
+    backend['block'] = block
 
 
 def find_ct_args(ndvar, overlay):
@@ -503,7 +525,7 @@ class mpl_figure:
 
     def Show(self):
         if mpl.get_backend() == 'WXAgg':
-            plt.show(block=show_block_arg)
+            plt.show(block=backend['block'])
 
     def redraw(self, axes=[], artists=[]):
         "Adapted duplicate of mpl_canvas.FigureCanvasPanel"
@@ -601,13 +623,25 @@ class eelfigure(object):
             self._layout = None
 
         # find the right frame
-        frame = None
         self._is_wx = False
-        if backend == 'wx':
-            frame = CanvasFrame(title=title, eelfigure=self, **fig_kwa)
+        frame_kind = backend['frame']
+        if frame_kind == 'wx':
+            import wx
+            app = wx.GetApp()
+            if app is None:
+                frame_kind = 'mpl'
+            elif hasattr(app, 'shell'):
+                parent = app.shell
+            else:
+                parent = app.GetTopWindow()
+            frame = CanvasFrame(parent, title=title, eelfigure=self, **fig_kwa)
             self._is_wx = True
-        else:
+
+        if frame_kind == 'mpl':
             frame = mpl_figure(**fig_kwa)
+        elif frame_kind != 'wx':
+            err = "Invalid backend 'frame' parameter: %r" % frame_kind
+            raise RuntimeError(err)
 
         figure = frame.figure
         if figtitle:

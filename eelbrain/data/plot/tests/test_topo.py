@@ -8,6 +8,7 @@ from eelbrain.data import datasets, plot
 
 def test_plot_topomap():
     "Test plot.topo.topomap"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
     p = plot.topo.topomap('utsnd.summary(time=(0.075, 0.125))', ds=ds)
     p.close()
@@ -16,6 +17,7 @@ def test_plot_topomap():
 
 def test_plot_butterfly():
     "Test plot.topo.butterfly"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
     p = plot.topo.butterfly('utsnd', ds=ds)
     p.close()
@@ -24,6 +26,7 @@ def test_plot_butterfly():
 
 def test_plot_array():
     "Test plot.topo.array"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
     p = plot.topo.array('utsnd', ds=ds)
     p.close()

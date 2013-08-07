@@ -11,6 +11,7 @@ from eelbrain.data import datasets, plot
 
 def test_map2d():
     "Test plot.sensors.map2d"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
     Y = ds['utsnd']
     p = plot.sensors.map2d(Y)
@@ -23,6 +24,7 @@ def test_map2d():
 
 def test_multi():
     "Test plot.sensors.multi"
+    plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
     Y = ds['utsnd']
     p = plot.sensors.multi(Y)
