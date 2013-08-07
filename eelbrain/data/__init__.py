@@ -1,5 +1,5 @@
 from .data_obj import *
-from .statfuncs import *
+from .stats import rms, rmssd
 
 from . import datasets
 from . import load

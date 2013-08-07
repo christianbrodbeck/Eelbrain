@@ -42,7 +42,7 @@ from .. import fmtxt
 from .. import ui
 from ..utils import LazyProperty
 from . import colorspaces as cs
-from .statfuncs import cihw
+from .stats import cihw
 
 
 __all__ = ('datalist', 'dataset', 'factor', 'var', 'ndvar', 'combine', 'align',

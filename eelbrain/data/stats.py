@@ -1,17 +1,11 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 '''
-Created on Apr 17, 2011
+Statistics functions that work on numpy arrays.
 
-statistical functions that could not be in module :mod:`analyze.test` because
-of a circular import
-
-@author: christianmbrodbeck
 '''
 
 import numpy as np
 import scipy.stats
-
-
-__all__ = ('ci', 'cihw', 'rms', 'rmssd')
 
 
 def ci(x, p=.95):
@@ -44,20 +38,6 @@ def cihw(x, p=.95):
     return c
 
 
-def rmssd(Y):
-    """
-    root mean square of successive differences. Used for heart rate variance
-    analysis.
-
-    """
-    assert np.ndim(Y) == 1
-    N = len(Y)
-    assert N > 1
-    dY = np.diff(Y)
-    X = N / (N - 1) * np.sum(dY ** 2)
-    return np.sqrt(X)
-
-
 def rms(Y, axis=-1, rm_mean=False):
     """Root mean square.
 
@@ -87,3 +67,31 @@ def rms(Y, axis=-1, rm_mean=False):
     # root mean square
     rms = np.sqrt(np.mean(Y ** 2, axis))
     return rms
+
+
+def rmssd(Y):
+    """
+    root mean square of successive differences. Used for heart rate variance
+    analysis.
+
+    """
+    assert np.ndim(Y) == 1
+    N = len(Y)
+    assert N > 1
+    dY = np.diff(Y)
+    X = N / (N - 1) * np.sum(dY ** 2)
+    return np.sqrt(X)
+
+
+def ftest_f(p, df_num, df_den):
+    "F values for a given probabilities."
+    p = np.asanyarray(p)
+    f = scipy.stats.f.isf(p, df_num, df_den)
+    return f
+
+
+def ftest_p(f, df_num, df_den):
+    "P values for given f values."
+    f = np.asanyarray(f)
+    p = scipy.stats.f.sf(f, df_num, df_den)
+    return p
