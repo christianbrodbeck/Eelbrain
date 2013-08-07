@@ -128,7 +128,6 @@ import collect
 import visualizers
 #import segments
 import mat
-import segment_ops
 
 from bionetics import Experiment, isexperiment, _extension
 #from datasets_base import is_experiment_item
