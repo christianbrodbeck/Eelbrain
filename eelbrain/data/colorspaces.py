@@ -189,8 +189,8 @@ def sym_sig_info(meas='p'):
 
 
 def eeg_info(vmax=1.5, unit=r'$\mu V$', meas="V"):
-    return dict(cmap='xpolar', vamx=vmax, meas=meas, unit=unit)
+    return dict(cmap='xpolar', vmax=vmax, meas=meas, unit=unit)
 
 
 def meg_info(vmax=2e-12, unit='Tesla', meas="B"):
-    return dict(cmap='xpolar', vamx=vmax, meas=meas, unit=unit)
+    return dict(cmap='xpolar', vmax=vmax, meas=meas, unit=unit)
