@@ -31,6 +31,7 @@ from ...utils import LazyProperty
 from ...utils.print_funcs import strdict
 from ..data_obj import (isvar, asvar, assub, isbalanced, isnestedin, hasrandom,
                         find_factors, model, asmodel)
+from ..stats import ftest_p
 from . import test
 
 
@@ -357,34 +358,49 @@ class lm_fitter(object):
     """
     def __init__(self, X):
         """
+        Object for efficiently fitting a model to multiple dependent variables.
+
+        Parameters
+        ----------
         X : model
             Model which will be fitted to the data.
-
         """
         # prepare input
-        self.X = X = asmodel(X)
-        self.n_cases = len(X)
+        X = asmodel(X)
         if not isbalanced(X):
             raise NotImplementedError("Unbalanced models")
-        self.X_ = X.full
+        self._x_full = X.full
 
-        self.full_model = fm = (X.df_error == 0)
-        if fm:
-            self.E_MS = hopkins_ems(X)
+        full_model = (X.df_error == 0)
+        if full_model:
+            E_MS = hopkins_ems(X)
+            df_den = {e: sum(e_.df for e_ in E_MS[e]) for e in X.effects}
+            effects = tuple(e for e in X.effects if df_den[e])
         elif hasrandom(X):
             err = ("Models containing random effects need to be fully "
                    "specified.")
             raise NotImplementedError(err)
+        else:
+            E_MS = None
+            effects = X.effects
+            df_den = {e: X.df_error for e in effects}
 
-
-        self.max_len = int(2 ** _max_array_size // X.df ** 2)
+        self._max_n_tests = int(2 ** _max_array_size // X.df ** 2)
 
         if _lmf_lsq == 0:
             pass
         elif _lmf_lsq == 1:
-            self.Xsinv = X.Xsinv
+            self._Xsinv = X.Xsinv
         else:
             raise ValueError('version')
+
+        # store public attributes
+        self.X = X
+        self.n_cases = len(X)
+        self.full_model = full_model
+        self.effects = effects
+        self.df_den = df_den
+        self.E_MS = E_MS
 
     def __repr__(self):
         return 'lm_fitter((%s))' % self.X.name
@@ -394,19 +410,19 @@ class lm_fitter(object):
         Fits the model to multiple dependent variables and returns arrays of
         F-values and optionally p-values.
 
+        Parameters
+        ----------
         Y : np.array
             Assumes that the first dimension of Y provides cases.
             Other than that, shape is free to vary and output shape will match
             input shape.
         p : bool
-            Also return a field of p-values corresponding to the F-values.
-
+            Also return a map of p-values corresponding to the F-values.
 
         Returns
         -------
-
-        A list with (effect, F-field [, P-field]) tuples for all effects that can
-        be estimated with the current method.
+        A list with (effect, F-map [, p-map]) tuples for all effects that
+        can be estimated with the current method.
 
         """
         X = self.X
@@ -420,14 +436,14 @@ class lm_fitter(object):
         df_res = X.df_error
 
         # Split Y that are too long
-        if Y.shape[1] > self.max_len:
-            splits = xrange(0, Y.shape[1], self.max_len)
+        if Y.shape[1] > self._max_n_tests:
+            splits = xrange(0, Y.shape[1], self._max_n_tests)
 
             msg = ("lm_fitter: Y.shape=%s; splitting Y at %s" %
                    (Y.shape, list(splits)))
             logging.debug(msg)
 
-            Y_list = (Y[:, s:s + self.max_len] for s in splits)
+            Y_list = (Y[:, s:s + self._max_n_tests] for s in splits)
             out_maps = [self.map(Yi, p=p) for Yi in Y_list]
             out_map = []
             for i in xrange(len(out_maps[0])):
@@ -440,15 +456,15 @@ class lm_fitter(object):
                     out_map.append((name, F))
             return out_map
         else:  # do the actual estimation
-            X_ = self.X_
+            x_full = self._x_full
             # beta: coefficient X test
             if _lmf_lsq == 0:
-                beta, SS_res, _, _ = lstsq(X_, Y)
+                beta, SS_res, _, _ = lstsq(x_full, Y)
             elif _lmf_lsq == 1:
-                beta = dot(self.Xsinv, Y)
+                beta = dot(self._Xsinv, Y)
 
             # values: case x effect-code x test
-            values = beta[None, :, :] * X_[:, :, None]
+            values = beta[None, :, :] * x_full[:, :, None]
 
             # MS of the residuals
             if not self.full_model:
@@ -457,8 +473,8 @@ class lm_fitter(object):
                     SS_res = ((Y - Yp) ** 2).sum(0)
                 MS_res = SS_res / df_res
 
-            # collect SS, df, MS
-            MSs = {}  # <- (ss, df, ms)
+            # collect MS of effects
+            MSs = {}
             for e in X.effects:
                 index = X.beta_index[e]
                 Yp = values[:, index, :].sum(1)
@@ -467,35 +483,30 @@ class lm_fitter(object):
                 MSs[e] = MS
 
             # F Tests
-            out_map = []  # <- (name, F, P)
+            # n = numerator, d = denominator
+            out_map = []  # <- (name, F [, P])
             for e_n in X.effects:
-                df_n = e_n.df  # n = numerator
+                df_n = e_n.df
                 if self.full_model:
-                    E_MS_cmp = self.E_MS[e_n]
-                    df_d = 0  # d = denominator
-                    if E_MS_cmp:
-                        MS_d = 0
-                        for e_d in E_MS_cmp:
-                            df_d += e_d.df
-                            MS_d += MSs[e_d]
+                    df_d = self.df_den[e_n]
+                    if df_d > 0:
+                        E_MS_cmp = self.E_MS[e_n]
+                        MS_d = sum(MSs[e_d] for e_d in E_MS_cmp)
                 else:
                     df_d = df_res
                     MS_d = MS_res
 
-                #
                 if df_d > 0:
                     MS_n = MSs[e_n]
-                    F = MS_n / MS_d
-                    Fmap = F.reshape(original_shape[1:])
+                    f = MS_n / MS_d
+                    fmap = f.reshape(original_shape[1:])
                     if p:
-                        P = scipy.stats.distributions.f.sf(F, df_n, df_d)
-                        Pmap = P.reshape(original_shape[1:])
-                        out_map.append((e_n, Fmap, Pmap))
+                        pmap = ftest_p(fmap, df_n, df_d)
+                        out_map.append((e_n, fmap, pmap))
                     else:
-                        out_map.append((e_n, Fmap))
+                        out_map.append((e_n, fmap))
 
             return out_map
-
 
 
 class incremental_F_test:
@@ -543,7 +554,6 @@ class incremental_F_test:
             lm1_MS_res = lm1.MS_res
             lm1_df_res = lm1.df_res
 
-
         if MS_e is None:
             assert df_e is None
             MS_e = lm1_MS_res
@@ -557,7 +567,7 @@ class incremental_F_test:
 
         if df_e > 0:
             F = MS_diff / MS_e
-            p = scipy.stats.distributions.f.sf(F, df_diff, df_e)
+            p = ftest_p(F, df_diff, df_e)
         else:
             F = None
             p = None
@@ -593,7 +603,7 @@ def comparelm(lm1, lm2):
     df_diff = lm1.df_res - lm2.df_res
     MS_diff = SS_diff / df_diff
     F = MS_diff / lm2.MS_res
-    p = 1 - scipy.stats.distributions.f.cdf(F, df_diff, lm2.df_res)
+    p = ftest_p(F, df_diff, lm2.df_res)
     stars = test.star(p).replace(' ', '')
     difftxt = "Residual SS reduction: {SS}, df difference: {df}, " + \
               "F = {F:.3f}{s}, p = {p:.4f}"
