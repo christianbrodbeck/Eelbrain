@@ -16,12 +16,13 @@ from ... import fmtxt
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, dataset,
                         factor, ndvar, var, Celltable, cellname, combine)
+from ..stats import ftest_f, ftest_p
 from ..test import glm as _glm
 from ..test.test import resample
 
 
 __all__ = ['ttest_1samp', 'ttest_ind', 'ttest_rel', 'f_oneway', 'anova',
-           'cluster_anova', 'corr', 'clean_time_axis']
+           'corr', 'clean_time_axis']
 __test__ = False
 
 
@@ -625,63 +626,21 @@ class f_oneway:
         self.all = p
 
 
-
 class anova:
-    """
+    """ANOVA with cluster permutation test
+
     Attributes
     ----------
-
-    Y : ndvar
-        Dependent variable.
-    X : model
-        Model.
-    p_maps : {effect -> ndvar}
-        Maps of p-values.
-    all : [ndvar]
-        List of all p-maps.
-
+    clusters : None | dataset
+        When performing a cluster permutation test, a dataset listing all
+        clusters.
+    f : list
+        Maps of f values with probability contours.
+    p : list
+        Maps of p values.
     """
-    def __init__(self, Y, X, sub=None, ds=None, p=.05,
-                 contours={.01: '.5', .001: '0'}):
-        sub = assub(sub, ds)
-        Y = self.Y = asndvar(Y, sub, ds)
-        X = self.X = asmodel(X, sub, ds)
-
-        self.name = "anova"
-
-        fitter = _glm.lm_fitter(X)
-
-        info = _cs.set_info_cs(Y.info, _cs.sig_info(p, contours))
-        kwargs = dict(dims=Y.dims[1:], info=info)
-
-        self.all = []
-        self.p_maps = {}
-        for e, _, Ps in fitter.map(Y.x):
-            name = e.name
-            P = ndvar(Ps, name=name, **kwargs)
-            self.all.append(P)
-            self.p_maps[e] = P
-
-
-class cluster_anova:
-    """
-    Attributes
-    ----------
-
-    Y : ndvar
-        Dependent variable.
-    X : model
-        Model.
-
-    all other attributes are dictionaries mapping effects from X.effects to
-    results
-
-    F_maps : {effect -> ndvar{
-        Maps of F-values.
-
-    """
-    def __init__(self, Y, X, t=.1, samples=1000, replacement=False,
-                 tstart=None, tstop=None, close_time=0, sub=None, ds=None):
+    def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=0.1,
+                 tstart=None, tstop=None):
         """ANOVA with cluster permutation test
 
         Parameters
@@ -690,30 +649,21 @@ class cluster_anova:
             Measurements (dependent variable)
         X : categorial
             Model
-        t : scalar
-            Threshold (uncorrected p-value) to use for finding clusters
-        samples : int
-            Number of samples to estimate parameter distributions
+        sub : None | index-array
+            Perform the test with a subset of the data.
+        ds : None | dataset
+            If a dataset is specified, all data-objects can be specified as
+            names of dataset variables.
+        samples : None | int
+            Number of samples for permutation cluster test. For None, no
+            clusters are formed.
+        pmin : scalar (0 < pmin < 1)
+            Threshold p value for forming clusters in permutation cluster test.
         replacement : bool
             whether random samples should be drawn with replacement or
             without
         tstart, tstop : None | scalar
-            Time window for clusters.
-            **None**: use the whole epoch;
-            **scalar**: use only a part of the epoch
-
-            .. Note:: implementation is not optimal: F-values are still
-                computed but ignored.
-
-        close_time : scalar
-            Close gaps in clusters that are smaller than this interval. Assumes
-            that Y is a uniform time series.
-        sub : index
-            Apply analysis to a subset of cases in Y, X
-
-
-        .. FIXME:: connectivity for >2 dimensional data. Currently, adjacent
-            samples are connected.
+            Restrict time window for permutation cluster test.
 
         """
         sub = assub(sub, ds)
@@ -721,55 +671,90 @@ class cluster_anova:
         X = self.X = asmodel(X, sub, ds)
 
         lm = _glm.lm_fitter(X)
+        effects = lm.effects
+        df_den = lm.df_den
+        fmaps = lm.map(Y.x, p=False)
 
-        # get F-thresholds from p-threshold
-        tF = {}
-        if lm.full_model:
-            for e in lm.E_MS:
-                effects_d = lm.E_MS[e]
-                if effects_d:
-                    df_d = sum(ed.df for ed in effects_d)
-                    tF[e] = scipy.stats.distributions.f.isf(t, e.df, df_d)
+        if samples:
+            # find F-thresholds for clusters
+            fmin = {e: ftest_f(pmin, e.df, df_den[e]) for e in effects}
+            cdists = {e: _ClusterDist(Y, samples, fmin[e], meas='F',
+                                      name=e.name, tstart=tstart, tstop=tstop)
+                      for e in fmin}
+
+            # Find clusters in the actual data
+            n_clusters = 0
+            for e, fmap in fmaps:
+                cdist = cdists[e]
+                cdist.add_original(fmap)
+                n_clusters += cdist.n_clusters
+
+            if n_clusters:
+                for Y_ in resample(cdist.Y_perm, samples):
+                    fmaps_ = lm.map(Y_.x, p=False)
+                    for e, fmap in fmaps_:
+                        cdist = cdists[e]
+                        cdist.add_perm(fmap)
+
+        # create ndvars
+        dims = Y.dims[1:]
+
+        f = []
+        p = []
+        for e, fmap in fmaps:
+            f0, f1, f2 = ftest_f((0.05, 0.01, 0.001), e.df, df_den[e])
+            info = _cs.set_info_cs(Y.info, _cs.stat_info('f', f0, f1, f2))
+            f_ = ndvar(fmap, dims, info, e.name)
+            f.append(f_)
+
+            info = _cs.set_info_cs(Y.info, _cs.sig_info())
+            pmap = ftest_p(fmap, e.df, df_den[e])
+            p_ = ndvar(pmap, dims, info, e.name)
+            p.append(p_)
+
+        if samples:
+            # f with cluster threshold
+            f_clt = []
+            for e, fmap in fmaps:
+                f0 = ftest_f(pmin, e.df, df_den[e])
+                info = _cs.set_info_cs(Y.info, _cs.stat_info('f', f0))
+                f_ = ndvar(fmap, dims, info, e.name)
+                f_clt.append(f_)
+
+            # create cluster table
+            dss = []
+            for e in effects:
+                name = e.name
+                ds = cdists[e].clusters
+                ds['effect'] = factor([name], rep=ds.n_cases)
+                dss.append(ds)
+            clusters = combine(dss)
         else:
-            df_d = X.df_error
-            tF = {e: scipy.stats.distributions.f.isf(t, e.df, df_d)
-                  for e in X.effects}
+            clusters = None
 
-        # Estimate statistic distributions from permuted Ys
-        kwargs = dict(meas='F', tstart=tstart, tstop=tstop,
-                      close_time=close_time)
-        cdists = {e: _ClusterDist(Y, samples, tF[e], name=e.name, **kwargs)
-                  for e in tF}
+        # store attributes
+        self.name = "anova(%s, %s)" % (Y.name, X.name)
+        self.clusters = clusters
+        self.f = [[f_, f_] for f_ in f]
+        self.p = p
+        self.samples = samples
+        if samples:
+            self.fmin = fmin
+            self._cdists = cdists
+            self.all = [[f_, cdists[e].cpmap] for f_, e in zip(f_clt, effects)]
+        else:
+            self.all = self.f
 
-        # Find clusters in the actual data
-        test0 = lm.map(Y.x, p=False)
-        self.effects = []
-        self.F_maps = {}
-        for e, F in test0:
-            self.effects.append(e)
-            dist = cdists[e]
-            dist.add_original(F)
-            self.F_maps[e] = dist.P
-
-        for Y_ in resample(Y, samples, replacement=replacement):
-            for e, F in lm.map(Y_.x, p=False):
-                cdists[e].add_perm(F)
-
-        self.name = "ANOVA Permutation Cluster Test"
-        self.tF = tF
-        self.cdists = cdists
-
-        dss = []
-        for e in self.effects:
-            name = e.name
-            ds = cdists[e].clusters
-            ds['effect'] = factor([name], rep=ds.n_cases)
-            dss.append(ds)
-        ds = combine(dss)
-        self.clusters = ds
-
-        self.all = [[self.F_maps[e]] + self.cdists[e].clusters
-                    for e in self.X.effects if e in self.F_maps]
+    def __repr__(self):
+        parts = ["<%s" % (self.name)]
+        if self.samples:
+            parts.append(" %i samples, clusters:" % self.samples)
+            for e in self.clusters['effect'].cells:
+                idx = self.clusters['effect'] == e
+                p = np.min(self.clusters[idx, 'p'].x)
+                parts.append(" %r p >= %.3f" % (e, p))
+        parts.append('>')
+        return ''.join(parts)
 
 
 class _ClusterDist:

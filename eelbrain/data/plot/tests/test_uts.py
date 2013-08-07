@@ -38,13 +38,13 @@ def test_clusters():
     Y = ds['uts']
 
     # fixed effects model
-    res = testnd.cluster_anova(Y, A * B)
+    res = testnd.anova(Y, A * B)
     p = plot.uts.clusters(res, title="Fixed Effects Model")
     p.close()
 
     # random effects model:
     subject = factor(range(15), tile=4, random=True, name='subject')
-    res = testnd.cluster_anova(Y, A * B * subject)
+    res = testnd.anova(Y, A * B * subject)
     p = plot.uts.clusters(res, title="Random Effects Model")
     p.close()
 
