@@ -18,10 +18,10 @@ WxTerm interface
   possible to step through a script line by line.
 
 
-:class:`~eelbrain.vessels.experiment.mne_experiment`
+:class:`~eelbrain.experiment.MneExperiment`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. currentmodule:: eelbrain.vessels.mne_experiment
+.. currentmodule:: eelbrain.experiment
 
 * Ability to use manual epoch rejection instead of the automatic procedure.
   The ``epoch_rejection`` class attribute specifies how epochs should be 
