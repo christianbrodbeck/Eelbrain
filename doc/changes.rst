@@ -45,7 +45,7 @@ WxTerm interface
   like ``'{subject}_{experimnt}'``.
 
 
-:class:`~eelbrain.vessels.data.dataset`
+:class:`~eelbrain.data.dataset`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. currentmodule:: eelbrain.vessels.data

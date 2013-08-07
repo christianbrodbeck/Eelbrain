@@ -5,17 +5,17 @@ Introduction
 
 There are two primary data-objects: 
 
-* :class:`~eelbrain.vessels.data.var` for scalar variables
-* :class:`~eelbrain.vessels.data.factor` for categorial variables
+* :class:`~eelbrain.data.var` for scalar variables
+* :class:`~eelbrain.data.factor` for categorial variables
 
 Multiple variables belonging to the same dataset can be grouped in a 
-:class:`~eelbrain.vessels.data.dataset` object.
+:class:`~eelbrain.data.dataset` object.
 
 
 Factor
 ======
 
-A :py:class:`~eelbrain.vessels.data.factor` is a container for 
+A :py:class:`~eelbrain.data.factor` is a container for 
 one-dimensional, categorial data: Each case is 
 described by a string label. The most obvious way to initialize a factor 
 is a list of strings::
@@ -29,7 +29,7 @@ same factor can be initialized with::
     factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b'], name='A')
  
 There are other shortcuts to initialize factors  (see also 
-the :py:class:`~eelbrain.vessels.data.factor` class documentation)::
+the :py:class:`~eelbrain.data.factor` class documentation)::
 
     >>> A = factor(['a', 'b', 'c'], rep=4, name='A')
     >>> A
@@ -43,7 +43,7 @@ Indexing works like for arrays::
     factor(['a', 'a', 'a', 'a', 'b', 'b'], name='A')
 
 All values present in a factor are accessible in its 
-:py:attr:`~eelbrain.vessels.data.factor.cells` attribute::
+:py:attr:`~eelbrain.data.factor.cells` attribute::
 
     >>> A.cells
     ['a', 'b', 'c']
@@ -82,13 +82,13 @@ where a categorial model is required::
 Var
 ===
 
-The :py:class:`~eelbrain.vessels.data.var` class is basically a container to 
+The :py:class:`~eelbrain.data.var` class is basically a container to 
 associate one-dimensional
 :py:class:`numpy.array` objects with a name. While simple operations can be 
 performed on the object directly, for any more complex operations on the data
 the corresponding :py:class:`numpy.array` can be retrieved in the 
-:py:class:`~eelbrain.vessels.data.var`'s
-:py:attr:`~eelbrain.vessels.data.var.x` attribute::
+:py:class:`~eelbrain.data.var`'s
+:py:attr:`~eelbrain.data.var.x` attribute::
 
     >>> Y = var(np.random.rand(10), name='Y')
     >>> Y
@@ -109,20 +109,20 @@ the corresponding :py:class:`numpy.array` can be retrieved in the
 Dataset
 =======
 
-The :py:class:`~eelbrain.vessels.data.dataset` class is a subclass of 
+The :py:class:`~eelbrain.data.dataset` class is a subclass of 
 :py:class:`collections.OrderedDict` from which it inherits much of its 
 behavior.
 Its intended purpose is to be a vessel for variable objects  
-(:py:class:`~eelbrain.vessels.data.factor`, 
-:py:class:`~eelbrain.vessels.data.var` and
-:py:class:`~eelbrain.vessels.data.ndvar`) 
+(:py:class:`~eelbrain.data.factor`, 
+:py:class:`~eelbrain.data.var` and
+:py:class:`~eelbrain.data.ndvar`) 
 describing the same cases. 
 As a dictionary, its keys are strings and its values are data-objects.
 
-The :py:class:`~eelbrain.vessels.data.dataset` class interacts with 
+The :py:class:`~eelbrain.data.dataset` class interacts with 
 data-objects' :py:attr:`name` attribute:
 
-* A :py:class:`~eelbrain.vessels.data.dataset` initialized with 
+* A :py:class:`~eelbrain.data.dataset` initialized with 
   data-objects automatically uses their names as keys::
 
         >>> A = factor('aabb', name='A')
@@ -161,9 +161,9 @@ variables stored in it::
 ``N=4`` indicates that the dataset contains four cases (rows). The subsequent 
 dict-like representation shows the keys and the types of the corresponding 
 values 
-(``F``:   :py:class:`~eelbrain.vessels.data.factor`,
-``V``:   :py:class:`~eelbrain.vessels.data.var`,
-``Vnd``: :py:class:`~eelbrain.vessels.data.ndvar`).
+(``F``:   :py:class:`~eelbrain.data.factor`,
+``V``:   :py:class:`~eelbrain.data.var`,
+``Vnd``: :py:class:`~eelbrain.data.ndvar`).
 If a variable's name does not match its key in the dataset, this is also 
 indicated::
 
@@ -328,12 +328,12 @@ Below is a simple example using data objects. For more examples, see the
 Exporting Data
 ==============
 
-:class:`~eelbrain.vessels.data.dataset` objects have an 
-:py:meth:`~eelbrain.vessels.data.dataset.export` method for
+:class:`~eelbrain.data.dataset` objects have an 
+:py:meth:`~eelbrain.data.dataset.export` method for
 saving in various formats. In addition, the dataset's
-:py:meth:`~eelbrain.vessels.data.dataset.as_table` method can create tables with 
+:py:meth:`~eelbrain.data.dataset.as_table` method can create tables with 
 more flexibility.
 
-Iterators (such as :class:`~eelbrain.vessels.data.var` and 
-:class:`~eelbrain.vessels.data.factor`) can be exported using the
-:func:`eelbrain.save.txt` function.
+Iterators (such as :class:`~eelbrain.data.var` and 
+:class:`~eelbrain.data.factor`) can be exported using the
+:func:`eelbrain.data.save.txt` function.

@@ -8,7 +8,7 @@ Data-Container Classes
 
 Basic data container classes:
 
-.. currentmodule:: eelbrain.vessels.data
+.. currentmodule:: eelbrain.data
 
 .. autosummary::
    :toctree: generated
@@ -16,7 +16,7 @@ Basic data container classes:
    dataset
    datalist
    factor
-   interaction
+   data_obj.interaction
    ndvar
    var
 
@@ -31,7 +31,7 @@ Functions and classes operating with data containers:
    align
    align1
    combine
-   celltable
+   Celltable
 
 
 File I/O
@@ -39,8 +39,6 @@ File I/O
 
 Read
 ----
-
-.. currentmodule:: eelbrain
 
 .. autosummary::
    :toctree: generated
@@ -54,12 +52,12 @@ Write
 -----
 
 * `Pickling <http://docs.python.org/library/pickle.html>`_: 
-  All data-objects can be pickled. :func:`eelbrain.save.pickle` provides a 
+  All data-objects can be pickled. :func:`save.pickle` provides a 
   shortcut for pickling objects.
 * ``txt`` export: Save a dataset using it's 
-  :py:meth:`~eelbrain.vessels.data.dataset.export` method. 
+  :py:meth:`~dataset.export` method. 
   Save any iterator with 
-  :py:func:`eelbrain.save.txt`.
+  :py:func:`save.txt`.
 
 .. autosummary::
    :toctree: generated

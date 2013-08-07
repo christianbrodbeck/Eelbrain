@@ -2,14 +2,14 @@
 Plotting
 ********
 
-.. automodule:: eelbrain.plot
+.. automodule:: eelbrain.data.plot
 
 
 
 
-.. automodule:: eelbrain.plot.brain
+.. automodule:: eelbrain.data.plot.brain
 
-.. currentmodule:: eelbrain.plot.brain
+.. currentmodule:: eelbrain.data.plot.brain
 
 .. autosummary::
    :toctree: generated
@@ -22,9 +22,9 @@ Plotting
 
 
 
-.. automodule:: eelbrain.plot.sensors
+.. automodule:: eelbrain.data.plot.sensors
 
-.. currentmodule:: eelbrain.plot.sensors
+.. currentmodule:: eelbrain.data.plot.sensors
 
 .. autosummary::
    :toctree: generated
@@ -35,9 +35,9 @@ Plotting
 
 
 
-.. automodule:: eelbrain.plot.topo
+.. automodule:: eelbrain.data.plot.topo
 
-.. currentmodule:: eelbrain.plot.topo
+.. currentmodule:: eelbrain.data.plot.topo
 
 .. autosummary::
    :toctree: generated
@@ -49,9 +49,9 @@ Plotting
 
 
 
-.. automodule:: eelbrain.plot.uts
+.. automodule:: eelbrain.data.plot.uts
 
-.. currentmodule:: eelbrain.plot.uts
+.. currentmodule:: eelbrain.data.plot.uts
 
 .. autosummary::
    :toctree: generated
@@ -63,9 +63,9 @@ Plotting
 
 
 
-.. automodule:: eelbrain.plot.utsnd
+.. automodule:: eelbrain.data.plot.utsnd
 
-.. currentmodule:: eelbrain.plot.utsnd
+.. currentmodule:: eelbrain.data.plot.utsnd
 
 .. autosummary::
    :toctree: generated
@@ -76,9 +76,9 @@ Plotting
 
 
 
-.. automodule:: eelbrain.plot.uv
+.. automodule:: eelbrain.data.plot.uv
 
-.. currentmodule:: eelbrain.plot.uv
+.. currentmodule:: eelbrain.data.plot.uv
 
 .. autosummary::
    :toctree: generated
@@ -95,4 +95,4 @@ Plotting
 
 
 
-.. automodule:: eelbrain.plot._base
+.. automodule:: eelbrain.data.plot._base

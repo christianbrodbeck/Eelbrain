@@ -2,7 +2,7 @@
 Data-Objects
 ############
 
-.. py:module:: eelbrain.vessels.data
+.. py:module:: eelbrain.data
 
 .. toctree::
    :maxdepth: 2
