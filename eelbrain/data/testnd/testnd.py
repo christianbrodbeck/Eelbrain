@@ -854,6 +854,7 @@ class _ClusterDist:
 
         self.Y = Y
         self.Y_perm = Y_perm
+        self.N = N
         self.dist = np.zeros(N)
         self._i = int(N)
         self.t_upper = t_upper
@@ -885,8 +886,9 @@ class _ClusterDist:
 
         # measure original clusters
         cluster_v = ndimage.sum(pmap_, cmap, cids)
-        cluster_p = np.array([1 - percentileofscore(self.dist, abs(v), 'mean')
-                              / 100 for v in cluster_v])
+        # the proportion of random partitions that resulted in a larger test
+        # statistic than the observed one... is called the p-value (179)
+        cluster_p = np.sum(self.dist > np.abs(cluster_v[:, None]), 1) / self.N
         sort_idx = np.argsort(cluster_p)
 
         # prepare container for clusters
@@ -906,7 +908,6 @@ class _ClusterDist:
         cmaps = np.empty((self.n_clusters,) + pmap.shape, dtype=pmap.dtype)
         boundaries = ndimage.find_objects(cmap)
         for i, ci in enumerate(sort_idx):
-            v = cluster_v[ci]
             p = cluster_p[ci]
             cid = cids[ci]
 
