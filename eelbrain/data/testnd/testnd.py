@@ -133,7 +133,7 @@ class corr:
                                  name=name, tstart=tstart, tstop=tstop)
             cdist.add_original(rmap)
             if cdist.n_clusters:
-                for Y_ in resample(cdist.Y_perm, samples, replacement=False):
+                for Y_ in resample(cdist.Y_perm, samples):
                     rmap_ = _corr(Y_.x, X.x)
                     cdist.add_perm(rmap_)
 
@@ -325,7 +325,7 @@ class ttest_ind:
                                  tstart, tstop)
             cdist.add_original(tmap)
             if cdist.n_clusters:
-                for Y_ in resample(cdist.Y_perm, samples, replacement=False):
+                for Y_ in resample(cdist.Y_perm, samples):
                     tmap_ = _t_ind(Y_.x, n1, n0)
                     cdist.add_perm(tmap_)
 
@@ -445,7 +445,7 @@ class ttest_rel:
                                 tstart, tstop)
             cdist.add_original(tmap)
             if cdist.n_clusters:
-                for Y_ in resample(cdist.Y_perm, samples, replacement=False):
+                for Y_ in resample(cdist.Y_perm, samples):
                     tmap_ = _t_rel(Y_.x)
                     cdist.add_perm(tmap_)
 

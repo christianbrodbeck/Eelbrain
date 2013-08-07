@@ -666,7 +666,7 @@ class bootstrap_pairwise(object):
         resampled = np.empty((samples + 1, len(Y)))  # sample X subject within category
         resampled[0] = Y.x
         # fill resampled
-        for i, Y_ in enumerate(resample(Y, samples, match, replacement), 1):
+        for i, Y_ in enumerate(resample(Y, samples, replacement, match), 1):
             resampled[i] = Y_.x
         self.resampled = resampled
 
@@ -803,7 +803,7 @@ class bootstrap_pairwise(object):
 
 
 
-def resample(Y, samples=10000, unit=None, replacement=True):
+def resample(Y, samples=10000, replacement=False, unit=None):
     """
     Generator function to resample a dependent variable (Y) multiple times
 
@@ -813,14 +813,13 @@ def resample(Y, samples=10000, unit=None, replacement=True):
         Variable which is to be resampled.
     samples : int
         number of samples to yield.
+    replacement : bool
+        whether random samples should be drawn with replacement or without.
     unit : categorial
         factor specifying unit of measurement (e.g. subject). If unit is
         specified, resampling proceeds by first resampling the categories of
         unit (with or without replacement) and then shuffling the values
         within units (no replacement).
-    replacement : bool
-        whether random samples should be drawn with replacement or
-        without.
 
     Returns
     -------
