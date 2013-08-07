@@ -574,11 +574,11 @@ class array(_base.eelfigure):
         self.epochs = epochs
         self._ntopo = ntopo
 
-        # if t argument is provided, set topo-pol time points
+        # if t argument is provided, set topo-map time points
         if t:
             if np.isscalar(t):
                 t = [t]
-            self.setwins(*t)
+            self.set_topowins(*t)
 
         # setup callback
         self._selected_window = None
