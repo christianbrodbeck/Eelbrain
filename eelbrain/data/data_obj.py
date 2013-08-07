@@ -489,7 +489,7 @@ class Celltable(object):
         A slice of the match argument describing the group members for each cell.
 
     """
-    def __init__(self, Y, X, match=None, sub=None, match_func=np.mean,
+    def __init__(self, Y, X=None, match=None, sub=None, match_func=np.mean,
                  cat=None, ds=None):
         """Divide Y into cells defined by X.
 
