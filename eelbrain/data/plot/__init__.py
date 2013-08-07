@@ -45,7 +45,22 @@ for every subject with its average response.
 Layout
 ^^^^^^
 
-All plots xxx ``**layout`` in their function signature.
+Most plots that also share certain layout keyword arguments. By default, all
+those parameters are determined automatically, but individual values can be
+specified manually by supplying them as keyword arguments.
+
+h, w : scalar
+    Height and width of the figure.
+axh, axw : scalar
+    Height and width of the axes.
+nrow, ncol : None | int
+    Limit number of rows/columns. If neither is specified, a square layout
+    is produced
+ax_aspect : scalar
+    Width / height aspect of the axes.
+
+Plots that do take those parameters can be identified by the ``**layout`` in
+their function signature.
 
 """
 from . import sensors
