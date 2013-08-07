@@ -131,13 +131,14 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
 
 def var(path=None, name=None):
     """
-    Loads a ``var`` object from a text file by splitting at white-spaces.
+    Load a :class:`var` object from a text file by splitting at white-spaces.
 
+    Parameters
+    ----------
     path : str(path) | None
         Source file. If None, a system file dialog is opened.
     name : str | None
         Name for the var.
-
     """
     if path is None:
         path = ui.ask_file("Select var File", "()")

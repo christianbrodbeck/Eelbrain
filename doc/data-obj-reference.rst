@@ -40,6 +40,8 @@ File I/O
 Read
 ----
 
+.. currentmodule:: eelbrain.data
+
 .. autosummary::
    :toctree: generated
 
@@ -54,8 +56,8 @@ Write
 * `Pickling <http://docs.python.org/library/pickle.html>`_: 
   All data-objects can be pickled. :func:`save.pickle` provides a 
   shortcut for pickling objects.
-* ``txt`` export: Save a dataset using it's 
-  :py:meth:`~dataset.export` method. 
+* Text file export: Save a dataset using it's 
+  :py:meth:`~dataset.save_txt` method. 
   Save any iterator with 
   :py:func:`save.txt`.
 

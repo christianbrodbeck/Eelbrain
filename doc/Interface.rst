@@ -4,7 +4,8 @@ Eelbrain wxPython Interface
 WxPython Gui
 ------------
 
-The Eelbrain GUI is based on `wxPython <http://www.wxpython.org/>`_. 
+The Eelbrain GUI is based on `wxPython <http://www.wxpython.org/>`_'s 
+`PyShell <http://wiki.wxpython.org/PyShell>`_. 
 
 
 Getting Help
