@@ -67,18 +67,34 @@ class topomap(_tb_sensors_mixin, _base.eelfigure):
                        'sensors': sensors,
                        'vlims': _base.find_fig_vlims(epochs)}
 
-        self._topomaps = []
+        self._plots = []
         self._sensor_plots = []
         for i, ax, layers in self._iter_ax(epochs):
             ax.ID = i
             h = _ax_topomap(ax, layers, title=True, **topo_kwargs)
-            self._topomaps.append(h)
+            self._plots.append(h)
             self._sensor_plots.append(h.sensors)
 
         if isinstance(sensors, str):
             self.set_label_text(sensors)
 
         self._show()
+
+    def add_contour(self, meas, level, color='k'):
+        """Add a contour line
+
+        Parameters
+        ----------
+        meas : str
+            The measurement for which to add a contour line.
+        level : scalar
+            The value at which to draw the contour.
+        color : matplotlib color
+            The color of the contour line.
+        """
+        for p in self._plots:
+            p.add_contour(meas, level, color)
+        self.draw()
 
     def set_cmap(self, cmap, base=True, overlays=False, **kwa):
         """Change the colormap in the topomaps
@@ -92,13 +108,13 @@ class topomap(_tb_sensors_mixin, _base.eelfigure):
         overlays : bool
             Apply the new colormap to the layers above the first layer.
         """
-        for p in self._topomaps:
+        for p in self._plots:
             p.set_cmap(cmap, base, overlays)
         self.draw()
 
     def set_vlim(self, vmax=None, meas=None, vmin=None):
         "Change the range of the data shown in he colormap"
-        for p in self._topomaps:
+        for p in self._plots:
             p.set_vlim(vmax, meas, vmin)
         self.draw()
 
@@ -329,31 +345,33 @@ class _plt_topomap(_utsnd._plt_im_array):
             Override the colorspace vmax.
         """
         im_kwa = _base.find_im_args(ndvar, overlay, vlims)
-        ct_kwa = _base.find_ct_args(ndvar, overlay)
+        contours = _base.find_ct_args(ndvar, overlay)
         self._meas = ndvar.info.get('meas', _base.default_meas)
-        self.ax = ax
 
         Y = ndvar.get_data(('sensor',))
-        Ymap = ndvar.sensor.get_im_for_topo(Y, proj=proj, res=res, frame=im_frame)
+        data = ndvar.sensor.get_im_for_topo(Y, proj=proj, res=res, frame=im_frame)
 
         emin = -im_frame
         emax = 1 + im_frame
-        map_kwargs = {'origin': 'lower', 'extent': (emin, emax, emin, emax)}
+        extent = (emin, emax, emin, emax)
 
         if im_kwa is not None:
-            im_kwa.update(map_kwargs)
             im_kwa.update(im_kwargs)
-            self.im = ax.imshow(Ymap, **im_kwa)
+            self.im = ax.imshow(data, extent=extent, origin='lower', **im_kwa)
             self._cmap = im_kwa['cmap']
         else:
             self.im = None
 
-        # contours
-        if ct_kwa is not None:
-            ct_kwa.update(map_kwargs)
-            self.contour = ax.contour(Ymap, **ct_kwa)
-        else:
-            self.contour = None
+        # store attributes
+        self.ax = ax
+        self.cont = None
+        self._data = data
+        self._aspect = 'equal'
+        self._extent = extent
+        self._contours = contours
+
+        # draw flexible part
+        self._draw_contours()
 
 
 class _ax_topomap(_utsnd._ax_im_array):

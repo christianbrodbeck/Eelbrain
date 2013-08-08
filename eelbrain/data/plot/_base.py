@@ -142,7 +142,7 @@ def find_ct_args(ndvar, overlay):
     Returns
     -------
     ct_args : dict
-        Arguments for the contour plot (levels, colors).
+        {level: color} mapping for contour plots.
 
     Notes
     -----
@@ -165,9 +165,7 @@ def find_ct_args(ndvar, overlay):
             contours = ndvar.info.get('base_contours', contours)
 
         if contours:
-            levels = sorted(contours)
-            colors = [contours[l] for l in levels]
-            ct_args.update(levels=levels, colors=colors)
+            ct_args.update(contours)
     else:
         ct_args = None
 

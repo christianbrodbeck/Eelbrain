@@ -25,7 +25,7 @@ class _plt_im_array(object):
     def __init__(self, ax, ndvar, overlay, dims=('time', 'sensor'),
                  extent=None, aspect='auto', vlims={}):
         im_kwa = _base.find_im_args(ndvar, overlay, vlims)
-        ct_kwa = _base.find_ct_args(ndvar, overlay)
+        contours = _base.find_ct_args(ndvar, overlay)
         self._meas = ndvar.info.get('meas', _base.default_meas)
         data = ndvar.get_data(dims)
         if data.ndim > 2:
@@ -39,10 +39,35 @@ class _plt_im_array(object):
         else:
             self.im = None
 
-        if ct_kwa is not None:
-            self.cont = ax.contour(data, aspect=aspect, extent=extent, **ct_kwa)
+        # store attributes
+        self.ax = ax
+        self.cont = None
+        self._data = data
+        self._aspect = aspect
+        self._extent = extent
+        self._contours = contours
+
+        # draw flexible part
+        self._draw_contours()
+
+    def _draw_contours(self):
+        if self.cont:
+            for c in self.cont.collections:
+                c.remove()
+
+        if self._contours:
+            levels = sorted(self._contours)
+            colors = [self._contours[l] for l in levels]
+            self.cont = self.ax.contour(self._data, levels=levels,
+                                        colors=colors, aspect=self._aspect,
+                                        origin='lower', extent=self._extent)
         else:
             self.cont = None
+
+    def add_contour(self, meas, level, color):
+        if self._meas == meas:
+            self._contours[level] = color
+            self._draw_contours()
 
     def get_kwargs(self):
         "Get the arguments required for plotting the im"
@@ -141,6 +166,10 @@ class _ax_im_array(object):
             title = _base.str2tex(epoch.name)
         ax.set_title(title)
 
+    def add_contour(self, meas, level, color):
+        for l in self.layers:
+            l.add_contour(meas, level, color)
+
     @property
     def kwargs(self):
         return self.layers[0].get_kwargs()
@@ -197,6 +226,22 @@ class array(_base.eelfigure):
             self.plots.append(p)
 
         self._show()
+
+    def add_contour(self, meas, level, color='k'):
+        """Add a contour line
+
+        Parameters
+        ----------
+        meas : str
+            The measurement for which to add a contour line.
+        level : scalar
+            The value at which to draw the contour.
+        color : matplotlib color
+            The color of the contour line.
+        """
+        for p in self.plots:
+            p.add_contour(meas, level, color)
+        self.draw()
 
     def set_cmap(self, cmap, meas=None):
         """Change the colormap in the array plots
