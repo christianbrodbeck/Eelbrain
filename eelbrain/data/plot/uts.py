@@ -370,62 +370,68 @@ def _ax_stat(ax, ct, colors, legend_h={}, dev=scipy.stats.sem, main=np.mean,
 
 
 class clusters(_base.subplot_figure):
-    "Plotting of permutation cluster test results"
-    def __init__(self, epochs, pmax=0.05, ptrend=0.1, title=None,
+    "Plotting of ANOVA permutation cluster test results"
+    def __init__(self, res, pmax=0.05, ptrend=0.1, title=None,
                  axtitle='{name}', cm='jet', overlay=False, **layout):
         """
         Plotting of permutation cluster test results
 
+        Parameters
+        ----------
+        res : testnd.anova
+            ANOVA with permutation cluster test result object.
         pmax : scalar
             Maximum p-value of clusters to plot as solid.
         ptrend : scalar
             Maximum p-value of clusters to plot as trend.
-        t : dict
-            Contains kwargs for matplotlib axhline for threshold plotting.
-            Plot threshold for forming clusters.
         title : str
-            Window title.
-        figtitle : str | None
             Figure title.
         axtitle : str | None
-            Axes title pattern. '{name}' is formatted to the first layer's
-            name
+            Axes title pattern. '{name}' is formatted to the effect name.
+        cm : str
+            Colormap to use for coloring different effects.
         overlay : bool
             Plot epochs (time course for different effects) on top of each
             other (as opposed to on separate axes).
 
         """
-        try:
-            self.cluster_info = epochs.as_table()
-            if not isinstance(self.cluster_info, (list, tuple)):
-                self.cluster_info = [self.cluster_info]
-        except AttributeError:
-            self.cluster_info = "No Cluster Info"
+        clusters_ = res.clusters
 
-        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1)
+        epochs = self.epochs = _base.unpack_epochs_arg(res, 1)
         cm = _cm.get_cmap(cm)
 
         # create figure
         N = len(epochs)
-        nax = None if overlay else N
+        nax = 1 if overlay else N
         super(clusters, self).__init__("plot.uts.clusters", nax, layout,
                                        figtitle=title)
 
         self._caxes = []
         if overlay:
-            ax = self.figure.add_subplot(1, 1, 1)
-            for i, layers in enumerate(epochs):
-                color = cm(i / N)
-                cax = _ax_clusters(ax, layers, color=color, pmax=pmax,
-                                   title=None, ptrend=ptrend)
-                self._caxes.append(cax)
-        else:
-            for i, ax, layers in self._iter_ax(epochs):
-                color = cm(i / N)
-                cax = _ax_clusters(ax, layers, color=color, pmax=pmax,
-                                   title=axtitle, ptrend=ptrend)
-                self._caxes.append(cax)
+            ax = self._get_subplot(0)
+            axtitle = None
+        for i, layers in enumerate(epochs):
+            if not overlay:
+                ax = self._get_subplot(i)
+                axtitle = axtitle
 
+            color = cm(i / N)
+            stat = layers[0]
+
+            # ax clusters
+            if clusters_:
+                if 'effect' in clusters_:
+                    cs = clusters_.subset('effect == %r' % layers[0].name)
+                else:
+                    cs = clusters_
+            else:
+                cs = None
+
+            cax = _ax_uts_clusters(ax, stat, cs, color=color,
+                                   pmax=pmax, title=axtitle, ptrend=ptrend)
+            self._caxes.append(cax)
+
+        self.clusters = clusters_
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -434,18 +440,25 @@ class clusters(_base.subplot_figure):
         btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
 
     def _OnShowClusterInfo(self, event):
-        size = (350, 700)
-        info = (os.linesep * 2).join(map(str, self.cluster_info))
-        dlg = TextDialog(self._frame, info, "Clusters", size=size)
-        dlg.ShowModal()
-        dlg.Destroy()
+        info = str(self.clusters)
+        style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.SYSTEM_MENU
+        dlg = TextDialog(self._frame, info, "Clusters", style=style)
+        font = wx.Font(12, wx.MODERN, wx.NORMAL, wx.NORMAL, False,
+                       u'Inconsolata')
+        dlg.text.SetFont(font)
 
-    def set_pmax(self, pmax=0.05):
+        n_lines = dlg.text.GetNumberOfLines()
+        line_text = dlg.text.GetLineText(0)
+        w, h = dlg.text.GetTextExtent(line_text)
+        dlg.text.SetSize((w + 100, (h + 3) * n_lines + 50))
+        dlg.Fit()
+        dlg.Show()
+
+    def set_pmax(self, pmax=0.05, ptrend=0.1):
         "set the threshold p-value for clusters to be displayed"
         for cax in self._caxes:
-            cax.set_pmax(pmax=pmax)
-
-        self.canvas.draw()
+            cax.set_pmax(pmax, ptrend)
+        self.draw()
 
 
 
@@ -509,10 +522,9 @@ def _plt_uts(ax, ndvar, color=None, xdim='time', kwargs={}):
         ax.axhline(y, **kwa)
 
 
-class _ax_clusters:
-    def __init__(self, ax, layers, color=None, pmax=0.05, ptrend=0.1,
+class _ax_uts_clusters:
+    def __init__(self, ax, Y, clusters, color=None, pmax=0.05, ptrend=0.1,
                  xdim='time', title=None):
-        Y = layers[0]
         uts_args = _base.find_uts_args(Y, False, color)
         self._bottom, self._top = _base.find_vlim_args(Y)
 
@@ -529,61 +541,62 @@ class _ax_clusters:
         if np.any(Y.x < 0) and np.any(Y.x > 0):
             ax.axhline(0, color='k')
 
+        # pmap
+        self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend, color)
+
+        # save ax attr
         self.ax = ax
         x = Y.get_dim(xdim).x
         self.xlim = (x[0], x[-1])
-        self.clusters = layers[1:]
-        self.cluster_hs = {}
-        self.sig_kwargs = dict(color=uts_args.get('color', None), xdim=xdim,
-                               y=Y)
-        self.trend_kwargs = dict(color=(.7, .7, .7), xdim=xdim, y=Y)
-        self.set_pmax(pmax=pmax, ptrend=ptrend)
-
-    def draw(self):
-        ax = self.ax
-
-        for c in self.clusters:
-            if c.info['p'] <= self.pmax:
-                if c not in self.cluster_hs:
-                    h = _plt_cluster(ax, c, **self.sig_kwargs)
-                    self.cluster_hs[c] = h
-            elif c.info['p'] <= self.ptrend:
-                if c not in self.cluster_hs:
-                    h = _plt_cluster(ax, c, **self.trend_kwargs)
-                    self.cluster_hs[c] = h
-            else:
-                if c in self.cluster_hs:
-                    h = self.cluster_hs.pop(c)
-                    h.remove()
 
         ax.set_xlim(*self.xlim)
         ax.set_ylim(bottom=self._bottom, top=self._top)
 
     def set_pmax(self, pmax=0.05, ptrend=0.1):
+        self.cluster_plt.set_pmax(pmax, ptrend)
+
+
+class _plt_uts_clusters:
+    def __init__(self, ax, clusters, pmax, ptrend=None, color=None, hatch='/'):
+        """
+        clusters : dataset
+            Dataset with entries for 'tstart', 'tstop' and 'p'.
+        """
         self.pmax = pmax
         self.ptrend = ptrend
-        self.draw()
+        self.h = []
+        self.ax = ax
+        self.clusters = clusters
+        self.color = color
+        self.hatch = hatch
+        self.update()
 
+    def set_pmax(self, pmax, ptrend):
+        self.pmax = pmax
+        self.ptrend = ptrend
+        self.update()
 
-def _plt_cluster(ax, ndvar, color=None, y=None, xdim='time', hatch='/'):
-    x = ndvar.get_dim(xdim).x
-    v = ndvar.get_data((xdim,))
-    where = np.nonzero(v)[0]
+    def update(self):
+        h = self.h
+        while len(h):
+            h.pop().remove()
 
-    # make sure the cluster is contiguous
-    if len(where) > 1 and np.max(np.diff(where)) > 1:
-        raise ValueError("Non-contiguous clusters not supported; where = %r" % where)
+        clusters = self.clusters
+        if clusters is None:
+            return
+        p_include = self.ptrend or self.pmax
+        for cluster in clusters.itercases():
+            p = cluster['p']
+            if p > p_include:
+                continue
 
-    x0 = where[0]
-    x1 = where[-1]
+            alpha = 0.5 if p < self.pmax else 0.25
+            x0 = cluster['tstart']
+            x1 = cluster['tstop']
 
-    if y is None:
-        h = ax.vspan(x0, x1, color=color, hatch=hatch, fill=False)
-    else:
-        y = y.get_data((xdim,))
-        h = ax.fill_between(x, y, where=v, color=color, alpha=0.5)
-
-    return h
+            h = self.ax.axvspan(x0, x1, color=self.color,  # , hatch=self.hatch,
+                                fill=True, alpha=alpha)
+            self.h.append(h)
 
 
 def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwargs):
