@@ -69,7 +69,7 @@ class topomap(_tb_sensors_mixin, _base.eelfigure):
 
         self._plots = []
         self._sensor_plots = []
-        for i, ax, layers in self._iter_ax(epochs):
+        for i, ax, layers in zip(xrange(nax), self._axes, epochs):
             ax.ID = i
             h = _ax_topomap(ax, layers, title=True, **topo_kwargs)
             self._plots.append(h)

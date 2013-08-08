@@ -218,7 +218,7 @@ class array(_base.eelfigure):
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs)
-        for i, ax, layers in self._iter_ax(epochs):
+        for i, ax, layers in zip(xrange(nax), self._axes, epochs):
             _ylabel = ylabel if i == 1 else None
             _xlabel = xlabel if i == nax - 1 else None
             p = _ax_im_array(ax, layers, xlabel=_xlabel, ylabel=ylabel,
@@ -502,7 +502,7 @@ class butterfly(_base.eelfigure):
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, True)
-        for ax, layers in zip(self._get_subplots(), epochs):
+        for ax, layers in zip(self._axes, epochs):
             h = _ax_butterfly(ax, layers, sensors=sensors, vlims=vlims,
                               title=axtitle, xlabel=xlabel, ylabel=ylabel,
                               color=color)

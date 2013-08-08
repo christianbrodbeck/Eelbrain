@@ -88,6 +88,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import PIL
 
+from ...utils import LazyProperty
 from ...utils.subp import cmd_exists
 from ...fmtxt import texify
 from ..colorspaces import symmetric_cmaps, zerobased_cmaps
@@ -659,26 +660,16 @@ class eelfigure(object):
         "subclass to add figure-specific content"
         return '%s'
 
-    def _get_subplot(self, i):
-        return self._get_subplots()[i - 1]
-
-    def _get_subplots(self):
+    @LazyProperty
+    def _axes(self):
         if self._layout is None:
-            raise RuntimeError("Can't create subplots without layout")
-
-        if self._subplots is None:
+            return []
+        else:
             ncol = self._layout.ncol
             nrow = self._layout.nrow
             kw = self._ax_kwa
-            self._subplots = [self.figure.add_subplot(nrow, ncol, i + 1, **kw)
-                              for i in xrange(self._layout.nax)]
-        return tuple(self._subplots)
-
-    def _iter_ax(self, data):
-        "Iterate through (i, ax, layers)"
-        nax = self._layout.nax
-        subplots = self._get_subplots()
-        return zip(xrange(nax), subplots, data)
+            return [self.figure.add_subplot(nrow, ncol, i + 1, **kw)
+                    for i in xrange(self._layout.nax)]
 
     def _on_leave_axes(self, event):
         "update the status bar when the cursor leaves axes"

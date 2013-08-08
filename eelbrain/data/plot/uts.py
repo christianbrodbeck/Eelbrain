@@ -156,7 +156,7 @@ class stat(_base.subplot_figure):
             if len(ct) < 2:
                 legend = False
         else:
-            for i, ax, cell in zip(xrange(nax), self._get_subplots(), ct.cells):
+            for i, ax, cell in zip(xrange(nax), self._axes, ct.cells):
                 kwargs['xlabel'] = xlabel if i == len(ct) - 1 else False
                 if X is not None:
                     X = Xct.data[cell]
@@ -308,7 +308,7 @@ class uts(_base.subplot_figure):
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         super(uts, self).__init__(title, len(epochs), layout, 1.5, 2)
 
-        for ax, epoch in zip(self._get_subplots(), epochs):
+        for ax, epoch in zip(self._axes, epochs):
             _ax_uts(ax, epoch, title=axtitle)
 
         self._show(figtitle=figtitle)
@@ -408,11 +408,11 @@ class clusters(_base.subplot_figure):
 
         self._caxes = []
         if overlay:
-            ax = self._get_subplot(0)
+            ax = self._axes[0]
             axtitle = None
         for i, layers in enumerate(epochs):
             if not overlay:
-                ax = self._get_subplot(i)
+                ax = self._axes[i]
                 axtitle = axtitle
 
             color = cm(i / N)
