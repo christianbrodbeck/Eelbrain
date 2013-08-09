@@ -268,24 +268,37 @@ class butterfly(_base.eelfigure):
         # setup callback
         self.canvas.mpl_connect('button_press_event', self._on_click)
         self._realtime_topo = True
+        self._t_label = None
         self._frame.store_canvas()
         self._draw_topo(0, draw=False)
         self._show(tight=False)
 
     def _draw_topo(self, t, draw=True):
         self._current_t = t
-        del self.topo_plots[:]
-        for ax, layers, p in zip(self.topo_axes, self._epochs, self.bfly_plots):
-            ax.cla()
-            layers = [l.subdata(time=t) for l in layers]
-            p = _ax_topomap(ax, layers, vmin=p.vmin, vmax=p.vmax,
-                            **self.topo_kwargs)
-            self.topo_plots.append(p)
+#         t_str = "t = %.3f" % t  # redraw does not properly erase the old text
+        epochs = [[l.subdata(time=t) for l in layers]
+                  for layers in self._epochs]
+
+        if not self.topo_plots:
+            for ax, layers, bfp in zip(self.topo_axes, epochs, self.bfly_plots):
+                p = _ax_topomap(ax, layers, vmin=bfp.vmin, vmax=bfp.vmax,
+                                **self.topo_kwargs)
+                self.topo_plots.append(p)
+#             self._t_label = ax.text(.5, -0.1, t_str, ha='center', va='top')
+        else:
+            for layers, p in zip(epochs, self.topo_plots):
+                p.set_data(layers)
+#             self._t_label.set_text(t_str)
 
         if draw:
-            self._frame.redraw(axes=self.topo_axes)  # , artists=self.t_markers)
+            self._frame.redraw(axes=self.topo_axes)  # , artists=[self._t_label])  # , artists=self.t_markers)
 
-    def _rm_markers(self):
+    def _rm_t_markers(self):
+        "Remove markers of a specific time point (vlines and t-label)"
+        if self._t_label:
+            self._t_label.remove()
+            self._t_label = None
+
         if self.t_markers:
             for m in self.t_markers:
                 m.remove()
@@ -297,7 +310,7 @@ class butterfly(_base.eelfigure):
         self._draw_topo(t, draw=False)
 
         # update t-markers
-        self._rm_markers()
+        self._rm_t_markers()
         for ax in self.bfly_axes:
             t_marker = ax.axvline(t, color='k')
             self.t_markers.append(t_marker)
@@ -317,8 +330,7 @@ class butterfly(_base.eelfigure):
                 t = event.xdata
                 self.set_topo_t(t)
             elif (button == 'r') and (self._realtime_topo == False):
-                self._rm_markers()
-                self._t_label.remove()
+                self._rm_t_markers()
                 self._realtime_topo = True
                 self.canvas.draw()
 #                self._frame.redraw(axes=self.bfly_axes) # this leaves the time label
@@ -335,6 +347,22 @@ class butterfly(_base.eelfigure):
             super(self.__class__, self)._on_motion(event)
         if self._realtime_topo and ax and hasattr(ax, 'ID'):
             self._draw_topo(event.xdata)
+
+    def add_contour(self, meas, level, color='k'):
+        """Add a contour line
+
+        Parameters
+        ----------
+        meas : str
+            The measurement for which to add a contour line.
+        level : scalar
+            The value at which to draw the contour.
+        color : matplotlib color
+            The color of the contour line.
+        """
+        for p in self.topo_plots:
+            p.add_contour(meas, level, color)
+        self.draw()
 
     def set_cmap(self, cmap):
         "Change the colormap"
