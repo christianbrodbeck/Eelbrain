@@ -5,8 +5,8 @@ plot.topo
 Plots with topographic maps.
 
 """
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
-from itertools import chain
 
 import numpy as np
 
@@ -14,14 +14,6 @@ from . import _base
 from . import utsnd as _utsnd
 from .sensors import _tb_sensors_mixin
 from .sensors import _plt_map2d
-
-# try:
-#    from _topo3d import *
-# except:
-#    logging.info("eelbrain.plot.topo: _topo3d import failed, 3d-plots not available")
-
-
-__hide__ = ['cs', 'test', 'utsnd']
 
 
 
@@ -550,8 +542,6 @@ class _Window_Topo:
             self.pointer = None
 
 
-
-
 class array(_base.eelfigure):
     """
     Channel by sample plots with corresponding topomaps
@@ -767,5 +757,3 @@ class array(_base.eelfigure):
         if getattr(ax, 'type', None) == 'main':
             if self._selected_window != None:
                 self._window_update(mouseevent)
-
-
