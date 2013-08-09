@@ -843,14 +843,14 @@ class _ClusterDist:
             struct = ndimage.generate_binary_structure(2, 1)
             struct[::2] = False
             self._struct = struct
-            # flattening and reshaping pmaps with swapped axes
+            # flattening and reshaping (cropped) p-maps with swapped axes
             shape = Y_perm.shape[1:]
             if ax:
                 shape = list(shape)
                 shape[0], shape[ax] = shape[ax], shape[0]
                 shape = tuple(shape)
             self._orig_shape = shape
-            self._flat_shape = (shape[0], -1)
+            self._flat_shape = (shape[0], np.prod(shape[1:]))
 
         self.Y = Y
         self.Y_perm = Y_perm
@@ -1050,7 +1050,7 @@ class _ClusterDist:
             return im
 
     def add_original(self, pmap):
-        """Add the originl statistical parameter map.
+        """Add the original statistical parameter map.
 
         Parameters
         ----------
