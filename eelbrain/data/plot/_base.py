@@ -130,7 +130,7 @@ def configure_backend(frame=True, block=False):
     backend['block'] = block
 
 
-def find_ct_args(ndvar, overlay):
+def find_ct_args(ndvar, overlay, contours={}):
     """Construct a dict with kwargs for a contour plot
 
     Parameters
@@ -139,6 +139,8 @@ def find_ct_args(ndvar, overlay):
         Data to be plotted.
     overlay : bool
         Whether the ndvar is plotted as a first layer or as an overlay.
+    contours : dict
+        Externally specified contours as {meas: {level: color}} mapping.
 
     Returns
     -------
@@ -157,23 +159,25 @@ def find_ct_args(ndvar, overlay):
     else:
         kind = ndvar.info.get('base', ())
 
+    ct_args = {}
     if 'contours' in kind:
-        ct_args = {}
-        contours = ndvar.info.get('contours', None)
+        info_ct = ndvar.info.get('contours', None)
         if overlay:
-            contours = ndvar.info.get('overlay_contours', contours)
+            info_ct = ndvar.info.get('overlay_contours', info_ct)
         else:
-            contours = ndvar.info.get('base_contours', contours)
+            info_ct = ndvar.info.get('base_contours', info_ct)
 
-        if contours:
-            ct_args.update(contours)
-    else:
-        ct_args = None
+        if info_ct:
+            ct_args.update(info_ct)
+
+    meas = ndvar.info.get('meas', default_meas)
+    if meas in contours:
+        ct_args.update(contours[meas])
 
     return ct_args
 
 
-def find_im_args(ndvar, overlay, vlims={}):
+def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
     """Construct a dict with kwargs for an im plot
 
     Parameters
@@ -183,7 +187,10 @@ def find_im_args(ndvar, overlay, vlims={}):
     overlay : bool
         Whether the ndvar is plotted as a first layer or as an overlay.
     vlims : dict
-        Vmax and vmin values by (meas, cmap).
+        {(meas, cmap): (vmax, vmin)} mapping to replace v-limits based on the
+        ndvar.info dict.
+    cmaps : dict
+        {meas: cmap} mapping to replace the cmap in the ndvar.info dict.
 
     Returns
     -------
@@ -203,8 +210,18 @@ def find_im_args(ndvar, overlay, vlims={}):
         kind = ndvar.info.get('base', ('im',))
 
     if 'im' in kind:
-        meas = ndvar.info.get('meas', default_meas)
-        cmap = ndvar.info.get('cmap', default_cmap)
+        if 'meas' in ndvar.info:
+            meas = ndvar.info['meas']
+        else:
+            meas = default_meas
+
+        if meas in cmaps:
+            cmap = cmaps[meas]
+        elif 'cmap' in ndvar.info:
+            cmap = ndvar.info['cmap']
+        else:
+            cmap = default_cmap
+
         key = (meas, cmap)
         if key in vlims:
             vmin, vmax = vlims[key]

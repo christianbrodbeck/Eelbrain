@@ -198,13 +198,13 @@ class butterfly(_base.eelfigure):
         y_sep = (1 - y_bottomframe) / n_plots
         height = y_sep - yframe
 
-        self.topo_kwargs = {'proj': proj,
-                            'res': res,
-                            'interpolation': interpolation,
-                            'sensors': sensors,
-                            'ROI': ROI,
-                            'ROIcolor': color,
-                            'title': False}
+        self._topo_kwargs = {'proj': proj,
+                             'res': res,
+                             'interpolation': interpolation,
+                             'sensors': sensors,
+                             'ROI': ROI,
+                             'ROIcolor': color,
+                             'title': False}
 
         t = 0
         self.bfly_axes = []
@@ -213,7 +213,7 @@ class butterfly(_base.eelfigure):
         self.topo_plots = []
         self._topoax_data = []
         self.t_markers = []
-        vlims = _base.find_fig_vlims(epochs, True)
+        self._vlims = vlims = _base.find_fig_vlims(epochs, True)
 
         # plot epochs (x/y are in figure coordinates)
         for i, layers in enumerate(epochs):
@@ -272,9 +272,9 @@ class butterfly(_base.eelfigure):
                   for layers in self._epochs]
 
         if not self.topo_plots:
-            for ax, layers, bfp in zip(self.topo_axes, epochs, self.bfly_plots):
-                p = _ax_topomap(ax, layers, vmin=bfp.vmin, vmax=bfp.vmax,
-                                **self.topo_kwargs)
+            for ax, layers in zip(self.topo_axes, epochs):
+                p = _ax_topomap(ax, layers, vlims=self._vlims,
+                                **self._topo_kwargs)
                 self.topo_plots.append(p)
 #             self._t_label = ax.text(.5, -0.1, t_str, ha='center', va='top')
         else:
@@ -360,7 +360,6 @@ class butterfly(_base.eelfigure):
         "Change the colormap"
         for p in self.topo_plots:
             p.set_cmap(cmap)
-        self.topo_kwargs['cmap'] = cmap
         self.draw()
 
     def set_vlim(self, vmax=None, vmin=None):
@@ -376,7 +375,8 @@ class butterfly(_base.eelfigure):
 
 class _plt_topomap(_utsnd._plt_im_array):
     def __init__(self, ax, ndvar, overlay, proj='default', res=100,
-                 im_frame=0.02, colorspace=None, vlims={}, **im_kwargs):
+                 interpolation=None, im_frame=0.02, vlims={}, cmaps={},
+                 contours={}):
         """
         Parameters
         ----------
@@ -385,8 +385,8 @@ class _plt_topomap(_utsnd._plt_im_array):
         vmax : scalar
             Override the colorspace vmax.
         """
-        im_kwa = _base.find_im_args(ndvar, overlay, vlims)
-        contours = _base.find_ct_args(ndvar, overlay)
+        im_kwa = _base.find_im_args(ndvar, overlay, vlims, cmaps)
+        self._contours = _base.find_ct_args(ndvar, overlay, contours)
         self._meas = ndvar.info.get('meas', _base.default_meas)
 
         self._topo_im_kwa = dict(proj=proj, res=res, frame=im_frame)
@@ -397,8 +397,8 @@ class _plt_topomap(_utsnd._plt_im_array):
         extent = (emin, emax, emin, emax)
 
         if im_kwa is not None:
-            im_kwa.update(im_kwargs)
-            self.im = ax.imshow(data, extent=extent, origin='lower', **im_kwa)
+            self.im = ax.imshow(data, extent=extent, origin='lower',
+                                interpolation=interpolation, **im_kwa)
             self._cmap = im_kwa['cmap']
         else:
             self.im = None
@@ -409,7 +409,6 @@ class _plt_topomap(_utsnd._plt_im_array):
         self._data = data
         self._aspect = 'equal'
         self._extent = extent
-        self._contours = contours
 
         # draw flexible part
         self._draw_contours()
@@ -422,8 +421,8 @@ class _plt_topomap(_utsnd._plt_im_array):
 
 class _ax_topomap(_utsnd._ax_im_array):
     def __init__(self, ax, layers, title=True, sensors=None, ROI=None,
-                 ROIcolor=True, proj='default', xlabel=None, im_frame=0.02,
-                 vlims={}, **im_kwargs):
+                 ROIcolor=True, proj='default', res=100, interpolation=None,
+                 xlabel=None, im_frame=0.02, vlims={}, cmaps={}, contours={}):
         """
         Parameters
         ----------
@@ -439,8 +438,8 @@ class _ax_topomap(_utsnd._ax_im_array):
         ax.set_axis_off()
         overlay = False
         for layer in layers:
-            h = _plt_topomap(ax, layer, overlay, im_frame=im_frame, proj=proj,
-                             vlims=vlims, **im_kwargs)
+            h = _plt_topomap(ax, layer, overlay, proj, res, interpolation,
+                             im_frame, vlims, cmaps, contours)
             self.layers.append(h)
             if title is True:
                 title = getattr(layer, 'name', True)
@@ -483,12 +482,13 @@ class _ax_topomap(_utsnd._ax_im_array):
 
 class _Window_Topo:
     """Helper class for array"""
-    def __init__(self, ax, parent):
+    def __init__(self, ax, parent, **plot_args):
         self.ax = ax
+        self.parent = parent
+        self.plot_args = plot_args
         # initial plot state
         self.t_line = None
         self.pointer = None
-        self.parent = parent
         self.plot = None
 
     def update(self, t=None):
@@ -526,14 +526,17 @@ class _Window_Topo:
 #                                                'shrink':.05},
                                     zorder=99)
 
-            self.ax.cla()
             layers = [l.subdata(time=t) for l in self.parent.data]
-            self.plot = _ax_topomap(self.ax, layers, title=False,
-                                    **self.parent.kwargs)
+            if self.plot is None:
+                self.plot = _ax_topomap(self.ax, layers, title=False,
+                                        **self.plot_args)
+            else:
+                self.plot.set_data(layers)
 
     def clear(self):
         self.ax.cla()
         self.ax.set_axis_off()
+        self.plot = None
         if self.t_line:
             self.t_line.remove()
             self.t_line = None
@@ -605,10 +608,18 @@ class array(_base.eelfigure):
             fig.suptitle(title)
         self.title = title
 
-        # im_array plots
-        self.array_plots = []
-        self.topo_windows = []
         vlims = _base.find_fig_vlims(epochs)
+
+        # save important properties
+        self._epochs = epochs
+        self._ntopo = ntopo
+        self._vlims = vlims  # keep track of these for replotting topomaps
+        self._cmaps = {}
+        self._contours = {}
+
+        # im_array plots
+        self._array_plots = []
+        self._topo_windows = []
         ax_height = .4 + .07 * (not title)
         ax_bottom = .45  # + .05*(not title)
         for i, layers in enumerate(epochs):
@@ -620,7 +631,7 @@ class array(_base.eelfigure):
             ax.ID = i
             ax.type = 'main'
             im_plot = _utsnd._ax_im_array(ax, layers, vlims=vlims)
-            self.array_plots.append(im_plot)
+            self._array_plots.append(im_plot)
             if i > 0:
                 ax.yaxis.set_visible(False)
 
@@ -631,11 +642,9 @@ class array(_base.eelfigure):
                                      picker=True, xticks=[], yticks=[])
                 ax.ID = ID
                 ax.type = 'window'
-                self.topo_windows.append(_Window_Topo(ax, im_plot))
-
-        # save important properties
-        self._epochs = epochs
-        self._ntopo = ntopo
+                win = _Window_Topo(ax, im_plot, vlims=self._vlims,
+                                   cmaps=self._cmaps, contours=self._contours)
+                self._topo_windows.append(win)
 
         # if t argument is provided, set topo-map time points
         if t:
@@ -662,6 +671,31 @@ class array(_base.eelfigure):
         txt = "<plot.topo.array{t} ({s})>".format(**kwargs)
         return txt
 
+    def add_contour(self, meas, level, color='k'):
+        """Add a contour line
+
+        Parameters
+        ----------
+        meas : str
+            The measurement for which to add a contour line.
+        level : scalar
+            The value at which to draw the contour.
+        color : matplotlib color
+            The color of the contour line.
+        """
+        self._contours.setdefault(meas, {})[level] = color
+        for p in self._iter_plots():
+            p.add_contour(meas, level, color)
+        self.draw()
+
+    def _iter_plots(self):
+        "Iterate through non-empty plots"
+        for p in self._array_plots:
+            yield p
+        for w in self._topo_windows:
+            if w.plot is not None:
+                yield w.plot
+
     def set_cmap(self, cmap, meas=None):
         """Change the colormap
 
@@ -673,11 +707,9 @@ class array(_base.eelfigure):
             Measurement to which to apply the colormap. With None, it is
             applied to all.
         """
-        for p in self.array_plots:
+        self._cmaps[meas] = cmap
+        for p in self._iter_plots():
             p.set_cmap(cmap, meas)
-        for w in self.topo_windows:
-            if w.plot is not None:
-                w.plot.set_cmap(cmap, meas)
         self.draw()
 
     def set_topo_single(self, topo, t, parent_im_id='auto'):
@@ -694,7 +726,7 @@ class array(_base.eelfigure):
         if parent_im_id == 'auto':
             parent_im_id = int(topo / self._ntopo)
         # get window ax
-        w = self.topo_windows[topo]
+        w = self._topo_windows[topo]
         w.clear()
 
         if t is not None:
@@ -708,7 +740,7 @@ class array(_base.eelfigure):
         modify a single topoplot, use setone method).
 
         """
-        for i in xrange(len(self.array_plots)):
+        for i in xrange(len(self._array_plots)):
             _topo = self._ntopo * i + topo_id
             self.set_topo_single(_topo, t, parent_im_id=i)
 
@@ -732,7 +764,7 @@ class array(_base.eelfigure):
         ax = pickevent.artist
         if ax.type == 'window':
             button = mouseevent.button  # 1: Left
-            window = self.topo_windows[ax.ID]
+            window = self._topo_windows[ax.ID]
             if button == 1:
                 self._selected_window = window
             elif button in (2, 3):

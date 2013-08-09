@@ -23,16 +23,18 @@ __hide__ = ['plt', 'math']
 
 class _plt_im_array(object):
     def __init__(self, ax, ndvar, overlay, dims=('time', 'sensor'),
-                 extent=None, aspect='auto', vlims={}):
-        im_kwa = _base.find_im_args(ndvar, overlay, vlims)
-        contours = _base.find_ct_args(ndvar, overlay)
+                 extent=None, interpolation=None, vlims={}, cmaps={},
+                 contours={}):
+        im_kwa = _base.find_im_args(ndvar, overlay, vlims, cmaps)
+        self._contours = _base.find_ct_args(ndvar, overlay, contours)
         self._meas = ndvar.info.get('meas', _base.default_meas)
         self._dims = dims
-        data = self._data_from_ndvar(ndvar)
 
+        data = self._data_from_ndvar(ndvar)
         if im_kwa is not None:
-            self.im = ax.imshow(data, origin='lower', aspect=aspect,
-                                extent=extent, **im_kwa)
+            self.im = ax.imshow(data, origin='lower', aspect='auto',
+                                extent=extent, interpolation=interpolation,
+                                **im_kwa)
             self._cmap = im_kwa['cmap']
         else:
             self.im = None
@@ -41,9 +43,8 @@ class _plt_im_array(object):
         self.ax = ax
         self.cont = None
         self._data = data
-        self._aspect = aspect
+        self._aspect = 'auto'
         self._extent = extent
-        self._contours = contours
 
         # draw flexible part
         self._draw_contours()
@@ -110,7 +111,8 @@ class _plt_im_array(object):
 
 class _ax_im_array(object):
     def __init__(self, ax, layers, x='time', xlabel=True, ylabel=True,
-                 title=None, tick_spacing=.3, vlims={}):
+                 title=None, tick_spacing=.3, interpolation=None, vlims={},
+                 cmaps={}, contours={}):
         """
         plots segment data as im
 
@@ -140,8 +142,8 @@ class _ax_im_array(object):
         overlay = False
         extent = (xdim[0], xdim[-1], ydim[0], ydim[-1])
         for l in layers:
-            p = _plt_im_array(ax, l, overlay, dims=(y, x), extent=extent,
-                              vlims=vlims)
+            p = _plt_im_array(ax, l, overlay, (y, x), extent, interpolation,
+                              vlims, cmaps, contours)
             self.layers.append(p)
             overlay = True
 
@@ -181,10 +183,6 @@ class _ax_im_array(object):
     def add_contour(self, meas, level, color):
         for l in self.layers:
             l.add_contour(meas, level, color)
-
-    @property
-    def kwargs(self):
-        return self.layers[0].get_kwargs()
 
     def set_cmap(self, cmap, meas=None):
         """Change the colormap in the array plot
