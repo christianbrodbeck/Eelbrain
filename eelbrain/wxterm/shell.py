@@ -206,11 +206,18 @@ class ShellFrame(wx.py.shell.ShellFrame):
     bufferOpen = 1  # Dummy attr so that py.frame enables Open menu
     bufferNew = 1  # same for New menu command
     bufferClose = 1  # same for Close menu command (handled by OnFileClose)
-    def __init__(self, parent=None, title='Eelbrain Shell'):
+    def __init__(self, parent=None, app=None, title='Eelbrain Shell'):
 
     # --- set up PREFERENCES ---
         config = wx.Config("eelbrain")
         std_paths = wx.StandardPaths.Get()
+
+        # redirect stdio for debugging
+        if app is not None:
+            redirect = config.ReadBool('Debug/Redirect', False)
+            if redirect:
+                filename = config.Read('Debug/Logfile') or None
+                app.RedirectStdio(filename)
 
         # override pyshell defaults
         if not config.HasEntry('Options/AutoSaveSettings'):

@@ -32,13 +32,10 @@ class MainApp(wx.App):
 
     """
     def __init__(self):
-        self.config = config = wx.Config("eelbrain")
-        redirect = config.ReadBool('Debug/Redirect', False)
-        filename = config.Read('Debug/Logfile') or None
-        wx.App.__init__(self, redirect=redirect, filename=filename)
+        wx.App.__init__(self)  # , redirect=redirect, filename=filename)
 
     def OnInit(self):
-        self.shell = ShellFrame()
+        self.shell = ShellFrame(app=self)
         self.SetTopWindow(self.shell)
         self.shell.Show()
         if wx.__version__ >= '2.9':
