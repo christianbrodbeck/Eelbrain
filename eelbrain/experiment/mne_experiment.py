@@ -310,7 +310,8 @@ class MneExperiment(FileTree):
         epoch_rejection.update(self.epoch_rejection)
         self.epoch_rejection = epoch_rejection
 
-        FileTree.__init__(self, root=root, **state)
+        FileTree.__init__(self, **state)
+        self.set_root(root, True)
 
         # regiser variables with complex behavior
         self._register_field('rej', self.epoch_rejection.keys(),
@@ -1622,7 +1623,7 @@ class MneExperiment(FileTree):
         ----------
         temp :
         """
-        dst_path = self.get(temp, rescan=False, **{field: dst})
+        dst_path = self.get(temp, **{field: dst})
         if not redo and os.path.exists(dst_path):
             return
 
@@ -1913,37 +1914,6 @@ class MneExperiment(FileTree):
         self.set(**kwargs)
         raw = mne.fiff.Raw(self.get('raw-file'))
         return dev_mri(raw)
-
-    def pull(self, src_root, names=['raw-file', 'log-dir'], scan=True,
-             **kwargs):
-        """OK 12/8/12
-        Copies all items matching a template from another root to the current
-        root.
-
-        .. warning:: Implemented by creating a new instance of the same class with
-            ``src_root`` as root and calling its ``.push()`` method.
-            This determines available templates and field_values.
-
-        src_root : str(path)
-            root of the source experiment
-        names : list of str
-            list of template names to copy.
-            tested for 'raw-file' and 'log-dir'.
-            Should work for any template with an exact match; '*' is not
-            implemented and will raise an error.
-        scan : bool
-            Use src location to find subjects as opposed to subjects in self.
-        **kwargs** :
-            see :py:meth:`push`
-
-        """
-        e = self.__class__()
-        e.set_root(rescan=scan)
-        if not scan:
-            e._mri_subjects = self._mri_subjects
-            subjects = self.get_field_values('subjects')
-            e._field_values['subject'] = subjects
-        e.push(self.get('root'), names=names, **kwargs)
 
     def rm_fake_mris(self, exclude=[], confirm=False):
         """
@@ -2262,10 +2232,10 @@ class MneExperiment(FileTree):
         if subject == self.get('subject'):
             self._state['mrisubject'] = mri_subject
 
-    def set_root(self, root, rescan=True):
+    def set_root(self, root, find_subjects=False):
         root = os.path.expanduser(root)
         self._fields['root'] = root
-        if not rescan:
+        if not find_subjects:
             return
 
         subjects = set()
