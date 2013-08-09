@@ -37,6 +37,8 @@ class topomap(_tb_sensors_mixin, _base.eelfigure):
         ----------
         epochs : ndvar | list of ndvar, dims = ([case,] sensor,)
             Data to plot.
+        Xax : None | categorial
+            Create a separate plot for each cell in this model.
         sensors : None | 'idx' | 'name' | 'fullname'
             Show sensor labels. For 'name', any prefix common to all names
             is removed; with 'fullname', the full name is shown.
@@ -46,14 +48,15 @@ class topomap(_tb_sensors_mixin, _base.eelfigure):
             Vmax for plots.
         size : scalar
             Side length in inches of individual axes.
-        dpi : scalar
-            Dpi of the figure.
-        title : str
-            Title (shown in the window, not figure title).
+        title : None | string
+            Figure title.
         res : int
             Resolution of the topomaps (width = height = ``res``).
         interpolation : str
             Matplotlib imshow() parameter for topomaps.
+        ds : None | dataset
+            If a dataset is provided, ``epochs`` and ``Xax`` can be specified
+            as strings.
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
@@ -135,11 +138,29 @@ class butterfly(_base.eelfigure):
         """
         Parameters
         ----------
-
-        ROI : list of indices
-            plot a subset of sensors
+        epochs :
+            Epoch(s) to plot.
+        Xax : None | categorial
+            Create a separate plot for each cell in this model.
+        title : None | string
+            Figure title.
+        xlabel, ylabel : bool | string
+            Labels for x and y axes. If True, labels are automatically chosen.
+        proj : str
+            The sensor projection to use for topomaps.
+        res : int
+            Resolution of the topomaps (width = height = ``res``).
+        interpolation : str
+            Matplotlib imshow() parameter for topomaps.
+        color : matplotlib color
+            Color of the butterfly plots.
         sensors : bool
             determines whether all sensors are marked in the topo-maps
+        ROI : None | list of indices
+            plot a subset of sensors
+        ds : None | dataset
+            If a dataset is provided, ``epochs`` and ``Xax`` can be specified
+            as strings.
 
         **Figure Layout:**
 
@@ -518,18 +539,19 @@ class array(_base.eelfigure):
         ----------
         epochs :
             Epoch(s) to plot.
-        title : str | None
+        Xax : None | categorial
+            Create a separate plot for each cell in this model.
+        title : None | string
             Figure title.
-        height, width : scalar
+        axh, axw : scalar
             Axes height and width in inches.
         ntopo | int
             number of topomaps per array-plot.
-        dpi : scalar
-            Figure dpi.
-        vmin, vmax : None | scalar
-            Limit of the range of the data displayed.
         t : list of scalar (len <= ntopo)
             Time points for topomaps.
+        ds : None | dataset
+            If a dataset is provided, ``epochs`` and ``Xax`` can be specified
+            as strings.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 

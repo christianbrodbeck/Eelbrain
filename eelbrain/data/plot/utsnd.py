@@ -203,12 +203,15 @@ class array(_base.eelfigure):
         ----------
         epochs : ndvar
             If data has only 1 dimension, the x-axis defines epochs.
+        Xax : None | categorial
+            Create a separate plot for each cell in this model.
+        title : None | string
+            Figure title.
         xlabel, ylabel : bool | str
             I True, determine from the data.
-        w, h : scalar
-            Width per plot and height in inches.
-        dpi : int
-            Dpi of the figure.
+        ds : None | dataset
+            If a dataset is provided, ``epochs`` and ``Xax`` can be specified
+            as strings.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
@@ -484,14 +487,8 @@ class butterfly(_base.eelfigure):
             Create a separate plot for each cell in this model.
         sensors: None or list of sensor IDs
             sensors to plot (``None`` = all)
-        w, h : scalar
-            width and height of the individual axes in inches.
-        dpi : int
-            Dpi of the figure.
-        ncol : int
-            Maximum number of columns when plotting multiple epochs.
-        title : bool | string
-            Title for the axes. If ``True``, the segment's name is used.
+        title : None | string
+            Figure title.
         color : matplotlib color
             default (``None``): use segment color if available, otherwise
             black; ``True``: alternate colors (mpl default)

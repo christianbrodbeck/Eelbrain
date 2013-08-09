@@ -329,7 +329,10 @@ class multi(_base.eelfigure):
             Initial ROI.
         proj : str
             Sensor projection for the fourth plot.
-
+        frame : scalar
+            Size of the empty space around sensors in axes.
+        title : None | string
+            Figure title.
         """
         # in case Sensors parent is submitted
         if hasattr(sensors, 'sensors'):
@@ -546,6 +549,12 @@ class map2d(_tb_sensors_mixin, _base.eelfigure):
         proj:
             Transform to apply to 3 dimensional sensor coordinates for plotting
             locations in a plane
+        ROI : None | list of int
+            List of sensor indices to mark.
+        frame : scalar
+            Size of the empty space around sensors in axes.
+        title : None | string
+            Figure title.
         """
         # in case Sensors parent is submitted
         if hasattr(sensors, 'sensors'):
