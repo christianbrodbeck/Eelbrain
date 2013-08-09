@@ -347,7 +347,7 @@ class multi(_base.eelfigure):
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
-        super(multi, self).__init__(ftitle, 4, layout, 1, 3)
+        super(multi, self).__init__(ftitle, 4, layout, 1, 3, figtitle=title)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)
 
@@ -533,7 +533,7 @@ class map2d(_tb_sensors_mixin, _base.eelfigure):
 
     """
     def __init__(self, sensors, labels='name', proj='default', ROI=None,
-                 frame=.05, **layout):
+                 frame=.05, title=None, **layout):
         """Plot sensor positions in 2 dimensions
 
         Parameters
@@ -557,7 +557,7 @@ class map2d(_tb_sensors_mixin, _base.eelfigure):
         sens_name = getattr(sensors, 'sysname', None)
         if sens_name:
             ftitle = '%s: %s' % (ftitle, sens_name)
-        _base.eelfigure.__init__(self, ftitle, 1, layout, 1, 7)
+        _base.eelfigure.__init__(self, ftitle, 1, layout, 1, 7, figtitle=title)
         _tb_sensors_mixin.__init__(self)
 
         # store args

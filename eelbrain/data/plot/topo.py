@@ -55,7 +55,7 @@ class topomap(_tb_sensors_mixin, _base.eelfigure):
         interpolation : str
             Matplotlib imshow() parameter for topomaps.
         """
-        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
+        epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
         _base.eelfigure.__init__(self, "plot.topo.topomap", nax, layout, 1, 7,
                                  figtitle=title)
@@ -156,7 +156,7 @@ class butterfly(_base.eelfigure):
             Override the default plot limits.
 
         """
-        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
+        epochs = self._epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         n_plots = len(epochs)
 
         # create figure
@@ -254,7 +254,7 @@ class butterfly(_base.eelfigure):
     def _draw_topo(self, t, draw=True):
         self._current_t = t
         del self.topo_plots[:]
-        for ax, layers, p in zip(self.topo_axes, self.epochs, self.bfly_plots):
+        for ax, layers, p in zip(self.topo_axes, self._epochs, self.bfly_plots):
             ax.cla()
             layers = [l.subdata(time=t) for l in layers]
             p = _ax_topomap(ax, layers, vmin=p.vmin, vmax=p.vmax,
@@ -589,7 +589,7 @@ class array(_base.eelfigure):
                 self.topo_windows.append(_Window_Topo(ax, im_plot))
 
         # save important properties
-        self.epochs = epochs
+        self._epochs = epochs
         self._ntopo = ntopo
 
         # if t argument is provided, set topo-map time points
@@ -607,7 +607,7 @@ class array(_base.eelfigure):
 
     def __repr__(self):
         e_repr = []
-        for e in self.epochs:
+        for e in self._epochs:
             if hasattr(e, 'name'):
                 e_repr.append(e.name)
             else:
