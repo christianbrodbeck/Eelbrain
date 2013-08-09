@@ -369,8 +369,8 @@ class _plt_topomap(_utsnd._plt_im_array):
         contours = _base.find_ct_args(ndvar, overlay)
         self._meas = ndvar.info.get('meas', _base.default_meas)
 
-        Y = ndvar.get_data(('sensor',))
-        data = ndvar.sensor.get_im_for_topo(Y, proj=proj, res=res, frame=im_frame)
+        self._topo_im_kwa = dict(proj=proj, res=res, frame=im_frame)
+        data = self._data_from_ndvar(ndvar)
 
         emin = -im_frame
         emax = 1 + im_frame
@@ -393,6 +393,11 @@ class _plt_topomap(_utsnd._plt_im_array):
 
         # draw flexible part
         self._draw_contours()
+
+    def _data_from_ndvar(self, ndvar):
+        Y = ndvar.get_data(('sensor',))
+        data = ndvar.sensor.get_im_for_topo(Y, **self._topo_im_kwa)
+        return data
 
 
 class _ax_topomap(_utsnd._ax_im_array):

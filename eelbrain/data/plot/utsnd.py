@@ -27,10 +27,8 @@ class _plt_im_array(object):
         im_kwa = _base.find_im_args(ndvar, overlay, vlims)
         contours = _base.find_ct_args(ndvar, overlay)
         self._meas = ndvar.info.get('meas', _base.default_meas)
-        data = ndvar.get_data(dims)
-        if data.ndim > 2:
-            assert data.shape[0] == 1
-            data = data[0]
+        self._dims = dims
+        data = self._data_from_ndvar(ndvar)
 
         if im_kwa is not None:
             self.im = ax.imshow(data, origin='lower', aspect=aspect,
@@ -49,6 +47,13 @@ class _plt_im_array(object):
 
         # draw flexible part
         self._draw_contours()
+
+    def _data_from_ndvar(self, ndvar):
+        data = ndvar.get_data(self._dims)
+        if data.ndim > 2:
+            assert data.shape[0] == 1
+            data = data[0]
+        return data
 
     def _draw_contours(self):
         if self.cont:
@@ -82,6 +87,13 @@ class _plt_im_array(object):
         if (self.im is not None) and (meas is None or meas == self._meas):
             self.im.set_cmap(cmap)
             self._cmap = cmap
+
+    def set_data(self, ndvar):
+        data = self._data_from_ndvar(ndvar)
+        if self.im is not None:
+            self.im.set_data(data)
+        self._data = data
+        self._draw_contours()
 
     def set_vlim(self, vmax, meas, vmin):
         if self.im is None:
@@ -187,6 +199,11 @@ class _ax_im_array(object):
         """
         for l in self.layers:
             l.set_cmap(cmap, meas)
+
+    def set_data(self, layers):
+        self.data = layers
+        for l, p in zip(layers, self.layers):
+            p.set_data(l)
 
     def set_vlim(self, vmax=None, meas=None, vmin=None):
         for l in self.layers:
