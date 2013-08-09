@@ -1868,7 +1868,8 @@ class ndvar(object):
             if d0 == 'case':
                 has_case = True
             else:
-                err = ("String dimension needs to be 'case' (got %r)" % d0)
+                err = ("The only dimension that can be specified as a string"
+                       "is 'case' (got %r)" % d0)
                 raise ValueError(err)
         else:
             has_case = False
@@ -1876,8 +1877,8 @@ class ndvar(object):
         for dim, n in zip(dims, x.shape)[has_case:]:
             if isinstance(dim, basestring):
                 err = ("Invalid dimension: %r in %r. First dimension can be "
-                       "'case', other dimensions need to be array-like" %
-                       (dim, dims))
+                       "'case', other dimensions need to be Dimension "
+                       "subclasses." % (dim, dims))
                 raise TypeError(err)
             n_dim = len(dim)
             if n_dim != n:

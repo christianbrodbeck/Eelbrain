@@ -18,33 +18,6 @@ WxTerm interface
   possible to step through a script line by line.
 
 
-:class:`~eelbrain.experiment.MneExperiment`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. currentmodule:: eelbrain.experiment
-
-* Ability to use manual epoch rejection instead of the automatic procedure.
-  The ``epoch_rejection`` class attribute specifies how epochs should be 
-  rejected.
-* The ``epoch`` can now be set with ``.set(epoch=...)``, and a default 
-  epoch can be specified in the :attr:`_defaults` class attribute.
-* The ``'root'`` is now treated like a normal templates entry, i.e., it can
-  be specified through the :attr:`_templates` and :attr:`_defaults` class 
-  attributes as well as in :meth:`__init__`.
-* More consistent template names:
-
-  * all template names now use '-' instead of '_' for name-kind sequences.
-  * all paths to files are called '*-file'.
-  * all paths to directories are called '*-dir'.
-  * all paths to directories containing subjects are called '*-sdir'.
-
-* Per-file settings (such as bad channel definition) are now stored with custom 
-  keys. ``bad_chs = e.bad_channels[e.get('badch-key')]``. By default, the key
-  is just ``'{subject}'``, but if for example multiple experiments are 
-  processed with the same experiment class, the key can be changed to something 
-  like ``'{subject}_{experimnt}'``.
-
-
 :class:`~eelbrain.data.dataset`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -61,4 +34,5 @@ Plotting Functions
 ^^^^^^^^^^^^^^^^^^
 
 * New uniform layout arguments for all plots with subplots of the same type
-  (see ).
+  (see :ref:`plotting-general`).
+  

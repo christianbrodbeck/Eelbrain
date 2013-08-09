@@ -20,8 +20,10 @@ Modules that provide data-specific plotting functions.
     plots for univariate data (such as boxplots, ...)
 
 
-Module General Parameters
--------------------------
+.. _plotting-general:
+
+General Parameters
+------------------
 
 Xax
 ^^^
