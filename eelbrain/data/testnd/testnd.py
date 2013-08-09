@@ -246,7 +246,7 @@ class ttest_1samp:
         p = ndvar(pmap, dims, info=info, name='p')
 
         t0, t1, t2 = _ttest_t((.05, .01, .001), df)
-        info = _cs.stat_info('T', t0, t1, t2)
+        info = _cs.stat_info('t', t0, t1, t2)
         info = _cs.set_info_cs(ct.Y.info, info)
         t = ndvar(tmap, dims, info=info, name='T')
 
@@ -337,7 +337,7 @@ class ttest_ind:
         p = ndvar(pmap, dims, info=info, name='p')
 
         t0, t1, t2 = _ttest_t((.05, .01, .001), df)
-        info = _cs.stat_info('T', t0, t1, t2)
+        info = _cs.stat_info('t', t0, t1, t2)
         info = _cs.set_info_cs(ct.Y.info, info)
         t = ndvar(tmap, dims, info=info, name='T')
 
@@ -457,7 +457,7 @@ class ttest_rel:
         p = ndvar(pmap, dims, info=info, name='p')
 
         t0, t1, t2 = _ttest_t((.05, .01, .001), df)
-        info = _cs.stat_info('T', t0, t1, t2)
+        info = _cs.stat_info('t', t0, t1, t2)
         info = _cs.set_info_cs(ct.Y.info, info)
         t = ndvar(tmap, dims, info=info, name='T')
 
