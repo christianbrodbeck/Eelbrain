@@ -712,21 +712,25 @@ class array(_base.eelfigure):
             p.set_cmap(cmap, meas)
         self.draw()
 
-    def set_topo_single(self, topo, t, parent_im_id='auto'):
+    def set_topo_t_single(self, topo_id, t, parent_im_id='auto'):
         """
-        Set the time for a single topomap
+        Set the time for a single topomap.
 
-        topo : int
-            Id of the topomap (numbered throughout the figure).
+        Parameters
+        ----------
+        topo_id : int
+            Index of the topomap (numbered throughout the figure).
         t : scalar or ``None``
             time point; ``None`` clears the topomap
-
+        parent_im_id : 'auto' | int
+            Index of the array plot from which to draw the topo plot. For
+            'auto', the array plot above the topomap is used.
         """
         # get parent ax
         if parent_im_id == 'auto':
-            parent_im_id = int(topo / self._ntopo)
+            parent_im_id = int(topo_id / self._ntopo)
         # get window ax
-        w = self._topo_windows[topo]
+        w = self._topo_windows[topo_id]
         w.clear()
 
         if t is not None:
@@ -734,24 +738,33 @@ class array(_base.eelfigure):
 
         self.canvas.draw()
 
-    def set_topowin(self, topo_id, t):
+    def set_topo_t(self, topo_id, t):
         """
-        Set the time point for a topo-map (for all xbyx plots; In order to
-        modify a single topoplot, use setone method).
+        Set the time point for a topo-map (same for all array plots).
 
+        Parameters
+        ----------
+        topo_id : int
+            Index of the topomap (numberd for each array-plot).
+        t : scalar or ``None``
+            time point; ``None`` clears the topomap
+
+        See Also
+        --------
+        .set_topo_ts : set several topomap time points at once
+        .set_topo_t_single : set the time point of a single topomap
         """
         for i in xrange(len(self._array_plots)):
             _topo = self._ntopo * i + topo_id
-            self.set_topo_single(_topo, t, parent_im_id=i)
+            self.set_topo_t_single(_topo, t, parent_im_id=i)
 
-    def set_topowins(self, *t_list):
+    def set_topo_ts(self, *t_list):
         """
-        Set time points for several topomaps (calls self.set() for each value
-        in t_list)
-
+        Set the time points for several topomaps (with ts identical for the
+        different array plots).
         """
         for i, t in enumerate(t_list):
-            self.set_topowin(i, t)
+            self.set_topo_t(i, t)
 
     def _window_update(self, mouseevent):
         "update a window (used for mouse-over and for pick)"
@@ -769,7 +782,7 @@ class array(_base.eelfigure):
                 self._selected_window = window
             elif button in (2, 3):
                 Id = window.ax.ID % self._ntopo
-                self.set_topowin(Id, None)
+                self.set_topo_t(Id, None)
             else:
                 pass
         elif (ax.type == 'main') and (self._selected_window != None):
@@ -779,7 +792,7 @@ class array(_base.eelfigure):
             # update corresponding topo_windows
             t = mouseevent.xdata
             Id = self._selected_window.ax.ID % self._ntopo
-            self.set_topowin(Id, t)
+            self.set_topo_t(Id, t)
 
             self._selected_window = None
             self.canvas.draw()
