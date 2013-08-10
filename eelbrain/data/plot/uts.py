@@ -393,7 +393,6 @@ class clusters(_base.subplot_figure):
         overlay : bool
             Plot epochs (time course for different effects) on top of each
             other (as opposed to on separate axes).
-
         """
         clusters_ = res.clusters
 
@@ -406,6 +405,7 @@ class clusters(_base.subplot_figure):
         super(clusters, self).__init__("plot.uts.clusters", nax, layout,
                                        figtitle=title)
 
+        ylabel = True
         self._caxes = []
         if overlay:
             ax = self._axes[0]
@@ -413,7 +413,6 @@ class clusters(_base.subplot_figure):
         for i, layers in enumerate(epochs):
             if not overlay:
                 ax = self._axes[i]
-                axtitle = axtitle
 
             color = cm(i / N)
             stat = layers[0]
@@ -427,9 +426,10 @@ class clusters(_base.subplot_figure):
             else:
                 cs = None
 
-            cax = _ax_uts_clusters(ax, stat, cs, color=color,
-                                   pmax=pmax, title=axtitle, ptrend=ptrend)
+            cax = _ax_uts_clusters(ax, stat, cs, color, pmax, ptrend, 'time',
+                                   axtitle, ylabel)
             self._caxes.append(cax)
+            ylabel = None
 
         self.clusters = clusters_
         self._show()
@@ -524,7 +524,7 @@ def _plt_uts(ax, ndvar, color=None, xdim='time', kwargs={}):
 
 class _ax_uts_clusters:
     def __init__(self, ax, Y, clusters, color=None, pmax=0.05, ptrend=0.1,
-                 xdim='time', title=None):
+                 xdim='time', title=None, ylabel=True):
         uts_args = _base.find_uts_args(Y, False, color)
         self._bottom, self._top = _base.find_vlim_args(Y)
 
@@ -533,7 +533,8 @@ class _ax_uts_clusters:
                 title = title.format(name=Y.name)
             ax.set_title(title)
 
-        ylabel = Y.info.get('unit', None)
+        if ylabel is True:
+            ylabel = Y.info.get('meas', _base.default_meas)
 
         _plt_uts(ax, Y, xdim=xdim, **uts_args)
         if ylabel:
@@ -590,7 +591,7 @@ class _plt_uts_clusters:
             if p > p_include:
                 continue
 
-            alpha = 0.5 if p < self.pmax else 0.25
+            alpha = 0.5 if p < self.pmax else 0.2
             x0 = cluster['tstart']
             x1 = cluster['tstop']
 
