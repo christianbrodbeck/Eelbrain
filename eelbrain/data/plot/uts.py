@@ -29,9 +29,9 @@ __hide__ = ['plt', 'division', 'Celltable']
 
 class stat(_base.subplot_figure):
     "Plots statistics for a one-dimensional ndvar"
-    def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
-                 match=None, sub=None, ds=None, Xax=None, legend='upper right',
-                 title=None, axtitle='{name}', ylabel=True, xlabel=True,
+    def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
+                 main=np.mean, dev=scipy.stats.sem, legend='upper right',
+                 title=None, axtitle='{name}', xlabel=True, ylabel=True,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
                  cm='jet', colors=None, clusters=None, **layout):
         """
