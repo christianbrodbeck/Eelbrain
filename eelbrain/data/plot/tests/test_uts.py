@@ -44,13 +44,13 @@ def test_clusters():
 
     # random effects model:
     subject = factor(range(15), tile=4, random=True, name='subject')
-    res = testnd.anova(Y, A * B * subject)
+    res = testnd.anova(Y, A * B * subject, samples=2)
     p = plot.uts.clusters(res, title="Random Effects Model")
     p.close()
 
     # plot stat
     p = plot.uts.stat(Y, A % B, match=subject)
-    p.plot_clusters(res.clusters[A])
+    p.set_clusters(res.clusters)
     p.close()
     p = plot.uts.stat(Y, A, Xax=B, match=subject)
     p.close()

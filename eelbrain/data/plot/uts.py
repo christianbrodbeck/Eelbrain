@@ -136,7 +136,7 @@ class stat(_base.subplot_figure):
         legend_h = {}
         kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
                       invy=invy, bottom=bottom, top=top, hline=hline,
-                      xlabel=xlabel, colors=colors, legend_h=legend_h)
+                      xlabel=xlabel, legend_h=legend_h)
 
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
@@ -150,7 +150,7 @@ class stat(_base.subplot_figure):
                 title_ = axtitle.format(name=ct.Y.name)
             else:
                 title_ = axtitle
-            p = _ax_stat(ax, ct, title=title_, **kwargs)
+            p = _ax_stat(ax, ct, colors, title=title_, **kwargs)
             self._plots.append(p)
             if len(ct) < 2:
                 legend = False
@@ -163,15 +163,15 @@ class stat(_base.subplot_figure):
                     match = matchct.data[cell]
                 cct = Celltable(ct.data[cell], X, match=match)
                 title_ = axtitle.format(name=cellname(cell))
-                p = _ax_stat(ax, cct, title=title_, **kwargs)
+                p = _ax_stat(ax, cct, colors, title=title_, **kwargs)
                 self._plots.append(p)
 
         self.legend_handles = legend_h.values()
         self.legend_labels = legend_h.keys()
         self.plot_legend(legend)
 
-        self._cluster_h = []
-        self.cluster_info = []
+        # prepare cluster plots
+        self._clusters = [None] * nax
 
         self._show()
 
@@ -182,55 +182,19 @@ class stat(_base.subplot_figure):
         btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
 
     def _OnShowClusterInfo(self, event):
-        size = (350, 700)
-        info = (os.linesep * 2).join(map(str, self.cluster_info))
-        dlg = TextDialog(self._frame, info, "Clusters", size=size)
-        dlg.ShowModal()
-        dlg.Destroy()
+        from ...wxutils import show_text_dialog
+        info = []
+        for i, clusters in enumerate(self._clusters):
+            if clusters is None:
+                continue
+            p = self._plots[i]
+            title = "Axes %i" % i
+            info.append(title)
+            info.append('-' * len(title))
+            info.append(str(clusters))
+        info = '\n\n'.join(info)
 
-    def plot_clusters(self, clusters, p=0.05, color=(.7, .7, .7), ax=0, clear=True):
-        """Add clusters from a cluster test to the uts plot (as shaded area).
-
-        Arguments
-        ---------
-
-        clusters : list of ndvars
-            The clusters, as stored in the cluster test results
-            :py:attr:`.clusters` dictionary.
-
-        p : scalar
-            Threshold p value: plot all clusters with p <= this value.
-
-        color : matplotlib color
-            Color for the cluster.
-
-        ax : int
-            Index of the axes (in the uts plot) to which the clusters are to
-            be plotted.
-
-        """
-        if clear:
-            for h in self._cluster_h:
-                h.remove()
-            self._cluster_h = []
-            self.cluster_info = []
-
-        if hasattr(clusters, 'clusters'):
-            self.cluster_info.append(clusters.as_table())
-            clusters = clusters.clusters
-            if self._is_wx:
-                self._cluster_btn.Enable(True)
-
-        ax = self.axes[ax]
-        for c in clusters:
-            if c.info['p'] <= p:
-                i0 = np.nonzero(c.x)[0][0]
-                i1 = np.nonzero(c.x)[0][-1]
-                t0 = c.time[i0]
-                t1 = c.time[i1]
-                h = ax.axvspan(t0, t1, zorder=-1, color=color)
-                self._cluster_h.append(h)
-        self.draw()
+        show_text_dialog(self._frame, info, "Clusters")
 
     def plot_legend(self, loc='fig', figsize=(2, 2)):
         """Plots (or removes) the legend from the figure.
@@ -278,6 +242,38 @@ class stat(_base.subplot_figure):
                 del self.legend
                 self.draw()
 
+    def set_clusters(self, clusters, pmax=0.05, ptrend=0.1, color='.7', ax=0):
+        """Add clusters from a cluster test to the plot (as shaded area).
+
+        Parameters
+        ----------
+        clusters : None | dataset
+            The clusters, as stored in test results' :py:attr:`.clusters`.
+            Use ``None`` to remove the clusters plotted on a given axis.
+        pmax : scalar
+            Maximum p-value of clusters to plot as solid.
+        ptrend : scalar
+            Maximum p-value of clusters to plot as trend.
+        color : matplotlib color
+            Color for the clusters.
+        ax : int
+            Index of the axes to which the clusters are to be added.
+        """
+        self._clusters[ax] = clusters
+        p = self._plots[ax].cluster_plt
+        p.set_clusters(clusters, False)
+        p.set_color(color, False)
+        p.set_pmax(pmax, ptrend)
+        self.draw()
+
+        # update GUI
+        if self._is_wx:
+            if clusters is not None:
+                self._cluster_btn.Enable(True)
+            elif all(c is None for c in self._clusters):
+                self._cluster_btn.Enable(False)
+                self._cluster_btn.Enable(True)
+
     def set_ylim(self, bottom=None, top=None):
         """
         Adjust the y-axis limits on all axes (see matplotlib's
@@ -316,7 +312,8 @@ class uts(_base.subplot_figure):
 class _ax_stat:
     def __init__(self, ax, ct, colors, legend_h={}, dev=scipy.stats.sem,
                  main=np.mean, title=True, ylabel=True, xdim='time',
-                 xlabel=True, invy=False, bottom=None, top=None, hline=None):
+                 xlabel=True, invy=False, bottom=None, top=None, hline=None,
+                 clusters=None, pmax=0.05, ptrend=0.1):
         ax.x_fmt = "t = %.3f s"
 
         # stat plots
@@ -342,6 +339,9 @@ class _ax_stat:
 
             hline = float(hline)
             ax.axhline(hline, **hline_kw)
+
+        # cluster plot
+        self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend)
 
         # title
         if title:
@@ -545,12 +545,15 @@ class _ax_uts_clusters:
         ax.set_xlim(*self.xlim)
         ax.set_ylim(bottom=self._bottom, top=self._top)
 
+    def set_clusters(self, clusters):
+        self.cluster_plt.set_clusters(clusters)
+
     def set_pmax(self, pmax=0.05, ptrend=0.1):
         self.cluster_plt.set_pmax(pmax, ptrend)
 
 
 class _plt_uts_clusters:
-    def __init__(self, ax, clusters, pmax, ptrend=None, color=None, hatch='/'):
+    def __init__(self, ax, clusters, pmax, ptrend, color=None, hatch='/'):
         """
         clusters : dataset
             Dataset with entries for 'tstart', 'tstop' and 'p'.
@@ -564,10 +567,21 @@ class _plt_uts_clusters:
         self.hatch = hatch
         self.update()
 
-    def set_pmax(self, pmax, ptrend):
+    def set_clusters(self, clusters, update=True):
+        self.clusters = clusters
+        if update:
+            self.update()
+
+    def set_color(self, color, update=True):
+        self.color = color
+        if update:
+            self.update()
+
+    def set_pmax(self, pmax, ptrend, update=True):
         self.pmax = pmax
         self.ptrend = ptrend
-        self.update()
+        if update:
+            self.update()
 
     def update(self):
         h = self.h
