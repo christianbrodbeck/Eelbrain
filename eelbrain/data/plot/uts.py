@@ -17,7 +17,6 @@ import matplotlib.cm as _cm
 
 try:
     import wx
-    from wx.lib.dialogs import ScrolledMessageDialog as TextDialog
 except:
     pass
 
@@ -440,27 +439,15 @@ class clusters(_base.subplot_figure):
         btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
 
     def _OnShowClusterInfo(self, event):
+        from ...wxutils import show_text_dialog
         info = str(self.clusters)
-        style = wx.CAPTION | wx.CLOSE_BOX | wx.RESIZE_BORDER | wx.SYSTEM_MENU
-        dlg = TextDialog(self._frame, info, "Clusters", style=style)
-        font = wx.Font(12, wx.MODERN, wx.NORMAL, wx.NORMAL, False,
-                       u'Inconsolata')
-        dlg.text.SetFont(font)
-
-        n_lines = dlg.text.GetNumberOfLines()
-        line_text = dlg.text.GetLineText(0)
-        w, h = dlg.text.GetTextExtent(line_text)
-        dlg.text.SetSize((w + 100, (h + 3) * n_lines + 50))
-        dlg.Fit()
-        dlg.Show()
+        show_text_dialog(self._frame, info, "Clusters")
 
     def set_pmax(self, pmax=0.05, ptrend=0.1):
         "set the threshold p-value for clusters to be displayed"
         for cax in self._caxes:
             cax.set_pmax(pmax, ptrend)
         self.draw()
-
-
 
 
 def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
