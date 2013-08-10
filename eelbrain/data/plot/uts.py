@@ -102,7 +102,7 @@ class stat(_base.subplot_figure):
 
         """
         if Xax is None:
-            nax = None
+            nax = 1
             ct = Celltable(Y, X, sub=sub, match=match, ds=ds)
         else:
             ct = Celltable(Y, Xax, sub=sub, ds=ds)
@@ -143,15 +143,15 @@ class stat(_base.subplot_figure):
         super(stat, self).__init__("plot.uts.stat", nax, layout,
                                    figtitle=title)
 
-        self.axes = []
+        self._plots = []
         if Xax is None:
-            ax = self.figure.add_subplot(111)
-            self.axes.append(ax)
+            ax = self._axes[0]
             if axtitle and '{name}' in axtitle:
                 title_ = axtitle.format(name=ct.Y.name)
             else:
                 title_ = axtitle
-            _ax_stat(ax, ct, title=title_, **kwargs)
+            p = _ax_stat(ax, ct, title=title_, **kwargs)
+            self._plots.append(p)
             if len(ct) < 2:
                 legend = False
         else:
@@ -163,8 +163,8 @@ class stat(_base.subplot_figure):
                     match = matchct.data[cell]
                 cct = Celltable(ct.data[cell], X, match=match)
                 title_ = axtitle.format(name=cellname(cell))
-                _ax_stat(ax, cct, title=title_, **kwargs)
-                self.axes.append(ax)
+                p = _ax_stat(ax, cct, title=title_, **kwargs)
+                self._plots.append(p)
 
         self.legend_handles = legend_h.values()
         self.legend_labels = legend_h.keys()
@@ -284,7 +284,7 @@ class stat(_base.subplot_figure):
         :py:meth:`axes.set_ylim`)
 
         """
-        for ax in self.axes:
+        for ax in self._axes:
             ax.set_ylim(bottom, top)
 
         self.draw()
@@ -313,59 +313,64 @@ class uts(_base.subplot_figure):
         self._show(figtitle=figtitle)
 
 
-def _ax_stat(ax, ct, colors, legend_h={}, dev=scipy.stats.sem, main=np.mean,
-             sub=None, match=None, ds=None,
-             figsize=(6, 3), dpi=90, legend='upper right', title=True,
-             ylabel=True, xdim='time', xlabel=True, invy=False, bottom=None,
-             top=None, hline=None):
-    ax.x_fmt = "t = %.3f s"
+class _ax_stat:
+    def __init__(self, ax, ct, colors, legend_h={}, dev=scipy.stats.sem,
+                 main=np.mean, title=True, ylabel=True, xdim='time',
+                 xlabel=True, invy=False, bottom=None, top=None, hline=None):
+        ax.x_fmt = "t = %.3f s"
 
-    h = []
-    for cell in ct.cells:
-        lbl = ct.cellname(cell, ' ')
-        c = colors[cell]
-        _h = _plt_stat(ax, ct.data[cell], main, dev, label=lbl, xdim=xdim, color=c)
-        h.append(_h)
-        if lbl not in legend_h:
-            legend_h[lbl] = _h['main'][0]
+        # stat plots
+        self.stat_plots = []
+        for cell in ct.cells:
+            lbl = ct.cellname(cell, ' ')
+            c = colors[cell]
+            h = _plt_stat(ax, ct.data[cell], main, dev, label=lbl, xdim=xdim,
+                          color=c)
+            self.stat_plots.append(h)
+            if lbl not in legend_h:
+                legend_h[lbl] = h['main'][0]
 
-    # hline
-    if hline is not None:
-        if isinstance(hline, tuple):
-            if len(hline) != 2:
-                raise ValueError("hline must be None, scalar or length 2 tuple")
-            hline, hline_kw = hline
-            hline_kw = dict(hline_kw)
-        else:
-            hline_kw = {'color': 'k'}
+        # hline
+        if hline is not None:
+            if isinstance(hline, tuple):
+                if len(hline) != 2:
+                    raise ValueError("hline must be None, scalar or length 2 tuple")
+                hline, hline_kw = hline
+                hline_kw = dict(hline_kw)
+            else:
+                hline_kw = {'color': 'k'}
 
-        hline = float(hline)
-        ax.axhline(hline, **hline_kw)
+            hline = float(hline)
+            ax.axhline(hline, **hline_kw)
 
-    # title
-    if title:
-        if title is True:
-            title = ct.Y.name
-        ax.set_title(title)
+        # title
+        if title:
+            if title is True:
+                title = ct.Y.name
+            ax.set_title(title)
 
-    # axes labels
-    dim = ct.Y.get_dim(xdim)
-    if xlabel:
-        if xlabel is True:
-            xlabel = dim.name
-        ax.set_xlabel(xlabel)
-    ax.set_xlim(min(dim), max(dim))
+        # axes labels
+        dim = ct.Y.get_dim(xdim)
+        if xlabel:
+            if xlabel is True:
+                xlabel = dim.name
+            ax.set_xlabel(xlabel)
+        ax.set_xlim(min(dim), max(dim))
 
-    if ylabel is True:
-        ylabel = ct.Y.info.get('unit', None)
-    if ylabel:
-        ax.set_ylabel(ylabel)
-    if invy:
-        y0, y1 = ax.get_ylim()
-        bottom = bottom if (bottom is not None) else y1
-        top = top if (top is not None) else y0
-    if (bottom is not None) or (top is not None):
-        ax.set_ylim(bottom, top)
+        if ylabel is True:
+            ylabel = ct.Y.info.get('unit', None)
+        if ylabel:
+            ax.set_ylabel(ylabel)
+        if invy:
+            y0, y1 = ax.get_ylim()
+            bottom = bottom if (bottom is not None) else y1
+            top = top if (top is not None) else y0
+        if (bottom is not None) or (top is not None):
+            ax.set_ylim(bottom, top)
+
+        # store attributes
+        self.ax = ax
+        self.title = title
 
 
 class clusters(_base.subplot_figure):
