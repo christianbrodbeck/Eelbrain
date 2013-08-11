@@ -43,22 +43,39 @@ class stat(_base.subplot_figure):
         Dependent variable (one-dimensional ndvar).
     X : categorial or None
         Model: specification of conditions which should be plotted separately.
+    Xax : None | categorial
+        Make separate axes for each category in this categoral model.
+    match : factor
+        Identifier for repeated measures data.
+    sub : None | index array
+        Only use a subset of the data provided.
+    ds : dataset
+        if ``var`` or ``X`` is submitted as string, the ``ds`` argument
+        must provide a dataset containing those variables.
+    main : func | None
+        Measure for the central tendency (function that takes an ``axis``
+        argument). The default is numpy.mean.
     dev : func | 'all' | float
         Measure for spread / deviation from the central tendency. Either a
         function that takes an ``axis`` argument, 'all' to plot all traces, or
         a float to plot all traces with a certain alpha value. The default is
         numpy.stats.sem which plots the standard error of the mean.
-    main : func | None
-        Measure for the central tendency (function that takes an ``axis``
-        argument). The default is numpy.mean.
-    Xax : None | categorial
-        Make separate axes for each category in this categoral model.
-    ncol : int
-        In case more than one set of axes are plotted, ncol specifies the
-        number of columns in the layout.
-
-    **plotting parameters:**
-
+    legend : str | None
+        matplotlib figure legend location argument
+    title : str | None
+        axes title; '{name}' will be formatted to ``Y.name``
+    axtitle : str | None
+        Title for individual axes.
+    xlabel, ylabel : True |str | None
+        X- and y axis label. If True the labels will be inferred from the data.
+    invy : bool
+        invert the y axis
+    bottom, top | None | scalar
+        Set an absolute range for the plot's y axis.
+    hline : None | scalar | (value, kwarg-dict) tuple
+        Add a horizontal line to each plot. If provided as a tuple, the second
+        element can include any keyword arguments that should be submitted to
+        the call to matplotlib axhline call.
     xdim : str
         dimension for the x-axis (default is 'time')
     cm : matplotlib colormap
@@ -72,34 +89,6 @@ class stat(_base.subplot_figure):
         parameter:
         **list**: A list of colors in the same sequence as X.cells.
         **dict**: A dictionary mapping each cell in X to a color.
-    bottom, top | None | scalar
-        Set an absolute range for the plot's y axis.
-    invy : bool
-        invert the y axis
-    hline : None | scalar | (value, kwarg-dict) tuple
-        Add a horizontal line to each plot. If provided as a tuple, the second
-        element can include any keyword arguments that should be submitted to
-        the call to matplotlib axhline call.
-
-    **figure parameters:**
-
-    legend : str | None
-        matplotlib figure legend location argument
-    title : str | False
-        axes title; '{name}' will be formatted to ``Y.name``
-    width, height : scalar
-        Width and height of each axes.
-
-    **standard data parameters:**
-
-    match : factor
-        Identifier for repeated measures data.
-    sub : None | index array
-        Only use a subset of the data provided.
-    ds : dataset
-        if ``var`` or ``X`` is submitted as string, the ``ds`` argument
-        must provide a dataset containing those variables.
-
     clusters : None | dataset
         Clusters to add to the plots. The clusters should be provided as
         dataset, as stored in test results' :py:attr:`.clusters`.
