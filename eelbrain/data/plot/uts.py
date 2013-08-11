@@ -32,8 +32,8 @@ class stat(_base.subplot_figure):
     def __init__(self, Y='Y', X=None, dev=scipy.stats.sem, main=np.mean,
                  match=None, sub=None, ds=None, Xax=None, legend='upper right',
                  title=None, axtitle='{name}', ylabel=True, xlabel=True,
-                 invy=False, bottom=None, top=None, hline=None,
-                 xdim='time', cm='jet', colors=None, **layout):
+                 invy=False, bottom=None, top=None, hline=None, xdim='time',
+                 cm='jet', colors=None, clusters=None, **layout):
         """
     Plot statistics for a one-dimensional ndvar
 
@@ -100,6 +100,9 @@ class stat(_base.subplot_figure):
         if ``var`` or ``X`` is submitted as string, the ``ds`` argument
         must provide a dataset containing those variables.
 
+    clusters : None | dataset
+        Clusters to add to the plots. The clusters should be provided as
+        dataset, as stored in test results' :py:attr:`.clusters`.
         """
         if Xax is None:
             nax = 1
@@ -172,6 +175,9 @@ class stat(_base.subplot_figure):
 
         # prepare cluster plots
         self._clusters = [None] * nax
+        self._clusters_all_same = True
+        if clusters is not None:
+            self.set_clusters(clusters)
 
         self._show()
 
@@ -183,16 +189,19 @@ class stat(_base.subplot_figure):
 
     def _OnShowClusterInfo(self, event):
         from ...wxutils import show_text_dialog
-        info = []
-        for i, clusters in enumerate(self._clusters):
-            if clusters is None:
-                continue
-            p = self._plots[i]
-            title = "Axes %i" % i
-            info.append(title)
-            info.append('-' * len(title))
-            info.append(str(clusters))
-        info = '\n\n'.join(info)
+        if self._clusters_all_same:
+            info = str(self._clusters)
+        else:
+            info = []
+            for i, clusters in enumerate(self._clusters):
+                if clusters is None:
+                    continue
+                title = "Axes %i" % i
+                info.append(title)
+                info.append('\n')
+                info.append('-' * len(title))
+                info.append(str(clusters))
+            info = '\n'.join(info)
 
         show_text_dialog(self._frame, info, "Clusters")
 
@@ -242,7 +251,7 @@ class stat(_base.subplot_figure):
                 del self.legend
                 self.draw()
 
-    def set_clusters(self, clusters, pmax=0.05, ptrend=0.1, color='.7', ax=0):
+    def set_clusters(self, clusters, pmax=0.05, ptrend=0.1, color='.7', ax=None):
         """Add clusters from a cluster test to the plot (as shaded area).
 
         Parameters
@@ -256,23 +265,36 @@ class stat(_base.subplot_figure):
             Maximum p-value of clusters to plot as trend.
         color : matplotlib color
             Color for the clusters.
-        ax : int
-            Index of the axes to which the clusters are to be added.
+        ax : None | int
+            Index of the axes to which the clusters are to be added. If None,
+            add the clusters to all axes.
         """
-        self._clusters[ax] = clusters
-        p = self._plots[ax].cluster_plt
-        p.set_clusters(clusters, False)
-        p.set_color(color, False)
-        p.set_pmax(pmax, ptrend)
+        nax = len(self._axes)
+        if ax is None:
+            self._clusters_all_same = True
+            self._clusters = clusters
+            axes = xrange(nax)
+        else:
+            if self._clusters_all_same:
+                self._clusters = [self._clusters] * nax
+                self._clusters_all_same = False
+            self._clusters[ax] = clusters
+            axes = [ax]
+
+        # update plots
+        for ax in axes:
+            p = self._plots[ax].cluster_plt
+            p.set_clusters(clusters, False)
+            p.set_color(color, False)
+            p.set_pmax(pmax, ptrend)
         self.draw()
 
         # update GUI
         if self._is_wx:
             if clusters is not None:
                 self._cluster_btn.Enable(True)
-            elif all(c is None for c in self._clusters):
+            elif self._clusters_all_same or all(c is None for c in self._clusters):
                 self._cluster_btn.Enable(False)
-                self._cluster_btn.Enable(True)
 
     def set_ylim(self, bottom=None, top=None):
         """
