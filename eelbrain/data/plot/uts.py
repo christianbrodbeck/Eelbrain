@@ -46,9 +46,9 @@ class stat(_base.subplot_figure):
         Identifier for repeated measures data.
     sub : None | index array
         Only use a subset of the data provided.
-    ds : Dataset
-        if ``var`` or ``X`` is submitted as string, the ``ds`` argument
-        must provide a Dataset containing those variables.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
     main : func | None
         Measure for the central tendency (function that takes an ``axis``
         argument). The default is numpy.mean.

@@ -141,8 +141,8 @@ def mark_by_threshold(ds, x='MEG', threshold=2e-12, above=False,
         How to mark segments that do (above) or do not (below) exceed the
         threshold: True->good; False->bad; None->don't change
     target : Factor | str
-        Factor (or its name) in which the result is stored. If ``var`` is
-        a string and the Dataset does not contain that Factor, it is
+        Factor (or its name) in which the result is stored. If ``target`` is
+        a string and the Dataset does not contain a Factor by that name, it is
         created.
     bad_chs : None | list of str, int
         Channels to ignore when thresholding.

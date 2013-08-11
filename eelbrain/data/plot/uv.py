@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 from ..test import test
-from ..data_obj import (isfactor, asfactor, isvar, asvar, ascategorial, assub,
-                        cellname, Celltable)
+from ..data_obj import (asfactor, isvar, asvar, ascategorial, assub, cellname,
+                        Celltable)
 from ._base import str2tex
 
 
@@ -298,8 +298,8 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     ----------
     Y : Var
         Dependent variable.
-    X : Factor or model
-        Category definition.
+    X : categorial
+        Category definition (draw one box for every cell in X).
     datalabels : scalar
         Threshold for labeling outliers (in standard-deviation).
     test : bool | scalar

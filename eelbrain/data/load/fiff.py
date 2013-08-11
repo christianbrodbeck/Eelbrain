@@ -206,6 +206,9 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     is modified in place. With ``reject``, a subset of ``ds`` is returned
     containing only those events for which data was loaded.
 
+    ds : Dataset
+        Dataset containing a variable which defines epoch cues (i_start) and
+        to which the epochs are added.
     add : bool
         Add the variable to the Dataset. If ``True`` (default), the data is
         added to the Dataset and the function returns nothing; if ``False``,
@@ -213,8 +216,6 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     baseline : tuple(start, stop) or ``None``
         Time interval in seconds for baseline correction; ``None`` omits
         baseline correction (default).
-    dataset : Dataset
-        Dataset containing a variable (i_start) which defines epoch cues
     decim : int
         Downsample the data by this factor when importing. ``1`` means no
         downsampling. Note that this function does not low-pass filter
