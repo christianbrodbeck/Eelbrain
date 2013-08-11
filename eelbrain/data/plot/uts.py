@@ -6,10 +6,7 @@ plotting functions for univariate uniform time-series.
 
 '''
 # author: Christian Brodbeck
-
 from __future__ import division
-
-import os
 
 import numpy as np
 import scipy.stats
@@ -28,30 +25,30 @@ __hide__ = ['plt', 'division', 'Celltable']
 
 
 class stat(_base.subplot_figure):
-    "Plots statistics for a one-dimensional ndvar"
+    "Plots statistics for a one-dimensional NDVar"
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, dev=scipy.stats.sem, legend='upper right',
                  title=None, axtitle='{name}', xlabel=True, ylabel=True,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
                  cm='jet', colors=None, clusters=None, **layout):
         """
-    Plot statistics for a one-dimensional ndvar
+    Plot statistics for a one-dimensional NDVar
 
     Parameters
     ----------
-    Y : 1d-ndvar
-        Dependent variable (one-dimensional ndvar).
+    Y : 1d-NDVar
+        Dependent variable (one-dimensional NDVar).
     X : categorial or None
         Model: specification of conditions which should be plotted separately.
     Xax : None | categorial
         Make separate axes for each category in this categoral model.
-    match : factor
+    match : Factor
         Identifier for repeated measures data.
     sub : None | index array
         Only use a subset of the data provided.
-    ds : dataset
+    ds : Dataset
         if ``var`` or ``X`` is submitted as string, the ``ds`` argument
-        must provide a dataset containing those variables.
+        must provide a Dataset containing those variables.
     main : func | None
         Measure for the central tendency (function that takes an ``axis``
         argument). The default is numpy.mean.
@@ -89,9 +86,9 @@ class stat(_base.subplot_figure):
         parameter:
         **list**: A list of colors in the same sequence as X.cells.
         **dict**: A dictionary mapping each cell in X to a color.
-    clusters : None | dataset
+    clusters : None | Dataset
         Clusters to add to the plots. The clusters should be provided as
-        dataset, as stored in test results' :py:attr:`.clusters`.
+        Dataset, as stored in test results' :py:attr:`.clusters`.
         """
         if Xax is None:
             nax = 1
@@ -245,7 +242,7 @@ class stat(_base.subplot_figure):
 
         Parameters
         ----------
-        clusters : None | dataset
+        clusters : None | Dataset
             The clusters, as stored in test results' :py:attr:`.clusters`.
             Use ``None`` to remove the clusters plotted on a given axis.
         pmax : scalar
@@ -566,7 +563,7 @@ class _ax_uts_clusters:
 class _plt_uts_clusters:
     def __init__(self, ax, clusters, pmax, ptrend, color=None, hatch='/'):
         """
-        clusters : dataset
+        clusters : Dataset
             Dataset with entries for 'tstart', 'tstop' and 'p'.
         """
         self.pmax = pmax

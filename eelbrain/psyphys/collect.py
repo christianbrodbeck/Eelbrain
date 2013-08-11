@@ -439,10 +439,10 @@ class _collector(object):
             X = [valdict[index] for index in indexes]
 
             if var.dict_enabled:
-                Y = _vsl.factor(X, name=var.name, random=var.random,
+                Y = _vsl.Factor(X, name=var.name, random=var.random,
                                 labels=var.dictionary, colors=var._color_dict)
             else:
-                Y = _vsl.var(X, name=var.name)
+                Y = _vsl.Var(X, name=var.name)
 
             ds.add(Y)
 
@@ -551,7 +551,7 @@ class TimewindowCollector(_collector):
 
     def _get_vessel_for_Y(self, Ydata):
         Ydata = [self._cfunc(data) for data in Ydata]
-        Y = _vsl.var(Ydata, name=self._name)
+        Y = _vsl.Var(Ydata, name=self._name)
         return Y
 
 
@@ -629,10 +629,10 @@ class TimeseriesCollector(_collector):
     def _get_vessel_for_Y(self, Ydata):
         Ydata = np.array([self._cfunc(data, axis=0) for data in Ydata])
         T = np.arange(self._tw.tstart, self._tw.tend, 1 / self._samplingrate)
-        time = _vsl.var(T, name='time')
+        time = _vsl.Var(T, name='time')
         dims = ('case', time)
         info = {'samplingrate': self._samplingrate}
-        Y = _vsl.ndvar(Ydata, dims, info=info, name=self._name)
+        Y = _vsl.NDVar(Ydata, dims, info=info, name=self._name)
         return Y
 
 

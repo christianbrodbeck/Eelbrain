@@ -1,11 +1,11 @@
 '''
-Statistical tests for ndvar objects.
+Statistical tests for NDVar objects.
 
 Tests are defined as classes that provide aspects of their results as
 attributes and methods::
 
     >>> res = testnd.ttest(Y, X, 'test', 'control')
-    >>> res.p  # an ndvar object with an uncorrected p-value for each sample
+    >>> res.p  # an NDVar object with an uncorrected p-value for each sample
 
 Test result objects can be directly submitted to plotting functions. To plot
 only part of the results, specific attributes can be submitted (for a

@@ -1,7 +1,7 @@
 '''
 Functions for loading data from mne's fiff files.
 
-To load events as a dataset::
+To load events as a Dataset::
 
     >>> ds = load.fiff.events(path)
 
@@ -10,18 +10,18 @@ Events can then be modified in he ds (adding variables, discarding events,
 options, see the documentation of the relevant functions):
 
 
-1) load epochs as ndvar
+1) load epochs as NDVar
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-The epochs can be added as an ndvar object with::
+The epochs can be added as an NDVar object with::
 
     >>> ds = load.fiff.add_epochs(ds)
 
-The returned ds contains the new ndvar as 'MEG'
+The returned ds contains the new NDVar as 'MEG'
 If no epochs are rejected during loading, the returned ds is identical with the
 input ds.
 If epochs are rejected during loading, the returned ds is a shortened version
-of the input dataset that only contains the good epochs.
+of the input Dataset that only contains the good epochs.
 
 
 2) load epochs as mne.Epochs object
@@ -52,7 +52,7 @@ import mne
 
 from ... import ui
 from .. import colorspaces as _cs
-from ..data_obj import var, ndvar, dataset, Sensor, SourceSpace, UTS
+from ..data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS
 
 __all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
            'mne_events', 'mne_Raw', 'mne_Epochs',  # get mne objects
@@ -149,7 +149,7 @@ def events(raw=None, merge=-1, proj=False, name=None,
         looking for any projection file starting with the raw file's name.
         If multiple files match the pattern, a ValueError will be raised.
     name : str | None
-        A name for the dataset. If ``None``, the raw filename will be used.
+        A name for the Dataset. If ``None``, the raw filename will be used.
     bads : None | list
         Specify additional bad channels in the raw data file (these are added
         to the ones that are already defined in the raw file).
@@ -162,11 +162,11 @@ def events(raw=None, merge=-1, proj=False, name=None,
 
     Returns
     -------
-    events : dataset
-        A dataset with the following variables:
+    events : Dataset
+        A Dataset with the following variables:
          - *i_start*: the index of the event in the raw file.
          - *eventID*: the event value.
-        The dataset's info dictionary contains the following values:
+        The Dataset's info dictionary contains the following values:
          - *raw*: the mne Raw object.
 
     """
@@ -188,10 +188,10 @@ def events(raw=None, merge=-1, proj=False, name=None,
     if len(evts) == 0:
         raise ValueError("No events found!")
 
-    i_start = var(evts[:, 0], name='i_start')
-    eventID = var(evts[:, 2], name='eventID')
+    i_start = Var(evts[:, 0], name='i_start')
+    eventID = Var(evts[:, 2], name='eventID')
     info = {'raw': raw}
-    return dataset(eventID, i_start, name=name, info=info)
+    return Dataset(eventID, i_start, name=name, info=info)
 
 
 def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
@@ -201,19 +201,19 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
                target="MEG", i_start='i_start',
                info=None, sensors=None, exclude='bads'):
     """
-    Adds data from individual epochs as a ndvar to the dataset ``ds`` and
-    returns the dataset. Unless the ``reject`` argument is specified, ``ds``
+    Adds data from individual epochs as a NDVar to the Dataset ``ds`` and
+    returns the Dataset. Unless the ``reject`` argument is specified, ``ds``
     is modified in place. With ``reject``, a subset of ``ds`` is returned
     containing only those events for which data was loaded.
 
     add : bool
-        Add the variable to the dataset. If ``True`` (default), the data is
-        added to the dataset and the function returns nothing; if ``False``,
-        the function returns the ndvar object.
+        Add the variable to the Dataset. If ``True`` (default), the data is
+        added to the Dataset and the function returns nothing; if ``False``,
+        the function returns the NDVar object.
     baseline : tuple(start, stop) or ``None``
         Time interval in seconds for baseline correction; ``None`` omits
         baseline correction (default).
-    dataset : dataset
+    dataset : Dataset
         Dataset containing a variable (i_start) which defines epoch cues
     decim : int
         Downsample the data by this factor when importing. ``1`` means no
@@ -235,7 +235,7 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     unit : str
         Unit of the data (default is 'T').
     target : str
-        name for the new ndvar containing the epoch data
+        name for the new NDVar containing the epoch data
     reject : None | scalar
         Threshold for rejecting epochs (peak to peak). Requires a for of
         mne-python which implements the Epochs.model['index'] variable.
@@ -293,21 +293,21 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
 
 def add_mne_epochs(ds, target='epochs', **kwargs):
     """
-    Add an mne.Epochs object to the dataset and return the dataset.
+    Add an mne.Epochs object to the Dataset and return the Dataset.
 
-    If, after loading, the Epochs contain fewer cases than the dataset, a copy
-    of the dataset is made containing only those events also contained in the
+    If, after loading, the Epochs contain fewer cases than the Dataset, a copy
+    of the Dataset is made containing only those events also contained in the
     Epochs. Note that the Epochs are always loaded with ``preload==True``.
 
 
     Parameters
     ----------
 
-    ds : dataset
+    ds : Dataset
         Dataset with events from a raw fiff file (i.e., created by
         load.fiff.events).
     target : str
-        Name for the Epochs object in the dataset.
+        Name for the Epochs object in the Dataset.
     kwargs :
         Any additional keyword arguments are forwarded to the mne Epochs
         object initialization.
@@ -323,7 +323,7 @@ def add_mne_epochs(ds, target='epochs', **kwargs):
 def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
     """
     ..Warning:
-        modifies the dataset ``ds`` in place
+        modifies the Dataset ``ds`` in place
 
     """
     ds[i_start] -= 1
@@ -368,7 +368,7 @@ def mne_Epochs(ds, i_start='i_start', raw=None,
     raw : None | mne.fiff.Raw
         If None, ds.info['raw'] is used.
     name : str
-        Name for the Epochs object. ``'{name}'`` is formatted with the dataset
+        Name for the Epochs object. ``'{name}'`` is formatted with the Dataset
         name ``ds.name``.
 
     """
@@ -422,14 +422,14 @@ def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
 def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
                  mult=1, unit='T', info=None, sensors=None, vmax=None):
     """
-    Convert an mne.Epochs object to an ndvar.
+    Convert an mne.Epochs object to an NDVar.
 
     Parameters
     ----------
     epoch : mne.Epochs
         The epochs object
     name : None | str
-        Name for the ndvar.
+        Name for the NDVar.
     meg : bool or string
         MEG channels to include (:func:`mne.fiff.pick_types` kwarg).
         If True include all MEG channels. If False include None
@@ -448,7 +448,7 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
     unit : str
         Unit of the data (default is 'T').
     target : str
-        name for the new ndvar containing the epoch data
+        name for the new NDVar containing the epoch data
     reject : None | scalar
         Threshold for rejecting epochs (peak to peak). Requires a for of
         mne-python which implements the Epochs.model['index'] variable.
@@ -478,20 +478,20 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
 
     sensor = sensors or sensor_dim(epochs, picks=picks)
     time = UTS(epochs.tmin, 1. / epochs.info['sfreq'], len(epochs.times))
-    return ndvar(x, ('case', sensor, time), info=info_, name=name)
+    return NDVar(x, ('case', sensor, time), info=info_, name=name)
 
 
 def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
     """
-    Convert an mne Evoked object or a list thereof to an ndvar.
+    Convert an mne Evoked object or a list thereof to an NDVar.
 
     Parameters
     ----------
     evoked : str | Evoked | list of Evoked
-        The Evoked to convert to ndvar. Can be a string designating a file
+        The Evoked to convert to NDVar. Can be a string designating a file
         path to a evoked fiff file containing only one evoked.
     name : str
-        Name of the ndvar.
+        Name of the NDVar.
     meg : bool | 'mag' | 'grad'
         What MEG data to keep.
     eeg : bool
@@ -544,12 +544,12 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
         dims = ('case', sensor, time)
 
     info = _cs.meg_info(2e-13)
-    return ndvar(x, dims, info=info, name=name)
+    return NDVar(x, dims, info=info, name=name)
 
 
 def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
     """
-    create an ndvar object from an mne SourceEstimate object
+    create an NDVar object from an mne SourceEstimate object
 
     stc : SourceEstimate | list of SourceEstimates | str
         The source estimate object(s) or a path to an stc file.
@@ -589,18 +589,18 @@ def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
     else:
         dims = (ss, time)
 
-    return ndvar(x, dims, name=name)
+    return NDVar(x, dims, name=name)
 
 
 def trim_ds(ds, epochs):
     """
-    Trim a dataset to account for rejected epochs. If no epochs were rejected,
+    Trim a Dataset to account for rejected epochs. If no epochs were rejected,
     the original ds is rturned.
 
     Parameters
     ----------
 
-    ds : dataset
+    ds : Dataset
         Dataset that was used to construct epochs.
     epochs : Epochs
         Epochs loaded with mne_Epochs()

@@ -5,18 +5,18 @@ Data Representation
 
 Data is stored in three main vessels:
 
-:class:`factor`:
+:class:`Factor`:
     stores categorical data
-:class:`var`:
+:class:`Var`:
     stores numeric data
-:class:`ndvar`:
+:class:`NDVar`:
     stores numerical data where each cell contains an array if data (e.g., EEG
     or MEG data)
 
 
 managed by
 
-    * dataset
+    * Dataset
 
 '''
 
@@ -45,7 +45,7 @@ from . import colorspaces as cs
 from .stats import cihw
 
 
-__all__ = ('datalist', 'dataset', 'factor', 'var', 'ndvar', 'combine', 'align',
+__all__ = ('Datalist', 'Dataset', 'Factor', 'Var', 'NDVar', 'combine', 'align',
            'align1', 'cwt_morlet', 'resample', 'cellname', 'Celltable')
 
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
@@ -55,7 +55,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
                    factor_repr_n_cases=100,
                    var_repr_fmt='%.3g',
                    factor_repr_use_labels=True,
-                   short_repr=True,  # "A % B" vs "interaction(A, B)"
+                   short_repr=True,  # "A % B" vs "Interaction(A, B)"
                    )
 
 
@@ -92,8 +92,8 @@ def cellname(cell, delim=' '):
     """
     Returns a consistent ``str`` representation for cells.
 
-    * for factor cells: the cell (str)
-    * for interaction cell: delim.join(cell).
+    * for Factor cells: the cell (str)
+    * for Interaction cell: delim.join(cell).
 
     """
     if isinstance(cell, str):
@@ -119,7 +119,7 @@ def isbalanced(X):
     returns True if X is balanced, False otherwise.
 
     X : categorial
-        categorial model (factor or interaction)
+        categorial model (Factor or Interaction)
 
     """
     if ismodel(X):
@@ -150,7 +150,7 @@ def iseffect(Y):
     return hasattr(Y, '_stype_') and  Y._stype_ in effectnames
 
 def isdatalist(Y, contains=None, test_all=True):
-    """Test whether Y is a datalist instance
+    """Test whether Y is a Datalist instance
 
     Parameters
     ----------
@@ -160,7 +160,7 @@ def isdatalist(Y, contains=None, test_all=True):
         If contains is provided, test all items' class (otherwise just test the
         first item).
     """
-    is_dl = isinstance(Y, datalist)
+    is_dl = isinstance(Y, Datalist)
     if is_dl and contains:
         if test_all:
             is_dl = all(isinstance(item, contains) for item in Y)
@@ -191,11 +191,11 @@ def isndvar(Y):
     return hasattr(Y, '_stype_') and Y._stype_ == "ndvar"
 
 def isnumeric(Y):
-    "var, ndvar"
+    "Var, NDVar"
     return hasattr(Y, '_stype_') and Y._stype_ in ["ndvar", "var"]
 
 def isuv(Y):
-    "univariate (var, factor)"
+    "univariate (Var, Factor)"
     return hasattr(Y, '_stype_') and Y._stype_ in ["factor", "var"]
 
 def isvar(Y):
@@ -218,7 +218,7 @@ def hasrandom(Y):
 def ascategorial(Y, sub=None, ds=None):
     if isinstance(Y, str):
         if ds is None:
-            err = ("Parameter was specified as string, but no dataset was "
+            err = ("Parameter was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
         Y = ds.eval(Y)
@@ -237,7 +237,7 @@ def asdataobject(Y, sub=None, ds=None):
     "Convert to any data object or numpy array."
     if isinstance(Y, str):
         if ds is None:
-            err = ("Data object was specified as string, but no dataset was "
+            err = ("Data object was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
         Y = ds.eval(Y)
@@ -247,7 +247,7 @@ def asdataobject(Y, sub=None, ds=None):
     elif isinstance(Y, np.ndarray):
         pass
     else:
-        Y = datalist(Y)
+        Y = Datalist(Y)
 
     if sub is not None:
         Y = Y[sub]
@@ -256,7 +256,7 @@ def asdataobject(Y, sub=None, ds=None):
 def asfactor(Y, sub=None, ds=None):
     if isinstance(Y, str):
         if ds is None:
-            err = ("Factor was specified as string, but no dataset was "
+            err = ("Factor was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
         Y = ds.eval(Y)
@@ -266,7 +266,7 @@ def asfactor(Y, sub=None, ds=None):
     elif hasattr(Y, 'as_factor'):
         Y = Y.as_factor()
     else:
-        Y = factor(Y)
+        Y = Factor(Y)
 
     if sub is not None:
         return Y[sub]
@@ -276,7 +276,7 @@ def asfactor(Y, sub=None, ds=None):
 def asmodel(X, sub=None, ds=None):
     if isinstance(X, str):
         if ds is None:
-            err = ("Model was specified as string, but no dataset was "
+            err = ("Model was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
         X = ds.eval(X)
@@ -284,9 +284,9 @@ def asmodel(X, sub=None, ds=None):
     if ismodel(X):
         pass
     elif isinstance(X, (list, tuple)):
-        X = model(*X)
+        X = Model(*X)
     else:
-        X = model(X)
+        X = Model(X)
 
     if sub is not None:
         return X[sub]
@@ -296,13 +296,13 @@ def asmodel(X, sub=None, ds=None):
 def asndvar(Y, sub=None, ds=None):
     if isinstance(Y, str):
         if ds is None:
-            err = ("Ndvar was specified as string, but no dataset was "
+            err = ("Ndvar was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
         Y = ds.eval(Y)
 
     if not isndvar(Y):
-        raise TypeError("ndvar required")
+        raise TypeError("NDVar required")
 
     if sub is not None:
         return Y[sub]
@@ -310,16 +310,16 @@ def asndvar(Y, sub=None, ds=None):
         return Y
 
 def asnumeric(Y, sub=None, ds=None):
-    "var, ndvar"
+    "Var, NDVar"
     if isinstance(Y, str):
         if ds is None:
-            err = ("Numeric argument was specified as string, but no dataset "
+            err = ("Numeric argument was specified as string, but no Dataset "
                    "was specified")
             raise TypeError(err)
         Y = ds.eval(Y)
 
     if not isnumeric(Y):
-        raise TypeError("Numeric argument required (var or ndvar)")
+        raise TypeError("Numeric argument required (Var or NDVar)")
 
     if sub is not None:
         return Y[sub]
@@ -330,7 +330,7 @@ def assub(sub, ds=None):
     "Interpret the sub argument."
     if isinstance(sub, str):
         if ds is None:
-            err = ("the sub parameter was specified as string, but no dataset "
+            err = ("the sub parameter was specified as string, but no Dataset "
                    "was specified")
             raise TypeError(err)
         sub = ds.eval(sub)
@@ -339,14 +339,14 @@ def assub(sub, ds=None):
 def asvar(Y, sub=None, ds=None):
     if isinstance(Y, str):
         if ds is None:
-            err = ("Var was specified as string, but no dataset was specified")
+            err = ("Var was specified as string, but no Dataset was specified")
             raise TypeError(err)
         Y = ds.eval(Y)
 
     if isvar(Y):
         pass
     else:
-        Y = var(Y)
+        Y = Var(Y)
 
     if sub is not None:
         return Y[sub]
@@ -359,14 +359,14 @@ def _empty_like(obj, n=None, name=None):
     n = n or len(obj)
     name = name or obj.name
     if isfactor(obj):
-        return factor([''], rep=n, name=name)
+        return Factor([''], rep=n, name=name)
     elif isvar(obj):
-        return var(np.empty(n) * np.NaN, name=name)
+        return Var(np.empty(n) * np.NaN, name=name)
     elif isndvar(obj):
         shape = (n,) + obj.shape[1:]
-        return ndvar(np.empty(shape) * np.NaN, dims=obj.dims, name=name)
+        return NDVar(np.empty(shape) * np.NaN, dims=obj.dims, name=name)
     elif isdatalist(obj):
-        return datalist([None] * n, name=name)
+        return Datalist([None] * n, name=name)
     else:
         err = "Type not supported: %s" % type(obj)
         raise TypeError(err)
@@ -441,7 +441,7 @@ def align1(d, idx, d_idx='index', out='data'):
     idx : index array, len = n2
         index to which d should be aligned.
     d_idx : str | index array, len = n1
-        Indices of cases in d. If d is a dataset, d_idx can be a name in d.
+        Indices of cases in d. If d is a Dataset, d_idx can be a name in d.
     out : 'data' | 'index' | 'bool'
         Return a subset of d, an array of numerical indices into d, or a
         boolean array into d.
@@ -495,12 +495,12 @@ class Celltable(object):
 
         Parameters
         ----------
-        Y : var, ndvar
+        Y : Var, NDVar
             dependent measurement
         X : categorial
-            factor or interaction
+            Factor or Interaction
         match :
-            factor on which cases are matched (i.e. subject for a repeated
+            Factor on which cases are matched (i.e. subject for a repeated
             measures comparisons). If several data points with the same
             case fall into one cell of X, they are combined using
             match_func. If match is not None, Celltable.groups contains the
@@ -513,10 +513,10 @@ class Celltable(object):
         cat : None | sequence of cells of X
             Only retain data for these cells. Data will be sorted in the order
             of cells occuring in cat.
-        ds : dataset
-            If a dataset is specified, input items (Y / X / match / sub) can
+        ds : Dataset
+            If a Dataset is specified, input items (Y / X / match / sub) can
             be str instead of data-objects, in which case they will be
-            retrieved from the dataset.
+            retrieved from the Dataset.
 
 
         Examples
@@ -736,7 +736,7 @@ def combine(items, name=None):
     ----------
     items : collection
         Collection (:py:class:`list`, :py:class:`tuple`, ...) of data objects
-        of a single type (dataset, var, factor, ndvar or datalist).
+        of a single type (Dataset, Var, Factor, NDVar or Datalist).
     name : None | str
         Name for the resulting data-object. If None, the name of the combined
         item is the common prefix of all items.
@@ -760,8 +760,8 @@ def combine(items, name=None):
                 if key not in keys:
                     keys.append(key)
                     sample[key] = item[key]
-        # create new dataset
-        out = dataset(name=name)
+        # create new Dataset
+        out = Dataset(name=name)
         for key in keys:
             pieces = [ds[key] if key in ds else
                       _empty_like(sample[key], ds.n_cases) for ds in items]
@@ -769,7 +769,7 @@ def combine(items, name=None):
         return out
     elif isvar(item0):
         x = np.hstack(i.x for i in items)
-        return var(x, name=name)
+        return Var(x, name=name)
     elif isfactor(item0):
         if all(f._labels == item0._labels for f in items[1:]):
             x = np.hstack(f.x for f in items)
@@ -777,7 +777,7 @@ def combine(items, name=None):
         else:
             x = sum((i.as_labels() for i in items), [])
             kwargs = dict(name=name, random=item0.random)
-        return factor(x, **kwargs)
+        return Factor(x, **kwargs)
     elif isndvar(item0):
         has_case = np.array([v.has_case for v in items])
         if np.all(has_case):
@@ -798,7 +798,7 @@ def combine(items, name=None):
         else:
             x = np.array([v.x for v in items])
         dims = ('case',) + dims
-        return ndvar(x, dims=dims, name=name, info=item0.info)
+        return NDVar(x, dims=dims, name=name, info=item0.info)
     elif isdatalist(item0):
         out = sum(items[1:], item0)
         out.name = name
@@ -812,26 +812,26 @@ def combine(items, name=None):
 def find_factors(obj):
     "returns a list of all factors contained in obj"
     if isuv(obj):
-        return effect_list([obj])
+        return EffectList([obj])
     elif ismodel(obj):
         f = set()
         for e in obj.effects:
             f.update(find_factors(e))
-        return effect_list(f)
+        return EffectList(f)
     elif isnested(obj):
         return find_factors(obj.effect)
     elif isinteraction(obj):
         return obj.base
-    else:  # nonbasic_effect
+    else:  # NonbasicEffect
         try:
-            return effect_list(obj.factors)
+            return EffectList(obj.factors)
         except:
             raise TypeError("%r has no factors" % obj)
 
 
-class effect_list(list):
+class EffectList(list):
     def __repr__(self):
-        return 'effect_list((%s))' % ', '.join(self.names())
+        return 'EffectList((%s))' % ', '.join(self.names())
 
     def __contains__(self, item):
         for f in self:
@@ -843,22 +843,22 @@ class effect_list(list):
         for i, f in enumerate(self):
             if (len(f) == len(item)) and np.all(item == f):
                 return i
-        raise ValueError("factor %r not in effect_list" % item.name)
+        raise ValueError("Factor %r not in EffectList" % item.name)
 
     def names(self):
         return [e.name if isuv(e) else repr(e) for e in self]
 
 
 
-class var(object):
+class Var(object):
     """
     Container for scalar data.
 
-    While :py:class:`var` objects support a few basic operations in a
+    While :py:class:`Var` objects support a few basic operations in a
     :py:mod:`numpy`-like fashion (``+``, ``-``, ``*``, ``/``, ``//``), their
-    :py:attr:`var.x` attribute provides access to the corresponding
+    :py:attr:`Var.x` attribute provides access to the corresponding
     :py:class:`numpy.array` which can be used for anything more complicated.
-    :py:attr:`var.x` can be read and modified, but should not be replaced.
+    :py:attr:`Var.x` can be read and modified, but should not be replaced.
 
     """
     _stype_ = "var"
@@ -878,7 +878,7 @@ class var(object):
             if np.count_nonzero(i > 1 for i in x.shape) <= 1:
                 x = np.ravel(x)
             else:
-                err = ("X needs to be one-dimensional. Use ndvar class for "
+                err = ("X needs to be one-dimensional. Use NDVar class for "
                        "data with more than one dimension.")
                 raise ValueError(err)
         self.__setstate__((x, name))
@@ -914,7 +914,7 @@ class var(object):
         if self.name is not None:
             args.append('name=%r' % self.name)
 
-        return "var(%s)" % ', '.join(args)
+        return "Var(%s)" % ', '.join(args)
 
     def __str__(self):
         return self.__repr__(True)
@@ -924,19 +924,19 @@ class var(object):
         return self._n_cases
 
     def __getitem__(self, index):
-        "if factor: return new variable with mean values per factor category"
+        "if Factor: return new variable with mean values per Factor category"
         if isfactor(index):
             f = index
             x = []
             for v in np.unique(f.x):
                 x.append(np.mean(self.x[f == v]))
-            return var(x, self.name)
+            return Var(x, self.name)
         elif isvar(index):
             index = index.x
 
         x = self.x[index]
         if np.iterable(x):
-            return var(x, self.name)
+            return Var(x, self.name)
         else:
             return x
 
@@ -949,8 +949,8 @@ class var(object):
     # numeric ---
     def __add__(self, other):
         if isdataobject(other):
-            # ??? should var + var return sum or model?
-            return model(self, other)
+            # ??? should Var + Var return sum or Model?
+            return Model(self, other)
         else:
             x = self.x + other
             if np.isscalar(other):
@@ -958,12 +958,12 @@ class var(object):
             else:
                 name = self.name
 
-            return var(x, name=name)
+            return Var(x, name=name)
 
     def __sub__(self, other):
         "subtract: values are assumed to be ordered. Otherwise use .sub method."
         if np.isscalar(other):
-            return var(self.x - other,
+            return Var(self.x - other,
                        name='%s-%s' % (self.name, other))
         else:
             assert len(other.x) == len(self.x)
@@ -973,11 +973,11 @@ class var(object):
                 name = n1
             else:
                 name = "%s-%s" % (n1, n2)
-            return var(x, name)
+            return Var(x, name)
 
     def __mul__(self, other):
         if iscategorial(other):
-            return model(self, other, self % other)
+            return Model(self, other, self % other)
         elif isvar(other):
             x = self.x * other.x
             name = '%s*%s' % (self.name, other.name)
@@ -989,7 +989,7 @@ class var(object):
             else:
                 name = self.name
 
-        return var(x, name=name)
+        return Var(x, name=name)
 
     def __floordiv__(self, other):
         if isvar(other):
@@ -1001,13 +1001,13 @@ class var(object):
         else:
             x = self.x // other
             name = '%s//%s' % (self.name, '?')
-        return var(x, name=name)
+        return Var(x, name=name)
 
     def __mod__(self, other):
         if  ismodel(other):
-            return model(self) % other
+            return Model(self) % other
         elif isdataobject(other):
-            return interaction((self, other))
+            return Interaction((self, other))
         elif isvar(other):
             other = other.x
             other_name = other.name
@@ -1016,7 +1016,7 @@ class var(object):
 
         name = '{name}%{other}'
         name = name.format(name=self.name, other=other_name)
-        return var(self.x % other, name=name)
+        return Var(self.x % other, name=name)
 
     def __lt__(self, y):
         return self.x < y
@@ -1044,16 +1044,16 @@ class var(object):
         type of other:
         scalar:
             returns var divided by other
-        factor:
-            returns a separate slope for each level of the factor; needed for
+        Factor:
+            returns a separate slope for each level of the Factor; needed for
             ANCOVA
 
         """
         if np.isscalar(other):
-            return var(self.x / other,
+            return Var(self.x / other,
                        name='%s/%s' % (self.name, other))
         elif isvar(other):
-            return var(self.x / other.x,
+            return Var(self.x / other.x,
                        name='%s/%s' % (self.name, other.name))
         else:
             categories = other
@@ -1067,7 +1067,7 @@ class var(object):
             # create effect
             name = '%s per %s' % (self.name, categories.name)
             labels = categories.dummy_complete_labels
-            out = nonbasic_effect(codes, [self, categories], name,
+            out = NonbasicEffect(codes, [self, categories], name,
                                   beta_labels=labels)
             return out
 
@@ -1078,9 +1078,9 @@ class var(object):
 
     def as_factor(self, name=None, labels='%r'):
         """
-        convert the var into a factor
+        convert the Var into a Factor
 
-        :arg name: if None, it will copy the var name
+        :arg name: if None, it will copy the Var name
         :arg labels: dictionary maping values->labels, or format string for
             converting values into labels
 
@@ -1094,7 +1094,7 @@ class var(object):
             for value in np.unique(self.x):
                 labels[value] = fmt % value
 
-        f = factor(self.x, name=name, labels=labels)
+        f = Factor(self.x, name=name, labels=labels)
         return f
 
     def centered(self):
@@ -1104,16 +1104,16 @@ class var(object):
         "returns a deep copy of itself"
         x = self.x.copy()
         name = name.format(name=self.name)
-        return var(x, name=name)
+        return Var(x, name=name)
 
     def compress(self, X, func=np.mean, name='{name}'):
         """
-        X: factor or interaction; returns a compressed var object with one
+        X: Factor or Interaction; returns a compressed Var object with one
         value for each cell in X.
 
         """
         if len(X) != len(self):
-            err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
+            err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
             raise ValueError(err)
 
         x = []
@@ -1124,7 +1124,7 @@ class var(object):
 
         x = np.array(x)
         name = name.format(name=self.name)
-        out = var(x, name=name)
+        out = Var(x, name=name)
         return out
 
     @property
@@ -1148,30 +1148,30 @@ class var(object):
         name = "{n}({x1}-{x2})".format(n=self.name,
                                        x1=X.cells[v1],
                                        x2=X.cells[v2])
-        return var(y, name)
+        return Var(y, name)
 
     @classmethod
     def from_dict(cls, base, values, name=None, default=0):
         """
-        Construct a var object by mapping ``base`` to ``values``.
+        Construct a Var object by mapping ``base`` to ``values``.
 
         Parameters
         ----------
         base : sequence
-            Sequence to be mapped to the new var.
+            Sequence to be mapped to the new Var.
         values : dict
-            Mapping from values in base to values in the new var.
+            Mapping from values in base to values in the new Var.
         name : None | str
-            Name for the new var.
+            Name for the new Var.
         default : scalar
             Default value to supply for entries in ``base`` that are not in
             ``values``.
 
         Examples
         --------
-        >>> base = factor('aabbcde')
-        >>> var.from_dict(base, {'a': 5, 'e': 8}, default=0)
-        var([5, 5, 0, 0, 0, 0, 8])
+        >>> base = Factor('aabbcde')
+        >>> Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
+        Var([5, 5, 0, 0, 0, 0, 8])
 
         """
         Y = cls([values.get(b, default) for b in base], name=name)
@@ -1180,16 +1180,16 @@ class var(object):
     @classmethod
     def from_apply(cls, base, func, name='{func}({name})'):
         """
-        Construct a var instance by applying a function to each value in a base
+        Construct a Var instance by applying a function to each value in a base
 
         Parameters
         ----------
         base : sequence, len = n
-            Base for the new var. Can be an ndvar, if ``func`` is a
+            Base for the new Var. Can be an NDVar, if ``func`` is a
             dimensionality reducing function such as :func:`numpy.mean`.
         func : callable
             A function that when applied to each element in ``base`` returns
-            the desired value for the resulting var.
+            the desired value for the resulting Var.
         """
         base_name = getattr(base, 'name', 'x')
         if isvar(base) or isndvar(base):
@@ -1231,10 +1231,10 @@ class var(object):
 
     def repeat(self, repeats, name='{name}'):
         "Analogous to :py:func:`numpy.repeat`"
-        return var(self.x.repeat(repeats), name=name.format(name=self.name))
+        return Var(self.x.repeat(repeats), name=name.format(name=self.name))
 
     def sort_idx(self, descending=False):
-        """Create an index that could be used to sort the var.
+        """Create an index that could be used to sort the Var.
 
         Parameters
         ----------
@@ -1251,17 +1251,16 @@ class var(object):
         return np.unique(self.x)
 
 
-
-class _effect_(object):
+class _Effect(object):
     # numeric ---
     def __add__(self, other):
-        return model(self) + other
+        return Model(self) + other
 
     def __mul__(self, other):
-        return model(self, other, self % other)
+        return Model(self, other, self % other)
 
     def __mod__(self, other):
-        return interaction((self, other))
+        return Interaction((self, other))
 
     def count(self, value, start=-1):
         """Cumulative count of the occurrences of ``value``
@@ -1281,9 +1280,9 @@ class _effect_(object):
 
         Examples
         --------
-        >>> a = factor('abc', tile=3)
+        >>> a = Factor('abc', tile=3)
         >>> a
-        factor(['a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c'])
+        Factor(['a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c'])
         >>> a.count('a')
         array([0, 0, 0, 1, 1, 1, 2, 2, 2])
         """
@@ -1353,7 +1352,7 @@ class _effect_(object):
         return sort_idx
 
 
-class factor(_effect_):
+class Factor(_Effect):
     """
     Container for categorial data.
 
@@ -1364,11 +1363,11 @@ class factor(_effect_):
         Parameters
         ----------
         x : iterator
-            Sequence of factor values (see also the ``labels`` kwarg).
+            Sequence of Factor values (see also the ``labels`` kwarg).
         name : str
-            Name of the factor.
+            Name of the Factor.
         random : bool
-            Treat factor as random factor (for ANOVA; default is False).
+            Treat Factor as random factor (for ANOVA; default is False).
         rep : int
             Repeat each element in ``x`` ``rep`` many times.
         tile : int
@@ -1381,22 +1380,22 @@ class factor(_effect_):
 
         Examples
         --------
-        The most obvious way to initialize a factor is a list of strings::
+        The most obvious way to initialize a Factor is a list of strings::
 
-            >>> factor(['in', 'in', 'in', 'out', 'out', 'out'])
-            factor(['in', 'in', 'in', 'out', 'out', 'out'])
+            >>> Factor(['in', 'in', 'in', 'out', 'out', 'out'])
+            Factor(['in', 'in', 'in', 'out', 'out', 'out'])
 
         The same can be achieved with a list of integers plus a labels dict::
 
-            >>> factor([1, 1, 1, 0, 0, 0], labels={1: 'in', 0: 'out'})
-            factor(['in', 'in', 'in', 'out', 'out', 'out'])
+            >>> Factor([1, 1, 1, 0, 0, 0], labels={1: 'in', 0: 'out'})
+            Factor(['in', 'in', 'in', 'out', 'out', 'out'])
 
-        Since the factor initialization simply iterates over the ``x``
-        argument, a factor with one-character codes can also be initialized
+        Since the Factor initialization simply iterates over the ``x``
+        argument, a Factor with one-character codes can also be initialized
         with a single string::
 
-            >>> factor('iiiooo')
-            factor(['i', 'i', 'i', 'o', 'o', 'o'])
+            >>> Factor('iiiooo')
+            Factor(['i', 'i', 'i', 'o', 'o', 'o'])
 
         """
         state = {'name': name, 'random': random}
@@ -1475,7 +1474,7 @@ class factor(_effect_):
         if not use_labels:
             args.append('labels=%s' % self._labels)
 
-        return 'factor(%s)' % ', '.join(args)
+        return 'Factor(%s)' % ', '.join(args)
 
     def __str__(self):
         return self.__repr__(True)
@@ -1495,7 +1494,7 @@ class factor(_effect_):
 
         x = self.x[index]
         if np.iterable(x):
-            return factor(x, **self._child_kwargs())
+            return Factor(x, **self._child_kwargs())
         else:
             return self._labels[x]
 
@@ -1528,7 +1527,7 @@ class factor(_effect_):
                 code += 1
 
             if code >= 65535:
-                raise ValueError("Too many categories in this factor.")
+                raise ValueError("Too many categories in this Factor.")
 
             self._labels[code] = label
             self._codes[label] = code
@@ -1566,7 +1565,7 @@ class factor(_effect_):
         each level of A only occurs together with one level of B.
 
         """
-        return nested_effect(self, other)
+        return NestedEffect(self, other)
 
     def _child_kwargs(self, name='{name}'):
         kwargs = dict(labels=self._labels,
@@ -1595,12 +1594,12 @@ class factor(_effect_):
                 while code in self._labels:
                     code += 1
                 if code >= 65535:
-                    raise ValueError("Too many categories in this factor.")
+                    raise ValueError("Too many categories in this Factor.")
                 self._labels[code] = Y
                 self._codes[Y] = code
                 return code
             else:
-                return 65535  # code for values not present in the factor
+                return 65535  # code for values not present in the Factor
         elif np.iterable(Y):
             out = np.empty(len(Y), dtype=np.uint16)
             for i, y in enumerate(Y):
@@ -1653,7 +1652,7 @@ class factor(_effect_):
 
     def compress(self, X, name='{name}'):
         """
-        Summarize the factor by collapsing within cells in `X`.
+        Summarize the Factor by collapsing within cells in `X`.
 
         Raises an error if there are cells that contain more than one value.
 
@@ -1664,12 +1663,12 @@ class factor(_effect_):
 
         Returns
         -------
-        f : factor
+        f : Factor
             A copy of self with only one value for each cell in X
 
         """
         if len(X) != len(self):
-            err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
+            err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
             raise ValueError(err)
 
         x = []
@@ -1678,7 +1677,7 @@ class factor(_effect_):
             if np.sum(idx):
                 x_i = np.unique(self.x[idx])
                 if len(x_i) > 1:
-                    err = ("ambiguous cell: factor %r has multiple values for "
+                    err = ("ambiguous cell: Factor %r has multiple values for "
                            "cell %r" % (self.name, cell))
                     raise ValueError(err)
                 else:
@@ -1686,12 +1685,12 @@ class factor(_effect_):
 
         x = np.array(x)
         name = name.format(name=self.name)
-        out = factor(x, name=name, labels=self._labels, random=self.random)
+        out = Factor(x, name=name, labels=self._labels, random=self.random)
         return out
 
     def copy(self, name='{name}', rep=1, tile=1):
         "returns a deep copy of itself"
-        f = factor(self.x.copy(), rep=rep, tile=tile,
+        f = Factor(self.x.copy(), rep=rep, tile=tile,
                    **self._child_kwargs(name))
         return f
 
@@ -1726,12 +1725,12 @@ class factor(_effect_):
 
     def isany(self, *values):
         """
-        Returns a boolean array that is True where the factor matches
+        Returns a boolean array that is True where the Factor matches
         one of the ``values``
 
         Example::
 
-            >>> a = factor('aabbcc')
+            >>> a = Factor('aabbcc')
             >>> b.isany('b', 'c')
             array([False, False,  True,  True,  True,  True], dtype=bool)
 
@@ -1770,7 +1769,7 @@ class factor(_effect_):
 
         Examples
         --------
-        >>> a = factor(['a1', 'a2', 'b1', 'b2'])
+        >>> a = Factor(['a1', 'a2', 'b1', 'b2'])
         >>> a.startswith('b')
         array([False, False,  True,  True], dtype=bool)
         """
@@ -1792,11 +1791,11 @@ class factor(_effect_):
 
     def project(self, target, name='{name}'):
         """
-        Project the factor onto an index array ``target``
+        Project the Factor onto an index array ``target``
 
         Example::
 
-            >>> f = V.data.factor('abc')
+            >>> f = Factor('abc')
             >>> f.as_labels()
             ['a', 'b', 'c']
             >>> fp = f.project([1,2,1,2,0,0])
@@ -1807,15 +1806,15 @@ class factor(_effect_):
         if isvar(target):
             target = target.x
         x = self.x[target]
-        return factor(x, **self._child_kwargs(name))
+        return Factor(x, **self._child_kwargs(name))
 
     def repeat(self, repeats, name='{name}'):
-        "Repeat elements of a factor (analogous to :py:func:`numpy.repeat`)"
-        return factor(self.x.repeat(repeats), **self._child_kwargs(name))
+        "Repeat elements of a Factor (analogous to :py:func:`numpy.repeat`)"
+        return Factor(self.x.repeat(repeats), **self._child_kwargs(name))
 
 
 
-class ndvar(object):
+class NDVar(object):
     "Container for n-dimensional data."
     _stype_ = "ndvar"
     def __init__(self, x, dims=('case',), info={}, name=None):
@@ -1832,7 +1831,7 @@ class ndvar(object):
             A dictionary with data properties (can contain arbitrary
             information that will be accessible in the info attribute).
         name : None | str
-            Name for the ndvar.
+            Name for the NDVar.
 
 
         Notes
@@ -1850,7 +1849,7 @@ class ndvar(object):
         (600, 80)
         >>> time = UTS(-.2, .01, 80)
         >>> dims = ('case', time)
-        >>> Y = ndvar(data, dims=dims)
+        >>> Y = NDVar(data, dims=dims)
 
         """
         # check data shape
@@ -1914,7 +1913,7 @@ class ndvar(object):
         # attr
         for dim in truedims:
             if hasattr(self, dim.name):
-                err = ("invalid dimension name: %r (already present as ndvar"
+                err = ("invalid dimension name: %r (already present as NDVar"
                        " attr)" % dim.name)
                 raise ValueError(err)
             else:
@@ -1987,7 +1986,7 @@ class ndvar(object):
             name = '%s+%s' % (self.name, str(other))
         else:
             raise ValueError("can't add %r" % other)
-        return ndvar(x, dims=dims, name=name, info=self.info)
+        return NDVar(x, dims=dims, name=name, info=self.info)
 
     def __iadd__(self, other):
         self.x += self._ialign(other)
@@ -2004,7 +2003,7 @@ class ndvar(object):
             name = '%s-%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
-        return ndvar(x, dims=dims, name=name, info=self.info)
+        return NDVar(x, dims=dims, name=name, info=self.info)
 
     def __isub__(self, other):
         self.x -= self._ialign(other)
@@ -2012,7 +2011,7 @@ class ndvar(object):
 
     def __rsub__(self, other):
         x = other - self.x
-        return ndvar(x, self.dims, self.info, name=self.name)
+        return NDVar(x, self.dims, self.info, name=self.name)
 
     # container ---
     def __getitem__(self, index):
@@ -2023,7 +2022,7 @@ class ndvar(object):
             x = self.x[index]
             if x.shape[1:] != self.x.shape[1:]:
                 raise NotImplementedError("Use subdata method when dims are affected")
-            return ndvar(x, dims=self.dims, name=self.name, info=self.info)
+            return NDVar(x, dims=self.dims, name=self.name, info=self.info)
         else:
             index = int(index)
             x = self.x[index]
@@ -2035,13 +2034,13 @@ class ndvar(object):
                 name = '%s_%i' % (self.name, index)
             else:
                 name = None
-            return ndvar(x, dims=dims, name=name, info=self.info)
+            return NDVar(x, dims=dims, name=name, info=self.info)
 
     def __len__(self):
         return self._len
 
     def __repr__(self):
-        rep = '<ndvar %(name)r: %(dims)s>'
+        rep = '<NDVar %(name)r: %(dims)s>'
         if self.has_case:
             dims = [(self._len, 'case')]
         else:
@@ -2059,26 +2058,26 @@ class ndvar(object):
 
     def compress(self, X, func=np.mean, name='{name}'):
         """
-        Return an ndvar with one case for each cell in ``X``.
+        Return an NDVar with one case for each cell in ``X``.
 
         Parameters
         ----------
         X : categorial
-            Categorial whose cells are used to compress the ndvar.
+            Categorial whose cells are used to compress the NDVar.
         func : function with axis argument
             Function that is used to create a summary of the cases falling
             into each cell of X. The function needs to accept the data as
             first argument and ``axis`` as keyword-argument. Default is
             ``numpy.mean``.
         name : str
-            Name for the resulting ndvar. ``'{name}'`` is formatted to the
-            current ndvar's ``.name``.
+            Name for the resulting NDVar. ``'{name}'`` is formatted to the
+            current NDVar's ``.name``.
 
         """
         if not self.has_case:
             raise DimensionMismatchError("%r has no case dimension" % self)
         if len(X) != len(self):
-            err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
+            err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
             raise ValueError(err)
 
         x = []
@@ -2095,7 +2094,7 @@ class ndvar(object):
 
         x = np.array(x)
         name = name.format(name=self.name)
-        out = ndvar(x, self.dims, info=info, name=name)
+        out = NDVar(x, self.dims, info=info, name=name)
         return out
 
     def copy(self, name='{name}'):
@@ -2110,7 +2109,7 @@ class ndvar(object):
         return self._dim_2_ax[dim]
 
     def get_data(self, dims):
-        """Retrieve the ndvar's data with a specific axes order.
+        """Retrieve the NDVar's data with a specific axes order.
 
         Parameters
         ----------
@@ -2150,7 +2149,7 @@ class ndvar(object):
             i = self._dim_2_ax[name]
             dim = self.dims[i]
             if isinstance(dim, str) and dim == 'case':
-                dim = var(np.arange(len(self)), 'case')
+                dim = Var(np.arange(len(self)), 'case')
         else:
             msg = "%r has no dimension named %r" % (self, name)
             raise DimensionMismatchError(msg)
@@ -2179,11 +2178,11 @@ class ndvar(object):
         dims = self.dims[:ax] + (repdim,) + self.dims[ax + 1:]
         info = self.info.copy()
         name = name.format(name=self.name)
-        return ndvar(x, dims, info=info, name=name)
+        return NDVar(x, dims, info=info, name=name)
 
     def summary(self, *dims, **regions):
         r"""
-        Returns a new ndvar with specified dimensions collapsed.
+        Returns a new NDVar with specified dimensions collapsed.
 
         .. warning::
             Data is collapsed over the different dimensions in turn using the
@@ -2206,7 +2205,7 @@ class ndvar(object):
             Function used to collapse the data. Needs to accept an "axis"
             kwarg (default: np.mean)
         name : str
-            Name for the new ndvar. Default: "{func}({name})".
+            Name for the new NDVar. Default: "{func}({name})".
 
 
         Examples
@@ -2221,7 +2220,7 @@ class ndvar(object):
 
             >>> Y = data.summary(time=(.1, .2), func=np.max)
 
-        Assuming MEG is an ndvar with dimensions time and sensor. Get the
+        Assuming MEG is an NDVar with dimensions time and sensor. Get the
         average across sensors 5, 6, and 8 in a time window::
 
             >>> ROI = [5, 6, 8]
@@ -2264,13 +2263,13 @@ class ndvar(object):
             if len(dims) == 0:
                 return x
             elif dims == ['case']:
-                return var(x, name=name)
+                return Var(x, name=name)
             else:
-                return ndvar(x, dims=dims, name=name, info=info)
+                return NDVar(x, dims=dims, name=name, info=info)
 
     def subdata(self, **kwargs):
         """
-        returns an ndvar object with a subset of the current ndvar's data.
+        returns an NDVar object with a subset of the current NDVar's data.
         The slice is specified using kwargs, with dimensions as keywords and
         indexes as values, e.g.::
 
@@ -2284,8 +2283,8 @@ class ndvar(object):
         returns a slice containing all values for times .2 seconds to .6
         seconds.
 
-        The name of the new ndvar can be set with a ``name`` parameter. The
-        default is the name of the current ndvar.
+        The name of the new NDVar can be set with a ``name`` parameter. The
+        default is the name of the current NDVar.
         """
         var_name = kwargs.pop('name', self.name)
         info = self.info.copy()
@@ -2328,13 +2327,13 @@ class ndvar(object):
 
         # create subdata object
         dims = tuple(dim for dim in dims if dim is not None)
-        return ndvar(x, dims=dims, name=var_name, info=info)
+        return NDVar(x, dims=dims, name=var_name, info=info)
 
 
 
-class datalist(list):
+class Datalist(list):
     """
-    :py:class:`list` subclass for including lists in in a dataset.
+    :py:class:`list` subclass for including lists in in a Dataset.
 
     The subclass adds certain methods that makes indexing behavior more
     similar to numpy and other data objects. The following methods are
@@ -2350,12 +2349,12 @@ class datalist(list):
     def __init__(self, items=None, name=None):
         self.name = name
         if items:
-            super(datalist, self).__init__(items)
+            super(Datalist, self).__init__(items)
         else:
-            super(datalist, self).__init__()
+            super(Datalist, self).__init__()
 
     def __repr__(self):
-        return "datalist(%s)" % super(datalist, self).__repr__()
+        return "Datalist(%s)" % super(Datalist, self).__repr__()
 
     def __getitem__(self, index):
         if isinstance(index, (int, slice)):
@@ -2365,20 +2364,20 @@ class datalist(list):
         if issubclass(index.dtype.type, np.bool_):
             N = len(self)
             assert len(index) == N
-            return datalist(self[i] for i in xrange(N) if index[i])
+            return Datalist(self[i] for i in xrange(N) if index[i])
         elif issubclass(index.dtype.type, np.integer):
-            return datalist(self[i] for i in index)
+            return Datalist(self[i] for i in index)
         else:
-            err = ("Unsupported type of index for datalist: %r" % index)
+            err = ("Unsupported type of index for Datalist: %r" % index)
             raise TypeError(err)
 
     def __add__(self, other):
-        lst = super(datalist, self).__add__(other)
-        return datalist(lst, name=self.name)
+        lst = super(Datalist, self).__add__(other)
+        return Datalist(lst, name=self.name)
 
     def compress(self, X, merge='mean'):
         """
-        X: factor or interaction; returns a compressed factor with one value
+        X: Factor or Interaction; returns a compressed Factor with one value
         for each cell in X.
 
         merge : str
@@ -2387,10 +2386,10 @@ class datalist(list):
 
         """
         if len(X) != len(self):
-            err = "Length mismatch: %i (var) != %i (X)" % (len(self), len(X))
+            err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
             raise ValueError(err)
 
-        x = datalist()
+        x = Datalist()
         for cell in X.cells:
             x_cell = self[X == cell]
             n = len(x_cell)
@@ -2409,43 +2408,43 @@ class datalist(list):
 
 
 
-class dataset(collections.OrderedDict):
+class Dataset(collections.OrderedDict):
     """
-    A dataset is a dictionary that represents a data table.
+    A Dataset is a dictionary that represents a data table.
 
     Attributes
     ----------
     n_cases : None | int
-        The number of cases in the dataset (corresponding to the number of
+        The number of cases in the Dataset (corresponding to the number of
         rows in the table representation). None if no variables have been
         added.
     n_items : int
-        The number of items (variables) in the dataset (corresponding to the
+        The number of items (variables) in the Dataset (corresponding to the
         number of columns in the table representation).
 
     Methods
     -------
     add:
-        Add a variable to the dataset.
+        Add a variable to the Dataset.
     as_table:
-        Create a data table representation of the dataset.
+        Create a data table representation of the Dataset.
     compress:
         For a given categorial description, reduce the number of cases in the
-        dataset per cell to one (e.g., average by subject and condition).
+        Dataset per cell to one (e.g., average by subject and condition).
     copy:
-        Create a shallow copy (i.e., return a new dataset containing the same
+        Create a shallow copy (i.e., return a new Dataset containing the same
         data objects).
     export:
-        Save the dataset in different formats.
+        Save the Dataset in different formats.
     eval:
-        Evaluate an expression in the dataset's namespace.
+        Evaluate an expression in the Dataset's namespace.
     index:
-        Add an index to the dataset (to keep track of cases when selecting
+        Add an index to the Dataset (to keep track of cases when selecting
         subsets).
     itercases:
         Iterate through each case as a dictionary.
     subset:
-        Create a dataset form a subset of cases (slightly faster than normal
+        Create a Dataset form a subset of cases (slightly faster than normal
         indexing).
 
     See Also
@@ -2454,23 +2453,23 @@ class dataset(collections.OrderedDict):
 
     Notes
     -----
-    A dataset represents a data table as a {variable_name: value_list}
+    A Dataset represents a data table as a {variable_name: value_list}
     dictionary. Each variable corresponds to a column, and each index in the
     value list corresponds to a row, or case.
 
-    The dataset class inherits most of its behavior from its superclass
+    The Dataset class inherits most of its behavior from its superclass
     :py:class:`collections.OrderedDict`.
     Dictionary keys are enforced to be :py:class:`str` objects and should
     preferably correspond to the variable names.
-    An exception is the dataset's length, which reflects the number of cases
-    in the dataset (i.e., the number of rows; the number of items can be
-    retrieved as  :py:attr:`dataset.n_items`).
+    An exception is the Dataset's length, which reflects the number of cases
+    in the Dataset (i.e., the number of rows; the number of items can be
+    retrieved as  :py:attr:`Dataset.n_items`).
 
 
     **Accessing Data:**
 
-    Standard indexing with *strings* is used to access the contained var and
-    factor objects. Nesting is possible:
+    Standard indexing with *strings* is used to access the contained Var and
+    Factor objects. Nesting is possible:
 
     - ``ds['var1']`` --> ``var1``.
     - ``ds['var1',]`` --> ``[var1]``.
@@ -2487,24 +2486,24 @@ class dataset(collections.OrderedDict):
 
      - ``ds[:4, :2]`` --> first 4 rows,
 
-    The ``.get_case()`` method or iteration over the dataset
+    The ``.get_case()`` method or iteration over the Dataset
     retrieve individual cases/rows as {name: value} dictionaries.
 
 
     **Naming:**
 
-    While var and factor objects themselves need not be named, they need
-    to be named when added to a dataset. This can be done by a) adding a
-    name when initializing the dataset::
+    While Var and Factor objects themselves need not be named, they need
+    to be named when added to a Dataset. This can be done by a) adding a
+    name when initializing the Dataset::
 
-        >>> ds = dataset(('v1', var1), ('v2', var2))
+        >>> ds = Dataset(('v1', var1), ('v2', var2))
 
-    or b) by adding the var or factor witha key::
+    or b) by adding the Var or Factor with a key::
 
         >>> ds['v3'] = var3
 
-    If a var/factor that is added to a dataset does not have a name, the new
-    key is automatically assigned to the var/factor's ``.name`` attribute.
+    If a Var/Factor that is added to a Dataset does not have a name, the new
+    key is automatically assigned to the Var/Factor's ``.name`` attribute.
 
     """
     _stype_ = "dataset"
@@ -2513,17 +2512,17 @@ class dataset(collections.OrderedDict):
         Datasets can be initialize with data-objects, or with
         ('name', data-object) tuples.::
 
-            >>> ds = dataset(var1, var2)
-            >>> ds = dataset(('v1', var1), ('v2', var2))
+            >>> ds = Dataset(var1, var2)
+            >>> ds = Dataset(('v1', var1), ('v2', var2))
 
-        The dataset stores the input items themselves, without making a copy().
+        The Dataset stores the input items themselves, without making a copy().
 
 
         Parameters
         ----------
 
         name : str
-            name describing the dataset
+            name describing the Dataset
         info : dict
             info dictionary, can contain arbitrary entries and can be accessad
             as ``.info`` attribute after initialization.
@@ -2535,8 +2534,8 @@ class dataset(collections.OrderedDict):
                 if item.name:
                     args.append((item.name, item))
                 else:
-                    err = ("items need to be named in a dataset; use "
-                            "dataset(('name', item), ...), or ds = dataset(); "
+                    err = ("items need to be named in a Dataset; use "
+                            "Dataset(('name', item), ...), or ds = Dataset(); "
                             "ds['name'] = item")
                     raise ValueError(err)
             else:
@@ -2546,7 +2545,7 @@ class dataset(collections.OrderedDict):
                 args.append(item)
 
         self.n_cases = None
-        super(dataset, self).__init__(args)
+        super(Dataset, self).__init__(args)
         self.__setstate__(kwargs)
 
     def __setstate__(self, kwargs):
@@ -2565,7 +2564,7 @@ class dataset(collections.OrderedDict):
             >>> ds[9]        (int) -> case
             >>> ds[9:12]     (slice) -> subset with those cases
             >>> ds[[9, 10, 11]]     (list) -> subset with those cases
-            >>> ds['MEG1']  (strings) -> var
+            >>> ds['MEG1']  (strings) -> Var
             >>> ds['MEG1', 'MEG2']  (list of strings) -> list of vars; can be nested!
 
         """
@@ -2573,13 +2572,13 @@ class dataset(collections.OrderedDict):
             return self.subset(index)
 
         if isinstance(index, basestring):
-            return super(dataset, self).__getitem__(index)
+            return super(Dataset, self).__getitem__(index)
 
         if not np.iterable(index):
-            raise KeyError("Invalid index for dataset: %r" % index)
+            raise KeyError("Invalid index for Dataset: %r" % index)
 
         if all(isinstance(item, basestring) for item in index):
-            return dataset(*(self[item] for item in index))
+            return Dataset(*(self[item] for item in index))
 
         if isinstance(index, tuple):
             i0 = index[0]
@@ -2587,7 +2586,7 @@ class dataset(collections.OrderedDict):
                 return self[i0][index[1:]]
 
             if len(index) != 2:
-                raise KeyError("Invalid index for dataset: %r" % index)
+                raise KeyError("Invalid index for Dataset: %r" % index)
             i1 = index[1]
             if isinstance(i1, basestring):
                 return self[i1][i0]
@@ -2595,11 +2594,11 @@ class dataset(collections.OrderedDict):
                                          in i1):
                 keys = i1
             else:
-                keys = datalist(self.keys())[i1]
+                keys = Datalist(self.keys())[i1]
                 if isinstance(keys, basestring):
                     return self[i1][i0]
 
-            subds = dataset(*((k, self[k][i0]) for k in keys))
+            subds = Dataset(*((k, self[k][i0]) for k in keys))
             return subds
 
         return self.subset(index)
@@ -2624,11 +2623,11 @@ class dataset(collections.OrderedDict):
         items = []
         for key in self:
             v = self[key]
-            if isinstance(v, var):
+            if isinstance(v, Var):
                 lbl = 'V'
-            elif isinstance(v, factor):
+            elif isinstance(v, Factor):
                 lbl = 'F'
-            elif isinstance(v, ndvar):
+            elif isinstance(v, NDVar):
                 lbl = 'Vnd'
             else:
                 lbl = type(v).__name__
@@ -2645,18 +2644,18 @@ class dataset(collections.OrderedDict):
 
     def __setitem__(self, name, item, overwrite=True):
         if not isinstance(name, str):
-            raise TypeError("dataset indexes need to be strings")
+            raise TypeError("Dataset indexes need to be strings")
         else:
             # test if name already exists
             if (not overwrite) and (name in self):
-                raise KeyError("dataset already contains variable of name %r" % name)
+                raise KeyError("Dataset already contains variable of name %r" % name)
 
             # coerce item to data-object
-            if isdataobject(item) or isinstance(object, datalist):
+            if isdataobject(item) or isinstance(object, Datalist):
                 if not item.name:
                     item.name = name
             elif isinstance(item, (list, tuple)):
-                item = datalist(item, name=name)
+                item = Datalist(item, name=name)
             else:
                 pass
 
@@ -2669,12 +2668,12 @@ class dataset(collections.OrderedDict):
             if self.n_cases is None:
                 self.n_cases = N
             elif self.n_cases != N:
-                msg = ("Can not assign item to dataset. The item`s length "
+                msg = ("Can not assign item to Dataset. The item`s length "
                        "(%i) is different from the number of cases in the "
-                       "dataset (%i)." % (N, self.n_cases))
+                       "Dataset (%i)." % (N, self.n_cases))
                 raise ValueError(msg)
 
-            super(dataset, self).__setitem__(name, item)
+            super(Dataset, self).__setitem__(name, item)
 
     def __str__(self):
         return unicode(self).encode('utf-8')
@@ -2686,14 +2685,14 @@ class dataset(collections.OrderedDict):
         maxn = preferences['dataset_str_n_cases']
         txt = unicode(self.as_table(cases=maxn, fmt='%.5g', midrule=True))
         if self.n_cases > maxn:
-            note = "... (use .as_table() method to see the whole dataset)"
+            note = "... (use .as_table() method to see the whole Dataset)"
             txt = os.linesep.join((txt, note))
         return txt
 
     def _check_n_cases(self, X, empty_ok=True):
         """Check that an input argument has the appropriate length.
 
-        Also raise an error if empty_ok is False and the dataset is empty.
+        Also raise an error if empty_ok is False and the Dataset is empty.
         """
         if self.n_cases is None:
             if empty_ok == True:
@@ -2705,7 +2704,7 @@ class dataset(collections.OrderedDict):
         n = len(X)
         if self.n_cases != n:
             name = getattr(X, 'name', "the argument")
-            err = ("The dataset has a different length (%i) than %s "
+            err = ("The Dataset has a different length (%i) than %s "
                    "(%i)" % (self.n_cases, name, n))
             raise ValueError(err)
 
@@ -2713,7 +2712,7 @@ class dataset(collections.OrderedDict):
         """
         ``ds.add(item)`` -> ``ds[item.name] = item``
 
-        unless the dataset already contains a variable named item.name, in
+        unless the Dataset already contains a variable named item.name, in
         which case a KeyError is raised. In order to replace existing
         variables, set ``replace`` to True::
 
@@ -2730,7 +2729,7 @@ class dataset(collections.OrderedDict):
     def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, sort=False,
                  header=True, midrule=False, count=False):
         r"""
-        returns a fmtxt.Table containing all vars and factors in the dataset
+        returns a fmtxt.Table containing all vars and factors in the Dataset
         (ndvars are skipped). Can be used for exporting in different formats
         such as csv.
 
@@ -2748,7 +2747,7 @@ class dataset(collections.OrderedDict):
             <http://docs.python.org/library/stdtypes.html#string-formatting>`
         f_fmt : str
             format string for factors (None -> code; e.g. `'%s'`)
-        match : factor
+        match : Factor
             create repeated-measurement table
         header : bool
             Include the varibale names as a header row
@@ -2801,7 +2800,7 @@ class dataset(collections.OrderedDict):
         """This method is deprecated. Use .save(), .save_pickled(),
         .save_txt() or .save_tex() instead.
         """
-        msg = ("The dataset.export() method is deprecated. Use .save(), "
+        msg = ("The Dataset.export() method is deprecated. Use .save(), "
                ".save_pickled(), .save_txt() or .save_tex() instead.")
         warn(msg, DeprecationWarning)
 
@@ -2828,13 +2827,13 @@ class dataset(collections.OrderedDict):
 
     def eval(self, expression):
         """
-        Evaluate an expression involving items stored in the dataset.
+        Evaluate an expression involving items stored in the Dataset.
 
         ``ds.eval(expression)`` is equivalent to ``eval(expression, ds)``.
 
         Examples
         --------
-        In a dataset containing factors 'A' and 'B'::
+        In a Dataset containing factors 'A' and 'B'::
 
             >>> ds.eval('A % B')
             A % B
@@ -2852,7 +2851,7 @@ class dataset(collections.OrderedDict):
 
     def get_subsets_by(self, X, exclude=[], name='{name}[{cell}]'):
         """
-        splits the dataset by the cells of a factor and
+        splits the Dataset by the cells of a Factor and
         returns as dictionary of subsets.
 
         """
@@ -2870,26 +2869,26 @@ class dataset(collections.OrderedDict):
     def compress(self, X, drop_empty=True, name='{name}', count='n',
                  drop_bad=False, drop=()):
         """
-        Return a dataset with one case for each cell in X.
+        Return a Dataset with one case for each cell in X.
 
         Parameters
         ----------
         X : None | str | categorial
             Model defining cells to which to reduce cases. For None, the
-            dataset is reduced to a single case.
+            Dataset is reduced to a single case.
         drop_empty : bool
-            Drops empty cells in X from the dataset. This is currently the only
+            Drops empty cells in X from the Dataset. This is currently the only
             option.
         name : str
-            Name of the new dataset.
+            Name of the new Dataset.
         count : None | str
-            Add a variable with this name to the new dataset, containing the
+            Add a variable with this name to the new Dataset, containing the
             number of cases in each cell in X.
         drop_bad : bool
             Drop bad items: silently drop any items for which compression
             raises an error. This concerns primarily factors with non-unique
             values for cells in X (if drop_bad is False, an error is raised
-            when such a factor is encountered)
+            when such a Factor is encountered)
         drop : sequence of str
             Additional data-objects to drop.
 
@@ -2904,13 +2903,13 @@ class dataset(collections.OrderedDict):
             X = ascategorial(X, ds=self)
             self._check_n_cases(X, empty_ok=False)
         else:
-            X = factor('a' * self.n_cases)
+            X = Factor('a' * self.n_cases)
 
-        ds = dataset(name=name.format(name=self.name))
+        ds = Dataset(name=name.format(name=self.name))
 
         if count:
             x = filter(None, (np.sum(X == cell) for cell in X.cells))
-            ds[count] = var(x)
+            ds[count] = Var(x)
 
         for k, v in self.iteritems():
             if k in drop:
@@ -2940,13 +2939,13 @@ class dataset(collections.OrderedDict):
 
     def copy(self):
         "ds.copy() returns an shallow copy of ds"
-        ds = dataset(name=self.name, info=self.info.copy())
+        ds = Dataset(name=self.name, info=self.info.copy())
         ds.update(self)
         return ds
 
     def index(self, name='index', start=0):
         """
-        Add an index to the dataset (i.e., `range(n_cases)`), e.g. for later
+        Add an index to the Dataset (i.e., `range(n_cases)`), e.g. for later
         alignment.
 
         Parameters
@@ -2956,7 +2955,7 @@ class dataset(collections.OrderedDict):
         start : int
             Number at which to start the index.
         """
-        self[name] = var(np.arange(start, self.n_cases + start))
+        self[name] = Var(np.arange(start, self.n_cases + start))
 
     def itercases(self, start=None, stop=None):
         "iterate through cases (each case represented as a dict)"
@@ -2973,16 +2972,16 @@ class dataset(collections.OrderedDict):
 
     @property
     def N(self):
-        warn("dataset.N s deprecated; use dataset.n_cases instead",
+        warn("Dataset.N s deprecated; use Dataset.n_cases instead",
              DeprecationWarning)
         return self.n_cases
 
     @property
     def n_items(self):
-        return super(dataset, self).__len__()
+        return super(Dataset, self).__len__()
 
     def rename(self, old, new):
-        """Shortcut to rename a data-object in the dataset.
+        """Shortcut to rename a data-object in the Dataset.
 
         Parameters
         ----------
@@ -3013,11 +3012,11 @@ class dataset(collections.OrderedDict):
 
     def repeat(self, n, name='{name}'):
         """
-        Analogous to :py:func:`numpy.repeat`. Returns a new dataset with each
+        Analogous to :py:func:`numpy.repeat`. Returns a new Dataset with each
         row repeated ``n`` times.
 
         """
-        ds = dataset(name=name.format(name=self.name))
+        ds = Dataset(name=name.format(name=self.name))
         for k, v in self.iteritems():
             ds[k] = v.repeat(n)
         return ds
@@ -3027,46 +3026,46 @@ class dataset(collections.OrderedDict):
         return (self.n_cases, self.n_items)
 
     def sort(self, order, descending=False):
-        """Sort the dataset in place.
+        """Sort the Dataset in place.
 
         Parameters
         ----------
         order : str | data-object
-            Data object (var, factor or interactions) according to whose values
-            to sort the dataset, or its name in the dataset.
+            Data object (Var, Factor or interactions) according to whose values
+            to sort the Dataset, or its name in the Dataset.
         descending : bool
             Sort in descending instead of an ascending order.
 
         See Also
         --------
-        .sort_idx : Create an index that could be used to sort the dataset
-        .sorted : Create a sorted copy of the dataset
+        .sort_idx : Create an index that could be used to sort the Dataset
+        .sorted : Create a sorted copy of the Dataset
         """
         idx = self.sort_idx(order, descending)
         for k in self:
             self[k] = self[k][idx]
 
     def sort_idx(self, order, descending=False):
-        """Create an index that could be used to sort the dataset.
+        """Create an index that could be used to sort the Dataset.
 
         Parameters
         ----------
         order : str | data-object
-            Data object (var, factor or interactions) according to whose values
-            to sort the dataset, or its name in the dataset.
+            Data object (Var, Factor or interactions) according to whose values
+            to sort the Dataset, or its name in the Dataset.
         descending : bool
             Sort in descending instead of an ascending order.
 
         See Also
         --------
-        .sort : sort the dataset in place
-        .sorted : Create a sorted copy of the dataset
+        .sort : sort the Dataset in place
+        .sorted : Create a sorted copy of the Dataset
         """
         if isinstance(order, basestring):
             order = self.eval(order)
 
         if not len(order) == self.n_cases:
-            err = ("Order must be of same length as dataset; got length "
+            err = ("Order must be of same length as Dataset; got length "
                    "%i." % len(order))
             raise ValueError(err)
 
@@ -3074,7 +3073,7 @@ class dataset(collections.OrderedDict):
         return idx
 
     def save(self):
-        """Shortcut to save the dataset, will display a system file dialog
+        """Shortcut to save the Dataset, will display a system file dialog
 
         Notes
         -----
@@ -3082,7 +3081,7 @@ class dataset(collections.OrderedDict):
 
         See Also
         --------
-        .save_pickled : Pickle the dataset
+        .save_pickled : Pickle the Dataset
         .save_txt : Save as text file
         .save_tex : Save as teX table
         .as_table : Create a table with more control over formatting
@@ -3108,7 +3107,7 @@ class dataset(collections.OrderedDict):
             raise ValueError(err)
 
     def save_tex(self, path=None, fmt='%.3g'):
-        """Save the dataset as TeX table.
+        """Save the Dataset as TeX table.
 
         Parameters
         ----------
@@ -3136,7 +3135,7 @@ class dataset(collections.OrderedDict):
         table.save_tex(path)
 
     def save_txt(self, path=None, fmt='%s', delim='\t', header=True):
-        """Save the dataset as text file.
+        """Save the Dataset as text file.
 
         Parameters
         ----------
@@ -3168,7 +3167,7 @@ class dataset(collections.OrderedDict):
         table.save_tsv(path, fmt=fmt, delimiter=delim)
 
     def save_pickled(self, path=None):
-        """Pickle the dataset.
+        """Pickle the Dataset.
 
         Parameters
         ----------
@@ -3193,20 +3192,20 @@ class dataset(collections.OrderedDict):
             pickle.dump(self, fid, pickle.HIGHEST_PROTOCOL)
 
     def sorted(self, order, descending=False):
-        """Create an sorted copy of the dataset.
+        """Create an sorted copy of the Dataset.
 
         Parameters
         ----------
         order : str | data-object
-            Data object (var, factor or interactions) according to whose values
-            to sort the dataset, or its name in the dataset.
+            Data object (Var, Factor or interactions) according to whose values
+            to sort the Dataset, or its name in the Dataset.
         descending : bool
             Sort in descending instead of an ascending order.
 
         See Also
         --------
-        .sort : sort the dataset in place
-        .sort_idx : Create an index that could be used to sort the dataset
+        .sort : sort the Dataset in place
+        .sort_idx : Create an index that could be used to sort the Dataset
         """
         idx = self.sort_idx(order, descending)
         ds = self[idx]
@@ -3214,15 +3213,15 @@ class dataset(collections.OrderedDict):
 
     def subset(self, index, name='{name}'):
         """
-        Returns a dataset containing only the subset of cases selected by
+        Returns a Dataset containing only the subset of cases selected by
         `index`.
 
         index : array | str
             index selecting a subset of epochs. Can be an valid numpy index or
-            a string (the name of a variable in dataset, or any expression to
-            be evaluated in the dataset's namespace).
+            a string (the name of a variable in Dataset, or any expression to
+            be evaluated in the Dataset's namespace).
         name : str
-            name for the new dataset
+            name for the new Dataset
 
         Notes
         -----
@@ -3242,16 +3241,16 @@ class dataset(collections.OrderedDict):
         if isvar(index):
             index = index.x
 
-        ds = dataset(name=name, info=info)
+        ds = Dataset(name=name, info=info)
         for k, v in self.iteritems():
             ds[k] = v[index]
 
         return ds
 
     def update(self, ds, replace=False, info=True):
-        """Update the dataset with all variables in ``ds``.
+        """Update the Dataset with all variables in ``ds``.
 
-        If a key is present in both the dataset and ds, and the corresponding
+        If a key is present in both the Dataset and ds, and the corresponding
         variables are not equal on all cases, a ValueError is raised.
 
         Parameters
@@ -3275,16 +3274,16 @@ class dataset(collections.OrderedDict):
                        "equal: %s" % unequal)
                 raise ValueError(err)
 
-        super(dataset, self).update(ds)
+        super(Dataset, self).update(ds)
 
         if info:
             self.info.update(ds.info)
 
 
 
-class interaction(_effect_):
+class Interaction(_Effect):
     """
-    Represents an interaction effect.
+    Represents an Interaction effect.
 
 
     Attributes
@@ -3309,8 +3308,8 @@ class interaction(_effect_):
             List of data-objects that form the basis of the interaction.
 
         """
-        # FIXME: interaction does not update when component factors update
-        self.base = effect_list()
+        # FIXME: Interaction does not update when component factors update
+        self.base = EffectList()
         self.is_categorial = True
         self.nestedin = set()
 
@@ -3321,28 +3320,28 @@ class interaction(_effect_):
                     if self.is_categorial:
                         self.is_categorial = False
                     else:
-                        raise TypeError("No Interaction between two var objects")
+                        raise TypeError("No Interaction between two Var objects")
             elif isinteraction(b):
                 if (not b.is_categorial) and (not self.is_categorial):
-                    raise TypeError("No Interaction between two var objects")
+                    raise TypeError("No Interaction between two Var objects")
                 else:
                     self.base.extend(b.base)
                     self.is_categorial = (self.is_categorial and b.is_categorial)
 
             elif b._stype_ == "nonbasic":  # TODO: nested effects
-                raise NotImplementedError("interaction of non-basic effects")
+                raise NotImplementedError("Interaction of non-basic effects")
 #    from _regresor_.__mod__ (?)
-#        if any([type(e)==nonbasic_effect for e in [self, other]]):
+#        if any([type(e)==NonbasicEffect for e in [self, other]]):
 #            multcodes = _inter
 #            name = ':'.join([self.name, other.name])
 #            factors = self.factors + other.factors
 #            nestedin = self._nestedin + other._nestedin
-#            return nonbasic_effect(multcodes, factors, name, nestedin=nestedin)
+#            return NonbasicEffect(multcodes, factors, name, nestedin=nestedin)
 #        else:
                 self.base.append(b)
                 self.nestedin.update(b.nestedin)
             else:
-                raise TypeError("Invalid type for interaction: %r" % type(b))
+                raise TypeError("Invalid type for Interaction: %r" % type(b))
 
         self._n_cases = N = len(self.base[0])
         if not all([len(f) == N for f in self.base[1:]]):
@@ -3356,7 +3355,7 @@ class interaction(_effect_):
         self.df = reduce(operator.mul, [f.df for f in self.base])
 
         # determine cells:
-        factors = effect_list(filter(isfactor, self.base))
+        factors = EffectList(filter(isfactor, self.base))
         self.cells = list(itertools.product(*(f.cells for f in factors)))
 
         # effect coding
@@ -3370,7 +3369,7 @@ class interaction(_effect_):
         if preferences['short_repr']:
             return ' % '.join(names)
         else:
-            return "interaction({n})".format(n=', '.join(names))
+            return "Interaction({n})".format(n=', '.join(names))
 
     # container ---
     def __len__(self):
@@ -3383,7 +3382,7 @@ class interaction(_effect_):
         out = tuple(f[index] for f in self.base)
 
         if np.iterable(index):
-            return interaction(out)
+            return Interaction(out)
         else:
             return out
 
@@ -3406,7 +3405,7 @@ class interaction(_effect_):
     def as_factor(self):
         name = self.name.replace(' ', '')
         x = self.as_labels()
-        return factor(x, name)
+        return Factor(x, name)
 
     def as_cells(self):
         """All values as a list of tuples."""
@@ -3423,10 +3422,10 @@ class interaction(_effect_):
         return map(delim.join, self)
 
     def compress(self, X):
-        return interaction(f.compress(X) for f in self.base)
+        return Interaction(f.compress(X) for f in self.base)
 
     def isin(self, cells):
-        """An index that is true where the interaction equals any of the cells.
+        """An index that is true where the Interaction equals any of the cells.
 
         Parameters
         ----------
@@ -3445,10 +3444,10 @@ class diff(object):
     """
     def __init__(self, X, c1, c2, match, sub=None):
         """
-        X: factor providing categories
+        X: Factor providing categories
         c1: category 1
         c2: category 2
-        match: factor matching values between categories
+        match: Factor matching values between categories
 
         """
         raise NotImplementedError
@@ -3473,7 +3472,7 @@ class diff(object):
 
     def subtract(self, Y):
         ""
-        assert type(Y) is var
+        assert type(Y) is Var
 #        if self.sub is not None:
 #            Y = Y[self.sub]
         Y1 = Y[self.I1]
@@ -3481,18 +3480,18 @@ class diff(object):
         y = Y1[self.s1] - Y2[self.s2]
         name = self.name.format(Y.name)
         # name = Y.name + '_DIFF'
-        return var(y, name)
+        return Var(y, name)
 
     def extract(self, Y):
         ""
         y1 = Y[self.I1].x[self.s1]
         y2 = Y[self.I2].x[self.s2]
         assert np.all(y1 == y2), Y.name
-        if type(Y) is factor:
-            return factor(y1, Y.name, random=Y.random, labels=Y.cells,
+        if type(Y) is Factor:
+            return Factor(y1, Y.name, random=Y.random, labels=Y.cells,
                           sort=False)
         else:
-            return var(y1, Y.name)
+            return Var(y1, Y.name)
 
     @property
     def N(self):
@@ -3504,7 +3503,7 @@ def box_cox_transform(X, p, name=True):
     :returns: a variable with the Box-Cox transform applied to X. With p==0,
         this is the log of X; otherwise (X**p - 1) / p
 
-    :arg var X: Source variable
+    :arg Var X: Source variable
     :arg float p: Parameter for Box-Cox transform
 
     """
@@ -3521,13 +3520,13 @@ def box_cox_transform(X, p, name=True):
     else:
         y = (X ** p - 1) / p
 
-    return var(y, name=name)
+    return Var(y, name=name)
 
 
 
 def split(Y, n=2, name='{name}_{split}'):
     """
-    Returns a factor splitting Y in n categories with equal number of cases
+    Returns a Factor splitting Y in n categories with equal number of cases
     (e.g. n=2 for a median split)
 
     Y : array-like
@@ -3537,7 +3536,7 @@ def split(Y, n=2, name='{name}_{split}'):
     name : str |
 
     """
-    if isinstance(Y, var):
+    if isinstance(Y, Var):
         y = Y.x
 
     d = 100. / n
@@ -3554,11 +3553,11 @@ def split(Y, n=2, name='{name}_{split}'):
         fmt['split'] = "split%i" % n
 
     name = name.format(fmt)
-    return factor(x, name=name)
+    return Factor(x, name=name)
 
 
 
-class nested_effect(object):
+class NestedEffect(object):
     _stype_ = "nested"
     def __init__(self, effect, nestedin):
         if not iscategorial(nestedin):
@@ -3631,7 +3630,7 @@ class nested_effect(object):
 
 
 
-class nonbasic_effect(object):
+class NonbasicEffect(object):
     _stype_ = "nonbasic"
     def __init__(self, effect_codes, factors, name, nestedin=[],
                  beta_labels=None):
@@ -3644,7 +3643,7 @@ class nonbasic_effect(object):
         self.beta_labels = beta_labels
 
     def __repr__(self):
-        txt = "<nonbasic_effect: {n}>"
+        txt = "<NonbasicEffect: {n}>"
         return txt.format(n=self.name)
 
     # container ---
@@ -3653,16 +3652,16 @@ class nonbasic_effect(object):
 
 
 
-class model(object):
+class Model(object):
     """
     stores a list of effects which constitute a model for an ANOVA.
 
-    a model's data is exhausted by its. .effects list; all the rest are
+    a Model's data is exhausted by its. .effects list; all the rest are
     @properties.
 
     Accessing effects:
-     - as list in model.effects
-     - with name as model[name]
+     - as list in Model.effects
+     - with name as Model[name]
 
     """
     _stype_ = "model"
@@ -3670,22 +3669,22 @@ class model(object):
         """
 
         Parameters : factors | effects | models
-            factors and secondary effects contained in the model.
+            factors and secondary effects contained in the Model.
             Can also contain models, in which case all the models' effects
             will be added.
 
         """
         if len(x) == 0:
-            raise ValueError("model needs to be initialized with effects")
+            raise ValueError("Model needs to be initialized with effects")
 
         # try to find effects in input
-        self.effects = effects = effect_list()
+        self.effects = effects = EffectList()
         self._n_cases = n_cases = len(x[0])
         for e in x:
             # check that all effects have same number of cases
             if len(e) != n_cases:
                 e0 = effects[0]
-                err = ("All effects contained in a model need to describe"
+                err = ("All effects contained in a Model need to describe"
                        " the same number of cases. %r has %i cases, %r has"
                        " %i cases." % (e0.name, len(e0), e.name, len(e)))
                 raise ValueError(err)
@@ -3696,7 +3695,7 @@ class model(object):
             elif ismodel(e):
                 effects += e.effects
             else:
-                err = ("model needs to be initialized with effects (vars, "
+                err = ("Model needs to be initialized with effects (vars, "
                        "factors, interactions, ...) and/or models (got %s)"
                        % type(e))
                 raise TypeError(err)
@@ -3726,7 +3725,7 @@ class model(object):
             return ' + '.join(names)
         else:
             x = ', '.join(names)
-            return "model(%s)" % x
+            return "Model(%s)" % x
 
     def __str__(self):
         return str(self.get_table(cases=50))
@@ -3742,14 +3741,14 @@ class model(object):
                     return e
             raise ValueError("No effect named %r" % sub)
         else:
-            return model(*(x[sub] for x in self.effects))
+            return Model(*(x[sub] for x in self.effects))
 
     def __contains__(self, effect):
         return id(effect) in map(id, self.effects)
 
     def sorted(self):
         """
-        returns sorted model, interactions last
+        returns sorted Model, interactions last
 
         """
         out = []
@@ -3759,21 +3758,21 @@ class model(object):
                 if len(e.factors) == i:
                     out.append(e)
             i += 1
-        return model(*out)
+        return Model(*out)
 
     # numeric ---
     def __add__(self, other):
-        return model(self, other)
+        return Model(self, other)
 
     def __mul__(self, other):
-        return model(self, other, self % other)
+        return Model(self, other, self % other)
 
     def __mod__(self, other):
         out = []
         for e_self in self.effects:
-            for e_other in model(other).effects:
+            for e_other in Model(other).effects:
                 out.append(e_self % e_other)
-        return model(*out)
+        return Model(*out)
 
     # repr ---
     @property
@@ -3827,7 +3826,7 @@ class model(object):
 
         Parameters
         ----------
-        Y : var | array, shape = (n_cases,)
+        Y : Var | array, shape = (n_cases,)
             Data to fit the model to.
 
         Returns
@@ -3863,7 +3862,7 @@ class model(object):
         return self.lin_indep(v) + self.orthogonal(v)
 
     def lin_indep(self, v=True):
-        "Checks the model for linear independence of its factors"
+        "Checks the Model for linear independence of its factors"
         msg = []
         ne = len(self.effects)
         codes = [e.as_effects for e in self.effects]
@@ -3885,7 +3884,7 @@ class model(object):
         return msg
 
     def orthogonal(self, v=True):
-        "Checks the model for orthogonality of its factors"
+        "Checks the Model for orthogonality of its factors"
         msg = []
         ne = len(self.effects)
         codes = [e.as_effects for e in self.effects]
@@ -3928,7 +3927,7 @@ class model(object):
     def repeat(self, n):
         "Analogous to numpy repeat method"
         effects = [e.repeat(n) for e in self.effects]
-        out = model(effects)
+        out = Model(effects)
         return out
 
     @LazyProperty
@@ -3939,7 +3938,7 @@ class model(object):
         return Xsinv
 
 
-# ---ndvar dimensions---
+# ---NDVar dimensions---
 
 def find_time_point(times, time, rnd='closest'):
     """
@@ -4197,7 +4196,7 @@ class Sensor(Dimension):
 
         if names is None:
             self.names_dist = names = [str(i) for i in xrange(self.n)]
-        self.names = datalist(names)
+        self.names = Datalist(names)
         self.channel_idx = {name: i for i, name in enumerate(self.names)}
         pf = os.path.commonprefix(self.names)
         if pf:
@@ -4431,7 +4430,7 @@ class Sensor(Dimension):
                 r = np.sqrt(z)  # desired 2d radius
                 r_xy = np.sqrt(np.sum(locs3d[:, :2] ** 2, 1))  # current radius in xy
                 idx = (r_xy != 0)  # avoid zero division
-                F = r[idx] / r_xy[idx]  # stretching factor accounting for current r
+                F = r[idx] / r_xy[idx]  # stretching Factor accounting for current r
                 locs2d[idx, :] *= F[:, None]
 
         else:
@@ -4974,14 +4973,14 @@ def intersect_dims(dims1, dims2):
     return tuple(d1.intersect(d2) for d1, d2 in zip(dims1, dims2))
 
 
-# ---ndvar functions---
+# ---NDVar functions---
 
 def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}_r_nbr'):
     """Calculate Neighbor correlation
 
     Parameter
     ---------
-    x : ndvar
+    x : NDVar
         The data.
     dim : str
         Dimension over which to correlate neighbors.
@@ -4998,7 +4997,7 @@ def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}_r_nbr'):
     xname = x.name or ''
     name = name.format(name=xname)
     info = cs.set_info_cs(x.info, cs.stat_info('r'))
-    out = ndvar(y, (dim_obj,), info=info, name=name)
+    out = NDVar(y, (dim_obj,), info=info, name=name)
     return out
 
 
@@ -5008,7 +5007,7 @@ def cwt_morlet(Y, freqs, use_fft=True, n_cycles=7.0, zero_mean=False,
 
     Parameters
     ----------
-    Y : ndvar with time dimension
+    Y : NDVar with time dimension
         Signal.
     freqs : scalar | array
         Frequency/ies of interest. For a scalar, the output will not contain a
@@ -5058,16 +5057,16 @@ def cwt_morlet(Y, freqs, use_fft=True, n_cycles=7.0, zero_mean=False,
 
     x = x.reshape(new_shape)
     info = cs.set_info_cs(Y.info, cs.default_info('A'))
-    out = ndvar(x, dims, info, Y.name)
+    out = NDVar(x, dims, info, Y.name)
     return out
 
 
 def resample(data, sfreq, npad=100, window='boxcar'):
-    """Resample an ndvar with 'time' dimension after properly filtering it
+    """Resample an NDVar with 'time' dimension after properly filtering it
 
     Parameters
     ----------
-    data : ndvar
+    data : NDVar
         Ndvar which should be resampled.
     sfreq : scalar
         New sampling frequency.
@@ -5087,4 +5086,4 @@ def resample(data, sfreq, npad=100, window='boxcar'):
     tstep = 1. / sfreq
     time = UTS(data.time.tmin, tstep, x.shape[axis])
     dims = data.dims[:axis] + (time,) + data.dims[axis + 1:]
-    return ndvar(x, dims=dims, info=data.info, name=data.name)
+    return NDVar(x, dims=dims, info=data.info, name=data.name)

@@ -3,7 +3,7 @@ Created on Dec 2, 2012
 
 @author: christian
 '''
-from eelbrain.data import factor, datasets, plot, testnd
+from eelbrain.data import Factor, datasets, plot, testnd
 
 
 def test_stat():
@@ -43,7 +43,7 @@ def test_clusters():
     p.close()
 
     # random effects model:
-    subject = factor(range(15), tile=4, random=True, name='subject')
+    subject = Factor(range(15), tile=4, random=True, name='subject')
     res = testnd.anova(Y, A * B * subject, samples=2)
     p = plot.uts.clusters(res, title="Random Effects Model")
     p.close()

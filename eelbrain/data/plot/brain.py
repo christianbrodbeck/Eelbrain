@@ -33,7 +33,7 @@ def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm',
 
     Parameters
     ----------
-    source_estimate : ndvar, dims = ([case,] source, [time])
+    source_estimate : NDVar, dims = ([case,] source, [time])
         The source estimates. If stc contains a case dimension, the average
         across cases is taken.
     fmin, fmid, fmax : scalar
@@ -87,9 +87,9 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, surf='smoothwm',
 
     Parameters
     ----------
-    p_map : ndvar
+    p_map : NDVar
         Statistic to plot (normally a map of p values).
-    param_map : ndvar
+    param_map : NDVar
         Statistical parameter covering the same data points as p_map. Used
         only for incorporating the directionality of the effect into the plot.
     p0, p1 : scalar
@@ -119,8 +119,8 @@ def activation(source_estimate, a_thresh=None, act_max=None, surf='smoothwm',
 
     Parameters
     ----------
-    source_estimate : ndvar
-        An ndvar describing activation in source space.
+    source_estimate : NDVar
+        An NDVar describing activation in source space.
     a_thresh : scalar | None
         the point at which alpha transparency is 50%. When None,
         a_thresh = one standard deviation above and below the mean.
@@ -151,7 +151,7 @@ def activation(source_estimate, a_thresh=None, act_max=None, surf='smoothwm',
 
 class stc:
     """
-    Plot a source space ndvar.
+    Plot a source space NDVar.
 
     See also
     --------
@@ -163,7 +163,7 @@ class stc:
         """
         Parameters
         ----------
-        v : ndvar, dims = (source, [time])
+        v : NDVar, dims = (source, [time])
             Ndvar to plot. Must contain a source dimension, and can optionally
             contain a time dimension.
         colormap : str | array
@@ -506,9 +506,9 @@ def p_lut(pmap, tmap, p0=0.05, p1=0.01, n=256, solid=False):
 
     Parameters
     ----------
-    pmap : ndvar
+    pmap : NDVar
         Map of p-values.
-    tmap : ndvar
+    tmap : NDVar
         Map of signed statistic (only used to code the sign of each p-value).
     p0 : scalar
         Highest p-vale that should be visible.

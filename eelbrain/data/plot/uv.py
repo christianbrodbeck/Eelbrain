@@ -296,9 +296,9 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
 
     Parameters
     ----------
-    Y : var
+    Y : Var
         Dependent variable.
-    X : factor or model
+    X : Factor or model
         Category definition.
     datalabels : scalar
         Threshold for labeling outliers (in standard-deviation).
@@ -436,11 +436,11 @@ def barplot(Y, X=None, match=None, sub=None,
     Parameters
     ----------
 
-    Y : scalar var
+    Y : scalar Var
         Dependent variable.
 
     X : categorial
-        Model (factor or interaction)
+        Model (Factor or Interaction)
 
     bottom : scalar
         Lowest possible value on the y axis (default is 0).
@@ -747,7 +747,7 @@ def timeplot(Y, categories, time, match=None, sub=None, ds=None,
         t_min = min(time_points) - padding
         t_max = max(time_points) + padding
     else:
-        raise NotImplementedError("time needs to be var object")
+        raise NotImplementedError("time needs to be Var object")
 
     # prepare array for timelines
     if line_plot:
@@ -973,11 +973,11 @@ class multitimeplot:
         Y :
             variable to plot
         categories :
-            factor indicating different categories to plot
+            Factor indicating different categories to plot
         time :
             variable indicating time
         match :
-            factor which indicates dependent measures (e.g. subject)
+            Factor which indicates dependent measures (e.g. subject)
         sub :
             subset
         heading :
@@ -1073,7 +1073,7 @@ class multitimeplot:
         ### same as timeplot()     #####  #####  #####  #####  #####  #####
 
         else:
-            raise NotImplementedError("time needs to be var object")
+            raise NotImplementedError("time needs to be Var object")
 
         # prepare array for timelines
         if line_plot:

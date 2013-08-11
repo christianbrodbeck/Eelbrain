@@ -13,7 +13,7 @@ import re
 import numpy as np
 
 from ... import ui
-from ..data_obj import dataset, factor, var
+from ..data_obj import Dataset, Factor, Var
 
 
 __all__ = ['events', 'vhdr']
@@ -45,13 +45,13 @@ def events(vhdr_path=None):
     m = np.array(m)
 
     name, _ = os.path.split(os.path.basename(hdr.path))
-    ds = dataset(name=name)
-    ds['Mk'] = var(np.array(m[:, 0], dtype=int))
-    ds['event_type'] = factor(m[:, 1])
-    ds['event_ID'] = var(np.array(m[:, 3], dtype=int))
-    ds['i_start'] = var(np.array(m[:, 4], dtype=int))
-    ds['points'] = var(np.array(m[:, 5], dtype=int))
-    ds['channel'] = var(np.array(m[:, 6], dtype=int))
+    ds = Dataset(name=name)
+    ds['Mk'] = Var(np.array(m[:, 0], dtype=int))
+    ds['event_type'] = Factor(m[:, 1])
+    ds['event_ID'] = Var(np.array(m[:, 3], dtype=int))
+    ds['i_start'] = Var(np.array(m[:, 4], dtype=int))
+    ds['points'] = Var(np.array(m[:, 5], dtype=int))
+    ds['channel'] = Var(np.array(m[:, 6], dtype=int))
 
     ds.info['hdr'] = hdr
     return ds

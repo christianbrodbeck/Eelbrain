@@ -272,7 +272,7 @@ def ttests(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
 
     parameters
     ----------
-    Y : var
+    Y : Var
         Dependent variable
     X : None | categorial
         Perform tests separately for all categories in X.
@@ -539,14 +539,14 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
 def correlations(Y, Xs, cat=None, sub=None, ds=None, levels=[.05, .01, .001],
                  diff=None, pmax=None, nan=True):  # , match=None):
     """
-    :arg var Y: first variable
-    :arg var X: second variable (or list of variables)
+    :arg Var Y: first variable
+    :arg Var X: second variable (or list of variables)
     :arg cat: show correlations separately for different groups in the
-        data. Can be a ``factor`` (the correlation for each level is shown
+        data. Can be a ``Factor`` (the correlation for each level is shown
         separately) or an array of ``bool`` values (e.g. from a comparison like
         ``Stim==1``)
     :arg list levels: significance levels to mark
-    :arg diff: (factor, cat_1, cat_2)
+    :arg diff: (Factor, cat_1, cat_2)
     :arg sub: use only a subset of the data
     :arg pmax: (None) don't show correlations with p>pmax
     :arg nan: ``True``: display correlation which yield NAN;
@@ -809,14 +809,14 @@ def resample(Y, samples=10000, replacement=False, unit=None):
 
     Parameters
     ----------
-    Y : var | ndvar
+    Y : Var | NDVar
         Variable which is to be resampled.
     samples : int
         number of samples to yield.
     replacement : bool
         whether random samples should be drawn with replacement or without.
     unit : categorial
-        factor specifying unit of measurement (e.g. subject). If unit is
+        Factor specifying unit of measurement (e.g. subject). If unit is
         specified, resampling proceeds by first resampling the categories of
         unit (with or without replacement) and then shuffling the values
         within units (no replacement).
@@ -831,9 +831,9 @@ def resample(Y, samples=10000, replacement=False, unit=None):
         pass
     elif isndvar(Y):
         if not Y.has_case:
-            raise ValueError("Need ndvar with cases")
+            raise ValueError("Need NDVar with cases")
     else:
-        raise TypeError("need var or ndvar")
+        raise TypeError("need Var or NDVar")
 
     Yout = Y.copy('{name}_resampled')
 

@@ -13,12 +13,12 @@ Basic data container classes:
 .. autosummary::
    :toctree: generated
 
-   dataset
-   datalist
-   factor
-   data_obj.interaction
-   ndvar
-   var
+   Dataset
+   Datalist
+   Factor
+   data_obj.Interaction
+   NDVar
+   Var
 
 
 Functions and classes operating with data containers:
@@ -56,8 +56,8 @@ Write
 * `Pickling <http://docs.python.org/library/pickle.html>`_: 
   All data-objects can be pickled. :func:`save.pickle` provides a 
   shortcut for pickling objects.
-* Text file export: Save a dataset using it's 
-  :py:meth:`~dataset.save_txt` method. 
+* Text file export: Save a Dataset using it's 
+  :py:meth:`~Dataset.save_txt` method. 
   Save any iterator with 
   :py:func:`save.txt`.
 

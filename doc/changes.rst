@@ -18,16 +18,16 @@ WxTerm interface
   possible to step through a script line by line.
 
 
-:class:`~eelbrain.data.dataset`
+:class:`~eelbrain.data.Dataset`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. currentmodule:: eelbrain.vessels.data
 
-* Idexing with sequence of strings now returns a :class:`dataset` (previously 
+* Idexing with sequence of strings now returns a :class:`Dataset` (previously 
   a :class:`list`). Example: ``new_ds = ds['var1', 'factor3']``. This is 
   consistent with numerical indexing, such as ``new_ds = ds[:10, ('var1', 
   'factor3')]``.
-* New save methods replace :meth:`dataset.export`. See :meth:`dataset.save`.
+* New save methods replace :meth:`Dataset.export`. See :meth:`Dataset.save`.
 
 
 Plotting Functions

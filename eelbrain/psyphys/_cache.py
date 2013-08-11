@@ -1,6 +1,6 @@
 """
 Every cache manager class provides the same interface for string and retrieving
-cache data. They can thus be used interchangeably depending on a dataset;s
+cache data. They can thus be used interchangeably depending on a Dataset;s
 requirements.
 
 

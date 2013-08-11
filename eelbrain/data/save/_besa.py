@@ -7,7 +7,7 @@ use :func:`besa_evt` to export a corresponding .evt file.
 import numpy as np
 
 from ... import ui
-from ..data_obj import var, dataset
+from ..data_obj import Var, Dataset
 from . import _txt
 
 __all__ = ['meg160_triggers', 'besa_evt']
@@ -22,7 +22,7 @@ def meg160_triggers(ds, dest=None, pad=1):
 
     Parameters
     ----------
-    ds : dataset
+    ds : Dataset
         Dataset containing all the desired events.
     dest : None | str
         Path where to save the triggers (if None, a dialog will be displayed).
@@ -43,7 +43,7 @@ def meg160_triggers(ds, dest=None, pad=1):
     # make trigger list with padding
     a = np.ones(len(times) + pad * 2) * times[0]
     a[pad:-pad] = times.x
-    triggers = var(a, name='triggers')
+    triggers = Var(a, name='triggers')
 
     # export trigger list
     _txt.txt(triggers, dest=dest)
@@ -59,7 +59,7 @@ def besa_evt(ds, tstart=-0.1, tstop=0.6, pad=0.1, dest=None):
 
     Parameters
     ----------
-    ds : dataset
+    ds : Dataset
         Dataset containing the events.
     tstart, tstop : scalar [sec]
         start and stop of the actual epoch.
@@ -70,7 +70,7 @@ def besa_evt(ds, tstart=-0.1, tstop=0.6, pad=0.1, dest=None):
 
     Notes
     -----
-    ds needs to be the same dataset (i.e., same length) from which the MEG-160
+    ds needs to be the same Dataset (i.e., same length) from which the MEG-160
     triggers were created.
 
     tstart, tstop and pad need to be the same values used for epoching in
@@ -87,14 +87,14 @@ def besa_evt(ds, tstart=-0.1, tstop=0.6, pad=0.1, dest=None):
     stop = epoch_len * N
 
     # BESA events
-    evts = dataset()
-    evts['Tsec'] = var(np.arange(start, stop, epoch_len))
-    evts['Code'] = var(np.ones(N))
+    evts = Dataset()
+    evts['Tsec'] = Var(np.arange(start, stop, epoch_len))
+    evts['Code'] = Var(np.ones(N))
 
     # remove rejected trials
     evts = evts.subset(idx)
 
-    evts['TriNo'] = var(ds['eventID'].x)
+    evts['TriNo'] = Var(ds['eventID'].x)
 
     # destination
     if dest is None:

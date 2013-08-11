@@ -17,7 +17,7 @@ __all__ = ['tsv', 'var']
 def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
         skiprows=0, start_tag=None):
     """
-    Load a :class:`dataset` from a tab-separated values file.
+    Load a :class:`Dataset` from a tab-separated values file.
 
     Parameters
     ----------
@@ -26,9 +26,9 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
         * ``True``: look for names on the first line of the file
         * ``False``: use "v1", "v2", ...
     types : 'auto' | list of int
-        * ``'auto'`` -> import as var if all values can be converted float,
-          otherwise as factor
-        * list of 0=auto, 1=factor, 2=var. e.g. ``[0,1,1,0]``
+        * ``'auto'`` -> import as Var if all values can be converted float,
+          otherwise as Factor
+        * list of 0=auto, 1=Factor, 2=Var. e.g. ``[0,1,1,0]``
     empty :
         value to substitute for empty cells
     delimiter : str
@@ -44,7 +44,7 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
         ``start_tag``.
     """
     if path is None:
-        path = ui.ask_file("Load TSV", "Select tsv file to import as dataset")
+        path = ui.ask_file("Load TSV", "Select tsv file to import as Dataset")
         if not path:
             return
 
@@ -112,18 +112,18 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
                     types[i] = 1
             data[i].append(v)
 
-    ds = _data.dataset(name=os.path.basename(path))
+    ds = _data.Dataset(name=os.path.basename(path))
 
     for name, values, force_type in zip(names, data, types):
         v = np.array(values)
         if force_type in [0, 2]:
             try:
                 v = v.astype(float)
-                fid = _data.var(v, name=name)
+                fid = _data.Var(v, name=name)
             except:
-                fid = _data.factor(v, name=name)
+                fid = _data.Factor(v, name=name)
         else:
-            fid = _data.factor(v, name=name)
+            fid = _data.Factor(v, name=name)
         ds.add(fid)
 
     return ds
@@ -131,17 +131,17 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
 
 def var(path=None, name=None):
     """
-    Load a :class:`var` object from a text file by splitting at white-spaces.
+    Load a :class:`Var` object from a text file by splitting at white-spaces.
 
     Parameters
     ----------
     path : str(path) | None
         Source file. If None, a system file dialog is opened.
     name : str | None
-        Name for the var.
+        Name for the Var.
     """
     if path is None:
-        path = ui.ask_file("Select var File", "()")
+        path = ui.ask_file("Select Var File", "()")
 
     FILE = open(path)
     lines = FILE.read().split()
@@ -153,4 +153,4 @@ def var(path=None, name=None):
     else:
         x = np.loadtxt(path)
 
-    return _data.var(x, name=None)
+    return _data.Var(x, name=None)

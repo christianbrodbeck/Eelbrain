@@ -12,7 +12,7 @@ from nose.tools import assert_equal, assert_true, eq_, ok_
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from eelbrain.data import datasets, var, factor, dataset, Celltable
+from eelbrain.data import datasets, Var, Factor, Dataset, Celltable
 from eelbrain.data.data_obj import (isdatalist, isndvar, isuv, align, align1,
                                     combine)
 
@@ -72,7 +72,7 @@ def test_align():
 def test_celltable():
     "Test the Celltable class."
     ds = datasets.get_rand()
-    ds['cat'] = factor('abcd', rep=15)
+    ds['cat'] = Factor('abcd', rep=15)
 
     ct = Celltable('Y', 'A', ds=ds)
     eq_(ct.n_cases, 60)
@@ -97,17 +97,17 @@ def test_celltable():
     eq_(ct.X[-1], 'b')
 
     # test rm sorting
-    ds = dataset()
-    ds['rm'] = factor('abc', rep=4)
-    ds['Y'] = var(np.arange(3.).repeat(4))
-    ds['X'] = factor('ab', rep=2, tile=3)
+    ds = Dataset()
+    ds['rm'] = Factor('abc', rep=4)
+    ds['Y'] = Var(np.arange(3.).repeat(4))
+    ds['X'] = Factor('ab', rep=2, tile=3)
     idx = np.arange(12)
     np.random.shuffle(idx)
     ds = ds[idx]
     ct = Celltable('Y', 'X', 'rm', ds=ds)
-    assert_array_equal(ct.match, factor('abc', tile=2))
+    assert_array_equal(ct.match, Factor('abc', tile=2))
     assert_array_equal(ct.Y, np.tile(np.arange(3.), 2))
-    assert_array_equal(ct.X, factor('ab', rep=3))
+    assert_array_equal(ct.X, Factor('ab', rep=3))
 
 
 def test_combine():
@@ -120,17 +120,17 @@ def test_combine():
     del ds2['YCat']
     ds = combine((ds1, ds2))
     assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:], "Combine with "
-                       "missing var")
+                       "missing Var")
     assert_true(np.all(ds1['YCat'] == ds['YCat'][:ds1.n_cases]), "Combine "
-                "with missing factor")
+                "with missing Factor")
 
-    # combine ndvar with unequel dimensions
+    # combine NDVar with unequel dimensions
     ds = datasets.get_rand(utsnd=True)
     y = ds['utsnd']
     y1 = y.subdata(sensor=['0', '1', '2', '3'])
     y2 = y.subdata(sensor=['1', '2', '3', '4'])
-    ds1 = dataset(y1)
-    ds2 = dataset(y2)
+    ds1 = Dataset(y1)
+    ds2 = Dataset(y2)
     dsc = combine((ds1, ds2))
     y = dsc['utsnd']
     assert_equal(y.sensor.names, ['1', '2', '3'], "Sensor dimension "
@@ -141,29 +141,29 @@ def test_combine():
 
 
 def test_dataset_sorting():
-    "Test dataset sorting methods"
+    "Test Dataset sorting methods"
     test_array = np.arange(10)
-    ds = dataset()
-    ds['v'] = var(test_array)
-    ds['f'] = factor(test_array)
+    ds = Dataset()
+    ds['v'] = Var(test_array)
+    ds['f'] = Factor(test_array)
 
-    # shuffle the dataset
+    # shuffle the Dataset
     rand_idx = test_array.copy()
     np.random.shuffle(rand_idx)
     ds_shuffled = ds[rand_idx]
 
-    # ascending, var, copy
+    # ascending, Var, copy
     dsa = ds_shuffled.sorted('v')
-    assert_dataset_equal(dsa, ds, "Copy sorted by var, ascending")
+    assert_dataset_equal(dsa, ds, "Copy sorted by Var, ascending")
 
-    # descending, factor, in-place
+    # descending, Factor, in-place
     ds_shuffled.sort('f', descending=True)
-    assert_dataset_equal(ds_shuffled, ds[::-1], "In-place sorted by factor, "
+    assert_dataset_equal(ds_shuffled, ds[::-1], "In-place sorted by Factor, "
                          "descending")
 
 
 def test_ndvar_op():
-    "Test ndvar operations"
+    "Test NDVar operations"
     ds = datasets.get_rand(utsnd=True)
     Ynd = ds['utsnd']
     Ynd_bl = Ynd - Ynd.summary(time=(None, 0))
@@ -176,7 +176,7 @@ def test_ndvar_op():
 def test_pickle_io():
     "Test io by pickling"
     ds = datasets.get_rand()
-    ds.info['info'] = "Some very useful information about the dataset"
+    ds.info['info'] = "Some very useful information about the Dataset"
     tempdir = tempfile.mkdtemp()
     try:
         dest = os.path.join(tempdir, 'test.pickled')
@@ -191,8 +191,8 @@ def test_pickle_io():
 
 
 def test_var():
-    "Test var objects"
-    base = factor('aabbcde')
-    Y = var.from_dict(base, {'a': 5, 'e': 8}, default=0)
+    "Test Var objects"
+    base = Factor('aabbcde')
+    Y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
     assert_array_equal(Y.x, [5, 5, 0, 0, 0, 0, 8])
 

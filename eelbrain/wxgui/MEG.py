@@ -14,7 +14,7 @@ import numpy as np
 import wx
 from wx.lib.dialogs import ScrolledMessageDialog
 
-from ..data.data_obj import dataset, var, corr
+from ..data.data_obj import Dataset, Var, corr
 from ..data import load, save
 from ..data import plot
 from ..data import process
@@ -30,7 +30,7 @@ __all__ = ['SelectEpochs', 'pca']
 
 class SelectEpochs(eelfigure):
     """
-    Interfaces showing individual cases in an ndvar as butterfly plots, with
+    Interfaces showing individual cases in an NDVar as butterfly plots, with
     the option to interactively manipulate a boolean list (i.e., select cases).
 
     LMB on any butterfly plot:
@@ -53,11 +53,11 @@ class SelectEpochs(eelfigure):
 
         Parameters
         ----------
-        ds : dataset
-            dataset on which to perform the selection.
-        data : str | ndvar
-            Epoch data as case by sensor by time ndvar (or its name in ds).
-        target : str | var
+        ds : Dataset
+            Dataset on which to perform the selection.
+        data : str | NDVar
+            Epoch data as case by sensor by time NDVar (or its name in ds).
+        target : str | Var
             Boolean variable indicating for each epoch whether it is accepted
             (True) or rejected (False). If a str with no corresponding variable
             in ds, a new variable is created.
@@ -66,7 +66,7 @@ class SelectEpochs(eelfigure):
             True and ds contains eyetracker information ('t_edf' variable and
             .info['edf'], as added by ``load.eyelink.events(path, ds=ds)``),
             the blink epochs are extracted automatically. Can also be str (name
-            in dataset) or blink epochs directly.
+            in ds) or blink epochs directly.
         path : None | str
             Path to the rejection file. If the file already exists, its values
             are read and applied immediately. If the file does not exist, this
@@ -122,7 +122,7 @@ class SelectEpochs(eelfigure):
             else:
                 msg = ("No eye tracker data was found in ds.info['edf']. Use "
                        "load.eyelink.add_edf(ds) to add an eye tracker file "
-                       "to a dataset ds.")
+                       "to a Dataset ds.")
                 wx.MessageBox(msg, "Eye Tracker Data Not Found")
                 blink = None
 
@@ -157,7 +157,7 @@ class SelectEpochs(eelfigure):
                 target = ds[target]
             else:
                 x = np.ones(ds.n_cases, dtype=bool)
-                target = var(x, name=target)
+                target = Var(x, name=target)
                 ds.add(target)
         else:
             self._target_name = target.name
@@ -411,7 +411,7 @@ class SelectEpochs(eelfigure):
         ----------
         path : str
             Path under which to save. The extension determines the way file
-            (*.pickled -> pickled dataset; *.txt -> tsv)
+            (*.pickled -> pickled Dataset; *.txt -> tsv)
         """
         # find dest path
         root, ext = os.path.splitext(path)
@@ -419,11 +419,11 @@ class SelectEpochs(eelfigure):
             ext = '.pickled'
         path = root + ext
 
-        # create dataset to save
+        # create Dataset to save
         accept = self._target
         if accept.name != 'accept':
             accept = accept.copy('accept')
-        ds = dataset(self._ds['eventID'], accept,
+        ds = Dataset(self._ds['eventID'], accept,
                      info={'bad_chs': self.get_bad_chs()})
 
         if ext == '.pickled':
@@ -744,7 +744,7 @@ class pca(mpl_canvas.CanvasFrame):
         """
         Performs PCA and opens a GUI for removing individual components.
 
-        Y : ndvar | str
+        Y : NDVar | str
             dependent variable
         timecourse : int
             number of (randomly picked) segments for whichthe time-course is
@@ -820,12 +820,12 @@ class pca(mpl_canvas.CanvasFrame):
         target = None
         rm = sorted(self._rm_comp)
         while not target:
-            dlg = wx.TextEntryDialog(self, "What name should the new ndvar be assigned in the dataset?",
+            dlg = wx.TextEntryDialog(self, "What name should the new NDVar be assigned in the Dataset?",
                                      "Choose Name for New Variable", "%s" % self._Y.name)
             if dlg.ShowModal() == wx.ID_OK:
                 newname = str(dlg.GetValue())
                 if newname in self._dataset:
-                    msg = ("The dataset already contains an item named %r. "
+                    msg = ("The Dataset already contains an item named %r. "
                            "Should it be replaced? The item is:\n\n%r" %
                             (newname, self._dataset[newname]))
                     answer = ui.ask("Replace %r?" % newname, msg)

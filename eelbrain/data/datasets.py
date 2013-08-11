@@ -3,48 +3,48 @@ Defines some basic example datasets that are used in testing.
 '''
 import numpy as np
 
-from .data_obj import dataset, factor, var, ndvar, Sensor, UTS
+from .data_obj import Dataset, Factor, Var, NDVar, Sensor, UTS
 
 
 def get_rand(utsnd=False):
-    """Create a sample dataset with 60 cases and random data.
+    """Create a sample Dataset with 60 cases and random data.
 
     Parameters
     ----------
     utsnd : bool
-        Add a sensor by time ndvar (called 'utsnd').
+        Add a sensor by time NDVar (called 'utsnd').
 
     Returns
     -------
-    ds : dataset
+    ds : Dataset
         Datasets with data from random distributions.
     """
     np.random.seed(0)
 
-    ds = dataset()
+    ds = Dataset()
 
     # add a model
-    ds['A'] = factor(['a0', 'a1'], rep=30)
-    ds['B'] = factor(['b0', 'b1'], rep=15, tile=2)
-    ds['rm'] = factor(('R%.2i' % i for i in xrange(15)), tile=4, random=True)
+    ds['A'] = Factor(['a0', 'a1'], rep=30)
+    ds['B'] = Factor(['b0', 'b1'], rep=15, tile=2)
+    ds['rm'] = Factor(('R%.2i' % i for i in xrange(15)), tile=4, random=True)
 
     # add dependent variables
     Y = np.hstack((np.random.normal(size=45), np.random.normal(1, size=15)))
-    ds['Y'] = var(Y)
+    ds['Y'] = Var(Y)
     ybin = np.random.randint(0, 2, size=60)
-    ds['YBin'] = factor(ybin, labels={0:'c1', 1:'c2'})
+    ds['YBin'] = Factor(ybin, labels={0:'c1', 1:'c2'})
     ycat = np.random.randint(0, 3, size=60)
-    ds['YCat'] = factor(ycat, labels={0:'c1', 1:'c2', 2:'c3'})
+    ds['YCat'] = Factor(ycat, labels={0:'c1', 1:'c2', 2:'c3'})
 
-    # add a uts ndvar
+    # add a uts NDVar
     time = UTS(-.2, .01, 100)
 
     y = np.random.normal(0, .5, (60, len(time)))
     y[:15, 20:60] += np.hanning(40) * 1  # interaction
     y[:30, 50:80] += np.hanning(30) * 1  # main effect
-    ds['uts'] = ndvar(y, dims=('case', time))
+    ds['uts'] = NDVar(y, dims=('case', time))
 
-    # add sensor ndvar
+    # add sensor NDVar
     if utsnd:
         locs = np.array([[-1.0, 0.0, 0.0],
                          [ 0.0, 1.0, 0.0],
@@ -61,6 +61,6 @@ def get_rand(utsnd=False):
             Y[i, 0] += x
 
         dims = ('case', sensor, time)
-        ds['utsnd'] = ndvar(Y, dims=dims)
+        ds['utsnd'] = NDVar(Y, dims=dims)
 
     return ds

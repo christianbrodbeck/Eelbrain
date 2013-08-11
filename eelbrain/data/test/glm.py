@@ -30,7 +30,7 @@ from ... import fmtxt
 from ...utils import LazyProperty
 from ...utils.print_funcs import strdict
 from ..data_obj import (isvar, asvar, assub, isbalanced, isnestedin, hasrandom,
-                        find_factors, model, asmodel)
+                        find_factors, Model, asmodel)
 from ..stats import ftest_p
 from . import test
 
@@ -84,7 +84,7 @@ def _hopkins_test(e, e2):
     e : effect
         effect whose E(MS) is being constructed
     e2 : effect
-        model effect which is tested for inclusion in E(MS) of e
+        Model effect which is tested for inclusion in E(MS) of e
 
     """
     if e is e2:
@@ -136,9 +136,9 @@ class lm:
 
         Parameters
         ----------
-        Y : var
+        Y : Var
             Dependent variable.
-        X : model
+        X : Model
             Model.
         sub : None | index
             Only use part of the data
@@ -228,7 +228,7 @@ class lm:
             table.title(title)
 
         if not isbalanced(X):
-            table.caption("Warning: model is unbalanced, use anova class")
+            table.caption("Warning: Model is unbalanced, use anova class")
 
         table.cell()
         headers = ["SS", "df", "MS"]
@@ -319,7 +319,7 @@ class lm:
         table.cell('p', mat=True)
         table.midrule()
         #
-        q = 1  # track start location of effect in model.full
+        q = 1  # track start location of effect in Model.full
         ne = len(self.X.effects)
         for ie, e in enumerate(self.X.effects):
             table.cell(e.name + ':')
@@ -362,7 +362,7 @@ class lm_fitter(object):
 
         Parameters
         ----------
-        X : model
+        X : Model
             Model which will be fitted to the data.
         """
         # prepare input
@@ -514,9 +514,9 @@ class incremental_F_test:
     Attributes
     ----------
 
-    lm1 : model
+    lm1 : Model
         The extended model
-    lm0 : model
+    lm0 : Model
         The control model
     SS : scalar
         the difference in the SS explained by the two models
@@ -534,7 +534,7 @@ class incremental_F_test:
         variance than that of lm0 (with model_1 == model_0 + q factors,  q > 0).
         If lm1 is None it is assumed that lm1 is the full model with 0 residuals.
 
-        lm1, lm0 : model
+        lm1, lm0 : Model
             The two models to compare.
         MS_e, df_e : scalar | None
             Parameters for random effects models: the Expected value of MS;
@@ -636,9 +636,9 @@ class anova(object):
 
         Parameters
         ----------
-        Y : var
+        Y : Var
             dependent variable
-        X : model
+        X : Model
             Model to fit to Y
         empty : bool
             include rows without F-Tests (True/False)
@@ -731,7 +731,7 @@ class anova(object):
                         else:
                             effects.append(e)
 
-                model0 = model(*effects)
+                model0 = Model(*effects)
                 if e_test.df > model0.df_error:
                     skip = "overspecified"
                 else:
@@ -739,7 +739,7 @@ class anova(object):
 
                     # find model 1
                     effects.append(e_test)
-                    model1 = model(*effects)
+                    model1 = Model(*effects)
                     if model1.df_error > 0:
                         lm1 = lm(Y, model1)
                     else:
@@ -750,7 +750,7 @@ class anova(object):
                         EMS_effects = _find_hopkins_ems(e_test, X)
 
                         if len(EMS_effects) > 0:
-                            lm_EMS = lm(Y, model(*EMS_effects))
+                            lm_EMS = lm(Y, Model(*EMS_effects))
                             MS_e = lm_EMS.MS_model
                             df_e = lm_EMS.df_model
                         else:
@@ -866,7 +866,7 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
         covariate = covariate[sub]
         if interaction != None:
             interaction = interaction[sub]
-    # if interaction: assert type(interaction) in [factor]
+    # if interaction: assert type(interaction) in [Factor]
     factorial_model = asmodel(factorial_model)
     a1 = lm(Y, factorial_model)
     if v:

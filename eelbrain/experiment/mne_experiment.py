@@ -17,7 +17,7 @@ Epochs are defined as dictionaries containing the following entries
     Value of the stimvar relative to which the epoch is defined. Can combine
     multiple names with '|'.
 **name** : str
-    A name for the epoch; when the resulting data is added to a dataset, this
+    A name for the epoch; when the resulting data is added to a Dataset, this
     name is used.
 **tmin** : scalar
     Start of the epoch.
@@ -78,7 +78,7 @@ from ..data import load
 from ..data import plot
 from ..data import save
 from ..data import testnd
-from ..data import var, ndvar, combine
+from ..data import Var, NDVar, combine
 from ..data.data_obj import isdatalist, UTS, DimensionMismatchError
 from .. import ui
 from ..utils import keydefaultdict
@@ -354,14 +354,14 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        ds : dataset
-            The dataset containing the mne Epochs for the desired trials.
+        ds : Dataset
+            The Dataset containing the mne Epochs for the desired trials.
         src : str
             Name of the source epochs in ds.
         dst : str
             Name of the source estimates to be created in ds.
         ndvar : bool
-            Add the source estimates as ndvar instead of a list of
+            Add the source estimates as NDVar instead of a list of
             SourceEstimate objects.
         """
         subject = ds['subject']
@@ -390,7 +390,7 @@ class MneExperiment(FileTree):
         label :
             the label's bare name (e.g., 'insula').
         hemi : 'lh' | 'rh' | 'bh' | False
-            False assumes that hemi is a factor in ds.
+            False assumes that hemi is a Factor in ds.
         src : str
             Name of the variable in ds containing the SourceEstimates.
 
@@ -423,20 +423,20 @@ class MneExperiment(FileTree):
             x.append(stc.in_label(lbl).data.mean(0))
 
         time = UTS(stc.tmin, stc.tstep, stc.shape[1])
-        ds[key] = ndvar(np.array(x), dims=('case', time))
+        ds[key] = NDVar(np.array(x), dims=('case', time))
 
     def add_evoked_stc(self, ds, ind='stc', morph='stcm', baseline=None,
                        ndvar=False):
         """
-        Add an stc (ndvar) to a dataset with an evoked list.
+        Add an stc (NDVar) to a Dataset with an evoked list.
 
         Assumes that all Evoked of the same subject share the same inverse
         operator.
 
         Parameters
         ----------
-        ds : dataset
-            The dataset containing the Evoked objects.
+        ds : Dataset
+            The Dataset containing the Evoked objects.
         ind: bool | str
             Add stcs on individual brains (with str as name, otherwise 'stc').
         morph : bool | str
@@ -445,7 +445,7 @@ class MneExperiment(FileTree):
         baseline : None | str | tuple
             Baseline correction in source space.
         ndvar : bool
-            Add stcs as ndvar (default is list of mne SourceEstimate objects).
+            Add stcs as NDVar (default is list of mne SourceEstimate objects).
             For individual brain stcs, this option only applies for datasets
             with a single subject.
         """
@@ -505,7 +505,7 @@ class MneExperiment(FileTree):
                                          subjects_dir=mri_sdir)
                     mstcs[name].append(stc)
 
-        # add to dataset
+        # add to Dataset
         for name in do:
             if ind:
                 if len(do) > 1:
@@ -697,12 +697,12 @@ class MneExperiment(FileTree):
 
     def label_events(self, ds, experiment, subject):
         """
-        Adds T (time) and SOA (stimulus onset asynchrony) to the dataset.
+        Adds T (time) and SOA (stimulus onset asynchrony) to the Dataset.
 
         Parameters
         ----------
-        ds : dataset
-            A dataset containing events (as returned by
+        ds : Dataset
+            A Dataset containing events (as returned by
             :func:`load.fiff.events`).
         experiment : str
             Name of the experiment.
@@ -717,7 +717,7 @@ class MneExperiment(FileTree):
             raw = ds.info['raw']
             sfreq = raw.info['sfreq']
             ds['T'] = ds['i_start'] / sfreq
-            ds['SOA'] = var(np.ediff1d(ds['T'].x, 0))
+            ds['SOA'] = Var(np.ediff1d(ds['T'].x, 0))
         return ds
 
     def label_subjects(self, ds):
@@ -725,12 +725,12 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        ds : dataset
-            A dataset with 'subject' entry.
+        ds : Dataset
+            A Dataset with 'subject' entry.
         """
         subject = ds['subject']
         for name, subjects in self.groups.iteritems():
-            ds[name] = var(subject.isin(subjects))
+            ds[name] = Var(subject.isin(subjects))
 
     def list_files(self, files=['raw-file'], count=True, fields=['subject'],
                    **kwargs):
@@ -797,7 +797,7 @@ class MneExperiment(FileTree):
                     add_bads=True, reject=True, cat=None, decim=None,
                     **kwargs):
         """
-        Load a dataset with epochs for a given epoch definition
+        Load a Dataset with epochs for a given epoch definition
 
         Parameters
         ----------
@@ -807,7 +807,7 @@ class MneExperiment(FileTree):
         epoch : str
             Epoch definition.
         ndvar : bool | str
-            Convert epochs to an ndvar with the given name (if True, 'MEG' is
+            Convert epochs to an NDVar with the given name (if True, 'MEG' is
             uesed).
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
@@ -865,7 +865,7 @@ class MneExperiment(FileTree):
 
     def load_epochs_stc(self, subject=None, sns_baseline=None,
                         src_baseline=None, ndvar=False, cat=None):
-        """Load a dataset with stcs for single epochs
+        """Load a Dataset with stcs for single epochs
 
         Parameters
         ----------
@@ -929,7 +929,7 @@ class MneExperiment(FileTree):
     def load_evoked(self, subject=None, ndvar=False, baseline=None, cat=None,
                     **kwargs):
         """
-        Load a dataset with evoked files for each subject.
+        Load a Dataset with evoked files for each subject.
 
         Load data previously created with :meth:`MneExperiment.make_evoked`.
 
@@ -939,7 +939,7 @@ class MneExperiment(FileTree):
             Subject(s) for which to load evoked files. Can be a group name
             such as 'all' or a single subject.
         ndvar : bool | str
-            Convert the mne Evoked objects to an ndvar. If True, the target
+            Convert the mne Evoked objects to an NDVar. If True, the target
             name is 'meg'.
         model : str (state)
             Model according to which epochs are grouped into evoked responses.
@@ -987,7 +987,7 @@ class MneExperiment(FileTree):
                 for e in ds['evoked']:
                     rescale(e.data, e.times, baseline, 'mean', copy=False)
 
-        # convert to ndvar
+        # convert to NDVar
         if ndvar:
             if ndvar is True:
                 ndvar = 'meg'
@@ -1017,7 +1017,7 @@ class MneExperiment(FileTree):
             Add stcs for data morphed to the common brain (with str as name,
             otherwise 'stcm').
         ndvar : bool
-            Add stcs as ndvar (default is list of mne SourceEstimate objects).
+            Add stcs as NDVar (default is list of mne SourceEstimate objects).
             For individual brain stcs, this option only applies for datasets
             with a single subject.
         sns_baseline : None | str | tuple
@@ -1113,7 +1113,7 @@ class MneExperiment(FileTree):
             such as 'all' or a single subject.
         reject : bool | 'keep'
             Reject bad trials. For True, bad trials are removed from the
-            dataset. For 'keep', the 'accept' variable is added to the dataset
+            Dataset. For 'keep', the 'accept' variable is added to the Dataset
             and bad trials are kept.
         add_proj : bool
             Add the projections to the Raw object.
@@ -1122,7 +1122,7 @@ class MneExperiment(FileTree):
             information is retrieved from self.bad_channels. Alternatively,
             a list of bad channels can be sumbitted.
         index : bool | str
-            Index the dataset before rejection (provide index name as str).
+            Index the Dataset before rejection (provide index name as str).
         others :
             Update the experiment state.
 
@@ -1816,7 +1816,7 @@ class MneExperiment(FileTree):
         for p in projs:
             d = p['data']['data'][0]
             name = p['desc'][-5:]
-            v = ndvar(d, (sensor,), name=name)
+            v = NDVar(d, (sensor,), name=name)
             PCA.append(v)
 
         proj_file = self.get('proj-file')

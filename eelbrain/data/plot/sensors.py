@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from ..data_obj import datalist
+from ..data_obj import Datalist
 
 try:
     import wx
@@ -193,7 +193,7 @@ class _plt_map2d:
 
         locs = self.locs
         if self.ROI is not None:
-            labels = datalist(labels)[self.ROI]
+            labels = Datalist(labels)[self.ROI]
             locs = locs[self.ROI]
 
         locs = locs + [[xpos, ypos]]
@@ -323,8 +323,8 @@ class multi(_base.eelfigure):
         """
         Parameters
         ----------
-        sensors : Sensor | ndvar
-            The sensors to use, or an ndvar with a sensor dimension.
+        sensors : Sensor | NDVar
+            The sensors to use, or an NDVar with a sensor dimension.
         ROI : list of int
             Initial ROI.
         proj : str
@@ -541,7 +541,7 @@ class map2d(_tb_sensors_mixin, _base.eelfigure):
 
         Parameters
         ----------
-        sensors : ndvar | Sensor
+        sensors : NDVar | Sensor
             sensor-net object or object containing sensor-net
         labels : None | 'idx' | 'name' | 'fullname'
             Content of the labels. For 'name', any prefix common to all names

@@ -27,7 +27,7 @@ class topomap(_tb_sensors_mixin, _base.eelfigure):
 
         Parameters
         ----------
-        epochs : ndvar | list of ndvar, dims = ([case,] sensor,)
+        epochs : NDVar | list of NDVar, dims = ([case,] sensor,)
             Data to plot.
         Xax : None | categorial
             Create a separate plot for each cell in this model.
@@ -46,8 +46,8 @@ class topomap(_tb_sensors_mixin, _base.eelfigure):
             Resolution of the topomaps (width = height = ``res``).
         interpolation : str
             Matplotlib imshow() parameter for topomaps.
-        ds : None | dataset
-            If a dataset is provided, ``epochs`` and ``Xax`` can be specified
+        ds : None | Dataset
+            If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
@@ -150,8 +150,8 @@ class butterfly(_base.eelfigure):
             determines whether all sensors are marked in the topo-maps
         ROI : None | list of indices
             plot a subset of sensors
-        ds : None | dataset
-            If a dataset is provided, ``epochs`` and ``Xax`` can be specified
+        ds : None | Dataset
+            If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
 
         **Figure Layout:**
@@ -575,8 +575,8 @@ class array(_base.eelfigure):
             number of topomaps per array-plot.
         t : list of scalar (len <= ntopo)
             Time points for topomaps.
-        ds : None | dataset
-            If a dataset is provided, ``epochs`` and ``Xax`` can be specified
+        ds : None | Dataset
+            If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)

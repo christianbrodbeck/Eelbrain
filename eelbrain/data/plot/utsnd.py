@@ -136,7 +136,7 @@ class _ax_im_array(object):
 
         ydim = epoch.get_dim(y)
         if y == 'sensor':
-            ydim = _dta.var(np.arange(len(ydim)), y)
+            ydim = _dta.Var(np.arange(len(ydim)), y)
 
         # plot
         overlay = False
@@ -216,7 +216,7 @@ class array(_base.eelfigure):
 
         Parameters
         ----------
-        epochs : ndvar
+        epochs : NDVar
             If data has only 1 dimension, the x-axis defines epochs.
         Xax : None | categorial
             Create a separate plot for each cell in this model.
@@ -224,8 +224,8 @@ class array(_base.eelfigure):
             Figure title.
         xlabel, ylabel : bool | str
             I True, determine from the data.
-        ds : None | dataset
-            If a dataset is provided, ``epochs`` and ``Xax`` can be specified
+        ds : None | Dataset
+            If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
@@ -374,7 +374,7 @@ def _plt_uts(ax, epoch,
     ----------
     ax : matplotlib axes
         Target axes.
-    epoch : ndvar (sensor by time)
+    epoch : NDVar (sensor by time)
         Epoch to plot.
     sensors : None | True | numpy index
         The sensors to plot (None or True -> all sensors).
@@ -496,7 +496,7 @@ class butterfly(_base.eelfigure):
         """
         Parameters
         ----------
-        epochs : (list of) ndvar
+        epochs : (list of) NDVar
             Data to plot.
         Xax : None | categorial
             Create a separate plot for each cell in this model.
@@ -536,7 +536,7 @@ class _ax_bfly_epoch:
 
         Parameters
         ----------
-        epoch : ndvar
+        epoch : NDVar
             Sensor by time epoch.
         """
         self.ax = ax

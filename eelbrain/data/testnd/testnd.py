@@ -14,8 +14,8 @@ from scipy.sparse.csgraph import connected_components
 
 from ... import fmtxt
 from .. import colorspaces as _cs
-from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, dataset,
-                        factor, ndvar, var, Celltable, cellname, combine)
+from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
+                        Factor, NDVar, Var, Celltable, cellname, combine)
 from ..stats import ftest_f, ftest_p
 from ..test import glm as _glm
 from ..test.test import resample
@@ -32,7 +32,7 @@ def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
 
     Parameters
     ----------
-    pmap : ndvar
+    pmap : NDVar
         Parameter map with time axis.
     dtmin : scalar
         Minimum duration required
@@ -46,7 +46,7 @@ def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
 
     Returns
     -------
-    cleaned_map : ndvar
+    cleaned_map : NDVar
         A copy of pmap with all values that do not belong to a cluster set to
         null.
     """
@@ -69,7 +69,7 @@ def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
     x = np.where(keep, pmap.x, null)
 
     info = pmap.info.copy()
-    cleaned = ndvar(x, pmap.dims, info, pmap.name)
+    cleaned = NDVar(x, pmap.dims, info, pmap.name)
     return cleaned
 
 
@@ -78,7 +78,7 @@ class corr:
     Attributes
     ----------
 
-    r : ndvar
+    r : NDVar
         Correlation (with threshold contours).
     """
     def __init__(self, Y, X, norm=None, sub=None, ds=None,
@@ -88,7 +88,7 @@ class corr:
 
         Parameters
         ----------
-        Y : ndvar
+        Y : NDVar
             Dependent variable.
         X : continuous | None
             The continuous predictor variable.
@@ -142,7 +142,7 @@ class corr:
         dims = Y.dims[1:]
         r0, r1, r2 = _rtest_r((.05, .01, .001), df)
         info = _cs.stat_info('r', r0, r1, r2)
-        r = ndvar(rmap, dims, info, name)
+        r = NDVar(rmap, dims, info, name)
 
         # store attributes
         self.name = name
@@ -211,17 +211,17 @@ class ttest_1samp:
 
         Parameters
         ----------
-        Y : ndvar
+        Y : NDVar
             Dependent variable.
         popmean : scalar
             Value to compare Y against (default is 0).
-        match : None | factor
+        match : None | Factor
             Combine data for these categories before testing.
         sub : None | index-array
             Perform test with a subset of the data.
-        ds : None | dataset
-            If a dataset is specified, all data-objects can be specified as
-            names of dataset variables
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables
         """
         ct = Celltable(Y, match=match, sub=sub, ds=ds)
 
@@ -243,12 +243,12 @@ class ttest_1samp:
 
         info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
         info['test'] = test_name
-        p = ndvar(pmap, dims, info=info, name='p')
+        p = NDVar(pmap, dims, info=info, name='p')
 
         t0, t1, t2 = _ttest_t((.05, .01, .001), df)
         info = _cs.stat_info('t', t0, t1, t2)
         info = _cs.set_info_cs(ct.Y.info, info)
-        t = ndvar(tmap, dims, info=info, name='T')
+        t = NDVar(tmap, dims, info=info, name='T')
 
         # store attributes
         self.popmean = popmean
@@ -285,7 +285,7 @@ class ttest_ind:
 
         Parameters
         ----------
-        Y : ndvar
+        Y : NDVar
             Dependent variable.
         X : categorial
             Model containing the cells which should be compared.
@@ -299,9 +299,9 @@ class ttest_ind:
             Combine cases with the same cell on X % match for testing.
         sub : None | index-array
             Perform the test with a subset of the data.
-        ds : None | dataset
-            If a dataset is specified, all data-objects can be specified as
-            names of dataset variables.
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables.
         samples : None | int
             Number of samples for permutation cluster test. For None, no
             clusters are formed.
@@ -334,12 +334,12 @@ class ttest_ind:
 
         info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
         info['test'] = test_name
-        p = ndvar(pmap, dims, info=info, name='p')
+        p = NDVar(pmap, dims, info=info, name='p')
 
         t0, t1, t2 = _ttest_t((.05, .01, .001), df)
         info = _cs.stat_info('t', t0, t1, t2)
         info = _cs.set_info_cs(ct.Y.info, info)
-        t = ndvar(tmap, dims, info=info, name='T')
+        t = NDVar(tmap, dims, info=info, name='T')
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
         c0_mean = ct.data[c0].summary(name=cellname(c0))
@@ -405,7 +405,7 @@ class ttest_rel:
 
         Parameters
         ----------
-        Y : ndvar
+        Y : NDVar
             Dependent variable.
         X : categorial
             Model containing the cells which should be compared.
@@ -415,13 +415,13 @@ class ttest_rel:
         c0 : str | tuple | None
             Control condition (cell of X). Can be None if X only contains two
             cells.
-        match : factor
+        match : Factor
             Match cases for a repeated measures test.
         sub : None | index-array
             Perform the test with a subset of the data.
-        ds : None | dataset
-            If a dataset is specified, all data-objects can be specified as
-            names of dataset variables.
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables.
         samples : None | int
             Number of samples for permutation cluster test. For None, no
             clusters are formed.
@@ -454,12 +454,12 @@ class ttest_rel:
 
         info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
         info['test'] = test_name
-        p = ndvar(pmap, dims, info=info, name='p')
+        p = NDVar(pmap, dims, info=info, name='p')
 
         t0, t1, t2 = _ttest_t((.05, .01, .001), df)
         info = _cs.stat_info('t', t0, t1, t2)
         info = _cs.set_info_cs(ct.Y.info, info)
-        t = ndvar(tmap, dims, info=info, name='T')
+        t = NDVar(tmap, dims, info=info, name='T')
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
         c0_mean = ct.data[c0].summary(name=cellname(c0))
@@ -618,7 +618,7 @@ class f_oneway:
 
         info = _cs.set_info_cs(Y.info, _cs.sig_info(p, contours))
         info['test'] = test_name
-        p = ndvar(Ps, dims, info=info, name=X.name)
+        p = NDVar(Ps, dims, info=info, name=X.name)
 
         # store results
         self.name = "anova"
@@ -631,8 +631,8 @@ class anova:
 
     Attributes
     ----------
-    clusters : None | dataset
-        When performing a cluster permutation test, a dataset listing all
+    clusters : None | Dataset
+        When performing a cluster permutation test, a Dataset listing all
         clusters.
     f : list
         Maps of f values with probability contours.
@@ -645,15 +645,15 @@ class anova:
 
         Parameters
         ----------
-        Y : ndvar
+        Y : NDVar
             Measurements (dependent variable)
         X : categorial
             Model
         sub : None | index-array
             Perform the test with a subset of the data.
-        ds : None | dataset
-            If a dataset is specified, all data-objects can be specified as
-            names of dataset variables.
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables.
         samples : None | int
             Number of samples for permutation cluster test. For None, no
             clusters are formed.
@@ -704,12 +704,12 @@ class anova:
         for e, fmap in fmaps:
             f0, f1, f2 = ftest_f((0.05, 0.01, 0.001), e.df, df_den[e])
             info = _cs.set_info_cs(Y.info, _cs.stat_info('f', f0, f1, f2))
-            f_ = ndvar(fmap, dims, info, e.name)
+            f_ = NDVar(fmap, dims, info, e.name)
             f.append(f_)
 
             info = _cs.set_info_cs(Y.info, _cs.sig_info())
             pmap = ftest_p(fmap, e.df, df_den[e])
-            p_ = ndvar(pmap, dims, info, e.name)
+            p_ = NDVar(pmap, dims, info, e.name)
             p.append(p_)
 
         if samples:
@@ -718,7 +718,7 @@ class anova:
             for e, fmap in fmaps:
                 f0 = ftest_f(pmin, e.df, df_den[e])
                 info = _cs.set_info_cs(Y.info, _cs.stat_info('f', f0))
-                f_ = ndvar(fmap, dims, info, e.name)
+                f_ = NDVar(fmap, dims, info, e.name)
                 f_clt.append(f_)
 
             # create cluster table
@@ -726,7 +726,7 @@ class anova:
             for e in effects:
                 name = e.name
                 ds = cdists[e].clusters
-                ds['effect'] = factor([name], rep=ds.n_cases)
+                ds['effect'] = Factor([name], rep=ds.n_cases)
                 dss.append(ds)
             clusters = combine(dss)
         else:
@@ -779,7 +779,7 @@ class _ClusterDist:
 
         Parameters
         ----------
-        Y : ndvar
+        Y : NDVar
             Dependent variable.
         N : int
             Number of permutations.
@@ -892,9 +892,9 @@ class _ClusterDist:
         sort_idx = np.argsort(cluster_p)
 
         # prepare container for clusters
-        ds = dataset()
-        ds['p'] = var(cluster_p[sort_idx])
-        ds['v'] = var(cluster_v[sort_idx])
+        ds = Dataset()
+        ds['p'] = Var(cluster_p[sort_idx])
+        ds['v'] = Var(cluster_v[sort_idx])
 
         # time window
         time = self.Y_perm.get_dim('time') if self.Y.has_dim('time') else None
@@ -929,21 +929,21 @@ class _ClusterDist:
         dims = self.Y.dims
         contours = {self.t_lower: (0.7, 0, 0.7), self.t_upper: (0.7, 0.7, 0)}
         info = _cs.stat_info(self.meas, contours=contours, summary_func=np.sum)
-        ds['cluster'] = ndvar(cmaps, dims=dims, info=info)
+        ds['cluster'] = NDVar(cmaps, dims=dims, info=info)
 
         if time is not None:
-            ds['tstart'] = var(tstart)
-            ds['tstop'] = var(tstop)
+            ds['tstart'] = Var(tstart)
+            ds['tstop'] = Var(tstop)
         self.clusters = ds
 
         # cluster probability map
         cpmap = self._uncrop(cpmap, 1)
         info = _cs.cluster_pmap_info()
-        self.cpmap = ndvar(cpmap, dims=dims[1:], name=self.name, info=info)
+        self.cpmap = NDVar(cpmap, dims=dims[1:], name=self.name, info=info)
 
         # statistic parameter map
         info = _cs.stat_info(self.meas, contours=contours)
-        self.pmap = ndvar(pmap, dims=dims[1:], name=self.name, info=info)
+        self.pmap = NDVar(pmap, dims=dims[1:], name=self.name, info=info)
 
         self.all = [[self.pmap, self.cpmap]]
         self._dt = current_time() - self._t0

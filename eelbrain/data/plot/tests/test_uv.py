@@ -2,7 +2,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from eelbrain.data import var, datasets, plot
+from eelbrain.data import Var, datasets, plot
 
 
 def test_barplot():
@@ -49,7 +49,7 @@ def test_timeplot():
     "Test plot.uv.timeplot"
     plot.configure_backend(False, False)
     ds = datasets.get_rand()
-    ds['seq'] = var(np.arange(2).repeat(30))
+    ds['seq'] = Var(np.arange(2).repeat(30))
     plot.uv.timeplot('Y', 'B', 'seq', match='rm', ds=ds)
     plt.close('all')
 

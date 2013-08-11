@@ -14,7 +14,7 @@ import numpy as np
 
 from ... import ui
 from ...utils.subp import get_bin
-from ..data_obj import dataset, datalist, var
+from ..data_obj import Dataset, Datalist, Var
 
 __all__ = ['Edf', 'read_edf', 'read_edf_events', 'read_edf_samples']
 
@@ -37,8 +37,8 @@ class Edf(object):
 
 
     1. **For all triggers:**
-       Acceptability for all triggers can be added to a dataset with a single
-       command if the dataset contains the same events as the edf file::
+       Acceptability for all triggers can be added to a Dataset with a single
+       command if the Dataset contains the same events as the edf file::
 
           >>> edf.mark_all(ds, ...)
 
@@ -46,11 +46,11 @@ class Edf(object):
     2. **For a subset of triggers:**
        Often it is more efficient to compute acceptability only for a subset of
        the triggers contained in the edf file. For those cases, the trigger time
-       should first be added to the complete dataset with::
+       should first be added to the complete Dataset with::
 
            >>> edf.add_T_to(ds)
 
-       Now, the dataset can be decimated::
+       Now, the Dataset can be decimated::
 
            >>> ds = ds.subset(...)
 
@@ -137,10 +137,10 @@ class Edf(object):
 
         Parameters
         ----------
-        ds : None | dataset
+        ds : None | Dataset
             Dataset with events.
         Id : str | array
-            If `ds` is a dataset, `Id` should be a string naming the variable
+            If `ds` is a Dataset, `Id` should be a string naming the variable
             in `ds` containing the event IDs. If `ds` is None, `Id` should be
             a series of event Ids.
 
@@ -158,7 +158,7 @@ class Edf(object):
                     break
 
             args = (getattr(ds, 'name', 'None'), self.path) + lens + (mm,)
-            err = ("dataset %r containes different number of events from edf "
+            err = ("Dataset %r containes different number of events from edf "
                    "file %r (%i vs %i); first mismatch at %i." % args)
             raise ValueError(err)
 
@@ -169,16 +169,16 @@ class Edf(object):
 
     def add_T_to(self, ds, Id='eventID', t_edf='t_edf'):
         """
-        Add edf trigger times as a variable to dataset ds.
+        Add edf trigger times as a variable to Dataset ds.
         These can then be used for Edf.add_by_T(ds) after ds hads been
         decimated.
 
         Parameters
         ----------
-        ds : dataset
-            The dataset to which the variable is added
-        Id : str | var | None
-            variable (or its name in the dataset) containing event IDs. Values
+        ds : Dataset
+            The Dataset to which the variable is added
+        Id : str | Var | None
+            variable (or its name in the Dataset) containing event IDs. Values
             in this variable are checked against the events in the EDF file,
             and an error is raised if there is a mismatch. This test can be
             skipped by setting Id=None.
@@ -191,19 +191,19 @@ class Edf(object):
             if isinstance(Id, str):
                 Id = ds[Id]
 
-        ds[t_edf] = var(self.triggers['T'])
+        ds[t_edf] = Var(self.triggers['T'])
 
     def filter(self, ds, tstart=-0.1, tstop=0.6, use=['ESACC', 'EBLINK'],
                T='t_edf'):
         """
-        Return a copy of the dataset ``ds`` with all bad events removed. A
-        dataset containing all the bad events is stored in
+        Return a copy of the Dataset ``ds`` with all bad events removed. A
+        Dataset containing all the bad events is stored in
         ``ds.info['rejected']``.
 
         Parameters
         ----------
-        ds : dataset
-            The dataset that is to be filtered
+        ds : Dataset
+            The Dataset that is to be filtered
         tstart : scalar
             Start of the time window in which to look for artifacts
         tstop : scalar
@@ -211,7 +211,7 @@ class Edf(object):
         use : list of str
             List of events types which are to be treated as artifacts (possible
             are 'ESACC' and 'EBLINK')
-        T : str | var
+        T : str | Var
             Variable describing edf-relative timing for the events in ``ds``.
             Usually this is a string key for a variable in ``ds``.
 
@@ -226,7 +226,7 @@ class Edf(object):
 
     def get_accept(self, T=None, tstart=-0.1, tstop=0.6, use=['ESACC', 'EBLINK']):
         """
-        returns a boolean var indicating for each epoch whether it should be
+        returns a boolean Var indicating for each epoch whether it should be
         accepted or not based on ocular artifacts in the edf file.
 
         Parameters
@@ -268,16 +268,16 @@ class Edf(object):
         return accept
 
     def get_T(self, name='t_edf'):
-        "returns all trigger times in the dataset"
-        return var(self.triggers['T'], name=name)
+        "returns all trigger times in the Dataset"
+        return Var(self.triggers['T'], name=name)
 
     def get_triggers(self, Id='Id', T='t_edf'):
         """
-        Returns a dataset with trigger Ids and corresponding Edf time values
+        Returns a Dataset with trigger Ids and corresponding Edf time values
 
         """
-        ds = dataset()
-        ds[Id] = var(self.triggers['Id'])
+        ds = Dataset()
+        ds[Id] = Var(self.triggers['Id'])
         ds[T] = self.get_T(name=T)
         return ds
 
@@ -289,8 +289,8 @@ class Edf(object):
 
         Parameters
         ----------
-        ds : dataset
-            dataset that contains the data to work with.
+        ds : Dataset
+            Dataset that contains the data to work with.
         tstart : scalar
             start of the time window relevant for rejection.
         tstop : scalar
@@ -303,9 +303,9 @@ class Edf(object):
             based on the eye-tracker data.
         use : list of str
             Artifact categories to include
-        T : var
+        T : Var
             variable providing the trigger time values
-        target : var
+        target : Var
             variable to which the good/bad values are assigned (if it does not
             exist, a new variable will be created with all values True
             initially)
@@ -315,7 +315,7 @@ class Edf(object):
             if target in ds:
                 target = ds[target]
             else:
-                ds[target] = target = var(np.ones(ds.n_cases, dtype=bool))
+                ds[target] = target = Var(np.ones(ds.n_cases, dtype=bool))
 
         if isinstance(T, str):
             T = ds[T]
@@ -337,8 +337,8 @@ class Edf(object):
 
         Parameters
         ----------
-        ds : dataset
-            dataset that contains the data to work with.
+        ds : Dataset
+            Dataset that contains the data to work with.
         tstart : scalar
             start of the time window relevant for rejection.
         tstop : scalar
@@ -351,11 +351,11 @@ class Edf(object):
             based on the eye-tracker data.
         use : list of str
             Artifact categories to include
-        Id : var | None
-            variable containing trigger Ids for asserting that the dataset
+        Id : Var | None
+            variable containing trigger Ids for asserting that the Dataset
             contains the same triggers as rhe edf file(s). The test can be
             skipped by setting Id=None
-        target : var
+        target : Var
             variable to which the good/bad values are assigned (if it does not
             exist, a new variable will be created with all values True
             initially)
@@ -381,32 +381,32 @@ def events(fname, samples=False, ds=None):
     samples : bool
         Read continuous eye position data as well as events. This is needed to
         extract eye position data later.
-    ds : dataset
-        Existing dataset to which the edf-triggers should be added. If the
-        dataset contains a variable called 'eventID' whose content does not
+    ds : Dataset
+        Existing Dataset to which the edf-triggers should be added. If the
+        Dataset contains a variable called 'eventID' whose content does not
         match the edf triggers, a ValueError is raised. ds is always modified
         in place, but returned for consistency.
     """
     edf = Edf(fname, samples=samples)
     if ds is None:
-        ds = dataset(info={'edf': edf})
+        ds = Dataset(info={'edf': edf})
     else:
         if 'eventID' in ds:
             edf.assert_Id_match(ds)
         else:
-            ds['eventID'] = var(edf.triggers['Id'])
+            ds['eventID'] = Var(edf.triggers['Id'])
         ds.info['edf'] = edf
 
-    ds['t_edf'] = var(edf.triggers['T'])
+    ds['t_edf'] = Var(edf.triggers['T'])
     return ds
 
 
 def add_edf(ds, path, eventID='eventID', t_edf='t_edf'):
-    """Add an edf file to a dataset
+    """Add an edf file to a Dataset
 
     Parameters
     ----------
-    ds : dataset
+    ds : Dataset
         Dataset to which the edf file should be added (needs to contain an
         eventID variable).
     path : str
@@ -426,8 +426,8 @@ def artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
 
     Parameters
     ----------
-    ds : dataset
-        Dataset with 'edf' entry in its info dictionary (usually a dataset
+    ds : Dataset
+        Dataset with 'edf' entry in its info dictionary (usually a Dataset
         returned by ``load.eyelink.events()``)
     tmin, tmax : scalar
         Relative start and end points of the epoch (in seconds).
@@ -442,9 +442,9 @@ def artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
 
     Returns
     -------
-    sacc : datalist
+    sacc : Datalist
         Saccade periods.
-    blink : datalist
+    blink : Datalist
         Blink periods.
     """
     edf = ds.info['edf']
@@ -459,8 +459,8 @@ def artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
     artifacts_s['start'] /= 1000.
     artifacts_s['stop'] /= 1000.
 
-    sacc = datalist(name=esacc) if esacc else None
-    blink = datalist(name=eblink) if eblink else None
+    sacc = Datalist(name=esacc) if esacc else None
+    blink = Datalist(name=eblink) if eblink else None
     for t in ds[t_edf]:
         t_s = t / 1000.
         epoch_idx = np.logical_and(stop > t + tmin, start < t + tmax)
@@ -493,12 +493,12 @@ def artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
 
 def add_artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
                         eblink='blink', t_edf='t_edf'):
-    """Add a datalist containing artifact information by event
+    """Add a Datalist containing artifact information by event
 
     Parameters
     ----------
-    ds : dataset
-        Dataset with 'edf' entry in its info dictionary (usually a dataset
+    ds : Dataset
+        Dataset with 'edf' entry in its info dictionary (usually a Dataset
         returned by ``load.eyelink.events()``)
     tmin, tmax : scalar
         Relative start and end points of the epoch (in seconds).
@@ -513,9 +513,9 @@ def add_artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
 
     Returns
     -------
-    ds : dataset
-        Returns the input dataset for consistency with similar functions; the
-        dataset is modified in place.
+    ds : Dataset
+        Returns the input Dataset for consistency with similar functions; the
+        Dataset is modified in place.
     """
     sacc, blink = artifact_epochs(ds, tmin, tmax, crop, esacc, eblink, t_edf)
 

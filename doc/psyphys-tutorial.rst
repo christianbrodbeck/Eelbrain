@@ -537,19 +537,19 @@ This plot can suggest good time-windows for further analysis with
 
     >>> ds = pp.collect.timewindow(subject * condition, e.SCRs, e.event, tstart=.1, tend=.6)
 
-Collectors return their result in the form of a :py:class:`~vessels.data.dataset`. 
-A :py:class:`~vessels.data.dataset` stores a data table containing multiple 
+Collectors return their result in the form of a :py:class:`~vessels.data.Dataset`. 
+A :py:class:`~vessels.data.Dataset` stores a data table containing multiple 
 variables, and works like a dictionary::
 
     >>> ds
-    <dataset '???' N=40: 'Y'(V), 'condition'(F), 'subject'(F)>
+    <Dataset '???' N=40: 'Y'(V), 'condition'(F), 'subject'(F)>
     >>> ds['Y']
-    var([0.27, 0.00, 0.00, 0.07, 0.06, ... n=40], name='Y')
+    Var([0.27, 0.00, 0.00, 0.07, 0.06, ... n=40], name='Y')
     >>> ds['subject']
-    factor([0, 0, 1, 1, 2, ...n=40], name="subject", random=True, labels={0: u'001', 1: u'002', 2: u'003', 3: u'004', 4: u'005', ...})
+    Factor([0, 0, 1, 1, 2, ...n=40], name="subject", random=True, labels={0: u'001', 1: u'002', 2: u'003', 3: u'004', 4: u'005', ...})
 
-The dataset contains :py:class:`~vessels.data.var` and 
-:py:class:`~vessels.data.factor` objects, which correspond to scalar and 
+The Dataset contains :py:class:`~vessels.data.Var` and 
+:py:class:`~vessels.data.Factor` objects, which correspond to scalar and 
 categorical variables. The table can be shown with ``print``::
 
     >>> print ds
@@ -597,7 +597,7 @@ categorical variables. The table can be shown with ``print``::
     0           014       control  
 
 
-A dataset can be retrieved as table object, and any table object can be 
+A Dataset can be retrieved as table object, and any table object can be 
 exported as tab-separated values (tsv) file::
 
     >>> t = ds.as_table()
@@ -613,7 +613,7 @@ Analyzing Statistics
 
     
 The :py:mod:`eelbrain.eellab` module contains functions for analyzing the 
-resulting dataset::
+resulting Dataset::
 
     >>> from eelbrain.eellab import *
     >>> attach(ds)

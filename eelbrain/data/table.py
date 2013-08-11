@@ -8,7 +8,7 @@ import numpy as np
 
 from .. import fmtxt
 from .data_obj import (ascategorial, asmodel, asvar, assub, isfactor, isvar,
-                       isinteraction, dataset, factor, var, Celltable)
+                       isinteraction, Dataset, Factor, Var, Celltable)
 
 __hide__ = ['division', 'fmtxt', 'scipy',
             'asmodel', 'isfactor', 'asfactor', 'isvar', 'Celltable',
@@ -31,13 +31,13 @@ def frequencies(Y, X=None, of=None, sub=None, ds=None):
         in `of` once. (Compress Y and X before calculating frequencies.)
     sub : None | index
         Only use a subset of the data.
-    ds : dataset
+    ds : Dataset
         If ds is specified, other parameters can be strings naming for
         variables in ds.
 
     Returns
     -------
-    freq : dataset
+    freq : Dataset
         Dataset with frequencies.
     """
     sub = assub(sub, ds)
@@ -58,31 +58,31 @@ def frequencies(Y, X=None, of=None, sub=None, ds=None):
 
     # special case
     if X is None:
-        out = dataset(name=name)
-        out['cell'] = factor(Y.cells, random=Y.random)
+        out = Dataset(name=name)
+        out['cell'] = Factor(Y.cells, random=Y.random)
         n = np.fromiter((np.sum(Y == cell) for cell in Y.cells), int,
                         len(Y.cells))
-        out['n'] = var(n)
+        out['n'] = Var(n)
         return out
 
     # header
     if getattr(X, 'name', None):
         name += ' by %s' % X.name
-    out = dataset(name=name)
+    out = Dataset(name=name)
 
     if isinteraction(X):
         for i, f in enumerate(X.base):
             random = getattr(f, 'random', False)
-            out[f.name] = factor((c[i] for c in X.cells), random=random)
+            out[f.name] = Factor((c[i] for c in X.cells), random=random)
     else:
-        out[X.name] = factor(X.cells)
+        out[X.name] = Factor(X.cells)
 
     y_idx = {cell: Y == cell for cell in Y.cells}
     x_idx = {cell: X == cell for cell in X.cells}
     for y_cell in Y.cells:
         n = (np.sum(np.logical_and(y_idx[y_cell], x_idx[x_cell]))
              for x_cell in X.cells)
-        out[y_cell] = var(np.fromiter(n, int, len(X.cells)))
+        out[y_cell] = Var(np.fromiter(n, int, len(X.cells)))
 
     return out
 
@@ -95,7 +95,7 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
 
     Parameters
     ----------
-    Y : var
+    Y : Var
         Dependent variable.
     y : categorial
         Model specifying rows
@@ -104,8 +104,8 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
     funcs : list of callables
         A list of statistics functions to show (all functions must take an
         array argument and return a scalar).
-    ds : dataset
-        If a dataset is provided, Y, y, and x can be strings specifying
+    ds : Dataset
+        If a Dataset is provided, Y, y, and x can be strings specifying
         members.
 
 
@@ -216,7 +216,7 @@ def rm_table(Y, X=None, match=None, cov=[], sub=None, fmt='%r', labels=True,
         categories defining cells (factorial model)
 
     match :
-        factor to match values on and return repeated-measures table
+        Factor to match values on and return repeated-measures table
 
     cov :
         covariate to report (WARNING: only works with match, where each value

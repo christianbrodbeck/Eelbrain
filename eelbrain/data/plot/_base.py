@@ -39,7 +39,7 @@ _plt_
     without explicitly changing aspects of the axes themselves.
 
 
-Top-level plotters can be called with nested lists of data-objects (ndvar
+Top-level plotters can be called with nested lists of data-objects (NDVar
 instances). They create a separate axes for each list element. Axes
 themselves can have multiple layers (e.g., a difference map visualized through
 a colormap, and significance levels indicated by contours).
@@ -135,10 +135,10 @@ def find_ct_args(ndvar, overlay, contours={}):
 
     Parameters
     ----------
-    ndvar : ndvar
+    ndvar : NDVar
         Data to be plotted.
     overlay : bool
-        Whether the ndvar is plotted as a first layer or as an overlay.
+        Whether the NDVar is plotted as a first layer or as an overlay.
     contours : dict
         Externally specified contours as {meas: {level: color}} mapping.
 
@@ -149,8 +149,8 @@ def find_ct_args(ndvar, overlay, contours={}):
 
     Notes
     -----
-    The ndvar's info dict contains default arguments that determine how the
-    ndvar is plotted as base and as overlay. In case of insufficient
+    The NDVar's info dict contains default arguments that determine how the
+    NDVar is plotted as base and as overlay. In case of insufficient
     information, defaults apply. On the other hand, defaults can be overridden
     by providing specific arguments to plotting functions.
     """
@@ -182,10 +182,10 @@ def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
 
     Parameters
     ----------
-    ndvar : ndvar
+    ndvar : NDVar
         Data to be plotted.
     overlay : bool
-        Whether the ndvar is plotted as a first layer or as an overlay.
+        Whether the NDVar is plotted as a first layer or as an overlay.
     vlims : dict
         {(meas, cmap): (vmax, vmin)} mapping to replace v-limits based on the
         ndvar.info dict.
@@ -199,8 +199,8 @@ def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
 
     Notes
     -----
-    The ndvar's info dict contains default arguments that determine how the
-    ndvar is plotted as base and as overlay. In case of insufficient
+    The NDVar's info dict contains default arguments that determine how the
+    NDVar is plotted as base and as overlay. In case of insufficient
     information, defaults apply. On the other hand, defaults can be overridden
     by providing specific arguments to plotting functions.
     """
@@ -240,10 +240,10 @@ def find_uts_args(ndvar, overlay, color=None):
 
     Parameters
     ----------
-    ndvar : ndvar
+    ndvar : NDVar
         Data to be plotted.
     overlay : bool
-        Whether the ndvar is plotted as a first layer or as an overlay.
+        Whether the NDVar is plotted as a first layer or as an overlay.
     vlims : dict
         Vmax and vmin values by (meas, cmap).
 
@@ -254,8 +254,8 @@ def find_uts_args(ndvar, overlay, color=None):
 
     Notes
     -----
-    The ndvar's info dict contains default arguments that determine how the
-    ndvar is plotted as base and as overlay. In case of insufficient
+    The NDVar's info dict contains default arguments that determine how the
+    NDVar is plotted as base and as overlay. In case of insufficient
     information, defaults apply. On the other hand, defaults can be overridden
     by providing specific arguments to plotting functions.
     """
@@ -280,7 +280,7 @@ def find_uts_hlines(ndvar):
 
     Parameters
     ----------
-    ndvar : ndvar
+    ndvar : NDVar
         Data to be plotted.
 
     Returns
@@ -303,7 +303,7 @@ def find_uts_ax_vlim(layers, vlims={}):
 
     Parameters
     ----------
-    layers : list of ndvar
+    layers : list of NDVar
         Data to be plotted.
     vlims : dict
         Vmax and vmin values by (meas, cmap).
@@ -350,7 +350,7 @@ def find_fig_vlims(plots, range_by_measure=False):
 
     Parameters
     ----------
-    plots : nested list of ndvar
+    plots : nested list of NDVar
         Unpacked plot data.
     range_by_measure : bool
         Constrain the vmax - vmin range such that the range is constant within
@@ -432,7 +432,7 @@ def fix_vlim_for_cmap(vmin, vmax, cmap):
 
 
 def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
-    """Unpack the first argument to top-level ndvar plotting functions
+    """Unpack the first argument to top-level NDVar plotting functions
 
     low level functions (``_plt_...``) work with two levels:
 
@@ -442,21 +442,21 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
     Ndvar plotting functions above 1-d UTS level should support the following
     API:
 
-     - simple ndvar: summary ``plot(meg)``
+     - simple NDVar: summary ``plot(meg)``
      - list of ndvars: summary for each ``plot(meg.as_list())``
-     - ndvar and Xax argument: summary for each  ``plot(meg, Xax=subject)
+     - NDVar and Xax argument: summary for each  ``plot(meg, Xax=subject)
      - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
 
     Parameters
     ----------
-    Y : ndvar | list
+    Y : NDVar | list
         the first argument.
     ndim : int
         The number of dimensions needed for the plotting function.
     Xax : None | categorial
         A model to divide Y into different axes. Xax is currently applied on
         the first level, i.e., it assumes that Y's first dimension is cases.
-    ds : None | dataset
+    ds : None | Dataset
         Dataset containing data objects which are provided as str.
     levels : int
         Current levels of nesting (0 is the lowest level where the output is a
@@ -464,7 +464,7 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
 
     Returns
     -------
-    data : list of list of ndvar
+    data : list of list of NDVar
         The processed data to plot.
     """
     if isinstance(Y, basestring):
@@ -494,7 +494,7 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
     if levels > 0:
         return [unpack_epochs_arg(v, ndim, None, ds, levels - 1) for v in Y]
     else:
-        # every value needs to be a ndvar
+        # every value needs to be a NDVar
         out = []
         for ndvar in Y:
             ndvar = asndvar(ndvar, ds=ds)

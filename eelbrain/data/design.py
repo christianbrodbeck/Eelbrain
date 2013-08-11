@@ -7,10 +7,10 @@ Usage
 Creating Design
 ---------------
 
-1) The first step is to construct a dataset from the variables that are
+1) The first step is to construct a Dataset from the variables that are
    permutated in the experiment. This is done by creating a list of `Variable`
    objects (one for each variable) and submitting it to the `permute` function.
-2) The second step is to add to the dataset additional variables that need
+2) The second step is to add to the Dataset additional variables that need
    randomization. A tool that can be used for this is the `random_factor`
    function.
 
@@ -148,15 +148,15 @@ def permute(variables, count='caseID', randomize=False):
         for i in xrange(0, n_trials, rand_bin_len):
             np.random.shuffle(out[i:i + rand_bin_len])
 
-    # create dataset
-    ds = _data.dataset(name='Design')
+    # create Dataset
+    ds = _data.Dataset(name='Design')
     for v in variables:
         x = out[:, v.ID]
-        f = _data.factor(x, v.name, labels=v.cells)
+        f = _data.Factor(x, v.name, labels=v.cells)
         ds.add(f)
 
     if count:
-        ds.add(_data.var(np.arange(ds.n_cases), count))
+        ds.add(_data.Var(np.arange(ds.n_cases), count))
 
     return ds
 
@@ -164,29 +164,29 @@ def permute(variables, count='caseID', randomize=False):
 
 def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
                   require_exact_balance=True, sub=None):
-    """Create a factor with random values
+    """Create a Factor with random values
 
     Parameters
     ----------
     values : list
-        Values (factor labels) from which to sample.
+        Values (Factor labels) from which to sample.
     n : int
-        Length of the new factor.
+        Length of the new Factor.
     name : None | str
-        Name of the factor.
+        Name of the Factor.
     rand : bool
         Randomize sequence of values (instead of just iterating over the
         range).
     balance : None | categorial
-        Cells over which the values in the new factor should be balanced.
+        Cells over which the values in the new Factor should be balanced.
     urn : None | list of factors
         Factors which have already drawn from the same urn. I.e., for each
-        index, the new factor should contain a value that is different from
+        index, the new Factor should contain a value that is different from
         the factors in urn.
     require_exact_balance : bool
         Raise an error if balancing exactly is not possible.
     sub : None | index array
-        Only fill up part of the factor (the other cells will have the default
+        Only fill up part of the Factor (the other cells will have the default
         '' empty string value).
     """
     i = 0
@@ -209,7 +209,7 @@ def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
         else:
             if sub is not None:
                 f_sub = f
-                f = _data.factor([''], rep=n_tgt, name=name)
+                f = _data.Factor([''], rep=n_tgt, name=name)
                 f[sub] = f_sub
             return f
 
@@ -233,7 +233,7 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
 
         region_len = region_lens[0]
     else:
-        regions = _data.factor('?' * n, "regions")
+        regions = _data.Factor('?' * n, "regions")
         region_len = n
 
     # generate random values with equal number of each value
@@ -292,18 +292,18 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
                         raise RandomizationError(msg)
 
         x[c_index] = values
-    return _data.factor(x, name, labels=cells)
+    return _data.Factor(x, name, labels=cells)
 
 
 def add_missing(base, name=None, values=None):
     """
-    returns a factor that contains the values that are not contained in a group
+    returns a Factor that contains the values that are not contained in a group
     of other factors.
 
     base : list of factors
         factors that together, on each case, contain all the values spare one.
     values : list of str | None
-        values for the factor. If None, the first factor's values are used.
+        values for the Factor. If None, the first Factor's values are used.
 
     """
     N = len(base[0])
@@ -316,7 +316,7 @@ def add_missing(base, name=None, values=None):
     for i, v in cells.iteritems():
         grid[:, i] = np.all([f != v for f in base], axis=0)
 
-    out = _data.factor('?' * N, name=name)
+    out = _data.Factor('?' * N, name=name)
     for i in cells:
         out[grid[:, i]] = cells[i]
 
@@ -326,14 +326,14 @@ def add_missing(base, name=None, values=None):
 
 def shuffle_cases(dataset, inplace=False, blocks=None):
     """
-    Shuffles the cases in a dataset.
+    Shuffles the cases in a Dataset.
 
-    blocks : categorial variable (factor or interaction)
+    blocks : categorial
         defines blocks between which cases are not exchanged
     inplace : bool
-        If True, the input dataset itself is modified, and the function does
-        not return anything; if False, a new dataset containing the shuffled
-        variables is returned and the original dataset is left unmodified.
+        If True, the input Dataset itself is modified, and the function does
+        not return anything; if False, a new Dataset containing the shuffled
+        variables is returned and the original Dataset is left unmodified.
 
     """
     index = np.arange(dataset.n_cases)
@@ -366,8 +366,8 @@ def export_mat(dataset, values=None, destination=None):
     Arguments
     ---------
 
-    dataset : dataset
-        dataset containing the trial list
+    dataset : Dataset
+        Dataset containing the trial list
 
     values : `None` or `{varname -> {cellname -> value}}`
         additional values that should be stored, where: `varname` is the
@@ -419,15 +419,15 @@ def export_mat(dataset, values=None, destination=None):
 
 def save(dataset, destination=None, values=None, pickle_values=False):
     """
-    Saves the dataset with the same name simultaneously in 3 different formats:
+    Saves the Dataset with the same name simultaneously in 3 different formats:
 
      - mat: matlab file
-     - pickled dataset
+     - pickled Dataset
      - TSV: tab-separated values
 
     """
     if destination is None:
-        msg = ("Pick a name to save the dataset (without extension; '.mat', "
+        msg = ("Pick a name to save the Dataset (without extension; '.mat', "
                "'.pickled' and '.tsv' will be appended")
         destination = ui.ask_saveas("Save Dataset", msg, None)
 
