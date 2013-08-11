@@ -47,12 +47,12 @@ Created on Feb 27, 2012
 @author: Christian Brodbeck
 '''
 import os
-import cPickle as _pickle
 
 import numpy as np
 import scipy.io
 
 from . import data_obj as _data
+from . import save
 from .. import ui
 
 
@@ -441,13 +441,13 @@ def save(dataset, destination=None, values=None, pickle_values=False):
         dest = os.path.extsep.join((destination, 'pickled'))
         print msg_temp % dest
         with open(dest, 'w') as f:
-            _pickle.dump(dataset, f)
+            save.pickle(dataset, f)
 
         if pickle_values:
             dest = os.path.extsep.join((destination + '_values', 'pickled'))
             print msg_temp % dest
             with open(dest, 'w') as f:
-                _pickle.dump(values, f)
+                save.pickle(values, f)
 
         dest = os.path.extsep.join((destination, 'mat'))
         print msg_temp % dest
