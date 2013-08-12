@@ -7,28 +7,28 @@ from eelbrain.data import datasets, plot
 
 
 def test_plot_topomap():
-    "Test plot.topo.topomap"
+    "Test plot.Topomap"
     plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
-    p = plot.topo.topomap('utsnd.summary(time=(0.075, 0.125))', ds=ds)
+    p = plot.Topomap('utsnd.summary(time=(0.075, 0.125))', ds=ds)
     p.close()
-    p = plot.topo.topomap('utsnd.summary(time=(0.075, 0.125))', 'A%B', ds=ds)
+    p = plot.Topomap('utsnd.summary(time=(0.075, 0.125))', 'A%B', ds=ds)
     p.close()
 
 def test_plot_butterfly():
-    "Test plot.topo.butterfly"
+    "Test plot.TopoButterfly"
     plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
-    p = plot.topo.butterfly('utsnd', ds=ds)
+    p = plot.TopoButterfly('utsnd', ds=ds)
     p.close()
-    p = plot.topo.butterfly('utsnd', 'A%B', ds=ds)
+    p = plot.TopoButterfly('utsnd', 'A%B', ds=ds)
     p.close()
 
 def test_plot_array():
-    "Test plot.topo.array"
+    "Test plot.TopoArray"
     plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
-    p = plot.topo.array('utsnd', ds=ds)
+    p = plot.TopoArray('utsnd', ds=ds)
     p.close()
-    p = plot.topo.array('utsnd', 'A%B', ds=ds)
+    p = plot.TopoArray('utsnd', 'A%B', ds=ds)
     p.close()

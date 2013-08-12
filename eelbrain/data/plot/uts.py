@@ -24,7 +24,7 @@ from . import _base
 __hide__ = ['plt', 'division', 'Celltable']
 
 
-class stat(_base.subplot_figure):
+class UTSStat(_base.subplot_figure):
     "Plots statistics for a one-dimensional NDVar"
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, dev=scipy.stats.sem, legend='upper right',
@@ -129,7 +129,7 @@ class stat(_base.subplot_figure):
 
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
-        super(stat, self).__init__("plot.uts.stat", nax, layout,
+        super(UTSStat, self).__init__("UTSStat Plot", nax, layout,
                                    figtitle=title)
 
         self._plots = []
@@ -295,9 +295,9 @@ class stat(_base.subplot_figure):
 
 
 
-class uts(_base.subplot_figure):
+class UTS(_base.subplot_figure):
     "Value by time plot for uts data."
-    def __init__(self, epochs, Xax=None, title='plot.uts.uts', figtitle=None,
+    def __init__(self, epochs, Xax=None, title='plot.UTS', figtitle=None,
                  axtitle='{name}', ds=None, ax_aspect=2, **layout):
         """
         Parameters
@@ -309,7 +309,8 @@ class uts(_base.subplot_figure):
 
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
-        super(uts, self).__init__(title, len(epochs), layout, 1.5, 2)
+        super(UTS, self).__init__("UTS", len(epochs), layout, 1.5, 2,
+                                  figtitle=title)
 
         for ax, epoch in zip(self._axes, epochs):
             _ax_uts(ax, epoch, title=axtitle)
@@ -381,7 +382,7 @@ class _ax_stat:
         self.title = title
 
 
-class clusters(_base.subplot_figure):
+class UTSClusters(_base.subplot_figure):
     "Plotting of ANOVA permutation cluster test results"
     def __init__(self, res, pmax=0.05, ptrend=0.1, title=None,
                  axtitle='{name}', cm='jet', overlay=False, **layout):
@@ -414,8 +415,8 @@ class clusters(_base.subplot_figure):
         # create figure
         N = len(epochs)
         nax = 1 if overlay else N
-        super(clusters, self).__init__("plot.uts.clusters", nax, layout,
-                                       figtitle=title)
+        super(UTSClusters, self).__init__("UTSClusters", nax, layout,
+                                          figtitle=title)
 
         ylabel = True
         self._caxes = []

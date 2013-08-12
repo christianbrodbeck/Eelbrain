@@ -17,7 +17,7 @@ Plotting
    activation
    dspm
    stat
-   stc
+   STC
 
 
 
@@ -29,8 +29,8 @@ Plotting
 .. autosummary::
    :toctree: generated
 
-   map2d
-   multi
+   SensorMap2d
+   SensorMaps
 
 
 
@@ -42,9 +42,9 @@ Plotting
 .. autosummary::
    :toctree: generated
    
-   array
-   butterfly
-   topomap
+   TopoArray
+   TopoButterfly
+   Topomap
 
 
 
@@ -56,9 +56,9 @@ Plotting
 .. autosummary::
    :toctree: generated
 
-   clusters
-   stat
-   uts
+   UTSClusters
+   UTSStat
+   UTS
 
 
 
@@ -70,8 +70,8 @@ Plotting
 .. autosummary::
    :toctree: generated
 
-   array
-   butterfly
+   Array
+   Butterfly
 
 
 

@@ -1820,7 +1820,7 @@ class MneExperiment(FileTree):
             PCA.append(v)
 
         proj_file = self.get('proj-file')
-        p = plot.topo.topomap(PCA, size=1, title=proj_file)
+        p = plot.Topomap(PCA, size=1, title=proj_file)
         if save_plot:
             dest = self.get('proj-plot')
             p.figure.savefig(dest)

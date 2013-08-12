@@ -11,11 +11,11 @@ def test_anova():
     testnd.anova('utsnd', 'A*B', ds=ds)
 
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds)
-    p = plot.topo.array(res)
+    p = plot.Array(res)
     p.close()
 
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2)
-    p = plot.topo.array(res)
+    p = plot.Array(res)
     p.close()
 
 
@@ -31,9 +31,9 @@ def test_corr():
     utsnd.x[:, 3:5, 50:65] += Y.x[:, None, None]
 
     res = testnd.corr('utsnd', 'Y', 'rm', ds=ds)
-    p = plot.topo.array(res)
+    p = plot.Array(res)
     p.close()
 
     res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=2)
-    p = plot.topo.array(res)
+    p = plot.Array(res)
     p.close()

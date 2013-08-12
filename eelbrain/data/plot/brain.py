@@ -19,7 +19,7 @@ from .. import testnd
 from . import _base
 
 
-__all__ = ['activation', 'dspm', 'stc', 'stat']
+__all__ = ['activation', 'dspm', 'STC', 'stat']
 
 
 def idx(i):
@@ -75,7 +75,7 @@ def dspm(source_estimate, fmin=13, fmid=18, fmax=22, surf='smoothwm',
     if source_estimate.has_case:
         source_estimate = source_estimate.summary()
 
-    return stc(source_estimate, lut, min=-fmax, max=fmax, surf=surf,
+    return STC(source_estimate, lut, min=-fmax, max=fmax, surf=surf,
                colorbar=False, hemi=hemi)
 
 
@@ -107,7 +107,7 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, surf='smoothwm',
     if dtmin and p_map.has_dim('time'):
         p_map = testnd.clean_time_axis(p_map, dtmin, below=p0, null=1)
     pmap, lut, vmax = p_lut(p_map, param_map, p0=p0, p1=p1, solid=solid)
-    plot = stc(pmap, colormap=lut, min=-vmax, max=vmax, colorbar=False,
+    plot = STC(pmap, colormap=lut, min=-vmax, max=vmax, colorbar=False,
                surf=surf, hemi=hemi)
     return plot
 
@@ -144,12 +144,12 @@ def activation(source_estimate, a_thresh=None, act_max=None, surf='smoothwm',
     if source_estimate.has_case:
         source_estimate = source_estimate.summary()
 
-    plot = stc(source_estimate, colormap=lut, min=-act_max, max=act_max,
+    plot = STC(source_estimate, colormap=lut, min=-act_max, max=act_max,
                colorbar=False, surf=surf, hemi=hemi)
     return plot
 
 
-class stc:
+class STC:
     """
     Plot a source space NDVar.
 

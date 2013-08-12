@@ -36,7 +36,7 @@ class SelectEpochs(eelfigure):
     LMB on any butterfly plot:
         (de-)select this case.
     't' on any butterfly plot:
-        Open a topomap for the current time point.
+        Open a Topomap for the current time point.
     'b' on any butterfly plot:
         Open a full butterfly plot for the current epoch.
     'c' on any epoch butterfly plot:
@@ -401,7 +401,7 @@ class SelectEpochs(eelfigure):
         if self._topo_fig:
             pass
         else:
-            fig = plot.topo.topomap(self._tseg, sensors='name')
+            fig = plot.Topomap(self._tseg, sensors='name')
             self._topo_fig = fig
 
     def save_rejection(self, path):
@@ -578,7 +578,7 @@ class SelectEpochs(eelfigure):
             if ax_id == -2:
                 return
             tseg = self._get_topo_seg(ax, t=event.xdata)
-            plot.topo.topomap(tseg, sensors='name')
+            plot.Topomap(tseg, sensors='name')
         elif (event.key == 'b'):
             if ax_id == -1:
                 seg = self._mean_seg
@@ -586,7 +586,7 @@ class SelectEpochs(eelfigure):
                 seg = self._case_segs[ax_id]
             else:
                 return
-            plot.topo.butterfly(seg)
+            plot.TopoButterfly(seg)
         elif (event.key == 'c'):
             if ax_id == -2:
                 return
@@ -597,7 +597,7 @@ class SelectEpochs(eelfigure):
                 seg = self._case_segs[ax_id]
                 name = 'Epoch %i Neighbor Correlation' % ax.segID
             cseg = corr(seg, name=name)
-            plot.topo.topomap(cseg, sensors='name')
+            plot.Topomap(cseg, sensors='name')
         elif event.key == 'right' and self._current_page_i < self._n_pages - 1:
             self.show_page(self._current_page_i + 1)
         elif event.key == 'left' and self._current_page_i > 0:

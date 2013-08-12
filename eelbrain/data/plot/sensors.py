@@ -303,7 +303,7 @@ class _tb_sensors_mixin:
         self.draw()
 
 
-class multi(_base.eelfigure):
+class SensorMaps(_base.eelfigure):
     """
     GUI with multiple views on a sensor layout.
 
@@ -342,7 +342,7 @@ class multi(_base.eelfigure):
 
         # layout figure
         layout.update(ncol=2, nrow=2)
-        ftitle = 'plot.sensors.multi'
+        ftitle = 'SensorMaps'
         sens_name = getattr(sensors, 'sysname', None)
         if sens_name:
             ftitle = '%s: %s' % (ftitle, sens_name)
@@ -350,7 +350,7 @@ class multi(_base.eelfigure):
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
-        super(multi, self).__init__(ftitle, 4, layout, 1, 3, figtitle=title)
+        super(SensorMaps, self).__init__(ftitle, 4, layout, 1, 3, figtitle=title)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)
 
@@ -530,7 +530,7 @@ class multi(_base.eelfigure):
 
 
 
-class map2d(_tb_sensors_mixin, _base.eelfigure):
+class SensorMap2d(_tb_sensors_mixin, _base.eelfigure):
     """
     Plot a 2d Sensor Map.
 
@@ -562,7 +562,7 @@ class map2d(_tb_sensors_mixin, _base.eelfigure):
         elif hasattr(sensors, 'sensor'):
             sensors = sensors.sensor
 
-        ftitle = 'plot.sensors.map2d'
+        ftitle = 'SensorMap2d'
         sens_name = getattr(sensors, 'sysname', None)
         if sens_name:
             ftitle = '%s: %s' % (ftitle, sens_name)

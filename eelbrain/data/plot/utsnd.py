@@ -208,7 +208,7 @@ class _ax_im_array(object):
             l.set_vlim(vmax, meas, vmin)
 
 
-class array(_base.eelfigure):
+class Array(_base.eelfigure):
     def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
                  ds=None, **layout):
         """
@@ -231,7 +231,7 @@ class array(_base.eelfigure):
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
         nax = len(epochs)
-        _base.eelfigure.__init__(self, "plot.utsnd.array", nax, layout,
+        _base.eelfigure.__init__(self, "Array Plot", nax, layout,
                                  figtitle=title)
 
         self.plots = []
@@ -488,7 +488,7 @@ class _ax_butterfly(object):
         self.vmax = vmax
 
 
-class butterfly(_base.eelfigure):
+class Butterfly(_base.eelfigure):
     "Plot data in a butterfly plot."
     def __init__(self, epochs, Xax=None, sensors=None, title=None,
                  axtitle='{name}', xlabel=True, ylabel=True, color=None,
@@ -509,8 +509,8 @@ class butterfly(_base.eelfigure):
             black; ``True``: alternate colors (mpl default)
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
-        super(butterfly, self).__init__('plot.utsnd.butterfly', len(epochs),
-                                        layout, figtitle=title)
+        super(Butterfly, self).__init__('Butterfly Plot', len(epochs), layout,
+                                        figtitle=title)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, True)

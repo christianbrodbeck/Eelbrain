@@ -530,7 +530,7 @@ The result can be plotted with::
     >>> detach()
     >>> attach(ds)
     >>> from eelbrain.eellab import *
-    >>> plot.uts.stat(Y, condition)
+    >>> plot.UTSStat(Y, condition)
 
 This plot can suggest good time-windows for further analysis with
 :py:func:`!psyphys.collect.timewindow`::

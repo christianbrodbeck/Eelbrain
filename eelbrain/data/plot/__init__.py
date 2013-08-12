@@ -34,11 +34,11 @@ object. The data of the plotted variable will be split into the catories in
 
 For example, while
 
-    >>> plot.utsnd.butterfly('meg', ds=ds)
+    >>> plot.Butterfly('meg', ds=ds)
 
-will create a single butterfly plot of the average response,
+will create a single Butterfly plot of the average response,
 
-    >>> plot.utsnd.butterfly('meg', 'subject', ds=ds)
+    >>> plot.Butterfly('meg', 'subject', ds=ds)
 
 where ``'subject'`` is the ``Xax`` parameter, will create a separate subplot
 for every subject with its average response.
@@ -65,10 +65,10 @@ Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.
 
 """
-from . import sensors
-from . import topo
-from . import uts
-from . import utsnd
+from sensors import SensorMaps, SensorMap2d
+from topo import TopoArray, TopoButterfly, Topomap
+from uts import UTSStat, UTS, UTSClusters
+from utsnd import Array, Butterfly
 from . import uv
 
 from ._base import configure_backend

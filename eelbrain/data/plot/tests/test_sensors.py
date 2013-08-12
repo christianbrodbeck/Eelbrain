@@ -10,11 +10,11 @@ from eelbrain.data import datasets, plot
 
 
 def test_map2d():
-    "Test plot.sensors.map2d"
+    "Test plot.SensorMap2d"
     plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
     Y = ds['utsnd']
-    p = plot.sensors.map2d(Y)
+    p = plot.SensorMap2d(Y)
     p.set_label_color('g')
     p.set_label_text('idx')
     p.show_connectivity()
@@ -23,11 +23,11 @@ def test_map2d():
 
 
 def test_multi():
-    "Test plot.sensors.multi"
+    "Test plot.SensorMaps"
     plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
     Y = ds['utsnd']
-    p = plot.sensors.multi(Y)
+    p = plot.SensorMaps(Y)
     ROI = [1, 2]
     p.set_ROI(ROI)
     ROI2 = p.get_ROI()

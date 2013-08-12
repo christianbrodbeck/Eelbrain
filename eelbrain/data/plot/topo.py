@@ -17,7 +17,7 @@ from .sensors import _plt_map2d
 
 
 
-class topomap(_tb_sensors_mixin, _base.eelfigure):
+class Topomap(_tb_sensors_mixin, _base.eelfigure):
     "Plot individual topogeraphies"
     def __init__(self, epochs, Xax=None, sensors=True, proj='default',
                  vmax=None, title=None, res=200, interpolation='nearest',
@@ -52,7 +52,7 @@ class topomap(_tb_sensors_mixin, _base.eelfigure):
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
-        _base.eelfigure.__init__(self, "plot.topo.topomap", nax, layout, 1, 7,
+        _base.eelfigure.__init__(self, "Topomap Plot", nax, layout, 1, 7,
                                  figtitle=title)
         _tb_sensors_mixin.__init__(self)
 
@@ -114,7 +114,7 @@ class topomap(_tb_sensors_mixin, _base.eelfigure):
         self.draw()
 
 
-class butterfly(_base.eelfigure):
+class TopoButterfly(_base.eelfigure):
     """
     Butterfly plot with corresponding topomaps.
 
@@ -177,7 +177,7 @@ class butterfly(_base.eelfigure):
         y_size = axh * n_plots
 
         fig_kwa.update(figsize=(x_size, y_size))
-        super(butterfly, self).__init__("plot.topo.butterfly", None,
+        super(TopoButterfly, self).__init__("TopoButterfly Plot", None,
                                         fig_kwa=fig_kwa, figtitle=title)
 
         # axes sizes
@@ -481,7 +481,7 @@ class _ax_topomap(_utsnd._ax_im_array):
 
 
 class _Window_Topo:
-    """Helper class for array"""
+    """Helper class for TopoArray"""
     def __init__(self, ax, parent, **plot_args):
         self.ax = ax
         self.parent = parent
@@ -545,7 +545,7 @@ class _Window_Topo:
             self.pointer = None
 
 
-class array(_base.eelfigure):
+class TopoArray(_base.eelfigure):
     """
     Channel by sample plots with corresponding topomaps
 
@@ -596,7 +596,7 @@ class array(_base.eelfigure):
         x_per_ax = (1 - x_frame_l - x_frame_r) / n_epochs
 
         # create figure
-        super(array, self).__init__('plot.topo.array', None, fig_kwa=fig_kwa)
+        super(TopoArray, self).__init__('TopoArray Plot', None, fig_kwa=fig_kwa)
         fig = self.figure
 
         fig.subplots_adjust(left=x_frame_l,
@@ -668,7 +668,7 @@ class array(_base.eelfigure):
                 e_repr.append([ie.name for ie in e])
         kwargs = {'s': repr(e_repr),
                   't': ' %r' % self.title if self.title else ''}
-        txt = "<plot.topo.array{t} ({s})>".format(**kwargs)
+        txt = "<plot.TopoArray{t} ({s})>".format(**kwargs)
         return txt
 
     def add_contour(self, meas, level, color='k'):

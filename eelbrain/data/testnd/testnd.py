@@ -6,7 +6,6 @@ from time import time as current_time
 
 import numpy as np
 import scipy.stats
-from scipy.stats import percentileofscore
 from scipy import ndimage
 from scipy.ndimage import binary_closing, binary_erosion, binary_dilation
 from scipy.sparse import coo_matrix
