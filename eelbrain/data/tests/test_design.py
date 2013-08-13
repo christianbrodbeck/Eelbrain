@@ -1,8 +1,9 @@
-from nose.tools import ok_, eq_
+from nose.tools import ok_, eq_, assert_raises
 
 import numpy as np
 
-from eelbrain.data.design import permute, random_factor
+from eelbrain.data import Dataset, Factor
+from eelbrain.data.design import permute, random_factor, complement
 
 
 def test_random_factor():
@@ -37,3 +38,22 @@ def test_random_factor():
     eq_(nv, 12, "random value assignment with `sub` arg")
     eq_(nv, (subrand == '2').sum(), "sub balancing")
     eq_(nv, (subrand == '3').sum(), "sub balancing")
+
+
+def test_complement():
+    """Test design.complement()"""
+    ds = Dataset()
+    ds['A'] = Factor('abcabc')
+    ds['B'] = Factor('bcabca')
+    ds['C'] = Factor('cabcab')
+
+    # underspecified
+    assert_raises(ValueError, complement, ['A'], ds=ds)
+
+    # correct
+    comp = complement(['A', 'B'], ds=ds)
+    ok_(np.all(comp == ds['C']), "Complement yielded %s instead of "
+        "%s." % (comp, ds['C']))
+
+    # overspecified
+    assert_raises(ValueError, complement, ['A', 'B', 'C'], ds=ds)

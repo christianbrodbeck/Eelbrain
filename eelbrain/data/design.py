@@ -346,6 +346,12 @@ def complement(base, name=None, values=None, ds=None):
     for i, v in cells.iteritems():
         grid[:, i] = np.all([f != v for f in base], axis=0)
 
+    grid_sum = np.sum(grid, axis=1)
+    if np.any(grid_sum > 1):
+        raise ValueError("More than one unused values for at least on case")
+    elif np.any(grid_sum < 1):
+        raise ValueError("No unused values for at least on case")
+
     out = Factor('?' * N, name=name)
     for i in cells:
         out[grid[:, i]] = cells[i]
