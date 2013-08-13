@@ -39,6 +39,7 @@ Can be used in matlab as:
              255           0           0
 
 '''
+from itertools import product
 import os
 
 import numpy as np
@@ -93,9 +94,32 @@ class Variable(object):
         self.Ndraw = self.N - len(self.urn)  # the N of possible values for each trial
 
 
+def permute(variables):
+    """
+    Create a Dataset from permuting variables.
+
+    Parameters
+    ----------
+    variables : sequence
+        Sequence of (name, values) tuples. For examples:
+        ``(('A', ('a1', 'a2')), ('B', ('b1', 'b2')))``
+
+    Examples
+    --------
+    >>> print permute((('A', ('a1', 'a2')),('B', ('b1', 'b2'))))
+    A    B
+    -------
+    a1   b1
+    a1   b2
+    a2   b1
+    a2   b2
+    """
+    names = (v[0] for v in variables)
+    cases = tuple(product(*(v[1] for v in variables)))
+    return Dataset.from_caselist(names, cases)
 
 
-def permute(variables, count='caseID', randomize=False):
+def permute_(variables, count='caseID', randomize=False):
     # sort variables
     perm_rand = []  # permutated and randomized
     perm_nonrand = []  # permutated and not randomized
@@ -148,7 +172,7 @@ def permute(variables, count='caseID', randomize=False):
 
 
 def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
-                  require_exact_balance=True, sub=None):
+                  require_exact_balance=True, sub=None, ds=None):
     """Create a Factor with random values
 
     Parameters

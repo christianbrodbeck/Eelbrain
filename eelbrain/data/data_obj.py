@@ -2845,6 +2845,28 @@ class Dataset(collections.OrderedDict):
             raise TypeError(err)
         return eval(expression, self)
 
+    @classmethod
+    def from_caselist(cls, names, cases):
+        """Create a Dataset from a list of cases
+
+        Parameters
+        ----------
+        names : sequence of str
+            Names for the variables.
+        cases : sequence
+            A sequence of cases, whereby each case is itself represented as a
+            sequence of values (str or scalar). Variable type (Factor or Var)
+            is inferred from whether values are str or not.
+        """
+        ds = cls()
+        for i, name in enumerate(names):
+            values = [case[i] for case in cases]
+            if any(isinstance(v, basestring) for v in values):
+                ds[name] = Factor(values)
+            else:
+                ds[name] = Var(values)
+        return ds
+
     def get_case(self, i):
         "returns the i'th case as a dictionary"
         return dict((k, v[i]) for k, v in self.iteritems())

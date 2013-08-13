@@ -2,14 +2,15 @@ from nose.tools import ok_, eq_
 
 import numpy as np
 
-from eelbrain.data.design import (permute, Variable, random_factor)
+from eelbrain.data.design import permute, random_factor
+
 
 def test_random_factor():
     """Test the design module for creating an experiemnt design"""
     ds = permute((
-                  Variable('A', '123456'),
-                  Variable('Bin', '01'),
-                  Variable('B', 'abcdef'),
+                  ('A', '123456'),
+                  ('Bin', '01'),
+                  ('B', 'abcdef'),
                   ))
     n = ds.n_cases
 
