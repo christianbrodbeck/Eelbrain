@@ -38,20 +38,13 @@ Can be used in matlab as:
     ans =
              255           0           0
 
-
-
-
-
-Created on Feb 27, 2012
-
-@author: Christian Brodbeck
 '''
 import os
 
 import numpy as np
 import scipy.io
 
-from . import data_obj as _data
+from .data_obj import Dataset, Factor
 from . import save
 from .. import ui
 
@@ -79,8 +72,8 @@ class Variable(object):
             randomize the sequence of values
         urn : list of Variables
             Variables which are drawn from the same urn BEFORE the
-            current Variable (i.e. the current Variable can only assume values not taken
-            by any PI in urn.
+            current Variable (i.e. the current Variable can only assume values
+            not taken by any PI in urn.
         """
         self.is_rand = rand
         self.name = name
@@ -99,9 +92,6 @@ class Variable(object):
         self.N = len(values)  # theN of categories
         self.Ndraw = self.N - len(self.urn)  # the N of possible values for each trial
 
-    def _set_list_ID(self, ID):
-        "called by PS.__init__ to set the ID that the PI has in the list"
-        self.ID = ID
 
 
 
@@ -114,11 +104,6 @@ def permute(variables, count='caseID', randomize=False):
             perm_rand.append(v)
         else:
             perm_nonrand.append(v)
-#    variables = perm_rand + perm_nonrand
-
-    # set the variables IDs
-    for i, v in enumerate(variables):
-        v._set_list_ID(i)
 
     perm_n = [v.Ndraw for v in variables]
     n_trials = np.prod(perm_n)
@@ -149,14 +134,14 @@ def permute(variables, count='caseID', randomize=False):
             np.random.shuffle(out[i:i + rand_bin_len])
 
     # create Dataset
-    ds = _data.Dataset(name='Design')
-    for v in variables:
-        x = out[:, v.ID]
-        f = _data.Factor(x, v.name, labels=v.cells)
+    ds = Dataset(name='Design')
+    for i, v in enumerate(variables):
+        x = out[:, i]
+        f = Factor(x, v.name, labels=v.cells)
         ds.add(f)
 
     if count:
-        ds.add(_data.Var(np.arange(ds.n_cases), count))
+        ds.index(count)
 
     return ds
 
@@ -179,10 +164,10 @@ def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
         range).
     balance : None | categorial
         Cells over which the values in the new Factor should be balanced.
-    urn : None | list of factors
+    urn : None | list of Factors
         Factors which have already drawn from the same urn. I.e., for each
         index, the new Factor should contain a value that is different from
-        the factors in urn.
+        the Factors in urn.
     require_exact_balance : bool
         Raise an error if balancing exactly is not possible.
     sub : None | index array
@@ -209,7 +194,7 @@ def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
         else:
             if sub is not None:
                 f_sub = f
-                f = _data.Factor([''], rep=n_tgt, name=name)
+                f = Factor([''], rep=n_tgt, name=name)
                 f[sub] = f_sub
             return f
 
@@ -233,7 +218,7 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
 
         region_len = region_lens[0]
     else:
-        regions = _data.Factor('?' * n, "regions")
+        regions = Factor('?' * n, "regions")
         region_len = n
 
     # generate random values with equal number of each value
@@ -292,19 +277,20 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
                         raise RandomizationError(msg)
 
         x[c_index] = values
-    return _data.Factor(x, name, labels=cells)
+    return Factor(x, name, labels=cells)
 
 
 def add_missing(base, name=None, values=None):
     """
-    returns a Factor that contains the values that are not contained in a group
-    of other factors.
+    Create a Factor that contains for each index the value that is not on any
+    other Factor at this index.
 
-    base : list of factors
-        factors that together, on each case, contain all the values spare one.
+    Parameters
+    ----------
+    base : list of Factors
+        Factors that together, on each case, contain all the values spare one.
     values : list of str | None
         values for the Factor. If None, the first Factor's values are used.
-
     """
     N = len(base[0])
     if values is None:
@@ -316,7 +302,7 @@ def add_missing(base, name=None, values=None):
     for i, v in cells.iteritems():
         grid[:, i] = np.all([f != v for f in base], axis=0)
 
-    out = _data.Factor('?' * N, name=name)
+    out = Factor('?' * N, name=name)
     for i in cells:
         out[grid[:, i]] = cells[i]
 
@@ -329,7 +315,7 @@ def shuffle_cases(dataset, inplace=False, blocks=None):
     Shuffles the cases in a Dataset.
 
     blocks : categorial
-        defines blocks between which cases are not exchanged
+        defines blocks between which cases are not exchanged.
     inplace : bool
         If True, the input Dataset itself is modified, and the function does
         not return anything; if False, a new Dataset containing the shuffled
