@@ -1,4 +1,5 @@
 from .data_obj import *
+from .design import permute, random_factor, complement
 from .stats import rms, rmssd
 
 from . import datasets
