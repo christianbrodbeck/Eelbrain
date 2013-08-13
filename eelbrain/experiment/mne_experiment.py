@@ -732,60 +732,6 @@ class MneExperiment(FileTree):
         for name, subjects in self.groups.iteritems():
             ds[name] = Var(subject.isin(subjects))
 
-    def list_files(self, files=['raw-file'], count=True, fields=['subject'],
-                   **kwargs):
-        """
-        Compile a table about the existence of files by subject
-
-        Parameters
-        ----------
-        files : str | list of str
-            The names of the path templates whose existence to list.
-        count : bool
-            Add a column with a number for each subject.
-        fields : str | list of str
-            The names of the variables for which to list files (i.e., for each
-            unique combination of ``fields``, list ``files``).
-        """
-        if not isinstance(files, (list, tuple)):
-            files = [files]
-        if not isinstance(fields, (list, tuple)):
-            fields = [fields]
-
-        ncol = (len(fields) + len(files))
-        table = fmtxt.Table('r' * bool(count) + 'l' * ncol)
-        if count:
-            table.cell()
-        for name in fields + files:
-            table.cell(name.capitalize())
-        table.midrule()
-
-        for i, _ in enumerate(self.iter(fields, **kwargs)):
-            if count:
-                table.cell(i)
-
-            for field in fields:
-                table.cell(self.get(field))
-
-            for temp in files:
-                path = self.get(temp)
-                if os.path.exists(path):
-                    table.cell(temp)
-                else:
-                    table.cell('-')
-
-        return table
-
-    def list_subjects(self):
-        """Print a table with the MRI subject corresponding to each subject"""
-        table = fmtxt.Table('ll')
-        table.cells('subject', 'mrisubject')
-        table.midrule()
-        for _ in self.iter('subject'):
-            table.cell(self.get('subject'))
-            table.cell(self.get('mrisubject'))
-        return table
-
     def load_edf(self, **kwargs):
         """Load the edf file ("edf-file" template)"""
         kwargs['fmatch'] = False
@@ -2270,13 +2216,18 @@ class MneExperiment(FileTree):
             subject = subjects[0]
         self.set(subject=subject, add=True)
 
-    def show_in_finder(self, key, **kwargs):
-        "Reveals the file corresponding to the ``key`` template in the Finder."
-        fname = self.get(key, **kwargs)
-        subprocess.call(["open", "-R", fname])
+    def show_subjects(self):
+        """Print a table with the MRI subject corresponding to each subject"""
+        table = fmtxt.Table('ll')
+        table.cells('subject', 'mrisubject')
+        table.midrule()
+        for _ in self.iter('subject'):
+            table.cell(self.get('subject'))
+            table.cell(self.get('mrisubject'))
+        return table
 
-    def summary(self, templates=['raw-file'], missing='-', link=' > ',
-                count=True):
+    def show_summary(self, templates=['raw-file'], missing='-', link=' > ',
+                     count=True):
         """
         Compile a table about the existence of files by subject
 

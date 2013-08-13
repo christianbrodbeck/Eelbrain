@@ -6,6 +6,7 @@ import itertools
 import os
 import re
 import shutil
+import subprocess
 
 import numpy as np
 
@@ -424,60 +425,6 @@ class TreeModel(object):
             path = temp.format(**self._fields)
             yield path
 
-    def list_values(self, str_out=False):
-        """
-        Generate a table for all iterable fields.
-
-        Parameters
-        ----------
-        str_out : bool
-            Return the table as a string (instead of printing it).
-        """
-        lines = []
-        for key in self._field_values:
-            values = list(self.get_field_values(key))
-            line = '%s:' % key
-            head_len = len(line) + 1
-            while values:
-                v = repr(values.pop(0))
-                if values:
-                    v += ','
-                if len(v) < 80 - head_len:
-                    line += ' ' + v
-                else:
-                    lines.append(line)
-                    line = ' ' * head_len + v
-
-                if not values:
-                    lines.append(line)
-
-        table = os.linesep.join(lines)
-        if str_out:
-            return table
-        else:
-            print table
-
-    def print_tree(self, root='root'):
-        """
-        Print a tree of the filehierarchy implicit in the templates
-
-        Parameters
-        ----------
-        root : str
-            Name of the root template (e.g., 'besa-root').
-        """
-        tree = {'.': root}
-        root_temp = '{%s}' % root
-        for k, v in self._fields.iteritems():
-            if str(v).startswith(root_temp):
-                tree[k] = {'.': v.replace(root_temp, '')}
-        _etree_expand(tree, self._fields)
-        nodes = _etree_node_repr(tree, root)
-        name_len = max(len(n) for n, _ in nodes)
-        path_len = max(len(p) for _, p in nodes)
-        pad = ' ' * (80 - name_len - path_len)
-        print os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len) for n, p in nodes)
-
     def reset(self, level=None):
         self._fields.reset(level)
         self._field_values.reset(level)
@@ -533,9 +480,43 @@ class TreeModel(object):
             for handler in self._post_set_handlers[k]:
                 handler(v)
 
-    def state(self, temp=None, empty=False):
+    def show_fields(self, str_out=False):
         """
-        Examine the state of the experiment.
+        Generate a table for all iterable fields and ther values.
+
+        Parameters
+        ----------
+        str_out : bool
+            Return the table as a string (instead of printing it).
+        """
+        lines = []
+        for key in self._field_values:
+            values = list(self.get_field_values(key))
+            line = '%s:' % key
+            head_len = len(line) + 1
+            while values:
+                v = repr(values.pop(0))
+                if values:
+                    v += ','
+                if len(v) < 80 - head_len:
+                    line += ' ' + v
+                else:
+                    lines.append(line)
+                    line = ' ' * head_len + v
+
+                if not values:
+                    lines.append(line)
+
+        table = os.linesep.join(lines)
+        if str_out:
+            return table
+        else:
+            print table
+
+    def show_state(self, temp=None, empty=False):
+        """
+        List all top-level fields and their values (i.e., fields whose values
+        do not contain templates).
 
         Parameters
         ----------
@@ -572,10 +553,32 @@ class TreeModel(object):
 
         return table
 
+    def show_tree(self, root='root'):
+        """
+        Print a tree of the filehierarchy implicit in the templates
+
+        Parameters
+        ----------
+        root : str
+            Name of the root template (e.g., 'besa-root').
+        """
+        tree = {'.': root}
+        root_temp = '{%s}' % root
+        for k, v in self._fields.iteritems():
+            if str(v).startswith(root_temp):
+                tree[k] = {'.': v.replace(root_temp, '')}
+        _etree_expand(tree, self._fields)
+        nodes = _etree_node_repr(tree, root)
+        name_len = max(len(n) for n, _ in nodes)
+        path_len = max(len(p) for _, p in nodes)
+        pad = ' ' * (80 - name_len - path_len)
+        print os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len) for n, p in nodes)
+
 
 class FileTree(TreeModel):
     """
-    Adds a new kind of binding,
+    A :class:`TreeModel` subclass specialized for representing a file system
+    hierarchy.
     """
     _repr_args = ('root',)
     def __init__(self, **state):
@@ -665,13 +668,26 @@ class FileTree(TreeModel):
         Parameters
         ----------
         temp : str
-            The names of the path template for te files to examine.
+            The name of the path template for the files to examine.
         row : str
             Field over which to alternate rows.
         col : None | str
             Field over which to alternate columns.
         count : bool
             Add a column with a number for each subject.
+        present : str
+            String to display when a given file is present.
+        absent : str
+            String to display when a given file is absent.
+
+        Examples
+        --------
+        >>> e.show_file_status('raw-file', 'subject', 'raw')
+             Subject   Clm   Lp40   Hp.1-lp40   Hp1-lp40
+        ------------------------------------------------
+         0   AD001     X     X      X           -
+         1   AD002     X     X      X           -
+        ...
         """
         if col is None:
             ncol = 1
@@ -713,6 +729,70 @@ class FileTree(TreeModel):
 
         return table
 
+    def show_file_status_mult(self, files, fields, count=True, present='X',
+                              absent='-', **kwargs):
+        """
+        Compile a table about the existence of multiple files
+
+        Parameters
+        ----------
+        files : str | list of str
+            The names of the path templates whose existence to list.
+        fields : str | list of str
+            The names of the variables for which to list files (i.e., for each
+            unique combination of ``fields``, list ``files``).
+        count : bool
+            Add a column with a number for each subject.
+        present : str
+            String to display when a given file is present.
+        absent : str
+            String to display when a given file is absent.
+
+        Examples
+        --------
+        >>> e.show_file_status_mult(['raw-file', 'trans-file', 'fwd-file'],
+        ... 'subject')
+             Subject   Raw-file   Trans-file   Fwd-file
+        -----------------------------------------------
+         0   AD001     X          X            X
+         1   AD002     X          X            X
+         2   AD003     X          X            X
+        ...
+        """
+        if not isinstance(files, (list, tuple)):
+            files = [files]
+        if not isinstance(fields, (list, tuple)):
+            fields = [fields]
+
+        ncol = (len(fields) + len(files))
+        table = fmtxt.Table('r' * bool(count) + 'l' * ncol)
+        if count:
+            table.cell()
+        for name in fields + files:
+            table.cell(name.capitalize())
+        table.midrule()
+
+        for i, _ in enumerate(self.iter(fields, **kwargs)):
+            if count:
+                table.cell(i)
+
+            for field in fields:
+                table.cell(self.get(field))
+
+            for temp in files:
+                path = self.get(temp)
+                if os.path.exists(path):
+                    table.cell(present)
+                else:
+                    table.cell(absent)
+
+        return table
+
+    def show_in_finder(self, temp, **kwargs):
+        "Reveals the file corresponding to the ``temp`` template in the Finder."
+        fname = self.get(temp, **kwargs)
+        subprocess.call(["open", "-R", fname])
+
     def push(self, dst_root, names, overwrite=False, **kwargs):
         """Copy files to another experiment root folder.
 
@@ -731,7 +811,7 @@ class FileTree(TreeModel):
 
         Notes
         -----
-        Use ``e.print_tree()`` to find out which element(s) to copy.
+        Use ``e.show_tree()`` to find out which element(s) to copy.
         """
         if isinstance(names, basestring):
             names = [names]
