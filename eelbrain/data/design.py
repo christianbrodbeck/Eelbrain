@@ -204,11 +204,15 @@ def random_factor(values, n=None, name=None, rand=True, balance=None, urn=None,
     """
     sub = assub(sub, ds)
     if urn is not None:
+        if n is None:
+            urn_0 = asfactor(urn[0], None, ds)
+            n = len(urn_0)
         urn = [asfactor(f, sub, ds) for f in urn]
-        n = len(urn[0])
     if balance is not None:
+        if n is None:
+            balance_ = ascategorial(balance, None, ds)
+            n = len(balance_)
         balance = ascategorial(balance, sub, ds)
-        n = len(balance)
     elif n is None:
         err = ("If neither urn not balance are specified, n needs to be "
                "explicitly specified.")
