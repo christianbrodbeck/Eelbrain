@@ -316,7 +316,7 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
     return Factor(x, name, labels=cells)
 
 
-def add_missing(base, name=None, values=None, ds=None):
+def complement(base, name=None, values=None, ds=None):
     """
     Create a Factor that contains for each index the value that is not on any
     other Factor at this index.
