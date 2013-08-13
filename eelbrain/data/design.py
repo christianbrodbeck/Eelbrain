@@ -45,7 +45,7 @@ import os
 import numpy as np
 import scipy.io
 
-from .data_obj import Dataset, Factor
+from .data_obj import Dataset, Factor, ascategorial, asfactor, assub
 from . import save
 from .. import ui
 
@@ -171,7 +171,7 @@ def permute_(variables, count='caseID', randomize=False):
 
 
 
-def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
+def random_factor(values, n=None, name=None, rand=True, balance=None, urn=None,
                   require_exact_balance=True, sub=None, ds=None):
     """Create a Factor with random values
 
@@ -179,8 +179,9 @@ def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
     ----------
     values : list
         Values (Factor labels) from which to sample.
-    n : int
-        Length of the new Factor.
+    n : None | int
+        Length of the new Factor. Can be None if another data-object is
+        specified in at least one other argument.
     name : None | str
         Name of the Factor.
     rand : bool
@@ -197,16 +198,27 @@ def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
     sub : None | index array
         Only fill up part of the Factor (the other cells will have the default
         '' empty string value).
+    ds : None | Dataset
+        If a Dataset is specified, ``urn``, ``balance`` and ``sub`` can be
+        specified as str (names in ds).
     """
-    i = 0
+    sub = assub(sub, ds)
+    if urn is not None:
+        urn = [asfactor(f, sub, ds) for f in urn]
+        n = len(urn[0])
+    if balance is not None:
+        balance = ascategorial(balance, sub, ds)
+        n = len(balance)
+    elif n is None:
+        err = ("If neither urn not balance are specified, n needs to be "
+               "explicitly specified.")
+        raise ValueError(err)
+
     if sub is not None:
-        if balance:
-            balance = balance[sub]
-        if urn:
-            urn = [f[sub] for f in urn]
         n_tgt = n
         n = len(np.empty(n)[sub])
 
+    i = 0
     while i < _max_iter:
         try:
             f = _try_make_random_factor(name, values, n, rand, balance, urn,
@@ -222,8 +234,8 @@ def random_factor(values, n, name=None, rand=True, balance=None, urn=None,
                 f[sub] = f_sub
             return f
 
-    raise RandomizationError("Random list generation exceeded max-iter (%i)" % i)
-
+    err = ("Random list generation exceeded max-iter (%i)" % i)
+    raise RandomizationError(err)
 
 
 def _try_make_random_factor(name, values, n, rand, balance, urn,
@@ -304,7 +316,7 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
     return Factor(x, name, labels=cells)
 
 
-def add_missing(base, name=None, values=None):
+def add_missing(base, name=None, values=None, ds=None):
     """
     Create a Factor that contains for each index the value that is not on any
     other Factor at this index.
@@ -315,7 +327,11 @@ def add_missing(base, name=None, values=None):
         Factors that together, on each case, contain all the values spare one.
     values : list of str | None
         values for the Factor. If None, the first Factor's values are used.
+    ds : None | Dataset
+        If a Dataset is specified, ``urn``, ``balance`` and ``sub`` can be
+        specified as str (names in ds).
     """
+    base = [asfactor(f, None, ds) for f in base]
     N = len(base[0])
     if values is None:
         values = base[0].cells
@@ -331,7 +347,6 @@ def add_missing(base, name=None, values=None):
         out[grid[:, i]] = cells[i]
 
     return out
-
 
 
 def shuffle_cases(dataset, inplace=False, blocks=None):
