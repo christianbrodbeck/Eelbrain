@@ -29,7 +29,7 @@ of the input Dataset that only contains the good epochs.
 
 The epochs can be loaded as mne.Epochs object using::
 
-    >>> epochs = load.fiff.mne_Epochs(ds)
+    >>> epochs = load.fiff.mne_epochs(ds)
 
 Note that the returned epochs event does not contain meaningful event ids,
 and ``epochs.event_id`` is None.
@@ -54,15 +54,8 @@ from ... import ui
 from .. import colorspaces as _cs
 from ..data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS
 
-__all__ = ['Raw', 'events', 'add_epochs', 'add_mne_epochs',  # basic pipeline
-           'mne_events', 'mne_Raw', 'mne_Epochs',  # get mne objects
-           'sensor_dim',
-           'epochs_ndvar', 'evoked', 'evoked_ndvar', 'stc', 'stc_ndvar',
-           'brainvision_events_to_fiff',
-           ]
 
-
-def Raw(path=None, proj=False, **kwargs):
+def mne_raw(path=None, proj=False, **kwargs):
     """
     Returns a mne.fiff.Raw object with added projections if appropriate.
 
@@ -171,7 +164,7 @@ def events(raw=None, merge=-1, proj=False, name=None,
 
     """
     if raw is None or isinstance(raw, basestring):
-        raw = Raw(raw, proj=proj)
+        raw = mne_raw(raw, proj=proj)
 
     if bads is not None:
         raw.info['bads'].extend(bads)
@@ -273,7 +266,7 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
     else:
         reject = None
 
-    epochs = mne_Epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
+    epochs = mne_epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
                         proj=proj, i_start=i_start, raw=raw, picks=picks,
                         reject=reject, preload=True, decim=decim)
 
@@ -315,7 +308,7 @@ def add_mne_epochs(ds, target='epochs', **kwargs):
 
     """
     kwargs['preload'] = True
-    epochs = mne_Epochs(ds, **kwargs)
+    epochs = mne_epochs(ds, **kwargs)
     ds = trim_ds(ds, epochs)
     ds[target] = epochs
     return ds
@@ -329,7 +322,7 @@ def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
     """
     ds[i_start] -= 1
     if raw is None or isinstance(raw, basestring):
-        raw = Raw(raw, proj=proj)
+        raw = mne_raw(raw, proj=proj)
 
     ds.info['raw'] = raw
 
@@ -352,12 +345,7 @@ def mne_events(ds=None, i_start='i_start', eventID='eventID'):
     return events
 
 
-def mne_Raw(ds):
-    return ds.info['raw']
-
-
-def mne_Epochs(ds, i_start='i_start', raw=None,
-               drop_bad_chs=True, name='{name}', **kwargs):
+def mne_epochs(ds, i_start='i_start', raw=None, drop_bad_chs=True, **kwargs):
     """
     All ``**kwargs`` are forwarded to the mne.Epochs instance creation. If the
     mne-python fork in use supports the ``epochs.model`` attribute,
@@ -397,6 +385,11 @@ def mne_Epochs(ds, i_start='i_start', raw=None,
     epochs = mne.Epochs(raw, events, event_id=None, **kwargs)
 
     return epochs
+
+def mne_Epochs(*args, **kwargs):
+    warn("load.fiff.mne_Epochs() is deprecated; use load.fiff.mne_epochs "
+         "instead", DeprecationWarning)
+    return mne_epochs(*args, **kwargs)
 
 
 def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):

@@ -215,7 +215,7 @@ class dev_head_fitter:
         # interpret raw
         if isinstance(raw, basestring):
             raw_fname = raw
-            raw = load.fiff.Raw(raw)
+            raw = load.fiff.mne_raw(raw)
         else:
             raw_fname = raw.info['filename']
         self._raw_fname = raw_fname
@@ -405,7 +405,7 @@ class dev_mri(object):
         # raw
         if isinstance(raw, basestring):
             raw_fname = raw
-            raw = load.fiff.Raw(raw_fname)
+            raw = load.fiff.mne_raw(raw_fname)
         else:
             raw_fname = raw.info['filename']
 

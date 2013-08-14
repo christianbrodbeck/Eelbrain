@@ -1035,7 +1035,7 @@ class MneExperiment(FileTree):
             proj = None
 
         raw_file = self.get('raw-file')
-        raw = load.fiff.Raw(raw_file, proj, preload=preload)
+        raw = load.fiff.mne_raw(raw_file, proj, preload=preload)
         if add_bads:
             if add_bads is True:
                 key = self.get('raw-key')
@@ -1244,7 +1244,7 @@ class MneExperiment(FileTree):
         ds = edf.filter(ds, use=['EBLINK'], tstart=tmin, tstop=tmax)
 
         # create covariance matrix
-        epochs = load.fiff.mne_Epochs(ds, baseline=(None, 0), preload=True,
+        epochs = load.fiff.mne_epochs(ds, baseline=(None, 0), preload=True,
                                       reject={'mag':3e-12}, tmin=tmin,
                                       tmax=tmax)
         cov = mne.cov.compute_covariance(epochs)
