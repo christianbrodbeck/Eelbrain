@@ -2729,13 +2729,11 @@ class Dataset(collections.OrderedDict):
     def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, sort=False,
                  header=True, midrule=False, count=False):
         r"""
-        returns a fmtxt.Table containing all vars and factors in the Dataset
-        (ndvars are skipped). Can be used for exporting in different formats
-        such as csv.
+        Create a fmtxt.Table containing all Vars and Factors in the Dataset.
+        Can be used for exporting in different formats such as csv.
 
         Parameters
         ----------
-
         cases : int
             number of cases to include (0 includes all; negative number works
             like negative indexing)
@@ -2755,7 +2753,6 @@ class Dataset(collections.OrderedDict):
             print a midrule after table header
         sort : bool
             Sort the columns alphabetically
-
         """
         if cases < 1:
             cases = self.n_cases + cases

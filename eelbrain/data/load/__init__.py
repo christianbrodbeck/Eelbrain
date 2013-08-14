@@ -23,6 +23,7 @@ from ... import ui as _ui
 from . import brainvision
 from . import eyelink
 from . import txt
+from .txt import tsv
 
 
 def unpickle(fname=None):

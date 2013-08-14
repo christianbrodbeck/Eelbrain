@@ -4,6 +4,7 @@ Created on Jun 9, 2012
 @author: christian
 '''
 import os
+import re
 
 import numpy as np
 
@@ -12,6 +13,8 @@ from .. import data_obj as _data
 
 
 __all__ = ['tsv', 'var']
+
+float_pattern = re.compile("^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
 
 
 def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
@@ -114,18 +117,22 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
 
     ds = _data.Dataset(name=os.path.basename(path))
 
-    for name, values, force_type in zip(names, data, types):
-        v = np.array(values)
-        if force_type in [0, 2]:
-            try:
-                v = v.astype(float)
-                fid = _data.Var(v, name=name)
-            except:
-                fid = _data.Factor(v, name=name)
+    # convert values to data-objects
+    for name, values, type_ in zip(names, data, types):
+        if type_ == 1:
+            dob = _data.Factor(values, name=name)
+        elif all(v in ('True', 'False') for v in values):
+            values = [{'True': True, 'False': False}[v] for v in values]
+            dob = _data.Var(values, name=name)
+        elif all(float_pattern.match(v) for v in values):
+            values = map(eval, values)
+            dob = _data.Var(values, name=name)
+        elif type_ == 2:
+            err = ("Could not convert all values to float: %s" % values)
+            raise ValueError(err)
         else:
-            fid = _data.Factor(v, name=name)
-        ds.add(fid)
-
+            dob = _data.Factor(values, name=name)
+        ds.add(dob)
     return ds
 
 

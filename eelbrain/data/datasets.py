@@ -4,6 +4,7 @@ Defines some basic example datasets that are used in testing.
 import numpy as np
 
 from .data_obj import Dataset, Factor, Var, NDVar, Sensor, UTS
+from .design import permute
 
 
 def get_rand(utsnd=False):
@@ -63,4 +64,17 @@ def get_rand(utsnd=False):
         dims = ('case', sensor, time)
         ds['utsnd'] = NDVar(Y, dims=dims)
 
+    return ds
+
+
+def get_uv():
+    ds = permute([('A', ('a1', 'a2')),
+                  ('B', ('b1', 'b2')),
+                  ('rm', ['s%03i' % i for i in xrange(20)])])
+    ds['rm'].random = True
+    ds['intvar'] = Var(np.random.randint(5, 15, 80))
+    ds['intvar'][:20] += 3
+    ds['fltvar'] = Var(np.random.normal(0, 1, 80))
+    ds['fltvar'][:40] += 1.
+    ds['index'] = Var(np.repeat([True, False], 40))
     return ds

@@ -10,27 +10,54 @@ import tempfile
 
 from nose.tools import assert_equal, assert_true, eq_, ok_
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-from eelbrain.data import datasets, Var, Factor, Dataset, Celltable
-from eelbrain.data.data_obj import (isdatalist, isndvar, isuv, align, align1,
-                                    combine)
+from eelbrain.data import datasets, Var, Factor, Dataset, Celltable, load
+from eelbrain.data.data_obj import (isdatalist, isndvar, isuv, isvar, align,
+                                    align1, combine)
 
 
-def assert_dataset_equal(ds1, ds2, msg="Datasets unequal"):
+def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
+    """
+    Raise an assertion if two Datasets are not equal up to desired precision.
+
+    Parameters
+    ----------
+    ds1, ds2 : Dataset
+        Datasets to compare.
+    msg : str
+        Prefix of the error message to be printed in case of failure.
+    decimal : None | int
+        Desired precision (default is exact match).
+    """
     assert_equal(ds1.keys(), ds2.keys(), "%s: different keys" % msg)
     for k in ds1.keys():
-        assert_dataobj_equal(ds1[k], ds2[k], msg=msg)
+        assert_dataobj_equal(ds1[k], ds2[k], msg=msg, decimal=decimal)
     assert_equal(ds1.info.keys(), ds2.info.keys(), "%s: keys in info" % msg)
 
 
-def assert_dataobj_equal(d1, d2, msg="Data-objects unequal"):
+def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
+    """
+    Raise an assertion if two data-objects are not equal up to desired
+    precision.
+
+    Parameters
+    ----------
+    ds1, ds2 : data-objects
+        Data-objects to compare.
+    msg : str
+        Prefix of the error message to be printed in case of failure.
+    decimal : None | int
+        Desired precision (default is exact match).
+    """
     msg = "%s:" % msg
     assert_equal(d1.name, d2.name, "%s unequal names (%r vs %r"
                  ")" % (msg, d1.name, d2.name))
     msg += ' %r have' % d1.name
     assert_equal(len(d1), len(d2), "%s unequal length" % msg)
-    if isuv(d1):
+    if isvar(d1) and decimal:
+        assert_array_almost_equal(d1.x, d2.x, decimal)
+    elif isuv(d1):
         assert_true(np.all(d1 == d2), "%s unequal values: %r vs "
                     "%r" % (msg, d1, d2))
     elif isndvar(d1):
@@ -173,7 +200,7 @@ def test_ndvar_op():
     ok_(np.abs(bl) < 1e-10, "Baseline correction")
 
 
-def test_pickle_io():
+def test_io_pickle():
     "Test io by pickling"
     ds = datasets.get_rand()
     ds.info['info'] = "Some very useful information about the Dataset"
@@ -188,6 +215,26 @@ def test_pickle_io():
         shutil.rmtree(tempdir)
 
     assert_dataset_equal(ds, ds2)
+
+
+def test_io_txt():
+    "Test Dataset io as text"
+    ds = datasets.get_uv()
+
+    # Var that has integer values as float
+    ds['intflt'] = ds.eval('intvar * 1.')
+    ds['intflt'].name = 'intflt'
+
+    # io test
+    tempdir = tempfile.mkdtemp()
+    try:
+        dest = os.path.join(tempdir, 'test.txt')
+        ds.save_txt(dest)
+        ds2 = load.tsv(dest)
+    finally:
+        shutil.rmtree(tempdir)
+
+    assert_dataset_equal(ds, ds2, decimal=6)
 
 
 def test_var():
