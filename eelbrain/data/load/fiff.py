@@ -17,7 +17,7 @@ The epochs can be added as an NDVar object with::
 
     >>> ds = load.fiff.add_epochs(ds)
 
-The returned ds contains the new NDVar as 'MEG'
+The returned ds contains the new NDVar as 'meg'
 If no epochs are rejected during loading, the returned ds is identical with the
 input ds.
 If epochs are rejected during loading, the returned ds is a shortened version
@@ -43,8 +43,9 @@ Created on Feb 21, 2012
 '''
 from __future__ import division
 
-import os
 import fnmatch
+import os
+from warnings import warn
 
 import numpy as np
 
@@ -187,64 +188,7 @@ def events(raw=None, merge=-1, proj=False, name=None,
     return Dataset(eventID, i_start, name=name, info=info)
 
 
-def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
-               decim=1, mult=1, unit='T', proj=True,
-               data='mag', reject=None,
-               raw=None, add=True,
-               target="MEG", i_start='i_start',
-               info=None, sensors=None, exclude='bads'):
-    """
-    Adds data from individual epochs as a NDVar to the Dataset ``ds`` and
-    returns the Dataset. Unless the ``reject`` argument is specified, ``ds``
-    is modified in place. With ``reject``, a subset of ``ds`` is returned
-    containing only those events for which data was loaded.
-
-    ds : Dataset
-        Dataset containing a variable which defines epoch cues (i_start) and
-        to which the epochs are added.
-    add : bool
-        Add the variable to the Dataset. If ``True`` (default), the data is
-        added to the Dataset and the function returns nothing; if ``False``,
-        the function returns the NDVar object.
-    baseline : tuple(start, stop) or ``None``
-        Time interval in seconds for baseline correction; ``None`` omits
-        baseline correction (default).
-    decim : int
-        Downsample the data by this factor when importing. ``1`` means no
-        downsampling. Note that this function does not low-pass filter
-        the data. The data is downsampled by picking out every
-        n-th sample (see `Wikipedia <http://en.wikipedia.org/wiki/Downsampling>`_).
-    i_start : str
-        name of the variable containing the index of the events to be
-        imported
-    mult : scalar
-        multiply all data by a constant. If used, the ``unit`` kwarg should
-        specify the target unit, not the source unit.
-    proj : bool
-        mne.Epochs kwarg (subtract projections when loading data)
-    tstart : scalar
-        start of the epoch relative to the cue
-    tstop : scalar
-        end of the epoch relative to the cue
-    unit : str
-        Unit of the data (default is 'T').
-    target : str
-        name for the new NDVar containing the epoch data
-    reject : None | scalar
-        Threshold for rejecting epochs (peak to peak). Requires a for of
-        mne-python which implements the Epochs.model['index'] variable.
-    raw : None | mne.fiff.Raw
-        Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
-    sensors : None | Sensor
-        The default (``None``) reads the sensor locations from the fiff file.
-        If the fiff file contains incorrect sensor locations, a different
-        Sensor instance can be supplied through this kwarg.
-    exclude : list of string | str
-        Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
-        If 'bads' (default), exclude channels in info['bads'].
-        If empty do not exclude any.
-
-    """
+def _ndvar_epochs_picks(info, data, exclude):
     if data == 'eeg':
         meg = False
         eeg = True
@@ -252,40 +196,183 @@ def add_epochs(ds, tstart=-0.1, tstop=0.6, baseline=None,
         meg = data
         eeg = False
     else:
-        err = 'data=%r' % data
-        raise NotImplementedError(err)
+        err = "data=%r (needs to be 'eeg', 'grad' or 'mag')" % data
+        raise ValueError(err)
+    picks = mne.fiff.pick_types(info, meg=meg, eeg=eeg, stim=False,
+                                exclude=exclude)
+    return picks
+
+
+def _ndvar_epochs_reject(data, reject):
+    if reject:
+        if not np.isscalar(reject):
+            err = ("Reject must be scalar (rejection threshold); got %s." %
+                   repr(reject))
+            raise ValueError(err)
+        reject = {data: reject}
+    else:
+        reject = None
+    return reject
+
+
+def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
+           unit='T', proj=False, data='mag', reject=None, exclude='bads',
+           info=None, name=None, raw=None, sensors=None, i_start='i_start'):
+    """
+    Load epochs from a fiff file as NDVar.
+
+    Parameters
+    ----------
+    ds : Dataset
+        Dataset containing a variable which defines epoch cues (i_start).
+    tmin, tmax : scalar
+        First and last sample to include in the epochs in seconds.
+    baseline : tuple(tmin, tmax) | ``None``
+        Time interval for baseline correction. Tmin/tmax in seconds, or None to
+        use all the data (e.g., ``(None, 0)`` uses all the data from the
+        beginning of the epoch up to t=0). ``baseline=None`` for no baseline
+        correction (default).
+    decim : int
+        Downsample the data by this factor when importing. ``1`` means no
+        downsampling. Note that this function does not low-pass filter
+        the data. The data is downsampled by picking out every
+        n-th sample (see `Wikipedia <http://en.wikipedia.org/wiki/Downsampling>`_).
+    mult : scalar
+        multiply all data by a constant. If used, the ``unit`` kwarg should
+        specify the target unit, not the source unit.
+    unit : str
+        Unit of the data (default is 'T').
+    proj : bool
+        mne.Epochs kwarg (subtract projections when loading data)
+    data : 'eeg' | 'mag' | 'grad'
+        The kind of data to load.
+    reject : None | scalar
+        Threshold for rejecting epochs (peak to peak). Requires a for of
+        mne-python which implements the Epochs.model['index'] variable.
+    exclude : list of string | str
+        Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
+        If 'bads' (default), exclude channels in info['bads'].
+        If empty do not exclude any.
+    info : None | dict
+        Entries for the ndvar's info dict.
+    name : str
+        name for the new NDVar.
+    raw : None | mne.fiff.Raw
+        Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
+    sensors : None | Sensor
+        The default (``None``) reads the sensor locations from the fiff file.
+        If the fiff file contains incorrect sensor locations, a different
+        Sensor instance can be supplied through this kwarg.
+    i_start : str
+        name of the variable containing the index of the events.
+
+    Returns
+    -------
+    epochs : NDVar
+        The epochs as NDVar object.
+    """
+    if raw is None:
+        raw = ds.info['raw']
+
+    picks = _ndvar_epochs_picks(raw.info, data, exclude)
+    reject = _ndvar_epochs_reject(data, reject)
+
+    epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
+                         picks=picks, reject=reject, proj=proj)
+    ndvar = epochs_ndvar(epochs_, name, None, mult=mult, unit=unit, info=info,
+                         sensors=sensors)
+
+    if len(epochs_) == 0:
+        raise RuntimeError("No events left in %r" % raw.info['filename'])
+    return ndvar
+
+
+def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
+               unit='T', proj=False, data='mag', reject=None, exclude='bads',
+               info=None, name="meg", raw=None, sensors=None,
+               i_start='i_start', **kwargs):
+    """
+    Load epochs form a fiff file and add them to a dataset as NDVar.
+
+    Unless the ``reject`` argument is specified, ``ds``
+    is modified in place. With ``reject``, a subset of ``ds`` is returned
+    containing only those events for which data was loaded.
+
+    Parameters
+    ----------
+    ds : Dataset
+        Dataset containing a variable which defines epoch cues (i_start) and to
+        which the epochs are added.
+    tmin, tmax : scalar
+        First and last sample to include in the epochs in seconds.
+    baseline : tuple(tmin, tmax) | ``None``
+        Time interval for baseline correction. Tmin/tmax in seconds, or None to
+        use all the data (e.g., ``(None, 0)`` uses all the data from the
+        beginning of the epoch up to t=0). ``baseline=None`` for no baseline
+        correction (default).
+    decim : int
+        Downsample the data by this factor when importing. ``1`` means no
+        downsampling. Note that this function does not low-pass filter
+        the data. The data is downsampled by picking out every
+        n-th sample (see `Wikipedia <http://en.wikipedia.org/wiki/Downsampling>`_).
+    mult : scalar
+        multiply all data by a constant. If used, the ``unit`` kwarg should
+        specify the target unit, not the source unit.
+    unit : str
+        Unit of the data (default is 'T').
+    proj : bool
+        mne.Epochs kwarg (subtract projections when loading data)
+    data : 'eeg' | 'mag' | 'grad'
+        The kind of data to load.
+    reject : None | scalar
+        Threshold for rejecting epochs (peak to peak). Requires a for of
+        mne-python which implements the Epochs.model['index'] variable.
+    exclude : list of string | str
+        Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
+        If 'bads' (default), exclude channels in info['bads'].
+        If empty do not exclude any.
+    info : None | dict
+        Entries for the ndvar's info dict.
+    name : str
+        name for the new NDVar.
+    raw : None | mne.fiff.Raw
+        Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
+    sensors : None | Sensor
+        The default (``None``) reads the sensor locations from the fiff file.
+        If the fiff file contains incorrect sensor locations, a different
+        Sensor instance can be supplied through this kwarg.
+    i_start : str
+        name of the variable containing the index of the events.
+
+    Returns
+    -------
+    ds : Dataset
+        Dataset containing the epochs. If no events are rejected, ``ds`` is the
+        same object as the input ``ds`` argument, otherwise a copy of it.
+    """
+    if 'target' in kwargs:
+        warn("load.fiff.add_epochs(): target kwarg is deprecated; use name "
+             "instead.", DeprecationWarning)
+        name = kwargs.pop('target')
+    if kwargs:
+        raise RuntimeError("Unknown parameters: %s" % str(kwargs.keys()))
 
     if raw is None:
         raw = ds.info['raw']
 
-    picks = mne.fiff.pick_types(raw.info, meg=meg, eeg=eeg, stim=False,
-                                eog=False, include=[], exclude=exclude)
+    picks = _ndvar_epochs_picks(raw.info, data, exclude)
+    reject = _ndvar_epochs_reject(data, reject)
 
-    if reject:
-        reject = {data: reject}
-    else:
-        reject = None
-
-    epochs = mne_epochs(ds, tstart=tstart, tstop=tstop, baseline=baseline,
-                        proj=proj, i_start=i_start, raw=raw, picks=picks,
-                        reject=reject, preload=True, decim=decim)
-
-    epochs_var = epochs_ndvar(epochs, name=target, meg=meg, eeg=eeg,
-                              exclude=exclude, mult=mult, unit=unit,
-                              info=info, sensors=sensors)
-
-    if len(epochs_var) == 0:
-        raise RuntimeError("No events left in %r" % raw.info['filename'])
-
-    if add:
-        ds = trim_ds(ds, epochs)
-        ds.add(epochs_var)
-        return ds
-    else:
-        return epochs_var
+    epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
+                         picks=picks, reject=reject, proj=proj, preload=True)
+    ds = _trim_ds(ds, epochs_)
+    ds[name] = epochs_ndvar(epochs_, name, None, mult=mult, unit=unit,
+                            info=info, sensors=sensors)
+    return ds
 
 
-def add_mne_epochs(ds, target='epochs', **kwargs):
+def add_mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, target='epochs',
+                   **kwargs):
     """
     Add an mne.Epochs object to the Dataset and return the Dataset.
 
@@ -296,10 +383,16 @@ def add_mne_epochs(ds, target='epochs', **kwargs):
 
     Parameters
     ----------
-
     ds : Dataset
         Dataset with events from a raw fiff file (i.e., created by
         load.fiff.events).
+    tmin, tmax : scalar
+        First and last sample to include in the epochs in seconds.
+    baseline : tuple(tmin, tmax) | ``None``
+        Time interval for baseline correction. Tmin/tmax in seconds, or None to
+        use all the data (e.g., ``(None, 0)`` uses all the data from the
+        beginning of the epoch up to t=0). ``baseline=None`` for no baseline
+        correction (default).
     target : str
         Name for the Epochs object in the Dataset.
     kwargs :
@@ -308,9 +401,9 @@ def add_mne_epochs(ds, target='epochs', **kwargs):
 
     """
     kwargs['preload'] = True
-    epochs = mne_epochs(ds, **kwargs)
-    ds = trim_ds(ds, epochs)
-    ds[target] = epochs
+    epochs_ = mne_epochs(ds, tmin, tmax, baseline, **kwargs)
+    ds = _trim_ds(ds, epochs_)
+    ds[target] = epochs_
     return ds
 
 
@@ -327,7 +420,10 @@ def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
     ds.info['raw'] = raw
 
 
-def mne_events(ds=None, i_start='i_start', eventID='eventID'):
+def _mne_events(ds=None, i_start='i_start', eventID='eventID'):
+    """
+    Convert events from a Dataset into mne events.
+    """
     if isinstance(i_start, basestring):
         i_start = ds[i_start]
 
@@ -345,21 +441,31 @@ def mne_events(ds=None, i_start='i_start', eventID='eventID'):
     return events
 
 
-def mne_epochs(ds, i_start='i_start', raw=None, drop_bad_chs=True, **kwargs):
+def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
+               raw=None, drop_bad_chs=True, **kwargs):
     """
-    All ``**kwargs`` are forwarded to the mne.Epochs instance creation. If the
-    mne-python fork in use supports the ``epochs.model`` attribute,
-    ``epochs.model`` is updated with ``ds``
+    Load an :class:`mne.Epochs` object for the events in ``ds``
 
+    Parameters
+    ----------
+    ds : Dataset
+        Dataset containing a variable which defines epoch cues (i_start).
+    tmin, tmax : scalar
+        First and last sample to include in the epochs in seconds.
+    baseline : tuple(tmin, tmax) | ``None``
+        Time interval for baseline correction. Tmin/tmax in seconds, or None to
+        use all the data (e.g., ``(None, 0)`` uses all the data from the
+        beginning of the epoch up to t=0). ``baseline=None`` for no baseline
+        correction (default).
+    i_start : str
+        name of the variable containing the index of the events.
+    raw : None | mne.fiff.Raw
+        If None, ds.info['raw'] is used.
     drop_bad_chs : bool
         Drop all channels in raw.info['bads'] form the Epochs. This argument is
         ignored if the picks argument is specified.
-    raw : None | mne.fiff.Raw
-        If None, ds.info['raw'] is used.
-    name : str
-        Name for the Epochs object. ``'{name}'`` is formatted with the Dataset
-        name ``ds.name``.
-
+    kwargs
+        :class:`mne.Epochs` parameters.
     """
     if raw is None:
         raw = ds.info['raw']
@@ -368,27 +474,29 @@ def mne_epochs(ds, i_start='i_start', raw=None, drop_bad_chs=True, **kwargs):
         kwargs['picks'] = mne.fiff.pick_channels(raw.info['ch_names'], [],
                                                  raw.info['bads'])
 
-    kwargs['name'] = name = name.format(name=ds.name)
-    if 'tstart' in kwargs:
-        kwargs['tmin'] = kwargs.pop('tstart')
-    elif not 'tmin' in kwargs:
-        kwargs['tmin'] = -0.1
-    if 'tstop' in kwargs:
-        kwargs['tmax'] = kwargs.pop('tstop')
-    elif not 'tmax' in kwargs:
-        kwargs['tmax'] = 0.5
-
-    events = mne_events(ds=ds, i_start=i_start)
+    events = _mne_events(ds=ds, i_start=i_start)
     # epochs with (event_id == None) does not use columns 1 and 2 of events
     events[:, 1] = np.arange(len(events))
-
-    epochs = mne.Epochs(raw, events, event_id=None, **kwargs)
-
+    epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, **kwargs)
     return epochs
+
 
 def mne_Epochs(*args, **kwargs):
     warn("load.fiff.mne_Epochs() is deprecated; use load.fiff.mne_epochs "
          "instead", DeprecationWarning)
+
+    if 'tstart' in kwargs:
+        warn("load.fiff.mne_epochs(): tstart argument is deprecated. Use tmin "
+             "instead", DeprecationWarning)
+        kwargs['tmin'] = kwargs.pop('tstart')
+    elif not 'tmin' in kwargs:
+        kwargs['tmin'] = -0.1
+    if 'tstop' in kwargs:
+        warn("load.fiff.mne_epochs(): tstop argument is deprecated. Use tmax "
+             "instead", DeprecationWarning)
+        kwargs['tmax'] = kwargs.pop('tstop')
+    elif not 'tmax' in kwargs:
+        kwargs['tmax'] = 0.5
     return mne_epochs(*args, **kwargs)
 
 
@@ -413,25 +521,19 @@ def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
     return Sensor(ch_locs, ch_names, sysname=sysname)
 
 
-def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
-                 mult=1, unit='T', info=None, sensors=None, vmax=None):
+def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
+                 unit='T', info=None, sensors=None, vmax=None):
     """
     Convert an mne.Epochs object to an NDVar.
 
     Parameters
     ----------
-    epoch : mne.Epochs
+    epochs : mne.Epochs
         The epochs object
     name : None | str
         Name for the NDVar.
-    meg : bool or string
-        MEG channels to include (:func:`mne.fiff.pick_types` kwarg).
-        If True include all MEG channels. If False include None
-        If string it can be 'mag' or 'grad' to select only gradiometers
-        or magnetometers. It can also be 'ref_meg' to get CTF
-        reference channels.
-    eeg : bool
-        If True include EEG channels (:func:`mne.fiff.pick_types` kwarg).
+    data : 'eeg' | 'mag' | 'grad'
+        The kind of data to include.
     exclude : list of string | str
         Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
@@ -441,13 +543,8 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
         specify the target unit, not the source unit.
     unit : str
         Unit of the data (default is 'T').
-    target : str
-        name for the new NDVar containing the epoch data
-    reject : None | scalar
-        Threshold for rejecting epochs (peak to peak). Requires a for of
-        mne-python which implements the Epochs.model['index'] variable.
-    raw : None | mne.fiff.Raw
-        Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
+    info : None | dict
+        Additional contents for the info dictionary of the NDVar.
     sensors : None | Sensor
         The default (``None``) reads the sensor locations from the fiff file.
         If the fiff file contains incorrect sensor locations, a different
@@ -464,9 +561,13 @@ def epochs_ndvar(epochs, name='MEG', meg=True, eeg=False, exclude='bads',
     if info:
         info_.update(info)
 
-    picks = mne.fiff.pick_types(epochs.info, meg=meg, eeg=eeg, stim=False,
-                                eog=False, include=[], exclude=exclude)
-    x = epochs.get_data()[:, picks]
+    x = epochs.get_data()
+    if data is not None:
+        picks = _ndvar_epochs_picks(epochs.info, data, exclude)
+        x = x[:, picks]
+    else:
+        picks = None
+
     if mult != 1:
         x *= mult
 
@@ -586,21 +687,19 @@ def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
     return NDVar(x, dims, name=name)
 
 
-def trim_ds(ds, epochs):
+def _trim_ds(ds, epochs):
     """
     Trim a Dataset to account for rejected epochs. If no epochs were rejected,
     the original ds is rturned.
 
     Parameters
     ----------
-
     ds : Dataset
         Dataset that was used to construct epochs.
     epochs : Epochs
-        Epochs loaded with mne_Epochs()
-
+        Epochs loaded with mne_epochs()
     """
-    if len(epochs.events) < ds.n_cases:
+    if len(epochs) < ds.n_cases:
         index = epochs.events[:, 1]
         ds = ds.subset(index)
 

@@ -796,16 +796,15 @@ class MneExperiment(FileTree):
             tmin = epoch['tmin']
             tmax = epoch['tmax']
             decim = decim or epoch['decim']
-            ds = load.fiff.add_mne_epochs(ds, target=target, tmin=tmin,
-                                          tmax=tmax, reject=reject_arg,
-                                          baseline=baseline, decim=decim)
+            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim,
+                                          target=target, reject=reject_arg)
 
         if ndvar:
             if ndvar is True:
                 ndvar = 'meg'
             else:
                 ndvar = str(ndvar)
-            ds[ndvar] = load.fiff.epochs_ndvar(ds[target], name=ndvar)
+            ds[ndvar] = load.fiff.epochs_ndvar(ds[target], ndvar)
 
         return ds
 
@@ -1244,9 +1243,8 @@ class MneExperiment(FileTree):
         ds = edf.filter(ds, use=['EBLINK'], tstart=tmin, tstop=tmax)
 
         # create covariance matrix
-        epochs = load.fiff.mne_epochs(ds, baseline=(None, 0), preload=True,
-                                      reject={'mag':3e-12}, tmin=tmin,
-                                      tmax=tmax)
+        epochs = load.fiff.mne_epochs(ds, tmin, tmax, (None, 0), preload=True,
+                                      reject={'mag':3e-12})
         cov = mne.cov.compute_covariance(epochs)
         cov.save(dest)
 
