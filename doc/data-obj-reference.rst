@@ -46,6 +46,7 @@ Read
    :toctree: generated
 
    load.eyelink.Edf
+   load.fiff
    load.tsv
    load.txt.var
 

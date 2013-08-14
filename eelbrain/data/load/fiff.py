@@ -1,45 +1,75 @@
 '''
-Functions for loading data from mne's fiff files.
+Tools for loading data from mne's fiff files:
 
-To load events as a Dataset::
+.. autosummary::
+   :toctree: generated
+
+   events
+   add_epochs
+   add_mne_epochs
+   epochs
+   mne_epochs
+
+Converting mne objects to :class:`NDVar`:
+
+.. autosummary::
+   :toctree: generated
+
+   epochs_ndvar
+   evoked_ndvar
+   stc_ndvar
+
+
+Managing events with a :class:`Dataset`
+---------------------------------------
+
+To load events as a :class:`~elbrain.data.Dataset`::
 
     >>> ds = load.fiff.events(path)
 
-Events can then be modified in he ds (adding variables, discarding events,
-...). These events can then be used in the following ways (for more
-options, see the documentation of the relevant functions):
+By default, the :class:`Dataset` contains a variable called ``"eventID"``
+with trigger values, and a variable called ``"i_start"`` with the indices of
+the events::
 
+    >>> print ds[:10]
+    eventID   i_start
+    -----------------
+    2         27977
+    3         28345
+    1         28771
+    4         29219
+    2         29652
+    3         30025
+    1         30450
+    4         30839
+    2         31240
+    3         31665
 
-1) load epochs as NDVar
-^^^^^^^^^^^^^^^^^^^^^^^
+These events can be modified in ``ds`` (adding variables, discarding events,
+...) before being used to load data epochs. Epochs will be loaded based only
+on the ``"i_start"`` variable.
 
-The epochs can be added as an NDVar object with::
+Epochs can then be added to the :class:`Dataset` as an NDVar object with
+:func:`add_epochs`::
 
-    >>> ds = load.fiff.add_epochs(ds)
+    >>> ds2 = load.fiff.add_epochs(ds, -0.1, 0.6)
 
-The returned ds contains the new NDVar as 'meg'
-If no epochs are rejected during loading, the returned ds is identical with the
-input ds.
-If epochs are rejected during loading, the returned ds is a shortened version
-of the input Dataset that only contains the good epochs.
+The returned ``ds2`` will contain the epochs as NDVar as ``ds['meg']``. If no
+epochs got rejected during loading, ``ds2`` is identical with the input ``ds``.
+If epochs were rejected, ``ds2`` is a shorter copy of the original ``ds``.
 
+:class:`mne.Epochs` can be added to ``ds`` in the same fashion with::
 
-2) load epochs as mne.Epochs object
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    >>> ds = load.fiff.add_mne_epochs(ds, -0.1, 0.6)
 
-The epochs can be loaded as mne.Epochs object using::
+The epochs can also be loaded as separate objects using::
 
-    >>> epochs = load.fiff.mne_epochs(ds)
+    >>> epochs = load.fiff.epochs(ds)
+    >>> mne_epochs = load.fiff.mne_epochs(ds)
 
 Note that the returned epochs event does not contain meaningful event ids,
 and ``epochs.event_id`` is None.
 
-
-
-
-Created on Feb 21, 2012
-
-@author: christian
 '''
 from __future__ import division
 
@@ -122,7 +152,7 @@ def mne_raw(path=None, proj=False, **kwargs):
 def events(raw=None, merge=-1, proj=False, name=None,
            bads=None, stim_channel=None):
     """
-    Read events from a raw fiff file.
+    Load events from a raw fiff file.
 
     Use :func:`fiff_epochs` to load MEG data corresponding to those events.
 
@@ -219,7 +249,7 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
            unit='T', proj=False, data='mag', reject=None, exclude='bads',
            info=None, name=None, raw=None, sensors=None, i_start='i_start'):
     """
-    Load epochs from a fiff file as NDVar.
+    Load epochs as :class:`NDVar`.
 
     Parameters
     ----------
@@ -292,7 +322,7 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
                info=None, name="meg", raw=None, sensors=None,
                i_start='i_start', **kwargs):
     """
-    Load epochs form a fiff file and add them to a dataset as NDVar.
+    Load epochs and add them to a dataset as :class:`NDVar`.
 
     Unless the ``reject`` argument is specified, ``ds``
     is modified in place. With ``reject``, a subset of ``ds`` is returned
@@ -374,7 +404,7 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
 def add_mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, target='epochs',
                    **kwargs):
     """
-    Add an mne.Epochs object to the Dataset and return the Dataset.
+    Load epochs and add them to a dataset as :class:`mne.Epochs`.
 
     If, after loading, the Epochs contain fewer cases than the Dataset, a copy
     of the Dataset is made containing only those events also contained in the
@@ -444,7 +474,7 @@ def _mne_events(ds=None, i_start='i_start', eventID='eventID'):
 def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
                raw=None, drop_bad_chs=True, **kwargs):
     """
-    Load an :class:`mne.Epochs` object for the events in ``ds``
+    Load epochs as :class:`mne.Epochs`.
 
     Parameters
     ----------
@@ -502,7 +532,7 @@ def mne_Epochs(*args, **kwargs):
 
 def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
     """
-    returns a Sensor object based on the info in a fiff object.
+    Create a Sensor dimension object based on the info in a fiff object.
 
     """
     info = fiff.info
@@ -524,7 +554,7 @@ def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
 def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
                  unit='T', info=None, sensors=None, vmax=None):
     """
-    Convert an mne.Epochs object to an NDVar.
+    Convert an :class:`mne.Epochs` object to an :class:`NDVar`.
 
     Parameters
     ----------
@@ -578,7 +608,7 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
 
 def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
     """
-    Convert an mne Evoked object or a list thereof to an NDVar.
+    Convert one or more :class:`mne.Evoked` objects to an :class:`NDVar`.
 
     Parameters
     ----------
@@ -644,8 +674,10 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
 
 def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
     """
-    create an NDVar object from an mne SourceEstimate object
+    Convert one or more :class:`mne.SourceEstimate` objects to an :class:`NDVar`.
 
+    Parameters
+    ----------
     stc : SourceEstimate | list of SourceEstimates | str
         The source estimate object(s) or a path to an stc file.
     subject : str
