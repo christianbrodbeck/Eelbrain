@@ -135,39 +135,39 @@ def texify(txt):
 
 class texstr(object):
     """
-    The elementary unit of the :py:mod:`fmtxt` module.
-    An item that can function as a string, but can hold a more complete
-    representation (e.g. font properties) at the same time.
+    An object that stores a value along with formatting properties.
+
+    The elementary unit of the :py:mod:`fmtxt` module. It can function as a
+    string, but can hold formatting properties such as font properties.
 
     The following methods are used to get different string representations:
-     - texstr.__str__()
-     - texstr.get_tex()
+
+     - texstr.get_str() -> unicode
+     - texstr.get_tex() -> str (tex)
+     - texstr.__str__() -> str
 
     """
     def __init__(self, text, property=None, mat=False,
                  drop0=False, fmt='%.6g'):
         """
-        :arg text: can be a string, a texstr, a scalar, or a list containing
-            a combination of those.
+        An object that stores a value along with formatting properties.
 
-        :arg str property: tex property that is followed by {}
-            (e.g., r'\textbf' will result in '\textbf{...}')
-
-        :arg bool mat: for tex output, content is enclosed in $...$
-
-
-        number properties
-        -----------------
-
-        fmt : format-str (default ``'%.6g'``)
-            Format for numerical ``text`` values
-
-        drop0 : bool (default ``False``)
+        Parameters
+        ----------
+        text : object | list
+            Any item with a string representation; can be a str, a texstr, a
+            scalar, or a list containing a combination of those.
+        property : str
+            TeX property that is followed by {}
+            (e.g., ``property=r'\textbf'`` will result in ``'\textbf{...}'``)
+        mat : bool
+            For TeX output, content is enclosed in ``'$...$'``
+        drop0 : bool
             For  numbers smaller than 0, drop the '0' before the decimal
-            point (e.g., for p values)
-
+            point (e.g., for p values).
+        fmt : str
+            Format-str for numerical values.
         """
-#        logging.debug("tex.texstr.__init__(%s)"%str(text))
         if hasattr(text, 'get_tex'):  # texstr
             text = [text]
         elif (np.iterable(text)) and (not isstr(text)):  # lists
@@ -194,14 +194,13 @@ class texstr(object):
 
     def __repr_items__(self):
         items = [repr(self.text)]
-
         if self.property:
             items.append(repr(self.property))
         if self.mat:
             items.append('mat=True')
         if self.drop0:
             items.append('drop0=True')
-        if self.fmt != '%.6g':
+        if self.fmt != '%s':
             items.append('fmt=%r' % self.fmt)
         return items
 
@@ -237,20 +236,18 @@ class texstr(object):
         elif isinstance(self.text, (bool, np.bool_, np.bool8)):
             return '%s' % self.text
         elif np.isscalar(self.text) or getattr(self.text, 'ndim', None) == 0:
-            if int(self.text) == self.text:
-                return str(int(self.text))
+            if fmt:
+                txt = fmt % self.text
             else:
-                if fmt:
-                    txt = fmt % self.text
-                else:
-                    txt = self.fmt % self.text
-                if self.drop0 and len(txt) > 0 and txt[0] == '0':
-                    txt = txt[1:]
-                return txt
+                txt = self.fmt % self.text
+            if self.drop0 and len(txt) > 2 and txt.startswith('0.'):
+                txt = txt[1:]
+            return txt
         elif not self.text:
             return ''
         else:
-            logging.warning(" Unknown text in tex.texstr: {0}".format(str(self.text)))
+            msg = "Unknown text in tex.texstr: {0}".format(str(self.text))
+            logging.warning(msg)
             return ''
 
     def get_tex(self, mat=False, fmt=None):
