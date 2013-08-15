@@ -1,44 +1,36 @@
-***************
-Data Containers
-***************
-
-
-Data-Container Classes
-======================
-
-Basic data container classes:
+************
+Data Classes
+************
 
 .. currentmodule:: eelbrain.data
+
+Primary data classes:
 
 .. autosummary::
    :toctree: generated
 
    Dataset
-   Datalist
    Factor
-   data_obj.Interaction
-   NDVar
    Var
+   NDVar
+   Datalist
 
 
-Functions and classes operating with data containers:
-
-.. currentmodule:: eelbrain.eellab
-
+Secondary classes (not usually initialized by themselves but through operations
+on primary data-objects):
+   
 .. autosummary::
    :toctree: generated
 
-   align
-   align1
-   combine
-   Celltable
+   data_obj.Interaction
 
 
+********
 File I/O
-========
+********
 
-Read
-----
+Load
+====
 
 .. currentmodule:: eelbrain.data
 
@@ -52,8 +44,8 @@ Read
    load.unpickle
 
 
-Write
------
+Save
+====
 
 * `Pickling <http://docs.python.org/library/pickle.html>`_: 
   All data-objects can be pickled. :func:`save.pickle` provides a 
@@ -68,3 +60,41 @@ Write
 
    save.pickle
    save.txt
+
+
+***************
+Data Processing
+***************
+
+Sorting and reordering
+======================
+
+.. currentmodule:: eelbrain.data
+
+.. autosummary::
+   :toctree: generated
+
+   align
+   align1
+   combine
+   Celltable
+   
+
+Data Transformations
+====================
+
+.. autosummary::
+   :toctree: generated
+
+   cwt_morlet
+
+
+**********
+Statistics
+**********
+
+.. autosummary::
+   :toctree: generated
+
+   test
+   testnd
