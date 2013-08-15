@@ -1193,7 +1193,11 @@ class ShellFrame(wx.py.shell.ShellFrame):
         """
         win = self.get_active_window()
         if win:
-            win.Close()
+            try:
+                win.Close()
+            except:
+                win.Destroy()
+                raise
         else:
             event.Skip()
 
