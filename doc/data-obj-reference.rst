@@ -49,6 +49,7 @@ Read
    load.fiff
    load.tsv
    load.txt.var
+   load.unpickle
 
 
 Write

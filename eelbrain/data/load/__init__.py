@@ -1,5 +1,6 @@
 """
-Modules for loading data.
+Tools for loading data.
+
 The following submodules are available:
 
 brainvision:
@@ -26,12 +27,23 @@ from . import txt
 from .txt import tsv
 
 
-def unpickle(fname=None):
-    if fname is None:
-        ext = [('pickled', "Pickles"), ('*', "all files")]
-        fname = _ui.ask_file("Select File to Unpickle", "Select a pickled "
-                             "file to unpickle", ext=ext)
-    if fname is False:
-        raise IOError("User canceled")
+def unpickle(file_path=None):
+    """Load pickled Python objects from a file.
 
-    return _pickle.load(open(fname))
+    Simply uses cPickle.load(), but allows using a system file dialog to select
+    a file.
+
+    Parameters
+    ----------
+    file_path : None | str
+        Path to a pickled file. If None, a system file dialog will be used. If
+        the user cancels the file dialog, a RuntimeError is raised.
+    """
+    if file_path is None:
+        ext = [('pickled', "Pickles"), ('*', "all files")]
+        file_path = _ui.ask_file("Select File to Unpickle", "Select a pickled "
+                                 "file to unpickle", ext=ext)
+    if file_path is False:
+        raise RuntimeError("User canceled")
+
+    return _pickle.load(open(file_path))
