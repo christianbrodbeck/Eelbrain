@@ -672,7 +672,7 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
     return NDVar(x, dims, info=info, name=name)
 
 
-def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
+def stc_ndvar(stc, subject, kind, grade, name=None, check=True):
     """
     Convert one or more :class:`mne.SourceEstimate` objects to an :class:`NDVar`.
 
@@ -682,6 +682,10 @@ def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
         The source estimate object(s) or a path to an stc file.
     subject : str
         MRI subject (used for loading MRI in PySurfer plotting)
+    kind : 'ico' | 'oct'
+        The kind of source space decimation employed.
+    grade : int
+        The decimation parameters.
     name : str | None
         Ndvar name.
     check : bool
@@ -710,7 +714,7 @@ def stc_ndvar(stc, subject='fsaverage', name=None, check=True):
         x = np.array([s.data for s in stcs])
 
     time = UTS(stc.tmin, stc.tstep, stc.shape[1])
-    ss = SourceSpace(stc.vertno, subject=subject)
+    ss = SourceSpace(stc.vertno, subject, kind, grade)
     if case:
         dims = ('case', ss, time)
     else:

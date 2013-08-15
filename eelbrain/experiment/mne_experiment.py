@@ -324,6 +324,7 @@ class MneExperiment(FileTree):
                              set_handler=self._set_inv_as_str)
         self._register_field('model', default='',
                              eval_handler=self._eval_model)
+        self._register_field('src', post_set_handler=self._post_set_src)
 
         # Define make handlers
         self._bind_make('evoked-file', self.make_evoked)
@@ -377,7 +378,8 @@ class MneExperiment(FileTree):
 
         if ndvar:
             subject = self.get('mrisubject')
-            stc = load.fiff.stc_ndvar(stc, subject, 'stc')
+            kind, grade = self._params['src']
+            stc = load.fiff.stc_ndvar(stc, subject, kind, grade, 'stc')
 
         ds[dst] = stc
 
@@ -515,7 +517,9 @@ class MneExperiment(FileTree):
 
                 if ndvar and (len(ds['subject'].cells) == 1):
                     subject = ds['subject'].cells[0]
-                    ds[key] = load.fiff.stc_ndvar(stcs[name], subject)
+                    kind, grade = self._params['src']
+                    ds[key] = load.fiff.stc_ndvar(stcs[name], subject, kind,
+                                                  grade)
                 else:
                     ds[key] = stcs[name]
             if morph:
@@ -525,7 +529,9 @@ class MneExperiment(FileTree):
                     key = morph
 
                 if ndvar:
-                    ds[key] = load.fiff.stc_ndvar(mstcs[name], common_brain)
+                    kind, grade = self._params['src']
+                    ds[key] = load.fiff.stc_ndvar(mstcs[name], common_brain,
+                                                  kind, grade)
                 else:
                     ds[key] = mstcs[name]
 
@@ -2071,6 +2077,11 @@ class MneExperiment(FileTree):
     def _post_set_rej(self, rej):
         rej_args = self.epoch_rejection[rej]
         self._params['rej'] = rej_args
+
+    def _post_set_src(self, src):
+        kind, grade = src.split('-')
+        grade = int(grade)
+        self._params['src'] = (kind, grade)
 
     def set_env(self, env=os.environ):
         """

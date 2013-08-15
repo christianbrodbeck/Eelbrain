@@ -4698,8 +4698,9 @@ class SourceSpace(Dimension):
     name = 'source'
     adjacent = False
 
-    def __init__(self, vertno, subject='fsaverage'):
-        """
+    def __init__(self, vertno, subject, kind, grade, index=None):
+        """Create mne source space dimension.
+
         Parameters
         ----------
         vertno : list of array
@@ -4707,22 +4708,38 @@ class SourceSpace(Dimension):
             Each array has shape [n_dipoles] for in each source space]
         subject : str
             The mri-subject (used to load brain).
+        kind : 'ico' | 'oct'
+            The kind of source space decimation employed.
+        grade : int
+            The decimation parameters.
+        index : None | array_like
+            If vertno is only a part of the source space, the index locates
+            vertno in the whole source space.
         """
+        if kind not in ('ico', 'oct', None):
+            raise ValueError("Kind must be 'ico' or 'oct', got %r." % kind)
         self.vertno = vertno
         self.lh_vertno = vertno[0]
         self.rh_vertno = vertno[1]
         self.lh_n = len(self.lh_vertno)
         self.rh_n = len(self.rh_vertno)
         self.subject = subject
+        self.kind = kind
+        self.grade = grade
+        self.index = index
 
     def __getstate__(self):
-        state = {'vertno': self.vertno, 'subject': self.subject}
+        state = {'vertno': self.vertno, 'subject': self.subject,
+                 'kind': self.kind, 'grade': self.grade, 'index': self.index}
         return state
 
     def __setstate__(self, state):
         vertno = state['vertno']
         subject = state['subject']
-        self.__init__(vertno, subject)
+        kind = state.get('kind', None)
+        grade = state.get('grade', None)
+        index = state.get('index', None)
+        self.__init__(vertno, subject, kind, grade, index)
 
     def __repr__(self):
         return "<dim SourceSpace: %i (lh), %i (rh)>" % (self.lh_n, self.rh_n)
@@ -4734,13 +4751,36 @@ class SourceSpace(Dimension):
         vert = np.hstack(self.vertno)
         hemi = np.zeros(len(vert))
         hemi[self.lh_n:] = 1
+        index_ = self.index or np.arange(len(self))
 
         vert = vert[index]
         hemi = hemi[index]
+        index_ = index_[index]
 
         new_vert = (vert[hemi == 0], vert[hemi == 1])
-        dim = SourceSpace(new_vert, subject=self.subject)
+        dim = SourceSpace(new_vert, self.subject, self.kind, self.grade,
+                          index_)
         return dim
+
+    def connectivity(self):
+        """Create source space connectivity
+        """
+        import mne
+        if self.kind == 'ico':
+            tris = mne.grade_to_tris(self.grade)
+            c = mne.spatial_tris_connectivity(tris)
+        else:
+            raise NotImplementedError("Connectivity for %r" % self.kind)
+
+        if self.index is not None:
+            idx = np.logical_and(np.in1d(c.row, self.index, True),
+                                 np.in1d(c.col, self.index, True))
+            row = c.row[idx]
+            col = c.col[idx]
+            data = c.data[idx]
+            c = coo_matrix((data, (row, col)))
+
+        return c
 
     def dimindex(self, obj):
         import mne
