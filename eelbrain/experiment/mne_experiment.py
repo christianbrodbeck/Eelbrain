@@ -2055,7 +2055,8 @@ class MneExperiment(FileTree):
             e_descs_bare.append(desc_b)
 
         # store secondary settings
-        fields = {'epoch-stim': '|'.join(sorted(stims)),
+        fields = {'epoch': epoch,
+                  'epoch-stim': '|'.join(sorted(stims)),
                   'epoch-desc': '(%s)' % ','.join(sorted(e_descs)),
                   'epoch-nodecim': '(%s)' % ','.join(sorted(e_descs_nodecim)),
                   'epoch-bare': '(%s)' % ','.join(sorted(e_descs_bare)),
