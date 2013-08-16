@@ -1219,40 +1219,25 @@ class MneExperiment(FileTree):
         # save evt
         save.besa_evt(ds, tstart=tmin, tstop=tmax, dest=evt_dest)
 
-    def make_cov(self, cov=None, redo=False):
+    def make_cov(self, redo=False, **state):
         """Make a noise covariance (cov) file
 
         Parameters
         ----------
+        redo : bool
+            If the cov file already exists, overwrite it.
         cov : None | str
             The epoch used for estimating the covariance matrix (needs to be
             a name in .epochs). If None, the experiment state cov is used.
         """
-        if (cov is not None) and not isinstance(cov, str):
-            raise TypeError("cov should be None or str, no %r" % cov)
-
-        cov = self.get('cov', cov=cov)
+        cov = self.get('cov', **state)
         dest = self.get('cov-file')
         if (not redo) and os.path.exists(dest):
             return
 
-        self.set(epoch=cov)
-        epoch = self._epoch_state
-        stimvar = epoch['stimvar']
-        stim = epoch['stim']
-        tmin = epoch['tmin']
-        tmax = epoch['tmax']
-
-        ds = self.load_events()
-
-        # decimate events
-        ds = ds.subset(ds[stimvar] == stim)
-        edf = ds.info['edf']
-        ds = edf.filter(ds, use=['EBLINK'], tstart=tmin, tstop=tmax)
-
-        # create covariance matrix
-        epochs = load.fiff.mne_epochs(ds, tmin, tmax, (None, 0), preload=True,
-                                      reject={'mag':3e-12})
+        ds = self.load_epochs(epoch=cov, baseline=(None, 0), ndvar=False,
+                              decim=1)
+        epochs = ds['epochs']
         cov = mne.cov.compute_covariance(epochs)
         cov.save(dest)
 
