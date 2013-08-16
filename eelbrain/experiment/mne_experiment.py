@@ -113,6 +113,7 @@ temp = {
         'raw-dir': os.path.join('{meg-dir}', 'raw'),
 
         # raw
+        'experiment': '???',
         'raw': ('clm', 'lp40', 'hp.1-lp40', 'hp.2-lp40', 'hp1-lp40'),
         # key necessary for identifying raw file info (used for bad channels):
         'raw-key': '{subject}',
@@ -131,7 +132,6 @@ temp = {
         # mne secondary/forward modeling
         'proj': '',
         'cov': 'bl',
-        'src': ('ico-4', 'vol-10', 'vol-7'),
         'proj-file': '{raw-base}_{proj}-proj.fif',
         'proj-plot': '{raw-base}_{proj}-proj.pdf',
         'cov-file': '{raw-base}_{cov}-{rej}-{proj}-cov.fif',
@@ -141,8 +141,6 @@ temp = {
         'fwd-file': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
 
         # epochs
-        'epoch': 'epoch',  # epoch name
-        'rej': 'man',  # rejection
         'epoch-stim': None,  # the stimulus/i selected by the epoch
         'epoch-desc': None,  # epoch description
         'epoch-bare': None,  # epoch description without decim or rej
@@ -160,6 +158,7 @@ temp = {
 
         # Source space
         'annot': 'aparc',
+        'label': '???',
         'label-dir': os.path.join('{mri-dir}', 'label', '{annot}'),
         'hemi': ('lh', 'rh'),
         'label-file': os.path.join('{label-dir}', '{hemi}.{label}.label'),
@@ -170,7 +169,6 @@ temp = {
 
         # result output files
         # group/subject
-        'group': 'all',  # analysis performed over (can be single subject)
         'kind': '',  # analysis kind (movie, plot, ...)
         'analysis': '',  # analysis name (source, ...)
         'name': '',  # file name
@@ -281,8 +279,10 @@ class MneExperiment(FileTree):
     # dictionary in the module level _temp dictionary, or a templates
     # dictionary
     _templates = temp
-    # modify certain template entries from the outset (e.g. specify the initial
-    # subject name)
+    # specify additional templates
+    _values = {}
+    # specify defaults for specific fields (e.g. specify the initial subject
+    # name)
     _defaults = {
                  'experiment': 'experiment_name',
                  # this should be a key in the epochs class attribute (see
@@ -304,6 +304,8 @@ class MneExperiment(FileTree):
         self.exclude = self.exclude.copy()
         self._mri_subjects = keydefaultdict(lambda k: k)
         self._label_cache = LabelCache()
+        self._templates = self._templates.copy()
+        self._templates.update(self._values)
 
         # store epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
@@ -320,11 +322,11 @@ class MneExperiment(FileTree):
                              eval_handler=self._eval_group)
         self._register_field('epoch', self.epochs.keys(),
                              set_handler=self.set_epoch)
-        self._register_field('inv', default='free-2-dSPM',
+        self._register_value('inv', 'free-2-dSPM',
                              set_handler=self._set_inv_as_str)
-        self._register_field('model', default='',
-                             eval_handler=self._eval_model)
-        self._register_field('src', post_set_handler=self._post_set_src)
+        self._register_value('model', '', eval_handler=self._eval_model)
+        self._register_field('src', ('ico-4', 'vol-10', 'vol-7'),
+                             post_set_handler=self._post_set_src)
 
         # Define make handlers
         self._bind_make('evoked-file', self.make_evoked)
