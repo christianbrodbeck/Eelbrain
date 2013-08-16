@@ -128,27 +128,21 @@ class TreeModel(object):
         self._post_set_handlers = defaultdict(list)
         self._set_handlers = {}
 
-        # construct initial state
+        # construct initial state: make all defaults available, then set as
+        # many values as we can
         self._defaults = dict(self._defaults)
         self._defaults.update(state)
-        for k, v in itertools.chain(self._templates.iteritems(),
-                                    self._defaults.iteritems()):
+        for k, v in self._templates.iteritems():
             if v is None:  # secondary field
                 pass
             elif isinstance(v, basestring):
-                self._fields[k] = v
+                self._register_value(k, v)
             elif isinstance(v, tuple):
                 self._register_field(k, v, v[0])
             else:
                 err = ("Invalid templates field value: %r. Need None, tuple "
                        "or string" % v)
                 raise TypeError(err)
-
-        # add any field occurring in templates
-        for k in self._fields.keys():
-            temp = self._fields[k]
-            for field in self._fmt_pattern.findall(temp):
-                self._fields.setdefault(field, '')
 
         if self.owner:
             self.notification = Notifier(self.owner, 'MneExperiment task')
@@ -182,6 +176,27 @@ class TreeModel(object):
             raise KeyError("set-handler for %r already set" % key)
         self._set_handlers[key] = handler
 
+    def _find_missing_fields(self, add=False):
+        """Find all field names occurring in field values but not as fields
+
+        Parameters
+        ----------
+        add : bool
+            Add non-existent field names with default value ''.
+        """
+        fields = set()
+        for k in self._fields.keys():
+            temp = self._fields[k]
+            for field in self._fmt_pattern.findall(temp):
+                if field not in self._fields:
+                    fields.add(field)
+
+        if add:
+            for field in fields:
+                self._register_value(field, '')
+
+        return fields
+
     def _register_field(self, key, values=None, default=None, set_handler=None,
                         eval_handler=None, post_set_handler=None):
         """Register an iterable field
@@ -201,6 +216,9 @@ class TreeModel(object):
         post_set_handler : None | callable
             Function to call after the value is changed.
         """
+        if key in self._fields:
+            raise KeyError("Field already exists: %r" % key)
+
         if set_handler is not None:
             self._bind_set(key, set_handler)
         if eval_handler is not None:
@@ -208,8 +226,7 @@ class TreeModel(object):
         if post_set_handler is not None:
             self._bind_post_set(key, post_set_handler)
 
-        if default is None:
-            default = self._defaults.get(key, None)
+        default = self._defaults.get(key, default)
 
         if values is not None:
             if default is None:
@@ -226,6 +243,37 @@ class TreeModel(object):
         else:
             kwargs = {key: default, 'add':True}
             self.set(**kwargs)
+
+    def _register_value(self, key, default, set_handler=None,
+                        eval_handler=None, post_set_handler=None):
+        """Register a value with handlers
+
+        Parameters
+        ----------
+        key : str
+            Name of the field.
+        default : None | str
+            Set the default value.
+        set_handler : None | callable
+            Function to call instead of updating the state value,
+        eval_handler : None | callable
+            Function to use for evaluating a value before setting.
+        post_set_handler : None | callable
+            Function to call after the value is changed.
+        """
+        if key in self._fields:
+            raise KeyError("Field already exists: %r" % key)
+
+        if set_handler is not None:
+            self._bind_set(key, set_handler)
+        if eval_handler is not None:
+            self._bind_eval(key, eval_handler)
+        if post_set_handler is not None:
+            self._bind_post_set(key, post_set_handler)
+
+        default = self._defaults.get(key, default)
+        kwargs = {key: default, 'add':True}
+        self.set(**kwargs)
 
     def _increase_depth(self):
         self._fields.increase_depth()
