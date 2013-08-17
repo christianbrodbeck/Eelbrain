@@ -138,7 +138,7 @@ temp = {
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
         'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
-        'fwd-file': '{raw-base}-{mrisubject}_{cov}-{cov-rej}-{proj}-fwd.fif',
+        'fwd-file': '{raw-base}_{mrisubject}-fwd.fif',
 
         # epochs
         'epoch-stim': None,  # the stimulus/i selected by the epoch
