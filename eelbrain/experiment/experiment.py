@@ -104,8 +104,7 @@ class LayeredDict(dict):
 
 
 class TreeModel(object):
-    """A model for a hierarchical tree of strings
-
+    """A hierarchical collection of format strings and field values
     """
     owner = None  # email address as string (for notification)
 
@@ -625,8 +624,7 @@ class TreeModel(object):
 
 class FileTree(TreeModel):
     """
-    A :class:`TreeModel` subclass specialized for representing a file system
-    hierarchy.
+    :class:`TreeModel` subclass for representing a file system hierarchy.
     """
     _repr_args = ('root',)
     def __init__(self, **state):
