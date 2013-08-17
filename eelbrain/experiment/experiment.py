@@ -702,7 +702,9 @@ class FileTree(TreeModel):
         # make the file
         if make and not os.path.exists(path) and temp in self._make_handlers:
             if temp in self._make_handlers:
+                level = self._increase_depth()
                 self._make_handlers[temp]()
+                self.reset(level - 1)
             else:
                 raise RuntimeError("No make handler for %r." % temp)
 
