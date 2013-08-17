@@ -134,11 +134,11 @@ temp = {
         'cov': 'bl',
         'proj-file': '{raw-base}_{proj}-proj.fif',
         'proj-plot': '{raw-base}_{proj}-proj.pdf',
-        'cov-file': '{raw-base}_{cov}-{rej}-{proj}-cov.fif',
+        'cov-file': '{raw-base}_{cov}-{cov-rej}-{proj}-cov.fif',
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
         'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
-        'fwd-file': '{raw-base}-{mrisubject}_{cov}_{proj}-fwd.fif',
+        'fwd-file': '{raw-base}-{mrisubject}_{cov}-{cov-rej}-{proj}-fwd.fif',
 
         # epochs
         'epoch-stim': None,  # the stimulus/i selected by the epoch
@@ -229,6 +229,8 @@ class MneExperiment(FileTree):
     #     selection on the fly; 'manual': manually create a rejection file (use
     #     the selection GUI .make_rej()); 'make' a rejection file
     #     is created by the user
+    # cov-rej : str
+    #     rej setting to use for cov under this setting.
     #
     # For manual rejection
     # ^^^^^^^^^^^^^^^^^^^^
@@ -1219,7 +1221,7 @@ class MneExperiment(FileTree):
         # save evt
         save.besa_evt(ds, tstart=tmin, tstop=tmax, dest=evt_dest)
 
-    def make_cov(self, redo=False, **state):
+    def make_cov(self, redo=False):
         """Make a noise covariance (cov) file
 
         Parameters
@@ -1230,13 +1232,14 @@ class MneExperiment(FileTree):
             The epoch used for estimating the covariance matrix (needs to be
             a name in .epochs). If None, the experiment state cov is used.
         """
-        cov = self.get('cov', **state)
         dest = self.get('cov-file')
         if (not redo) and os.path.exists(dest):
             return
 
-        ds = self.load_epochs(epoch=cov, baseline=(None, 0), ndvar=False,
-                              decim=1)
+        cov = self.get('cov')
+        rej = self.get('cov-rej')
+        ds = self.load_epochs(baseline=(None, 0), ndvar=False, decim=1,
+                              epoch=cov, rej=rej)
         epochs = ds['epochs']
         cov = mne.cov.compute_covariance(epochs)
         cov.save(dest)
@@ -2065,6 +2068,8 @@ class MneExperiment(FileTree):
     def _post_set_rej(self, rej):
         rej_args = self.epoch_rejection[rej]
         self._params['rej'] = rej_args
+        cov_rej = rej_args.get('cov-rej', rej)
+        self._fields['cov-rej'] = cov_rej
 
     def _post_set_src(self, src):
         kind, grade = src.split('-')
