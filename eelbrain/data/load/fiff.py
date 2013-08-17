@@ -606,7 +606,7 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
     return NDVar(x, ('case', sensor, time), info=info_, name=name)
 
 
-def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
+def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads'):
     """
     Convert one or more :class:`mne.Evoked` objects to an :class:`NDVar`.
 
@@ -617,12 +617,12 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
         path to a evoked fiff file containing only one evoked.
     name : str
         Name of the NDVar.
-    meg : bool | 'mag' | 'grad'
-        What MEG data to keep.
-    eeg : bool
-        Whether to keep EEG data.
-    exclude : see mne documentation
-        Channels to exclude.
+    data : 'eeg' | 'mag' | 'grad'
+        The kind of data to include.
+    exclude : list of string | string
+        Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
+        If 'bads' (default), exclude channels in info['bads'].
+        If empty do not exclude any.
 
     Notes
     -----
@@ -633,8 +633,8 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
         evoked = mne.fiff.Evoked(evoked)
 
     if isinstance(evoked, mne.fiff.Evoked):
-        picks = mne.fiff.pick_types(evoked.info, meg=meg, eeg=eeg,
-                                    exclude=exclude)
+        picks = _ndvar_epochs_picks(evoked.info, data, exclude)
+
         x = evoked.data[picks]
         sensor = sensor_dim(evoked, picks=picks)
         time = UTS.from_int(evoked.first, evoked.last, evoked.info['sfreq'])
@@ -658,9 +658,9 @@ def evoked_ndvar(evoked, name='MEG', meg=True, eeg=False, exclude='bads'):
         # get data
         x = []
         sensor = None
+        exclude = list(exclude)
         for e in evoked:
-            picks = mne.fiff.pick_types(e.info, meg=meg, eeg=eeg,
-                                        exclude=list(exclude))
+            picks = _ndvar_epochs_picks(e.info, data, exclude)
             x.append(e.data[picks])
             if sensor is None:
                 sensor = sensor_dim(e, picks=picks)
