@@ -431,35 +431,56 @@ class MneExperiment(FileTree):
         time = UTS(stc.tmin, stc.tstep, stc.shape[1])
         ds[key] = NDVar(np.array(x), dims=('case', time))
 
-    def add_evoked_stc(self, ds, ind='stc', morph='stcm', baseline=None,
-                       ndvar=False):
+    def add_evoked_stc(self, ds, ind_stc=True, ind_ndvar=False, morph_stc=False,
+                       morph_ndvar=False, baseline=None):
         """
-        Add an stc (NDVar) to a Dataset with an evoked list.
-
-        Assumes that all Evoked of the same subject share the same inverse
-        operator.
+        Add source estimates to a dataset with evoked data.
 
         Parameters
         ----------
         ds : Dataset
             The Dataset containing the Evoked objects.
-        ind: bool | str
-            Add stcs on individual brains (with str as name, otherwise 'stc').
-        morph : bool | str
-            Add stcs for data morphed to the common brain (with str as name,
-            otherwise 'stcm').
+        ind_stc : bool
+            Add source estimates on individual brains as list of
+            :class:`mne.SourceEstimate`.
+        ind_ndvar : bool
+            Add source estimates on individual brains as :class:`NDVar`.
+        morph_stc : bool
+            Add source estimates morphed to the common brain as list of
+            :class:`mne.SourceEstimate`.
+        morph_ndvar : bool
+            Add source estimates morphed to the common brain as :class:`NDVar`.
         baseline : None | str | tuple
             Baseline correction in source space.
-        ndvar : bool
-            Add stcs as NDVar (default is list of mne SourceEstimate objects).
-            For individual brain stcs, this option only applies for datasets
-            with a single subject.
+
+        Notes
+        -----
+        Assumes that all Evoked of the same subject share the same inverse
+        operator.
         """
+        n_subjects = ds.eval('len(subject.cells)')
+        ind = (ind_stc or ind_ndvar)
+        morph = (morph_stc or morph_ndvar)
         if not (ind or morph):
             return
 
         if isinstance(baseline, str):
-            raise NotImplementedError
+            raise NotImplementedError("Baseline form different epoch")
+
+        # find from subjects
+        common_brain = self.get('common_brain')
+        from_subjects = {}
+        for subject in ds.eval('subject.cells'):
+            if is_fake_mri(self.get('mri-dir', subject=subject)):
+                subject_from = common_brain
+            elif ind_ndvar and n_subjects > 1:
+                err = ("Subject %r has its own MRI; An ndvar can only be "
+                       "created form indivdual stcs if all stcs were "
+                       "estimated on the common brain." % subject)
+                raise ValueError(err)
+            else:
+                subject_from = subject
+            from_subjects[subject] = subject_from
 
         # find vars to work on
         do = []
@@ -470,22 +491,17 @@ class MneExperiment(FileTree):
         # prepare data containers
         invs = {}
         if ind:
-            ind = 'stc' if (ind == True) else str(ind)
             stcs = defaultdict(list)
         if morph:
-            morph = 'stcm' if (morph == True) else str(morph)
             mstcs = defaultdict(list)
 
         # convert evoked objects
-        common_brain = self.get('common_brain')
         mri_sdir = self.get('mri-sdir')
         for case in ds.itercases():
             subject = case['subject']
-            if is_fake_mri(self.get('mri-dir')):
-                subject_from = common_brain
-            else:
-                subject_from = subject
+            subject_from = from_subjects[subject]
 
+            # create stcs from sns data
             for name in do:
                 evoked = case[name]
 
@@ -512,32 +528,27 @@ class MneExperiment(FileTree):
                     mstcs[name].append(stc)
 
         # add to Dataset
-        for name in do:
-            if ind:
-                if len(do) > 1:
-                    key = '%s_%s' % (ind, do)
-                else:
-                    key = ind
-
-                if ndvar and (len(ds['subject'].cells) == 1):
+        if len(do) > 1:
+            keys = ('%%s_%s' % d for d in do)
+        else:
+            keys = ('%s',)
+        kind, grade = self._params['src']
+        for name, key in zip(do, keys):
+            if ind_stc:
+                ds[key % 'stc'] = stcs[name]
+            if ind_ndvar:
+                if n_subjects == 1:
                     subject = ds['subject'].cells[0]
-                    kind, grade = self._params['src']
-                    ds[key] = load.fiff.stc_ndvar(stcs[name], subject, kind,
-                                                  grade)
                 else:
-                    ds[key] = stcs[name]
-            if morph:
-                if len(do) > 1:
-                    key = '%s_%s' % (morph, do)
-                else:
-                    key = morph
-
-                if ndvar:
-                    kind, grade = self._params['src']
-                    ds[key] = load.fiff.stc_ndvar(mstcs[name], common_brain,
-                                                  kind, grade)
-                else:
-                    ds[key] = mstcs[name]
+                    subject = common_brain
+                ndvar = load.fiff.stc_ndvar(stcs[name], subject, kind, grade)
+                ds[key % 'src'] = ndvar
+            if morph_stc:
+                ds[key % 'stcm'] = mstcs[name]
+            if morph_ndvar:
+                ndvar = load.fiff.stc_ndvar(mstcs[name], common_brain, kind,
+                                            grade)
+                ds[key % 'srcm'] = ndvar
 
     def cache_events(self, redo=False):
         """Create the 'raw-evt-file'.
@@ -881,31 +892,33 @@ class MneExperiment(FileTree):
         ds = self.label_events(ds, experiment, subject)
         return ds
 
-    def load_evoked(self, subject=None, ndvar=False, baseline=None, cat=None,
+    def load_evoked(self, subject=None, baseline=None, ndvar=True, cat=None,
                     **kwargs):
         """
-        Load a Dataset with evoked files for each subject.
-
-        Load data previously created with :meth:`MneExperiment.make_evoked`.
+        Load a Dataset with the evoked responses for each subject.
 
         Parameters
         ----------
         subject : str
             Subject(s) for which to load evoked files. Can be a group name
             such as 'all' or a single subject.
+        baseline : None | (tmin, tmax)
+            Baseline to apply to evoked response.
         ndvar : bool | str
             Convert the mne Evoked objects to an NDVar. If True, the target
             name is 'meg'.
+        cat : sequence of cell-names
+            Only load data for these cells (cells of model).
         model : str (state)
             Model according to which epochs are grouped into evoked responses.
-        others :
+        *others* : str
             State parameters.
         """
         if subject in self.get_field_values('group'):
             self.set(**kwargs)
             dss = []
             for _ in self.iter(group=subject):
-                ds = self.load_evoked(ndvar=False, baseline=baseline, cat=cat)
+                ds = self.load_evoked(baseline=baseline, ndvar=False, cat=cat)
                 dss.append(ds)
 
             ds = combine(dss)
@@ -957,35 +970,40 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_evoked_stc(self, subject=None, ind=True, morph=False, ndvar=False,
-                        sns_baseline=None, src_baseline=None, cat=None,
-                        **kwargs):
-        """
+    def load_evoked_stc(self, subject=None, sns_baseline=None,
+                        src_baseline=None, sns_ndvar=False, ind_stc=True,
+                        ind_ndvar=False, morph_stc=False, morph_ndvar=False,
+                        cat=None, **kwargs):
+        """Load evoked source estimates.
+
         Parameters
         ----------
         subject : str
             Subject(s) for which to load evoked files. Can be a group name
             such as 'all' or a single subject.
-        ind: bool | str
-            Add stcs on individual brains (with str as name, otherwise 'stc').
-        morph : bool | str
-            Add stcs for data morphed to the common brain (with str as name,
-            otherwise 'stcm').
-        ndvar : bool
-            Add stcs as NDVar (default is list of mne SourceEstimate objects).
-            For individual brain stcs, this option only applies for datasets
-            with a single subject.
         sns_baseline : None | str | tuple
             Sensor space baseline correction.
         src_baseline : None | str | tuple
             Source space baseline correctoin.
-        others : str
+        ind_stc : bool
+            Add source estimates on individual brains as list of
+            :class:`mne.SourceEstimate`.
+        ind_ndvar : bool
+            Add source estimates on individual brains as :class:`NDVar`.
+        morph_stc : bool
+            Add source estimates morphed to the common brain as list of
+            :class:`mne.SourceEstimate`.
+        morph_ndvar : bool
+            Add source estimates morphed to the common brain as :class:`NDVar`.
+        cat : sequence of cell-names
+            Only load data for these cells (cells of model).
+        *others* : str
             State parameters.
         """
         ds = self.load_evoked(subject=subject, baseline=sns_baseline,
-                              ndvar=False, cat=cat, **kwargs)
-        self.add_evoked_stc(ds, ind=ind, morph=morph, baseline=src_baseline,
-                            ndvar=ndvar)
+                              ndvar=sns_ndvar, cat=cat, **kwargs)
+        self.add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
+                            src_baseline)
         return ds
 
     def load_inv(self, fiff, **kwargs):
