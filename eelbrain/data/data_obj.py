@@ -114,6 +114,18 @@ def rank(A, tol=1e-8):
     return np.sum(np.where(s > tol, 1, 0))
 
 
+def check_length(objs, n=None):
+    for obj in objs:
+        if obj is None:
+            pass
+        elif n is None:
+            n = len(obj)
+        elif n != len(obj):
+            err = ("%r has wrong length: %i (%i needed)." %
+                   (obj.name, len(obj), n))
+            raise ValueError(err)
+
+
 def isbalanced(X):
     """
     returns True if X is balanced, False otherwise.

@@ -45,7 +45,8 @@ import os
 import numpy as np
 import scipy.io
 
-from .data_obj import Dataset, Factor, ascategorial, asfactor, assub
+from .data_obj import (Dataset, Factor, ascategorial, asfactor, assub,
+                       check_length)
 from . import save
 from .. import ui
 
@@ -202,6 +203,7 @@ def random_factor(values, n=None, name=None, rand=True, balance=None, urn=None,
         If a Dataset is specified, ``urn``, ``balance`` and ``sub`` can be
         specified as str (names in ds).
     """
+    # convert input args
     sub = assub(sub, ds)
     if urn is not None:
         if n is None:
@@ -217,7 +219,8 @@ def random_factor(values, n=None, name=None, rand=True, balance=None, urn=None,
         err = ("If neither urn not balance are specified, n needs to be "
                "explicitly specified.")
         raise ValueError(err)
-
+    if urn is not None:
+        check_length(urn + [balance])
     if sub is not None:
         n_tgt = n
         n = len(np.empty(n)[sub])
