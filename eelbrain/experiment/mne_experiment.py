@@ -191,23 +191,6 @@ temp = {
 class MneExperiment(FileTree):
     """Class for managing data for an experiment
 
-    Methods
-    -------
-    Methods for getting information about the experiment:
-
-    .print_tree()
-        see templates and their dependency
-    .state()
-        print variables with their current value
-    .list_files()
-        List the presence or absence of files for a list of file templates.
-    .list_values()
-        print a table for all iterable varibales, i.e., those variables for
-        which the experiment stores multiple values.
-    .subjects_table()
-        Each subject with corresponding MRI subject.
-    .summary()
-        check for the presence of files for a given templates
     """
     # Experiment Constants
     # ====================
@@ -774,7 +757,7 @@ class MneExperiment(FileTree):
         epoch : str
             Epoch definition.
         ndvar : bool | str
-            Convert epochs to an NDVar with the given name (if True, 'MEG' is
+            Convert epochs to an NDVar with the given name (if True, 'meg' is
             uesed).
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
@@ -783,8 +766,8 @@ class MneExperiment(FileTree):
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
             employed depends on the :attr:`.epoch_rejection` class attribute.
-        cat : list of str or tuple
-            Only load evoked for a certain category (cells on model).
+        cat : sequence of cell-names
+            Only load data for these cells (cells of model).
         decim : None | int
             override the epoch decim factor.
         """
