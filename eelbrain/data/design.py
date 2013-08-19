@@ -39,7 +39,10 @@ Can be used in matlab as:
              255           0           0
 
 '''
+from __future__ import division
+
 from itertools import product
+from math import ceil
 import os
 
 import numpy as np
@@ -265,19 +268,19 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
         region_len = n
 
     # generate random values with equal number of each value
-    exact_balance = not bool(region_len % N_values)
+    exact_balance = (region_len % N_values == 0)
     if exact_balance:
         values = np.arange(region_len, dtype=np.uint8) % N_values
+    elif require_exact_balance:
+        raise ValueError("No exact balancing possible")
     else:
-        if require_exact_balance:
-            raise ValueError("No exact balancing possible")
-        _len = (region_len // N_values + 1) * N_values
+        _len = int(ceil(region_len / N_values)) * N_values
         values = np.arange(_len, dtype=np.uint8) % N_values
 
         # drop trailing values randomly
         if rand:  # and _randomize:
             np.random.shuffle(values[-N_values:])
-        values = values[:n]
+        values = values[:region_len]
 
 
     # cycle through values of the balance containers
