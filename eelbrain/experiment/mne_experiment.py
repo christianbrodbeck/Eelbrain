@@ -316,6 +316,8 @@ class MneExperiment(FileTree):
         # Define make handlers
         self._bind_make('evoked-file', self.make_evoked)
         self._bind_make('raw-file', self.make_raw)
+        self._bind_make('cov-file', self.make_cov)
+        self._bind_make('fwd-file', self.make_fwd)
 
         # set initial values
         self._increase_depth()
@@ -1325,7 +1327,7 @@ class MneExperiment(FileTree):
                '--src', self.get('src-file'),
                '--bem', self.get('bem-sol-file'),
                '--mri', self.get('trans-file'),
-               '--meas', self.get('raw-file'),  # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
+               '--meas', self.get('raw-file', make=True),  # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
                '--fwd', self.get('fwd-file'),
                '--megonly']
         if redo:
