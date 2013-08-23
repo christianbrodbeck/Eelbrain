@@ -122,10 +122,9 @@ class UTSStat(_base.subplot_figure):
                 N = len(cells)
                 colors = {cell: cm(i / N) for i, cell in enumerate(cells)}
 
-        legend_h = {}
         kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
                       invy=invy, bottom=bottom, top=top, hline=hline,
-                      xlabel=xlabel, legend_h=legend_h)
+                      xlabel=xlabel)
 
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
@@ -133,6 +132,7 @@ class UTSStat(_base.subplot_figure):
                                    figtitle=title)
 
         self._plots = []
+        self._legend_handles = {}
         if Xax is None:
             ax = self._axes[0]
             if axtitle and '{name}' in axtitle:
@@ -141,6 +141,7 @@ class UTSStat(_base.subplot_figure):
                 title_ = axtitle
             p = _ax_stat(ax, ct, colors, title=title_, **kwargs)
             self._plots.append(p)
+            self._legend_handles.update(p.legend_handles)
             if len(ct) < 2:
                 legend = False
         else:
@@ -154,9 +155,8 @@ class UTSStat(_base.subplot_figure):
                 title_ = axtitle.format(name=cellname(cell))
                 p = _ax_stat(ax, cct, colors, title=title_, **kwargs)
                 self._plots.append(p)
+                self._legend_handles.update(p.legend_handles)
 
-        self.legend_handles = legend_h.values()
-        self.legend_labels = legend_h.keys()
         self.plot_legend(legend)
 
         # prepare cluster plots
@@ -223,9 +223,10 @@ class UTSStat(_base.subplot_figure):
         'center'       : 10,
 
         """
-        if loc and len(self.legend_handles) > 1:
-            handles = self.legend_handles
-            labels = self.legend_labels
+        if loc and len(self._legend_handles) > 1:
+            cells = sorted(self._legend_handles)
+            labels = [cellname(cell) for cell in cells]
+            handles = [self._legend_handles[cell] for cell in cells]
             if loc == 'fig':
                 return _base.legend(handles, labels, figsize=figsize)
             else:
@@ -319,7 +320,7 @@ class UTS(_base.subplot_figure):
 
 
 class _ax_stat:
-    def __init__(self, ax, ct, colors, legend_h={}, dev=scipy.stats.sem,
+    def __init__(self, ax, ct, colors, dev=scipy.stats.sem,
                  main=np.mean, title=True, ylabel=True, xdim='time',
                  xlabel=True, invy=False, bottom=None, top=None, hline=None,
                  clusters=None, pmax=0.05, ptrend=0.1):
@@ -327,14 +328,15 @@ class _ax_stat:
 
         # stat plots
         self.stat_plots = []
+        self.legend_handles = {}
         for cell in ct.cells:
-            lbl = ct.cellname(cell, ' ')
+            lbl = cellname(cell)
             c = colors[cell]
-            h = _plt_stat(ax, ct.data[cell], main, dev, label=lbl, xdim=xdim,
-                          color=c)
-            self.stat_plots.append(h)
-            if lbl not in legend_h:
-                legend_h[lbl] = h['main'][0]
+            plt = _plt_stat(ax, ct.data[cell], main, dev, label=lbl, xdim=xdim,
+                            color=c)
+            self.stat_plots.append(plt)
+            if plt.main is not None:
+                self.legend_handles[cell] = plt.main[0]
 
         # hline
         if hline is not None:
@@ -615,53 +617,49 @@ class _plt_uts_clusters:
             self.h.append(h)
 
 
-def _plt_stat(ax, ndvar, main, dev, label=None, xdim='time', color=None, **kwargs):
-    h = {}
-    dim = ndvar.get_dim(xdim)
-    x = dim.x
-    y = ndvar.get_data(('case', 'time'))
+class _plt_stat(object):
+    def __init__(self, ax, ndvar, main, dev, label=None, xdim='time',
+                 color=None, **kwargs):
+        dim = ndvar.get_dim(xdim)
+        x = dim.x
+        y = ndvar.get_data(('case', 'time'))
 
-    if color:
-        kwargs['color'] = color
+        if color:
+            kwargs['color'] = color
 
-    main_kwargs = kwargs.copy()
-    dev_kwargs = kwargs.copy()
-    if label:
-        main_kwargs['label'] = label
+        main_kwargs = kwargs.copy()
+        dev_kwargs = kwargs.copy()
+        if label:
+            main_kwargs['label'] = label
 
-    if np.isscalar(dev):
-        dev_kwargs['alpha'] = dev
-        dev = 'all'
-    else:
-        dev_kwargs['alpha'] = .3
-
-    if dev == 'all':
-        if 'linewidth' in kwargs:
-            main_kwargs['linewidth'] = kwargs['linewidth'] * 2
-        elif 'lw' in kwargs:
-            main_kwargs['lw'] = kwargs['lw'] * 2
+        if np.isscalar(dev):
+            dev_kwargs['alpha'] = dev
+            dev = 'all'
         else:
-            main_kwargs['lw'] = 2
+            dev_kwargs['alpha'] = .3
 
-    # plot main
-    if hasattr(main, '__call__'):
-        y_ct = main(y, axis=0)
-        h['main'] = ax.plot(x, y_ct, zorder=5, **main_kwargs)
-    elif dev == 'all':
-        pass
-    else:
-        raise ValueError("Invalid argument: main=%r" % main)
+        if dev == 'all':
+            if 'linewidth' in kwargs:
+                main_kwargs['linewidth'] = kwargs['linewidth'] * 2
+            elif 'lw' in kwargs:
+                main_kwargs['lw'] = kwargs['lw'] * 2
+            else:
+                main_kwargs['lw'] = 2
 
-    # plot dev
-    if hasattr(dev, '__call__'):
-        ydev = dev(y, axis=0)
-        h['dev'] = ax.fill_between(x, y_ct - ydev, y_ct + ydev, zorder=0, **dev_kwargs)
-    elif dev == 'all':
-        h['dev'] = ax.plot(x, y.T, **dev_kwargs)
-        dev = None
-    else:
-        pass
+        # plot main
+        if hasattr(main, '__call__'):
+            y_ct = main(y, axis=0)
+            self.main = ax.plot(x, y_ct, zorder=5, **main_kwargs)
+        elif dev == 'all':
+            self.main = None
+        else:
+            raise ValueError("Invalid argument: main=%r" % main)
 
-    return h
-
-
+        # plot dev
+        if hasattr(dev, '__call__'):
+            ydev = dev(y, axis=0)
+            self.dev = ax.fill_between(x, y_ct - ydev, y_ct + ydev, zorder=0, **dev_kwargs)
+        elif dev == 'all':
+            self.dev = ax.plot(x, y.T, **dev_kwargs)
+        else:
+            self.dev = None
