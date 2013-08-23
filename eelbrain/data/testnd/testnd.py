@@ -380,10 +380,12 @@ class ttest_ind:
         else:
             parts.append(", n1=%i, n0=%i" % (self.n1, self.n0))
         if self._samples:
-            n = self._cdist.n_clusters
-            parts.append(", %i samples: %i clusters" % (self._samples, n))
-            if n:
-                parts.append(", p >= %.3f" % np.min(self.clusters['p'].x.min()))
+            if self.clusters is None:
+                parts.append(", no clusters found")
+            else:
+                n = self._cdist.n_clusters
+                parts.append(", %i samples: %i clusters" % (self._samples, n))
+                parts.append(", p >= %.3f" % self.clusters['p'].x.min())
         parts.append('>')
         return ''.join(parts)
 
@@ -484,7 +486,10 @@ class ttest_rel:
         self.diffp = [[diff, t]]
         self.uncorrected = [c1_mean, c0_mean] + self.diffp
         if samples:
-            self.diff_cl = [diff, cdist.cpmap]
+            if cdist.n_clusters:
+                self.diff_cl = [diff, cdist.cpmap]
+            else:
+                self.diff_cl = [diff]
             self.all = [c1_mean, c0_mean, self.diff_cl]
             self._cdist = cdist
             self.clusters = cdist.clusters
@@ -496,10 +501,12 @@ class ttest_rel:
         parts = ["<%s %r-%r" % (self.name, self._c1, self._c0)]
         parts.append(", n=%i" % self.n)
         if self._samples:
-            n = self._cdist.n_clusters
-            parts.append(", %i samples: %i clusters" % (self._samples, n))
-            if n:
-                parts.append(", p >= %.3f" % np.min(self.clusters['p'].x.min()))
+            if self.clusters is None:
+                parts.append(", no clusters found")
+            else:
+                n = self._cdist.n_clusters
+                parts.append(", %i samples: %i clusters" % (self._samples, n))
+                parts.append(", p >= %.3f" % self.clusters['p'].x.min())
         parts.append('>')
         return ''.join(parts)
 
@@ -712,22 +719,34 @@ class anova:
             p.append(p_)
 
         if samples:
-            # f with cluster threshold
-            f_clt = []
+            # f-maps with clusters
+            f_and_clusters = []
             for e, fmap in fmaps:
+                # create f-map with cluster threshold
                 f0 = ftest_f(pmin, e.df, df_den[e])
                 info = _cs.set_info_cs(Y.info, _cs.stat_info('f', f0))
                 f_ = NDVar(fmap, dims, info, e.name)
-                f_clt.append(f_)
+                # add overlay with cluster
+                cdist = cdists[e]
+                if cdist.n_clusters:
+                    f_and_clusters.append([f_, cdist.cpmap])
+                else:
+                    f_and_clusters.append([f_])
 
             # create cluster table
             dss = []
             for e in effects:
                 name = e.name
                 ds = cdists[e].clusters
+                if ds is None:
+                    continue
                 ds['effect'] = Factor([name], rep=ds.n_cases)
                 dss.append(ds)
-            clusters = combine(dss)
+
+            if dss:
+                clusters = combine(dss)
+            else:
+                clusters = None
         else:
             clusters = None
 
@@ -740,18 +759,21 @@ class anova:
         if samples:
             self.fmin = fmin
             self._cdists = cdists
-            self.all = [[f_, cdists[e].cpmap] for f_, e in zip(f_clt, effects)]
+            self.all = f_and_clusters
         else:
             self.all = self.f
 
     def __repr__(self):
         parts = ["<%s" % (self.name)]
         if self.samples:
-            parts.append(" %i samples, clusters:" % self.samples)
-            for e in self.clusters['effect'].cells:
-                idx = self.clusters['effect'] == e
-                p = np.min(self.clusters[idx, 'p'].x)
-                parts.append(" %r p >= %.3f" % (e, p))
+            if self.clusters is None:
+                parts.append(" no clusters found")
+            else:
+                parts.append(" %i samples, clusters:" % self.samples)
+                for e in self.clusters['effect'].cells:
+                    idx = self.clusters['effect'] == e
+                    p = np.min(self.clusters[idx, 'p'].x)
+                    parts.append(" %r p >= %.3f" % (e, p))
         parts.append('>')
         return ''.join(parts)
 
