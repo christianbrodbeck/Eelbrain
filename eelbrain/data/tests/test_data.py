@@ -123,6 +123,17 @@ def test_celltable():
     eq_(ct.X[0], 'c')
     eq_(ct.X[-1], 'b')
 
+    # test sub
+    ds_sub = ds.subset("A == 'a0'")
+    ct_sub = Celltable('Y', 'B', ds=ds_sub)
+    ct = Celltable('Y', 'B', sub="A == 'a0'", ds=ds)
+    assert_dataobj_equal(ct_sub.Y, ct.Y)
+
+    # test sub with rm
+    ct_sub = Celltable('Y', 'B', match='rm', ds=ds_sub)
+    ct = Celltable('Y', 'B', match='rm', sub="A == 'a0'", ds=ds)
+    assert_dataobj_equal(ct_sub.Y, ct.Y)
+
     # test rm sorting
     ds = Dataset()
     ds['rm'] = Factor('abc', rep=4)

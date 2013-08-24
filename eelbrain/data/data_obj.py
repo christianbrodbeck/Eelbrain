@@ -569,7 +569,8 @@ class Celltable(object):
                 if sub is None:
                     sub = sort_idx
                 else:
-                    sub = sort_idx[sub]
+                    imax = max(len(sub), np.max(sub))
+                    sub = np.arange(imax)[sub][sort_idx]
 
         Y = asdataobject(Y, sub, ds)
 
