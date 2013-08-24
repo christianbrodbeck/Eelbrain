@@ -655,7 +655,7 @@ class MneExperiment(FileTree):
             Fields with constant values throughout the iteration.
         """
         if group and (group != 'all') and ('subject' in fields):
-            subjects = self.get_field_values['subject']
+            subjects = self.get_field_values('subject')
             group = self.groups[group]
             group_subjects = [s for s in subjects if s in group]
             kwargs.setdefault('values', {})['subject'] = group_subjects
