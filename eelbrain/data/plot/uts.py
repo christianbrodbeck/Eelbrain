@@ -30,7 +30,7 @@ class UTSStat(_base.subplot_figure):
                  main=np.mean, dev=scipy.stats.sem, legend='upper right',
                  title=None, axtitle='{name}', xlabel=True, ylabel=True,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
-                 cm='jet', colors=None, clusters=None, **layout):
+                 color='b', colors='jet', clusters=None, **layout):
         """
     Plot statistics for a one-dimensional NDVar
 
@@ -75,17 +75,16 @@ class UTSStat(_base.subplot_figure):
         the call to matplotlib axhline call.
     xdim : str
         dimension for the x-axis (default is 'time')
-    cm : matplotlib colormap
-        colormap from which colors for different categories in ``X`` are
-        derived
-    colors : None | list | dict
-        Override the default color assignment based on the ``cm`` parameter.
-        Colors are always specified as `matplotlib compatible color arguments
-        <http://matplotlib.org/api/colors_api.html>`_. The correspondence
-        between cells and colors is determined by the type of the ``colors``
-        parameter:
+    color : matplotlib color
+        Color if just a single category of data is plotted.
+    colors : str | list | dict
+        Colors for the plots if multiple categories of data are plotted.
+        **str**: A colormap name; Cells of X are mapped onto the colormap in
+        regular intervals.
         **list**: A list of colors in the same sequence as X.cells.
         **dict**: A dictionary mapping each cell in X to a color.
+        Colors are specified as `matplotlib compatible color arguments
+        <http://matplotlib.org/api/colors_api.html>`_.
     clusters : None | Dataset
         Clusters to add to the plots. The clusters should be provided as
         Dataset, as stored in test results' :py:attr:`.clusters`.
@@ -93,32 +92,38 @@ class UTSStat(_base.subplot_figure):
         if Xax is None:
             nax = 1
             ct = Celltable(Y, X, sub=sub, match=match, ds=ds)
+            if X is None:
+                cells = None
+            else:
+                cells = ct.X.cells
         else:
             ct = Celltable(Y, Xax, sub=sub, ds=ds)
-            if X is not None:
+            if X is None:
+                cells = None
+            else:
                 Xct = Celltable(X, Xax, sub=sub, ds=ds)
+                cells = Xct.Y.cells
             if match is not None:
                 matchct = Celltable(match, Xax, sub=sub, ds=ds)
             nax = len(ct.cells)
 
         # assemble colors
-        if X is None:
-            if colors is None:
-                colors = 'b'
-            elif isinstance(colors, (list, tuple)):
-                colors = colors[0]
-            colors = {None: colors}
+        if cells is None:
+            colors = {None: color}
         else:
             if isinstance(colors, (list, tuple)):
-                colors = dict(zip(X.cells, colors))
-            if isinstance(colors, dict):
-                for cell in X.cells:
+                if len(colors) < len(cells):
+                    err = ("The `colors` argument %s does not supply enough "
+                           "colors (%i) for %i "
+                           "cells." % (str(colors), len(colors), len(cells)))
+                    raise ValueError(err)
+                colors = dict(zip(cells, colors))
+            elif isinstance(colors, dict):
+                for cell in cells:
                     if cell not in colors:
                         raise KeyError("%s not in colors" % repr(cell))
             else:
-                cm = _cm.get_cmap(cm)
-                sub = assub(sub, ds)
-                cells = ascategorial(X, sub=sub, ds=ds).cells
+                cm = _cm.get_cmap(colors)
                 N = len(cells)
                 colors = {cell: cm(i / N) for i, cell in enumerate(cells)}
 
