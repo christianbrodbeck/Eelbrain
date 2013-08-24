@@ -1239,8 +1239,17 @@ class Var(object):
     def isnot(self, *values):
         return np.all([self.x != v for v in values], axis=0)
 
+    def max(self):
+        "Returns the highest value"
+        return self.x.max()
+
     def mean(self):
+        "Returns the mean"
         return self.x.mean()
+
+    def min(self):
+        "Returns the smallest value"
+        return self.x.min()
 
     def repeat(self, repeats, name='{name}'):
         "Analogous to :py:func:`numpy.repeat`"
