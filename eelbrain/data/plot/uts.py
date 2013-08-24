@@ -618,7 +618,7 @@ class _plt_uts_clusters:
             x1 = cluster['tstop']
 
             h = self.ax.axvspan(x0, x1, color=self.color,  # , hatch=self.hatch,
-                                fill=True, alpha=alpha)
+                                fill=True, alpha=alpha, zorder=-1)
             self.h.append(h)
 
 
