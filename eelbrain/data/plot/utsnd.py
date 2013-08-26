@@ -60,6 +60,7 @@ class _plt_im_array(object):
         if self.cont:
             for c in self.cont.collections:
                 c.remove()
+            self.cont = None
 
         if self._contours:
             levels = sorted(self._contours)
@@ -67,8 +68,6 @@ class _plt_im_array(object):
             self.cont = self.ax.contour(self._data, levels=levels,
                                         colors=colors, aspect=self._aspect,
                                         origin='lower', extent=self._extent)
-        else:
-            self.cont = None
 
     def add_contour(self, meas, level, color):
         if self._meas == meas:
