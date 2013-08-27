@@ -365,8 +365,8 @@ class ttest_ind:
         self.diffp = [[diff, t]]
         self.uncorected = [c1_mean, c0_mean] + self.diffp
         if samples:
-            self.diff_cl = [diff, cdist.cpmap]
-            self.all = [c1_mean, c0_mean, self.diff_cl]
+            self.diff_cl = [[diff, cdist.cpmap]]
+            self.all = [c1_mean, c0_mean] + self.diff_cl
             self._cdist = cdist
             self.clusters = cdist.clusters
         else:
@@ -487,10 +487,10 @@ class ttest_rel:
         self.uncorrected = [c1_mean, c0_mean] + self.diffp
         if samples:
             if cdist.n_clusters:
-                self.diff_cl = [diff, cdist.cpmap]
+                self.diff_cl = [[diff, cdist.cpmap]]
             else:
-                self.diff_cl = [diff]
-            self.all = [c1_mean, c0_mean, self.diff_cl]
+                self.diff_cl = [[diff]]
+            self.all = [c1_mean, c0_mean] + self.diff_cl
             self._cdist = cdist
             self.clusters = cdist.clusters
         else:
