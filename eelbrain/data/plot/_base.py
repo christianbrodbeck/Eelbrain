@@ -864,19 +864,16 @@ class Layout():
 
             if h:
                 axh = axh or h / nrow
-            else:
-                if not axh:
-                    axh = min(axh_default, defaults['maxh'] / nrow)
-
             if w:
                 axw = axw or w / ncol
-            else:
-                if not axw:
-                    axw = axh * ax_aspect
-                    axw_max = defaults['maxw'] / ncol
-                    if axw > axw_max:
-                        axw = axw_max
-                        axh = axw / ax_aspect
+
+            if not axw and not axh:
+                axh = axh_default
+
+            if axh and not axw:
+                axw = axh * ax_aspect
+            elif axw and not axh:
+                axh = axh = axw / ax_aspect
 
         w = w or axw * ncol
         h = h or axh * nrow
