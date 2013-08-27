@@ -188,9 +188,21 @@ def sym_sig_info(meas='p'):
     return info
 
 
-def eeg_info(vmax=1.5, unit=r'$\mu V$', meas="V"):
+_unit_fmt = {1: "%s",
+             1e-3: "m%s",
+             1e-6: r"$\mu$%s",
+             1e-9: "n%s",
+             1e-12: "p%s",
+             1e-15: "f%s"}
+
+def eeg_info(vmax=None, mult=1, unit='V', meas="V"):
+    unit = _unit_fmt[1 / mult] % unit
+    if vmax is None:
+        vmax = 1.5e-6 * mult
     return dict(cmap='xpolar', vmax=vmax, meas=meas, unit=unit)
 
-
-def meg_info(vmax=2e-12, unit='Tesla', meas="B"):
+def meg_info(vmax=None, mult=1, unit='T', meas="B"):
+    unit = _unit_fmt[1 / mult] % unit
+    if vmax is None:
+        vmax = 2e-12 * mult
     return dict(cmap='xpolar', vmax=vmax, meas=meas, unit=unit)

@@ -245,9 +245,9 @@ def _ndvar_epochs_reject(data, reject):
     return reject
 
 
-def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
-           unit='T', proj=False, data='mag', reject=None, exclude='bads',
-           info=None, name=None, raw=None, sensors=None, i_start='i_start'):
+def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
+           data='mag', reject=None, exclude='bads', info=None, name=None,
+           raw=None, sensors=None, i_start='i_start'):
     """
     Load epochs as :class:`NDVar`.
 
@@ -268,10 +268,7 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
         the data. The data is downsampled by picking out every
         n-th sample (see `Wikipedia <http://en.wikipedia.org/wiki/Downsampling>`_).
     mult : scalar
-        multiply all data by a constant. If used, the ``unit`` kwarg should
-        specify the target unit, not the source unit.
-    unit : str
-        Unit of the data (default is 'T').
+        multiply all data by a constant.
     proj : bool
         mne.Epochs kwarg (subtract projections when loading data)
     data : 'eeg' | 'mag' | 'grad'
@@ -309,7 +306,7 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
 
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
                          picks=picks, reject=reject, proj=proj)
-    ndvar = epochs_ndvar(epochs_, name, None, mult=mult, unit=unit, info=info,
+    ndvar = epochs_ndvar(epochs_, name, data, mult=mult, info=info,
                          sensors=sensors)
 
     if len(epochs_) == 0:
@@ -318,9 +315,9 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
 
 
 def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
-               unit='T', proj=False, data='mag', reject=None, exclude='bads',
-               info=None, name="meg", raw=None, sensors=None,
-               i_start='i_start', **kwargs):
+               proj=False, data='mag', reject=None, exclude='bads', info=None,
+               name="meg", raw=None, sensors=None, i_start='i_start',
+               **kwargs):
     """
     Load epochs and add them to a dataset as :class:`NDVar`.
 
@@ -346,10 +343,7 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
         the data. The data is downsampled by picking out every
         n-th sample (see `Wikipedia <http://en.wikipedia.org/wiki/Downsampling>`_).
     mult : scalar
-        multiply all data by a constant. If used, the ``unit`` kwarg should
-        specify the target unit, not the source unit.
-    unit : str
-        Unit of the data (default is 'T').
+        multiply all data by a constant.
     proj : bool
         mne.Epochs kwarg (subtract projections when loading data)
     data : 'eeg' | 'mag' | 'grad'
@@ -396,8 +390,8 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
                          picks=picks, reject=reject, proj=proj, preload=True)
     ds = _trim_ds(ds, epochs_)
-    ds[name] = epochs_ndvar(epochs_, name, None, mult=mult, unit=unit,
-                            info=info, sensors=sensors)
+    ds[name] = epochs_ndvar(epochs_, name, data, mult=mult, info=info,
+                            sensors=sensors)
     return ds
 
 
@@ -552,7 +546,7 @@ def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
 
 
 def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
-                 unit='T', info=None, sensors=None, vmax=None):
+                 info=None, sensors=None, vmax=None):
     """
     Convert an :class:`mne.Epochs` object to an :class:`NDVar`.
 
@@ -569,10 +563,7 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
     mult : scalar
-        multiply all data by a constant. If used, the ``unit`` kwarg should
-        specify the target unit, not the source unit.
-    unit : str
-        Unit of the data (default is 'T').
+        multiply all data by a constant.
     info : None | dict
         Additional contents for the info dictionary of the NDVar.
     sensors : None | Sensor
@@ -581,22 +572,27 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
         Sensor can be supplied through this kwarg.
     vmax : None | scalar
         The default range for plotting (the default is 2e-12 T).
-
     """
-    vmax = vmax or 2e-12 * mult
-    info_ = _cs.meg_info(vmax, unit)
+    if data == 'eeg':
+        info_ = _cs.eeg_info(vmax, mult)
+        summary_info = _cs.eeg_info(0.1 * info_['vmax'], mult)
+    elif data == 'mag':
+        info_ = _cs.meg_info(vmax, mult)
+        summary_info = _cs.meg_info(0.1 * info_['vmax'], mult)
+    elif data == 'grad':
+        info_ = _cs.meg_info(vmax, mult, 'T/cm')
+        summary_info = _cs.meg_info(0.1 * info_['vmax'], mult, 'T/cm')
+    else:
+        raise ValueError("data=%r" % data)
     info_.update(proj='z root', samplingrate=epochs.info['sfreq'],
-                 summary_info=_cs.meg_info(0.1 * vmax))
-
+                 summary_info=summary_info)
     if info:
         info_.update(info)
 
     x = epochs.get_data()
-    if data is not None:
-        picks = _ndvar_epochs_picks(epochs.info, data, exclude)
+    picks = _ndvar_epochs_picks(epochs.info, data, exclude)
+    if len(picks) < x.shape[1]:
         x = x[:, picks]
-    else:
-        picks = None
 
     if mult != 1:
         x *= mult
