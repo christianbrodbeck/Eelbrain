@@ -14,3 +14,4 @@ def test_frequencies():
     Cat = ds['YCat']
     print table.frequencies(Cat, A)
     print table.frequencies(Cat, A % B)
+    print table.frequencies(Cat % A, B)

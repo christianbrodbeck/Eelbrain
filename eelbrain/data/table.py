@@ -8,7 +8,8 @@ import numpy as np
 
 from .. import fmtxt
 from .data_obj import (ascategorial, asmodel, asvar, assub, isfactor, isvar,
-                       isinteraction, Dataset, Factor, Var, Celltable)
+                       isinteraction, Dataset, Factor, Var, Celltable,
+                       cellname)
 
 __hide__ = ['division', 'fmtxt', 'scipy',
             'asmodel', 'isfactor', 'asfactor', 'isvar', 'Celltable',
@@ -82,7 +83,8 @@ def frequencies(Y, X=None, of=None, sub=None, ds=None):
     for y_cell in Y.cells:
         n = (np.sum(np.logical_and(y_idx[y_cell], x_idx[x_cell]))
              for x_cell in X.cells)
-        out[y_cell] = Var(np.fromiter(n, int, len(X.cells)))
+        name = cellname(y_cell)
+        out[name] = Var(np.fromiter(n, int, len(X.cells)))
 
     return out
 
