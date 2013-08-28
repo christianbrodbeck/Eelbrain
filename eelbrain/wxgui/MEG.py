@@ -18,7 +18,7 @@ from ..data.data_obj import Dataset, Var, corr
 from ..data import load, save
 from ..data import plot
 from ..data import process
-from ..data.plot._base import eelfigure
+from ..data.plot._base import eelfigure, find_fig_vlims
 from ..data.plot.utsnd import _ax_bfly_epoch
 from ..data.plot.nuts import _plt_bin_nuts
 from .. import ui
@@ -42,10 +42,10 @@ class SelectEpochs(eelfigure):
     'c' on any epoch butterfly plot:
         Open a plot with the correlation of each channel with its neighbors.
     """
-    def __init__(self, ds, data='MEG', target='accept', blink=True,
+    def __init__(self, ds, data='meg', target='accept', blink=True,
                  path=None, bad_chs=None,
                  nplots=16, plotw=3, ploth=1.5, fill=True, ROI=None,
-                 mean=True, topo=True, ylim=None, dpi=60):
+                 mean=True, topo=True, vlim=None, dpi=60):
         """
         Plots all cases in the collection segment and allows visual selection
         of cases. The selection can be retrieved through the get_selection
@@ -91,7 +91,7 @@ class SelectEpochs(eelfigure):
             Plot the page mean on each page.
         topo : bool
             Show a dynamically updated topographic plot at the bottom right.
-        ylim : scalar
+        vlim : scalar
             y-limit of the butterfly plots.
         dpi : scalar
             Figure DPI (determines figure size).
@@ -196,11 +196,10 @@ class SelectEpochs(eelfigure):
             self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
 
     # compile plot kwargs:
-        self._bfly_kwargs = {'plot_range': fill, 'plot_traces': ROI}
-        if ylim is None:
-            ylim = data.info.get('ylim', None)
-        if ylim:
-            self._bfly_kwargs['ylim'] = ylim
+        self._vlims = find_fig_vlims([[data]])
+        self._bfly_kwargs = {'plot_range': fill, 'plot_traces': ROI,
+                             'vlims':self._vlims}
+        self._topo_kwargs = {'vlims':self._vlims}
 
     # finalize
         self._set_bad_chs(bad_chs, reset=True)
@@ -287,7 +286,7 @@ class SelectEpochs(eelfigure):
             elif  ax.ID == -1:  # mean plot
                 txt = "Page average,   %s"
             # update internal topomap plot
-            plot.topo._ax_topomap(self._topo_ax, [tseg])
+            plot.topo._ax_topomap(self._topo_ax, [tseg], **self._topo_kwargs)
             self._frame.redraw(axes=[self._topo_ax])
             # update external topomap plot
             if self._topo_fig:
@@ -313,7 +312,7 @@ class SelectEpochs(eelfigure):
 
     def _update_mean(self):
         mseg = self._get_page_mean_seg()
-        self._mean_handle.update_data(mseg)
+        self._mean_plot.update_data(mseg)
         self._frame.redraw(axes=[self._mean_ax])
 
     def set_ax_state(self, axID, state):
@@ -327,7 +326,7 @@ class SelectEpochs(eelfigure):
             Accept (True) or reject (False).
         """
         ax = self._case_axes[axID]
-        h = self._case_handles[axID]
+        h = self._case_plots[axID]
         h.set_state(state)
         ax._epoch_state = state
 
@@ -463,12 +462,23 @@ class SelectEpochs(eelfigure):
         self._set_bad_chs(bad_chs, reset=reset)
         self._refresh()
 
-    def set_ylim(self, y):
-        for ax in self._case_axes:
-            ax.set_ylim(-y, y)
-        self._mean_ax.set_ylim(-y, y)
+    def set_vlim(self, vlim):
+        """Set the value limits (butterfly plot y axes and topomap colormaps)
+
+        Parameters
+        ----------
+        vlim : scalar | (scalar, scalar)
+            For symmetric limits the positive vmax, for asymmetric limits a
+            (vmin, vmax) tuple.
+        """
+        for p in self._case_plots:
+            p.set_ylim(vlim)
+        self._mean_plot.set_ylim(vlim)
+        if np.isscalar(vlim):
+            vlim = (-vlim, vlim)
+        for key in self._vlims:
+            self._vlims[key] = vlim
         self.canvas.draw()
-        self._bfly_kwargs['ylim'] = y
 
     def show_page(self, page=None):
         "Dislay a specific page (start counting with 0)"
@@ -493,7 +503,7 @@ class SelectEpochs(eelfigure):
             sens_idx = None
 
         # segment plots
-        self._case_handles = []
+        self._case_plots = []
         self._case_axes = []
         self._case_segs = []
         for i, ID in enumerate(seg_IDs):
@@ -510,7 +520,7 @@ class SelectEpochs(eelfigure):
 
             ax.ID = i
             ax.segID = ID
-            self._case_handles.append(h)
+            self._case_plots.append(h)
             self._case_axes.append(ax)
             self._case_segs.append(case)
 
@@ -522,7 +532,7 @@ class SelectEpochs(eelfigure):
             ax.ID = -1
 
             mseg = self._mean_seg = self._get_page_mean_seg(sensor=sens_idx)
-            self._mean_handle = _ax_bfly_epoch(ax, mseg, **self._bfly_kwargs)
+            self._mean_plot = _ax_bfly_epoch(ax, mseg, **self._bfly_kwargs)
 
         # topomap
         if self._plot_topo:

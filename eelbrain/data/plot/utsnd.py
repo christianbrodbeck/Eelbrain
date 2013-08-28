@@ -529,8 +529,8 @@ class Butterfly(_base.eelfigure):
 
 
 class _ax_bfly_epoch:
-    def __init__(self, ax, epoch, xlabel=True, ylabel=True, ylim=None,
-                 plot_range=True, plot_traces=False, state=True):
+    def __init__(self, ax, epoch, xlabel=True, ylabel=True, plot_range=True,
+                 plot_traces=False, state=True, vlims={}):
         """Specific plot for showing a single sensor by time epoch
 
         Parameters
@@ -546,7 +546,7 @@ class _ax_bfly_epoch:
 
         self._tmin = epoch.time[0]
         self._tmax = epoch.time[-1]
-        self._ylim = ylim or epoch.info.get('ylim', None)
+        self._ylim = _base.find_uts_ax_vlim([epoch], vlims)
 
         self.ax.x_fmt = "t = %.3f s"
 
@@ -620,6 +620,10 @@ class _ax_bfly_epoch:
                 h2 = self.ax.plot([0, 1], [1, 0], color='r', linewidth=1,
                                   transform=self.ax.transAxes)
                 self._state_h.extend(h1 + h2)
+
+    def set_ylim(self, ylim):
+        self._ylim = ylim
+        self.set_ax_lim()
 
     def update_data(self, epoch):
         self.epoch = epoch
