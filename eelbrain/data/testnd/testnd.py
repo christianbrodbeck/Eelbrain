@@ -205,7 +205,7 @@ class ttest_1samp:
     p_val :
         [c0 - c1, P]
     """
-    def __init__(self, Y, popmean=0, match=None, sub=None, ds=None):
+    def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0):
         """Element-wise one sample t-test
 
         Parameters
@@ -221,13 +221,18 @@ class ttest_1samp:
         ds : None | Dataset
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables
+        tail : 0 | 1 | -1
+            Which tail of the t-distribution to consider:
+            0: both (two-tailed);
+            1: upper tail (one-tailed);
+            -1: lower tail (one-tailed).
         """
         ct = Celltable(Y, match=match, sub=sub, ds=ds)
 
         n = len(ct.Y)
         df = n - 1
         tmap = _t_1samp(ct.Y.x, popmean)
-        pmap = _ttest_p(tmap, df)
+        pmap = _ttest_p(tmap, df, tail)
 
         test_name = '1-Sample t-Test'
         y = ct.Y.summary()
@@ -244,8 +249,8 @@ class ttest_1samp:
         info['test'] = test_name
         p = NDVar(pmap, dims, info=info, name='p')
 
-        t0, t1, t2 = _ttest_t((.05, .01, .001), df)
-        info = _cs.stat_info('t', t0, t1, t2)
+        t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
+        info = _cs.stat_info('t', t0, t1, t2, tail)
         info = _cs.set_info_cs(ct.Y.info, info)
         t = NDVar(tmap, dims, info=info, name='T')
 
@@ -279,7 +284,7 @@ class ttest_ind:
         [c0 - c1, P]
     """
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
-                 samples=None, pmin=0.1, tstart=None, tstop=None,):
+                 tail=0, samples=None, pmin=0.1, tstart=None, tstop=None):
         """Element-wise t-test
 
         Parameters
@@ -301,6 +306,11 @@ class ttest_ind:
         ds : None | Dataset
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables.
+        tail : 0 | 1 | -1
+            Which tail of the t-distribution to consider:
+            0: both (two-tailed);
+            1: upper tail (one-tailed);
+            -1: lower tail (one-tailed).
         samples : None | int
             Number of samples for permutation cluster test. For None, no
             clusters are formed.
@@ -318,11 +328,13 @@ class ttest_ind:
         n0 = N - n1
         df = N - 2
         tmap = _t_ind(ct.Y.x, n1, n0)
-        pmap = _ttest_p(tmap, df)
+        pmap = _ttest_p(tmap, df, tail)
         if samples:
-            tmin = _ttest_t(pmin, df)
-            cdist = _ClusterDist(ct.Y, samples, tmin, -tmin, 't', test_name,
-                                 tstart, tstop)
+            t_threshold = _ttest_t(pmin, df, tail)
+            t_upper = t_threshold if tail >= 0 else None
+            t_lower = -t_threshold if tail <= 0 else None
+            cdist = _ClusterDist(ct.Y, samples, t_upper, t_lower, 't',
+                                 test_name, tstart, tstop)
             cdist.add_original(tmap)
             if cdist.n_clusters:
                 for Y_ in resample(cdist.Y_perm, samples):
@@ -335,8 +347,8 @@ class ttest_ind:
         info['test'] = test_name
         p = NDVar(pmap, dims, info=info, name='p')
 
-        t0, t1, t2 = _ttest_t((.05, .01, .001), df)
-        info = _cs.stat_info('t', t0, t1, t2)
+        t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
+        info = _cs.stat_info('t', t0, t1, t2, tail)
         info = _cs.set_info_cs(ct.Y.info, info)
         t = NDVar(tmap, dims, info=info, name='T')
 
@@ -400,8 +412,8 @@ class ttest_rel:
     p_val :
         [c0 - c1, P]
     """
-    def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None,
-                 ds=None, samples=None, pmin=0.1, tstart=None, tstop=None,):
+    def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
+                 tail=0, samples=None, pmin=0.1, tstart=None, tstop=None):
         """Element-wise t-test
 
         Parameters
@@ -423,6 +435,11 @@ class ttest_rel:
         ds : None | Dataset
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables.
+        tail : 0 | 1 | -1
+            Which tail of the t-distribution to consider:
+            0: both (two-tailed);
+            1: upper tail (one-tailed);
+            -1: lower tail (one-tailed).
         samples : None | int
             Number of samples for permutation cluster test. For None, no
             clusters are formed.
@@ -440,11 +457,13 @@ class ttest_rel:
         n = len(ct.Y) / 2
         df = n - 1
         tmap = _t_rel(ct.Y.x)
-        pmap = _ttest_p(tmap, df)
+        pmap = _ttest_p(tmap, df, tail)
         if samples:
-            tmin = _ttest_t(pmin, df)
-            cdist = _ClusterDist(ct.Y, samples, tmin, -tmin, 't', test_name,
-                                tstart, tstop)
+            t_threshold = _ttest_t(pmin, df, tail)
+            t_upper = t_threshold if tail >= 0 else None
+            t_lower = -t_threshold if tail <= 0 else None
+            cdist = _ClusterDist(ct.Y, samples, t_upper, t_lower, 't',
+                                 test_name, tstart, tstop)
             cdist.add_original(tmap)
             if cdist.n_clusters:
                 for Y_ in resample(cdist.Y_perm, samples):
@@ -457,8 +476,8 @@ class ttest_rel:
         info['test'] = test_name
         p = NDVar(pmap, dims, info=info, name='p')
 
-        t0, t1, t2 = _ttest_t((.05, .01, .001), df)
-        info = _cs.stat_info('t', t0, t1, t2)
+        t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
+        info = _cs.stat_info('t', t0, t1, t2, tail)
         info = _cs.set_info_cs(ct.Y.info, info)
         t = NDVar(tmap, dims, info=info, name='T')
 
@@ -583,17 +602,52 @@ def _t_rel(Y):
     return t
 
 
-def _ttest_p(t, df):
-    "Two tailed probability"
+def _ttest_p(t, df, tail=0):
+    """Two tailed probability
+
+    Parameters
+    ----------
+    t : array_like
+        T values.
+    df : int
+        Degrees of freedom.
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+    """
     t = np.asanyarray(t)
-    p = scipy.stats.t.sf(np.abs(t), df) * 2
+    if tail == 0:
+        t = np.abs(t)
+    elif tail == -1:
+        t = -t
+    elif tail != 1:
+        raise ValueError("tail=%r" % tail)
+    p = scipy.stats.t.sf(t, df)
+    if tail == 0:
+        p *= 2
     return p
 
 
-def _ttest_t(p, df):
-    "Positive t value for two tailed probability"
+def _ttest_t(p, df, tail=0):
+    """Positive t value for a given probability
+
+    Parameters
+    ----------
+    p : array_like
+        Probability.
+    df : int
+        Degrees of freedom.
+    tail : 0 | 1 | -1
+        One- or two-tailed t-distribution (the return value is always positive):
+        0: two-tailed;
+        1 or -1: one-tailed).
+    """
     p = np.asanyarray(p)
-    t = scipy.stats.t.isf(p / 2, df)
+    if tail == 0:
+        p = p / 2
+    t = scipy.stats.t.isf(p, df)
     return t
 
 
@@ -948,7 +1002,11 @@ class _ClusterDist:
                     tstop.append(time.times[t_slice.stop])
 
         dims = self.Y.dims
-        contours = {self.t_lower: (0.7, 0, 0.7), self.t_upper: (0.7, 0.7, 0)}
+        contours = {}
+        if self.t_lower is not None:
+            contours[self.t_lower] = (0.7, 0, 0.7)
+        if self.t_upper is not None:
+            contours[self.t_upper] = (0.7, 0.7, 0)
         info = _cs.stat_info(self.meas, contours=contours, summary_func=np.sum)
         ds['cluster'] = NDVar(cmaps, dims=dims, info=info)
 

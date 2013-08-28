@@ -156,18 +156,24 @@ def sig_info(p=.05, contours={.01: '.5', .001: '0'}):
     return info
 
 
-def stat_info(meas, c0=None, c1=None, c2=None, **kwargs):
+def stat_info(meas, c0=None, c1=None, c2=None, tail=0, **kwargs):
     if 'contours' not in kwargs:
         contours = kwargs['contours'] = {}
         if c0 is not None:
-            contours[ c0] = (1.0, 0.5, 0.1)
-            contours[-c0] = (0.5, 0.1, 1.0)
+            if tail >= 0:
+                contours[ c0] = (1.0, 0.5, 0.1)
+            if tail <= 0:
+                contours[-c0] = (0.5, 0.1, 1.0)
         if c1 is not None:
-            contours[ c1] = (1.0, 0.9, 0.2)
-            contours[-c1] = (0.9, 0.2, 1.0)
+            if tail >= 0:
+                contours[ c1] = (1.0, 0.9, 0.2)
+            if tail <= 0:
+                contours[-c1] = (0.9, 0.2, 1.0)
         if c2 is not None:
-            contours[ c2] = (1.0, 1.0, 0.8)
-            contours[-c2] = (1.0, 0.8, 1.0)
+            if tail >= 0:
+                contours[ c2] = (1.0, 1.0, 0.8)
+            if tail <= 0:
+                contours[-c2] = (1.0, 0.8, 1.0)
 
     if meas == 'r':
         info = {'meas': meas, 'cmap': 'RdBu_r', 'vmax': 1}
