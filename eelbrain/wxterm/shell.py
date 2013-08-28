@@ -29,7 +29,7 @@ from ..wxutils import Icon, droptarget
 from ..wxutils.mpl_canvas import CanvasFrame
 from . import ID
 from .about_dialog import AboutFrame
-from .help import HelpViewer
+from .help import HelpFrame
 from .mpl_tools import PyplotManager
 from .preferences_dialog import PreferencesDialog
 from .py_editor import PyEditor
@@ -1378,7 +1378,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
             wpos = (x_pos, y_pos)
             wsize = (width, height)
             logging.debug("help viewer: size=%s, pos=%s" % (wsize, wpos))
-            self.help_viewer = HelpViewer(self, size=wsize, pos=wpos)
+            self.help_viewer = HelpFrame(self, size=wsize, pos=wpos)
             self.help_viewer.Show()
 
         if topic_str and (pos is not None):

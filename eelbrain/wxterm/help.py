@@ -8,15 +8,14 @@ TODO: use wx.html2
 import inspect
 import logging
 import types
-import os
 import webbrowser
 
 import wx.html
 import docutils.core
 
-import ID
-from eelbrain.wxutils import Icon
-from eelbrain import fmtxt
+from .. import fmtxt
+from ..wxutils import Icon
+from . import ID
 
 
 
@@ -73,14 +72,23 @@ def format_subtitle(subtitle):
     return '<span style="color: rgb(102, 102, 102);">%s</span>' % subtitle
 
 
-class HelpViewer(wx.Frame):
+class HelpFrame(wx.Frame):
     def __init__(self, parent, *args, **kwargs):
         wx.Frame.__init__(self, parent, *args, **kwargs)
         self.EnableCloseButton(False)
         self.parent_shell = parent
 
-#        self.help_panel = TxtHelpPanel(self)
-        self.help_panel = HtmlHelpPanel(self)
+        self.help_formatter = HTMLHelpFormatter()
+
+        style = wx.NO_FULL_REPAINT_ON_RESIZE
+        self.HTMLPanel = wx.html.HtmlWindow(self, style=style)
+        self.HTMLPanel.Bind(wx.html.EVT_HTML_LINK_CLICKED, self.OnLinkClicked)
+
+#        html.SetRelatedFrame(parent)
+        # after wxPython Demo
+        if "gtk2" in wx.PlatformInfo:
+            self.SetStandardFonts()
+
 
         # prepare data container
         self.history = []
@@ -104,7 +112,6 @@ class HelpViewer(wx.Frame):
         self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
         tb.EnableTool(wx.ID_FORWARD, False)
         tb.EnableTool(wx.ID_BACKWARD, False)
-        tb.AddSeparator()
 
         # text search
         self.history_menu = wx.Menu()
@@ -121,10 +128,6 @@ class HelpViewer(wx.Frame):
         tb.AddControl(search_ctrl)
         self.search_ctrl = search_ctrl
 
-        # window resizing
-#        self.Bind(wx.EVT_MAXIMIZE, self.OnMaximize)
-#        height = self.GetMaxHeight()
-#        self.SetMaxSize((600, height))
 
         if wx.__version__ >= '2.9':
             tb.AddStretchableSpace()
@@ -138,9 +141,16 @@ class HelpViewer(wx.Frame):
         # finish
         tb.Realize()
 
-    def GetCurLine(self):
-        # FIXME: better implementation that returns the actual line!
-        return self.help_panel.GetCurLine()
+    def display(self, name):
+        if name in self.help_formatter.help_items:
+            content = self.help_formatter.help_items[name]
+            self.HTMLPanel.SetPage(content)
+        else:
+            raise ValueError("No help object for %r" % name)
+
+        self.search_ctrl.SetValue(name)
+        self.SetTitle("Help: %s" % name)
+        self.Show()
 
     def HelpLookup(self, topic=None, name=None):
         """
@@ -152,7 +162,7 @@ class HelpViewer(wx.Frame):
         if topic is None:
             name = 'Start Page'
         else:
-            name = self.help_panel.add_object(topic)
+            name = self.help_formatter.add_object(topic)
 
         self.display(name)
 
@@ -170,44 +180,13 @@ class HelpViewer(wx.Frame):
         self.Raise()
 
     def OnClearCache(self, event):
-        self.help_panel.delete_cache()
+        self.help_formatter.delete_cache()
 
     def OnHide(self, event=None):
         self.Show(False)
 
     def OnHome(self, event=None):
         self.HelpLookup(topic=None)
-#    def OnMaximize(self, event=None):
-#        logging.debug("help.OnMaximize")
-#        height = self.GetMaxHeight()
-#        x_pos = self.GetPosition()[0]
-#        self.SetPosition((x_pos, 0))
-#        self.SetSize((600, height))
-    def OnSearchCancel(self, event=None):
-        self.search_ctrl.Clear()
-
-    def OnSearchhistory(self, event=None):
-        i = event.GetId() - 1
-        self.display(i)
-
-    def display(self, name):
-        self.help_panel.display(name)
-
-        self.search_ctrl.SetValue(name)
-        self.SetTitle("Help: %s" % name)
-        self.Show()
-
-    def OnSelfSearch(self, event=None):
-        txt = event.GetString()
-        if len(txt) > 0:
-            self.text_lookup(txt)
-
-    def OnForward(self, event=None):
-        i = self.current_history_id + 1
-
-        name = self.history[i]
-        self.display(name)
-        self.set_current_history_id(i)
 
     def OnBackward(self, event=None):
         i = self.current_history_id
@@ -218,6 +197,33 @@ class HelpViewer(wx.Frame):
         name = self.history[i]
         self.display(name)
         self.set_current_history_id(i)
+
+    def OnForward(self, event=None):
+        i = self.current_history_id + 1
+
+        name = self.history[i]
+        self.display(name)
+        self.set_current_history_id(i)
+
+    def OnLinkClicked(self, event):
+        URL = event.GetLinkInfo().GetHref()
+        # is there a better way to distinguish external from internal links?
+        if URL.startswith('http://') or URL.startswith('www.'):
+            webbrowser.open(URL)
+        else:
+            event.Skip()
+
+    def OnSearchCancel(self, event=None):
+        self.search_ctrl.Clear()
+
+    def OnSearchhistory(self, event=None):
+        i = event.GetId() - 1
+        self.display(i)
+
+    def OnSelfSearch(self, event=None):
+        txt = event.GetString()
+        if len(txt) > 0:
+            self.text_lookup(txt)
 
     def set_current_history_id(self, i):
         self.current_history_id = i
@@ -244,14 +250,10 @@ class HelpViewer(wx.Frame):
             self.HelpLookup(obj, name=txt)
 
 
-
-class HelpPanel():
+class HTMLHelpFormatter(object):
     """
-    Baseclass for help panels, does not work in itself
-
     """
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self):
         self.delete_cache()
 
     def add_object(self, obj, name=None):
@@ -272,16 +274,6 @@ class HelpPanel():
         "removes all stored help entries"
         self.help_items = {'Start Page': self.get_help_home()}
 
-    def display(self, name):
-        if name in self.help_items:
-            content = self.help_items[name]
-            self.set_content(name, content)
-        else:
-            raise ValueError("No help object for %r" % name)
-
-    def GetCurLine(self):
-        raise NotImplementedError
-
     def get_help_home(self):
         title = "PyShell"
         title = '\n'.join([title, '-' * len(title)])
@@ -289,119 +281,6 @@ class HelpPanel():
         pyshell_doc = '\t' + wx.py.shell.HELP_TEXT.replace('\n', '\n\t')
         text = '\n\n'.join([_main_help, title, intro, pyshell_doc])
         return self.parse_text(text)
-
-    def parse_object(self, obj):
-        "parse an object (through its __doc__ string and attributes)"
-        raise NotImplementedError
-
-    def parse_text(self, text):
-        "parse a string"
-        raise NotImplementedError
-
-    def set_content(self, name, content):
-        raise NotImplementedError
-
-
-
-class TxtHelpPanel(HelpPanel):
-    def __init__(self, parent):
-        HelpPanel.__init__(self, parent)
-        self.TextCtrl = wx.TextCtrl(parent, -1, style=wx.TE_MULTILINE)
-        self.TextCtrl.SetEditable(False)
-        self.TextCtrl.SetFont(wx.Font(12, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL,
-                                      wx.FONTWEIGHT_LIGHT, face='Monaco'))
-        self.TextCtrl.SetBackgroundColour(wx.Colour(170, 220, 250))
-
-    def GetCurLine(self):
-        txt = self.TextCtrl.GetString(*self.TextCtrl.GetSelection())
-        if len(txt) == 0:
-            dlg = wx.MessageDialog(self.parent, "In the help viewer, the whole "
-                                   "name must be selected to get help", "Help"
-                                   "Lookup Error", wx.ICON_INFORMATION | wx.OK)
-            dlg.ShowModal()
-            dlg.Destroy()
-        else:
-            return txt, 0
-
-    def parse_object(self, obj):
-        """
-        Parse the object's doc-string
-
-        """
-        if not hasattr(obj, '__doc__'):
-            raise ValueError("Object does not have a doc-string.")
-        txt = obj.__doc__
-        if txt is None:
-            txt = ''
-
-        attrs = {}
-        title_indexes = []
-#            # TODO: format text with
-#            for i1, i2 in title_indexes:
-#                self.textCtrl.SetStyle(...))
-
-        for attr in dir(obj):
-            if attr[0] != '_' or attr == '__init__':
-                a = getattr(obj, attr)
-                if hasattr(a, '__doc__'):
-                    attrs[attr] = a.__doc__
-
-        if len(attrs) > 0:
-            if len(txt) > 0:
-                txt += '\n\n\n' + '-' * 80 + '\n\n'
-            txt += 'Attributes\n==========\n'
-            items = sorted(attrs.keys())
-            for i in items:
-                if attrs[i]:
-                    txt += '%s\n' % i
-                else:
-                    txt += '%s (no __doc__)\n' % i
-            for i in items:
-                docstr = attrs[i]
-                if docstr:
-                    id1 = len(txt)
-                    id2 = id1 + len(i)
-                    title_indexes.append((id1, id2))
-                    txt += format_chapter(i, docstr)
-
-        if txt == '':
-            return "Error: No doc-string found."
-        else:
-            return txt
-
-    def parse_text(self, text):
-        return text
-
-    def set_content(self, name, content):
-        self.TextCtrl.SetValue(content)
-
-
-
-
-class HtmlHelpPanel(HelpPanel):
-    """
-    """
-    def __init__(self, parent):
-        HelpPanel.__init__(self, parent)
-        self.HtmlCtrl = html = wx.html.HtmlWindow(parent, -1,
-                                           style=wx.NO_FULL_REPAINT_ON_RESIZE)
-        html.Bind(wx.html.EVT_HTML_LINK_CLICKED, self.OnLinkClicked)
-
-#        html.SetRelatedFrame(parent)
-        # after wxPython Demo
-        if "gtk2" in wx.PlatformInfo:
-            self.SetStandardFonts()
-
-    def GetCurLine(self):
-        return '', 0
-
-    def OnLinkClicked(self, event):
-        URL = event.GetLinkInfo().GetHref()
-        # is there a better way to distinguish external from internal links?
-        if URL.startswith('http://') or URL.startswith('www.'):
-            webbrowser.open(URL)
-        else:
-            event.Skip()
 
     def parse_object(self, obj):
         """
@@ -531,10 +410,6 @@ class HtmlHelpPanel(HelpPanel):
 
     def parse_text(self, text):
         return rst2html(text)
-
-    def set_content(self, name, content):
-        self.HtmlCtrl.SetPage(content)
-
 
 
 _main_help = """
