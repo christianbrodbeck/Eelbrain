@@ -480,8 +480,11 @@ class _ax_topomap(_utsnd._ax_im_array):
             self.title = None
 
 
-class _Window_Topo:
-    """Helper class for TopoArray"""
+class _TopoWindow:
+    """Helper class for TopoArray.
+
+    Maintains a topomap corresponding to one segment with flexible time point.
+    """
     def __init__(self, ax, parent, **plot_args):
         self.ax = ax
         self.parent = parent
@@ -642,8 +645,8 @@ class TopoArray(_base.eelfigure):
                                      picker=True, xticks=[], yticks=[])
                 ax.ID = ID
                 ax.type = 'window'
-                win = _Window_Topo(ax, im_plot, vlims=self._vlims,
-                                   cmaps=self._cmaps, contours=self._contours)
+                win = _TopoWindow(ax, im_plot, vlims=self._vlims,
+                                  cmaps=self._cmaps, contours=self._contours)
                 self._topo_windows.append(win)
 
         # if t argument is provided, set topo-map time points

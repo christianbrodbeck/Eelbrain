@@ -577,13 +577,13 @@ def _t_rel(Y):
 
     Parameters
     ----------
-    Y : array
+    Y : array_like, shape = (n_cases, ...)
         Dependent variable in right input format: The first half and second
         half of the data represent the two samples; in each subjects
 
     Returns
     -------
-    t : array
+    t : array, shape = (...)
         t-statistic
 
     Notes

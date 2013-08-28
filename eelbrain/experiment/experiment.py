@@ -287,7 +287,7 @@ class TreeModel(object):
         Parameters
         ----------
         values : container (implements __contains__)
-            values which should not be expanded (in addition to
+            values which should not be expanded.
         """
         temp = self._fields.get(temp, temp)
 

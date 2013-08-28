@@ -418,7 +418,7 @@ def _plt_extrema(ax, epoch, **plot_kwargs):
 
 class _ax_butterfly(object):
     def __init__(self, ax, layers, sensors=None, extrema=False, title='{name}',
-                xlabel=True, ylabel=True, color=None, vlims={}):
+                 xlabel=True, ylabel=True, color=None, vlims={}):
         """
         Parameters
         ----------

@@ -507,10 +507,10 @@ class Celltable(object):
 
         Parameters
         ----------
-        Y : Var, NDVar
+        Y : data-object
             dependent measurement
         X : categorial
-            Factor or Interaction
+            Model (Factor or Interaction) for dividing Y.
         match :
             Factor on which cases are matched (i.e. subject for a repeated
             measures comparisons). If several data points with the same
