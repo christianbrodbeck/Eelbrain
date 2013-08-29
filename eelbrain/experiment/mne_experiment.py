@@ -249,6 +249,12 @@ class MneExperiment(FileTree):
 
     groups = {}
 
+    # projection definition:
+    # "base": 'raw' for raw file, or epoch name
+    # "rej": rejection setting to use (only applies for epoch projs)
+    # r.g. {'ironcross': {'base': 'adj', 'rej': 'man'}}
+    projs = {}
+
     # Pattern for subject names
     subject_re = re.compile('R\d{4}$')
 
@@ -746,8 +752,8 @@ class MneExperiment(FileTree):
         return edf
 
     def load_epochs(self, subject=None, baseline=None, ndvar=False,
-                    add_bads=True, reject=True, cat=None, decim=None,
-                    **kwargs):
+                    add_bads=True, reject=True, add_proj=True, cat=None,
+                    decim=None, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
 
@@ -785,7 +791,8 @@ class MneExperiment(FileTree):
             ds = combine(dss)
         else:  # single subject
             self.set(subject=subject, **kwargs)
-            ds = self.load_selected_events(add_bads=add_bads, reject=reject)
+            ds = self.load_selected_events(add_bads=add_bads, reject=reject,
+                                           add_proj=add_proj)
             if reject and self._params['rej']['kind'] == 'auto':
                 reject_arg = self._params['rej'].get('threshold', None)
             else:
@@ -1592,7 +1599,7 @@ class MneExperiment(FileTree):
 
         self.run_subp(cmd, workers=workers)
 
-    def make_proj_for_epochs(self, epochs, n_mag=5, save=True, save_plot=True):
+    def make_proj(self, save=True, save_plot=True):
         """
         computes the first ``n_mag`` PCA components, plots them, and asks for
         user input (a tuple) on which ones to save.
@@ -1612,8 +1619,64 @@ class MneExperiment(FileTree):
         save_plot : False | str(path)
             target path to save the plot
         """
-        projs = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=n_mag, n_eeg=0)
-        self.ui_select_projs(projs, epochs, save=save, save_plot=save_plot)
+        proj = self.get('proj')
+        opt = self.projs[proj]
+        reject = {'mag': 1.5e-11}  # far lower than the data range
+        if opt['base'] == 'raw':
+            raw = self.load_raw(add_proj=False)
+
+            # select time range of events
+            events = load.fiff.events(raw)
+            time = events['i_start'] / events.info['samplingrate']
+            tstart = time.x.min() - 5
+            tstop = time.x.max() + 5
+
+            projs = mne.compute_proj_raw(raw, tstart, tstop, duration=5,
+                                         n_grad=0, n_mag=9, n_eeg=0,
+                                         reject=reject, n_jobs=1)
+            fiff_obj = raw
+        else:
+            epoch = opt['base']
+            rej = opt.get('rej', None)
+            rej_ = '' if rej is None else rej
+            self.set(epoch=epoch, rej=rej_)
+            ds = self.load_epochs(add_proj=False)
+            epochs = ds['epochs']
+            if rej is None:
+                epochs.reject = reject.copy()
+                epochs._reject_setup()
+            projs = mne.compute_proj_epochs(epochs, n_grad=0, n_mag=9, n_eeg=0)
+            fiff_obj = epochs
+
+        # convert projs to NDVar
+        picks = mne.epochs.pick_types(fiff_obj.info, exclude='bads')
+        sensor = load.fiff.sensor_dim(fiff_obj, picks=picks)
+        projs_ndvars = []
+        for p in projs:
+            d = p['data']['data'][0]
+            name = p['desc'][-5:]
+            v = NDVar(d, (sensor,), name=name)
+            projs_ndvars.append(v)
+
+        # plot PCA components
+        proj_file = self.get('proj-file')
+        p = plot.Topomap(projs_ndvars, title=proj_file, ncol=3, w=9)
+        if save_plot:
+            dest = self.get('proj-plot')
+            p.figure.savefig(dest)
+        if save:
+            rm = save
+            title = "Select Projections"
+            msg = ("which Projections do you want to select? (tuple / 'x' to "
+                   "abort)")
+            while not isinstance(rm, tuple):
+                answer = ui.ask_str(msg, title, default='(0,)')
+                rm = eval(answer)
+                if rm == 'x': raise
+
+            p.close()
+            projs = [projs[i] for i in rm]
+            mne.write_proj(proj_file, projs)
 
     def make_raw(self, redo=False, n_jobs=1, **kwargs):
         """Make a raw file
@@ -1733,53 +1796,6 @@ class MneExperiment(FileTree):
                    '--ico', param,
                    '--overwrite']
         self.run_subp(cmd, workers=int(thread))
-
-    def ui_select_projs(self, projs, fif_obj, save=True, save_plot=True):
-        """
-        Plots proj, and asks the user which ones to save.
-
-        Parameters
-        ----------
-        proj : list
-            The projections.
-        fif_obj : mne fiff object
-            Provides info dictionary for extracting sensor locations.
-        save : False | True | tuple
-            False: don'r save proj fil; True: manuall pick componentws to
-            include in the proj file; tuple: automatically include these
-            components
-        save_plot : False | str(path)
-            target path to save the plot
-        """
-        picks = mne.epochs.pick_types(fif_obj.info, exclude='bads')
-        sensor = load.fiff.sensor_dim(fif_obj, picks=picks)
-
-        # plot PCA components
-        PCA = []
-        for p in projs:
-            d = p['data']['data'][0]
-            name = p['desc'][-5:]
-            v = NDVar(d, (sensor,), name=name)
-            PCA.append(v)
-
-        proj_file = self.get('proj-file')
-        p = plot.Topomap(PCA, size=1, title=proj_file)
-        if save_plot:
-            dest = self.get('proj-plot')
-            p.figure.savefig(dest)
-        if save:
-            rm = save
-            title = "Select Projections"
-            msg = ("which Projections do you want to select? (tuple / 'x' to "
-                   "abort)")
-            while not isinstance(rm, tuple):
-                answer = ui.ask_str(msg, title, default='(0,)')
-                rm = eval(answer)
-                if rm == 'x': raise
-
-            p.close()
-            projs = [projs[i] for i in rm]
-            mne.write_proj(proj_file, projs)
 
     def makeplt_coreg(self, redo=False, **kwargs):
         """
