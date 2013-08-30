@@ -4155,7 +4155,7 @@ class Ordered(Scalar):
 
     def dimindex(self, arg):
         if isinstance(arg, tuple):
-            start, stop = tuple
+            start, stop = arg
             arg = np.logical_and(self.values >= start, self.values < stop)
         else:
             arg = super(Ordered, self).dimindex(arg)
