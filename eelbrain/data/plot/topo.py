@@ -653,7 +653,7 @@ class TopoArray(_base.eelfigure):
         if t:
             if np.isscalar(t):
                 t = [t]
-            self.set_topowins(*t)
+            self.set_topo_ts(*t)
 
         # setup callback
         self._selected_window = None
