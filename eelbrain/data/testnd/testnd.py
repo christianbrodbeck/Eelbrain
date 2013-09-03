@@ -591,7 +591,19 @@ def _t_rel(Y):
     Based on scipy.stats.ttest_rel
     df = n - 1
     """
-    n = len(Y) / 2
+    n_cases = len(Y)
+    shape = Y.shape[1:]
+    n_tests = np.product(shape)
+    if np.log2(n_tests) > 13:
+        Y = Y.reshape((n_cases, n_tests))
+        t = np.empty(n_tests)
+        step = 2 ** 13
+        for i in xrange(0, n_tests, step):
+            i1 = i + step
+            t[i:i1] = _t_rel(Y[:, i:i1])
+        t = t.reshape(shape)
+        return t
+    n = n_cases / 2
     a = Y[:n]
     b = Y[n:]
     d = (a - b).astype(np.float64)
