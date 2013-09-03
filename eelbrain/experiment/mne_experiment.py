@@ -114,7 +114,7 @@ temp = {
 
         # raw
         'experiment': '???',
-        'raw': ('clm', 'lp40', 'hp.1-lp40', 'hp.2-lp40', 'hp1-lp40'),
+        'raw': ('clm', 'lp40', 'hp.25-lp40', 'hp1-lp40'),
         # key necessary for identifying raw file info (used for bad channels):
         'raw-key': '{subject}',
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
@@ -1689,6 +1689,11 @@ class MneExperiment(FileTree):
             If the file already exists, recreate it.
         n_jobs : int
             Number of processes for multiprocessing.
+
+        Notes
+        -----
+        Due to the electronics of the KIT system sensors, signal lower than
+        0.16 Hz is not recorded even when recording at DC.
         """
         dst = self.get('raw-file', **kwargs)
         if not redo and os.path.exists(dst):
@@ -1699,11 +1704,8 @@ class MneExperiment(FileTree):
             self._make_raw_filter(dst, hp=None, lp=40, n_jobs=n_jobs, src='clm')
         elif raw == 'hp1-lp40':
             self._make_raw_filter(dst, hp=1, lp=40, n_jobs=n_jobs, src='clm')
-        elif raw == 'hp.2-lp40':
-            self._make_raw_filter(dst, hp=0.2, lp=40, n_jobs=n_jobs, src='clm',
-                                  l_trans_bandwidth=0.05, filter_length='20s')
-        elif raw == 'hp.1-lp40':
-            self._make_raw_filter(dst, hp=0.1, lp=40, n_jobs=n_jobs, src='clm',
+        elif raw == 'hp.25-lp40':
+            self._make_raw_filter(dst, hp=0.25, lp=40, n_jobs=n_jobs, src='clm',
                                   l_trans_bandwidth=0.05, filter_length='20s')
         else:
             raise ValueError('raw = %r' % raw)
