@@ -16,6 +16,26 @@ In addition to matplotlib colormaps, the following names can be used:
 import matplotlib as mpl
 
 
+def make_seq_cmap(seq, val, name):
+    red = []
+    green = []
+    blue = []
+    for v, col in zip(val, seq):
+        if len(col) == 3:
+            r0, g0, b0 = col
+            r1, g1, b1 = col
+        elif len(col) == 2:
+            (r0, g0, b0), (r1, g1, b1) = col
+        else:
+            raise ValueError('col in seq: %s' % str(col))
+        red.append((v, r0, r1))
+        green.append((v, g0, g1))
+        blue.append((v, b0, b1))
+    cdict = {'red': red, 'green': green, 'blue':blue}
+    cm = mpl.colors.LinearSegmentedColormap(name, cdict)
+    return cm
+
+
 def make_cmaps():
     """Create some custom colormaps and register them with matplotlib"""
     _cdict = {'red':  [(.0, .0, .0),
@@ -102,6 +122,27 @@ def make_cmaps():
     cmap.set_over('k', alpha=0.)
     cmap.set_under('k', alpha=0.)
     mpl.cm.register_cmap(cmap=cmap)
+
+    # interaction cell coloring cmaps ---
+    # yellow / blue
+    seq = [ (1, 1, .2),
+           ((.6, .6, .6), (.2, .2, 1)),
+                          (.3, .7, 1),
+                          (.6, .6, .6)]
+    val = (0, .25, .5, .75, 1)
+    cmap = make_seq_cmap(seq, val, "2group-yb")
+    mpl.cm.register_cmap(cmap=cmap)
+
+    # orange / blue
+    seq = [ (1, .5, .1),
+            (1, .6, .6),
+           ((.6, .6 , .6), (.2, .2, 1)),
+                           (.3, .7, 1),
+                           (.6, .6, .6)]
+    val = (0, .25, .5, .75, 1)
+    cmap = make_seq_cmap(seq, val, "2group-ob")
+    mpl.cm.register_cmap(cmap=cmap)
+
 
 
 make_cmaps()
