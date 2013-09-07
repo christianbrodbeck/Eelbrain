@@ -300,10 +300,13 @@ def p(p, digits=3, stars=None, of=3):
     returns a texstr with properties set for p-values
 
     """
-    if p < 10 ** -digits:
+    if p < 10 ** -digits:  # APA 6th, p. 114
         p = '< .' + '0' * (digits - 1) + '1'
+        mat = True
+    else:
+        mat = False
     fmt = '%' + '.%if' % digits
-    ts_p = texstr(p, fmt=fmt, drop0=True)
+    ts_p = texstr(p, fmt=fmt, drop0=True, mat=mat)
     if stars is None:
         return ts_p
     else:
