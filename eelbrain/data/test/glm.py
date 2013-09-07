@@ -777,14 +777,20 @@ class anova(object):
         return "anova(%s, %s)" % (self.Y.name, self.X.name)
 
     def __str__(self):
-        return str(self.anova())
+        return str(self.table())
 
     def print_log(self):
         out = self._log[:]
         print os.linesep.join(out)
 
-    def anova(self):
-        "Return an ANOVA table"
+    def table(self):
+        """Create an ANOVA table
+
+        Returns
+        -------
+        anova_table : eelbrain.fmtxt.Table
+            Anova table.
+        """
         # table head
         table = fmtxt.Table('l' + 'r' * 5)
         if self.title:
@@ -870,11 +876,11 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
     factorial_model = asmodel(factorial_model)
     a1 = lm(Y, factorial_model)
     if v:
-        print a1.anova(title="MODEL 1", **anova_kwargs)
+        print a1.table(title="MODEL 1", **anova_kwargs)
         print '\n'
     a2 = lm(Y, factorial_model + covariate)
     if v:
-        print a2.anova(title="MODEL 2: Main Effect Covariate", **anova_kwargs)
+        print a2.table(title="MODEL 2: Main Effect Covariate", **anova_kwargs)
         print '\n'
     print 'Model with "%s" Covariate > without Covariate' % covariate.name
     print comparelm(a1, a2)
@@ -887,7 +893,7 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
         a3 = lm(Y, factorial_model + i_effect)
         if v:
             print '\n'
-            print a3.anova(title="MODEL 3: Interaction")
+            print a3.table(title="MODEL 3: Interaction")
         # compare
         print '\n"%s"x"%s" Interaction > No Covariate:' % (covariate.name, interaction.name)
         print comparelm(a1, a3)
@@ -907,9 +913,9 @@ def compare(Y, first_model, test_effect, sub=None):
     a1 = lm(Y, first_model, sub=sub)
     a2 = lm(Y, first_model + test_effect, sub=sub)
     print
-    print a1.anova(title='MODEL 1:')
+    print a1.table(title='MODEL 1:')
     print '\n'
-    print a2.anova(title='MODEL 2:')
+    print a2.table(title='MODEL 2:')
     # compare
     SS_diff = a1.SS_res - a2.SS_res
     df_diff = test_effect.df
