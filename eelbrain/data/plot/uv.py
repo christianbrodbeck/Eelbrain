@@ -284,7 +284,7 @@ class _simple_fig():
 
 
 def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
-            bottom=None,
+            bottom=None, top=None,
             title=True, ylabel='{unit}', xlabel=True, xtick_delim='\n',
             titlekwargs=defaults['title_kwargs'],
             test=True, par=True, trend=".", corr='Hochberg',
@@ -346,7 +346,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     ax = fig.ax
 
     # determine ax lim
-    if bottom == None:
+    if bottom is None:
         if np.min(ct.Y.x) >= 0:
             bottom = 0
         else:
@@ -396,7 +396,8 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
         plt.axhline(test, color='black')
         y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit,
                                    x0=1, popmean=test, trend=trend, corr=corr)
-
+    if top is None:
+        top = y_top
 
     # data labels
     if datalabels:
@@ -408,7 +409,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
                 ax.annotate(label, (i + 1, d[index]))
 
     # set ax limits
-    ax.set_ylim(bottom, y_top)
+    ax.set_ylim(bottom, top)
     ax.set_xlim(.5, k + .5)
 
     # adjust axes rect
