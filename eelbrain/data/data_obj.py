@@ -2583,14 +2583,16 @@ class Dataset(collections.OrderedDict):
         """
         possible::
 
-            >>> ds[9]        (int) -> case
+            >>> ds[9]        (int) -> dictionary for one case
             >>> ds[9:12]     (slice) -> subset with those cases
             >>> ds[[9, 10, 11]]     (list) -> subset with those cases
             >>> ds['MEG1']  (strings) -> Var
             >>> ds['MEG1', 'MEG2']  (list of strings) -> list of vars; can be nested!
 
         """
-        if isinstance(index, (int, slice)):
+        if isinstance(index, int):
+            return self.get_case(index)
+        elif isinstance(index, slice):
             return self.subset(index)
 
         if isinstance(index, basestring):
