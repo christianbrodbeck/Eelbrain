@@ -3257,10 +3257,10 @@ class Dataset(collections.OrderedDict):
         Returns a Dataset containing only the subset of cases selected by
         `index`.
 
-        index : array | str
-            index selecting a subset of epochs. Can be an valid numpy index or
-            a string (the name of a variable in Dataset, or any expression to
-            be evaluated in the Dataset's namespace).
+        index : int | array | str
+            Index for selecting a subset of cases. Can be an valid numpy index
+            or a string (the name of a variable in Dataset, or an expression
+            to be evaluated in the Dataset's namespace).
         name : str
             name for the new Dataset
 
@@ -3272,7 +3272,10 @@ class Dataset(collections.OrderedDict):
 
         """
         if isinstance(index, int):
-            index = slice(index, index + 1)
+            if index == -1:
+                index = slice(-1, None)
+            else:
+                index = slice(index, index + 1)
         elif isinstance(index, str):
             index = self.eval(index)
 
