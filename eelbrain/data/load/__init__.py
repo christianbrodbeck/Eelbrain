@@ -21,6 +21,7 @@ txt:
 import cPickle as _pickle
 
 from ... import ui as _ui
+from . import besa
 from . import brainvision
 from . import eyelink
 from . import txt
