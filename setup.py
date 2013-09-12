@@ -50,7 +50,7 @@ kwargs = dict(
               install_requires=[
                                 'tex',
                                 'matplotlib',
-                                'scipy',
+                                'scipy >= 0.11.0',
                                 'numpy',
                                 'docutils',
 #                                'wxPython',
