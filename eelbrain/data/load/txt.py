@@ -16,7 +16,17 @@ __all__ = ['tsv', 'var']
 
 float_pattern = re.compile("^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
 
+def _str_is_float(x):
+    if float_pattern.match(x):
+        return True
+    elif x.lower() == 'nan':
+        return True
+    else:
+        return False
 
+
+# could use csv module (http://docs.python.org/2/library/csv.html) but it
+# currently does not support unicode
 def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
         skiprows=0, start_tag=None):
     """
@@ -118,14 +128,15 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
     ds = _data.Dataset(name=os.path.basename(path))
 
     # convert values to data-objects
+    np_vars = vars(np)
     for name, values, type_ in zip(names, data, types):
         if type_ == 1:
             dob = _data.Factor(values, name=name)
         elif all(v in ('True', 'False') for v in values):
             values = [{'True': True, 'False': False}[v] for v in values]
             dob = _data.Var(values, name=name)
-        elif all(float_pattern.match(v) for v in values):
-            values = map(eval, values)
+        elif all(_str_is_float(v) for v in values):
+            values = [eval(v, np_vars) for v in values]
             dob = _data.Var(values, name=name)
         elif type_ == 2:
             err = ("Could not convert all values to float: %s" % values)
