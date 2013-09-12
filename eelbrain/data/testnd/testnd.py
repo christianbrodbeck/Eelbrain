@@ -20,8 +20,8 @@ from ..test import glm as _glm
 from ..test.test import resample
 
 
-__all__ = ['ttest_1samp', 'ttest_ind', 'ttest_rel', 'f_oneway', 'anova',
-           'corr', 'clean_time_axis']
+__all__ = ['ttest_1samp', 'ttest_ind', 'ttest_rel', 'anova', 'corr',
+           'clean_time_axis']
 __test__ = False
 
 
@@ -683,7 +683,7 @@ def _ttest_t(p, df, tail=0):
     return t
 
 
-class f_oneway:
+class _f_oneway:
     def __init__(self, Y='MEG', X='condition', sub=None, ds=None,
                  p=.05, contours={.01: '.5', .001: '0'}):
         """
