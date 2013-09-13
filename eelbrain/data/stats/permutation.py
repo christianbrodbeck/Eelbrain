@@ -42,9 +42,7 @@ def resample(Y, samples=10000, replacement=False, unit=None):
 
     Yout = Y.copy('{name}_resampled')
 
-    if unit:
-        raise NotImplementedError("Check implementation")
-    else:
+    if unit is None:
         if replacement:
             N = len(Y)
             for _ in xrange(samples):
@@ -54,4 +52,18 @@ def resample(Y, samples=10000, replacement=False, unit=None):
         else:  # OK
             for _ in xrange(samples):
                 np.random.shuffle(Yout.x)
+                yield Yout
+    else:
+        if replacement:
+            raise NotImplementedError("replacement and units")
+        else:
+            idx_orig = np.arange(len(Y))
+            idx_perm = np.arange(len(Y))
+            unit_idxs = [np.nonzero(unit == cell)[0] for cell in unit.cells]
+            for _ in xrange(samples):
+                for idx_ in unit_idxs:
+                    v = idx_orig[idx_]
+                    np.random.shuffle(v)
+                    idx_perm[idx_] = v
+                Yout.x[idx_perm] = Y.x
                 yield Yout

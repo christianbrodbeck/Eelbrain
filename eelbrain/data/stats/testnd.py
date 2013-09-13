@@ -82,7 +82,8 @@ class corr:
     """
     def __init__(self, Y, X, norm=None, sub=None, ds=None,
                  contours={.05: (.8, .2, .0), .01: (1., .6, .0), .001: (1., 1., .0)},
-                 samples=0, pmin=0.1, tstart=None, tstop=None, tmin=0):
+                 samples=0, pmin=0.1, tstart=None, tstop=None, tmin=0,
+                 match=None):
         """
 
         Parameters
@@ -107,6 +108,9 @@ class corr:
             Restrict time window for permutation cluster test.
         tmin : scalar
             Minimum duration for clusters.
+        match : None | categorial
+            When permuting data, only shuffle the cases within the categories
+            of match.
         """
         sub = assub(sub, ds)
         Y = asndvar(Y, sub=sub, ds=ds)
@@ -116,6 +120,8 @@ class corr:
         X = asvar(X, sub=sub, ds=ds)
         if norm is not None:
             norm = ascategorial(norm, sub, ds)
+        if match is not None:
+            match = ascategorial(match, sub, ds)
 
         name = "%s corr %s" % (Y.name, X.name)
 
@@ -147,7 +153,7 @@ class corr:
                                  tstart, tstop, tmin)
             cdist.add_original(rmap)
             if cdist.n_clusters:
-                for Y_ in resample(cdist.Y_perm, samples):
+                for Y_ in resample(cdist.Y_perm, samples, unit=match):
                     rmap_ = _corr(Y_.x, X.x)
                     cdist.add_perm(rmap_)
 
@@ -467,6 +473,11 @@ class ttest_rel:
             Restrict time window for permutation cluster test.
         tmin : scalar
             Minimum duration for clusters.
+
+        Notes
+        -----
+        In the permutation cluster test, permutations are done within the
+        categories of ``match``.
         """
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds)
         c1, c0 = ct.cat
@@ -486,7 +497,7 @@ class ttest_rel:
                                  test_name, tstart, tstop, tmin)
             cdist.add_original(tmap)
             if cdist.n_clusters:
-                for Y_ in resample(cdist.Y_perm, samples):
+                for Y_ in resample(cdist.Y_perm, samples, unit=ct.match):
                     tmap_ = _t_rel(Y_.x)
                     cdist.add_perm(tmap_)
 
@@ -732,7 +743,7 @@ class anova:
         Maps of p values.
     """
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=0.1,
-                 tstart=None, tstop=None, tmin=0):
+                 tstart=None, tstop=None, tmin=0, match=None):
         """ANOVA with cluster permutation test
 
         Parameters
@@ -758,10 +769,15 @@ class anova:
             Restrict time window for permutation cluster test.
         tmin : scalar
             Minimum duration for clusters.
+        match : None | categorial
+            When permuting data, only shuffle the cases within the categories
+            of match.
         """
         sub = assub(sub, ds)
         Y = self.Y = asndvar(Y, sub, ds)
         X = self.X = asmodel(X, sub, ds)
+        if match is not None:
+            match = self.match = ascategorial(match, sub, ds)
 
         lm = lm_fitter(X)
         effects = lm.effects
@@ -783,7 +799,7 @@ class anova:
                 n_clusters += cdist.n_clusters
 
             if n_clusters:
-                for Y_ in resample(cdist.Y_perm, samples):
+                for Y_ in resample(cdist.Y_perm, samples, unit=match):
                     fmaps_ = lm.map(Y_.x, p=False)
                     for e, fmap in fmaps_:
                         cdist = cdists[e]
