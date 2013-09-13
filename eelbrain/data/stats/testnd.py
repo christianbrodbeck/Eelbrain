@@ -15,9 +15,9 @@ from ... import fmtxt
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                         Factor, NDVar, Var, Celltable, cellname, combine)
-from ..stats import ftest_f, ftest_p
-from ..test import glm as _glm
-from ..test.test import resample
+from .glm import lm_fitter
+from .permutation import resample
+from .stats import ftest_f, ftest_p
 
 
 __all__ = ['ttest_1samp', 'ttest_ind', 'ttest_rel', 'anova', 'corr',
@@ -763,7 +763,7 @@ class anova:
         Y = self.Y = asndvar(Y, sub, ds)
         X = self.X = asmodel(X, sub, ds)
 
-        lm = _glm.lm_fitter(X)
+        lm = lm_fitter(X)
         effects = lm.effects
         df_den = lm.df_den
         fmaps = lm.map(Y.x, p=False)

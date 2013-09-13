@@ -31,7 +31,7 @@ from ...utils import LazyProperty
 from ...utils.print_funcs import strdict
 from ..data_obj import (isvar, asvar, assub, isbalanced, isnestedin, hasrandom,
                         find_factors, Model, asmodel)
-from ..stats import ftest_p
+from .stats import ftest_p
 from . import test
 
 
