@@ -1028,11 +1028,13 @@ class _ClusterDist:
         ds['v'] = Var(cluster_v[sort_idx])
 
         # time window
-        time = self.Y_perm.get_dim('time') if self.Y.has_dim('time') else None
-        if time is not None:
-            time_ax = self.Y.get_axis('time') - 1
+        if self.Y.has_dim('time'):
+            time = self.Y_perm.get_dim('time')
+            time_ax = self._t_ax
             tstart = []
             tstop = []
+        else:
+            time = None
 
         # create cluster ndvars
         cpmap = np.ones_like(pmap_)
