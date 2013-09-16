@@ -2700,9 +2700,7 @@ class Dataset(collections.OrderedDict):
         return rep_tmp % fmt
 
     def __setitem__(self, name, item, overwrite=True):
-        if not isinstance(name, str):
-            raise TypeError("Dataset indexes need to be strings")
-        else:
+        if isinstance(name, str):
             # test if name already exists
             if (not overwrite) and (name in self):
                 raise KeyError("Dataset already contains variable of name %r" % name)
@@ -2731,6 +2729,23 @@ class Dataset(collections.OrderedDict):
                 raise ValueError(msg)
 
             super(Dataset, self).__setitem__(name, item)
+        elif isinstance(name, tuple):
+            if len(name) != 2:
+                raise NotImplementedError("More than 2 index components.")
+            key, idx = name
+            if key in self:
+                self[key][idx] = item
+            elif isinstance(item, basestring):
+                if idx.start is None and idx.stop is None:
+                    self[key] = Factor([item], rep=self.n_cases)
+                else:
+                    err = ("Can only add Factor with general value "
+                           "(ds['name',:] = ...")
+                    raise NotImplementedError(err)
+            else:
+                raise NotImplementedError
+        else:
+            raise TypeError("Dataset indexes need to be strings")
 
     def __str__(self):
         return unicode(self).encode('utf-8')

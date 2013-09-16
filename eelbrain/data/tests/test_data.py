@@ -200,6 +200,13 @@ def test_dataset_sorting():
                          "descending")
 
 
+def test_dataset_indexing():
+    """Test Dataset indexing"""
+    ds = datasets.get_uv()
+    ds['C', :] = 'c'
+    ok_(np.all(ds.eval("C == 'c'")))
+
+
 def test_ndvar_op():
     "Test NDVar operations"
     ds = datasets.get_rand(utsnd=True)
