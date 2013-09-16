@@ -1746,28 +1746,61 @@ class Factor(_Effect):
         return np.array(index)
 
     def isany(self, *values):
+        """Find the index of entries matching one of the ``*values``
+
+        Returns
+        -------
+        index : array of bool
+            For each case True if the value is in values, else False.
+
+        Examples
+        --------
+        >>> a = Factor('aabbcc')
+        >>> b.isany('b', 'c')
+        array([False, False,  True,  True,  True,  True], dtype=bool)
         """
-        Returns a boolean array that is True where the Factor matches
-        one of the ``values``
-
-        Example::
-
-            >>> a = Factor('aabbcc')
-            >>> b.isany('b', 'c')
-            array([False, False,  True,  True,  True,  True], dtype=bool)
-
-        """
+        if not all(isinstance(v, basestring) for v in values):
+            err = "Factor indexes need to be str, got %r" % str(values)
+            raise ValueError(err)
         return self.isin(values)
 
     def isin(self, values):
+        """Find the index of entries matching one of the ``values``
+
+        Returns
+        -------
+        index : array of bool
+            For each case True if the value is in values, else False.
+
+        Examples
+        --------
+        >>> a = Factor('aabbcc')
+        >>> b.isany(('b', 'c'))
+        array([False, False,  True,  True,  True,  True], dtype=bool)
+        """
         is_v = [self.x == self._codes.get(v, np.nan) for v in values]
         return np.any(is_v, 0)
 
     def isnot(self, *values):
-        """
-        returns a boolean array that is True where the data does not equal any
-        of the values
+        """Find the index of entries not in ``values``
 
+        Returns
+        -------
+        index : array of bool
+            For each case False if the value is in values, else True.
+        """
+        if not all(isinstance(v, basestring) for v in values):
+            err = "Factor indexes need to be str, got %r" % str(values)
+            raise ValueError(err)
+        return self.isnotin(values)
+
+    def isnotin(self, values):
+        """Find the index of entries not in ``values``
+
+        Returns
+        -------
+        index : array of bool
+            For each case False if the value is in values, else True.
         """
         is_not_v = [self.x != self._codes.get(v, np.nan) for v in values]
         if is_not_v:
