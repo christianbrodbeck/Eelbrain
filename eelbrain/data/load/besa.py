@@ -3,12 +3,163 @@ Loading data from the besa-mn pipeline
 '''
 # Authors: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
+from glob import glob
+import re
 
 import numpy as np
 from scipy.io import loadmat
 
 from ... import ui
-from ..data_obj import Dataset, Factor, NDVar, UTS
+from ..data_obj import Dataset, Factor, NDVar, UTS, Ordered, combine
+
+
+def dat_file(path):
+    """Load an besa source estimate from a dat file
+
+    Parameters
+    ----------
+    path : str
+        Path to the dat file.
+
+    Results
+    -------
+    src : NDVar
+        Source estimate read from the dat file, with additional info in the
+        src.info dict.
+    """
+    info = {}
+    pattern = re.compile("(.+):\s*(.+)")
+    with open(path) as fid:
+        in_header = True
+        while in_header:
+            line = fid.readline().strip()
+            match = pattern.match(line)
+            if match:
+                key, value = match.groups()
+                info[key] = value
+            elif line.startswith('=='):
+                in_header = False
+            else:
+                continue
+
+        # time axis
+        line = fid.readline()
+        times = map(float, line.split()[2:])
+        tstep = (times[1] - times[0]) / 1000
+        tstart = times[0] / 1000
+        nsamples = len(times)
+        time = UTS(tstart, tstep, nsamples)
+
+        # data
+        n_locs = int(info['Locations'])
+        n_times = int(info['Time samples'])
+        data = np.fromfile(fid, 'float64', sep=" ")
+        data = data.reshape((n_locs, n_times + 3))
+        locs = data[:, :3]
+        data = data[:, 3:]
+        source = Ordered("source", np.arange(n_locs))
+        src = NDVar(data, (source, time), info, 'src')
+
+    return src
+
+
+def dat_set(path, subjects=[], conditions=[]):
+    """Load multiple dat files as a Dataset
+
+    Parameters
+    ----------
+    path : str
+        The path to the dat files, contain the placeholders '{subject}' and
+        '{condition}'.
+    subjects : list
+        Subject identifiers. If the list is empty, they are inferred based on
+        the path and existing files.
+    conditions : list
+        Condition labels. If the list is empty, they are inferred based on
+        the path and existing files.
+
+    Returns
+    -------
+    ds : Dataset
+        Dataset containing the variables 'subject', 'condition' and 'src' (the
+        source estimate).
+    """
+    # check path
+    if ('{subject}' not in path) or ('{condition}' not in path):
+        err = ("The path needs to contain the placeholders '{subject}' and "
+               "'{condition}'. Got %r." % path)
+        raise ValueError(err)
+
+    if not subjects:
+        find_subjects = True
+        subjects = set()
+    else:
+        find_subjects = False
+
+    if not conditions:
+        find_conditions = True
+        conditions = set()
+    else:
+        find_conditions = False
+
+    # infer subjects and/or conditions from file names
+    if find_subjects or find_conditions:
+        glob_pattern = path.format(subject='*', condition='*')
+        paths = glob(glob_pattern)
+        pattern = re.compile(path.format(subject='(?P<subject>.+)',
+                                         condition='(?P<condition>.+)'))
+        for path_ in paths:
+            m = pattern.match(path_)
+            if find_subjects:
+                subjects.add(m.group('subject'))
+            if find_conditions:
+                conditions.add(m.group('condition'))
+
+        subjects = sorted(subjects)
+        conditions = sorted(conditions)
+
+    # read dat files
+    stcs = []
+    for condition in conditions:
+        for subject in subjects:
+            path_ = path.format(subject=subject, condition=condition)
+            stc = dat_file(path_)
+            stcs.append(stc)
+
+    # create source estimate NDVar
+    src = combine(stcs)
+    src.info.update(unit="nA", meas="I")
+
+    # create Dataset
+    info = {'path': path}
+    ds = Dataset(info=info)
+    ds['src'] = src
+    ds['subject'] = Factor(subjects, tile=len(conditions), random=True)
+    ds['condition'] = Factor(conditions, rep=len(subjects))
+    return ds
+
+
+def roi(path, adjust_index=True):
+    """Load a BESA-MN ROI saved in a *.mat file.
+
+    Parameters
+    ----------
+    path : str
+        Path to the *.mat file containing the ROI.
+    adjust_index : bool
+        Adjust the index for Python (Matlab indexes start with 1, Python
+        indexes start with 0).
+
+    Returns
+    -------
+    roi : array, shape = (n_sources,)
+        ROI source indexes.
+    """
+    mat = loadmat(path)
+    roi_idx = np.ravel(mat['roi_sources'])
+    if adjust_index:
+        roi_idx -= 1
+    return roi_idx
 
 
 def roi_results(path=None, varname=None):
