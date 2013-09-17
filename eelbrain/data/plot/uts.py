@@ -30,7 +30,7 @@ class UTSStat(_base.subplot_figure):
                  main=np.mean, dev=scipy.stats.sem, legend='upper right',
                  title=None, axtitle='{name}', xlabel=True, ylabel=True,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
-                 color='b', colors='jet', clusters=None, **layout):
+                 xlim=None, color='b', colors='jet', clusters=None, **layout):
         """
     Plot statistics for a one-dimensional NDVar
 
@@ -75,6 +75,8 @@ class UTSStat(_base.subplot_figure):
         the call to matplotlib axhline call.
     xdim : str
         dimension for the x-axis (default is 'time')
+    xlim : None | (scalar, scalar)
+        Tuple of xmin and xmax to set the initial x-axis limits.
     color : matplotlib color
         Color if just a single category of data is plotted.
     colors : str | list | dict
@@ -129,7 +131,7 @@ class UTSStat(_base.subplot_figure):
 
         kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
                       invy=invy, bottom=bottom, top=top, hline=hline,
-                      xlabel=xlabel)
+                      xlabel=xlabel, xlim=xlim)
 
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
@@ -288,6 +290,13 @@ class UTSStat(_base.subplot_figure):
             elif self._clusters_all_same or all(c is None for c in self._clusters):
                 self._cluster_btn.Enable(False)
 
+    def set_xlim(self, xmin, xmax):
+        """Adjust the x-axis limits on all axes
+        """
+        for ax in self._axes:
+            ax.set_xlim(xmin, xmax)
+        self.draw()
+
     def set_ylim(self, bottom=None, top=None):
         """
         Adjust the y-axis limits on all axes (see matplotlib's
@@ -326,7 +335,7 @@ class UTS(_base.subplot_figure):
 
 class _ax_stat:
     def __init__(self, ax, ct, colors, dev=scipy.stats.sem,
-                 main=np.mean, title=True, ylabel=True, xdim='time',
+                 main=np.mean, title=True, ylabel=True, xdim='time', xlim=None,
                  xlabel=True, invy=False, bottom=None, top=None, hline=None,
                  clusters=None, pmax=0.05, ptrend=0.1):
         ax.x_fmt = "t = %.3f s"
@@ -383,6 +392,9 @@ class _ax_stat:
             top = top if (top is not None) else y0
         if (bottom is not None) or (top is not None):
             ax.set_ylim(bottom, top)
+        if xlim is not None:
+            xmin, xmax = xlim
+            ax.set_xlim(xmin, xmax)
 
         # store attributes
         self.ax = ax
