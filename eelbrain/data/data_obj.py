@@ -87,7 +87,6 @@ def _effect_interaction(a, b):
     return np.hstack(out)
 
 
-
 def cellname(cell, delim=' '):
     """
     Returns a consistent ``str`` representation for cells.
@@ -821,10 +820,14 @@ def combine(items, name=None):
         raise TypeError(err)
 
 
-
 def find_factors(obj):
     "returns a list of all factors contained in obj"
-    if isuv(obj):
+    if isinstance(obj, EffectList):
+        f = set()
+        for e in obj:
+            f.update(find_factors(e))
+        return EffectList(f)
+    elif isuv(obj):
         return EffectList([obj])
     elif ismodel(obj):
         f = set()
@@ -3405,7 +3408,7 @@ class Interaction(_Effect):
         # FIXME: Interaction does not update when component factors update
         self.base = EffectList()
         self.is_categorial = True
-        self.nestedin = set()
+        self.nestedin = EffectList()
 
         for b in base:
             if isuv(b):
@@ -3421,19 +3424,10 @@ class Interaction(_Effect):
                 else:
                     self.base.extend(b.base)
                     self.is_categorial = (self.is_categorial and b.is_categorial)
-
-            elif b._stype_ == "nonbasic":  # TODO: nested effects
-                raise NotImplementedError("Interaction of non-basic effects")
-#    from _regresor_.__mod__ (?)
-#        if any([type(e)==NonbasicEffect for e in [self, other]]):
-#            multcodes = _inter
-#            name = ':'.join([self.name, other.name])
-#            factors = self.factors + other.factors
-#            nestedin = self._nestedin + other._nestedin
-#            return NonbasicEffect(multcodes, factors, name, nestedin=nestedin)
-#        else:
+            elif b._stype_ == "nested":  # TODO: nested effects
                 self.base.append(b)
-                self.nestedin.update(b.nestedin)
+                if b.nestedin not in self.nestedin:
+                    self.nestedin.append(b.nestedin)
             else:
                 raise TypeError("Invalid type for Interaction: %r" % type(b))
 
@@ -3659,6 +3653,8 @@ class NestedEffect(object):
 
         self.effect = effect
         self.nestedin = nestedin
+        self.random = effect.random
+        self.cells = effect.cells
         self._n_cases = len(effect)
 
         if isfactor(self.effect):
@@ -3675,6 +3671,9 @@ class NestedEffect(object):
     def __repr__(self):
         return self.name
 
+    def __iter__(self):
+        return self.effect.__iter__()
+
     def __len__(self):
         return self._n_cases
 
@@ -3687,41 +3686,16 @@ class NestedEffect(object):
         "create effect codes"
         codes = np.zeros((self._n_cases, self.df))
         ix = 0
-        iy = 0
-        for cell in self.nestedin.cells:
-            n_idx = (self.nestedin == cell)
-            n = n_idx.sum()
-            codes[iy:iy + n, ix:ix + n - 1] = _effect_eye(n)
-            iy += n
+        for outer_cell in self.nestedin.cells:
+            outer_idx = (self.nestedin == outer_cell)
+            inner_model = self.effect[outer_idx]
+            n = len(inner_model.cells)
+            inner_codes = _effect_eye(n)
+            for i, cell in enumerate(inner_model.cells):
+                codes[self.effect == cell, ix:ix + n - 1] = inner_codes[i]
             ix += n - 1
 
         return codes
-
-#        nesting_base = self.nestedin.as_effects
-#        value_map = map(tuple, nesting_base.tolist())
-#        codelist = []
-#        for v in np.unique(value_map):
-#            nest_indexes = np.where([v1 == v for v1 in value_map])[0]
-#
-#            e_local_values = self.effect.x[nest_indexes]
-#            e_unique_local_values = np.unique(e_local_values)
-#
-#            n = len(e_unique_local_values)
-#            nest_codes = _effect_eye(n)
-#
-#            v_codes = np.zeros((self.effect._n_cases, n - 1), dtype=int)
-#
-#            i1 = set(nest_indexes)
-#            for v_self, v_code in zip(e_unique_local_values, nest_codes):
-#                i2 = set(np.where(self.effect.x == v_self)[0])
-#                i = list(i1.intersection(i2))
-#                v_codes[i] = v_code
-#
-#            codelist.append(v_codes)
-#
-#        effect_codes = np.hstack(codelist)
-#        return effect_codes
-
 
 
 class NonbasicEffect(object):
