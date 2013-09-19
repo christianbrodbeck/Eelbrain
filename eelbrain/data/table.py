@@ -9,12 +9,76 @@ import numpy as np
 from .. import fmtxt
 from .data_obj import (ascategorial, asmodel, asvar, assub, isfactor, isvar,
                        isinteraction, Dataset, Factor, Var, Celltable,
-                       cellname)
+                       cellname, combine)
 
 __hide__ = ['division', 'fmtxt', 'scipy',
             'asmodel', 'isfactor', 'asfactor', 'isvar', 'Celltable',
             ]
 
+
+def difference(Y, X, c1, c0, match, by=None, sub=None, ds=None):
+    """Subtract data in one cell from another
+
+    Parameters
+    ----------
+    Y : Var | NDVar
+        Dependent variable.
+    X : categorial
+        Model for subtraction.
+    c1 : str | tuple
+        Name of the cell in X that forms the minuend.
+    c0 : str | tuple
+        Name of the cell in X that is to be subtracted from c1.
+    match : categorial
+        Units over which measurements were repeated.
+    by : None | categorial
+        Grouping variable to define cells for which to calculate differences.
+    sub : None | index
+        Only include a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified other arguments can be str instead of
+        data-objects and will be retrieved from ds.
+
+    Returns
+    -------
+    diff : Dataset
+        Dataset with the difference between c1 and c0 on Y.
+    """
+    sub = assub(sub, ds)
+    X = ascategorial(X, sub, ds)
+    out = Dataset()
+    if by is None:
+        ct = Celltable(Y, X, match, sub, ds=ds)
+        out.add(ct.groups[c1])
+        if not ct.all_within:
+            raise ValueError("Design is not fully balanced")
+        out[ct.Y.name] = ct.data[c1] - ct.data[c0]
+    else:
+        by = ascategorial(by, sub, ds)
+        ct = Celltable(Y, X % by, match, sub, ds=ds)
+        if not ct.all_within:
+            raise ValueError("Design is not fully balanced")
+
+        dss = []
+        if isinstance(c1, str):
+            c1 = (c1,)
+        if isinstance(c0, str):
+            c0 = (c0,)
+        for cell in by.cells:
+            if isinstance(cell, str):
+                cell = (cell,)
+            cell_ds = Dataset()
+            cell_ds.add(ct.groups[c1 + cell])
+            cell_ds[ct.Y.name] = ct.data[c1 + cell] - ct.data[c0 + cell]
+            if isfactor(by):
+                cell_ds[by.name, :] = cell[0]
+            else:
+                for b, c in zip(by.base, cell):
+                    cell_ds[b.name, :] = c
+            dss.append(cell_ds)
+        out = combine(dss)
+
+    return out
 
 
 def frequencies(Y, X=None, of=None, sub=None, ds=None):

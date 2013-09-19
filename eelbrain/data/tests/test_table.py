@@ -3,7 +3,25 @@ Created on Dec 2, 2012
 
 @author: christian
 '''
-from eelbrain.data import datasets, table
+from eelbrain.data import datasets, table, combine
+
+
+def test_difference():
+    "Test tabe.difference"
+    ds = datasets.get_uv()
+    print table.difference('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds)
+    print table.difference('fltvar', 'A', 'a1', 'a2', 'rm', by='B', ds=ds)
+    print table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm',
+                           ds=ds)
+
+    # create bigger dataset
+    ds['C', :] = 'c1'
+    ds2 = datasets.get_uv()
+    ds2['C', :] = 'c2'
+    ds = combine((ds, ds2))
+    print table.difference('fltvar', 'A', 'a1', 'a2', 'rm', 'B%C', ds=ds)
+    print table.difference('fltvar', 'A%B', ('a1', 'b1'), ('a2', 'b2'), 'rm',
+                           'C', ds=ds)
 
 
 def test_frequencies():
