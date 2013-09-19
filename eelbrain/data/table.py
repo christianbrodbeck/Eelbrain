@@ -154,7 +154,7 @@ def frequencies(Y, X=None, of=None, sub=None, ds=None):
 
 
 
-def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
+def stats(Y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
           ds=None):
     """
     Make a table with statistics.
@@ -163,15 +163,15 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
     ----------
     Y : Var
         Dependent variable.
-    y : categorial
+    row : categorial
         Model specifying rows
-    x : categorial | None
+    col : categorial | None
         Model specifying columns.
     funcs : list of callables
         A list of statistics functions to show (all functions must take an
         array argument and return a scalar).
     ds : Dataset
-        If a Dataset is provided, Y, y, and x can be strings specifying
+        If a Dataset is provided, Y, row, and col can be strings specifying
         members.
 
 
@@ -194,10 +194,10 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
 
     """
     Y = asvar(Y, ds=ds)
-    y = ascategorial(y, ds=ds)
+    row = ascategorial(row, ds=ds)
 
-    if x is None:
-        ct = Celltable(Y, y, sub=sub, match=match)
+    if col is None:
+        ct = Celltable(Y, row, sub=sub, match=match)
 
         # table header
         n_disp = len(funcs)
@@ -214,19 +214,19 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
             for func in funcs:
                 table.cell(fmt % func(data.x))
     else:
-        x = ascategorial(x, ds=ds)
-        ct = Celltable(Y, y % x, sub=sub, match=match)
+        col = ascategorial(col, ds=ds)
+        ct = Celltable(Y, row % col, sub=sub, match=match)
 
-        N = len(x.cells)
+        N = len(col.cells)
         table = fmtxt.Table('l' * (N + 1))
 
         # table header
         table.cell()
-        table.cell(x.name, width=N, just='c')
+        table.cell(col.name, width=N, just='c')
         table.midrule(span=(2, N + 1))
         table.cell()
 
-        table.cells(*x.cells)
+        table.cells(*col.cells)
         table.midrule()
 
         # table body
@@ -238,9 +238,9 @@ def stats(Y, y, x=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
         else:
             raise ValueError("fmt does not match funcs")
 
-        for Ycell in y.cells:
+        for Ycell in row.cells:
             table.cell(Ycell)
-            for Xcell in x.cells:
+            for Xcell in col.cells:
                 # construct address
                 a = ()
                 if isinstance(Ycell, tuple):
