@@ -7,8 +7,8 @@ y = np.empty(21)
 y[:14] = np.random.normal(0, 1, 14)
 y[14:] = np.random.normal(1.5, 1, 7)
 
-Y = var(y, 'Y')
-A = factor('abc', 'A', rep=7)
+Y = Var(y, 'Y')
+A = Factor('abc', 'A', rep=7)
 
 print dataset(Y, A)
 print table.frequencies(A)

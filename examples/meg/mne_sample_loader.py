@@ -37,11 +37,11 @@ def load_evts(path):
     eventID = ds['eventID']
 
     # use eventID to add various labels to the dataset
-    ds['condition'] = EL.factor(eventID, labels={1:'LA', 2:'RA', 3:'LV', 4:'RV', 
+    ds['condition'] = EL.Factor(eventID, labels={1:'LA', 2:'RA', 3:'LV', 4:'RV', 
                                                  5:'smiley', 32:'button'})
-    ds['side'] = EL.factor(eventID, labels={1: 'L', 2:'R', 3:'L', 4:'R', 
+    ds['side'] = EL.Factor(eventID, labels={1: 'L', 2:'R', 3:'L', 4:'R', 
                                             5:'None', 32:'None'})
-    ds['modality'] = EL.factor(eventID, labels={1: 'A', 2:'A', 3:'V', 4:'V', 
+    ds['modality'] = EL.Factor(eventID, labels={1: 'A', 2:'A', 3:'V', 4:'V', 
                                                 5:'None', 32:'None'})
 
     return ds
@@ -59,9 +59,9 @@ if __name__ == '__main__':
     print EL.table.frequencies('condition', ds=ds)
     ds = ds.subset('modality == "A"')
 
-    ds = EL.load.fiff.add_epochs(ds, tstart=-0.1, tstop=0.3, 
-                                 baseline=(None, 0), proj=False, data='mag', 
-                                 reject={'mag': 2e-12}, target='meg')
+    ds = EL.load.fiff.add_epochs(ds, tmin=-0.1, tmax=0.3, baseline=(None, 0), 
+                                 proj=False, data='mag', reject=2e-12, 
+                                 name='meg')
 
-    p = plot.topo.butterfly('meg', 'side', ds=ds)
+    p = plot.TopoButterfly('meg', 'side', ds=ds)
     p.set_vlim(1e-12)

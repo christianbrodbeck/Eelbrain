@@ -1,7 +1,9 @@
 import numpy as np
 from eelbrain.eellab import *
+# the time dimension object
+from eelbrain.data.data_obj import UTS
 
-T = var(np.arange(-.2, .8, .01), name='time')
+T = UTS(-.2, .01, 100)
 
 # create simulated data:
 # 4 conditions, 15 subjects
@@ -13,22 +15,20 @@ y[:15,20:60] += np.hanning(40) * 1
 y[:30,50:80] += np.hanning(30) * 1
 
 
-Y = ndvar(y, dims=('case', T), name='Y')
-A = factor(['a0', 'a1'], rep=30, name='A')
-B = factor(['b0', 'b1'], rep=15, tile=2, name='B')
+Y = NDVar(y, dims=('case', T), name='Y')
+A = Factor(['a0', 'a1'], rep=30, name='A')
+B = Factor(['b0', 'b1'], rep=15, tile=2, name='B')
 
 
 # fixed effects model
-res = testnd.cluster_anova(Y, A*B)
-plot.uts.clusters(res, title="Fixed Effects Model")
+res = testnd.anova(Y, A*B, samples=10000)
+plot.UTSClusters(res, title="Fixed Effects Model")
 
 
 # random effects model:
-subject = factor(range(15), tile=4, random=True, name='subject')
-res = testnd.cluster_anova(Y, A*B*subject)
-plot.uts.clusters(res, title="Random Effects Model")
+subject = Factor(range(15), tile=4, random=True, name='subject')
+res = testnd.anova(Y, A*B*subject, samples=10000, match=subject)
+plot.UTSClusters(res, title="Random Effects Model")
 
 # plot Y
-p = plot.uts.stat(Y, A%B, match=subject)
-# show the clusters for the main effect of A
-p.plot_clusters(res.clusters[A])
+p = plot.UTSStat(Y, A%B, match=subject, clusters=res.clusters)

@@ -20,11 +20,11 @@ Y = np.array([16,  7, 11,  9, 10, 11,  8,  8,
               16, 10, 13, 10, 10, 14, 11, 12,
               24, 29, 10, 22, 25, 28, 22, 24])
 
-cov = var([9, 5, 6, 4, 6, 8, 3, 5, 
+cov = Var([9, 5, 6, 4, 6, 8, 3, 5, 
            8, 5, 6, 5, 3, 6, 4, 6,
            5, 8, 3, 4, 6, 9, 4, 5], name='cov')
 
-A = factor([1, 2, 3], rep=8, name='A' )
+A = Factor([1, 2, 3], rep=8, name='A' )
 
 print test.anova(Y, A + cov)
 print test.anova(Y, cov * A)

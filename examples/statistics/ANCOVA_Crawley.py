@@ -18,7 +18,7 @@
 import numpy as np
 from eelbrain.eellab import *
 
-Y = var([2, 3, 3, 4,
+Y = Var([2, 3, 3, 4,
          3, 4, 5, 6,
          1, 2, 1, 2, 
          1, 1, 2, 2,
@@ -26,9 +26,9 @@ Y = var([2, 3, 3, 4,
          1, 1, 2, 3], name="Growth Rate")
 
 
-genot = factor(np.arange(6).repeat(4), name="Genotype")
+genot = Factor(np.arange(6).repeat(4), name="Genotype")
 
-hrs = var([8, 12, 16, 24]*6, name="Hours")
+hrs = Var([8, 12, 16, 24]*6, name="Hours")
 
 # show the model
 m = hrs * genot 

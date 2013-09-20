@@ -4,9 +4,9 @@ import string
 from eelbrain.eellab import *
 
 
-ds = dataset()
-# Add a factor froma known sequence
-ds['ascii'] = factor(string.ascii_lowercase)
+ds = Dataset()
+# Add a Factor froma known sequence
+ds['ascii'] = Factor(string.ascii_lowercase)
 # Add an index variable to the dataset to later identify the cases
 ds.index()
 

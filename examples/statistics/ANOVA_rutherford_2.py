@@ -37,14 +37,14 @@ Y = np.array([ 7, 3, 6, 6, 5, 8, 6, 7,
               16,10,13,10,10,14,11,12,
               24,29,10,22,25,28,22,24])
 
-A = factor([1,0], rep=3*8, name='A')
-B = factor(range(3), tile=2, rep=8, name='B')
+A = Factor([1,0], rep=3*8, name='A')
+B = Factor(range(3), tile=2, rep=8, name='B')
 
 # Independent Measures:
-subject = factor(range(8*6), name='subject', random=True)
+subject = Factor(range(8*6), name='subject', random=True)
 print test.anova(Y, A*B+subject(A%B), title="Independent Measures:")
 
 # Repeated Measure:
-subject = factor(range(8), tile=6, name='subject', random=True)
+subject = Factor(range(8), tile=6, name='subject', random=True)
 print test.anova(Y, A * B * subject, title="Repeated Measure:")
 
