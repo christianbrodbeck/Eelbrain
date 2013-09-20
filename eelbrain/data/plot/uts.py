@@ -237,6 +237,9 @@ class UTSStat(_base.subplot_figure):
             if loc == 'fig':
                 return _base.legend(handles, labels, figsize=figsize)
             else:
+                # take care of old legend; remove() not implemented as of mpl 1.3
+                if hasattr(self, 'legend'):
+                    self.legend.set_visible(False)
                 self.legend = self.figure.legend(handles, labels, loc=loc)
                 self.draw()
         else:
