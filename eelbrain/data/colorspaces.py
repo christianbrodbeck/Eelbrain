@@ -126,19 +126,19 @@ def make_cmaps():
     # interaction cell coloring cmaps ---
     # yellow / blue
     seq = [ (1, 1, .2),
-           ((.6, .6, .6), (.2, .2, 1)),
-                          (.3, .7, 1),
-                          (.6, .6, .6)]
-    val = (0, .25, .5, .75, 1)
+           ((.3, .3, .6), (.2, .8, 1)),
+                          (.2, .2, 1),
+                          (.6, .6, .3)]
+    val = (0, .5, 1)
     cmap = make_seq_cmap(seq, val, "2group-yb")
     mpl.cm.register_cmap(cmap=cmap)
 
     # orange / blue
-    seq = [ (1, .5, .1),
-            (1, .6, .6),
-           ((.6, .6 , .6), (.2, .2, 1)),
-                           (.3, .7, 1),
-                           (.6, .6, .6)]
+    seq = [ (1, .9, .1),
+            (1, .5, .3),
+           ((.3, .6 , .6), (.2, .8, 1)),
+                           (.2, .2, 1),
+                           (.6, .6, .3)]
     val = (0, .25, .5, .75, 1)
     cmap = make_seq_cmap(seq, val, "2group-ob")
     mpl.cm.register_cmap(cmap=cmap)
