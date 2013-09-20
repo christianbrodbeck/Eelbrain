@@ -83,6 +83,36 @@ def dat_set(path, subjects=[], conditions=[]):
     ds : Dataset
         Dataset containing the variables 'subject', 'condition' and 'src' (the
         source estimate).
+
+    See Also
+    --------
+    dat_set_paths : find just the paths to check whether all files are found
+    add_dat_set_epochs : add epochs to the Dataset returned by dat_set_paths()
+    """
+    ds = dat_set_paths(path, subjects, conditions)
+    ds = add_dat_set_epochs(ds)
+    return ds
+
+
+def dat_set_paths(path, subjects=[], conditions=[]):
+    """Find paths for a set of dat files
+
+    Parameters
+    ----------
+    path : str
+        The path to the dat files, contain the placeholders '{subject}' and
+        '{condition}'.
+    subjects : list
+        Subject identifiers. If the list is empty, they are inferred based on
+        the path and existing files.
+    conditions : list
+        Condition labels. If the list is empty, they are inferred based on
+        the path and existing files.
+
+    Returns
+    -------
+    ds : Dataset
+        Dataset containing the variables 'subject', 'condition' and 'path'.
     """
     # check path
     if ('{subject}' not in path) or ('{condition}' not in path):
@@ -118,24 +148,57 @@ def dat_set(path, subjects=[], conditions=[]):
         subjects = sorted(subjects)
         conditions = sorted(conditions)
 
-    # read dat files
-    stcs = []
+    paths = []
     for condition in conditions:
         for subject in subjects:
             path_ = path.format(subject=subject, condition=condition)
-            stc = dat_file(path_)
-            stcs.append(stc)
-
-    # create source estimate NDVar
-    src = combine(stcs)
-    src.info.update(unit="nA", meas="I")
+            paths_ = glob(path_)
+            if len(paths_) == 0:
+                err = "No dat file found for %r/%r" % (subject, condition)
+                raise ValueError(err)
+            elif len(paths_) > 1:
+                err = ("Multiple dat files found for "
+                       "%r/%r" % (subject, condition))
+                raise ValueError(err)
+            else:
+                paths.append(paths_[0])
 
     # create Dataset
     info = {'path': path}
     ds = Dataset(info=info)
-    ds['src'] = src
     ds['subject'] = Factor(subjects, tile=len(conditions), random=True)
     ds['condition'] = Factor(conditions, rep=len(subjects))
+    ds['path'] = paths
+    return ds
+
+
+def add_dat_set_epochs(ds, name='src'):
+    """
+    Read epochs for a Dataset created with :func:`dat_set_paths`
+
+    Parameters
+    ----------
+    ds : Dataset
+        Dataset as returned by :func:`dat_set_paths`
+    name : str
+        Name for the variable containing the epochs.
+
+    Returns
+    -------
+    ds : Dataset
+        Reference to the input Dataset ds, which is modified in place.
+    """
+    # read dat files
+    stcs = []
+    for case in ds.itercases():
+        path = case['path']
+        stc = dat_file(path)
+        stcs.append(stc)
+
+    # create source estimate NDVar
+    src = combine(stcs)
+    src.info.update(unit="nA", meas="I")
+    ds[name] = src
     return ds
 
 
