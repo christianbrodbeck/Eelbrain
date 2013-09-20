@@ -130,6 +130,24 @@ def configure_backend(frame=True, block=False):
     backend['block'] = block
 
 
+_unit = {'time': 'ms'}
+_conversion = {'time': {'ms': 1e3}}
+def _convert(x, dimname):
+    unit = _unit[dimname]
+    u = _conversion[dimname][unit]
+    return x * u
+
+
+def _x_axis(ndvar, dimname, label=True):
+    dim = ndvar.get_dim(dimname)
+    values = _convert(dim.x, dimname)
+    if label is True:
+        unit = _unit[dimname]
+        name = dimname.capitalize()
+        label = "%s [%s]" % (name, unit)
+    return values, label
+
+
 def find_ct_args(ndvar, overlay, contours={}):
     """Construct a dict with kwargs for a contour plot
 

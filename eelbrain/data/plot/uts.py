@@ -343,11 +343,13 @@ class _ax_stat:
         # stat plots
         self.stat_plots = []
         self.legend_handles = {}
+        x, xlabel = _base._x_axis(ct.Y, xdim, xlabel)
         for cell in ct.cells:
-            lbl = cellname(cell)
+            cell_label = cellname(cell)
             c = colors[cell]
-            plt = _plt_stat(ax, ct.data[cell], main, dev, label=lbl, xdim=xdim,
-                            color=c)
+            ndvar = ct.data[cell]
+            y = ndvar.get_data(('case', xdim))
+            plt = _plt_stat(ax, x, y, main, dev, label=cell_label, color=c)
             self.stat_plots.append(plt)
             if plt.main is not None:
                 self.legend_handles[cell] = plt.main[0]
@@ -374,27 +376,27 @@ class _ax_stat:
                 title = ct.Y.name
             ax.set_title(title)
 
-        # axes labels
-        dim = ct.Y.get_dim(xdim)
+        # axes
         if xlabel:
-            if xlabel is True:
-                xlabel = dim.name
             ax.set_xlabel(xlabel)
-        ax.set_xlim(min(dim), max(dim))
+            xlabel = None
 
         if ylabel is True:
             ylabel = ct.Y.info.get('unit', None)
         if ylabel:
             ax.set_ylabel(ylabel)
+
         if invy:
             y0, y1 = ax.get_ylim()
             bottom = bottom if (bottom is not None) else y1
             top = top if (top is not None) else y0
         if (bottom is not None) or (top is not None):
             ax.set_ylim(bottom, top)
-        if xlim is not None:
-            xmin, xmax = xlim
-            ax.set_xlim(xmin, xmax)
+
+        if xlim is None:
+            xlim = (min(x), max(x))
+        xmin, xmax = xlim
+        ax.set_xlim(xmin, xmax)
 
         # store attributes
         self.ax = ax
@@ -529,8 +531,7 @@ def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
         ax.set_ylim(bottom, top)
 
 
-def _plt_uts(ax, ndvar, color=None, xdim='time', kwargs={}):
-    x = ndvar.get_dim(xdim).x
+def _plt_uts(ax, x, ndvar, color=None, xdim='time', kwargs={}):
     y = ndvar.get_data((xdim,))
     if color is not None:
         kwargs['color'] = color
@@ -544,7 +545,7 @@ def _plt_uts(ax, ndvar, color=None, xdim='time', kwargs={}):
 
 class _ax_uts_clusters:
     def __init__(self, ax, Y, clusters, color=None, pmax=0.05, ptrend=0.1,
-                 xdim='time', title=None, ylabel=True):
+                 xdim='time', title=None, xlabel=True, ylabel=True):
         uts_args = _base.find_uts_args(Y, False, color)
         self._bottom, self._top = _base.find_vlim_args(Y)
 
@@ -553,12 +554,16 @@ class _ax_uts_clusters:
                 title = title.format(name=Y.name)
             ax.set_title(title)
 
+        x, xlabel = _base._x_axis(Y, xdim, xlabel)
+        _plt_uts(ax, x, Y, xdim=xdim, **uts_args)
+
         if ylabel is True:
             ylabel = Y.info.get('meas', _base.default_meas)
-
-        _plt_uts(ax, Y, xdim=xdim, **uts_args)
         if ylabel:
             ax.set_ylabel(ylabel)
+
+        if xlabel:
+            ax.set_xlabel(xlabel)
         if np.any(Y.x < 0) and np.any(Y.x > 0):
             ax.axhline(0, color='k')
 
@@ -567,7 +572,6 @@ class _ax_uts_clusters:
 
         # save ax attr
         self.ax = ax
-        x = Y.get_dim(xdim).x
         self.xlim = (x[0], x[-1])
 
         ax.set_xlim(*self.xlim)
@@ -626,8 +630,8 @@ class _plt_uts_clusters:
                 continue
 
             alpha = 0.5 if p < self.pmax else 0.2
-            x0 = cluster['tstart']
-            x1 = cluster['tstop']
+            x0 = _base._convert(cluster['tstart'], 'time')
+            x1 = _base._convert(cluster['tstop'], 'time')
 
             h = self.ax.axvspan(x0, x1, color=self.color,  # , hatch=self.hatch,
                                 fill=True, alpha=alpha, zorder=-1)
@@ -635,12 +639,7 @@ class _plt_uts_clusters:
 
 
 class _plt_stat(object):
-    def __init__(self, ax, ndvar, main, dev, label=None, xdim='time',
-                 color=None, **kwargs):
-        dim = ndvar.get_dim(xdim)
-        x = dim.x
-        y = ndvar.get_data(('case', 'time'))
-
+    def __init__(self, ax, x, y, main, dev, label=None, color=None, **kwargs):
         if color:
             kwargs['color'] = color
 
