@@ -114,7 +114,8 @@ temp = {
 
         # raw
         'experiment': '???',
-        'raw': ('clm', 'lp40', 'hp.25-lp40', 'hp1-lp40'),
+        # use iir with "l-h" labels, "hp..." labels are legacy
+        'raw': ('clm', '0-40', '1-40', 'lp40', 'hp1-lp40'),
         # key necessary for identifying raw file info (used for bad channels):
         'raw-key': '{subject}',
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
@@ -1699,43 +1700,27 @@ class MneExperiment(FileTree):
         if not redo and os.path.exists(dst):
             return
 
-        raw = self.get('raw')
-        if raw == 'lp40':
-            self._make_raw_filter(dst, hp=None, lp=40, n_jobs=n_jobs, src='clm')
-        elif raw == 'hp1-lp40':
-            self._make_raw_filter(dst, hp=1, lp=40, n_jobs=n_jobs, src='clm')
-        elif raw == 'hp.25-lp40':
-            self._make_raw_filter(dst, hp=0.25, lp=40, n_jobs=n_jobs, src='clm',
-                                  l_trans_bandwidth=0.05, filter_length='20s')
-        else:
-            raise ValueError('raw = %r' % raw)
+        raw_dst = self.get('raw')
+        raw_src = 'clm'
+        apply_proj = False
 
-    def _make_raw_filter(self, dst, src='clm', hp=None, lp=40,
-                         apply_proj=False, n_jobs=1, **kwargs):
-        """
-        Make a filtered raw file
-
-        Parameters
-        ----------
-        dst : str
-            Path under which to save the raw.
-        src : str
-            `raw` field value for the source raw file.
-        hp, lp : None | int
-            High-pass and low-pass parameters.
-        apply_proj : bool
-            Apply the projections to the Raw data before filtering.
-        n_jobs : int
-            Number of processes. Warning: PyShell does not support
-            multiprocessing and will crash with values > 1.
-        kwargs :
-            mne.fiff.Raw.filter() kwargs.
-        """
-        raw = self.load_raw(raw=src, add_proj=apply_proj, add_bads=False,
+        raw = self.load_raw(raw=raw_src, add_proj=apply_proj, add_bads=False,
                             preload=True)
         if apply_proj:
             raw.apply_projector()
-        raw.filter(hp, lp, n_jobs=n_jobs, **kwargs)
+
+        if raw_dst == '0-40':
+            raw.filter(None, 40, n_jobs=n_jobs, method='iir')
+        elif raw_dst == '1-40':
+            raw.filter(1, 40, n_jobs=n_jobs, method='iir')
+        elif raw_dst == 'lp40':
+            raw.filter(None, 40, n_jobs=n_jobs)
+        elif raw_dst == 'hp1-lp40':
+            raw.filter(1, 40, n_jobs=n_jobs)
+        else:
+            raise ValueError('raw = %r' % raw_dst)
+
+        self.set(raw=raw_dst)
         raw.save(dst, overwrite=True)
 
     def make_rej(self, **kwargs):
