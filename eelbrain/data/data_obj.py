@@ -578,11 +578,11 @@ class Celltable(object):
             cell_model = match if X is None else X % match
             sort_idx = None
             if len(cell_model) > len(cell_model.cells):
-                # need to compress
-                Y = Y.compress(cell_model)
-                match = match.compress(cell_model)
+                # need to aggregate
+                Y = Y.aggregate(cell_model)
+                match = match.aggregate(cell_model)
                 if X is not None:
-                    X = X.compress(cell_model)
+                    X = X.aggregate(cell_model)
                     if cat is not None:
                         sort_idx = X.sort_idx(order=cat)
             else:
@@ -1123,10 +1123,29 @@ class Var(object):
         return Var(x, name=name)
 
     def compress(self, X, func=np.mean, name='{name}'):
-        """
-        X: Factor or Interaction; returns a compressed Var object with one
-        value for each cell in X.
+        "Deprecated. Use .aggregate()."
+        warn("Var.compress s deprecated; use Var.aggregate instead"
+             "(with identical functionality).", DeprecationWarning)
+        self.aggregate(X, func, name)
 
+    def aggregate(self, X, func=np.mean, name='{name}'):
+        """Summarize cases within cells of X
+
+        Parameters
+        ----------
+        X : categorial
+            Model defining cells in which to aggregate.
+        func : callable
+            Function that converts arrays into scalars, used to summarize data
+            within each cell of X.
+        name : str
+            Name of the output Var ("{name}" is converted to the current Var's
+            name).
+
+        Returns
+        -------
+        aggregated_var : Var
+            A Var instance with a single value for each cell in X.
         """
         if len(X) != len(self):
             err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
@@ -1676,6 +1695,12 @@ class Factor(_Effect):
         return sorted(self._labels.values())
 
     def compress(self, X, name='{name}'):
+        "Deprecated. Use .aggregate()."
+        warn("Factor.compress s deprecated; use Factor.aggregate instead"
+             "(with identical functionality).", DeprecationWarning)
+        self.aggregate(X, name)
+
+    def aggregate(self, X, name='{name}'):
         """
         Summarize the Factor by collapsing within cells in `X`.
 
@@ -1690,7 +1715,6 @@ class Factor(_Effect):
         -------
         f : Factor
             A copy of self with only one value for each cell in X
-
         """
         if len(X) != len(self):
             err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
@@ -2115,13 +2139,19 @@ class NDVar(object):
             raise DimensionMismatchError(err)
 
     def compress(self, X, func=np.mean, name='{name}'):
+        "Deprecated. Use .aggregate()."
+        warn("NDVar.compress s deprecated; use NDVar.aggregate instead"
+             "(with identical functionality).", DeprecationWarning)
+        self.aggregate(X, func, name)
+
+    def aggregate(self, X, func=np.mean, name='{name}'):
         """
-        Return an NDVar with one case for each cell in ``X``.
+        Summarize data in each cell of ``X``.
 
         Parameters
         ----------
         X : categorial
-            Categorial whose cells are used to compress the NDVar.
+            Categorial whose cells define which cases to aggregate.
         func : function with axis argument
             Function that is used to create a summary of the cases falling
             into each cell of X. The function needs to accept the data as
@@ -2131,6 +2161,10 @@ class NDVar(object):
             Name for the resulting NDVar. ``'{name}'`` is formatted to the
             current NDVar's ``.name``.
 
+        Returns
+        -------
+        aggregated_ndvar : NDVar
+            Returns an
         """
         if not self.has_case:
             raise DimensionMismatchError("%r has no case dimension" % self)
@@ -2434,14 +2468,22 @@ class Datalist(list):
         return Datalist(lst, name=self.name)
 
     def compress(self, X, merge='mean'):
-        """
-        X: Factor or Interaction; returns a compressed Factor with one value
-        for each cell in X.
+        "Deprecated. Use .aggregate()."
+        warn("Var.compress s deprecated; use Var.aggregate instead"
+             "(with identical functionality).", DeprecationWarning)
+        self.aggregate(X, merge)
 
+    def aggregate(self, X, merge='mean'):
+        """
+        Summarize cases for each cell in X
+
+        Parameters
+        ----------
+        X : categorial
+            Cells which to aggregate.
         merge : str
             How to merge entries.
-            ``'mean'``: use sum(Y[1:], Y[0])
-
+            ``'mean'``: sum elements and dividie by cell length
         """
         if len(X) != len(self):
             err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
@@ -2486,7 +2528,7 @@ class Dataset(collections.OrderedDict):
         Add a variable to the Dataset.
     as_table:
         Create a data table representation of the Dataset.
-    compress:
+    aggregate:
         For a given categorial description, reduce the number of cases in the
         Dataset per cell to one (e.g., average by subject and condition).
     copy:
@@ -2962,6 +3004,13 @@ class Dataset(collections.OrderedDict):
 
     def compress(self, X, drop_empty=True, name='{name}', count='n',
                  drop_bad=False, drop=()):
+        "Deprecated. Use .aggregate()."
+        warn("Dataset.compress s deprecated; use Dataset.aggregate instead"
+             "(with identical functionality).", DeprecationWarning)
+        self.aggregate(X, drop_empty, name, count, drop_bad, drop)
+
+    def aggregate(self, X, drop_empty=True, name='{name}', count='n',
+                  drop_bad=False, drop=()):
         """
         Return a Dataset with one case for each cell in X.
 
@@ -3009,8 +3058,8 @@ class Dataset(collections.OrderedDict):
             if k in drop:
                 continue
             try:
-                if hasattr(v, 'compress'):
-                    ds[k] = v.compress(X)
+                if hasattr(v, 'aggregate'):
+                    ds[k] = v.aggregate(X)
                 else:
                     from mne import Epochs
                     if isinstance(v, Epochs):
@@ -3510,7 +3559,13 @@ class Interaction(_Effect):
         return map(delim.join, self)
 
     def compress(self, X):
-        return Interaction(f.compress(X) for f in self.base)
+        "Deprecated. Use .aggregate()."
+        warn("Interaction.compress s deprecated; use Interaction.aggregate "
+             "instead (with identical functionality).", DeprecationWarning)
+        self.aggregate(X)
+
+    def aggregate(self, X):
+        return Interaction(f.aggregate(X) for f in self.base)
 
     def isin(self, cells):
         """An index that is true where the Interaction equals any of the cells.

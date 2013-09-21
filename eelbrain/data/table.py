@@ -110,9 +110,9 @@ def frequencies(Y, X=None, of=None, sub=None, ds=None):
         X = ascategorial(X, sub, ds)
     if of is not None:
         of = ascategorial(of, sub, ds)
-        Y = Y.compress(of)
+        Y = Y.aggregate(of)
         if X is not None:
-            X = X.compress(of)
+            X = X.aggregate(of)
 
     # find name
     if getattr(Y, 'name', None):

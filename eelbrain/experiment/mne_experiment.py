@@ -1283,7 +1283,7 @@ class MneExperiment(FileTree):
         # find the events common to all epochs
         idx = reduce(np.intersect1d, (ds['index'] for ds in dss))
 
-        # reduce datasets to common events and compress
+        # reduce datasets to common events and aggregate
         model = self.get('model')
         drop = ('i_start', 't_edf', 'T', 'index')
         for i in xrange(len(dss)):
@@ -1293,7 +1293,7 @@ class MneExperiment(FileTree):
             if ds_idx.sum() < len(ds_idx):
                 ds = ds[ds_idx]
 
-            dss[i] = ds.compress(model, drop_bad=True, drop=drop)
+            dss[i] = ds.aggregate(model, drop_bad=True, drop=drop)
 
         if len(dss) == 1:
             ds = dss[0]
