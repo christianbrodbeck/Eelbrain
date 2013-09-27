@@ -499,13 +499,13 @@ class _TopoWindow:
             if self.t_line:
                 self.t_line.remove()
             self.t_line = self.parent.ax.axvline(t, c='r')
-            # self.pointer.xy=(t,1)
-            # self.pointer.set_text("t = %s"%t)
+
+            t_ms = _base._convert(t, 'time')
+            t_str = "%i ms" % round(t_ms)
             if self.pointer:
-                # print 't =', t
                 self.pointer.set_axes(self.parent.ax)
                 self.pointer.xy = (t, 1)
-                self.pointer.set_text("t=%.3g" % t)
+                self.pointer.set_text(t_str)
                 self.pointer.set_visible(True)
             else:
                 xytext = self.ax.transAxes.transform((.5, 1))
@@ -514,7 +514,7 @@ class _TopoWindow:
                 # into 'figure fraction' coordinates
                 inv = self.ax.figure.transFigure.inverted()
                 xytext = inv.transform(xytext)
-                self.pointer = self.parent.ax.annotate("t=%.3g" % t, (t, 0),
+                self.pointer = self.parent.ax.annotate(t_str, (t, 0),
                                     xycoords='data',
                                     xytext=xytext,
                                     textcoords='figure fraction',

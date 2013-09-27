@@ -110,7 +110,7 @@ class _plt_im_array(object):
 
 class _ax_im_array(object):
     def __init__(self, ax, layers, x='time', xlabel=True, ylabel=True,
-                 title=None, tick_spacing=.3, interpolation=None, vlims={},
+                 title=None, tick_spacing=0.1, interpolation=None, vlims={},
                  cmaps={}, contours={}):
         """
         plots segment data as im
@@ -146,9 +146,8 @@ class _ax_im_array(object):
             self.layers.append(p)
             overlay = True
 
+        xlabel = _base._axlabel(x, xlabel)
         if xlabel:
-            if xlabel is True:
-                xlabel = xdim.name
             ax.set_xlabel(xlabel)
 
         if ylabel:
@@ -158,9 +157,13 @@ class _ax_im_array(object):
 
         # x-ticks
         tickstart = math.ceil(xdim[0] / tick_spacing) * tick_spacing
-        tickend = xdim[-1] + tick_spacing / 1e4
-        ticklabels = np.arange(tickstart, tickend, tick_spacing)
-        ax.xaxis.set_ticks(ticklabels)
+        tickstop = xdim[-1] + tick_spacing / 1e4
+        ticks = np.arange(tickstart, tickstop, tick_spacing)
+        if ticks[0] < 0 and ticks[0] == xdim[0]:
+            ticks = ticks[1:]
+        ax.xaxis.set_ticks(ticks)
+        ticklabels = ['%i' % lbl for lbl in _base._convert(ticks, x)]
+        ax.xaxis.set_ticklabels(ticklabels)
         if xdim.name == 'time':
             ax.x_fmt = "t = %.3f s"
 
@@ -457,16 +460,15 @@ class _ax_butterfly(object):
 
         # axes decoration
         l = layers[0]
-        if xlabel is True:
-            xlabel = 'Time [s]'
-        if ylabel is True:
-            ylabel = l.info.get('unit', None)
-
         ax.set_xlim(min(xmin), max(xmax))
 
-        if xlabel not in [False, None]:
+        xlabel = _base._axlabel('time', xlabel)
+        if xlabel:
             ax.set_xlabel(xlabel)
-        if ylabel not in [False, None]:
+
+        if ylabel is True:
+            ylabel = l.info.get('unit', None)
+        if ylabel:
             ax.set_ylabel(ylabel)
 
     #    ax.yaxis.set_offset_position('right')

@@ -132,19 +132,57 @@ def configure_backend(frame=True, block=False):
 
 _unit = {'time': 'ms'}
 _conversion = {'time': {'ms': 1e3}}
+_fmt = {'time', '%i'}
 def _convert(x, dimname):
+    """Convert known units from SI for plotting
+
+    Parameters
+    ----------
+    x : scalar | array_like
+        Value in SI.
+    dimname : str
+        Name of the dimension (e.g., "time")
+    """
     unit = _unit[dimname]
     u = _conversion[dimname][unit]
     return x * u
 
 
-def _x_axis(ndvar, dimname, label=True):
-    dim = ndvar.get_dim(dimname)
-    values = _convert(dim.x, dimname)
+def _ticklabels(ticks, dimname):
+    fmt = _fmt.get(dimname, None)
+    ticklabels = _convert(ticks, dimname)
+    if fmt:
+        ticklabels = [fmt % lbl for lbl in ticklabels]
+    return ticklabels
+
+
+def _axlabel(dimname, label=True):
+    """Find an axis label
+
+    Parameters
+    ----------
+    dimname : str
+        Name of the dimension.
+    label : None | True | str
+        Label argument.
+
+    Returns
+    -------
+    label : str | None
+        Returns the default axis label if label==True, otherwise the label
+        argument.
+    """
     if label is True:
         unit = _unit[dimname]
         name = dimname.capitalize()
         label = "%s [%s]" % (name, unit)
+    return label
+
+
+def _x_axis(ndvar, dimname, label=True):
+    dim = ndvar.get_dim(dimname)
+    values = _convert(dim.x, dimname)
+    label = _axlabel(dimname, label)
     return values, label
 
 
