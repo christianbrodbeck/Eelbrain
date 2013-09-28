@@ -2366,18 +2366,18 @@ class NDVar(object):
             else:
                 return NDVar(x, dims=dims, name=name, info=info)
 
-    def subdata(self, **kwargs):
+    def sub(self, **kwargs):
         """
-        returns an NDVar object with a subset of the current NDVar's data.
+        returns an NDVar object with a slice of the current NDVar's data.
         The slice is specified using kwargs, with dimensions as keywords and
         indexes as values, e.g.::
 
-            >>> Y.subdata(time = 1)
+            >>> Y.sub(time = 1)
 
         returns a slice for time point 1 (second). For dimensions whose values
         change monotonically, a tuple can be used to specify a window::
 
-            >>> Y.subdata(time = (.2, .6))
+            >>> Y.sub(time = (.2, .6))
 
         returns a slice containing all values for times .2 seconds to .6
         seconds.
@@ -2428,6 +2428,29 @@ class NDVar(object):
         dims = tuple(dim for dim in dims if dim is not None)
         return NDVar(x, dims=dims, name=var_name, info=info)
 
+    def subdata(self, **kwargs):
+        """
+        returns an NDVar object with a slice of the current NDVar's data.
+        The slice is specified using kwargs, with dimensions as keywords and
+        indexes as values, e.g.::
+
+            >>> Y.subdata(time = 1)
+
+        returns a slice for time point 1 (second). For dimensions whose values
+        change monotonically, a tuple can be used to specify a window::
+
+            >>> Y.subdata(time = (.2, .6))
+
+        returns a slice containing all values for times .2 seconds to .6
+        seconds.
+
+        The name of the new NDVar can be set with a ``name`` parameter. The
+        default is the name of the current NDVar.
+        """
+#         "Deprecated. Use .sub() with identical functionality"
+#         warn("NDVar.subdata is deprecated; use NDVar.sub instead "
+#              "(with identical functionality).", DeprecationWarning)
+        return self.sub(**kwargs)
 
 
 class Datalist(list):
@@ -3371,24 +3394,24 @@ class Dataset(collections.OrderedDict):
         ds = self[idx]
         return ds
 
-    def subset(self, index, name='{name}'):
+    def sub(self, index, name='{name}'):
         """
-        Returns a Dataset containing only the subset of cases selected by
-        `index`.
+        Returns a Dataset containing only the cases selected by `index`.
 
+        Parameters
+        ----------
         index : int | array | str
             Index for selecting a subset of cases. Can be an valid numpy index
             or a string (the name of a variable in Dataset, or an expression
             to be evaluated in the Dataset's namespace).
         name : str
-            name for the new Dataset
+            name for the new Dataset.
 
         Notes
         -----
         Keep in mind that index is passed on to numpy objects, which means
         that advanced indexing always returns a copy of the data, whereas
         basic slicing (using slices) returns a view.
-
         """
         if isinstance(index, int):
             if index == -1:
@@ -3409,6 +3432,31 @@ class Dataset(collections.OrderedDict):
             ds[k] = v[index]
 
         return ds
+
+    def subset(self, index, name='{name}'):
+        """
+        Returns a Dataset containing only the subset of cases selected by
+        `index`.
+
+        Parameters
+        ----------
+        index : int | array | str
+            Index for selecting a subset of cases. Can be an valid numpy index
+            or a string (the name of a variable in Dataset, or an expression
+            to be evaluated in the Dataset's namespace).
+        name : str
+            name for the new Dataset.
+
+        Notes
+        -----
+        Keep in mind that index is passed on to numpy objects, which means
+        that advanced indexing always returns a copy of the data, whereas
+        basic slicing (using slices) returns a view.
+        """
+#         "Deprecated: use .sub()"
+#         warn("Dataset.subset is deprecated; use Dataset.sub instead"
+#              "(with identical functionality).", DeprecationWarning)
+        return self.sub(index, name)
 
     def update(self, ds, replace=False, info=True):
         """Update the Dataset with all variables in ``ds``.
