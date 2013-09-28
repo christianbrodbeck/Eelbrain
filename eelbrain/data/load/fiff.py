@@ -111,14 +111,25 @@ def mne_raw(path=None, proj=False, **kwargs):
     """
     if path is None:
         path = ui.ask_file("Pick a Raw Fiff File", "Pick a Raw Fiff File",
-                           [('Functional image file (*.fif)', '*.fif')])
+                           [('Functional image file (*.fif)', '*.fif'),
+                            ('KIT Raw File (*.sqd,*.con', '*.sqd;*.con')])
         if not path:
             return
 
     if not os.path.isfile(path):
         raise IOError("%r is not a file" % path)
 
-    raw = mne.fiff.Raw(path, **kwargs)
+    if isinstance(path, basestring):
+        _, ext = os.path.splitext(path)
+        if ext.startswith('.fif'):
+            raw = mne.fiff.Raw(path, **kwargs)
+        elif ext in ('.sqd', '.con'):
+            from mne.fiff.kit import read_raw_kit
+            raw = read_raw_kit(path, **kwargs)
+        else:
+            raise ValueError("Unknown extension: %r" % ext)
+    else:
+        raw = mne.fiff.Raw(path, **kwargs)
 
     if proj:
         if proj == True:
