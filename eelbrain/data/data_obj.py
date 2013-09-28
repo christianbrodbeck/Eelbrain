@@ -32,6 +32,7 @@ from warnings import warn
 
 import numpy as np
 from numpy import dot
+import scipy
 import scipy.stats
 from scipy.linalg import inv
 from scipy.optimize import leastsq
@@ -2955,7 +2956,16 @@ class Dataset(collections.OrderedDict):
         """
         Evaluate an expression involving items stored in the Dataset.
 
-        ``ds.eval(expression)`` is equivalent to ``eval(expression, ds)``.
+        Parameters
+        ----------
+        expression : str
+            Python expression to evaluate, with scipy constituting the global
+            namespace and the current Dataset constituting the local namespace.
+
+        Notes
+        -----
+        ``ds.eval(expression)`` is equivalent to
+        ``eval(expression, scipy, ds)``.
 
         Examples
         --------
@@ -2969,7 +2979,7 @@ class Dataset(collections.OrderedDict):
             err = ("Eval needs expression of type unicode or str. Got "
                    "%s" % type(expression))
             raise TypeError(err)
-        return eval(expression, self)
+        return eval(expression, vars(scipy), self)
 
     @classmethod
     def from_caselist(cls, names, cases):
