@@ -10,7 +10,6 @@ files = {}  # name: file
 # folders that are included entirely
 folders = ["actions",
            "copy",
-           "datasets",
            "documents",
            ]
 

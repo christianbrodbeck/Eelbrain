@@ -32,8 +32,6 @@ The following modules provide additional functionality if they are installed:
 * `mne <https://github.com/mne-tools/mne-python>`_
 * A working `LaTeX <http://www.latex-project.org/>`_ installation (enables 
   exporting tables as pdf).
-* `bioread <http://pypi.python.org/pypi/bioread>`_ Enables an importer for 
-  ``.acq`` files.
 
 
 .. _obtain-source:

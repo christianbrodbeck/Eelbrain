@@ -21,7 +21,6 @@ Contents:
    Interface
    data-obj
    experiment
-   psyphys
    Various
 
 
