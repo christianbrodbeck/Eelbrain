@@ -380,7 +380,7 @@ class STC:
         """
         if not fname:
             fname = ui.ask_saveas("Save Movie", "Save Movie",
-                                  [('mov', 'Movie file')])
+                                  [('Movie file (*.mov)', '*.mov')])
             if not fname:
                 return
 

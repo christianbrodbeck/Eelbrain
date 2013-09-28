@@ -111,7 +111,7 @@ def mne_raw(path=None, proj=False, **kwargs):
     """
     if path is None:
         path = ui.ask_file("Pick a Raw Fiff File", "Pick a Raw Fiff File",
-                           ext=[('fif', 'Fiff')])
+                           [('Functional image file (*.fif)', '*.fif')])
         if not path:
             return
 

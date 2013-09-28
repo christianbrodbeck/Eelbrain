@@ -24,15 +24,17 @@ section_re = re.compile('^\[([ \w]+)\]')
 marker_re = re.compile('^Mk(\d+)=([ \w]+),(\w)(\d+),(\d+),(\d+),(\d+)', re.MULTILINE)
 
 vhdr_hdr = 'Brain Vision Data Exchange Header File'
+_vhdr_wildcard = ('Brain Vision Header File (*.vhdr)', '*.vhdr')
 
 
 def events(vhdr_path=None):
     """Load events from a brainvision vhdr file.
     """
     if vhdr_path is None:
+        filetypes = []
         vhdr_path = ui.ask_file("Pick a Brain Vision EEG Header File",
                                 "Pick a Brain Vision EEG Header File",
-                                ext=[('vhdr', 'Brain Vision Header File')])
+                                [_vhdr_wildcard])
         if not vhdr_path:
             return
 
@@ -71,7 +73,7 @@ class vhdr(dict):
         if path is None:
             path = ui.ask_file("Pick a Brain Vision EEG Header File",
                                "Pick a Brain Vision EEG Header File",
-                               ext=[('vhdr', 'Brain Vision Header File')])
+                               [_vhdr_wildcard])
             if not path:
                 raise RuntimeError("User Canceled")
 

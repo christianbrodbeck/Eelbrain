@@ -13,6 +13,8 @@ from ... import ui
 from ..data_obj import Dataset, Factor, NDVar, UTS, Ordered, combine
 
 
+_mat_wildcard = ('Matlab data file (*.mat)', '*.mat')
+
 def dat_file(path):
     """Load an besa source estimate from a dat file
 
@@ -247,8 +249,7 @@ def roi_results(path=None, varname=None):
     """
     if path is None:
         path = ui.ask_file("Pick a Matlab file with Besa-MN results",
-                           "Pick a Matlab File",
-                           ext=[('mat', 'Matlab data file')])
+                           "Pick a Matlab File", [_mat_wildcard])
         if not path:
             return
 
@@ -308,8 +309,7 @@ def mrat_data(path=None, tstart=-0.1, roi=None, varname=None):
     """
     if path is None:
         path = ui.ask_file("Pick a Matlab file with Besa-MN results",
-                           "Pick a Matlab File",
-                           ext=[('mat', 'Matlab data file')])
+                           "Pick a Matlab File", [_mat_wildcard])
         if not path:
             return
 

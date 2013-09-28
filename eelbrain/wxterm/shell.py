@@ -1218,11 +1218,10 @@ class ShellFrame(wx.py.shell.ShellFrame):
 
     def OnFileOpen(self, event=None, path=None):
         if path is None:
-            path = ui.ask_file(title="Open File",
-                               message="Open a Python script in an editor, or attach pickled data",
-                               ext=[('py;*.pickled', 'Readable Files')])
-#                               ext=[('py', 'Python script'),
-#                                    ('pickled', 'Pickled data')])
+            path = ui.ask_file("Open File", "Open a Python script in an "
+                               "editor, or attach pickled data",
+                               [('Known Files (*.py, *.pickled)',
+                                 '*.py;*.pickled')])
             if not path:
                 return
 
@@ -1302,15 +1301,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
             self.bufferSaveAs()
         else:
             event.skip()
-
-    def OnFindPath(self, event=None):
-        filenames = ui.ask_file(wildcard='', mult=True)
-        if filenames:
-            if len(filenames) == 1:
-                filenames = '"' + filenames[0] + '"'
-            else:
-                filenames = str(filenames)
-            self.shell.ReplaceSelection(filenames)
 
     def OnFocusPrompt(self, event):
         self.shell.DocumentEnd()

@@ -59,6 +59,12 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
                    )
 
 
+_pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
+_tex_wildcard = ("TeX (*.tex)", '*.tex')
+_tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
+_txt_wildcard = ("Plain Text (*.txt)", '*.txt')
+
+
 class DimensionMismatchError(Exception):
     pass
 
@@ -2919,9 +2925,9 @@ class Dataset(collections.OrderedDict):
         warn(msg, DeprecationWarning)
 
         if not isinstance(fn, basestring):
-            fn = ui.ask_saveas(ext=[('txt', "Tab-separated values"),
-                                    ('tex', "Tex table"),
-                                    ('pickled', "Pickle")])
+            fn = ui.ask_saveas(filetypes=[("Tab-separated values", '*.txt'),
+                                          ("Tex table", '*.tex'),
+                                          ("Pickle", '*.pickled')])
             if fn:
                 print 'saving %r' % fn
             else:
@@ -3233,10 +3239,8 @@ class Dataset(collections.OrderedDict):
         if self.name:
             title += ' %s' % self.name
         msg = ""
-        ext = [('pickled', "Pickled Dataset"), ('txt', "Tab-Separated Values"),
-               ('tex', "TeX Table")]
-        path = ui.ask_saveas(title, message=msg, ext=ext,
-                             defaultFile=self.name)
+        filetypes = [_pickled_ds_wildcard, _tsv_wildcard, _tex_wildcard]
+        path = ui.ask_saveas(title, msg, filetypes, defaultFile=self.name)
         _, ext = os.path.splitext(path)
         if ext == '.pickled':
             self.save_pickled(path)
@@ -3266,8 +3270,7 @@ class Dataset(collections.OrderedDict):
                 title += ' %s' % self.name
             title += " as TeX Table"
             msg = ""
-            ext = [('tex', "TeX File")]
-            path = ui.ask_saveas(title, message=msg, ext=ext,
+            path = ui.ask_saveas(title, msg, [_tex_wildcard],
                                  defaultFile=self.name)
 
         _, ext = os.path.splitext(path)
@@ -3298,8 +3301,7 @@ class Dataset(collections.OrderedDict):
                 title += ' %s' % self.name
             title += " as Text"
             msg = ""
-            ext = ('txt', "Text File"),
-            path = ui.ask_saveas(title, message=msg, ext=ext,
+            path = ui.ask_saveas(title, msg, [_tsv_wildcard],
                                  defaultFile=self.name)
 
         _, ext = os.path.splitext(path)
@@ -3323,8 +3325,7 @@ class Dataset(collections.OrderedDict):
             if self.name:
                 title += ' %s' % self.name
             msg = ""
-            ext = ('pickled', "Pickled File"),
-            path = ui.ask_saveas(title, message=msg, ext=ext,
+            path = ui.ask_saveas(title, msg, [_pickled_ds_wildcard],
                                  defaultFile=self.name)
 
         _, ext = os.path.splitext(path)

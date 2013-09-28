@@ -24,7 +24,7 @@ def txt(iterator, fmt='%s', delim=os.linesep, dest=None):
     if dest is None:
         name = repr(iterator)[:20]
         msg = "Save %s..." % name
-        dest = ui.ask_saveas(msg, msg, None)
+        dest = ui.ask_saveas(msg, msg, [("Plain Text File", '*.txt')])
 
     if dest:
         with open(dest, 'w') as FILE:

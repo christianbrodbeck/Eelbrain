@@ -1,27 +1,21 @@
 """
-This is the terminal-based implementation of the fmtxt.ui functions and 
-depends only on the Python standard library os.
+This terminal-based implementation of the Eelbrain ui functions depends only
+on the Python standard library os.
 
 """
-
-
 import os
 
 
-
-def ask_saveas(title="Save File",
-               message="Please Pick a File Name",
-               ext=[('eelbrain', "pickled eelbrain experiment")],
-               defaultDir=None, defaultFile=None):
+def ask_saveas(title, messagefiletypes, defaultDir, defaultFile):
     """
     ext: list of (extension, description) tuples
          or None
-    
+
     """
     msg = "%s (%s): " % (title, message)
     path = raw_input(msg)
     path = os.path.expanduser(path)
-    
+
     dirname = os.path.split(path)[0]
     if os.path.exists(path):
         if ask(title="File Exists. Overwrite?",
@@ -40,9 +34,9 @@ def ask_saveas(title="Save File",
             return False
 
 
-def ask_dir(title = "Select Folder",
-            message = "Please Pick a Folder",
-            must_exist = True):
+def ask_dir(title="Select Folder",
+            message="Please Pick a Folder",
+            must_exist=True):
     msg = "%s (%s): " % (title, message)
     path = raw_input(msg)
     path = os.path.expanduser(path)
@@ -52,14 +46,10 @@ def ask_dir(title = "Select Folder",
         return False
 
 
-def ask_file(title = "Pick File",
-             message = "Please Pick a File", 
-             ext = [('*', "all files")],
-             directory='',
-             mult=False):
+def ask_file(title, message, filetypes, directory, mult):
     """
     returns a path (str) or False
-    
+
     """
     msg = "%s (%s): " % (title, message)
     path = raw_input(msg)
@@ -70,8 +60,8 @@ def ask_file(title = "Pick File",
         return False
 
 
-def ask(title = "Overwrite File?",
-        message = "Duplicate filename. Do you want to overwrite?",
+def ask(title="Overwrite File?",
+        message="Duplicate filename. Do you want to overwrite?",
         cancel=False,
         default=True,
         ):
@@ -103,7 +93,7 @@ def message(title, message=None, icon='i'):
     """
     icon : str
         can be one of the following: '?', '!', 'i', 'error', None
-    
+
     """
     if icon:
         title = "%s: %s" % (icon, title)
@@ -113,12 +103,12 @@ def message(title, message=None, icon='i'):
 
 
 class progress:
-    def __init__(self, 
+    def __init__(self,
                  i_max=None,
                  title="Progress",
                  message="We're getting there...",
                  cancel=True):
-        if i_max: 
+        if i_max:
             end_msg = " %i>" % i_max
         else:
             end_msg = ''
@@ -126,14 +116,14 @@ class progress:
         print txt,
         self._i = 0
         self._i_max = i_max
-    
+
     def advance(self, new_msg=None):
         self.i += 1
         if self._i_max:
             print self._i_max - self._i,
         else:
             print self._i
-    
+
     def terminate(self):
         print ']'
 
@@ -141,7 +131,7 @@ class progress:
 def copy_file(path):
     """
     copies a file to the clipboard
-    
+
     """
     raise NotImplementedError
 
@@ -149,6 +139,6 @@ def copy_file(path):
 def copy_text(text):
     """
     copies a file to the clipboard
-    
+
     """
     raise NotImplementedError

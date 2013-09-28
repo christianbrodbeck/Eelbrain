@@ -81,7 +81,7 @@ class Edf(object):
         """
         if path is None:
             path = ui.ask_file("Load an eyelink .edf file", "Pick the edf file",
-                               ext=[('edf', 'eyelink data format')])
+                               [('eyelink data format (*.edf)', '*.edf')])
 
         # find all paths from which to read
         self.path = path

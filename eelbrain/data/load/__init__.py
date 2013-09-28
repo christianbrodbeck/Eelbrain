@@ -41,9 +41,9 @@ def unpickle(file_path=None):
         the user cancels the file dialog, a RuntimeError is raised.
     """
     if file_path is None:
-        ext = [('pickled', "Pickles"), ('*', "all files")]
+        filetypes = [("Pickles (*.pickled)", '*.pickled'), ("All files", '*')]
         file_path = _ui.ask_file("Select File to Unpickle", "Select a pickled "
-                                 "file to unpickle", ext=ext)
+                                 "file to unpickle", filetypes)
     if file_path is False:
         raise RuntimeError("User canceled")
 

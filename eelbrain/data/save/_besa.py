@@ -36,7 +36,7 @@ def meg160_triggers(ds, dest=None, pad=1):
     if dest is None:
         dest = ui.ask_saveas("Save MEG-160 Triggers", "Please pick a "
                              "destination for the MEG-160 triggers",
-                             ext=('txt', 'trigger-list'))
+                             [('MEG160 trigger-list', '*.txt')])
         if not dest:
             return
 
@@ -100,7 +100,7 @@ def besa_evt(ds, tstart=-0.1, tstop=0.6, pad=0.1, dest=None):
     if dest is None:
         dest = ui.ask_saveas("Save Besa Events", "Please pick a "
                              "destination for the Besa events",
-                             ('evt', 'Besa Events'))
+                             [('Besa Events', '*.evt')])
         if not dest:
             return
 

@@ -33,7 +33,7 @@ def get_ui():
 
 
 def ask_saveas(title="Save File", message="Please Pick a File Name",
-               ext=[('pickled', "pickled Python object")],
+               filetypes=[("Pickled Python Objects (*.pickled)", '*.pickled')],
                defaultDir=None, defaultFile=False):
     """Display a save-as dialog
 
@@ -43,8 +43,8 @@ def ask_saveas(title="Save File", message="Please Pick a File Name",
         Title of the dialog.
     message : str
         Message in the dialog.
-    ext: list of (extension, description) tuples
-         or None.
+    filetypes : sequence of tuples
+        Sequence of (label, pattern) tuples.
     defaultDir : None | str
         Default directory to save at.
     defaultFile : None | str
@@ -55,10 +55,9 @@ def ask_saveas(title="Save File", message="Please Pick a File Name",
     result : False | str
         The path as str if the user selects a dialog, otherwise ``False``.
     """
-    result = get_ui().ask_saveas(title, message, ext, defaultDir=defaultDir,
-                                 defaultFile=defaultFile)
+    result = get_ui().ask_saveas(title, message, filetypes, defaultDir,
+                                 defaultFile)
     return result
-
 
 
 def ask_dir(title="Select Folder",
@@ -67,10 +66,9 @@ def ask_dir(title="Select Folder",
     return get_ui().ask_dir(title, message, must_exist)
 
 
-
 def ask_file(title="Pick File",
              message="Please Pick a File",
-             ext=[('*', "all files")],
+             filetypes=[("All files", '*')],
              directory='',
              mult=False):
     """
@@ -80,8 +78,8 @@ def ask_file(title="Pick File",
     ----------
     title, message : str
         Title and message for the dialog.
-    ext : list
-        Allowed extensions.
+    filetypes : sequence of tuples
+        Sequence of (label, pattern) tuples.
     directory : None | str
         Path to initial directory.
     mult : bool
@@ -92,10 +90,8 @@ def ask_file(title="Pick File",
     paths : False | str | list
         If the user cancels: False. Otherwise, if mult=False a single path, and
         if mult=True a list of paths.
-
     """
-    return get_ui().ask_file(title, message, ext, directory, mult)
-
+    return get_ui().ask_file(title, message, filetypes, directory, mult)
 
 
 def ask(title="Overwrite File?",
@@ -104,7 +100,6 @@ def ask(title="Overwrite File?",
         default=True,  # True=YES, False=NO, None=Nothing
         ):
     return get_ui().ask(title, message, cancel, default)
-
 
 
 def ask_color(default=(0, 0, 0)):
@@ -161,7 +156,6 @@ def copy_file(path):
 
 def copy_text(text):
     return get_ui().copy_text(text)
-
 
 
 def test_targetpath(path, cancel=True):

@@ -20,8 +20,8 @@ def pickle(obj, dest=None, protocol=cPickle.HIGHEST_PROTOCOL):
         Pickle protocol (default is HIGHEST_PROTOCOL).
     """
     if dest is None:
-        ext = [('pickled', "Pickled Python Object")]
-        dest = ui.ask_saveas("Pickle Destination", "", ext=ext)
+        filetypes = [("Pickled Python Objects (*.pickled)", '*.pickled')]
+        dest = ui.ask_saveas("Pickle Destination", "", filetypes)
         if dest:
             print 'dest=%r' % dest
         else:

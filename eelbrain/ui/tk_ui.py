@@ -9,19 +9,28 @@ http://tkinter.unpythonic.net/wiki/tkFileDialog
 '''
 import logging
 import tkFileDialog
+from tkFileDialog import Open
 import tkMessageBox
 from Tkinter import Tk
 
 
 
-def ask_saveas(title, message, ext, defaultDir=None, defaultFile=None):
-    return tkFileDialog.asksaveasfile(title=title, message=message)
+def ask_saveas(title, message, filetypes, defaultDir=None, defaultFile=None):
+    return tkFileDialog.asksaveasfile(title=title, message=message,
+                                      filetypes=filetypes)
 
 
 def ask_dir(title="Select Folder",
             message="Please Pick a Folder",
             must_exist=True):
     return tkFileDialog.askdirectory(title=title, mustexist=must_exist)
+
+
+def ask_file(title, message, filetypes, directory, mult):
+    dlg = Open(title=title, filetypes=filetypes, initialdir=directory,
+               multiple=mult)
+    out = dlg.show()
+    return out
 
 
 def ask(title="Overwrite File?",

@@ -1,28 +1,28 @@
 import os
+import re
 
 import wx
+
+
+_ext_re = re.compile(r"\*\.(\w+)")
 
 
 def GetWxParent():
     return wx.GetApp().GetTopWindow()
 
 
-
-def _wildcard_from_ext(ext):
-    if ext:
-        wildcard = '|'.join(["{d} (*.{e})|*.{e}".format(d=d, e=e) for e, d in ext])
-        return wildcard
-    else:
-        return ""
+def _wildcard(filetypes):
+    return '|'.join(map('|'.join, filetypes))
 
 
-def ask_saveas(title, message, ext, defaultDir=None, defaultFile=None):
+def ask_saveas(title, message, filetypes, defaultDir, defaultFile):
     """See eelbrain.ui documentation"""
-    if not ext:  # allow for []
-        ext = None
+    if filetypes:
+        wildcard = _wildcard(filetypes)
+    else:
+        wildcard = ""
 
-    dialog = wx.FileDialog(GetWxParent(), message,
-                           wildcard=_wildcard_from_ext(ext),
+    dialog = wx.FileDialog(GetWxParent(), message, wildcard=wildcard,
                            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
     dialog.SetTitle(title)
     if defaultDir:
@@ -31,11 +31,16 @@ def ask_saveas(title, message, ext, defaultDir=None, defaultFile=None):
         dialog.SetFilename(defaultFile)
     if dialog.ShowModal() == wx.ID_OK:
         path = dialog.GetPath()
-        if ext is not None:
-            wc = dialog.GetFilterIndex()
-            extension = ext[wc][0]
-            if path.split(os.extsep)[-1] != extension:
-                path = os.extsep.join([path, extension])
+        # add extension
+        if filetypes:
+            head, ext = os.path.splitext(path)
+            if not ext:
+                wc = dialog.GetFilterIndex()
+                extension = filetypes[wc][1]
+                m = _ext_re.match(extension)
+                if m:
+                    ext = m.group(1)
+                    path = os.path.extsep.join((head, ext))
         return path
     else:
         return False
@@ -57,11 +62,7 @@ def ask_dir(title="Select Folder",
         return False
 
 
-def ask_file(title="Pick File",
-             message="Please Pick a File",
-             ext=[('*', "all files")],
-             directory='',
-             mult=False):
+def ask_file(title, message, filetypes, directory, mult):
     """
     returns path(s) or False
 
@@ -71,9 +72,9 @@ def ask_file(title="Pick File",
     style = wx.FD_OPEN
     if mult:
         style = style | wx.FD_MULTIPLE
+    wildcard = _wildcard(filetypes)
     dialog = wx.FileDialog(GetWxParent(), message, directory,
-                           wildcard=_wildcard_from_ext(ext),
-                           style=style)
+                           wildcard=wildcard, style=style)
     dialog.SetTitle(title)
     if dialog.ShowModal() == wx.ID_OK:
         if mult:
