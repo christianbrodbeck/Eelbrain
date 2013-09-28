@@ -1232,6 +1232,29 @@ class MneExperiment(FileTree):
         # save evt
         save.besa_evt(ds, tstart=tmin, tstop=tmax, dest=evt_dest)
 
+    def make_copy(self, temp, field, src, dst, redo=False):
+        """Make a copy of a file
+
+        Parameters
+        ----------
+        temp : str
+            Template of the file which to copy.
+        field : str
+            Field in which the source and target of the link are distinguished.
+        src : str
+            Value for field on the source file.
+        dst : str
+            Value for field on the destination filename.
+        redo : bool
+            If the target file already exists, overwrite it.
+        """
+        dst_path = self.get(temp, **{field: dst})
+        if not redo and os.path.exists(dst_path):
+            return
+
+        src_path = self.get(temp, **{field: src})
+        shutil.copyfile(src_path, dst_path)
+
     def make_cov(self, redo=False):
         """Make a noise covariance (cov) file
 
@@ -1572,7 +1595,16 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        temp :
+        temp : str
+            Template of the file for which to make a link.
+        field : str
+            Field in which the source and target of the link are distinguished.
+        src : str
+            Value for field on the source file.
+        dst : str
+            Value for field on the destination filename.
+        redo : bool
+            If the target file already exists, overwrite it.
         """
         dst_path = self.get(temp, **{field: dst})
         if not redo and os.path.exists(dst_path):
