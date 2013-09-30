@@ -1054,7 +1054,7 @@ class MneExperiment(FileTree):
         else:
             proj = None
 
-        raw_file = self.get('raw-file')
+        raw_file = self.get('raw-file', make=True)
         raw = load.fiff.mne_raw(raw_file, proj, preload=preload)
         if add_bads:
             if add_bads is True:
