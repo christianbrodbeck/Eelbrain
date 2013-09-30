@@ -81,7 +81,6 @@ class corr:
         Correlation (with threshold contours).
     """
     def __init__(self, Y, X, norm=None, sub=None, ds=None,
-                 contours={.05: (.8, .2, .0), .01: (1., .6, .0), .001: (1., 1., .0)},
                  samples=0, pmin=0.1, tstart=None, tstop=None, tmin=0,
                  match=None):
         """
@@ -148,6 +147,7 @@ class corr:
         if samples:
             # calculate r threshold for clusters
             threshold = _rtest_r(pmin, df)
+            
 
             cdist = _ClusterDist(Y, samples, threshold, -threshold, 'r', name,
                                  tstart, tstop, tmin)
@@ -156,11 +156,13 @@ class corr:
                 for Y_ in resample(cdist.Y_perm, samples, unit=match):
                     rmap_ = _corr(Y_.x, X.x)
                     cdist.add_perm(rmap_)
+            info = _cs.stat_info('r', threshold)
+        else:
+            r0, r1, r2 = _rtest_r((.05, .01, .001), df)
+            info = _cs.stat_info('r', r0, r1, r2)
 
         # compile results
         dims = Y.dims[1:]
-        r0, r1, r2 = _rtest_r((.05, .01, .001), df)
-        info = _cs.stat_info('r', r0, r1, r2)
         r = NDVar(rmap, dims, info, name)
 
         # store attributes
@@ -171,8 +173,12 @@ class corr:
         if samples:
             self.cdist = cdist
             self.clusters = cdist.clusters
-            self.r_cl = [[r, cdist.cpmap]]
-            self.all = [[r, cdist.cpmap]]
+            if cdist.n_clusters:
+                self.r_cl = [[r, cdist.cpmap]]
+                self.all = [[r, cdist.cpmap]]
+            else:
+                self.r_cl = [[r]]
+                self.all = [[r]]
         else:
             self.all = [[r, r]]
 
