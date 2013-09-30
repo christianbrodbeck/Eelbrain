@@ -31,7 +31,7 @@ from ...utils import LazyProperty
 from ...utils.print_funcs import strdict
 from ..data_obj import (isvar, asvar, assub, isbalanced, isnestedin, hasrandom,
                         find_factors, Model, asmodel)
-from ..stats import ftest_p
+from .stats import ftest_p
 from . import test
 
 
@@ -59,6 +59,14 @@ class hopkins_ems(dict):
 
     """
     def __init__(self, X):
+        """
+        Components of the F-test denominator according to Hopkins (1976)
+
+        Parameters
+        ----------
+        X : Model
+            ANOVA model. Needs to balanced and completely specified.
+        """
         super(hopkins_ems, self).__init__()
         if X.df_error > 0:
             err = "Hopkins E(MS) estimate requires a fully specified model"

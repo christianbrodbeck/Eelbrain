@@ -24,4 +24,4 @@ is expected to provide a default object for plotting. This is implemented in
 
 __test__ = False
 
-from .testnd import *
+from .stats.testnd import *

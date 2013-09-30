@@ -217,7 +217,7 @@ def stat_info(meas, c0=None, c1=None, c2=None, tail=0, **kwargs):
                 contours[-c2] = (1.0, 0.8, 1.0)
 
     if meas == 'r':
-        info = {'meas': meas, 'cmap': 'RdBu_r', 'vmax': 1}
+        info = {'meas': meas, 'cmap': 'RdBu_r'}
     elif meas == 't':
         info = {'meas': meas, 'cmap': 'RdBu_r'}
     elif meas == 'f':

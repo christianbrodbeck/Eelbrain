@@ -7,6 +7,8 @@ Statistics functions that work on numpy arrays.
 import numpy as np
 import scipy.stats
 
+__all__ = ['ci', 'cihw', 'rms', 'rmssd', 'ftest_f', 'ftest_p']
+
 
 def ci(x, p=.95):
     """
@@ -84,7 +86,7 @@ def rmssd(Y):
 
 
 def ftest_f(p, df_num, df_den):
-    "F values for a given probabilities."
+    "F values for given probabilities."
     p = np.asanyarray(p)
     f = scipy.stats.f.isf(p, df_num, df_den)
     return f

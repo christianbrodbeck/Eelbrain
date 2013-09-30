@@ -87,7 +87,6 @@ def _effect_interaction(a, b):
     return np.hstack(out)
 
 
-
 def cellname(cell, delim=' '):
     """
     Returns a consistent ``str`` representation for cells.
@@ -821,10 +820,14 @@ def combine(items, name=None):
         raise TypeError(err)
 
 
-
 def find_factors(obj):
     "returns a list of all factors contained in obj"
-    if isuv(obj):
+    if isinstance(obj, EffectList):
+        f = set()
+        for e in obj:
+            f.update(find_factors(e))
+        return EffectList(f)
+    elif isuv(obj):
         return EffectList([obj])
     elif ismodel(obj):
         f = set()
@@ -1746,28 +1749,61 @@ class Factor(_Effect):
         return np.array(index)
 
     def isany(self, *values):
+        """Find the index of entries matching one of the ``*values``
+
+        Returns
+        -------
+        index : array of bool
+            For each case True if the value is in values, else False.
+
+        Examples
+        --------
+        >>> a = Factor('aabbcc')
+        >>> b.isany('b', 'c')
+        array([False, False,  True,  True,  True,  True], dtype=bool)
         """
-        Returns a boolean array that is True where the Factor matches
-        one of the ``values``
-
-        Example::
-
-            >>> a = Factor('aabbcc')
-            >>> b.isany('b', 'c')
-            array([False, False,  True,  True,  True,  True], dtype=bool)
-
-        """
+        if not all(isinstance(v, basestring) for v in values):
+            err = "Factor indexes need to be str, got %r" % str(values)
+            raise ValueError(err)
         return self.isin(values)
 
     def isin(self, values):
+        """Find the index of entries matching one of the ``values``
+
+        Returns
+        -------
+        index : array of bool
+            For each case True if the value is in values, else False.
+
+        Examples
+        --------
+        >>> a = Factor('aabbcc')
+        >>> b.isany(('b', 'c'))
+        array([False, False,  True,  True,  True,  True], dtype=bool)
+        """
         is_v = [self.x == self._codes.get(v, np.nan) for v in values]
         return np.any(is_v, 0)
 
     def isnot(self, *values):
-        """
-        returns a boolean array that is True where the data does not equal any
-        of the values
+        """Find the index of entries not in ``values``
 
+        Returns
+        -------
+        index : array of bool
+            For each case False if the value is in values, else True.
+        """
+        if not all(isinstance(v, basestring) for v in values):
+            err = "Factor indexes need to be str, got %r" % str(values)
+            raise ValueError(err)
+        return self.isnotin(values)
+
+    def isnotin(self, values):
+        """Find the index of entries not in ``values``
+
+        Returns
+        -------
+        index : array of bool
+            For each case False if the value is in values, else True.
         """
         is_not_v = [self.x != self._codes.get(v, np.nan) for v in values]
         if is_not_v:
@@ -2667,9 +2703,7 @@ class Dataset(collections.OrderedDict):
         return rep_tmp % fmt
 
     def __setitem__(self, name, item, overwrite=True):
-        if not isinstance(name, str):
-            raise TypeError("Dataset indexes need to be strings")
-        else:
+        if isinstance(name, str):
             # test if name already exists
             if (not overwrite) and (name in self):
                 raise KeyError("Dataset already contains variable of name %r" % name)
@@ -2698,6 +2732,23 @@ class Dataset(collections.OrderedDict):
                 raise ValueError(msg)
 
             super(Dataset, self).__setitem__(name, item)
+        elif isinstance(name, tuple):
+            if len(name) != 2:
+                raise NotImplementedError("More than 2 index components.")
+            key, idx = name
+            if key in self:
+                self[key][idx] = item
+            elif isinstance(item, basestring):
+                if idx.start is None and idx.stop is None:
+                    self[key] = Factor([item], rep=self.n_cases)
+                else:
+                    err = ("Can only add Factor with general value "
+                           "(ds['name',:] = ...")
+                    raise NotImplementedError(err)
+            else:
+                raise NotImplementedError
+        else:
+            raise TypeError("Dataset indexes need to be strings")
 
     def __str__(self):
         return unicode(self).encode('utf-8')
@@ -3357,7 +3408,7 @@ class Interaction(_Effect):
         # FIXME: Interaction does not update when component factors update
         self.base = EffectList()
         self.is_categorial = True
-        self.nestedin = set()
+        self.nestedin = EffectList()
 
         for b in base:
             if isuv(b):
@@ -3373,19 +3424,10 @@ class Interaction(_Effect):
                 else:
                     self.base.extend(b.base)
                     self.is_categorial = (self.is_categorial and b.is_categorial)
-
-            elif b._stype_ == "nonbasic":  # TODO: nested effects
-                raise NotImplementedError("Interaction of non-basic effects")
-#    from _regresor_.__mod__ (?)
-#        if any([type(e)==NonbasicEffect for e in [self, other]]):
-#            multcodes = _inter
-#            name = ':'.join([self.name, other.name])
-#            factors = self.factors + other.factors
-#            nestedin = self._nestedin + other._nestedin
-#            return NonbasicEffect(multcodes, factors, name, nestedin=nestedin)
-#        else:
+            elif b._stype_ == "nested":  # TODO: nested effects
                 self.base.append(b)
-                self.nestedin.update(b.nestedin)
+                if b.nestedin not in self.nestedin:
+                    self.nestedin.append(b.nestedin)
             else:
                 raise TypeError("Invalid type for Interaction: %r" % type(b))
 
@@ -3611,6 +3653,8 @@ class NestedEffect(object):
 
         self.effect = effect
         self.nestedin = nestedin
+        self.random = effect.random
+        self.cells = effect.cells
         self._n_cases = len(effect)
 
         if isfactor(self.effect):
@@ -3627,6 +3671,9 @@ class NestedEffect(object):
     def __repr__(self):
         return self.name
 
+    def __iter__(self):
+        return self.effect.__iter__()
+
     def __len__(self):
         return self._n_cases
 
@@ -3639,41 +3686,16 @@ class NestedEffect(object):
         "create effect codes"
         codes = np.zeros((self._n_cases, self.df))
         ix = 0
-        iy = 0
-        for cell in self.nestedin.cells:
-            n_idx = (self.nestedin == cell)
-            n = n_idx.sum()
-            codes[iy:iy + n, ix:ix + n - 1] = _effect_eye(n)
-            iy += n
+        for outer_cell in self.nestedin.cells:
+            outer_idx = (self.nestedin == outer_cell)
+            inner_model = self.effect[outer_idx]
+            n = len(inner_model.cells)
+            inner_codes = _effect_eye(n)
+            for i, cell in enumerate(inner_model.cells):
+                codes[self.effect == cell, ix:ix + n - 1] = inner_codes[i]
             ix += n - 1
 
         return codes
-
-#        nesting_base = self.nestedin.as_effects
-#        value_map = map(tuple, nesting_base.tolist())
-#        codelist = []
-#        for v in np.unique(value_map):
-#            nest_indexes = np.where([v1 == v for v1 in value_map])[0]
-#
-#            e_local_values = self.effect.x[nest_indexes]
-#            e_unique_local_values = np.unique(e_local_values)
-#
-#            n = len(e_unique_local_values)
-#            nest_codes = _effect_eye(n)
-#
-#            v_codes = np.zeros((self.effect._n_cases, n - 1), dtype=int)
-#
-#            i1 = set(nest_indexes)
-#            for v_self, v_code in zip(e_unique_local_values, nest_codes):
-#                i2 = set(np.where(self.effect.x == v_self)[0])
-#                i = list(i1.intersection(i2))
-#                v_codes[i] = v_code
-#
-#            codelist.append(v_codes)
-#
-#        effect_codes = np.hstack(codelist)
-#        return effect_codes
-
 
 
 class NonbasicEffect(object):

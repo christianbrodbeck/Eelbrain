@@ -17,7 +17,7 @@ import scipy.stats  # without this sp.stats is not available
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-from ..test import test
+from ..stats import test
 from ..data_obj import (asfactor, isvar, asvar, ascategorial, assub, cellname,
                         Celltable)
 from ._base import str2tex
