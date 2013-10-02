@@ -37,7 +37,6 @@ from . import ui
 
 
 preferences = dict(
-                   table_delim='   ',  # delimiter for tables' string representation
                    keep_recent=3,  # number of recent tables to keep in memory
                    )
 
@@ -507,11 +506,12 @@ class Table:
     """
     def __init__(self, columns, rules=True, title=None, caption=None, rows=[]):
         """
+        Parameters
+        ----------
         columns : str
             alignment for each column, e.g. ``'lrr'``
         rules : bool
             Add toprule and bottomrule
-
         """
         self.columns = columns
         self._table = rows[:]
@@ -648,12 +648,20 @@ class Table:
     def __unicode__(self):
         return self.get_str()
 
-    def get_str(self, fmt=None, row_delimiter='default'):
+    def get_str(self, fmt=None, delim='   ', linesep=os.linesep):
+        """Convert Table to str
+
+        Parameters
+        ----------
+        fmt : None  | str
+            Format for numbers.
+        delim : str
+            Delimiter between columns.
+        linesep : str
+            Line separation string
+        """
         # append to recent tex out
         _add_to_recent(self)
-
-        if row_delimiter == 'default':
-            row_delimiter = preferences['table_delim']
 
         # determine column widths
         widths = []
@@ -671,7 +679,7 @@ class Table:
         c_width = np.max(widths, axis=0)  # column widths!
 
         # FIXME: take into account tab length:
-        midrule = row_delimiter.join(['-' * w for w in c_width])
+        midrule = delim.join(['-' * w for w in c_width])
         midrule = midrule.expandtabs(4).replace(' ', '-')
 
         # collect lines
@@ -691,16 +699,16 @@ class Table:
                     start = int(start) - 1
                     end = int(end)
                     line = [' ' * w for w in c_width[:start]]
-                    rule = row_delimiter.join(['-' * w for w in c_width[start:end]])
+                    rule = delim.join(['-' * w for w in c_width[start:end]])
                     rule = rule.expandtabs(4).replace(' ', '-')
                     line += [rule]
                     line += [' ' * w for w in c_width[start:end]]
-                    txtlines.append(row_delimiter.join(line))
+                    txtlines.append(delim.join(line))
                 else:
                     pass
             else:
                 txtlines.append(row.get_str(c_width, self.columns, fmt=fmt,
-                                            delimiter=row_delimiter))
+                                            delimiter=delim))
         out = txtlines
 
         if self._title != None:
@@ -711,7 +719,7 @@ class Table:
         elif self._caption:
             out.append(str(self._caption))
 
-        return os.linesep.join(out)
+        return linesep.join(out)
 
     def get_tex(self, fmt=None):
         tex_pre = [r"\begin{center}",
@@ -770,14 +778,20 @@ class Table:
 
     def save_tsv(self, path=None, delimiter='\t', linesep='\r\n', fmt='%.15g'):
         """
-        Saves the table as tab-separated values file.
+        Save the table as tab-separated values file.
 
-        :arg str delimiter: string that is placed between cells (default: tab).
-        :arg str linesep: string that is placed in between lines.
-        :arg str fmt: format string for representing numerical cells.
-            (see 'Python String Formatting Documentation <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_ )
-            http://docs.python.org/library/stdtypes.html#string-formatting-operations
-
+        Parameters
+        ----------
+        path : str | None
+            Destination file name.
+        delimiter : str
+            String that is placed between cells (default: tab).
+        linesep : str
+            String that is placed in between lines.
+        fmt : str
+            Format string for representing numerical cells.
+            (see 'Python String Formatting Documentation
+            <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_ )
         """
         if not path:
             path = ui.ask_saveas(title="Save Tab Separated Table",
@@ -791,6 +805,34 @@ class Table:
             with open(path, 'w') as f:
                 out = self.get_tsv(delimiter=delimiter, linesep=linesep,
                                    fmt=fmt)
+                if isinstance(out, unicode):
+                    out = out.encode('utf-8')
+                f.write(out)
+
+    def save_txt(self, path=None, fmt='%.15g', delim='   ', linesep=os.linesep):
+        """
+        Save the table as text file.
+
+        Parameters
+        ----------
+        path : str | None
+            Destination file name.
+        fmt : str
+            Format string for representing numerical cells.
+        linesep : str
+            String that is placed in between lines.
+        """
+        if not path:
+            path = ui.ask_saveas(title="Save Table as Text File",
+                                 message="Please Pick a File Name",
+                                 ext=[("txt", "txt file")])
+        if ui.test_targetpath(path):
+            ext = os.path.splitext(path)[1]
+            if ext == '':
+                path += '.txt'
+
+            with open(path, 'w') as f:
+                out = self.get_str(fmt, delim, linesep)
                 if isinstance(out, unicode):
                     out = out.encode('utf-8')
                 f.write(out)
