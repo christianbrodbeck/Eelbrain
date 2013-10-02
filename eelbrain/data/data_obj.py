@@ -2850,7 +2850,8 @@ class Dataset(collections.OrderedDict):
             self[item.name] = item
 
     def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, sort=False,
-                 header=True, midrule=False, count=False):
+                 header=True, midrule=False, count=False, title=None,
+                 caption=None):
         r"""
         Create a fmtxt.Table containing all Vars and Factors in the Dataset.
         Can be used for exporting in different formats such as csv.
@@ -2876,6 +2877,10 @@ class Dataset(collections.OrderedDict):
             print a midrule after table header
         sort : bool
             Sort the columns alphabetically
+        title : None | str
+            Title for the table.
+        caption : None | str
+            Caption for the table.
         """
         if cases < 1:
             cases = self.n_cases + cases
@@ -2890,7 +2895,8 @@ class Dataset(collections.OrderedDict):
 
         values = [self[key] for key in keys]
 
-        table = fmtxt.Table('l' * (len(keys) + count))
+        columns = 'l' * (len(keys) + count)
+        table = fmtxt.Table(columns, True, title, caption)
 
         if header:
             if count:
