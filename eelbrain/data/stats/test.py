@@ -300,21 +300,21 @@ def ttests(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     if isinstance(against, str):
         k = len(ct.indexes) - 1
         assert against in ct.cells
-        for id in ct.indexes:
-            label = ct.cells[id]
+        for idx in ct.indexes:
+            label = ct.cells[idx]
             if against == label:
-                baseline_id = id
-                baseline = ct.data[id]
+                baseline_id = idx
+                baseline = ct.data[idx]
 
-        for id in ct.indexes:
-            if id == baseline_id:
+        for idx in ct.indexes:
+            if idx == baseline_id:
                 continue
-            names.append(ct.cells[id])
-            if (ct.within is not False) and ct.within[id, baseline_id]:
-                t, p = scipy.stats.ttest_rel(baseline, ct.data[id])
+            names.append(ct.cells[idx])
+            if (ct.within is not False) and ct.within[idx, baseline_id]:
+                t, p = scipy.stats.ttest_rel(baseline, ct.data[idx])
                 df = len(baseline) - 1
             else:
-                data = ct.data[id]
+                data = ct.data[idx]
                 t, p = scipy.stats.ttest_ind(baseline, data)
                 df = len(baseline) + len(data) - 2
             ts.append(t)
@@ -324,9 +324,9 @@ def ttests(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     elif np.isscalar(against):
         k = len(ct.cells)
 
-        for id in ct.indexes:
-            label = ct.cells[id]
-            data = ct.data[id]
+        for idx in ct.indexes:
+            label = ct.cells[idx]
+            data = ct.data[idx]
             t, p = scipy.stats.ttest_1samp(data, against)
             df = len(data) - 1
             names.append(label); ts.append(t); dfs.append(df); ps.append(p)
@@ -381,12 +381,26 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
              title='{desc}', mirror=False,  # layout
              ):
     """
-    pairwise comparison according to factor structure
+    Pairwise comparison table.
+
+    Parameters
+    ----------
+    Y : Var
+        Dependent measure.
+    X : categorial
+        Categories to compare.
+    match : None | Factor
+        Repeated measures factor.
+    sub : None | index-array
+        Perform tests with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables
 
     """
     ct = Celltable(Y, X, match=match, sub=sub, ds=ds)
-    test = _pairwise(ct.get_data(), within=ct.all_within, parametric=par, corr=corr,  # levels=levels,
-                     trend=trend)
+    test = _pairwise(ct.get_data(), within=ct.all_within, parametric=par,
+                     corr=corr, trend=trend)
 
     # extract test results
     k = len(ct)
