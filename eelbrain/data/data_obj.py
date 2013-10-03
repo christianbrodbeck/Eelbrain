@@ -3078,7 +3078,7 @@ class Dataset(collections.OrderedDict):
         "Deprecated. Use .aggregate()."
         warn("Dataset.compress s deprecated; use Dataset.aggregate instead"
              "(with identical functionality).", DeprecationWarning)
-        self.aggregate(X, drop_empty, name, count, drop_bad, drop)
+        return self.aggregate(X, drop_empty, name, count, drop_bad, drop)
 
     def aggregate(self, X, drop_empty=True, name='{name}', count='n',
                   drop_bad=False, drop=()):
