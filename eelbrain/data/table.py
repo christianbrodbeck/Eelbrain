@@ -152,6 +152,38 @@ def frequencies(Y, X=None, of=None, sub=None, ds=None):
     return out
 
 
+def melt(name, cells, cell_var_name, ds):
+    """
+    Restructure a Dataset such that a measured variable is in a single row
+
+    Restructure a Dataset with a certain variable represented in several
+    columns into a longer dataset in which the variable is represented in a
+    single column along with an identifying variable.
+
+    Parameters
+    ----------
+    name : str
+        Name of the variable in the new Dataset.
+    cells : sequence of str
+        Names of the columns representing the variable in the input Dataset.
+    cell_var_name : str
+        Name of the variable to contain the cell identifier.
+    ds : Dataset
+        Input Dataset.
+    """
+    dss = []
+    for cell in cells:
+        cell_ds = ds.copy()
+        cell_ds.rename(cell, name)
+        for src in cells:
+            if src != cell:
+                del cell_ds[src]
+        cell_ds[cell_var_name, :] = cell
+        dss.append(cell_ds)
+    out = combine(dss)
+    return out
+
+
 
 def stats(Y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
           ds=None):
