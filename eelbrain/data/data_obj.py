@@ -2081,6 +2081,32 @@ class NDVar(object):
         self.x += self._ialign(other)
         return self
 
+    def __div__(self, other):
+        if isnumeric(other):
+            dims, x_self, x_other = self._align(other)
+            x = x_self / x_other
+            name = '%s/%s' % (self.name, other.name)
+        elif np.isscalar(other):
+            x = self.x / other
+            dims = self.dims
+            name = '%s/%s' % (self.name, str(other))
+        else:
+            raise ValueError("can't subtract %r" % other)
+        return NDVar(x, dims=dims, name=name, info=self.info)
+
+    def __mul__(self, other):
+        if isnumeric(other):
+            dims, x_self, x_other = self._align(other)
+            x = x_self * x_other
+            name = '%s*%s' % (self.name, other.name)
+        elif np.isscalar(other):
+            x = self.x * other
+            dims = self.dims
+            name = '%s*%s' % (self.name, str(other))
+        else:
+            raise ValueError("can't subtract %r" % other)
+        return NDVar(x, dims=dims, name=name, info=self.info)
+
     def __sub__(self, other):  # TODO: use dims
         if isnumeric(other):
             dims, x_self, x_other = self._align(other)
