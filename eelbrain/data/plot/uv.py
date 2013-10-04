@@ -102,7 +102,7 @@ def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, x0=0,
     y_top = y_top + 2 * y_unit
     return y_top
 
-def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0,
+def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, corr='Hochberg',
                         levels=True, trend=".", pwcolors=None,
                         popmean=0,  # <- mod
                         font_size=plt.rcParams['font.size'] * 1.5
@@ -124,16 +124,16 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0,
             ps.append(p)
     else:
         raise NotImplementedError("nonparametric 1-sample test")
-    stars = test.star(ps, out=int, levels=levels, trend=trend)
+    stars = test.star(ps, int, levels, trend, corr)
     stars_str = test.star(ps, levels=levels, trend=trend)
     if any(stars):
         y_stars = y_min + 1.75 * y_unit
         for i, n_stars in enumerate(stars):
             if n_stars > 0:
                 c = pwcolors[n_stars - 1]
-                P.text(x0 + i, y_stars, stars_str[i], color=c, size=font_size,
-                       horizontalalignment='center', clip_on=False,
-                       verticalalignment='center')
+                plt.text(x0 + i, y_stars, stars_str[i], color=c, size=font_size,
+                         horizontalalignment='center', clip_on=False,
+                         verticalalignment='center')
         return y_min + 4 * y_unit
     else:
         return y_min
@@ -395,7 +395,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
     else:
         plt.axhline(test, color='black')
         y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit,
-                                   x0=1, popmean=test, trend=trend, corr=corr)
+                                   x0=1, corr=corr, popmean=test, trend=trend)
     if top is None:
         top = y_top
 

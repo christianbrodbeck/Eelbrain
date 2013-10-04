@@ -8,8 +8,9 @@ from eelbrain.data import Var, datasets, plot
 def test_barplot():
     "Test plot.uv.barplot"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand()
-    plot.uv.barplot('Y', 'A%B', match='rm', ds=ds)
+    ds = datasets.get_uv()
+    plot.uv.barplot('fltvar', 'A%B', match='rm', ds=ds)
+    plot.uv.barplot('fltvar', 'A%B', match='rm', test=0, ds=ds)
     plt.close('all')
 
 
