@@ -238,7 +238,7 @@ Below is a simple example using data objects. For more examples, see the
 ``Eelbrain/examples/statistics`` folder::
 
     >>> import numpy as np
-    >>> from eelbrain.eellab import *
+    >>> from eelbrain.lab import *
     >>> y = np.empty(21)
     >>> y[:14] = np.random.normal(0, 1, 14)
     >>> y[14:] = np.random.normal(1.5, 1, 7)

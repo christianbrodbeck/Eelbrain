@@ -6,7 +6,7 @@ import os
 from nose.tools import eq_
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-from eelbrain.eellab import load
+from eelbrain.data import load
 
 data_path = mne.datasets.sample.data_path()
 raw_path = os.path.join(data_path, 'MEG', 'sample',
