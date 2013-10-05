@@ -267,7 +267,7 @@ def _oneway(ct, parametric=True):
 
 
 
-def ttests(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
+def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
            title='{desc}', ds=None):
     """T tests for one or more samples.
 
@@ -287,6 +287,8 @@ def ttests(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
         Title for the table.
     """
     ct = Celltable(Y, X, match, sub, ds=ds)
+    if not isvar(ct.Y):
+        raise TypeError("Need Var as dependent variable, not %s" % type(ct.Y))
 
     par = True
     if par:
@@ -324,9 +326,9 @@ def ttests(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     elif np.isscalar(against):
         k = len(ct.cells)
 
-        for idx in ct.indexes:
-            label = ct.cells[idx]
-            data = ct.data[idx]
+        for cell in ct.cells:
+            label = cellname(cell)
+            data = ct.data[cell].x
             t, p = scipy.stats.ttest_1samp(data, against)
             df = len(data) - 1
             names.append(label); ts.append(t); dfs.append(df); ps.append(p)
