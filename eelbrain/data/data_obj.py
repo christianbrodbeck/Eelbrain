@@ -484,27 +484,29 @@ class Celltable(object):
     Attributes
     ----------
     .Y, .X,
-        Y and X after sub was applied
+        Y and X after sub was applied.
     .sub, .match:
-        input arguments
+        Input arguments.
     .cells : list of str
-        list of all cells in X
+        List of all cells in X.
     .data : dict(cell -> data)
-        data in each cell
+        Data (``Y[index]``) in each cell.
     .data_indexes : dict(cell -> index-array)
-        for each cell, a boolean-array specifying the index for that cell in ``X``
+        For each cell, a boolean-array specifying the index for that cell in
+        ``X``.
 
     **If ``match`` is specified**:
 
     .within : dict(cell1, cell2 -> bool)
-        dictionary that specifies for each cell pair whether the corresponding
+        Dictionary that specifies for each cell pair whether the corresponding
         comparison is a repeated-measures or an independent measures
         comparison (only available when the input argument ``match`` is
         specified.
     .all_within : bool
-        whether all comparison are repeated-measures comparisons or not
+        Whether all comparison are repeated-measures comparisons or not.
     .groups : dict(cell -> group)
-        A slice of the match argument describing the group members for each cell.
+        A slice of the match argument describing the group members for each
+        cell.
 
     """
     def __init__(self, Y, X=None, match=None, sub=None, match_func=np.mean,
