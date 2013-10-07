@@ -22,4 +22,4 @@ Copyright (c) 2012. All rights reserved.
 
 """
 
-__version__ = '0.0.5dev'
+__version__ = '0.1.0'

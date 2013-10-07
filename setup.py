@@ -41,10 +41,10 @@ else:
 kwargs = dict(
               name='eelbrain',
               version=VERSION,
-              description="Eelbrain",
+              description="MEEG analysis tools",
               url='http://christianmbrodbeck.github.com/Eelbrain/',
-              author="Christian M. Brodbeck",
-              author_email='christianmbrodbeck@gmail.com',
+              author="Christian Brodbeck",
+              author_email='christianbrodbeck@nyu.edu',
               license='GPL3',
               long_description=open('README.txt').read(),
               install_requires=[
