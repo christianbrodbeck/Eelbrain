@@ -94,7 +94,7 @@ def besa_evt(ds, tstart=-0.1, tstop=0.6, pad=0.1, dest=None):
     # remove rejected trials
     evts = evts.subset(idx)
 
-    evts['TriNo'] = Var(ds['eventID'].x)
+    evts['TriNo'] = Var(ds['trigger'].x)
 
     # destination
     if dest is None:

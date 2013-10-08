@@ -128,7 +128,7 @@ class Edf(object):
     def __repr__(self):
         return "Edf(%r)" % self.path
 
-    def assert_Id_match(self, ds=None, Id='eventID'):
+    def assert_Id_match(self, ds=None, Id='trigger'):
         """
         Make sure the Edf and another event list describe the same events.
 
@@ -167,7 +167,7 @@ class Edf(object):
             err = "Event ID mismatch: %s" % np.where(check == False)[0]
             raise ValueError(err)
 
-    def add_T_to(self, ds, Id='eventID', t_edf='t_edf'):
+    def add_T_to(self, ds, Id='trigger', t_edf='t_edf'):
         """
         Add edf trigger times as a variable to Dataset ds.
         These can then be used for Edf.add_by_T(ds) after ds hads been
@@ -328,7 +328,7 @@ class Edf(object):
 
     def mark_all(self, ds, tstart=-0.1, tstop=0.6, good=None, bad=False,
                  use=['ESACC', 'EBLINK'],
-                 Id='eventID', target='accept'):
+                 Id='trigger', target='accept'):
         """
         Mark each epoch in the ds for acceptability based on overlap with
         blinks and saccades. ds needs to contain the same number of triggers
@@ -383,7 +383,7 @@ def events(fname, samples=False, ds=None):
         extract eye position data later.
     ds : Dataset
         Existing Dataset to which the edf-triggers should be added. If the
-        Dataset contains a variable called 'eventID' whose content does not
+        Dataset contains a variable called 'trigger' whose content does not
         match the edf triggers, a ValueError is raised. ds is always modified
         in place, but returned for consistency.
     """
@@ -391,31 +391,31 @@ def events(fname, samples=False, ds=None):
     if ds is None:
         ds = Dataset(info={'edf': edf})
     else:
-        if 'eventID' in ds:
+        if 'trigger' in ds:
             edf.assert_Id_match(ds)
         else:
-            ds['eventID'] = Var(edf.triggers['Id'])
+            ds['trigger'] = Var(edf.triggers['Id'])
         ds.info['edf'] = edf
 
     ds['t_edf'] = Var(edf.triggers['T'])
     return ds
 
 
-def add_edf(ds, path, eventID='eventID', t_edf='t_edf'):
+def add_edf(ds, path, trigger='trigger', t_edf='t_edf'):
     """Add an edf file to a Dataset
 
     Parameters
     ----------
     ds : Dataset
         Dataset to which the edf file should be added (needs to contain an
-        eventID variable).
+        trigger variable).
     path : str
         Path to the edf file.
     """
     if 'edf' in ds.info:
         raise ValueError("ds.info already contains 'edf' entry.")
     edf = Edf(path, False)
-    edf.add_T_to(ds, eventID, t_edf)
+    edf.add_T_to(ds, trigger, t_edf)
     ds.info['edf'] = edf
     return ds
 

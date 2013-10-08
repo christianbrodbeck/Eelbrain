@@ -27,12 +27,12 @@ To load events as a :class:`~elbrain.data.Dataset`::
 
     >>> ds = load.fiff.events(path)
 
-By default, the :class:`Dataset` contains a variable called ``"eventID"``
+By default, the :class:`Dataset` contains a variable called ``"trigger"``
 with trigger values, and a variable called ``"i_start"`` with the indices of
 the events::
 
     >>> print ds[:10]
-    eventID   i_start
+    trigger   i_start
     -----------------
     2         27977
     3         28345
@@ -200,7 +200,7 @@ def events(raw=None, merge=-1, proj=False, name=None,
     events : Dataset
         A Dataset with the following variables:
          - *i_start*: the index of the event in the raw file.
-         - *eventID*: the event value.
+         - *trigger*: the event value.
         The Dataset's info dictionary contains the following values:
          - *raw*: the mne Raw object.
 
@@ -224,9 +224,9 @@ def events(raw=None, merge=-1, proj=False, name=None,
         raise ValueError("No events found!")
 
     i_start = Var(evts[:, 0], name='i_start')
-    eventID = Var(evts[:, 2], name='eventID')
+    trigger = Var(evts[:, 2], name='trigger')
     info = {'raw': raw}
-    return Dataset(eventID, i_start, name=name, info=info)
+    return Dataset(trigger, i_start, name=name, info=info)
 
 
 def _ndvar_epochs_picks(info, data, exclude):
@@ -455,7 +455,7 @@ def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
     ds.info['raw'] = raw
 
 
-def _mne_events(ds=None, i_start='i_start', eventID='eventID'):
+def _mne_events(ds=None, i_start='i_start', trigger='trigger'):
     """
     Convert events from a Dataset into mne events.
     """
@@ -464,15 +464,15 @@ def _mne_events(ds=None, i_start='i_start', eventID='eventID'):
 
     N = len(i_start)
 
-    if isinstance(eventID, basestring):
-        eventID = ds[eventID]
-    elif eventID is None:
-        eventID = np.ones(N)
+    if isinstance(trigger, basestring):
+        trigger = ds[trigger]
+    elif trigger is None:
+        trigger = np.ones(N)
 
     events = np.empty((N, 3), dtype=np.int32)
     events[:, 0] = i_start.x
     events[:, 1] = 0
-    events[:, 2] = eventID
+    events[:, 2] = trigger
     return events
 
 

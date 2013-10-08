@@ -16,7 +16,7 @@ raw_path = os.path.join(data_path, 'MEG', 'sample',
 def test_load_fiff_from_raw():
     "Test loading data from a fiff raw file"
     ds = load.fiff.events(raw_path)
-    ds = ds.subset('eventID == 32')
+    ds = ds.subset('trigger == 32')
 
     # add epochs as ndvar
     ds_ndvar = load.fiff.add_epochs(ds, -0.1, 0.3, decim=10, data='mag',

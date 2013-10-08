@@ -383,7 +383,7 @@ class SelectEpochs(eelfigure):
         else:
             raise ValueError("Unknown file extension for rejections: %r" % ext)
 
-        if np.all(ds['eventID'] == self._ds['eventID']):
+        if np.all(ds['trigger'] == self._ds['trigger']):
             self._target[:] = ds['accept']
             if 'bad_chs' in ds.info:
                 bad_chs = ds.info['bad_chs']
@@ -422,7 +422,7 @@ class SelectEpochs(eelfigure):
         accept = self._target
         if accept.name != 'accept':
             accept = accept.copy('accept')
-        ds = Dataset(self._ds['eventID'], accept,
+        ds = Dataset(self._ds['trigger'], accept,
                      info={'bad_chs': self.get_bad_chs()})
 
         if ext == '.pickled':

@@ -52,7 +52,7 @@ def events(vhdr_path=None):
     ds = Dataset(name=name)
     ds['Mk'] = Var(np.array(m[:, 0], dtype=int))
     ds['event_type'] = Factor(m[:, 1])
-    ds['eventID'] = Var(np.array(m[:, 3], dtype=int))
+    ds['trigger'] = Var(np.array(m[:, 3], dtype=int))
     ds['i_start'] = Var(np.array(m[:, 4], dtype=int))
     ds['points'] = Var(np.array(m[:, 5], dtype=int))
     ds['channel'] = Var(np.array(m[:, 6], dtype=int))

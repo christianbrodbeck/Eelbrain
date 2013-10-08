@@ -1133,7 +1133,7 @@ class MneExperiment(FileTree):
                            ".make_rej() first." % path)
                     raise RuntimeError(err)
                 ds_sel = load.unpickle(path)
-                if not np.all(ds['eventID'] == ds_sel['eventID']):
+                if not np.all(ds['trigger'] == ds_sel['trigger']):
                     err = ("The epoch selection file contains different "
                            "events than the data. Something went wrong...")
                     raise RuntimeError(err)
