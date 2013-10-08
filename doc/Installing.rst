@@ -3,18 +3,11 @@
 Installing
 ==========
 
-Eelbrain is a pure Python project and uses 
-`Distribute <http://packages.python.org/distribute/setuptools.html>`_, 
-so most dependencies are automatically installed. In order to use Eelbrain, 
+For most purposes, Eelbrain can be installed from the 
+`Python Package Index <https://pypi.python.org/pypi/eelbrain>`_ 
+with easy_install::
 
-#.  Depending on your purpose, install :ref:`optional dependencies 
-    <dependencies>`
-#.  :ref:`Obtain the Eelbrian source code <obtain-source>`
-#.  Install and run Eelbrain in one of those ways:
-
-    a. :ref:`Install as a package <install-package>`
-    b. On OS X, :ref:`create an Eelbrain.app Application <OS-X-app>`
-       with :py:mod:`py2app`
+    $ sudo easy_install eelbrain
 
 
 .. _dependencies:
