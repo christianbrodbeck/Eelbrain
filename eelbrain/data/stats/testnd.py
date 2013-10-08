@@ -147,7 +147,7 @@ class corr:
         if samples:
             # calculate r threshold for clusters
             threshold = _rtest_r(pmin, df)
-            
+
 
             cdist = _ClusterDist(Y, samples, threshold, -threshold, 'r', name,
                                  tstart, tstop, tmin)
@@ -404,7 +404,7 @@ class ttest_ind:
         self.p = p
 
         self.diffp = [[diff, t]]
-        self.uncorected = [c1_mean, c0_mean] + self.diffp
+        self.uncorrected = [c1_mean, c0_mean] + self.diffp
         if samples:
             self.diff_cl = [[diff, cdist.cpmap]]
             self.all = [c1_mean, c0_mean] + self.diff_cl
