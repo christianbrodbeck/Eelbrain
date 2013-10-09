@@ -412,7 +412,7 @@ class SensorMaps(_base.eelfigure):
                                markeredgewidth=.9,
                                ls='')
         self._ROI_h = []
-        if ROI:
+        if ROI is not None:
             self.set_ROI(ROI)
         else:
             self.ROI = None
@@ -517,8 +517,9 @@ class SensorMaps(_base.eelfigure):
         ROI : list of int
             List of sensor indices in the new ROI.
         """
+        idx = self._sensors.dimindex(ROI)
         self.ROI = np.zeros(len(self._sensors), dtype=bool)
-        self.ROI[ROI] = True
+        self.ROI[idx] = True
         self.update_ROI_plot()
 
     def update_ROI_plot(self):
@@ -606,8 +607,9 @@ class SensorMap2d(_tb_sensors_mixin, _base.eelfigure):
         --------
         .remove_ROIs() : Remove the plotted ROIs
         """
-        h = _plt_map2d(self.axes, self._sensors, proj=self._proj, ROI=ROI, kwargs=kwargs)
-        self._ROIs.extend(h)
+        h = _plt_map2d(self.axes, self._sensors, proj=self._proj, ROI=ROI,
+                       kwargs=kwargs)
+        self._ROIs.append(h)
         self.canvas.draw()
 
     def remove_ROIs(self):
