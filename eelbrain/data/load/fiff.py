@@ -161,7 +161,7 @@ def mne_raw(path=None, proj=False, **kwargs):
 
 
 def events(raw=None, merge=-1, proj=False, name=None,
-           bads=None, stim_channel=None):
+           bads=None, stim_channel=None, **kwargs):
     """
     Load events from a raw fiff file.
 
@@ -194,6 +194,8 @@ def events(raw=None, merge=-1, proj=False, name=None,
         'MNE_STIM_CHANNEL', 'MNE_STIM_CHANNEL_1', 'MNE_STIM_CHANNEL_2',
         etc. are read. If these are not found, it will default to
         'STI 014'.
+    others :
+        Keyword arguments for loading the raw file.
 
     Returns
     -------
@@ -206,14 +208,17 @@ def events(raw=None, merge=-1, proj=False, name=None,
 
     """
     if raw is None or isinstance(raw, basestring):
-        raw = mne_raw(raw, proj=proj)
+        raw = mne_raw(raw, proj=proj, **kwargs)
 
     if bads is not None:
         raw.info['bads'].extend(bads)
 
     if name is None:
-        raw_file = raw.info['filename']
-        name = os.path.basename(raw_file)
+        raw_path = raw.info['filename']
+        if isinstance(raw_path, basestring):
+            name = os.path.basename(raw_path)
+        else:
+            name = None
 
     # stim_channel_bl: see commit 52796ad1267b5ad4fba10f6ca5f2b7cfba65ba9b or earlier
     evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
