@@ -4182,7 +4182,7 @@ def find_time_point(times, time, rnd='closest'):
                 raise ValueError("time=%s lies outside array %r" % (time, name))
         elif np.any(gr):
             pass
-        elif times[-1] - times[-2] > time - times[-1]:
+        elif times[-1] - times[-2] >= time - times[-1]:
             return len(times) - 1, times[-1]
         else:
             name = repr(times.name) if hasattr(times, 'name') else ''
