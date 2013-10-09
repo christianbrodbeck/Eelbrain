@@ -310,7 +310,7 @@ class MneExperiment(FileTree):
         # regiser variables with complex behavior
         self._register_field('rej', self.epoch_rejection.keys(),
                              post_set_handler=self._post_set_rej)
-        self._register_field('group', self.groups.keys(),
+        self._register_field('group', self.groups.keys() + ['all'], 'all',
                              eval_handler=self._eval_group)
         self._register_field('epoch', self.epochs.keys(),
                              set_handler=self.set_epoch)

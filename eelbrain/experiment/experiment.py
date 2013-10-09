@@ -227,7 +227,7 @@ class TreeModel(object):
 
         default = self._defaults.get(key, default)
 
-        if values is not None:
+        if values is not None and len(values):
             if default is None:
                 default = values[0]
             elif default not in values:
