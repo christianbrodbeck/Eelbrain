@@ -401,6 +401,8 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
 
     """
     ct = Celltable(Y, X, match=match, sub=sub, ds=ds)
+    if not isvar(ct.Y):
+        raise TypeError("Pairwise test requires univariate dependent variable")
     test = _pairwise(ct.get_data(), within=ct.all_within, parametric=par,
                      corr=corr, trend=trend)
 

@@ -288,8 +288,6 @@ class MneExperiment(FileTree):
         root : str | None
             the root directory for the experiment (usually the directory
             containing the 'meg' and 'mri' directories)
-        parse_subjects : bool
-            Find MEG subjects using :attr:`_subjects_loc`
         """
         # create attributes
         self.groups = self.groups.copy()

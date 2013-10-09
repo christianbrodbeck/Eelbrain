@@ -2,7 +2,7 @@
 
   "The human brain is like an enormous fish. It's flat
    and slimy, and has gills through which it can see."
-                                               - Dr. Qwatt
+                                               - Dr. Quat
 
 
 Module Hierarchy

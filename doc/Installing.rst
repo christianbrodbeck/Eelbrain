@@ -3,12 +3,16 @@
 Installing
 ==========
 
-For most purposes, Eelbrain can be installed from the 
+The easiest way to use the Eelbrain library is to install it from the 
 `Python Package Index <https://pypi.python.org/pypi/eelbrain>`_ 
 with easy_install::
 
     $ sudo easy_install eelbrain
 
+And it can be updated similarly::
+
+    $ sudo easy_install -U eelbrain
+    
 
 .. _dependencies:
 
@@ -22,7 +26,6 @@ The following modules provide additional functionality if they are installed:
   `Currently it can not be installed through distutils 
   <http://stackoverflow.com/q/477573/166700>`_. 
   Installers are provided `here <http://www.wxpython.org/download.php>`_. 
-* `mne <https://github.com/mne-tools/mne-python>`_
 * A working `LaTeX <http://www.latex-project.org/>`_ installation (enables 
   exporting tables as pdf).
 
@@ -33,10 +36,10 @@ Installing from GitHub
 ----------------------
 
 The Eelbrain source code is hosted on `GitHub 
-<https://github.com/christianmbrodbeck/Eelbrain>`_. The latest source can be 
-downloaded as a 
+<https://github.com/christianmbrodbeck/Eelbrain>`_. The source for the latest
+development version can be downloaded as a 
 `zip archive <https://github.com/christianmbrodbeck/Eelbrain/zipball/master>`_.
-However, since the code is currently evolving, the better option is to clone 
+However, since the code is evolving, the better option is to clone 
 the project with git. A way to do this is::
 
     $ cd /target/directory
@@ -45,37 +48,14 @@ the project with git. A way to do this is::
 This will create the folder ``/target/directory/Eelbrain`` containing all the 
 source files.
 
-
-Updating
-^^^^^^^^
-
 The source can then always be updated to the latest version
 from within the ``Eelbrain`` directory::
 
     $ cd /target/directory/Eelbrain
     $ git pull
 
-After obtaining the source, there are several options to use Eelbrain:
-
-.. note::
-    Make sure to run setup.py with the python version with which you want to
-    use Eelbrain.
-
-
-
-.. _install-package:
-
-A. Install as a Package
------------------------
-
-If you install Eelbrain as a package, you can use it in two ways:
-
-- import as a module
-- launch as an application
-
-I recommend to install Eelbrain in ``develop`` mode. This has the
-benefit that changes in the source folder (e.g., after running 
-``$ git pull``) take effect without re-installing::
+If Eelbrain is installed in ``develop`` mode, changes in the source folder 
+(e.g., after running ``$ git pull``) take effect without re-installing::
 
 	$ cd /target/directory/Eelbrain
 	$ python setup.py develop
@@ -88,21 +68,30 @@ that Eelbrain can be launched with::
 
 .. _OS-X-app:
 
-B. Create Eelbrian.app on OS X
-------------------------------
+Creating Eelbrian.app on OS X
+-----------------------------
+
+On Mac OS X, a small .App file can be created which will launch the WxPython
+GUI.
 
 .. note::
     This step requires wxPython (see :ref:`optional dependencies 
     <dependencies>` above).
 
-Invoking ``$ python setup.py py2app`` does not seem to properly
-take care of dependencies. For this reason, Eelbrain should
-be :ref:`installed as package <install-package>` before invoking the 
-``py2app`` build command.
+If using the enthought distribution, newer versions of some packages are 
+required::
+
+    $ enpkg --remove py2app macholib altgraph modulegraph
+    $ easy_install pip
+    $ pip install --upgrade py2app macholib altgraph modulegraph
+
+Eelbrain should first be installed as package if this has not been done::
+
+    $ cd /target/directory/Eelbrain
+    $ python setup.py develop
 
 The application can then be generated with::
 
-    $ cd /target/directory/Eelbrain
     $ python setup.py py2app -A
 
 This will create a small application in 

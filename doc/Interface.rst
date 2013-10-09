@@ -1,5 +1,5 @@
-Eelbrain wxPython Interface
-===========================
+Eelbrain wxPython GUI
+=====================
 
 WxPython Gui
 ------------

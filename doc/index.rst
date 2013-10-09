@@ -17,14 +17,15 @@ Contents:
    :maxdepth: 2
    
    About
-   changes
-   Interface
    data-obj
    experiment
+   Interface
    Various
 
 
-.. seealso:: `Eelbrain on GitHub <http://github.com/christianmbrodbeck/Eelbrain>`_
+.. seealso:: `Eelbrain on GitHub <http://github.com/christianmbrodbeck/Eelbrain>`_,
+    in particular, 
+    `examples <https://github.com/christianmbrodbeck/Eelbrain/tree/master/examples>`_
 
 Indices and tables
 ==================

@@ -167,7 +167,6 @@ class TopoButterfly(_base.eelfigure):
             matplotlib imshow kwargs
         vmax : None | scalar
             Override the default plot limits.
-
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         n_plots = len(epochs)
