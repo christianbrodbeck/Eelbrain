@@ -4877,35 +4877,34 @@ class SourceSpace(Dimension):
     name = 'source'
     adjacent = False
 
-    def __init__(self, vertno, subject, kind, grade, index=None):
+    def __init__(self, vertno, subject=None, src=None, subjects_dir=None,
+                 connectivity=None):
         """Create mne source space dimension.
 
         Parameters
         ----------
         vertno : list of array
-            The indices of the dipoles in the different source spaces.
-            Each array has shape [n_dipoles] for in each source space]
+            The vertex identities of the dipoles in the source space (left and
+            right hemisphere separately).
         subject : str
-            The mri-subject (used to load brain).
-        kind : 'ico' | 'oct'
-            The kind of source space decimation employed.
-        grade : int
-            The decimation parameters.
-        index : None | array_like
-            If vertno is only a part of the source space, the index locates
-            vertno in the whole source space.
+            The mri-subject name.
+        src : str
+            The kind of source space used (e.g., 'ico-4').
+        subjects_dir : str
+            The path to the subjects_dir (needed to locate the source space
+            file).
+        connectivity : None | sparse matrix
+            Cached source space connectivity.
         """
-        if kind not in ('ico', 'oct', None):
-            raise ValueError("Kind must be 'ico' or 'oct', got %r." % kind)
         self.vertno = vertno
         self.lh_vertno = vertno[0]
         self.rh_vertno = vertno[1]
         self.lh_n = len(self.lh_vertno)
         self.rh_n = len(self.rh_vertno)
         self.subject = subject
-        self.kind = kind
-        self.grade = grade
-        self.index = index
+        self.src = src
+        self.subjects_dir = subjects_dir
+        self._connectivity = connectivity
 
     def __getstate__(self):
         state = {'vertno': self.vertno, 'subject': self.subject,
@@ -4927,6 +4926,18 @@ class SourceSpace(Dimension):
         return self.lh_n + self.rh_n
 
     def __getitem__(self, index):
+        if self._connectivity is None:
+            connectivity = None
+        else:
+            c = self._connectivity
+            int_index = np.arange(len(self))[index]
+            idx = np.logical_and(np.in1d(c.row, int_index, True),
+                                 np.in1d(c.col, int_index, True))
+            row = c.row[idx]
+            col = c.col[idx]
+            data = c.data[idx]
+            connectivity = coo_matrix((data, (row, col)))
+
         vert = np.hstack(self.vertno)
         hemi = np.zeros(len(vert))
         hemi[self.lh_n:] = 1
@@ -4937,28 +4948,43 @@ class SourceSpace(Dimension):
         index_ = index_[index]
 
         new_vert = (vert[hemi == 0], vert[hemi == 1])
-        dim = SourceSpace(new_vert, self.subject, self.kind, self.grade,
-                          index_)
+        dim = SourceSpace(new_vert, self.subject, self.src, self.subjects_dir,
+                          connectivity)
         return dim
 
     def connectivity(self):
         """Create source space connectivity
         """
+        if self._connectivity is not None:
+            return self._connectivity
+
+
+        if any(x is None for x in (self.src, self.subject, self.subjects_dir)):
+            err = ("In order for a SourceSpace dimension to provide "
+                   "connectivity information it needs to be initialized with "
+                   "src, subject and subjects_dir parameters")
+            raise ValueError(err)
+
         import mne
-        if self.kind == 'ico':
-            tris = mne.grade_to_tris(self.grade)
-            c = mne.spatial_tris_connectivity(tris)
-        else:
-            raise NotImplementedError("Connectivity for %r" % self.kind)
+        pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
+                               '{subject}-{src}-src.fif')
+        path = pattern.format(subjects_dir=self.subjects_dir,
+                              subject=self.subject, src=self.src)
+        src = mne.read_source_spaces(path)
 
-        if self.index is not None:
-            idx = np.logical_and(np.in1d(c.row, self.index, True),
-                                 np.in1d(c.col, self.index, True))
-            row = c.row[idx]
-            col = c.col[idx]
-            data = c.data[idx]
-            c = coo_matrix((data, (row, col)))
+        lh_vertno = np.intersect1d(self.vertno[0], src[0]['vertno'], True)
+        pt_in_use = np.in1d(src[0]['use_tris'], lh_vertno).reshape((-1, 3))
+        tri_in_use = np.any(pt_in_use, axis=1)
+        lh_tris = src[0]['use_tris'][tri_in_use]
 
+        rh_vertno = np.intersect1d(self.vertno[1], src[1]['vertno'], True)
+        pt_in_use = np.in1d(src[1]['use_tris'], rh_vertno).reshape((-1, 3))
+        tri_in_use = np.any(pt_in_use, axis=1)
+        rh_tris = src[1]['use_tris'][tri_in_use]
+
+        tris = np.vstack((lh_tris, rh_tris))
+        c = mne.spatial_tris_connectivity(tris)
+        self._connectivity = c
         return c
 
     def dimindex(self, obj):
@@ -4979,8 +5005,15 @@ class SourceSpace(Dimension):
             else:
                 raise IndexError('%r' % obj)
         elif isinstance(obj, SourceSpace):
-            self_idx, other_idx = np.nonzero(self.vertno[:, None] == obj.vertno)
-            obj = self_idx[np.argsort(other_idx)]
+            if obj.index is None:
+                return slice(None)
+            elif (np.array_equal(self.lh_vertno, obj.lh_vertno) and
+                  np.array_equal(self.rh_vertno, obj.rh_vertno)):
+                return slice(None)
+            elif self.index is None:
+                return obj.index
+            else:
+                return np.intersect1d(self.index, obj.index, True)
         else:
             return obj
 
@@ -4994,6 +5027,18 @@ class SourceSpace(Dimension):
 
         idx = np.nonzero(map(label.vertices.__contains__, stc_vertices))[0]
         return idx + base
+
+    def intersect(self, other):
+        if self.subject != other.subject:
+            raise ValueError("Different subject")
+        elif self.src != other.src:
+            raise ValueError("Different src")
+        elif self.subjects_dir != other.subjects_dir:
+            raise ValueError("Different subjects_dir")
+        lh = np.intersect1d(self.lh_vertno, other.lh_vertno, True)
+        rh = np.intersect1d(self.rh_vertno, other.rh_vertno, True)
+        out = SourceSpace([lh, rh], self.subject, self.src, self.subjects_dir)
+        return out
 
     def label_index(self, label):
         """Returns the index for a label

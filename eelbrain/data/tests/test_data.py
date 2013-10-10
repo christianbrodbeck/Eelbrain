@@ -284,4 +284,3 @@ def test_var():
     base = Factor('aabbcde')
     Y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
     assert_array_equal(Y.x, [5, 5, 0, 0, 0, 0, 8])
-
