@@ -1,5 +1,5 @@
 
-def launch():
+def launch(py2app=False):
     "launches Eelbrain's wxPython terminal"
     import wx
     if wx.GetApp():
@@ -16,5 +16,5 @@ def launch():
 
     from .app import MainApp
 
-    app = MainApp()
+    app = MainApp(py2app)
     app.MainLoop()

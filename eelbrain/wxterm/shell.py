@@ -609,8 +609,6 @@ class ShellFrame(wx.py.shell.ShellFrame):
         if wx.__version__ < '2.9':
             self.global_namespace['cd'] = self.curdir
 
-        self.curdir(os.path.expanduser('~'))
-
         for name in ('printdict', 'printlist', 'dicttree'):
             self.global_namespace[name] = getattr(print_funcs, name)
 

@@ -26,10 +26,11 @@ use_setuptools()
 
 from setuptools import setup, find_packages
 
-
 # VERSION must be in X.X.X format, e.g., "0.0.3dev"
 from eelbrain import __version__ as VERSION
 
+
+print sys.argv
 if len(sys.argv) > 1:
     arg = sys.argv[1]
 else:
@@ -60,6 +61,26 @@ kwargs = dict(
               )
 
 # py2app -----------------------------------------------------------------------
+py2app_alias_script = """
+# Startup script for py2app.
+import os
+import site
+import sys
+
+# extend sys.path
+paths = %s
+for path in paths:
+    if path not in sys.path:
+        site.addsitedir(path)
+
+
+# launch Eelbrain
+import eelbrain.wxterm
+
+os.chdir(os.path.expanduser('~'))
+eelbrain.wxterm.launch(True)
+""" % str(sys.path)
+
 if arg == 'py2app':
     doctypes = [
                 {"CFBundleTypeExtensions": ["py"],
@@ -94,8 +115,16 @@ if arg == 'py2app':
                              ),
                }
 
+    # create the startup script
+    if '-A' in sys.argv:
+        script_path = 'scripts/eelbrain_alias.py'
+        with open(script_path, 'w') as fid:
+            fid.write(py2app_alias_script)
+    else:
+        script_path = 'scripts/eelbrain_py2app.py'
+
     kwargs.update(
-                  app=['eelbrain.py'],
+                  app=[script_path],
                   options={'py2app': OPTIONS},
                   setup_requires=['py2app'])
 # cx_freeze??? ---
@@ -141,28 +170,7 @@ else:
 
     # normal -----------------------------------------------------------------------
     else:
-        if sys.platform == 'darwin':
-            # script for mac
-            python = sys.executable
-            destdir = os.path.dirname(python)
-            python = os.path.dirname(destdir)
-
-            python = os.path.join(python, 'Resources/Python.app/Contents/MacOS/Python')
-            destfile = os.path.join(destdir, 'eelbrain_run.py')
-            mac_script = '\n'.join(("#!/bin/sh",
-                                    'exec "%s" %s "$@"' % (python, destfile),
-                                    ''))
-
-            scriptfile = 'scripts_mac/eelbrain'
-            with open(scriptfile, 'w') as fid:
-                fid.write(mac_script)
-            os.chmod(scriptfile, 0755)
-            SCRIPTS = [scriptfile,
-                       'scripts_mac/eelbrain_run.py']
-        else:
-            SCRIPTS = ['scripts/eelbrain']
-
-        kwargs['scripts'] = SCRIPTS
+        kwargs['scripts'] = ['scripts/eelbrain']
 
 
 setup(**kwargs)

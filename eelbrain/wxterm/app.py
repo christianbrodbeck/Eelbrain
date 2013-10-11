@@ -31,14 +31,15 @@ class MainApp(wx.App):
     instance.
 
     """
-    def __init__(self):
+    def __init__(self, py2app):
+        self.py2app = py2app
         wx.App.__init__(self)  # , redirect=redirect, filename=filename)
 
     def OnInit(self):
         self.shell = ShellFrame(app=self)
         self.SetTopWindow(self.shell)
         self.shell.Show()
-        if wx.__version__ >= '2.9':
+        if self.py2app and wx.__version__ >= '2.9':
             dlg = ModalDummyDialog('dsa', 'dsa')
             wx.CallLater(200, dlg.CloseAndDestroy)
             dlg.ShowModal()
@@ -58,7 +59,7 @@ class MainApp(wx.App):
             win.Raise()
 
     def MacOpenFile(self, fname):
-        if not fname.endswith('eelbrain_run.py'):
+        if not fname.endswith('bin/eelbrain'):
             self.MacOpenFiles([fname])
 
     def MacOpenFiles(self, filenames):
