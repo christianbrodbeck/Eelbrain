@@ -7,6 +7,7 @@ Created by Christian Brodbeck on 7/3/09.
 from collections import defaultdict
 import os
 import cPickle as pickle
+import re
 
 import numpy as np
 
@@ -76,6 +77,15 @@ class LazyProperty(object):
         result = obj.__dict__[self.__name__] = self._func(obj)
         return result
 
+
+def _natural_keys(text):
+    "Sorting key for natural sorting"
+    # after http://stackoverflow.com/a/5967539/166700
+    return [int(c) if c.isdigit() else c for c in re.split('(\d+)', text)]
+
+
+def natsorted(seq):
+    return sorted(seq, key=_natural_keys)
 
 
 class keydefaultdict(defaultdict):

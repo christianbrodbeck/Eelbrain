@@ -41,7 +41,7 @@ from scipy.spatial.distance import pdist, squareform
 
 from .. import fmtxt
 from .. import ui
-from ..utils import LazyProperty
+from ..utils import LazyProperty, natsorted
 from . import colorspaces as cs
 from .stats import cihw
 
@@ -1701,7 +1701,7 @@ class Factor(_Effect):
 
     @property
     def cells(self):
-        return sorted(self._labels.values())
+        return natsorted(self._labels.values())
 
     def compress(self, X, name='{name}'):
         "Deprecated. Use .aggregate()."
