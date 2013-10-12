@@ -200,6 +200,23 @@ class Shell(wx.py.shell.Shell):
             self.prompt()
             self.has_moved = False
 
+    def showIntro(self, text=''):
+        """Display introductory text in the shell."""
+        if text:
+            self.write(text)
+        try:
+            if self.interp.introText:
+                if text and not text.endswith(os.linesep):
+                    self.write(os.linesep)
+                # modified to avoid printing invalid instructions
+                for line in self.interp.introText.splitlines():
+                    if line.startswith('Type "help"'):
+                        pass
+                    else:
+                        self.write(line)
+                # end modification
+        except AttributeError:
+            pass
 
 
 class ShellFrame(wx.py.shell.ShellFrame):
