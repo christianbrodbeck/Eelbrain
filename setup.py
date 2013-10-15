@@ -54,6 +54,7 @@ kwargs = dict(
                                 'scipy >= 0.11.0',
                                 'numpy',
                                 'docutils',
+                                'mne >= 0.6',
 #                                'wxPython',
 # Does not install properly from pypi (http://stackoverflow.com/q/477573/166700)
                                   ],
