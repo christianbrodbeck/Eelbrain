@@ -511,6 +511,10 @@ def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
     ax.set_xlim(x[0], x[-1])
     ax.x_fmt = "t = %.3f s"
 
+    ticks = ax.xaxis.get_ticklocs()
+    ticklabels = _base._ticklabels(ticks, 'time')
+    ax.xaxis.set_ticklabels(ticklabels)
+
     if title:
         if 'name' in title:
             title = title.format(name=l0.name)
@@ -521,10 +525,10 @@ def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
             xlabel = x.name
         ax.set_xlabel(xlabel)
 
-#    if ylabel:
-#        if ylabel is True:
-#            ylabel = l.info.get('unit', None)
-#        ax.set_ylabel(ylabel)
+    if ylabel is True:
+        ylabel = l.info.get('unit', None)
+    if ylabel:
+        ax.set_ylabel(ylabel)
 
     if invy:
         y0, y1 = ax.get_ylim()
@@ -534,8 +538,9 @@ def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
         ax.set_ylim(bottom, top)
 
 
-def _plt_uts(ax, x, ndvar, color=None, xdim='time', kwargs={}):
+def _plt_uts(ax, ndvar, color=None, xdim='time', kwargs={}):
     y = ndvar.get_data((xdim,))
+    x = ndvar.get_dim(xdim).x
     if color is not None:
         kwargs['color'] = color
     ax.plot(x, y, **kwargs)
@@ -557,24 +562,26 @@ class _ax_uts_clusters:
                 title = title.format(name=Y.name)
             ax.set_title(title)
 
-        x, xlabel = _base._x_axis(Y, xdim, xlabel)
-        _plt_uts(ax, x, Y, xdim=xdim, **uts_args)
+        _plt_uts(ax, Y, xdim=xdim, **uts_args)
 
         if ylabel is True:
             ylabel = Y.info.get('meas', _base.default_meas)
         if ylabel:
             ax.set_ylabel(ylabel)
 
+        xlabel = _base._axlabel(xdim, xlabel)
         if xlabel:
             ax.set_xlabel(xlabel)
         if np.any(Y.x < 0) and np.any(Y.x > 0):
             ax.axhline(0, color='k')
+
 
         # pmap
         self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend, color)
 
         # save ax attr
         self.ax = ax
+        x = Y.get_dim(xdim).x
         self.xlim = (x[0], x[-1])
 
         ax.set_xlim(*self.xlim)
