@@ -132,7 +132,9 @@ def configure_backend(frame=True, block=False):
 
 _unit = {'time': 'ms'}
 _conversion = {'time': {'ms': 1e3}}
-_fmt = {'time', '%i'}
+_fmt = {'time': '%i'}
+
+
 def _convert(x, dimname):
     """Convert known units from SI for plotting
 
@@ -148,7 +150,21 @@ def _convert(x, dimname):
     return x * u
 
 
+def _ticklabel(tick, dimname, unit=False):
+    "Convert value to string if default units exist"
+    fmt = _fmt.get(dimname, None)
+    label = _convert(tick, dimname)
+    if fmt:
+        label = fmt % label
+    if unit is True:
+        unit = _unit[dimname]
+    if unit:
+        label = ' '.join((label, unit))
+    return label
+
+
 def _ticklabels(ticks, dimname):
+    "Convert values to strings if default units exist"
     fmt = _fmt.get(dimname, None)
     ticklabels = _convert(ticks, dimname)
     if fmt:

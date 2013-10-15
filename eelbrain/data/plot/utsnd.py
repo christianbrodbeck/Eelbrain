@@ -162,7 +162,7 @@ class _ax_im_array(object):
         if ticks[0] < 0 and ticks[0] == xdim[0]:
             ticks = ticks[1:]
         ax.xaxis.set_ticks(ticks)
-        ticklabels = ['%i' % lbl for lbl in _base._convert(ticks, x)]
+        ticklabels = _base._ticklabels(ticks, xdim.name)
         ax.xaxis.set_ticklabels(ticklabels)
         if xdim.name == 'time':
             ax.x_fmt = "t = %.3f s"
@@ -362,61 +362,68 @@ def _axgrid_sensors(sensorLocs2d, figsize=(8, 8),
     return axes, axes_legend
 
 
-def _plt_uts(ax, epoch,
-             sensors=None,  # sensors (ID) to plot
-             lp=None,  # line-properties
-             test_epoch=False, p=.05, softStats=False,  # testWindowFreq='max',
-             sem=None,  # 'sem' (float multiplier)
-             plotLabel=False,
-             **plot_kwargs):
-    """
-    uts plot for a single epoch
+class _plt_uts:
 
-    Parameters
-    ----------
-    ax : matplotlib axes
-        Target axes.
-    epoch : NDVar (sensor by time)
-        Epoch to plot.
-    sensors : None | True | numpy index
-        The sensors to plot (None or True -> all sensors).
-    lp: dictionary (line-properties)
-        any keyword-arguments for matplotlib plot
-    sem: = None or float
-        plot standard error of the mean (e.g., ``sem=2`` plots the mean +/- 2
-        sem)
-    test_epoch:
-        submit a test_epoch to add to plot (efficient because usually
-        _ax_utsStats is called more than once for several epochs
-    """
-    if sensors not in [None, True]:
-        epoch = epoch.subdata(sensor=sensors)
+    def __init__(self, ax, epoch, sensors=None, lp=None, test_epoch=False,
+                 p=.05, softStats=False, sem=None, plotLabel=False,
+                 **plot_kwargs):
+        """
+        uts plot for a single epoch
 
-    Y = epoch.get_data(('time', 'sensor'))
-    T = epoch.time  # .x[...,None]
-    handles = ax.plot(T, Y, label=epoch.name, **plot_kwargs)
+        Parameters
+        ----------
+        ax : matplotlib axes
+            Target axes.
+        epoch : NDVar (sensor by time)
+            Epoch to plot.
+        sensors : None | True | numpy index
+            The sensors to plot (None or True -> all sensors).
+        lp : dictionary (line-properties)
+            any keyword-arguments for matplotlib plot
+        test_epoch :
+            submit a test_epoch to add to plot (efficient because usually
+            _ax_utsStats is called more than once for several epochs
+        sem : None or float
+            plot standard error of the mean (e.g., ``sem=2`` plots the mean +/- 2
+            sem)
+        """
+        if sensors not in [None, True]:
+            epoch = epoch.subdata(sensor=sensors)
 
-    for y, kwa in _base.find_uts_hlines(epoch):
-        ax.axhline(y, **kwa)
+        Y = epoch.get_data(('time', 'sensor'))
+        x = epoch.time.x
+        handles = ax.plot(x, Y, label=epoch.name, **plot_kwargs)
 
-    if plotLabel:
-        Ymax = np.max(Y)
-        ax.text(T[0] / 2, Ymax / 2, plotLabel, horizontalalignment='center')
+        for y, kwa in _base.find_uts_hlines(epoch):
+            ax.axhline(y, **kwa)
 
-    return handles
+        if plotLabel:
+            Ymax = np.max(Y)
+            ax.text(x[0] / 2, Ymax / 2, plotLabel, horizontalalignment='center')
+
+        self.x = x
+        self.lines = handles
+
+    def remove(self):
+        self.lines.remove()
 
 
+class _plt_extrema:
 
-def _plt_extrema(ax, epoch, **plot_kwargs):
-    data = epoch.get_data(('time', 'sensor'))
-    Ymin = data.min(1)
-    Ymax = data.max(1)
-    T = epoch.time
+    def __init__(self, ax, epoch, **plot_kwargs):
+        data = epoch.get_data(('time', 'sensor'))
+        Ymin = data.min(1)
+        Ymax = data.max(1)
+        x = _base._convert(epoch.time.x, 'time')
 
-    handle = ax.fill_between(T, Ymin, Ymax, **plot_kwargs)
-    ax.set_xlim(T[0], T[-1])
+        handle = ax.fill_between(x, Ymin, Ymax, **plot_kwargs)
+        ax.set_xlim(x[0], x[-1])
 
-    return handle
+        self.x = x
+        self.fill = handle
+
+    def remove(self):
+        self.fill.remove()
 
 
 class _ax_butterfly(object):
@@ -435,8 +442,6 @@ class _ax_butterfly(object):
 
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
 
-        xmin = []
-        xmax = []
         name = ''
         overlay = False
         for l in layers:
@@ -452,20 +457,22 @@ class _ax_butterfly(object):
                 h = _plt_uts(ax, l, sensors=sensors, **uts_args)
 
             self.layers.append(h)
-            xmin.append(l.time[0])
-            xmax.append(l.time[-1])
-
             if not name:
                 name = getattr(l, 'name', '')
 
         # axes decoration
-        l = layers[0]
-        ax.set_xlim(min(xmin), max(xmax))
+        ax.set_xlim(min(l.x[0] for l in self.layers),
+                    max(l.x[-1] for l in self.layers))
+
+        ticks = ax.xaxis.get_ticklocs()
+        ticklabels = _base._ticklabels(ticks, 'time')
+        ax.xaxis.set_ticklabels(ticklabels)
 
         xlabel = _base._axlabel('time', xlabel)
         if xlabel:
             ax.set_xlabel(xlabel)
 
+        l = layers[0]
         if ylabel is True:
             ylabel = l.info.get('unit', None)
         if ylabel:

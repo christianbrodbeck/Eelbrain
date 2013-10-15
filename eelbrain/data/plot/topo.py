@@ -309,7 +309,7 @@ class TopoButterfly(_base.eelfigure):
 
         # add time label
         ax = self.topo_axes[-1]
-        t_str = "t = %.3f" % t
+        t_str = "t = %s" % _base._ticklabel(t, 'time', True)
         self._t_label = ax.text(.5, -0.1, t_str, ha='center', va='top')
 
         self.canvas.draw()  # otherwise time label does not get redrawn
