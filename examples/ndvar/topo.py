@@ -24,7 +24,7 @@ sensor = Sensor([[0,0,0],[1,0,0],[0,-1,0],[-1,0,0],[0,1,0]],
 # combine all these into the NDVar. Plotting defaults are stored in the info 
 # dict:
 info = {'vmax': 2.5, 'meas': 'B', 'cmap': 'xpolar', 'unit': 'pT'}
-Y = NDVar(x, dims=('case', sensor, T), name='Y', info=info)
+Y = NDVar(x, dims=('case', sensor, time), name='Y', info=info)
 
 
 
