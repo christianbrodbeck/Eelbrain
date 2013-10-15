@@ -194,7 +194,6 @@ class TopoButterfly(_base.eelfigure):
 
         yframe = frame / y_size
         y_bottomframe = 0.5 / y_size
-#        y_bottom = yframe
         y_sep = (1 - y_bottomframe) / n_plots
         height = y_sep - yframe
 
@@ -206,7 +205,6 @@ class TopoButterfly(_base.eelfigure):
                              'ROIcolor': color,
                              'title': False}
 
-        t = 0
         self.bfly_axes = []
         self.topo_axes = []
         self.bfly_plots = []
@@ -227,10 +225,6 @@ class TopoButterfly(_base.eelfigure):
 
             ax2 = self.figure.add_axes(ax2_rect, frameon=False)
             ax2.set_axis_off()
-
-            # t - label
-            if len(self.topo_axes) == n_plots - 1:
-                self._t_title = ax2.text(.0, 0, 't = %.3f' % t, ha='center')
 
             self.bfly_axes.append(ax1)
             self.topo_axes.append(ax2)
