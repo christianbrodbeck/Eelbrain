@@ -244,12 +244,14 @@ _unit_fmt = {1: "%s",
 
 def eeg_info(vmax=None, mult=1, unit='V', meas="V"):
     unit = _unit_fmt[1 / mult] % unit
-    if vmax is None:
-        vmax = 1.5e-6 * mult
-    return dict(cmap='xpolar', vmax=vmax, meas=meas, unit=unit)
+    out = dict(cmap='xpolar', meas=meas, unit=unit)
+    if vmax is not None:
+        out['vmax'] = vmax
+    return out
 
 def meg_info(vmax=None, mult=1, unit='T', meas="B"):
     unit = _unit_fmt[1 / mult] % unit
-    if vmax is None:
-        vmax = 2e-12 * mult
-    return dict(cmap='xpolar', vmax=vmax, meas=meas, unit=unit)
+    out = dict(cmap='xpolar', meas=meas, unit=unit)
+    if vmax is not None:
+        out['vmax'] = vmax
+    return out

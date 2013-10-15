@@ -587,17 +587,20 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
         If the fiff file contains incorrect sensor locations, a different
         Sensor can be supplied through this kwarg.
     vmax : None | scalar
-        The default range for plotting (the default is 2e-12 T).
+        Set a default range for plotting.
     """
     if data == 'eeg':
         info_ = _cs.eeg_info(vmax, mult)
-        summary_info = _cs.eeg_info(0.1 * info_['vmax'], mult)
+        summary_vmax = 0.1 * vmax if vmax else None
+        summary_info = _cs.eeg_info(summary_vmax, mult)
     elif data == 'mag':
         info_ = _cs.meg_info(vmax, mult)
-        summary_info = _cs.meg_info(0.1 * info_['vmax'], mult)
+        summary_vmax = 0.1 * vmax if vmax else None
+        summary_info = _cs.meg_info(summary_vmax, mult)
     elif data == 'grad':
         info_ = _cs.meg_info(vmax, mult, 'T/cm')
-        summary_info = _cs.meg_info(0.1 * info_['vmax'], mult, 'T/cm')
+        summary_vmax = 0.1 * vmax if vmax else None
+        summary_info = _cs.meg_info(summary_vmax, mult, 'T/cm')
     else:
         raise ValueError("data=%r" % data)
     info_.update(proj='z root', samplingrate=epochs.info['sfreq'],
@@ -618,7 +621,7 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
     return NDVar(x, ('case', sensor, time), info=info_, name=name)
 
 
-def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads'):
+def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
     """
     Convert one or more :class:`mne.Evoked` objects to an :class:`NDVar`.
 
@@ -635,6 +638,8 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads'):
         Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
+    vmax : None | scalar
+        Set a default range for plotting.
 
     Notes
     -----
@@ -680,7 +685,7 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads'):
         time = UTS.from_int(e0.first, e0.last, e0.info['sfreq'])
         dims = ('case', sensor, time)
 
-    info = _cs.meg_info(2e-13)
+    info = _cs.meg_info(vmax)
     return NDVar(x, dims, info=info, name=name)
 
 
