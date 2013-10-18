@@ -226,7 +226,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def __init__(self, parent=None, app=None, title='Eelbrain Shell'):
 
     # --- set up PREFERENCES ---
-        config = wx.Config("eelbrain")
+        self.config = config = wx.Config("eelbrain")
         std_paths = wx.StandardPaths.Get()
 
         # redirect stdio for debugging
@@ -1707,6 +1707,32 @@ class ShellFrame(wx.py.shell.ShellFrame):
         elif Id == ID.SIZE_MIN:
             rect = wx.Rect(area.left, 200, 350, 600)
         self.SetRect(rect)
+
+    def set_debug_mode(self, redirect, logfile=None, write=True):
+        """Change the debug mode (whether to show internal exceptions)
+
+        Parameters
+        ----------
+        redirect : bool
+            Redirect output for internal internal exceptions.
+        logfile : None | str
+            A file to redirect the output to. If None, open a window with
+            the output.
+        write : bool
+            Save the new settings to the configuration file.
+
+        Notes
+        -----
+        Turning off debug mode only takes effect after restarting the
+        Application.
+        """
+        if write:
+            self.config.WriteBool('Debug/Redirect', redirect)
+            self.config.Write('Debug/Logfile', logfile or '')
+
+        if redirect:
+            app = wx.GetApp()
+            app.RedirectStdio(logfile)
 
     def shell_message(self, message, sep=False, ascommand=False, endline=True,
                       internal_call=False):
