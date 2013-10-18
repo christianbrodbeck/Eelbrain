@@ -542,6 +542,11 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
     if isinstance(Y, basestring):
         Y = ds.eval(Y)
 
+    if Xax is not None and isinstance(Y, (tuple, list)):
+        err = ("Xax can only be used to divide Y into different axes if Y is "
+               "a single NDVar (got a %s)." % Y.__class__.__name__)
+        raise TypeError(err)
+
     if isinstance(Xax, str) and Xax.startswith('.'):
         dimname = Xax[1:]
         dim = Y.get_dim(dimname)
