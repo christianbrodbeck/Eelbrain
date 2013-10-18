@@ -71,7 +71,7 @@ import mne
 from mne.baseline import rescale
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
-from mne.transforms.coreg import scale_labels
+from mne.coreg import scale_labels
 
 from .. import fmtxt
 from ..data import load
