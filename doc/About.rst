@@ -14,4 +14,5 @@ main components
    :maxdepth: 2
 
    Installing
+   changes
  

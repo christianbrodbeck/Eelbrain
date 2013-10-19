@@ -434,6 +434,7 @@ class _ax_butterfly(object):
         self.ax = ax
         self.data = layers
         self.layers = []
+        self._xvalues = []  # values on the x axis
         self._meas = None
 
         vmin, vmax = _base.find_uts_ax_vlim(layers, vlims)
@@ -455,6 +456,8 @@ class _ax_butterfly(object):
             self.layers.append(h)
             if not name:
                 name = getattr(l, 'name', '')
+
+            self._xvalues = np.union1d(self._xvalues, l.time.x)
 
         # axes decoration
         ax.set_xlim(min(l.x[0] for l in self.layers),

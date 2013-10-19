@@ -117,7 +117,9 @@ class TopoButterfly(_base.eelfigure):
      - LMB click in butterfly plots fixates the topomap time.
      - RMB click in butterfly plots removes the time point, the topomaps follow
        the mouse pointer.
-
+     - ``Right arrow``: Increment the current topomap time.
+     - ``Left arrow``: Decrement the current topomap time.
+     - ``t``: open a TopoMap plot for the region under the mouse pointer.
     """
     def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
                  proj='default', res=100, interpolation='nearest', color=None,
@@ -207,6 +209,7 @@ class TopoButterfly(_base.eelfigure):
         self._topoax_data = []
         self.t_markers = []
         self._vlims = vlims = _base.find_fig_vlims(epochs, True)
+        self._xvalues = []
 
         # plot epochs (x/y are in figure coordinates)
         for i, layers in enumerate(epochs):
@@ -214,12 +217,15 @@ class TopoButterfly(_base.eelfigure):
             bottom = 1 - y_sep * (1 + i)
 
             ax1_rect = [ax1_left, bottom, ax1_width, height]
-            ax2_rect = [ax2_left, bottom, ax2_width, height]
             ax1 = self.figure.add_axes(ax1_rect)
-            ax1.ID = i
+            ax1.id = i * 2
+            self._axes.append(ax1)
 
+            ax2_rect = [ax2_left, bottom, ax2_width, height]
             ax2 = self.figure.add_axes(ax2_rect, frameon=False)
+            ax2.id = i * 2 + 1
             ax2.set_axis_off()
+            self._axes.append(ax2)
 
             self.bfly_axes.append(ax1)
             self.topo_axes.append(ax2)
@@ -236,6 +242,8 @@ class TopoButterfly(_base.eelfigure):
             if not show_x_axis:
                 ax1.xaxis.set_ticklabels([])
 
+            self._xvalues = np.union1d(self._xvalues, p._xvalues)
+
             # find and print epoch title
             title = True
             for l in layers:
@@ -248,6 +256,7 @@ class TopoButterfly(_base.eelfigure):
 
         # setup callback
         self.canvas.mpl_connect('button_press_event', self._on_click)
+        self.canvas.mpl_connect('key_press_event', self._on_key)
         self._realtime_topo = True
         self._t_label = None
         self._frame.store_canvas()
@@ -305,7 +314,7 @@ class TopoButterfly(_base.eelfigure):
 
     def _on_click(self, event):
         ax = event.inaxes
-        if ax and hasattr(ax, 'ID'):
+        if ax in self.bfly_axes:
             button = {1:'l', 2:'r', 3:'r'}[event.button]
             if button == 'l':
                 t = event.xdata
@@ -316,6 +325,27 @@ class TopoButterfly(_base.eelfigure):
                 self.canvas.draw()
 #                self._frame.redraw(axes=self.bfly_axes) # this leaves the time label
 
+    def _on_key(self, event):
+        ax = event.inaxes
+        key = event.key
+        if key == 't':
+            if ax in self.bfly_axes:
+                p = self.bfly_plots[ax.id // 2]
+                t = event.xdata
+                seg = [l.sub(time=t) for l in p.data]
+                Topomap(seg)
+            elif ax in self.topo_axes:
+                p = self.topo_plots[ax.id // 2]
+                Topomap(p.data)
+        elif key == 'right' and not self._realtime_topo:
+            i = np.where(self._xvalues > self._current_t)[0][0]
+            t = self._xvalues[i]
+            self.set_topo_t(t)
+        elif key == 'left' and not self._realtime_topo:
+            i = np.where(self._xvalues < self._current_t)[0][-1]
+            t = self._xvalues[i]
+            self.set_topo_t(t)
+
     def _on_leave_axes(self, event):
         "update the status bar when the cursor leaves axes"
         txt = "Topomap: t = %.3f" % self._current_t
@@ -323,10 +353,9 @@ class TopoButterfly(_base.eelfigure):
 
     def _on_motion(self, event):
         "update the status bar for mouse movement"
+        super(self.__class__, self)._on_motion(event)
         ax = event.inaxes
-        if ax and hasattr(ax, 'ID'):
-            super(self.__class__, self)._on_motion(event)
-        if self._realtime_topo and ax and hasattr(ax, 'ID'):
+        if ax in self.bfly_axes and self._realtime_topo:
             self._draw_topo(event.xdata)
 
     def add_contour(self, meas, level, color='k'):
@@ -422,6 +451,7 @@ class _ax_topomap(_utsnd._ax_im_array):
 
         """
         self.ax = ax
+        self.data = layers
         self.layers = []
 
         ax.set_axis_off()
