@@ -108,7 +108,7 @@ class SelectEpochs(eelfigure):
     # interpret plotting args
         # variable keeping track of selection
         if isinstance(data, basestring):
-            data = ds[data]
+            data = ds.eval(data)
         self._data = data
 
         if isinstance(blink, basestring):
@@ -197,7 +197,12 @@ class SelectEpochs(eelfigure):
 
     # compile plot kwargs:
         self._vlims = find_fig_vlims([[data]])
-        self._bfly_kwargs = {'plot_range': fill, 'plot_traces': ROI,
+        if ROI and not fill:
+            ROI = data.sensor.dimindex(ROI)
+            traces = np.setdiff1d(np.arange(len(data.sensor)), ROI)
+        else:
+            traces = not bool(fill)
+        self._bfly_kwargs = {'plot_range': fill, 'traces': traces, 'mark': ROI,
                              'vlims':self._vlims}
         self._topo_kwargs = {'vlims':self._vlims}
 
@@ -312,7 +317,7 @@ class SelectEpochs(eelfigure):
 
     def _update_mean(self):
         mseg = self._get_page_mean_seg()
-        self._mean_plot.update_data(mseg)
+        self._mean_plot.set_data(mseg)
         self._frame.redraw(axes=[self._mean_ax])
 
     def set_ax_state(self, axID, state):

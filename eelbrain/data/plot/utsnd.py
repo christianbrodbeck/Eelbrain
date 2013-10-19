@@ -383,7 +383,7 @@ class _plt_uts:
             plot standard error of the mean (e.g., ``sem=2`` plots the mean +/- 2
             sem)
         """
-        if sensors not in [None, True]:
+        if sensors is not None and sensors is not True:
             epoch = epoch.subdata(sensor=sensors)
 
         Y = epoch.get_data(('time', 'sensor'))
@@ -401,7 +401,8 @@ class _plt_uts:
         self.lines = handles
 
     def remove(self):
-        self.lines.remove()
+        while self.lines:
+            self.lines.pop().remove()
 
 
 class _plt_extrema:
@@ -538,7 +539,8 @@ class Butterfly(_base.eelfigure):
 
 class _ax_bfly_epoch:
     def __init__(self, ax, epoch, xlabel=True, ylabel=True, plot_range=True,
-                 plot_traces=False, state=True, vlims={}):
+                 traces=None, mark=None, state=True, vlims={},
+                 color=None, mark_color='r'):
         """Specific plot for showing a single sensor by time epoch
 
         Parameters
@@ -546,11 +548,31 @@ class _ax_bfly_epoch:
         epoch : NDVar
             Sensor by time epoch.
         """
+        if color is None:
+            if traces is None:
+                color = '0.5'
+            else:
+                color = 'k'
+
         self.ax = ax
-        self.epoch = epoch
         self._traces = None
+        self._marked_traces = None
         self._range = None
         self._state_h = []
+
+        if traces is True:
+            self._do_plot_traces = True
+            self._traces_idx = None
+        elif traces is None or traces is False:
+            self._do_plot_traces = False
+        else:
+            self._do_plot_traces = True
+            self._traces_idx = traces
+
+        self._do_plot_range = plot_range
+        self._mark_idx = mark
+        self._color = color
+        self._mark_color = mark_color
 
         self._tmin = epoch.time[0]
         self._tmax = epoch.time[-1]
@@ -570,39 +592,50 @@ class _ax_bfly_epoch:
             self.ax.yaxis.offsetText.set_va('top')
 
         # create initial plots
-        if plot_range and (plot_traces is not True):
-            self.plot_range()
-        if plot_traces:
-            self.plot_traces(plot_traces)
-
+        self.set_data(epoch)
         self.set_state(state)
 
-    def plot_range(self, color='k', alpha=0.5):
+    def _plot_range(self):
         "plot the range between sensors"
-        self.rm_range()
-        self._range = _plt_extrema(self.ax, self.epoch, color=color,
-                                   alpha=alpha, antialiased=False)
-        self.set_ax_lim()
+        self._rm_range()
+        if not self._do_plot_range:
+            return
 
-    def plot_traces(self, ROI=None, color='b'):
+        self._range = _plt_extrema(self.ax, self.epoch, color=self._color,
+                                   antialiased=False)
+
+    def _plot_traces(self):
         "Plot traces for individual sensors"
-        self.rm_traces()
-        self._traces = _plt_uts(self.ax, self.epoch, color=color, sensors=ROI,
-                                antialiased=False)
-        self.set_ax_lim()
+        self._rm_traces()
+        if self._do_plot_traces:
+            h = _plt_uts(self.ax, self.epoch, color=self._color,
+                         sensors=self._traces_idx, antialiased=False)
+            self._traces = h
+        if self._mark_idx:
+            h = _plt_uts(self.ax, self.epoch, color=self._mark_color,
+                         sensors=self._mark_idx, antialiased=False)
+            self._marked_traces = h
 
-    def rm_range(self):
+    def _rm_range(self):
         "Remove the range from the plot"
         if self._range:
             self._range.remove()
-        self._range = None
+            self._range = None
 
-    def rm_traces(self):
+    def _rm_traces(self):
         "Remove the traces from the plot"
-        while self._traces:
-            trace = self._traces.pop()
-            trace.remove()
-        self._traces = None
+        if self._traces:
+            self._traces.remove()
+            self._traces = None
+        if self._marked_traces:
+            self._marked_traces.remove()
+            self._marked_traces = None
+
+    def set_data(self, epoch):
+        self.epoch = epoch
+        self._plot_range()
+        self._plot_traces()
+        self.set_ax_lim()
 
     def set_ax_lim(self):
         self.ax.set_xlim(self._tmin, self._tmax)
@@ -631,10 +664,3 @@ class _ax_bfly_epoch:
     def set_ylim(self, ylim):
         self._ylim = ylim
         self.set_ax_lim()
-
-    def update_data(self, epoch):
-        self.epoch = epoch
-        if self._range:
-            self.plot_range()
-        if self._traces:
-            self.plot_traces()
