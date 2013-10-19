@@ -2234,8 +2234,13 @@ class NDVar(object):
         return self.__class__(x, dims=self.dims, name=name,
                               info=info)
 
-    def get_axis(self, dim):
-        return self._dim_2_ax[dim]
+    def get_axis(self, name):
+        if self.has_dim(name):
+            i = self._dim_2_ax[name]
+        else:
+            msg = "%r has no dimension named %r" % (self, name)
+            raise DimensionMismatchError(msg)
+        return i
 
     def get_data(self, dims):
         """Retrieve the NDVar's data with a specific axes order.
@@ -2274,14 +2279,10 @@ class NDVar(object):
 
     def get_dim(self, name):
         "Returns the Dimension object named ``name``"
-        if self.has_dim(name):
-            i = self._dim_2_ax[name]
-            dim = self.dims[i]
-            if isinstance(dim, str) and dim == 'case':
-                dim = Var(np.arange(len(self)), 'case')
-        else:
-            msg = "%r has no dimension named %r" % (self, name)
-            raise DimensionMismatchError(msg)
+        i = self.get_axis(name)
+        dim = self.dims[i]
+        if isinstance(dim, str) and dim == 'case':
+            dim = Var(np.arange(len(self)), 'case')
 
         return dim
 
@@ -2397,8 +2398,9 @@ class NDVar(object):
                 return NDVar(x, dims=dims, name=name, info=info)
 
     def sub(self, **kwargs):
-        """
-        returns an NDVar object with a slice of the current NDVar's data.
+        """Retrieve a slice through the NDVar.
+
+        Returns an NDVar object with a slice of the current NDVar's data.
         The slice is specified using kwargs, with dimensions as keywords and
         indexes as values, e.g.::
 
@@ -2424,12 +2426,8 @@ class NDVar(object):
             if arg is None:
                 continue
 
-            try:
-                dimax = self._dim_2_ax[name]
-                dim = self.dims[dimax]
-            except KeyError:
-                err = ("Segment does not contain %r dimension." % name)
-                raise DimensionMismatchError(err)
+            dimax = self.get_axis(name)
+            dim = self.dims[dimax]
 
             if hasattr(dim, 'dimindex'):
                 idx = dim.dimindex(arg)
