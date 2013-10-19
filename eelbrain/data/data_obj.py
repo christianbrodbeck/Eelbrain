@@ -4193,6 +4193,11 @@ class Dimension(object):
         raise NotImplementedError
 
     def __getitem__(self, index):
+        """
+         - int -> label or value for that location
+         - [int] -> Dimension object with 1 location
+         - [int, ...] -> Dimension object
+        """
         raise NotImplementedError
 
     def _dimrepr_(self):
@@ -4415,9 +4420,11 @@ class Sensor(Dimension):
 
     def __getitem__(self, index):
         index = self.dimindex(index)
-        if np.isscalar(index) or len(index) == 0:
+        if np.isscalar(index):
+            return self.names[index]
+        elif len(index) == 0:
             return None
-        elif len(index) > 1:
+        else:
             locs = self.locs[index]
             names = self.names[index]
             # TODO: groups

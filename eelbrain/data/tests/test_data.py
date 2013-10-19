@@ -8,7 +8,7 @@ import cPickle as pickle
 import shutil
 import tempfile
 
-from nose.tools import assert_equal, assert_true, eq_, ok_
+from nose.tools import assert_equal, assert_true, eq_, ok_, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
@@ -207,14 +207,21 @@ def test_dataset_indexing():
     ok_(np.all(ds.eval("C == 'c'")))
 
 
-def test_ndvar_op():
-    "Test NDVar operations"
+def test_ndvar():
+    "Test the NDVar class"
     ds = datasets.get_rand(utsnd=True)
-    Ynd = ds['utsnd']
-    Ynd_bl = Ynd - Ynd.summary(time=(None, 0))
+    x = ds['utsnd']
 
+    # slicing
+    assert_raises(KeyError, x.sub, sensor='5')
+    assert_equal(x.sub(sensor='4').ndim, 2)
+    assert_equal(x.sub(sensor=['4']).ndim, 3)
+    assert_equal(x.sub(case=1, sensor='4').ndim, 1)
+
+    # baseline correction
+    x_bl = x - x.summary(time=(None, 0))
     # assert that the baseline is 0
-    bl = Ynd_bl.summary('case', 'sensor', time=(None, 0))
+    bl = x_bl.summary('case', 'sensor', time=(None, 0))
     ok_(np.abs(bl) < 1e-10, "Baseline correction")
 
 
