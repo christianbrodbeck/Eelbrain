@@ -1,9 +1,5 @@
 '''
-plot.sensors
-============
-
-Plotting functions for Sensor dimension objects.
-
+Plot sensor maps.
 '''
 # author: Christian Brodbeck
 

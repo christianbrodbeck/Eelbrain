@@ -1,9 +1,5 @@
 '''
-plot.uts
-========
-
-plotting functions for univariate uniform time-series.
-
+Plot uniform time-series of one variable.
 '''
 # author: Christian Brodbeck
 from __future__ import division

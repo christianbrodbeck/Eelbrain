@@ -1,9 +1,5 @@
 '''
-plot.coreg
-==========
-
 Coregistration for :mod:`mne`.
-
 '''
 # author: Christian Brodbeck
 

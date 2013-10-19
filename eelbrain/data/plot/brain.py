@@ -1,9 +1,5 @@
 '''
-plot.brain
-==========
-
-Plot source estimates with mayavi/pysurfer.
-
+Plot NDVars containing source estimates with mayavi/pysurfer.
 '''
 # author: Christian Brodbeck
 from __future__ import division

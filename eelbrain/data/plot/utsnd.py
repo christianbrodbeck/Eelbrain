@@ -1,9 +1,5 @@
 """
-plot.utsnd
-==========
-
-plots for multivariate uniform time series
-
+Plot multivariate uniform time series.
 """
 
 from __future__ import division

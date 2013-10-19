@@ -1,9 +1,5 @@
 '''
-plot.uv
-=======
-
-Plotting psystats objects.
-
+Plot univariate data.
 '''
 # author: Christian Brodbeck
 

@@ -1,9 +1,5 @@
 """
-plot.topo
-=========
-
-Plots with topographic maps.
-
+Plot topographic maps of sensor space data.
 """
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
