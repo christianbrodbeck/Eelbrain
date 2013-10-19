@@ -1777,9 +1777,9 @@ class MneExperiment(FileTree):
         path = self.get('rej-file', mkdir=True)
 
         from ..wxgui import MEG
-        ROI = rej_args.get('eog_sns', None)
+        mark = rej_args.get('eog_sns', None)
         bad_chs = self.bad_channels[self.get('raw-key')]
-        MEG.SelectEpochs(ds, data='meg', path=path, ROI=ROI, bad_chs=bad_chs,
+        MEG.SelectEpochs(ds, data='meg', path=path, mark=mark, bad_chs=bad_chs,
                          **kwargs)  # nplots, plotsize,
 
     def make_src(self, thread=False, redo=False):

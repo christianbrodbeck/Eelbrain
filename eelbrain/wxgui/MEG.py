@@ -42,10 +42,10 @@ class SelectEpochs(eelfigure):
     'c' on any epoch butterfly plot:
         Open a plot with the correlation of each channel with its neighbors.
     """
-    def __init__(self, ds, data='meg', target='accept', blink=True,
-                 path=None, bad_chs=None,
-                 nplots=16, plotw=3, ploth=1.5, fill=True, ROI=None,
-                 mean=True, topo=True, vlim=None, dpi=60):
+    def __init__(self, ds, data='meg', target='accept', blink=True, path=None,
+                 bad_chs=None, nplots=16, plotw=3, ploth=1.5, fill=True,
+                 color=None, mark=None, mcolor='r', mean=True, topo=True,
+                 vlim=None, dpi=60):
         """
         Plots all cases in the collection segment and allows visual selection
         of cases. The selection can be retrieved through the get_selection
@@ -84,9 +84,12 @@ class SelectEpochs(eelfigure):
         fill : bool
             Only show the range in the butterfly plots, instead of all traces.
             This is faster for data with many channels.
-        ROI : None | index for sensor dim
-            Sensors to plot as individual traces over the range (ignored if
-            range==False).
+        color : None | matplotlib color
+            Color for primary data (defaultis black).
+        mark : None | index for sensor dim
+            Sensors to plot as individual traces with a separate color.
+        mcolor : matplotlib color
+            Color for marked traces.
         mean : bool
             Plot the page mean on each page.
         topo : bool
@@ -197,14 +200,7 @@ class SelectEpochs(eelfigure):
 
     # compile plot kwargs:
         self._vlims = find_fig_vlims([[data]])
-        if ROI and not fill:
-            ROI = data.sensor.dimindex(ROI)
-            traces = np.setdiff1d(np.arange(len(data.sensor)), ROI)
-        else:
-            traces = not bool(fill)
-        self._bfly_kwargs = {'plot_range': fill, 'traces': traces, 'mark': ROI,
-                             'vlims':self._vlims}
-        self._topo_kwargs = {'vlims':self._vlims}
+        self._set_plot_style(fill, color, mark, mcolor)
 
     # finalize
         self._set_bad_chs(bad_chs, reset=True)
@@ -439,6 +435,19 @@ class SelectEpochs(eelfigure):
         self._saved_target[:] = self._target
         self._UpdateTitle()
 
+    def set_bad_chs(self, bad_chs=None, reset=False):
+        """Set the channels to treat as bad (i.e., exclude)
+
+        Parameters
+        ----------
+        bad_chs : None | list of str, int
+            List of channels to treat as bad (as name or index).
+        reset : bool
+            Reset previously set bad channels to good.
+        """
+        self._set_bad_chs(bad_chs, reset=reset)
+        self._refresh()
+
     def _set_bad_chs(self, bad_chs, reset=False):
         "Set the self._bad_chs value, but don't refresh the plot"
         if reset:
@@ -454,18 +463,37 @@ class SelectEpochs(eelfigure):
 
             self._bad_chs.append(ch)
 
-    def set_bad_chs(self, bad_chs=None, reset=False):
-        """Set the channels to treat as bad (i.e., exclude)
+    def set_plot_style(self, fill=True, color=None, mark=None, mcolor='r'):
+        """Select channels to mark in the butterfly plots.
 
         Parameters
         ----------
-        bad_chs : None | list of str, int
-            List of channels to treat as bad (as name or index).
-        reset : bool
-            Reset previously set bad channels to good.
+        fill : bool
+            Only show the range in the butterfly plots, instead of all traces.
+            This is faster for data with many channels.
+        color : None | matplotlib color
+            Color for primary data (defaultis black).
+        mark : None | index for sensor dim
+            Sensors to plot as individual traces with a separate color.
+        mcolor : matplotlib color
+            Color for marked traces.
         """
-        self._set_bad_chs(bad_chs, reset=reset)
-        self._refresh()
+        self._set_plot_style(fill, color, mark, mcolor)
+        self.show_page()
+
+    def _set_plot_style(self, fill, color, mark, mcolor):
+        if mark is not None:
+            mark = self._data.sensor.dimindex(mark)
+
+        if fill or mark is None:
+            traces = not bool(fill)
+        else:
+            traces = np.setdiff1d(np.arange(len(self._data.sensor)), mark)
+
+        self._bfly_kwargs = {'plot_range': fill, 'traces': traces,
+                             'color': color, 'mark': mark, 'mcolor': mcolor,
+                             'vlims':self._vlims}
+        self._topo_kwargs = {'vlims':self._vlims}
 
     def set_vlim(self, vlim):
         """Set the value limits (butterfly plot y axes and topomap colormaps)

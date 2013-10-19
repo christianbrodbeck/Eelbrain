@@ -539,8 +539,8 @@ class Butterfly(_base.eelfigure):
 
 class _ax_bfly_epoch:
     def __init__(self, ax, epoch, xlabel=True, ylabel=True, plot_range=True,
-                 traces=None, mark=None, state=True, vlims={},
-                 color=None, mark_color='r'):
+                 traces=None, color=None, mark=None, mcolor='r', state=True,
+                 vlims={}):
         """Specific plot for showing a single sensor by time epoch
 
         Parameters
@@ -572,7 +572,7 @@ class _ax_bfly_epoch:
         self._do_plot_range = plot_range
         self._mark_idx = mark
         self._color = color
-        self._mark_color = mark_color
+        self._mark_color = mcolor
 
         self._tmin = epoch.time[0]
         self._tmax = epoch.time[-1]
