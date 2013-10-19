@@ -410,7 +410,7 @@ class _plt_extrema:
         data = epoch.get_data(('time', 'sensor'))
         Ymin = data.min(1)
         Ymax = data.max(1)
-        x = _base._convert(epoch.time.x, 'time')
+        x = epoch.time.x
 
         handle = ax.fill_between(x, Ymin, Ymax, **plot_kwargs)
         ax.set_xlim(x[0], x[-1])
@@ -559,14 +559,13 @@ class _ax_bfly_epoch:
         self.ax.x_fmt = "t = %.3f s"
 
         # ax decoration
-        if xlabel is True:
-            xlabel = 'Time [s]'
+        xlabel = _base._axlabel('time', xlabel)
+        if xlabel:
+            ax.set_xlabel(xlabel)
+
         if ylabel is True:
             ylabel = epoch.info.get('unit', None)
-
-        if xlabel not in [False, None]:
-            self.ax.set_xlabel(xlabel)
-        if ylabel not in [False, None]:
+        if ylabel:
             self.ax.set_ylabel(ylabel)
             self.ax.yaxis.offsetText.set_va('top')
 
