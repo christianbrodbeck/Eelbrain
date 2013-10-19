@@ -800,7 +800,7 @@ class MneExperiment(FileTree):
             if cat:
                 model = ds.eval(self.get('model'))
                 idx = model.isin(cat)
-                ds = ds.subset(idx)
+                ds = ds.sub(idx)
 
             # load sensor space data
             epoch = self._epoch_state
@@ -935,7 +935,7 @@ class MneExperiment(FileTree):
             if cat:
                 model = ds.eval(self.get('model'))
                 idx = model.isin(cat)
-                ds = ds.subset(idx)
+                ds = ds.sub(idx)
 
             # baseline correction
             if isinstance(baseline, str):
@@ -1114,7 +1114,7 @@ class MneExperiment(FileTree):
             idx = stimvar.isin(stim.split('|'))
         else:
             idx = stimvar == stim
-        ds = ds.subset(idx)
+        ds = ds.sub(idx)
 
         if index:
             idx_name = index if isinstance(index, str) else 'index'
@@ -1138,7 +1138,7 @@ class MneExperiment(FileTree):
                 if reject == 'keep':
                     ds['accept'] = ds_sel['accept']
                 elif reject == True:
-                    ds = ds.subset(ds_sel['accept'])
+                    ds = ds.sub(ds_sel['accept'])
                 else:
                     err = ("reject parameter must be bool or 'keep', not "
                            "%r" % reject)
@@ -1214,7 +1214,7 @@ class MneExperiment(FileTree):
         # load events
         ds = self.load_selected_events(reject='keep')
         idx = ds['stim'] == stim
-        ds = ds.subset(idx)
+        ds = ds.sub(idx)
 
         # save triggers
         if redo or not os.path.exists(trig_dest):
@@ -1225,7 +1225,7 @@ class MneExperiment(FileTree):
             ds.index('besa_index', 1)
 
         # reject bad trials
-        ds = ds.subset('accept')
+        ds = ds.sub('accept')
 
         # save evt
         save.besa_evt(ds, tstart=tmin, tstop=tmax, dest=evt_dest)

@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     ds = load_evts(raw_path)
     print EL.table.frequencies('condition', ds=ds)
-    ds = ds.subset('modality == "A"')
+    ds = ds.sub('modality == "A"')
 
     ds = EL.load.fiff.add_epochs(ds, tmin=-0.1, tmax=0.3, baseline=(None, 0), 
                                  proj=False, data='mag', reject=2e-12, 

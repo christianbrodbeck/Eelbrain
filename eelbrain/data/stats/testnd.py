@@ -964,7 +964,7 @@ class _ClusterDist:
             Y_perm = Y
         else:
             self.crop = True
-            Y_perm = Y.subdata(time=(tstart, tstop))
+            Y_perm = Y.sub(time=(tstart, tstop))
             istart = 0 if tstart is None else Y.time.index(tstart, 'up')
             istop = istart + len(Y_perm.time)
             self._crop_idx = (slice(None),) * t_ax + (slice(istart, istop),)

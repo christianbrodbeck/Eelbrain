@@ -52,7 +52,7 @@ class Edf(object):
 
        Now, the Dataset can be decimated::
 
-           >>> ds = ds.subset(...)
+           >>> ds = ds.sub(...)
 
        and acceptability can be added for the subset::
 
@@ -219,8 +219,8 @@ class Edf(object):
         if isinstance(T, str):
             T = ds[T]
         accept = self.get_accept(T, tstart=tstart, tstop=tstop, use=use)
-        accepted = ds.subset(accept)
-        rejected = ds.subset(accept == False)
+        accepted = ds.sub(accept)
+        rejected = ds.sub(accept == False)
         accepted.info['rejected'] = rejected
         return accepted
 

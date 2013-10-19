@@ -754,6 +754,6 @@ def _trim_ds(ds, epochs):
     """
     if len(epochs) < ds.n_cases:
         index = epochs.events[:, 1]
-        ds = ds.subset(index)
+        ds = ds.sub(index)
 
     return ds

@@ -92,7 +92,7 @@ def besa_evt(ds, tstart=-0.1, tstop=0.6, pad=0.1, dest=None):
     evts['Code'] = Var(np.ones(N))
 
     # remove rejected trials
-    evts = evts.subset(idx)
+    evts = evts.sub(idx)
 
     evts['TriNo'] = Var(ds['trigger'].x)
 

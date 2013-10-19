@@ -453,7 +453,7 @@ class UTSClusters(_base.subplot_figure):
             # ax clusters
             if clusters_:
                 if 'effect' in clusters_:
-                    cs = clusters_.subset('effect == %r' % layers[0].name)
+                    cs = clusters_.sub('effect == %r' % layers[0].name)
                 else:
                     cs = clusters_
             else:

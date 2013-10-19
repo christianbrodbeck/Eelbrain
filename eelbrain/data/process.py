@@ -150,7 +150,7 @@ def mark_by_threshold(ds, x='MEG', threshold=2e-12, above=False,
     x = asnumeric(x, ds=ds)
     if bad_chs:
         idx = x.sensor.index(bad_chs)
-        x = x.subdata(sensor=idx)
+        x = x.sub(sensor=idx)
 
     # get the Factor on which to store results
     if isfactor(target) or isvar(target):
@@ -202,7 +202,7 @@ def rm_baseline(ndvar, tstart=None, tend=0, name='{name}'):
         name for the new NDVar
 
     """
-    subdata = ndvar.subdata(time=(tstart, tend))
+    subdata = ndvar.sub(time=(tstart, tend))
     baseline = subdata.summary('time')
 
     t_ax = subdata.get_axis('time')

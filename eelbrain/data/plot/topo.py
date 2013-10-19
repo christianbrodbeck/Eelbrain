@@ -266,7 +266,7 @@ class TopoButterfly(_base.eelfigure):
     def _draw_topo(self, t, draw=True):
         self._current_t = t
 #         t_str = "t = %.3f" % t  # redraw does not properly erase the old text
-        epochs = [[l.subdata(time=t) for l in layers]
+        epochs = [[l.sub(time=t) for l in layers]
                   for layers in self._epochs]
 
         if not self.topo_plots:
@@ -548,7 +548,7 @@ class _TopoWindow:
 #                                                'shrink':.05},
                                     zorder=99)
 
-            layers = [l.subdata(time=t) for l in self.parent.data]
+            layers = [l.sub(time=t) for l in self.parent.data]
             if self.plot is None:
                 self.plot = _ax_topomap(self.ax, layers, title=False,
                                         **self.plot_args)

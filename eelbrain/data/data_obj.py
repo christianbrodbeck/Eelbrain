@@ -813,7 +813,7 @@ def combine(items, name=None):
 
         dims = reduce(intersect_dims, all_dims)
         idx = {d.name: d for d in dims}
-        items = [item.subdata(**idx) for item in items]
+        items = [item.sub(**idx) for item in items]
         if has_case:
             x = np.concatenate([v.x for v in items], axis=0)
         else:
@@ -2138,7 +2138,9 @@ class NDVar(object):
         if np.iterable(index) or isinstance(index, slice):
             x = self.x[index]
             if x.shape[1:] != self.x.shape[1:]:
-                raise NotImplementedError("Use subdata method when dims are affected")
+                err = ("Use .sub() method for indexing dimensions other than "
+                       "case")
+                raise NotImplementedError(err)
             return NDVar(x, dims=self.dims, name=self.name, info=self.info)
         else:
             index = int(index)
@@ -2323,7 +2325,7 @@ class NDVar(object):
         range:
             A range within a dimension is specified through a keyword-argument.
             Only the data in the specified range is included. Use like the
-            :py:meth:`.subdata` method.
+            :py:meth:`.sub` method.
 
 
         **additional kwargs:**
@@ -2372,7 +2374,7 @@ class NDVar(object):
         if regions:
             dims = list(dims)
             dims.extend(dim for dim in regions if not np.isscalar(regions[dim]))
-            data = self.subdata(**regions)
+            data = self.sub(**regions)
             return data.summary(*dims, func=func, name=name)
         else:
             x = self.x
@@ -2452,32 +2454,14 @@ class NDVar(object):
             i_cur = i_max - i
             x = x[(slice(None),) * i_cur + (idx,)]
 
-        # create subdata object
+        # create NDVar
         dims = tuple(dim for dim in dims if dim is not None)
         return NDVar(x, dims=dims, name=var_name, info=info)
 
     def subdata(self, **kwargs):
-        """
-        returns an NDVar object with a slice of the current NDVar's data.
-        The slice is specified using kwargs, with dimensions as keywords and
-        indexes as values, e.g.::
-
-            >>> Y.subdata(time = 1)
-
-        returns a slice for time point 1 (second). For dimensions whose values
-        change monotonically, a tuple can be used to specify a window::
-
-            >>> Y.subdata(time = (.2, .6))
-
-        returns a slice containing all values for times .2 seconds to .6
-        seconds.
-
-        The name of the new NDVar can be set with a ``name`` parameter. The
-        default is the name of the current NDVar.
-        """
-#         "Deprecated. Use .sub() with identical functionality"
-#         warn("NDVar.subdata is deprecated; use NDVar.sub instead "
-#              "(with identical functionality).", DeprecationWarning)
+        "Deprecated. Use .sub() method (with identical functionality)."
+        warn("NDVar.subdata is deprecated; use NDVar.sub instead "
+             "(with identical functionality).", DeprecationWarning)
         return self.sub(**kwargs)
 
 
@@ -2729,7 +2713,7 @@ class Dataset(collections.OrderedDict):
         if isinstance(index, int):
             return self.get_case(index)
         elif isinstance(index, slice):
-            return self.subset(index)
+            return self.sub(index)
 
         if isinstance(index, basestring):
             return super(Dataset, self).__getitem__(index)
@@ -2761,7 +2745,7 @@ class Dataset(collections.OrderedDict):
             subds = Dataset(*((k, self[k][i0]) for k in keys))
             return subds
 
-        return self.subset(index)
+        return self.sub(index)
 
     def __repr__(self):
         class_name = self.__class__.__name__
@@ -3072,7 +3056,7 @@ class Dataset(collections.OrderedDict):
             if cell not in exclude:
                 setname = name.format(name=self.name, cell=cell)
                 index = (X == cell)
-                out[cell] = self.subset(index, setname)
+                out[cell] = self.sub(index, setname)
         return out
 
     def compress(self, X, drop_empty=True, name='{name}', count='n',
@@ -3462,28 +3446,9 @@ class Dataset(collections.OrderedDict):
         return ds
 
     def subset(self, index, name='{name}'):
-        """
-        Returns a Dataset containing only the subset of cases selected by
-        `index`.
-
-        Parameters
-        ----------
-        index : int | array | str
-            Index for selecting a subset of cases. Can be an valid numpy index
-            or a string (the name of a variable in Dataset, or an expression
-            to be evaluated in the Dataset's namespace).
-        name : str
-            name for the new Dataset.
-
-        Notes
-        -----
-        Keep in mind that index is passed on to numpy objects, which means
-        that advanced indexing always returns a copy of the data, whereas
-        basic slicing (using slices) returns a view.
-        """
-#         "Deprecated: use .sub()"
-#         warn("Dataset.subset is deprecated; use Dataset.sub instead"
-#              "(with identical functionality).", DeprecationWarning)
+        "Deprecated: use .sub() method with identical functionality."
+        warn("Dataset.subset is deprecated; use Dataset.sub instead"
+             "(with identical functionality).", DeprecationWarning)
         return self.sub(index, name)
 
     def update(self, ds, replace=False, info=True):

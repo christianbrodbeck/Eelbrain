@@ -391,7 +391,7 @@ def shuffle_cases(dataset, inplace=False, blocks=None):
         for k in dataset:
             dataset[k] = dataset[k][index]
     else:
-        return dataset.subset(index)
+        return dataset.sub(index)
 
 
 

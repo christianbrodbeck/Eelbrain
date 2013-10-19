@@ -384,7 +384,7 @@ class _plt_uts:
             sem)
         """
         if sensors is not None and sensors is not True:
-            epoch = epoch.subdata(sensor=sensors)
+            epoch = epoch.sub(sensor=sensors)
 
         Y = epoch.get_data(('time', 'sensor'))
         x = epoch.time.x

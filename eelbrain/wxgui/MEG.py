@@ -277,7 +277,7 @@ class SelectEpochs(eelfigure):
         index[seg_IDs] = True
         index = np.logical_and(index, self._target)
         mseg = self._data.summary(case=index)
-        mseg = mseg.subdata(sensor=sensor)
+        mseg = mseg.sub(sensor=sensor)
         return mseg
 
     def _get_statusbar_text(self, event):
@@ -305,10 +305,10 @@ class SelectEpochs(eelfigure):
         name = '%%s, %.3f s' % t
         ax_id = ax.ID
         if ax_id == -1:
-            tseg = self._mean_seg.subdata(time=t, name=name % 'Page Average')
+            tseg = self._mean_seg.sub(time=t, name=name % 'Page Average')
         elif ax_id >= 0:
             seg = self._case_segs[ax_id]
-            tseg = seg.subdata(time=t, name=name % 'Epoch %i' % ax.segID)
+            tseg = seg.sub(time=t, name=name % 'Epoch %i' % ax.segID)
         else:
             raise IndexError("ax_id needs to be >= -1, not %i" % ax_id)
 
@@ -512,7 +512,7 @@ class SelectEpochs(eelfigure):
         self._case_axes = []
         self._case_segs = []
         for i, ID in enumerate(seg_IDs):
-            case = self._data.subdata(case=ID, sensor=sens_idx,
+            case = self._data.sub(case=ID, sensor=sens_idx,
                                       name='Epoch %i' % ID)
             state = self._target[ID]
             ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0], yticks=[])  # , 'axis_off')

@@ -88,7 +88,7 @@ def test_align():
     ds = datasets.get_rand()
     ds.index()
     idx = np.arange(0, ds.n_cases, 4)
-    ds_sub = ds.subset(np.arange(0, ds.n_cases, 2))
+    ds_sub = ds.sub(np.arange(0, ds.n_cases, 2))
     dsa = align1(ds_sub, idx)
     assert_array_equal(dsa['index'].x, idx, "align1() failure")
 
@@ -124,7 +124,7 @@ def test_celltable():
     eq_(ct.X[-1], 'b')
 
     # test sub
-    ds_sub = ds.subset("A == 'a0'")
+    ds_sub = ds.sub("A == 'a0'")
     ct_sub = Celltable('Y', 'B', ds=ds_sub)
     ct = Celltable('Y', 'B', sub="A == 'a0'", ds=ds)
     assert_dataobj_equal(ct_sub.Y, ct.Y)
@@ -165,8 +165,8 @@ def test_combine():
     # combine NDVar with unequel dimensions
     ds = datasets.get_rand(utsnd=True)
     y = ds['utsnd']
-    y1 = y.subdata(sensor=['0', '1', '2', '3'])
-    y2 = y.subdata(sensor=['1', '2', '3', '4'])
+    y1 = y.sub(sensor=['0', '1', '2', '3'])
+    y2 = y.sub(sensor=['1', '2', '3', '4'])
     ds1 = Dataset(y1)
     ds2 = Dataset(y2)
     dsc = combine((ds1, ds2))

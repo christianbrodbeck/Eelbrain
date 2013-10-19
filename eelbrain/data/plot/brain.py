@@ -177,9 +177,9 @@ class STC:
         """
         hemi = hemi.lower()
         if hemi.startswith('l'):
-            v = v.subdata(source='lh')
+            v = v.sub(source='lh')
         elif hemi.startswith('r'):
-            v = v.subdata(source='rh')
+            v = v.sub(source='rh')
 
         self.fig = fig = mlab.figure(size=figsize)
         self.lh = self.rh = None
@@ -215,7 +215,7 @@ class STC:
 
     def _hemi(self, v, hemi, b_kwargs, d_kwargs):
         brain = surfer.Brain(v.source.subject, hemi, **b_kwargs)
-        data = v.subdata(source=hemi).x
+        data = v.sub(source=hemi).x
         vert = v.source.vertno[hemi == 'rh']
         brain.add_data(data, vertices=vert, **d_kwargs)
         return brain
