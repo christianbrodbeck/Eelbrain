@@ -654,7 +654,14 @@ class _plt_stat(object):
         if label:
             main_kwargs['label'] = label
 
-        if np.isscalar(dev):
+        if isinstance(dev, basestring):
+            if dev == 'all':
+                dev_kwargs['alpha'] = .3
+            else:
+                err = ("The only possible str value for dev is 'all'; got "
+                       "%r." % dev)
+                raise ValueError(err)
+        elif np.isscalar(dev):
             dev_kwargs['alpha'] = dev
             dev = 'all'
         else:
