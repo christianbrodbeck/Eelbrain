@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from warnings import warn
 
 import numpy as np
 
@@ -48,7 +49,7 @@ class Edf(object):
        the triggers contained in the edf file. For those cases, the trigger time
        should first be added to the complete Dataset with::
 
-           >>> edf.add_T_to(ds)
+           >>> edf.add_t_to(ds)
 
        Now, the Dataset can be decimated::
 
@@ -128,32 +129,31 @@ class Edf(object):
     def __repr__(self):
         return "Edf(%r)" % self.path
 
-    def assert_Id_match(self, ds=None, Id='trigger'):
+    def assert_trigger_match(self, ds=None, trigger='trigger'):
         """
         Make sure the Edf and another event list describe the same events.
 
-        Raises an error if the Ids in ``Id`` do not match the Ids in the Edf
-        file(s).
+        Raises an error if the triggers in ``trigger`` do not match the
+        triggers in the Edf file(s).
 
         Parameters
         ----------
         ds : None | Dataset
             Dataset with events.
-        Id : str | array
-            If `ds` is a Dataset, `Id` should be a string naming the variable
-            in `ds` containing the event IDs. If `ds` is None, `Id` should be
-            a series of event Ids.
-
+        trigger : str | array
+            If ``ds`` is a Dataset, ``trigger`` should be a string naming the
+            variable in `ds` containing the trigger values. If ``ds`` is
+            ``None``, ``trigger`` should be a sequence of event triggers.
         """
-        if isinstance(Id, str):
-            Id = ds[Id]
+        if isinstance(trigger, str):
+            trigger = ds[trigger]
 
-        ID_edf = self.triggers['Id']
-        if len(Id) != len(ID_edf):
-            lens = (len(Id), len(ID_edf))
+        edf_trigger = self.triggers['Id']
+        if len(trigger) != len(edf_trigger):
+            lens = (len(trigger), len(edf_trigger))
             mm = min(lens)
             for i in xrange(mm):
-                if Id[i] != ID_edf[i]:
+                if trigger[i] != edf_trigger[i]:
                     mm = i
                     break
 
@@ -162,12 +162,12 @@ class Edf(object):
                    "file %r (%i vs %i); first mismatch at %i." % args)
             raise ValueError(err)
 
-        check = (Id == ID_edf)
+        check = (trigger == edf_trigger)
         if not all(check):
             err = "Event ID mismatch: %s" % np.where(check == False)[0]
             raise ValueError(err)
 
-    def add_T_to(self, ds, Id='trigger', t_edf='t_edf'):
+    def add_t_to(self, ds, trigger='trigger', t_edf='t_edf'):
         """
         Add edf trigger times as a variable to Dataset ds.
         These can then be used for Edf.add_by_T(ds) after ds hads been
@@ -177,19 +177,19 @@ class Edf(object):
         ----------
         ds : Dataset
             The Dataset to which the variable is added
-        Id : str | Var | None
-            variable (or its name in the Dataset) containing event IDs. Values
-            in this variable are checked against the events in the EDF file,
-            and an error is raised if there is a mismatch. This test can be
-            skipped by setting Id=None.
+        trigger : str | Var | None
+            variable (or its name in the Dataset) containing event trigger
+            values. Values in this variable are checked against the events in
+            the EDF file, and an error is raised if there is a mismatch. This
+            test can be skipped by setting trigger=None.
         t_edf : str
             Name for the target variable holding the edf trigger times.
 
         """
-        if Id:
-            self.assert_Id_match(ds=ds, Id=Id)
-            if isinstance(Id, str):
-                Id = ds[Id]
+        if trigger:
+            self.assert_trigger_match(ds=ds, trigger=trigger)
+            if isinstance(trigger, str):
+                trigger = ds[trigger]
 
         ds[t_edf] = Var(self.triggers['T'])
 
@@ -267,18 +267,29 @@ class Edf(object):
 
         return accept
 
-    def get_T(self, name='t_edf'):
+    def get_t(self, name='t_edf'):
         "returns all trigger times in the Dataset"
         return Var(self.triggers['T'], name=name)
 
-    def get_triggers(self, Id='Id', T='t_edf'):
+    def get_triggers(self, trigger='trigger', t_edf='t_edf'):
         """
-        Returns a Dataset with trigger Ids and corresponding Edf time values
+        Returns a Dataset with triggers and corresponding edf time values
 
+        Parameters
+        ----------
+        trigger : str
+            Name for the trigger value variable.
+        t_edf : str
+            Name for the variable containing edf event times.
+
+        Returns
+        -------
+        ds : Dataset
+            Dataset with triggers and corresponding edf times.
         """
-        ds = Dataset()
-        ds[Id] = Var(self.triggers['Id'])
-        ds[T] = self.get_T(name=T)
+        ds = Dataset(info={'edf': self})
+        ds[trigger] = Var(self.triggers['Id'])
+        ds[t_edf] = self.get_t(name=t_edf)
         return ds
 
     def mark(self, ds, tstart=-0.1, tstop=0.6, good=None, bad=False,
@@ -328,12 +339,12 @@ class Edf(object):
 
     def mark_all(self, ds, tstart=-0.1, tstop=0.6, good=None, bad=False,
                  use=['ESACC', 'EBLINK'],
-                 Id='trigger', target='accept'):
+                 trigger='trigger', target='accept'):
         """
         Mark each epoch in the ds for acceptability based on overlap with
         blinks and saccades. ds needs to contain the same number of triggers
         as the edf file. For adding acceptability to a decimated ds, use
-        Edf.add_T_to(ds, ...) and then Edf.mark(ds, ...).
+        Edf.add_t_to(ds, ...) and then Edf.mark(ds, ...).
 
         Parameters
         ----------
@@ -351,32 +362,31 @@ class Edf(object):
             based on the eye-tracker data.
         use : list of str
             Artifact categories to include
-        Id : Var | None
-            variable containing trigger Ids for asserting that the Dataset
-            contains the same triggers as rhe edf file(s). The test can be
-            skipped by setting Id=None
+        trigger : Var | None
+            variable containing trigger values for asserting that the Dataset
+            contains the same triggers as the edf file(s). The test can be
+            skipped by setting ``trigger=None``.
         target : Var
             variable to which the good/bad values are assigned (if it does not
             exist, a new variable will be created with all values True
             initially)
-
         """
-        if Id:
-            self.assert_Id_match(ds=ds, Id=Id)
-            if isinstance(Id, str):
-                Id = ds[Id]
+        if trigger:
+            self.assert_trigger_match(ds=ds, trigger=trigger)
+            if isinstance(trigger, str):
+                trigger = ds[trigger]
 
-        T = self.get_T()
+        T = self.get_t()
         self.mark(ds, tstart=tstart, tstop=tstop, good=good, bad=bad, use=use,
                   T=T, target=target)
 
 
-def events(fname, samples=False, ds=None):
+def events(path, samples=False, ds=None, trigger='trigger', t_edf='t_edf'):
     """Read events from an edf file
 
     Parameters
     ----------
-    fname : str
+    path : str
         Filename.
     samples : bool
         Read continuous eye position data as well as events. This is needed to
@@ -386,38 +396,38 @@ def events(fname, samples=False, ds=None):
         Dataset contains a variable called 'trigger' whose content does not
         match the edf triggers, a ValueError is raised. ds is always modified
         in place, but returned for consistency.
-    """
-    edf = Edf(fname, samples=samples)
-    if ds is None:
-        ds = Dataset(info={'edf': edf})
-    else:
-        if 'trigger' in ds:
-            edf.assert_Id_match(ds)
-        else:
-            ds['trigger'] = Var(edf.triggers['Id'])
-        ds.info['edf'] = edf
+    trigger : str
+        Name of the trigger variable.
+    t_edf : str
+        Name of the edf time variable.
 
-    ds['t_edf'] = Var(edf.triggers['T'])
+    Returns
+    -------
+    ds : Dataset
+        Dataset with events form the edf file (if the ``ds`` input argument is
+        provided, the ds that is returned is the same object as the input ds).
+    """
+    edf = Edf(path, samples=samples)
+    if ds is None:
+        ds = edf.get_triggers(trigger, t_edf)
+    else:
+        if 'edf' in ds.info:
+            raise ValueError("ds.info already contains 'edf' entry.")
+        if trigger in ds:
+            edf.assert_trigger_match(ds)
+        else:
+            ds[trigger] = Var(edf.triggers['Id'])
+        ds.info['edf'] = edf
+        edf.add_t_to(ds, trigger, t_edf)
+
     return ds
 
 
 def add_edf(ds, path, trigger='trigger', t_edf='t_edf'):
-    """Add an edf file to a Dataset
-
-    Parameters
-    ----------
-    ds : Dataset
-        Dataset to which the edf file should be added (needs to contain an
-        trigger variable).
-    path : str
-        Path to the edf file.
-    """
-    if 'edf' in ds.info:
-        raise ValueError("ds.info already contains 'edf' entry.")
-    edf = Edf(path, False)
-    edf.add_T_to(ds, trigger, t_edf)
-    ds.info['edf'] = edf
-    return ds
+    "Deprecated. Use load.eyelink.events() with ds parameter."
+    warn("load.eyelink.add_edf() is deprecated. use load.eyelink.events() "
+         "with ds parameter instead.", DeprecationWarning)
+    return events(path, False, ds, trigger, t_edf)
 
 
 def artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',

@@ -868,7 +868,7 @@ class MneExperiment(FileTree):
 
             # add edf
             edf = self.load_edf()
-            edf.add_T_to(ds)
+            edf.add_t_to(ds)
             ds.info['edf'] = edf
 
             # cache
