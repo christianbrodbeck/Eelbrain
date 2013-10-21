@@ -41,7 +41,7 @@ def cihw(x, p=.95):
 
 
 def rms(Y, axis=-1, rm_mean=False):
-    """Root mean square.
+    """Root mean square
 
     Parameters
     ----------
@@ -72,10 +72,9 @@ def rms(Y, axis=-1, rm_mean=False):
 
 
 def rmssd(Y):
-    """
-    root mean square of successive differences. Used for heart rate variance
-    analysis.
+    """Root mean square of successive differences
 
+    Used for heart rate variance analysis.
     """
     assert np.ndim(Y) == 1
     N = len(Y)

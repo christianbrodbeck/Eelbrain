@@ -2,6 +2,8 @@
 Reference
 *********
 
+All references are relative to :mod:`eelbrain.data` or :mod:`eelbrain.lab`.
+
 ^^^^^^^^^^^^
 Data Classes
 ^^^^^^^^^^^^
@@ -97,6 +99,8 @@ Data Transformations
 Statistics
 ^^^^^^^^^^
 
+Modules with statistical tests:
+
 .. autosummary::
    :toctree: generated
    
@@ -104,9 +108,20 @@ Statistics
    testnd
 
    
+Functions for some statistics:
+
+.. autosummary::
+   :toctree: generated
+   
+   rms
+   rmssd
+
+
 ^^^^^^^^
 Plotting
 ^^^^^^^^
+
+Modules for plotting:
 
 .. autosummary::
    :toctree: generated
