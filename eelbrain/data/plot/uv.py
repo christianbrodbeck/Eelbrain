@@ -1,5 +1,17 @@
-'''
-Plot univariate data.
+'''Plot univariate data (:py:`Var` objects).
+
+.. autosummary::
+   :toctree: generated
+
+   barplot
+   boxcox_explore
+   boxplot
+   corrplot
+   histogram
+   multitimeplot
+   regplot
+   timeplot
+
 '''
 # author: Christian Brodbeck
 

@@ -1,5 +1,5 @@
 """
-Plot multivariate uniform time series.
+Plot multidimensional uniform time series.
 """
 
 from __future__ import division

@@ -65,13 +65,13 @@ The _ax_ function calls _plt_ for each of its input elements. Thus, the
 functions executed are:
 
 #. plot([A, B, [diff(A,B), p(A, B)]])
-#. -> _ax_(A)
-#. ----> _plt_(A)
-#. -> _ax_(B)
-#. ----> _plt_(B)
-#. -> _ax_([diff(A,B), p(A, B)])
-#. ----> _plt_(diff(A,B))
-#. ----> _plt_(p(A, B))
+#. ---> _ax_(A)
+#. ------> _plt_(A)
+#. ---> _ax_(B)
+#. ------> _plt_(B)
+#. ---> _ax_([diff(A,B), p(A, B)])
+#. ------> _plt_(diff(A,B))
+#. ------> _plt_(p(A, B))
 
 """
 from __future__ import division

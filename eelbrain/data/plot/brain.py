@@ -1,5 +1,14 @@
 '''
-Plot NDVars containing source estimates with mayavi/pysurfer.
+Plot :class:`NDVar` objects containing source estimates with mayavi/pysurfer.
+
+.. autosummary::
+   :toctree: generated
+
+   activation
+   dspm
+   stat
+   STC
+
 '''
 # author: Christian Brodbeck
 from __future__ import division

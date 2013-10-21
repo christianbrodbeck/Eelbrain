@@ -1,6 +1,10 @@
-************
+*********
+Reference
+*********
+
+^^^^^^^^^^^^
 Data Classes
-************
+^^^^^^^^^^^^
 
 .. currentmodule:: eelbrain.data
 
@@ -25,9 +29,9 @@ on primary data-objects):
    data_obj.Interaction
 
 
-********
+^^^^^^^^
 File I/O
-********
+^^^^^^^^
 
 Load
 ====
@@ -62,9 +66,9 @@ Save
    save.txt
 
 
-***************
+^^^^^^^^^^^^^^^
 Data Processing
-***************
+^^^^^^^^^^^^^^^
 
 Sorting and reordering
 ======================
@@ -89,14 +93,26 @@ Data Transformations
    cwt_morlet
 
 
-**********
+^^^^^^^^^^
 Statistics
-**********
-
-.. currentmodule:: eelbrain.data
+^^^^^^^^^^
 
 .. autosummary::
    :toctree: generated
    
    test
    testnd
+
+   
+^^^^^^^^
+Plotting
+^^^^^^^^
+
+.. autosummary::
+   :toctree: generated
+   
+    plot
+    plot.brain
+    plot.uv
+
+.. seealso:: :ref:`plotting-notes`

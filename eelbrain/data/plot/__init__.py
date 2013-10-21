@@ -1,4 +1,58 @@
-"""
+"""Plotting for data-objects
+
+Plotting multidimensional data (:class:`NDVar` objects)
+-------------------------------------------------------
+
+.. automodule:: eelbrain.data.plot.uts
+
+.. autosummary::
+   :toctree: generated
+
+   UTSClusters
+   UTSStat
+   UTS
+
+
+.. automodule:: eelbrain.data.plot.utsnd
+
+.. autosummary::
+   :toctree: generated
+
+   Array
+   Butterfly
+
+
+.. automodule:: eelbrain.data.plot.topo
+
+.. autosummary::
+   :toctree: generated
+
+   TopoArray
+   TopoButterfly
+   Topomap
+
+
+.. automodule:: eelbrain.data.plot.sensors
+
+.. autosummary::
+   :toctree: generated
+
+   SensorMap2d
+   SensorMaps
+
+
+Submodules
+----------
+
+.. currentmodule:: eelbrain.data
+
+.. autosummary::
+   :toctree: generated
+
+    plot.brain
+    plot.uv
+
+
 .. _plotting-general:
 
 General Parameters
