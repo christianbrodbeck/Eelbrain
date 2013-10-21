@@ -61,7 +61,7 @@ If Eelbrain is installed in ``develop`` mode, changes in the source folder
 	$ python setup.py develop
 
 Besides installing the ``eelbrain`` module, this installs a shell script so 
-that Eelbrain can be launched with::
+that the pyshell terminal/editor optimized for OS X can be launched with::
 
     $ eelbrain 
 

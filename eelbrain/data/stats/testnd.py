@@ -26,8 +26,8 @@ __test__ = False
 
 
 def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
-    """Clean a parameter map by requiring a threshold value for a minimum time
-    window.
+    """
+    Clean a parameter map by requiring a threshold value for a minimum duration
 
     Parameters
     ----------
@@ -73,17 +73,17 @@ def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
 
 
 class corr:
-    """
+    """Correlation
+
     Attributes
     ----------
-
     r : NDVar
         Correlation (with threshold contours).
     """
     def __init__(self, Y, X, norm=None, sub=None, ds=None,
                  samples=0, pmin=0.1, tstart=None, tstop=None, tmin=0,
                  match=None):
-        """
+        """Correlation.
 
         Parameters
         ----------
@@ -736,7 +736,7 @@ class _f_oneway:
 
 
 class anova:
-    """ANOVA with cluster permutation test
+    """Element-wise ANOVA
 
     Attributes
     ----------

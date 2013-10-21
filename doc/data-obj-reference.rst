@@ -93,8 +93,10 @@ Data Transformations
 Statistics
 **********
 
+.. currentmodule:: eelbrain.data
+
 .. autosummary::
    :toctree: generated
-
+   
    test
    testnd

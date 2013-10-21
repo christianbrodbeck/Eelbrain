@@ -21,40 +21,48 @@ __test__ = False
 
 
 def lilliefors(data, formatted=False, **kwargs):
-    """
-    Returns the D-value of the Kolmogorov-Smirnov Test and p approximated
-    according to Dallal and Wilkinson (1986). Requires minimal sample size of 5.
-    p is reasonably accurate only when it is <= .1 (cf. Dallal and Wilkens).
+    """Lilliefors test for normal distribution.
 
     The Lilliefors test is an adaptation of the Kolmogorov-Smirnov test. It
     is used to test the null hypothesis that data come from a normally
     distributed population, when the null hypothesis does not specify which
     normal distribution, i.e. does not specify the expected value and variance.
 
+    Parameters
+    ----------
+    data : array_like
+
+    formatted : bool
+        Return a single string with the results instead of the numbers.
+    kwargs :
+        All keyword arguments are forwarded to :func:`scipy.stats.kstest`.
+
+    Returns
+    -------
+    D : float
+        The D-value of the Kolmogorov-Smirnov Test
+    p_estimate : float
+        The approximate p value according to Dallal and Wilkinson (1986).
+        Requires minimal sample size of 5. p is reasonably accurate only when
+        it is <= .1 (cf. Dallal and Wilkens).
+
+    Notes
+    -----
     Uses the scipy.stats.kstest implementation of the Kolmogorov-Smirnov test.
 
-
-    kwargs:
-
-        all kwargs are forwarded to scipy.stats.kstest
-
-
-    NOTE:
-    p values agree with R lillie.test (nortest package) on low values of p.
-    lillie.test adjusts something at p>.1
-    http://pbil.univ-lyon1.fr/library/nortest/R/nortest
-
-    References:
-
-        Dallal, G. E. and Wilkinson, L. (1986). An Analytic Approximation to the
-                Distribution of Lilliefors's Test Statistic for Normality. The
-                American Statistician, 40(4), 294--296.
-        Lilliefors, H. W. (1967). On the Kolmogorov-Smirnov Test for Normality
-                with Mean and Variance Unknown. Journal of the American
-                Statistical Association, 62(318), 399--402.
-
-
+    References
+    ----------
+    Dallal, G. E. and Wilkinson, L. (1986). An Analytic Approximation to the
+            Distribution of Lilliefors's Test Statistic for Normality. The
+            American Statistician, 40(4), 294--296.
+    Lilliefors, H. W. (1967). On the Kolmogorov-Smirnov Test for Normality
+            with Mean and Variance Unknown. Journal of the American
+            Statistical Association, 62(318), 399--402.
     """
+    # p values agree with R lillie.test (nortest package) on low values of p.
+    # lillie.test adjusts something at p>.1
+    # http://pbil.univ-lyon1.fr/library/nortest/R/nortest
+    data = np.asarray(data)
     N = len(data)  # data.shape[-1] #axis]
     assert N >= 5, "sample size must be greater than 4"
     # perform Kolmogorov-Smirnov with estimated mean and std
@@ -557,23 +565,29 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
 
 def correlations(Y, Xs, cat=None, sub=None, ds=None, levels=[.05, .01, .001],
                  diff=None, pmax=None, nan=True):  # , match=None):
-    """
-    :arg Var Y: first variable
-    :arg Var X: second variable (or list of variables)
-    :arg cat: show correlations separately for different groups in the
+    """Correlation with multiple predictors.
+
+    Parameters
+    ----------
+    Y : Var
+        First variable
+    X : Var | list of Var
+        second variable (or list of variables).
+    cat : categorial
+        Show correlations separately for different groups in the
         data. Can be a ``Factor`` (the correlation for each level is shown
         separately) or an array of ``bool`` values (e.g. from a comparison like
         ``Stim==1``)
-    :arg list levels: significance levels to mark
-    :arg diff: (Factor, cat_1, cat_2)
-    :arg sub: use only a subset of the data
-    :arg pmax: (None) don't show correlations with p>pmax
-    :arg nan: ``True``: display correlation which yield NAN;
-        ``False``: hide NANs but mention occurrence in summary (not
-        implemented);
-        ``None``: don't mention NANs
-    :rtype: Table
-
+    levels : list of float
+        Significance levels to mark.
+    diff :
+        (Factor, cat_1, cat_2)
+    sub :
+        Use only a subset of the data
+    pmax : float | None
+        Don't show correlations with p > pmax
+    nan : bool
+        Display correlation which yield NAN;
     """
     sub = assub(sub, ds)
     Y = asvar(Y, sub, ds)

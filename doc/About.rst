@@ -8,7 +8,7 @@ main components
     `SciPy <http://www.scipy.org/>`_ libraries.
     For an example see :ref:`here <statistics-example>`.
 *   An interactive terminal and Python editor based on 
-    `WxPython <http://www.wxpython.org/>`_
+    `WxPython <http://www.wxpython.org/>`_, optimized for OS X.
 
  .. toctree::
    :maxdepth: 2
