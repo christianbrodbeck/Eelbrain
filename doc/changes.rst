@@ -3,5 +3,8 @@ Changes
 
 .. currentmodule:: eelbrain.data
 
-* :py:class:`~.plot.topo.TopoButterfly` plot: New keyboard commands (``t``, 
+New in 0.1.5
+------------
+
+* :py:class:`~.plot.topo.TopoButterfly` plot: new keyboard commands (``t``, 
   ``left arrow``, ``right arrow``).
