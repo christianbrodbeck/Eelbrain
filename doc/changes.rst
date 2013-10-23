@@ -3,6 +3,9 @@ Changes
 
 .. currentmodule:: eelbrain.data
 
+* Parameters that take :class:`NDVar` objects now also accept 
+  :class:`mne.Epochs` and :class:`mne.fiff.Evoked` objects.
+
 New in 0.1.5
 ------------
 

@@ -80,6 +80,7 @@ from warnings import warn
 import numpy as np
 
 import mne
+from mne.fiff import FIFF
 
 from ... import ui
 from .. import colorspaces as _cs
@@ -232,6 +233,34 @@ def events(raw=None, merge=-1, proj=False, name=None,
     trigger = Var(evts[:, 2], name='trigger')
     info = {'raw': raw}
     return Dataset(trigger, i_start, name=name, info=info)
+
+
+def _guess_ndvar_data_type(info):
+    """Guess which type of data to extract from an mne object.
+
+    Checks for the presence of channels in that order: "mag", "eeg", "grad".
+    If none are found, a ValueError is raised.
+
+    Parameters
+    ----------
+    info : dict
+        MNE info dictionary.
+
+    Returns
+    -------
+    data : str
+        Kind of data to extract
+    """
+    for ch in info['chs']:
+        kind = ch['kind']
+        if kind == FIFF.FIFFV_MEG_CH:
+            if ch['unit'] == FIFF.FIFF_UNIT_T_M:
+                return 'grad'
+            elif ch['unit'] == FIFF.FIFF_UNIT_T:
+                return 'mag'
+        elif kind == FIFF.FIFFV_EEG_CH:
+            return 'eeg'
+    raise ValueError("No MEG or EEG channel found in info.")
 
 
 def _ndvar_epochs_picks(info, data, exclude):
@@ -572,8 +601,8 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
         The epochs object
     name : None | str
         Name for the NDVar.
-    data : 'eeg' | 'mag' | 'grad'
-        The kind of data to include.
+    data : 'eeg' | 'mag' | 'grad' | None
+        The kind of data to include. If None, guess based on ``epochs.info``.
     exclude : list of string | str
         Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
@@ -589,6 +618,9 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
     vmax : None | scalar
         Set a default range for plotting.
     """
+    if data is None:
+        data = _guess_ndvar_data_type(epochs.info)
+
     if data == 'eeg':
         info_ = _cs.eeg_info(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None

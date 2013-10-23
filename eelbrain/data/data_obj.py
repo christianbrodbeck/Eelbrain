@@ -30,6 +30,7 @@ import os
 import re
 from warnings import warn
 
+import mne
 import numpy as np
 from numpy import dot
 import scipy
@@ -318,6 +319,14 @@ def asndvar(Y, sub=None, ds=None):
                    "specified")
             raise TypeError(err)
         Y = ds.eval(Y)
+
+    # convert MNE objects
+    if isinstance(Y, mne.Epochs):
+        from .load.fiff import epochs_ndvar
+        Y = epochs_ndvar(Y)
+    elif isinstance(Y, mne.fiff.Evoked):
+        from .load.fiff import evoked_ndvar
+        Y = evoked_ndvar(Y)
 
     if not isndvar(Y):
         raise TypeError("NDVar required")
