@@ -943,9 +943,7 @@ class _ClusterDist:
                 raise ValueError(err)
 
         # prepare time manipulation
-        time_args = (tstart, tstop, close_time, tmin)
-        use_time = any(arg is not None for arg in time_args)
-        if use_time:
+        if Y.has_dim('time'):
             t_ax = Y.get_axis('time') - 1
         else:
             t_ax = None
@@ -969,11 +967,6 @@ class _ClusterDist:
             istop = istart + len(Y_perm.time)
             self._crop_idx = (slice(None),) * t_ax + (slice(istart, istop),)
             self._uncropped_shape = Y.shape[1:]
-
-        if use_time:
-            n_samples = Y_perm.time.nsamples
-        else:
-            n_samples = None
 
         # prepare adjacency
         adjacent = [d.adjacent for d in Y_perm.dims[1:]]
@@ -1013,7 +1006,6 @@ class _ClusterDist:
         self.tmin = tmin
         self._tmin_samples = tmin_samples
         self._t_ax = t_ax
-        self._n_samples = n_samples
         self.meas = meas
         self.name = name
 
