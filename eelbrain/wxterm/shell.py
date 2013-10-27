@@ -1321,6 +1321,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
             event.skip()
 
     def OnFocusPrompt(self, event):
+        self.Show()
         self.shell.DocumentEnd()
         self.Raise()
 
@@ -1699,6 +1700,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         self.windowMenu.Remove(ID)
 
     def Resize(self, Id=ID.SIZE_MAX):
+        self.Show()
         display = wx.Display()
         area = display.GetClientArea()
         if Id == ID.SIZE_MAX:
