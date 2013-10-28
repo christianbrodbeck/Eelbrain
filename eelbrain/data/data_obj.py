@@ -4585,7 +4585,6 @@ class Sensor(Dimension):
         if index in self._transformed:
             return self._transformed[index]
 
-
         if proj in ['cone', 'lower cone', 'z root']:
 
             # fit the 3d sensor locations to a sphere with center (cx, cy, cz)
@@ -4653,7 +4652,7 @@ class Sensor(Dimension):
         if extent:
             locs2d -= np.min(locs2d, axis=0)  # move to bottom left
             locs2d /= (np.max(locs2d) / extent)  # scale to extent
-            locs2d -= np.min(locs2d, axis=0) / 2  # center
+            locs2d += (extent - np.max(locs2d, axis=0)) / 2  # center
 
         # save for future access
         self._transformed[index] = locs2d
