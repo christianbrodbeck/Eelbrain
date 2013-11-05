@@ -21,13 +21,13 @@ B = Factor(['b0', 'b1'], rep=15, tile=2, name='B')
 
 
 # fixed effects model
-res = testnd.anova(Y, A*B, samples=10000)
+res = testnd.anova(Y, A*B, samples=1000)
 plot.UTSClusters(res, title="Fixed Effects Model")
 
 
 # random effects model:
 subject = Factor(range(15), tile=4, random=True, name='subject')
-res = testnd.anova(Y, A*B*subject, samples=10000, match=subject)
+res = testnd.anova(Y, A*B*subject, samples=1000, match=subject)
 plot.UTSClusters(res, title="Random Effects Model")
 
 # plot Y
