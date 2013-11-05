@@ -208,6 +208,8 @@ class SelectEpochs(eelfigure):
             self._load_selection(path)
 
         self.show_page(0)
+        if vlim is not None:
+            self.set_vlim(vlim)
         self._frame.store_canvas()
         self._show(tight=False)
         self._UpdateTitle()
