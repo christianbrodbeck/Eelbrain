@@ -14,7 +14,7 @@ import numpy as np
 import wx
 from wx.lib.dialogs import ScrolledMessageDialog
 
-from ..data.data_obj import Dataset, Var, corr
+from ..data.data_obj import Dataset, Var, corr, asndvar
 from ..data import load, save
 from ..data import plot
 from ..data import process
@@ -110,8 +110,7 @@ class SelectEpochs(eelfigure):
         """
     # interpret plotting args
         # variable keeping track of selection
-        if isinstance(data, basestring):
-            data = ds.eval(data)
+        data = asndvar(data, ds=ds)
         self._data = data
 
         if isinstance(blink, basestring):
