@@ -178,6 +178,23 @@ def test_combine():
     assert_array_equal(y.get_data(dims), ref, "combine utsnd")
 
 
+def test_dataset_combining():
+    "Test Dataset combination methods"
+    ds = datasets.get_uv()
+    del ds['fltvar'], ds['intvar'], ds['A']
+
+    ds2 = datasets.get_uv()
+    del ds2['fltvar'], ds2['intvar']
+    ds.update(ds2)
+    assert_array_equal(ds['A'], ds2['A'])
+
+    ds2 = datasets.get_uv()
+    del ds2['fltvar'], ds2['intvar']
+    ds2['B'][5] = 'something_else'
+    del ds['A']
+    assert_raises(ValueError, ds.update, ds2)
+
+
 def test_dataset_sorting():
     "Test Dataset sorting methods"
     test_array = np.arange(10)

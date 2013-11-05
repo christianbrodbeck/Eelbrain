@@ -3461,9 +3461,6 @@ class Dataset(collections.OrderedDict):
     def update(self, ds, replace=False, info=True):
         """Update the Dataset with all variables in ``ds``.
 
-        If a key is present in both the Dataset and ds, and the corresponding
-        variables are not equal on all cases, a ValueError is raised.
-
         Parameters
         ----------
         ds : dict-like
@@ -3474,6 +3471,13 @@ class Dataset(collections.OrderedDict):
             duplicates raise a ValueError (unless they are equivalent).
         info : bool
             Also update the info dictionary.
+
+        Notes
+        -----
+        By default, if a key is present in both Datasets, and the corresponding
+        variables are not equal on all cases, a ValueError is raised. If all
+        values are equal, the variable in ds is copied into the Dataset that is
+        being updated (the expected behavior of .update()).
         """
         if not replace:
             unequal = []
