@@ -1329,39 +1329,19 @@ class MneExperiment(FileTree):
 
         save.pickle(ds, dest)
 
-    def make_fwd(self, thread=False):
-        """Make the forward model
+    def make_fwd(self, redo=False):
+        """Make the forward model"""
+        fname = self.get('fwd-file')
+        if not redo and os.path.exists(fname):
+            return
 
-        Parameters
-        ----------
-        thread : bool
-            Process files in the background. Warning: nothing will prevent the
-            user from destroying the ongoing process by terminating the Python
-            interpreter. Check :attr:`.queue.unfinished_tasks`.
-        """
-        cmd = self._make_fwd_cmd()
-        self.run_subp(cmd, workers=int(thread))
+        info = self.get('raw-file', make=True)
+        mri = self.get('trans-file')
+        src = self.get('src-file')
+        bem = self.get('bem-sol-file')
 
-    def _make_fwd_cmd(self, redo=False):
-        """Create the mne_do_forward_solution command.
-
-        Returns
-        -------
-        cmd : list of str
-            The command to run mne_do_forward_solution as it would be
-            submitted to subprocess.call().
-        """
-        cmd = ["mne_do_forward_solution",
-               '--subject', self.get('mrisubject'),
-               '--src', self.get('src-file'),
-               '--bem', self.get('bem-sol-file'),
-               '--mri', self.get('trans-file'),
-               '--meas', self.get('raw-file', make=True),  # provides sensor locations and coordinate transformation between the MEG device coordinates and MEG head-based coordinates.
-               '--fwd', self.get('fwd-file'),
-               '--megonly']
-        if redo:
-            cmd.append('--overwrite')
-        return cmd
+        mne.make_forward_solution(info, mri, src, bem, fname, ignore_ref=True,
+                                  overwrite=True)
 
     def _get_ttest_name(self, c1, c0, blc, cov=False):
         blc = blc or ''
@@ -1782,15 +1762,11 @@ class MneExperiment(FileTree):
         MEG.SelectEpochs(ds, data='meg', path=path, mark=mark, bad_chs=bad_chs,
                          **kwargs)  # nplots, plotsize,
 
-    def make_src(self, thread=False, redo=False):
+    def make_src(self, redo=False):
         """Make the source space
 
         Parameters
         ----------
-        thread : bool
-            Process files in the background. Warning: nothing will prevent the
-            user from destroying the ongoing process by terminating the Python
-            interpreter. Check :attr:`.queue.unfinished_tasks`.
         redo : bool
             Recreate the source space even if the corresponding file already
             exists.
@@ -1801,18 +1777,34 @@ class MneExperiment(FileTree):
 
         src = self.get('src')
         kind, param = src.split('-')
-        if kind == 'vol':
-            cmd = ['mne_volume_source_space',
-                   '--bem', self.get('bem-file'),
-                   '--grid', param,
-                   '--all',
-                   '--src', dst]
-        elif kind == 'ico':
-            cmd = ['mne_setup_source_space',
-                   '--subject', self.get('mrisubject'),
-                   '--ico', param,
-                   '--overwrite']
-        self.run_subp(cmd, workers=int(thread))
+
+        subject = self.get('mrisubject')
+        subjects_dir = self.get('mri-sdir')
+        try:
+            cfg = mne.coreg.read_mri_cfg(subject, subjects_dir)
+            is_scaled = True
+        except IOError:
+            is_scaled = False
+
+        if is_scaled:
+            # make sure the source space exists for the original
+            subject_from = cfg['subject_from']
+            self.set(mrisubject=subject_from)
+            self.make_src()
+            self.set(mrisubject=subject)
+            mne.scale_source_space(subject, src, subjects_dir=subjects_dir)
+        else:
+            if kind == 'vol':
+                cmd = ['mne_volume_source_space',
+                       '--bem', self.get('bem-file'),
+                       '--grid', param,
+                       '--all',
+                       '--src', dst]
+                self.run_subp(cmd, workers=0)
+            else:
+                spacing = kind + param
+                mne.setup_source_space(subject, spacing=spacing,
+                                       subjects_dir=subjects_dir)
 
     def makeplt_coreg(self, redo=False, **kwargs):
         """
