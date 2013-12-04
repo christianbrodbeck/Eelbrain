@@ -66,11 +66,11 @@ class Notifier(object):
         "Add a note to the notification"
         self.msg.append(unicode(note))
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type_, value, traceback):
         body = "\n\n".join(map(unicode, self.msg))
         if isinstance(value, Exception):
             result = 'failed'
-            body = '\n\n'.join(map(unicode, (body, type, value)))
+            body = '\n\n'.join(map(unicode, (body, type_, value)))
         else:
             result = 'finished'
         subject = '%s %s' % (self.name, result)
