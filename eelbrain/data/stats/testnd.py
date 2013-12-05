@@ -1125,8 +1125,7 @@ class _ClusterDist:
                 cmap, cids = self._label_clusters_1tailed(bin_map_below)
             else:
                 cmap_l, cids_l = self._label_clusters_1tailed(bin_map_below)
-                x = cmap.max()
-#                 cmap_l += x * bin_map_below  # faster?
+                x = int(cmap.max())  # apparently np.uint64 + int makes a float
                 cmap_l[bin_map_below] += x
                 cmap += cmap_l
                 cids.update(c + x for c in cids_l)
