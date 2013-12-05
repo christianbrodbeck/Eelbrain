@@ -8,13 +8,14 @@ import cPickle as pickle
 import shutil
 import tempfile
 
+import mne
 from nose.tools import assert_equal, assert_true, eq_, ok_, assert_raises
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from eelbrain.data import datasets, Var, Factor, Dataset, Celltable, load
-from eelbrain.data.data_obj import (isdatalist, isndvar, isuv, isvar, align,
-                                    align1, combine)
+from eelbrain.data.data_obj import (SourceSpace, isdatalist, isndvar, isuv,
+                                    isvar, align, align1, combine)
 
 
 def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
@@ -65,6 +66,32 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
     elif isdatalist(d1):
         for i in xrange(len(d1)):
             assert_equal(d1[i], d2[i], "%s unequal values" % msg)
+
+
+def assert_source_space_equal(src1, src2, msg="SourceSpace Dimension objects "
+                              "unequal"):
+    """
+    Raise an assertion if two SourceSpace objects are not equal up to desired
+    precision.
+
+    Parameters
+    ----------
+    src1, src2 : SourceSpace objects
+        SourceSpace objects to compare.
+    msg : str
+        Prefix of the error message to be printed in case of failure.
+    """
+    msg = "%s:" % msg
+    assert_array_equal(src1.vertno[0], src2.vertno[0], "%s unequal lh vertno "
+                       "(%r vs %r)" % (msg, src1.vertno[0], src2.vertno[0]))
+    assert_array_equal(src1.vertno[1], src2.vertno[1], "%s unequal rh vertno "
+                       "(%r vs %r)" % (msg, src1.vertno[1], src2.vertno[1]))
+    assert_equal(src1.subject, src2.subject, "%s unequal subject (%r vs %r"
+                 ")" % (msg, src1.subject, src2.subject))
+    assert_equal(src1.src, src2.src, "%s unequal names (%r vs %r"
+                 ")" % (msg, src1.src, src2.src))
+    assert_equal(src1.subjects_dir, src2.subjects_dir, "%s unequal names (%r "
+                 "vs %r)" % (msg, src1.subjects_dir, src2.subjects_dir))
 
 
 def test_print():
@@ -277,6 +304,33 @@ def test_io_txt():
         shutil.rmtree(tempdir)
 
     assert_dataset_equal(ds, ds2, decimal=6)
+
+
+def test_source_space():
+    "Test SourceSpace Dimension"
+    data_path = mne.datasets.sample.data_path()
+    mri_sdir = os.path.join(data_path, 'subjects')
+    mri_dir = os.path.join(mri_sdir, 'fsaverage')
+    src_path = os.path.join(mri_dir, 'bem', 'fsaverage-ico-5-src.fif')
+    label_dir = os.path.join(mri_dir, 'label')
+    label_ba1 = mne.read_label(os.path.join(label_dir, 'lh.BA1.label'))
+    label_v1 = mne.read_label(os.path.join(label_dir, 'lh.V1.label'))
+    label_mt = mne.read_label(os.path.join(label_dir, 'lh.MT.label'))
+    label_ba1_v1 = label_ba1 + label_v1
+    label_v1_mt = label_v1 + label_mt
+
+    src = mne.read_source_spaces(src_path)
+    source = SourceSpace((src[0]['vertno'], src[1]['vertno']), 'fsaverage',
+                         'ico-5', mri_sdir)
+    index = source.dimindex(label_v1)
+    source_v1 = source[index]
+    index = source.dimindex(label_ba1_v1)
+    source_ba1_v1 = source[index]
+    index = source.dimindex(label_v1_mt)
+    source_v1_mt = source[index]
+    index = source_ba1_v1.dimindex(source_v1_mt)
+    source_v1_intersection = source_ba1_v1[index]
+    assert_source_space_equal(source_v1, source_v1_intersection)
 
 
 def test_var():

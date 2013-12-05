@@ -4908,16 +4908,15 @@ class SourceSpace(Dimension):
 
     def __getstate__(self):
         state = {'vertno': self.vertno, 'subject': self.subject,
-                 'kind': self.kind, 'grade': self.grade, 'index': self.index}
+                 'src': self.src, 'subjects_dir': self.subjects_dir}
         return state
 
     def __setstate__(self, state):
         vertno = state['vertno']
         subject = state['subject']
-        kind = state.get('kind', None)
-        grade = state.get('grade', None)
-        index = state.get('index', None)
-        self.__init__(vertno, subject, kind, grade, index)
+        src = state.get('src', None)
+        subjects_dir = state.get('subjects_dir', None)
+        self.__init__(vertno, subject, src, subjects_dir)
 
     def __repr__(self):
         return "<dim SourceSpace: %i (lh), %i (rh)>" % (self.lh_n, self.rh_n)
@@ -4941,11 +4940,9 @@ class SourceSpace(Dimension):
         vert = np.hstack(self.vertno)
         hemi = np.zeros(len(vert))
         hemi[self.lh_n:] = 1
-        index_ = self.index or np.arange(len(self))
 
         vert = vert[index]
         hemi = hemi[index]
-        index_ = index_[index]
 
         new_vert = (vert[hemi == 0], vert[hemi == 1])
         dim = SourceSpace(new_vert, self.subject, self.src, self.subjects_dir,
@@ -5005,15 +5002,14 @@ class SourceSpace(Dimension):
             else:
                 raise IndexError('%r' % obj)
         elif isinstance(obj, SourceSpace):
-            if obj.index is None:
+            if (np.array_equal(self.lh_vertno, obj.lh_vertno) and
+                np.array_equal(self.rh_vertno, obj.rh_vertno)):
                 return slice(None)
-            elif (np.array_equal(self.lh_vertno, obj.lh_vertno) and
-                  np.array_equal(self.rh_vertno, obj.rh_vertno)):
-                return slice(None)
-            elif self.index is None:
-                return obj.index
             else:
-                return np.intersect1d(self.index, obj.index, True)
+                lh_index = np.in1d(self.lh_vertno, obj.lh_vertno, True)
+                rh_index = np.in1d(self.rh_vertno, obj.rh_vertno, True)
+                index = np.hstack((lh_index, rh_index))
+                return index
         else:
             return obj
 
