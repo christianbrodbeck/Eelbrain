@@ -1112,8 +1112,9 @@ class _ClusterDist:
         -------
         cluster_map : array
             Array of same shape as pmap with clusters labeled.
-        clusters : tuple
-            Identifiers of the clusters.
+        cluster_ids : tuple
+            Identifiers of the clusters that survive the minimum duration
+            criterion.
         """
         if self.t_upper is not None:
             bin_map_above = (pmap > self.t_upper)
@@ -1145,7 +1146,8 @@ class _ClusterDist:
         cluster_map : array
             Array of same shape as bin_map with clusters labeled.
         cluster_ids : iterator over int
-            Identifiers of the clusters.
+            Identifiers of the clusters that survive the minimum duration
+            criterion.
         """
         # manipulate morphology
         if self._close is not None:
@@ -1154,10 +1156,15 @@ class _ClusterDist:
         # find clusters
         if self._all_adjacent:
             cmap, n = ndimage.label(bin_map)
+            # n is 1 even when no cluster is found
+            if n == 1 and cmap.max() == 0:
+                n = 0
             cids = set(xrange(1, n + 1))
         else:
             c = self._conn
             cmap, n = ndimage.label(bin_map, self._struct)
+            if n == 1 and cmap.max() == 0:
+                n = 0
             cids = set(xrange(1, n + 1))
             n_chan = len(cmap)
 
