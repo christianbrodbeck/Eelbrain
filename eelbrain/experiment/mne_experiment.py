@@ -252,6 +252,9 @@ class MneExperiment(FileTree):
 
     groups = {}
 
+    # whether to look for and load eye tracker data when loading raw files
+    has_edf = defaultdict(lambda: False)
+
     # projection definition:
     # "base": 'raw' for raw file, or epoch name
     # "rej": rejection setting to use (only applies for epoch projs)
@@ -871,10 +874,11 @@ class MneExperiment(FileTree):
         else:
             ds = load.fiff.events(raw)
 
-            # add edf
-            edf = self.load_edf()
-            edf.add_t_to(ds)
-            ds.info['edf'] = edf
+            subject = self.get('subject')
+            if self.has_edf[subject]:  # add edf
+                edf = self.load_edf()
+                edf.add_t_to(ds)
+                ds.info['edf'] = edf
 
             # cache
             del ds.info['raw']
