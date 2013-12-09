@@ -823,20 +823,22 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stc(self, subject=None, sns_baseline=None,
-                        src_baseline=None, ndvar=False, cat=None):
+    def load_epochs_stc(self, subject=None, sns_baseline=None, ndvar=False,
+                        cat=None):
         """Load a Dataset with stcs for single epochs
 
         Parameters
         ----------
-
+        subject : str
+            Subject(s) for which to load evoked files. Can be a group name
+            such as 'all' or a single subject.
         """
         ds = self.load_epochs(subject, baseline=sns_baseline, ndvar=False,
                               cat=cat)
-        self.add_epochs_stc(ds, baseline=src_baseline, ndvar=ndvar)
+        self.add_epochs_stc(ds, ndvar=ndvar)
         return ds
 
-    def load_events(self, subject=None, add_proj=True, add_bads=True, edf=True,
+    def load_events(self, subject=None, add_proj=True, add_bads=True,
                     **kwargs):
         """
         Load events from a raw file.
