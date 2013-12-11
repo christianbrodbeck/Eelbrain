@@ -1516,6 +1516,8 @@ class MneExperiment(FileTree):
         # scaled MRI
         if is_fake_mri(mri_dir):
             common_brain = self.get('common_brain')
+            self.make_labels(mrisubject=common_brain)
+            self.set(mrisubject=mrisubject)
             scale_labels(mrisubject, common_brain, overwrite=redo,
                          subjects_dir=mri_sdir)
             return
