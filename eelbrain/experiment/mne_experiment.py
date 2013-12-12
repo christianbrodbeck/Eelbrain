@@ -1518,13 +1518,12 @@ class MneExperiment(FileTree):
             common_brain = self.get('common_brain')
             self.make_labels(mrisubject=common_brain)
             self.set(mrisubject=mrisubject)
-            scale_labels(mrisubject, common_brain, overwrite=redo,
-                         subjects_dir=mri_sdir)
+            scale_labels(mrisubject, overwrite=redo, subjects_dir=mri_sdir)
             return
 
         # original MRI
         label_dir = self.get('label-dir')
-        if not os.path.exists(label_dir):
+        if not os.path.exists(label_dir) or not os.listdir(label_dir):
             annot = self.get('annot')
             subp.mri_annotation2label(mrisubject, annot=annot,
                                       subjects_dir=mri_sdir)
@@ -1570,13 +1569,14 @@ class MneExperiment(FileTree):
                         label.save(path)
             else:
                 dst, srcs = item
-                dst_file = self.get('label-file', label=dst)
-                if (not redo) and os.path.exists(dst_file):
-                    continue
+                for _ in self.iter('hemi'):
+                    dst_file = self.get('label-file', label=dst)
+                    if (not redo) and os.path.exists(dst_file):
+                        continue
 
-                src_labels = (self.load_label(label=name) for name in srcs)
-                label = reduce(add, src_labels)
-                label.save(dst_file)
+                    src_labels = (self.load_label(label=name) for name in srcs)
+                    label = reduce(add, src_labels)
+                    label.save(dst_file)
 
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link at the file with the dst value on field, linking to
