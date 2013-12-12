@@ -242,7 +242,9 @@ class MneExperiment(FileTree):
                         'et': {'kind': 'auto',
                                'threshold': dict(mag=3e-12),
                                'edf': ['EBLINK'],
-                               }
+                               },
+                        'threshold': {'kind': 'auto',
+                                      'threshold': dict(mag=3e-12)}
                         }
     epoch_rejection = {}
 
