@@ -322,6 +322,7 @@ class MneExperiment(FileTree):
         self._bind_make('evoked-file', self.make_evoked)
         self._bind_make('raw-file', self.make_raw)
         self._bind_make('cov-file', self.make_cov)
+        self._bind_make('src-file', self.make_src)
         self._bind_make('fwd-file', self.make_fwd)
 
         # set initial values
@@ -1337,7 +1338,7 @@ class MneExperiment(FileTree):
 
         info = self.get('raw-file', make=True)
         mri = self.get('trans-file')
-        src = self.get('src-file')
+        src = self.get('src-file', make=True)
         bem = self.get('bem-sol-file')
 
         mne.make_forward_solution(info, mri, src, bem, fname, ignore_ref=True,
