@@ -669,6 +669,7 @@ class SelectEpochs(eelfigure):
             return
 
         chs = map(unicode.strip, dlg.GetValue().split(','))
+        chs = filter(None, chs)
         bads = [ch for ch in chs if ch not in self._data.sensor.channel_idx]
         if bads:
             names = ', '.join(map(repr, map(str, bads)))
