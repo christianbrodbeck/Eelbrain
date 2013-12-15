@@ -10,6 +10,7 @@ import math
 import os
 import time
 
+import mne
 import numpy as np
 import wx
 from wx.lib.dialogs import ScrolledMessageDialog
@@ -41,6 +42,8 @@ class SelectEpochs(eelfigure):
         Open a full butterfly plot for the current epoch.
     'c' on any epoch butterfly plot:
         Open a plot with the correlation of each channel with its neighbors.
+    left/right arrow keys:
+        Cycle through pages.
     """
     def __init__(self, ds, data='meg', target='accept', blink=True, path=None,
                  bad_chs=None, nplots=16, plotw=3, ploth=1.5, fill=True,
@@ -53,8 +56,9 @@ class SelectEpochs(eelfigure):
 
         Parameters
         ----------
-        ds : Dataset
-            Dataset on which to perform the selection.
+        ds : Dataset | mne.Epochs
+            Dataset on which to perform the selection. Can also be mne.Epochs
+            instance.
         data : str | NDVar
             Epoch data as case by sensor by time NDVar (or its name in ds).
         target : str | Var
@@ -109,6 +113,17 @@ class SelectEpochs(eelfigure):
 
         """
     # interpret plotting args
+        # allow ds to be mne.Epochs
+        if isinstance(ds, mne.Epochs):
+            epochs = ds
+            if not epochs.preload:
+                err = ("Need Epochs with preloaded data (preload=True)")
+                raise ValueError(err)
+            ds = Dataset()
+            ds[data] = epochs
+            ds['trigger'] = Var(epochs.events[:, 2])
+
+
         # variable keeping track of selection
         data = asndvar(data, ds=ds)
         self._data = data
