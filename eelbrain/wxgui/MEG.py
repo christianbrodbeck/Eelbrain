@@ -498,13 +498,10 @@ class SelectEpochs(eelfigure):
         self.show_page()
 
     def _set_plot_style(self, fill, color, mark, mcolor):
-        if mark is not None:
-            mark = self._data.sensor.dimindex(mark)
-
         if fill or mark is None:
             traces = not bool(fill)
         else:
-            traces = np.setdiff1d(np.arange(len(self._data.sensor)), mark)
+            traces = self._data.sensor.index(mark, names=True)
 
         self._bfly_kwargs = {'plot_range': fill, 'traces': traces,
                              'color': color, 'mark': mark, 'mcolor': mcolor,

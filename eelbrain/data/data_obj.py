@@ -4760,7 +4760,7 @@ class Sensor(Dimension):
 
         return Sensor(locs, names, sysname=self.sysname)
 
-    def index(self, exclude=None):
+    def index(self, exclude=None, names=False):
         """Construct an index for specified sensors
 
         Parameters
@@ -4784,6 +4784,9 @@ class Sensor(Dimension):
                 idx = int(idx)
 
             index[idx] = False
+
+        if names:
+            index = self.names[index]
 
         return index
 
