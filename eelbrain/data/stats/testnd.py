@@ -640,7 +640,7 @@ def _t_rel(Y):
             t[i:i1] = _t_rel(Y[:, i:i1])
         t = t.reshape(shape)
         return t
-    n = n_cases / 2
+    n = n_cases // 2
     a = Y[:n]
     b = Y[n:]
     d = (a - b).astype(np.float64)
