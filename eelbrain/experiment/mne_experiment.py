@@ -1737,8 +1737,11 @@ class MneExperiment(FileTree):
 
         raw_dst = self.get('raw')
         raw_src = 'clm'
-        apply_proj = False
+        if raw_dst == raw_src:
+            err = ("Raw %r can not be made (target same as source)" % raw_dst)
+            raise ValueError(err)
 
+        apply_proj = False
         raw = self.load_raw(raw=raw_src, add_proj=apply_proj, add_bads=False,
                             preload=True)
         if apply_proj:
