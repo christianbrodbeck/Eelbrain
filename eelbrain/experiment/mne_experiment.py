@@ -563,7 +563,7 @@ class MneExperiment(FileTree):
 
     def get_epoch_str(self, stimvar=None, stim=None, tmin=None, tmax=None,
                       reject_tmin=None, reject_tmax=None, decim=None,
-                      name=None, tag=None):
+                      name=None, tag=None, rej_epoch=None):
         """Produces a descriptor for a single epoch specification
 
         Parameters
@@ -587,6 +587,9 @@ class MneExperiment(FileTree):
             Name the epoch (not included in the label).
         tag : None | str
             Optional tag for epoch string.
+        rej_epoch : None | str
+            Use rejection from another epoch (only for rejection by rej-file;
+            needs to have same triggers).
         """
         desc = '%s[' % stim
         if reject_tmin is None:
@@ -603,6 +606,8 @@ class MneExperiment(FileTree):
             desc += '|%i' % decim
 
         desc += '{rej}'
+        if rej_epoch is not None:
+            desc += '-%s' % rej_epoch
 
         if tag is not None:
             desc += '|%s' % tag
@@ -1131,14 +1136,23 @@ class MneExperiment(FileTree):
 
         if reject:
             if reject not in (True, 'keep'):
-                raise ValueError("Invalie reject value: %r" % reject)
+                raise ValueError("Invalid reject value: %r" % reject)
 
             if self._params['rej']['kind'] in ('manual', 'make'):
+                # if rejections come from different epoch, increase level
+                rej_epoch = epoch.get('rej_epoch', None)
+                if rej_epoch is not None:
+                    level = self._increase_depth()
+                    self.set(epoch=rej_epoch)
                 path = self.get('rej-file')
+                if rej_epoch is not None:
+                    self.reset(level - 1)
+
                 if not os.path.exists(path):
                     err = ("The rejection file at %r does not exist. Run "
                            ".make_rej() first." % path)
                     raise RuntimeError(err)
+
                 ds_sel = load.unpickle(path)
                 if not np.all(ds['trigger'] == ds_sel['trigger']):
                     err = ("The epoch selection file contains different "
