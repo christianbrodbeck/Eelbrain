@@ -72,12 +72,26 @@ class LayeredDict(dict):
             raise ValueError(err)
 
     def increase_depth(self):
-        "Returns new level"
+        """Increase depth to make changes while preserving values at the lower level
+
+        Returns
+        -------
+        level : int
+            New level.
+        """
         self._layers.append(self.copy())
         self.level += 1
         return self.level
 
     def reset(self, level=None):
+        """Reset the values
+
+        Parameters
+        ----------
+        level : None | int
+            If None, stay at the current level. With int, reset to a lower
+            level. Negative values specify relative offset from current level.
+        """
         if level is None:
             level = self.level
         elif level > self.level:
@@ -98,9 +112,6 @@ class LayeredDict(dict):
 
         self.clear()
         self.update(new)
-
-    def set_level(self, level):
-        level = int(level)
 
 
 class TreeModel(object):
@@ -275,6 +286,12 @@ class TreeModel(object):
         self.set(**kwargs)
 
     def _increase_depth(self):
+        """Increase the depth of the settings by a level
+
+        See also
+        --------
+        reset : reset to a lower level
+        """
         self._fields.increase_depth()
         self._field_values.increase_depth()
         return self._params.increase_depth()
@@ -473,6 +490,14 @@ class TreeModel(object):
             yield path
 
     def reset(self, level=None):
+        """Reset the depth of the settings to a lower level
+
+        Parameters
+        ----------
+        level : None | int
+            If None, stay at the current level. With int, reset to a lower
+            level. Negative values specify relative offset from current level.
+        """
         self._fields.reset(level)
         self._field_values.reset(level)
         self._params.reset(level)
