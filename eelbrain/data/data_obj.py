@@ -55,7 +55,9 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
                    dataset_str_n_cases=500,
                    var_repr_n_cases=100,
                    factor_repr_n_cases=100,
-                   var_repr_fmt='%.3g',
+                   bool_fmt='%s',
+                   float_fmt='%.6g',
+                   int_fmt='%s',
                    factor_repr_use_labels=True,
                    short_repr=True,  # "A % B" vs "Interaction(A, B)"
                    )
@@ -197,28 +199,46 @@ def ismodel(X):
     return hasattr(X, '_stype_') and X._stype_ == "model"
 
 def isnested(Y):
+    "Determine whether Y is nested"
     return hasattr(Y, '_stype_') and Y._stype_ == "nested"
 
 def isnestedin(item, item2):
-    "returns True if item is nested in item2, False otherwise"
+    "Returns True if item is nested in item2, False otherwise"
     if hasattr(item, 'nestedin'):
         return item.nestedin and (item2 in find_factors(item.nestedin))
     else:
         return False
 
 def isndvar(Y):
+    "Determine whether Y is an NDVar"
     return hasattr(Y, '_stype_') and Y._stype_ == "ndvar"
 
 def isnumeric(Y):
-    "Var, NDVar"
+    "Determine wether Y is numeric (a Var or an NDVar)"
     return hasattr(Y, '_stype_') and Y._stype_ in ["ndvar", "var"]
 
 def isuv(Y):
-    "univariate (Var, Factor)"
+    "Determine whether Y is univariate (a Var or a Factor)"
     return hasattr(Y, '_stype_') and Y._stype_ in ["factor", "var"]
 
 def isvar(Y):
+    "Determine whether Y is a Var"
     return hasattr(Y, '_stype_') and Y._stype_ == "var"
+
+def isboolvar(Y):
+    "Determine whether Y is a Var whose data type is boolean"
+    if not isvar(Y):
+        return False
+    isbool = Y.x.dtype.kind == 'b'
+    return isbool
+
+def isintvar(Y):
+    "Determine whether Y is a Var whose data type is integer"
+    if not isvar(Y):
+        return False
+    # http://stackoverflow.com/a/934652/166700
+    isint = Y.x.dtype.kind in 'iu'
+    return isint
 
 
 def hasrandom(Y):
@@ -933,16 +953,18 @@ class Var(object):
     def __repr__(self, full=False):
         n_cases = preferences['var_repr_n_cases']
 
-        if self.x.dtype == bool:
-            fmt = '%r'
+        if isintvar(self):
+            fmt = preferences['int_fmt']
+        elif isboolvar(self):
+            fmt = preferences['bool_fmt']
         else:
-            fmt = preferences['var_repr_fmt']
+            fmt = preferences['float_fmt']
 
         if full or len(self.x) <= n_cases:
             x = [fmt % v for v in self.x]
         else:
             x = [fmt % v for v in self.x[:n_cases]]
-            x.append('<... N=%s>' % len(self.x))
+            x.append('... (N=%s)' % len(self.x))
 
         args = ['[%s]' % ', '.join(x)]
         if self.name is not None:
@@ -2892,9 +2914,10 @@ class Dataset(collections.OrderedDict):
         else:
             self[item.name] = item
 
-    def as_table(self, cases=0, fmt='%.6g', f_fmt='%s', match=None, sort=False,
-                 header=True, midrule=False, count=False, title=None,
-                 caption=None):
+    def as_table(self, cases=0, fmt='%.6g', sfmt='%s', match=None,
+                 sort=False, header=True, midrule=False, count=False,
+                 title=None, caption=None, ifmt='%s', bfmt='%s',
+                 f_fmt='deprecated'):
         r"""
         Create a fmtxt.Table containing all Vars and Factors in the Dataset.
         Can be used for exporting in different formats such as csv.
@@ -2903,28 +2926,35 @@ class Dataset(collections.OrderedDict):
         ----------
         cases : int
             number of cases to include (0 includes all; negative number works
-            like negative indexing)
+            like negative indexing).
         count : bool
-            Add an initial column containing the case number
+            Add an initial column containing the case number.
         fmt : str
-            format string for numerical variables. Hast to be a valid
-            `format string,
-            <http://docs.python.org/library/stdtypes.html#string-formatting>`
-        f_fmt : str
-            format string for factors (None -> code; e.g. `'%s'`)
-        match : Factor
-            create repeated-measurement table
+            Format string for float variables (default ``'%.6g'``).
+        sfmt : str | None
+            Formatting for strings (None -> code; default ``'%s'``).
+        match : None | Factor
+            Create repeated-measurement table.
         header : bool
-            Include the varibale names as a header row
+            Include the varibale names as a header row.
         midrule : bool
-            print a midrule after table header
+            print a midrule after table header.
         sort : bool
-            Sort the columns alphabetically
+            Sort the columns alphabetically.
         title : None | str
             Title for the table.
         caption : None | str
             Caption for the table.
+        ifmt : str
+            Formatting for integers (default ``'%s'``).
+        bfmt : str
+            Formatting for booleans (default ``'%s'``).
         """
+        if f_fmt != 'deprecated':
+            msg = "The f_fmt parameter is deprecated. Use sfmt instead."
+            warn(msg, DeprecationWarning)
+            sfmt = f_fmt
+
         if cases < 1:
             cases = self.n_cases + cases
             if cases < 0:
@@ -2937,6 +2967,16 @@ class Dataset(collections.OrderedDict):
             keys = sorted(keys)
 
         values = [self[key] for key in keys]
+        fmts = []
+        for v in values:
+            if isfactor(v):
+                fmts.append(sfmt)
+            elif isintvar(v):
+                fmts.append(ifmt)
+            elif isboolvar(v):
+                fmts.append(bfmt)
+            else:
+                fmts.append(fmt)
 
         columns = 'l' * (len(keys) + count)
         table = fmtxt.Table(columns, True, title, caption)
@@ -2954,14 +2994,11 @@ class Dataset(collections.OrderedDict):
             if count:
                 table.cell(i)
 
-            for v in values:
-                if isfactor(v):
-                    if f_fmt is None:
-                        table.cell(v.x[i], fmt='%i')
-                    else:
-                        table.cell(f_fmt % v[i])
-                elif isvar:
-                    table.cell(v[i], fmt=fmt)
+            for v, fmt_ in zip(values, fmts):
+                if fmt_ is None:
+                    table.cell(v.x[i], fmt='%i')
+                else:
+                    table.cell(v[i], fmt=fmt_)
 
         return table
 
