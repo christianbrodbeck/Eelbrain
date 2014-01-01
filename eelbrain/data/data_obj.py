@@ -1021,8 +1021,11 @@ class Var(object):
         if np.isscalar(other):
             return Var(self.x - other,
                        name='%s-%s' % (self.name, other))
+        elif len(other) != len(self):
+            err = ("Objects have different length (%i vs "
+                   "%i)" % (len(self), len(other)))
+            raise ValueError(err)
         else:
-            assert len(other.x) == len(self.x)
             x = self.x - other.x
             n1, n2 = self.name, other.name
             if n1 == n2:
@@ -1134,12 +1137,15 @@ class Var(object):
 
     def as_factor(self, name=None, labels='%r'):
         """
-        convert the Var into a Factor
+        Convert the Var into a Factor
 
-        :arg name: if None, it will copy the Var name
-        :arg labels: dictionary maping values->labels, or format string for
-            converting values into labels
-
+        Parameters
+        ----------
+        name : None | str
+            Name for the Factor. If None (default), it will be the Var's name.
+        labels : dict | str
+            Dictionary mapping values to labels, or format string for
+            converting values into labels (default: ``'%r'``).
         """
         if name is None:
             name = self.name
@@ -1208,9 +1214,16 @@ class Var(object):
 
     def diff(self, X, v1, v2, match):
         """
-        subtracts X==v2 from X==v1; sorts values in ascending order according
-        to match
+        Subtract X==v2 from X==v1; sorts values according to match (ascending)
 
+        Parameters
+        ----------
+        X : categorial
+            Model to define cells.
+        v1, v2 : str | tuple
+            Cells on X for subtraction.
+        match : categorial
+            Model that defines how to mach cells in v1 to cells in v2.
         """
         raise NotImplementedError
         # FIXME: use celltable
