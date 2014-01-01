@@ -175,8 +175,8 @@ def loadtable(path, d='\t', txt='"', dtype=float, txtcols=[], txtrows=[],
     """
     name, ext = os.path.splitext(path)
     if ext in ['.pickled', '.pickle']:
-        with open(path) as f:
-            table = pickle.load(f)
+        with open(path, 'rb') as fid:
+            table = pickle.load(fid)
     else:
         raw_table = []
         for line in open(path):

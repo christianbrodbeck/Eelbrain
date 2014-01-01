@@ -2984,7 +2984,8 @@ class Dataset(collections.OrderedDict):
 
         ext = os.path.splitext(fn)[1][1:]
         if ext == 'pickled':
-            pickle.dump(self, open(fn, 'w'))
+            with open(fn, 'wb') as fid:
+                pickle.dump(self, fid)
         else:
             table = self.as_table(fmt=fmt, header=header, sort=sort)
             if ext in ['txt', 'tsv']:
@@ -3390,7 +3391,7 @@ class Dataset(collections.OrderedDict):
         if not ext:
             path += '.pickled'
 
-        with open(path, 'w') as fid:
+        with open(path, 'wb') as fid:
             pickle.dump(self, fid, pickle.HIGHEST_PROTOCOL)
 
     def sorted(self, order, descending=False):

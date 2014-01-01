@@ -68,7 +68,9 @@ _bin_dirs = {'mne': 'None',
              'edfapi': 'None'}
 
 try:
-    _bin_dirs.update(pickle.load(open(_cfg_path)))
+    with open(_cfg_path, 'rb') as fid:
+        _saved_dirs = pickle.load(fid)
+    _bin_dirs.update(_saved_dirs)
     _set_bin_dirs(**_bin_dirs)
 except:
     logging.info("subp: loading paths failed at %r" % _cfg_path)
@@ -122,7 +124,8 @@ def set_bin_dir(package):
         if answer:
             if _is_bin_path(package, answer):
                 _bin_dirs[package] = answer
-                pickle.dump(_bin_dirs, open(_cfg_path, 'w'))
+                with open(_cfg_path, 'wb') as fid:
+                    pickle.dump(_bin_dirs, fid)
                 _set_bin_dirs(**{package: answer})
                 have_valid_path = True
         else:

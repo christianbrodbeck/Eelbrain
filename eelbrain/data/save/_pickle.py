@@ -31,5 +31,5 @@ def pickle(obj, dest=None, protocol=cPickle.HIGHEST_PROTOCOL):
         if not os.path.splitext(dest)[1]:
             dest += '.pickled'
 
-    with open(dest, 'w') as FILE:
+    with open(dest, 'wb') as FILE:
         cPickle.dump(obj, FILE, protocol)

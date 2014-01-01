@@ -276,9 +276,9 @@ def test_io_pickle():
     tempdir = tempfile.mkdtemp()
     try:
         dest = os.path.join(tempdir, 'test.pickled')
-        with open(dest, 'w') as fid:
+        with open(dest, 'wb') as fid:
             pickle.dump(ds, fid, protocol=pickle.HIGHEST_PROTOCOL)
-        with open(dest) as fid:
+        with open(dest, 'rb') as fid:
             ds2 = pickle.load(fid)
     finally:
         shutil.rmtree(tempdir)

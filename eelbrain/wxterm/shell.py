@@ -1247,8 +1247,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
                 self.create_py_editor(pyfile=path)
             elif ext == '.pickled':
                 try:
-                    with open(path) as FILE:
-                        dinnerplate = pickle.load(FILE)
+                    with open(path, 'rb') as fid:
+                        dinnerplate = pickle.load(fid)
                 except Exception as exc:
                     msg = '%s: %s' % (type(exc).__name__, exc)
                     sty = wx.OK | wx.ICON_ERROR

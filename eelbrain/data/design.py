@@ -481,14 +481,12 @@ def save(dataset, destination=None, values=None, pickle_values=False):
 
         dest = os.path.extsep.join((destination, 'pickled'))
         print msg_temp % dest
-        with open(dest, 'w') as f:
-            save.pickle(dataset, f)
+        save.pickle(dataset, dest)
 
         if pickle_values:
             dest = os.path.extsep.join((destination + '_values', 'pickled'))
             print msg_temp % dest
-            with open(dest, 'w') as f:
-                save.pickle(values, f)
+            save.pickle(values, dest)
 
         dest = os.path.extsep.join((destination, 'mat'))
         print msg_temp % dest

@@ -369,8 +369,8 @@ class TableFrame(wx.Frame, wx.FileDropTarget):
             dialog.CenterOnScreen()
             if dialog.ShowModal() == wx.ID_OK:
                 table = self.grid.get(**dialog.GetKwargs())
-                with open(path, 'w') as file:
-                    pickle.dump(table, file)
+                with open(path, 'wb') as fid:
+                    pickle.dump(table, fid)
         elif file_type == 1:  # TSV
             with open(path, 'w') as f:
                 for row in self.grid.get():
