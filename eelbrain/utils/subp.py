@@ -110,10 +110,11 @@ def set_bin_dir(package):
     """
     Change the location from which binaries are used.
 
+    Parameters
+    ----------
     package : str
         Binary package for which to set the directory. One from:
         ``['mne', 'freesurfer', 'edfapi']``
-
     """
     have_valid_path = False
     while not have_valid_path:
