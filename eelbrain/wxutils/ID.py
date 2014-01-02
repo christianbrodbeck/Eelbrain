@@ -46,6 +46,7 @@ INSERT_Path_file = wx.NewId()
 INSERT_Path_dir = wx.NewId()
 INSERT_Path_new = wx.NewId()
 
+OPEN = wx.NewId()
 OPEN_HISTORY = wx.NewId()
 OPEN_HISTORY_CURRENT = wx.NewId()
 OPEN_HISTORY_PAST = wx.NewId()
@@ -62,6 +63,7 @@ PCA_REMOVE = wx.NewId()
 
 RECENT_LOAD_E = wx.NewId()
 RECENT_LOAD_PYDOC = wx.NewId()
+REDO = wx.NewId()
 RESIZE = wx.NewId()
 
 SAVE_REJECTION = wx.NewId()
@@ -82,3 +84,5 @@ TABLE_COL = wx.NewId()
 TABLE_ROW = wx.NewId()
 TABLE_SAVE = wx.NewId()
 THRESHOLD = wx.NewId()
+
+UNDO = wx.NewId()
