@@ -21,8 +21,8 @@ The module also provides functions that work with fmtxt objects:
 @author Christian M Brodbeck 2009; christianmbrodbeck@gmail.com
 """
 
-import os
 import logging
+import os
 import tempfile
 
 try:
@@ -56,7 +56,7 @@ def isstr(obj):
 
 
 def get_pdf(tex_obj):
-    "creates a pdf from a textab object (using tex)"
+    "creates a pdf from an fmtxt object (using tex)"
     txt = tex_obj.get_tex()
     document = u"""
 \\documentclass{article}
@@ -70,17 +70,18 @@ def get_pdf(tex_obj):
 
 
 def save_pdf(tex_obj, path=None):
-    "saves a textab object as a pdf"
+    "Save an fmtxt object as a pdf"
     pdf = get_pdf(tex_obj)
     if path is None:
-        path = ui.ask_saveas(title="Save tex as pdf", ext=[('pdf', 'pdf')])
+        msg = "Save as PDF"
+        path = ui.ask_saveas(msg, msg, [('PDF (*.pdf)', '*.pdf')])
     if path:
         with open(path, 'w') as f:
             f.write(pdf)
 
 
 def save_tex(tex_obj, path=None):
-    "saves a textab object as a pdf"
+    "saves an fmtxt object as a pdf"
     txt = tex_obj.get_tex()
     if path is None:
         path = ui.ask_saveas(title="Save tex", ext=[('tex', 'tex source code')])
@@ -91,7 +92,7 @@ def save_tex(tex_obj, path=None):
 
 def copy_pdf(tex_obj=-1):
     """
-    copies a textab object to the clipboard as pdf. `tex_obj` can be an object
+    copies an fmtxt object to the clipboard as pdf. `tex_obj` can be an object
     with a `.get_tex` method or an int, in which case the item is retrieved from
     a list of recently displayed fmtxt objects.
 
@@ -111,7 +112,7 @@ def copy_pdf(tex_obj=-1):
 
 
 def copy_tex(tex_obj):
-    "copies a textab object to the clipboard as tex code"
+    "copies an fmtxt object to the clipboard as tex code"
     txt = tex_obj.get_tex()
     ui.copy_text(txt)
 
@@ -253,7 +254,8 @@ class texstr(object):
         if isstr(self.text) or not np.iterable(self.text):
             tex = self.get_str(fmt=fmt)
         else:
-            tex = ''.join([tex_e.get_tex(mat=(self.mat or mat)) for tex_e in self.text])
+            tex = ''.join([tex_e.get_tex(mat=(self.mat or mat)) for tex_e in
+                           self.text])
 
         if self.property:
             tex = r"%s{%s}" % (self.property, tex)
@@ -263,17 +265,11 @@ class texstr(object):
 
 
 class symbol(texstr):
+    "Print df neatly in plain text as well as formatted"
     def __init__(self, symbol, df=None):
         assert (df is None) or np.isscalar(df) or isstr(df) or np.iterable(df)
         self._df = df
         texstr.__init__(self, symbol)
-
-    def get_str(self, fmt=None):
-        symbol = texstr.get_str(self, fmt=fmt)
-        if self._df is None:
-            return symbol
-        else:
-            return '%s(%s)' % (symbol, self.get_df_str())
 
     def get_df_str(self):
         if np.isscalar(self._df):
@@ -282,6 +278,13 @@ class symbol(texstr):
             return self._df
         else:
             return ','.join(str(i) for i in self._df)
+
+    def get_str(self, fmt=None):
+        symbol = texstr.get_str(self, fmt=fmt)
+        if self._df is None:
+            return symbol
+        else:
+            return '%s(%s)' % (symbol, self.get_df_str())
 
     def get_tex(self, mat=False, fmt=None):
         out = texstr.get_tex(self, mat, fmt)
@@ -358,7 +361,7 @@ class Stars(texstr):
         texstr.__init__(self, text, property=property)
 
     def get_tex(self, mat=False, fmt=None):
-        txt = self.__str__()
+        txt = str(self)
         spaces = r'\ ' * (self.of - self.n)
         txtlist = ['^{', txt, spaces, '}']
         if not mat:
@@ -369,16 +372,18 @@ class Stars(texstr):
 # Table ---
 
 class Cell(texstr):
-    def __init__(self, text=None, property=None, width=1, just=False,
+    def __init__(self, text=None, property=None, width=1, just=None,
                  **texstr_kwargs):
-        """
-        width, pos: for multicolumn
-        just: False = use column standard
-              'l' / 'r' / ...
+        """A cell for a table
 
-        properties: list of Tex Text Property commands,
-        e.g. Cell("Entry", "textsf", "textbf") for bold sans serif
-
+        Parameters
+        ----------
+        width : int
+            Width in columns for multicolumn cells.
+        just : None | 'l' | 'r' | 'c'
+            Justification. None: use column standard.
+        others :
+            texstr parameters.
         """
         texstr.__init__(self, text, property, **texstr_kwargs)
         self.width = width
@@ -409,14 +414,14 @@ class Row(list):
     def __len__(self):
         return sum([len(cell) for cell in self])
 
-    def get_tex(self, fmt=None):
-        tex = ' & '.join(cell.get_tex(fmt=fmt) for cell in self)
-        tex += r" \\"
-        return tex
+    def __repr__(self):
+        return "Row(%s)" % list.__repr__(self)
 
-    def get_tsv(self, delimiter, fmt=None):
-        txt = delimiter.join(cell.get_str(fmt=fmt) for cell in self)
-        return txt
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
+        return ' '.join([str(cell) for cell in self])
 
     def _strlen(self, fmt=None):
         "returns list of cell-str-lengths; multicolumns handled poorly"
@@ -426,15 +431,6 @@ class Row(list):
             for _ in xrange(len(cell)):
                 lens.append(cell_len / len(cell))  # TODO: better handling of multicolumn
         return lens
-
-    def __repr__(self):
-        return "Row(%s)" % list.__repr__(self)
-
-    def __str__(self):
-        return unicode(self).encode('utf-8')
-
-    def __unicode__(self):
-        return ' '.join([str(cell) for cell in self])
 
     def get_str(self, c_width, c_just, delimiter='   ',
                 fmt=None):
@@ -463,6 +459,15 @@ class Row(list):
                 txt = txt.rjust(rj).ljust(strlen)
             out.append(txt)
         return delimiter.join(out)
+
+    def get_tex(self, fmt=None):
+        tex = ' & '.join(cell.get_tex(fmt=fmt) for cell in self)
+        tex += r" \\"
+        return tex
+
+    def get_tsv(self, delimiter, fmt=None):
+        txt = delimiter.join(cell.get_str(fmt=fmt) for cell in self)
+        return txt
 
 
 class Table:
