@@ -517,6 +517,12 @@ class Table:
             alignment for each column, e.g. ``'lrr'``
         rules : bool
             Add toprule and bottomrule
+        title : None | text
+            Title for the table.
+        caption : None | text
+            Caption for the table.
+        rows : list of Row
+            Table body.
         """
         self.columns = columns
         self._table = rows[:]
