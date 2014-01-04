@@ -160,8 +160,9 @@ class CanvasFrame(wx.Frame):
 
     def FillToolBar(self, tb, eelfigure):
         "subclasses should call this after adding their own items"
-        tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
-        self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
+        if hasattr(self.Parent, 'attach'):
+            tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
+            self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
 
         tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"),
                         shortHelp="Save Document")
