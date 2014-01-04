@@ -38,8 +38,32 @@ from . import ui
 
 preferences = dict(
                    keep_recent=3,  # number of recent tables to keep in memory
+                   html_tables_in_fig=True,
                    )
 
+_html_alignments = {'l': 'left',
+                    'r': 'right',
+                    'c': 'center'}
+
+_html_tags = {r'_': 'sub',
+              r'^': 'sup',
+              r'\emph': 'em',
+              r'\textbf': 'b',
+              r'\textit': 'i'}
+
+_html_doc_template = """<!DOCTYPE html>
+<html>
+<head>
+    <title>{title}</title>
+</head>
+
+<body>
+
+{body}
+
+</body>
+</html>
+"""
 
 # to keep track of recent tex out and allow copying
 _recent_texout = []
@@ -67,6 +91,19 @@ def get_pdf(tex_obj):
 """ % txt
     pdf = tex.latex2pdf(document)
     return pdf
+
+
+def save_html(tex_obj, path=None):
+    "Save an fmtxt object as html file"
+    html = make_html_doc(tex_obj)
+    if path is None:
+        msg = "Save as HTML"
+        path = ui.ask_saveas(msg, msg, [('HTML (*.html)', '*.html')])
+    if path:
+        if not path.endswith('.html'):
+            path += '.html'
+        with open(path, 'w') as fid:
+            fid.write(html)
 
 
 def save_pdf(tex_obj, path=None):
@@ -117,6 +154,44 @@ def copy_tex(tex_obj):
     ui.copy_text(txt)
 
 
+def html(text, options={}):
+    """Create html code for a text object
+
+    Parameters
+    ----------
+    text : any
+        Object to be converted to HTML. If the object has a ``.get_html()``
+        method the result of this method is returned, otherwise ``str(text)``.
+    """
+    if hasattr(text, 'get_html'):
+        return text.get_html(options)
+    else:
+        return str(text)
+
+
+def make_html_doc(body, title=None):
+    """
+    Parameters
+    ----------
+    body : fmtxt-object
+        FMTXT object which should be formatted into an HTML document.
+    title : texstr
+        Document title.
+
+    Returns
+    -------
+    html : str
+        HTML document.
+    """
+    if title is None:
+        if hasattr(body, 'get_title'):
+            title = html(body.get_title())
+        else:
+            title = "Untitled"
+    txt = _html_doc_template.format(title=title, body=html(body))
+    return txt
+
+
 def texify(txt):
     """
     prepares non-latex txt for input to tex (e.g. for Matplotlib)
@@ -131,6 +206,28 @@ def texify(txt):
              .replace('{', r'\{') \
              .replace('}', r'\}')
     return out
+
+
+_html_temp = '<{tag}>{body}</{tag}>'
+_html_temp_opt = '<{tag} {options}>{body}</{tag}>'
+def _html_element(tag, body, options=None):
+    """Format an HTML element
+
+    Parameters
+    ----------
+    tag : str
+        The HTML tag.
+    body : FMText
+        The main content between the tags.
+    options : dict
+        Options to be inserted in the start tag.
+    """
+    if options:
+        options_ = ' '.join('%s="%s"' % item for item in options.iteritems())
+        txt = _html_temp_opt.format(tag=tag, options=options_, body=html(body))
+    else:
+        txt = _html_temp.format(tag=tag, body=html(body))
+    return txt
 
 
 class texstr(object):
@@ -215,6 +312,13 @@ class texstr(object):
     def __unicode__(self):
         return self.get_str()
 
+    def get_html(self, fmt=None):
+        txt = self.get_str(fmt)
+        if self.property is not None and self.property in _html_tags:
+            tag = _html_tags[self.property]
+            txt = _html_element(tag, txt)
+        return txt
+
     def get_str(self, fmt=None):
         """
         Returns the string representation.
@@ -278,6 +382,14 @@ class symbol(texstr):
             return self._df
         else:
             return ','.join(str(i) for i in self._df)
+
+    def get_html(self, fmt=None):
+        symbol = texstr.get_html(self, fmt)
+        if self._df is None:
+            return symbol
+        else:
+            text = '%s<sub>%s<\sub>' % (symbol, self.get_df_str())
+            return text
 
     def get_str(self, fmt=None):
         symbol = texstr.get_str(self, fmt=fmt)
@@ -402,6 +514,23 @@ class Cell(texstr):
     def __len__(self):
         return self.width
 
+    def get_html(self, fmt=None):
+        html_repr = texstr.get_html(self, fmt)
+        options = []
+        if self.width > 1:
+            options.append('colspan="%i"' % self.width)
+        if self.just:
+            align = _html_alignments[self.just]
+            options.append('align="%s"' % align)
+
+        if options:
+            start_tag = '<td %s>' % ' '.join(options)
+        else:
+            start_tag = '<td>'
+
+        html_repr = ' %s%s</td>' % (start_tag, html_repr)
+        return html_repr
+
     def get_tex(self, fmt=None):
         tex_repr = texstr.get_tex(self, fmt=fmt)
         if self.width > 1 or self.just:
@@ -431,6 +560,11 @@ class Row(list):
             for _ in xrange(len(cell)):
                 lens.append(cell_len / len(cell))  # TODO: better handling of multicolumn
         return lens
+
+    def get_html(self, fmt=None):
+        html = '\n'.join(cell.get_html(fmt=fmt) for cell in self)
+        html = '<tr>\n%s\n</tr>' % html
+        return html
 
     def get_str(self, c_width, c_just, delimiter='   ',
                 fmt=None):
@@ -658,6 +792,43 @@ class Table:
 
     def __unicode__(self):
         return self.get_str()
+
+    def get_html(self, fmt=None):
+        if self._caption is None:
+            caption = None
+        else:
+            if preferences['html_tables_in_fig']:
+                tag = 'figcaption'
+            else:
+                tag = 'caption'
+            caption = _html_element(tag, self._caption)
+
+        # table body
+        table = []
+        if caption and not preferences['html_tables_in_fig']:
+            table.append(caption)
+        for row in self._table:
+            if isstr(row):
+                if row == "\\midrule":
+                    pass
+#                     table.append('<tr style="border-bottom:1px solid black">')
+            else:
+                table.append(row.get_html(fmt=fmt))
+        body = '\n'.join(table)
+
+        # table frame
+        options = {'border': 0}
+        if self.rules:
+            options['frame'] = 'hsides'
+        txt = _html_element('table', body, options)
+
+        # embedd in a figure
+        if preferences['html_tables_in_fig']:
+            if caption:
+                txt = '\n'.join((txt, caption))
+            txt = _html_element('figure', txt)
+
+        return txt
 
     def get_str(self, fmt=None, delim='   ', linesep=os.linesep):
         """Convert Table to str
