@@ -320,11 +320,11 @@ class FMText(object):
         else:
             raise NotImplementedError("FMText is value, not list")
 
-    def get_html(self, fmt=None):
+    def get_html(self, options={}):
         if isinstance(self._content, list):
-            txt = ''.join(i.get_html(fmt) for i in self._content)
+            txt = ''.join(i.get_html(options) for i in self._content)
         else:
-            txt = self.get_str(fmt)
+            txt = self.get_str(options)
 
         if self.property is not None and self.property in _html_tags:
             tag = _html_tags[self.property]
@@ -332,7 +332,7 @@ class FMText(object):
 
         return txt
 
-    def get_str(self, fmt=None):
+    def get_str(self, options={}):
         """
         Returns the string representation.
 
@@ -343,7 +343,7 @@ class FMText(object):
             texstr object
         """
         if isinstance(self._content, list):
-            return ''.join(i.get_str(fmt) for i in self._content)
+            return ''.join(i.get_str(options) for i in self._content)
         elif isstr(self._content):
             return self._content.replace('\\', '')
         elif self._content is None:
@@ -353,10 +353,8 @@ class FMText(object):
         elif isinstance(self._content, (bool, np.bool_, np.bool8)):
             return '%s' % self._content
         elif np.isscalar(self._content) or getattr(self._content, 'ndim', None) == 0:
-            if fmt:
-                txt = fmt % self._content
-            else:
-                txt = self.fmt % self._content
+            fmt = options.get('fmt', self.fmt)
+            txt = fmt % self._content
             if self.drop0 and len(txt) > 2 and txt.startswith('0.'):
                 txt = txt[1:]
             return txt
@@ -367,12 +365,16 @@ class FMText(object):
             logging.warning(msg)
             return ''
 
-    def get_tex(self, mat=False, fmt=None):
+    def get_tex(self, options={}):
         if isinstance(self._content, list):
-            mat_ = self.mat or mat
-            txt = ''.join(i.get_tex(mat_, fmt) for i in self._content)
+            options_mat = options.get('mat', False)
+            mat = self.mat or options_mat
+            if mat != options_mat:
+                options = options.copy()
+                options['mat'] = mat
+            txt = ''.join(i.get_tex(options) for i in self._content)
         else:
-            txt = self.get_str(fmt=fmt)
+            txt = self.get_str(options)
 
         if self.property:
             txt = r"%s{%s}" % (self.property, txt)
@@ -398,27 +400,27 @@ class symbol(FMText):
         else:
             return ','.join(str(i) for i in self._df)
 
-    def get_html(self, fmt=None):
-        symbol = FMText.get_html(self, fmt)
+    def get_html(self, options={}):
+        symbol = FMText.get_html(self, options)
         if self._df is None:
             return symbol
         else:
             text = '%s<sub>%s<\sub>' % (symbol, self.get_df_str())
             return text
 
-    def get_str(self, fmt=None):
-        symbol = FMText.get_str(self, fmt=fmt)
+    def get_str(self, options={}):
+        symbol = FMTextElement.get_str(self, options)
         if self._df is None:
             return symbol
         else:
             return '%s(%s)' % (symbol, self.get_df_str())
 
-    def get_tex(self, mat=False, fmt=None):
-        out = FMText.get_tex(self, mat, fmt)
+    def get_tex(self, options={}):
+        out = FMText.get_tex(self, options)
         if self._df is not None:
             out += '_{%s}' % self.get_df_str()
 
-        if mat:
+        if options.get('mat', False):
             return out
         else:
             return out.join(('$', '$'))
@@ -483,11 +485,11 @@ class Stars(FMText):
             text = n.ljust(of)
         FMText.__init__(self, text, property=property)
 
-    def get_tex(self, mat=False, fmt=None):
+    def get_tex(self, options={}):
         txt = str(self)
         spaces = r'\ ' * (self.of - self.n)
         txtlist = ['^{', txt, spaces, '}']
-        if not mat:
+        if not options.get('mat', False):
             txtlist = ['$'] + txtlist + ['$']
         return ''.join(txtlist)
 
@@ -527,8 +529,8 @@ class Cell(FMText):
     def __len__(self):
         return self.width
 
-    def get_html(self, fmt=None):
-        html_repr = FMText.get_html(self, fmt)
+    def get_html(self, options={}):
+        html_repr = FMText.get_html(self, options)
         options = []
         if self.width > 1:
             options.append('colspan="%i"' % self.width)
@@ -544,8 +546,8 @@ class Cell(FMText):
         html_repr = ' %s%s</td>' % (start_tag, html_repr)
         return html_repr
 
-    def get_tex(self, fmt=None):
-        tex_repr = FMText.get_tex(self, fmt=fmt)
+    def get_tex(self, options={}):
+        tex_repr = FMText.get_tex(self, options)
         if self.width > 1 or self.just:
             tex_repr = r"\multicolumn{%s}{%s}{%s}" % (self.width, self.just,
                                                       tex_repr)
@@ -565,22 +567,22 @@ class Row(list):
     def __unicode__(self):
         return ' '.join([str(cell) for cell in self])
 
-    def _strlen(self, fmt=None):
+    def _strlen(self, options):
         "returns list of cell-str-lengths; multicolumns handled poorly"
         lens = []
         for cell in self:
-            cell_len = len(cell.get_str(fmt=fmt))
+            cell_len = len(cell.get_str(options))
             for _ in xrange(len(cell)):
                 lens.append(cell_len / len(cell))  # TODO: better handling of multicolumn
         return lens
 
-    def get_html(self, fmt=None):
-        html = '\n'.join(cell.get_html(fmt=fmt) for cell in self)
+    def get_html(self, options={}):
+        html = '\n'.join(cell.get_html(options) for cell in self)
         html = '<tr>\n%s\n</tr>' % html
         return html
 
     def get_str(self, c_width, c_just, delimiter='   ',
-                fmt=None):
+                options={}):
         "returns the row using col spacing provided in c_width"
         col = 0
         out = []
@@ -596,7 +598,7 @@ class Row(list):
                 strlen += len(delimiter) * (cell.width - 1)
                 just = cell.just
             col += cell.width
-            txt = cell.get_str(fmt=fmt)
+            txt = cell.get_str(options)
             if just == 'l':
                 txt = txt.ljust(strlen)
             elif just == 'r':
@@ -607,13 +609,14 @@ class Row(list):
             out.append(txt)
         return delimiter.join(out)
 
-    def get_tex(self, fmt=None):
-        tex = ' & '.join(cell.get_tex(fmt=fmt) for cell in self)
+    def get_tex(self, options={}):
+        tex = ' & '.join(cell.get_tex(options) for cell in self)
         tex += r" \\"
         return tex
 
     def get_tsv(self, delimiter, fmt=None):
-        txt = delimiter.join(cell.get_str(fmt=fmt) for cell in self)
+        options = {'fmt': fmt}
+        txt = delimiter.join(cell.get_str(options) for cell in self)
         return txt
 
 
@@ -806,7 +809,7 @@ class Table:
     def __unicode__(self):
         return self.get_str()
 
-    def get_html(self, fmt=None):
+    def get_html(self, options={}):
         if self._caption is None:
             caption = None
         else:
@@ -826,7 +829,7 @@ class Table:
                     pass
 #                     table.append('<tr style="border-bottom:1px solid black">')
             else:
-                table.append(row.get_html(fmt=fmt))
+                table.append(row.get_html(options))
         body = '\n'.join(table)
 
         # table frame
@@ -843,7 +846,7 @@ class Table:
 
         return txt
 
-    def get_str(self, fmt=None, delim='   ', linesep=os.linesep):
+    def get_str(self, options, delim='   ', linesep=os.linesep):
         """Convert Table to str
 
         Parameters
@@ -862,7 +865,7 @@ class Table:
         widths = []
         for row in self._table:
             if not isstr(row):  # some commands are str
-                row_strlen = row._strlen()
+                row_strlen = row._strlen(options)
                 while len(row_strlen) < len(self.columns):
                     row_strlen.append(0)
                 widths.append(row_strlen)
@@ -902,12 +905,12 @@ class Table:
                 else:
                     pass
             else:
-                txtlines.append(row.get_str(c_width, self.columns, fmt=fmt,
-                                            delimiter=delim))
+                txtlines.append(row.get_str(c_width, self.columns, delim,
+                                            options))
         out = txtlines
 
         if self._title != None:
-            out = ['', self._title.get_str(), ''] + out
+            out = ['', self._title.get_str(options), ''] + out
 
         if isstr(self._caption):
             out.append(self._caption)
@@ -916,7 +919,7 @@ class Table:
 
         return linesep.join(out)
 
-    def get_tex(self, fmt=None):
+    def get_tex(self, options={}):
         tex_pre = [r"\begin{center}",
                    r"\begin{tabular}{%s}" % self.columns]
         if self.rules:
@@ -927,7 +930,7 @@ class Table:
             if isstr(row):
                 tex_body.append(row)
             else:
-                tex_body.append(row.get_tex(fmt=fmt))
+                tex_body.append(row.get_tex(options))
         # post
         tex_post = [r"\end{tabular}",
                     r"\end{center}"]
@@ -1027,7 +1030,8 @@ class Table:
                 path += '.txt'
 
             with open(path, 'w') as f:
-                out = self.get_str(fmt, delim, linesep)
+                options = {'fmt': fmt}
+                out = self.get_str(options, delim, linesep)
                 if isinstance(out, unicode):
                     out = out.encode('utf-8')
                 f.write(out)
