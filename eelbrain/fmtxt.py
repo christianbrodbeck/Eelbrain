@@ -21,8 +21,11 @@ The module also provides functions that work with fmtxt objects:
 @author Christian M Brodbeck 2009; christianmbrodbeck@gmail.com
 """
 
+import datetime
 import logging
 import os
+import cPickle as pickle
+import shutil
 import tempfile
 
 try:
@@ -47,6 +50,7 @@ _html_alignments = {'l': 'left',
 
 _html_tags = {r'_': 'sub',
               r'^': 'sup',
+              r'\author': 'author',
               r'\emph': 'em',
               r'\textbf': 'b',
               r'\textit': 'i'}
@@ -1067,6 +1071,232 @@ class Table(FMTextElement):
                 if isinstance(out, unicode):
                     out = out.encode('utf-8')
                 f.write(out)
+
+
+class Image(FMTextElement):
+    "Represent an image file"
+
+    def __init__(self, path, alt=None):
+        """Represent an image file
+
+        Parameters
+        ----------
+        path : str
+            Path to the image file.
+        alt : None | str
+            Alternate text, placeholder in case the image can not be found
+            (HTML `alt` tag).
+        """
+        self._path = path
+        self._alt = alt or os.path.basename(path)
+
+    def get_html(self, options={}):
+        txt = ' <img src="%s" alt="%s">' % (self._path, html(self._alt))
+        return ' ' + txt
+
+    def get_str(self, options={}):
+        txt = "Image(%r, %s)" % (self._path, str(self._alt))
+        return txt
+
+
+class Figure(FMText):
+    "Represent a figure"
+
+    def __init__(self, content, caption=None):
+        """Represent a figure
+
+        Parameters
+        ----------
+        content : Text
+        """
+        self._caption = caption
+        FMText.__init__(self, content)
+
+    def get_html(self, options={}):
+        body = FMText.get_html(self, options)
+        if self._caption:
+            caption = _html_element('figcaption', self._caption)
+            body = '\n'.join((body, caption))
+        txt = _html_element('figure', body)
+        return txt
+
+    def get_str(self, options={}):
+        body = FMText.get_str(self, options)
+        caption = str(self._caption)
+        txt = "\nFigure:\n%s\nCaption: %s" % (body, caption)
+        return txt
+
+
+class Section(FMText):
+
+    def __init__(self, heading, content=[]):
+        self._heading = heading
+        FMText.__init__(self, content)
+
+    def add_image_figure(self, path, caption, alt=None):
+        image = Image(path, alt)
+        figure = Figure(image, caption)
+        self.append(figure)
+
+    def add_section(self, heading, content=[]):
+        """Add a new subordinate section
+
+        Parameters
+        ----------
+        heading : FMText
+            Heading for the section.
+        content : None | list of FMText
+            Content for the section.
+
+        Returns
+        -------
+        section : Section
+            The new section.
+        """
+        section = Section(heading, content)
+        self.append(section)
+        return section
+
+    def get_html(self, options={}):
+        options = options.copy()
+        options['level'] = options.get('level', 1)
+        heading = self._get_html_section_heading(options)
+
+        options['level'] += 1
+        body = FMText.get_html(self, options)
+
+        txt = '\n\n'.join(('', heading, body))
+        return txt
+
+    def _get_html_section_heading(self, options):
+        level = options['level']
+        tag = 'h%i' % level
+        heading = '<%s>%s</%s>' % (tag, html(self._heading), tag)
+        return heading
+
+    def get_str(self, options={}):
+        level = options.get('level', (1,))
+        number = '.'.join(map(str, level))
+        title = ' '.join((number, str(self._heading)))
+        if len(level) == 1:
+            underline_char = '='
+        else:
+            underline_char = '-'
+        underline = underline_char * len(title)
+
+        content = [title, underline, '']
+        options = options.copy()
+        level = list(level) + [1]
+        for item in self._content:
+            if isinstance(item, Section):
+                options['level'] = tuple(level)
+                txt = item.get_str(options)
+                level[-1] += 1
+                content += ['', '', txt]
+            else:
+                content += [str(item)]
+
+        txt = '\n'.join(content)
+        return txt
+
+    def get_title(self):
+        return self._heading
+
+
+class Report(Section):
+
+    def __init__(self, path, title, author=None, date=True, overwrite=False,
+                 content=[]):
+        if os.path.exists(path):
+            if overwrite:
+                shutil.rmtree(path)
+            else:
+                raise IOError("Already exists: %s" % path)
+        if author is not None:
+            author = FMText(author, r'\author')
+        if date is not None:
+            if date is True:
+                date = str(datetime.date.today())
+            date = FMText(date, r'\date')
+        self._path = path
+        self._name = os.path.basename(path)
+        self._author = author
+        self._date = date
+        Section.__init__(self, title, content)
+
+    def _get_html_section_heading(self, options):
+        level = options['level']
+        if level != 1:
+            raise ValueError("Report must be top level.")
+
+        content = []
+        if self._heading is not None:
+            title = _html_element('h1', self._heading)
+            content.append(title)
+        if self._author is not None:
+            author = html(self._author, options)
+            content.append(author)
+        if self._date is not None:
+            date = html(self._date, options)
+            content.append(date)
+
+        txt = '\n\n'.join(content)
+        return txt
+
+    def get_str(self, options={}):
+        content = []
+        if self._heading is not None:
+            title = str(self._heading)
+            underline = '^' * len(title)
+            content += [title, underline, '']
+        if self._author is not None:
+            author = self._author.get_str(options)
+            content += [author, '']
+        if self._date is not None:
+            date = self._date.get_str(options)
+            content += [date, '']
+
+        if content:
+            content += ['', '']
+
+        level = [1]
+        options = options.copy()
+        for item in self._content:
+            if isinstance(item, Section):
+                options['level'] = tuple(level)
+                txt = item.get_str(options)
+                level[-1] += 1
+            else:
+                txt = item.get_str(options)
+            content += [txt, '']
+
+        txt = '\n'.join(content)
+        return txt
+
+    def new_file_path(self, ext, name=''):
+        if not os.path.exists(self._path):
+            os.mkdir(self._path)
+        path = os.path.join(self._path, os.path.extsep.join((name, ext)))
+        i = 0
+        while os.path.exists(path):
+            filename = os.path.extsep.join((name + '_%i' % i, ext))
+            path = os.path.join(self._path, filename)
+            i += 1
+        return path
+
+    def pickle(self):
+        filepath = os.extsep.join((self._path, 'pickled'))
+        with open(filepath, 'wb') as fid:
+            pickle.dump(self, fid, pickle.HIGHEST_PROTOCOL)
+
+    def save(self, pickle=True, html=True):
+        if pickle:
+            self.pickle()
+        if html:
+            self.save_html()
+
+    def save_html(self):
+        save_html(self, self._path)
 
 
 def unindent(text, skip1=False):
