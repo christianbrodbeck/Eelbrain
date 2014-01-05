@@ -175,7 +175,7 @@ def make_html_doc(body, title=None):
     ----------
     body : fmtxt-object
         FMTXT object which should be formatted into an HTML document.
-    title : texstr
+    title : FMText
         Document title.
 
     Returns
@@ -230,33 +230,40 @@ def _html_element(tag, body, options=None):
     return txt
 
 
-class texstr(object):
-    """
-    An object that stores a value along with formatting properties.
+def asfmtext(text):
+    "Convert non-FMText objects to FMText"
+    if isinstance(text, FMText):
+        return text
+    else:
+        return FMText(text)
+
+
+class FMText(object):
+    """Represent a value along with formatting properties.
 
     The elementary unit of the :py:mod:`fmtxt` module. It can function as a
     string, but can hold formatting properties such as font properties.
 
     The following methods are used to get different string representations:
 
-     - texstr.get_str() -> unicode
-     - texstr.get_tex() -> str (tex)
-     - texstr.__str__() -> str
+     - FMText.get_str() -> unicode
+     - FMText.get_tex() -> str (TeX)
+     - FMText.get_html() -> str (HTML)
+     - str(FMText) -> str
 
     """
     def __init__(self, text, property=None, mat=False,
                  drop0=False, fmt='%.6g'):
-        """
-        An object that stores a value along with formatting properties.
+        """Represent a value along with formatting properties.
 
         Parameters
         ----------
-        text : object | list
-            Any item with a string representation; can be a str, a texstr, a
-            scalar, or a list containing a combination of those.
+        text : str | object | iterable
+            Any item with a string representation (str, FMText, scalar, ...)
+            or an object that iterates over such items (e.g. a list of FMText).
         property : str
-            TeX property that is followed by {}
-            (e.g., ``property=r'\textbf'`` will result in ``'\textbf{...}'``)
+            TeX property that is followed by ``{}`` (e.g.,
+            ``property=r'\textbf'`` for bold)
         mat : bool
             For TeX output, content is enclosed in ``'$...$'``
         drop0 : bool
@@ -265,32 +272,27 @@ class texstr(object):
         fmt : str
             Format-str for numerical values.
         """
-        if hasattr(text, 'get_tex'):  # texstr
-            text = [text]
-        elif (np.iterable(text)) and (not isstr(text)):  # lists
-            t_new = []  # replace problematic stuff
-            for t in text:
-                if type(t) in [texstr, Stars]:
-                    t_new.append(t)
-                else:  # need to add texstr subclasses
-                    t_new.append(texstr(t))
-            text = t_new
-
+        # np integers are not instance of int
         if isinstance(text, np.integer):
-            # np integers are not recognized as instance of int
-            self.text = int(text)
-        else:
-            self.text = text
+            text = int(text)
+
+        # convert complex objects to list of FMText
+        if isinstance(text, FMText):
+            text = [text]
+        elif (np.iterable(text) and not isstr(text)):  # lists
+            text = map(asfmtext, text)
+
+        self._content = text
         self.mat = mat
         self.drop0 = drop0
         self.fmt = fmt
         self.property = property
 
     def __add__(self, other):
-        return texstr([self, other])
+        return FMText([self, other])
 
     def __repr_items__(self):
-        items = [repr(self.text)]
+        items = [repr(self._content)]
         if self.property:
             items.append(repr(self.property))
         if self.mat:
@@ -312,11 +314,22 @@ class texstr(object):
     def __unicode__(self):
         return self.get_str()
 
+    def append(self, content):
+        if isinstance(self._content, list):
+            self._content.append(asfmtext(content))
+        else:
+            raise NotImplementedError("FMText is value, not list")
+
     def get_html(self, fmt=None):
-        txt = self.get_str(fmt)
+        if isinstance(self._content, list):
+            txt = ''.join(i.get_html(fmt) for i in self._content)
+        else:
+            txt = self.get_str(fmt)
+
         if self.property is not None and self.property in _html_tags:
             tag = _html_tags[self.property]
             txt = _html_element(tag, txt)
+
         return txt
 
     def get_str(self, fmt=None):
@@ -329,51 +342,53 @@ class texstr(object):
             can be used to override the format string associated with the
             texstr object
         """
-        if isstr(self.text):
-            return self.text.replace('\\', '')
-        elif np.iterable(self.text):
-            return ''.join([str(t) for t in self.text])
-        elif self.text is None:
+        if isinstance(self._content, list):
+            return ''.join(i.get_str(fmt) for i in self._content)
+        elif isstr(self._content):
+            return self._content.replace('\\', '')
+        elif self._content is None:
             return ''
-        elif np.isnan(self.text):
+        elif np.isnan(self._content):
             return 'NaN'
-        elif isinstance(self.text, (bool, np.bool_, np.bool8)):
-            return '%s' % self.text
-        elif np.isscalar(self.text) or getattr(self.text, 'ndim', None) == 0:
+        elif isinstance(self._content, (bool, np.bool_, np.bool8)):
+            return '%s' % self._content
+        elif np.isscalar(self._content) or getattr(self._content, 'ndim', None) == 0:
             if fmt:
-                txt = fmt % self.text
+                txt = fmt % self._content
             else:
-                txt = self.fmt % self.text
+                txt = self.fmt % self._content
             if self.drop0 and len(txt) > 2 and txt.startswith('0.'):
                 txt = txt[1:]
             return txt
-        elif not self.text:
+        elif not self._content:
             return ''
         else:
-            msg = "Unknown text in tex.texstr: {0}".format(str(self.text))
+            msg = "Unknown text in tex.texstr: {0}".format(str(self._content))
             logging.warning(msg)
             return ''
 
     def get_tex(self, mat=False, fmt=None):
-        if isstr(self.text) or not np.iterable(self.text):
-            tex = self.get_str(fmt=fmt)
+        if isinstance(self._content, list):
+            mat_ = self.mat or mat
+            txt = ''.join(i.get_tex(mat_, fmt) for i in self._content)
         else:
-            tex = ''.join([tex_e.get_tex(mat=(self.mat or mat)) for tex_e in
-                           self.text])
+            txt = self.get_str(fmt=fmt)
 
         if self.property:
-            tex = r"%s{%s}" % (self.property, tex)
-        if (self.mat) and (not mat):
-            tex = "$%s$" % tex
-        return tex
+            txt = r"%s{%s}" % (self.property, txt)
+
+        if self.mat and not mat:
+            txt = "$%s$" % txt
+
+        return txt
 
 
-class symbol(texstr):
+class symbol(FMText):
     "Print df neatly in plain text as well as formatted"
     def __init__(self, symbol, df=None):
         assert (df is None) or np.isscalar(df) or isstr(df) or np.iterable(df)
         self._df = df
-        texstr.__init__(self, symbol)
+        FMText.__init__(self, symbol)
 
     def get_df_str(self):
         if np.isscalar(self._df):
@@ -384,7 +399,7 @@ class symbol(texstr):
             return ','.join(str(i) for i in self._df)
 
     def get_html(self, fmt=None):
-        symbol = texstr.get_html(self, fmt)
+        symbol = FMText.get_html(self, fmt)
         if self._df is None:
             return symbol
         else:
@@ -392,14 +407,14 @@ class symbol(texstr):
             return text
 
     def get_str(self, fmt=None):
-        symbol = texstr.get_str(self, fmt=fmt)
+        symbol = FMText.get_str(self, fmt=fmt)
         if self._df is None:
             return symbol
         else:
             return '%s(%s)' % (symbol, self.get_df_str())
 
     def get_tex(self, mat=False, fmt=None):
-        out = texstr.get_tex(self, mat, fmt)
+        out = FMText.get_tex(self, mat, fmt)
         if self._df is not None:
             out += '_{%s}' % self.get_df_str()
 
@@ -411,7 +426,7 @@ class symbol(texstr):
 
 def p(p, digits=3, stars=None, of=3):
     """
-    returns a texstr with properties set for p-values
+    returns a FMText with properties set for p-values
 
     """
     if p < 10 ** -digits:  # APA 6th, p. 114
@@ -420,39 +435,35 @@ def p(p, digits=3, stars=None, of=3):
     else:
         mat = False
     fmt = '%' + '.%if' % digits
-    ts_p = texstr(p, fmt=fmt, drop0=True, mat=mat)
+    ts_p = FMText(p, fmt=fmt, drop0=True, mat=mat)
     if stars is None:
         return ts_p
     else:
         ts_s = Stars(stars, of=of)
-        return texstr((ts_p, ts_s), mat=True)
+        return FMText((ts_p, ts_s), mat=True)
 
 
 def stat(x, fmt="%.2f", stars=None, of=3, drop0=False):
     """
-    returns a texstr with properties set for a statistic (e.g. a t-value)
+    returns a FMText with properties set for a statistic (e.g. a t-value)
 
     """
-    ts_stat = texstr(x, fmt=fmt, drop0=drop0)
+    ts_stat = FMText(x, fmt=fmt, drop0=drop0)
     if stars is None:
         return ts_stat
     else:
         ts_s = Stars(stars, of=of)
-        return texstr((ts_stat, ts_s), mat=True)
+        return FMText((ts_stat, ts_s), mat=True)
 
 
 def eq(name, result, eq='=', df=None, fmt='%.2f', drop0=False, stars=None,
        of=3):
     symbol_ = symbol(name, df=df)
     stat_ = stat(result, fmt=fmt, drop0=drop0, stars=stars, of=of)
-    return texstr([symbol_, eq, stat_], mat=True)
+    return FMText([symbol_, eq, stat_], mat=True)
 
 
-def bold(txt):
-    return texstr(txt, property=r'\textbf')
-
-
-class Stars(texstr):
+class Stars(FMText):
     """
     Shortcut for adding stars to a table and spaces in place of absent stars,
     so that alignment to the right can be used.
@@ -470,7 +481,7 @@ class Stars(texstr):
             text = '*' * n + ' ' * (of - n)
         else:
             text = n.ljust(of)
-        texstr.__init__(self, text, property=property)
+        FMText.__init__(self, text, property=property)
 
     def get_tex(self, mat=False, fmt=None):
         txt = str(self)
@@ -483,21 +494,23 @@ class Stars(texstr):
 
 # Table ---
 
-class Cell(texstr):
+class Cell(FMText):
     def __init__(self, text=None, property=None, width=1, just=None,
                  **texstr_kwargs):
         """A cell for a table
 
         Parameters
         ----------
+        text : FMText
+            Cell content.
         width : int
             Width in columns for multicolumn cells.
         just : None | 'l' | 'r' | 'c'
             Justification. None: use column standard.
         others :
-            texstr parameters.
+            FMText parameters.
         """
-        texstr.__init__(self, text, property, **texstr_kwargs)
+        FMText.__init__(self, text, property, **texstr_kwargs)
         self.width = width
         if width > 1 and not just:
             self.just = 'l'
@@ -505,7 +518,7 @@ class Cell(texstr):
             self.just = just
 
     def __repr_items__(self):
-        items = texstr.__repr_items__(self)
+        items = FMText.__repr_items__(self)
         if self.width != 1:
             i = min(2, len(items))
             items.insert(i, 'width=%s' % self.width)
@@ -515,7 +528,7 @@ class Cell(texstr):
         return self.width
 
     def get_html(self, fmt=None):
-        html_repr = texstr.get_html(self, fmt)
+        html_repr = FMText.get_html(self, fmt)
         options = []
         if self.width > 1:
             options.append('colspan="%i"' % self.width)
@@ -532,7 +545,7 @@ class Cell(texstr):
         return html_repr
 
     def get_tex(self, fmt=None):
-        tex_repr = texstr.get_tex(self, fmt=fmt)
+        tex_repr = FMText.get_tex(self, fmt=fmt)
         if self.width > 1 or self.just:
             tex_repr = r"\multicolumn{%s}{%s}{%s}" % (self.width, self.just,
                                                       tex_repr)
@@ -684,7 +697,7 @@ class Table:
     def cell(self, *args, **kwargs):
         """
         args:   text, *properties
-        OR:     texstr object
+        OR:     FMText object
 
         properties are tex text properties (e.g. "textbf")
 
@@ -696,7 +709,7 @@ class Table:
         width=1     use value >1 for multicolumn cells
         just='l'    justification (only for multicolumn)
         mat=False   enclose tex output in $...$ if True
-        texstr kwargs ...
+        FMText kwargs ...
 
 
         number properties
@@ -766,18 +779,18 @@ class Table:
             self._table.append(r"\cmidrule{%s}" % span)
 
     def title(self, *args, **kwargs):
-        """Set the table title (with texstr args/kwargs)"""
+        """Set the table title (with FMText args/kwargs)"""
         if (len(args) == 1) and (args[0] is None):
             self._title = None
         else:
-            self._title = texstr(*args, **kwargs)
+            self._title = FMText(*args, **kwargs)
 
     def caption(self, *args, **kwargs):
-        """Set the table caption (with texstr args/kwargs)"""
+        """Set the table caption (with FMText args/kwargs)"""
         if (len(args) == 1) and (args[0] is None):
             self._caption = None
         else:
-            self._caption = texstr(*args, **kwargs)
+            self._caption = FMText(*args, **kwargs)
 
     def __repr__(self):
         """
