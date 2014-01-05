@@ -455,9 +455,24 @@ class symbol(FMTextElement):
 
 
 def p(p, digits=3, stars=None, of=3):
-    """
-    returns a FMText with properties set for p-values
+    """Create an FMText representation of a p-value
 
+    Parameters
+    ----------
+    p : scalar
+        P-value.
+    digits : int
+        Significant digits.
+    stars : None | str
+        Stars decorating the p-value (e.g., "**")
+    of : int
+        Max numbers of star characters possible (to add empty space for
+        alignment).
+
+    Returns
+    -------
+    text : FMText
+        FMText with formatted p-value.
     """
     if p < 10 ** -digits:  # APA 6th, p. 114
         p = '< .' + '0' * (digits - 1) + '1'
