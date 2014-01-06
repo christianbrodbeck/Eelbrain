@@ -2117,7 +2117,7 @@ class MneExperiment(FileTree):
         return group
 
     def _eval_model(self, model):
-        model = model.split('%')
+        model = [v.strip() for v in model.split('%')]
         model.sort()
         return '%'.join(model)
 
