@@ -1,3 +1,5 @@
+# requires: Fox_Prestige_data.txt
+#
 # Results cross-checked with Fox 2008, p. 139:
 # --------------------------------------------
 ##
