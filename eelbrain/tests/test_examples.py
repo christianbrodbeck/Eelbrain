@@ -34,7 +34,7 @@ def test_0():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('align.py')
+    execfile('align.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -60,7 +60,7 @@ def test_1():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('report.py')
+    execfile('report.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -86,7 +86,7 @@ def test_2():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('table.py')
+    execfile('table.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -112,7 +112,7 @@ def test_3():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('table_pdf.py')
+    execfile('table_pdf.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -138,7 +138,7 @@ def test_4():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('mne_sample_loader.py')
+    execfile('mne_sample_loader.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -164,7 +164,7 @@ def test_5():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('simple meg.py')
+    execfile('simple meg.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -190,7 +190,7 @@ def test_6():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('topo.py')
+    execfile('topo.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -216,7 +216,7 @@ def test_7():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('uts cluster permutation test.py')
+    execfile('uts cluster permutation test.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -242,7 +242,7 @@ def test_8():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('uts.py')
+    execfile('uts.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -268,7 +268,7 @@ def test_9():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('ANCOVA_Crawley.py')
+    execfile('ANCOVA_Crawley.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -294,7 +294,7 @@ def test_10():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('ANCOVA_rutherford.py')
+    execfile('ANCOVA_rutherford.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -320,7 +320,7 @@ def test_11():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('ANOVA.py')
+    execfile('ANOVA.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -346,7 +346,7 @@ def test_12():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('ANOVA_rutherford_1.py')
+    execfile('ANOVA_rutherford_1.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -372,7 +372,7 @@ def test_13():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('ANOVA_rutherford_2.py')
+    execfile('ANOVA_rutherford_2.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -398,7 +398,7 @@ def test_14():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('Fox_Prestige.py')
+    execfile('Fox_Prestige.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -424,7 +424,7 @@ def test_15():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('pdf.py')
+    execfile('pdf.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -450,7 +450,7 @@ def test_16():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('simple.py')
+    execfile('simple.py', {})
     plt.close('all')
 
     # delete temporary files
@@ -476,7 +476,7 @@ def test_17():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile('progress_monitor.py')
+    execfile('progress_monitor.py', {})
     plt.close('all')
 
     # delete temporary files

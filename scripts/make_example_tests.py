@@ -30,7 +30,7 @@ def test_{i}():
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
     plot.configure_backend(False, False)
-    execfile({filename!r})
+    execfile({filename!r}, {{}})
     plt.close('all')
 
     # delete temporary files
