@@ -26,6 +26,7 @@ import logging
 import os
 import cPickle as pickle
 import shutil
+from StringIO import StringIO
 import tempfile
 
 try:
@@ -97,17 +98,33 @@ def get_pdf(tex_obj):
     return pdf
 
 
-def save_html(tex_obj, path=None):
-    "Save an fmtxt object as html file"
-    html = make_html_doc(tex_obj)
+def save_html(fmtxt, path=None):
+    "Save an FMText object as html file"
     if path is None:
         msg = "Save as HTML"
         path = ui.ask_saveas(msg, msg, [('HTML (*.html)', '*.html')])
-    if path:
-        if not path.endswith('.html'):
-            path += '.html'
-        with open(path, 'w') as fid:
-            fid.write(html)
+        if not path:
+            return
+    path = os.path.abspath(path)
+
+    extension = '.html'
+    if path.endswith(extension):
+        resource_dir = path[:-len(extension)]
+        file_path = path
+    else:
+        resource_dir = path
+        file_path = path + extension
+
+    if os.path.exists(resource_dir):
+        shutil.rmtree(resource_dir)
+    os.mkdir(resource_dir)
+
+    root = os.path.dirname(file_path)
+    resource_dir = os.path.relpath(resource_dir, root)
+
+    buf = make_html_doc(fmtxt, root, resource_dir)
+    with open(file_path, 'wb') as fid:
+        fid.write(buf)
 
 
 def save_pdf(tex_obj, path=None):
@@ -159,13 +176,17 @@ def copy_tex(tex_obj):
 
 
 def html(text, options={}):
-    """Create html code for a text object
+    """Create html code for any object with a string representation
 
     Parameters
     ----------
     text : any
         Object to be converted to HTML. If the object has a ``.get_html()``
         method the result of this method is returned, otherwise ``str(text)``.
+
+    Options
+    -------
+    ...
     """
     if hasattr(text, 'get_html'):
         return text.get_html(options)
@@ -173,14 +194,20 @@ def html(text, options={}):
         return str(text)
 
 
-def make_html_doc(body, title=None):
+def make_html_doc(body, root, resource_dir, title=None):
     """
     Parameters
     ----------
     body : fmtxt-object
         FMTXT object which should be formatted into an HTML document.
-    title : FMText
-        Document title.
+    root : str
+        Path to the directory in which the HTML file is going to be located.
+    resource_dir : str
+        Path to the directory containing resources like images, relative to
+        root.
+    title : None | FMText
+        Document title. Default is title specified by body.get_title() or
+        "Untitled".
 
     Returns
     -------
@@ -192,7 +219,10 @@ def make_html_doc(body, title=None):
             title = html(body.get_title())
         else:
             title = "Untitled"
-    txt = _html_doc_template.format(title=title, body=html(body))
+
+    options = {'root': root, 'resource_dir': resource_dir}
+    txt_body = html(body, options)
+    txt = _html_doc_template.format(title=title, body=txt_body)
     return txt
 
 
@@ -295,6 +325,10 @@ class FMTextElement(object):
         return self.get_str()
 
     def __add__(self, other):
+        if isinstance(other, str) and other == '':
+            # added to prevent matplotlib from thinking Image is a file path
+            raise ValueError("Can't add empty string")
+
         return FMText([self, other])
 
     def get_html(self, options):
@@ -1073,30 +1107,87 @@ class Table(FMTextElement):
                 f.write(out)
 
 
-class Image(FMTextElement):
+class Image(FMTextElement, StringIO):
     "Represent an image file"
 
-    def __init__(self, path, alt=None):
+    def __init__(self, filename, alt=None, buf=''):
         """Represent an image file
+
+        Parameters
+        ----------
+        filename : str
+            Filename for the image file (should have the appropriate
+            extension). If a document has multiple images with the same name,
+            a unique integer is appended.
+        alt : None | str
+            Alternate text, placeholder in case the image can not be found
+            (HTML `alt` tag).
+        """
+        StringIO.__init__(self, buf)
+
+        self._filename = filename
+        self._alt = alt or filename
+
+    @classmethod
+    def from_file(self, path, filename=None, alt=None):
+        """Create an Image object from an existsing image file.
 
         Parameters
         ----------
         path : str
             Path to the image file.
+        filename : None | str
+            Filename for the target image. The default is
+            os.path.basename(path).
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
         """
-        self._path = path
-        self._alt = alt or os.path.basename(path)
+        if filename is None:
+            filename = os.path.basename(path)
+
+        with open(path, 'rb') as fid:
+            buf = fid.read()
+
+        return Image(filename, alt, buf)
+
+    def __repr_items__(self):
+        out = [repr(self._filename)]
+        if self._alt != self._filename:
+            out.append(repr(self._alt))
+        v = self.getvalue()
+        if len(v) > 0:
+            out.append('buf=%s...' % repr(v[:50]))
+        return out
 
     def get_html(self, options={}):
-        txt = ' <img src="%s" alt="%s">' % (self._path, html(self._alt))
+        dirpath = os.path.join(options['root'], options['resource_dir'])
+        abspath = os.path.join(dirpath, self._filename)
+        if os.path.exists(abspath):
+            i = 0
+            name, ext = os.path.splitext(self._filename)
+            while os.path.exists(abspath):
+                i += 1
+                filename = name + ' %i' % i + ext
+                abspath = os.path.join(dirpath, filename)
+
+        self.save_image(abspath)
+
+        relpath = os.path.relpath(abspath, options['root'])
+        txt = ' <img src="%s" alt="%s">' % (relpath, html(self._alt))
         return ' ' + txt
 
     def get_str(self, options={}):
-        txt = "Image(%r, %s)" % (self._path, str(self._alt))
+        txt = "Image (%s)" % str(self._alt)
         return txt
+
+    def save_image(self, dst):
+        if os.path.isdir(dst):
+            dst = os.path.join(dst, self._filename)
+
+        buf = self.getvalue()
+        with open(dst, 'wb') as fid:
+            fid.write(buf)
 
 
 class Figure(FMText):
@@ -1133,10 +1224,30 @@ class Section(FMText):
         self._heading = heading
         FMText.__init__(self, content)
 
-    def add_image_figure(self, path, caption, alt=None):
-        image = Image(path, alt)
+    def add_image_figure(self, filename, caption, alt=None):
+        """Add an image in a figure frame to the section
+
+        Parameters
+        ----------
+        filename : str
+            Filename for the image file (should have the appropriate
+            extension). If a document has multiple images with the same name,
+            a unique integer is appended.
+        caption : FMText
+            Image caption.
+        alt : None | str
+            Alternate text, placeholder in case the image can not be found
+            (HTML `alt` tag).
+
+        Returns
+        -------
+        image : Image
+            Image object that was added.
+        """
+        image = Image(filename, alt)
         figure = Figure(image, caption)
         self.append(figure)
+        return image
 
     def add_section(self, heading, content=[]):
         """Add a new subordinate section
@@ -1205,21 +1316,13 @@ class Section(FMText):
 
 class Report(Section):
 
-    def __init__(self, path, title, author=None, date=True, overwrite=False,
-                 content=[]):
-        if os.path.exists(path):
-            if overwrite:
-                shutil.rmtree(path)
-            else:
-                raise IOError("Already exists: %s" % path)
+    def __init__(self, title, author=None, date=True, content=[]):
         if author is not None:
             author = FMText(author, r'\author')
         if date is not None:
             if date is True:
                 date = str(datetime.date.today())
             date = FMText(date, r'\date')
-        self._path = path
-        self._name = os.path.basename(path)
         self._author = author
         self._date = date
         Section.__init__(self, title, content)
@@ -1273,30 +1376,45 @@ class Report(Section):
         txt = '\n'.join(content)
         return txt
 
-    def new_file_path(self, ext, name=''):
-        if not os.path.exists(self._path):
-            os.mkdir(self._path)
-        path = os.path.join(self._path, os.path.extsep.join((name, ext)))
-        i = 0
-        while os.path.exists(path):
-            filename = os.path.extsep.join((name + '_%i' % i, ext))
-            path = os.path.join(self._path, filename)
-            i += 1
-        return path
+    def pickle(self, path, extension='.pickled'):
+        """Pickle the Report object
 
-    def pickle(self):
-        filepath = os.extsep.join((self._path, 'pickled'))
-        with open(filepath, 'wb') as fid:
+        Parameters
+        ----------
+        path : str
+            Location where to save the report. For None, the file is saved
+            in the report's folder.
+        extension : None | str
+            Extension to append to the path. If extension is None, or path
+            already ends with extension nothing is done.
+        """
+        if extension and not path.endswith(extension):
+            path += extension
+
+        with open(path, 'wb') as fid:
             pickle.dump(self, fid, pickle.HIGHEST_PROTOCOL)
 
-    def save(self, pickle=True, html=True):
-        if pickle:
-            self.pickle()
-        if html:
-            self.save_html()
+    def save_html(self, path, pickle=True):
+        """Save HTML file of the report
 
-    def save_html(self):
-        save_html(self, self._path)
+        Parameters
+        ----------
+        path : str
+            Path at which to save the html. Does not need to contain the
+            extension. A folder with the same name is created fo resource
+            files.
+        pickle : bool
+            Also store a pickled version of the report in the resource folder.
+        """
+        if path.endswith('.html'):
+            path = path[:-5]
+
+        save_html(self, path)
+
+        if pickle:
+            name = os.path.basename(path)
+            pickle_path = os.path.join(path, name)
+            self.pickle(pickle_path)
 
 
 def unindent(text, skip1=False):

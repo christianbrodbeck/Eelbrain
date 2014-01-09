@@ -2,12 +2,11 @@ import matplotlib.pyplot as plt
 from eelbrain.lab import *
 from eelbrain import fmtxt
 
-
 ds = datasets.get_uv()
 path = 'test_report'
 
 # create the initial report
-report = fmtxt.Report(path, "Test Report", "Test Author")
+report = fmtxt.Report("Test Report", "Test Author")
 
 # add a new section to the report and add some text
 s1 = report.add_section("The Big Analysis")
@@ -31,14 +30,11 @@ s12.append("And now finally we will show a figure")
 print s12
 
 # add a figure 
-fpath = report.new_file_path('svg', 'boxplot')
+image = report.add_image_figure("boxplot.svg", "Boxplot of all the data")
 p = plot.uv.boxplot('fltvar', 'A%B', 'rm', ds=ds)
-p.fig.savefig(fpath)
+p.fig.savefig(image, format='svg')
 plt.close(p.fig)
-print s12
-s12.add_image_figure(fpath, "Boxplot of all the data")
-print s12
 
 # print string representation and save
 print report.get_str()
-report.save()
+report.save_html(path)
