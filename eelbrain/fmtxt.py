@@ -924,6 +924,7 @@ class Table(FMTextElement):
             table_options = {'border': 1, 'frame': 'hsides', 'rules': 'none'}
         else:
             table_options = {'border': 0}
+        table_options['cellpadding'] = 2
         txt = _html_element('table', body, table_options)
 
         # embedd in a figure
