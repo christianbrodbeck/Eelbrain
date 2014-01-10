@@ -11,9 +11,9 @@ import scipy.stats
 from matplotlib import pyplot as P
 
 from ... import fmtxt
-from ..data_obj import (isvar, isndvar, asvar, isfactor, asfactor, assub,
-                        ismodel, iscategorial, ascategorial, cellname,
-                        Celltable)
+from ..data_obj import (ascategorial, asfactor, assub, asvar, cellname,
+                        Celltable, Factor, iscategorial, isfactor, ismodel,
+                        isndvar, isvar)
 from .permutation import resample
 
 
@@ -218,6 +218,28 @@ def star(p_list, out=str, levels=True, trend=False, corr='Hochberg',
     else:
         return out
 
+
+def star_factor(p, levels={.1: '`', .05 : '*', .01 : '**', .001: '***'}):
+    """Create a factor with stars for a sequence of p-values
+
+    Parameters
+    ----------
+    p : sequence of scalar
+        Sequence of p-values.
+    levels : dict {scalar: str}
+        {value: star-mark} dictionary.
+
+    Returns
+    -------
+    stars : Factor
+        Factor with the appropriate star marking for each item in p.
+    """
+    sorted_levels = sorted(levels, reverse=True)
+    star_labels = {i: levels[v] for i, v in enumerate(sorted_levels, 1)}
+    star_labels[0] = ''
+    level_values = np.reshape(sorted_levels, (-1, 1))
+    stars = Factor(np.sum(p < level_values, 0), labels=star_labels)
+    return stars
 
 
 def oneway(Y, X, match=None, sub=None, par=True, title=None, ds=None):

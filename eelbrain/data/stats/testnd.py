@@ -18,6 +18,7 @@ from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
 from .glm import lm_fitter
 from .permutation import resample
 from .stats import ftest_f, ftest_p
+from .test import star_factor
 
 
 __all__ = ['ttest_1samp', 'ttest_ind', 'ttest_rel', 'anova', 'corr',
@@ -1038,7 +1039,8 @@ class _ClusterDist:
 
         # prepare container for clusters
         ds = Dataset()
-        ds['p'] = Var(cluster_p[sort_idx])
+        ds['p'] = p = Var(cluster_p[sort_idx])
+        ds['*'] = star_factor(p)
         ds['v'] = Var(cluster_v[sort_idx])
 
         # time window
