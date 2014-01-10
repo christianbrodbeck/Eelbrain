@@ -1308,10 +1308,19 @@ class Section(FMText):
         return txt
 
     def _get_html_section_heading(self, options):
+        heading = html(self._heading)
+
         level = options['level']
         tag = 'h%i' % level
-        heading = '<%s>%s</%s>' % (tag, html(self._heading), tag)
-        return heading
+        txt = _html_element(tag, heading)
+        if 'toc' in options:
+            toc_id = max(options['toc_ids']) + 1
+            options['toc_ids'].append(toc_id)
+            txt = _html_element('a', txt, {'name': toc_id})
+
+            toc_txt = _html_element('a', heading, {'href': '#%i' % toc_id})
+            options['toc'].append((level, toc_txt))
+        return txt
 
     def get_str(self, options={}):
         level = options.get('level', (1,))
@@ -1370,11 +1379,7 @@ class Report(Section):
         self._date = date
         Section.__init__(self, title, content)
 
-    def _get_html_section_heading(self, options):
-        level = options['level']
-        if level != 1:
-            raise ValueError("Report must be top level.")
-
+    def get_html(self, options={}):
         content = []
         if self._heading is not None:
             title = _html_element('h1', self._heading)
@@ -1386,7 +1391,27 @@ class Report(Section):
             date = html(self._date, options)
             content.append(date)
 
-        txt = '\n\n'.join(content)
+        options = options.copy()
+        options['toc'] = []
+        options['toc_ids'] = [-1]
+        options['level'] = 2
+        body = FMText.get_html(self, options)
+
+        toc = ['<ul>']
+        level = 2
+        for item_level, item in options['toc']:
+            if item_level > level:
+                toc.append('<ul>' * (item_level - level))
+            elif item_level < level:
+                toc.append('</ul>' * (level - item_level))
+            toc.append(_html_element('li', item))
+            level = item_level
+        toc.append('</ul></li>' * (level - 1) + '</ul>')
+        toc = '\n'.join(toc)
+
+        content.append(toc)
+        content.append(body)
+        txt = '\n<br>\n'.join(content)
         return txt
 
     def get_str(self, options={}):
