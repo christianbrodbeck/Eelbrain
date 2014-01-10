@@ -1,25 +1,43 @@
 """
-Create text objects which can be output as str as well as tex.
-The main class is :py:class:`~eelbrain.fmtxt.Table`, which can represent
-tables in equal width font as well as tex.
+Text objects which can be output as str but also as formatted text (currently
+TeX and HTML). Different classes can be used to achieve special formatting:
 
-:py:mod:`fmtxt` objects provide:
+:class:`FMText`
+    Any string of text, along with a formatting property specified as TeX
+    property. FMText objects can be sequenced and nested.
+:class:`Table`
+    Tables with multicolumn cells.
+:class:`Image`
+    Images.
+:class:`Figure`
+    Figure with content and caption.
+:class:`Section`
+    Document section containing a title and content (any other FMText objects,
+    including other Section objects for subsections).
+:class:`Report`
+    Document consisting of several sections plus a title.
 
-- a :py:meth:`__str__` method for a string representation
-- a :py:meth:`get_gex` method for a tex code representation
+Whenever an parameter asks for an FMText object, a plain str can also be
+provided and will be converted to an FMText object.
+
+FMText objects provide an interface to formatting through different methods:
+
+- the :py:meth:`__str__` method for a string representation
+- a :py:meth:`get_tex` method for a TeX representation
+- a :py:meth:`get_html` method for a HTML representation
 
 The module also provides functions that work with fmtxt objects:
 
-- :py:func:`save_tex` for saving an object's tex representation
-- :py:func:`copy_tex` for copying an object's tex representation to
+- :func:`save_tex` for saving an object's tex representation
+- :func:`copy_tex` for copying an object's tex representation to
   the clipboard
-- :py:func:`save_pdf` for saving a pdf
-- :py:func:`copy_pdf` for copying a pdf to the clipboard
+- :func:`save_pdf` for saving a pdf
+- :func:`copy_pdf` for copying a pdf to the clipboard
+- :func:`save_html` for saving an HTML file
 
-
-
-@author Christian M Brodbeck 2009; christianmbrodbeck@gmail.com
 """
+# Author:  Christian Brodbeck <christianbrodbeck@nyu.edu>
+
 
 import datetime
 import logging
@@ -1221,6 +1239,16 @@ class Figure(FMText):
 class Section(FMText):
 
     def __init__(self, heading, content=[]):
+        """Represent a section of an FMText document
+
+        Parameters
+        ----------
+        heading : FMText
+            Section heading.
+        content : list of FMText
+            Section content. Can also be constructed dynamically through the
+            different .add_... methods.
+        """
         self._heading = heading
         FMText.__init__(self, content)
 
@@ -1317,6 +1345,21 @@ class Section(FMText):
 class Report(Section):
 
     def __init__(self, title, author=None, date=True, content=[]):
+        """Represent an FMText report document
+
+        Parameters
+        ----------
+        title : FMText
+            Document title.
+        author : None | FMText
+            Document autho.
+        date : None | True | FMText
+            Date to print on the report. If True, the current day (object
+            initialization) is used.
+        content : list of FMText
+            Report content. Can also be constructed dynamically through the
+            different .add_... methods.
+        """
         if author is not None:
             author = FMText(author, r'\author')
         if date is not None:
@@ -1418,13 +1461,15 @@ class Report(Section):
 
 
 def unindent(text, skip1=False):
-    """
-    removes the minimum number of leading spaces present in all lines.
+    """Removes leading spaces that are present in all lines of ``text``.
 
+    Parameters
+    ----------
+    test : str
+        The text from which leading spaces should be removed.
     skip1 : bool
         Ignore the first line when determining number of spaces to unindent,
         and remove all leading whitespaces from it.
-
     """
     # count leading whitespaces
     lines = text.splitlines()
