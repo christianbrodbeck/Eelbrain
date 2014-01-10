@@ -2274,14 +2274,55 @@ class MneExperiment(FileTree):
             subject = subjects[0]
         self.set(subject=subject, add=True)
 
-    def show_subjects(self):
-        """Print a table with the MRI subject corresponding to each subject"""
-        table = fmtxt.Table('ll')
-        table.cells('subject', 'mrisubject')
+    def show_subjects(self, group='all', count=True, mri=True,
+                       mrisubject=False):
+        """Print a table with subjects
+
+        Parameters
+        ----------
+        group : str
+            Group of subjects to display.
+        count : bool
+            Add  a column with line numbers.
+        mri : bool
+            Add a column specifying whether the subject is using a scaled MRI
+            or whether it has its own MRI.
+        mrisubject : bool
+            Add a column showing the MRI subject corresponding to each subject.
+        """
+        n_col = bool(count) + 1 + bool(mri) + bool(mrisubject)
+        table = fmtxt.Table('l' * n_col)
+
+        # header
+        if count:
+            table.cell('#')
+        table.cell('subject')
+        if mri:
+            table.cell('mri')
+        if mrisubject:
+            table.cell('mrisubject')
         table.midrule()
-        for _ in self.iter('subject'):
+
+        # body
+        for i, _ in enumerate(self.iter(group=group)):
+            if count:
+                table.cell(i)
             table.cell(self.get('subject'))
-            table.cell(self.get('mrisubject'))
+            if mri:
+                mri_dir = self.get('mri-dir')
+                subject = self.get('mrisubject')
+                if not os.path.exists(mri_dir):
+                    table.cell('*missing')
+                elif is_fake_mri(mri_dir):
+                    mri_sdir = self.get('mri-sdir')
+                    info = mne.coreg.read_mri_cfg(subject, mri_sdir)
+                    cell = "%s * %s" % (info['subject_from'],
+                                        str(info['scale']))
+                    table.cell(cell)
+                else:
+                    table.cell(subject)
+            if mrisubject:
+                table.cell(self.get('mrisubject'))
         return table
 
     def show_summary(self, templates=['raw-file'], missing='-', link=' > ',
