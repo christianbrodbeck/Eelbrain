@@ -320,8 +320,7 @@ class MneExperiment(FileTree):
         self._register_value('inv', 'free-2-dSPM',
                              set_handler=self._set_inv_as_str)
         self._register_value('model', '', eval_handler=self._eval_model)
-        self._register_field('src', ('ico-4', 'vol-10', 'vol-7'),
-                             post_set_handler=self._post_set_src)
+        self._register_field('src', ('ico-4', 'vol-10', 'vol-7'))
 
         # Define make handlers
         self._bind_make('evoked-file', self.make_evoked)
@@ -379,7 +378,7 @@ class MneExperiment(FileTree):
         if ndvar:
             subject = self.get('mrisubject')
             kind, grade = self._params['src']
-            stc = load.fiff.stc_ndvar(stc, subject, kind, grade, 'stc')
+            stc = load.fiff.stc_ndvar(stc, subject, src, mri_sdir, dst)
 
         ds[dst] = stc
 
@@ -528,7 +527,7 @@ class MneExperiment(FileTree):
             keys = ('%%s_%s' % d for d in do)
         else:
             keys = ('%s',)
-        kind, grade = self._params['src']
+        src = self.get('src')
         for name, key in zip(do, keys):
             if ind_stc:
                 ds[key % 'stc'] = stcs[name]
@@ -537,13 +536,13 @@ class MneExperiment(FileTree):
                     subject = ds['subject'].cells[0]
                 else:
                     subject = common_brain
-                ndvar = load.fiff.stc_ndvar(stcs[name], subject, kind, grade)
+                ndvar = load.fiff.stc_ndvar(stcs[name], subject, src, mri_sdir)
                 ds[key % 'src'] = ndvar
             if morph_stc:
                 ds[key % 'stcm'] = mstcs[name]
             if morph_ndvar:
-                ndvar = load.fiff.stc_ndvar(mstcs[name], common_brain, kind,
-                                            grade)
+                ndvar = load.fiff.stc_ndvar(mstcs[name], common_brain, src,
+                                            mri_sdir)
                 ds[key % 'srcm'] = ndvar
 
     def cache_events(self, redo=False):
@@ -2126,11 +2125,6 @@ class MneExperiment(FileTree):
         self._params['rej'] = rej_args
         cov_rej = rej_args.get('cov-rej', rej)
         self._fields['cov-rej'] = cov_rej
-
-    def _post_set_src(self, src):
-        kind, grade = src.split('-')
-        grade = int(grade)
-        self._params['src'] = (kind, grade)
 
     def set_env(self, env=os.environ):
         """
