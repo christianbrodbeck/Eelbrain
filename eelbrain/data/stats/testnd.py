@@ -577,7 +577,7 @@ def _t_1samp(a, popmean):
         step = int(floor(2 ** 25 / n))
         t_flat = np.empty(n_samp)
         for i in xrange(0, n_samp, step):
-            t_flat[i:i + step] = _t_1samp(a_flat[i:i + step], popmean)
+            t_flat[i:i + step] = _t_1samp(a_flat[:, i:i + step], popmean)
         t = t_flat.reshape(a.shape[1:])
         return t
 
