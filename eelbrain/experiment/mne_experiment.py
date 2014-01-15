@@ -396,50 +396,6 @@ class MneExperiment(FileTree):
                 raise NotImplementedError("Baseline for SourceEstimate")
             ds[dst] = stc
 
-    def add_evoked_label(self, ds, label, hemi='lh', src='stc'):
-        """
-        Extract the label time course from a list of SourceEstimates.
-
-        Parameters
-        ----------
-        label :
-            the label's bare name (e.g., 'insula').
-        hemi : 'lh' | 'rh' | 'bh' | False
-            False assumes that hemi is a Factor in ds.
-        src : str
-            Name of the variable in ds containing the SourceEstimates.
-
-        Returns
-        -------
-        ``None``
-        """
-        if hemi in ['lh', 'rh']:
-            self.set(hemi=hemi)
-            key = label + '_' + hemi
-        else:
-            key = label
-            if hemi != 'bh':
-                assert 'hemi' in ds
-
-        self.set(label=label)
-
-        x = []
-        for case in ds.itercases():
-            if hemi == 'bh':
-                lbl_l = self.load_label(subject=case['subject'], hemi='lh')
-                lbl_r = self.load_label(hemi='rh')
-                lbl = lbl_l + lbl_r
-            else:
-                if hemi is False:
-                    self.set(hemi=case['hemi'])
-                lbl = self.load_label(subject=case['subject'])
-
-            stc = case[src]
-            x.append(stc.in_label(lbl).data.mean(0))
-
-        time = UTS(stc.tmin, stc.tstep, stc.shape[1])
-        ds[key] = NDVar(np.array(x), dims=('case', time))
-
     def add_evoked_stc(self, ds, ind_stc=True, ind_ndvar=False, morph_stc=False,
                        morph_ndvar=False, baseline=None):
         """
@@ -558,6 +514,59 @@ class MneExperiment(FileTree):
                 ndvar = load.fiff.stc_ndvar(mstcs[name], common_brain, src,
                                             mri_sdir)
                 ds[key % 'srcm'] = ndvar
+
+    def add_stc_label(self, ds, label, hemi='lh', src='stc'):
+        """
+        Extract the label time course from a list of SourceEstimates.
+
+        Returns nothing.
+
+        Parameters
+        ----------
+        ds : Dataset
+            Dataset containing a list of SourceEstimates and a subject
+            variabls.
+        label :
+            the label's bare name (e.g., 'insula').
+        hemi : 'lh' | 'rh' | 'bh' | False
+            False assumes that hemi is a Factor in ds.
+        src : str
+            Name of the variable in ds containing the SourceEstimates.
+        """
+        if hemi in ['lh', 'rh']:
+            self.set(hemi=hemi)
+            key = label + '_' + hemi
+        else:
+            key = label
+            if hemi != 'bh':
+                assert 'hemi' in ds
+
+        self.set(label=label)
+
+        labels = {}
+        x = []
+        for case in ds.itercases():
+            # find appropriate label
+            subject = case['subject']
+            if subject in labels:
+                lbl = labels[subject]
+            else:
+                if hemi == 'bh':
+                    lbl_l = self.load_label(subject=case['subject'], hemi='lh')
+                    lbl_r = self.load_label(hemi='rh')
+                    lbl = lbl_l + lbl_r
+                else:
+                    if hemi is False:
+                        self.set(hemi=case['hemi'])
+                    lbl = self.load_label(subject=case['subject'])
+                labels[subject] = lbl
+
+            # extract label
+            stc = case[src]
+            x.append(stc.in_label(lbl).data.mean(0))
+
+        time = UTS(stc.tmin, stc.tstep, stc.shape[1])
+        ds[key] = NDVar(np.array(x), dims=('case', time))
 
     def cache_events(self, redo=False):
         """Create the 'raw-evt-file'.
