@@ -347,7 +347,8 @@ class MneExperiment(FileTree):
             raise NotImplementedError(err)
         return epochs[0]
 
-    def add_epochs_stc(self, ds, src='epochs', dst='stc', ndvar=True):
+    def add_epochs_stc(self, ds, src='epochs', dst=None, ndvar=True,
+                       baseline=None):
         """
         Transform epochs contained in ds into source space (adds a list of mne
         SourceEstimates to ds)
@@ -359,7 +360,8 @@ class MneExperiment(FileTree):
         src : str
             Name of the source epochs in ds.
         dst : str
-            Name of the source estimates to be created in ds.
+            Name of the source estimates to be created in ds. The default is
+            'stc' for SourceEstimate, and 'src' for NDVar.
         ndvar : bool
             Add the source estimates as NDVar instead of a list of
             SourceEstimate objects.
@@ -376,11 +378,23 @@ class MneExperiment(FileTree):
         stc = apply_inverse_epochs(epochs, inv, **self._params['apply_inv_kw'])
 
         if ndvar:
-            subject = self.get('mrisubject')
-            kind, grade = self._params['src']
-            stc = load.fiff.stc_ndvar(stc, subject, src, mri_sdir, dst)
+            if dst is None:
+                dst = 'src'
 
-        ds[dst] = stc
+            subject = self.get('mrisubject')
+            src = self.get('src')
+            mri_sdir = self.get('mri-sdir')
+            src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir, dst)
+            if baseline is not None:
+                src -= src.summary(time=baseline)
+            ds[dst] = src
+        else:
+            if dst is None:
+                dst = 'stc'
+
+            if baseline is not None:
+                raise NotImplementedError("Baseline for SourceEstimate")
+            ds[dst] = stc
 
     def add_evoked_label(self, ds, label, hemi='lh', src='stc'):
         """
@@ -830,8 +844,8 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stc(self, subject=None, sns_baseline=None, ndvar=False,
-                        cat=None):
+    def load_epochs_stc(self, subject=None, sns_baseline=None,
+                        src_baseline=None, ndvar=False, cat=None):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -842,7 +856,7 @@ class MneExperiment(FileTree):
         """
         ds = self.load_epochs(subject, baseline=sns_baseline, ndvar=False,
                               cat=cat)
-        self.add_epochs_stc(ds, ndvar=ndvar)
+        self.add_epochs_stc(ds, ndvar=ndvar, baseline=src_baseline)
         return ds
 
     def load_events(self, subject=None, add_proj=True, add_bads=True,
