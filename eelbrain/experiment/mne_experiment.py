@@ -56,7 +56,6 @@ the interval form 0 to 500 ms used for rejection.
 
 from collections import defaultdict
 import inspect
-from operator import add
 import os
 from Queue import Queue
 import re
@@ -83,24 +82,25 @@ from ..data.data_obj import isdatalist, UTS, DimensionMismatchError
 from .. import ui
 from ..utils import keydefaultdict
 from ..utils import subp
-from ..utils.mne_utils import is_fake_mri, split_label
+from ..utils.mne_utils import is_fake_mri
 from .experiment import FileTree
 
 
-__all__ = ['MneExperiment', 'LabelCache']
-
-analysis_source = 'source_{raw}_{proj}_{rej}_{inv}'
-analysis_sensor = 'sensor_{raw}_{proj}_{rej}'
+__all__ = ['MneExperiment']
 
 
-class LabelCache(dict):
+class PickleCache(dict):
     def __getitem__(self, path):
         if path in self:
-            return super(LabelCache, self).__getitem__(path)
+            return dict.__getitem__(self, path)
         else:
-            label = mne.read_label(path)
-            self[path] = label
-            return label
+            item = load.unpickle(path)
+            dict.__setitem__(self, path, item)
+            return item
+
+    def __setitem__(self, path, item):
+        save.pickle(item, path)
+        dict.__setitem__(self, path, item)
 
 
 temp = {
@@ -154,11 +154,14 @@ temp = {
                                     '{proj}_{epoch}-{rej}_{model}.pickled'),
 
         # Source space
-        'annot': 'aparc',
-        'label': '???',
-        'label-dir': os.path.join('{mri-dir}', 'label', '{annot}'),
+        'parc': ('aparc.a2005s', 'aparc.a2009s', 'aparc', 'PALS_B12_Brodmann',
+                 'PALS_B12_Lobes', 'PALS_B12_OrbitoFrontal',
+                 'PALS_B12_Visuotopic'),
         'hemi': ('lh', 'rh'),
-        'label-file': os.path.join('{label-dir}', '{hemi}.{label}.label'),
+        'label-dir': os.path.join('{mri-dir}', 'label'),
+        'annot-file': os.path.join('{label-dir}', '{hemi}.{parc}.annot'),
+        # pickled list of labels
+        'label-file': os.path.join('{label-dir}', '{parc}.pickled'),
 
         # compound properties
         'sns-kind': '{raw}-{proj}',
@@ -197,29 +200,6 @@ temp = {
         'besa-evt': os.path.join('{besa-root}', '{subject}', '{subject}_'
                                  '{experiment}_{epoch}[{rej}].evt'),
          }
-
-
-# split:  (src, axis, (dst1, ...))
-# merge:  (dst, (src1, ...))
-_derived_labels = (
-                   # split:
-                   ('superiortemporal', 1, ('pSTG', 'mSTG', 'aSTG')),
-                   ('middletemporal', 1, ('pMTG', 'mMTG', 'aMTG')),
-                   ('inferiortemporal', 1, ('pITG', 'mITG', 'aITG')),
-                   ('fusiform', 1, ('pFFG', 'mFFG', 'aFFG')),
-
-                   # merge:
-                   ('OFC', ('medialorbitofrontal', 'lateralorbitofrontal')),
-                   ('IFG', ('parsopercularis', 'parstriangularis',
-                            'parsorbitalis')),
-                   ('V', ('pericalcarine', 'cuneus', 'lingual',
-                          'lateraloccipital')),
-                   ('LTL', ('superiortemporal', 'middletemporal',
-                            'inferiortemporal')),
-                   ('aTL', ('aSTG', 'aMTG', 'aITG')),
-                   ('mTL', ('mSTG', 'mMTG', 'mITG')),
-                   ('pTL', ('pSTG', 'bankssts', 'pMTG', 'pITG')),
-                   ('amTL', ('aTL', 'mTL')))
 
 
 class MneExperiment(FileTree):
@@ -319,9 +299,6 @@ class MneExperiment(FileTree):
                  # above)
                  'epoch': 'epoch'}
 
-    # Labels
-    _derived_labels = _derived_labels
-
     # model order: list of factors in the order in which models should be built
     # (default for factors not in this list is alphabetic)
     _model_order = []
@@ -338,7 +315,7 @@ class MneExperiment(FileTree):
         self.groups = self.groups.copy()
         self.exclude = self.exclude.copy()
         self._mri_subjects = keydefaultdict(lambda k: k)
-        self._label_cache = LabelCache()
+        self._label_cache = PickleCache()
         self._templates = self._templates.copy()
         for cls in reversed(inspect.getmro(self.__class__)):
             if hasattr(cls, '_values'):
@@ -391,15 +368,24 @@ class MneExperiment(FileTree):
         self._bind_make('cov-file', self.make_cov)
         self._bind_make('src-file', self.make_src)
         self._bind_make('fwd-file', self.make_fwd)
+        self._bind_make('label-file', self.make_labels)
 
         # set initial values
         self.store_state()
         self.set_env()
+        self.brain = None
 
     def __iter__(self):
         "Iterate state through subjects and yield each subject name."
         for subject in self.iter():
             yield subject
+
+    def _annot_exists(self):
+        for _ in self.iter('hemi'):
+            fpath = self.get('annot-file')
+            if not os.path.exists(fpath):
+                return False
+        return True
 
     @property
     def _epoch_state(self):
@@ -617,7 +603,7 @@ class MneExperiment(FileTree):
                 ndvar = load.fiff.stc_ndvar(stcm, common_brain, src, mri_sdir)
                 ds[key % 'srcm'] = ndvar
 
-    def add_stc_label(self, ds, label, hemi='lh', src='stc'):
+    def add_stc_label(self, ds, label, src='stc'):
         """
         Extract the label time course from a list of SourceEstimates.
 
@@ -629,46 +615,24 @@ class MneExperiment(FileTree):
             Dataset containing a list of SourceEstimates and a subject
             variabls.
         label :
-            the label's bare name (e.g., 'insula').
-        hemi : 'lh' | 'rh' | 'bh' | False
-            False assumes that hemi is a Factor in ds.
+            the label's name (e.g., 'fusiform_lh').
         src : str
             Name of the variable in ds containing the SourceEstimates.
         """
-        if hemi in ['lh', 'rh']:
-            self.set(hemi=hemi)
-            key = label + '_' + hemi
-        else:
-            key = label
-            if hemi != 'bh':
-                assert 'hemi' in ds
-
-        self.set(label=label)
-
-        labels = {}
         x = []
         for case in ds.itercases():
             # find appropriate label
             subject = case['subject']
-            if subject in labels:
-                lbl = labels[subject]
-            else:
-                if hemi == 'bh':
-                    lbl_l = self.load_label(subject=case['subject'], hemi='lh')
-                    lbl_r = self.load_label(hemi='rh')
-                    lbl = lbl_l + lbl_r
-                else:
-                    if hemi is False:
-                        self.set(hemi=case['hemi'])
-                    lbl = self.load_label(subject=case['subject'])
-                labels[subject] = lbl
+            label_ = self.load_label(label, subject=subject)
 
             # extract label
             stc = case[src]
-            x.append(stc.in_label(lbl).data.mean(0))
+            label_data = stc.in_label(label_).data
+            label_avg = label_data.mean(0)
+            x.append(label_avg)
 
         time = UTS(stc.tmin, stc.tstep, stc.shape[1])
-        ds[key] = NDVar(np.array(x), dims=('case', time))
+        ds[label] = NDVar(np.array(x), dims=('case', time))
 
     def cache_events(self, redo=False):
         """Create the 'raw-evt-file'.
@@ -828,6 +792,15 @@ class MneExperiment(FileTree):
         subject = ds['subject']
         for name, subjects in self.groups.iteritems():
             ds[name] = Var(subject.isin(subjects))
+
+    def load_annot(self, **state):
+        parc = self.get('parc', **state)
+        subject = self.get('mrisubject')
+        mri_sdir = self.get('mri-sdir')
+        if not self._annot_exists():
+            self.make_annot()
+        labels = mne.read_annot(subject, parc, 'both', subjects_dir=mri_sdir)
+        return labels
 
     def load_edf(self, **kwargs):
         """Load the edf file ("edf-file" template)"""
@@ -1111,11 +1084,48 @@ class MneExperiment(FileTree):
                                     **self._params['make_inv_kw'])
         return inv
 
-    def load_label(self, **kwargs):
-        """Load an mne label file."""
-        self.set(**kwargs)
-        fname = self.get('label-file')
-        return self._label_cache[fname]
+    def load_label(self, label, **kwargs):
+        """Retrieve a label as mne Label object
+
+        Parameters
+        ----------
+        label : str
+            Name of the label. If the label ends in '_bh', the combination of
+            '*_lh' and '*_rh' will be returned.
+
+        Notes
+        -----
+        Labels are processed in the following sequence:
+
+        annot-file
+            Some are provided by default, others are created. Each vertex is
+            occupied by at most one label (limitation of *.annot files). Can be
+            morphed from one subject to others. Labels are marked "*-?h".
+        label-file
+            File with pickled labels, based on an annot file but can add
+            additional labels. Labels can be overlapping. Labels are marked
+            "*_?h".
+        """
+        labels = self.load_labels(**kwargs)
+        if label in labels:
+            return labels[label]
+        elif label.endswith('_bh'):
+            region = label[:-3]
+            label_lh = self.load_label(region + '_lh')
+            label_rh = self.load_label(region + '_rh')
+            label_bh = label_lh + label_rh
+            labels[label] = label_bh
+            return label_bh
+        else:
+            parc = self.get('parc')
+            msg = ("Label %r could not be found in parc %r." % (label, parc))
+            raise ValueError(msg)
+
+    def load_labels(self, **kwargs):
+        """Load labels from an annotation file."""
+        fpath = self.get('label-file', make=True, **kwargs)
+        labels = self._label_cache[fpath]
+        return labels
 
     def load_raw(self, add_proj=True, add_bads=True, preload=False, **kwargs):
         """
@@ -1277,6 +1287,42 @@ class MneExperiment(FileTree):
 
         return ds
 
+    def make_annot(self, redo=False):
+        if not redo and self._annot_exists():
+            return
+
+        # variables
+        parc = self.get('parc')
+        mrisubject = self.get('mrisubject')
+        common_brain = self.get('common_brain')
+
+        if mrisubject == common_brain:
+            labels = self._make_annot(parc, mrisubject)
+            mri_sdir = self.get('mri-sdir')
+            mne.write_annot(labels, mrisubject, parc, True, mri_sdir)
+        else:
+            # make sure annot exists for common brain
+            self.set(mrisubject=common_brain, match=False)
+            self.make_annot()
+            self.set(mrisubject=mrisubject, match=False)
+
+            # copy or morph
+            if is_fake_mri(self.get('mri-dir')):
+                for _ in self.iter('hemi'):
+                    self.make_copy('annot-file', 'mrisubject', common_brain,
+                                   mrisubject)
+            else:
+                for hemi in ('lh', 'rh'):
+                    cmd = ["mri_surf2surf", "--srcsubject", common_brain,
+                           "--trgsubject", mrisubject, "--sval-annot", parc,
+                           "--tval", parc, "--hemi", hemi]
+                    self.run_subp(cmd, 0)
+
+    def _make_annot(self, parc, subject):
+        "Only called to make custom annotation files for the common_brain"
+        msg = "Custom parcellations %r is not implemented." % parc
+        raise NotImplementedError(msg)
+
     def make_besa_evt(self, epoch=None, redo=False):
         """Make the trigger and event files needed for besa
 
@@ -1433,59 +1479,29 @@ class MneExperiment(FileTree):
         mne.make_forward_solution(info, mri, src, bem, fname, ignore_ref=True,
                                   overwrite=True)
 
-    def make_labels(self, redo=False, **kwargs):
-        """
-
-        Notes
-        -----
-        Specific to aparc and will set the
-
-        """
-        mrisubject = self.get('mrisubject', **kwargs)
-        mri_sdir = self.get('mri-sdir')
-        mri_dir = self.get('mri-dir')
-
-        # scaled MRI
-        if is_fake_mri(mri_dir):
-            common_brain = self.get('common_brain')
-            self.make_labels(mrisubject=common_brain)
-            self.set(mrisubject=mrisubject)
-            scale_labels(mrisubject, overwrite=redo, subjects_dir=mri_sdir)
+    def make_labels(self, redo=False):
+        dst = self.get('label-file')
+        if not redo and os.path.exists(dst):
             return
 
-        # original MRI
-        label_dir = self.get('label-dir')
-        if not os.path.exists(label_dir) or not os.listdir(label_dir):
-            annot = self.get('annot')
-            subp.mri_annotation2label(mrisubject, annot=annot,
-                                      subjects_dir=mri_sdir)
+        parc = self.get('parc')
+        subject = self.get('mrisubject')
+        mri_sdir = self.get('mri-sdir')
+        labels = self._make_labels(parc, subject, redo, mri_sdir)
+        label_dict = {label.name: label for label in labels}
+        self._label_cache[dst] = label_dict
 
-        for item in self._derived_labels:
-            if len(item) == 3:
-                src, axis, dst_names = item
-                for _ in self.iter('hemi'):
-                    dst_paths = [self.get('label-file', label=name) for name
-                                 in dst_names]
-                    if (not redo) and all(os.path.exists(pth)
-                                          for pth in dst_paths):
-                        continue
-
-                    src_label = self.load_label(label=src)
-
-                    labels = split_label(src_label, axis=axis)
-                    for name, label, path in zip(dst_names, labels, dst_paths):
-                        label.name = name
-                        label.save(path)
-            else:
-                dst, srcs = item
-                for _ in self.iter('hemi'):
-                    dst_file = self.get('label-file', label=dst)
-                    if (not redo) and os.path.exists(dst_file):
-                        continue
-
-                    src_labels = (self.load_label(label=name) for name in srcs)
-                    label = reduce(add, src_labels)
-                    label.save(dst_file)
+    def _make_labels(self, parc, subject, redo, mri_sdir):
+        "Returns an iterator over labels for a given parc/subject combination"
+        if redo:
+            self.make_annot(redo)
+        labels = self.load_annot()
+        for label in labels:
+            if label.name.endswith('-lh'):
+                label.name = label.name[:-3] + '_lh'
+            elif label.name.endswith('-rh'):
+                label.name = label.name[:-3] + '_rh'
+        return labels
 
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link at the file with the dst value on field, linking to
@@ -1640,6 +1656,63 @@ class MneExperiment(FileTree):
                                 dtmin=0.01)
         brain.save_movie(dst)
         brain.close()
+
+    def make_plot_annot(self, surf='inflated', redo=False, **state):
+        mrisubject = self.get('mrisubject', **state)
+        if is_fake_mri(self.get('mri-dir')):
+            mrisubject = self.get('common_brain')
+            self.set(mrisubject=mrisubject, match=False)
+
+        analysis = 'Source Annot'
+        resname = "{parc} {mrisubject} %s" % surf
+        ext = 'png'
+        dst = self.get('res-file', mkdir=True, analysis=analysis,
+                       resname=resname, ext=ext)
+        if not redo and os.path.exists(dst):
+            return
+
+        brain = self.plot_annot(surf, w=1200)
+        brain.save_image(dst)
+
+    def make_plot_label(self, label, surf='inflated', redo=False, **state):
+        mrisubject = self.get('mrisubject', **state)
+        if is_fake_mri(self.get('mri-dir')):
+            mrisubject = self.get('common_brain')
+            self.set(mrisubject=mrisubject, match=False)
+
+        dst = self._make_plot_label_dst(surf, label)
+        if not redo and os.path.exists(dst):
+            return
+
+        brain = self.plot_label(label, surf=surf)
+        brain.save_image(dst)
+
+    def make_plots_labels(self, surf='inflated', redo=False, **state):
+        mrisubject = self.get('mrisubject', **state)
+        if is_fake_mri(self.get('mri-dir')):
+            mrisubject = self.get('common_brain')
+            self.set(mrisubject=mrisubject, match=False)
+
+        labels = self.load_labels().values()
+        dsts = [self._make_plot_label_dst(surf, label.name)
+                for label in labels]
+        if not redo and all(os.path.exists(dst) for dst in dsts):
+            return
+
+        brain = self.plot_brain(surf, None, 'split', ['lat', 'med'], w=1200)
+        for label, dst in zip(labels, dsts):
+            brain.add_label(label)
+            brain.save_image(dst)
+            brain.remove_labels(hemi='lh')
+
+    def _make_plot_label_dst(self, surf, label):
+        analysis = 'Source Labels'
+        folder = "{parc} {mrisubject} %s" % surf
+        resname = label
+        ext = 'png'
+        dst = self.get('res-deep-file', mkdir=True, analysis=analysis,
+                       folder=folder, resname=resname, ext=ext)
+        return dst
 
     def make_proj(self, save=True, save_plot=True):
         """
@@ -1882,32 +1955,76 @@ class MneExperiment(FileTree):
 
         self.set(**{field: next_})
 
-    def plot_annot(self, annot=None, surf='smoothwm', mrisubject=None,
-                   borders=True, label=True):
-        mrisubject = self.get('mrisubject', mrisubject=mrisubject, match=False)
-        brain = self.plot_brain(surf=surf)
-        brain.add_annotation(self.get('annot', annot=annot), borders=borders)
+    def plot_annot(self, surf='inflated', views=['lat', 'med'], hemi='split',
+                   alpha=0.7, borders=False, w=600, parc=None):
+        """Plot the annot file on which the current parcellation is based
 
-        if label:
-            if label is True:
-                label = '%s: %s' % (mrisubject, annot)
-            from mayavi import mlab
-            mlab.text(.05, .05, label, color=(0, 0, 0), figure=brain._f)
+        kwargs are for self.plot_brain().
 
+        Parameters
+        ----------
+        parc : None | str
+            Parcellation to plot. If None, use parc from the current state.
+        """
+        if parc is None:
+            parc = self.get('parc')
+        else:
+            parc = self.get('parc', parc=parc)
+
+        self.make_annot()
+        title = parc
+        brain = self.plot_brain(surf, title, hemi, views, w, True)
+        brain.add_annotation(parc, borders, alpha)
         return brain
 
-    def plot_brain(self, surf='smoothwm', mrisubject=None, new=True):
-        from mayavi import mlab
+    def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat'],
+                   w=500, clear=True, common_brain=True):
+        """Create a PuSyrfer Brain instance
+
+        Parameters
+        ----------
+        w : int
+            Total window width.
+        clear : bool
+            If self.brain exists, replace it with a new plot (if False,
+            the existsing self.brain is returned).
+        common_brain : bool
+            If the current mrisubject is a scaled MRI, use the common_brain
+            instead.
+        """
         import surfer
-        self.set_env()
+        if clear:
+            self.brain = None
+        else:
+            if self.brain is None:
+                pass
+            elif self.brain._figures == [[None, None], [None, None]]:
+                self.brain = None
+            else:
+                return self.brain
 
-        mrisubject = self.get('mrisubject', mrisubject=mrisubject, match=False)
-        hemi = self.get('hemi')
+        # find subject
+        mri_sdir = self.get('mri-sdir')
+        if common_brain and is_fake_mri(self.get('mri-dir')):
+            mrisubject = self.get('common_brain')
+            self.set(mrisubject=mrisubject, match=False)
+        else:
+            mrisubject = self.get('mrisubject')
 
-        opts = dict(background=(1, 1, 1), foreground=(0, 0, 0))
-        figure = mlab.figure()
-        brain = surfer.Brain(mrisubject, hemi, surf, config_opts=opts,
-                             figure=figure)
+        if title is not None:
+            title = title.format(mrisubject=mrisubject)
+
+        if hemi in ('lh', 'rh'):
+            self.set(hemi=hemi)
+            height = len(views) * w * 3 / 4.
+        else:
+            height = len(views) * w * 3 / 8.
+
+        config_opts = dict(background=(1, 1, 1), foreground=(0, 0, 0),
+                           width=w, height=height)
+        brain = surfer.Brain(mrisubject, hemi, surf, True, title, config_opts,
+                             None, mri_sdir, views)
+
         self.brain = brain
         return brain
 
@@ -1916,6 +2033,15 @@ class MneExperiment(FileTree):
         self.set(**kwargs)
         raw = mne.fiff.Raw(self.get('raw-file'))
         return dev_mri(raw)
+
+    def plot_label(self, label, surf='inflated', w=600, clear=False):
+        """Plot a label"""
+        if isinstance(label, basestring):
+            label = self.load_label(label)
+        title = label.name
+
+        brain = self.plot_brain(surf, title, 'split', ['lat', 'med'], w, clear)
+        brain.add_label(label, alpha=0.75)
 
     def run_mne_analyze(self, subject=None, modal=False):
         subjects_dir = self.get('mri-sdir')
@@ -2023,6 +2149,9 @@ class MneExperiment(FileTree):
         return group
 
     def _eval_model(self, model):
+        if '*' in model:
+            raise ValueError("Specify model with '%' instead of '*'")
+
         factors = [v.strip() for v in model.split('%')]
 
         # find order value for each factor

@@ -117,8 +117,9 @@ def split_label(label, source_space=None, axis='pca', pieces=3):
         pos = label.pos[idx]
         values = label.values[idx]
         hemi = label.hemi
+        subject = label.subject
         comment = label.comment
-        lbl = Label(vert, pos, values, hemi, comment=comment)
+        lbl = Label(vert, pos, values, hemi, comment, subject=subject)
         labels.append(lbl)
 
     return labels
