@@ -396,7 +396,7 @@ class MneExperiment(FileTree):
                 raise NotImplementedError("Baseline for SourceEstimate")
             ds[dst] = stc
 
-    def add_evoked_stc(self, ds, ind_stc=True, ind_ndvar=False, morph_stc=False,
+    def add_evoked_stc(self, ds, ind_stc=False, ind_ndvar=False, morph_stc=False,
                        morph_ndvar=False, baseline=None):
         """
         Add source estimates to a dataset with evoked data.
@@ -423,16 +423,16 @@ class MneExperiment(FileTree):
         Assumes that all Evoked of the same subject share the same inverse
         operator.
         """
-        n_subjects = ds.eval('len(subject.cells)')
-        ind = (ind_stc or ind_ndvar)
-        morph = (morph_stc or morph_ndvar)
-        if not (ind or morph):
-            return
+        if not any((ind_stc, ind_ndvar, morph_stc, morph_ndvar)):
+            err = ("Nothing to load, set at least one of (ind_stc, ind_ndvar, "
+                   "morph_stc, morph_ndvar) to True")
+            raise ValueError(err)
 
         if isinstance(baseline, str):
             raise NotImplementedError("Baseline form different epoch")
 
         # find from subjects
+        n_subjects = ds.eval('len(subject.cells)')
         common_brain = self.get('common_brain')
         from_subjects = {}
         for subject in ds.eval('subject.cells'):
@@ -447,6 +447,13 @@ class MneExperiment(FileTree):
                 subject_from = subject
             from_subjects[subject] = subject_from
 
+        morph_requested = (morph_stc or morph_ndvar)
+        all_are_common_brain = all(v == common_brain for v in
+                                   from_subjects.values())
+        collect_morphed_stcs = morph_requested and not all_are_common_brain
+        collect_ind_stcs = (ind_stc or ind_ndvar) or (morph_requested and
+                                                      all_are_common_brain)
+
         # find vars to work on
         do = []
         for name in ds:
@@ -455,9 +462,9 @@ class MneExperiment(FileTree):
 
         # prepare data containers
         invs = {}
-        if ind:
+        if collect_ind_stcs:
             stcs = defaultdict(list)
-        if morph:
+        if collect_morphed_stcs:
             mstcs = defaultdict(list)
 
         # convert evoked objects
@@ -484,10 +491,10 @@ class MneExperiment(FileTree):
                 if baseline:
                     rescale(stc._data, stc.times, baseline, 'mean', copy=False)
 
-                if ind:
+                if collect_ind_stcs:
                     stcs[name].append(stc)
 
-                if morph:
+                if collect_morphed_stcs:
                     stc = mne.morph_data(subject_from, common_brain, stc, 4,
                                          subjects_dir=mri_sdir)
                     mstcs[name].append(stc)
@@ -509,10 +516,17 @@ class MneExperiment(FileTree):
                 ndvar = load.fiff.stc_ndvar(stcs[name], subject, src, mri_sdir)
                 ds[key % 'src'] = ndvar
             if morph_stc:
-                ds[key % 'stcm'] = mstcs[name]
+                if all_are_common_brain:
+                    stcm = stcs[name]
+                else:
+                    stcm = mstcs[name]
+                ds[key % 'stcm'] = stcm
             if morph_ndvar:
-                ndvar = load.fiff.stc_ndvar(mstcs[name], common_brain, src,
-                                            mri_sdir)
+                if all_are_common_brain:
+                    stcm = stcs[name]
+                else:
+                    stcm = mstcs[name]
+                ndvar = load.fiff.stc_ndvar(stcm, common_brain, src, mri_sdir)
                 ds[key % 'srcm'] = ndvar
 
     def add_stc_label(self, ds, label, hemi='lh', src='stc'):
@@ -998,7 +1012,7 @@ class MneExperiment(FileTree):
         return ds
 
     def load_evoked_stc(self, subject=None, sns_baseline=None,
-                        src_baseline=None, sns_ndvar=False, ind_stc=True,
+                        src_baseline=None, sns_ndvar=False, ind_stc=False,
                         ind_ndvar=False, morph_stc=False, morph_ndvar=False,
                         cat=None, **kwargs):
         """Load evoked source estimates.
@@ -1027,6 +1041,11 @@ class MneExperiment(FileTree):
         *others* : str
             State parameters.
         """
+        if not any((ind_stc, ind_ndvar, morph_stc, morph_ndvar)):
+            err = ("Nothing to load, set at least one of (ind_stc, ind_ndvar, "
+                   "morph_stc, morph_ndvar) to True")
+            raise ValueError(err)
+
         ds = self.load_evoked(subject=subject, baseline=sns_baseline,
                               ndvar=sns_ndvar, cat=cat, **kwargs)
         self.add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
