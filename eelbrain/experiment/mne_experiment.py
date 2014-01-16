@@ -27,12 +27,16 @@ reject_tmin : scalar
     Alternate start time for rejection (amplitude and eye-tracker).
 reject_tmax : scalar
     Alternate end time for rejection (amplitude and eye-tracker).
+rej_epoch : str
+    Name of the epoch whose trial rejection file should be used.
 decim : int
     Decimate the data by this factor (i.e., only keep every ``decim``'th
     sample)
 tag : str
     Optional tag to identify epochs that differ in ways not captured by the
     above.
+sub : str
+    Select a subset of trials based on events.
 
 
 Epochs can be
@@ -599,7 +603,7 @@ class MneExperiment(FileTree):
 
     def get_epoch_str(self, stimvar=None, stim=None, tmin=None, tmax=None,
                       reject_tmin=None, reject_tmax=None, decim=None,
-                      name=None, tag=None, rej_epoch=None):
+                      name=None, tag=None, rej_epoch=None, sub=None):
         """Produces a descriptor for a single epoch specification
 
         Parameters
@@ -626,8 +630,13 @@ class MneExperiment(FileTree):
         rej_epoch : None | str
             Use rejection from another epoch (only for rejection by rej-file;
             needs to have same triggers).
+        sub : None | str
+            Select a subset of trials based on events.
         """
         desc = '%s[' % stim
+        if sub is not None:
+            desc += '%s,' % sub
+
         if reject_tmin is None:
             desc += '%i_' % (tmin * 1000)
         else:
@@ -1217,6 +1226,10 @@ class MneExperiment(FileTree):
                         edf.mark(ds, tstart=tmin, tstop=tmax, use=use)
                     else:
                         ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=use)
+
+        sub = epoch.get('sub', None)
+        if sub is not None:
+            ds = ds.sub(sub)
 
         return ds
 
