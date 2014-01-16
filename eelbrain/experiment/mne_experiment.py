@@ -715,11 +715,15 @@ class MneExperiment(FileTree):
         others :
             Fields with constant values throughout the iteration.
         """
-        if group and (group != 'all') and ('subject' in fields):
-            subjects = self.get_field_values('subject')
-            group = self.groups[group]
-            group_subjects = [s for s in subjects if s in group]
-            kwargs.setdefault('values', {})['subject'] = group_subjects
+        if 'subject' in fields:
+            if group is None:
+                group = self.get('group')
+
+            if group != 'all':
+                subjects = self.get_field_values('subject')
+                group = self.groups[group]
+                group_subjects = [s for s in subjects if s in group]
+                kwargs.setdefault('values', {})['subject'] = group_subjects
 
         return FileTree.iter(self, fields, **kwargs)
 
