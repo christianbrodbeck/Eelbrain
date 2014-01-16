@@ -2274,8 +2274,8 @@ class MneExperiment(FileTree):
             subject = subjects[0]
         self.set(subject=subject, add=True)
 
-    def show_subjects(self, group='all', count=True, mri=True,
-                       mrisubject=False):
+    def show_subjects(self, count=True, mri=True, mrisubject=False,
+                      caption=True):
         """Print a table with subjects
 
         Parameters
@@ -2290,8 +2290,13 @@ class MneExperiment(FileTree):
         mrisubject : bool
             Add a column showing the MRI subject corresponding to each subject.
         """
+        # caption
+        if caption is True:
+            caption = self.format("Subject in group {group}")
+
+        # table
         n_col = bool(count) + 1 + bool(mri) + bool(mrisubject)
-        table = fmtxt.Table('l' * n_col)
+        table = fmtxt.Table('l' * n_col, caption=caption)
 
         # header
         if count:
@@ -2304,7 +2309,7 @@ class MneExperiment(FileTree):
         table.midrule()
 
         # body
-        for i, _ in enumerate(self.iter(group=group)):
+        for i, _ in enumerate(self.iter()):
             if count:
                 table.cell(i)
             table.cell(self.get('subject'))
@@ -2323,6 +2328,7 @@ class MneExperiment(FileTree):
                     table.cell(subject)
             if mrisubject:
                 table.cell(self.get('mrisubject'))
+
         return table
 
     def show_summary(self, templates=['raw-file'], missing='-', link=' > ',
