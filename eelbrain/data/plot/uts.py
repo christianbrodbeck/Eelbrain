@@ -98,6 +98,7 @@ class UTSStat(_base.subplot_figure):
             ct = Celltable(Y, Xax, sub=sub, ds=ds)
             if X is None:
                 cells = None
+                X_ = None
             else:
                 Xct = Celltable(X, Xax, sub=sub, ds=ds)
                 cells = Xct.Y.cells
@@ -151,10 +152,10 @@ class UTSStat(_base.subplot_figure):
             for i, ax, cell in zip(xrange(nax), self._axes, ct.cells):
                 kwargs['xlabel'] = xlabel if i == len(ct) - 1 else False
                 if X is not None:
-                    X = Xct.data[cell]
+                    X_ = Xct.data[cell]
                 if match is not None:
                     match = matchct.data[cell]
-                cct = Celltable(ct.data[cell], X, match=match)
+                cct = Celltable(ct.data[cell], X_, match=match)
                 title_ = axtitle.format(name=cellname(cell))
                 p = _ax_stat(ax, cct, colors, title=title_, **kwargs)
                 self._plots.append(p)
