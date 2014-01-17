@@ -401,6 +401,30 @@ def asvar(Y, sub=None, ds=None):
         return Y
 
 
+def index_ndim(index):
+    """Determine the dimensionality of an index
+
+    Parameters
+    ----------
+    index : numpy_index
+        Any valid numpy index.
+
+    Returns
+    -------
+    ndim : int
+        Number of index dimensions: 0 for an index to a single element, 1 for
+        an index to a sequence.
+    """
+    if np.iterable(index):
+        return 1
+    elif isinstance(index, slice):
+        return 1
+    elif isinstance(index, int):
+        return 0
+    else:
+        raise TypeError("unknown index type: %s" % repr(index))
+
+
 def _empty_like(obj, n=None, name=None):
     "Create an empty object of the same type as obj"
     n = n or len(obj)
@@ -3638,7 +3662,7 @@ class Interaction(_Effect):
 
         out = tuple(f[index] for f in self.base)
 
-        if np.iterable(index):
+        if index_ndim(index) == 1:
             return Interaction(out)
         else:
             return out

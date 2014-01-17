@@ -16,6 +16,8 @@ def test_stat():
     p.close()
     p = plot.UTSStat('uts', 'A', Xax='B', ds=ds)
     p.close()
+    p = plot.UTSStat('uts', 'A%B', 'rm', sub="rm.isin(('R00', 'R01'))", ds=ds)
+    p.close()
 
 
 def test_uts():
