@@ -193,6 +193,29 @@ temp = {
          }
 
 
+# split:  (src, axis, (dst1, ...))
+# merge:  (dst, (src1, ...))
+_derived_labels = (
+                   # split:
+                   ('superiortemporal', 1, ('pSTG', 'mSTG', 'aSTG')),
+                   ('middletemporal', 1, ('pMTG', 'mMTG', 'aMTG')),
+                   ('inferiortemporal', 1, ('pITG', 'mITG', 'aITG')),
+                   ('fusiform', 1, ('pFFG', 'mFFG', 'aFFG')),
+
+                   # merge:
+                   ('OFC', ('medialorbitofrontal', 'lateralorbitofrontal')),
+                   ('IFG', ('parsopercularis', 'parstriangularis',
+                            'parsorbitalis')),
+                   ('V', ('pericalcarine', 'cuneus', 'lingual',
+                          'lateraloccipital')),
+                   ('LTL', ('superiortemporal', 'middletemporal',
+                            'inferiortemporal')),
+                   ('aTL', ('aSTG', 'aMTG', 'aITG')),
+                   ('mTL', ('mSTG', 'mMTG', 'mITG')),
+                   ('pTL', ('pSTG', 'bankssts', 'pMTG', 'pITG')),
+                   ('amTL', ('aTL', 'mTL')))
+
+
 class MneExperiment(FileTree):
     """Class for managing data for an experiment
 
@@ -289,6 +312,9 @@ class MneExperiment(FileTree):
                  # this should be a key in the epochs class attribute (see
                  # above)
                  'epoch': 'epoch'}
+
+    # Labels
+    _derived_labels = _derived_labels
 
     def __init__(self, root=None, **state):
         """
@@ -1600,30 +1626,7 @@ class MneExperiment(FileTree):
             subp.mri_annotation2label(mrisubject, annot=annot,
                                       subjects_dir=mri_sdir)
 
-        # split:  (src, axis, (dst1, ...))
-        # merge:  (dst, (src1, ...))
-        labels = (
-                  # split:
-                  ('superiortemporal', 1, ('pSTG', 'mSTG', 'aSTG')),
-                  ('middletemporal', 1, ('pMTG', 'mMTG', 'aMTG')),
-                  ('inferiortemporal', 1, ('pITG', 'mITG', 'aITG')),
-                  ('fusiform', 1, ('pFFG', 'mFFG', 'aFFG')),
-
-                  # merge:
-                  ('OFC', ('medialorbitofrontal', 'lateralorbitofrontal')),
-                  ('IFG', ('parsopercularis', 'parstriangularis',
-                           'parsorbitalis')),
-                  ('V', ('pericalcarine', 'cuneus', 'lingual',
-                         'lateraloccipital')),
-                  ('LTL', ('superiortemporal', 'middletemporal',
-                           'inferiortemporal')),
-                  ('aTL', ('aSTG', 'aMTG', 'aITG')),
-                  ('mTL', ('mSTG', 'mMTG', 'mITG')),
-                  ('pTL', ('pSTG', 'pMTG', 'pITG')),
-                  ('amTL', ('aTL', 'mTL')),
-                  ('PTL', ('pSTG', 'bankssts', 'pMTG', 'pITG')))
-
-        for item in labels:
+        for item in self._derived_labels:
             if len(item) == 3:
                 src, axis, dst_names = item
                 for _ in self.iter('hemi'):
