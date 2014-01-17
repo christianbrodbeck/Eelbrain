@@ -32,3 +32,6 @@ plot.UTSClusters(res, title="Random Effects Model")
 
 # plot Y
 p = plot.UTSStat(Y, A%B, match=subject, clusters=res.clusters)
+
+# table with all clusters
+print res.clusters
