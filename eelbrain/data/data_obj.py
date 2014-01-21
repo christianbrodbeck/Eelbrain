@@ -5278,6 +5278,13 @@ class SourceSpace(Dimension):
         connectivity : None | sparse matrix
             Cached source space connectivity.
         """
+        match = re.match("(ico|vol)-(\d)", src)
+        if match:
+            kind, grade = match.groups()
+            grade = int(grade)
+        else:
+            raise ValueError("Unrecognized src value %r" % src)
+
         self.vertno = vertno
         self.lh_vertno = vertno[0]
         self.rh_vertno = vertno[1]
@@ -5285,6 +5292,8 @@ class SourceSpace(Dimension):
         self.rh_n = len(self.rh_vertno)
         self.subject = subject
         self.src = src
+        self.kind = kind
+        self.grade = grade
         self.subjects_dir = subjects_dir
         self._connectivity = connectivity
 
