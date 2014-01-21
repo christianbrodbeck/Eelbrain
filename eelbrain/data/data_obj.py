@@ -1154,6 +1154,30 @@ class Var(object):
                                   beta_labels=labels)
             return out
 
+    def argmax(self):
+        """:fun:`numpy.argmax`"""
+        return np.argmax(self.x)
+
+    def argmin(self):
+        """:fun:`numpy.argmin`"""
+        return np.argmin(self.x)
+
+    def argsort(self, kind='quicksort'):
+        """:fun:`numpy.argsort`
+
+        Parameters
+        ----------
+        kind : 'quicksort' | 'mergesort' | 'heapsort'
+            Sorting algorithm (default 'quicksort').
+
+        Returns
+        -------
+        index_array : array of int
+            Array of indices that sort `a` along the specified axis.
+            In other words, ``a[index_array]`` yields a sorted `a`.
+        """
+        return np.argsort(self.x, kind=kind)
+
     @property
     def as_effects(self):
         "for effect initialization"
