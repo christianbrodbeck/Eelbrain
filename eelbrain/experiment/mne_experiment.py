@@ -376,6 +376,31 @@ class MneExperiment(FileTree):
                    "%s)" % self.get('epoch'))
             raise NotImplementedError(err)
         return epochs[0]
+    
+    def _process_subject_arg(self, subject, kwargs):
+        """Process subject arg for methods that work on groups and subjects
+        
+        Returns
+        -------
+        is_group : bool
+            True if the value specifies a group, False if it specifies a 
+            subject.
+        value : str
+            Name of the group or subject. 
+        """
+        if subject is None:
+            is_group = False
+            value = self.get('subject', **kwargs)
+        elif subject in self.get_field_values('group'):
+            is_group = True
+            value = subject
+            self.set(**kwargs)
+        else:
+            is_group = False
+            value = subject
+            self.set(subject=subject, **kwargs)
+        
+        return is_group, value
 
     def add_epochs_stc(self, ds, src='epochs', dst=None, ndvar=True,
                        baseline=None):
@@ -864,10 +889,10 @@ class MneExperiment(FileTree):
         decim : None | int
             override the epoch decim factor.
         """
-        if subject in self.get_field_values('group'):
-            self.set(**kwargs)
+        is_group, group = self._process_subject_arg(subject, kwargs)
+        if is_group:
             dss = []
-            for _ in self.iter(group=subject):
+            for _ in self.iter(group=group):
                 ds = self.load_epochs(baseline=baseline, ndvar=False,
                                       add_bads=add_bads, reject=reject,
                                       cat=cat)
@@ -875,7 +900,6 @@ class MneExperiment(FileTree):
 
             ds = combine(dss)
         else:  # single subject
-            self.set(subject=subject, **kwargs)
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            add_proj=add_proj)
             if reject and self._params['rej']['kind'] == 'auto':
@@ -994,10 +1018,10 @@ class MneExperiment(FileTree):
         *others* : str
             State parameters.
         """
-        if subject in self.get_field_values('group'):
-            self.set(**kwargs)
+        is_group, group = self._process_subject_arg(subject, kwargs)
+        if is_group:
             dss = []
-            for _ in self.iter(group=subject):
+            for _ in self.iter(group=group):
                 ds = self.load_evoked(baseline=baseline, ndvar=False, cat=cat)
                 dss.append(ds)
 
@@ -1017,7 +1041,6 @@ class MneExperiment(FileTree):
                         raise DimensionMismatchError(os.linesep.join(err))
 
         else:  # single subject
-            self.set(subject=subject, **kwargs)
             path = self.get('evoked-file', make=True)
             ds = load.unpickle(path)
 
@@ -1189,15 +1212,14 @@ class MneExperiment(FileTree):
         For automatic rejection: Since no epochs are loaded, no rejection
         based on thresholding is performed.
         """
-        self.set(**kwargs)
-        if subject in self.get_field_values('group'):
+        is_group, group = self._process_subject_arg(subject, kwargs)
+        if is_group:
             dss = [self.load_selected_events(reject=reject, add_proj=add_proj,
                                              add_bads=add_bads, index=index)
-                   for _ in self.iter(group=subject)]
+                   for _ in self.iter(group=group)]
             ds = combine(dss)
             return ds
 
-        self.set(subject=subject)
         epoch = self._epoch_state
 
         ds = self.load_events(add_proj=add_proj, add_bads=add_bads)
