@@ -2750,7 +2750,8 @@ class Dataset(collections.OrderedDict):
     """
     _stype_ = "dataset"
     def __init__(self, *items, **kwargs):
-        """
+        """Store multiple variables covering to the same observations
+
         Datasets can be initialize with data-objects, or with
         ('name', data-object) tuples.::
 
@@ -2793,10 +2794,12 @@ class Dataset(collections.OrderedDict):
     def __setstate__(self, kwargs):
         self.name = kwargs.get('name', None)
         self.info = kwargs.get('info', {})
+        self._caption = kwargs.get('caption', None)
 
     def __reduce__(self):
         args = tuple(self.items())
-        kwargs = {'name': self.name, 'info': self.info}
+        kwargs = {'name': self.name, 'info': self.info,
+                  'caption': self._caption}
         return self.__class__, args, kwargs
 
     def __getitem__(self, index):
@@ -3015,7 +3018,7 @@ class Dataset(collections.OrderedDict):
         title : None | str
             Title for the table.
         caption : None | str
-            Caption for the table.
+            Caption for the table (default is the Dataset's caption).
         ifmt : str
             Formatting for integers (default ``'%s'``).
         bfmt : str
@@ -3036,6 +3039,9 @@ class Dataset(collections.OrderedDict):
         keys = [k for k, v in self.iteritems() if isuv(v)]
         if sort:
             keys = sorted(keys)
+
+        if caption is None:
+            caption = self._caption
 
         values = [self[key] for key in keys]
         fmts = []
