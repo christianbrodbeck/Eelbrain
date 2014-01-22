@@ -82,7 +82,7 @@ from ..data import load
 from ..data import plot
 from ..data import save
 from ..data import testnd
-from ..data import Var, NDVar, combine
+from ..data import Dataset, Factor, Var, NDVar, combine
 from ..data.data_obj import isdatalist, UTS, DimensionMismatchError
 from .. import ui
 from ..utils import keydefaultdict
@@ -2352,16 +2352,13 @@ class MneExperiment(FileTree):
             subject = subjects[0]
         self.set(subject=subject, add=True)
 
-    def show_subjects(self, count=True, mri=True, mrisubject=False,
-                      caption=True):
-        """Print a table with subjects
+    def show_subjects(self, mri=True, mrisubject=False, caption=True):
+        """Create a Dataset with subject information
 
         Parameters
         ----------
         group : str
             Group of subjects to display.
-        count : bool
-            Add  a column with line numbers.
         mri : bool
             Add a column specifying whether the subject is using a scaled MRI
             or whether it has its own MRI.
@@ -2372,42 +2369,34 @@ class MneExperiment(FileTree):
         if caption is True:
             caption = self.format("Subject in group {group}")
 
-        # table
-        n_col = bool(count) + 1 + bool(mri) + bool(mrisubject)
-        table = fmtxt.Table('l' * n_col, caption=caption)
-
-        # header
-        if count:
-            table.cell('#')
-        table.cell('subject')
-        if mri:
-            table.cell('mri')
-        if mrisubject:
-            table.cell('mrisubject')
-        table.midrule()
-
-        # body
-        for i, _ in enumerate(self.iter()):
-            if count:
-                table.cell(i)
-            table.cell(self.get('subject'))
+        subject_list  = []
+        mri_list = []
+        mrisubject_list = []
+        for subject in self.iter():
+            subject_list.append(subject)
+            mrisubject_ = self.get('mrisubject')
+            mrisubject_list.append(mrisubject_)
             if mri:
                 mri_dir = self.get('mri-dir')
-                subject = self.get('mrisubject')
                 if not os.path.exists(mri_dir):
-                    table.cell('*missing')
+                    mri_list.append('*missing')
                 elif is_fake_mri(mri_dir):
                     mri_sdir = self.get('mri-sdir')
-                    info = mne.coreg.read_mri_cfg(subject, mri_sdir)
+                    info = mne.coreg.read_mri_cfg(mrisubject_, mri_sdir)
                     cell = "%s * %s" % (info['subject_from'],
                                         str(info['scale']))
-                    table.cell(cell)
+                    mri_list.append(cell)
                 else:
-                    table.cell(subject)
-            if mrisubject:
-                table.cell(self.get('mrisubject'))
+                    mri_list.append(mrisubject_)
+        
+        ds = Dataset(caption=caption)
+        ds['subject'] = Factor(subject_list)
+        if mri:
+            ds['mri'] = Factor(mri_list)
+        if mrisubject:
+            ds['mrisubject'] = Factor(mrisubject_list)
 
-        return table
+        return ds
 
     def show_summary(self, templates=['raw-file'], missing='-', link=' > ',
                      count=True):
