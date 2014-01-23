@@ -60,6 +60,7 @@ the interval form 0 to 500 ms used for rejection.
 '''
 
 from collections import defaultdict
+import inspect
 from operator import add
 import os
 from Queue import Queue
@@ -330,7 +331,9 @@ class MneExperiment(FileTree):
         self._mri_subjects = keydefaultdict(lambda k: k)
         self._label_cache = LabelCache()
         self._templates = self._templates.copy()
-        self._templates.update(self._values)
+        for cls in reversed(inspect.getmro(self.__class__)):
+            if hasattr(cls, '_values'):
+                self._templates.update(cls._values)
 
         # store epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
