@@ -169,21 +169,35 @@ temp = {
         'hemi': ('lh', 'rh'),
         'label-file': os.path.join('{label-dir}', '{hemi}.{label}.label'),
 
+        # compound properties
+        'sns-kind': '{raw}-{proj}',
+        'src-kind': '{sns-kind}-{cov}-{inv}',
+
         # (method) plots
         'plot-dir': os.path.join('{root}', 'plots'),
         'plot-file': os.path.join('{plot-dir}', '{analysis}', '{name}.{ext}'),
 
         # result output files
-        # group/subject
-        'kind': '',  # analysis kind (movie, plot, ...)
-        'analysis': '',  # analysis name (source, ...)
-        'name': '',  # file name
+        # data processing parameters
+        #    > group
+        #        > kind of test
+        #    > single-subject
+        #        > kind of test
+        #            > subject
+        'analysis': '',  # analysis parameters (filtering, ...)
+        'folder': '',  # intermediate folder for deep files
+        'resname': '',  # analysis name (GA-movie, max plot, ...)
         'ext': 'pickled',  # file extension
-
-        'res-gdir': os.path.join('{root}', 'res_{kind}_{experiment}',
-                                 '{analysis}'),
-        'res-dir': os.path.join('{res-gdir}', '{group}'),
-        'res-file': os.path.join('{res-dir}', '{name}.{ext}'),
+        'res-dir': os.path.join('{root}', 'results'),
+        'res-file': os.path.join('{res-dir}', '{analysis}', '{resname}.{ext}'),
+        'res-deep-file': os.path.join('{res-dir}', '{analysis}', '{folder}',
+                                      '{resname}.{ext}'),
+        'res-g-file': os.path.join('{res-dir}', '{analysis} {group}',
+                                   '{resname}.{ext}'),
+        'res-g-deep-file': os.path.join('{res-dir}', '{analysis} {group}',
+                                        '{folder}', '{resname}.{ext}'),
+        'res-s-file': os.path.join('{res-dir}', '{analysis} subjects',
+                                    '{resname}', '{subject}.{ext}'),
 
         # besa
         'besa-root': os.path.join('{root}', 'besa'),
