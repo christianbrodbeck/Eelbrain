@@ -489,7 +489,9 @@ class ttest_rel:
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds)
         c1, c0 = ct.cat
         if not ct.all_within:
-            raise ValueError("XXX")
+            err = ("conditions %r and %r do not have the same values on "
+                   "%r" % (c1, c0, ct.match.name))
+            raise ValueError(err)
 
         test_name = 'Related Samples t-Test'
         n = len(ct.Y) / 2
