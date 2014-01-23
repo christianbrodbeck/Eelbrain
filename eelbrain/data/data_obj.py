@@ -690,7 +690,13 @@ class Celltable(object):
         if match:
             self.within = {}
             for cell1, cell2 in itertools.combinations(X.cells, 2):
-                within = np.all(self.groups[cell1] == self.groups[cell2])
+                group1 = self.groups[cell1]
+                if len(group1) == 0:
+                    continue
+                group2 = self.groups[cell2]
+                if len(group2) == 0:
+                    continue
+                within = np.all(group1 == group2)
                 self.within[cell1, cell2] = within
                 self.within[cell2, cell1] = within
             self.any_within = any(self.within.values())
