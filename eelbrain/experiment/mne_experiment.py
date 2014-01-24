@@ -331,6 +331,10 @@ class MneExperiment(FileTree):
     # Labels
     _derived_labels = _derived_labels
 
+    # model order: list of factors in the order in which models should be built
+    # (default for factors not in this list is alphabetic)
+    _model_order = []
+
     def __init__(self, root=None, **state):
         """
         Parameters
@@ -2116,8 +2120,22 @@ class MneExperiment(FileTree):
         return group
 
     def _eval_model(self, model):
-        model = [v.strip() for v in model.split('%')]
-        model.sort()
+        factors = [v.strip() for v in model.split('%')]
+
+        # find order value for each factor
+        ordered_factors = {}
+        unordered_factors = []
+        for factor in sorted(factors):
+            if factor in self._model_order:
+                v = self._model_order.index(factor)
+                ordered_factors[v] = factor
+            else:
+                unordered_factors.append(factor)
+
+        # recompose
+        model = [ordered_factors[v] for v in sorted(ordered_factors)]
+        if unordered_factors:
+            model.extend(unordered_factors)
         return '%'.join(model)
 
     def _post_set_rej(self, rej):
