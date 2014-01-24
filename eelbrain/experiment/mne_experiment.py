@@ -1561,6 +1561,117 @@ class MneExperiment(FileTree):
 
         self.run_subp(cmd, workers=workers)
 
+    def make_mov_ga(self, subject=None, surf='smoothwm', p0=0.05, redo=False,
+                    **kwargs):
+        """Make a grand average movie for a subject or group
+
+        In order to compare activation with baseline, data are not baseline
+        corrected in sensor space but in source space.
+
+        Parameters
+        ----------
+        group : None | str
+            Groups (or subject) for which to make the the movie.
+
+        """
+        is_group, group = self._process_subject_arg(subject, kwargs)
+
+        if p0 == 0.05:
+            p1 = 0.01
+        elif p0 == 0.01:
+            p1 = 0.001
+        else:
+            raise ValueError("Unknown p0: %s" % p0)
+
+        self.set(analysis='{src-kind}',
+                 resname="GA %s %s" % (surf, p0),
+                 ext='mov')
+        if is_group:
+            dst = self.get('res-g-file', mkdir=True)
+        else:
+            dst = self.get('res-s-file', mkdir=True)
+        if not redo and os.path.exists(dst):
+            return
+
+        inv = self.get('inv')
+        if inv.startswith(('free', 'loose')):
+            sns_baseline = None
+            src_baseline = (None, 0)
+        elif inv.startswith('fixed'):
+            sns_baseline = (None, 0)
+            src_baseline = None
+        else:
+            raise ValueError("Unknown inv kind: %r" % inv)
+
+        self.set(model='')
+        if is_group:
+            ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
+                                      morph_ndvar=True)
+            src = 'srcm'
+        else:
+            ds = self.load_epochs_stc(group, sns_baseline, src_baseline,
+                                      ndvar=True)
+            src = 'src'
+
+        res = testnd.ttest_1samp(src, match=None, ds=ds)
+        brain = plot.brain.stat(res.p, res.t, p0=p0, p1=p1, surf=surf,
+                                dtmin=0.01)
+        brain.save_movie(dst)
+        brain.close()
+
+    def make_mov_ttest(self, x, c1, c0, subject=None, surf='inflated', p0=0.05,
+                       redo=False, **kwargs):
+        """Make a t-test movie
+
+        Parameters
+        ----------
+        x : str
+            Model on which the conditions c1 and c0 are defined.
+        c1 : None | str | tuple
+            Test condition (cell in model). If None, the grand average is
+            used and c0 has to be a scalar.
+        c0 : str | scalar
+            Control condition (cell on model) or scalar against which to
+            compare c1.
+        subject : str (state)
+            Group name, or subject name for single subject ttest.
+        """
+        is_group, group = self._process_subject_arg(subject, kwargs)
+
+        if p0 == 0.05:
+            p1 = 0.01
+        elif p0 == 0.01:
+            p1 = 0.001
+        else:
+            raise ValueError("Unknown p0: %s" % p0)
+
+        self.set(analysis='{src-kind}',
+                 resname="T-Test %s-%s %s %s" % (str(c1), str(c0), surf, p0),
+                 ext='mov')
+        if is_group:
+            dst = self.get('res-g-file', mkdir=True)
+        else:
+            dst = self.get('res-s-file', mkdir=True)
+        if not redo and os.path.exists(dst):
+            return
+
+        sns_baseline = (None, 0)
+        src_baseline = None
+
+        if is_group:
+            ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
+                                      morph_ndvar=True, cat=(c1, c0), model=x)
+            res = testnd.ttest_rel('srcm', x, c1, c0, match='subject', ds=ds)
+        else:
+            ds = self.load_epochs_stc(group, sns_baseline, src_baseline,
+                                      ndvar=True, cat=(c1, c0), model=x)
+            res = testnd.ttest_ind('src', x, c1, c0, ds=ds)
+
+        brain = plot.brain.stat(res.p, res.t, p0=p0, p1=p1, surf=surf,
+                                dtmin=0.01)
+        brain.save_movie(dst)
+        brain.close()
+
     def make_proj(self, save=True, save_plot=True):
         """
         computes the first ``n_mag`` PCA components, plots them, and asks for
