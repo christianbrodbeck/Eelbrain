@@ -26,6 +26,9 @@ reject_tmax : scalar
 decim : int
     Decimate the data by this factor (i.e., only keep every ``decim``'th
     sample)
+pad : scalar
+    Pad epochs with this this amount of data (in seconds) not included in
+    rejection.
 tag : str
     Optional tag to identify epochs that differ in ways not captured by the
     above.
@@ -139,19 +142,16 @@ temp = {
         'fwd-file': '{raw-base}_{mrisubject}-fwd.fif',
 
         # epochs
-        'epoch-desc': None,  # epoch description
-        'epoch-bare': None,  # epoch description without decim or rej
-        'epoch-nodecim': None,  # epoch description without decim parameter
-        'epoch-rej': None,  # epoch description for rejection purposes
-        'rej-file': os.path.join('{meg-dir}', 'epoch_sel', '{raw}_'
-                                 '{experiment}_{epoch-rej}_sel.pickled'),
+        'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
+        'rej-file': os.path.join('{rej-dir}', '{experiment}_{raw}_'
+                                 '{epoch}-{rej}.pickled'),
 
         'common_brain': 'fsaverage',
 
         # evoked
-        'evoked-dir': os.path.join('{meg-dir}', 'evoked_{raw}_{proj}'),
-        'evoked-file': os.path.join('{evoked-dir}', '{experiment}_'
-                                    '{epoch-desc}_{model}_evoked.pickled'),
+        'evoked-dir': os.path.join('{meg-dir}', 'evoked'),
+        'evoked-file': os.path.join('{evoked-dir}', '{experiment}_{raw}_'
+                                    '{proj}_{epoch}-{rej}_{model}.pickled'),
 
         # Source space
         'annot': 'aparc',
@@ -193,9 +193,9 @@ temp = {
         # besa
         'besa-root': os.path.join('{root}', 'besa'),
         'besa-trig': os.path.join('{besa-root}', '{subject}', '{subject}_'
-                                  '{experiment}_{epoch-bare}_triggers.txt'),
+                                  '{experiment}_{epoch}_triggers.txt'),
         'besa-evt': os.path.join('{besa-root}', '{subject}', '{subject}_'
-                                 '{experiment}_{epoch-nodecim}.evt'),
+                                 '{experiment}_{epoch}[{rej}].evt'),
          }
 
 
@@ -334,7 +334,7 @@ class MneExperiment(FileTree):
             the root directory for the experiment (usually the directory
             containing the 'meg' and 'mri' directories)
         """
-        # create attributes
+        # create attributes (overwrite class attributes)
         self.groups = self.groups.copy()
         self.exclude = self.exclude.copy()
         self._mri_subjects = keydefaultdict(lambda k: k)
@@ -343,6 +343,27 @@ class MneExperiment(FileTree):
         for cls in reversed(inspect.getmro(self.__class__)):
             if hasattr(cls, '_values'):
                 self._templates.update(cls._values)
+        # epochs
+        epochs = {}
+        for name in self.epochs:
+            # expand epoch dict
+            epoch = self.epoch_default.copy()
+            epoch.update(self.epochs[name])
+            epoch['name'] = name
+
+            # process secondary attributes
+            pad = epoch.get('pad', None)
+            if pad:
+                if not 'reject_tmin' in epoch:
+                    epoch['reject_tmin'] = epoch['tmin']
+                epoch['tmin'] -= pad
+                if not 'reject_tmax' in epoch:
+                    epoch['reject_tmax'] = epoch['tmax']
+                epoch['tmax'] += pad
+            
+            epochs[name] = epoch
+        self.epochs = epochs
+        
 
         # store epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
@@ -358,7 +379,7 @@ class MneExperiment(FileTree):
         self._register_field('group', self.groups.keys() + ['all'], 'all',
                              eval_handler=self._eval_group)
         self._register_field('epoch', self.epochs.keys(),
-                             set_handler=self.set_epoch)
+                             eval_handler=self._eval_epoch)
         self._register_value('inv', 'free-2-dSPM',
                              set_handler=self._set_inv_as_str)
         self._register_value('model', '', eval_handler=self._eval_model)
@@ -663,57 +684,6 @@ class MneExperiment(FileTree):
             return
 
         self.load_events(add_proj=False)
-
-    def get_epoch_str(self, sel=None, tmin=None, tmax=None, reject_tmin=None,
-                      reject_tmax=None, decim=None, name=None, tag=None,
-                      sel_epoch=None):
-        """Produces a descriptor for a single epoch specification
-
-        Parameters
-        ----------
-        sel : str
-            Expression to select events in the events Dataset.
-        tmin : scalar
-            Start of the epoch data in seconds.
-        tmax : scalar
-            End of the epoch data in seconds.
-        reject_tmin : None | scalar
-            Set an alternate tmin for epoch rejection.
-        reject_tmax : None | scalar
-            Set an alternate tmax for epoch rejection.
-        decim : None | int
-            Decimate epoch data.
-        name : None | str
-            Name the epoch (not included in the label).
-        tag : None | str
-            Optional tag for epoch string.
-        sel_epoch : None | str
-            Use rejection from another epoch (only for rejection by rej-file;
-            needs to have same triggers).
-        """
-        desc = '%s[' % sel.replace(' ', '')
-
-        if reject_tmin is None:
-            desc += '%i_' % (tmin * 1000)
-        else:
-            desc += '(%i)%i_' % (tmin * 1000, reject_tmin * 1000)
-
-        if reject_tmax is None:
-            desc += '%i' % (tmax * 1000)
-        else:
-            desc += '(%i)%i' % (reject_tmax * 1000, tmax * 1000)
-
-        if (decim is not None) and (decim != 1):
-            desc += '|%i' % decim
-
-        desc += '{rej}'
-        if sel_epoch is not None:
-            desc += '-%s' % sel_epoch
-
-        if tag is not None:
-            desc += '|%s' % tag
-
-        return desc + ']'
 
     def get_field_values(self, field, exclude=True):
         """Find values for a field taking into account exclusion
@@ -2027,7 +1997,7 @@ class MneExperiment(FileTree):
 
         FileTree.set(self, **state)
 
-    def set_epoch(self, epoch, pad=None):
+    def _eval_epoch(self, epoch):
         """Set the current epoch
 
         Parameters
@@ -2036,69 +2006,15 @@ class MneExperiment(FileTree):
             An epoch name for an epoch defined in self.epochs. Several epochs
             can be combined with '|' (but not all functions support linked
             epochs).
-        pad : None | scalar
-            Pad epochs with this this amount of data (in seconds). Padding is
-            not reflected in the epoch descriptors.
         """
+        # fix epoch name
         epochs = epoch.split('|')
         epochs.sort()
         epoch = '|'.join(epochs)
 
-        e_descs = []  # full epoch descriptor
-        e_descs_nodecim = []  # epoch description without decim
-        e_descs_bare = []  # epoch description without decim or rejection
-        e_descs_rej = []
-        epoch_dicts = []
-        for name in epochs:
-            # expand epoch description
-            ep = self.epoch_default.copy()
-            ep.update(self.epochs[name])
-            ep['name'] = name
-
-            # store expanded epoch
-            ep_desc = ep.copy()
-            if pad:
-                if not 'reject_tmin' in ep:
-                    ep['reject_tmin'] = ep['tmin']
-                ep['tmin'] -= pad
-                if not 'reject_tmax' in ep:
-                    ep['reject_tmax'] = ep['tmax']
-                ep['tmax'] += pad
-            epoch_dicts.append(ep)
-
-            # epoch desc
-            desc = self.get_epoch_str(**ep_desc)
-            e_descs.append(desc)
-
-            # epoch desc without decim
-            ep_desc['decim'] = None
-            desc_nd = self.get_epoch_str(**ep_desc)
-            e_descs_nodecim.append(desc_nd)
-
-            # epoch for rejection
-            ep_rej = ep_desc.copy()
-            if 'reject_tmin' in ep_rej:
-                ep_rej['tmin'] = ep_rej.pop('reject_tmin')
-            if 'reject_tmax' in ep_rej:
-                ep_rej['tmax'] = ep_rej.pop('reject_tmax')
-            desc_rej = self.get_epoch_str(**ep_rej)
-            e_descs_rej.append(desc_rej)
-
-            # bare epoch desc
-            ep_desc['reject_tmin'] = None
-            ep_desc['reject_tmax'] = None
-            desc_b = self.get_epoch_str(**ep_desc)
-            desc_b = desc_b.format(rej='')
-            e_descs_bare.append(desc_b)
-
-        # store secondary settings
-        fields = {'epoch': epoch,
-                  'epoch-desc': '(%s)' % ','.join(sorted(e_descs)),
-                  'epoch-nodecim': '(%s)' % ','.join(sorted(e_descs_nodecim)),
-                  'epoch-bare': '(%s)' % ','.join(sorted(e_descs_bare)),
-                  'epoch-rej': '(%s)' % ','.join(sorted(e_descs_rej))}
-        self._fields.update(fields)
-        self._params['epochs'] = epoch_dicts
+        # find epoch dicts
+        self._params['epochs'] = [self.epochs[name] for name in epochs]
+        return epoch
 
     def _eval_group(self, group):
         if group not in self.get_field_values('group'):
