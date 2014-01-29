@@ -9,16 +9,12 @@ Epochs
 Epochs are defined as dictionaries containing the following entries
 (**mandatory**/optional):
 
-**stimvar** : str
-    The name of the variable which defines the relevant stimuli (i.e., the
-    variable on which the stim value is chosen: the relevant events are
-    found by ``idx = (ds[stimvar] == stim)``.
-**stim** : str
-    Value of the stimvar relative to which the epoch is defined. Can combine
-    multiple names with '|'.
-**name** : str
-    A name for the epoch; when the resulting data is added to a Dataset, this
-    name is used.
+sel_epoch : str
+    Name of the epoch providing primary events (e.g. whose trial rejection
+    file should be used).
+sel : str
+    Expression which evaluates in the events Dataset to the index of the
+    events included in this Epoch specification.
 **tmin** : scalar
     Start of the epoch.
 **tmax** : scalar
@@ -27,16 +23,12 @@ reject_tmin : scalar
     Alternate start time for rejection (amplitude and eye-tracker).
 reject_tmax : scalar
     Alternate end time for rejection (amplitude and eye-tracker).
-rej_epoch : str
-    Name of the epoch whose trial rejection file should be used.
 decim : int
     Decimate the data by this factor (i.e., only keep every ``decim``'th
     sample)
 tag : str
     Optional tag to identify epochs that differ in ways not captured by the
     above.
-sub : str
-    Select a subset of trials based on events.
 
 
 Epochs can be
@@ -48,7 +40,7 @@ argument to various methods. Example::
 
     # in MneExperiment subclass definition
     class experiment(MneExperiment):
-        epochs = {'adjbl': dict(name='bl', stim='adj', tstart=-0.1, tstop=0)}
+        epochs = {'adjbl': dict(sel="stim=='adj'", tstart=-0.1, tstop=0)}
         ...
 
 The :meth:`MneExperiment.get_epoch_str` method produces A label for each
@@ -147,7 +139,6 @@ temp = {
         'fwd-file': '{raw-base}_{mrisubject}-fwd.fif',
 
         # epochs
-        'epoch-stim': None,  # the stimulus/i selected by the epoch
         'epoch-desc': None,  # epoch description
         'epoch-bare': None,  # epoch description without decim or rej
         'epoch-nodecim': None,  # epoch description without decim parameter
@@ -242,11 +233,11 @@ class MneExperiment(FileTree):
     bad_channels = defaultdict(list)
 
     # Default values for epoch definitions
-    epoch_default = {'stimvar': 'stim', 'tmin':-0.1, 'tmax': 0.6, 'decim': 5}
+    epoch_default = {'tmin':-0.1, 'tmax': 0.6, 'decim': 5}
 
     # named epochs
-    epochs = {'bl': {'stim': 'adj', 'tmin':-0.2, 'tmax':0},
-              'epoch': {'stim': 'adj'}}
+    epochs = {'epoch': dict(sel="stim=='target'"),
+              'bl': dict(sel_epoch='epoch', tmin=-0.1, tmax=0)}
     # Rejection
     # =========
     # how to reject data epochs.
@@ -673,18 +664,15 @@ class MneExperiment(FileTree):
 
         self.load_events(add_proj=False)
 
-    def get_epoch_str(self, stimvar=None, stim=None, tmin=None, tmax=None,
-                      reject_tmin=None, reject_tmax=None, decim=None,
-                      name=None, tag=None, rej_epoch=None, sub=None):
+    def get_epoch_str(self, sel=None, tmin=None, tmax=None, reject_tmin=None,
+                      reject_tmax=None, decim=None, name=None, tag=None,
+                      sel_epoch=None):
         """Produces a descriptor for a single epoch specification
 
         Parameters
         ----------
-        stimvar : str
-            The name of the variable on which stim is defined (not included in
-            the label).
-        stim : str
-            The stimulus name.
+        sel : str
+            Expression to select events in the events Dataset.
         tmin : scalar
             Start of the epoch data in seconds.
         tmax : scalar
@@ -699,15 +687,11 @@ class MneExperiment(FileTree):
             Name the epoch (not included in the label).
         tag : None | str
             Optional tag for epoch string.
-        rej_epoch : None | str
+        sel_epoch : None | str
             Use rejection from another epoch (only for rejection by rej-file;
             needs to have same triggers).
-        sub : None | str
-            Select a subset of trials based on events.
         """
-        desc = '%s[' % stim
-        if sub is not None:
-            desc += '%s,' % sub
+        desc = '%s[' % sel.replace(' ', '')
 
         if reject_tmin is None:
             desc += '%i_' % (tmin * 1000)
@@ -723,8 +707,8 @@ class MneExperiment(FileTree):
             desc += '|%i' % decim
 
         desc += '{rej}'
-        if rej_epoch is not None:
-            desc += '-%s' % rej_epoch
+        if sel_epoch is not None:
+            desc += '-%s' % sel_epoch
 
         if tag is not None:
             desc += '|%s' % tag
@@ -1233,6 +1217,13 @@ class MneExperiment(FileTree):
         For automatic rejection: Since no epochs are loaded, no rejection
         based on thresholding is performed.
         """
+        # process arguments
+        if reject not in (True, False, 'keep'):
+            raise ValueError("Invalid reject value: %r" % reject)
+        if index and not isinstance(index, str):
+            index = 'index'
+
+        # case of loading events for a group
         is_group, group = self._process_subject_arg(subject, kwargs)
         if is_group:
             dss = [self.load_selected_events(reject=reject, add_proj=add_proj,
@@ -1241,68 +1232,78 @@ class MneExperiment(FileTree):
             ds = combine(dss)
             return ds
 
+        # retrieve & check epoch parameters
         epoch = self._epoch_state
+        sel = epoch.get('sel', None)
+        sel_epoch = epoch.get('sel_epoch', None)
+        rej_kind = self._params['rej']['kind']
+        if rej_kind not in ('manual', 'make', 'auto'):
+            raise ValueError("Unknown rej_kind value: %r" % rej_kind)
 
+        # case 1: no rejection
+        if not reject or rej_kind == '':
+            ds = self.load_events(add_proj=add_proj, add_bads=add_bads)
+            if sel is not None:
+                ds = ds.sub(sel)
+            if index:
+                ds.index(index)
+            return ds
+            
+        # case 2: rejection comes from a different epoch
+        if sel_epoch is not None:
+            level = self._increase_depth()
+            ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
+                                           index, epoch=sel_epoch)
+            self.reset(level - 1)
+            
+            if sel is not None:
+                ds = ds.sub(sel)
+            if index:
+                ds.index(index)
+
+            if reject is True:
+                ds = ds.sub('accept')
+
+            return ds
+
+        # case 3: proper rejection
         ds = self.load_events(add_proj=add_proj, add_bads=add_bads)
-        stimvar = epoch['stimvar']
-        stim = epoch['stim']
-        stimvar = ds[stimvar]
-        if '|' in stim:
-            idx = stimvar.isin(stim.split('|'))
-        else:
-            idx = stimvar == stim
-        ds = ds.sub(idx)
-
+        if sel is not None:
+            ds = ds.sub(sel)
         if index:
-            idx_name = index if isinstance(index, str) else 'index'
-            ds.index(idx_name)
+            ds.index(index)
 
-        if reject:
-            if reject not in (True, 'keep'):
-                raise ValueError("Invalid reject value: %r" % reject)
+        if rej_kind in ('manual', 'make'):
+            path = self.get('rej-file')
+            if not os.path.exists(path):
+                err = ("The rejection file at %r does not exist. Run "
+                       ".make_rej() first." % path)
+                raise RuntimeError(err)
 
-            if self._params['rej']['kind'] in ('manual', 'make'):
-                # if rejections come from different epoch, increase level
-                rej_epoch = epoch.get('rej_epoch', None)
-                if rej_epoch is not None:
-                    level = self._increase_depth()
-                    self.set(epoch=rej_epoch)
-                path = self.get('rej-file')
-                if rej_epoch is not None:
-                    self.reset(level - 1)
+            ds_sel = load.unpickle(path)
+            if not np.all(ds['trigger'] == ds_sel['trigger']):
+                err = ("The epoch selection file contains different "
+                       "events than the data. Something went wrong...")
+                raise RuntimeError(err)
 
-                if not os.path.exists(path):
-                    err = ("The rejection file at %r does not exist. Run "
-                           ".make_rej() first." % path)
-                    raise RuntimeError(err)
-
-                ds_sel = load.unpickle(path)
-                if not np.all(ds['trigger'] == ds_sel['trigger']):
-                    err = ("The epoch selection file contains different "
-                           "events than the data. Something went wrong...")
-                    raise RuntimeError(err)
-                if reject == 'keep':
-                    ds['accept'] = ds_sel['accept']
-                elif reject == True:
-                    ds = ds.sub(ds_sel['accept'])
-                else:
-                    err = ("reject parameter must be bool or 'keep', not "
-                           "%r" % reject)
-                    raise ValueError(err)
+            if reject == 'keep':
+                ds['accept'] = ds_sel['accept']
+            elif reject == True:
+                ds = ds.sub(ds_sel['accept'])
             else:
-                use = self._params['rej'].get('edf', False)
-                if use:
-                    edf = ds.info['edf']
-                    tmin = epoch.get('reject_tmin', epoch['tmin'])
-                    tmax = epoch.get('reject_tmax', epoch['tmax'])
-                    if reject == 'keep':
-                        edf.mark(ds, tstart=tmin, tstop=tmax, use=use)
-                    else:
-                        ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=use)
-
-        sub = epoch.get('sub', None)
-        if sub is not None:
-            ds = ds.sub(sub)
+                err = ("reject parameter must be bool or 'keep', not "
+                       "%r" % reject)
+                raise ValueError(err)
+        else:
+            use = self._params['rej'].get('edf', False)
+            if use:
+                edf = ds.info['edf']
+                tmin = epoch.get('reject_tmin', epoch['tmin'])
+                tmax = epoch.get('reject_tmax', epoch['tmax'])
+                if reject == 'keep':
+                    edf.mark(ds, tstart=tmin, tstop=tmax, use=use)
+                else:
+                    ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=use)
 
         return ds
 
@@ -1325,9 +1326,6 @@ class MneExperiment(FileTree):
         self.set(epoch=epoch)
         epoch = self._epoch_state
 
-        stim = epoch['stim']
-        tmin = epoch['tmin']
-        tmax = epoch['tmax']
         rej = self.get('rej')
 
         trig_dest = self.get('besa-trig', rej='', mkdir=True)
@@ -1338,8 +1336,6 @@ class MneExperiment(FileTree):
 
         # load events
         ds = self.load_selected_events(reject='keep')
-        idx = ds['stim'] == stim
-        ds = ds.sub(idx)
 
         # save triggers
         if redo or not os.path.exists(trig_dest):
@@ -1353,6 +1349,8 @@ class MneExperiment(FileTree):
         ds = ds.sub('accept')
 
         # save evt
+        tmin = epoch['tmin']
+        tmax = epoch['tmax']
         save.besa_evt(ds, tstart=tmin, tstop=tmax, dest=evt_dest)
 
     def make_copy(self, temp, field, src, dst, redo=False):
@@ -1408,13 +1406,10 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        stimvar : str
-            Name of the variable containing the stimulus.
+        epoch : str
+            Data epoch specification.
         model : str
-            Name of the model. No spaces, order matters.
-        epoch : epoch specifications
-            See the module documentation.
-
+            Model specifying cells for evoked.
         """
         dest = self.get('evoked-file', mkdir=True, **kwargs)
         if not redo and os.path.exists(dest):
@@ -2054,20 +2049,13 @@ class MneExperiment(FileTree):
         e_descs_bare = []  # epoch description without decim or rejection
         e_descs_rej = []
         epoch_dicts = []
-        stims = set()  # all relevant stims
         for name in epochs:
             # expand epoch description
             ep = self.epoch_default.copy()
             ep.update(self.epochs[name])
             ep['name'] = name
 
-            # make sure stim is ordered
-            stim = ep['stim']
-            if '|' in stim:
-                stim = '|'.join(sorted(set(stim.split('|'))))
-
             # store expanded epoch
-            stims.update(stim.split('|'))
             ep_desc = ep.copy()
             if pad:
                 if not 'reject_tmin' in ep:
@@ -2105,7 +2093,6 @@ class MneExperiment(FileTree):
 
         # store secondary settings
         fields = {'epoch': epoch,
-                  'epoch-stim': '|'.join(sorted(stims)),
                   'epoch-desc': '(%s)' % ','.join(sorted(e_descs)),
                   'epoch-nodecim': '(%s)' % ','.join(sorted(e_descs_nodecim)),
                   'epoch-bare': '(%s)' % ','.join(sorted(e_descs_bare)),
