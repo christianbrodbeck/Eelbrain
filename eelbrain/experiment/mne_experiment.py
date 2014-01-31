@@ -371,7 +371,7 @@ class MneExperiment(FileTree):
         self.epoch_rejection = epoch_rejection
 
         FileTree.__init__(self, **state)
-        self.set_root(root, True)
+        self.set_root(root, state.pop('find_subjects', True))
 
         # regiser variables with complex behavior
         self._register_field('rej', self.epoch_rejection.keys(),
@@ -2152,7 +2152,11 @@ class MneExperiment(FileTree):
             self._state['mrisubject'] = mri_subject
 
     def set_root(self, root, find_subjects=False):
-        root = os.path.expanduser(root)
+        if root is None:
+            root = ''
+            find_subjects = False
+        else:
+            root = os.path.expanduser(root)
         self._fields['root'] = root
         if not find_subjects:
             return
@@ -2166,8 +2170,8 @@ class MneExperiment(FileTree):
                     subjects.add(dirname)
         else:
             err = ("Subjects directory not found: %r. Initialize with "
-                   "parse_subjects=False, or specifiy proper directory in "
-                   "experiment._subject_loc." % sub_dir)
+                   "root=None or find_subjects=False, or specifiy proper "
+                   "directory in experiment._subject_loc." % sub_dir)
             raise IOError(err)
 
         subjects = sorted(subjects)
