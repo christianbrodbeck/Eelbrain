@@ -393,7 +393,7 @@ class MneExperiment(FileTree):
         self._bind_make('fwd-file', self.make_fwd)
 
         # set initial values
-        self._increase_depth()
+        self.store_state()
         self.set_env()
 
     def __iter__(self):
@@ -778,12 +778,12 @@ class MneExperiment(FileTree):
         idx = slice(start, stop)
         values = values[idx]
 
-        level = self._increase_depth()
+        self.store_state()
         for value in values:
-            self.reset()
+            self.restore_state(discard_tip=False)
             self.set(**{field: value})
             yield value
-        self.reset(level - 1)
+        self.restore_state()
 
     def iter_vars(self, *args, **kwargs):
         """Deprecated. Use :attr:`.iter()`"""
@@ -1221,10 +1221,10 @@ class MneExperiment(FileTree):
             
         # case 2: rejection comes from a different epoch
         if sel_epoch is not None:
-            level = self._increase_depth()
+            self.store_state()
             ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
                                            index, epoch=sel_epoch)
-            self.reset(level - 1)
+            self.restore_state()
             
             if sel is not None:
                 ds = ds.sub(sel)

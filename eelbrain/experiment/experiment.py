@@ -40,78 +40,66 @@ def _etree_node_repr(node, name, indent=0):
 
 
 class LayeredDict(dict):
-    """Modify dictionary entries while keeping a history for resetting
+    """Dictionary which can store and restore states
     """
     def __init__(self, *args, **kwargs):
-        self._layers = []
-        self.level = 0
+        self._states = []
 
     def __repr__(self):
-        rep = ("<LayeredDict at level %i: "
-               "%r>" % (self.level, dict.__repr__(self)))
+        rep = ("<LayeredDict with %i stored states:\n"
+               "%r>" % (len(self._states), dict.__repr__(self)))
         return rep
 
-    def get_lower(self, key, level, *args):
+    def _get_state(self, index):
+        "Retrieve a state (raise an appropriate error if not present)."
+        if index >= len(self._states) or index < -len(self._states):
+            err = ("Dict has only %i stored states, requested "
+                   "%i" % (len(self._states), index))
+            raise IndexError(err)
+        return self._states[index]
+
+    def get_stored(self, key, level, *args):
         """Retrieve a field value from any level
 
         Parameters
         ----------
         key : str
-            the field name (dicitonary key).
+            the field name (dictionary key).
         level : int
             The level from which to retrieve the value. -1 = the current level.
         """
-        if level == self.level:
-            return self[key]
-        elif -self.level < level < self.level:
-            ldict = self._layers[level]
-            return ldict[key]
-        else:
-            err = ("Dict has only %i levels, requested "
-                   "%i" % (self.level, level))
-            raise ValueError(err)
+        state = self._get_state(level)
+        return state.get(key, *args)
 
-    def increase_depth(self):
-        """Increase depth to make changes while preserving values at the lower level
-
-        Returns
-        -------
-        level : int
-            New level.
-        """
-        self._layers.append(self.copy())
-        self.level += 1
-        return self.level
-
-    def reset(self, level=None):
-        """Reset the values
+    def restore_state(self, index=-1, discard_tip=True):
+        """Restore a previously stored state
 
         Parameters
         ----------
-        level : None | int
-            If None, stay at the current level. With int, reset to a lower
-            level. Negative values specify relative offset from current level.
-        """
-        if level is None:
-            level = self.level
-        elif level > self.level:
-            err = ("Requested level (%i) higher than current level "
-                   "(%i)" % (level, self.level))
-            raise RuntimeError(err)
+        index : int
+            Index of the state which to restore (specified as index into a
+            list of stored states, i.e., negative values access recently
+            stored states).
+        discard_tip : bool
+            Discard the relevant state after restoring it. All states stored
+            later are discarded either way.
 
-        if level == self.level:
-            new = self._layers[-1]
-        elif level < 0:
-            while level < 0:
-                new = self._layers.pop()
-                level += 1
-        else:
-            while level < self.level:
-                new = self._layers.pop()
-                self.level -= 1
+        See Also
+        --------
+        .get_stored(): Retrieve a stored value without losing stored states
+        """
+        state = self._get_state(index)
+        if discard_tip:
+            del self._states[index:]
+        elif index != -1:
+            del self._states[index + 1:]
 
         self.clear()
-        self.update(new)
+        self.update(state)
+
+    def store_state(self):
+        "Store the current state"
+        self._states.append(self.copy())
 
 
 class TreeModel(object):
@@ -169,7 +157,7 @@ class TreeModel(object):
                 continue
 
             v = self._fields[k]
-            if v != self._fields.get_lower(k, level=0):
+            if v != self._fields.get_stored(k, level=0):
                 kwargs.append((k, repr(v)))
 
         args.extend('='.join(pair) for pair in kwargs)
@@ -286,17 +274,6 @@ class TreeModel(object):
         kwargs = {key: default, 'add':True}
         self.set(**kwargs)
 
-    def _increase_depth(self):
-        """Increase the depth of the settings by a level
-
-        See also
-        --------
-        reset : reset to a lower level
-        """
-        self._fields.increase_depth()
-        self._field_values.increase_depth()
-        return self._params.increase_depth()
-
     def expand_template(self, temp, values=()):
         """
         Expand a template until all its subtemplates are neither in
@@ -412,7 +389,7 @@ class TreeModel(object):
 
         # set constants
         self.set(**constants)
-        level = self._increase_depth()
+        self.store_state()
 
         if isinstance(fields, basestring):
             fields = [fields]
@@ -452,7 +429,7 @@ class TreeModel(object):
             for v_list in itertools.product(*v_lists):
                 if prog:
                     progm.message(' | '.join(map(str, v_list)))
-                self.reset()
+                self.restore_state(discard_tip=False)
                 values = dict(zip(fields, v_list))
                 self.set(**values)
 
@@ -466,7 +443,7 @@ class TreeModel(object):
         else:
             yield ()
 
-        self.reset(level - 1)
+        self.restore_state()
         if mail:
             send_email(mail, "Eelbrain Task Done", "I did as you desired, "
                        "my master.")
@@ -494,18 +471,22 @@ class TreeModel(object):
             path = temp.format(**self._fields)
             yield path
 
-    def reset(self, level=None):
-        """Reset the depth of the settings to a lower level
+    def restore_state(self, index=-1, discard_tip=True):
+        """Restore a previously stored state
 
         Parameters
         ----------
-        level : None | int
-            If None, stay at the current level. With int, reset to a lower
-            level. Negative values specify relative offset from current level.
+        index : int
+            Index of the state which to restore (specified as index into a
+            list of stored states, i.e., negative values access recently
+            stored states).
+        discard_tip : bool
+            Discard the relevant state after restoring it. All states stored
+            later are discarded either way.
         """
-        self._fields.reset(level)
-        self._field_values.reset(level)
-        self._params.reset(level)
+        self._fields.restore_state(index, discard_tip)
+        self._field_values.restore_state(index, discard_tip)
+        self._params.restore_state(index, discard_tip)
 
     def set(self, match=True, **state):
         """Set the value of one or more fields.
@@ -625,7 +606,7 @@ class TreeModel(object):
                 continue
 
             v = self._fields[k]
-            if v != self._fields.get_lower(k, level=0):
+            if v != self._fields.get_stored(k, level=0):
                 mod = '*'
             else:
                 mod = ''
@@ -654,7 +635,19 @@ class TreeModel(object):
         name_len = max(len(n) for n, _ in nodes)
         path_len = max(len(p) for _, p in nodes)
         pad = ' ' * (80 - name_len - path_len)
-        print os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len) for n, p in nodes)
+        print os.linesep.join(n.ljust(name_len) + pad + p.ljust(path_len)
+                              for n, p in nodes)
+
+    def store_state(self):
+        """Store the current state
+
+        See also
+        --------
+        .restore_state() : restore a previously stored state
+        """
+        self._fields.store_state()
+        self._field_values.store_state()
+        self._params.store_state()
 
 
 class FileTree(TreeModel):
@@ -735,9 +728,9 @@ class FileTree(TreeModel):
         # make the file
         if make and not os.path.exists(path) and temp in self._make_handlers:
             if temp in self._make_handlers:
-                level = self._increase_depth()
+                self.store_state()
                 self._make_handlers[temp]()
-                self.reset(level - 1)
+                self.restore_state()
             else:
                 raise RuntimeError("No make handler for %r." % temp)
 
