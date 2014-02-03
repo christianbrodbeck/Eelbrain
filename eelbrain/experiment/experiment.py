@@ -155,7 +155,8 @@ class TreeModel(object):
                 raise TypeError(err)
 
         if self.owner:
-            self.notification = Notifier(self.owner, 'MneExperiment task')
+            self.notification = Notifier(self.owner, 'MneExperiment task',
+                                         self.show_state)
 
     def __repr__(self):
         args = [repr(self._fields[arg]) for arg in self._repr_args]

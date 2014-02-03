@@ -3,6 +3,7 @@ import bz2
 from email.mime.text import MIMEText
 import os
 import smtplib
+import traceback
 
 
 _pwd_fname = os.path.expanduser('~/.eelbrain_n00b')
@@ -42,7 +43,7 @@ class Notifier(object):
     ...
 
     """
-    def __init__(self, to, name='job'):
+    def __init__(self, to, name='job', state_func=None):
         """
         Parameters
         ----------
@@ -50,6 +51,9 @@ class Notifier(object):
             Email address of the recipient.
         name : str
             Name of the job (will be included in subject line).
+        state_func : None | callable
+            Will be called upon crash to produce a string that will be included
+            in the crash report.
         """
         if not os.path.exists(_pwd_fname):
             err = "File required for notification not found: %r" % _pwd_fname
@@ -57,6 +61,7 @@ class Notifier(object):
 
         self.to = to
         self.name = name
+        self.state_func = state_func
 
     def __enter__(self):
         self.msg = []
@@ -66,13 +71,24 @@ class Notifier(object):
         "Add a note to the notification"
         self.msg.append(unicode(note))
 
-    def __exit__(self, type_, value, traceback):
-        body = "\n\n".join(map(unicode, self.msg))
+    def __exit__(self, type_, value, traceback_):
+        items = self.msg[:]
         if isinstance(value, Exception):
-            result = 'failed'
-            body = '\n\n'.join(map(unicode, (body, type_, value)))
+            result = '%s: %s' % (type_.__name__, value)
+
+            # state description
+            if self.state_func:
+                state_desc = self.state_func()
+                items.append(state_desc)
+
+            # traceback
+            tb_items = traceback.format_tb(traceback_)
+            tb_str = '\n'.join(tb_items)
+            items.append(tb_str)
+            items.append(result)
         else:
             result = 'finished'
+        body = '\n\n'.join(map(unicode, items))
         subject = '%s %s' % (self.name, result)
         send_email(self.to, subject, body)
 
