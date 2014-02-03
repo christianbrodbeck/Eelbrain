@@ -360,10 +360,10 @@ class MneExperiment(FileTree):
                 if not 'reject_tmax' in epoch:
                     epoch['reject_tmax'] = epoch['tmax']
                 epoch['tmax'] += pad
-            
+
             epochs[name] = epoch
         self.epochs = epochs
-        
+
 
         # store epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
@@ -409,17 +409,17 @@ class MneExperiment(FileTree):
                    "%s)" % self.get('epoch'))
             raise NotImplementedError(err)
         return epochs[0]
-    
+
     def _process_subject_arg(self, subject, kwargs):
         """Process subject arg for methods that work on groups and subjects
-        
+
         Returns
         -------
         is_group : bool
-            True if the value specifies a group, False if it specifies a 
+            True if the value specifies a group, False if it specifies a
             subject.
         value : str
-            Name of the group or subject. 
+            Name of the group or subject.
         """
         if subject is None:
             is_group = False
@@ -432,7 +432,7 @@ class MneExperiment(FileTree):
             is_group = False
             value = subject
             self.set(subject=subject, **kwargs)
-        
+
         return is_group, value
 
     def add_epochs_stc(self, ds, src='epochs', dst=None, ndvar=True,
@@ -1218,14 +1218,14 @@ class MneExperiment(FileTree):
             if index:
                 ds.index(index)
             return ds
-            
+
         # case 2: rejection comes from a different epoch
         if sel_epoch is not None:
             self.store_state()
             ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
                                            index, epoch=sel_epoch)
             self.restore_state()
-            
+
             if sel is not None:
                 ds = ds.sub(sel)
             if index:
@@ -2210,7 +2210,7 @@ class MneExperiment(FileTree):
         if caption is True:
             caption = self.format("Subject in group {group}")
 
-        subject_list  = []
+        subject_list = []
         mri_list = []
         mrisubject_list = []
         for subject in self.iter():
@@ -2229,7 +2229,7 @@ class MneExperiment(FileTree):
                     mri_list.append(cell)
                 else:
                     mri_list.append(mrisubject_)
-        
+
         ds = Dataset(caption=caption)
         ds['subject'] = Factor(subject_list)
         if mri:
