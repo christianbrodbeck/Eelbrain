@@ -421,8 +421,12 @@ class TreeModel(object):
         fields = list(set(fields).difference(constants).union(values))
 
         # gather possible values to iterate over
-        field_values = {k: self.get_field_values(k) for k in fields}
-        field_values.update(values)
+        field_values = {}
+        for k in fields:
+            if k in values:
+                field_values[k] = values[k]
+            else:
+                field_values[k] = self.get_field_values(k)
 
         # exclude values
         for k in exclude:
