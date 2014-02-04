@@ -82,7 +82,7 @@ from ..data.data_obj import isdatalist, UTS, DimensionMismatchError
 from .. import ui
 from ..utils import keydefaultdict
 from ..utils import subp
-from ..utils.mne_utils import is_fake_mri
+from ..utils.mne_utils import fix_annot_names, is_fake_mri
 from .experiment import FileTree
 
 
@@ -1317,6 +1317,10 @@ class MneExperiment(FileTree):
                            "--trgsubject", mrisubject, "--sval-annot", parc,
                            "--tval", parc, "--hemi", hemi]
                     self.run_subp(cmd, 0)
+
+                mri_sdir = self.get('mri-sdir')
+                fix_annot_names(mrisubject, parc, common_brain,
+                                subjects_dir=mri_sdir)
 
     def _make_annot(self, parc, subject):
         "Only called to make custom annotation files for the common_brain"
