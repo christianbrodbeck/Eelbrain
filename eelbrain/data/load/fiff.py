@@ -573,6 +573,20 @@ def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
     """
     Create a Sensor dimension object based on the info in a fiff object.
 
+    Parameters
+    ----------
+    fiff : mne-python object
+        Object that has a .info attribute that contains measurement info.
+    picks : None | array of int
+        Channel picks (as used in mne-python). If None (default) all channels
+        are included.
+    sysname : str
+        Name of the sensor system (stored as Sensor attribute).
+
+    Returns
+    -------
+    sensor_dim : Sensor
+        Sensor dimension object.
     """
     info = fiff.info
     if picks is None:
