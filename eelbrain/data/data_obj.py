@@ -3215,7 +3215,7 @@ class Dataset(collections.OrderedDict):
         else:
             X = Factor('a' * self.n_cases)
 
-        ds = Dataset(name=name.format(name=self.name))
+        ds = Dataset(name=name.format(name=self.name), info=self.info)
 
         if count:
             x = filter(None, (np.sum(X == cell) for cell in X.cells))
