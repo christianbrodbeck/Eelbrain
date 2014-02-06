@@ -803,7 +803,7 @@ class Celltable(object):
         return zip(self.cells, self.get_statistic(func=func, a=a, **kwargs))
 
 
-def combine(items, name=None):
+def combine(items, name=None, check_dims=True):
     """Combine a list of items of the same type into one item.
 
     Parameters
@@ -814,6 +814,10 @@ def combine(items, name=None):
     name : None | str
         Name for the resulting data-object. If None, the name of the combined
         item is the common prefix of all items.
+    check_dims : bool
+        For NDVars, check dimensions for consistency between items (e.g.,
+        channel locations in a Sensor dimension). Default is ``True``. Set to
+        ``False`` to ignore non-fatal mismatches.
 
     Notes
     -----
@@ -864,7 +868,7 @@ def combine(items, name=None):
             err = ("Some items have a 'case' dimension, others do not")
             raise DimensionMismatchError(err)
 
-        dims = reduce(intersect_dims, all_dims)
+        dims = reduce(lambda x, y: intersect_dims(x, y, check_dims), all_dims)
         idx = {d.name: d for d in dims}
         items = [item.sub(**idx) for item in items]
         if has_case:
@@ -4318,8 +4322,22 @@ class Dimension(object):
     def dimindex(self, arg):
         raise NotImplementedError
 
-    def intersect(self, dim):
-        "Create a dimension object that is the intersection with dim"
+    def intersect(self, dim, check_dims=True):
+        """Create a Dimension that is the intersection with dim
+
+        Parameters
+        ----------
+        dim : Dimension
+            Dimension to intersect with.
+        check_dims : bool
+            Check dimensions for consistency (not applicaple).
+
+        Returns
+        -------
+        intersection : Dimension
+            The intersection with dim (returns itself if dim and self are
+            equal)
+        """
         raise NotImplementedError
 
 
@@ -4379,12 +4397,19 @@ class Scalar(Dimension):
             arg = [self.dimindex(a) for a in arg]
         return arg
 
-    def intersect(self, dim):
-        """Find the intersection with dim
+    def intersect(self, dim, check_dims=False):
+        """Create a dimension object that is the intersection with dim
+
+        Parameters
+        ----------
+        dim : type(self)
+            Dimension to intersect with.
+        check_dims : bool
+            Check dimensions for consistency (not applicaple to this subclass).
 
         Returns
         -------
-        dim : type(self)
+        intersection : type(self)
             The intersection with dim (returns itself if dim and self are
             equal)
         """
@@ -4889,16 +4914,18 @@ class Sensor(Dimension):
 
         return index
 
-    def intersect(self, dim, ignore_locs=False):
-        """Find the intersection with dim
+    def intersect(self, dim, check_dims=True):
+        """Create a Sensor dimension that is the intersection with dim
 
         Parameters
         ----------
         dim : Sensor
             Sensor dimension to intersect with.
-        ignore_locs : bool
-            Intersect channels based on names only and ignore mismatch between
-            locations for channels with the same same.
+        check_dims : bool
+            Check dimensions for consistency (e.g., channel locations). Default
+            is ``True``. Set to ``False`` to intersect channels based on names
+            only and ignore mismatch between locations for channels with the
+            same name.
 
         Returns
         -------
@@ -4921,7 +4948,7 @@ class Sensor(Dimension):
         names = sorted(names)
         idx = map(self.names.index, names)
         locs = self.locs[idx]
-        if not ignore_locs:
+        if check_dims:
             idxd = map(dim.names.index, names)
             if not np.all(locs == dim.locs[idxd]):
                 err = "Sensor locations don't match between dimension objects"
@@ -5126,7 +5153,22 @@ class SourceSpace(Dimension):
         idx = np.nonzero(map(label.vertices.__contains__, stc_vertices))[0]
         return idx + base
 
-    def intersect(self, other):
+    def intersect(self, other, check_dims=True):
+        """Create a Source dimension that is the intersection with dim
+
+        Parameters
+        ----------
+        dim : Source
+            Dimension to intersect with.
+        check_dims : bool
+            Check dimensions for consistency (not applicaple to this subclass).
+
+        Returns
+        -------
+        intersection : Source
+            The intersection with dim (returns itself if dim and self are
+            equal)
+        """
         if self.subject != other.subject:
             raise ValueError("Different subject")
         elif self.src != other.src:
@@ -5321,7 +5363,22 @@ class UTS(Dimension):
         i, _ = find_time_point(self.times, time, rnd)
         return i
 
-    def intersect(self, dim):
+    def intersect(self, dim, check_dims=True):
+        """Create a UTS dimension that is the intersection with dim
+
+        Parameters
+        ----------
+        dim : UTS
+            Dimension to intersect with.
+        check_dims : bool
+            Check dimensions for consistency (not applicaple to this subclass).
+
+        Returns
+        -------
+        intersection : UTS
+            The intersection with dim (returns itself if dim and self are
+            equal)
+        """
         idx = self.times[:, None] == dim.times
         if np.all(np.any(idx, 0)):
             return dim
@@ -5338,20 +5395,24 @@ class UTS(Dimension):
         return UTS(tmin, tstep, nsamples)
 
 
-def intersect_dims(dims1, dims2):
+def intersect_dims(dims1, dims2, check_dims=True):
     """Find the intersection between two multidimensional spaces
 
     Parameters
     ----------
     dims1, dims2 : tuple of dimension objects
         Two spaces involving the same dimensions with overlapping values.
+    check_dims : bool
+        Check dimensions for consistency (e.g., channel locations in a Sensor
+        dimension). Default is ``True``. Set to ``False`` to ignore non-fatal
+        mismatches.
 
     Returns
     -------
     dims : tuple of Dimension objects
         Intersection of dims1 and dims2.
     """
-    return tuple(d1.intersect(d2) for d1, d2 in zip(dims1, dims2))
+    return tuple(d1.intersect(d2, check_dims=check_dims) for d1, d2 in zip(dims1, dims2))
 
 
 # ---NDVar functions---
