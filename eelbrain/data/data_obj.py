@@ -2179,7 +2179,7 @@ class NDVar(object):
             name = '%s+%s' % (self.name, str(other))
         else:
             raise ValueError("can't add %r" % other)
-        return NDVar(x, dims=dims, name=name, info=self.info)
+        return NDVar(x, dims, self.info, name)
 
     def __iadd__(self, other):
         self.x += self._ialign(other)
@@ -2196,7 +2196,7 @@ class NDVar(object):
             name = '%s/%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
-        return NDVar(x, dims=dims, name=name, info=self.info)
+        return NDVar(x, dims, self.info, name)
 
     def __mul__(self, other):
         if isnumeric(other):
@@ -2209,9 +2209,9 @@ class NDVar(object):
             name = '%s*%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
-        return NDVar(x, dims=dims, name=name, info=self.info)
+        return NDVar(x, dims, self.info, name)
 
-    def __sub__(self, other):  # TODO: use dims
+    def __sub__(self, other):
         if isnumeric(other):
             dims, x_self, x_other = self._align(other)
             x = x_self - x_other
@@ -2222,7 +2222,7 @@ class NDVar(object):
             name = '%s-%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
-        return NDVar(x, dims=dims, name=name, info=self.info)
+        return NDVar(x, dims, self.info, name)
 
     def __isub__(self, other):
         self.x -= self._ialign(other)
@@ -2230,7 +2230,7 @@ class NDVar(object):
 
     def __rsub__(self, other):
         x = other - self.x
-        return NDVar(x, self.dims, self.info, name=self.name)
+        return NDVar(x, self.dims, self.info, self.name)
 
     # container ---
     def __getitem__(self, index):
@@ -2243,7 +2243,7 @@ class NDVar(object):
                 err = ("Use .sub() method for indexing dimensions other than "
                        "case")
                 raise NotImplementedError(err)
-            return NDVar(x, dims=self.dims, name=self.name, info=self.info)
+            return NDVar(x, self.dims, self.info, self.name)
         else:
             index = int(index)
             x = self.x[index]
@@ -2255,7 +2255,7 @@ class NDVar(object):
                 name = '%s_%i' % (self.name, index)
             else:
                 name = None
-            return NDVar(x, dims=dims, name=name, info=self.info)
+            return NDVar(x, dims, self.info, name)
 
     def __len__(self):
         return self._len
@@ -2325,7 +2325,7 @@ class NDVar(object):
 
         x = np.array(x)
         name = name.format(name=self.name)
-        out = NDVar(x, self.dims, info=info, name=name)
+        out = NDVar(x, self.dims, info, name)
         return out
 
     def copy(self, name='{name}'):
@@ -2410,7 +2410,7 @@ class NDVar(object):
         dims = self.dims[:ax] + (repdim,) + self.dims[ax + 1:]
         info = self.info.copy()
         name = name.format(name=self.name)
-        return NDVar(x, dims, info=info, name=name)
+        return NDVar(x, dims, info, name)
 
     def summary(self, *dims, **regions):
         r"""
@@ -2497,7 +2497,7 @@ class NDVar(object):
             elif dims == ['case']:
                 return Var(x, name=name)
             else:
-                return NDVar(x, dims=dims, name=name, info=info)
+                return NDVar(x, dims, info, name)
 
     def sub(self, **kwargs):
         """Retrieve a slice through the NDVar.
@@ -2556,7 +2556,7 @@ class NDVar(object):
 
         # create NDVar
         dims = tuple(dim for dim in dims if dim is not None)
-        return NDVar(x, dims=dims, name=var_name, info=info)
+        return NDVar(x, dims, info, var_name)
 
     def subdata(self, **kwargs):
         "Deprecated. Use .sub() method (with identical functionality)."
@@ -5091,11 +5091,9 @@ class SourceSpace(Dimension):
         return dim
 
     def connectivity(self):
-        """Create source space connectivity
-        """
+        "Create source space connectivity"
         if self._connectivity is not None:
             return self._connectivity
-
 
         if any(x is None for x in (self.src, self.subject, self.subjects_dir)):
             err = ("In order for a SourceSpace dimension to provide "
@@ -5103,7 +5101,6 @@ class SourceSpace(Dimension):
                    "src, subject and subjects_dir parameters")
             raise ValueError(err)
 
-        import mne
         pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
                                '{subject}-{src}-src.fif')
         path = pattern.format(subjects_dir=self.subjects_dir,
@@ -5126,7 +5123,6 @@ class SourceSpace(Dimension):
         return c
 
     def dimindex(self, obj):
-        import mne
         if isinstance(obj, (mne.Label, mne.label.BiHemiLabel)):
             return self.label_index(obj)
         elif isinstance(obj, str):
@@ -5533,7 +5529,6 @@ def resample(data, sfreq, npad=100, window='boxcar'):
     -----
     requires mne-python
     """
-    import mne
     axis = data.get_axis('time')
     old_sfreq = 1.0 / data.time.tstep
     x = mne.filter.resample(data.x, sfreq, old_sfreq, npad, axis, window)
