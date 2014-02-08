@@ -6,7 +6,6 @@ from .data import *
 
 # mne
 import eelbrain.data.load.fiff
-from .utils.mne_utils import split_label
 
 # mayavi
 try:
