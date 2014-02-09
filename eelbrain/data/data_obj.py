@@ -5101,26 +5101,60 @@ class SourceSpace(Dimension):
                    "src, subject and subjects_dir parameters")
             raise ValueError(err)
 
+        # read the corresponding source space
         pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
                                '{subject}-{src}-src.fif')
         path = pattern.format(subjects_dir=self.subjects_dir,
                               subject=self.subject, src=self.src)
         src = mne.read_source_spaces(path)
 
-        lh_vertno = np.intersect1d(self.vertno[0], src[0]['vertno'], True)
-        pt_in_use = np.in1d(src[0]['use_tris'], lh_vertno).reshape((-1, 3))
-        tri_in_use = np.any(pt_in_use, axis=1)
-        lh_tris = src[0]['use_tris'][tri_in_use]
+        # find applicable triangles for each hemisphere
+        if self.lh_n:
+            lh_tris = self._hemi_tris(0, src)
+        if self.rh_n:
+            rh_tris = self._hemi_tris(1, src)
 
-        rh_vertno = np.intersect1d(self.vertno[1], src[1]['vertno'], True)
-        pt_in_use = np.in1d(src[1]['use_tris'], rh_vertno).reshape((-1, 3))
-        tri_in_use = np.any(pt_in_use, axis=1)
-        rh_tris = src[1]['use_tris'][tri_in_use]
+        # combine applicable triangles
+        if self.lh_n and self.rh_n:
+            rh_tris += self.lh_n
+            tris = np.vstack((lh_tris, rh_tris))
+        elif self.lh_n:
+            tris = lh_tris
+        else:
+            tris = rh_tris
 
-        tris = np.vstack((lh_tris, rh_tris))
+        # connectivity
         c = mne.spatial_tris_connectivity(tris)
         self._connectivity = c
         return c
+
+    def _hemi_tris(self, i, src):
+        """Triangles in one hemisphere
+
+        Parameters
+        ----------
+        i : 0 | 1
+            Hemisphere index (0 = lh, 11 = rh).
+        src : list of dict
+            Source spaces (as returned by mne.read_source_spaces).
+
+        Returns
+        -------
+        tris : array, shape (n_trid, 3)
+            Triangles present in the source space, with point ids equal to
+            vertex position within hemisphere.
+        """
+        # find applicable triangles
+        vertno = np.intersect1d(self.vertno[i], src[i]['vertno'], True)
+        pt_in_use = np.in1d(src[i]['use_tris'], vertno).reshape((-1, 3))
+        tris_in_use = np.all(pt_in_use, axis=1)
+        tris = src[i]['use_tris'][tris_in_use]
+
+        # reassign vertex ids based on present vertices
+        tris_ = scipy.stats.rankdata(tris, 'dense')
+        tris_ = tris_.reshape(tris.shape)
+        tris_ = tris_.astype('uint32')
+        return tris_
 
     def dimindex(self, obj):
         if isinstance(obj, (mne.Label, mne.label.BiHemiLabel)):
