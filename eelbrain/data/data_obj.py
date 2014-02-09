@@ -2293,6 +2293,25 @@ class NDVar(object):
         args = dict(dims=dims, name=self.name or '')
         return rep % args
 
+    def any(self, dims=None):
+        """Compute presence of any value other than zero over given dimensions
+
+        Parameters
+        ----------
+        dims : None | str | tuple of str
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute whether there are any nonzero values at all.
+
+        Returns
+        -------
+        max : NDVar | Var | float
+            Boolean data indicating presence of nonzero value over specified
+            dimensions. Returns a Var if only the case dimension remains, and a
+            float if the function collapses over all data.
+        """
+        return self._aggregate_over_dims(dims, np.any)
+
     def assert_dims(self, dims):
         if self.dimnames != dims:
             err = "Dimensions of %r do not match %r" % (self, dims)
@@ -2348,6 +2367,32 @@ class NDVar(object):
         name = name.format(name=self.name)
         out = NDVar(x, self.dims, info, name)
         return out
+
+    def _aggregate_over_dims(self, dims, func):
+        if dims is None:
+            return func(self.x)
+        elif isinstance(dims, basestring):
+            dim_name = dims
+            axis = self._dim_2_ax[dim_name]
+            x = func(self.x, axis=axis)
+            dims = (self.dims[i] for i in xrange(self.ndim) if i != axis)
+        else:
+            dim_names = dims
+            axes = [self._dim_2_ax[dim_name] for dim_name in dim_names]
+            x = self.x
+            for axis in sorted(axes, reverse=True):
+                x = func(x, axis=axis)
+            dims = (self.dims[i] for i in xrange(self.ndim) if i not in axes)
+
+        dims = tuple(dims)
+        name = self.name
+        if len(dims) == 0:
+            return x
+        elif dims == ('case',):
+            return Var(x, name)
+        else:
+            info = self.info.copy()
+            return NDVar(x, dims, info, name)
 
     def copy(self, name='{name}'):
         "returns a deep copy of itself"
@@ -2415,6 +2460,63 @@ class NDVar(object):
 
     def has_dim(self, name):
         return name in self._dim_2_ax
+
+    def max(self, dims=None):
+        """Compute the maximum over given dimensions
+
+        Parameters
+        ----------
+        dims : None | str | tuple of str
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute the maximum over all dimensions.
+
+        Returns
+        -------
+        max : NDVar | Var | float
+            The maximum over specified dimensions. Returns a Var if only the
+            case dimension remains, and a float if the function collapses over
+            all data.
+        """
+        return self._aggregate_over_dims(dims, np.max)
+
+    def mean(self, dims=None):
+        """Compute the mean over given dimensions
+
+        Parameters
+        ----------
+        dims : None | str | tuple of str
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute the mean over all dimensions.
+
+        Returns
+        -------
+        mean : NDVar | Var | float
+            The mean over specified dimensions. Returns a Var if only the case
+            dimension remains, and a float if the function collapses over all
+            data.
+        """
+        return self._aggregate_over_dims(dims, np.mean)
+
+    def min(self, dims=None):
+        """Compute the minimum over given dimensions
+
+        Parameters
+        ----------
+        dims : None | str | tuple of str
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute the minimum over all dimensions.
+
+        Returns
+        -------
+        min : NDVar | Var | float
+            The minimum over specified dimensions. Returns a Var if only the
+            case dimension remains, and a float if the function collapses over
+            all data.
+        """
+        return self._aggregate_over_dims(dims, np.min)
 
     def repeat(self, repeats, dim='case', name='{name}'):
         """
@@ -2584,6 +2686,25 @@ class NDVar(object):
         warn("NDVar.subdata is deprecated; use NDVar.sub instead "
              "(with identical functionality).", DeprecationWarning)
         return self.sub(**kwargs)
+
+    def sum(self, dims=None):
+        """Compute the sum over given dimensions
+
+        Parameters
+        ----------
+        dims : None | str | tuple of str
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute the sum over all dimensions.
+
+        Returns
+        -------
+        sum : NDVar | Var | float
+            The sum over specified dimensions. Returns a Var if only the
+            case dimension remains, and a float if the function collapses over
+            all data.
+        """
+        return self._aggregate_over_dims(dims, np.sum)
 
 
 class Datalist(list):
