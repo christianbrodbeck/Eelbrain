@@ -2241,6 +2241,20 @@ class NDVar(object):
     def __getitem__(self, index):
         if isvar(index):
             index = index.x
+        elif isndvar(index):
+            if not index.x.dtype.kind == 'b':
+                err = "Only NDVars with boolean data can serve as indexes"
+                raise ValueError(err)
+            if index.ndim == 1:
+                axis = self._dim_2_ax[index.dims[0].name]
+                index_ = (slice(None),) * axis + (index.x,)
+                x = self.x[index_]
+                dims = tuple(dim[index.x] if i == axis else dim for i, dim in
+                             enumerate(self.dims))
+            else:
+                raise NotImplementedError("NDVar index with ndim > 1")
+            info = self.info.copy()
+            return NDVar(x, dims, info, self.name)
 
         if np.iterable(index) or isinstance(index, slice):
             x = self.x[index]
