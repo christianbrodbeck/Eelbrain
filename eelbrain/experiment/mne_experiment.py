@@ -154,6 +154,10 @@ temp = {
                                     '{proj}_{epoch}-{rej}_{model}.pickled'),
 
         # Source space
+        'morph-file' : os.path.join('{bem-dir}',
+                                    '{common_brain}-{src}-morph.pickled'),
+
+        # Labels
         'parc': ('aparc.a2005s', 'aparc.a2009s', 'aparc', 'PALS_B12_Brodmann',
                  'PALS_B12_Lobes', 'PALS_B12_OrbitoFrontal',
                  'PALS_B12_Visuotopic'),
@@ -368,6 +372,7 @@ class MneExperiment(FileTree):
         self._bind_make('cov-file', self.make_cov)
         self._bind_make('src-file', self.make_src)
         self._bind_make('fwd-file', self.make_fwd)
+        self._bind_make('morph-file', self.make_morph_matrix)
         self._bind_make('label-file', self.make_labels)
 
         # set initial values
@@ -543,6 +548,7 @@ class MneExperiment(FileTree):
 
         # convert evoked objects
         mri_sdir = self.get('mri-sdir')
+        mm = {}
         for case in ds.itercases():
             subject = case['subject']
             subject_from = from_subjects[subject]
@@ -569,8 +575,16 @@ class MneExperiment(FileTree):
                     stcs[name].append(stc)
 
                 if collect_morphed_stcs:
-                    stc = mne.morph_data(subject_from, common_brain, stc, 4,
-                                         subjects_dir=mri_sdir)
+                    if subject_from != common_brain:
+                        if subject_from in mm:
+                            v_to, morph_mat = mm[subject_from]
+                        else:
+                            info = self.load_morph_matrix()
+                            v_to = info['vertices_to']
+                            morph_mat = info['morph_matrix']
+                            mm[subject_from] = (v_to, morph_mat)
+                        stc = mne.morph_data_precomputed(subject_from, subject,
+                                                         stc, v_to, morph_mat)
                     mstcs[name].append(stc)
 
         # add to Dataset
@@ -1127,6 +1141,11 @@ class MneExperiment(FileTree):
         labels = self._label_cache[fpath]
         return labels
 
+    def load_morph_matrix(self, **state):
+        fpath = self.get('morph-file', make=True, **state)
+        mm = load.unpickle(fpath)
+        return mm
+
     def load_raw(self, add_proj=True, add_bads=True, preload=False, **kwargs):
         """
         Load a raw file as mne Raw object.
@@ -1286,6 +1305,12 @@ class MneExperiment(FileTree):
                     ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=use)
 
         return ds
+
+    def load_src(self, add_geom=False, **state):
+        "Load the current source space"
+        fpath = self.get('src-file', **state)
+        src = mne.read_source_spaces(fpath, add_geom)
+        return src
 
     def make_annot(self, redo=False):
         if not redo and self._annot_exists():
@@ -1549,6 +1574,24 @@ class MneExperiment(FileTree):
             cmd.appen('--redo')
 
         self.run_subp(cmd, workers=workers)
+
+    def make_morph_matrix(self, redo=False):
+        dst = self.get('morph-file')
+        if not redo and os.path.exists(dst):
+            return
+
+        subject_from = self.get('mrisubject')
+        subject_to = self.get('common_brain')
+        src_to = self.load_src(mrisubject=subject_to, match=False)
+        src_from = self.load_src(mrisubject=subject_from)
+        vertices_from = [src_from[0]['vertno'], src_from[1]['vertno']]
+        vertices_to = [src_to[0]['vertno'], src_to[1]['vertno']]
+
+        subjects_dir = self.get('mri-sdir')
+        mm = mne.compute_morph_matrix(subject_from, subject_to, vertices_from,
+                                      vertices_to, None, subjects_dir)
+        info = {'vertices_to': vertices_to, 'morph_matrix': mm}
+        save.pickle(info, dst)
 
     def make_mov_ga(self, subject=None, surf='smoothwm', p0=0.05, redo=False,
                     **kwargs):
