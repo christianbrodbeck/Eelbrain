@@ -2179,7 +2179,8 @@ class NDVar(object):
             name = '%s+%s' % (self.name, str(other))
         else:
             raise ValueError("can't add %r" % other)
-        return NDVar(x, dims, self.info, name)
+        info = self.info.copy()
+        return NDVar(x, dims, info, name)
 
     def __iadd__(self, other):
         self.x += self._ialign(other)
@@ -2196,7 +2197,8 @@ class NDVar(object):
             name = '%s/%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
-        return NDVar(x, dims, self.info, name)
+        info = self.info.copy()
+        return NDVar(x, dims, info, name)
 
     def __mul__(self, other):
         if isnumeric(other):
@@ -2209,7 +2211,8 @@ class NDVar(object):
             name = '%s*%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
-        return NDVar(x, dims, self.info, name)
+        info = self.info.copy()
+        return NDVar(x, dims, info, name)
 
     def __sub__(self, other):
         if isnumeric(other):
@@ -2222,7 +2225,8 @@ class NDVar(object):
             name = '%s-%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
-        return NDVar(x, dims, self.info, name)
+        info = self.info.copy()
+        return NDVar(x, dims, info, name)
 
     def __isub__(self, other):
         self.x -= self._ialign(other)
@@ -2230,7 +2234,8 @@ class NDVar(object):
 
     def __rsub__(self, other):
         x = other - self.x
-        return NDVar(x, self.dims, self.info, self.name)
+        info = self.info.copy()
+        return NDVar(x, self.dims, info, self.name)
 
     # container ---
     def __getitem__(self, index):
@@ -2243,7 +2248,8 @@ class NDVar(object):
                 err = ("Use .sub() method for indexing dimensions other than "
                        "case")
                 raise NotImplementedError(err)
-            return NDVar(x, self.dims, self.info, self.name)
+            info = self.info.copy()
+            return NDVar(x, self.dims, info, self.name)
         else:
             index = int(index)
             x = self.x[index]
@@ -2255,7 +2261,8 @@ class NDVar(object):
                 name = '%s_%i' % (self.name, index)
             else:
                 name = None
-            return NDVar(x, dims, self.info, name)
+            info = self.info.copy()
+            return NDVar(x, dims, info, name)
 
     def __len__(self):
         return self._len
