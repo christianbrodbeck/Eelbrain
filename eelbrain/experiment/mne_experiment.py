@@ -361,7 +361,7 @@ class MneExperiment(FileTree):
                              eval_handler=self._eval_group)
         self._register_field('epoch', self.epochs.keys(),
                              eval_handler=self._eval_epoch)
-        self._register_value('inv', 'free-2-dSPM',
+        self._register_value('inv', 'free-3-dSPM',
                              set_handler=self._set_inv_as_str)
         self._register_value('model', '', eval_handler=self._eval_model)
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7'))
