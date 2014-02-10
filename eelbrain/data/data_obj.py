@@ -5215,10 +5215,13 @@ class SourceSpace(Dimension):
             int_index = np.arange(len(self))[index]
             idx = np.logical_and(np.in1d(c.row, int_index, True),
                                  np.in1d(c.col, int_index, True))
-            row = c.row[idx]
-            col = c.col[idx]
-            data = c.data[idx]
-            connectivity = coo_matrix((data, (row, col)))
+            if np.any(idx):
+                row = c.row[idx]
+                col = c.col[idx]
+                data = c.data[idx]
+                connectivity = coo_matrix((data, (row, col)))
+            else:
+                connectivity = None
 
         vert = np.hstack(self.vertno)
         hemi = np.zeros(len(vert))
