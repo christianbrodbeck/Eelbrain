@@ -101,7 +101,8 @@ class corr:
             names of Dataset variables.
         samples : None | int
             Number of samples for permutation cluster test. For None, no
-            clusters are formed.
+            clusters are formed. Use 0 to compute clusters without performing
+            any permutations.
         pmin : scalar (0 < pmin < 1)
             Threshold p value for forming clusters in permutation cluster test.
         tstart, tstop : None | scalar
@@ -145,7 +146,7 @@ class corr:
 
         rmap = _corr(Y.x, X.x)
 
-        if samples:
+        if samples is not None:
             # calculate r threshold for clusters
             threshold = _rtest_r(pmin, df)
 
@@ -153,7 +154,7 @@ class corr:
             cdist = _ClusterDist(Y, samples, threshold, -threshold, 'r', name,
                                  tstart, tstop, tmin)
             cdist.add_original(rmap)
-            if cdist.n_clusters:
+            if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples, unit=match):
                     rmap_ = _corr(Y_.x, X.x)
                     cdist.add_perm(rmap_)
@@ -171,7 +172,9 @@ class corr:
         self.df = df
         self.r = r
         self.r_p = [[r, r]]
-        if samples:
+        if samples is None:
+            self.all = [[r, r]]
+        else:
             self.cdist = cdist
             self.clusters = cdist.clusters
             if cdist.n_clusters:
@@ -180,8 +183,6 @@ class corr:
             else:
                 self.r_cl = [[r]]
                 self.all = [[r]]
-        else:
-            self.all = [[r, r]]
 
 
 def _corr(y, x):
@@ -341,7 +342,8 @@ class ttest_ind:
             -1: lower tail (one-tailed).
         samples : None | int
             Number of samples for permutation cluster test. For None, no
-            clusters are formed.
+            clusters are formed. Use 0 to compute clusters without performing
+            any permutations.
         pmin : scalar (0 < pmin < 1)
             Threshold p value for forming clusters in permutation cluster test.
         tstart, tstop : None | scalar
@@ -359,14 +361,14 @@ class ttest_ind:
         df = N - 2
         tmap = _t_ind(ct.Y.x, n1, n0)
         pmap = _ttest_p(tmap, df, tail)
-        if samples:
+        if samples is not None:
             t_threshold = _ttest_t(pmin, df, tail)
             t_upper = t_threshold if tail >= 0 else None
             t_lower = -t_threshold if tail <= 0 else None
             cdist = _ClusterDist(ct.Y, samples, t_upper, t_lower, 't',
                                  test_name, tstart, tstop, tmin)
             cdist.add_original(tmap)
-            if cdist.n_clusters:
+            if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples):
                     tmap_ = _t_ind(Y_.x, n1, n0)
                     cdist.add_perm(tmap_)
@@ -406,14 +408,14 @@ class ttest_ind:
 
         self.diffp = [[diff, t]]
         self.uncorrected = [c1_mean, c0_mean] + self.diffp
-        if samples:
+        if samples is None:
+            self.all = self.uncorrected
+            self._cdist = None
+        else:
             self.diff_cl = [[diff, cdist.cpmap]]
             self.all = [c1_mean, c0_mean] + self.diff_cl
             self._cdist = cdist
             self.clusters = cdist.clusters
-        else:
-            self.all = self.uncorrected
-            self._cdist = None
 
     def __repr__(self):
         parts = ["<%s %r-%r" % (self.name, self._c1, self._c0)]
@@ -473,7 +475,8 @@ class ttest_rel:
             -1: lower tail (one-tailed).
         samples : None | int
             Number of samples for permutation cluster test. For None, no
-            clusters are formed.
+            clusters are formed. Use 0 to compute clusters without performing
+            any permutations.
         pmin : scalar (0 < pmin < 1)
             Threshold p value for forming clusters in permutation cluster test.
         tstart, tstop : None | scalar
@@ -498,14 +501,14 @@ class ttest_rel:
         df = n - 1
         tmap = _t_rel(ct.Y.x)
         pmap = _ttest_p(tmap, df, tail)
-        if samples:
+        if samples is not None:
             t_threshold = _ttest_t(pmin, df, tail)
             t_upper = t_threshold if tail >= 0 else None
             t_lower = -t_threshold if tail <= 0 else None
             cdist = _ClusterDist(ct.Y, samples, t_upper, t_lower, 't',
                                  test_name, tstart, tstop, tmin)
             cdist.add_original(tmap)
-            if cdist.n_clusters:
+            if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples, unit=ct.match):
                     tmap_ = _t_rel(Y_.x)
                     cdist.add_perm(tmap_)
@@ -544,17 +547,17 @@ class ttest_rel:
 
         self.diffp = [[diff, t]]
         self.uncorrected = [c1_mean, c0_mean] + self.diffp
-        if samples:
-            if cdist.n_clusters:
+        if samples is None:
+            self.all = self.uncorrected
+            self._cdist = None
+        else:
+            if cdist.n_clusters and samples:
                 self.diff_cl = [[diff, cdist.cpmap]]
             else:
                 self.diff_cl = [[diff]]
             self.all = [c1_mean, c0_mean] + self.diff_cl
             self._cdist = cdist
             self.clusters = cdist.clusters
-        else:
-            self.all = self.uncorrected
-            self._cdist = None
 
     def __repr__(self):
         parts = ["<%s %r-%r" % (self.name, self._c1, self._c0)]
@@ -768,7 +771,8 @@ class anova:
             names of Dataset variables.
         samples : None | int
             Number of samples for permutation cluster test. For None, no
-            clusters are formed.
+            clusters are formed. Use 0 to compute clusters without performing
+            any permutations.
         pmin : scalar (0 < pmin < 1)
             Threshold p value for forming clusters in permutation cluster test.
         replacement : bool
@@ -793,7 +797,7 @@ class anova:
         df_den = lm.df_den
         fmaps = lm.map(Y.x, p=False)
 
-        if samples:
+        if samples is not None:
             # find F-thresholds for clusters
             fmin = {e: ftest_f(pmin, e.df, df_den[e]) for e in effects}
             cdists = {e: _ClusterDist(Y, samples, fmin[e], None, 'F', e.name,
@@ -807,7 +811,7 @@ class anova:
                 cdist.add_original(fmap)
                 n_clusters += cdist.n_clusters
 
-            if n_clusters:
+            if n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples, unit=match):
                     fmaps_ = lm.map(Y_.x, p=False)
                     for e, fmap in fmaps_:
@@ -830,7 +834,9 @@ class anova:
             p_ = NDVar(pmap, dims, info, e.name)
             p.append(p_)
 
-        if samples:
+        if samples is None:
+            clusters = None
+        else:
             # f-maps with clusters
             f_and_clusters = []
             for e, fmap in fmaps:
@@ -840,7 +846,7 @@ class anova:
                 f_ = NDVar(fmap, dims, info, e.name)
                 # add overlay with cluster
                 cdist = cdists[e]
-                if cdist.n_clusters:
+                if cdist.n_clusters and samples:
                     f_and_clusters.append([f_, cdist.cpmap])
                 else:
                     f_and_clusters.append([f_])
@@ -859,8 +865,6 @@ class anova:
                 clusters = combine(dss)
             else:
                 clusters = None
-        else:
-            clusters = None
 
         # store attributes
         self.name = "anova(%s, %s)" % (Y.name, X.name)
@@ -868,12 +872,12 @@ class anova:
         self.f = [[f_, f_] for f_ in f]
         self.p = p
         self.samples = samples
-        if samples:
+        if samples is None:
+            self.all = self.f
+        else:
             self.fmin = fmin
             self._cdists = cdists
             self.all = f_and_clusters
-        else:
-            self.all = self.f
 
     def __repr__(self):
         parts = ["<%s" % (self.name)]
@@ -1032,18 +1036,20 @@ class _ClusterDist:
             self.clusters = None
             return
 
-        # measure original clusters
-        cluster_v = ndimage.sum(pmap_, cmap, cids)
-        # the proportion of random partitions that resulted in a larger test
-        # statistic than the observed one... is called the p-value (179)
-        cluster_p = np.sum(self.dist > np.abs(cluster_v[:, None]), 1) / self.N
-        sort_idx = np.argsort(cluster_p)
-
         # prepare container for clusters
         ds = Dataset()
-        ds['p'] = p = Var(cluster_p[sort_idx])
-        ds['*'] = star_factor(p)
-        ds['v'] = Var(cluster_v[sort_idx])
+
+        # measure original clusters
+        cluster_v = ndimage.sum(pmap_, cmap, cids)
+        ds['v'] = Var(cluster_v)
+
+        # p-values: "the proportion of random partitions that resulted in a
+        # larger test statistic than the observed one" (179)
+        if self.N:
+            n_larger = np.sum(self.dist > np.abs(cluster_v[:, None]), 1)
+            cluster_p = n_larger / self.N
+            ds['p'] = p = Var(cluster_p)
+            ds['*'] = star_factor(p)
 
         # time window
         if self.Y.has_dim('time'):
@@ -1058,14 +1064,15 @@ class _ClusterDist:
         cpmap = np.ones_like(pmap_)
         cmaps = np.empty((self.n_clusters,) + pmap.shape, dtype=pmap.dtype)
         boundaries = ndimage.find_objects(cmap)
-        for i, ci in enumerate(sort_idx):
-            p = cluster_p[ci]
-            cid = cids[ci]
+        for i in xrange(self.n_clusters):
+            cid = cids[i]
 
             # update cluster maps
             c_mask = (cmap == cid)
-            cpmap[c_mask] = p
             cmaps[i] = self._uncrop(pmap_ * c_mask)
+            if self.N:
+                p = cluster_p[i]
+                cpmap[c_mask] = p
 
             # extract cluster properties
             bounds = boundaries[cid - 1]
@@ -1249,7 +1256,7 @@ class _ClusterDist:
         self._cids = cids
         self.n_clusters = len(cids)
         self._t0 = current_time()
-        if self.n_clusters == 0:
+        if self.n_clusters == 0 or self.N == 0:
             self._finalize()
 
     def add_perm(self, pmap):
