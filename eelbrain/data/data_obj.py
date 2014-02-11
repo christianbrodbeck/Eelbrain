@@ -5213,12 +5213,17 @@ class SourceSpace(Dimension):
         else:
             c = self._connectivity
             int_index = np.arange(len(self))[index]
-            idx = np.logical_and(np.in1d(c.row, int_index, True),
-                                 np.in1d(c.col, int_index, True))
+            idx = np.logical_and(np.in1d(c.row, int_index),
+                                 np.in1d(c.col, int_index))
             if np.any(idx):
                 row = c.row[idx]
                 col = c.col[idx]
                 data = c.data[idx]
+
+                # remap to new vertex ids
+                row = np.digitize(row, int_index, True)
+                col = np.digitize(col, int_index, True)
+
                 connectivity = coo_matrix((data, (row, col)))
             else:
                 connectivity = None
@@ -5289,17 +5294,26 @@ class SourceSpace(Dimension):
             Triangles present in the source space, with point ids equal to
             vertex position within hemisphere.
         """
+        vertices = self.vertno[i]
+        src_vertices = src[i]['vertno']
+        src_tris = src[i]['use_tris']
+
+        if not np.all(np.in1d(vertices, src_vertices)):
+            raise RuntimeError("Not all vertices are in the source space")
+
+        if np.all(np.in1d(src_vertices, vertices, True)):
+            return src_tris
+
         # find applicable triangles
-        vertno = np.intersect1d(self.vertno[i], src[i]['vertno'], True)
-        pt_in_use = np.in1d(src[i]['use_tris'], vertno).reshape((-1, 3))
+        pt_in_use = np.in1d(src_tris, vertices).reshape(src_tris.shape)
         tris_in_use = np.all(pt_in_use, axis=1)
-        tris = src[i]['use_tris'][tris_in_use]
+        tris = src_tris[tris_in_use]
 
         # reassign vertex ids based on present vertices
-        tris_ = scipy.stats.rankdata(tris, 'dense')
-        tris_ = tris_.reshape(tris.shape)
-        tris_ = tris_.astype('uint32')
-        return tris_
+        if len(vertices) != vertices.max() - 1:
+            flat_tris = np.digitize(tris.ravel(), vertices, True)
+            tris = flat_tris.reshape(tris.shape)
+        return tris
 
     def dimindex(self, obj):
         if isinstance(obj, (mne.Label, mne.label.BiHemiLabel)):
