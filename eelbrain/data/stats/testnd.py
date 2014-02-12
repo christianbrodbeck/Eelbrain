@@ -1009,11 +1009,13 @@ class _ClusterDist:
                            "the data: %r" % k)
                     raise ValueError(err)
 
+        N = int(N)
+
         self.Y = Y
         self.Y_perm = Y_perm
         self.N = N
         self.dist = np.zeros(N)
-        self._i = int(N)
+        self._i = N
         self.t_upper = t_upper
         self.t_lower = t_lower
         self.tstart = tstart
@@ -1022,6 +1024,25 @@ class _ClusterDist:
         self.meas = meas
         self.name = name
         self.criteria = criteria_
+        self.has_original = False
+
+    def __repr__(self):
+        items = []
+        if self.has_original:
+            dt = self.dt_original / 60.
+            items.append("%i clusters (%.2f min)" % (self.n_clusters, dt))
+
+            if self.N > 0 and self.n_clusters > 0:
+                if self._i == 0:
+                    dt = self.dt_perm / 60.
+                    item = "%i permutations (%.2f min)" % (self.N, dt)
+                else:
+                    item = "%i of %i permutations" % (self.N - self._i, self.N)
+                items.append(item)
+        else:
+            items.append("no data")
+
+        return "<ClusterDist: %s>" % ', '.join(items)
 
     def _crop(self, im):
         if self.crop:
@@ -1099,7 +1120,7 @@ class _ClusterDist:
         self.pmap = NDVar(pmap, dims=dims[1:], name=self.name, info=info)
 
         self.all = [[self.pmap, self.cpmap]]
-        self._dt = current_time() - self._t0
+        self.dt_perm = current_time() - self._t0
 
     def _label_clusters(self, pmap):
         """Find clusters on a statistical parameter map
@@ -1233,6 +1254,7 @@ class _ClusterDist:
         if hasattr(self, '_cluster_im'):
             raise RuntimeError("Original pmap already added")
 
+        t0 = current_time()
         pmap_ = self._crop(pmap)
         if not self._all_adjacent:
             pmap_ = pmap_.swapaxes(0, self._nad_ax)
@@ -1242,6 +1264,8 @@ class _ClusterDist:
             cmap = cmap.reshape(self._orig_shape)
             cmap = cmap.swapaxes(0, self._nad_ax)
 
+        self.has_original = True
+        self.dt_original = current_time() - t0
         self._cluster_im = cmap
         self._original_pmap = pmap
         self._cids = cids
