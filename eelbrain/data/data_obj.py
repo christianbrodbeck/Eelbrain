@@ -5490,13 +5490,8 @@ class SourceSpace(Dimension):
                    "src, subject and subjects_dir parameters")
             raise ValueError(err)
 
-        # read the corresponding source space
-        pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
-                               '{subject}-{src}-src.fif')
-        path = pattern.format(subjects_dir=self.subjects_dir,
-                              subject=self.subject, src=self.src)
-        src = mne.read_source_spaces(path)
-
+        src = self.get_source_space()
+        
         # find applicable triangles for each hemisphere
         if self.lh_n:
             lh_tris = self._hemi_tris(0, src)
@@ -5592,6 +5587,15 @@ class SourceSpace(Dimension):
 
         idx = np.nonzero(map(label.vertices.__contains__, stc_vertices))[0]
         return idx + base
+    
+    def get_source_space(self):
+        "Read the corresponding MNE source space"
+        pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
+                               '{subject}-{src}-src.fif')
+        path = pattern.format(subjects_dir=self.subjects_dir,
+                              subject=self.subject, src=self.src)
+        src = mne.read_source_spaces(path)
+        return src
 
     def intersect(self, other, check_dims=True):
         """Create a Source dimension that is the intersection with dim
