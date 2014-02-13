@@ -827,8 +827,12 @@ def combine(items, name=None, check_dims=True):
 
     Notes
     -----
-    For datasets, missing variables are filled in with empty values ('' for
-    factors, NaN for variables).
+    For Datasets:
+
+     - Missing variables are filled in with empty values ('' for factors, NaN
+       for variables).
+     - The info dict inherits only entries that are equal (``np.all(x == y)``
+       for all items.
     """
     if name is None:
         names = filter(None, (item.name for item in items))
@@ -844,8 +848,19 @@ def combine(items, name=None, check_dims=True):
                 if key not in keys:
                     keys.append(key)
                     sample[key] = item[key]
+
+        # info dict
+        info_keys = set(item0.info.keys())
+        for ds in items[1:]:
+            info_keys.intersection_update(ds.info.keys())
+        info = {}
+        for key in info_keys:
+            value = item0.info[key]
+            if all(np.all(ds.info[key] == value) for ds in items[1:]):
+                info[key] = value
+
         # create new Dataset
-        out = Dataset(name=name)
+        out = Dataset(name=name, info=info)
         for key in keys:
             pieces = [ds[key] if key in ds else
                       _empty_like(sample[key], ds.n_cases) for ds in items]
