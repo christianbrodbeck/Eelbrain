@@ -1164,6 +1164,11 @@ class Var(object):
                                   beta_labels=labels)
             return out
 
+    def abs(self, name='abs_{name}'):
+        "Return a Var with the absolute value."
+        name = name.format(name=self.name)
+        return Var(np.abs(self.x), name)
+
     def argmax(self):
         """:fun:`numpy.argmax`"""
         return np.argmax(self.x)
@@ -2292,6 +2297,14 @@ class NDVar(object):
         dims = ' X '.join('%i (%s)' % fmt for fmt in dims)
         args = dict(dims=dims, name=self.name or '')
         return rep % args
+
+    def abs(self, name="{name}"):
+        """Compute the absolute value"""
+        x = np.abs(self.x)
+        dims = self.dims
+        info = self.info.copy()
+        name = name.format(name=self.name)
+        return NDVar(x, dims, info, name)
 
     def any(self, dims=None):
         """Compute presence of any value other than zero over given dimensions
