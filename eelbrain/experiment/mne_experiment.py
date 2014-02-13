@@ -1352,13 +1352,11 @@ class MneExperiment(FileTree):
         msg = "Custom parcellations %r is not implemented." % parc
         raise NotImplementedError(msg)
 
-    def make_besa_evt(self, epoch=None, redo=False):
+    def make_besa_evt(self, redo=False, **state):
         """Make the trigger and event files needed for besa
 
         Parameters
         ----------
-        epoch : epoch definition (see module documentation)
-            name of the epoch for which to produce the evt files.
         redo : bool
             If besa files already exist, overwrite them.
 
@@ -1368,7 +1366,7 @@ class MneExperiment(FileTree):
 
         Target files are saved relative to the *besa-root* location.
         """
-        self.set(epoch=epoch)
+        self.set(**state)
         epoch = self._epoch_state
 
         rej = self.get('rej')
