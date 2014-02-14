@@ -16,7 +16,7 @@ from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                         Factor, NDVar, Var, Celltable, cellname, combine)
 from .glm import lm_fitter
-from .permutation import resample
+from .permutation import resample, _resample_params
 from .stats import ftest_f, ftest_p
 from .test import star_factor
 
@@ -234,7 +234,8 @@ class ttest_1samp:
     p_val :
         [c0 - c1, P]
     """
-    def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0):
+    def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
+                 samples=None, pmin=0.1, tstart=None, tstop=None, **criteria):
         """Element-wise one sample t-test
 
         Parameters
@@ -255,6 +256,18 @@ class ttest_1samp:
             0: both (two-tailed);
             1: upper tail (one-tailed);
             -1: lower tail (one-tailed).
+        samples : None | int
+            Number of samples for permutation cluster test. For None, no
+            clusters are formed. Use 0 to compute clusters without performing
+            any permutations.
+        pmin : scalar (0 < pmin < 1)
+            Threshold p value for forming clusters in permutation cluster test.
+        tstart, tstop : None | scalar
+            Restrict time window for permutation cluster test.
+        mintime : scalar
+            Minimum duration for clusters (in seconds).
+        minsource : int
+            Minimum number of sources per cluster.
         """
         ct = Celltable(Y, match=match, sub=sub, ds=ds)
 
@@ -272,6 +285,23 @@ class ttest_1samp:
         else:
             diff = y
 
+        if samples is not None:
+            t_threshold = _ttest_t(pmin, df, tail)
+            t_upper = t_threshold if tail >= 0 else None
+            t_lower = -t_threshold if tail <= 0 else None
+            if popmean:
+                y_perm = ct.Y - popmean
+            else:
+                y_perm = ct.Y
+            n_samples, samples_ = _resample_params(len(y_perm), samples)
+            cdist = _ClusterDist(y_perm, n_samples, t_upper, t_lower, 't',
+                                 test_name, tstart, tstop, criteria)
+            cdist.add_original(tmap)
+            if cdist.n_clusters and samples:
+                for Y_ in resample(cdist.Y_perm, samples_, sign_flip=True):
+                    tmap_ = _t_1samp(Y_.x, 0)
+                    cdist.add_perm(tmap_)
+
         dims = ct.Y.dims[1:]
 
         info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
@@ -288,6 +318,7 @@ class ttest_1samp:
         self.n = n
         self.df = df
         self.name = test_name
+        self._samples = samples
 
         self.y = y
         self.diff = diff
@@ -296,10 +327,32 @@ class ttest_1samp:
 
         self.diffp = [[diff, t]]
         self.all = [y, [diff, t]] if popmean else [[diff, t]]
+        if samples is not None:
+            self._n_samples = n_samples
+            self._all_permutations = samples_ < 0
+            if cdist.n_clusters and samples:
+                self.diff_cl = [[diff, cdist.cpmap]]
+            else:
+                self.diff_cl = [[diff]]
+            self._cdist = cdist
+            self.clusters = cdist.clusters
 
     def __repr__(self):
-        r = "<%s against %g, n=%i>" % (self.name, self.popmean, self.n)
-        return r
+        parts = ["<%s against %g, n=%i" % (self.name, self.popmean, self.n)]
+        if self._samples is not None:
+            if self.clusters is None:
+                parts.append(", no clusters found")
+            else:
+                parts.append(", %i clusters" % self._cdist.n_clusters)
+
+                if self._samples:
+                    if self._all_permutations:
+                        parts.append(", %i permutations" % self._n_samples)
+                    elif self._n_samples:
+                        parts.append(", %i samples" % self._n_samples)
+                    parts.append(", p >= %.3f" % self.clusters['p'].x.min())
+        parts.append(">")
+        return ''.join(parts)
 
 
 class ttest_ind:
