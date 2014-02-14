@@ -1863,6 +1863,29 @@ class Factor(_Effect):
     def df(self):
         return max(0, len(self._labels) - 1)
 
+    def endswith(self, substr):
+        """Create an index that is true for all cases whose name ends with
+        ``substr``
+
+        Parameters
+        ----------
+        substr : str
+            String for selecting cells that end with substr.
+
+        Returns
+        -------
+        idx : boolean array,  len = len(self)
+            Index that is true wherever the value ends with ``substr``.
+
+        Examples
+        --------
+        >>> a = Factor(['a1', 'a2', 'b1', 'b2'])
+        >>> a.endswith('1')
+        array([True, False,  True,  False], dtype=bool)
+        """
+        values = [v for v in self.cells if v.endswith(substr)]
+        return self.isin(values)
+
     def get_index_to_match(self, other):
         """
         Assuming that ``other`` is a shuffled version of self, this method
