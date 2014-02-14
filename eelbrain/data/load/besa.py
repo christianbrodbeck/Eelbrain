@@ -72,7 +72,7 @@ def dat_set(path, subjects=[], conditions=[]):
     ----------
     path : str
         The path to the dat files, contain the placeholders '{subject}' and
-        '{condition}'.
+        '{condition}'. Can contain "*".
     subjects : list
         Subject identifiers. If the list is empty, they are inferred based on
         the path and existing files.
@@ -103,7 +103,7 @@ def dat_set_paths(path, subjects=[], conditions=[]):
     ----------
     path : str
         The path to the dat files, contain the placeholders '{subject}' and
-        '{condition}'.
+        '{condition}'. Can contain "*".
     subjects : list
         Subject identifiers. If the list is empty, they are inferred based on
         the path and existing files.
@@ -138,8 +138,10 @@ def dat_set_paths(path, subjects=[], conditions=[]):
     if find_subjects or find_conditions:
         glob_pattern = path.format(subject='*', condition='*')
         paths = glob(glob_pattern)
-        pattern = re.compile(path.format(subject='(?P<subject>.+)',
-                                         condition='(?P<condition>.+)'))
+        path_ = path.replace('*', '.*')
+        path_ = path_.format(subject='(?P<subject>.+)',
+                             condition='(?P<condition>.+)')
+        pattern = re.compile(path_)
         for path_ in paths:
             m = pattern.match(path_)
             if find_subjects:
