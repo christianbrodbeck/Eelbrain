@@ -4507,6 +4507,33 @@ class Dimension(object):
         """
         raise NotImplementedError
 
+    def _cluster_properties(self, x, axis):
+        """Find cluster properties for this dimension
+
+        Parameters
+        ----------
+        x : array
+            The data. Different clusters are stacked along the first axis.
+        axis : int
+            The axis in ``x`` which this dimension corresponds to.
+
+        Returns
+        -------
+        cluster_properties : None | Dataset
+            A dataset with variables describing cluster properties.
+        """
+        return None
+
+    def _cluster_size_basic(self, x, axis):
+        """Cluster size in n_samples for one cluster"""
+        # flatten clusters into one dimension
+        axes = tuple(i for i in xrange(x.ndim) if i != axis)
+        x = np.any(x, axes)
+
+        # find cluster extent
+        n_sources = np.sum(x)
+        return n_sources
+
 
 class Scalar(Dimension):
     def __init__(self, name, values, unit=None):
@@ -5253,6 +5280,45 @@ class SourceSpace(Dimension):
                           connectivity)
         return dim
 
+    def _cluster_properties(self, x, axis):
+        """Find cluster properties for this dimension
+
+        Parameters
+        ----------
+        x : array
+            The data. Different clusters are stacked along the first axis.
+        axis : int
+            The axis in ``x`` which this dimension corresponds to.
+
+        Returns
+        -------
+        cluster_properties : Dataset
+            A dataset with variables describing cluster properties along this
+            dimension: "n_sources".
+        """
+        ds = Dataset()
+        axes = tuple(i for i in xrange(1, x.ndim) if i != axis)
+        x = np.any(x, axes)
+
+        # n sources
+        n_sources = np.sum(x, 1)
+        ds['n_sources'] = Var(n_sources)
+
+        # hemi
+        hemis = []
+        for x_ in x:
+            where = np.nonzero(x_)[0]
+            src_in_lh = (where < self.lh_n)
+            if np.all(src_in_lh):
+                hemis.append('lh')
+            elif np.any(src_in_lh):
+                hemis.append('bh')
+            else:
+                hemis.append('rh')
+        ds['hemi'] = Factor(hemis)
+
+        return ds
+
     def connectivity(self):
         "Create source space connectivity"
         if self._connectivity is not None:
@@ -5528,6 +5594,46 @@ class UTS(Dimension):
             raise TypeError(err)
 
         return UTS(tmin, tstep, nsamples)
+
+    def _cluster_bounds(self, x, axis):
+        """Cluster min and max in samples"""
+        # flatten clusters into one dimension
+        axes = tuple(i for i in xrange(1, x.ndim) if i != axis)
+        x = np.any(x, axes)
+
+        # find indices of cluster extent
+        cluster_id, cluster = np.nonzero(x)
+        ts = [cluster[cluster_id == i][[0, -1]] for i in xrange(len(x))]
+        ts = np.array(ts)
+
+        return ts
+
+    def _cluster_properties(self, x, axis):
+        """Find cluster properties for this dimension
+
+        Parameters
+        ----------
+        x : array
+            The data. Different clusters are stacked along the first axis.
+        axis : int
+            The axis in ``x`` which this dimension corresponds to.
+
+        Returns
+        -------
+        cluster_properties : Dataset
+            A dataset with variables describing cluster properties along this
+            dimension: "tstart", "tstop", "duration".
+        """
+        bounds = self._cluster_bounds(x, axis)
+
+        # create time values
+        tmin = self.times[bounds[:, 0]]
+        tmax = self.times[bounds[:, 1]]
+        ds = Dataset()
+        ds['tstart'] = Var(tmin)
+        ds['tstop'] = Var(tmax + self.tstep)
+        ds['duration'] = ds.eval("tstop - tstart")
+        return ds
 
     def dimindex(self, arg):
         if np.isscalar(arg):

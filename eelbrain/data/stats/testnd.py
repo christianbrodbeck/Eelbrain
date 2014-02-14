@@ -7,7 +7,7 @@ from time import time as current_time
 import numpy as np
 import scipy.stats
 from scipy import ndimage
-from scipy.ndimage import binary_closing, binary_erosion, binary_dilation
+from scipy.ndimage import binary_erosion, binary_dilation
 from scipy.sparse import coo_matrix
 from scipy.sparse.csgraph import connected_components
 
@@ -81,9 +81,8 @@ class corr:
     r : NDVar
         Correlation (with threshold contours).
     """
-    def __init__(self, Y, X, norm=None, sub=None, ds=None,
-                 samples=0, pmin=0.1, tstart=None, tstop=None, tmin=0,
-                 match=None):
+    def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=0, pmin=0.1,
+                 tstart=None, tstop=None, match=None, **criteria):
         """Correlation.
 
         Parameters
@@ -107,11 +106,13 @@ class corr:
             Threshold p value for forming clusters in permutation cluster test.
         tstart, tstop : None | scalar
             Restrict time window for permutation cluster test.
-        tmin : scalar
-            Minimum duration for clusters.
         match : None | categorial
             When permuting data, only shuffle the cases within the categories
             of match.
+        mintime : scalar
+            Minimum duration for clusters (in seconds).
+        minsource : int
+            Minimum number of sources per cluster.
         """
         sub = assub(sub, ds)
         Y = asndvar(Y, sub=sub, ds=ds)
@@ -152,7 +153,7 @@ class corr:
 
 
             cdist = _ClusterDist(Y, samples, threshold, -threshold, 'r', name,
-                                 tstart, tstop, tmin)
+                                 tstart, tstop, criteria)
             cdist.add_original(rmap)
             if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples, unit=match):
@@ -313,7 +314,7 @@ class ttest_ind:
     """
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=0.1, tstart=None, tstop=None,
-                 tmin=0):
+                 **criteria):
         """Element-wise t-test
 
         Parameters
@@ -348,8 +349,10 @@ class ttest_ind:
             Threshold p value for forming clusters in permutation cluster test.
         tstart, tstop : None | scalar
             Restrict time window for permutation cluster test.
-        tmin : scalar
-            Minimum duration for clusters.
+        mintime : scalar
+            Minimum duration for clusters (in seconds).
+        minsource : int
+            Minimum number of sources per cluster.
         """
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds)
         c1, c0 = ct.cat
@@ -366,7 +369,7 @@ class ttest_ind:
             t_upper = t_threshold if tail >= 0 else None
             t_lower = -t_threshold if tail <= 0 else None
             cdist = _ClusterDist(ct.Y, samples, t_upper, t_lower, 't',
-                                 test_name, tstart, tstop, tmin)
+                                 test_name, tstart, tstop, criteria)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples):
@@ -446,7 +449,7 @@ class ttest_rel:
     """
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=0.1, tstart=None, tstop=None,
-                 tmin=0):
+                 **criteria):
         """Element-wise t-test
 
         Parameters
@@ -481,8 +484,10 @@ class ttest_rel:
             Threshold p value for forming clusters in permutation cluster test.
         tstart, tstop : None | scalar
             Restrict time window for permutation cluster test.
-        tmin : scalar
-            Minimum duration for clusters.
+        mintime : scalar
+            Minimum duration for clusters (in seconds).
+        minsource : int
+            Minimum number of sources per cluster.
 
         Notes
         -----
@@ -506,7 +511,7 @@ class ttest_rel:
             t_upper = t_threshold if tail >= 0 else None
             t_lower = -t_threshold if tail <= 0 else None
             cdist = _ClusterDist(ct.Y, samples, t_upper, t_lower, 't',
-                                 test_name, tstart, tstop, tmin)
+                                 test_name, tstart, tstop, criteria)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples, unit=ct.match):
@@ -755,7 +760,7 @@ class anova:
         Maps of p values.
     """
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=0.1,
-                 tstart=None, tstop=None, tmin=0, match=None):
+                 tstart=None, tstop=None, match=None, **criteria):
         """ANOVA with cluster permutation test
 
         Parameters
@@ -780,11 +785,13 @@ class anova:
             without
         tstart, tstop : None | scalar
             Restrict time window for permutation cluster test.
-        tmin : scalar
-            Minimum duration for clusters.
         match : None | categorial
             When permuting data, only shuffle the cases within the categories
             of match.
+        mintime : scalar
+            Minimum duration for clusters (in seconds).
+        minsource : int
+            Minimum number of sources per cluster.
         """
         sub = assub(sub, ds)
         Y = self.Y = asndvar(Y, sub, ds)
@@ -801,7 +808,7 @@ class anova:
             # find F-thresholds for clusters
             fmin = {e: ftest_f(pmin, e.df, df_den[e]) for e in effects}
             cdists = {e: _ClusterDist(Y, samples, fmin[e], None, 'F', e.name,
-                                      tstart, tstop, tmin)
+                                      tstart, tstop, criteria)
                       for e in fmin}
 
             # Find clusters in the actual data
@@ -911,7 +918,7 @@ class _ClusterDist:
         ``cdist.add_perm(pmap)``.
     """
     def __init__(self, Y, N, t_upper, t_lower=None, meas='?', name=None,
-                 tstart=None, tstop=None, tmin=0, close_time=0):
+                 tstart=None, tstop=None, criteria={}):
         """Accumulate information on a cluster statistic.
 
         Parameters
@@ -930,11 +937,9 @@ class _ClusterDist:
         tstart, tstop : None | scalar
             Restrict the time window for finding clusters (None: use the whole
             epoch).
-        tmin : scalar
-            Minimum duration for clusters.
-        close_time : scalar
-            Close gaps in clusters that are smaller than this interval. Assumes
-            that Y is a uniform time series.
+        criteria : dict
+            Dictionary with threshold criteria for cluster size: 'mintime'
+            (seconds) and 'minsource' (n_sources).
         """
         assert Y.has_case
         if t_lower is not None:
@@ -954,14 +959,6 @@ class _ClusterDist:
             t_ax = Y.get_axis('time') - 1
         else:
             t_ax = None
-
-        # prepare gap closing
-        if close_time:
-            raise NotImplementedError
-            time = Y.get_dim('time')
-            self._close = np.ones(round(close_time / time.tstep))
-        else:
-            self._close = None
 
         # prepare cropping
         if (tstart is None) and (tstop is None):
@@ -996,10 +993,21 @@ class _ClusterDist:
             self._orig_shape = shape
             self._flat_shape = (shape[0], np.prod(shape[1:]))
 
-        if tmin:
-            tmin_samples = int(ceil(tmin / Y.time.tstep))
-        else:
-            tmin_samples = None
+        # interpret cluster criteria
+        criteria_ = {}
+        for k, v in criteria.iteritems():
+            if k == 'tmin' or k == 'mintime':
+                criteria_['time'] = int(ceil(v / Y.time.tstep))
+            elif k == 'minsource':
+                criteria_['source'] = v
+            else:
+                raise ValueError("Unknown criterion: %r" % k)
+
+            for k in criteria_:
+                if not Y.has_dim(k):
+                    err = ("Criterion specified for dimension that is not in "
+                           "the data: %r" % k)
+                    raise ValueError(err)
 
         self.Y = Y
         self.Y_perm = Y_perm
@@ -1010,11 +1018,10 @@ class _ClusterDist:
         self.t_lower = t_lower
         self.tstart = tstart
         self.tstop = tstop
-        self.tmin = tmin
-        self._tmin_samples = tmin_samples
         self._t_ax = t_ax
         self.meas = meas
         self.name = name
+        self.criteria = criteria_
 
     def _crop(self, im):
         if self.crop:
@@ -1026,21 +1033,22 @@ class _ClusterDist:
         if self._i < 0:
             raise RuntimeError("Too many permutations added to _ClusterDist")
 
-        # retrieve original clusters
-        pmap = self._original_pmap
-        pmap_ = self._crop(pmap)
-        cmap = self._cluster_im
-        cids = self._cids
-
         if not self.n_clusters:
             self.clusters = None
             return
 
+        # retrieve original clusters
+        pmap = self._original_pmap  # parameter map
+        pmap_cropped = self._crop(pmap)
+        cmap = self._cluster_im
+        cids = self._cids
+
         # prepare container for clusters
-        ds = Dataset()
+        self.clusters = ds = Dataset()
+        dims = self.Y.dims
 
         # measure original clusters
-        cluster_v = ndimage.sum(pmap_, cmap, cids)
+        cluster_v = ndimage.sum(pmap_cropped, cmap, cids)
         ds['v'] = Var(cluster_v)
 
         # p-values: "the proportion of random partitions that resulted in a
@@ -1051,40 +1059,22 @@ class _ClusterDist:
             ds['p'] = p = Var(cluster_p)
             ds['*'] = star_factor(p)
 
-        # time window
-        if self.Y.has_dim('time'):
-            time = self.Y_perm.get_dim('time')
-            time_ax = self._t_ax
-            tstart = []
-            tstop = []
-        else:
-            time = None
-
         # create cluster ndvars
-        cpmap = np.ones_like(pmap_)
+        cpmap = np.ones_like(pmap_cropped)  # cluster probability
         cmaps = np.empty((self.n_clusters,) + pmap.shape, dtype=pmap.dtype)
-        boundaries = ndimage.find_objects(cmap)
         for i in xrange(self.n_clusters):
+            # cluster index
             cid = cids[i]
-
-            # update cluster maps
+            # cluster extent
             c_mask = (cmap == cid)
-            cmaps[i] = self._uncrop(pmap_ * c_mask)
+            # cluster value map
+            cmaps[i] = self._uncrop(pmap_cropped * c_mask)
             if self.N:
+                # cluster probability map
                 p = cluster_p[i]
                 cpmap[c_mask] = p
 
-            # extract cluster properties
-            bounds = boundaries[cid - 1]
-            if time is not None:
-                t_slice = bounds[time_ax]
-                tstart.append(time.times[t_slice.start])
-                if t_slice.stop == len(time):
-                    tstop.append(time.times[-1] + time.tstep)
-                else:
-                    tstop.append(time.times[t_slice.stop])
-
-        dims = self.Y.dims
+        # store cluster NDVar
         contours = {}
         if self.t_lower is not None:
             contours[self.t_lower] = (0.7, 0, 0.7)
@@ -1093,10 +1083,11 @@ class _ClusterDist:
         info = _cs.stat_info(self.meas, contours=contours, summary_func=np.sum)
         ds['cluster'] = NDVar(cmaps, dims=dims, info=info)
 
-        if time is not None:
-            ds['tstart'] = Var(tstart)
-            ds['tstop'] = Var(tstop)
-        self.clusters = ds
+        # add cluster info
+        for axis, dim in enumerate(dims[1:], 1):
+            properties = dim._cluster_properties(cmaps, axis)
+            if properties is not None:
+                ds.update(properties)
 
         # cluster probability map
         cpmap = self._uncrop(cpmap, 1)
@@ -1150,7 +1141,7 @@ class _ClusterDist:
         ----------
         bin_map : array
             Binary map of where the parameter map exceeds the threshold for a
-            cluster.
+            cluster. (flattened if the data contains non-adjacent dimensions).
 
         Returns
         -------
@@ -1160,10 +1151,6 @@ class _ClusterDist:
             Identifiers of the clusters that survive the minimum duration
             criterion.
         """
-        # manipulate morphology
-        if self._close is not None:
-            bin_map = bin_map | binary_closing(bin_map, self._close)
-
         # find clusters
         if self._all_adjacent:
             cmap, n = ndimage.label(bin_map)
@@ -1206,19 +1193,23 @@ class _ClusterDist:
                 if len(cids) == 1:
                     break
 
-        # apply minimum cluster duration criterion
-        tmin_samples = self._tmin_samples
-        if tmin_samples:
-            boundaries = ndimage.find_objects(cmap)
-            for i, idx in enumerate(boundaries, 1):
-                if idx is None:
-                    continue
+        # apply minimum cluster size criteria
+        criteria = self.criteria
+        if criteria:
+            # return cmap to proper shape
+            if self._all_adjacent:
+                cmap_ = cmap
+            else:
+                cmap_ = cmap.reshape(self._orig_shape)
+                cmap_ = cmap_.swapaxes(0, self._nad_ax)
 
-                t_idx = idx[self._t_ax]
-                tstart = t_idx.start or 0
-                tstop = t_idx.stop or self._nsamples
-                if tstop - tstart < tmin_samples:
-                    cids.remove(i)
+            for axis, dim in enumerate(self.Y_perm.dims[1:]):
+                if dim.name not in criteria:
+                    continue
+                vmin = criteria[dim.name]
+                size = dim._cluster_size_basic
+                rm = tuple(i for i in cids if size(cmap_ == i, axis) < vmin)
+                cids.difference_update(rm)
 
         return cmap, cids
 
