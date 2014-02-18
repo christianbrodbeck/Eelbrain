@@ -120,7 +120,7 @@ def tsv(path=None, names=True, types='auto', empty='nan', delimiter=None,
     for line in rows:
         for i, v in enumerate(line[start:]):
             for str_del in ["'", '"']:
-                if v[0] == str_del:
+                if len(v) > 0 and v[0] == str_del:
                     v = v.strip(str_del)
                     types[i] = 1
             data[i].append(v)
