@@ -1052,6 +1052,16 @@ class Var(object):
         return value in self.x
 
     # numeric ---
+    def __neg__(self):
+        x = -self.x
+        return Var(x, self.name)
+
+    def __pos__(self):
+        return self
+
+    def __abs__(self):
+        return self.abs()
+
     def __add__(self, other):
         if isdataobject(other):
             # ??? should Var + Var return sum or Model?
@@ -2163,6 +2173,17 @@ class NDVar(object):
         return state
 
     # numeric ---
+    def __neg__(self):
+        x = -self.x
+        info = self.info.copy()
+        return NDVar(x, self.dims, info, self.name)
+
+    def __pos__(self):
+        return self
+
+    def __abs__(self):
+        return self.abs()
+
     def _align(self, other):
         "align data from 2 ndvars"
         if isvar(other):
