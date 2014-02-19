@@ -269,6 +269,33 @@ def test_dataset_combining():
 def test_dataset_indexing():
     """Test Dataset indexing"""
     ds = datasets.get_uv()
+
+    # indexing values
+    assert_equal(ds['A', 1], ds['A'][1])
+    assert_equal(ds[1, 'A'], ds['A'][1])
+
+    # indexing variables
+    assert_dataobj_equal(ds[:, 'A'], ds['A'])
+    assert_dataobj_equal(ds['A', :], ds['A'])
+    assert_dataobj_equal(ds[:10, 'A'], ds['A'][:10])
+    assert_dataobj_equal(ds['A', :10], ds['A'][:10])
+
+    # new Dataset through indexing
+    ds2 = Dataset()
+    ds2['A'] = ds['A']
+    assert_dataset_equal(ds[('A',)], ds2)
+    ds2['B'] = ds['B']
+    assert_dataset_equal(ds['A', 'B'], ds2)
+    assert_dataset_equal(ds[('A', 'B'), :10], ds2[:10])
+    assert_dataset_equal(ds[:10, ('A', 'B')], ds2[:10])
+
+    # assigning value
+    ds[2, 'A'] = 'hello'
+    assert_equal(ds[2, 'A'], 'hello')
+    ds['A', 2] = 'not_hello'
+    assert_equal(ds[2, 'A'], 'not_hello')
+
+    # assigning new factor
     ds['C', :] = 'c'
     ok_(np.all(ds.eval("C == 'c'")))
 

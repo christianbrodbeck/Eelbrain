@@ -3339,15 +3339,16 @@ class Dataset(collections.OrderedDict):
             return Dataset(*(self[item] for item in index))
 
         if isinstance(index, tuple):
-            i0 = index[0]
-            if isinstance(i0, basestring):
-                return self[i0][index[1:]]
-
             if len(index) != 2:
-                raise KeyError("Invalid index for Dataset: %r" % index)
-            i1 = index[1]
-            if isinstance(i1, basestring):
+                raise KeyError("Invalid index for Dataset: %s" % repr(index))
+
+            i0, i1 = index
+            if isinstance(i0, basestring):
+                return self[i1, i0]
+            elif isinstance(i1, basestring):
                 return self[i1][i0]
+            elif np.iterable(i0) and isinstance(i0[0], basestring):
+                return self[i1, i0]
             elif np.iterable(i1) and all(isinstance(item, basestring) for item
                                          in i1):
                 keys = i1
