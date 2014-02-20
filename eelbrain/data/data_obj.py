@@ -2306,11 +2306,16 @@ class NDVar(object):
         if isvar(index):
             index = index.x
         elif isndvar(index):
-            if not index.x.dtype.kind == 'b':
+            if index.x.dtype.kind != 'b':
                 err = "Only NDVars with boolean data can serve as indexes"
                 raise ValueError(err)
             if index.ndim == 1:
-                axis = self._dim_2_ax[index.dims[0].name]
+                index_dim = index.dims[0]
+                axis = self._dim_2_ax[index_dim.name]
+                dim = self.dims[axis]
+                if index_dim != dim:
+                    err = "Index dimension is different from data dimension"
+                    raise ValueError(err)
                 index_ = (slice(None),) * axis + (index.x,)
                 x = self.x[index_]
                 dims = tuple(dim[index.x] if i == axis else dim for i, dim in
@@ -4534,6 +4539,11 @@ class Dimension(object):
     def __len__(self):
         raise NotImplementedError
 
+    def __eq__(self, other):
+        if isinstance(other, basestring):
+            return False
+        return self.name == other.name
+
     def __getitem__(self, index):
         """
          - int -> label or value for that location
@@ -4628,6 +4638,11 @@ class Scalar(Dimension):
 
     def __len__(self):
         return len(self.values)
+
+    def __eq__(self, other):
+        is_equal = (Dimension.__eq__(self, other)
+                    and np.array_equal(self.values, other.values))
+        return is_equal
 
     def __getitem__(self, index):
         if isinstance(index, int):
@@ -4807,6 +4822,13 @@ class Sensor(Dimension):
 
     def __len__(self):
         return self.n
+
+    def __eq__(self, other):
+        "Based on having same sensor names"
+        is_equal = (Dimension.__eq__(self, other)
+                    and len(self) == len(other)
+                    and all(n == no for n, no in zip(self.names, other.names)))
+        return is_equal
 
     def __getitem__(self, index):
         index = self.dimindex(index)
@@ -5315,6 +5337,15 @@ class SourceSpace(Dimension):
     def __len__(self):
         return self.lh_n + self.rh_n
 
+    def __eq__(self, other):
+        is_equal = (Dimension.__eq__(self, other)
+                    and self.subject == other.subject
+                    and self.lh_n == other.lh_n
+                    and self.rh_n == other.rh_n
+                    and np.array_equal(self.lh_vertno, other.lh_vertno)
+                    and np.array_equal(self.rh_vertno, other.rh_vertno))
+        return is_equal
+
     def __getitem__(self, index):
         if self._connectivity is None:
             connectivity = None
@@ -5624,6 +5655,13 @@ class UTS(Dimension):
 
     def __len__(self):
         return len(self.times)
+
+    def __eq__(self, other):
+        is_equal = (Dimension.__eq__(self, other)
+                    and self.tmin == other.tmin
+                    and self.tstep == other.tstep
+                    and self.nsamples == other.nsamples)
+        return is_equal
 
     def __getitem__(self, index):
         if isinstance(index, int):
