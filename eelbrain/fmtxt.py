@@ -1253,7 +1253,7 @@ class Section(FMText):
         self._heading = heading
         FMText.__init__(self, content)
 
-    def add_image_figure(self, filename, caption, alt=None):
+    def add_image_figure(self, filename, caption, alt=None, from_file=None):
         """Add an image in a figure frame to the section
 
         Parameters
@@ -1267,13 +1267,26 @@ class Section(FMText):
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
+        from_file : None | str
+            Path to an existing image file. Add an image that already exists
+            in a file.
 
         Returns
         -------
         image : Image
             Image object that was added.
         """
-        image = Image(filename, alt)
+        if from_file is None:
+            image = Image(filename, alt)
+        else:
+            _, ext_src = os.path.splitext(from_file)
+            _, ext_dst = os.path.splitext(filename)
+            if ext_dst != ext_src:
+                err = ("The extension of the image filename (%s) does not "
+                       "correspond to the input image file (%s)." %
+                       (ext_dst, ext_src))
+                raise ValueError(err)
+            image = Image.from_file(from_file, filename, alt)
         figure = Figure(image, caption)
         self.append(figure)
         return image
