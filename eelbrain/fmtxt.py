@@ -1396,23 +1396,16 @@ class Report(Section):
         Section.__init__(self, title, content)
 
     def get_html(self, options={}):
-        content = []
-        if self._heading is not None:
-            title = _html_element('h1', self._heading)
-            content.append(title)
-        if self._author is not None:
-            author = html(self._author, options)
-            content.append(author)
-        if self._date is not None:
-            date = html(self._date, options)
-            content.append(date)
-
+        # setup TOC in options
         options = options.copy()
         options['toc'] = []
         options['toc_ids'] = [-1]
         options['level'] = 2
+
+        # format document body (& collect document info)
         body = FMText.get_html(self, options)
 
+        # format TOC
         toc = ['<ul>']
         level = 2
         for item_level, item in options['toc']:
@@ -1425,6 +1418,17 @@ class Report(Section):
         toc.append('</ul></li>' * (level - 1) + '</ul>')
         toc = '\n'.join(toc)
 
+        # compile document content
+        content = []
+        if self._heading is not None:
+            title = _html_element('h1', self._heading)
+            content.append(title)
+        if self._author is not None:
+            author = html(self._author, options)
+            content.append(author)
+        if self._date is not None:
+            date = html(self._date, options)
+            content.append(date)
         content.append(toc)
         content.append(body)
         txt = '\n<br>\n'.join(content)
