@@ -1,5 +1,5 @@
 import numpy as np
-from eelbrain.eellab import *
+from eelbrain.lab import *
 # dimension objects
 from eelbrain.data.data_obj import UTS, Sensor
 

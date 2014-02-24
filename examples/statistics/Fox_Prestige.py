@@ -15,7 +15,7 @@
 ##Total            	28346.8756 	97 	          	           	     
 ##
 
-from eelbrain.eellab import *
+from eelbrain.lab import *
 
 
 filepath = 'Fox_Prestige_data.txt'

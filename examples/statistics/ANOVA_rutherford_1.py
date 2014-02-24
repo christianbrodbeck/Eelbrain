@@ -22,7 +22,7 @@
 ##
 
 import numpy as np
-from eelbrain.eellab import *
+from eelbrain.lab import *
 
 
 Y = Var([7,  3,  6,  6,  5,  8,  6,  7,

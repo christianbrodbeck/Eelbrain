@@ -5,7 +5,7 @@ Performs ANOVA and copies the ANOVA table to the clip-board. Requires the
 """
 
 import numpy as np
-from eelbrain.eellab import *
+from eelbrain.lab import *
 from eelbrain.fmtxt import copy_pdf
 
 Y = np.array([ 7, 3, 6, 6, 5, 8, 6, 7,

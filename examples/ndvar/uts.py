@@ -1,5 +1,5 @@
 import numpy as np
-from eelbrain.eellab import *
+from eelbrain.lab import *
 # the time dimension object
 from eelbrain.data.data_obj import UTS
 

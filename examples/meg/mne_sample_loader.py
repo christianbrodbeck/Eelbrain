@@ -14,7 +14,7 @@ as the other script. if this is the case, the function can be used like::
 
 """
 
-import eelbrain.eellab as EL
+import eelbrain.lab as EL
 
 
 def load_evts(path):

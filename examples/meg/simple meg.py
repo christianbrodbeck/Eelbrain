@@ -11,7 +11,7 @@ the data and could be left out for a pure analysis script.
 """
 import os
 import mne
-from eelbrain.eellab import *
+from eelbrain.lab import *
 
 # find the path for the mne sample data file
 datapath = mne.datasets.sample.data_path()

@@ -13,7 +13,7 @@
 ##Total     	    1112 	23 	         	           	     
 
 import numpy as np
-from eelbrain.eellab import *
+from eelbrain.lab import *
 
 
 Y = np.array([16,  7, 11,  9, 10, 11,  8,  8,

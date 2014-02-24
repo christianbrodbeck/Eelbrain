@@ -1,7 +1,7 @@
 import random
 import string
 
-from eelbrain.eellab import *
+from eelbrain.lab import *
 
 
 ds = Dataset()
