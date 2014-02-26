@@ -68,6 +68,7 @@ RESIZE = wx.NewId()
 
 SAVE_REJECTION = wx.NewId()
 SET_FONT = wx.NewId()
+SET_LAYOUT = wx.NewId()
 SET_TEND = wx.NewId()
 SET_TSTART = wx.NewId()
 SHELL_Clear = wx.NewId()

@@ -507,6 +507,7 @@ class Frame(wx.Frame):  # control
 
         # View
         m = self.viewMenu = wx.Menu()
+        m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+l", "Change the Layout")
 #         m.Append(wx.ID_TOGGLE_MAXIMIZE, '&Toggle Maximize\tF11', 'Maximize/'
 #                  'Restore Application')
 
@@ -853,6 +854,7 @@ class Controller(object):
         f.Bind(wx.EVT_TOOL, self.OnLoad, id=ID.OPEN)
         f.Bind(wx.EVT_TOOL, self.OnSave, id=wx.ID_SAVE)
         f.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVEAS)
+        f.Bind(wx.EVT_TOOL, self.OnSetLayout, id=ID.SET_LAYOUT)
         f.threshold_button.Bind(wx.EVT_BUTTON, self.OnThreshold)
 
         f.Bind(wx.EVT_MENU, self.OnLoad, id=wx.ID_OPEN)
@@ -861,6 +863,7 @@ class Controller(object):
         f.Bind(wx.EVT_MENU, self.OnSaveAs, id=wx.ID_SAVEAS)
         f.Bind(wx.EVT_MENU, self.OnUndo, id=wx.ID_UNDO)
         f.Bind(wx.EVT_MENU, self.OnRedo, id=wx.ID_REDO)
+        f.Bind(wx.EVT_MENU, self.OnSetLayout, id=ID.SET_LAYOUT)
 
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_BACKWARD)
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_FORWARD)
@@ -1036,6 +1039,61 @@ class Controller(object):
 
     def OnSaveAs(self, event):
         self.SaveAs()
+
+    def OnSetLayout(self, event):
+        caption = "Set Plot Layout"
+        msg = ("Number of epoch plots for square layout (e.g., '10') or \n"
+               "exact n_rows and n_columns (e.g., '5 4'). Add 'nomean' to \n"
+               "turn off plotting the page mean at the bottom right (e.g., "
+               "'3 nomean').")
+        default = ""
+        dlg = wx.TextEntryDialog(self.frame, msg, caption, default)
+        while True:
+            if dlg.ShowModal() == wx.ID_OK:
+                nplots = None
+                topo = True
+                mean = True
+                err = []
+
+                # separate options from layout
+                value = dlg.GetValue()
+                items = value.split(' ')
+                options = []
+                while not items[-1].isdigit():
+                    options.append(items.pop(-1))
+
+                # extract options
+                for option in options:
+                    if option == 'nomean':
+                        mean = False
+                    elif option == 'notopo':
+                        topo = False
+                    else:
+                        err.append('Unknown option: "%s"' % option)
+
+                # extract layout info
+                if len(items) == 1 and items[0].isdigit():
+                    nplots = int(items[0])
+                elif len(items) == 2 and all(item.isdigit() for item in items):
+                    nplots = tuple(int(item) for item in items)
+                else:
+                    value_ = ' '.join(items)
+                    err = 'Invalid layout specification: "%s"' % value_
+
+                # if all ok: break
+                if nplots and not err:
+                    break
+
+                # error
+                caption = 'Invalid Layout Entry: "%s"' % value
+                err.append('Please read the instructions and try again.')
+                msg = '\n'.join(err)
+                style = wx.OK | wx.ICON_ERROR
+                wx.MessageBox(msg, caption, style)
+            else:
+                return
+
+        self.frame.SetLayout(nplots, topo, mean)
 
     def OnThreshold(self, event):
         threshold = None
