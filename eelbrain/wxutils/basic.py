@@ -5,22 +5,20 @@ from wx.lib.dialogs import ScrolledMessageDialog
 
 from . import icons
 
-__all__ = ['Icon', 'key_mod', 'show_text_dialog']
-
 
 # store icons once loaded for repeated access
-cache = {}
-iconcache = {}
+_cache = {}
+_iconcache = {}
 
-def Icon(path, asicon=False):  # , size=None):
+def Icon(path, asicon=False):
     if asicon:
-        if path not in iconcache:
-            iconcache[path] = icons.catalog[path].GetIcon()
-        return iconcache[path]
+        if path not in _iconcache:
+            _iconcache[path] = icons.catalog[path].GetIcon()
+        return _iconcache[path]
     else:
-        if path not in cache:
-            cache[path] = icons.catalog[path].GetBitmap()
-        return cache[path]
+        if path not in _cache:
+            _cache[path] = icons.catalog[path].GetBitmap()
+        return _cache[path]
 
 
 def key_mod(event):
