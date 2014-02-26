@@ -2184,6 +2184,36 @@ class NDVar(object):
     def __abs__(self):
         return self.abs()
 
+    def __lt__(self, other):
+        y = self._ialign(other)
+        x = self.x < y
+        return NDVar(x, self.dims, self.info.copy(), self.name)
+
+    def __le__(self, other):
+        y = self._ialign(other)
+        x = self.x <= y
+        return NDVar(x, self.dims, self.info.copy(), self.name)
+
+    def __eq__(self, other):
+        y = self._ialign(other)
+        x = self.x == y
+        return NDVar(x, self.dims, self.info.copy(), self.name)
+
+    def __ne__(self, other):
+        y = self._ialign(other)
+        x = self.x != y
+        return NDVar(x, self.dims, self.info.copy(), self.name)
+
+    def __gt__(self, other):
+        y = self._ialign(other)
+        x = self.x > y
+        return NDVar(x, self.dims, self.info.copy(), self.name)
+
+    def __ge__(self, other):
+        y = self._ialign(other)
+        x = self.x >= y
+        return NDVar(x, self.dims, self.info.copy(), self.name)
+
     def _align(self, other):
         "align data from 2 ndvars"
         if isvar(other):
@@ -2215,7 +2245,9 @@ class NDVar(object):
 
     def _ialign(self, other):
         "align for self-modifying operations (+=, ...)"
-        if isvar(other):
+        if np.isscalar(other):
+            return other
+        elif isvar(other):
             assert self.has_case
             n = len(other)
             shape = (n,) + (1,) * (self.x.ndim - 1)
@@ -2311,10 +2343,28 @@ class NDVar(object):
                 raise ValueError(err)
             if index.ndim == 1:
                 index_dim = index.dims[0]
-                axis = self._dim_2_ax[index_dim.name]
+                if index_dim == 'case':
+                    if self.has_case:
+                        axis = 0
+                    else:
+                        raise ValueError("Index dimension case not in data")
+                else:
+                    dim_name = index_dim.name
+                    if self.has_dim(dim_name):
+                        axis = self._dim_2_ax[dim_name]
+                    else:
+                        err = ("Index dimension %s not in data" % dim_name)
+                        raise ValueError(err)
+
+                if self.shape[axis] != index.shape[0]:
+                    err = ("NDVar and index have different length on "
+                           "dimension %s" % dim_name)
+                    raise ValueError(err)
+
                 dim = self.dims[axis]
                 if index_dim != dim:
-                    err = "Index dimension is different from data dimension"
+                    err = ("Index dimension %s is different from data "
+                           "dimension" % dim_name)
                     raise ValueError(err)
                 index_ = (slice(None),) * axis + (index.x,)
                 x = self.x[index_]

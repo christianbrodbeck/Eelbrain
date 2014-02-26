@@ -266,7 +266,13 @@ def test_ndvar():
     x_bl = x - x.summary(time=(None, 0))
     # assert that the baseline is 0
     bl = x_bl.summary('case', 'sensor', time=(None, 0))
-    ok_(np.abs(bl) < 1e-10, "Baseline correction")
+    ok_(abs(bl) < 1e-10, "Baseline correction")
+
+    # NDVar as index
+    sens_mean = x.mean(('case', 'time'))
+    idx = sens_mean > 0
+    pos = sens_mean[idx]
+    assert_array_equal(pos.x > 0, True)
 
 
 def test_io_pickle():
