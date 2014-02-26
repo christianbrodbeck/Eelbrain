@@ -1,10 +1,15 @@
 '''Some WxPython utilities'''
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import logging
+import re
+
 import wx
 from wx.lib.dialogs import ScrolledMessageDialog
 
 from . import icons
 
+
+logger = logging.getLogger('eelbrain.wx')
 
 # store icons once loaded for repeated access
 _cache = {}
