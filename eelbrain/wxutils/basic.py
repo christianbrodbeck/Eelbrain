@@ -61,3 +61,46 @@ def show_text_dialog(parent, text, caption):
     dlg.Fit()
     dlg.Show()
     return dlg
+
+
+class REValidator(wx.PyValidator):
+    "Ensure that the value of a text field matches a regular expression"
+    def __init__(self, pattern, message, can_be_empty=False):
+        wx.PyValidator.__init__(self)
+        self.pattern = re.compile(pattern)
+        self.message = message
+        self.can_be_empty = bool(can_be_empty)
+
+    def Clone(self):
+        return REValidator(self.pattern, self.message, self.can_be_empty)
+
+    def Validate(self, win):
+        ctrl = self.GetWindow()
+        text = ctrl.GetValue()
+
+        if len(text.strip()) == 0 and self.can_be_empty:
+            return True
+
+        if self.pattern.match(text):
+            return True
+
+        wx.MessageBox(self.message.format(value=text), "Error")
+        ctrl.SetBackgroundColour("pink")
+        ctrl.SetFocus()
+        ctrl.Refresh()
+        return False
+#         else:
+#             ctrl.SetBackgroundColour(
+#                 wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
+#             ctrl.Refresh()
+#             return True
+
+    def TransferToWindow(self):
+        return True
+
+    def TransferFromWindow(self):
+        return True
+
+
+
+

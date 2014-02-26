@@ -18,7 +18,7 @@ from ..data import plot
 from ..data.plot._base import find_fig_vlims
 from ..data.plot.utsnd import _ax_bfly_epoch
 from ..data.plot.nuts import _plt_bin_nuts
-from ..wxutils import Icon, ID, logger
+from ..wxutils import Icon, ID, logger, REValidator
 from ..wxutils.mpl_canvas import FigureCanvasPanel
 from .history import History
 
@@ -1096,26 +1096,13 @@ class Controller(object):
         self.frame.SetLayout(nplots, topo, mean)
 
     def OnThreshold(self, event):
-        threshold = None
-        above = False
-        below = True
-
-        msg = ("Mark epochs based on a threshold criterion (any sensor \n"
-               "exceeding the threshold at any time):")
-        while threshold is None:
-            dlg = wx.TextEntryDialog(self.frame, msg, "Threshold Rejection",
-                                     "2e-12")
-            if dlg.ShowModal() == wx.ID_OK:
-                value = dlg.GetValue()
-                try:
-                    threshold = float(value)
-                except ValueError:
-                    msg = "%r is not a valid entry. Need a float." % value
-                    wx.MessageBox(msg, "Invalid Entry")
-            else:
-                return
-
-        self.model.auto_reject(threshold, 'abs', above, below)
+        dlg = ThresholdDialog(self.frame)
+        if dlg.ShowModal() == wx.ID_OK:
+            threshold = dlg.GetThreshold()
+            method = dlg.GetMethod()
+            above = dlg.GetAbove()
+            below = dlg.GetBelow()
+            self.model.auto_reject(threshold, method, above, below)
 
     def OnUndo(self, event):
         self.history.undo()
@@ -1259,3 +1246,81 @@ class TerminalInterface(object):
         if not app.IsMainLoopRunning():
             logger.info("Entering MainLoop for Epoch Selection GUI")
             app.MainLoop()
+
+
+class ThresholdDialog(wx.Dialog):
+
+    _methods = (('absolute', 'abs'),
+                ('peak-to-peak', 'p2p'))
+
+    def __init__(self, parent):
+        title = "Threshold Criterion Rejection"
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        txt = "Mark epochs based on a threshold criterion"
+        ctrl = wx.StaticText(self, wx.ID_ANY, txt)
+        sizer.Add(ctrl)
+
+        choices = tuple(m[0] for m in self._methods)
+        ctrl = wx.RadioBox(self, wx.ID_ANY, "Method", choices=choices)
+        sizer.Add(ctrl)
+        self.method_ctrl = ctrl
+
+        ctrl = wx.CheckBox(self, wx.ID_ANY, "Mark above as bad")
+        ctrl.SetValue(True)
+        sizer.Add(ctrl)
+        self.mark_above_ctrl = ctrl
+
+        ctrl = wx.CheckBox(self, wx.ID_ANY, "Mark below as good")
+        ctrl.SetValue(False)
+        sizer.Add(ctrl)
+        self.mark_below_ctrl = ctrl
+
+        float_pattern = "^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$"
+        msg = ("Invalid entry for threshold: {value}. Need a floating\n"
+               "point number.")
+        validator = REValidator(float_pattern, msg, False)
+        ctrl = wx.TextCtrl(self, wx.ID_ANY, "2e-12", validator=validator)
+        ctrl.SetHelpText("Threshold value (positive scalar)")
+        ctrl.SelectAll()
+        sizer.Add(ctrl)
+        self.threshold_ctrl = ctrl
+
+        # buttons
+        button_sizer = wx.StdDialogButtonSizer()
+
+        btn = wx.Button(self, wx.ID_OK)
+        btn.SetDefault()
+        button_sizer.AddButton(btn)
+
+        btn = wx.Button(self, wx.ID_CANCEL)
+        button_sizer.AddButton(btn)
+
+        button_sizer.Realize()
+        sizer.Add(button_sizer)
+
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+
+    def GetAbove(self):
+        if self.mark_above_ctrl.IsChecked():
+            return False
+        else:
+            return None
+
+    def GetBelow(self):
+        if self.mark_below_ctrl.IsChecked():
+            return True
+        else:
+            return None
+
+    def GetMethod(self):
+        index = self.method_ctrl.GetSelection()
+        value = self._methods[index][1]
+        return value
+
+    def GetThreshold(self):
+        text = self.threshold_ctrl.GetValue()
+        value = float(text)
+        return value
