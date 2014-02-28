@@ -304,15 +304,33 @@ class Model(object):
         x = self.doc.data_good
         if method == 'abs':
             x_max = x.abs().max(('time', 'sensor'))
-            accept = x_max <= threshold
+            sub_threshold = x_max <= threshold
         elif method == 'p2p':
             p2p = x.max('time') - x.min('time')
             max_p2p = p2p.max('sensor')
-            accept = max_p2p <= threshold
+            sub_threshold = max_p2p <= threshold
         else:
             raise ValueError("Invalid method: %r" % method)
 
-        index = np.where(self.doc.accept != accept)[0]
+        accept = sub_threshold.copy()
+
+        if below is False:
+            accept[sub_threshold] = False
+        elif below is None:
+            accept[sub_threshold] = self.doc.accept.x[sub_threshold]
+        elif below is not True:
+            err = "below needs to be True, False or None, got %s" % repr(below)
+            raise TypeError(err)
+
+        if above is True:
+            accept[sub_threshold == False] = True
+        elif above is None:
+            accept = np.where(sub_threshold, accept, self.doc.accept.x)
+        elif above is not False:
+            err = "above needs to be True, False or None, got %s" % repr(above)
+            raise TypeError(err)
+
+        index = np.where(self.doc.accept.x != accept)[0]
         old_accept = self.doc.accept[index]
         new_accept = accept[index]
         old_tag = self.doc.tag[index]
