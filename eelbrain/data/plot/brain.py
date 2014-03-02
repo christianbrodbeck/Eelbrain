@@ -14,7 +14,6 @@ Plot :class:`NDVar` objects containing source estimates with mayavi/pysurfer.
 from __future__ import division
 
 import numpy as np
-import surfer
 
 from ..data_obj import asndvar
 from .. import testnd
@@ -217,6 +216,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     brain : surfer.Brain
         PySurfer Brain instance containing the plot.
     """
+    from surfer import Brain
+
     src = asndvar(src)  # , sub=None, ds=ds)
     if src.has_case:
         src = src.summary()
@@ -252,9 +253,9 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     if 'background' in layout:
         config_opts['background'] = layout['background']
 
-    brain = surfer.Brain(src.source.subject, hemi, surf, True, title,
-                         config_opts=config_opts, views=views,
-                         subjects_dir=src.source.subjects_dir)
+    brain = Brain(src.source.subject, hemi, surf, True, title,
+                  config_opts=config_opts, views=views,
+                  subjects_dir=src.source.subjects_dir)
 
     # general PySurfer data args
     alpha = 1

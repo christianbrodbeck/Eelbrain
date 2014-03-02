@@ -102,6 +102,6 @@ from sensors import SensorMaps, SensorMap2d
 from topo import TopoArray, TopoButterfly, Topomap
 from uts import UTSStat, UTS, UTSClusters
 from utsnd import Array, Butterfly
-from . import uv
+from . import brain, uv
 
 from ._base import configure_backend
