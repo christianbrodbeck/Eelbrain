@@ -43,7 +43,7 @@ class Notifier(object):
     ...
 
     """
-    def __init__(self, to, name='job', state_func=None):
+    def __init__(self, to, name='job', state_func=None, pdb=True):
         """
         Parameters
         ----------
@@ -62,6 +62,7 @@ class Notifier(object):
         self.to = to
         self.name = name
         self.state_func = state_func
+        self.pdb = pdb
 
     def __enter__(self):
         self.msg = []
@@ -72,23 +73,47 @@ class Notifier(object):
         self.msg.append(unicode(note))
 
     def __exit__(self, type_, value, traceback_):
-        items = self.msg[:]
         if isinstance(value, Exception):
-            result = '%s: %s' % (type_.__name__, value)
+            event = '%s: %s' % (type_.__name__, value)
+            info = []
 
             # state description
             if self.state_func:
                 state_desc = self.state_func()
-                items.append(state_desc)
+                info.append(state_desc)
 
             # traceback
             tb_items = traceback.format_tb(traceback_)
             tb_str = '\n'.join(tb_items)
-            items.append(tb_str)
-            items.append(result)
+            info.append(tb_str)
+            info.append(event)
+
+            if self.pdb:
+                info.append("Starting PDB...")
+            else:
+                info.append("Terminating...")
+
+            self.send(event, info)
+
+            # drop into pdb
+            if self.pdb:
+                import pdb
+                pdb.post_mortem(traceback_)
         else:
-            result = 'finished'
+            self.send('finished')
+
+    def send(self, event, info=[]):
+        """Send an email message
+
+        Parameters
+        ----------
+        event : str
+            Event description.
+        info : list of str
+            Infomation that is added to the email body.
+        """
+        items = self.msg + info
         body = '\n\n'.join(map(unicode, items))
-        subject = '%s %s' % (self.name, result)
+        subject = '%s %s' % (self.name, event)
         send_email(self.to, subject, body)
 
