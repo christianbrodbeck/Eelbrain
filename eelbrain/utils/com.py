@@ -2,6 +2,7 @@
 import bz2
 from email.mime.text import MIMEText
 import os
+import pdb
 import smtplib
 import traceback
 
@@ -43,7 +44,7 @@ class Notifier(object):
     ...
 
     """
-    def __init__(self, to, name='job', state_func=None, pdb=True):
+    def __init__(self, to, name='job', state_func=None, debug=True):
         """
         Parameters
         ----------
@@ -62,15 +63,10 @@ class Notifier(object):
         self.to = to
         self.name = name
         self.state_func = state_func
-        self.pdb = pdb
+        self.debug = debug
 
     def __enter__(self):
-        self.msg = []
         return self
-
-    def add(self, note):
-        "Add a note to the notification"
-        self.msg.append(unicode(note))
 
     def __exit__(self, type_, value, traceback_):
         if isinstance(value, Exception):
@@ -88,7 +84,7 @@ class Notifier(object):
             info.append(tb_str)
             info.append(event)
 
-            if self.pdb:
+            if self.debug:
                 info.append("Starting PDB...")
             else:
                 info.append("Terminating...")
@@ -96,8 +92,8 @@ class Notifier(object):
             self.send(event, info)
 
             # drop into pdb
-            if self.pdb:
-                import pdb
+            if self.debug:
+                traceback.print_exc()
                 pdb.post_mortem(traceback_)
         else:
             self.send('finished')
@@ -112,8 +108,7 @@ class Notifier(object):
         info : list of str
             Infomation that is added to the email body.
         """
-        items = self.msg + info
-        body = '\n\n'.join(map(unicode, items))
+        body = '\n\n'.join(map(unicode, info))
         subject = '%s %s' % (self.name, event)
         send_email(self.to, subject, body)
 
