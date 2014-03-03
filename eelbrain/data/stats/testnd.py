@@ -852,7 +852,7 @@ class anova:
         if match is not None:
             match = self.match = ascategorial(match, sub, ds)
 
-        lm = lm_fitter(X)
+        lm = lm_fitter(X, Y.x.shape)
         effects = lm.effects
         df_den = lm.df_den
         fmaps = lm.map(Y.x, p=False)

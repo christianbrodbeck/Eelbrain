@@ -364,7 +364,7 @@ class lm_fitter(object):
     E(MS) for F statistic after Hopkins (1976)
 
     """
-    def __init__(self, X):
+    def __init__(self, X, y_shape=None):
         """
         Object for efficiently fitting a model to multiple dependent variables.
 
@@ -372,6 +372,9 @@ class lm_fitter(object):
         ----------
         X : Model
             Model which will be fitted to the data.
+        y_shape : None | tuple
+            Data shape (if known) will allow preallocation of containers for
+            intermediate results.
         """
         # prepare input
         X = asmodel(X)
@@ -410,6 +413,16 @@ class lm_fitter(object):
         self.df_den = df_den
         self.E_MS = E_MS
 
+        # preallocate large arrays
+        self.y_shape = y_shape
+        if y_shape is not None:
+            n_cases = y_shape[0]
+            n_betas = self._x_full.shape[1]
+            n_tests = min(self._max_n_tests, np.product(y_shape[1:]))
+            self._values = np.empty((n_cases, n_betas, n_tests))
+        else:
+            self._values = None
+
     def __repr__(self):
         return 'lm_fitter((%s))' % self.X.name
 
@@ -435,13 +448,14 @@ class lm_fitter(object):
         """
         X = self.X
         n_cases = self.n_cases
+        df_res = X.df_error
 
         original_shape = Y.shape
         if original_shape[0] != n_cases:
             raise ValueError("first dimension of Y must contain cases")
-
-        Y = Y.reshape((n_cases, -1))
-        df_res = X.df_error
+        if len(original_shape) > 2:
+            Y = Y.reshape((n_cases, -1))
+        out_shape = original_shape[1:]
 
         # Split Y that are too long
         if Y.shape[1] > self._max_n_tests:
@@ -456,9 +470,9 @@ class lm_fitter(object):
             out_map = []
             for i in xrange(len(out_maps[0])):
                 name = out_maps[0][i][0]
-                F = np.hstack([m[i][1] for m in out_maps]).reshape(original_shape[1:])
+                F = np.hstack([m[i][1] for m in out_maps]).reshape(out_shape)
                 if p:
-                    P = np.hstack([m[i][2] for m in out_maps]).reshape(original_shape[1:])
+                    P = np.hstack([m[i][2] for m in out_maps]).reshape(out_shape)
                     out_map.append((name, F, P))
                 else:
                     out_map.append((name, F))
@@ -472,7 +486,11 @@ class lm_fitter(object):
                 beta = dot(self._Xsinv, Y)
 
             # values: case x effect-code x test
-            values = beta[None, :, :] * x_full[:, :, None]
+            out = self._values
+            n_tests = beta.shape[1]
+            if out is not None and n_tests < out.shape[2]:
+                out = out[:, :, :n_tests]
+            values = np.multiply(beta[None, :, :], x_full[:, :, None], out)
 
             # MS of the residuals
             if not self.full_model:
@@ -507,7 +525,7 @@ class lm_fitter(object):
                 if df_d > 0:
                     MS_n = MSs[e_n]
                     f = MS_n / MS_d
-                    fmap = f.reshape(original_shape[1:])
+                    fmap = f.reshape(out_shape)
                     if p:
                         pmap = ftest_p(fmap, df_n, df_d)
                         out_map.append((e_n, fmap, pmap))
