@@ -4594,6 +4594,9 @@ class Dimension(object):
             return False
         return self.name == other.name
 
+    def __ne__(self, other):
+        return not self == other
+
     def __getitem__(self, index):
         """
          - int -> label or value for that location
