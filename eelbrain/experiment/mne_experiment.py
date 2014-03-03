@@ -70,7 +70,6 @@ import mne
 from mne.baseline import rescale
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
-from mne.coreg import scale_labels
 
 from .. import fmtxt
 from ..data import load
@@ -2333,6 +2332,7 @@ class MneExperiment(FileTree):
             root = os.path.expanduser(root)
         self._fields['root'] = root
         if not find_subjects:
+            self._field_values['subject'] = []
             return
 
         subjects = set()
