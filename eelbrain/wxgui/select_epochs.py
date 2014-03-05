@@ -537,7 +537,10 @@ class Frame(wx.Frame):  # control
 
         # View
         m = self.viewMenu = wx.Menu()
-        m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+l", "Change the Layout")
+        m.Append(ID.SET_VLIM, "Set Y-Axis Limit... \tCtrl+l", "Change the Y-"
+                 "axis limit in epoch plots")
+        m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+Shift+l", "Change the "
+                 "page layout")
         m.AppendCheckItem(ID.PLOT_RANGE, "&Plot Data Range \tCtrl+r", "Plot "
                           "data range instead of individual sensor traces")
 #         m.Append(wx.ID_TOGGLE_MAXIMIZE, '&Toggle Maximize\tF11', 'Maximize/'
@@ -914,6 +917,7 @@ class Controller(object):
         f.Bind(wx.EVT_MENU, self.OnSaveAs, id=wx.ID_SAVEAS)
         f.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
         f.Bind(wx.EVT_MENU, self.OnRedo, id=ID.REDO)
+        f.Bind(wx.EVT_MENU, self.OnSetVLim, id=ID.SET_VLIM)
         f.Bind(wx.EVT_MENU, self.OnSetLayout, id=ID.SET_LAYOUT)
         f.Bind(wx.EVT_MENU, self.OnTogglePlotRange, id=ID.PLOT_RANGE)
 
@@ -1149,6 +1153,24 @@ class Controller(object):
 
         dlg.Destroy()
         self.frame.SetLayout(nplots, topo, mean)
+
+    def OnSetVLim(self, event):
+        default = str(self.frame._vlims.values()[0][1])
+        dlg = wx.TextEntryDialog(self.frame, "New Y-axis limit:",
+                                 "Set Y-Axis Limit", default)
+
+        if dlg.ShowModal() == wx.ID_OK:
+            value = dlg.GetValue()
+            try:
+                vlim = abs(float(value))
+            except Exception as exception:
+                msg = wx.MessageDialog(self.frame, str(exception), "Invalid "
+                                        "Entry", wx.ICON_ERROR)
+                msg.ShowModal()
+                msg.Destroy()
+                raise
+            self.frame.SetVLim(vlim)
+        dlg.Destroy()
 
     def OnThreshold(self, event):
         dlg = ThresholdDialog(self.frame)
