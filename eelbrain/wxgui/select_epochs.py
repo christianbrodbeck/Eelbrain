@@ -1144,8 +1144,10 @@ class Controller(object):
                 style = wx.OK | wx.ICON_ERROR
                 wx.MessageBox(msg, caption, style)
             else:
+                dlg.Destroy()
                 return
 
+        dlg.Destroy()
         self.frame.SetLayout(nplots, topo, mean)
 
     def OnThreshold(self, event):
