@@ -358,11 +358,9 @@ def _axgrid_sensors(sensorLocs2d, figsize=(8, 8),
     return axes, axes_legend
 
 
-class _plt_uts:
+class _plt_utsnd:
 
-    def __init__(self, ax, epoch, sensors=None, lp=None, test_epoch=False,
-                 p=.05, softStats=False, sem=None, plotLabel=False,
-                 **plot_kwargs):
+    def __init__(self, ax, epoch, sensors=None, *args, **kwargs):
         """
         uts plot for a single epoch
 
@@ -374,28 +372,19 @@ class _plt_uts:
             Epoch to plot.
         sensors : None | True | numpy index
             The sensors to plot (None or True -> all sensors).
-        lp : dictionary (line-properties)
-            any keyword-arguments for matplotlib plot
-        test_epoch :
-            submit a test_epoch to add to plot (efficient because usually
-            _ax_utsStats is called more than once for several epochs
-        sem : None or float
-            plot standard error of the mean (e.g., ``sem=2`` plots the mean +/- 2
-            sem)
+        others :
+            Matplotlib plot() arguments.
         """
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
         Y = epoch.get_data(('time', 'sensor'))
         x = epoch.time.x
-        handles = ax.plot(x, Y, label=epoch.name, **plot_kwargs)
+        kwargs['label'] = epoch.name
+        handles = ax.plot(x, Y, *args, **kwargs)
 
         for y, kwa in _base.find_uts_hlines(epoch):
             ax.axhline(y, **kwa)
-
-        if plotLabel:
-            Ymax = np.max(Y)
-            ax.text(x[0] / 2, Ymax / 2, plotLabel, horizontalalignment='center')
 
         self.x = x
         self.lines = handles
@@ -424,6 +413,7 @@ class _plt_extrema:
 
 
 class _ax_butterfly(object):
+
     def __init__(self, ax, layers, sensors=None, extrema=False, title='{name}',
                  xlabel=True, ylabel=True, color=None, vlims={}):
         """
@@ -452,7 +442,7 @@ class _ax_butterfly(object):
             if extrema:
                 h = _plt_extrema(ax, l, **uts_args)
             else:
-                h = _plt_uts(ax, l, sensors=sensors, **uts_args)
+                h = _plt_utsnd(ax, l, sensors, **uts_args)
 
             self.layers.append(h)
             if not name:
@@ -539,14 +529,20 @@ class Butterfly(_base.eelfigure):
 
 class _ax_bfly_epoch:
     def __init__(self, ax, epoch, xlabel=True, ylabel=True, plot_range=True,
-                 traces=None, color=None, mark=None, mcolor='r', state=True,
-                 vlims={}):
+                 traces=None, color=None, lw=0.2, mark=None, mcolor='r',
+                 mlw=0.8, antialiased=True, state=True, vlims={}):
         """Specific plot for showing a single sensor by time epoch
 
         Parameters
         ----------
+        ...
         epoch : NDVar
             Sensor by time epoch.
+        ...
+        lw : scalar
+            Sensor trace plot Line width (default 0.5).
+        mlw : scalar
+            Marked sensor plot line width (default 1).
         """
         if color is None:
             if traces is None:
@@ -560,19 +556,18 @@ class _ax_bfly_epoch:
         self._range = None
         self._state_h = []
 
+        self._trace_kwargs = dict(color=color, lw=lw, antialiased=antialiased)
+        self._range_kwargs = dict(color=color, antialiased=antialiased)
+        self._mark_kwargs = dict(color=mcolor, lw=mlw, antialiased=antialiased,
+                                 sensors=mark)
+        self._do_plot_range = plot_range
         if traces is True:
             self._do_plot_traces = True
-            self._traces_idx = None
         elif traces is None or traces is False:
             self._do_plot_traces = False
         else:
             self._do_plot_traces = True
-            self._traces_idx = traces
-
-        self._do_plot_range = plot_range
-        self._mark_idx = mark
-        self._color = color
-        self._mark_color = mcolor
+            self._trace_kwargs['sensors'] = traces
 
         self._tmin = epoch.time[0]
         self._tmax = epoch.time[-1]
@@ -601,19 +596,16 @@ class _ax_bfly_epoch:
         if not self._do_plot_range:
             return
 
-        self._range = _plt_extrema(self.ax, self.epoch, color=self._color,
-                                   antialiased=False)
+        self._range = _plt_extrema(self.ax, self.epoch, **self._range_kwargs)
 
     def _plot_traces(self):
         "Plot traces for individual sensors"
         self._rm_traces()
         if self._do_plot_traces:
-            h = _plt_uts(self.ax, self.epoch, color=self._color,
-                         sensors=self._traces_idx, antialiased=False)
+            h = _plt_utsnd(self.ax, self.epoch, **self._trace_kwargs)
             self._traces = h
-        if self._mark_idx:
-            h = _plt_uts(self.ax, self.epoch, color=self._mark_color,
-                         sensors=self._mark_idx, antialiased=False)
+        if self._mark_kwargs['sensors']:
+            h = _plt_utsnd(self.ax, self.epoch, **self._mark_kwargs)
             self._marked_traces = h
 
     def _rm_range(self):
