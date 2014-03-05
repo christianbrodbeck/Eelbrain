@@ -379,7 +379,7 @@ class Frame(wx.Frame):  # control
     "View object of the epoch selection GUI"
 
     def __init__(self, parent, model, nplots=(6, 6), topo=True, mean=True,
-                 vlim=None, fill=True, color=None, lw=0.2, mark=None,
+                 vlim=None, plot_range=True, color=None, lw=0.2, mark=None,
                  mcolor='r', mlw=0.8, antialiased=True, pos=wx.DefaultPosition,
                  size=wx.DefaultSize):
         """View object of the epoch selection GUI
@@ -401,10 +401,10 @@ class Frame(wx.Frame):  # control
         vlim : None | scalar
             Limit of the epoch plots on the y-axis. If None, a value is
             determined automatically to show all data.
-        fill : bool
-            In the epoch plots, fill the range of the data (instead of plottng
-            all sensor traces). For faster drawing performance with many
-            sensors set ``fill=True`` (default).
+        plot_range : bool
+            In the epoch plots, plot the range of the data (instead of plotting
+            all sensor traces). This makes drawing of pages quicker, especially
+            for data with many sensors (default ``True``).
         color : None | matplotlib color
             Color for primary data (default is black).
         lw : scalar
@@ -502,8 +502,12 @@ class Frame(wx.Frame):  # control
         if vlim is not None:
             for k in self._vlims:
                 self._vlims[k] = (-vlim, vlim)
+        self._bfly_kwargs = {'plot_range': plot_range, 'color': color, 'lw': lw,
+                             'mcolor': mcolor, 'mlw': mlw,
+                             'antialiased': antialiased, 'vlims': self._vlims}
+        self._topo_kwargs = {'vlims': self._vlims, 'title': None}
+        self._SetPlotStyle(mark=mark)
         self._SetLayout(nplots, topo, mean)
-        self._SetPlotStyle(fill, color, lw, mark, mcolor, mlw, antialiased)
 
         # Finalize
         self.ShowPage(0)
@@ -709,16 +713,15 @@ class Frame(wx.Frame):  # control
                 pages.append('%i: %i...' % (i, istart))
         self.page_choice.SetItems(pages)
 
-    def SetPlotStyle(self, fill=True, color=None, lw=0.5, mark=None,
-                     mcolor='r', mlw=0.8, antialiased=False):
+    def SetPlotStyle(self, **kwargs):
         """Select channels to mark in the butterfly plots.
 
         Parameters
         ----------
-        fill : bool
-            In the epoch plots, fill the range of the data (instead of plottng
-            all sensor traces). For faster drawing performance with many
-            sensors set ``fill=True`` (default).
+        plot_range : bool
+            In the epoch plots, plot the range of the data (instead of plotting
+            all sensor traces). This makes drawing of pages quicker, especially
+            for data with many sensors (default ``True``).
         color : None | matplotlib color
             Color for primary data (default is black).
         lw : scalar
@@ -733,23 +736,34 @@ class Frame(wx.Frame):  # control
             Perform Antialiasing on epoch plots (associated with a minor speed
             cost).
         """
-        self._SetPlotStyle(fill, color, lw, mark, mcolor, mlw, antialiased)
+        self._SetPlotStyle(**kwargs)
         self.ShowPage()
 
-    def _SetPlotStyle(self, fill, color, lw, mark, mcolor, mlw, antialiased):
-        if mark is not None:
-            mark = self.doc.data.sensor.dimindex(mark)
+    def _SetPlotStyle(self, **kwargs):
+        "See .SetPlotStyle()"
+        bf_kwargs = self._bfly_kwargs
 
-        if fill or mark is None:
-            traces = not bool(fill)
+        for key, value in kwargs.iteritems():
+            if key == 'vlims':
+                err = ("%r is an invalid keyword argument for this function"
+                       % key)
+                raise TypeError(err)
+            elif key == 'mark':
+                if value is None:
+                    bf_kwargs['mark'] = None
+                else:
+                    bf_kwargs['mark'] = self.doc.data.sensor.dimindex(value)
+            elif key in bf_kwargs:
+                bf_kwargs[key] = value
+
+        # update which traces to plot
+        plot_range = bf_kwargs['plot_range']
+        mark = bf_kwargs['mark']
+        if plot_range or mark is None:
+            traces = not bool(plot_range)
         else:
             traces = np.setdiff1d(np.arange(len(self.doc.data.sensor)), mark)
-
-        self._bfly_kwargs = {'plot_range': fill, 'traces': traces,
-                             'color': color, 'lw': lw, 'mark': mark,
-                             'mcolor': mcolor, 'mlw': mlw,
-                             'antialiased': antialiased, 'vlims': self._vlims}
-        self._topo_kwargs = {'vlims': self._vlims}
+        bf_kwargs['traces'] = traces
 
     def SetVLim(self, vlim):
         """Set the value limits (butterfly plot y axes and topomap colormaps)
@@ -1207,7 +1221,7 @@ class TerminalInterface(object):
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger',
                  path=None, nplots=(6, 6), topo=True, mean=True,
-                 vlim=None, fill=True, color=None, lw=0.2, mark=None,
+                 vlim=None, plot_range=True, color=None, lw=0.2, mark=None,
                  mcolor='r', mlw=0.8, antialiased=True):
         """
         ds : Dataset | mne.Epochs
@@ -1241,10 +1255,10 @@ class TerminalInterface(object):
         vlim : None | scalar
             Limit of the epoch plots on the y-axis. If None, a value is
             determined automatically to show all data.
-        fill : bool
-            In the epoch plots, fill the range of the data (instead of plottng
-            all sensor traces). For faster drawing performance with many
-            sensors set ``fill=True`` (default).
+        plot_range : bool
+            In the epoch plots, plot the range of the data (instead of plotting
+            all sensor traces). This makes drawing of pages quicker, especially
+            for data with many sensors (default ``True``).
         color : None | matplotlib color
             Color for primary data (default is black).
         lw : scalar
@@ -1280,7 +1294,7 @@ class TerminalInterface(object):
             parent = app.GetTopWindow()
             create_menu = True
 
-        self.frame = Frame(parent, self.model, nplots, topo, mean, vlim, fill,
+        self.frame = Frame(parent, self.model, nplots, topo, mean, vlim, plot_range,
                            color, lw, mark, mcolor, mlw, antialiased,
                            size=(800, 600))
         self.controller = Controller(self.frame)
