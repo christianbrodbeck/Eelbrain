@@ -2015,9 +2015,9 @@ class MneExperiment(FileTree):
         else:
             parc = self.get('parc', parc=parc)
 
-        self.make_annot()
         title = parc
         brain = self.plot_brain(surf, title, hemi, views, w, True)
+        self.make_annot()
         brain.add_annotation(parc, borders, alpha)
         return brain
 
