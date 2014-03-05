@@ -1158,6 +1158,7 @@ class Controller(object):
             above = dlg.GetAbove()
             below = dlg.GetBelow()
             self.model.auto_reject(threshold, method, above, below)
+        dlg.Destroy()
 
     def OnTogglePlotRange(self, event):
         plot_range = event.IsChecked()
