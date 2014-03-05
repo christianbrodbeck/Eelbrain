@@ -538,6 +538,8 @@ class Frame(wx.Frame):  # control
         # View
         m = self.viewMenu = wx.Menu()
         m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+l", "Change the Layout")
+        m.AppendCheckItem(ID.PLOT_RANGE, "&Plot Data Range \tCtrl+r", "Plot "
+                          "data range instead of individual sensor traces")
 #         m.Append(wx.ID_TOGGLE_MAXIMIZE, '&Toggle Maximize\tF11', 'Maximize/'
 #                  'Restore Application')
 
@@ -913,12 +915,14 @@ class Controller(object):
         f.Bind(wx.EVT_MENU, self.OnUndo, id=wx.ID_UNDO)
         f.Bind(wx.EVT_MENU, self.OnRedo, id=wx.ID_REDO)
         f.Bind(wx.EVT_MENU, self.OnSetLayout, id=ID.SET_LAYOUT)
+        f.Bind(wx.EVT_MENU, self.OnTogglePlotRange, id=ID.PLOT_RANGE)
 
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_BACKWARD)
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_FORWARD)
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_REDO)
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_SAVE)
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_UNDO)
+        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.PLOT_RANGE)
 
         # canvas events
         f.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
@@ -1153,6 +1157,10 @@ class Controller(object):
             below = dlg.GetBelow()
             self.model.auto_reject(threshold, method, above, below)
 
+    def OnTogglePlotRange(self, event):
+        plot_range = event.IsChecked()
+        self.frame.SetPlotStyle(plot_range=plot_range)
+
     def OnUndo(self, event):
         self.history.undo()
 
@@ -1168,6 +1176,9 @@ class Controller(object):
             event.Enable(self.CanRedo())
         elif id_ == wx.ID_SAVE:
             event.Enable(self.CanSave())
+        elif id_ == ID.PLOT_RANGE:
+            check = self.frame._bfly_kwargs['plot_range']
+            event.Check(check)
 
     def Save(self):
         if self.doc.path:

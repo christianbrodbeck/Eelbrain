@@ -51,6 +51,7 @@ OPEN_HISTORY = wx.NewId()
 OPEN_HISTORY_CURRENT = wx.NewId()
 OPEN_HISTORY_PAST = wx.NewId()
 
+PLOT_RANGE = wx.NewId()
 PYDOC_NEW = wx.NewId()
 PYDOC_LOAD = wx.NewId()
 PYDOC_EXEC_ISOLATE = wx.NewId()
