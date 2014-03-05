@@ -27,7 +27,7 @@ def _str_is_float(x):
 
 # could use csv module (http://docs.python.org/2/library/csv.html) but it
 # currently does not support unicode
-def tsv(path=None, names=True, types='auto', delimiter=None, skiprows=0,
+def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
         start_tag=None):
     """
     Load a :class:`Dataset` from a tab-separated values file.
@@ -42,9 +42,9 @@ def tsv(path=None, names=True, types='auto', delimiter=None, skiprows=0,
         * ``'auto'`` -> import as Var if all values can be converted float,
           otherwise as Factor
         * list of 0=auto, 1=Factor, 2=Var. e.g. ``[0,1,1,0]``
-    delimiter : str
-        value delimiting cells in the input file (None = any whitespace;
-        e.g., ``'\\t'``)
+    delimiter : None | str
+        Value delimiting cells in the input file (default: ``'\\t'`` (tab);
+        None = any whitespace).
     skiprows : int
         Skip so many rows at the beginning of the file (for tsv files with
         headers). Column names (if names==True) are expected to come after
