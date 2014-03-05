@@ -452,9 +452,9 @@ class Frame(wx.Frame):  # control
                         Icon("tango/actions/document-open"),
                         shortHelp="Open Rejections")
 
-        tb.AddLabelTool(wx.ID_UNDO, "Undo", Icon("tango/actions/edit-undo"),
+        tb.AddLabelTool(ID.UNDO, "Undo", Icon("tango/actions/edit-undo"),
                         shortHelp="Undo")
-        tb.AddLabelTool(wx.ID_REDO, "Redo", Icon("tango/actions/edit-redo"),
+        tb.AddLabelTool(ID.REDO, "Redo", Icon("tango/actions/edit-redo"),
                         shortHelp="Redo")
         tb.AddSeparator()
 
@@ -529,8 +529,8 @@ class Frame(wx.Frame):  # control
 
         # Edit
         m = self.editMenu = wx.Menu()
-        m.Append(wx.ID_UNDO, '&Undo \tCtrl+Z', 'Undo the last action')
-        m.Append(wx.ID_REDO, '&Redo \tCtrl+Shift+Z', 'Redo the last undone '
+        m.Append(ID.UNDO, '&Undo \tCtrl+Z', 'Undo the last action')
+        m.Append(ID.REDO, '&Redo \tCtrl+Shift+Z', 'Redo the last undone '
                  'action')
         m.AppendSeparator()
         m.Append(wx.ID_CLEAR, 'Cle&ar', 'Select all epochs')
@@ -912,16 +912,16 @@ class Controller(object):
         f.Bind(wx.EVT_MENU, self.OnClose, id=wx.ID_CLOSE)
         f.Bind(wx.EVT_MENU, self.OnSave, id=wx.ID_SAVE)
         f.Bind(wx.EVT_MENU, self.OnSaveAs, id=wx.ID_SAVEAS)
-        f.Bind(wx.EVT_MENU, self.OnUndo, id=wx.ID_UNDO)
-        f.Bind(wx.EVT_MENU, self.OnRedo, id=wx.ID_REDO)
+        f.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
+        f.Bind(wx.EVT_MENU, self.OnRedo, id=ID.REDO)
         f.Bind(wx.EVT_MENU, self.OnSetLayout, id=ID.SET_LAYOUT)
         f.Bind(wx.EVT_MENU, self.OnTogglePlotRange, id=ID.PLOT_RANGE)
 
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_BACKWARD)
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_FORWARD)
-        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_REDO)
+        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.REDO)
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_SAVE)
-        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_UNDO)
+        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.UNDO)
         f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.PLOT_RANGE)
 
         # canvas events
@@ -1170,9 +1170,9 @@ class Controller(object):
             event.Enable(self.CanGoBackward())
         elif id_ == wx.ID_FORWARD:
             event.Enable(self.CanGoForward())
-        elif id_ == wx.ID_UNDO:
+        elif id_ == ID.UNDO:
             event.Enable(self.CanUndo())
-        elif id_ == wx.ID_REDO:
+        elif id_ == ID.REDO:
             event.Enable(self.CanRedo())
         elif id_ == wx.ID_SAVE:
             event.Enable(self.CanSave())
