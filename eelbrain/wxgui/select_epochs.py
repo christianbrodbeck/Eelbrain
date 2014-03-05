@@ -379,8 +379,9 @@ class Frame(wx.Frame):  # control
     "View object of the epoch selection GUI"
 
     def __init__(self, parent, model, nplots=(6, 6), topo=True, mean=True,
-                 vlim=None, fill=True, color=None, mark=None, mcolor='r',
-                 pos=wx.DefaultPosition, size=wx.DefaultSize):
+                 vlim=None, fill=True, color=None, lw=0.2, mark=None,
+                 mcolor='r', mlw=0.8, antialiased=True, pos=wx.DefaultPosition,
+                 size=wx.DefaultSize):
         """View object of the epoch selection GUI
 
         Parameters
@@ -406,10 +407,17 @@ class Frame(wx.Frame):  # control
             sensors set ``fill=True`` (default).
         color : None | matplotlib color
             Color for primary data (default is black).
+        lw : scalar
+            Linewidth for normal sensor plots.
         mark : None | index for sensor dim
             Sensors to plot as individual traces with a separate color.
         mcolor : matplotlib color
             Color for marked traces.
+        mlw : scalar
+            Line width for marked sensor plots.
+        antialiased : bool
+            Perform Antialiasing on epoch plots (associated with a minor speed
+            cost).
         """
         super(Frame, self).__init__(parent, -1, "Select Epochs", pos, size)
 
@@ -495,7 +503,7 @@ class Frame(wx.Frame):  # control
             for k in self._vlims:
                 self._vlims[k] = (-vlim, vlim)
         self._SetLayout(nplots, topo, mean)
-        self._SetPlotStyle(fill, color, mark, mcolor)
+        self._SetPlotStyle(fill, color, lw, mark, mcolor, mlw, antialiased)
 
         # Finalize
         self.ShowPage(0)
@@ -701,7 +709,8 @@ class Frame(wx.Frame):  # control
                 pages.append('%i: %i...' % (i, istart))
         self.page_choice.SetItems(pages)
 
-    def SetPlotStyle(self, fill=True, color=None, mark=None, mcolor='r'):
+    def SetPlotStyle(self, fill=True, color=None, lw=0.5, mark=None,
+                     mcolor='r', mlw=0.8, antialiased=False):
         """Select channels to mark in the butterfly plots.
 
         Parameters
@@ -712,15 +721,22 @@ class Frame(wx.Frame):  # control
             sensors set ``fill=True`` (default).
         color : None | matplotlib color
             Color for primary data (default is black).
+        lw : scalar
+            Linewidth for normal sensor plots.
         mark : None | index for sensor dim
             Sensors to plot as individual traces with a separate color.
         mcolor : matplotlib color
             Color for marked traces.
+        mlw : scalar
+            Line width for marked sensor plots.
+        antialiased : bool
+            Perform Antialiasing on epoch plots (associated with a minor speed
+            cost).
         """
-        self._SetPlotStyle(fill, color, mark, mcolor)
+        self._SetPlotStyle(fill, color, lw, mark, mcolor, mlw, antialiased)
         self.ShowPage()
 
-    def _SetPlotStyle(self, fill, color, mark, mcolor):
+    def _SetPlotStyle(self, fill, color, lw, mark, mcolor, mlw, antialiased):
         if mark is not None:
             mark = self.doc.data.sensor.dimindex(mark)
 
@@ -730,9 +746,10 @@ class Frame(wx.Frame):  # control
             traces = np.setdiff1d(np.arange(len(self.doc.data.sensor)), mark)
 
         self._bfly_kwargs = {'plot_range': fill, 'traces': traces,
-                             'color': color, 'mark': mark, 'mcolor': mcolor,
-                             'vlims':self._vlims}
-        self._topo_kwargs = {'vlims':self._vlims}
+                             'color': color, 'lw': lw, 'mark': mark,
+                             'mcolor': mcolor, 'mlw': mlw,
+                             'antialiased': antialiased, 'vlims': self._vlims}
+        self._topo_kwargs = {'vlims': self._vlims}
 
     def SetVLim(self, vlim):
         """Set the value limits (butterfly plot y axes and topomap colormaps)
@@ -1190,7 +1207,8 @@ class TerminalInterface(object):
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger',
                  path=None, nplots=(6, 6), topo=True, mean=True,
-                 vlim=None, fill=True, color=None, mark=None, mcolor='r'):
+                 vlim=None, fill=True, color=None, lw=0.2, mark=None,
+                 mcolor='r', mlw=0.8, antialiased=True):
         """
         ds : Dataset | mne.Epochs
             The data for which to select trials. If ds is an mne.Epochs object
@@ -1229,10 +1247,17 @@ class TerminalInterface(object):
             sensors set ``fill=True`` (default).
         color : None | matplotlib color
             Color for primary data (default is black).
+        lw : scalar
+            Linewidth for normal sensor plots.
         mark : None | index for sensor dim
             Sensors to plot as individual traces with a separate color.
         mcolor : matplotlib color
             Color for marked traces.
+        mlw : scalar
+            Line width for marked sensor plots.
+        antialiased : bool
+            Perform Antialiasing on epoch plots (associated with a minor speed
+            cost).
         """
         bad_chs = None
         self.doc = Document(ds, data, accept, blink, tag, trigger, path,
@@ -1256,7 +1281,8 @@ class TerminalInterface(object):
             create_menu = True
 
         self.frame = Frame(parent, self.model, nplots, topo, mean, vlim, fill,
-                           color, mark, mcolor, size=(800, 600))
+                           color, lw, mark, mcolor, mlw, antialiased,
+                           size=(800, 600))
         self.controller = Controller(self.frame)
         if create_menu:
             self.frame._create_menu()
