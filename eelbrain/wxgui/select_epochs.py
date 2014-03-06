@@ -334,7 +334,7 @@ class Model(object):
         old_accept = self.doc.accept[index]
         new_accept = accept[index]
         old_tag = self.doc.tag[index]
-        new_tag = method
+        new_tag = "%s_%s" % (method, threshold)
         desc = "Threshold-%s" % method
         action = ChangeAction(desc, index, old_accept, new_accept, old_tag,
                               new_tag)
