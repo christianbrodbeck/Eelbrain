@@ -19,6 +19,7 @@ Created on Oct 17, 2010
 '''
 from __future__ import division
 
+from itertools import izip
 import logging, os
 
 import numpy as np
@@ -396,6 +397,11 @@ class lm_fitter(object):
             effects = X.effects
             df_den = {e: X.df_error for e in effects}
 
+        # pre-compute dfs
+        dfs_nom = [e.df for e in effects]
+        dfs_denom = [df_den[e] for e in effects]
+
+        # determine how many tests can be done in one call
         self._max_n_tests = int(2 ** _max_array_size // X.df ** 2)
 
         if _lmf_lsq == 0:
@@ -410,7 +416,10 @@ class lm_fitter(object):
         self.n_cases = len(X)
         self.full_model = full_model
         self.effects = effects
+        self.n_effects = len(effects)
         self.df_den = df_den
+        self.dfs_nom = dfs_nom
+        self.dfs_denom = dfs_denom
         self.E_MS = E_MS
 
         # preallocate large arrays
@@ -477,62 +486,57 @@ class lm_fitter(object):
                 else:
                     out_map.append((name, F))
             return out_map
-        else:  # do the actual estimation
-            x_full = self._x_full
-            # beta: coefficient X test
-            if _lmf_lsq == 0:
-                beta, SS_res, _, _ = lstsq(x_full, Y)
-            elif _lmf_lsq == 1:
-                beta = dot(self._Xsinv, Y)
 
-            # values: case x effect-code x test
-            out = self._values
-            n_tests = beta.shape[1]
-            if out is not None and n_tests < out.shape[2]:
-                out = out[:, :, :n_tests]
-            values = np.multiply(beta[None, :, :], x_full[:, :, None], out)
+        # do the actual estimation
+        x_full = self._x_full
+        # beta: coefficient X test
+        if _lmf_lsq == 0:
+            beta, SS_res, _, _ = lstsq(x_full, Y)
+        elif _lmf_lsq == 1:
+            beta = dot(self._Xsinv, Y)
 
-            # MS of the residuals
-            if not self.full_model:
-                if _lmf_lsq == 1:
-                    Yp = values.sum(1)  # case x test
-                    SS_res = ((Y - Yp) ** 2).sum(0)
-                MS_res = SS_res / df_res
+        # values: case x effect-code x test
+        out = self._values
+        n_tests = beta.shape[1]
+        if out is not None and n_tests < out.shape[2]:
+            out = out[:, :, :n_tests]
+        values = np.multiply(beta[None, :, :], x_full[:, :, None], out)
 
-            # collect MS of effects
-            MSs = {}
-            for e in X.effects:
-                index = X.beta_index[e]
-                Yp = values[:, index, :].sum(1)
-                SS = (Yp ** 2).sum(0)
-                MS = SS / e.df
-                MSs[e] = MS
+        # MS of the residuals
+        if not self.full_model:
+            if _lmf_lsq == 1:
+                Yp = values.sum(1)  # case x test
+                SS_res = ((Y - Yp) ** 2).sum(0)
+            MS_res = SS_res / df_res
 
-            # F Tests
-            # n = numerator, d = denominator
-            out_map = []  # <- (name, F [, P])
-            for e_n in X.effects:
-                df_n = e_n.df
-                if self.full_model:
-                    df_d = self.df_den[e_n]
-                    if df_d > 0:
-                        E_MS_cmp = self.E_MS[e_n]
-                        MS_d = sum(MSs[e_d] for e_d in E_MS_cmp)
-                else:
-                    df_d = df_res
-                    MS_d = MS_res
+        # collect MS of effects
+        MSs = {}
+        for e in X.effects:
+            index = X.beta_index[e]
+            Yp = values[:, index, :].sum(1)
+            SS = (Yp ** 2).sum(0)
+            MS = SS / e.df
+            MSs[e] = MS
 
-                if df_d > 0:
-                    MS_n = MSs[e_n]
-                    f = MS_n / MS_d
-                    fmap = f.reshape(out_shape)
-                    if p:
-                        pmap = ftest_p(fmap, df_n, df_d)
-                        out_map.append((e_n, fmap, pmap))
-                    else:
-                        out_map.append((e_n, fmap))
+        # F Tests
+        # n = numerator, d = denominator
+        f_maps = []  # <- (name, F [, P])
+        for e_n in self.effects:
+            if self.full_model:
+                E_MS_cmp = self.E_MS[e_n]
+                MS_d = sum(MSs[e_d] for e_d in E_MS_cmp)
+            else:
+                MS_d = MS_res
 
-            return out_map
+            MS_n = MSs[e_n]
+            f = MS_n / MS_d
+            f_maps.append(f.reshape(out_shape))
+
+        if p:
+            p_maps = map(ftest_p, f_maps, self.dfs_nom, self.dfs_denom)
+            return zip(self.effects, f_maps, p_maps)
+        else:
+            return zip(self.effects, f_maps)
 
 
 class incremental_F_test:
