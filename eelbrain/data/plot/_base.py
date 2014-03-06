@@ -417,7 +417,7 @@ def find_uts_ax_vlim(layers, vlims={}):
     return bottom, top
 
 
-def find_fig_vlims(plots, range_by_measure=False):
+def find_fig_vlims(plots, range_by_measure=False, vlims={}):
     """Find vmin and vmax parameters for every (meas, cmap) combination
 
     Parameters
@@ -427,33 +427,39 @@ def find_fig_vlims(plots, range_by_measure=False):
     range_by_measure : bool
         Constrain the vmax - vmin range such that the range is constant within
         measure (for uts plots).
+    vlims : dict
+        Predetermined vlims (take precedence).
 
     Returns
     -------
     vlims : dict
         Dictionary of im limits: {(meas, cmap): (vmin, vmax)}.
     """
-    vlims = {}  # (meas, cmap): (vmin, vmax)
+    out = {}  # (meas, cmap): (vmin, vmax)
     for ndvar in chain(*plots):
         vmin, vmax = find_vlim_args(ndvar)
         meas = ndvar.info.get('meas', '?')
         cmap = ndvar.info.get('cmap', None)
         key = (meas, cmap)
         if key in vlims:
-            vmin_, vmax_ = vlims[key]
+            continue
+        elif key in out:
+            vmin_, vmax_ = out[key]
             vmin = min(vmin, vmin_)
             vmax = max(vmax, vmax_)
         vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
-        vlims[key] = (vmin, vmax)
+        out[key] = (vmin, vmax)
+
+    out.update(vlims)
 
     if range_by_measure:
         range_ = {}
-        for (meas, cmap), (vmin, vmax) in vlims.iteritems():
+        for (meas, cmap), (vmin, vmax) in out.iteritems():
             r = vmax - vmin
             range_[meas] = max(range_.get(meas, 0), r)
-        for key in vlims.keys():
+        for key in out.keys():
             meas, cmap = key
-            vmin, vmax = vlims[key]
+            vmin, vmax = out[key]
             diff = range_[meas] - (vmax - vmin)
             if diff:
                 if cmap in zerobased_cmaps:
@@ -462,9 +468,9 @@ def find_fig_vlims(plots, range_by_measure=False):
                     diff /= 2
                     vmax += diff
                     vmin -= diff
-                vlims[key] = vmin, vmax
+                out[key] = vmin, vmax
 
-    return vlims
+    return out
 
 
 def find_vlim_args(ndvar, vmin=None, vmax=None):
