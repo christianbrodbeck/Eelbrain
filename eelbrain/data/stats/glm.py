@@ -36,12 +36,12 @@ from .stats import ftest_p
 from . import test
 
 
-_max_array_size = 26  # constant for max array size in lm_fitter
+_max_array_size = 26  # constant for max array size in LMFitter
 
 # Method to use for least squares estimation:
 # (0) Use scipy.linalg.lstsq
 # (1) Use lstsq after Fox (2008) with caching of the model transformation
-_lmf_lsq = 1  # for the lm_fitter class
+_lmf_lsq = 1  # for the LMFitter class
 _lm_lsq = 0  # for the lm class
 
 
@@ -358,62 +358,65 @@ class lm:
 
 
 
-class lm_fitter(object):
+class LMFitter(object):
     """
     Object for efficiently fitting a model to multiple dependent variables.
+
+    Notes
+    -----
     Currently only implemented for balanced models.
     E(MS) for F statistic after Hopkins (1976)
 
     """
-    def __init__(self, X, y_shape=None):
+    def __init__(self, x, y_shape=None):
         """
         Object for efficiently fitting a model to multiple dependent variables.
 
         Parameters
         ----------
-        X : Model
+        x : Model
             Model which will be fitted to the data.
         y_shape : None | tuple
             Data shape (if known) will allow preallocation of containers for
             intermediate results.
         """
         # prepare input
-        X = asmodel(X)
-        if not isbalanced(X):
+        x = asmodel(x)
+        if not isbalanced(x):
             raise NotImplementedError("Unbalanced models")
-        self._x_full = X.full
+        self._x_full = x.full
 
-        full_model = (X.df_error == 0)
+        full_model = (x.df_error == 0)
         if full_model:
-            E_MS = hopkins_ems(X)
-            df_den = {e: sum(e_.df for e_ in E_MS[e]) for e in X.effects}
-            effects = tuple(e for e in X.effects if df_den[e])
-        elif hasrandom(X):
+            E_MS = hopkins_ems(x)
+            df_den = {e: sum(e_.df for e_ in E_MS[e]) for e in x.effects}
+            effects = tuple(e for e in x.effects if df_den[e])
+        elif hasrandom(x):
             err = ("Models containing random effects need to be fully "
                    "specified.")
             raise NotImplementedError(err)
         else:
             E_MS = None
-            effects = X.effects
-            df_den = {e: X.df_error for e in effects}
+            effects = x.effects
+            df_den = {e: x.df_error for e in effects}
 
         # pre-compute dfs
         dfs_nom = [e.df for e in effects]
         dfs_denom = [df_den[e] for e in effects]
 
         # determine how many tests can be done in one call
-        self._max_n_tests = int(2 ** _max_array_size // X.df ** 2)
+        self._max_n_tests = int(2 ** _max_array_size // x.df ** 2)
 
         if _lmf_lsq == 0:
             pass
         elif _lmf_lsq == 1:
-            self._Xsinv = X.Xsinv
+            self._Xsinv = x.Xsinv
         else:
             raise ValueError('version')
 
         # store public attributes
-        self.X = X
-        self.n_cases = len(X)
+        self.x = x
+        self.n_cases = len(x)
         self.full_model = full_model
         self.effects = effects
         self.n_effects = len(effects)
@@ -433,7 +436,7 @@ class lm_fitter(object):
             self._values = None
 
     def __repr__(self):
-        return 'lm_fitter((%s))' % self.X.name
+        return 'LMFitter((%s))' % self.x.name
 
     def map(self, Y, p=True):
         """
@@ -451,13 +454,11 @@ class lm_fitter(object):
 
         Returns
         -------
-        A list with (effect, F-map [, p-map]) tuples for all effects that
-        can be estimated with the current method.
-
+        result : list, [(effect, array, array), ...] | [(effect, array), ...]
+            A list with (effect, F-map [, p-map]) tuples for all effects that
+            can be estimated with the current method.
         """
-        X = self.X
         n_cases = self.n_cases
-        df_res = X.df_error
 
         original_shape = Y.shape
         if original_shape[0] != n_cases:
@@ -470,7 +471,7 @@ class lm_fitter(object):
         if Y.shape[1] > self._max_n_tests:
             splits = xrange(0, Y.shape[1], self._max_n_tests)
 
-            msg = ("lm_fitter: Y.shape=%s; splitting Y at %s" %
+            msg = ("LMFitter: Y.shape=%s; splitting Y at %s" %
                    (Y.shape, list(splits)))
             logging.debug(msg)
 
@@ -488,7 +489,9 @@ class lm_fitter(object):
             return out_map
 
         # do the actual estimation
+        x = self.x
         x_full = self._x_full
+        full_model = self.full_model
         # beta: coefficient X test
         if _lmf_lsq == 0:
             beta, SS_res, _, _ = lstsq(x_full, Y)
@@ -503,7 +506,8 @@ class lm_fitter(object):
         values = np.multiply(beta[None, :, :], x_full[:, :, None], out)
 
         # MS of the residuals
-        if not self.full_model:
+        if not full_model:
+            df_res = x.df_error
             if _lmf_lsq == 1:
                 Yp = values.sum(1)  # case x test
                 SS_res = ((Y - Yp) ** 2).sum(0)
@@ -511,8 +515,8 @@ class lm_fitter(object):
 
         # collect MS of effects
         MSs = {}
-        for e in X.effects:
-            index = X.beta_index[e]
+        for e in x.effects:
+            index = x.beta_index[e]
             Yp = values[:, index, :].sum(1)
             SS = (Yp ** 2).sum(0)
             MS = SS / e.df
@@ -522,7 +526,7 @@ class lm_fitter(object):
         # n = numerator, d = denominator
         f_maps = []  # <- (name, F [, P])
         for e_n in self.effects:
-            if self.full_model:
+            if full_model:
                 E_MS_cmp = self.E_MS[e_n]
                 MS_d = sum(MSs[e_d] for e_d in E_MS_cmp)
             else:

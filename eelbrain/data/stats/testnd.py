@@ -15,7 +15,7 @@ from ... import fmtxt
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                         Factor, NDVar, Var, Celltable, cellname, combine)
-from .glm import lm_fitter
+from .glm import LMFitter
 from .permutation import resample, _resample_params
 from .stats import ftest_f, ftest_p
 from .test import star_factor
@@ -852,7 +852,7 @@ class anova:
         if match is not None:
             match = self.match = ascategorial(match, sub, ds)
 
-        lm = lm_fitter(X, Y.x.shape)
+        lm = LMFitter(X, Y.x.shape)
         effects = lm.effects
         df_den = lm.df_den
         fmaps = lm.map(Y.x, p=False)
