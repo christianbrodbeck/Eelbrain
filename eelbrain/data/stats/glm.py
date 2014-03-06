@@ -438,7 +438,7 @@ class LMFitter(object):
     def __repr__(self):
         return 'LMFitter((%s))' % self.x.name
 
-    def map(self, Y, p=True):
+    def map(self, Y, p=True, out=None):
         """
         Fits the model to multiple dependent variables and returns arrays of
         F-values and optionally p-values.
@@ -451,6 +451,9 @@ class LMFitter(object):
             input shape.
         p : bool
             Also return a map of p-values corresponding to the F-values.
+        out : list of array
+            List of arrays in which to place the resulting (ravelled) f-maps.
+            Can only be used in conjunction with ``p=False``.
 
         Returns
         -------
@@ -475,18 +478,24 @@ class LMFitter(object):
                    (Y.shape, list(splits)))
             logging.debug(msg)
 
-            Y_list = (Y[:, s:s + self._max_n_tests] for s in splits)
-            out_maps = [self.map(Yi, p=p) for Yi in Y_list]
-            out_map = []
-            for i in xrange(len(out_maps[0])):
-                name = out_maps[0][i][0]
-                F = np.hstack([m[i][1] for m in out_maps]).reshape(out_shape)
-                if p:
-                    P = np.hstack([m[i][2] for m in out_maps]).reshape(out_shape)
-                    out_map.append((name, F, P))
-                else:
-                    out_map.append((name, F))
-            return out_map
+            # pre-allocate result
+            f_maps = [np.empty(out_shape) for _ in xrange(self.n_effects)]
+
+            # compute f-maps
+            for s in splits:
+                s1 = s + self._max_n_tests
+                y_sub = Y[:, s:s1]
+                out = (f_map[s:s1] for f_map in f_maps)
+                self.map(y_sub, False, out)
+
+            # return to original shape
+            f_maps = [f_map.reshape(out_shape) for f_map in f_maps]
+
+            if p:
+                p_maps = map(ftest_p, f_maps, self.dfs_nom, self.dfs_denom)
+                return zip(self.effects, f_maps, p_maps)
+            else:
+                return zip(self.effects, f_maps)
 
         # do the actual estimation
         x = self.x
@@ -499,11 +508,11 @@ class LMFitter(object):
             beta = dot(self._Xsinv, Y)
 
         # values: case x effect-code x test
-        out = self._values
+        out_ = self._values
         n_tests = beta.shape[1]
-        if out is not None and n_tests < out.shape[2]:
-            out = out[:, :, :n_tests]
-        values = np.multiply(beta[None, :, :], x_full[:, :, None], out)
+        if out_ is not None and n_tests < out_.shape[2]:
+            out_ = out_[:, :, :n_tests]
+        values = np.multiply(beta[None, :, :], x_full[:, :, None], out_)
 
         # MS of the residuals
         if not full_model:
@@ -511,7 +520,7 @@ class LMFitter(object):
             if _lmf_lsq == 1:
                 Yp = values.sum(1)  # case x test
                 SS_res = ((Y - Yp) ** 2).sum(0)
-            MS_res = SS_res / df_res
+            MS_d = SS_res / df_res
 
         # collect MS of effects
         MSs = {}
@@ -525,18 +534,21 @@ class LMFitter(object):
         # F Tests
         # n = numerator, d = denominator
         f_maps = []  # <- (name, F [, P])
-        for e_n in self.effects:
+        for i, e_n in enumerate(self.effects):
             if full_model:
                 E_MS_cmp = self.E_MS[e_n]
                 MS_d = sum(MSs[e_d] for e_d in E_MS_cmp)
-            else:
-                MS_d = MS_res
 
             MS_n = MSs[e_n]
-            f = MS_n / MS_d
-            f_maps.append(f.reshape(out_shape))
+            if out is None:
+                f = MS_n / MS_d
+                f_maps.append(f.reshape(out_shape))
+            else:
+                np.divide(MS_n, MS_d, out[i])
 
-        if p:
+        if out is not None:
+            return
+        elif p:
             p_maps = map(ftest_p, f_maps, self.dfs_nom, self.dfs_denom)
             return zip(self.effects, f_maps, p_maps)
         else:
