@@ -69,11 +69,17 @@ class hopkins_ems(dict):
             ANOVA model. Needs to balanced and completely specified.
         """
         super(hopkins_ems, self).__init__()
+
         if X.df_error > 0:
             err = "Hopkins E(MS) estimate requires a fully specified model"
             raise ValueError(err)
-        if not isbalanced(X):
+        elif not any(f.random for f in find_factors(X)):
+            err = ("Need at least one random effect in fully specified model "
+                   "(got %s)" % X.name)
+            raise ValueError(err)
+        elif not isbalanced(X):
             logging.warn('X is not balanced')
+
         for e in X.effects:
             self[e] = _find_hopkins_ems(e, X)
 
