@@ -42,7 +42,7 @@ _max_array_size = 26  # constant for max array size in LMFitter
 # (0) Use scipy.linalg.lstsq
 # (1) Use lstsq after Fox (2008) with caching of the model transformation
 _lmf_lsq = 1  # for the LMFitter class
-_lm_lsq = 0  # for the lm class
+_lm_lsq = 0  # for the LM class
 
 
 
@@ -126,7 +126,7 @@ def is_higher_order(e1, e0):
 
 
 
-class lm:
+class LM(object):
     """
     Fit a linear model to a dependent variable
 
@@ -212,7 +212,7 @@ class lm:
             fmt['kw'] = ', '.join([''] + map('='.join, kwargs))
         else:
             fmt['kw'] = ''
-        return "lm({Y}, {X}{kw})".format(**fmt)
+        return "LM({Y}, {X}{kw})".format(**fmt)
 
     def anova(self, title='ANOVA', empty=True, ems=False):
         """
@@ -751,21 +751,21 @@ class anova(object):
         self._log.append("Using %s effects model" % fx_desc)
 
         # list of (name, SS, df, MS, F, p)
-        self.F_tests = []
+        self.f_tests = []
         self.names = []
 
 
         if len(X.effects) == 1:
             self._log.append("single factor model")
-            lm1 = lm(Y, X)
-            self.F_tests.append(lm1)
+            lm1 = LM(Y, X)
+            self.f_tests.append(lm1)
             self.names.append(X.name)
             self.residuals = lm1.SS_res, lm1.df_res, lm1.MS_res
         else:
             if rfx:
                 pass  # <- Hopkins
             else:
-                full_lm = lm(Y, X)
+                full_lm = LM(Y, X)
                 SS_e = full_lm.SS_res
                 MS_e = full_lm.MS_res
                 df_e = full_lm.df_res
@@ -792,13 +792,13 @@ class anova(object):
                 if e_test.df > model0.df_error:
                     skip = "overspecified"
                 else:
-                    lm0 = lm(Y, model0)
+                    lm0 = LM(Y, model0)
 
                     # find model 1
                     effects.append(e_test)
                     model1 = Model(*effects)
                     if model1.df_error > 0:
-                        lm1 = lm(Y, model1)
+                        lm1 = LM(Y, model1)
                     else:
                         lm1 = None
 
@@ -807,7 +807,7 @@ class anova(object):
                         EMS_effects = _find_hopkins_ems(e_test, X)
 
                         if len(EMS_effects) > 0:
-                            lm_EMS = lm(Y, Model(*EMS_effects))
+                            lm_EMS = LM(Y, Model(*EMS_effects))
                             MS_e = lm_EMS.MS_model
                             df_e = lm_EMS.df_model
                         else:
@@ -825,7 +825,7 @@ class anova(object):
                     self._log.append("SKIPPING: %s (%s)" % (e_test.name, skip))
                 else:
                     res = incremental_F_test(lm1, lm0, MS_e=MS_e, df_e=df_e, name=name)
-                    self.F_tests.append(res)
+                    self.f_tests.append(res)
                     self.names.append(name)
             if not rfx:
                 self.residuals = SS_e, df_e, MS_e
@@ -860,15 +860,15 @@ class anova(object):
         table.midrule()
 
         # table body
-        for name, F_test in zip(self.names, self.F_tests):
+        for name, f_test in izip(self.names, self.f_tests):
             table.cell(name)
-            table.cell(fmtxt.stat(F_test.SS))
-            table.cell(fmtxt.stat(F_test.df, fmt='%i'))
-            table.cell(fmtxt.stat(F_test.MS))
-            if F_test.F:
-                stars = test.star(F_test.p)
-                table.cell(fmtxt.stat(F_test.F, stars=stars))
-                table.cell(fmtxt.p(F_test.p))
+            table.cell(fmtxt.stat(f_test.SS))
+            table.cell(fmtxt.stat(f_test.df, fmt='%i'))
+            table.cell(fmtxt.stat(f_test.MS))
+            if f_test.F:
+                stars = test.star(f_test.p)
+                table.cell(fmtxt.stat(f_test.F, stars=stars))
+                table.cell(fmtxt.p(f_test.p))
             else:
                 table.cell()
                 table.cell()
@@ -931,11 +931,11 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
             interaction = interaction[sub]
     # if interaction: assert type(interaction) in [Factor]
     factorial_model = asmodel(factorial_model)
-    a1 = lm(Y, factorial_model)
+    a1 = LM(Y, factorial_model)
     if v:
         print a1.table(title="MODEL 1", **anova_kwargs)
         print '\n'
-    a2 = lm(Y, factorial_model + covariate)
+    a2 = LM(Y, factorial_model + covariate)
     if v:
         print a2.table(title="MODEL 2: Main Effect Covariate", **anova_kwargs)
         print '\n'
@@ -947,7 +947,7 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
         logging.debug("%s" % (covariate.__div__))
         i_effect = covariate.__div__(interaction)
 #        i_effect = covariate / interaction
-        a3 = lm(Y, factorial_model + i_effect)
+        a3 = LM(Y, factorial_model + i_effect)
         if v:
             print '\n'
             print a3.table(title="MODEL 3: Interaction")
@@ -967,8 +967,8 @@ def compare(Y, first_model, test_effect, sub=None):
     first_model alone.
 
     """
-    a1 = lm(Y, first_model, sub=sub)
-    a2 = lm(Y, first_model + test_effect, sub=sub)
+    a1 = LM(Y, first_model, sub=sub)
+    a2 = LM(Y, first_model + test_effect, sub=sub)
     print
     print a1.table(title='MODEL 1:')
     print '\n'
