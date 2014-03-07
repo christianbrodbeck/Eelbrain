@@ -587,6 +587,41 @@ class Stars(FMTextElement):
         return txt + spaces
 
 
+class List(FMTextElement):
+    def __init__(self, ordered=False, items=None):
+        self.ordered = ordered
+        if items is None:
+            items = []
+        self.items = []
+
+    def __repr_items__(self):
+        if self.items:
+            return [repr(self.ordered), repr(self.items)]
+        elif self.ordered:
+            return [repr(self.ordered)]
+        else:
+            return []
+
+    def add_item(self, item):
+        self.items.append(item)
+
+    def get_html(self, options={}):
+        items = []
+        tag = 'ol' if self.ordered else 'ul'
+        items.append('<%s>' % tag)
+
+        # body
+        for item in self.items:
+            items.append(_html_element('li', item, options))
+
+        items.append('</%s>' % tag)
+        return os.linesep.join(items)
+
+    def get_str(self, options={}):
+        items = (' - ' + str(item) for item in self.items)
+        return os.linesep.join(items)
+
+
 # Table ---
 
 class Cell(FMText):
