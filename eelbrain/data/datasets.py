@@ -28,6 +28,7 @@ def get_rand(utsnd=False):
     ds['A'] = Factor(['a0', 'a1'], rep=30)
     ds['B'] = Factor(['b0', 'b1'], rep=15, tile=2)
     ds['rm'] = Factor(('R%.2i' % i for i in xrange(15)), tile=4, random=True)
+    ds['ind'] = Factor(('R%.2i' % i for i in xrange(60)), random=True)
 
     # add dependent variables
     Y = np.hstack((np.random.normal(size=45), np.random.normal(1, size=15)))
