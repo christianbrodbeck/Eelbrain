@@ -872,8 +872,9 @@ class anova:
                 n_clusters += cdist.n_clusters
 
             if n_clusters and samples:
+                fmaps_ = lm.preallocate(cdist.Y_perm.shape)
                 for Y_ in resample(cdist.Y_perm, samples, unit=match):
-                    fmaps_ = lm.map(Y_.x)
+                    lm.map(Y_.x)
                     for cdist, fmap in izip(cdists, fmaps_):
                         cdist.add_perm(fmap)
 

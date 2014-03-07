@@ -416,7 +416,7 @@ class LMFitter(object):
 
         # store public attributes
         self.x = x
-        self.n_cases = len(x)
+        self.n_obs = len(x)
         self.full_model = full_model
         self.effects = effects
         self.n_effects = len(effects)
@@ -424,16 +424,25 @@ class LMFitter(object):
         self.dfs_nom = dfs_nom
         self.dfs_denom = dfs_denom
         self.E_MS = E_MS
+        self._flat_f_maps = None
 
         # preallocate large arrays
+        self._preallocate_internals(y_shape)
+
+    def _preallocate_internals(self, y_shape):
         self.y_shape = y_shape
-        if y_shape is not None:
-            n_cases = y_shape[0]
-            n_betas = self._x_full.shape[1]
-            n_tests = min(self._max_n_tests, np.product(y_shape[1:]))
-            self._values = np.empty((n_cases, n_betas, n_tests))
+        if y_shape is None:
+            self._buffer_obt = None
+            self._buffer_ot = None
+            self._buffer_bt = None
+            self._buffer_t = None
         else:
-            self._values = None
+            n_obs, n_betas = self._x_full.shape
+            n_tests = min(self._max_n_tests, np.product(y_shape[1:]))
+            self._buffer_obt = np.empty((n_obs, n_betas, n_tests))
+            self._buffer_ot = np.empty((n_obs, n_tests))
+            self._buffer_bt = np.empty((n_betas, n_tests))
+            self._buffer_t = np.empty(n_tests)
 
     def __repr__(self):
         return 'LMFitter((%s))' % self.x.name
@@ -458,29 +467,35 @@ class LMFitter(object):
         f_maps : list
             A list with maps of F values (order corresponding to self.effects).
         """
-        n_cases = self.n_cases
+        n_obs = self.n_obs
 
         original_shape = Y.shape
-        if original_shape[0] != n_cases:
+        if original_shape[0] != n_obs:
             raise ValueError("first dimension of Y must contain cases")
         if len(original_shape) > 2:
-            Y = Y.reshape((n_cases, -1))
+            Y = Y.reshape((n_obs, -1))
         out_shape = original_shape[1:]
+        n_tests = Y.shape[1]
+
+        # find result container
+        if out is None:
+            if self._flat_f_maps is None:
+                f_maps = [np.empty(out_shape) for _ in xrange(self.n_effects)]
+                flat_maps = tuple(f_map.ravel() for f_map in f_maps)
+            else:
+                f_maps = None
+                flat_maps = self._flat_f_maps
+        else:
+            f_maps = None
+            flat_maps = out
 
         # Split Y that are too long
-        if Y.shape[1] > self._max_n_tests:
-            splits = xrange(0, Y.shape[1], self._max_n_tests)
+        if n_tests > self._max_n_tests:
+            splits = xrange(0, n_tests, self._max_n_tests)
 
             msg = ("LMFitter: Y.shape=%s; splitting Y at %s" %
                    (Y.shape, list(splits)))
             logging.debug(msg)
-
-            # pre-allocate result
-            if out is None:
-                f_maps = [np.empty(out_shape) for _ in xrange(self.n_effects)]
-                flat_maps = [f_map.ravel() for f_map in f_maps]
-            else:
-                flat_maps = out
 
             # compute f-maps
             for s in splits:
@@ -489,28 +504,32 @@ class LMFitter(object):
                 out_ = tuple(f_map[s:s1] for f_map in flat_maps)
                 self.map(y_sub, out_)
 
-            # return to original shape
-            if out is None:
-                return f_maps
-            else:
-                return
+            return f_maps
 
         # do the actual estimation
         x = self.x
         x_full = self._x_full
         full_model = self.full_model
+
+        # pre-allocated memory
+        _buffer_obt = self._buffer_obt
+        _buffer_ot = self._buffer_ot
+        _buffer_bt = self._buffer_bt
+        _buffer_t = self._buffer_t
+        if _buffer_obt is not None and n_tests != _buffer_obt.shape[2]:
+            _buffer_obt = _buffer_obt[:, :, :n_tests]
+            _buffer_ot = _buffer_ot[:, :n_tests]
+            _buffer_t = _buffer_t[:n_tests]
+            _buffer_bt = None  # needs to be C-contiguous
+
         # beta: coefficient X test
         if _lmf_lsq == 0:
             beta, SS_res, _, _ = lstsq(x_full, Y)
         elif _lmf_lsq == 1:
-            beta = dot(self._Xsinv, Y)
+            beta = dot(self._Xsinv, Y, _buffer_bt)
 
-        # values: case x effect-code x test
-        out_ = self._values
-        n_tests = beta.shape[1]
-        if out_ is not None and n_tests < out_.shape[2]:
-            out_ = out_[:, :, :n_tests]
-        values = np.multiply(beta[None, :, :], x_full[:, :, None], out_)
+        # values: observation x coefficient x test
+        values = np.multiply(beta[None, :, :], x_full[:, :, None], _buffer_obt)
 
         # MS of the residuals
         if not full_model:
@@ -524,28 +543,28 @@ class LMFitter(object):
         MSs = {}
         for e in x.effects:
             index = x.beta_index[e]
-            Yp = values[:, index, :].sum(1)
-            SS = (Yp ** 2).sum(0)
+            # observation x test
+            Yp = np.sum(values[:, index, :], 1, out=_buffer_ot)
+            Sq = np.power(Yp, 2, Yp)
+            # test
+            SS = np.sum(Sq, 0, out=_buffer_t)
             MS = SS / e.df
             MSs[e] = MS
 
         # F Tests
         # n = numerator, d = denominator
-        f_maps = []  # <- (name, F [, P])
-        for i, e_n in enumerate(self.effects):
+        for e_n, f_map in izip(self.effects, flat_maps):
             if full_model:
                 E_MS_cmp = self.E_MS[e_n]
-                MS_d = sum(MSs[e_d] for e_d in E_MS_cmp)
+                MS_d = _buffer_t  # re-use memory
+                MS_d.fill(0)
+                for e_d in E_MS_cmp:
+                    MS_d += MSs[e_d]
 
             MS_n = MSs[e_n]
-            if out is None:
-                f = MS_n / MS_d
-                f_maps.append(f.reshape(out_shape))
-            else:
-                np.divide(MS_n, MS_d, out[i])
+            np.divide(MS_n, MS_d, f_map)
 
-        if out is None:
-            return f_maps
+        return f_maps
 
     def p_maps(self, f_maps):
         """Convert F-maps for uncorrected p-maps
@@ -564,6 +583,25 @@ class LMFitter(object):
         """
         p_maps = map(ftest_p, f_maps, self.dfs_nom, self.dfs_denom)
         return p_maps
+
+    def preallocate(self, y_shape):
+        """Pre-allocate an output array container.
+
+        Returns
+        -------
+        f_maps : array
+            Properly shaped output array. Every time .map() is called, the
+            content of this array will change (and map() will not return
+            anything)
+        """
+        if y_shape is None:
+            err = "Can only preallocate output of LMFitter with known y_shape"
+            raise RuntimeError(err)
+        self._preallocate_internals(y_shape)
+        out_shape = y_shape[1:]
+        f_maps = [np.empty(out_shape) for _ in xrange(self.n_effects)]
+        self._flat_f_maps = tuple(f_map.ravel() for f_map in f_maps)
+        return f_maps
 
 
 class incremental_F_test:
