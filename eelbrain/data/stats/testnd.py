@@ -1,6 +1,7 @@
 '''Statistical tests for ndvars'''
 from __future__ import division
 
+from itertools import izip
 from math import ceil, floor
 from time import time as current_time
 
@@ -855,27 +856,25 @@ class anova:
         lm = LMFitter(X, Y.x.shape)
         effects = lm.effects
         df_den = lm.df_den
-        fmaps = lm.map(Y.x, p=False)
+        fmaps = lm.map(Y.x)
 
         if samples is not None:
             # find F-thresholds for clusters
-            fmin = {e: ftest_f(pmin, e.df, df_den[e]) for e in effects}
-            cdists = {e: _ClusterDist(Y, samples, fmin[e], None, 'F', e.name,
-                                      tstart, tstop, criteria)
-                      for e in fmin}
+            fmins = [ftest_f(pmin, e.df, df_den[e]) for e in effects]
+            cdists = [_ClusterDist(Y, samples, fmin, None, 'F', e.name,
+                                   tstart, tstop, criteria)
+                      for e, fmin in izip(effects, fmins)]
 
             # Find clusters in the actual data
             n_clusters = 0
-            for e, fmap in fmaps:
-                cdist = cdists[e]
+            for cdist, fmap in izip(cdists, fmaps):
                 cdist.add_original(fmap)
                 n_clusters += cdist.n_clusters
 
             if n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples, unit=match):
-                    fmaps_ = lm.map(Y_.x, p=False)
-                    for e, fmap in fmaps_:
-                        cdist = cdists[e]
+                    fmaps_ = lm.map(Y_.x)
+                    for cdist, fmap in izip(cdists, fmaps_):
                         cdist.add_perm(fmap)
 
         # create ndvars
@@ -883,7 +882,7 @@ class anova:
 
         f = []
         p = []
-        for e, fmap in fmaps:
+        for e, fmap in izip(effects, fmaps):
             f0, f1, f2 = ftest_f((0.05, 0.01, 0.001), e.df, df_den[e])
             info = _cs.set_info_cs(Y.info, _cs.stat_info('f', f0, f1, f2))
             f_ = NDVar(fmap, dims, info, e.name)
@@ -899,13 +898,12 @@ class anova:
         else:
             # f-maps with clusters
             f_and_clusters = []
-            for e, fmap in fmaps:
+            for e, fmap, cdist in izip(effects, fmaps, cdists):
                 # create f-map with cluster threshold
                 f0 = ftest_f(pmin, e.df, df_den[e])
                 info = _cs.set_info_cs(Y.info, _cs.stat_info('f', f0))
                 f_ = NDVar(fmap, dims, info, e.name)
                 # add overlay with cluster
-                cdist = cdists[e]
                 if cdist.n_clusters and samples:
                     f_and_clusters.append([f_, cdist.cpmap])
                 else:
@@ -913,12 +911,11 @@ class anova:
 
             # create cluster table
             dss = []
-            for e in effects:
-                name = e.name
-                ds = cdists[e].clusters
+            for cdist in cdists:
+                ds = cdist.clusters
                 if ds is None:
                     continue
-                ds['effect'] = Factor([name], rep=ds.n_cases)
+                ds['effect'] = Factor([cdist.name], rep=ds.n_cases)
                 dss.append(ds)
 
             if dss:
@@ -935,7 +932,7 @@ class anova:
         if samples is None:
             self.all = self.f
         else:
-            self.fmin = fmin
+            self.fmin = fmins
             self._cdists = cdists
             self.all = f_and_clusters
 

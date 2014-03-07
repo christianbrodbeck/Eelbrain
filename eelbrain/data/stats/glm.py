@@ -438,7 +438,7 @@ class LMFitter(object):
     def __repr__(self):
         return 'LMFitter((%s))' % self.x.name
 
-    def map(self, Y, p=True, out=None):
+    def map(self, Y, out=None):
         """
         Fits the model to multiple dependent variables and returns arrays of
         F-values and optionally p-values.
@@ -449,17 +449,14 @@ class LMFitter(object):
             Assumes that the first dimension of Y provides cases.
             Other than that, shape is free to vary and output shape will match
             input shape.
-        p : bool
-            Also return a map of p-values corresponding to the F-values.
         out : list of array
             List of arrays in which to place the resulting (ravelled) f-maps.
             Can only be used in conjunction with ``p=False``.
 
         Returns
         -------
-        result : list, [(effect, array, array), ...] | [(effect, array), ...]
-            A list with (effect, F-map [, p-map]) tuples for all effects that
-            can be estimated with the current method.
+        f_maps : list
+            A list with maps of F values (order corresponding to self.effects).
         """
         n_cases = self.n_cases
 
@@ -479,23 +476,24 @@ class LMFitter(object):
             logging.debug(msg)
 
             # pre-allocate result
-            f_maps = [np.empty(out_shape) for _ in xrange(self.n_effects)]
+            if out is None:
+                f_maps = [np.empty(out_shape) for _ in xrange(self.n_effects)]
+                flat_maps = [f_map.ravel() for f_map in f_maps]
+            else:
+                flat_maps = out
 
             # compute f-maps
             for s in splits:
                 s1 = s + self._max_n_tests
                 y_sub = Y[:, s:s1]
-                out = (f_map[s:s1] for f_map in f_maps)
-                self.map(y_sub, False, out)
+                out_ = tuple(f_map[s:s1] for f_map in flat_maps)
+                self.map(y_sub, out_)
 
             # return to original shape
-            f_maps = [f_map.reshape(out_shape) for f_map in f_maps]
-
-            if p:
-                p_maps = map(ftest_p, f_maps, self.dfs_nom, self.dfs_denom)
-                return zip(self.effects, f_maps, p_maps)
+            if out is None:
+                return f_maps
             else:
-                return zip(self.effects, f_maps)
+                return
 
         # do the actual estimation
         x = self.x
@@ -546,13 +544,26 @@ class LMFitter(object):
             else:
                 np.divide(MS_n, MS_d, out[i])
 
-        if out is not None:
-            return
-        elif p:
-            p_maps = map(ftest_p, f_maps, self.dfs_nom, self.dfs_denom)
-            return zip(self.effects, f_maps, p_maps)
-        else:
-            return zip(self.effects, f_maps)
+        if out is None:
+            return f_maps
+
+    def p_maps(self, f_maps):
+        """Convert F-maps for uncorrected p-maps
+
+        Parameters
+        ----------
+        f_maps : list
+            List of f_maps in the same order as self.effects, as returned by
+            self.map().
+
+        Returns
+        -------
+        p_maps : list, optional
+            A list with maps of uncorrected p values (order corresponding to
+            self.effects).
+        """
+        p_maps = map(ftest_p, f_maps, self.dfs_nom, self.dfs_denom)
+        return p_maps
 
 
 class incremental_F_test:
