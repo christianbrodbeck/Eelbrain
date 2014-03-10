@@ -1288,6 +1288,27 @@ class Section(FMText):
         self._heading = heading
         FMText.__init__(self, content)
 
+    def add_figure(self, caption):
+        """Add a figure frame to the section
+
+        Parameters
+        ----------
+        caption : FMText
+            Figure caption.
+
+        Returns
+        -------
+        figure : Figure
+            Figure object that was added.
+
+        See Also
+        --------
+        .add_image_figure: add figure with a single image
+        """
+        figure = Figure([], caption)
+        self.append(figure)
+        return figure
+
     def add_image_figure(self, filename, caption, alt=None, from_file=None):
         """Add an image in a figure frame to the section
 
@@ -1298,7 +1319,7 @@ class Section(FMText):
             extension). If a document has multiple images with the same name,
             a unique integer is appended.
         caption : FMText
-            Image caption.
+            Figure caption.
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
@@ -1310,6 +1331,10 @@ class Section(FMText):
         -------
         image : Image
             Image object that was added.
+
+        See Also
+        --------
+        .add_figure: add figure without ading an image
         """
         if from_file is None:
             image = Image(filename, alt)
