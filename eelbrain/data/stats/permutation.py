@@ -102,13 +102,14 @@ def resample(Y, samples=10000, replacement=False, unit=None, sign_flip=False):
             # random resampling
             sample_sequences = np.random.randint(0, n_perm, samples)
 
-        mult = 2 ** np.arange(N, dtype=np.uint32)
-        buffer_ = np.empty(N, dtype=np.uint32)
+        sign_shape = (N,) + (1,) * (Y.ndim - 1)
+        mult = 2 ** np.arange(N, dtype=np.uint32).reshape(sign_shape)
+        buffer_ = np.empty(sign_shape, dtype=np.uint32)
         for i in sample_sequences:
             np.floor_divide(i, mult, buffer_)
             buffer_ %= 2
             sign = np.where(buffer_, 1, -1)
-            np.multiply(Y.x, sign[:, np.newaxis], Yout.x)
+            np.multiply(Y.x, sign, Yout.x)
             yield Yout
     elif unit is None:
         if replacement:
