@@ -3,6 +3,8 @@ Created on Sep 13, 2013
 
 @author: Christian M Brodbeck
 '''
+import random
+
 import numpy as np
 
 from ..data_obj import isvar, isndvar
@@ -100,15 +102,15 @@ def resample(Y, samples=10000, replacement=False, unit=None, sign_flip=False):
             sample_sequences = xrange(1, n_perm)
         else:
             # random resampling
-            sample_sequences = np.random.randint(0, n_perm, samples)
+            sample_sequences = random.sample(xrange(1, n_perm), samples)
 
         sign_shape = (N,) + (1,) * (Y.ndim - 1)
         mult = 2 ** np.arange(N, dtype=np.uint32).reshape(sign_shape)
         buffer_ = np.empty(sign_shape, dtype=np.uint32)
         for i in sample_sequences:
-            np.floor_divide(i, mult, buffer_)
+            np.floor_divide(i, mult, buffer_, dtype=np.uint32)
             buffer_ %= 2
-            sign = np.where(buffer_, 1, -1)
+            sign = np.where(buffer_, -1, 1)
             np.multiply(Y.x, sign, Yout.x)
             yield Yout
     elif unit is None:
