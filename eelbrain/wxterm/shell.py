@@ -225,7 +225,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
     def __init__(self, parent=None, app=None, title='Eelbrain Shell'):
 
     # --- set up PREFERENCES ---
-        self.config = config = wx.Config("eelbrain")
+        self.config = config = wx.Config("Eelbrain")
         std_paths = wx.StandardPaths.Get()
 
         # redirect stdio for debugging
