@@ -195,11 +195,10 @@ def _axlabel(dimname, label=True):
     return label
 
 
-def _x_axis(ndvar, dimname, label=True):
-    dim = ndvar.get_dim(dimname)
-    values = _convert(dim.x, dimname)
+def set_xlabel(ax, dimname, label=True):
     label = _axlabel(dimname, label)
-    return values, label
+    if label:
+        ax.set_xlabel(label)
 
 
 def find_ct_args(ndvar, overlay, contours={}):

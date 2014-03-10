@@ -343,7 +343,8 @@ class _ax_stat:
         # stat plots
         self.stat_plots = []
         self.legend_handles = {}
-        x, xlabel = _base._x_axis(ct.Y, xdim, xlabel)
+
+        x = ct.Y.get_dim(xdim)
         for cell in ct.cells:
             cell_label = cellname(cell)
             c = colors[cell]
@@ -376,10 +377,14 @@ class _ax_stat:
                 title = ct.Y.name
             ax.set_title(title)
 
-        # axes
-        if xlabel:
-            ax.set_xlabel(xlabel)
-            xlabel = None
+        # format x axis
+        ax.set_xlim(x[0], x[-1])
+        ax.x_fmt = "t = %.3f s"
+        ticks = ax.xaxis.get_ticklocs()
+        ticklabels = _base._ticklabels(ticks, 'time')
+        ax.xaxis.set_ticklabels(ticklabels)
+
+        _base.set_xlabel(ax, xdim, xlabel)
 
         if ylabel is True:
             ylabel = ct.Y.info.get('unit', None)
@@ -517,10 +522,7 @@ def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
             title = title.format(name=l0.name)
         ax.set_title(title)
 
-    if xlabel:
-        if xlabel is True:
-            xlabel = x.name
-        ax.set_xlabel(xlabel)
+    _base.set_xlabel(ax, xdim, xlabel)
 
     if ylabel is True:
         ylabel = l.info.get('unit', None)
@@ -637,9 +639,8 @@ class _plt_uts_clusters:
                 continue
 
             alpha = 0.5 if p < self.pmax else 0.2
-            x0 = _base._convert(cluster['tstart'], 'time')
-            x1 = _base._convert(cluster['tstop'], 'time')
-
+            x0 = cluster['tstart']
+            x1 = cluster['tstop']
             h = self.ax.axvspan(x0, x1, color=self.color,  # , hatch=self.hatch,
                                 fill=True, alpha=alpha, zorder=-1)
             self.h.append(h)
