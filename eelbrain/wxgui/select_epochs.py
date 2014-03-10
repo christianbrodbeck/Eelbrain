@@ -378,49 +378,21 @@ class Model(object):
 class Frame(wx.Frame):  # control
     "View object of the epoch selection GUI"
 
-    def __init__(self, parent, model, nplots=(6, 6), topo=True, mean=True,
-                 vlim=None, plot_range=True, color=None, lw=0.2, mark=None,
-                 mcolor='r', mlw=0.8, antialiased=True, pos=wx.DefaultPosition,
-                 size=wx.DefaultSize):
+    def __init__(self, parent, model, config, nplots, topo, mean, vlim,
+                 plot_range, color, lw, mark, mcolor, mlw, antialiased, pos,
+                 size):
         """View object of the epoch selection GUI
 
         Parameters
         ----------
         parent : wx.Frame
             Parent window.
-        model : Model
-            Document model.
-        nplots : int | tuple of 2 int
-            Number of epoch plots per page. Can be an ``int`` to produce a
-            square layout with that many epochs, or an ``(n_rows, n_columns)``
-            tuple.
-        topo : bool
-            Show a topomap plot of the time point under the mouse cursor.
-        mean : bool
-            Show a plot of the page mean at the bottom right of the page.
-        vlim : None | scalar
-            Limit of the epoch plots on the y-axis. If None, a value is
-            determined automatically to show all data.
-        plot_range : bool
-            In the epoch plots, plot the range of the data (instead of plotting
-            all sensor traces). This makes drawing of pages quicker, especially
-            for data with many sensors (default ``True``).
-        color : None | matplotlib color
-            Color for primary data (default is black).
-        lw : scalar
-            Linewidth for normal sensor plots.
-        mark : None | index for sensor dim
-            Sensors to plot as individual traces with a separate color.
-        mcolor : matplotlib color
-            Color for marked traces.
-        mlw : scalar
-            Line width for marked sensor plots.
-        antialiased : bool
-            Perform Antialiasing on epoch plots (associated with a minor speed
-            cost).
+        others :
+            See TerminalInterface constructor.
         """
         super(Frame, self).__init__(parent, -1, "Select Epochs", pos, size)
 
+        self.config = config
         self.model = model
         self.doc = model.doc
         self.history = model.history
@@ -669,28 +641,49 @@ class Frame(wx.Frame):  # control
         self.ShowPage(0)
 
     def _SetLayout(self, nplots, topo, mean):
-        if isinstance(nplots, int):
-            if nplots == 1:
-                mean = False
-            elif nplots < 1:
-                raise ValueError("nplots needs to be >= 1; got %r" % nplots)
-            nax = nplots + bool(mean) + bool(topo)
-            nrow = math.ceil(math.sqrt(nax))
-            ncol = int(math.ceil(nax / nrow))
-            nrow = int(nrow)
-            n_per_page = nplots
+        if topo is None:
+            topo = self.config.ReadBool('Layout/show_topo', True)
         else:
-            nrow, ncol = nplots
+            topo = bool(topo)
+            self.config.WriteBool('Layout/show_topo', topo)
+
+        if mean is None:
+            mean = self.config.ReadBool('Layout/show_mean', True)
+        else:
+            mean = bool(mean)
+            self.config.WriteBool('Layout/show_mean', mean)
+
+        if nplots is None:
+            nrow = self.config.ReadInt('Layout/n_rows', 6)
+            ncol = self.config.ReadInt('Layout/n_cols', 6)
             nax = ncol * nrow
-            if nax == 1:
-                mean = False
-                topo = False
-            elif nax == 2:
-                mean = False
-            elif nax < 1:
-                err = ("nplots=%s: Need at least one plot." % str(nplots))
-                raise ValueError(err)
             n_per_page = nax - bool(topo) - bool(mean)
+        else:
+            if isinstance(nplots, int):
+                if nplots == 1:
+                    mean = False
+                elif nplots < 1:
+                    raise ValueError("nplots needs to be >= 1; got %r" % nplots)
+                nax = nplots + bool(mean) + bool(topo)
+                nrow = math.ceil(math.sqrt(nax))
+                ncol = int(math.ceil(nax / nrow))
+                nrow = int(nrow)
+                n_per_page = nplots
+            else:
+                nrow, ncol = nplots
+                nax = ncol * nrow
+                if nax == 1:
+                    mean = False
+                    topo = False
+                elif nax == 2:
+                    mean = False
+                elif nax < 1:
+                    err = ("nplots=%s: Need at least one plot." % str(nplots))
+                    raise ValueError(err)
+                n_per_page = nax - bool(topo) - bool(mean)
+            self.config.WriteInt('Layout/n_rows', nrow)
+            self.config.WriteInt('Layout/n_cols', ncol)
+        self.config.Flush()
 
         self._plot_mean = mean
         self._plot_topo = topo
@@ -890,11 +883,27 @@ class Frame(wx.Frame):  # control
 
 class Controller(object):
 
-    def __init__(self, frame):
-        self.frame = frame
-        self.model = frame.model
-        self.doc = frame.model.doc
-        self.history = frame.model.history
+    def __init__(self, parent, model, nplots, topo, mean, vlim, plot_range,
+                 color, lw, mark, mcolor, mlw, antialiased, pos, size):
+        """Controller object for SelectEpochs GUI
+
+        Parameters
+        ----------
+        parent : wx.Frame
+            Parent window.
+        model : Model
+            Document model.
+        others :
+            See TerminalInterface constructor.
+        """
+        self.config = wx.Config("Eelbrain")
+        self.config.SetPath("SelectEpochs")
+        self.frame = Frame(parent, model, self.config, nplots, topo, mean, vlim,
+                           plot_range, color, lw, mark, mcolor, mlw,
+                           antialiased, pos, size)
+        self.model = model
+        self.doc = model.doc
+        self.history = model.history
 
         self.doc.subscribe_to_case_change(self.CaseChanged)
         self.doc.subscribe_to_path_change(self.frame.UpdateTitle)
@@ -1173,13 +1182,36 @@ class Controller(object):
         dlg.Destroy()
 
     def OnThreshold(self, event):
-        dlg = ThresholdDialog(self.frame)
+        method = self.config.Read("Threshold/method", "p2p")
+        mark_above = self.config.ReadBool("Threshold/mark_above", True)
+        mark_below = self.config.ReadBool("Threshold/mark_below", False)
+        threshold = self.config.ReadFloat("Threshold/threshold", 2e-12)
+
+        dlg = ThresholdDialog(self.frame, method, mark_above, mark_below,
+                              threshold)
         if dlg.ShowModal() == wx.ID_OK:
             threshold = dlg.GetThreshold()
             method = dlg.GetMethod()
-            above = dlg.GetAbove()
-            below = dlg.GetBelow()
+            mark_above = dlg.GetMarkAbove()
+            if mark_above:
+                above = False
+            else:
+                above = None
+
+            mark_below = dlg.GetMarkBelow()
+            if mark_below:
+                below = True
+            else:
+                below = None
+
             self.model.auto_reject(threshold, method, above, below)
+
+            self.config.Write("Threshold/method", method)
+            self.config.WriteBool("Threshold/mark_above", mark_above)
+            self.config.WriteBool("Threshold/mark_below", mark_below)
+            self.config.WriteFloat("Threshold/threshold", threshold)
+            self.config.Flush()
+
         dlg.Destroy()
 
     def OnTogglePlotRange(self, event):
@@ -1256,9 +1288,10 @@ class TerminalInterface(object):
     """
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger',
-                 path=None, nplots=(6, 6), topo=True, mean=True,
+                 path=None, nplots=None, topo=None, mean=None,
                  vlim=None, plot_range=True, color=None, lw=0.2, mark=None,
-                 mcolor='r', mlw=0.8, antialiased=True):
+                 mcolor='r', mlw=0.8, antialiased=True, pos=wx.DefaultPosition,
+                 size=(800, 600)):
         """
         ds : Dataset | mne.Epochs
             The data for which to select trials. If ds is an mne.Epochs object
@@ -1280,14 +1313,16 @@ class TerminalInterface(object):
             Path to the desired rejection file. If the file already exists it
             is loaded as starting values. The extension determines the format
             (*.pickled or *.txt).
-        nplots : int | tuple of 2 int
+        nplots : None | int | tuple of 2 int
             Number of epoch plots per page. Can be an ``int`` to produce a
             square layout with that many epochs, or an ``(n_rows, n_columns)``
-            tuple.
-        topo : bool
+            tuple. Default (None): use settings form last session.
+        topo : None | bool
             Show a topomap plot of the time point under the mouse cursor.
-        mean : bool
+            Default (None): use settings form last session.
+        mean : None | bool
             Show a plot of the page mean at the bottom right of the page.
+            Default (None): use settings form last session.
         vlim : None | scalar
             Limit of the epoch plots on the y-axis. If None, a value is
             determined automatically to show all data.
@@ -1330,10 +1365,10 @@ class TerminalInterface(object):
             parent = app.GetTopWindow()
             create_menu = True
 
-        self.frame = Frame(parent, self.model, nplots, topo, mean, vlim, plot_range,
-                           color, lw, mark, mcolor, mlw, antialiased,
-                           size=(800, 600))
-        self.controller = Controller(self.frame)
+        self.controller = Controller(parent, self.model, nplots, topo, mean,
+                                     vlim, plot_range, color, lw, mark, mcolor,
+                                     mlw, antialiased, pos, size)
+        self.frame = self.controller.frame
         if create_menu:
             self.frame._create_menu()
         app.SetTopWindow(self.frame)
@@ -1347,7 +1382,7 @@ class ThresholdDialog(wx.Dialog):
     _methods = (('absolute', 'abs'),
                 ('peak-to-peak', 'p2p'))
 
-    def __init__(self, parent):
+    def __init__(self, parent, method, mark_above, mark_below, threshold):
         title = "Threshold Criterion Rejection"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title)
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -1358,16 +1393,18 @@ class ThresholdDialog(wx.Dialog):
 
         choices = tuple(m[0] for m in self._methods)
         ctrl = wx.RadioBox(self, wx.ID_ANY, "Method", choices=choices)
+        selection = [m[1] for m in self._methods].index(method)
+        ctrl.SetSelection(selection)
         sizer.Add(ctrl)
         self.method_ctrl = ctrl
 
         ctrl = wx.CheckBox(self, wx.ID_ANY, "Mark above as bad")
-        ctrl.SetValue(True)
+        ctrl.SetValue(mark_above)
         sizer.Add(ctrl)
         self.mark_above_ctrl = ctrl
 
         ctrl = wx.CheckBox(self, wx.ID_ANY, "Mark below as good")
-        ctrl.SetValue(False)
+        ctrl.SetValue(mark_below)
         sizer.Add(ctrl)
         self.mark_below_ctrl = ctrl
 
@@ -1375,7 +1412,8 @@ class ThresholdDialog(wx.Dialog):
         msg = ("Invalid entry for threshold: {value}. Need a floating\n"
                "point number.")
         validator = REValidator(float_pattern, msg, False)
-        ctrl = wx.TextCtrl(self, wx.ID_ANY, "2e-12", validator=validator)
+        ctrl = wx.TextCtrl(self, wx.ID_ANY, str(threshold),
+                           validator=validator)
         ctrl.SetHelpText("Threshold value (positive scalar)")
         ctrl.SelectAll()
         sizer.Add(ctrl)
@@ -1397,17 +1435,11 @@ class ThresholdDialog(wx.Dialog):
         self.SetSizer(sizer)
         sizer.Fit(self)
 
-    def GetAbove(self):
-        if self.mark_above_ctrl.IsChecked():
-            return False
-        else:
-            return None
+    def GetMarkAbove(self):
+        return self.mark_above_ctrl.IsChecked()
 
-    def GetBelow(self):
-        if self.mark_below_ctrl.IsChecked():
-            return True
-        else:
-            return None
+    def GetMarkBelow(self):
+        return self.mark_below_ctrl.IsChecked()
 
     def GetMethod(self):
         index = self.method_ctrl.GetSelection()
