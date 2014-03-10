@@ -390,7 +390,28 @@ class Frame(wx.Frame):  # control
         others :
             See TerminalInterface constructor.
         """
+        if pos is None:
+            pos = (config.ReadInt("pos_horizontal", -1),
+                   config.ReadInt("pos_vertical", -1))
+        else:
+            pos_h, pos_v = pos
+            config.WriteInt("pos_horizontal", pos_h)
+            config.WriteInt("pos_vertical", pos_v)
+            config.Flush()
+
+        if size is None:
+            size = (config.ReadInt("size_width", 800),
+                   config.ReadInt("size_height", 600))
+        else:
+            w, h = pos
+            config.WriteInt("size_width", w)
+            config.WriteInt("size_height", h)
+            config.Flush()
+
         super(Frame, self).__init__(parent, -1, "Select Epochs", pos, size)
+
+        # bind close event to save window properties in config
+        self.Bind(wx.EVT_CLOSE, self.OnClose, self)
 
         self.config = config
         self.model = model
@@ -566,6 +587,19 @@ class Frame(wx.Frame):  # control
             axes.append(self._mean_ax)
 
         self.canvas.redraw(axes=axes)
+
+    def OnClose(self, event):
+        logger.debug("Frame.OnClose(), saving window properties...")
+        pos_h, pos_v = self.GetPosition()
+        w, h = self.GetSize()
+
+        self.config.WriteInt("pos_horizontal", pos_h)
+        self.config.WriteInt("pos_vertical", pos_v)
+        self.config.WriteInt("size_width", w)
+        self.config.WriteInt("size_height", h)
+        self.config.Flush()
+
+        event.Skip()
 
     def OnPageChoice(self, event):
         "called by the page Choice control"
@@ -1290,8 +1324,7 @@ class TerminalInterface(object):
                  tag='rej_tag', trigger='trigger',
                  path=None, nplots=None, topo=None, mean=None,
                  vlim=None, plot_range=True, color=None, lw=0.2, mark=None,
-                 mcolor='r', mlw=0.8, antialiased=True, pos=wx.DefaultPosition,
-                 size=(800, 600)):
+                 mcolor='r', mlw=0.8, antialiased=True, pos=None, size=None):
         """
         ds : Dataset | mne.Epochs
             The data for which to select trials. If ds is an mne.Epochs object
@@ -1343,6 +1376,12 @@ class TerminalInterface(object):
         antialiased : bool
             Perform Antialiasing on epoch plots (associated with a minor speed
             cost).
+        pos : None | tuple of 2 int
+            Window position on screen. Default (None): use settings form last
+            session.
+        size : None | tuple of 2 int
+            Window size on screen. Default (None): use settings form last
+            session.
         """
         bad_chs = None
         self.doc = Document(ds, data, accept, blink, tag, trigger, path,
