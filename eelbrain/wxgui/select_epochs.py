@@ -342,6 +342,14 @@ class Model(object):
                     (len(index), method))
         self.history.do(action)
 
+    def clear(self):
+        desc = "Clear"
+        index = np.logical_not(self.doc.accept.x)
+        old_tag = self.doc.tag[index]
+        action = ChangeAction(desc, index, False, True, old_tag, 'clear')
+        logger.info("Clearing %i rejections" % index.sum())
+        self.history.do(action)
+
     def load(self, path):
         new_accept, new_tag = self.doc.read_rej_file(path)
 
@@ -510,8 +518,7 @@ class Frame(wx.Frame):  # control
         # Menu
         m = self.fileMenu = wx.Menu()
         m.Append(wx.ID_OPEN, '&Open... \tCtrl+O', 'Open file')
-        m.Append(wx.ID_REVERT, '&Revert \tCtrl+R', 'Revert to last saved '
-                 'version')
+#         m.Append(wx.ID_REVERT, '&Revert', 'Revert to the last saved version')
         m.AppendSeparator()
         m.Append(wx.ID_CLOSE, '&Close \tCtrl+W', 'Close Window')
         m.Append(wx.ID_SAVE, '&Save \tCtrl+S', 'Save file')
@@ -960,6 +967,7 @@ class Controller(object):
         f.Bind(wx.EVT_MENU, self.OnSaveAs, id=wx.ID_SAVEAS)
         f.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
         f.Bind(wx.EVT_MENU, self.OnRedo, id=ID.REDO)
+        f.Bind(wx.EVT_MENU, self.OnClear, id=wx.ID_CLEAR)
         f.Bind(wx.EVT_MENU, self.OnSetVLim, id=ID.SET_VLIM)
         f.Bind(wx.EVT_MENU, self.OnSetLayout, id=ID.SET_LAYOUT)
         f.Bind(wx.EVT_MENU, self.OnTogglePlotRange, id=ID.PLOT_RANGE)
@@ -1070,18 +1078,15 @@ class Controller(object):
         elif (event.key == 'c'):
             self.frame.PlotCorrelation(ax_index)
 
+    def OnClear(self, event):
+        self.model.clear()
+
     def OnClose(self, event):
         win = self.GetActiveWindow()
         if win:
             win.Close()
-#             try:
-#             except:
-#                 logger.error(msg)
-#                 win.Destroy()
-#                 raise
         else:
             event.Skip()
-#         self.frame.Close(False)
 
     def OnCloseEvent(self, event):
         "Ask to save unsaved changes"
