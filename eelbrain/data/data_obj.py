@@ -47,9 +47,6 @@ from . import colorspaces as cs
 from .stats import cihw
 
 
-__all__ = ('Datalist', 'Dataset', 'Factor', 'Var', 'NDVar', 'combine', 'align',
-           'align1', 'cwt_morlet', 'resample', 'cellname', 'Celltable')
-
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
                    repr_len=5,  # length of repr
                    dataset_str_n_cases=500,
