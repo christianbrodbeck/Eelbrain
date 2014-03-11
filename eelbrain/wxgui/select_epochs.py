@@ -24,7 +24,7 @@ from .history import History
 
 
 class ChangeAction():
-    """Action objects are kept in the history and can do and undo theselves"""
+    """Action objects are kept in the history and can do and undo themselves"""
 
     def __init__(self, desc, index, old_accept, new_accept, old_tag, new_tag,
                  old_path=None, new_path=None):
@@ -1442,12 +1442,14 @@ class ThresholdDialog(wx.Dialog):
         sizer.Add(ctrl)
         self.method_ctrl = ctrl
 
-        ctrl = wx.CheckBox(self, wx.ID_ANY, "Mark above as bad")
+        ctrl = wx.CheckBox(self, wx.ID_ANY, "Reject all epochs exceeding the "
+                           "threshold")
         ctrl.SetValue(mark_above)
         sizer.Add(ctrl)
         self.mark_above_ctrl = ctrl
 
-        ctrl = wx.CheckBox(self, wx.ID_ANY, "Mark below as good")
+        ctrl = wx.CheckBox(self, wx.ID_ANY, "Accept all epochs not exceeding "
+                           "the threshold")
         ctrl.SetValue(mark_below)
         sizer.Add(ctrl)
         self.mark_below_ctrl = ctrl
