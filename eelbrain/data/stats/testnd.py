@@ -765,41 +765,6 @@ def _ttest_t(p, df, tail=0):
     return t
 
 
-class _f_oneway:
-    def __init__(self, Y='MEG', X='condition', sub=None, ds=None,
-                 p=.05, contours={.01: '.5', .001: '0'}):
-        """
-        uses scipy.stats.f_oneway
-
-        """
-        sub = assub(sub, ds)
-        Y = asndvar(Y, sub, ds)
-        X = ascategorial(X, sub, ds)
-
-        Ys = [Y[X == c] for c in X.cells]
-        Ys = [y.x.reshape((y.x.shape[0], -1)) for y in Ys]
-        N = Ys[0].shape[1]
-
-        Ps = []
-        for i in xrange(N):
-            groups = (y[:, i] for y in Ys)
-            F, p = scipy.stats.f_oneway(*groups)
-            Ps.append(p)
-        test_name = 'One-way ANOVA'
-
-        dims = Y.dims[1:]
-        Ps = np.reshape(Ps, tuple(len(dim) for dim in dims))
-
-        info = _cs.set_info_cs(Y.info, _cs.sig_info(p, contours))
-        info['test'] = test_name
-        p = NDVar(Ps, dims, info=info, name=X.name)
-
-        # store results
-        self.name = "anova"
-        self.p = p
-        self.all = p
-
-
 class anova:
     """Element-wise ANOVA
 
