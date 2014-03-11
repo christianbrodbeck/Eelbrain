@@ -5,7 +5,7 @@ Created on Sep 13, 2013
 '''
 import logging
 
-from nose.tools import eq_
+from nose.tools import eq_, ok_
 import numpy as np
 
 from eelbrain.data.stats.permutation import resample
@@ -35,3 +35,11 @@ def test_permutation():
 
     # check we have some variability
     eq_(max(map(len, cols)), 2)
+
+    # with sign flip
+    v = Var(np.arange(1, 7))
+    res = np.empty((2 ** 6 - 1, 6))
+    for i, y in enumerate(resample(v, samples=-1, sign_flip=True)):
+        res[i] = y.x
+    logging.info('Permutation with sign_flip:\n%s' % res)
+    ok_(np.all(res.min(1) < 0), "Not all permutations have a sign flip")
