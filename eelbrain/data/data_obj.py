@@ -965,6 +965,7 @@ class Var(object):
 
     """
     _stype_ = "var"
+    ndim = 1
     def __init__(self, x, name=None):
         """Represents a univariate variable.
 
