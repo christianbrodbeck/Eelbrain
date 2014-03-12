@@ -511,19 +511,6 @@ def fix_vlim_for_cmap(vmin, vmax, cmap):
 def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
     """Unpack the first argument to top-level NDVar plotting functions
 
-    low level functions (``_plt_...``) work with two levels:
-
-     - list of lists axes
-     - list of layers
-
-    Ndvar plotting functions above 1-d UTS level should support the following
-    API:
-
-     - simple NDVar: summary ``plot(meg)``
-     - list of ndvars: summary for each ``plot(meg.as_list())``
-     - NDVar and Xax argument: summary for each  ``plot(meg, Xax=subject)
-     - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
-
     Parameters
     ----------
     Y : NDVar | list
@@ -543,9 +530,28 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
     -------
     data : list of list of NDVar
         The processed data to plot.
+
+    Notes
+    -----
+    low level functions (``_plt_...``) work with two levels:
+
+     - list of lists axes
+     - list of layers
+
+    Ndvar plotting functions above 1-d UTS level should support the following
+    API:
+
+     - simple NDVar: summary ``plot(meg)``
+     - list of ndvars: summary for each ``plot(meg.as_list())``
+     - NDVar and Xax argument: summary for each  ``plot(meg, Xax=subject)
+     - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
     """
-    if isinstance(Y, basestring):
-        Y = ds.eval(Y)
+    if hasattr(Y, '_default_plot_obj'):
+        Y = Y._default_plot_obj
+    elif hasattr(Y, 'all'):
+        Y = Y.all
+    if not isinstance(Y, (tuple, list)):
+        Y = asndvar(Y, ds=ds)
 
     if Xax is not None and isinstance(Y, (tuple, list)):
         err = ("Xax can only be used to divide Y into different axes if Y is "
@@ -554,12 +560,22 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
 
     if isinstance(Xax, str) and Xax.startswith('.'):
         dimname = Xax[1:]
-        dim = Y.get_dim(dimname)
-        unit = getattr(dim, 'unit', '')
+        if dimname == 'case':
+            if not Y.has_case:
+                err = ("Xax='.case' supplied, but Y does not have case "
+                       "dimension")
+                raise ValueError(err)
+            values = range(len(Y))
+            unit = ''
+        else:
+            dim = Y.get_dim(dimname)
+            values = dim.values
+            unit = getattr(dim, 'unit', '')
+
         name = dimname.capitalize() + ' = %s'
         if unit:
             name += ' ' + unit
-        Y = [Y.sub(name=name % v, **{dimname: v}) for v in dim.values]
+        Y = [Y.sub(name=name % v, **{dimname: v}) for v in values]
     elif Xax is not None:
         Xax = ascategorial(Xax, ds=ds)
         Ys = []
@@ -568,10 +584,8 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
             v.name = cell
             Ys.append(v)
         Y = Ys
-    else:
-        Y = getattr(Y, '_default_plot_obj', getattr(Y, 'all', Y))
-        if not isinstance(Y, (tuple, list)):
-            Y = [Y]
+    elif not isinstance(Y, (tuple, list)):
+        Y = [Y]
 
     if levels > 0:
         return [unpack_epochs_arg(v, ndim, None, ds, levels - 1) for v in Y]
