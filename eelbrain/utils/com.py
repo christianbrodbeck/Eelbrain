@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 import os
 import pdb
 import smtplib
+import socket
 import traceback
 
 
@@ -18,7 +19,8 @@ def send_email(to, subject, body):
 
     msg = MIMEText(body)
     msg['Subject'] = subject
-    msg['From'] = 'The Eelbrain N00b <%s>' % gmail_user
+    host = socket.gethostname()
+    msg['From'] = 'Eelbrain on %s <%s>' % (host, gmail_user)
     msg['To'] = to
 
     smtpserver = smtplib.SMTP('smtp.gmail.com', 587)
