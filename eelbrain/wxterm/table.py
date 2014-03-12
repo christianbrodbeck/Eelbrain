@@ -18,8 +18,7 @@ import wx
 import wx.grid
 # import wx.lib.mixins.grid
 
-import ID
-from ..wxutils import Icon
+from ..wxutils import Icon, ID
 from ..utils.basic import add_ext, loadtable
 
 
@@ -127,7 +126,7 @@ class TableAttachDialog(wx.Dialog):
     def __init__(self, parent, default_name,
                  title="Attach Table",
                  message="Settings for attaching table to global namespace",
-                 ID= -1, size=wx.DefaultSize,
+                 ID=-1, size=wx.DefaultSize,
                  pos=wx.DefaultPosition, style=wx.DEFAULT_DIALOG_STYLE,
                  useMetal=False,):
         # Instead of calling wx.Dialog.__init__ we precreate the dialog
@@ -281,7 +280,7 @@ class TableFrame(wx.Frame, wx.FileDropTarget):
         tb.AddControl(txt)
         tb.AddControl(sc)
         self.sc_r = sc
-        self.Bind(wx.EVT_SPINCTRL, self.OnSpinCtrl, id= -1)
+        self.Bind(wx.EVT_SPINCTRL, self.OnSpinCtrl, id=-1)
 
         # tb.AddControl()
 

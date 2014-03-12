@@ -10,8 +10,8 @@ Created on Feb 20, 2012
 import wx
 from wx.lib.agw import hyperlink
 
-from eelbrain import __version__
-from eelbrain.wxutils import Icon
+from .. import __version__
+from ..wxutils import Icon
 
 
 class AboutFrame(wx.MiniFrame):

@@ -3,9 +3,8 @@ import logging, tempfile, os
 import matplotlib.pyplot as P
 import wx
 
-from eelbrain import fmtxt
-from eelbrain import ui
-from eelbrain.wxutils import Icon
+from .. import fmtxt, ui
+from ..wxutils import Icon
 
 
 class PyplotManager(wx.MiniFrame):

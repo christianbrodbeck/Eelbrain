@@ -23,8 +23,7 @@ from ..data.plot._base import eelfigure, find_fig_vlims
 from ..data.plot.utsnd import _ax_bfly_epoch
 from ..data.plot.nuts import _plt_bin_nuts
 from .. import ui
-from ..wxutils import mpl_canvas, Icon
-from . import ID
+from ..wxutils import mpl_canvas, Icon, ID
 
 __all__ = ['SelectEpochs', 'pca']
 

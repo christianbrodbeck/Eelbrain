@@ -5,6 +5,7 @@ Created by Christian Brodbeck on 7/3/09.
 """
 
 from collections import defaultdict
+import logging
 import os
 import cPickle as pickle
 import re
@@ -12,6 +13,12 @@ import re
 import numpy as np
 
 from eelbrain import ui
+
+
+logger = logging.getLogger('eelbrain')
+logger.propagate = False
+_hdlr = logging.StreamHandler()
+logger.addHandler(_hdlr)
 
 
 class intervals:

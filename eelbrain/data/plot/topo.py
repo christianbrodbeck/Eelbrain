@@ -16,8 +16,8 @@ from .sensors import _plt_map2d
 class Topomap(_tb_sensors_mixin, _base.eelfigure):
     "Plot individual topogeraphies"
     def __init__(self, epochs, Xax=None, sensors=True, proj='default',
-                 vmax=None, title=None, res=200, interpolation='nearest',
-                 ds=None, **layout):
+                 title=None, res=200, interpolation='nearest', ds=None,
+                 vlims={}, **layout):
         """
         Plot individual topogeraphies
 
@@ -32,8 +32,6 @@ class Topomap(_tb_sensors_mixin, _base.eelfigure):
             is removed; with 'fullname', the full name is shown.
         proj : str
             The sensor projection to use for topomaps.
-        vmax : scalar
-            Vmax for plots.
         size : scalar
             Side length in inches of individual axes.
         title : None | string
@@ -56,7 +54,7 @@ class Topomap(_tb_sensors_mixin, _base.eelfigure):
                        'interpolation': interpolation,
                        'proj': proj,
                        'sensors': sensors,
-                       'vlims': _base.find_fig_vlims(epochs)}
+                       'vlims': _base.find_fig_vlims(epochs, vlims=vlims)}
 
         self._plots = []
         self._sensor_plots = []
@@ -124,7 +122,7 @@ class TopoButterfly(_base.eelfigure):
     def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensors=True, ROI=None, ds=None, axh=3, ax_aspect=2,
-                 **fig_kwa):
+                 vlims={}, **fig_kwa):
         """
         Parameters
         ----------
@@ -202,13 +200,15 @@ class TopoButterfly(_base.eelfigure):
                              'ROIcolor': color,
                              'title': False}
 
+        vlims = _base.find_fig_vlims(epochs, True, vlims)
+
         self.bfly_axes = []
         self.topo_axes = []
         self.bfly_plots = []
         self.topo_plots = []
         self._topoax_data = []
         self.t_markers = []
-        self._vlims = vlims = _base.find_fig_vlims(epochs, True)
+        self._vlims = vlims
         self._xvalues = []
 
         # plot epochs (x/y are in figure coordinates)

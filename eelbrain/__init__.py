@@ -22,4 +22,6 @@ Copyright (c) 2012. All rights reserved.
 
 """
 
+from .utils import logger
+
 __version__ = '0.2.git'

@@ -6,11 +6,8 @@ import wx.stc
 import wx.py
 # import wx.lib.mixins.listctrl
 
-import ID
-from eelbrain import fmtxt
-from eelbrain import wxutils
-from eelbrain.wxutils import Icon
-
+from .. import fmtxt
+from ..wxutils import droptarget, Icon, ID, key_mod
 
 
 # replace Document to allow unicode i/o
@@ -171,7 +168,7 @@ class PyEditor(wx.py.editor.EditorFrame):
         zoom = self.shell.shell.GetZoom()
         self.editor.window.SetZoom(zoom)
 
-        wxutils.droptarget.set_for_strings(self.editor.window)
+        droptarget.set_for_strings(self.editor.window)
         self.editor.window.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
         if filename:
             self.updateTitle()
@@ -501,7 +498,7 @@ class PyEditor(wx.py.editor.EditorFrame):
         # these ought to be handles in stc.StyledTextCtrl
         # src/osx_cocoa/stc.py ?
         key = event.GetKeyCode()
-        mod = wxutils.key_mod(event)
+        mod = key_mod(event)
         if any(mod):
             mod_str = '-'.join(d for d, s in zip(['ctrl', 'cmd', 'alt'], mod) if s)
             logging.info("Editor OnKeyDown: {0} {1}".format(mod_str, key))
