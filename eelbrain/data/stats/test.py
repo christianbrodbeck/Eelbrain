@@ -244,7 +244,7 @@ def star_factor(p, levels={.1: '`', .05 : '*', .01 : '**', .001: '***'}):
 
 def oneway(Y, X, match=None, sub=None, par=True, title=None, ds=None):
     "data: for should iter over groups/treatments"
-    ct = Celltable(Y, X, match=match, sub=sub, ds=ds)
+    ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
     test = _oneway(ct, parametric=par)
     template = "{test}: {statistic}={value}{stars}, p={p}"
     out = template.format(**test)
@@ -316,9 +316,7 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     title : str
         Title for the table.
     """
-    ct = Celltable(Y, X, match, sub, ds=ds)
-    if not isvar(ct.Y):
-        raise TypeError("Need Var as dependent variable, not %s" % type(ct.Y))
+    ct = Celltable(Y, X, match, sub, ds=ds, coercion=asvar)
 
     par = True
     if par:
@@ -430,9 +428,7 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
         names of Dataset variables
 
     """
-    ct = Celltable(Y, X, match=match, sub=sub, ds=ds)
-    if not isvar(ct.Y):
-        raise TypeError("Pairwise test requires univariate dependent variable")
+    ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
     test = _pairwise(ct.get_data(), within=ct.all_within, parametric=par,
                      corr=corr, trend=trend)
 

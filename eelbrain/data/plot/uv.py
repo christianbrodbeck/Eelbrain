@@ -322,7 +322,7 @@ def boxplot(Y, X=None, match=None, sub=None, datalabels=None,
         Reference to the matplotlib figure.
     """
     # get data
-    ct = Celltable(Y, X, match=match, sub=sub, ds=ds)
+    ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
     Y = ct.Y
     X = ct.X
 
@@ -525,7 +525,7 @@ def barplot(Y, X=None, match=None, sub=None,
     fig = _simple_fig(title, xlabel, ylabel, **simple_kwargs)
     ax = fig.ax
 
-    ct = Celltable(Y, X, match=match, sub=sub, ds=ds)
+    ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
 
     x0, x1, y0, y1 = _barplot(ax, ct,
                            test=test, par=par, trend=trend, corr=corr,
@@ -1474,7 +1474,7 @@ def histogram(Y, X=None, match=None, sub=None, ds=None, pooled=True,
     titlekwargs : dict
         Forwarded to :py:func:`pyplot.suptitle`.
     """
-    ct = Celltable(Y, X, match=match, sub=sub, ds=ds)
+    ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
 
     # ylabel
     if ylabel is True:

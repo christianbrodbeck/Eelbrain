@@ -13,7 +13,7 @@ try:
 except:
     pass
 
-from ..data_obj import ascategorial, cellname, Celltable, assub
+from ..data_obj import ascategorial, asndvar, cellname, Celltable
 from . import _base
 
 
@@ -89,21 +89,22 @@ class UTSStat(_base.subplot_figure):
         """
         if Xax is None:
             nax = 1
-            ct = Celltable(Y, X, sub=sub, match=match, ds=ds)
+            ct = Celltable(Y, X, sub=sub, match=match, ds=ds, coercion=asndvar)
             if X is None:
                 cells = None
             else:
                 cells = ct.X.cells
         else:
-            ct = Celltable(Y, Xax, sub=sub, ds=ds)
+            ct = Celltable(Y, Xax, sub=sub, ds=ds, coercion=asndvar)
             if X is None:
                 cells = None
                 X_ = None
             else:
-                Xct = Celltable(X, Xax, sub=sub, ds=ds)
+                Xct = Celltable(X, Xax, sub=sub, ds=ds, coercion=ascategorial)
                 cells = Xct.Y.cells
             if match is not None:
-                matchct = Celltable(match, Xax, sub=sub, ds=ds)
+                matchct = Celltable(match, Xax, sub=sub, ds=ds,
+                                    coercion=ascategorial)
             nax = len(ct.cells)
 
         # assemble colors
@@ -155,7 +156,8 @@ class UTSStat(_base.subplot_figure):
                     X_ = Xct.data[cell]
                 if match is not None:
                     match = matchct.data[cell]
-                cct = Celltable(ct.data[cell], X_, match=match)
+                cct = Celltable(ct.data[cell], X_, match=match,
+                                coercion=asndvar)
                 title_ = axtitle.format(name=cellname(cell))
                 p = _ax_stat(ax, cct, colors, title=title_, **kwargs)
                 self._plots.append(p)

@@ -270,7 +270,7 @@ class ttest_1samp:
         minsource : int
             Minimum number of sources per cluster.
         """
-        ct = Celltable(Y, match=match, sub=sub, ds=ds)
+        ct = Celltable(Y, match=match, sub=sub, ds=ds, coercion=asndvar)
 
         n = len(ct.Y)
         df = n - 1
@@ -408,7 +408,7 @@ class ttest_ind:
         minsource : int
             Minimum number of sources per cluster.
         """
-        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds)
+        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
         c1, c0 = ct.cat
 
         test_name = 'Independent Samples t-Test'
@@ -548,7 +548,7 @@ class ttest_rel:
         In the permutation cluster test, permutations are done within the
         categories of ``match``.
         """
-        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds)
+        ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
         c1, c0 = ct.cat
         if not ct.all_within:
             err = ("conditions %r and %r do not have the same values on "

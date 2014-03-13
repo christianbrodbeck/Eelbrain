@@ -564,7 +564,7 @@ class Celltable(object):
 
     """
     def __init__(self, Y, X=None, match=None, sub=None, match_func=np.mean,
-                 cat=None, ds=None):
+                 cat=None, ds=None, coercion=asdataobject):
         """Divide Y into cells defined by X.
 
         Parameters
@@ -591,6 +591,9 @@ class Celltable(object):
             If a Dataset is specified, input items (Y / X / match / sub) can
             be str instead of data-objects, in which case they will be
             retrieved from the Dataset.
+        coercion : callable
+            Function to convert the Y parameter to to the dependent varaible
+            (default: asdataobject).
 
 
         Examples
@@ -634,7 +637,7 @@ class Celltable(object):
                     imax = max(len(sub), np.max(sub))
                     sub = np.arange(imax)[sub][sort_idx]
 
-        Y = asdataobject(Y, sub, ds)
+        Y = coercion(Y, sub, ds)
 
         if match is not None:
             match = asfactor(match, sub, ds)
@@ -666,6 +669,7 @@ class Celltable(object):
         self.X = X
         self.cat = cat
         self.match = match
+        self.coercion = coercion.__name__
         self.n_cases = len(Y)
 
         # extract cell data
@@ -717,6 +721,8 @@ class Celltable(object):
             else:
                 indexes = ' '.join(str(i) for i in self.sub[:4])
                 args.append("sub=[%s...]" % indexes)
+        if self.coercion != 'asdataobject':
+            args.append("coercion=%s" % self.coercion)
         return rpr % (', '.join(args))
 
     def __len__(self):

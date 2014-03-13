@@ -9,13 +9,14 @@ import shutil
 import tempfile
 
 import mne
-from nose.tools import assert_equal, assert_true, eq_, ok_, assert_raises
+from nose.tools import (assert_equal, assert_is_instance, assert_true, eq_,
+                        ok_, assert_raises)
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from eelbrain.data import datasets, Var, Factor, Dataset, Celltable, load
-from eelbrain.data.data_obj import (SourceSpace, isdatalist, isndvar, isuv,
-                                    isvar, align, align1, combine)
+from eelbrain.data.data_obj import (align, align1, asvar, combine, isdatalist,
+                                    isndvar, isvar, isuv, SourceSpace)
 
 
 def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
@@ -149,6 +150,12 @@ def test_celltable():
     eq_(ct.n_cases, 30)
     eq_(ct.X[0], 'c')
     eq_(ct.X[-1], 'b')
+
+    # test coercion
+    ct = Celltable(ds['Y'].x, 'A', ds=ds)
+    assert_is_instance(ct.Y, np.ndarray)
+    ct = Celltable(ds['Y'].x, 'A', ds=ds, coercion=asvar)
+    assert_is_instance(ct.Y, Var)
 
     # test sub
     ds_sub = ds.sub("A == 'a0'")
