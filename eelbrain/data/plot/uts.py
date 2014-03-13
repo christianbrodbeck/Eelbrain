@@ -17,9 +17,6 @@ from ..data_obj import ascategorial, asndvar, cellname, Celltable
 from . import _base
 
 
-__hide__ = ['plt', 'division', 'Celltable']
-
-
 class UTSStat(_base.subplot_figure):
     "Plots statistics for a one-dimensional NDVar"
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,

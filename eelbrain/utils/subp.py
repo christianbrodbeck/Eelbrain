@@ -33,11 +33,6 @@ from ..data.load.brainvision import vhdr as _vhdr
 from .kit import MarkerFile
 
 
-__hide__ = ['os', 'shutil', 'subprocess', 'tempfile', 're', 'fnmatch', 'pickle',
-            'np',
-            'ui']
-
-
 # handling binaries ---
 
 def _set_bin_dirs(mne=None, freesurfer=None, edfapi=None):

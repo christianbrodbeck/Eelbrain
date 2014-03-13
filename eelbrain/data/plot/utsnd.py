@@ -14,9 +14,6 @@ from .. import data_obj as _dta
 from . import _base
 
 
-__hide__ = ['plt', 'math']
-
-
 class _plt_im_array(object):
     def __init__(self, ax, ndvar, overlay, dims=('time', 'sensor'),
                  extent=None, interpolation=None, vlims={}, cmaps={},

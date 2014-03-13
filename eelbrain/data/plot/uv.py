@@ -31,12 +31,6 @@ from ..data_obj import (asfactor, isvar, asvar, ascategorial, assub, cellname,
 from ._base import str2tex
 
 
-__hide__ = ['division', 'logging', 'np', 'sp', 'scipy', 'plt', 'mpl',
-            'test', 'isfactor', 'asfactor', 'isvar', 'asvar', 'cellname',
-            'Celltable', 'str2tex']
-
-
-
 defaults = dict(title_kwargs={'size': 14,
                                 'family': 'serif'},
               mono=False,  # use monochrome instead of colors

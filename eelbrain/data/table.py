@@ -10,10 +10,6 @@ from .. import fmtxt
 from .data_obj import (ascategorial, asvar, assub, isfactor, isinteraction,
                        Dataset, Factor, Var, Celltable, cellname, combine)
 
-__hide__ = ['division', 'fmtxt', 'scipy',
-            'asmodel', 'isfactor', 'asfactor', 'isvar', 'Celltable',
-            ]
-
 
 def difference(Y, X, c1, c0, match, by=None, sub=None, ds=None):
     """Subtract data in one cell from another

@@ -105,46 +105,6 @@ class Shell(wx.py.shell.Shell):
 #        wx.py.shell.Shell.__init__(self, *args, **kwargs)
 #        self.exec_mode = 0
 #        self.push('from __future__ import print_function')
-    def autoCompleteShow(self, command, offset=0):
-        """
-        Display auto-completion popup list from wxPython, with an additional
-        mechanism for filtering out unwanted names:
-         - names listed in the object's __hide__ attribute
-
-        """
-        ###### MY ADDITIONAL PRUNING MECHANISM
-        # logging.debug(" AutoComplete for command {c}".format(c=str(command)))
-        ###### MY end
-        self.AutoCompSetAutoHide(self.autoCompleteAutoHide)
-        self.AutoCompSetIgnoreCase(self.autoCompleteCaseInsensitive)
-        options = self.interp.getAutoCompleteList(command,
-                                includeMagic=self.autoCompleteIncludeMagic,
-                                includeSingle=self.autoCompleteIncludeSingle,
-                                includeDouble=self.autoCompleteIncludeDouble)
-        if options:
-            ###### MY ADDITIONAL PRUNING MECHANISM
-            if command.endswith('.'):
-                if ('__hide__' in options):  # or ('__all__' in options):
-                    # strip command preceding module name
-                    for c in _punctuation + ' ':
-                        if c in command:
-                            command = command.split(c)[-1]
-                    # lookup
-                    source = self.Parent.global_namespace
-                    for name in command.split('.'):
-                        if name:
-                            source = source[name].__dict__
-
-                    if '__hide__' in options:
-                        for item in source['__hide__']:
-                            if item in options:
-                                options.remove(item)
-#                    elif '__all__' in options:
-#                        options = sorted(source['__all__'], key=str.lower)
-
-            ###### MY end
-            options = ' '.join(options)
-            self.AutoCompShow(offset, options)
 
     def writeOut(self, message):
         """

@@ -23,11 +23,6 @@ except:
 import _base
 
 
-
-__hide__ = ['mpl_canvas']
-
-
-
 # some useful kwarg dictionaries for different plot layouts
 kwargs_mono = dict(mc='k',
                    lc='.5',
