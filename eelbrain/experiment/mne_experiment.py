@@ -1924,15 +1924,14 @@ class MneExperiment(FileTree):
                    ".epoch_rejection class attribute." % self.get('rej'))
             raise RuntimeError(err)
 
-        ds = self.load_epochs(ndvar=True, add_bads=False, reject=False,
+        ds = self.load_epochs(ndvar=True, reject=False,
                               decim=rej_args.get('decim', 5))
         path = self.get('rej-file', mkdir=True)
 
-        from ..wxgui import MEG
+        from ..gui import SelectEpochs
         mark = rej_args.get('eog_sns', None)
-        bad_chs = self.bad_channels[self.get('raw-key')]
-        MEG.SelectEpochs(ds, data='meg', path=path, mark=mark, bad_chs=bad_chs,
-                         **kwargs)  # nplots, plotsize,
+        SelectEpochs(ds, data='meg', path=path, vlim=2e-12, mark=mark,
+                     **kwargs)
 
     def make_src(self, redo=False):
         """Make the source space
