@@ -344,6 +344,10 @@ def asndvar(Y, sub=None, ds=None):
     elif isinstance(Y, mne.fiff.Evoked):
         from .load.fiff import evoked_ndvar
         Y = evoked_ndvar(Y)
+    elif isinstance(Y, list):
+        item_0 = Y[0]
+        if isinstance(item_0, mne.fiff.Evoked):
+            Y = evoked_ndvar(Y)
 
     if not isndvar(Y):
         raise TypeError("NDVar required")
