@@ -320,6 +320,7 @@ class ttest_1samp:
         self.df = df
         self.name = test_name
         self._samples = samples
+        self.tail = tail
 
         self.y = y
         self.diff = diff
@@ -340,6 +341,8 @@ class ttest_1samp:
 
     def __repr__(self):
         parts = ["<%s against %g, n=%i" % (self.name, self.popmean, self.n)]
+        if self.tail:
+            parts.append(", tail=%i" % self.tail)
         if self._samples is not None:
             if self.clusters is None:
                 parts.append(", no clusters found")
@@ -455,6 +458,7 @@ class ttest_ind:
         self._c0 = c0
         self._c1 = c1
         self._samples = samples
+        self.tail = tail
         self._ct = ct
 
         self.c1 = c1_mean
@@ -480,6 +484,8 @@ class ttest_ind:
             parts.append(", n1=n0=%i" % self.n1)
         else:
             parts.append(", n1=%i, n0=%i" % (self.n1, self.n0))
+        if self.tail:
+            parts.append(", tail=%i" % self.tail)
         if self._samples:
             if self.clusters is None:
                 parts.append(", no clusters found")
@@ -596,6 +602,7 @@ class ttest_rel:
         self._c0 = c0
         self._c1 = c1
         self._samples = samples
+        self.tail = tail
         self._ct = ct
 
         self.c1 = c1_mean
@@ -621,6 +628,8 @@ class ttest_rel:
     def __repr__(self):
         parts = ["<%s %r-%r" % (self.name, self._c1, self._c0)]
         parts.append(", n=%i" % self.n)
+        if self.tail:
+            parts.append(", tail=%i" % self.tail)
         if self._samples:
             if self.clusters is None:
                 parts.append(", no clusters found")
