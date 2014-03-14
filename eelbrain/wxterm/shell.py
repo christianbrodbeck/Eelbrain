@@ -99,12 +99,12 @@ wx.py.introspect.getBaseObject = getBaseObject
 
 # subclass Shell in order to set some custom properties
 class Shell(wx.py.shell.Shell):
-    exec_mode = 0  # counter to determine whether other objects than the shell itself are writing to writeOut
-    has_moved = False  # keeps track whether any entity has written to the shell in exec_mode
-#    def __init__(self, *args, **kwargs): # Leads to recursion crash
-#        wx.py.shell.Shell.__init__(self, *args, **kwargs)
-#        self.exec_mode = 0
-#        self.push('from __future__ import print_function')
+    def __init__(self, *args, **kwargs):  # Leads to recursion crash
+        self.exec_mode = 0  # counter to determine whether other objects than
+        # the shell itself are writing to writeOut
+        self.has_moved = False  # keeps track whether any entity has written
+        # to the shell in exec_mode
+        super(Shell, self).__init__(*args, **kwargs)
 
     def writeOut(self, message):
         """
