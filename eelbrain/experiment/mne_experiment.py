@@ -316,7 +316,6 @@ class MneExperiment(FileTree):
         """
         # create attributes (overwrite class attributes)
         self.groups = self.groups.copy()
-        self.exclude = self.exclude.copy()
         self._mri_subjects = keydefaultdict(lambda k: k)
         self._label_cache = PickleCache()
         self._templates = self._templates.copy()
@@ -669,8 +668,10 @@ class MneExperiment(FileTree):
         ----------
         field : str
             Field for which to find values.
-        exclude : bool
-            Exclude values based on experiment.exclude.
+        exclude : bool | list of values
+            Exclude values. If True, exclude values based on ``self.exclude``.
+            For 'mrisubject', exclusions are done on 'subject'. For 'group',
+            no exclusions are done.
         """
         if field == 'mrisubject':
             subjects = self.get_field_values('subject', exclude=exclude)
@@ -684,13 +685,7 @@ class MneExperiment(FileTree):
             values.extend(self.groups.keys())
             return values
         else:
-            values = list(FileTree.get_field_values(self, field))
-            if exclude:
-                exclude = self.exclude.get(field, None)
-            if exclude:
-                values = [v for v in values if not v in exclude]
-
-        return values
+            return FileTree.get_field_values(self, field, exclude)
 
     def iter(self, fields='subject', group=None, **kwargs):
         """

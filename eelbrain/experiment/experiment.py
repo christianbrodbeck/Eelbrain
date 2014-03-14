@@ -113,9 +113,13 @@ class TreeModel(object):
     _templates = {}
     _defaults = {}
 
+    exclude = {}  # field_values to exclude (e.g. subjects)
+
     _repr_args = ()
     _repr_kwargs = ()
     def __init__(self, **state):
+        self.exclude = self.exclude.copy()
+
         # scaffold for state
         self._fields = LayeredDict()
         self._field_values = LayeredDict()
@@ -353,11 +357,30 @@ class TreeModel(object):
         path = self.format('{%s}' % temp, **state)
         return path
 
-    def get_field_values(self, field):
+    def get_field_values(self, field, exclude=True):
+        """Find values for a field taking into account exclusion
+
+        Parameters
+        ----------
+        field : str
+            Field for which to find values.
+        exclude : bool | list of values
+            Exclude values. If True, exclude values based on ``self.exclude``.
+        """
         values = self._field_values[field]
+        if exclude is True:
+            exclude = self.exclude.get(field, None)
+        elif isinstance(exclude, basestring):
+            exclude = (exclude,)
+
+        if exclude:
+            values = [v for v in values if not v in exclude]
+        else:
+            values = list(values)
+
         return values
 
-    def iter(self, fields, exclude={}, values={}, mail=False, prog=False,
+    def iter(self, fields, exclude=True, values={}, mail=False, prog=False,
              **constants):
         """
         Cycle the experiment's state through all values on the given fields
@@ -366,9 +389,12 @@ class TreeModel(object):
         ----------
         fields : list | str
             Field(s) over which should be iterated.
-        exclude : dict  {str: str, str: iterator over str, ...}
-            Values to exclude from the iteration with {name: value} and/or
-            {name: (sequence of values, )} entries.
+        exclude : bool | dict  {str: bool, str: str, str: iterator over str}
+            Exclude values from iteration. Boolean specifies whether to apply
+            standard exclusion (``self.exclude``). A ``dict`` can be used to
+            customize the exclusion per field with one of {field: bool,
+            field: value, field: (sequence of values, )}. If only some fields
+            are specified in a dict, True is assumed for absent fields.
         values : dict  {str: iterator over str}
             Fields with custom values to iterate over (instead of the
             corresponding field values) with {name: (sequence of values)}
@@ -400,18 +426,17 @@ class TreeModel(object):
 
         # gather possible values to iterate over
         field_values = {}
-        for k in fields:
-            if k in values:
-                field_values[k] = values[k]
+        for field in fields:
+            if field in values:
+                field_values[field] = values[field]
             else:
-                field_values[k] = self.get_field_values(k)
-
-        # exclude values
-        for k in exclude:
-            ex = exclude[k]
-            if isinstance(ex, basestring):
-                ex = (ex,)
-            field_values[k] = [v for v in field_values[k] if not v in ex]
+                if isinstance(exclude, bool):
+                    exclude_ = exclude
+                elif field in exclude:
+                    exclude_ = exclude[field]
+                else:
+                    exclude_ = True
+                field_values[field] = self.get_field_values(field, exclude_)
 
         # pick out the fields to iterate, but drop excluded cases:
         v_lists = []
@@ -448,7 +473,7 @@ class TreeModel(object):
             send_email(mail, "Eelbrain Task Done", "I did as you desired, "
                        "my master.")
 
-    def iter_temp(self, temp, exclude={}, values={}, mail=False, prog=False,
+    def iter_temp(self, temp, exclude=True, values={}, mail=False, prog=False,
                   **constants):
         """
         Iterate through all paths conforming to a template given in ``temp``.
@@ -524,7 +549,7 @@ class TreeModel(object):
                 pass
             elif '*' in state[k]:
                 pass
-            elif state[k] not in self.get_field_values(k):
+            elif state[k] not in self.get_field_values(k, False):
                 err = ("Variable {k!r} has no value {v!r}. In order to "
                        "see valid values use e.list_values(); In order to "
                        "set a non-existent value, use e.set({k!s}={v!r}, "
