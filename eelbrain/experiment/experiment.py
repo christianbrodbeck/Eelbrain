@@ -751,7 +751,7 @@ class FileTree(TreeModel):
                 os.makedirs(dirname)
 
         # make the file
-        if make and not os.path.exists(path) and temp in self._make_handlers:
+        if make and not os.path.exists(path):
             if temp in self._make_handlers:
                 self.store_state()
                 self._make_handlers[temp]()
