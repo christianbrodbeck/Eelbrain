@@ -780,6 +780,8 @@ class FileTree(TreeModel):
             String to display when a given file is present.
         absent : str
             String to display when a given file is absent.
+        others :
+            ``self.iter()`` kwargs.
 
         Examples
         --------
@@ -894,7 +896,7 @@ class FileTree(TreeModel):
         fname = self.get(temp, **kwargs)
         subprocess.call(["open", "-R", fname])
 
-    def push(self, dst_root, names, overwrite=False, **kwargs):
+    def push(self, dst_root, names, overwrite=False, exclude=False, **kwargs):
         """Copy files to another experiment root folder.
 
         Before copying any files the user is asked for confirmation.
@@ -920,7 +922,7 @@ class FileTree(TreeModel):
         # find files
         files = []
         for name in names:
-            for src in self.iter_temp(name, **kwargs):
+            for src in self.iter_temp(name, exclude=exclude, **kwargs):
                 if '*' in src:
                     raise NotImplementedError("Can't fnmatch here yet")
 
@@ -967,9 +969,9 @@ class FileTree(TreeModel):
             else:
                 shutil.copy(src, dst)
 
-    def rename(self, old, new):
+    def rename(self, old, new, exclude=False):
         """
-        Rename a files corresponding to a pattern (or template)
+        Rename files corresponding to a pattern (or template)
 
         Parameters
         ----------
@@ -989,7 +991,7 @@ class FileTree(TreeModel):
         """
         new = self.expand_template(new)
         files = []
-        for old_name in self.iter_temp(old):
+        for old_name in self.iter_temp(old, exclude):
             if '*' in old_name:
                 matches = glob(old_name)
                 if len(matches) == 1:
@@ -1028,7 +1030,7 @@ class FileTree(TreeModel):
                     os.makedirs(dirname)
                 os.rename(old, new)
 
-    def rename_field(self, temp, field, old, new, **kwargs):
+    def rename_field(self, temp, field, old, new, exclude=False, **kwargs):
         """Change the value of one field in paths corresponding to a template
 
         Parameters
@@ -1047,7 +1049,7 @@ class FileTree(TreeModel):
         items = []  # (tag, src, dst)
         kwargs[field] = old
         dst_kwa = {field: new}
-        for src in self.iter_temp(temp, **kwargs):
+        for src in self.iter_temp(temp, exclude, ** kwargs):
             dst = self.get(temp, **dst_kwa)
             if os.path.exists(src):
                 if os.path.exists(dst):
@@ -1087,7 +1089,7 @@ class FileTree(TreeModel):
             os.rename(src, dst)
         print "Done"
 
-    def rm(self, temp, exclude={}, values={}, v=False, **constants):
+    def rm(self, temp, exclude=False, values={}, v=False, **constants):
         """
         Remove all files corresponding to a template
 
@@ -1098,8 +1100,8 @@ class FileTree(TreeModel):
         ----------
         temp : str
             The template.
-        exclude : dict
-            Exclude specific values by field.
+        exclude : bool | dict
+            Exclude specific field values.
         values : dict
             Provide specific values by field.
         v : bool
@@ -1108,8 +1110,7 @@ class FileTree(TreeModel):
             Set fields.
         """
         files = []
-        for fname in self.iter_temp(temp, exclude=exclude, values=values,
-                                    **constants):
+        for fname in self.iter_temp(temp, exclude, values=values, **constants):
             fnames = glob(fname)
             if v:
                 print "%s -> %i" % (fname, len(fnames))
