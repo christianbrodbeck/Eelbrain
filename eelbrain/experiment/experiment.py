@@ -1028,6 +1028,65 @@ class FileTree(TreeModel):
                     os.makedirs(dirname)
                 os.rename(old, new)
 
+    def rename_field(self, temp, field, old, new, **kwargs):
+        """Change the value of one field in paths corresponding to a template
+
+        Parameters
+        ----------
+        temp : str
+            Template name.
+        field : str
+            Field to change.
+        old : str
+            Old value.
+        new : str
+            New value.
+        kwargs :
+            ``self.iter_temp`` arguments.
+        """
+        items = []  # (tag, src, dst)
+        kwargs[field] = old
+        dst_kwa = {field: new}
+        for src in self.iter_temp(temp, **kwargs):
+            dst = self.get(temp, **dst_kwa)
+            if os.path.exists(src):
+                if os.path.exists(dst):
+                    tag = 'o'
+                else:
+                    tag = ' '
+            else:
+                tag = 'm'
+            items.append((tag, src, dst))
+
+        src_prefix = os.path.commonprefix(tuple(item[1] for item in items))
+        dst_prefix = os.path.commonprefix(tuple(item[2] for item in items))
+        src_crop = len(src_prefix)
+        dst_crop = len(dst_prefix)
+
+        # print info
+        if src_prefix == dst_prefix:
+            lines = ['in ' + src_prefix, '']
+        else:
+            lines = [src_prefix, '->' + dst_prefix, '']
+
+        for tag, src, dst in items:
+            lines.append('%s %s -> %s' % (tag, src[src_crop:], dst[dst_crop:]))
+        lines.append('')
+        msg = 'Legend  m: source is missing;  o: will overwite a file'
+        lines.append(msg)
+        print os.linesep.join(lines)
+        rename = tuple(item for item in items if item[0] == ' ')
+        if not rename:
+            return
+
+        msg = "Rename %i files (confirm with 'yes')? " % len(rename)
+        if raw_input(msg) != 'yes':
+            return
+
+        for _, src, dst in rename:
+            os.rename(src, dst)
+        print "Done"
+
     def rm(self, temp, exclude={}, values={}, v=False, **constants):
         """
         Remove all files corresponding to a template
