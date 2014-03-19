@@ -1585,6 +1585,47 @@ class MneExperiment(FileTree):
         info = {'vertices_to': vertices_to, 'morph_matrix': mm}
         save.pickle(info, dst)
 
+    def make_mov_ga_dspm(self, subject=None, surf='inflated', fmin=2,
+                         redo=False, **kwargs):
+        """Make a grand average movie from dSPM values
+
+        Parameters
+        ----------
+        subject : None | str
+            Subject or group.
+        surf : str
+            Surface on which to plot data.
+        fmin : scalar
+            Minimum dSPM value to draw. fmax is 3 * fmin.
+        redo : bool
+            Make the movie even if the target file exists already.
+        others :
+            Experiment state parameters.
+        """
+        kwargs['model'] = ''
+        is_group, group = self._process_subject_arg(subject, kwargs)
+
+        self.set(analysis='{src-kind}',
+                 resname="GA dSPM %s %s" % (surf, fmin),
+                 ext='mov')
+        if is_group:
+            dst = self.get('res-g-file', mkdir=True)
+            src = 'srcm'
+        else:
+            dst = self.get('res-s-file', mkdir=True)
+            src = 'src'
+        if not redo and os.path.exists(dst):
+            return
+
+        is_single_subject = not is_group
+        ds = self.load_evoked_stc(group, (None, 0),
+                                  ind_ndvar=is_single_subject,
+                                  morph_ndvar=is_group)
+
+        brain = plot.brain.dspm(ds[src], fmin, fmin * 3, surf=surf)
+        brain.save_movie(dst)
+        brain.close()
+
     def make_mov_ga(self, subject=None, surf='smoothwm', p0=0.05, redo=False,
                     **kwargs):
         """Make a grand average movie for a subject or group
@@ -1594,9 +1635,16 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        group : None | str
-            Groups (or subject) for which to make the the movie.
-
+        subject : None | str
+            Subject or group.
+        surf : str
+            Surface on which to plot data.
+        p0 : scalar
+            Minimum p value to draw.
+        redo : bool
+            Make the movie even if the target file exists already.
+        others :
+            Experiment state parameters.
         """
         is_group, group = self._process_subject_arg(subject, kwargs)
 
