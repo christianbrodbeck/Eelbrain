@@ -1070,18 +1070,21 @@ class MneExperiment(FileTree):
                             src_baseline)
         return ds
 
-    def load_inv(self, fiff, **kwargs):
+    def load_inv(self, fiff=None, **kwargs):
         """Load the inverse operator
 
         Parameters
         ----------
         fiff : Raw | Epochs | Evoked | ...
             Object for which to make the inverse operator (provides the mne
-            info dictionary).
+            info dictionary). By default, the current raw is used.
         others :
             State parameters.
         """
         self.set(**kwargs)
+
+        if fiff is None:
+            fiff = self.load_raw()
 
         fwd_file = self.get('fwd-file', make=True)
         fwd = mne.read_forward_solution(fwd_file, surf_ori=True)
