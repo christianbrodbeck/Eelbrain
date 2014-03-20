@@ -289,6 +289,24 @@ def asdataobject(Y, sub=None, ds=None):
         Y = Y[sub]
     return Y
 
+def asepochs(y, sub=None, ds=None):
+    "Convert to mne Epochs object"
+    if isinstance(y, str):
+        if ds is None:
+            err = ("Epochs object was specified as string, but no Dataset was "
+                   "specified")
+            raise TypeError(err)
+        y = ds.eval(y)
+
+    if isinstance(y, mne.Epochs):
+        pass
+    else:
+        raise TypeError("Need mne Epochs object, got %s" % repr(y))
+
+    if sub is not None:
+        y = y[sub]
+    return y
+
 def asfactor(Y, sub=None, ds=None):
     if isinstance(Y, str):
         if ds is None:
@@ -3954,7 +3972,8 @@ class Interaction(_Effect):
 
         # determine cells:
         factors = EffectList(filter(isfactor, self.base))
-        self.cells = list(itertools.product(*(f.cells for f in factors)))
+        self.cells = tuple(itertools.product(*(f.cells for f in factors)))
+        self.cell_header = tuple(f.name for f in factors)
 
         # effect coding
         codelist = [f.as_effects for f in self.base]
@@ -5491,7 +5510,7 @@ class SourceSpace(Dimension):
             raise ValueError(err)
 
         src = self.get_source_space()
-        
+
         # find applicable triangles for each hemisphere
         if self.lh_n:
             lh_tris = self._hemi_tris(0, src)
@@ -5587,7 +5606,7 @@ class SourceSpace(Dimension):
 
         idx = np.nonzero(map(label.vertices.__contains__, stc_vertices))[0]
         return idx + base
-    
+
     def get_source_space(self):
         "Read the corresponding MNE source space"
         pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
