@@ -2,7 +2,9 @@ from itertools import izip
 from math import ceil
 
 import numpy as np
+import scipy as sp
 
+import mne
 from mne.label import _n_colors, Label
 from mne.source_space import label_src_vertno_sel
 from mne import minimum_norm as mn
@@ -67,6 +69,82 @@ def labels_from_clusters(clusters, names=None):
         labels.append(label)
 
     return labels
+
+
+def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None):
+    """Morph source estimate between subjects using a precomputed matrix
+
+    Parameters
+    ----------
+    ndvar : NDVar
+        NDVar with SourceSpace dimension.
+    subject_to : string
+        Name of the subject on which to morph.
+    morph_mat : None | sparse matrix
+        The morphing matrix. If ndvar contains a whole source space, the morph
+        matrix can be automatically loaded, although providing a cached matrix
+        can speed up processing by a second or two.
+    vertices_to : None | list of array of int
+        The vertices on the destination subject's brain. If ndvar contains a
+        whole source space, vertices_to can be automatically loaded, although
+        providing them as argument can speed up processing by a second or two.
+
+    Returns
+    -------
+    morphed_ndvar : NDVar
+        NDVar morphed to the destination subject.
+    """
+    src = ndvar.source.src
+    subject_from = ndvar.source.subject
+    subjects_dir = ndvar.source.subjects_dir
+    vertices_from = ndvar.source.vertno
+    if vertices_to is None:
+        path = SourceSpace._src_pattern.format(subjects_dir=subjects_dir,
+                                               subject=subject_to, src=src)
+        src_to = mne.read_source_spaces(path)
+        vertices_to = [src_to[0]['vertno'], src_to[1]['vertno']]
+    elif not isinstance(vertices_to, list) or not len(vertices_to) == 2:
+        raise ValueError('vertices_to must be a list of length 2')
+
+    if morph_mat is None:
+        morph_mat = mne.compute_morph_matrix(subject_from, subject_to,
+                                             vertices_from, vertices_to, None,
+                                             subjects_dir)
+    elif not sp.sparse.issparse(morph_mat):
+        raise ValueError('morph_mat must be a sparse matrix')
+    elif not sum(len(v) for v in vertices_to) == morph_mat.shape[0]:
+        raise ValueError('morph_mat.shape[0] must match number of vertices in '
+                         'vertices_to')
+
+    # flatten data
+    axis = ndvar.get_axis('source')
+    x = ndvar.x
+    if axis != 0:
+        x = x.swapaxes(0, axis)
+    n_sources = len(x)
+    if not n_sources == morph_mat.shape[1]:
+        raise ValueError('ndvar source dimension length must be the same as '
+                         'morph_mat.shape[0]')
+    if ndvar.ndim > 2:
+        shape = x.shape
+        x = x.reshape((n_sources, -1))
+
+    # apply morph matrix
+    x_ = morph_mat * x
+
+    # restore data shape
+    if ndvar.ndim > 2:
+        shape_ = (len(x_),) + shape[1:]
+        x_ = x_.reshape(shape_)
+    if axis != 0:
+        x_ = x_.swapaxes(axis, 0)
+
+    # package output NDVar
+    source = SourceSpace(vertices_to, subject_to, src, subjects_dir)
+    dims = ndvar.dims[:axis] + (source,) + ndvar.dims[axis + 1:]
+    info = ndvar.info.copy()
+    out = NDVar(x_, dims, info, ndvar.name)
+    return out
 
 
 _default_frequencies = list(np.e ** np.arange(2, 3.8, .1))

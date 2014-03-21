@@ -5360,7 +5360,8 @@ class SourceSpace(Dimension):
     """
     name = 'source'
     adjacent = False
-
+    _src_pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
+                                '{subject}-{src}-src.fif')
     def __init__(self, vertno, subject=None, src=None, subjects_dir=None,
                  connectivity=None):
         """Create mne source space dimension.
@@ -5609,10 +5610,8 @@ class SourceSpace(Dimension):
 
     def get_source_space(self):
         "Read the corresponding MNE source space"
-        pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
-                               '{subject}-{src}-src.fif')
-        path = pattern.format(subjects_dir=self.subjects_dir,
-                              subject=self.subject, src=self.src)
+        path = self._src_pattern.format(subjects_dir=self.subjects_dir,
+                                        subject=self.subject, src=self.src)
         src = mne.read_source_spaces(path)
         return src
 
