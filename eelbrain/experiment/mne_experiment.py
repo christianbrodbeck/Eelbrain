@@ -76,7 +76,7 @@ from ..data import load
 from ..data import plot
 from ..data import save
 from ..data import testnd
-from ..data import Dataset, Factor, Var, NDVar, combine
+from ..data import Dataset, Factor, Var, NDVar, combine, source_induced_power
 from ..data.data_obj import isdatalist, UTS, DimensionMismatchError
 from .. import ui
 from ..utils import keydefaultdict
@@ -398,25 +398,24 @@ class MneExperiment(FileTree):
 
         Returns
         -------
-        is_group : bool
-            True if the value specifies a group, False if it specifies a
-            subject.
-        value : str
-            Name of the group or subject.
+        subject : None | str
+            Subject name if the value specifies a subject, None otherwise.
+        group : None | str
+            Group name if the value specifies a group, None otherwise.
         """
         if subject is None:
-            is_group = False
-            value = self.get('subject', **kwargs)
+            group = None
+            subject_ = self.get('subject', **kwargs)
         elif subject in self.get_field_values('group'):
-            is_group = True
-            value = subject
+            group = subject
+            subject_ = None
             self.set(**kwargs)
         else:
-            is_group = False
-            value = subject
+            group = None
+            subject_ = subject
             self.set(subject=subject, **kwargs)
 
-        return is_group, value
+        return subject_, group
 
     def add_epochs_stc(self, ds, src='epochs', dst=None, ndvar=True,
                        baseline=None):
@@ -811,7 +810,7 @@ class MneExperiment(FileTree):
 
     def load_epochs(self, subject=None, baseline=None, ndvar=False,
                     add_bads=True, reject=True, add_proj=True, cat=None,
-                    decim=None, **kwargs):
+                    decim=None, pad=0, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
 
@@ -837,8 +836,8 @@ class MneExperiment(FileTree):
         decim : None | int
             override the epoch decim factor.
         """
-        is_group, group = self._process_subject_arg(subject, kwargs)
-        if is_group:
+        subject, group = self._process_subject_arg(subject, kwargs)
+        if group is not None:
             dss = []
             for _ in self.iter(group=group):
                 ds = self.load_epochs(baseline=baseline, ndvar=False,
@@ -865,6 +864,9 @@ class MneExperiment(FileTree):
             target = 'epochs'
             tmin = epoch['tmin']
             tmax = epoch['tmax']
+            if pad:
+                tmin -= pad
+                tmax += pad
             decim = decim or epoch['decim']
             ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim,
                                           target=target, reject=reject_arg)
@@ -966,8 +968,8 @@ class MneExperiment(FileTree):
         *others* : str
             State parameters.
         """
-        is_group, group = self._process_subject_arg(subject, kwargs)
-        if is_group:
+        subject, group = self._process_subject_arg(subject, kwargs)
+        if group is not None:
             dss = []
             for _ in self.iter(group=group):
                 ds = self.load_evoked(baseline=baseline, ndvar=False, cat=cat)
@@ -1019,6 +1021,46 @@ class MneExperiment(FileTree):
                     ndvar_key = ndvar
                 ds[ndvar_key] = load.fiff.evoked_ndvar(ds[k])
 
+        return ds
+
+    def load_evoked_freq(self, subject=None, sns_baseline=(None, 0),
+                         label=None, frequencies='4:40', **kwargs):
+        """Load frequency space evoked data
+
+        Parameters
+        ----------
+        subject : str
+            Subject or group.
+        sns_baseline : tuple
+            Baseline in sensor space.
+        label : None | str | mne.Label
+            Label in which to compute the induce power (average in label).
+        """
+        subject, group = self._process_subject_arg(subject, kwargs)
+        model = self.get('model') or None
+        if group is not None:
+            dss = []
+            for _ in self.iter(group=group):
+                ds = self.load_evoked_freq(None, sns_baseline, label,
+                                           frequencies)
+                dss.append(ds)
+
+            ds = combine(dss)
+        else:
+            if label is None:
+                src = self.get('src')
+            else:
+                src = 'mean'
+                if isinstance(label, basestring):
+                    label = self.load_label(label)
+            ds_epochs = self.load_epochs(None, sns_baseline, decim=10, pad=0.2)
+            inv = self.load_inv(ds_epochs['epochs'])
+            subjects_dir = self.get('mri-sdir')
+            ds = source_induced_power('epochs', model, ds_epochs, src, label,
+                                      None, inv, subjects_dir, frequencies,
+                                      n_cycles=3,
+                                      **self._params['apply_inv_kw'])
+            ds['subject'] = Factor([subject], rep=ds.n_cases, random=True)
         return ds
 
     def load_evoked_stc(self, subject=None, sns_baseline=None,
@@ -1231,8 +1273,8 @@ class MneExperiment(FileTree):
             index = 'index'
 
         # case of loading events for a group
-        is_group, group = self._process_subject_arg(subject, kwargs)
-        if is_group:
+        subject, group = self._process_subject_arg(subject, kwargs)
+        if group is not None:
             dss = [self.load_selected_events(reject=reject, add_proj=add_proj,
                                              add_bads=add_bads, index=index)
                    for _ in self.iter(group=group)]
@@ -1581,12 +1623,12 @@ class MneExperiment(FileTree):
             Experiment state parameters.
         """
         kwargs['model'] = ''
-        is_group, group = self._process_subject_arg(subject, kwargs)
+        subject, group = self._process_subject_arg(subject, kwargs)
 
         self.set(analysis='{src-kind}',
                  resname="GA dSPM %s %s" % (surf, fmin),
                  ext='mov')
-        if is_group:
+        if group is not None:
             dst = self.get('res-g-file', mkdir=True)
             src = 'srcm'
         else:
@@ -1595,10 +1637,9 @@ class MneExperiment(FileTree):
         if not redo and os.path.exists(dst):
             return
 
-        is_single_subject = not is_group
         ds = self.load_evoked_stc(group, (None, 0),
-                                  ind_ndvar=is_single_subject,
-                                  morph_ndvar=is_group)
+                                  ind_ndvar=subject is not None,
+                                  morph_ndvar=group is not None)
 
         brain = plot.brain.dspm(ds[src], fmin, fmin * 3, surf=surf)
         brain.save_movie(dst)
@@ -1624,7 +1665,7 @@ class MneExperiment(FileTree):
         others :
             Experiment state parameters.
         """
-        is_group, group = self._process_subject_arg(subject, kwargs)
+        subject, group = self._process_subject_arg(subject, kwargs)
 
         if p0 == 0.05:
             p1 = 0.01
@@ -1636,7 +1677,7 @@ class MneExperiment(FileTree):
         self.set(analysis='{src-kind}',
                  resname="GA %s %s" % (surf, p0),
                  ext='mov')
-        if is_group:
+        if group is not None:
             dst = self.get('res-g-file', mkdir=True)
         else:
             dst = self.get('res-s-file', mkdir=True)
@@ -1654,7 +1695,7 @@ class MneExperiment(FileTree):
             raise ValueError("Unknown inv kind: %r" % inv)
 
         self.set(model='')
-        if is_group:
+        if group is not None:
             ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
                                       morph_ndvar=True)
             src = 'srcm'
@@ -1686,7 +1727,7 @@ class MneExperiment(FileTree):
         subject : str (state)
             Group name, or subject name for single subject ttest.
         """
-        is_group, group = self._process_subject_arg(subject, kwargs)
+        subject, group = self._process_subject_arg(subject, kwargs)
 
         if p0 == 0.05:
             p1 = 0.01
@@ -1698,7 +1739,7 @@ class MneExperiment(FileTree):
         self.set(analysis='{src-kind}',
                  resname="T-Test %s-%s %s %s" % (str(c1), str(c0), surf, p0),
                  ext='mov')
-        if is_group:
+        if group is not None:
             dst = self.get('res-g-file', mkdir=True)
         else:
             dst = self.get('res-s-file', mkdir=True)
@@ -1708,7 +1749,7 @@ class MneExperiment(FileTree):
         sns_baseline = (None, 0)
         src_baseline = None
 
-        if is_group:
+        if group is not None:
             ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
                                       morph_ndvar=True, cat=(c1, c0), model=x)
             res = testnd.ttest_rel('srcm', x, c1, c0, match='subject', ds=ds)

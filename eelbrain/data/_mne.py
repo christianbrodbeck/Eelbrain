@@ -1,5 +1,6 @@
 from itertools import izip
-from math import ceil
+from math import ceil, log
+import re
 
 import numpy as np
 import scipy as sp
@@ -147,11 +148,9 @@ def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None):
     return out
 
 
-_default_frequencies = list(np.e ** np.arange(2, 3.8, .1))
-
 def source_induced_power(epochs='epochs', x=None, ds=None, src='ico-4',
                          label=None, sub=None, inv=None, subjects_dir=None,
-                         frequencies=_default_frequencies, *args, **kwargs):
+                         frequencies='4:40:0.1', *args, **kwargs):
     """Compute source induced power and phase locking from mne Epochs
 
     Parameters
@@ -176,8 +175,9 @@ def source_induced_power(epochs='epochs', x=None, ds=None, src='ico-4',
         ``ds.info['inv']``.
     subjects_dir : str
         subjects_dir.
-    frequencies : array
-        Array of frequencies of interest.
+    frequencies : str | array_like
+        Array of frequencies of interest. A 'low:high' string is interpreted as
+        logarithmically increasing range.
     lambda2 : float
         The regularization parameter of the minimum norm.
     method : "MNE" | "dSPM" | "sLORETA"
@@ -239,6 +239,18 @@ def source_induced_power(epochs='epochs', x=None, ds=None, src='ico-4',
     else:
         vertices, _ = label_src_vertno_sel(label, inv['src'])
 
+    # find frequencies
+    if isinstance(frequencies, basestring):
+        m = re.match("(\d+):(\d+):([\d.]+)", frequencies)
+        if not m:
+            raise ValueError("Invalid frequencies parameter: %r" % frequencies)
+        low = log(float(m.group(1)))
+        high = log(float(m.group(2)))
+        step = float(m.group(3))
+        frequencies = np.e ** np.arange(low, high, step)
+    else:
+        frequencies = np.asarray(frequencies)
+
     # prepare output dimensions
     frequency = Ordered('frequency', frequencies, 'Hz')
     if len(args) >= 5:
@@ -257,28 +269,28 @@ def source_induced_power(epochs='epochs', x=None, ds=None, src='ico-4',
         dims = (frequency, time)
 
     if x is None:
-        p, pl = mn.source_induced_power(epochs, inv, frequencies, label,
-                                        *args, **kwargs)
-        if src_fun is not None:
-            p = src_fun(p, axis=0)
-            pl = src_fun(pl, axis=0)
+        cells = (None,)
     else:
-        shape = (len(x.cells),) + tuple(len(dim) for dim in dims)
-        dims = ('case',) + dims
-        p = np.empty(shape)
-        pl = np.empty(shape)
-        x_ = []
-        for i, cell in enumerate(x.cells):
+        cells = x.cells
+    shape = (len(cells),) + tuple(len(dim) for dim in dims)
+    dims = ('case',) + dims
+    p = np.empty(shape)
+    pl = np.empty(shape)
+    for i, cell in enumerate(cells):
+        if cell is None:
+            epochs_ = epochs
+        else:
             idx = (x == cell)
             epochs_ = epochs[idx]
-            p_, pl_ = mn.source_induced_power(epochs_, inv, frequencies,
-                                              label, *args, **kwargs)
-            if src_fun is not None:
-                p_ = src_fun(p_, axis=0)
-                pl_ = src_fun(pl_, axis=0)
+
+        p_, pl_ = mn.source_induced_power(epochs_, inv, frequencies, label,
+                                          *args, **kwargs)
+        if src_fun is None:
             p[i] = p_
             pl[i] = pl_
-            x_.append(cell)
+        else:
+            src_fun(p_, axis=0, out=p[i])
+            src_fun(pl_, axis=0, out=pl[i])
 
     out = Dataset()
     out['power'] = NDVar(p, dims)
@@ -286,10 +298,10 @@ def source_induced_power(epochs='epochs', x=None, ds=None, src='ico-4',
     if x is None:
         pass
     elif isfactor(x):
-        out[x.name] = Factor(x_)
+        out[x.name] = Factor(cells)
     elif isinteraction(x):
-        for i, name in x.cell_header:
-            out[name] = Factor((cell[i] for cell in x_))
+        for i, name in enumerate(x.cell_header):
+            out[name] = Factor((cell[i] for cell in cells))
     else:
         raise TypeError("x=%s" % repr(x))
     return out
