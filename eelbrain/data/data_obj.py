@@ -24,6 +24,8 @@ from __future__ import division
 
 import collections
 import itertools
+from itertools import izip
+from math import ceil, log10
 import cPickle as pickle
 import operator
 import os
@@ -2432,7 +2434,7 @@ class NDVar(object):
             dims = [(self._len, 'case')]
         else:
             dims = []
-        dims.extend([(len(dim), dim._dimrepr_()) for dim in self._truedims])
+        dims.extend([(len(dim), dim.name) for dim in self._truedims])
 
         dims = ' X '.join('%i (%s)' % fmt for fmt in dims)
         args = dict(dims=dims, name=self.name or '')
@@ -2554,6 +2556,40 @@ class NDVar(object):
         info = self.info.copy()
         return self.__class__(x, dims=self.dims, name=name,
                               info=info)
+
+    def diminfo(self, str_out=False):
+        """Information about the dimensions
+
+        Parameters
+        ----------
+        str_out : bool
+            Return a string with the information (as opposed to the default
+            which is to print the information).
+
+        Returns
+        -------
+        info : None | str
+            If str_out is True, the dimension description as str.
+        """
+        ns = []
+        dim_info = ["<NDVar %r" % self.name]
+        if self.has_case:
+            ns.append(len(self))
+            dim_info.append("cases")
+
+        for dim in self._truedims:
+            ns.append(len(dim))
+            dim_info.append(dim._diminfo())
+        dim_info[-1] += '>'
+
+        n_digits = int(max(ceil(log10(n)) for n in ns))
+
+        info = '\n '.join('{:{}d} {:s}'.format(n, n_digits, desc) for n, desc
+                          in izip(ns, dim_info))
+        if str_out:
+            return info
+        else:
+            print info
 
     def get_axis(self, name):
         if self.has_dim(name):
@@ -4632,7 +4668,8 @@ class Dimension(object):
         """
         raise NotImplementedError
 
-    def _dimrepr_(self):
+    def _diminfo(self):
+        "Return a str describing the dimension in on line (79 chars)"
         return str(self.name)
 
     def dimindex(self, arg):
@@ -4711,11 +4748,6 @@ class Scalar(Dimension):
             args.append(repr(self.unit))
         return "%s(%s)" % (self.__class__.__name__, ', '.join(args))
 
-    def _dimrepr_(self):
-        values = str(list(self.values))
-        r = '%r: %s' % (self.name, values)
-        return r
-
     def __len__(self):
         return len(self.values)
 
@@ -4744,6 +4776,9 @@ class Scalar(Dimension):
         else:
             arg = [self.dimindex(a) for a in arg]
         return arg
+
+    def _diminfo(self):
+        return "%s" % self.name.capitalize()
 
     def intersect(self, dim, check_dims=False):
         """Create a dimension object that is the intersection with dim
@@ -4788,6 +4823,12 @@ class Ordered(Scalar):
         else:
             arg = super(Ordered, self).dimindex(arg)
         return arg
+
+    def _diminfo(self):
+        name = self.name.capitalize(),
+        vmin = self.x.min()
+        vmax = self.x.max()
+        return "%s [%s, %s]" % (name, vmin, vmax)
 
 
 class Sensor(Dimension):
@@ -5499,6 +5540,9 @@ class SourceSpace(Dimension):
 
         return ds
 
+    def _diminfo(self):
+        return "Source Space (MNE) %i in lh, %i in rh" % (self.lh_n, self.rh_n)
+
     def connectivity(self):
         "Create source space connectivity"
         if self._connectivity is not None:
@@ -5730,11 +5774,12 @@ class UTS(Dimension):
     def __repr__(self):
         return "UTS(%s, %s, %s)" % (self.tmin, self.tstep, self.nsamples)
 
-    def _dimrepr_(self):
-        tmax = self.times[-1]
+    def _diminfo(self):
+        name = self.name.capitalize()
+        tmax = self.times[-1] + self.tstep
         sfreq = 1. / self.tstep
-        r = '%r: %.3f - %.3f s, %s Hz' % (self.name, self.tmin, tmax, sfreq)
-        return r
+        info = '%s %.3f - %.3f s, %s Hz' % (name, self.tmin, tmax, sfreq)
+        return info
 
     def __len__(self):
         return len(self.times)
