@@ -1317,7 +1317,7 @@ class MneExperiment(FileTree):
 
     def load_src(self, add_geom=False, **state):
         "Load the current source space"
-        fpath = self.get('src-file', **state)
+        fpath = self.get('src-file', make=True, **state)
         src = mne.read_source_spaces(fpath, add_geom)
         return src
 
@@ -1975,8 +1975,10 @@ class MneExperiment(FileTree):
                 self.run_subp(cmd, workers=0)
             else:
                 spacing = kind + param
-                mne.setup_source_space(subject, spacing=spacing,
-                                       subjects_dir=subjects_dir)
+                src = mne.setup_source_space(subject, None, spacing=spacing,
+                                             subjects_dir=subjects_dir)
+                mne.add_source_space_distances(src)
+                src.save(dst)
 
     def makeplt_coreg(self, redo=False, **kwargs):
         """
