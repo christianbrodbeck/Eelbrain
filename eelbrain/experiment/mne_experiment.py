@@ -152,10 +152,6 @@ temp = {
         'evoked-file': os.path.join('{evoked-dir}', '{experiment}_{raw}_'
                                     '{proj}_{epoch}-{rej}_{model}.pickled'),
 
-        # Source space
-        'morph-file' : os.path.join('{bem-dir}',
-                                    '{common_brain}-{src}-morph.pickled'),
-
         # Labels
         'parc': ('aparc.a2005s', 'aparc.a2009s', 'aparc', 'PALS_B12_Brodmann',
                  'PALS_B12_Lobes', 'PALS_B12_OrbitoFrontal',
@@ -370,7 +366,6 @@ class MneExperiment(FileTree):
         self._bind_make('cov-file', self.make_cov)
         self._bind_make('src-file', self.make_src)
         self._bind_make('fwd-file', self.make_fwd)
-        self._bind_make('morph-file', self.make_morph_matrix)
         self._bind_make('label-file', self.make_labels)
 
         # set initial values
@@ -546,7 +541,7 @@ class MneExperiment(FileTree):
 
         # convert evoked objects
         mri_sdir = self.get('mri-sdir')
-        mm = {}
+        mms = {}
         for case in ds.itercases():
             subject = case['subject']
             subject_from = from_subjects[subject]
@@ -574,15 +569,13 @@ class MneExperiment(FileTree):
 
                 if collect_morphed_stcs:
                     if subject_from != common_brain:
-                        if subject_from in mm:
-                            v_to, morph_mat = mm[subject_from]
+                        if subject_from in mms:
+                            v_to, mm = mms[subject_from]
                         else:
-                            info = self.load_morph_matrix()
-                            v_to = info['vertices_to']
-                            morph_mat = info['morph_matrix']
-                            mm[subject_from] = (v_to, morph_mat)
+                            mm, v_to = self.load_morph_matrix()
+                            mms[subject_from] = (v_to, mm)
                         stc = mne.morph_data_precomputed(subject_from, subject,
-                                                         stc, v_to, morph_mat)
+                                                         stc, v_to, mm)
                     mstcs[name].append(stc)
 
         # add to Dataset
@@ -1139,9 +1132,28 @@ class MneExperiment(FileTree):
         return labels
 
     def load_morph_matrix(self, **state):
-        fpath = self.get('morph-file', make=True, **state)
-        mm = load.unpickle(fpath)
-        return mm
+        """Load the morph matrix from mrisubject to common_brain
+
+        Returns
+        -------
+        mm :
+            Morph matrix.
+        vertices_to : array
+            Vertices of the morphed data.
+        """
+        subjects_dir = self.get('mri-sdir', **state)
+        subject_to = self.get('common_brain')
+        subject_from = self.get('mrisubject')
+
+        src_to = self.load_src(mrisubject=subject_to, match=False)
+        src_from = self.load_src(mrisubject=subject_from, match=False)
+
+        vertices_to = [src_to[0]['vertno'], src_to[1]['vertno']]
+        vertices_from = [src_from[0]['vertno'], src_from[1]['vertno']]
+
+        mm = mne.compute_morph_matrix(subject_from, subject_to, vertices_from,
+                                      vertices_to, None, subjects_dir)
+        return mm, vertices_to
 
     def load_raw(self, add_proj=True, add_bads=True, preload=False, **kwargs):
         """
@@ -1550,43 +1562,6 @@ class MneExperiment(FileTree):
 
         src_path = self.get(temp, **{field: src})
         os.link(src_path, dst_path)
-
-    def make_morph_map(self, redo=False, workers=2):
-        """Run the mne_make_morph_map utility
-
-        Parameters
-        ----------
-        redo : bool
-            Redo existing files.
-        workers : int
-            See :meth:`.run_subp()`
-        """
-        cmd = ["mne_make_morph_maps",
-               '--to', self.get('common_brain'),
-               '--from', self.get('mrisubject')]
-
-        if redo:
-            cmd.appen('--redo')
-
-        self.run_subp(cmd, workers=workers)
-
-    def make_morph_matrix(self, redo=False):
-        dst = self.get('morph-file')
-        if not redo and os.path.exists(dst):
-            return
-
-        subject_from = self.get('mrisubject')
-        subject_to = self.get('common_brain')
-        src_to = self.load_src(mrisubject=subject_to, match=False)
-        src_from = self.load_src(mrisubject=subject_from)
-        vertices_from = [src_from[0]['vertno'], src_from[1]['vertno']]
-        vertices_to = [src_to[0]['vertno'], src_to[1]['vertno']]
-
-        subjects_dir = self.get('mri-sdir')
-        mm = mne.compute_morph_matrix(subject_from, subject_to, vertices_from,
-                                      vertices_to, None, subjects_dir)
-        info = {'vertices_to': vertices_to, 'morph_matrix': mm}
-        save.pickle(info, dst)
 
     def make_mov_ga_dspm(self, subject=None, surf='inflated', fmin=2,
                          redo=False, **kwargs):
