@@ -4766,16 +4766,12 @@ class Scalar(Dimension):
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
             s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
-            arg = s_idx[np.argsort(a_idx)]
+            idx = s_idx[np.argsort(a_idx)]
         elif np.isscalar(arg):
-            nz = np.nonzero(self.values == arg)[0]
-            if len(nz):
-                arg = nz[0]
-            else:
-                raise ValueError("%s has no value %s" % (self.name, arg))
+            idx = np.argmin(np.abs(self.values - arg))
         else:
-            arg = [self.dimindex(a) for a in arg]
-        return arg
+            idx = np.unique(tuple(self.dimindex(a) for a in arg))
+        return idx
 
     def _diminfo(self):
         return "%s" % self.name.capitalize()
@@ -4819,10 +4815,10 @@ class Ordered(Scalar):
     def dimindex(self, arg):
         if isinstance(arg, tuple):
             start, stop = arg
-            arg = np.logical_and(self.values >= start, self.values < stop)
+            idx = np.logical_and(self.values >= start, self.values < stop)
         else:
-            arg = super(Ordered, self).dimindex(arg)
-        return arg
+            idx = super(Ordered, self).dimindex(arg)
+        return idx
 
     def _diminfo(self):
         name = self.name.capitalize(),
