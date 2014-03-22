@@ -4624,7 +4624,7 @@ def find_time_point(times, time, rnd='closest'):
         if rnd == 'down':
             return i_prev, t_prev
         elif rnd != 'closest':
-            raise ValueError("Invalid argument snap=%r" % snap)
+            raise ValueError("Invalid argument rnd=%r" % rnd)
 
         if (t_next - time) < (time - t_prev):
             i = i_next
