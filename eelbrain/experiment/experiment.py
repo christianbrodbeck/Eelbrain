@@ -756,6 +756,8 @@ class FileTree(TreeModel):
                 self.store_state()
                 self._make_handlers[temp]()
                 self.restore_state()
+            elif temp.endswith('-dir'):
+                os.makedirs(path)
             else:
                 raise RuntimeError("No make handler for %r." % temp)
 

@@ -1346,6 +1346,7 @@ class MneExperiment(FileTree):
                     self.make_copy('annot-file', 'mrisubject', common_brain,
                                    mrisubject)
             else:
+                label_dir = self.get('label-dir', make=True)
                 for hemi in ('lh', 'rh'):
                     cmd = ["mri_surf2surf", "--srcsubject", common_brain,
                            "--trgsubject", mrisubject, "--sval-annot", parc,
