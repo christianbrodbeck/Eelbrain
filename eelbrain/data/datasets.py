@@ -14,8 +14,8 @@ from .design import permute
 
 
 def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
-                   inv=False, src=False, sub="modality=='A'", fixed=False,
-                   snr=2, method='dSPM'):
+                   src=None, sub="modality=='A'", fixed=False, snr=2,
+                   method='dSPM'):
     """Load events and epochs from the MNE sample data
 
     Parameters
@@ -24,10 +24,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
         Epoch parameters.
     sns : bool
         Add sensor space data as NDVar as ``ds['sns']``.
-    inv : bool
-        Add the inverse operator as ``ds.info['inv']`` even when not adding
-        source estimates.
-    src : bool
+    src : None | 'ico' | 'vol'
         Add source space data as NDVar as ``ds['src']``.
     sub : str | None
         Expresion for subset of events to load.
@@ -73,35 +70,47 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     if sns:
         ds['sns'] = load.fiff.epochs_ndvar(ds['epochs'])
 
-    if inv or src:
-        bem_dir = os.path.join(subjects_dir, subject, 'bem')
-        trans_file = os.path.join(meg_dir, 'sample_audvis_raw-trans.fif')
-        bem_file = os.path.join(bem_dir, 'sample-5120-5120-5120-bem-sol.fif')
-        src_file = os.path.join(bem_dir, 'sample-ico-4-src.fif')
-        fwd_file = os.path.join(meg_dir, 'sample-ico-4-fwd.fif')
+    if not src:
+        return ds
 
-        epochs = ds['epochs']
-        if os.path.exists(fwd_file):
-            fwd = mne.read_forward_solution(fwd_file)
-        else:
-            if os.path.exists(src_file):
-                src_ = src_file
-            else:
-                src_ = mne.setup_source_space(subject, src_file, 'ico4',
-                                              subjects_dir=subjects_dir)
+    bem_dir = os.path.join(subjects_dir, subject, 'bem')
+    bem_file = os.path.join(bem_dir, 'sample-5120-5120-5120-bem-sol.fif')
+    trans_file = os.path.join(meg_dir, 'sample_audvis_raw-trans.fif')
+    epochs = ds['epochs']
+    if src == 'ico':
+        src_tag = 'ico-4'
+    elif src == 'vol':
+        src_tag = 'vol-10'
+    else:
+        raise ValueError("src = %r" % src)
 
-            fwd = mne.make_forward_solution(epochs.info, trans_file, src_,
-                                            bem_file, fwd_file)
+    fwd_file = os.path.join(meg_dir, 'sample-%s-fwd.fif' % src_tag)
+    if os.path.exists(fwd_file):
+        fwd = mne.read_forward_solution(fwd_file)
+    else:
+        src_file = os.path.join(bem_dir, 'sample-%s-src.fif' % src_tag)
+        if os.path.exists(src_file):
+            src_ = src_file
+        elif src == 'ico':
+            src_ = mne.setup_source_space(subject, src_file, 'ico4',
+                                          subjects_dir=subjects_dir)
+        elif src == 'vol':
+            mri_file = os.path.join(subjects_dir, subject, 'mri', 'orig.mgz')
+            src_ = mne.setup_volume_source_space(subject, src_file, pos=10.,
+                                                 mri=mri_file, bem=bem_file,
+                                                 mindist=0., exclude=0.,
+                                                 subjects_dir=subjects_dir)
+        fwd = mne.make_forward_solution(epochs.info, trans_file, src_,
+                                        bem_file, fwd_file)
 
-        cov_file = os.path.join(meg_dir, 'sample_audvis-cov.fif')
-        cov = mne.read_cov(cov_file)
-        inv = mn.make_inverse_operator(epochs.info, fwd, cov, None, None,
-                                       fixed)
-        ds.info['inv'] = inv
+    cov_file = os.path.join(meg_dir, 'sample_audvis-cov.fif')
+    cov = mne.read_cov(cov_file)
+    inv = mn.make_inverse_operator(epochs.info, fwd, cov, None, None,
+                                   fixed)
+    ds.info['inv'] = inv
 
-    if src:
-        stcs = mn.apply_inverse_epochs(epochs, inv, 1. / (snr ** 2), method)
-        ds['src'] = load.fiff.stc_ndvar(stcs, subject, 'ico-4', subjects_dir)
+    stcs = mn.apply_inverse_epochs(epochs, inv, 1. / (snr ** 2), method)
+    ds['src'] = load.fiff.stc_ndvar(stcs, subject, src_tag, subjects_dir)
 
     return ds
 

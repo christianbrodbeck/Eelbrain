@@ -135,6 +135,7 @@ temp = {
         'proj-file': '{raw-base}_{proj}-proj.fif',
         'proj-plot': '{raw-base}_{proj}-proj.pdf',
         'cov-file': '{raw-base}_{cov}-{cov-rej}-{proj}-cov.fif',
+        'mri-file': os.path.join('{mri-dir}', 'mri', 'orig.mgz'),
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
         'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
@@ -358,7 +359,7 @@ class MneExperiment(FileTree):
         self._register_value('inv', 'free-3-dSPM',
                              set_handler=self._set_inv_as_str)
         self._register_value('model', '', eval_handler=self._eval_model)
-        self._register_field('src', ('ico-4', 'vol-10', 'vol-7'))
+        self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
 
         # Define make handlers
         self._bind_make('evoked-file', self.make_evoked)
@@ -1390,7 +1391,7 @@ class MneExperiment(FileTree):
                     self.make_copy('annot-file', 'mrisubject', common_brain,
                                    mrisubject)
             else:
-                label_dir = self.get('label-dir', make=True)
+                self.get('label-dir', make=True)
                 for hemi in ('lh', 'rh'):
                     cmd = ["mri_surf2surf", "--srcsubject", common_brain,
                            "--trgsubject", mrisubject, "--sval-annot", parc,
@@ -2012,12 +2013,12 @@ class MneExperiment(FileTree):
             mne.scale_source_space(subject, src, subjects_dir=subjects_dir)
         else:
             if kind == 'vol':
-                cmd = ['mne_volume_source_space',
-                       '--bem', self.get('bem-file'),
-                       '--grid', param,
-                       '--all',
-                       '--src', dst]
-                self.run_subp(cmd, workers=0)
+                mri = self.get('mri-file')
+                bem = self.get('bem-file')
+                mne.setup_volume_source_space(subject, dst, pos=float(param),
+                                              mri=mri, bem=bem, mindist=0.,
+                                              exclude=0.,
+                                              subjects_dir=subjects_dir)
             else:
                 spacing = kind + param
                 src = mne.setup_source_space(subject, None, spacing=spacing,

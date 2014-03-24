@@ -40,7 +40,7 @@ import scipy.stats
 from scipy.linalg import inv
 from scipy.optimize import leastsq
 from scipy.sparse import coo_matrix
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import cdist, pdist, squareform
 
 from .. import fmtxt
 from .. import ui
@@ -5426,16 +5426,18 @@ class SourceSpace(Dimension):
             raise ValueError("Unrecognized src value %r" % src)
 
         self.vertno = vertno
-        self.lh_vertno = vertno[0]
-        self.rh_vertno = vertno[1]
-        self.lh_n = len(self.lh_vertno)
-        self.rh_n = len(self.rh_vertno)
         self.subject = subject
         self.src = src
         self.kind = kind
         self.grade = grade
         self.subjects_dir = subjects_dir
         self._connectivity = connectivity
+        self._n_vert = sum(len(v) for v in vertno)
+        if kind == 'ico':
+            self.lh_vertno = vertno[0]
+            self.rh_vertno = vertno[1]
+            self.lh_n = len(self.lh_vertno)
+            self.rh_n = len(self.rh_vertno)
 
     def __getstate__(self):
         state = {'vertno': self.vertno, 'subject': self.subject,
@@ -5450,18 +5452,18 @@ class SourceSpace(Dimension):
         self.__init__(vertno, subject, src, subjects_dir)
 
     def __repr__(self):
-        return "<dim SourceSpace: %i (lh), %i (rh)>" % (self.lh_n, self.rh_n)
+        ns = ', '.join(str(len(v)) for v in self.vertno)
+        return "<SourceSpace [%s], %r, %r>" % (ns, self.subject, self.src)
 
     def __len__(self):
-        return self.lh_n + self.rh_n
+        return self._n_vert
 
     def __eq__(self, other):
         is_equal = (Dimension.__eq__(self, other)
                     and self.subject == other.subject
-                    and self.lh_n == other.lh_n
-                    and self.rh_n == other.rh_n
-                    and np.array_equal(self.lh_vertno, other.lh_vertno)
-                    and np.array_equal(self.rh_vertno, other.rh_vertno))
+                    and len(self) == len(other)
+                    and all(np.array_equal(s, o) for s, o in
+                            izip(self.vertno, other.vertno)))
         return is_equal
 
     def __getitem__(self, index):
@@ -5485,14 +5487,19 @@ class SourceSpace(Dimension):
             else:
                 connectivity = None
 
+        # apply index to combined vertices
         vert = np.hstack(self.vertno)
-        hemi = np.zeros(len(vert))
-        hemi[self.lh_n:] = 1
+        space_i = np.empty_like(vert, dtype=np.uint8)
+        i0 = 0
+        for i, space in enumerate(self.vertno):
+            i1 = i0 + len(space)
+            space_i[i0:i1] = i
+            i0 = i1
 
         vert = vert[index]
-        hemi = hemi[index]
+        space_i = space_i[index]
 
-        new_vert = (vert[hemi == 0], vert[hemi == 1])
+        new_vert = [vert[space_i == i] for i in xrange(len(self.vertno))]
         dim = SourceSpace(new_vert, self.subject, self.src, self.subjects_dir,
                           connectivity)
         return dim
@@ -5521,6 +5528,9 @@ class SourceSpace(Dimension):
         n_sources = np.sum(x, 1)
         ds['n_sources'] = Var(n_sources)
 
+        if self.kind == 'vol':
+            return ds
+
         # hemi
         hemis = []
         for x_ in x:
@@ -5537,7 +5547,8 @@ class SourceSpace(Dimension):
         return ds
 
     def _diminfo(self):
-        return "Source Space (MNE) %i in lh, %i in rh" % (self.lh_n, self.rh_n)
+        ns = ', '.join(str(len(v)) for v in self.vertno)
+        return "SourceSpace (MNE) [%s], %r, %r>" % (ns, self.subject, self.src)
 
     def connectivity(self):
         "Create source space connectivity"
@@ -5552,23 +5563,38 @@ class SourceSpace(Dimension):
 
         src = self.get_source_space()
 
-        # find applicable triangles for each hemisphere
-        if self.lh_n:
-            lh_tris = self._hemi_tris(0, src)
-        if self.rh_n:
-            rh_tris = self._hemi_tris(1, src)
-
-        # combine applicable triangles
-        if self.lh_n and self.rh_n:
-            rh_tris += self.lh_n
-            tris = np.vstack((lh_tris, rh_tris))
-        elif self.lh_n:
-            tris = lh_tris
+        if self.kind == 'vol':
+            vertno = self.vertno[0]
+            s = src[0]
+            n = len(self)
+            coords = s['rr'][vertno]
+            dist = pdist(coords)
+            sf = squareform(dist)
+            row, col = np.where(sf < 0.011)
+            idx = row != col
+            row = row[idx]
+            col = col[idx]
+            data = np.ones(col.shape)
+            c = coo_matrix((data, (row, col)), shape=(n, n))
         else:
-            tris = rh_tris
+            # find applicable triangles for each hemisphere
+            if self.lh_n:
+                lh_tris = self._hemi_tris(0, src)
+            if self.rh_n:
+                rh_tris = self._hemi_tris(1, src)
 
-        # connectivity
-        c = mne.spatial_tris_connectivity(tris)
+            # combine applicable triangles
+            if self.lh_n and self.rh_n:
+                rh_tris += self.lh_n
+                tris = np.vstack((lh_tris, rh_tris))
+            elif self.lh_n:
+                tris = lh_tris
+            else:
+                tris = rh_tris
+
+            # connectivity
+            c = mne.spatial_tris_connectivity(tris)
+
         self._connectivity = c
         return c
 
@@ -5609,6 +5635,35 @@ class SourceSpace(Dimension):
             tris = flat_tris.reshape(tris.shape)
         return tris
 
+    def circular_index(self, seeds, extent=0.05, name="globe"):
+        """Returns an index into all vertices within extent of seed
+
+        Parameters
+        ----------
+        seeds : array_like, (3,) | (n, 3)
+            Seed location(s) around which to build index.
+        extent :
+
+        Returns
+        -------
+        roi : NDVar, ('source',)
+            Index into the spherical area around seeds.
+        """
+        seeds = np.atleast_2d(seeds)
+        dist = cdist(self.coordinates, seeds)
+        mindist = np.min(dist, 1)
+        x = mindist < extent
+        dims = (self,)
+        info = {'seeds': seeds, 'extent': extent}
+        return NDVar(x, dims, info, name)
+
+    @LazyProperty
+    def coordinates(self):
+        sss = self.get_source_space()
+        coords = (ss['rr'][v] for ss, v in izip(sss, self.vertno))
+        coords = np.vstack(coords)
+        return coords
+
     def dimindex(self, obj):
         if isinstance(obj, (mne.Label, mne.label.BiHemiLabel)):
             return self.label_index(obj)
@@ -5626,13 +5681,13 @@ class SourceSpace(Dimension):
             else:
                 raise IndexError('%r' % obj)
         elif isinstance(obj, SourceSpace):
-            if (np.array_equal(self.lh_vertno, obj.lh_vertno) and
-                np.array_equal(self.rh_vertno, obj.rh_vertno)):
+            sv = self.vertno
+            ov = obj.vertno
+            if all(np.array_equal(s, o) for s, o in izip(sv, ov)):
                 return slice(None)
             else:
-                lh_index = np.in1d(self.lh_vertno, obj.lh_vertno, True)
-                rh_index = np.in1d(self.rh_vertno, obj.rh_vertno, True)
-                index = np.hstack((lh_index, rh_index))
+                idxs = tuple(np.in1d(s, o, True) for s, o in izip(sv, ov))
+                index = np.hstack(idxs)
                 return index
         else:
             return obj
@@ -5677,9 +5732,9 @@ class SourceSpace(Dimension):
             raise ValueError("Different src")
         elif self.subjects_dir != other.subjects_dir:
             raise ValueError("Different subjects_dir")
-        lh = np.intersect1d(self.lh_vertno, other.lh_vertno, True)
-        rh = np.intersect1d(self.rh_vertno, other.rh_vertno, True)
-        out = SourceSpace([lh, rh], self.subject, self.src, self.subjects_dir)
+        vertno = [np.intersect1d(s, o, True) for s, o in
+                  izip(self.vertno, other.vertno)]
+        out = SourceSpace(vertno, self.subject, self.src, self.subjects_dir)
         return out
 
     def label_index(self, label):

@@ -15,7 +15,7 @@ from __future__ import division
 
 import numpy as np
 
-from ..data_obj import asndvar
+from ..data_obj import asndvar, NDVar
 from .. import testnd
 
 
@@ -24,6 +24,14 @@ __all__ = ['activation', 'dspm', 'surfer_brain', 'stat']
 
 def _idx(i):
     return int(round(i))
+
+
+def _plot(data, lut, vmin, vmax, *args, **kwargs):
+    "Plot depending on source space kind"
+    if data.source.kind == 'vol':
+        return _voxel_brain(data, lut, vmin, vmax, *args, **kwargs)
+    else:
+        return surfer_brain(data, lut, vmin, vmax, *args, **kwargs)
 
 
 def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
@@ -60,7 +68,7 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     if fmid is None:
         fmid = (fmax + fmin) / 2
     lut = _dspm_lut(fmin, fmid, fmax)
-    return surfer_brain(src, lut, -fmax, fmax, *args, **kwargs)
+    return _plot(src, lut, -fmax, fmax, *args, **kwargs)
 
 
 def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, dtmin=0.01,
@@ -102,8 +110,7 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, dtmin=0.01,
         p_map = testnd.clean_time_axis(p_map, dtmin, below=p0, null=1)
 
     pmap, lut, vmax = _p_lut(p_map, param_map, p0=p0, p1=p1, solid=solid)
-    brain = surfer_brain(pmap, lut, -vmax, vmax, *args, **kwargs)
-    return brain
+    return _plot(pmap, lut, -vmax, vmax, *args, **kwargs)
 
 
 def activation(src, threshold=None, vmax=None, *args, **kwargs):
@@ -147,8 +154,7 @@ def activation(src, threshold=None, vmax=None, *args, **kwargs):
         vmax = x + 2 * std
     lut = _activation_lut(threshold, vmax)
 
-    brain = surfer_brain(src, lut, -vmax, vmax, *args, **kwargs)
-    return brain
+    return _plot(src, lut, -vmax, vmax, *args, **kwargs)
 
 
 def cluster(cluster, vmax=None, *args, **kwargs):
@@ -184,7 +190,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
         vmax = max(cluster.x.max(), -cluster.x.min())
 
     lut = _dspm_lut(0, vmax / 10, vmax)
-    return surfer_brain(cluster, lut, -vmax, vmax, *args, **kwargs)
+    return _plot(cluster, lut, -vmax, vmax, *args, **kwargs)
 
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
@@ -447,3 +453,61 @@ def _activation_lut(threshold=3, vmax=8):
     lut[trans_uidx:, 1] = np.linspace(0, 255, 256 - trans_uidx)
 
     return lut
+
+
+def _voxel_brain(data, lut, vmin, vmax):
+    """Plot spheres for volume source space
+
+    Parameters
+    ----------
+    data : NDVar
+        Data to plot.
+    lut : array
+        Color LUT.
+    vmin, vmax : scalar
+        Data range.
+    """
+    if data.dimnames != ('source',):
+        raise ValueError("Can only plot 1 dimensional source space NDVars")
+
+    from mayavi import mlab
+
+    x, y, z = data.source.coordinates.T
+
+    figure = mlab.figure()
+    mlab.points3d(x, y, z, scale_factor=0.002, opacity=0.5)
+    pts = mlab.points3d(x, y, z, data.x, vmin=vmin, vmax=vmax)
+    pts.module_manager.scalar_lut_manager.lut.table = lut
+    return figure
+
+
+def connectivity(source):
+    """Plot source space connectivity
+
+    Parameters
+    ----------
+    source : SourceSpace | NDVar
+        Source space or NDVar containing the source space.
+
+    Returns
+    -------
+    figure : mayavi Figure
+        The figure.
+    """
+    from mayavi import mlab
+
+    if isinstance(source, NDVar):
+        source = source.get_dim('source')
+
+    con = source.connectivity()
+    coords = source.coordinates
+    x, y, z = coords.T
+    connections = np.hstack((con.row[:, None], con.col[:, None]))
+
+    figure = mlab.figure()
+    src = mlab.pipeline.scalar_scatter(x, y, z, figure=figure)
+    src.mlab_source.dataset.lines = connections
+    lines = mlab.pipeline.stripper(src)
+    mlab.pipeline.surface(lines, colormap='Accent', line_width=1, opacity=1.,
+                          figure=figure)
+    return figure

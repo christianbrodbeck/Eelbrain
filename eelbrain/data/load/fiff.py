@@ -81,6 +81,7 @@ import numpy as np
 
 import mne
 from mne.fiff import FIFF
+from mne.source_estimate import _BaseSourceEstimate
 
 from ... import ui
 from .. import colorspaces as _cs
@@ -762,7 +763,8 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, name=None, check=True):
     if isinstance(stc, basestring):
         stc = mne.read_source_estimate(stc)
 
-    if isinstance(stc, mne.SourceEstimate):
+    # construct data array
+    if isinstance(stc, _BaseSourceEstimate):
         case = False
         x = stc.data
     else:
@@ -770,17 +772,20 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, name=None, check=True):
         stcs = stc
         stc = stcs[0]
         if check:
-            vert_lh, vert_rh = stc.vertno
             times = stc.times
+            vertno = stc.vertno
             for stc_ in stcs[1:]:
-                assert np.all(times == stc_.times)
-                lh, rh = stc_.vertno
-                assert np.all(vert_lh == lh)
-                assert np.all(vert_rh == rh)
+                assert np.array_equal(stc_.times, times)
+                assert np.array_equal(stc_.vertno, vertno)
         x = np.array([s.data for s in stcs])
 
+    # Construct NDVar Dimensions
     time = UTS(stc.tmin, stc.tstep, stc.shape[1])
-    ss = SourceSpace(stc.vertno, subject, src, subjects_dir)
+    if isinstance(stc, mne.VolSourceEstimate):
+        ss = SourceSpace([stc.vertno], subject, src, subjects_dir)
+    else:
+        ss = SourceSpace(stc.vertno, subject, src, subjects_dir)
+
     if case:
         dims = ('case', ss, time)
     else:
