@@ -370,7 +370,6 @@ class MneExperiment(FileTree):
 
         # set initial values
         self.store_state()
-        self.set_env()
         self.brain = None
 
     def __iter__(self):
