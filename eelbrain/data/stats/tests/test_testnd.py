@@ -52,6 +52,7 @@ def test_ttest_1samp():
     repr0 = repr(res0)
     assert_in('against', repr0)
     assert_not_in('clusters', repr0)
+    assert_not_in('mintime', repr0)
 
     # clusters without resampling
     res1 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=0,
@@ -60,7 +61,8 @@ def test_ttest_1samp():
     assert_not_in('p', res1.clusters)
     repr1 = repr(res1)
     assert_in('clusters', repr1)
-    assert_not_in('samples', repr1)
+    assert_in('samples', repr1)
+    assert_in('mintime', repr1)
 
 
     # clusters with resampling

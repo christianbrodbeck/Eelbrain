@@ -286,7 +286,9 @@ class ttest_1samp:
         else:
             diff = y
 
-        if samples is not None:
+        if samples is None:
+            cdist = None
+        else:
             t_threshold = _ttest_t(pmin, df, tail)
             t_upper = t_threshold if tail >= 0 else None
             t_lower = -t_threshold if tail <= 0 else None
@@ -329,6 +331,7 @@ class ttest_1samp:
 
         self.diffp = [[diff, t]]
         self.all = [y, [diff, t]] if popmean else [[diff, t]]
+        self._cdist = cdist
         if samples is not None:
             self._n_samples = n_samples
             self._all_permutations = samples_ < 0
@@ -336,25 +339,15 @@ class ttest_1samp:
                 self.diff_cl = [[diff, cdist.cpmap]]
             else:
                 self.diff_cl = [[diff]]
-            self._cdist = cdist
             self.clusters = cdist.clusters
 
     def __repr__(self):
         parts = ["<%s against %g, n=%i" % (self.name, self.popmean, self.n)]
         if self.tail:
             parts.append(", tail=%i" % self.tail)
-        if self._samples is not None:
-            if self.clusters is None:
-                parts.append(", no clusters found")
-            else:
-                parts.append(", %i clusters" % self._cdist.n_clusters)
-
-                if self._samples:
-                    if self._all_permutations:
-                        parts.append(", %i permutations" % self._n_samples)
-                    elif self._n_samples:
-                        parts.append(", %i samples" % self._n_samples)
-                    parts.append(", p >= %.3f" % self.clusters['p'].x.min())
+        if self._cdist:
+            txt = self._cdist._cluster_repr(perm=self._all_permutations)
+            parts.append(txt)
         parts.append(">")
         return ''.join(parts)
 
@@ -486,13 +479,8 @@ class ttest_ind:
             parts.append(", n1=%i, n0=%i" % (self.n1, self.n0))
         if self.tail:
             parts.append(", tail=%i" % self.tail)
-        if self._samples:
-            if self.clusters is None:
-                parts.append(", no clusters found")
-            else:
-                n = self._cdist.n_clusters
-                parts.append(", %i samples: %i clusters" % (self._samples, n))
-                parts.append(", p >= %.3f" % self.clusters['p'].x.min())
+        if self._cdist:
+            parts.append(self._cdist._cluster_repr())
         parts.append('>')
         return ''.join(parts)
 
@@ -630,13 +618,8 @@ class ttest_rel:
         parts.append(", n=%i" % self.n)
         if self.tail:
             parts.append(", tail=%i" % self.tail)
-        if self._samples:
-            if self.clusters is None:
-                parts.append(", no clusters found")
-            else:
-                n = self._cdist.n_clusters
-                parts.append(", %i samples: %i clusters" % (self._samples, n))
-                parts.append(", p >= %.3f" % self.clusters['p'].x.min())
+        if self._cdist:
+            parts.append(self._cdist._cluster_repr())
         parts.append('>')
         return ''.join(parts)
 
@@ -832,7 +815,9 @@ class anova:
         df_den = lm.df_den
         fmaps = lm.map(Y.x)
 
-        if samples is not None:
+        if samples is None:
+            cdists = None
+        else:
             # find F-thresholds for clusters
             fmins = [ftest_f(pmin, e.df, df_den[e]) for e in effects]
             cdists = [_ClusterDist(Y, samples, fmin, None, 'F', e.name,
@@ -904,26 +889,25 @@ class anova:
         self.f = [[f_, f_] for f_ in f]
         self.p = p
         self.samples = samples
+        self._cdists = cdists
         if samples is None:
             self.all = self.f
         else:
             self.fmin = fmins
-            self._cdists = cdists
             self.all = f_and_clusters
 
     def __repr__(self):
-        parts = ["<%s" % (self.name)]
-        if self.samples:
+        parts = [self.name]
+        if self._cdists:
             if self.clusters is None:
-                parts.append(" no clusters found")
+                parts.append("no clusters")
             else:
-                parts.append(" %i samples, clusters:" % self.samples)
-                for e in self.clusters['effect'].cells:
-                    idx = self.clusters['effect'] == e
-                    p = np.min(self.clusters[idx, 'p'].x)
-                    parts.append(" %r p >= %.3f" % (e, p))
-        parts.append('>')
-        return ''.join(parts)
+                parts.append(self._cdists[0]._param_repr())
+                for cdist in self._cdists:
+                    name = cdist.name
+                    clusters = cdist._cluster_repr(params=False)
+                    parts.append("%s: %s" % (name, clusters))
+        return "<%s>" % ', '.join(parts)
 
 
 class _ClusterDist:
@@ -1049,6 +1033,7 @@ class _ClusterDist:
         self.meas = meas
         self.name = name
         self.criteria = criteria_
+        self._criteria_arg = criteria
         self.has_original = False
 
     def __repr__(self):
@@ -1068,6 +1053,31 @@ class _ClusterDist:
             items.append("no data")
 
         return "<ClusterDist: %s>" % ', '.join(items)
+
+    def _cluster_repr(self, params=True, perm=False):
+        """Repr fragment with cluster properties
+
+        Parameters
+        ----------
+        params : bool
+            Include information on input parameters.
+        perm : bool
+            Whether permutation rather than random resampling was used.
+        """
+        if self.clusters is None:
+            txt = ", no clusters"
+        else:
+            n = self.n_clusters
+            if params:
+                params = self._param_repr(perm)
+                txt = "%s: %i clusters" % (params, n)
+            else:
+                txt = "%i" % (n,)
+
+            if self.N:
+                minp = self.clusters['p'].min()
+                txt += ", p >= %.3f" % minp
+        return txt
 
     def _crop(self, im):
         if self.crop:
@@ -1258,6 +1268,19 @@ class _ClusterDist:
                 cids.difference_update(rm)
 
         return cmap, cids
+
+    def _param_repr(self, perm=False):
+        "Repr fragment with clustering parameters"
+        if perm:
+            sampling = "permutations"
+        else:
+            sampling = "samples"
+        items = [", %i %s" % (self.N, sampling)]
+
+        for item in self._criteria_arg.iteritems():
+            items.append("%s=%s" % item)
+
+        return ', '.join(items)
 
     def _uncrop(self, im, background=0):
         if self.crop:
