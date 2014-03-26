@@ -1729,7 +1729,9 @@ class MneExperiment(FileTree):
         """
         subject, group = self._process_subject_arg(subject, kwargs)
 
-        if p0 == 0.05:
+        if p0 == 0.1:
+            p1 = 0.05
+        elif p0 == 0.05:
             p1 = 0.01
         elif p0 == 0.01:
             p1 = 0.001
