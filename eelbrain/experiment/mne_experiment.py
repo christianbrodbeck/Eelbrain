@@ -672,7 +672,7 @@ class MneExperiment(FileTree):
                 mrisubjects.insert(0, common_brain)
             return mrisubjects
         elif field == 'group':
-            values = ['all']
+            values = ['all', 'all!']
             values.extend(self.groups.keys())
             return values
         else:
@@ -694,8 +694,9 @@ class MneExperiment(FileTree):
             corresponding field values) with {name: (sequence of values)}
             entries.
         group : None | str
-            If iterating over subjects, use this group ('all' or a name defined
-            in experiment.groups).
+            If iterating over subjects, use this group ('all' for all except
+            excluded subjects, 'all!' for all including excluded subjects, or
+            a name defined in experiment.groups).
         prog : bool | str
             Show a progress dialog; str for dialog title.
         mail : bool | str
@@ -708,7 +709,9 @@ class MneExperiment(FileTree):
             if group is None:
                 group = self.get('group')
 
-            if group != 'all':
+            if group == 'all!':
+                kwargs['exclude'] = False
+            elif group != 'all':
                 subjects = self.get_field_values('subject')
                 group = self.groups[group]
                 group_subjects = [s for s in subjects if s in group]
