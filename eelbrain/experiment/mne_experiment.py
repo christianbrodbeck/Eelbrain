@@ -138,7 +138,7 @@ temp = {
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
         'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
-        'fwd-file': '{raw-base}_{mrisubject}-fwd.fif',
+        'fwd-file': '{raw-base}_{mrisubject}-{src}-fwd.fif',
 
         # epochs
         'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
