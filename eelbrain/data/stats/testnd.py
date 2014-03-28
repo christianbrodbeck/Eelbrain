@@ -550,9 +550,11 @@ class ttest_rel:
             raise ValueError(err)
 
         test_name = 'Related Samples t-Test'
-        n = len(ct.Y) / 2
+        n = len(ct.Y) // 2
+        if n <= 2:
+            raise ValueError("Not enough observations for t-test (n=%n)" % n)
         df = n - 1
-        tmap = _t_rel(ct.Y.x)
+        tmap = _t_rel(ct.Y.x[:n], ct.Y.x[n:])
         pmap = _ttest_p(tmap, df, tail)
         if samples is not None:
             t_threshold = _ttest_t(pmin, df, tail)
@@ -562,8 +564,9 @@ class ttest_rel:
                                  test_name, tstart, tstop, criteria)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
+                tmap_ = np.empty(cdist.Y_perm.shape[1:])
                 for Y_ in resample(cdist.Y_perm, samples, unit=ct.match):
-                    tmap_ = _t_rel(Y_.x)
+                    _t_rel(Y_.x[:n], Y_.x[n:], tmap_)
                     cdist.add_perm(tmap_)
 
         dims = ct.Y.dims[1:]
@@ -665,47 +668,50 @@ def _t_ind(x, n1, n2, equal_var=True):
     return t
 
 
-def _t_rel(Y):
+def _t_rel(y1, y0, out=None):
     """
     Calculates the T statistic on two related samples.
 
     Parameters
     ----------
-    Y : array_like, shape = (n_cases, ...)
-        Dependent variable in right input format: The first half and second
-        half of the data represent the two samples; in each subjects
+    y1, y0 : array_like, shape (n_cases, ...)
+        Dependent variable for the two samples.
+    out : None | array, shape (...)
+        array in which to place the result.
 
     Returns
     -------
-    t : array, shape = (...)
-        t-statistic
+    t : array, shape (...)
+        t-statistic.
 
     Notes
     -----
     Based on scipy.stats.ttest_rel
     df = n - 1
     """
-    n_cases = len(Y)
-    shape = Y.shape[1:]
+    assert(y1.shape == y0.shape)
+    n_subjects = len(y1)
+    shape = y1.shape[1:]
+    if out is None:
+        out = np.empty(shape)
     n_tests = np.product(shape)
     if np.log2(n_tests) > 13:
-        Y = Y.reshape((n_cases, n_tests))
-        t = np.empty(n_tests)
+        y1 = y1.reshape((n_subjects, n_tests))
+        y0 = y0.reshape((n_subjects, n_tests))
+        out_flat = out.reshape(n_tests)
         step = 2 ** 13
         for i in xrange(0, n_tests, step):
             i1 = i + step
-            t[i:i1] = _t_rel(Y[:, i:i1])
-        t = t.reshape(shape)
-        return t
-    n = n_cases // 2
-    a = Y[:n]
-    b = Y[n:]
-    d = (a - b).astype(np.float64)
-    v = np.var(d, 0, ddof=1)
-    dm = np.mean(d, 0)
-    denom = np.sqrt(v / n)
-    t = np.divide(dm, denom)
-    return t
+            _t_rel(y1[:, i:i1], y0[:, i:i1], out_flat[i:i1])
+        return out
+    d = (y1 - y0).astype(np.float64)
+    # out = mean(d) / sqrt(var(d) / n_subjects)
+    np.mean(d, 0, out=out)
+    denom = np.var(d, 0, ddof=1)
+    denom /= n_subjects
+    np.sqrt(denom, out=denom)
+    out /= denom
+    return out
 
 
 def _ttest_p(t, df, tail=0):
