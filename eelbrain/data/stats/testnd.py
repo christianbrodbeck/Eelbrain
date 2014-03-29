@@ -3,6 +3,7 @@ from __future__ import division
 
 from itertools import izip
 from math import ceil, floor
+import re
 from time import time as current_time
 
 import numpy as np
@@ -22,8 +23,6 @@ from .stats import ftest_f, ftest_p
 from .test import star_factor
 
 
-__all__ = ['ttest_1samp', 'ttest_ind', 'ttest_rel', 'anova', 'corr',
-           'clean_time_axis']
 __test__ = False
 
 
@@ -72,6 +71,244 @@ def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
     info = pmap.info.copy()
     cleaned = NDVar(x, pmap.dims, info, pmap.name)
     return cleaned
+
+
+class t_contrast_rel:
+    def __init__(self, Y, X, contrast, match=None, sub=None, ds=None,
+                 tail=0, samples=None, pmin=0.05, tstart=None, tstop=None,
+                 **criteria):
+        """Contrast with t-values from multiple comparisons
+
+        Parameters
+        ----------
+        Y : NDVar
+            Dependent variable.
+        X : categorial
+            Model containing the cells which are compared with the contrast.
+        contrast : str
+            Contrast specification: see Notes.
+        match : Factor
+            Match cases for a repeated measures test.
+        sub : None | index-array
+            Perform the test with a subset of the data.
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables.
+        tail : 0 | 1 | -1
+            Which tail of the t-distribution to consider:
+            0: both (two-tailed);
+            1: upper tail (one-tailed);
+            -1: lower tail (one-tailed).
+        samples : None | int
+            Number of samples for permutation cluster test. For None, no
+            clusters are formed. Use 0 to compute clusters without performing
+            any permutations.
+        pmin : scalar (0 < pmin < 1)
+            Threshold p value for forming clusters: a t-value equivalent to p
+            for a related samples t-test (with df = len(match.cells) - 1) is
+            used. Alternatively, in order to directly specify the threshold as
+            t-value you can supply ``tmin`` as keyword argument. This overrides
+            the ``pmin`` parameter.
+        tstart, tstop : None | scalar
+            Restrict time window for permutation cluster test.
+        mintime : scalar
+            Minimum duration for clusters (in seconds).
+        minsource : int
+            Minimum number of sources per cluster.
+
+        Notes
+        -----
+        Contrast definitions can contain:
+
+         - comparisons using ">" and "<", e.g. ``"cell1 > cell0"``.
+         - numpy functions, e.g. ``min(...)``.
+         - prefixing a function or comparison with ``+`` or ``-`` makes the
+           relevant comparison one-tailed by setting all values of the opposite
+           sign to zero (e.g., ```"+a>b"``` sets all data points where a<b to
+           0.
+
+        So for example, to find cluster where both of two pairwise comparisons
+        are reliable, one could use ``"min(a1 > a0, b1 > b0)"``
+
+        If X is an interaction, interaction cells are specified with "|", e.g.
+        ``"a1 | b > a0 | b"``.
+        """
+        test_name = "t-contrast"
+        ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
+        Y = ct.Y
+        index = ct.data_indexes
+
+        if 'tmin' in criteria:
+            tmin = criteria.pop('tmin')
+        else:
+            df = len(ct.match.cells) - 1
+            tmin = _ttest_t(pmin, df, tail)
+        contrast_ = _parse_t_contrast(contrast)
+
+        # buffer memory allocation
+        shape = ct.Y.shape[1:]
+        buffers = _t_contrast_rel_setup(contrast_)
+        buff = np.empty((buffers,) + shape)
+
+        # original data
+        tmap = _t_contrast_rel(contrast_, Y.x, index, buff)
+
+        if samples is None:
+            cdist = None
+        else:
+            if tail == 0:
+                t_upper = abs(tmin)
+                t_lower = -t_upper
+            elif tail > 0:
+                t_upper = tmin
+                t_lower = None
+            else:
+                t_upper = None
+                t_lower = -abs(tmin)
+            cdist = _ClusterDist(Y, samples, t_upper, t_lower, 't', test_name,
+                                 tstart, tstop, criteria)
+            cdist.add_original(tmap)
+            if cdist.n_clusters and samples:
+                # buffer memory allocation
+                shape = cdist.Y_perm.shape[1:]
+                buff = np.empty((buffers,) + shape)
+                tmap_ = np.empty(shape)
+                for Y_ in resample(cdist.Y_perm, samples, unit=ct.match):
+                    _t_contrast_rel(contrast_, Y_.x, index, buff, tmap_)
+                    cdist.add_perm(tmap_)
+
+        # construct results
+        dims = ct.Y.dims[1:]
+
+        # store attributes
+        self.name = test_name
+        self.t = NDVar(tmap, dims, {}, 't')
+        self._cdist = cdist
+        self.contrast = contrast
+        self._contrast = contrast_
+        if samples is not None:
+            self.clusters = cdist.clusters
+
+    def __repr__(self):
+        parts = ["<%s %r" % (self.name, self.contrast)]
+        if self._cdist:
+            parts.append(self._cdist._cluster_repr())
+        parts.append('>')
+        return ''.join(parts)
+
+
+def _parse_cell(cell_name):
+    cell = tuple(s.strip() for s in cell_name.split('|'))
+    if len(cell) == 1:
+        return cell[0]
+    else:
+        return cell
+
+
+def _parse_t_contrast(contrast):
+    depth = 0
+    start = 0
+    if not '(' in contrast:
+        m = re.match("\s*([+-]*)\s*([\w\|]+)\s*([<>])\s*([\w\|]+)", contrast)
+        if m:
+            clip, c1, direction, c0 = m.groups()
+            if direction == '<':
+                c1, c0 = c0, c1
+            c1 = _parse_cell(c1)
+            c0 = _parse_cell(c0)
+            return ('comp', clip or None, c1, c0)
+
+    for i, c in enumerate(contrast):
+        if c == '(':
+            if depth == 0:
+                prefix = contrast[start:i]
+                i_open = i + 1
+                items = []
+            depth += 1
+        elif c == ',':
+            if depth == 0:
+                raise
+            elif depth == 1:
+                item = _parse_t_contrast(contrast[i_open:i])
+                items.append(item)
+                i_open = i + 1
+        elif c == ')':
+            depth -= 1
+            if depth == 0:
+                item = _parse_t_contrast(contrast[i_open:i])
+                items.append(item)
+
+                m = re.match("\s*([+-]*)\s*(\w+)", prefix)
+                if m is None:
+                    raise ValueError("uninterpretable prefix: %r" % prefix)
+                clip, func_name = m.groups()
+                func = getattr(np, func_name)
+
+                return ('func', clip or None, func, items)
+            elif depth == -1:
+                err = "Invalid ')' at position %i of %r" % (i, contrast)
+                raise ValueError(err)
+
+
+def _t_contrast_rel_setup(item):
+    """Setup t-contrast
+
+    Parameters
+    ----------
+    item : tuple
+        Contrast specification.
+
+    Returns
+    -------
+    buffers : int
+        Number of buffer maps needed.
+    """
+    if item[0] == 'func':
+        _, _, _, items_ = item
+        local_buffers = len(items_)
+        for i, item_ in enumerate(items_):
+            available_buffers = local_buffers - i - 1
+            needed_buffers = _t_contrast_rel_setup(item_)
+            additional_buffers = needed_buffers - available_buffers
+            if additional_buffers > 0:
+                local_buffers += additional_buffers
+        return local_buffers
+    else:
+        return 0
+
+
+def _t_contrast_rel(item, y, index, buff=None, out=None):
+    if out is None:
+        out = np.zeros(y.shape[1:])
+    else:
+        out[:] = 0
+
+    if item[0] == 'func':
+        _, clip, func, items_ = item
+        tmaps = buff[:len(items_)]
+        for i, item_ in enumerate(items_):
+            if buff is None:
+                buff_ = None
+            else:
+                buff_ = buff[i + 1:]
+            _t_contrast_rel(item_, y, index, buff_, tmaps[i])
+        tmap = func(tmaps, axis=0, out=out)
+    else:
+        _, clip, c1, c0 = item
+        i1 = index[c1]
+        i0 = index[c0]
+        tmap = _t_rel(y[i1], y[i0], out)
+
+    if clip is not None:
+        if clip == '+':
+            a_min = 0
+            a_max = tmap.max() + 1
+        elif clip == '-':
+            a_min = tmap.min() - 1
+            a_max = 0
+        tmap.clip(a_min, a_max, tmap)
+
+    return tmap
 
 
 class corr:

@@ -1,6 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
 from nose.tools import assert_equal, assert_in, assert_less, assert_not_in
+import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain.data import datasets, testnd, plot
@@ -40,6 +41,25 @@ def test_corr():
     res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=2)
     p = plot.Array(res)
     p.close()
+
+
+def test_t_contrast():
+    ds = datasets.get_rand()
+
+    # simple contrast
+    res = testnd.t_contrast_rel('uts', 'A', 'a1>a0', 'rm', ds=ds, samples=100)
+    res_ = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=ds)
+    assert_array_equal(res.t.x, res_.t.x)
+    assert_in('samples', repr(res))
+
+    # complex contrast
+    res = testnd.t_contrast_rel('uts', 'A%B', 'min(a0|b0>a1|b0, a0|b1>a1|b1)',
+                                'rm', ds=ds, samples=100)
+    res_b0 = testnd.ttest_rel('uts', 'A%B', ('a0', 'b0'), ('a1', 'b0'), 'rm',
+                              ds=ds)
+    res_b1 = testnd.ttest_rel('uts', 'A%B', ('a0', 'b1'), ('a1', 'b1'), 'rm',
+                              ds=ds)
+    assert_array_equal(res.t.x, np.min([res_b0.t.x, res_b1.t.x], axis=0))
 
 
 def test_ttest_1samp():
