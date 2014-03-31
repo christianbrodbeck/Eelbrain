@@ -1545,12 +1545,12 @@ class _Effect(object):
         sort_index : array of int
             Array which can be used to sort a data_object in the desired order.
         """
+        idx = np.empty(len(self), dtype=np.uint32)
         if order is None:
             cells = self.cells
-            idx = np.empty(len(self), dtype=np.uint32)
         else:
             cells = order
-            idx = -np.ones(len(self), dtype=np.uint32)
+            idx[:] = -1
 
         for i, cell in enumerate(cells):
             idx[self == cell] = i
@@ -1560,8 +1560,10 @@ class _Effect(object):
             i_cut = -np.count_nonzero(idx == np.uint32(-1))
             if i_cut:
                 sort_idx = sort_idx[:i_cut]
+
         if descending:
             sort_idx = sort_idx[::-1]
+
         return sort_idx
 
 
