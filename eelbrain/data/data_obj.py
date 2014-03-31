@@ -4013,11 +4013,7 @@ class Interaction(_Effect):
         self.cells = tuple(itertools.product(*(f.cells for f in factors)))
         self.cell_header = tuple(f.name for f in factors)
 
-        # effect coding
-        codelist = [f.as_effects for f in self.base]
-        codes = reduce(_effect_interaction, codelist)
-        self.as_effects = codes
-        self.beta_labels = ['?'] * codes.shape[1]  # TODO:
+        self.beta_labels = ['?'] * self.df  # TODO:
 
     def __repr__(self):
         names = [str(f.name) for f in self.base]
@@ -4065,6 +4061,13 @@ class Interaction(_Effect):
     def as_cells(self):
         """All values as a list of tuples."""
         return [case for case in self]
+
+    @LazyProperty
+    def as_effects(self):
+        "effect coding"
+        codelist = [f.as_effects for f in self.base]
+        codes = reduce(_effect_interaction, codelist)
+        return codes
 
     def as_labels(self, delim=' '):
         """All values as a list of strings.
