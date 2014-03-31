@@ -905,7 +905,7 @@ def _t_ind(x, n1, n2, equal_var=True):
     return t
 
 
-def _t_rel(y1, y0, out=None):
+def _t_rel(y1, y0, out=None, buff=None):
     """
     Calculates the T statistic on two related samples.
 
@@ -915,6 +915,8 @@ def _t_rel(y1, y0, out=None):
         Dependent variable for the two samples.
     out : None | array, shape (...)
         array in which to place the result.
+    buff : None | array, shape (n_cases, ...)
+        Array to serve as buffer for the difference y1 - y0.
 
     Returns
     -------
@@ -932,6 +934,7 @@ def _t_rel(y1, y0, out=None):
     if out is None:
         out = np.empty(shape)
     n_tests = np.product(shape)
+
     if np.log2(n_tests) > 13:
         y1 = y1.reshape((n_subjects, n_tests))
         y0 = y0.reshape((n_subjects, n_tests))
@@ -939,9 +942,16 @@ def _t_rel(y1, y0, out=None):
         step = 2 ** 13
         for i in xrange(0, n_tests, step):
             i1 = i + step
-            _t_rel(y1[:, i:i1], y0[:, i:i1], out_flat[i:i1])
+            if buff is None:
+                buff_ = None
+            else:
+                buff_ = buff[:, i:i1]
+            _t_rel(y1[:, i:i1], y0[:, i:i1], out_flat[i:i1], buff_)
         return out
-    d = (y1 - y0).astype(np.float64)
+
+    if buff is None:
+        buff = np.empty(y1.shape)
+    d = np.subtract(y1, y0, buff)
     # out = mean(d) / sqrt(var(d) / n_subjects)
     np.mean(d, 0, out=out)
     denom = np.var(d, 0, ddof=1)
