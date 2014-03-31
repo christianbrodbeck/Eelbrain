@@ -12,6 +12,8 @@ Plot :class:`NDVar` objects containing source estimates with mayavi/pysurfer.
 '''
 # author: Christian Brodbeck
 from __future__ import division
+import os
+from tempfile import mkdtemp
 
 import numpy as np
 
@@ -511,3 +513,22 @@ def connectivity(source):
     mlab.pipeline.surface(lines, colormap='Accent', line_width=1, opacity=1.,
                           figure=figure)
     return figure
+
+
+def copy(brain):
+    "Copy figure to clip board"
+    import wx
+
+    tempdir = mkdtemp()
+    tempfile = os.path.join(tempdir, "brain.png")
+    brain.save_image(tempfile)
+
+    bitmap = wx.Bitmap(tempfile, wx.BITMAP_TYPE_PNG)
+    bitmap_obj = wx.BitmapDataObject(bitmap)
+
+    if not wx.TheClipboard.IsOpened():
+        open_success = wx.TheClipboard.Open()
+        if open_success:
+            wx.TheClipboard.SetData(bitmap_obj)
+            wx.TheClipboard.Close()
+            wx.TheClipboard.Flush()
