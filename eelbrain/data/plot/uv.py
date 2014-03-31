@@ -1,4 +1,4 @@
-'''Plot univariate data (:py:`Var` objects).
+'''Plot univariate data (:class:`Var` objects).
 
 .. autosummary::
    :toctree: generated

@@ -4739,6 +4739,12 @@ class Dimension(object):
         return str(self.name)
 
     def dimindex(self, arg):
+        """Process index parameter
+
+        Notes
+        -----
+        Boolean and int arrays are always considered inexing self.values.
+        """
         raise NotImplementedError
 
     def intersect(self, dim, check_dims=True):
@@ -6181,7 +6187,7 @@ def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}_r_nbr'):
     return out
 
 
-def cwt_morlet(Y, freqs, use_fft=True, n_cycles=7.0, zero_mean=False,
+def cwt_morlet(Y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
                out='magnitude'):
     """Time frequency decomposition with Morlet wavelets (mne-python)
 
@@ -6199,12 +6205,12 @@ def cwt_morlet(Y, freqs, use_fft=True, n_cycles=7.0, zero_mean=False,
     zero_mean : bool
         Make sure the wavelets are zero mean.
     out : 'complex' | 'magnitude' | 'phase'
-        xxx
+        Format of the data in the returned NDVar.
 
     Returns
     -------
-    tfr : 3D array
-        Time Frequency Decompositions (n_signals x n_frequencies x n_times)
+    tfr : NDVar
+        Time frequency decompositions.
     """
     from mne.time_frequency.tfr import cwt_morlet
 

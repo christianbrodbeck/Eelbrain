@@ -86,13 +86,35 @@ Sorting and reordering
    Celltable
    
 
-Data Transformations
-====================
+NDVar Transformations
+=====================
 
 .. autosummary::
    :toctree: generated
 
    cwt_morlet
+   labels_from_clusters
+   morph_source_space
+   source_induced_power
+
+
+^^^^^^
+Tables
+^^^^^^
+
+Manipulate data tables and compile information about data objects such as cell 
+frequencies:
+
+.. currentmodule:: eelbrain.data
+
+.. autosummary::
+   :toctree: generated
+
+    table.difference
+    table.frequencies
+    table.melt
+    table.repmeas
+    table.stats
 
 
 ^^^^^^^^^^
