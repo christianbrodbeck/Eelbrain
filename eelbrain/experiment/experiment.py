@@ -104,6 +104,11 @@ class LayeredDict(dict):
 
 class TreeModel(object):
     """A hierarchical collection of format strings and field values
+
+    Notes
+    -----
+    Any subclass should make sure to call the ``.store_state()` method at the
+    end of initialization.
     """
     owner = None  # email address as string (for notification)
 
@@ -154,6 +159,7 @@ class TreeModel(object):
         args = [repr(self._fields[arg]) for arg in self._repr_args]
         kwargs = [(arg, repr(self._fields[arg])) for arg in self._repr_kwargs]
 
+        no_initial_state = len(self._fields._states) == 0
         for k in sorted(self._fields):
             if k in self._repr_args or k in self._repr_kwargs:
                 continue
@@ -161,7 +167,7 @@ class TreeModel(object):
                 continue
 
             v = self._fields[k]
-            if v != self._fields.get_stored(k, level=0):
+            if no_initial_state or v != self._fields.get_stored(k, level=0):
                 kwargs.append((k, repr(v)))
 
         args.extend('='.join(pair) for pair in kwargs)
