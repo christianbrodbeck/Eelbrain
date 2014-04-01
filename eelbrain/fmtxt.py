@@ -116,7 +116,7 @@ def get_pdf(tex_obj):
     return pdf
 
 
-def save_html(fmtxt, path=None):
+def save_html(fmtxt, path=None, embed_images=True):
     "Save an FMText object as html file"
     if path is None:
         msg = "Save as HTML"
@@ -132,13 +132,15 @@ def save_html(fmtxt, path=None):
     else:
         resource_dir = path
         file_path = path + extension
-
-    if os.path.exists(resource_dir):
-        shutil.rmtree(resource_dir)
-    os.mkdir(resource_dir)
-
     root = os.path.dirname(file_path)
-    resource_dir = os.path.relpath(resource_dir, root)
+
+    if embed_images:
+        resource_dir = None
+    else:
+        if os.path.exists(resource_dir):
+            shutil.rmtree(resource_dir)
+        os.mkdir(resource_dir)
+        resource_dir = os.path.relpath(resource_dir, root)
 
     buf = make_html_doc(fmtxt, root, resource_dir)
     with open(file_path, 'wb') as fid:
@@ -212,7 +214,7 @@ def html(text, options={}):
         return str(text)
 
 
-def make_html_doc(body, root, resource_dir, title=None):
+def make_html_doc(body, root, resource_dir=None, title=None):
     """
     Parameters
     ----------
@@ -220,9 +222,9 @@ def make_html_doc(body, root, resource_dir, title=None):
         FMTXT object which should be formatted into an HTML document.
     root : str
         Path to the directory in which the HTML file is going to be located.
-    resource_dir : str
+    resource_dir : None | str
         Path to the directory containing resources like images, relative to
-        root.
+        root. If None, images are embedded.
     title : None | FMText
         Document title. Default is title specified by body.get_site_title() or
         "Untitled".
@@ -1164,7 +1166,7 @@ class Table(FMTextElement):
 class Image(FMTextElement, StringIO):
     "Represent an image file"
 
-    def __init__(self, filename, alt=None, buf=''):
+    def __init__(self, filename='image.png', alt=None, buf=''):
         """Represent an image file
 
         Parameters
@@ -1179,8 +1181,16 @@ class Image(FMTextElement, StringIO):
         """
         StringIO.__init__(self, buf)
 
+        name, ext = os.path.splitext(filename)
+        if ext:
+            ext = ext.strip('.')
+        else:
+            err = "filename needs to be name with extension (got %r)"
+            raise ValueError(err % filename)
+
         self._filename = filename
-        self._alt = alt or filename
+        self._ext = ext
+        self._alt = alt or name
 
     @classmethod
     def from_file(self, path, filename=None, alt=None):
@@ -1215,20 +1225,29 @@ class Image(FMTextElement, StringIO):
         return out
 
     def get_html(self, options={}):
-        dirpath = os.path.join(options['root'], options['resource_dir'])
-        abspath = os.path.join(dirpath, self._filename)
-        if os.path.exists(abspath):
-            i = 0
-            name, ext = os.path.splitext(self._filename)
-            while os.path.exists(abspath):
-                i += 1
-                filename = name + ' %i' % i + ext
-                abspath = os.path.join(dirpath, filename)
+        resource_dir = options.get('resource_dir', None)
+        if resource_dir is None:
+            buf = self.getvalue()
+            if self._ext == 'svg':  # special case for embedded svg
+                return buf
+            # http://stackoverflow.com/a/7389616/166700
+            data = buf.encode('base64').replace('\n', '')
+            src = 'data:image/{};base64,{}'.format(self._ext, data)
+        else:
+            dirpath = os.path.join(options['root'], resource_dir)
+            abspath = os.path.join(dirpath, self._filename)
+            if os.path.exists(abspath):
+                i = 0
+                name, ext = os.path.splitext(self._filename)
+                while os.path.exists(abspath):
+                    i += 1
+                    filename = name + ' %i' % i + ext
+                    abspath = os.path.join(dirpath, filename)
 
-        self.save_image(abspath)
+            self.save_image(abspath)
+            src = os.path.relpath(abspath, options['root'])
 
-        relpath = os.path.relpath(abspath, options['root'])
-        txt = ' <img src="%s" alt="%s">' % (relpath, html(self._alt))
+        txt = ' <img src="%s" alt="%s">' % (src, html(self._alt))
         return ' ' + txt
 
     def get_str(self, options={}):
@@ -1545,7 +1564,7 @@ class Report(Section):
         with open(path, 'wb') as fid:
             pickle.dump(self, fid, pickle.HIGHEST_PROTOCOL)
 
-    def save_html(self, path, pickle=True):
+    def save_html(self, path, embed_images=True):
         """Save HTML file of the report
 
         Parameters
@@ -1560,12 +1579,7 @@ class Report(Section):
         if path.endswith('.html'):
             path = path[:-5]
 
-        save_html(self, path)
-
-        if pickle:
-            name = os.path.basename(path)
-            pickle_path = os.path.join(path, name)
-            self.pickle(pickle_path)
+        save_html(self, path, embed_images)
 
 
 def unindent(text, skip1=False):
