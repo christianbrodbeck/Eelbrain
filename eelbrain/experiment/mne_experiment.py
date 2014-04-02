@@ -1067,7 +1067,7 @@ class MneExperiment(FileTree):
             ds['subject'] = Factor([subject], rep=ds.n_cases, random=True)
         return ds
 
-    def load_evoked_stc(self, subject=None, sns_baseline=None,
+    def load_evoked_stc(self, subject=None, sns_baseline=(None, 0),
                         src_baseline=None, sns_ndvar=False, ind_stc=False,
                         ind_ndvar=False, morph_stc=False, morph_ndvar=False,
                         cat=None, **kwargs):
