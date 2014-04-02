@@ -196,7 +196,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
 
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
-                 views=['lat', 'med'], colorbar=True, **layout):
+                 views=['lat', 'med'], colorbar=True, time_label='%.3g s',
+                 **layout):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -283,24 +284,26 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
 
     if src.source.lh_n:
         if hemi == 'lh':
-            colorbar = True
-            time_label = '%.3g s'
-        else:
+            colorbar_ = colorbar
             colorbar = False
+            time_label_ = time_label
             time_label = None
+        else:
+            colorbar_ = False
+            time_label_ = None
 
         src_hemi = src.sub(source='lh')
         data = src_hemi.get_data(data_dims)
         vertices = src.source.lh_vertno
         brain.add_data(data, vmin, vmax, None, colormap, alpha, vertices,
-                       smoothing_steps, times, time_label, colorbar, 'lh')
+                       smoothing_steps, times, time_label_, colorbar_, 'lh')
 
     if src.source.rh_n:
         src_hemi = src.sub(source='rh')
         data = src_hemi.get_data(data_dims)
         vertices = src.source.rh_vertno
         brain.add_data(data, vmin, vmax, None, colormap, alpha, vertices,
-                       smoothing_steps, times, '%.3g s', True, 'rh')
+                       smoothing_steps, times, time_label, colorbar, 'rh')
 
     return brain
 
