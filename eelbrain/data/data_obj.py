@@ -871,7 +871,7 @@ def combine(items, name=None, check_dims=True):
         for key in keys:
             pieces = [ds[key] if key in ds else
                       _empty_like(sample[key], ds.n_cases) for ds in items]
-            out[key] = combine(pieces)
+            out[key] = combine(pieces, check_dims=check_dims)
         return out
     elif isvar(item0):
         x = np.hstack(i.x for i in items)
