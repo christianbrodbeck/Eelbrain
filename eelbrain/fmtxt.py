@@ -40,6 +40,7 @@ The module also provides functions that work with fmtxt objects:
 
 
 import datetime
+from itertools import izip
 import logging
 import os
 import cPickle as pickle
@@ -54,6 +55,7 @@ except:
     tex = None
 
 import numpy as np
+from matplotlib.image import imsave
 
 from . import ui
 
@@ -1193,7 +1195,7 @@ class Image(FMTextElement, StringIO):
         self._alt = alt or name
 
     @classmethod
-    def from_file(self, path, filename=None, alt=None):
+    def from_file(cls, path, filename=None, alt=None):
         """Create an Image object from an existsing image file.
 
         Parameters
@@ -1333,8 +1335,8 @@ class Section(FMText):
 
         Parameters
         ----------
-        filename : str
-            Filename for the image file (should have the appropriate
+        filename : str | Image
+            Image or filename for the image file (should have the appropriate
             extension). If a document has multiple images with the same name,
             a unique integer is appended.
         caption : FMText
@@ -1354,6 +1356,14 @@ class Section(FMText):
         See Also
         --------
         .add_figure: add figure without ading an image
+
+        Notes
+        -----
+        Returns the Image object which can be used to write the image data. If
+        a function supports writing to a file-like object, it can be written
+        with ``save_image(image)``. A function that writes a file to disk can
+        be used as ``save_image(image.``.
+
         """
         if from_file is None:
             image = Image(filename, alt)
@@ -1610,3 +1620,83 @@ def unindent(text, skip1=False):
             text = os.linesep.join(line[rm:] for line in lines)
 
     return text
+
+
+def im_table(ims, header=None, name="im_table"):
+    """Create an SVG with a table of images
+
+    Parameters
+    ----------
+    ims : list of list of arrays
+        Images. Should all have same shape.
+    header : None | list of str
+        List of column titles.
+
+    Returns
+    -------
+    images : Image
+        FMTXT Image object that can be saved as SVG or integrated into an
+        FMTXT document.
+    """
+    if not name.endswith('.svg'):
+        name += '.svg'
+
+    lens = set(map(len, ims))
+    if len(lens) > 1:
+        raise ValueError("Unequal number of columns")
+    n_cols = lens.pop()
+    n_rows = len(ims)
+
+    # test im shape
+    im0 = ims[0][0]
+    if im0.ndim != 3:
+        raise ValueError("Images need ndim=3, got %i" % ims[0][0].ndim)
+    shape = im0.shape
+    if not all(im.shape == shape for line in ims for im in line):
+        raise NotImplementedError("Not all images have same shape")
+    im_h, im_w, _ = shape
+
+    xs = range(0, im_w * n_cols, im_w)
+    y0 = 0 if header is None else 25
+    ys = range(y0, y0 + im_h * n_rows, im_h)
+
+    svg_h = y0 + im_h * n_rows
+    svg_w = im_w * n_cols
+    svg = ['<svg width="{w}" height="{h}">'.format(w=svg_w, h=svg_h)]
+    if header is not None:
+        assert len(header) == n_cols
+        p = '<text x="{x}" y="{y}">{txt}</text>'
+        for x, txt in izip(xs, header):
+            item = p.format(x=x, y=18, txt=txt)
+            svg.append(item)
+
+    p = ('<image x="{x}" y="{y}" width="{w}" height="{h}" xlink:href='
+         '"data:image/png;base64,{data}" />')
+    for y, line in izip(ys, ims):
+        for x, im in izip(xs, line):
+            data = _array_as_png(im)
+            item = p.format(x=x, y=y, w=im_w, h=im_h, data=data)
+            svg.append(item)
+
+    svg.append("</svg>")
+    buf = '\n'.join(svg)
+    return Image(name, name, buf)
+
+
+def _array_as_png(im):
+    """Convert array to base64 encoded PNG
+
+    Parameters
+    ----------
+    im : array_like
+        An MxN (luminance), MxNx3 (RGB) or MxNx4 (RGBA) array.
+
+    Returns
+    -------
+    data : str
+        Encoded PNG image.
+    """
+    buf = StringIO()
+    imsave(buf, np.asarray(im), format='png')
+    data = buf.getvalue().encode('base64').replace('\n', '')
+    return data

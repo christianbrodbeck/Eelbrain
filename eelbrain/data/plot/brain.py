@@ -12,12 +12,14 @@ Plot :class:`NDVar` objects containing source estimates with mayavi/pysurfer.
 '''
 # author: Christian Brodbeck
 from __future__ import division
+from itertools import izip
 import os
 from tempfile import mkdtemp
 
 import numpy as np
 
-from ..data_obj import asndvar, NDVar
+from ...fmtxt import im_table
+from ..data_obj import asndvar, NDVar, UTS
 from .. import testnd
 
 
@@ -484,6 +486,91 @@ def _voxel_brain(data, lut, vmin, vmax):
     pts = mlab.points3d(x, y, z, data.x, vmin=vmin, vmax=vmax)
     pts.module_manager.scalar_lut_manager.lut.table = lut
     return figure
+
+
+def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1,
+              views=['lat', 'med']):
+    """Create a table with images for time bins
+
+    Parameters
+    ----------
+    ndvar : NDVar (time x source)
+        Data to be plotted.
+    tstart : None | scalar
+        Time point of the start of the first bin (inclusive; None to use the
+        first time point in ndvar).
+    tstop : None | scalar
+        End of the last bin (exclusive; None to end with the last time point
+        in ndvar).
+    tstep : scalar
+        Size of each bin (in seconds).
+    views : list of str
+        Views to display (for each hemisphere, lh first).
+
+    Returns
+    -------
+    images : Image
+        FMTXT Image object that can be saved as SVG or integrated into an
+        FMTXT document.
+    """
+    data = _bin_data(ndvar, tstart, tstop, tstep)
+    ims = []
+    vmax = max(abs(data.min()), data.max())
+    for hemi in ('lh', 'rh'):
+        hemi_data = data.sub(source=hemi)
+        brain = cluster(hemi_data, vmax, w=300, h=250, views=views[0],
+                        colorbar=False, time_label=None)
+        fig = brain._figures[0][0]
+        fig.scene.camera.parallel_projection = True
+        fig.scene.camera.parallel_scale = 70
+        fig.scene.render()
+        im = brain.screenshot_single('rgba', True)
+
+        hemi_lines = [[] for _ in views]
+        for i in xrange(len(data.time)):
+            brain.set_data_time_index(i)
+            for line, view in izip(hemi_lines, views):
+                brain.show_view(view)
+                im = brain.screenshot_single('rgba', True)
+                line.append(im)
+        ims += hemi_lines
+#         brain.close() # causes segfault in wx
+
+    bins = data.info['bins']
+    header = ['%i - %i ms' % (t0 * 1000, t1 * 1000) for t0, t1 in bins]
+    im = im_table(ims, header)
+
+    return im
+
+
+def _bin_data(ndvar, tstart, tstop, tstep, summary=np.sum):
+    data = ndvar.get_data(('source', 'time'))
+
+    # times
+    if tstart is None:
+        tstart = ndvar.time.tmin
+    if tstop is None:
+        tstop = ndvar.time.tmax + ndvar.time.tstep
+    times = np.arange(tstart, tstop, tstep)
+    if times[-1] < tstop:
+        times = np.append(times, tstop)
+
+    n_bins = len(times) - 1
+    x = np.empty((len(data), n_bins))
+    bins = []
+    for i in xrange(n_bins):
+        t0 = times[i]
+        t1 = times[i + 1]
+        bins.append((t0, t1))
+        idx = ndvar.time.dimindex((t0, t1))
+        x[:, i] = summary(data[:, idx], axis=1)
+
+    time = UTS(tstart + tstep / 2, tstep, n_bins)
+    dims = (ndvar.source, time)
+    info = ndvar.info.copy()
+    info['bins'] = bins
+    out = NDVar(x, dims, info, ndvar.name)
+    return out
 
 
 def connectivity(source):
