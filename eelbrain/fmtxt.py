@@ -1330,15 +1330,15 @@ class Section(FMText):
         self.append(figure)
         return figure
 
-    def add_image_figure(self, filename, caption, alt=None, from_file=None):
+    def add_image_figure(self, image, caption, alt=None, from_file=None):
         """Add an image in a figure frame to the section
 
         Parameters
         ----------
-        filename : str | Image
-            Image or filename for the image file (should have the appropriate
-            extension). If a document has multiple images with the same name,
-            a unique integer is appended.
+        image : str | Image
+            Image or target filename for the image (should have the appropriate
+            extension; if a document has multiple images with the same name,
+            a unique integer is appended).
         caption : FMText
             Figure caption.
         alt : None | str
@@ -1355,7 +1355,7 @@ class Section(FMText):
 
         See Also
         --------
-        .add_figure: add figure without ading an image
+        .add_figure: add an empty figure
 
         Notes
         -----
@@ -1365,17 +1365,22 @@ class Section(FMText):
         be used as ``save_image(image.``.
 
         """
-        if from_file is None:
-            image = Image(filename, alt)
-        else:
-            _, ext_src = os.path.splitext(from_file)
-            _, ext_dst = os.path.splitext(filename)
-            if ext_dst != ext_src:
-                err = ("The extension of the image filename (%s) does not "
-                       "correspond to the input image file (%s)." %
-                       (ext_dst, ext_src))
-                raise ValueError(err)
-            image = Image.from_file(from_file, filename, alt)
+        if isinstance(image, str):
+            filename = image
+            if from_file is None:
+                image = Image(filename, alt)
+            else:
+                _, ext_src = os.path.splitext(from_file)
+                _, ext_dst = os.path.splitext(filename)
+                if ext_dst != ext_src:
+                    err = ("The extension of the image filename (%s) does not "
+                           "correspond to the input image file (%s)." %
+                           (ext_dst, ext_src))
+                    raise ValueError(err)
+                image = Image.from_file(from_file, filename, alt)
+        elif not isinstance(image, Image):
+            raise TypeError("Unrecognized image: %s" % repr(image))
+
         figure = Figure(image, caption)
         self.append(figure)
         return image
