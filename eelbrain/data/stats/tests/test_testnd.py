@@ -18,7 +18,7 @@ def test_anova():
     p = plot.Array(res)
     p.close()
 
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2)
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
     p = plot.Array(res)
     p.close()
 
@@ -38,7 +38,7 @@ def test_corr():
     p = plot.Array(res)
     p.close()
 
-    res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=2)
+    res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=2, pmin=0.05)
     p = plot.Array(res)
     p.close()
 
@@ -47,14 +47,15 @@ def test_t_contrast():
     ds = datasets.get_rand()
 
     # simple contrast
-    res = testnd.t_contrast_rel('uts', 'A', 'a1>a0', 'rm', ds=ds, samples=100)
+    res = testnd.t_contrast_rel('uts', 'A', 'a1>a0', 'rm', ds=ds, samples=100,
+                                pmin=0.05)
     res_ = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=ds)
     assert_array_equal(res.t.x, res_.t.x)
     assert_in('samples', repr(res))
 
     # complex contrast
     res = testnd.t_contrast_rel('uts', 'A%B', 'min(a0|b0>a1|b0, a0|b1>a1|b1)',
-                                'rm', ds=ds, samples=100)
+                                'rm', ds=ds, samples=100, pmin=0.05)
     res_b0 = testnd.ttest_rel('uts', 'A%B', ('a0', 'b0'), ('a1', 'b0'), 'rm',
                               ds=ds)
     res_b1 = testnd.ttest_rel('uts', 'A%B', ('a0', 'b1'), ('a1', 'b1'), 'rm',

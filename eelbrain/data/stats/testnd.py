@@ -156,16 +156,7 @@ class t_contrast_rel:
         if samples is None:
             cdist = None
         else:
-            if tail == 0:
-                t_upper = abs(tmin)
-                t_lower = -t_upper
-            elif tail > 0:
-                t_upper = tmin
-                t_lower = None
-            else:
-                t_upper = None
-                t_lower = -abs(tmin)
-            cdist = _ClusterDist(Y, samples, t_upper, t_lower, 't', test_name,
+            cdist = _ClusterDist(Y, samples, tmin, tail, 't', test_name,
                                  tstart, tstop, criteria)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
@@ -390,7 +381,7 @@ class corr:
             threshold = _rtest_r(pmin, df)
 
 
-            cdist = _ClusterDist(Y, samples, threshold, -threshold, 'r', name,
+            cdist = _ClusterDist(Y, samples, threshold, 0, 'r', name,
                                  tstart, tstop, criteria)
             cdist.add_original(rmap)
             if cdist.n_clusters and samples:
@@ -527,14 +518,12 @@ class ttest_1samp:
             cdist = None
         else:
             t_threshold = _ttest_t(pmin, df, tail)
-            t_upper = t_threshold if tail >= 0 else None
-            t_lower = -t_threshold if tail <= 0 else None
             if popmean:
                 y_perm = ct.Y - popmean
             else:
                 y_perm = ct.Y
             n_samples, samples_ = _resample_params(len(y_perm), samples)
-            cdist = _ClusterDist(y_perm, n_samples, t_upper, t_lower, 't',
+            cdist = _ClusterDist(y_perm, n_samples, t_threshold, tail, 't',
                                  test_name, tstart, tstop, criteria)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
@@ -653,9 +642,7 @@ class ttest_ind:
         pmap = _ttest_p(tmap, df, tail)
         if samples is not None:
             t_threshold = _ttest_t(pmin, df, tail)
-            t_upper = t_threshold if tail >= 0 else None
-            t_lower = -t_threshold if tail <= 0 else None
-            cdist = _ClusterDist(ct.Y, samples, t_upper, t_lower, 't',
+            cdist = _ClusterDist(ct.Y, samples, t_threshold, tail, 't',
                                  test_name, tstart, tstop, criteria)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
@@ -795,9 +782,7 @@ class ttest_rel:
         pmap = _ttest_p(tmap, df, tail)
         if samples is not None:
             t_threshold = _ttest_t(pmin, df, tail)
-            t_upper = t_threshold if tail >= 0 else None
-            t_lower = -t_threshold if tail <= 0 else None
-            cdist = _ClusterDist(ct.Y, samples, t_upper, t_lower, 't',
+            cdist = _ClusterDist(ct.Y, samples, t_threshold, tail, 't',
                                  test_name, tstart, tstop, criteria)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
@@ -1073,8 +1058,8 @@ class anova:
         else:
             # find F-thresholds for clusters
             fmins = [ftest_f(pmin, e.df, df_den[e]) for e in effects]
-            cdists = [_ClusterDist(Y, samples, fmin, None, 'F', e.name,
-                                   tstart, tstop, criteria)
+            cdists = [_ClusterDist(Y, samples, fmin, 1, 'F', e.name, tstart,
+                                   tstop, criteria)
                       for e, fmin in izip(effects, fmins)]
 
             # Find clusters in the actual data
@@ -1179,7 +1164,7 @@ class _ClusterDist:
       - proceed to add statistical maps from permuted data with
         ``cdist.add_perm(pmap)``.
     """
-    def __init__(self, Y, N, t_upper, t_lower=None, meas='?', name=None,
+    def __init__(self, Y, N, threshold, tail=0, meas='?', name=None,
                  tstart=None, tstop=None, criteria={}):
         """Accumulate information on a cluster statistic.
 
@@ -1189,9 +1174,12 @@ class _ClusterDist:
             Dependent variable.
         N : int
             Number of permutations.
-        t_upper, t_lower : None | scalar
-            Positive and negative thresholds for finding clusters. If None,
-            no clusters with the corresponding sign are counted.
+        threshold : scalar > 0
+            Thresholds for finding clusters.
+        tail : 1 | 0 | -1
+            Which tail(s) of the distribution to consider. 0 is two-tailed,
+            whereas 1 only considers positive values and -1 only considers
+            negative values.
         meas : str
             Label for the parameter measurement (e.g., 't' for t-values).
         name : None | str
@@ -1204,29 +1192,14 @@ class _ClusterDist:
             (seconds) and 'minsource' (n_sources).
         """
         assert Y.has_case
-        if t_lower is not None:
-            if t_lower >= 0:
-                raise ValueError("t_lower needs to be < 0; is %s" % t_lower)
-        if t_upper is not None:
-            if t_upper <= 0:
-                raise ValueError("t_upper needs to be > 0; is %s" % t_upper)
-        if (t_lower is not None) and (t_upper is not None):
-            if t_lower != -t_upper:
-                err = ("If t_upper and t_lower are defined, t_upper has to be "
-                       "-t_lower")
-                raise ValueError(err)
+        assert threshold > 0
 
-        # prepare time manipulation
-        if Y.has_dim('time'):
-            t_ax = Y.get_axis('time') - 1
-        else:
-            t_ax = None
-
-        # prepare cropping
+        # prepare temporal cropping
         if (tstart is None) and (tstop is None):
             self.crop = False
             Y_perm = Y
         else:
+            t_ax = Y.get_axis('time') - 1
             self.crop = True
             Y_perm = Y.sub(time=(tstart, tstop))
             istart = 0 if tstart is None else Y.time.index(tstart, 'up')
@@ -1278,11 +1251,10 @@ class _ClusterDist:
         self.N = N
         self.dist = np.zeros(N)
         self._i = N
-        self.t_upper = t_upper
-        self.t_lower = t_lower
+        self.threshold = threshold
+        self.tail = tail
         self.tstart = tstart
         self.tstop = tstop
-        self._t_ax = t_ax
         self.meas = meas
         self.name = name
         self.criteria = criteria_
@@ -1385,10 +1357,10 @@ class _ClusterDist:
 
         # store cluster NDVar
         contours = {}
-        if self.t_lower is not None:
-            contours[self.t_lower] = (0.7, 0, 0.7)
-        if self.t_upper is not None:
-            contours[self.t_upper] = (0.7, 0.7, 0)
+        if self.tail >= 0:
+            contours[self.threshold] = (0.7, 0.7, 0)
+        if self.tail <= 0:
+            contours[-self.threshold] = (0.7, 0, 0.7)
         info = _cs.stat_info(self.meas, contours=contours, summary_func=np.sum)
         ds['cluster'] = NDVar(cmaps, dims=dims, info=info)
 
@@ -1427,16 +1399,16 @@ class _ClusterDist:
             Identifiers of the clusters that survive the minimum duration
             criterion.
         """
-        if self.t_upper is not None:
-            bin_map_above = (pmap > self.t_upper)
-            cmap, cids = self._label_clusters_1tailed(bin_map_above)
+        if self.tail >= 0:
+            bin_map_above = (pmap > self.threshold)
+            cmap, cids = self._label_clusters_binary(bin_map_above)
 
-        if self.t_lower is not None:
-            bin_map_below = (pmap < self.t_lower)
-            if self.t_upper is None:
-                cmap, cids = self._label_clusters_1tailed(bin_map_below)
+        if self.tail <= 0:
+            bin_map_below = (pmap < -self.threshold)
+            if self.tail < 0:
+                cmap, cids = self._label_clusters_binary(bin_map_below)
             else:
-                cmap_l, cids_l = self._label_clusters_1tailed(bin_map_below)
+                cmap_l, cids_l = self._label_clusters_binary(bin_map_below)
                 x = int(cmap.max())  # apparently np.uint64 + int makes a float
                 cmap_l[bin_map_below] += x
                 cmap += cmap_l
@@ -1444,7 +1416,7 @@ class _ClusterDist:
 
         return cmap, tuple(cids)
 
-    def _label_clusters_1tailed(self, bin_map):
+    def _label_clusters_binary(self, bin_map):
         """
         Parameters
         ----------
@@ -1457,8 +1429,7 @@ class _ClusterDist:
         cluster_map : array
             Array of same shape as bin_map with clusters labeled.
         cluster_ids : iterator over int
-            Identifiers of the clusters that survive the minimum duration
-            criterion.
+            Identifiers of the clusters that survive the selection criteria.
         """
         # find clusters
         if self._all_adjacent:
