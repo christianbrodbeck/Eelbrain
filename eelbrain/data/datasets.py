@@ -115,20 +115,23 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     return ds
 
 
-def get_rand(utsnd=False):
+def get_rand(utsnd=False, seed=0):
     """Create a sample Dataset with 60 cases and random data.
 
     Parameters
     ----------
     utsnd : bool
         Add a sensor by time NDVar (called 'utsnd').
+    seed : None | int
+        If not None, call ``numpy.random.seed(seed)`` to ensure replicability.
 
     Returns
     -------
     ds : Dataset
         Datasets with data from random distributions.
     """
-    np.random.seed(0)
+    if seed is not None:
+        np.random.seed(seed)
 
     ds = Dataset()
 
