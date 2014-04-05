@@ -1216,7 +1216,7 @@ class _ClusterDist:
                 raise NotImplementedError(err)
             self._nad_ax = ax = adjacent.index(False)
             self._conn = Y_perm.dims[ax + 1].connectivity()
-            struct = ndimage.generate_binary_structure(2, 1)
+            struct = ndimage.generate_binary_structure(Y.ndim - 1, 1)
             struct[::2] = False
             self._struct = struct
             # flattening and reshaping (cropped) p-maps with swapped axes
@@ -1446,11 +1446,12 @@ class _ClusterDist:
             cids = set(xrange(1, n + 1))
             n_chan = len(cmap)
 
+            cmap_flat = cmap.reshape(self._flat_shape)
             for i in xrange(bin_map.shape[1]):
-                if len(np.setdiff1d(cmap[:, i], np.zeros(1), False)) <= 1:
+                if len(np.setdiff1d(cmap_flat[:, i], np.zeros(1), False)) <= 1:
                     continue
 
-                idx = np.flatnonzero(cmap[:, i])
+                idx = np.flatnonzero(cmap_flat[:, i])
                 c_idx = np.logical_and(np.in1d(c.row, idx), np.in1d(c.col, idx))
                 row = c.row[c_idx]
                 col = c.col[c_idx]
@@ -1463,11 +1464,11 @@ class _ClusterDist:
                 labels_ = np.flatnonzero(np.bincount(lbl_map) > 1)
                 for lbl in labels_:
                     idx_ = lbl_map == lbl
-                    merge = np.unique(cmap[idx_, i])
+                    merge = np.unique(cmap_flat[idx_, i])
 
                     # merge labels
-                    idx_ = reduce(np.logical_or, (cmap == m for m in merge))
-                    cmap[idx_] = merge[0]
+                    idx_ = reduce(np.logical_or, (cmap_flat == m for m in merge))
+                    cmap_flat[idx_] = merge[0]
                     cids.difference_update(merge[1:])
 
                 if len(cids) == 1:
@@ -1480,8 +1481,7 @@ class _ClusterDist:
             if self._all_adjacent:
                 cmap_ = cmap
             else:
-                cmap_ = cmap.reshape(self._orig_shape)
-                cmap_ = cmap_.swapaxes(0, self._nad_ax)
+                cmap_ = cmap.swapaxes(0, self._nad_ax)
 
             for axis, dim in enumerate(self.Y_perm.dims[1:]):
                 if dim.name not in criteria:
@@ -1530,10 +1530,8 @@ class _ClusterDist:
         pmap_ = self._crop(pmap)
         if not self._all_adjacent:
             pmap_ = pmap_.swapaxes(0, self._nad_ax)
-            pmap_ = pmap_.reshape(self._flat_shape)
         cmap, cids = self._label_clusters(pmap_)
         if not self._all_adjacent:  # return cmap to proper shape
-            cmap = cmap.reshape(self._orig_shape)
             cmap = cmap.swapaxes(0, self._nad_ax)
 
         self.has_original = True
@@ -1558,8 +1556,6 @@ class _ClusterDist:
 
         if not self._all_adjacent:
             pmap = pmap.swapaxes(0, self._nad_ax)
-            pmap = pmap.reshape(self._flat_shape)
-
         cmap, cids = self._label_clusters(pmap)
         if cids:
             clusters_v = ndimage.sum(pmap, cmap, cids)
