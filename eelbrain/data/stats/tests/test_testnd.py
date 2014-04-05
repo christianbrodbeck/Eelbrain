@@ -4,7 +4,9 @@ from nose.tools import assert_equal, assert_in, assert_less, assert_not_in
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from eelbrain.data import datasets, testnd, plot
+from eelbrain.data.data_obj import UTS, Ordered, Sensor
+from eelbrain.data.stats.testnd import _ClusterDist
+from eelbrain.data import datasets, testnd, plot, NDVar
 
 
 def test_anova():
@@ -21,6 +23,54 @@ def test_anova():
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
     p = plot.Array(res)
     p.close()
+
+
+def test_clusterdist():
+    "Test _ClusterDist class"
+    shape = (10, 6, 6, 4)
+    locs = [[0, 0, 0],
+            [1, 0, 0],
+            [1, 1, 0],
+            [0, 1, 0]]
+    x = np.random.normal(0, 1, shape)
+    dims = ('case', UTS(-0.1, 0.1, 6), Ordered('dim2', range(6), 'unit'),
+            Sensor(locs, ['0', '1', '2', '3'], connect_dist=1.1))
+    Y = NDVar(x, dims)
+
+    # test connecting sensors
+    bin_map = np.zeros(shape[1:], dtype=np.bool8)
+    bin_map[:3, :3, :2] = True
+    pmap = np.random.normal(0, 1, shape[1:])
+    np.clip(pmap, -1, 1, pmap)
+    pmap[bin_map] = 2
+    cdist = _ClusterDist(Y, 0, 1.5)
+    cdist.add_original(pmap)
+    assert_equal(cdist.n_clusters, 1)
+    assert_array_equal(cdist._cluster_im == cdist._cids[0], bin_map)
+    assert_equal(cdist.pmap.dims, Y.dims[1:])
+
+    # test connecting many sensors
+    bin_map = np.zeros(shape[1:], dtype=np.bool8)
+    bin_map[:3, :3] = True
+    pmap = np.random.normal(0, 1, shape[1:])
+    np.clip(pmap, -1, 1, pmap)
+    pmap[bin_map] = 2
+    cdist = _ClusterDist(Y, 0, 1.5)
+    cdist.add_original(pmap)
+    assert_equal(cdist.n_clusters, 1)
+    assert_array_equal(cdist._cluster_im == cdist._cids[0], bin_map)
+    assert_equal(cdist.pmap.dims, Y.dims[1:])
+
+    # test keeping sensors separate
+    bin_map = np.zeros(shape[1:], dtype=np.bool8)
+    bin_map[:3, :3, 0] = True
+    bin_map[:3, :3, 2] = True
+    pmap = np.random.normal(0, 1, shape[1:])
+    np.clip(pmap, -1, 1, pmap)
+    pmap[bin_map] = 2
+    cdist = _ClusterDist(Y, 1, 1.5)
+    cdist.add_original(pmap)
+    assert_equal(cdist.n_clusters, 2)
 
 
 def test_corr():
