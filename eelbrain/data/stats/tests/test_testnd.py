@@ -46,8 +46,9 @@ def test_clusterdist():
     cdist = _ClusterDist(Y, 0, 1.5)
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 1)
-    assert_array_equal(cdist._cluster_im == cdist._cids[0], bin_map)
-    assert_equal(cdist.pmap.dims, Y.dims[1:])
+    assert_array_equal(cdist._original_cmap == cdist._cids[0],
+                       cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))
+    assert_equal(cdist.parameter_map.dims, Y.dims[1:])
 
     # test connecting many sensors
     bin_map = np.zeros(shape[1:], dtype=np.bool8)
@@ -58,8 +59,8 @@ def test_clusterdist():
     cdist = _ClusterDist(Y, 0, 1.5)
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 1)
-    assert_array_equal(cdist._cluster_im == cdist._cids[0], bin_map)
-    assert_equal(cdist.pmap.dims, Y.dims[1:])
+    assert_array_equal(cdist._original_cmap == cdist._cids[0],
+                       cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))
 
     # test keeping sensors separate
     bin_map = np.zeros(shape[1:], dtype=np.bool8)
