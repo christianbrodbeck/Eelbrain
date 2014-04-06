@@ -1207,9 +1207,12 @@ class _ClusterDist:
             self._crop_idx = (slice(None),) * t_ax + (slice(istart, istop),)
             self._uncropped_shape = Y.shape[1:]
 
-        pmap_ndim = Y_perm.ndim - 1
+        # cluster map properties
+        ndim = Y_perm.ndim - 1
+        shape = Y_perm.shape[1:]
 
         # prepare adjacency
+        struct = ndimage.generate_binary_structure(ndim, 1)
         adjacent = [d.adjacent for d in Y_perm.dims[1:]]
         all_adjacent = all(adjacent)
         if all_adjacent:
@@ -1220,16 +1223,13 @@ class _ClusterDist:
                 raise NotImplementedError(err)
             nad_ax = adjacent.index(False)
             connectivity = Y_perm.dims[nad_ax + 1].connectivity()
-            struct = ndimage.generate_binary_structure(pmap_ndim, 1)
             struct[::2] = False
             # prepare flattening (cropped) maps with swapped axes
-            shape = Y_perm.shape[1:]
             if nad_ax:
                 shape = list(shape)
                 shape[0], shape[nad_ax] = shape[nad_ax], shape[0]
                 shape = tuple(shape)
 
-            self._struct = struct
             self._flat_shape = (shape[0], np.prod(shape[1:]))
             self._connectivity = connectivity
 
@@ -1251,7 +1251,7 @@ class _ClusterDist:
                     elif ax == nad_ax:
                         ax = 0
 
-                axes = tuple(i for i in xrange(pmap_ndim) if i != ax)
+                axes = tuple(i for i in xrange(ndim) if i != ax)
                 criteria_.append((axes, v))
         else:
             criteria_ = None
@@ -1263,10 +1263,11 @@ class _ClusterDist:
         self.N = N
         self.dist = np.zeros(N)
         self._i = N
-        self._all_adjacent = all_adjacent
-        self._nad_ax = nad_ax
         self.threshold = threshold
         self.tail = tail
+        self._all_adjacent = all_adjacent
+        self._nad_ax = nad_ax
+        self._struct = struct
         self.tstart = tstart
         self.tstop = tstop
         self.meas = meas
@@ -1274,6 +1275,17 @@ class _ClusterDist:
         self.criteria = criteria_
         self._criteria_arg = criteria
         self.has_original = False
+
+        # pre-allocate memory buffers
+        self._bin_buff = np.empty(shape, dtype=np.bool8)
+        self._int_buff = np.empty(shape, dtype=np.uint32)
+        self._cluster_im = np.empty(shape, dtype=np.uint32)
+        if tail == 0:
+            self._int_buff2 = np.empty(shape, dtype=np.uint32)
+        if not all_adjacent:
+            self._slice_buff = np.empty(shape[0], dtype=np.bool8)
+            self._bin_buff2 = np.empty(shape, dtype=np.bool8)
+            self._bin_buff3 = np.empty(shape, dtype=np.bool8)
 
     def __repr__(self):
         items = []
@@ -1327,6 +1339,16 @@ class _ClusterDist:
     def _finalize(self):
         if self._i < 0:
             raise RuntimeError("Too many permutations added to _ClusterDist")
+
+        # remove memory buffers
+        del self._bin_buff
+        del self._int_buff
+        if self.tail == 0:
+            del self._int_buff2
+        if not self.all_adjacent:
+            del self._slice_buff
+            del self._bin_buff2
+            del self._bin_buff3
 
         if not self.n_clusters:
             self.clusters = None
@@ -1396,7 +1418,7 @@ class _ClusterDist:
         self.all = [[self.pmap, self.cpmap]]
         self.dt_perm = current_time() - self._t0
 
-    def _label_clusters(self, pmap):
+    def _label_clusters(self, pmap, out):
         """Find clusters on a statistical parameter map
 
         Parameters
@@ -1414,15 +1436,16 @@ class _ClusterDist:
             criterion.
         """
         if self.tail >= 0:
-            bin_map_above = (pmap > self.threshold)
-            cmap, cids = self._label_clusters_binary(bin_map_above)
+            bin_map_above = np.greater(pmap, self.threshold, self._bin_buff)
+            cmap, cids = self._label_clusters_binary(bin_map_above, out)
 
         if self.tail <= 0:
-            bin_map_below = (pmap < -self.threshold)
+            bin_map_below = np.less(pmap, -self.threshold, self._bin_buff)
             if self.tail < 0:
-                cmap, cids = self._label_clusters_binary(bin_map_below)
+                cmap, cids = self._label_clusters_binary(bin_map_below, out)
             else:
-                cmap_l, cids_l = self._label_clusters_binary(bin_map_below)
+                cmap_l, cids_l = self._label_clusters_binary(bin_map_below,
+                                                             self._int_buff2)
                 x = int(cmap.max())  # apparently np.uint64 + int makes a float
                 cmap_l[bin_map_below] += x
                 cmap += cmap_l
@@ -1430,7 +1453,7 @@ class _ClusterDist:
 
         return cmap, tuple(cids)
 
-    def _label_clusters_binary(self, bin_map):
+    def _label_clusters_binary(self, bin_map, out):
         """
         Parameters
         ----------
@@ -1446,21 +1469,18 @@ class _ClusterDist:
             Identifiers of the clusters that survive the selection criteria.
         """
         # find clusters
-        if self._all_adjacent:
-            cmap, n = ndimage.label(bin_map)
-            # n is 1 even when no cluster is found
-            if n == 1 and cmap.max() == 0:
-                n = 0
-            cids = set(xrange(1, n + 1))
-        else:
+        n = ndimage.label(bin_map, self._struct, out)
+        # n is 1 even when no cluster is found
+        if n == 1 and out.max() == 0:
+            n = 0
+        cids = set(xrange(1, n + 1))
+        if not self._all_adjacent:
             c = self._connectivity
-            cmap, n = ndimage.label(bin_map, self._struct)
-            if n == 1 and cmap.max() == 0:
-                n = 0
-            cids = set(xrange(1, n + 1))
-
+            midx = self._slice_buff
+            cidx = self._bin_buff2
+            cidx2 = self._bin_buff3
             # reshape cluster map for iteration
-            cmap_flat = cmap.reshape(self._flat_shape).swapaxes(0, 1)
+            cmap_flat = out.reshape(self._flat_shape).swapaxes(0, 1)
             for cmap_slice in cmap_flat:
                 if np.count_nonzero(np.unique(cmap_slice)) <= 1:
                     continue
@@ -1470,20 +1490,25 @@ class _ClusterDist:
                 c_idx = np.in1d(c.row, idx)
                 c_idx *= np.in1d(c.col, idx)
                 row = c.row[c_idx]
+                if len(row) == 0:
+                    continue
                 col = c.col[c_idx]
                 data = c.data[c_idx]
                 c_ = coo_matrix((data, (row, col)), shape=c.shape)
 
                 n_lbls, lbl_map = connected_components(c_, False)
-                if n_lbls == len(lbl_map):
-                    continue
                 for lbl in xrange(n_lbls):
-                    idx_ = lbl_map == lbl
-                    merge = np.unique(cmap_slice[idx_])
+                    np.equal(lbl_map, lbl, midx)
+                    if np.count_nonzero(midx) == 1:
+                        continue
+                    merge = np.unique(cmap_slice[midx])
 
                     # merge labels
-                    idx_ = reduce(np.logical_or, (cmap_flat == m for m in merge))
-                    cmap_flat[idx_] = merge[0]
+                    np.equal(out, merge[1], cidx)
+                    for m in merge[2:]:
+                        np.equal(out, m, cidx2)
+                        np.logical_or(cidx, cidx2, cidx)
+                    out[cidx] = merge[0]
                     cids.difference_update(merge[1:])
 
                 if len(cids) == 1:
@@ -1493,10 +1518,10 @@ class _ClusterDist:
         if self.criteria:
             for axes, v in self.criteria:
                 rm = tuple(i for i in cids if
-                           np.count_nonzero(np.equal(cmap, i).any(axes)) < v)
+                           np.count_nonzero(np.equal(out, i).any(axes)) < v)
                 cids.difference_update(rm)
 
-        return cmap, cids
+        return out, cids
 
     def _param_repr(self, perm=False):
         "Repr fragment with clustering parameters"
@@ -1528,14 +1553,14 @@ class _ClusterDist:
         pmap : array
             Parameter map of the statistic of interest (uncropped).
         """
-        if hasattr(self, '_cluster_im'):
+        if self.has_original:
             raise RuntimeError("Original pmap already added")
 
         t0 = current_time()
         pmap_ = self._crop(pmap)
         if self._nad_ax:
             pmap_ = pmap_.swapaxes(0, self._nad_ax)
-        cmap, cids = self._label_clusters(pmap_)
+        cmap, cids = self._label_clusters(pmap_, self._cluster_im)
         if self._nad_ax:  # return cmap to proper shape
             cmap = cmap.swapaxes(0, self._nad_ax)
 
@@ -1561,7 +1586,7 @@ class _ClusterDist:
 
         if self._nad_ax:
             pmap = pmap.swapaxes(0, self._nad_ax)
-        cmap, cids = self._label_clusters(pmap)
+        cmap, cids = self._label_clusters(pmap, self._int_buff)
         if cids:
             clusters_v = ndimage.sum(pmap, cmap, cids)
             self.dist[self._i] = np.max(np.abs(clusters_v))
