@@ -10,7 +10,6 @@ import eelbrain.data.load.fiff
 # mayavi
 try:
     import eelbrain.data.plot.brain
-    import eelbrain.data.plot.coreg
 except:
     globals().setdefault('err', []).append('plot.brain (mayavi)')
 
