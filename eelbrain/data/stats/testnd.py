@@ -75,7 +75,7 @@ def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
 
 class t_contrast_rel:
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None,
-                 tail=0, samples=None, pmin=0.05, tstart=None, tstop=None,
+                 tail=0, samples=None, pmin=None, tstart=None, tstop=None,
                  **criteria):
         """Contrast with t-values from multiple comparisons
 
@@ -313,8 +313,8 @@ class corr:
     r : NDVar
         Correlation (with threshold contours).
     """
-    def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=0, pmin=0.05,
-                 tstart=None, tstop=None, match=None, **criteria):
+    def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=None,
+                 pmin=None, tstart=None, tstop=None, match=None, **criteria):
         """Correlation.
 
         Parameters
@@ -470,7 +470,7 @@ class ttest_1samp:
         [c0 - c1, P]
     """
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
-                 samples=None, pmin=0.05, tstart=None, tstop=None, **criteria):
+                 samples=None, pmin=None, tstart=None, tstop=None, **criteria):
         """Element-wise one sample t-test
 
         Parameters
@@ -599,7 +599,7 @@ class ttest_ind:
         [c0 - c1, P]
     """
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
-                 tail=0, samples=None, pmin=0.05, tstart=None, tstop=None,
+                 tail=0, samples=None, pmin=None, tstart=None, tstop=None,
                  **criteria):
         """Element-wise t-test
 
@@ -736,7 +736,7 @@ class ttest_rel:
         [c0 - c1, P]
     """
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
-                 tail=0, samples=None, pmin=0.05, tstart=None, tstop=None,
+                 tail=0, samples=None, pmin=None, tstart=None, tstop=None,
                  **criteria):
         """Element-wise t-test
 
@@ -1029,7 +1029,7 @@ class anova:
     p : list
         Maps of p values.
     """
-    def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=0.05,
+    def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
                  tstart=None, tstop=None, match=None, **criteria):
         """ANOVA with cluster permutation test
 

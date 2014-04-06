@@ -1,6 +1,7 @@
 """Test mne interaction"""
 import os
 
+from nose.tools import assert_equal
 from numpy.testing import assert_array_equal
 
 import mne
@@ -13,8 +14,9 @@ def test_source_estimate():
     ds = datasets.get_mne_sample(src='ico')
 
     # source space clustering
-    res = testnd.ttest_ind('src', 'side', ds=ds, samples=0, tstart=0.05,
-                           mintime=0.02, minsource=10)
+    res = testnd.ttest_ind('src', 'side', ds=ds, samples=0, pmin=0.05,
+                           tstart=0.05, mintime=0.02, minsource=10)
+    assert_equal(res.clusters.n_cases, 52)
 
     # test morphing
     dsa = ds.aggregate('side')
