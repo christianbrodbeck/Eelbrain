@@ -1207,42 +1207,54 @@ class _ClusterDist:
             self._crop_idx = (slice(None),) * t_ax + (slice(istart, istop),)
             self._uncropped_shape = Y.shape[1:]
 
+        pmap_ndim = Y_perm.ndim - 1
+
         # prepare adjacency
         adjacent = [d.adjacent for d in Y_perm.dims[1:]]
-        self._all_adjacent = all_adjacent = all(adjacent)
-        if not all_adjacent:
+        all_adjacent = all(adjacent)
+        if all_adjacent:
+            nad_ax = 0
+        else:
             if sum(adjacent) < len(adjacent) - 1:
                 err = ("more than one non-adjacent dimension")
                 raise NotImplementedError(err)
-            self._nad_ax = ax = adjacent.index(False)
-            self._conn = Y_perm.dims[ax + 1].connectivity()
-            struct = ndimage.generate_binary_structure(Y.ndim - 1, 1)
+            nad_ax = adjacent.index(False)
+            connectivity = Y_perm.dims[nad_ax + 1].connectivity()
+            struct = ndimage.generate_binary_structure(pmap_ndim, 1)
             struct[::2] = False
-            self._struct = struct
-            # flattening and reshaping (cropped) p-maps with swapped axes
+            # prepare flattening (cropped) maps with swapped axes
             shape = Y_perm.shape[1:]
-            if ax:
+            if nad_ax:
                 shape = list(shape)
-                shape[0], shape[ax] = shape[ax], shape[0]
+                shape[0], shape[nad_ax] = shape[nad_ax], shape[0]
                 shape = tuple(shape)
-            self._orig_shape = shape
+
+            self._struct = struct
             self._flat_shape = (shape[0], np.prod(shape[1:]))
+            self._connectivity = connectivity
 
-        # interpret cluster criteria
-        criteria_ = {}
-        for k, v in criteria.iteritems():
-            if k == 'tmin' or k == 'mintime':
-                criteria_['time'] = int(ceil(v / Y.time.tstep))
-            elif k == 'minsource':
-                criteria_['source'] = v
-            else:
-                raise ValueError("Unknown criterion: %r" % k)
+        # prepare cluster minimum size criteria
+        if criteria:
+            criteria_ = []
+            for k, v in criteria.iteritems():
+                if k == 'mintime':
+                    ax = Y.get_axis('time') - 1
+                    v = int(ceil(v / Y.time.tstep))
+                elif k == 'minsource':
+                    ax = Y.get_axis('source') - 1
+                else:
+                    raise ValueError("Unknown criterion: %r" % k)
 
-            for k in criteria_:
-                if not Y.has_dim(k):
-                    err = ("Criterion specified for dimension that is not in "
-                           "the data: %r" % k)
-                    raise ValueError(err)
+                if nad_ax:
+                    if ax == 0:
+                        ax = nad_ax
+                    elif ax == nad_ax:
+                        ax = 0
+
+                axes = tuple(i for i in xrange(pmap_ndim) if i != ax)
+                criteria_.append((axes, v))
+        else:
+            criteria_ = None
 
         N = int(N)
 
@@ -1251,6 +1263,8 @@ class _ClusterDist:
         self.N = N
         self.dist = np.zeros(N)
         self._i = N
+        self._all_adjacent = all_adjacent
+        self._nad_ax = nad_ax
         self.threshold = threshold
         self.tail = tail
         self.tstart = tstart
@@ -1388,8 +1402,8 @@ class _ClusterDist:
         Parameters
         ----------
         pmap : array
-            Statistical parameter map (flattened if the data contains
-            non-adjacent dimensions).
+            Statistical parameter map (non-adjacent dimension on the first
+            axis).
 
         Returns
         -------
@@ -1422,7 +1436,7 @@ class _ClusterDist:
         ----------
         bin_map : array
             Binary map of where the parameter map exceeds the threshold for a
-            cluster. (flattened if the data contains non-adjacent dimensions).
+            cluster (non-adjacent dimension on the first axis).
 
         Returns
         -------
@@ -1439,32 +1453,33 @@ class _ClusterDist:
                 n = 0
             cids = set(xrange(1, n + 1))
         else:
-            c = self._conn
+            c = self._connectivity
             cmap, n = ndimage.label(bin_map, self._struct)
             if n == 1 and cmap.max() == 0:
                 n = 0
             cids = set(xrange(1, n + 1))
-            n_chan = len(cmap)
 
-            cmap_flat = cmap.reshape(self._flat_shape)
-            for i in xrange(bin_map.shape[1]):
-                if len(np.setdiff1d(cmap_flat[:, i], np.zeros(1), False)) <= 1:
+            # reshape cluster map for iteration
+            cmap_flat = cmap.reshape(self._flat_shape).swapaxes(0, 1)
+            for cmap_slice in cmap_flat:
+                if np.count_nonzero(np.unique(cmap_slice)) <= 1:
                     continue
 
-                idx = np.flatnonzero(cmap_flat[:, i])
-                c_idx = np.logical_and(np.in1d(c.row, idx), np.in1d(c.col, idx))
+                # find connectivity of True entries
+                idx = cmap_slice.nonzero()[0]
+                c_idx = np.in1d(c.row, idx)
+                c_idx *= np.in1d(c.col, idx)
                 row = c.row[c_idx]
                 col = c.col[c_idx]
                 data = c.data[c_idx]
-                n = np.max(idx)
                 c_ = coo_matrix((data, (row, col)), shape=c.shape)
-                n_, lbl_map = connected_components(c_, False)
-                if n_ == n_chan:
+
+                n_lbls, lbl_map = connected_components(c_, False)
+                if n_lbls == len(lbl_map):
                     continue
-                labels_ = np.flatnonzero(np.bincount(lbl_map) > 1)
-                for lbl in labels_:
+                for lbl in xrange(n_lbls):
                     idx_ = lbl_map == lbl
-                    merge = np.unique(cmap_flat[idx_, i])
+                    merge = np.unique(cmap_slice[idx_])
 
                     # merge labels
                     idx_ = reduce(np.logical_or, (cmap_flat == m for m in merge))
@@ -1475,20 +1490,10 @@ class _ClusterDist:
                     break
 
         # apply minimum cluster size criteria
-        criteria = self.criteria
-        if criteria:
-            # return cmap to proper shape
-            if self._all_adjacent:
-                cmap_ = cmap
-            else:
-                cmap_ = cmap.swapaxes(0, self._nad_ax)
-
-            for axis, dim in enumerate(self.Y_perm.dims[1:]):
-                if dim.name not in criteria:
-                    continue
-                vmin = criteria[dim.name]
-                size = dim._cluster_size_basic
-                rm = tuple(i for i in cids if size(cmap_ == i, axis) < vmin)
+        if self.criteria:
+            for axes, v in self.criteria:
+                rm = tuple(i for i in cids if
+                           np.count_nonzero(np.equal(cmap, i).any(axes)) < v)
                 cids.difference_update(rm)
 
         return cmap, cids
@@ -1528,10 +1533,10 @@ class _ClusterDist:
 
         t0 = current_time()
         pmap_ = self._crop(pmap)
-        if not self._all_adjacent:
+        if self._nad_ax:
             pmap_ = pmap_.swapaxes(0, self._nad_ax)
         cmap, cids = self._label_clusters(pmap_)
-        if not self._all_adjacent:  # return cmap to proper shape
+        if self._nad_ax:  # return cmap to proper shape
             cmap = cmap.swapaxes(0, self._nad_ax)
 
         self.has_original = True
@@ -1554,7 +1559,7 @@ class _ClusterDist:
         """
         self._i -= 1
 
-        if not self._all_adjacent:
+        if self._nad_ax:
             pmap = pmap.swapaxes(0, self._nad_ax)
         cmap, cids = self._label_clusters(pmap)
         if cids:

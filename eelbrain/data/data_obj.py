@@ -4715,16 +4715,6 @@ class Dimension(object):
         """
         return None
 
-    def _cluster_size_basic(self, x, axis):
-        """Cluster size in n_samples for one cluster"""
-        # flatten clusters into one dimension
-        axes = tuple(i for i in xrange(x.ndim) if i != axis)
-        x = np.any(x, axes)
-
-        # find cluster extent
-        n_sources = np.sum(x)
-        return n_sources
-
 
 class Scalar(Dimension):
     def __init__(self, name, values, unit=None):

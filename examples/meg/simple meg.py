@@ -66,7 +66,7 @@ plot.TopoButterfly('meg', 'side % modality', ds=ds_sub)
 # take a minute -- increase samples to 10000 for a better test)
 res = testnd.ttest_ind('meg', 'side', 'L', 'R', sub="modality == 'V'", 
                         ds=ds_sub, samples=100, pmin=0.05, tstart=0,
-                        tstop=0.4, tmin=0.01)
+                        tstop=0.4, mintime=0.01)
 # show parameters for all clusters
 print res.clusters
 # show parameters for cluster with p <= 0.1 (res.clusters is a Dataset)
