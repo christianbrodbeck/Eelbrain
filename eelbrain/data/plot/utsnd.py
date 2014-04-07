@@ -151,9 +151,12 @@ class _ax_im_array(object):
         # x-ticks
         tickstart = math.ceil(xdim[0] / tick_spacing) * tick_spacing
         tickstop = xdim[-1] + tick_spacing / 1e4
-        ticks = np.arange(tickstart, tickstop, tick_spacing)
-        if ticks[0] < 0 and ticks[0] == xdim[0]:
-            ticks = ticks[1:]
+        if tickstop - tickstart > tick_spacing:
+            ticks = np.arange(tickstart, tickstop, tick_spacing)
+            if len(ticks) > 2 and ticks[0] < 0 and ticks[0] == xdim[0]:
+                ticks = ticks[1:]
+        else:
+            ticks = np.array([xdim[0], xdim[-1]])
         ax.xaxis.set_ticks(ticks)
         ticklabels = _base._ticklabels(ticks, xdim.name)
         ax.xaxis.set_ticklabels(ticklabels)
