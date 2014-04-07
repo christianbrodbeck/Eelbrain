@@ -127,7 +127,7 @@ class _ax_im_array(object):
             raise ValueError(err)
 
         ydim = epoch.get_dim(y)
-        if y == 'sensor':
+        if not ydim.adjacent:
             ydim = _dta.Var(np.arange(len(ydim)), y)
 
         # plot
