@@ -10,8 +10,6 @@ import numpy as np
 import scipy.stats
 from scipy import ndimage
 from scipy.ndimage import binary_erosion, binary_dilation
-from scipy.sparse import coo_matrix
-from scipy.sparse.csgraph import connected_components
 
 from ... import fmtxt
 from .. import colorspaces as _cs
@@ -1577,9 +1575,7 @@ class _ClusterDist:
         cids = set(xrange(1, n + 1))
         if not self._all_adjacent:
             c = self._connectivity
-            midx = self._slice_buff
             cidx = self._bin_buff2
-            cidx2 = self._bin_buff3
             # reshape cluster map for iteration
             cmap_flat = out.reshape(self._flat_shape).swapaxes(0, 1)
             for cmap_slice in cmap_flat:
@@ -1590,30 +1586,24 @@ class _ClusterDist:
                 idx = cmap_slice.nonzero()[0]
                 c_idx = np.in1d(c.row, idx)
                 c_idx *= np.in1d(c.col, idx)
-                row = c.row[c_idx]
-                if len(row) == 0:
+                if np.count_nonzero(c_idx) == 0:
                     continue
+
+                row = c.row[c_idx]
                 col = c.col[c_idx]
-                data = c.data[c_idx]
-                c_ = coo_matrix((data, (row, col)), shape=c.shape)
-
-                n_lbls, lbl_map = connected_components(c_, False)
-                for lbl in xrange(n_lbls):
-                    np.equal(lbl_map, lbl, midx)
-                    if np.count_nonzero(midx) == 1:
-                        continue
-                    merge = np.unique(cmap_slice[midx])
-                    if len(merge) <= 1:
+                for vert_0, vert_1 in izip(row, col):
+                    # find corresponding cluster indices
+                    id_0 = cmap_slice[vert_0]
+                    id_1 = cmap_slice[vert_1]
+                    if id_0 == id_1:
                         continue
 
-                    # merge labels
-                    np.equal(out, merge[1], cidx)
-                    for m in merge[2:]:
-                        np.equal(out, m, cidx2)
-                        np.logical_or(cidx, cidx2, cidx)
-                    out[cidx] = merge[0]
-                    cids.difference_update(merge[1:])
-
+                    # merge id_1 into id_0
+                    np.equal(out, id_1, cidx)
+                    out[cidx] = id_0
+                    cids.remove(id_1)
+                    if len(cids) == 1:
+                        break
                 if len(cids) == 1:
                     break
 
