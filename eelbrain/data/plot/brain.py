@@ -20,7 +20,6 @@ import numpy as np
 
 from ...fmtxt import im_table
 from ..data_obj import asndvar, NDVar, UTS
-from .. import testnd
 
 
 __all__ = ['activation', 'dspm', 'surfer_brain', 'stat']
@@ -75,8 +74,8 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     return _plot(src, lut, -fmax, fmax, *args, **kwargs)
 
 
-def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, dtmin=0.01,
-         *args, **kwargs):
+def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
+         **kwargs):
     """
     Plot a statistic in source space.
 
@@ -92,8 +91,6 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, dtmin=0.01,
     solid : bool
         Use solid color patches between p0 and p1 (default: False - blend
         transparency between p0 and p1).
-    dtmin : scalar | None
-        Temporal cutoff: minimum duration of p < p0 to display.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : list of str | str
@@ -110,9 +107,6 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, dtmin=0.01,
     brain : surfer.Brain
         PySurfer Brain instance containing the plot.
     """
-    if dtmin and p_map.has_dim('time'):
-        p_map = testnd.clean_time_axis(p_map, dtmin, below=p0, null=1)
-
     pmap, lut, vmax = _p_lut(p_map, param_map, p0=p0, p1=p1, solid=solid)
     return _plot(pmap, lut, -vmax, vmax, *args, **kwargs)
 

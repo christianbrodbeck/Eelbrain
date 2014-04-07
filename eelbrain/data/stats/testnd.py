@@ -24,52 +24,6 @@ from .test import star_factor
 __test__ = False
 
 
-def clean_time_axis(pmap, dtmin=0.02, below=None, above=None, null=0):
-    """
-    Clean a parameter map by requiring a threshold value for a minimum duration
-
-    Parameters
-    ----------
-    pmap : NDVar
-        Parameter map with time axis.
-    dtmin : scalar
-        Minimum duration required
-    below : scalar | None
-        Threshold value for finding clusters: find clusters of values below
-        this threshold.
-    above : scalar | None
-        As ``below``, but for finding clusters above a threshold.
-    null : scalar
-        Value to substitute outside of clusters.
-
-    Returns
-    -------
-    cleaned_map : NDVar
-        A copy of pmap with all values that do not belong to a cluster set to
-        null.
-    """
-    if below is None and above is None:
-        raise TypeError("Need to specify either above or below.")
-    elif below is None:
-        passes_t = pmap.x >= above
-    elif above is None:
-        passes_t = pmap.x <= below
-    else:
-        passes_t = np.logical_and(pmap.x >= above, pmap.x <= below)
-
-    ax = pmap.get_axis('time')
-    di_min = int(ceil(dtmin / pmap.time.tstep))
-    struct_shape = (1,) * ax + (di_min,) + (1,) * (pmap.ndim - ax - 1)
-    struct = np.ones(struct_shape, dtype=int)
-
-    cores = binary_erosion(passes_t, struct)
-    keep = binary_dilation(cores, struct)
-    x = np.where(keep, pmap.x, null)
-
-    info = pmap.info.copy()
-    cleaned = NDVar(x, pmap.dims, info, pmap.name)
-    return cleaned
-
 
 class t_contrast_rel:
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None,
