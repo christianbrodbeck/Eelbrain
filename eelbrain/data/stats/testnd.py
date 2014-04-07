@@ -1246,16 +1246,26 @@ class _ClusterDist:
                 err = ("more than one non-adjacent dimension")
                 raise NotImplementedError(err)
             nad_ax = adjacent.index(False)
-            connectivity = Y_perm.dims[nad_ax + 1].connectivity()
             struct[::2] = False
             # prepare flattening (cropped) maps with swapped axes
             if nad_ax:
                 shape = list(shape)
                 shape[0], shape[nad_ax] = shape[nad_ax], shape[0]
                 shape = tuple(shape)
-
             self._flat_shape = (shape[0], np.prod(shape[1:]))
-            self._connectivity = connectivity
+
+            # prepare connectivity
+            coo = Y_perm.dims[nad_ax + 1].connectivity()
+            pairs = set()
+            for v0, v1, d in izip(coo.row, coo.col, coo.data):
+                if not d or v0 == v1:
+                    continue
+                src = min(v0, v1)
+                dst = max(v0, v1)
+                pairs.add((src, dst))
+            connectivity = np.array(sorted(pairs), dtype=np.int32)
+            self._connectivity_src = connectivity[:, 0]
+            self._connectivity_dst = connectivity[:, 1]
 
         # prepare cluster minimum size criteria
         if criteria:
@@ -1574,7 +1584,8 @@ class _ClusterDist:
             n = 0
         cids = set(xrange(1, n + 1))
         if not self._all_adjacent:
-            c = self._connectivity
+            conn_src = self._connectivity_src
+            conn_dst = self._connectivity_dst
             cidx = self._bin_buff2
             # reshape cluster map for iteration
             cmap_flat = out.reshape(self._flat_shape).swapaxes(0, 1)
@@ -1584,24 +1595,23 @@ class _ClusterDist:
 
                 # find connectivity of True entries
                 idx = cmap_slice.nonzero()[0]
-                c_idx = np.in1d(c.row, idx)
-                c_idx *= np.in1d(c.col, idx)
+                c_idx = np.in1d(conn_src, idx)
+                c_idx *= np.in1d(conn_dst, idx)
                 if np.count_nonzero(c_idx) == 0:
                     continue
 
-                row = c.row[c_idx]
-                col = c.col[c_idx]
-                for vert_0, vert_1 in izip(row, col):
+                c_idx = c_idx.nonzero()[0]
+                for i in c_idx:
                     # find corresponding cluster indices
-                    id_0 = cmap_slice[vert_0]
-                    id_1 = cmap_slice[vert_1]
-                    if id_0 == id_1:
+                    id_src = cmap_slice[conn_src[i]]
+                    id_dst = cmap_slice[conn_dst[i]]
+                    if id_src == id_dst:
                         continue
 
-                    # merge id_1 into id_0
-                    np.equal(out, id_1, cidx)
-                    out[cidx] = id_0
-                    cids.remove(id_1)
+                    # merge id_dst into id_src
+                    np.equal(out, id_dst, cidx)
+                    out[cidx] = id_src
+                    cids.remove(id_dst)
                     if len(cids) == 1:
                         break
                 if len(cids) == 1:
