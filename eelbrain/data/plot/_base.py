@@ -898,7 +898,7 @@ class Layout():
                     ncol = round(w / (axh * ax_aspect))
                 else:
                     ncol = round(w / (axh_default * ax_aspect))
-                ncol = min(nax, ncol)
+                ncol = max(1, min(nax, ncol))
                 axw = w / ncol
                 nrow = math.ceil(nax / ncol)
                 if h:
