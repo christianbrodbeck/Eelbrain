@@ -1420,6 +1420,18 @@ class _ClusterDist:
             # simplify: find clusters where p < 0.05; should find maxima
             np.less_equal(cpmap, 0.05, idx)
             cmap, cids = self._label_clusters_binary(idx, self._int_buff)
+            cids = list(cids)
+            # add trends
+            np.less_equal(cpmap, 0.1, idx)
+            cmap_, cids_ = self._label_clusters_binary(idx, np.empty_like(cmap))
+            new_id = max(cids) + 1
+            for cid in cids_:
+                np.equal(cmap_, cid, idx)
+                if not np.any(cmap[idx]):
+                    cmap[idx] = new_id
+                    cids.append(new_id)
+                    new_id += 1
+
             self.n_clusters = len(cids)
             cluster_p = []
         elif self.threshold and self.n_clusters:
