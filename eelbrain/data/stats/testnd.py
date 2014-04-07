@@ -1297,7 +1297,6 @@ class _ClusterDist:
 
         N = int(N)
 
-        self.Y = Y
         self.Y_perm = Y_perm
         self.N = N
         self.dist = np.zeros(N)
@@ -1390,8 +1389,7 @@ class _ClusterDist:
             raise RuntimeError("Too many permutations added to _ClusterDist")
 
         # prepare container for clusters
-        dims = self.Y.dims
-        dims_cropped = self.Y_perm.dims
+        dims = self.Y_perm.dims
         ds = Dataset()
         param_contours = {}
         if self.threshold:
@@ -1401,17 +1399,11 @@ class _ClusterDist:
                 param_contours[-self.threshold] = (0.7, 0, 0.7)
 
         # original parameter-map
-        pmap = self._original_pmap  # parameter map (not reshaped/cropped)
-        if self._nad_ax:
-            pmap_cropped = self._crop(pmap.swapaxes(0, self._nad_ax))
-        else:
-            pmap_cropped = self._crop(pmap)
-        info = _cs.stat_info(self.meas, contours=param_contours)
-        param_map = NDVar(pmap, dims[1:], info, self.name)
+        param_map = self._original_param_map
 
         if self.threshold is None:
             tfce_map = self._original_cmap
-            tfce_map_ = NDVar(tfce_map, dims_cropped[1:], {}, self.name)
+            tfce_map_ = NDVar(tfce_map, dims[1:], {}, self.name)
         else:
             tfce_map_ = None
 
@@ -1447,7 +1439,7 @@ class _ClusterDist:
             cids = self._cids
 
             # measure original clusters
-            cluster_v = ndimage.sum(pmap_cropped, cmap, cids)
+            cluster_v = ndimage.sum(param_map, cmap, cids)
             ds['v'] = Var(cluster_v)
 
             # p-values: "the proportion of random partitions that resulted in a
@@ -1464,13 +1456,14 @@ class _ClusterDist:
 
         # expand clusters and find cluster properties
         if self.n_clusters:
-            cmaps = np.empty((self.n_clusters,) + cmap.shape, dtype=pmap.dtype)
+            cmaps = np.empty((self.n_clusters,) + cmap.shape,
+                             dtype=param_map.dtype)
             c_mask = self._bin_buff
             for i, cid in enumerate(cids):
                 # cluster extent
                 np.equal(cmap, cid, c_mask)
                 # cluster value map
-                np.multiply(pmap_cropped, c_mask, cmaps[i])
+                np.multiply(param_map, c_mask, cmaps[i])
                 if self.N:
                     if self.threshold is None:
                         cluster_p.append(cpmap[c_mask].min())
@@ -1486,25 +1479,31 @@ class _ClusterDist:
                 cmaps = cmaps.swapaxes(1, self._nad_ax + 1)
             info = _cs.stat_info(self.meas, contours=param_contours,
                                  summary_func=np.sum)
-            ds['cluster'] = NDVar(cmaps, dims=dims_cropped, info=info)
+            ds['cluster'] = NDVar(cmaps, dims=dims, info=info)
 
             # add cluster info
-            for axis, dim in enumerate(dims_cropped[1:], 1):
+            for axis, dim in enumerate(dims[1:], 1):
                 properties = dim._cluster_properties(cmaps, axis)
                 if properties is not None:
                     ds.update(properties)
 
+        # original parameter map
+        info = _cs.stat_info(self.meas, contours=param_contours)
+        if self._nad_ax:
+            param_map = param_map.swapaxes(0, self._nad_ax)
+        param_map_ = NDVar(param_map, dims[1:], info, self.name)
+
         # cluster probability map
         if cpmap is None:
             probability_map = None
-            all_ = [[param_map]]
+            all_ = [[param_map_]]
         else:
             # revert to original shape
             if self._nad_ax:
                 cpmap = cpmap.swapaxes(0, self._nad_ax)
             info = _cs.cluster_pmap_info()
-            probability_map = NDVar(cpmap, dims_cropped[1:], info, self.name)
-            all_ = [[param_map, probability_map]]
+            probability_map = NDVar(cpmap, dims[1:], info, self.name)
+            all_ = [[param_map_, probability_map]]
 
         # remove memory buffers
         del self._bin_buff
@@ -1520,7 +1519,7 @@ class _ClusterDist:
 
         # store attributes
         self.clusters = ds
-        self.parameter_map = param_map
+        self.parameter_map = param_map_
         self.tfce_map = tfce_map_
         self.probability_map = probability_map
         self.all = all_
@@ -1689,34 +1688,34 @@ class _ClusterDist:
         else:
             return im
 
-    def add_original(self, pmap):
+    def add_original(self, param_map):
         """Add the original statistical parameter map.
 
         Parameters
         ----------
-        pmap : array
+        param_map : array
             Parameter map of the statistic of interest (uncropped).
         """
         if self.has_original:
             raise RuntimeError("Original pmap already added")
 
         t0 = current_time()
-        pmap_ = self._crop(pmap)
+        param_map = self._crop(param_map)
         if self._nad_ax:
-            pmap_ = pmap_.swapaxes(0, self._nad_ax)
+            param_map = param_map.swapaxes(0, self._nad_ax)
 
         if self.threshold is None:
-            self._tfce(pmap_, self._original_cmap)
+            self._tfce(param_map, self._original_cmap)
             self.n_clusters = True
         else:
-            _, cids = self._label_clusters(pmap_, self._original_cmap)
+            _, cids = self._label_clusters(param_map, self._original_cmap)
             self._cids = cids
             self.n_clusters = len(cids)
 
         self.has_original = True
         self.dt_original = current_time() - t0
         self._t0 = current_time()
-        self._original_pmap = pmap
+        self._original_param_map = param_map
         if self.N == 0 or self.n_clusters == 0:
             self._finalize()
 
@@ -1744,34 +1743,3 @@ class _ClusterDist:
 
         if self._i == 0:
             self._finalize()
-
-    def as_table(self, pmax=1.):
-        cols = 'll'
-        headings = ('#', 'p')
-        time = self.Y.get_dim('time') if self.Y.has_dim('time') else None
-        if time is not None:
-            time_ax = self.Y.get_axis('time') - 1
-            any_axes = tuple(i for i in xrange(self.Y.ndim - 1) if i != time_ax)
-            cols += 'l'
-            headings += ('time interval',)
-
-        table = fmtxt.Table(cols)
-        table.cells(*headings)
-        table.midrule()
-
-        i = 0
-        for c in self.clusters:
-            p = c.info['p']
-            if p <= pmax:
-                table.cell(i)
-                i += 1
-                table.cell(p)
-
-                if time is not None:
-                    nz = np.flatnonzero(np.any(c.x, axis=any_axes))
-                    tstart = time[nz.min()]
-                    tstop = time[nz.max()]
-                    interval = '%.3f - %.3f s' % (tstart, tstop)
-                    table.cell(interval)
-
-        return table
