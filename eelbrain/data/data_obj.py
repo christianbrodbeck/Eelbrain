@@ -3321,6 +3321,29 @@ class Dataset(collections.OrderedDict):
         else:
             self[item.name] = item
 
+    def add_empty_var(self, name, dtype=np.float64):
+        """Create an empty variable in the dataset
+
+        Parameters
+        ----------
+        name : str
+            Name for the new variable.
+        dtype : numpy dtype
+            Data type of the new variable (default is float64).
+
+        Returns
+        -------
+        var : Var
+            The new variable.
+        """
+        if self.n_cases is None:
+            err = "Can't add variable to a Dataset without length"
+            raise RuntimeError(err)
+        x = np.empty(self.n_cases, dtype=dtype)
+        v = Var(x)
+        self[name] = v
+        return v
+
     def as_table(self, cases=0, fmt='%.6g', sfmt='%s', match=None,
                  sort=False, header=True, midrule=False, count=False,
                  title=None, caption=None, ifmt='%s', bfmt='%s',
