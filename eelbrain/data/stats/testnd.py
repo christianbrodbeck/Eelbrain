@@ -1195,6 +1195,8 @@ class _ClusterDist:
         all_adjacent = all(adjacent)
         if all_adjacent:
             nad_ax = 0
+            connectivity_src = None
+            connectivity_dst = None
         else:
             if sum(adjacent) < len(adjacent) - 1:
                 err = ("more than one non-adjacent dimension")
@@ -1218,8 +1220,8 @@ class _ClusterDist:
                 dst = max(v0, v1)
                 pairs.add((src, dst))
             connectivity = np.array(sorted(pairs), dtype=np.int32)
-            self._connectivity_src = connectivity[:, 0]
-            self._connectivity_dst = connectivity[:, 1]
+            connectivity_src = connectivity[:, 0]
+            connectivity_dst = connectivity[:, 1]
 
         # prepare cluster minimum size criteria
         if criteria:
@@ -1252,6 +1254,10 @@ class _ClusterDist:
         N = int(N)
 
         self.Y_perm = Y_perm
+        self.dims = Y_perm.dims
+        self.shape = shape
+        self._connectivity_src = connectivity_src
+        self._connectivity_dst = connectivity_dst
         self.N = N
         self.dist = np.zeros(N)
         self._i = N
@@ -1264,24 +1270,43 @@ class _ClusterDist:
         self.tstop = tstop
         self.meas = meas
         self.name = name
-        self.criteria = criteria_
-        self._criteria_arg = criteria
+        self._criteria = criteria_
+        self.criteria = criteria
         self.has_original = False
+        self._has_buffers = False
+        self._allocate_memory_buffers()
 
-        # pre-allocate memory buffers
+    def _allocate_memory_buffers(self):
+        "Pre-allocate memory buffers used for cluster processing"
+        if self._has_buffers:
+            return
+        shape = self.shape
         self._bin_buff = np.empty(shape, dtype=np.bool8)
         self._int_buff = np.empty(shape, dtype=np.uint32)
-        if threshold is None:
-            self._original_cmap = np.empty(shape)
+        if self.threshold is None:
             self._float_buff = np.empty(shape)
         else:
-            self._original_cmap = np.empty(shape, dtype=np.uint32)
-            if tail == 0:
+            if self.tail == 0:
                 self._int_buff2 = np.empty(shape, dtype=np.uint32)
-        if not all_adjacent:
+        if not self._all_adjacent:
             self._slice_buff = np.empty(shape[0], dtype=np.bool8)
             self._bin_buff2 = np.empty(shape, dtype=np.bool8)
             self._bin_buff3 = np.empty(shape, dtype=np.bool8)
+        self._has_buffers = True
+
+    def _clear_memory_buffers(self):
+        "Remove memory buffers used for cluster processing"
+        del self._bin_buff
+        del self._int_buff
+        if self.threshold is None:
+            del self._float_buff
+        elif self.tail == 0:
+            del self._int_buff2
+        if not self._all_adjacent:
+            del self._slice_buff
+            del self._bin_buff2
+            del self._bin_buff3
+        self._has_buffers = False
 
     def __repr__(self):
         items = []
@@ -1300,6 +1325,32 @@ class _ClusterDist:
             items.append("no data")
 
         return "<ClusterDist: %s>" % ', '.join(items)
+
+    def __getstate__(self):
+        if self._i > 0:
+            err = ("Cannot pickle cluster distribution before all permu"
+                   "tations have been added.")
+            raise RuntimeError(err)
+        attrs = ('name', 'meas',
+                 # settings ...
+                 'threshold', 'tail', 'criteria', 'N', 'tstart', 'tstop',
+                  # data properties ...
+                 'dims', 'shape', '_all_adjacent', '_nad_ax', '_struct',
+                 '_flat_shape', '_connectivity_src', '_connectivity_dst',
+                 '_criteria',
+                 # results ...
+                 'dt_original', 'dt_perm', 'n_clusters',
+                 'dist', '_original_param_map', '_original_cluster_map')
+        state = {name: getattr(self, name) for name in attrs}
+        return state
+
+    def __setstate__(self, state):
+        for k, v in state.iteritems():
+            setattr(self, k, v)
+        self._i = 0
+        self.has_original = True
+        self._has_buffers = False
+        self._finalize()
 
     def _cluster_repr(self, params=True, perm=False):
         """Repr fragment with cluster properties
@@ -1339,11 +1390,9 @@ class _ClusterDist:
 
     def _finalize(self):
         "Package results and delete temporary data"
-        if self._i < 0:
-            raise RuntimeError("Too many permutations added to _ClusterDist")
-
         # prepare container for clusters
-        dims = self.Y_perm.dims
+        self._allocate_memory_buffers()
+        dims = self.dims
         ds = Dataset()
         param_contours = {}
         if self.threshold:
@@ -1356,7 +1405,7 @@ class _ClusterDist:
         param_map = self._original_param_map
 
         if self.threshold is None:
-            tfce_map = self._original_cmap
+            tfce_map = self._original_cluster_map
             x = tfce_map.swapaxes(0, self._nad_ax)
             tfce_map_ = NDVar(x, dims[1:], {}, self.name)
         else:
@@ -1388,7 +1437,7 @@ class _ClusterDist:
                 if self.N:
                     p[i] = cpmap[idx][0]
         elif self.n_clusters:
-            cmap = self._original_cmap
+            cmap = self._original_cluster_map
             cids = self._cids
 
             # measure original clusters
@@ -1453,18 +1502,6 @@ class _ClusterDist:
             probability_map = NDVar(cpmap, dims[1:], info, self.name)
             all_ = [[param_map_, probability_map]]
 
-        # remove memory buffers
-        del self._bin_buff
-        del self._int_buff
-        if self.threshold is None:
-            del self._float_buff
-        elif self.tail == 0:
-            del self._int_buff2
-        if not self._all_adjacent:
-            del self._slice_buff
-            del self._bin_buff2
-            del self._bin_buff3
-
         # store attributes
         self.clusters = ds
         self.parameter_map = param_map_
@@ -1472,7 +1509,7 @@ class _ClusterDist:
         self.probability_map = probability_map
         self.all = all_
 
-        self.dt_perm = current_time() - self._t0
+        self._clear_memory_buffers()
 
     def _find_peaks(self, x, out=None):
         """Find peaks (local maxima, including plateaus) in x
@@ -1658,8 +1695,8 @@ class _ClusterDist:
                     break
 
         # apply minimum cluster size criteria
-        if self.criteria:
-            for axes, v in self.criteria:
+        if self._criteria:
+            for axes, v in self._criteria:
                 rm = tuple(i for i in cids if
                            np.count_nonzero(np.equal(out, i).any(axes)) < v)
                 cids.difference_update(rm)
@@ -1677,7 +1714,7 @@ class _ClusterDist:
 
         items = [", %i %s" % (self.N, sampling)]
 
-        for item in self._criteria_arg.iteritems():
+        for item in self.criteria.iteritems():
             items.append("%s=%s" % item)
 
         return ', '.join(items)
@@ -1746,10 +1783,13 @@ class _ClusterDist:
             param_map = param_map.swapaxes(0, self._nad_ax)
 
         if self.threshold is None:
-            self._tfce(param_map, self._original_cmap)
+            self._original_cluster_map = np.empty(self.shape)
+            self._tfce(param_map, self._original_cluster_map)
             self.n_clusters = True
         else:
-            _, cids = self._label_clusters(param_map, self._original_cmap)
+            self._original_cluster_map = buff = np.empty(self.shape,
+                                                         dtype=np.uint32)
+            _, cids = self._label_clusters(param_map, buff)
             self._cids = cids
             self.n_clusters = len(cids)
 
@@ -1768,6 +1808,8 @@ class _ClusterDist:
         pmap : array
             Parameter map of the statistic of interest.
         """
+        if self._i <= 0:
+            raise RuntimeError("Too many permutations added to _ClusterDist")
         self._i -= 1
 
         if self._nad_ax:
@@ -1783,4 +1825,5 @@ class _ClusterDist:
                 self.dist[self._i] = np.max(np.abs(clusters_v))
 
         if self._i == 0:
+            self.dt_perm = current_time() - self._t0
             self._finalize()

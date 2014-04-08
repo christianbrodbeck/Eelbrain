@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
+import cPickle as pickle
 import logging
 
 from nose.tools import assert_equal, assert_in, assert_less, assert_not_in
@@ -48,7 +49,7 @@ def test_clusterdist():
     cdist = _ClusterDist(Y, 0, 1.5)
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 1)
-    assert_array_equal(cdist._original_cmap == cdist._cids[0],
+    assert_array_equal(cdist._original_cluster_map == cdist._cids[0],
                        cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))
     assert_equal(cdist.parameter_map.dims, Y.dims[1:])
 
@@ -61,7 +62,7 @@ def test_clusterdist():
     cdist = _ClusterDist(Y, 0, 1.5)
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 1)
-    assert_array_equal(cdist._original_cmap == cdist._cids[0],
+    assert_array_equal(cdist._original_cluster_map == cdist._cids[0],
                        cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))
 
     # test keeping sensors separate
@@ -75,7 +76,7 @@ def test_clusterdist():
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 2)
 
-    # find peaks
+    # TFCE
     dims = ('case', UTS(-0.1, 0.1, 4),
             Sensor(locs, ['0', '1', '2', '3'], connect_dist=1.1),
             Ordered('dim2', range(10), 'unit'))
@@ -83,7 +84,11 @@ def test_clusterdist():
     cdist = _ClusterDist(Y, 1, None)
     cdist.add_original(Y.x[0])
     cdist.add_perm(Y.x[1])
-
+    # I/O
+    string = pickle.dumps(cdist, pickle.HIGHEST_PROTOCOL)
+    cdist_ = pickle.loads(string)
+    assert_equal(repr(cdist_), repr(cdist))
+    # find peaks
     x = np.array([[[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                    [7, 7, 0, 0, 0, 0, 0, 0, 0, 0],
                    [0, 7, 0, 0, 0, 0, 0, 0, 0, 0],
