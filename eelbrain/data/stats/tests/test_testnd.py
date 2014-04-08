@@ -80,7 +80,9 @@ def test_clusterdist():
             Sensor(locs, ['0', '1', '2', '3'], connect_dist=1.1),
             Ordered('dim2', range(10), 'unit'))
     Y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
-    cdist = _ClusterDist(Y, 1, 1.5)
+    cdist = _ClusterDist(Y, 1, None)
+    cdist.add_original(Y.x[0])
+    cdist.add_perm(Y.x[1])
 
     x = np.array([[[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                    [7, 7, 0, 0, 0, 0, 0, 0, 0, 0],
