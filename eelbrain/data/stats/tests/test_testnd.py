@@ -1,5 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
+import logging
+
 from nose.tools import assert_equal, assert_in, assert_less, assert_not_in
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -72,6 +74,38 @@ def test_clusterdist():
     cdist = _ClusterDist(Y, 1, 1.5)
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 2)
+
+    # find peaks
+    dims = ('case', UTS(-0.1, 0.1, 4),
+            Sensor(locs, ['0', '1', '2', '3'], connect_dist=1.1),
+            Ordered('dim2', range(10), 'unit'))
+    Y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
+    cdist = _ClusterDist(Y, 1, 1.5)
+
+    x = np.array([[[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                   [7, 7, 0, 0, 0, 0, 0, 0, 0, 0],
+                   [0, 7, 0, 0, 0, 0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+
+                  [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                   [5, 7, 0, 0, 0, 0, 0, 0, 0, 0],
+                   [0, 6, 0, 0, 0, 0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+
+                  [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0, 7, 5, 5, 0, 0],
+                   [0, 0, 0, 0, 5, 4, 4, 4, 0, 0],
+                   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+
+                  [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0, 0, 0, 4, 0, 0],
+                   [0, 0, 0, 0, 7, 0, 0, 3, 0, 0],
+                   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]])
+    tgt = np.equal(x, 7)
+    peaks = cdist._find_peaks(x)
+    logging.debug(' detected: \n%s' % (peaks.astype(int)))
+    logging.debug(' target: \n%s' % (tgt.astype(int)))
+    assert_array_equal(peaks, tgt)
 
 
 def test_corr():

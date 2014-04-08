@@ -1357,38 +1357,37 @@ class _ClusterDist:
 
         if self.threshold is None:
             tfce_map = self._original_cmap
-            tfce_map_ = NDVar(tfce_map, dims[1:], {}, self.name)
+            x = tfce_map.swapaxes(0, self._nad_ax)
+            tfce_map_ = NDVar(x, dims[1:], {}, self.name)
         else:
             tfce_map_ = None
 
-        if self.threshold is None and self.N:
-            # construct probability map
-            idx = self._bin_buff
-            cpmap = self._float_buff
-            cpmap.fill(0)
-            for v in self.dist:
-                np.greater(v, tfce_map, idx)
-                cpmap[idx] += 1
-            cpmap /= self.N
+        if self.threshold is None:
+            if self.N:
+                # construct probability map
+                idx = self._bin_buff
+                cpmap = self._float_buff
+                cpmap.fill(0)
+                for v in self.dist:
+                    np.greater(v, tfce_map, idx)
+                    cpmap[idx] += 1
+                cpmap /= self.N
+            else:
+                cpmap = None
 
-            # simplify: find clusters where p < 0.05; should find maxima
-            np.less_equal(cpmap, 0.05, idx)
-            cmap, cids = self._label_clusters_binary(idx, self._int_buff)
-            cids = list(cids)
-            # add trends
-            np.less_equal(cpmap, 0.1, idx)
-            cmap_, cids_ = self._label_clusters_binary(idx, np.empty_like(cmap))
-            new_id = max(cids) + 1
-            for cid in cids_:
-                np.equal(cmap_, cid, idx)
-                if not np.any(cmap[idx]):
-                    cmap[idx] = new_id
-                    cids.append(new_id)
-                    new_id += 1
-
-            self.n_clusters = len(cids)
-            cluster_p = []
-        elif self.threshold and self.n_clusters:
+            # find peaks
+            peaks = self._find_peaks(tfce_map)
+            peak_map, peak_ids = self._label_clusters_binary(peaks, self._int_buff)
+            ds['id'] = Var(np.fromiter(peak_ids, np.int32, len(peak_ids)))
+            v = ds.add_empty_var('v')
+            if self.N:
+                p = ds.add_empty_var('p')
+            for i, id_ in enumerate(peak_ids):
+                idx = np.equal(peak_map, id_, self._bin_buff)
+                v[i] = param_map[idx][0]
+                if self.N:
+                    p[i] = cpmap[idx][0]
+        elif self.n_clusters:
             cmap = self._original_cmap
             cids = self._cids
 
@@ -1401,15 +1400,12 @@ class _ClusterDist:
             if self.N:
                 n_larger = np.sum(self.dist > np.abs(cluster_v[:, None]), 1)
                 cluster_p = n_larger / self.N
+                ds['p'] = Var(cluster_p)
+                cpmap = np.ones(cmap.shape)  # cluster probability
+            else:
+                cpmap = None
 
-            # create cluster NDVar
-            cpmap = np.ones(cmap.shape)  # cluster probability
-        else:
-            self.n_clusters = 0
-            cpmap = None
-
-        # expand clusters and find cluster properties
-        if self.n_clusters:
+            # expand clusters and find cluster properties
             cmaps = np.empty((self.n_clusters,) + cmap.shape,
                              dtype=param_map.dtype)
             c_mask = self._bin_buff
@@ -1419,14 +1415,7 @@ class _ClusterDist:
                 # cluster value map
                 np.multiply(param_map, c_mask, cmaps[i])
                 if self.N:
-                    if self.threshold is None:
-                        cluster_p.append(cpmap[c_mask].min())
-                    else:
-                        cpmap[c_mask] = cluster_p[i]
-
-            if self.N:
-                ds['p'] = p = Var(cluster_p)
-                ds['*'] = star_factor(p)
+                    cpmap[c_mask] = cluster_p[i]
 
             # store cluster NDVar
             if self._nad_ax:
@@ -1440,6 +1429,11 @@ class _ClusterDist:
                 properties = dim._cluster_properties(cmaps, axis)
                 if properties is not None:
                     ds.update(properties)
+        else:
+            cpmap = None
+
+        if 'p' in ds:
+            ds['*'] = star_factor(ds['p'])
 
         # original parameter map
         info = _cs.stat_info(self.meas, contours=param_contours)
@@ -1479,6 +1473,99 @@ class _ClusterDist:
         self.all = all_
 
         self.dt_perm = current_time() - self._t0
+
+    def _find_peaks(self, x, out=None):
+        """Find peaks (local maxima, including plateaus) in x
+
+        Returns
+        -------
+        out : array (x.shape, bool)
+            Boolean array which is True only on local maxima. The borders are
+            treated as lower than the rest of x (i.e., local maxima can touch
+            the border).
+        """
+        if out is None:
+            out = np.empty(x.shape, np.bool8)
+        out.fill(True)
+
+        # move through each axis in both directions and discard descending
+        # slope. Do most computationally intensive axis last.
+        for ax in xrange(x.ndim - 1, -1, -1):
+            if ax == 0 and not self._all_adjacent:
+                shape = (len(x), -1)
+                xsa = x.reshape(shape)
+                outsa = out.reshape(shape)
+                axlen = xsa.shape[1]
+
+                conn_src = self._connectivity_src
+                conn_dst = self._connectivity_dst
+                for i in xrange(axlen):
+                    data = xsa[:, i]
+                    outslice = outsa[:, i]
+                    if not np.any(outslice):
+                        continue
+
+                    # find all points under a slope
+                    sign = np.sign(data[conn_src] - data[conn_dst])
+                    no = set(conn_src[sign < 0])
+                    no.update(conn_dst[sign > 0])
+
+                    # expand to equal points
+                    border = no
+                    while border:
+                        # forward
+                        idx = np.in1d(conn_src, border)
+                        conn_dst_sub = conn_dst[idx]
+                        eq = np.equal(data[conn_src[idx]], data[conn_dst_sub])
+                        new = set(conn_dst_sub[eq])
+                        # backward
+                        idx = np.in1d(conn_dst, border)
+                        conn_src_sub = conn_src[idx]
+                        eq = np.equal(data[conn_src_sub], data[conn_dst[idx]])
+                        new.update(conn_src_sub[eq])
+
+                        # update
+                        new.difference_update(no)
+                        no.update(new)
+                        border = new
+
+                    # mark vertices or whole isoline
+                    if no:
+                        outslice[list(no)] = False
+                    elif not np.all(outslice):
+                        outslice.fill(False)
+            else:
+                if x.ndim == 1:
+                    xsa = x[:, None]
+                    outsa = out[:, None]
+                else:
+                    xsa = x.swapaxes(0, ax)
+                    outsa = out.swapaxes(0, ax)
+                axlen = len(xsa)
+
+                kernel = np.empty(xsa.shape[1:], dtype=np.bool8)
+
+                diff = np.diff(xsa, 1, 0)
+
+                # forward
+                kernel.fill(True)
+                for i in xrange(axlen - 1):
+                    kernel[diff[i] > 0] = True
+                    kernel[diff[i] < 0] = False
+                    nodiff = diff[i] == 0
+                    kernel[nodiff] *= outsa[i + 1][nodiff]
+                    outsa[i + 1] *= kernel
+
+                # backward
+                kernel.fill(True)
+                for i in xrange(axlen - 2, -1, -1):
+                    kernel[diff[i] < 0] = True
+                    kernel[diff[i] > 0] = False
+                    nodiff = diff[i] == 0
+                    kernel[nodiff] *= outsa[i][nodiff]
+                    outsa[i] *= kernel
+
+        return out
 
     def _label_clusters(self, pmap, out):
         """Find clusters on a statistical parameter map
