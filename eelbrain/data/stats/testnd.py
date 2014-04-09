@@ -25,8 +25,90 @@ from .test import star_factor
 __test__ = False
 
 
+class _TestResult(object):
+    _pickle_common = ('Y', 'X', 'match', 'sub', 'samples', 'name', '_cdist')
+    _pickle_specific = ()
 
-class t_contrast_rel:
+    @property
+    def _attributes(self):
+        return self._pickle_common + self._pickle_specific
+
+    def __getstate__(self):
+        state = {name: getattr(self, name, None) for name in self._attributes}
+        return state
+
+    def __setstate__(self, state):
+        for k, v in state.iteritems():
+            setattr(self, k, v)
+        self._expand_state()
+
+    def _expand_state(self):
+        "override to create secondary results"
+        cdist = self._cdist
+        if cdist is None:
+            self.samples = None
+        else:
+            self.samples = cdist.N
+            self.clusters = cdist.clusters
+            self.parameter_map = cdist.parameter_map
+            self.tfce_map = cdist.tfce_map
+            self.probability_map = cdist.probability_map
+
+    def masked_parameter_map(self, pmin=0.05):
+        """Create a copy of the parameter map masked by significance
+
+        Parameters
+        ----------
+        pmin : scalar
+            Threshold p-value for masking (default 0.05).
+
+        Returns
+        -------
+        masked_map : NDVar
+            NDVar with data from the original parameter map wherever p <= pmin
+            and 0 everywhere else.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        return self._cdist.masked_parameter_map(pmin)
+
+    def tfce_clusters(self, pmin=0.05):
+        """Find significant regions in a TFCE distribution
+
+        Parameters
+        ----------
+        pmin : scalar
+            Threshold p-value for forming clusters (default 0.05).
+
+        Returns
+        -------
+        ds : Dataset
+            Dataset with information about the clusters.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        return self._cdist.tfce_clusters(pmin)
+
+    def tfce_peaks(self):
+        """Find peaks in a TFCE distribution
+
+        Returns
+        -------
+        ds : Dataset
+            Dataset with information about the peaks.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        return self._cdist.tfce_peaks()
+
+
+class t_contrast_rel(_TestResult):
+
+    _pickle_specific = ('contrast', 't')
+
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tstart=None, tstop=None,
                  **criteria):
@@ -89,7 +171,6 @@ class t_contrast_rel:
         """
         test_name = "t-contrast"
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
-        Y = ct.Y
         index = ct.data_indexes
 
         if 'tmin' in criteria:
@@ -107,12 +188,14 @@ class t_contrast_rel:
         buff = np.empty((buffers,) + shape)
 
         # original data
-        tmap = _t_contrast_rel(contrast_, Y.x, index, buff)
+        tmap = _t_contrast_rel(contrast_, ct.Y.x, index, buff)
+        dims = ct.Y.dims[1:]
+        t = NDVar(tmap, dims, {}, 't')
 
         if samples is None:
             cdist = None
         else:
-            cdist = _ClusterDist(Y, samples, tmin, tail, 't', test_name,
+            cdist = _ClusterDist(ct.Y, samples, tmin, tail, 't', test_name,
                                  tstart, tstop, criteria)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
@@ -124,20 +207,34 @@ class t_contrast_rel:
                     _t_contrast_rel(contrast_, Y_.x, index, buff, tmap_)
                     cdist.add_perm(tmap_)
 
-        # construct results
-        dims = ct.Y.dims[1:]
-
         # store attributes
-        self.name = test_name
-        self.t = NDVar(tmap, dims, {}, 't')
-        self._cdist = cdist
+        self.Y = ct.Y.name
+        self.X = ct.X.name
         self.contrast = contrast
-        self._contrast = contrast_
-        if samples is not None:
-            self.clusters = cdist.clusters
+        if ct.match:
+            self.match = ct.match.name
+        else:
+            self.match = None
+        if sub is None or isinstance(sub, basestring):
+            self.sub = sub
+        else:
+            self.sub = "unsaved array"
+        self.samples = samples
+        self.name = test_name
+        self.t = t
+        self._cdist = cdist
+
+        self._expand_state()
 
     def __repr__(self):
-        parts = ["<%s %r" % (self.name, self.contrast)]
+        parts = ["<%s: %r ~ %r, %r" % (self.name, self.Y, self.X,
+                                       self.contrast)]
+        if self.match:
+            parts.append(', match=%r' % self.match)
+        if self.sub:
+            parts.append(', sub=%r' % self.sub)
+        if self.sub:
+            parts.append(', sub=%r' % self.sub)
         if self._cdist:
             parts.append(self._cdist._cluster_repr())
         parts.append('>')
@@ -258,7 +355,7 @@ def _t_contrast_rel(item, y, index, buff=None, out=None):
     return tmap
 
 
-class corr:
+class corr(_TestResult):
     """Correlation
 
     Attributes
@@ -266,6 +363,8 @@ class corr:
     r : NDVar
         Correlation (with threshold contours).
     """
+    _pickle_specific = ('norm', 'r')
+
     def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=None,
                  pmin=None, tstart=None, tstop=None, match=None, **criteria):
         """Correlation.
@@ -333,7 +432,11 @@ class corr:
 
         rmap = _corr(Y.x, X.x)
 
-        if samples is not None:
+        if samples is None:
+            cdist = None
+            r0, r1, r2 = _rtest_r((.05, .01, .001), df)
+            info = _cs.stat_info('r', r0, r1, r2)
+        else:
             # calculate r threshold for clusters
             if pmin is None:
                 threshold = None
@@ -348,30 +451,34 @@ class corr:
                     rmap_ = _corr(Y_.x, X.x)
                     cdist.add_perm(rmap_)
             info = _cs.stat_info('r', threshold)
-        else:
-            r0, r1, r2 = _rtest_r((.05, .01, .001), df)
-            info = _cs.stat_info('r', r0, r1, r2)
 
         # compile results
         dims = Y.dims[1:]
         r = NDVar(rmap, dims, info, name)
 
         # store attributes
+        self.Y = Y.name
+        self.X = X.name
+        self.norm = None if norm is None else norm.name
+        self.match = None if match is None else match.name
+        self.samples = samples
         self.name = name
+        self._cdist = cdist
+
         self.df = df
         self.r = r
+
+        self._expand_state()
+
+    def _expand_state(self):
+        _TestResult._expand_state(self)
+
+        r = self.r
         self.r_p = [[r, r]]
-        if samples is None:
-            self.all = [[r, r]]
+        if self.samples:
+            self.all = [[r, self.probability_map]]
         else:
-            self.cdist = cdist
-            self.clusters = cdist.clusters
-            if cdist.n_clusters:
-                self.r_cl = [[r, cdist.probability_map]]
-                self.all = [[r, cdist.probability_map]]
-            else:
-                self.r_cl = [[r]]
-                self.all = [[r]]
+            self.all = [[r, r]]
 
 
 def _corr(y, x):
@@ -541,7 +648,7 @@ class ttest_1samp:
         return ''.join(parts)
 
 
-class ttest_ind:
+class ttest_ind(_TestResult):
     """Element-wise independent samples t-test
 
     Attributes
@@ -551,6 +658,10 @@ class ttest_ind:
     p_val :
         [c0 - c1, P]
     """
+
+    _pickle_specific = ('c1', 'c0', 'tail', 't', 'n1', 'n0', 'df', 'c1_mean',
+                        'c0_mean')
+
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tstart=None, tstop=None,
                  **criteria):
@@ -603,8 +714,9 @@ class ttest_ind:
         n0 = N - n1
         df = N - 2
         tmap = _t_ind(ct.Y.x, n1, n0)
-        pmap = _ttest_p(tmap, df, tail)
-        if samples is not None:
+        if samples is None:
+            cdist = None
+        else:
             if pmin is None:
                 threshold = None
             else:
@@ -620,10 +732,6 @@ class ttest_ind:
 
         dims = ct.Y.dims[1:]
 
-        info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
-        info['test'] = test_name
-        p = NDVar(pmap, dims, info=info, name='p')
-
         t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
         info = _cs.stat_info('t', t0, t1, t2, tail)
         info = _cs.set_info_cs(ct.Y.info, info)
@@ -631,41 +739,66 @@ class ttest_ind:
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
         c0_mean = ct.data[c0].summary(name=cellname(c0))
-        diff = c1_mean - c0_mean
-        if np.any(diff < 0):
-            diff.info['cmap'] = 'xpolar'
 
         # store attributes
+        self.Y = ct.Y.name
+        self.X = ct.X.name
+        self.c0 = c0
+        self.c1 = c1
+        if ct.match:
+            self.match = ct.match.name
+        else:
+            self.match = None
+        if sub is None or isinstance(sub, basestring):
+            self.sub = sub
+        else:
+            self.sub = "unsaved array"
+        self.tail = tail
+        self.samples = samples
+        self.name = test_name
+        self.t = t
+        self._cdist = cdist
+
         self.n1 = n1
         self.n0 = n0
         self.df = df
-        self.name = test_name
-        self._c0 = c0
-        self._c1 = c1
-        self._samples = samples
-        self.tail = tail
-        self._ct = ct
 
-        self.c1 = c1_mean
-        self.c0 = c0_mean
-        self.diff = diff
-        self.t = t
-        self.p = p
+        self.c1_mean = c1_mean
+        self.c0_mean = c0_mean
 
+        self._expand_state()
+
+    def _expand_state(self):
+        _TestResult._expand_state(self)
+
+        cdist = self._cdist
+        c1_mean = self.c1_mean
+        c0_mean = self.c0_mean
+        t = self.t
+
+        # difference
+        diff = c1_mean - c0_mean
+        if np.any(diff < 0):
+            diff.info['cmap'] = 'xpolar'
+        self.difference = diff
+
+        # uncorrected
+        pmap = _ttest_p(t.x, self.df, self.tail)
+        info = _cs.set_info_cs(t.info, _cs.sig_info())
+        p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
+        self.uncorrected_probability = p_uncorr
+
+        # composites
         self.diffp = [[diff, t]]
         self.uncorrected = [c1_mean, c0_mean] + self.diffp
-        if samples is None:
+        if cdist is None:
             self.all = self.uncorrected
-            self._cdist = None
-        else:
-            self._cdist = cdist
-            self.clusters = cdist.clusters
-            if samples > 0:
-                self.diff_cl = [[diff, cdist.probability_map]]
-                self.all = [c1_mean, c0_mean] + self.diff_cl
+        elif cdist.N > 0:
+            self.diff_cl = [[diff, cdist.probability_map]]
+            self.all = [c1_mean, c0_mean] + self.diff_cl
 
     def __repr__(self):
-        parts = ["<%s %r-%r" % (self.name, self._c1, self._c0)]
+        parts = ["<%s %r-%r" % (self.name, self.c1, self.c0)]
         if self.n1 == self.n0:
             parts.append(", n1=n0=%i" % self.n1)
         else:
