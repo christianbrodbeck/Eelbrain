@@ -1393,7 +1393,6 @@ class _ClusterDist:
         # prepare container for clusters
         self._allocate_memory_buffers()
         dims = self.dims
-        ds = Dataset()
         param_contours = {}
         if self.threshold:
             if self.tail >= 0:
@@ -1404,6 +1403,7 @@ class _ClusterDist:
         # original parameter-map
         param_map = self._original_param_map
 
+        # TFCE map
         if self.threshold is None:
             tfce_map = self._original_cluster_map
             x = tfce_map.swapaxes(0, self._nad_ax)
@@ -1411,56 +1411,32 @@ class _ClusterDist:
         else:
             tfce_map_ = None
 
-        if self.threshold is None:
-            if self.N:
-                # construct probability map
-                idx = self._bin_buff
-                cpmap = self._float_buff
-                cpmap.fill(0)
-                for v in self.dist:
-                    np.greater(v, tfce_map, idx)
-                    cpmap[idx] += 1
-                cpmap /= self.N
-            else:
-                cpmap = None
-
-            # find peaks
-            peaks = self._find_peaks(tfce_map)
-            peak_map, peak_ids = self._label_clusters_binary(peaks, self._int_buff)
-            ds['id'] = Var(np.fromiter(peak_ids, np.int32, len(peak_ids)))
-            v = ds.add_empty_var('v')
-            if self.N:
-                p = ds.add_empty_var('p')
-            for i, id_ in enumerate(peak_ids):
-                idx = np.equal(peak_map, id_, self._bin_buff)
-                v[i] = param_map[idx][0]
-                if self.N:
-                    p[i] = cpmap[idx][0]
-        elif self.n_clusters:
-            cmap = self._original_cluster_map
+        # clusters (traditional cluster test)
+        if self.threshold and self.n_clusters:
+            cluster_map = self._original_cluster_map
             cids = self._cids
+            clusters = Dataset()
 
             # measure original clusters
-            cluster_v = ndimage.sum(param_map, cmap, cids)
-            ds['v'] = Var(cluster_v)
+            cluster_v = ndimage.sum(param_map, cluster_map, cids)
+            clusters['v'] = Var(cluster_v)
 
             # p-values: "the proportion of random partitions that resulted in a
             # larger test statistic than the observed one" (179)
             if self.N:
                 n_larger = np.sum(self.dist > np.abs(cluster_v[:, None]), 1)
                 cluster_p = n_larger / self.N
-                ds['p'] = Var(cluster_p)
-                cpmap = np.ones(cmap.shape)  # cluster probability
-            else:
-                cpmap = None
+                clusters['p'] = Var(cluster_p)
+                clusters['*'] = star_factor(clusters['p'])
+                cpmap = np.ones(self.shape)  # cluster probability
 
             # expand clusters and find cluster properties
-            cmaps = np.empty((self.n_clusters,) + cmap.shape,
+            cmaps = np.empty((self.n_clusters,) + self.shape,
                              dtype=param_map.dtype)
             c_mask = self._bin_buff
             for i, cid in enumerate(cids):
                 # cluster extent
-                np.equal(cmap, cid, c_mask)
+                np.equal(cluster_map, cid, c_mask)
                 # cluster value map
                 np.multiply(param_map, c_mask, cmaps[i])
                 if self.N:
@@ -1471,18 +1447,28 @@ class _ClusterDist:
                 cmaps = cmaps.swapaxes(1, self._nad_ax + 1)
             info = _cs.stat_info(self.meas, contours=param_contours,
                                  summary_func=np.sum)
-            ds['cluster'] = NDVar(cmaps, dims=dims, info=info)
+            clusters['cluster'] = NDVar(cmaps, dims=dims, info=info)
 
             # add cluster info
             for axis, dim in enumerate(dims[1:], 1):
                 properties = dim._cluster_properties(cmaps, axis)
                 if properties is not None:
-                    ds.update(properties)
+                    clusters.update(properties)
         else:
-            cpmap = None
+            clusters = None
 
-        if 'p' in ds:
-            ds['*'] = star_factor(ds['p'])
+        # probability map (TFCE)
+        if self.N == 0:
+            cpmap = None
+        elif self.threshold is None:
+            idx = self._bin_buff
+            cpmap = np.empty(self.shape)
+            cpmap.fill(0)
+            for v in self.dist:
+                cpmap += np.greater(v, tfce_map, idx)
+            cpmap /= self.N
+        elif self.n_clusters:
+            pass
 
         # original parameter map
         info = _cs.stat_info(self.meas, contours=param_contours)
@@ -1491,6 +1477,7 @@ class _ClusterDist:
         param_map_ = NDVar(param_map, dims[1:], info, self.name)
 
         # cluster probability map
+        self._probability_map = cpmap
         if cpmap is None:
             probability_map = None
             all_ = [[param_map_]]
@@ -1503,7 +1490,7 @@ class _ClusterDist:
             all_ = [[param_map_, probability_map]]
 
         # store attributes
-        self.clusters = ds
+        self.clusters = clusters
         self.parameter_map = param_map_
         self.tfce_map = tfce_map_
         self.probability_map = probability_map
@@ -1827,3 +1814,69 @@ class _ClusterDist:
         if self._i == 0:
             self.dt_perm = current_time() - self._t0
             self._finalize()
+
+    def tfce_clusters(self, pmin=0.05):
+        """Find significant regions in a TFCE distribution
+
+        Parameters
+        ----------
+        pmin : scalar
+            Threshold p-value for forming clusters (default 0.05).
+
+        Returns
+        -------
+        ds : Dataset
+            Dataset with information about the clusters.
+        """
+        if self.threshold:
+            raise RuntimeError("Not a TFCE distribution")
+
+        shape = self.shape
+        bin_buff = self._bin_buff
+        p_map = self._probability_map
+        dims = self.dims
+
+        bin_map = np.less_equal(p_map, pmin, bin_buff)
+        c_map, cids = self._label_clusters_binary(bin_map, np.empty(shape))
+        cids = sorted(cids)
+        min_pos = ndimage.minimum_position(p_map, c_map, cids)
+
+        info = {'clusters': NDVar(c_map.swapaxes(0, self._nad_ax), dims[1:])}
+
+        ds = Dataset(info=info)
+        ds['id'] = Var(cids)
+        ds['p'] = Var(p_map[pos] for pos in min_pos)
+        ds['*'] = star_factor(ds['p'])
+
+        return ds
+
+    def tfce_peaks(self):
+        """Find peaks in a TFCE distribution
+
+        Returns
+        -------
+        ds : Dataset
+            Dataset with information about the peaks.
+        """
+        if self.threshold:
+            raise RuntimeError("Not a TFCE distribution")
+
+        param_map = self._original_param_map
+        probability_map = self._probability_map
+
+        peaks = self._find_peaks(self._tfce_map)
+        peak_map, peak_ids = self._label_clusters_binary(peaks, self._int_buff)
+
+        ds = Dataset()
+        ds['id'] = Var(np.fromiter(peak_ids, np.int32, len(peak_ids)))
+        v = ds.add_empty_var('v')
+        if self.N:
+            p = ds.add_empty_var('p')
+
+        for i, id_ in enumerate(peak_ids):
+            idx = np.equal(peak_map, id_, self._bin_buff)
+            v[i] = param_map[idx][0]
+            if self.N:
+                p[i] = probability_map[idx][0]
+
+        return ds
