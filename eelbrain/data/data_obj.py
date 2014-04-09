@@ -4721,15 +4721,14 @@ class Dimension(object):
         """
         raise NotImplementedError
 
-    def _cluster_properties(self, x, axis):
+    def _cluster_properties(self, x):
         """Find cluster properties for this dimension
 
         Parameters
         ----------
-        x : array
-            The data. Different clusters are stacked along the first axis.
-        axis : int
-            The axis in ``x`` which this dimension corresponds to.
+        x : array of bool, (n_clusters, len(self))
+            The cluster extents, with different clusters stacked along the
+            first axis.
 
         Returns
         -------
@@ -5522,15 +5521,14 @@ class SourceSpace(Dimension):
                           connectivity)
         return dim
 
-    def _cluster_properties(self, x, axis):
+    def _cluster_properties(self, x):
         """Find cluster properties for this dimension
 
         Parameters
         ----------
-        x : array
-            The data. Different clusters are stacked along the first axis.
-        axis : int
-            The axis in ``x`` which this dimension corresponds to.
+        x : array of bool, (n_clusters, len(self))
+            The cluster extents, with different clusters stacked along the
+            first axis.
 
         Returns
         -------
@@ -5539,8 +5537,6 @@ class SourceSpace(Dimension):
             dimension: "n_sources".
         """
         ds = Dataset()
-        axes = tuple(i for i in xrange(1, x.ndim) if i != axis)
-        x = np.any(x, axes)
 
         # n sources
         n_sources = np.sum(x, 1)
@@ -5898,12 +5894,8 @@ class UTS(Dimension):
 
         return UTS(tmin, tstep, nsamples)
 
-    def _cluster_bounds(self, x, axis):
+    def _cluster_bounds(self, x):
         """Cluster min and max in samples"""
-        # flatten clusters into one dimension
-        axes = tuple(i for i in xrange(1, x.ndim) if i != axis)
-        x = np.any(x, axes)
-
         # find indices of cluster extent
         cluster_id, cluster = np.nonzero(x)
         ts = [cluster[cluster_id == i][[0, -1]] for i in xrange(len(x))]
@@ -5911,15 +5903,14 @@ class UTS(Dimension):
 
         return ts
 
-    def _cluster_properties(self, x, axis):
+    def _cluster_properties(self, x):
         """Find cluster properties for this dimension
 
         Parameters
         ----------
-        x : array
-            The data. Different clusters are stacked along the first axis.
-        axis : int
-            The axis in ``x`` which this dimension corresponds to.
+        x : array of bool, (n_clusters, len(self))
+            The cluster extents, with different clusters stacked along the
+            first axis.
 
         Returns
         -------
@@ -5927,7 +5918,7 @@ class UTS(Dimension):
             A dataset with variables describing cluster properties along this
             dimension: "tstart", "tstop", "duration".
         """
-        bounds = self._cluster_bounds(x, axis)
+        bounds = self._cluster_bounds(x)
 
         # create time values
         tmin = self.times[bounds[:, 0]]

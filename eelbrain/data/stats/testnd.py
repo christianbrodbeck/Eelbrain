@@ -1415,7 +1415,9 @@ class _ClusterDist:
         if self.threshold and self.n_clusters:
             cluster_map = self._original_cluster_map
             cids = self._cids
-            clusters = Dataset()
+
+            # custer extent properties
+            clusters = self._cluster_properties(cluster_map, cids)
 
             # measure original clusters
             cluster_v = ndimage.sum(param_map, cluster_map, cids)
@@ -1448,12 +1450,6 @@ class _ClusterDist:
             info = _cs.stat_info(self.meas, contours=param_contours,
                                  summary_func=np.sum)
             clusters['cluster'] = NDVar(cmaps, dims=dims, info=info)
-
-            # add cluster info
-            for axis, dim in enumerate(dims[1:], 1):
-                properties = dim._cluster_properties(cmaps, axis)
-                if properties is not None:
-                    clusters.update(properties)
         else:
             clusters = None
 
@@ -1815,6 +1811,43 @@ class _ClusterDist:
             self.dt_perm = current_time() - self._t0
             self._finalize()
 
+    def _cluster_properties(self, cluster_map, cids):
+        "Create a Dataset with cluster properties"
+        c_mask = self._bin_buff
+        ndim = c_mask.ndim
+        dims = self.dims[1:]
+        n_clusters = len(cids)
+
+        # setup compression
+        compression = []
+        for ax, length in enumerate(c_mask.shape):
+            if ax == 0:
+                dim = dims[self._nad_ax]
+            elif ax == self._nad_ax:
+                dim = dims[0]
+            else:
+                dim = dims[ax]
+            extents = np.empty((n_clusters, length), dtype=np.bool8)
+            axes = tuple(i for i in xrange(ndim) if i != ax)
+            compression.append((ax, dim, axes, extents))
+
+        # find extents for all clusters
+        for i, cid in enumerate(cids):
+            np.equal(cluster_map, cid, c_mask)
+            for ax, dim, axes, extents in compression:
+                np.any(c_mask, axes, extents[i])
+
+        # prepare Dataset
+        ds = Dataset()
+        ds['id'] = Var(cids)
+
+        for ax, dim, axes, extents in compression:
+            properties = dim._cluster_properties(extents)
+            if properties is not None:
+                ds.update(properties)
+
+        return ds
+
     def tfce_clusters(self, pmin=0.05):
         """Find significant regions in a TFCE distribution
 
@@ -1831,6 +1864,7 @@ class _ClusterDist:
         if self.threshold:
             raise RuntimeError("Not a TFCE distribution")
 
+        self._allocate_memory_buffers()
         shape = self.shape
         bin_buff = self._bin_buff
         p_map = self._probability_map
@@ -1839,13 +1873,13 @@ class _ClusterDist:
         bin_map = np.less_equal(p_map, pmin, bin_buff)
         c_map, cids = self._label_clusters_binary(bin_map, np.empty(shape))
         cids = sorted(cids)
+
+        ds = self._cluster_properties(c_map, cids)
+        ds.info['clusters'] = NDVar(c_map.swapaxes(0, self._nad_ax), dims[1:],
+                                    {}, "Clusters")
+
         min_pos = ndimage.minimum_position(p_map, c_map, cids)
-
-        info = {'clusters': NDVar(c_map.swapaxes(0, self._nad_ax), dims[1:])}
-
-        ds = Dataset(info=info)
-        ds['id'] = Var(cids)
-        ds['p'] = Var(p_map[pos] for pos in min_pos)
+        ds['p'] = Var([p_map[pos] for pos in min_pos])
         ds['*'] = star_factor(ds['p'])
 
         return ds
@@ -1861,6 +1895,7 @@ class _ClusterDist:
         if self.threshold:
             raise RuntimeError("Not a TFCE distribution")
 
+        self._allocate_memory_buffers()
         param_map = self._original_param_map
         probability_map = self._probability_map
 
