@@ -12,6 +12,7 @@ from scipy import ndimage
 from scipy.ndimage import binary_erosion, binary_dilation
 
 from ... import fmtxt
+from ...utils import logger
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                         Factor, NDVar, Var, Celltable, cellname, combine)
@@ -1807,6 +1808,14 @@ class _ClusterDist:
                 clusters_v = ndimage.sum(pmap, cmap, cids)
                 self.dist[self._i] = np.max(np.abs(clusters_v))
 
+        # info
+        dt = (current_time() - self._t0)
+        if dt > 60:
+            n = self.N - self._i
+            avg_time = dt / n
+            logger.info("Sample %i, avg time: %i" % (n, avg_time))
+
+        # catch last permutation
         if self._i == 0:
             self.dt_perm = current_time() - self._t0
             self._finalize()
