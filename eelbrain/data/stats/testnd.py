@@ -110,8 +110,7 @@ class t_contrast_rel(_TestResult):
     _pickle_specific = ('contrast', 't')
 
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None,
-                 tail=0, samples=None, pmin=None, tstart=None, tstop=None,
-                 **criteria):
+                 samples=None, pmin=None, tstart=None, tstop=None, **criteria):
         """Contrast with t-values from multiple comparisons
 
         Parameters
@@ -129,11 +128,6 @@ class t_contrast_rel(_TestResult):
         ds : None | Dataset
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables.
-        tail : 0 | 1 | -1
-            Which tail of the t-distribution to consider:
-            0: both (two-tailed);
-            1: upper tail (one-tailed);
-            -1: lower tail (one-tailed).
         samples : None | int
             Number of samples for permutation cluster test. For None, no
             clusters are formed. Use 0 to compute clusters without performing
@@ -173,6 +167,17 @@ class t_contrast_rel(_TestResult):
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
         index = ct.data_indexes
 
+        contrast_ = _parse_t_contrast(contrast)
+        tail_ = contrast_[1]
+        if tail_ is None:
+            tail = 0
+        elif tail_ == '+':
+            tail = 1
+        elif tail_ == '-':
+            tail = -1
+        else:
+            raise RuntimeError("Invalid tail in parse: %s" % repr(tail_))
+
         if 'tmin' in criteria:
             tmin = criteria.pop('tmin')
         elif pmin is None:
@@ -180,15 +185,15 @@ class t_contrast_rel(_TestResult):
         else:
             df = len(ct.match.cells) - 1
             tmin = _ttest_t(pmin, df, tail)
-        contrast_ = _parse_t_contrast(contrast)
 
         # buffer memory allocation
         shape = ct.Y.shape[1:]
-        buffers = _t_contrast_rel_setup(contrast_)
-        buff = np.empty((buffers,) + shape)
+        n_buffers = _t_contrast_rel_setup(contrast_)
+        buff = np.empty((n_buffers,) + shape)
 
         # original data
         tmap = _t_contrast_rel(contrast_, ct.Y.x, index, buff)
+        del buff
         dims = ct.Y.dims[1:]
         t = NDVar(tmap, dims, {}, 't')
 
@@ -201,7 +206,7 @@ class t_contrast_rel(_TestResult):
             if cdist.n_clusters and samples:
                 # buffer memory allocation
                 shape = cdist.Y_perm.shape[1:]
-                buff = np.empty((buffers,) + shape)
+                buff = np.empty((n_buffers,) + shape)
                 tmap_ = np.empty(shape)
                 for Y_ in resample(cdist.Y_perm, samples, unit=ct.match):
                     _t_contrast_rel(contrast_, Y_.x, index, buff, tmap_)
@@ -304,7 +309,7 @@ def _t_contrast_rel_setup(item):
 
     Returns
     -------
-    buffers : int
+    n_buffers : int
         Number of buffer maps needed.
     """
     if item[0] == 'func':
@@ -323,9 +328,7 @@ def _t_contrast_rel_setup(item):
 
 def _t_contrast_rel(item, y, index, buff=None, out=None):
     if out is None:
-        out = np.zeros(y.shape[1:])
-    else:
-        out[:] = 0
+        out = np.empty(y.shape[1:])
 
     if item[0] == 'func':
         _, clip, func, items_ = item
