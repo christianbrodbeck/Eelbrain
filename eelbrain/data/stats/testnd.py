@@ -9,7 +9,6 @@ from time import time as current_time
 import numpy as np
 import scipy.stats
 from scipy import ndimage
-from scipy.ndimage import binary_erosion, binary_dilation
 
 from ... import fmtxt
 from ...utils import logger
