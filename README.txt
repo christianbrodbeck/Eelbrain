@@ -1,1 +1,1 @@
-The documentation is located at: http://christianmbrodbeck.github.com/Eelbrain/
+The documentation is located at: http://christianbrodbeck.github.com/Eelbrain/

@@ -42,11 +42,11 @@ class AboutFrame(wx.MiniFrame):
 
     # Links
         link = hyperlink.HyperLinkCtrl(self, wx.ID_ANY, "Eelbrain Documentation",
-                                       URL="http://christianmbrodbeck.github.com/Eelbrain/")
+                                       URL="http://christianbrodbeck.github.com/Eelbrain/")
         sizer.Add(link, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.ALIGN_CENTER_HORIZONTAL, 10)
 
         link = hyperlink.HyperLinkCtrl(self, wx.ID_ANY, "Eelbrain on GitHub",
-                                       URL="https://github.com/christianmbrodbeck/Eelbrain/")
+                                       URL="https://github.com/christianbrodbeck/Eelbrain/")
         sizer.Add(link, 0, wx.LEFT | wx.TOP | wx.RIGHT | wx.ALIGN_CENTER_HORIZONTAL, 10)
 
 

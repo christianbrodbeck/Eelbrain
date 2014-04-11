@@ -23,9 +23,9 @@ Contents:
    Various
 
 
-.. seealso:: `Eelbrain on GitHub <http://github.com/christianmbrodbeck/Eelbrain>`_,
+.. seealso:: `Eelbrain on GitHub <http://github.com/christianbrodbeck/Eelbrain>`_,
     in particular, 
-    `examples <https://github.com/christianmbrodbeck/Eelbrain/tree/master/examples>`_
+    `examples <https://github.com/christianbrodbeck/Eelbrain/tree/master/examples>`_
 
 Indices and tables
 ==================

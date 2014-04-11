@@ -36,14 +36,14 @@ Installing from GitHub
 ----------------------
 
 The Eelbrain source code is hosted on `GitHub 
-<https://github.com/christianmbrodbeck/Eelbrain>`_. The source for the latest
+<https://github.com/christianbrodbeck/Eelbrain>`_. The source for the latest
 development version can be downloaded as a 
-`zip archive <https://github.com/christianmbrodbeck/Eelbrain/zipball/master>`_.
+`zip archive <https://github.com/christianbrodbeck/Eelbrain/zipball/master>`_.
 However, since the code is evolving, the better option is to clone 
 the project with git. A way to do this is::
 
     $ cd /target/directory
-    $ git clone https://github.com/christianmbrodbeck/Eelbrain.git
+    $ git clone https://github.com/christianbrodbeck/Eelbrain.git
 
 This will create the folder ``/target/directory/Eelbrain`` containing all the 
 source files.

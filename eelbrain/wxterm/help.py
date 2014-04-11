@@ -412,7 +412,7 @@ class HTMLHelpFormatter(object):
 
 
 _main_help = """
-Eelbrain online documentation: http://christianmbrodbeck.github.com/Eelbrain/html/index.html
+Eelbrain online documentation: http://christianbrodbeck.github.com/Eelbrain/html/index.html
 
 """
 
