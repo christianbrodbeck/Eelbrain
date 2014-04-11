@@ -1915,3 +1915,22 @@ class _ClusterDist:
                 p[i] = probability_map[idx][0]
 
         return ds
+
+    def masked_parameter_map(self, pmin=0.05):
+        """Create a copy of the parameter map masked by significance
+
+        Parameters
+        ----------
+        pmin : scalar
+            Threshold p-value for masking (default 0.05).
+
+        Returns
+        -------
+        masked_map : NDVar
+            NDVar with data from the original parameter map wherever p <= pmin
+            and 0 everywhere else.
+        """
+        c_mask = np.less_equal(self._probability_map, pmin)
+        masked_param_map = self._original_param_map * c_mask
+        out = NDVar(masked_param_map, self.dims[1:])
+        return out
