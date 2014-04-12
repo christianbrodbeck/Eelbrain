@@ -1278,7 +1278,7 @@ class _ClusterDist:
         ``cdist.add_perm(pmap)``.
     """
     def __init__(self, Y, N, threshold, tail=0, meas='?', name=None,
-                 tstart=None, tstop=None, criteria={}):
+                 tstart=None, tstop=None, criteria={}, dist_dim=None):
         """Accumulate information on a cluster statistic.
 
         Parameters
@@ -1304,6 +1304,11 @@ class _ClusterDist:
         criteria : dict
             Dictionary with threshold criteria for cluster size: 'mintime'
             (seconds) and 'minsource' (n_sources).
+        dist_dim : None | str
+            Collect permutation extrema for all points in this dimension
+            instead of only collecting the overall maximum. This allows
+            deriving p-values for regions of interest from the same set of
+            permutations.
         """
         assert Y.has_case
         assert threshold is None or threshold > 0
@@ -1387,7 +1392,26 @@ class _ClusterDist:
         else:
             criteria_ = None
 
+        # prepare distribution
         N = int(N)
+        if dist_dim is None:
+            dist_shape = (N,)
+            dist_ax = None
+            dist_axes = None
+        elif threshold:
+            err = ("The dist_dim parameter only applies to threshold-free "
+                   "cluster distributions.")
+            raise ValueError(err)
+        else:
+            dist_dim_ = Y_perm.get_dim(dist_dim)
+            dist_shape = (N, len(dist_dim_))
+            dist_ax = Y_perm.get_axis(dist_dim) - 1
+            if nad_ax != 0:
+                if dist_ax == 0:
+                    dist_ax = nad_ax
+                elif dist_ax == nad_ax:
+                    dist_ax = 0
+            dist_axes = tuple(i for i in xrange(ndim) if i != dist_ax)
 
         self.Y_perm = Y_perm
         self.dims = Y_perm.dims
@@ -1395,7 +1419,11 @@ class _ClusterDist:
         self._connectivity_src = connectivity_src
         self._connectivity_dst = connectivity_dst
         self.N = N
-        self.dist = np.zeros(N)
+        self._dist_shape = dist_shape
+        self._dist_dim = dist_dim
+        self._dist_ax = dist_ax
+        self._dist_axes = dist_axes
+        self.dist = np.zeros(dist_shape)
         self._i = N
         self.threshold = threshold
         self.tail = tail
@@ -1476,7 +1504,8 @@ class _ClusterDist:
                  '_criteria',
                  # results ...
                  'dt_original', 'dt_perm', 'n_clusters',
-                 'dist', '_original_param_map', '_original_cluster_map')
+                 '_dist_shape', '_dist_dim', '_dist_ax', '_dist_axes', 'dist',
+                 '_original_param_map', '_original_cluster_map')
         state = {name: getattr(self, name) for name in attrs}
         return state
 
@@ -1547,6 +1576,12 @@ class _ClusterDist:
         else:
             tfce_map_ = None
 
+        # prepare cluster distribution
+        if self.N:
+            dist = self.dist
+            if self._dist_ax is not None:
+                dist = dist.max(1)
+
         # clusters (traditional cluster test)
         if self.threshold and self.n_clusters:
             cluster_map = self._original_cluster_map
@@ -1562,7 +1597,7 @@ class _ClusterDist:
             # p-values: "the proportion of random partitions that resulted in a
             # larger test statistic than the observed one" (179)
             if self.N:
-                n_larger = np.sum(self.dist > np.abs(cluster_v[:, None]), 1)
+                n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
                 cluster_p = n_larger / self.N
                 clusters['p'] = Var(cluster_p)
                 clusters['*'] = star_factor(clusters['p'])
@@ -1596,7 +1631,7 @@ class _ClusterDist:
             idx = self._bin_buff
             cpmap = np.empty(self.shape)
             cpmap.fill(0)
-            for v in self.dist:
+            for v in dist:
                 cpmap += np.greater(v, tfce_map, idx)
             cpmap /= self.N
         elif self.n_clusters:
@@ -1936,12 +1971,13 @@ class _ClusterDist:
 
         if self.threshold is None:
             cmap = self._tfce(pmap, self._float_buff)
-            self.dist[self._i] = cmap.max()
+            self.dist[self._i] = cmap.max(self._dist_axes)
         else:
             cmap, cids = self._label_clusters(pmap, self._int_buff)
             if cids:
                 clusters_v = ndimage.sum(pmap, cmap, cids)
-                self.dist[self._i] = np.max(np.abs(clusters_v))
+                np.abs(clusters_v, clusters_v)
+                self.dist[self._i] = clusters_v.max()
 
         # info
         dt = (current_time() - self._t0)

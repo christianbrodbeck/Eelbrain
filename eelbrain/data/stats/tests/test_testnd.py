@@ -81,9 +81,10 @@ def test_clusterdist():
             Sensor(locs, ['0', '1', '2', '3'], connect_dist=1.1),
             Ordered('dim2', range(10), 'unit'))
     Y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
-    cdist = _ClusterDist(Y, 1, None)
+    cdist = _ClusterDist(Y, 3, None)
     cdist.add_original(Y.x[0])
-    cdist.add_perm(Y.x[1])
+    for i in xrange(1, 4):
+        cdist.add_perm(Y.x[i])
     # I/O
     string = pickle.dumps(cdist, pickle.HIGHEST_PROTOCOL)
     cdist_ = pickle.loads(string)
@@ -113,6 +114,14 @@ def test_clusterdist():
     logging.debug(' detected: \n%s' % (peaks.astype(int)))
     logging.debug(' target: \n%s' % (tgt.astype(int)))
     assert_array_equal(peaks, tgt)
+
+    # test collecting more complex distributions
+    assert_equal(cdist.dist.shape, (3,))
+    cdist = _ClusterDist(Y, 5, None, dist_dim='sensor')
+    cdist.add_original(Y.x[0])
+    for i in xrange(1, 6):
+        cdist.add_perm(Y.x[i])
+    assert_equal(cdist.dist.shape, (5, 4))
 
 
 def test_corr():
