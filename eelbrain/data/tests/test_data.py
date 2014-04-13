@@ -345,6 +345,10 @@ def test_source_space():
     source_v1_intersection = source_ba1_v1[index]
     assert_source_space_equal(source_v1, source_v1_intersection)
 
+    # index from label
+    index = source.index_for_label(label_v1)
+    assert_array_equal(index.source[index.x].vertno[0],
+                       np.intersect1d(source.lh_vertno, label_v1.vertices, 1))
 
 def test_var():
     "Test Var objects"

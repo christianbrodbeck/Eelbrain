@@ -5713,7 +5713,7 @@ class SourceSpace(Dimension):
 
     def dimindex(self, obj):
         if isinstance(obj, (mne.Label, mne.label.BiHemiLabel)):
-            return self.label_index(obj)
+            return self._dimindex_label(obj)
         elif isinstance(obj, str):
             if obj == 'lh':
                 if self.lh_n:
@@ -5739,16 +5739,31 @@ class SourceSpace(Dimension):
         else:
             return obj
 
-    def _hemilabel_index(self, label):
+    def _dimindex_label(self, label):
+        if label.hemi == 'both':
+            lh_idx = self._dimindex_hemilabel(label.lh)
+            rh_idx = self._dimindex_hemilabel(label.rh)
+            idx = np.hstack((lh_idx, rh_idx))
+        else:
+            idx = np.zeros(len(self), dtype=np.bool8)
+            idx_part = self._dimindex_hemilabel(label)
+            if label.hemi == 'lh':
+                idx[:self.lh_n] = idx_part
+            elif label.hemi == 'rh':
+                idx[self.lh_n:] = idx_part
+            else:
+                err = "Unknown value for label.hemi: %s" % repr(label.hemi)
+                raise ValueError(err)
+
+        return idx
+
+    def _dimindex_hemilabel(self, label):
         if label.hemi == 'lh':
             stc_vertices = self.vertno[0]
-            base = 0
         else:
             stc_vertices = self.vertno[1]
-            base = len(self.vertno[0])
-
-        idx = np.nonzero(map(label.vertices.__contains__, stc_vertices))[0]
-        return idx + base
+        idx = np.in1d(stc_vertices, label.vertices, True)
+        return idx
 
     def get_source_space(self):
         "Read the corresponding MNE source space"
@@ -5756,6 +5771,24 @@ class SourceSpace(Dimension):
                                         subject=self.subject, src=self.src)
         src = mne.read_source_spaces(path)
         return src
+
+    def index_for_label(self, label):
+        """Returns the index for a label
+
+        Parameters
+        ----------
+        label : Label | BiHemiLabel
+            The label (as created for example by mne.read_label). If the label
+            does not match any sources in the SourceEstimate, a ValueError is
+            raised.
+
+        Returns
+        -------
+        index : NDVar of bool
+            Index into the source space dim that corresponds to the label.
+        """
+        idx = self._dimindex_label(label)
+        return NDVar(idx, (self,), {}, label.name)
 
     def intersect(self, other, check_dims=True):
         """Create a Source dimension that is the intersection with dim
@@ -5783,28 +5816,6 @@ class SourceSpace(Dimension):
                   izip(self.vertno, other.vertno)]
         out = SourceSpace(vertno, self.subject, self.src, self.subjects_dir)
         return out
-
-    def label_index(self, label):
-        """Returns the index for a label
-
-        Parameters
-        ----------
-        label : Label | BiHemiLabel
-            The label (as created for example by mne.read_label). If the label
-            does not match any sources in the SourceEstimate, a ValueError is
-            raised.
-        """
-        if label.hemi == 'both':
-            lh_idx = self._hemilabel_index(label.lh)
-            rh_idx = self._hemilabel_index(label.rh)
-            idx = np.hstack((lh_idx, rh_idx))
-        else:
-            idx = self._hemilabel_index(label)
-
-        if len(idx) == 0:
-            raise ValueError('No vertices match the label in the stc file')
-
-        return idx
 
 
 class UTS(Dimension):
