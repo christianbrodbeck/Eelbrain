@@ -139,6 +139,14 @@ def test_clusterdist():
         cdist.add_perm(Y.x[i])
     assert_equal(cdist.dist.shape, (5, 4, 2))
 
+    # test keeping 2 dimensions and time bins
+    cdist = _ClusterDist(Y, 5, None, dist_dim=('sensor', 'dim2'),
+                         dist_tstep=0.2)
+    cdist.add_original(Y.x[0])
+    for i in xrange(1, 6):
+        cdist.add_perm(Y.x[i])
+    assert_equal(cdist.dist.shape, (5, 4, 2, 10))
+
 
 def test_corr():
     "Test testnd.corr()"

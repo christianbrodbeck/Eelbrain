@@ -109,7 +109,8 @@ class t_contrast_rel(_TestResult):
     _pickle_specific = ('contrast', 't')
 
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None,
-                 samples=None, pmin=None, tstart=None, tstop=None, **criteria):
+                 samples=None, pmin=None, tstart=None, tstop=None,
+                 dist_dim=None, dist_tstep=None, **criteria):
         """Contrast with t-values from multiple comparisons
 
         Parameters
@@ -200,7 +201,7 @@ class t_contrast_rel(_TestResult):
             cdist = None
         else:
             cdist = _ClusterDist(ct.Y, samples, tmin, tail, 't', test_name,
-                                 tstart, tstop, criteria)
+                                 tstart, tstop, criteria, dist_dim, dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 # buffer memory allocation
@@ -368,7 +369,8 @@ class corr(_TestResult):
     _pickle_specific = ('norm', 'r')
 
     def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=None,
-                 pmin=None, tstart=None, tstop=None, match=None, **criteria):
+                 pmin=None, tstart=None, tstop=None, match=None,
+                 dist_dim=None, dist_tstep=None, **criteria):
         """Correlation.
 
         Parameters
@@ -446,7 +448,7 @@ class corr(_TestResult):
                 threshold = _rtest_r(pmin, df)
 
             cdist = _ClusterDist(Y, samples, threshold, 0, 'r', name,
-                                 tstart, tstop, criteria)
+                                 tstart, tstop, criteria, dist_dim, dist_tstep)
             cdist.add_original(rmap)
             if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples, unit=match):
@@ -532,7 +534,8 @@ class ttest_1samp:
         [c0 - c1, P]
     """
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
-                 samples=None, pmin=None, tstart=None, tstop=None, **criteria):
+                 samples=None, pmin=None, tstart=None, tstop=None,
+                 dist_dim=None, dist_tstep=None, **criteria):
         """Element-wise one sample t-test
 
         Parameters
@@ -596,7 +599,8 @@ class ttest_1samp:
                 y_perm = ct.Y
             n_samples, samples_ = _resample_params(len(y_perm), samples)
             cdist = _ClusterDist(y_perm, n_samples, threshold, tail, 't',
-                                 test_name, tstart, tstop, criteria)
+                                 test_name, tstart, tstop, criteria, dist_dim,
+                                 dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples_, sign_flip=True):
@@ -666,7 +670,7 @@ class ttest_ind(_TestResult):
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tstart=None, tstop=None,
-                 **criteria):
+                 dist_dim=None, dist_tstep=None, **criteria):
         """Element-wise t-test
 
         Parameters
@@ -725,7 +729,8 @@ class ttest_ind(_TestResult):
                 threshold = _ttest_t(pmin, df, tail)
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
-                                 test_name, tstart, tstop, criteria)
+                                 test_name, tstart, tstop, criteria, dist_dim,
+                                 dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples):
@@ -825,7 +830,7 @@ class ttest_rel:
     """
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tstart=None, tstop=None,
-                 **criteria):
+                 dist_dim=None, dist_tstep=None, **criteria):
         """Element-wise t-test
 
         Parameters
@@ -892,7 +897,8 @@ class ttest_rel:
                 threshold = _ttest_t(pmin, df, tail)
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
-                                 test_name, tstart, tstop, criteria)
+                                 test_name, tstart, tstop, criteria, dist_dim,
+                                 dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 tmap_ = np.empty(cdist.Y_perm.shape[1:])
@@ -1118,7 +1124,8 @@ class anova:
         Maps of p values.
     """
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
-                 tstart=None, tstop=None, match=None, **criteria):
+                 tstart=None, tstop=None, match=None, dist_dim=None,
+                 dist_tstep=None, **criteria):
         """ANOVA with cluster permutation test
 
         Parameters
@@ -1172,7 +1179,7 @@ class anova:
             else:
                 fmins = [ftest_f(pmin, e.df, df_den[e]) for e in effects]
             cdists = [_ClusterDist(Y, samples, fmin, 1, 'F', e.name, tstart,
-                                   tstop, criteria)
+                                   tstop, criteria, dist_dim, dist_tstep)
                       for e, fmin in izip(effects, fmins)]
 
             # Find clusters in the actual data
@@ -1278,7 +1285,7 @@ class _ClusterDist:
         ``cdist.add_perm(pmap)``.
     """
     def __init__(self, Y, N, threshold, tail=0, meas='?', name=None,
-                 tstart=None, tstop=None, criteria={}, dist_dim=None,
+                 tstart=None, tstop=None, criteria={}, dist_dim=(),
                  dist_tstep=None):
         """Accumulate information on a cluster statistic.
 
@@ -1305,15 +1312,16 @@ class _ClusterDist:
         criteria : dict
             Dictionary with threshold criteria for cluster size: 'mintime'
             (seconds) and 'minsource' (n_sources).
-        dist_dim : None | str
-            Collect permutation extrema for all points in this dimension
+        dist_dim : None | str | list of str
+            Collect permutation extrema for all points in this dimension(s)
             instead of only collecting the overall maximum. This allows
             deriving p-values for regions of interest from the same set of
-            permutations.
+            permutations. TFCE only.
         dist_tstep : None | scalar [seconds]
             Instead of collecting the distribution for the maximum across time,
-            collect the maximum in several time bins. The valur of tstep has to
-            divide the time between tstart and tstop in even sections.
+            collect the maximum in several time bins. The value of tstep has to
+            divide the time between tstart and tstop in even sections. TFCE
+            only.
         """
         assert Y.has_case
         assert threshold is None or threshold > 0
@@ -1334,6 +1342,7 @@ class _ClusterDist:
         # cluster map properties
         ndim = Y_perm.ndim - 1
         shape = Y_perm.shape[1:]
+        cmap_dims = Y_perm.dims[1:]
 
         # prepare adjacency
         struct = ndimage.generate_binary_structure(ndim, 1)
@@ -1354,6 +1363,9 @@ class _ClusterDist:
                 shape = list(shape)
                 shape[0], shape[nad_ax] = shape[nad_ax], shape[0]
                 shape = tuple(shape)
+                cmap_dims = list(cmap_dims)
+                cmap_dims[0], cmap_dims[nad_ax] = cmap_dims[nad_ax], cmap_dims[0]
+                cmap_dims = tuple(cmap_dims)
             self._flat_shape = (shape[0], np.prod(shape[1:]))
 
             # prepare connectivity
@@ -1405,11 +1417,20 @@ class _ClusterDist:
                        "threshold-free cluster distributions.")
                 raise ValueError(err)
 
-            cmap_dims = Y_perm.dims[1:]
-            if nad_ax:
-                cmap_dims = list(cmap_dims)
-                cmap_dims[0], cmap_dims[nad_ax] = cmap_dims[nad_ax], cmap_dims[0]
-                cmap_dims = tuple(cmap_dims)
+            if isinstance(dist_dim, basestring):
+                dist_dim = (dist_dim,)
+
+            # checks
+            dim_names = tuple(dim.name for dim in Y_perm.dims[1:])
+            err = tuple(name for name in dist_dim if name not in dim_names)
+            if err:
+                if len(err) == 1:
+                    msg = ("%r is contained in dist_dim but is not a valid "
+                           "dimension in the input ndvar" % err)
+                else:
+                    msg = ("%r are contained in dist_dim but are not valid "
+                           "dimensions in the input ndvar" % str(err))
+                raise ValueError(msg)
 
             dist_shape = [N]
             dist_dims = ['case']
@@ -1417,7 +1438,7 @@ class _ClusterDist:
             max_axes = []
             reshaped_ax_shift = 0  # number of inserted axes after reshaping cmap
             for i, dim in enumerate(cmap_dims):
-                if dim.name == dist_dim:  # keep the dimension
+                if dim.name in dist_dim:  # keep the dimension
                     length = len(dim)
                     dist_shape.append(length)
                     dist_dims.append(dim)
@@ -1452,6 +1473,7 @@ class _ClusterDist:
 
         self.Y_perm = Y_perm
         self.dims = Y_perm.dims
+        self._cmap_dims = cmap_dims
         self.shape = shape
         self._connectivity_src = connectivity_src
         self._connectivity_dst = connectivity_dst
@@ -1536,7 +1558,7 @@ class _ClusterDist:
                   # data properties ...
                  'dims', 'shape', '_all_adjacent', '_nad_ax', '_struct',
                  '_flat_shape', '_connectivity_src', '_connectivity_dst',
-                 '_criteria',
+                 '_criteria', '_cmap_dims',
                  # results ...
                  'dt_original', 'dt_perm', 'n_clusters',
                  '_dist_shape', '_dist_dims', 'dist',
@@ -1618,8 +1640,17 @@ class _ClusterDist:
                 axes = tuple(xrange(1, dist.ndim))
                 dist = dist.max(axes)
 
-        # clusters (traditional cluster test)
-        if self.threshold and self.n_clusters:
+        # probability map and clusters
+        if self.threshold is None and self.N:
+            # probability map (TFCE)
+            idx = self._bin_buff
+            cpmap = np.zeros(self.shape)
+            for v in dist:
+                cpmap += np.greater(v, tfce_map, idx)
+            cpmap /= self.N
+            clusters = None
+        elif self.threshold and self.n_clusters:
+            # traditional clusters
             cluster_map = self._original_cluster_map
             cids = self._cids
 
@@ -1632,12 +1663,12 @@ class _ClusterDist:
 
             # p-values: "the proportion of random partitions that resulted in a
             # larger test statistic than the observed one" (179)
+            cpmap = np.ones(self.shape)  # cluster probability
             if self.N:
                 n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
                 cluster_p = n_larger / self.N
                 clusters['p'] = Var(cluster_p)
                 clusters['*'] = star_factor(clusters['p'])
-                cpmap = np.ones(self.shape)  # cluster probability
 
             # expand clusters and find cluster properties
             cmaps = np.empty((self.n_clusters,) + self.shape,
@@ -1659,19 +1690,7 @@ class _ClusterDist:
             clusters['cluster'] = NDVar(cmaps, dims=dims, info=info)
         else:
             clusters = None
-
-        # probability map (TFCE)
-        if self.N == 0:
             cpmap = None
-        elif self.threshold is None:
-            idx = self._bin_buff
-            cpmap = np.empty(self.shape)
-            cpmap.fill(0)
-            for v in dist:
-                cpmap += np.greater(v, tfce_map, idx)
-            cpmap /= self.N
-        elif self.n_clusters:
-            pass
 
         # original parameter map
         info = _cs.stat_info(self.meas, contours=param_contours)
@@ -2098,6 +2117,7 @@ class _ClusterDist:
         ds['p'] = Var([p_map[pos] for pos in min_pos])
         ds['*'] = star_factor(ds['p'])
 
+        self._clear_memory_buffers()
         return ds
 
     def tfce_peaks(self):
@@ -2115,7 +2135,7 @@ class _ClusterDist:
         param_map = self._original_param_map
         probability_map = self._probability_map
 
-        peaks = self._find_peaks(self._tfce_map)
+        peaks = self._find_peaks(self._original_cluster_map)
         peak_map, peak_ids = self._label_clusters_binary(peaks, self._int_buff)
 
         ds = Dataset()
@@ -2130,9 +2150,72 @@ class _ClusterDist:
             if self.N:
                 p[i] = probability_map[idx][0]
 
+        self._clear_memory_buffers()
         return ds
 
-    def masked_parameter_map(self, pmin=0.05):
+    def _aggregate_dist(self, tstart=None, tstop=None, sub=None):
+        """Aggregate permutation distribution to one value per permutation
+
+        Parameters
+        ----------
+        tstart : scalar
+            Only correct against multiple comparisons from this time point
+            (vs whole epoch). Needs to correspond to the beginning of a proper
+            time bin.
+        tstop : scalar
+            Only correct against multiple comparisons up until this time point
+            (vs whole epoch). Needs to correspond to the end of a proper time
+            bin.
+        sub : boolean NDVar
+            Create the probability map for, and correct for multiple
+            comparisons in only a part of Y.
+        """
+        if any(i is not None for i in (tstart, tstop, sub)):
+            dist_ndvar = NDVar(self.dist, self._dist_dims)
+            if tstart is not None or tstop is not None:
+                dist_ndvar = dist_ndvar.sub(time=(tstart, tstop))
+            if sub is not None:
+                dist_ndvar = dist_ndvar[sub]
+            dist = dist_ndvar.x
+        else:
+            dist = self.dist
+
+        if dist.ndim > 1:
+            axes = tuple(xrange(1, dist.ndim))
+            dist = dist.max(axes)
+
+        return dist
+
+    def tfce_probability_map(self, tstart=None, tstop=None, sub=None):
+        """Create a probability map for a threshold-free cluster distribution
+
+        Parameters
+        ----------
+        tstart : scalar
+            Only correct against multiple comparisons from this time point
+            (vs whole epoch). Needs to correspond to the beginning of a proper
+            time bin.
+        tstop : scalar
+            Only correct against multiple comparisons up until this time point
+            (vs whole epoch). Needs to correspond to the end of a proper time
+            bin.
+        sub : boolean NDVar
+            Create the probability map for, and correct for multiple
+            comparisons in only a part of Y.
+        """
+        dist = self._aggregate_dist(tstart, tstop, sub)
+        tfce_map = self._original_cluster_map
+        dims = self._cmap_dims
+
+        idx = np.empty(self.shape, dtype=np.bool8)
+        cpmap = np.zeros(tfce_map.shape)
+        for v in dist:
+            cpmap += np.greater(v, tfce_map, idx)
+        cpmap /= self.N
+        return NDVar(cpmap, dims)
+
+    def masked_parameter_map(self, pmin=0.05, tstart=None, tstop=None,
+                             sub=None):
         """Create a copy of the parameter map masked by significance
 
         Parameters
@@ -2146,7 +2229,8 @@ class _ClusterDist:
             NDVar with data from the original parameter map wherever p <= pmin
             and 0 everywhere else.
         """
-        c_mask = np.less_equal(self._probability_map, pmin)
+        probability_map = self.tfce_probability_map(tstart, tstop, sub)
+        c_mask = np.less_equal(probability_map.x, pmin)
         masked_param_map = self._original_param_map * c_mask
         out = NDVar(masked_param_map, self.dims[1:])
         return out
