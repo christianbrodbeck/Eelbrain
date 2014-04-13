@@ -3,7 +3,8 @@
 import cPickle as pickle
 import logging
 
-from nose.tools import assert_equal, assert_in, assert_less, assert_not_in
+from nose.tools import (assert_equal, assert_in, assert_less, assert_not_in,
+                        assert_raises)
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -115,13 +116,28 @@ def test_clusterdist():
     logging.debug(' target: \n%s' % (tgt.astype(int)))
     assert_array_equal(peaks, tgt)
 
-    # test collecting more complex distributions
+    # test keeping dimension
     assert_equal(cdist.dist.shape, (3,))
     cdist = _ClusterDist(Y, 5, None, dist_dim='sensor')
     cdist.add_original(Y.x[0])
     for i in xrange(1, 6):
         cdist.add_perm(Y.x[i])
     assert_equal(cdist.dist.shape, (5, 4))
+
+    # test keeping time bins
+    cdist = _ClusterDist(Y, 5, None, dist_tstep=0.2)
+    cdist.add_original(Y.x[0])
+    for i in xrange(1, 6):
+        cdist.add_perm(Y.x[i])
+    assert_equal(cdist.dist.shape, (5, 2))
+    assert_raises(ValueError, _ClusterDist, Y, 5, None, dist_tstep=0.3)
+
+    # test keeping dimension and time bins
+    cdist = _ClusterDist(Y, 5, None, dist_dim='sensor', dist_tstep=0.2)
+    cdist.add_original(Y.x[0])
+    for i in xrange(1, 6):
+        cdist.add_perm(Y.x[i])
+    assert_equal(cdist.dist.shape, (5, 4, 2))
 
 
 def test_corr():

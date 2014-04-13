@@ -14,7 +14,7 @@ from ... import fmtxt
 from ...utils import logger
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
-                        Factor, NDVar, Var, Celltable, cellname, combine)
+                        Factor, NDVar, Var, Celltable, cellname, combine, UTS)
 from .glm import LMFitter
 from .permutation import resample, _resample_params
 from .stats import ftest_f, ftest_p
@@ -1278,7 +1278,8 @@ class _ClusterDist:
         ``cdist.add_perm(pmap)``.
     """
     def __init__(self, Y, N, threshold, tail=0, meas='?', name=None,
-                 tstart=None, tstop=None, criteria={}, dist_dim=None):
+                 tstart=None, tstop=None, criteria={}, dist_dim=None,
+                 dist_tstep=None):
         """Accumulate information on a cluster statistic.
 
         Parameters
@@ -1309,6 +1310,10 @@ class _ClusterDist:
             instead of only collecting the overall maximum. This allows
             deriving p-values for regions of interest from the same set of
             permutations.
+        dist_tstep : None | scalar [seconds]
+            Instead of collecting the distribution for the maximum across time,
+            collect the maximum in several time bins. The valur of tstep has to
+            divide the time between tstart and tstop in even sections.
         """
         assert Y.has_case
         assert threshold is None or threshold > 0
@@ -1394,24 +1399,56 @@ class _ClusterDist:
 
         # prepare distribution
         N = int(N)
-        if dist_dim is None:
-            dist_shape = (N,)
-            dist_ax = None
-            dist_axes = None
-        elif threshold:
-            err = ("The dist_dim parameter only applies to threshold-free "
-                   "cluster distributions.")
-            raise ValueError(err)
+        if (dist_dim or dist_tstep):
+            if threshold:
+                err = ("The dist_dim and dist_tstep parameters only apply to "
+                       "threshold-free cluster distributions.")
+                raise ValueError(err)
+
+            cmap_dims = Y_perm.dims[1:]
+            if nad_ax:
+                cmap_dims = list(cmap_dims)
+                cmap_dims[0], cmap_dims[nad_ax] = cmap_dims[nad_ax], cmap_dims[0]
+                cmap_dims = tuple(cmap_dims)
+
+            dist_shape = [N]
+            dist_dims = ['case']
+            cmap_reshape = []
+            max_axes = []
+            reshaped_ax_shift = 0  # number of inserted axes after reshaping cmap
+            for i, dim in enumerate(cmap_dims):
+                if dim.name == dist_dim:  # keep the dimension
+                    length = len(dim)
+                    dist_shape.append(length)
+                    dist_dims.append(dim)
+                    cmap_reshape.append(length)
+                elif dim.name == 'time' and dist_tstep:
+                    step = int(round(dist_tstep / dim.tstep))
+                    if dim.nsamples % step != 0:
+                        err = ("dist_tstep={} does not divide time into even "
+                               "parts ({} samples / {}).")
+                        err = err.format(dist_tstep, dim.nsamples, step)
+                        raise ValueError(err)
+                    n_times = int(dim.nsamples / step)
+
+                    dist_shape.append(n_times)
+                    dist_dims.append(UTS(dim.tmin, dist_tstep, n_times))
+                    cmap_reshape.append(step)
+                    cmap_reshape.append(n_times)
+                    max_axes.append(i + reshaped_ax_shift)
+                    reshaped_ax_shift += 1
+                else:
+                    cmap_reshape.append(len(dim))
+                    max_axes.append(i + reshaped_ax_shift)
+
+            dist_shape = tuple(dist_shape)
+            dist_dims = tuple(dist_dims)
+            max_axes = tuple(max_axes)
         else:
-            dist_dim_ = Y_perm.get_dim(dist_dim)
-            dist_shape = (N, len(dist_dim_))
-            dist_ax = Y_perm.get_axis(dist_dim) - 1
-            if nad_ax != 0:
-                if dist_ax == 0:
-                    dist_ax = nad_ax
-                elif dist_ax == nad_ax:
-                    dist_ax = 0
-            dist_axes = tuple(i for i in xrange(ndim) if i != dist_ax)
+            dist_shape = (N,)
+            dist_dims = None
+            cmap_reshape = None
+            max_axes = None
 
         self.Y_perm = Y_perm
         self.dims = Y_perm.dims
@@ -1420,9 +1457,9 @@ class _ClusterDist:
         self._connectivity_dst = connectivity_dst
         self.N = N
         self._dist_shape = dist_shape
-        self._dist_dim = dist_dim
-        self._dist_ax = dist_ax
-        self._dist_axes = dist_axes
+        self._dist_dims = dist_dims
+        self._cmap_reshape = cmap_reshape
+        self._max_axes = max_axes
         self.dist = np.zeros(dist_shape)
         self._i = N
         self.threshold = threshold
@@ -1447,29 +1484,27 @@ class _ClusterDist:
         shape = self.shape
         self._bin_buff = np.empty(shape, dtype=np.bool8)
         self._int_buff = np.empty(shape, dtype=np.uint32)
-        if self.threshold is None:
-            self._float_buff = np.empty(shape)
-        else:
-            if self.tail == 0:
-                self._int_buff2 = np.empty(shape, dtype=np.uint32)
+        if self.threshold and self.tail == 0:
+            self._int_buff2 = np.empty(shape, dtype=np.uint32)
         if not self._all_adjacent:
-            self._slice_buff = np.empty(shape[0], dtype=np.bool8)
             self._bin_buff2 = np.empty(shape, dtype=np.bool8)
-            self._bin_buff3 = np.empty(shape, dtype=np.bool8)
         self._has_buffers = True
+        if self._i == 0 or self.threshold:  # no permutations will be added
+            return
+
+        # only for TFCE
+        self._float_buff = np.empty(shape)
+        if self._cmap_reshape is None:
+            self._cmap_stacked = self._float_buff
+        else:
+            self._cmap_stacked = self._float_buff.reshape(self._cmap_reshape)
 
     def _clear_memory_buffers(self):
         "Remove memory buffers used for cluster processing"
-        del self._bin_buff
-        del self._int_buff
-        if self.threshold is None:
-            del self._float_buff
-        elif self.tail == 0:
-            del self._int_buff2
-        if not self._all_adjacent:
-            del self._slice_buff
-            del self._bin_buff2
-            del self._bin_buff3
+        for name in ('_bin_buff', '_int_buff', '_float_buff', '_int_buff2',
+                     '_bin_buff2'):
+            if hasattr(self, name):
+                delattr(self, name)
         self._has_buffers = False
 
     def __repr__(self):
@@ -1504,7 +1539,7 @@ class _ClusterDist:
                  '_criteria',
                  # results ...
                  'dt_original', 'dt_perm', 'n_clusters',
-                 '_dist_shape', '_dist_dim', '_dist_ax', '_dist_axes', 'dist',
+                 '_dist_shape', '_dist_dims', 'dist',
                  '_original_param_map', '_original_cluster_map')
         state = {name: getattr(self, name) for name in attrs}
         return state
@@ -1579,8 +1614,9 @@ class _ClusterDist:
         # prepare cluster distribution
         if self.N:
             dist = self.dist
-            if self._dist_ax is not None:
-                dist = dist.max(1)
+            if dist.ndim > 1:
+                axes = tuple(xrange(1, dist.ndim))
+                dist = dist.max(axes)
 
         # clusters (traditional cluster test)
         if self.threshold and self.n_clusters:
@@ -1970,8 +2006,8 @@ class _ClusterDist:
             pmap = pmap.swapaxes(0, self._nad_ax)
 
         if self.threshold is None:
-            cmap = self._tfce(pmap, self._float_buff)
-            self.dist[self._i] = cmap.max(self._dist_axes)
+            self._tfce(pmap, self._float_buff)
+            self.dist[self._i] = self._cmap_stacked.max(self._max_axes)
         else:
             cmap, cids = self._label_clusters(pmap, self._int_buff)
             if cids:
