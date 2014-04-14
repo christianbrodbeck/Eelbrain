@@ -321,10 +321,11 @@ def test_io_txt():
 
 def test_source_space():
     "Test SourceSpace Dimension"
+    subject = 'fsaverage'
     data_path = mne.datasets.sample.data_path()
     mri_sdir = os.path.join(data_path, 'subjects')
-    mri_dir = os.path.join(mri_sdir, 'fsaverage')
-    src_path = os.path.join(mri_dir, 'bem', 'fsaverage-ico-5-src.fif')
+    mri_dir = os.path.join(mri_sdir, subject)
+    src_path = os.path.join(mri_dir, 'bem', subject + '-ico-5-src.fif')
     label_dir = os.path.join(mri_dir, 'label')
     label_ba1 = mne.read_label(os.path.join(label_dir, 'lh.BA1.label'))
     label_v1 = mne.read_label(os.path.join(label_dir, 'lh.V1.label'))
@@ -333,7 +334,7 @@ def test_source_space():
     label_v1_mt = label_v1 + label_mt
 
     src = mne.read_source_spaces(src_path)
-    source = SourceSpace((src[0]['vertno'], src[1]['vertno']), 'fsaverage',
+    source = SourceSpace((src[0]['vertno'], src[1]['vertno']), subject,
                          'ico-5', mri_sdir)
     index = source.dimindex(label_v1)
     source_v1 = source[index]
@@ -349,6 +350,16 @@ def test_source_space():
     index = source.index_for_label(label_v1)
     assert_array_equal(index.source[index.x].vertno[0],
                        np.intersect1d(source.lh_vertno, label_v1.vertices, 1))
+
+    # parcellation and cluster localization
+    parc = mne.read_annot(subject, parc='aparc', subjects_dir=mri_sdir)
+    indexes = [source.index_for_label(label) for label in parc
+               if len(label) > 10]
+    x = np.vstack([index.x for index in indexes])
+    ds = source._cluster_properties(x)
+    for i in xrange(ds.n_cases):
+        assert_equal(ds[i, 'location'], parc[i].name)
+
 
 def test_var():
     "Test Var objects"

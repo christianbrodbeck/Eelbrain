@@ -5450,7 +5450,7 @@ class SourceSpace(Dimension):
     _src_pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
                                 '{subject}-{src}-src.fif')
     def __init__(self, vertno, subject=None, src=None, subjects_dir=None,
-                 connectivity=None):
+                 parc='aparc', connectivity=None):
         """Create mne source space dimension.
 
         Parameters
@@ -5465,6 +5465,9 @@ class SourceSpace(Dimension):
         subjects_dir : str
             The path to the subjects_dir (needed to locate the source space
             file).
+        parc : None | str
+            Add a parcellation to the source space to identify vertex location.
+            Only applies to ico source spaces, default is 'aparc'.
         connectivity : None | sparse matrix
             Cached source space connectivity.
         """
@@ -5488,18 +5491,21 @@ class SourceSpace(Dimension):
             self.rh_vertno = vertno[1]
             self.lh_n = len(self.lh_vertno)
             self.rh_n = len(self.rh_vertno)
+            self.set_parc(parc)
 
     def __getstate__(self):
         state = {'vertno': self.vertno, 'subject': self.subject,
-                 'src': self.src, 'subjects_dir': self.subjects_dir}
+                 'src': self.src, 'subjects_dir': self.subjects_dir,
+                 'parc': self.parc}
         return state
 
     def __setstate__(self, state):
         vertno = state['vertno']
         subject = state['subject']
         src = state.get('src', None)
+        parc = state.get('parc', None)
         subjects_dir = state.get('subjects_dir', None)
-        self.__init__(vertno, subject, src, subjects_dir)
+        self.__init__(vertno, subject, src, subjects_dir, parc)
 
     def __repr__(self):
         ns = ', '.join(str(len(v)) for v in self.vertno)
@@ -5549,9 +5555,15 @@ class SourceSpace(Dimension):
         vert = vert[index]
         space_i = space_i[index]
 
+        # parc
+        if self.parc is None:
+            parc = None
+        else:
+            parc = (self.parc, self._parc[index], self._parc_names)
+
         new_vert = [vert[space_i == i] for i in xrange(len(self.vertno))]
         dim = SourceSpace(new_vert, self.subject, self.src, self.subjects_dir,
-                          connectivity)
+                          parc, connectivity)
         return dim
 
     def _cluster_properties(self, x):
@@ -5569,6 +5581,9 @@ class SourceSpace(Dimension):
             A dataset with variables describing cluster properties along this
             dimension: "n_sources".
         """
+        if np.any(np.sum(x, 1) == 0):
+            raise ValueError("Empty cluster")
+
         ds = Dataset()
 
         # n sources
@@ -5590,6 +5605,16 @@ class SourceSpace(Dimension):
             else:
                 hemis.append('rh')
         ds['hemi'] = Factor(hemis)
+
+        # location
+        if self.parc is not None:
+            locations = []
+            for x_ in x:
+                parc_entries = self._parc[x_]
+                argmax = np.argmax(np.bincount(parc_entries))
+                location = self._parc_names[argmax]
+                locations.append(location)
+            ds['location'] = Factor(locations)
 
         return ds
 
@@ -5812,10 +5837,45 @@ class SourceSpace(Dimension):
             raise ValueError("Different src")
         elif self.subjects_dir != other.subjects_dir:
             raise ValueError("Different subjects_dir")
-        vertno = [np.intersect1d(s, o, True) for s, o in
-                  izip(self.vertno, other.vertno)]
-        out = SourceSpace(vertno, self.subject, self.src, self.subjects_dir)
-        return out
+
+        index = np.hstack(np.in1d(s, o) for s, o
+                          in izip(self.vertno, other.vertno))
+        return self[index]
+
+    def set_parc(self, parc):
+        """Set the source space parcellation
+
+        Parameters
+        ----------
+        parc : None | str
+            Add a parcellation to the source space to identify vertex location.
+            Only applies to ico source spaces, default is 'aparc'.
+        """
+        if parc is None:
+            parc = None
+            parc_ = None
+            parc_names = None
+        elif isinstance(parc, tuple):
+            parc, parc_, parc_names = parc
+        elif isinstance(parc, basestring):
+            labels = mne.read_annot(self.subject, parc,
+                                    subjects_dir=self.subjects_dir)
+            if len(labels) > 255:
+                dtype = np.uint16
+            else:
+                dtype = np.uint8
+            parc_names = ['unknown']
+            parc_ = np.zeros(self._n_vert, dtype=dtype)
+            for i, label in enumerate(labels, 1):
+                parc_names.append(label.name)
+                index = self.dimindex(label)
+                parc_[index] = i
+        else:
+            raise ValueError("Parc needs to be string, got %s" % repr(parc))
+
+        self.parc = parc
+        self._parc = parc_
+        self._parc_names = parc_names
 
 
 class UTS(Dimension):

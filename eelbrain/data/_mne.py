@@ -141,7 +141,8 @@ def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None):
         x_ = x_.swapaxes(axis, 0)
 
     # package output NDVar
-    source = SourceSpace(vertices_to, subject_to, src, subjects_dir)
+    parc = ndvar.source.parc
+    source = SourceSpace(vertices_to, subject_to, src, subjects_dir, parc)
     dims = ndvar.dims[:axis] + (source,) + ndvar.dims[axis + 1:]
     info = ndvar.info.copy()
     out = NDVar(x_, dims, info, ndvar.name)
@@ -263,7 +264,7 @@ def source_induced_power(epochs='epochs', x=None, ds=None, src='ico-4',
     time = UTS(tmin, tstep, nsamples)
     src_fun = getattr(np, src, None)
     if src_fun is None:
-        source = SourceSpace(vertices, subject, src, subjects_dir)
+        source = SourceSpace(vertices, subject, src, subjects_dir, None)
         dims = (source, frequency, time)
     else:
         dims = (frequency, time)

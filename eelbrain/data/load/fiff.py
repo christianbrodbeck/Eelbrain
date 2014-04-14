@@ -736,7 +736,8 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
     return NDVar(x, dims, info=info, name=name)
 
 
-def stc_ndvar(stc, subject, src, subjects_dir=None, name=None, check=True):
+def stc_ndvar(stc, subject, src, subjects_dir=None, name=None, check=True,
+              parc='aparc'):
     """
     Convert one or more :class:`mne.SourceEstimate` objects to an :class:`NDVar`.
 
@@ -756,7 +757,8 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, name=None, check=True):
     check : bool
         If multiple stcs are provided, check if all stcs have the same times
         and vertices.
-
+    parc : None | str
+        Parcellation to add to the source space.
     """
     subjects_dir = mne.utils.get_subjects_dir(subjects_dir)
 
@@ -782,9 +784,9 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, name=None, check=True):
     # Construct NDVar Dimensions
     time = UTS(stc.tmin, stc.tstep, stc.shape[1])
     if isinstance(stc, mne.VolSourceEstimate):
-        ss = SourceSpace([stc.vertno], subject, src, subjects_dir)
+        ss = SourceSpace([stc.vertno], subject, src, subjects_dir, parc)
     else:
-        ss = SourceSpace(stc.vertno, subject, src, subjects_dir)
+        ss = SourceSpace(stc.vertno, subject, src, subjects_dir, parc)
 
     if case:
         dims = ('case', ss, time)
