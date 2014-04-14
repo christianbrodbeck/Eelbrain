@@ -194,7 +194,7 @@ def test_ttest_1samp():
 
     # no clusters
     res0 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds)
-    assert_less(res0.p.x.min(), 0.05)
+    assert_less(res0.p_uncorrected.x.min(), 0.05)
     repr0 = repr(res0)
     assert_in('against', repr0)
     assert_not_in('clusters', repr0)

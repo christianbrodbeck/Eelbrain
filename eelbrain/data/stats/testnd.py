@@ -1,4 +1,21 @@
-'''Statistical tests for ndvars'''
+'''Statistical tests for NDVars
+
+Common Attributes
+-----------------
+
+The following attributes are always present. For ANOVA, they are lists with the
+corresponding items for different effects.
+
+t/f/... : NDVar
+    Map of the statistical parameter.
+p_uncorrected : NDVar
+    Map of uncorrected p values.
+p : NDVar | None
+    Map of corrected p values (None if no correct was applied).
+clusters : Dataset | None
+    Table of all the clusters found (None if no clusters were found, or if no
+    clustering was performed).
+'''
 from __future__ import division
 
 from itertools import izip
@@ -14,7 +31,7 @@ from ... import fmtxt
 from ...utils import logger
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
-                        Factor, NDVar, Var, Celltable, cellname, combine, UTS)
+                        NDVar, Var, Celltable, cellname, combine, UTS)
 from .glm import LMFitter
 from .permutation import resample, _resample_params
 from .stats import ftest_f, ftest_p
@@ -25,12 +42,12 @@ __test__ = False
 
 
 class _TestResult(object):
-    _pickle_common = ('Y', 'X', 'match', 'sub', 'samples', 'name', '_cdist')
-    _pickle_specific = ()
+    _state_common = ('Y', 'match', 'sub', 'samples', 'name', '_cdist')
+    _state_specific = ()
 
     @property
     def _attributes(self):
-        return self._pickle_common + self._pickle_specific
+        return self._state_common + self._state_specific
 
     def __getstate__(self):
         state = {name: getattr(self, name, None) for name in self._attributes}
@@ -45,13 +62,13 @@ class _TestResult(object):
         "override to create secondary results"
         cdist = self._cdist
         if cdist is None:
-            self.samples = None
+            self.clusters = None
+            self.tfce_map = None
+            self.p = None
         else:
-            self.samples = cdist.N
             self.clusters = cdist.clusters
-            self.parameter_map = cdist.parameter_map
             self.tfce_map = cdist.tfce_map
-            self.probability_map = cdist.probability_map
+            self.p = cdist.probability_map
 
     def masked_parameter_map(self, pmin=0.05):
         """Create a copy of the parameter map masked by significance
@@ -106,7 +123,7 @@ class _TestResult(object):
 
 class t_contrast_rel(_TestResult):
 
-    _pickle_specific = ('contrast', 't')
+    _state_specific = ('X', 'contrast', 't')
 
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None,
                  samples=None, pmin=None, tstart=None, tstop=None,
@@ -366,7 +383,7 @@ class corr(_TestResult):
     r : NDVar
         Correlation (with threshold contours).
     """
-    _pickle_specific = ('norm', 'r')
+    _state_specific = ('X', 'norm', 'n', 'df', 'r')
 
     def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=None,
                  pmin=None, tstart=None, tstop=None, match=None,
@@ -469,6 +486,7 @@ class corr(_TestResult):
         self.name = name
         self._cdist = cdist
 
+        self.n = n
         self.df = df
         self.r = r
 
@@ -478,11 +496,18 @@ class corr(_TestResult):
         _TestResult._expand_state(self)
 
         r = self.r
-        self.r_p = [[r, r]]
+
+        # uncorrected probability
+        pmap = _rtest_p(r.x, self.df)
+        info = _cs.sig_info()
+        p_uncorrected = NDVar(pmap, r.dims, info, 'p_uncorrected')
+        self.p_uncorrected = p_uncorrected
+
+        self.r_p_uncorrected = [[r, r]]
         if self.samples:
-            self.all = [[r, self.probability_map]]
+            self.r_p = self._default_plot_obj = [[r, self.p]]
         else:
-            self.all = [[r, r]]
+            self._default_plot_obj = self.r_p_uncorrected
 
 
 def _corr(y, x):
@@ -523,7 +548,7 @@ def _rtest_r(p, df):
     return r
 
 
-class ttest_1samp:
+class ttest_1samp(_TestResult):
     """Element-wise one sample t-test
 
     Attributes
@@ -533,6 +558,8 @@ class ttest_1samp:
     p_val :
         [c0 - c1, P]
     """
+    _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'y', 'diff')
+
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
                  samples=None, pmin=None, tstart=None, tstop=None,
                  dist_dim=None, dist_tstep=None, **criteria):
@@ -572,13 +599,11 @@ class ttest_1samp:
         """
         ct = Celltable(Y, match=match, sub=sub, ds=ds, coercion=asndvar)
 
+        test_name = '1-Sample t-Test'
         n = len(ct.Y)
         df = n - 1
-        tmap = _t_1samp(ct.Y.x, popmean)
-        pmap = _ttest_p(tmap, df, tail)
-
-        test_name = '1-Sample t-Test'
         y = ct.Y.summary()
+        tmap = _t_1samp(ct.Y.x, popmean)
         if popmean:
             diff = y - popmean
             if np.any(diff < 0):
@@ -597,58 +622,72 @@ class ttest_1samp:
                 y_perm = ct.Y - popmean
             else:
                 y_perm = ct.Y
-            n_samples, samples_ = _resample_params(len(y_perm), samples)
+            n_samples, samples = _resample_params(len(y_perm), samples)
             cdist = _ClusterDist(y_perm, n_samples, threshold, tail, 't',
                                  test_name, tstart, tstop, criteria, dist_dim,
                                  dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
-                for Y_ in resample(cdist.Y_perm, samples_, sign_flip=True):
+                for Y_ in resample(cdist.Y_perm, samples, sign_flip=True):
                     tmap_ = _t_1samp(Y_.x, 0)
                     cdist.add_perm(tmap_)
 
+        # NDVar map of t-values
         dims = ct.Y.dims[1:]
-
-        info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
-        info['test'] = test_name
-        p = NDVar(pmap, dims, info=info, name='p')
-
         t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
         info = _cs.stat_info('t', t0, t1, t2, tail)
         info = _cs.set_info_cs(ct.Y.info, info)
         t = NDVar(tmap, dims, info=info, name='T')
 
         # store attributes
+        self.Y = ct.Y.name
         self.popmean = popmean
+        if ct.match:
+            self.match = ct.match.name
+        else:
+            self.match = None
+        if sub is None or isinstance(sub, basestring):
+            self.sub = sub
+        else:
+            self.sub = "<unsaved array>"
+        self.tail = tail
+        self.samples = samples
+
+        self.name = test_name
         self.n = n
         self.df = df
-        self.name = test_name
-        self._samples = samples
-        self.tail = tail
 
         self.y = y
         self.diff = diff
         self.t = t
-        self.p = p
-
-        self.diffp = [[diff, t]]
-        self.all = [y, [diff, t]] if popmean else [[diff, t]]
         self._cdist = cdist
-        if samples is not None:
-            self._n_samples = n_samples
-            self._all_permutations = samples_ < 0
-            if cdist.n_clusters and samples:
-                self.diff_cl = [[diff, cdist.probability_map]]
-            else:
-                self.diff_cl = [[diff]]
-            self.clusters = cdist.clusters
+
+        self._expand_state()
+
+    def _expand_state(self):
+        _TestResult._expand_state(self)
+
+        t = self.t
+        pmap = _ttest_p(t.x, self.df, self.tail)
+        info = _cs.set_info_cs(t.info, _cs.sig_info())
+        p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
+        self.p_uncorrected = p_uncorr
+
+        diff_p_uncorrected = [self.diff, t]
+        self.diff_p_uncorrected = [diff_p_uncorrected]
+
+        if self.samples:
+            diff_p = [self.diff, self.p]
+            self.diff_p = self._default_plot_obj = [diff_p]
+        else:
+            self._default_plot_obj = self.diff_p_uncorrected
 
     def __repr__(self):
         parts = ["<%s against %g, n=%i" % (self.name, self.popmean, self.n)]
         if self.tail:
             parts.append(", tail=%i" % self.tail)
         if self._cdist:
-            txt = self._cdist._cluster_repr(perm=self._all_permutations)
+            txt = self._cdist._cluster_repr(perm=self.samples < 0)
             parts.append(txt)
         parts.append(">")
         return ''.join(parts)
@@ -664,9 +703,8 @@ class ttest_ind(_TestResult):
     p_val :
         [c0 - c1, P]
     """
-
-    _pickle_specific = ('c1', 'c0', 'tail', 't', 'n1', 'n0', 'df', 'c1_mean',
-                        'c0_mean')
+    _state_specific = ('X', 'c1', 'c0', 'tail', 't', 'n1', 'n0', 'df', 'c1_mean',
+                       'c0_mean')
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tstart=None, tstop=None,
@@ -720,6 +758,7 @@ class ttest_ind(_TestResult):
         n0 = N - n1
         df = N - 2
         tmap = _t_ind(ct.Y.x, n1, n0)
+
         if samples is None:
             cdist = None
         else:
@@ -759,26 +798,25 @@ class ttest_ind(_TestResult):
         if sub is None or isinstance(sub, basestring):
             self.sub = sub
         else:
-            self.sub = "unsaved array"
+            self.sub = "<unsaved array>"
         self.tail = tail
         self.samples = samples
-        self.name = test_name
-        self.t = t
-        self._cdist = cdist
 
+        self.name = test_name
         self.n1 = n1
         self.n0 = n0
         self.df = df
 
         self.c1_mean = c1_mean
         self.c0_mean = c0_mean
+        self.t = t
+        self._cdist = cdist
 
         self._expand_state()
 
     def _expand_state(self):
         _TestResult._expand_state(self)
 
-        cdist = self._cdist
         c1_mean = self.c1_mean
         c0_mean = self.c0_mean
         t = self.t
@@ -789,20 +827,23 @@ class ttest_ind(_TestResult):
             diff.info['cmap'] = 'xpolar'
         self.difference = diff
 
-        # uncorrected
+        # uncorrected p
         pmap = _ttest_p(t.x, self.df, self.tail)
         info = _cs.set_info_cs(t.info, _cs.sig_info())
         p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
-        self.uncorrected_probability = p_uncorr
+        self.p_uncorrected = p_uncorr
 
         # composites
-        self.diffp = [[diff, t]]
-        self.uncorrected = [c1_mean, c0_mean] + self.diffp
-        if cdist is None:
-            self.all = self.uncorrected
-        elif cdist.N > 0:
-            self.diff_cl = [[diff, cdist.probability_map]]
-            self.all = [c1_mean, c0_mean] + self.diff_cl
+        diff_p_uncorrected = [diff, t]
+        self.diff_p_uncorrected = [diff_p_uncorrected]
+        self.all_uncorrected = [c1_mean, c0_mean, diff_p_uncorrected]
+        if self.samples:
+            diff_p = [diff, self.p]
+            self.diff_p = [diff_p]
+            self.all = [c1_mean, c0_mean, diff_p]
+            self._default_plot_obj = self.all
+        else:
+            self._default_plot_obj = self.all_uncorrected
 
     def __repr__(self):
         parts = ["<%s %r-%r" % (self.name, self.c1, self.c0)]
@@ -818,7 +859,7 @@ class ttest_ind(_TestResult):
         return ''.join(parts)
 
 
-class ttest_rel:
+class ttest_rel(_TestResult):
     """Element-wise t-test
 
     Attributes
@@ -828,6 +869,9 @@ class ttest_rel:
     p_val :
         [c0 - c1, P]
     """
+    _state_specific = ('X', 'c1', 'c0', 'tail', 't', 'n', 'df', 'c1_mean',
+                       'c0_mean')
+
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tstart=None, tstop=None,
                  dist_dim=None, dist_tstep=None, **criteria):
@@ -889,8 +933,10 @@ class ttest_rel:
             raise ValueError("Not enough observations for t-test (n=%n)" % n)
         df = n - 1
         tmap = _t_rel(ct.Y.x[:n], ct.Y.x[n:])
-        pmap = _ttest_p(tmap, df, tail)
-        if samples is not None:
+
+        if samples is None:
+            cdist = None
+        else:
             if pmin is None:
                 threshold = None
             else:
@@ -907,51 +953,69 @@ class ttest_rel:
                     cdist.add_perm(tmap_)
 
         dims = ct.Y.dims[1:]
-
-        info = _cs.set_info_cs(ct.Y.info, _cs.sig_info())
-        info['test'] = test_name
-        p = NDVar(pmap, dims, info=info, name='p')
-
         t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
         info = _cs.stat_info('t', t0, t1, t2, tail)
-        info = _cs.set_info_cs(ct.Y.info, info)
         t = NDVar(tmap, dims, info=info, name='T')
 
         c1_mean = ct.data[c1].summary(name=cellname(c1))
         c0_mean = ct.data[c0].summary(name=cellname(c0))
-        diff = c1_mean - c0_mean
-        if np.any(diff < 0):
-            diff.info['cmap'] = 'xpolar'
 
         # store attributes
+        self.Y = ct.Y.name
+        self.X = ct.X.name
+        self.c0 = c0
+        self.c1 = c1
+        if ct.match:
+            self.match = ct.match.name
+        else:
+            self.match = None
+        if sub is None or isinstance(sub, basestring):
+            self.sub = sub
+        else:
+            self.sub = "<unsaved array>"
+        self.tail = tail
+        self.samples = samples
+
+        self.name = test_name
         self.n = n
         self.df = df
-        self.name = test_name
-        self._c0 = c0
-        self._c1 = c1
-        self._samples = samples
-        self.tail = tail
-        self._ct = ct
 
-        self.c1 = c1_mean
-        self.c0 = c0_mean
-        self.diff = diff
+        self.c1_mean = c1_mean
+        self.c0_mean = c0_mean
         self.t = t
-        self.p = p
+        self._cdist = cdist
 
-        self.diffp = [[diff, t]]
-        self.uncorrected = [c1_mean, c0_mean] + self.diffp
-        if samples is None:
-            self.all = self.uncorrected
-            self._cdist = None
+        self._expand_state()
+
+    def _expand_state(self):
+        _TestResult._expand_state(self)
+
+        cdist = self._cdist
+        t = self.t
+
+        # difference
+        diff = self.c1_mean - self.c0_mean
+        if np.any(diff < 0):
+            diff.info['cmap'] = 'xpolar'
+        self.difference = diff
+
+        # uncorrected p
+        pmap = _ttest_p(t.x, self.df, self.tail)
+        info = _cs.sig_info()
+        info['test'] = self.name
+        p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
+        self.p_uncorrected = p_uncorr
+
+        # composites
+        diff_p_uncorr = [diff, t]
+        self.difference_p_uncorrected = [diff_p_uncorr]
+        self.uncorrected = [self.c1_mean, self.c0_mean, diff_p_uncorr]
+        if self.samples:
+            diff_p_corr = [diff, cdist.probability_map]
+            self.difference_p = [diff_p_corr]
+            self._default_plot_obj = [self.c1_mean, self.c0_mean, diff_p_corr]
         else:
-            if cdist.n_clusters and samples:
-                self.diff_cl = [[diff, cdist.probability_map]]
-            else:
-                self.diff_cl = [[diff]]
-            self.all = [c1_mean, c0_mean] + self.diff_cl
-            self._cdist = cdist
-            self.clusters = cdist.clusters
+            self._default_plot_obj = self.uncorrected
 
     def __repr__(self):
         parts = ["<%s %r-%r" % (self.name, self._c1, self._c0)]
@@ -1110,7 +1174,7 @@ def _ttest_t(p, df, tail=0):
     return t
 
 
-class anova:
+class anova(_TestResult):
     """Element-wise ANOVA
 
     Attributes
@@ -1123,6 +1187,8 @@ class anova:
     p : list
         Maps of p values.
     """
+    _state_specific = ('X', 'pmin', 'effects', 'df_den', 'f')
+
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
                  tstart=None, tstop=None, match=None, dist_dim=None,
                  dist_tstep=None, **criteria):
@@ -1160,10 +1226,10 @@ class anova:
             Minimum number of sources per cluster.
         """
         sub = assub(sub, ds)
-        Y = self.Y = asndvar(Y, sub, ds)
-        X = self.X = asmodel(X, sub, ds)
+        Y = asndvar(Y, sub, ds)
+        X = asmodel(X, sub, ds)
         if match is not None:
-            match = self.match = ascategorial(match, sub, ds)
+            match = ascategorial(match, sub, ds)
 
         lm = LMFitter(X, Y.x.shape)
         effects = lm.effects
@@ -1199,60 +1265,85 @@ class anova:
         dims = Y.dims[1:]
 
         f = []
-        p = []
         for e, fmap in izip(effects, fmaps):
             f0, f1, f2 = ftest_f((0.05, 0.01, 0.001), e.df, df_den[e])
-            info = _cs.set_info_cs(Y.info, _cs.stat_info('f', f0, f1, f2))
+            info = _cs.stat_info('f', f0, f1, f2)
             f_ = NDVar(fmap, dims, info, e.name)
             f.append(f_)
 
-            info = _cs.set_info_cs(Y.info, _cs.sig_info())
-            pmap = ftest_p(fmap, e.df, df_den[e])
-            p_ = NDVar(pmap, dims, info, e.name)
-            p.append(p_)
-
-        if samples is None:
-            clusters = None
+        # store attributes
+        self.Y = Y.name
+        self.X = X.name
+        if match:
+            self.match = match.name
         else:
-            # f-maps with clusters
+            self.match = None
+        if sub is None or isinstance(sub, basestring):
+            self.sub = sub
+        else:
+            self.sub = "<unsaved array>"
+        self.samples = samples
+        self.pmin = pmin
+
+        self.name = "ANOVA"
+        self.effects = effects
+        self.df_den = df_den
+        self.f = f
+
+        self._cdist = cdists
+
+        self._expand_state()
+
+    def _expand_state(self):
+        cdists = self._cdist
+        df_den = self.df_den
+
+        # clusters
+        if cdists is not None:
+            self.tfce_maps = [cdist.tfce_map for cdist in cdists]
+            self.probability_maps = [cdist.probability_map for cdist in cdists]
+
+            clusters = []
+            for cdist in cdists:
+                if cdist.clusters is not None:
+                    cdist.clusters[:, 'effect'] = cdist.name
+                    clusters.append(cdist.clusters)
+            if clusters:
+                self.clusters = combine(clusters)
+            else:
+                self.clusters = None
+        else:
+            self.clusters = None
+
+        # f-maps with clusters
+        pmin = self.pmin or 0.05
+        if self.samples:
             f_and_clusters = []
-            for e, fmap, cdist in izip(effects, fmaps, cdists):
+            for e, fmap, cdist in izip(self.effects, self.f, cdists):
                 # create f-map with cluster threshold
                 f0 = ftest_f(pmin, e.df, df_den[e])
-                info = _cs.set_info_cs(Y.info, _cs.stat_info('f', f0))
-                f_ = NDVar(fmap, dims, info, e.name)
+                info = _cs.stat_info('f', f0)
+                f_ = NDVar(fmap.x, fmap.dims, info, e.name)
                 # add overlay with cluster
-                if cdist.n_clusters and samples:
+                if cdist.probability_map is not None:
                     f_and_clusters.append([f_, cdist.probability_map])
                 else:
                     f_and_clusters.append([f_])
+            self.f_probability = f_and_clusters
 
-            # create cluster table
-            dss = []
-            for cdist in cdists:
-                ds = cdist.clusters
-                if ds is None:
-                    continue
-                ds['effect'] = Factor([cdist.name], rep=ds.n_cases)
-                dss.append(ds)
+        # uncorrected probability
+        p_uncorr = []
+        for e, f in izip(self.effects, self.f):
+            info = _cs.sig_info()
+            pmap = ftest_p(f.x, e.df, self.df_den[e])
+            p_ = NDVar(pmap, f.dims, info, e.name)
+            p_uncorr.append(p_)
+        self.p_uncorrected = p_uncorr
 
-            if dss:
-                clusters = combine(dss)
-            else:
-                clusters = None
-
-        # store attributes
-        self.name = "anova(%s, %s)" % (Y.name, X.name)
-        self.clusters = clusters
-        self.f = [[f_, f_] for f_ in f]
-        self.p = p
-        self.samples = samples
-        self._cdists = cdists
-        if samples is None:
-            self.all = self.f
+        if self.samples is None:
+            self._default_plot_obj = self.f
         else:
-            self.fmin = fmins
-            self.all = f_and_clusters
+            self._default_plot_obj = f_and_clusters
 
     def __repr__(self):
         parts = [self.name]
@@ -1266,6 +1357,68 @@ class anova:
                     clusters = cdist._cluster_repr(params=False)
                     parts.append("%s: %s" % (name, clusters))
         return "<%s>" % ', '.join(parts)
+
+    def masked_parameter_map(self, effect=0, pmin=0.05):
+        """Create a copy of the parameter map masked by significance
+
+        Parameters
+        ----------
+        effect : int
+            Index of the effect from which to use the parameter map.
+        pmin : scalar
+            Threshold p-value for masking (default 0.05).
+
+        Returns
+        -------
+        masked_map : NDVar
+            NDVar with data from the original parameter map wherever p <= pmin
+            and 0 everywhere else.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        return self._cdist[effect].masked_parameter_map(pmin)
+
+    def tfce_clusters(self, pmin=0.05):
+        """Find significant regions in a TFCE distribution
+
+        Parameters
+        ----------
+        pmin : scalar
+            Threshold p-value for forming clusters (default 0.05).
+
+        Returns
+        -------
+        ds : Dataset
+            Dataset with information about the clusters.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        dss = []
+        for cdist in self._cdist:
+            ds = cdist.tfce_clusters(pmin)
+            ds[:, 'effect'] = cdist.name
+            dss.append(ds)
+        return combine(dss)
+
+    def tfce_peaks(self):
+        """Find peaks in a TFCE distribution
+
+        Returns
+        -------
+        ds : Dataset
+            Dataset with information about the peaks.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        dss = []
+        for cdist in self._cdist:
+            ds = cdist.tfce_peaks()
+            ds[:, 'effect'] = cdist.name
+            dss.append(ds)
+        return combine(dss)
 
 
 class _ClusterDist:
@@ -1562,7 +1715,7 @@ class _ClusterDist:
                  # results ...
                  'dt_original', 'dt_perm', 'n_clusters',
                  '_dist_shape', '_dist_dims', 'dist',
-                 '_original_param_map', '_original_cluster_map')
+                 '_original_param_map', '_original_cluster_map', '_cids')
         state = {name: getattr(self, name) for name in attrs}
         return state
 
@@ -1716,7 +1869,7 @@ class _ClusterDist:
         self.parameter_map = param_map_
         self.tfce_map = tfce_map_
         self.probability_map = probability_map
-        self.all = all_
+        self._default_plot_obj = all_
 
         self._clear_memory_buffers()
 
@@ -1994,19 +2147,21 @@ class _ClusterDist:
         if self.threshold is None:
             self._original_cluster_map = np.empty(self.shape)
             self._tfce(param_map, self._original_cluster_map)
-            self.n_clusters = True
+            cids = None
+            n_clusters = True
         else:
             self._original_cluster_map = buff = np.empty(self.shape,
                                                          dtype=np.uint32)
             _, cids = self._label_clusters(param_map, buff)
-            self._cids = cids
-            self.n_clusters = len(cids)
+            n_clusters = len(cids)
 
+        self._cids = cids
+        self.n_clusters = n_clusters
         self.has_original = True
         self.dt_original = current_time() - t0
         self._t0 = current_time()
         self._original_param_map = param_map
-        if self.N == 0 or self.n_clusters == 0:
+        if self.N == 0 or n_clusters == 0:
             self._finalize()
 
     def add_perm(self, pmap):
