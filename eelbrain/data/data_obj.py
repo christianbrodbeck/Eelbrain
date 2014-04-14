@@ -23,6 +23,7 @@ managed by
 from __future__ import division
 
 import collections
+from fnmatch import fnmatchcase
 import itertools
 from itertools import izip
 from math import ceil, log10
@@ -561,7 +562,7 @@ class Celltable(object):
         Y and X after sub was applied.
     .sub, .match:
         Input arguments.
-    .cells : list of str
+    .cells : list of (str | tupel)
         List of all cells in X.
     .data : dict(cell -> data)
         Data (``Y[index]``) in each cell.
@@ -769,6 +770,55 @@ class Celltable(object):
         .cellname : Produce a str label for a single cell.
         """
         return [cellname(cell, delim) for cell in self.cells]
+
+    def data_for_cell(self, cell):
+        """Retrieve data for a cell, allowing advanced cell combinations
+
+        Parameters
+        ----------
+        cell : str | tuple of str
+            Name fo the cell. See notes for special cell names. After a special
+            cell is retrieved for the first time it is also add to
+            ``self.data``.
+
+        Notes
+        -----
+        Special cell names can be used to retrieve averages between different
+        primary cells. The names should be composed so that a case sensitive
+        version of fnmatch will find the source cells. For examples, if all
+        cells are ``[('a', '1'), ('a', '2'), ('b', '1'), ('b', '2')]``,
+        ``('a', '*')`` will retrieve the average of ``('a', '1')`` and
+        ``('a', '2')``.
+        """
+        if cell in self.data:
+            return self.data[cell]
+
+        # find cells matched by `cell`
+        if isinstance(cell, basestring):
+            cells = [c for c in self.cells if fnmatchcase(c, cell)]
+            name = cell
+        else:
+            cells = [c for c in self.cells if all(fnmatchcase(c_, cp)
+                                                  for c_, cp in izip(c, cell))]
+            name = '|'.join(cell)
+
+        # check that all are repeated measures
+        for cell1, cell2 in itertools.combinations(cells, 2):
+            if not self.within[(cell1, cell2)]:
+                err = ("Combinatory cells can only be formed from repeated "
+                       "measures cells, %r and %r are not." % (cell1, cell2))
+                raise ValueError(err)
+
+        # combine data
+        cell0 = cells[0]
+        x = np.empty_like(self.data[cell0].x)
+        for cell_ in cells:
+            x += self.data[cell_].x
+        x /= len(cells)
+        out = NDVar(x, cell0.dims, {}, name)
+        self.data[cell] = out
+        return out
+
 
     def get_data(self, out=list):
         if out is dict:
