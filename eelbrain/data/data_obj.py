@@ -3245,18 +3245,18 @@ class Dataset(collections.OrderedDict):
         fmt['items'] = ', '.join(items)
         return rep_tmp % fmt
 
-    def __setitem__(self, name, item, overwrite=True):
-        if isinstance(name, str):
+    def __setitem__(self, index, item, overwrite=True):
+        if isinstance(index, str):
             # test if name already exists
-            if (not overwrite) and (name in self):
-                raise KeyError("Dataset already contains variable of name %r" % name)
+            if (not overwrite) and (index in self):
+                raise KeyError("Dataset already contains variable of name %r" % index)
 
             # coerce item to data-object
             if isdataobject(item) or isinstance(object, Datalist):
                 if not item.name:
-                    item.name = name
+                    item.name = index
             elif isinstance(item, (list, tuple)):
-                item = Datalist(item, name=name)
+                item = Datalist(item, name=index)
             else:
                 pass
 
@@ -3274,24 +3274,34 @@ class Dataset(collections.OrderedDict):
                        "Dataset (%i)." % (N, self.n_cases))
                 raise ValueError(msg)
 
-            super(Dataset, self).__setitem__(name, item)
-        elif isinstance(name, tuple):
-            if len(name) != 2:
-                raise NotImplementedError("More than 2 index components.")
-            key, idx = name
+            super(Dataset, self).__setitem__(index, item)
+        elif isinstance(index, tuple):
+            if len(index) != 2:
+                err = ("Dataset indexes can have only two components; direct "
+                       "access to NDVars is not implemented")
+                raise NotImplementedError(err)
+            key, idx = index
+            if isinstance(idx, str):
+                key, idx = idx, key
+            elif not isinstance(key, str):
+                TypeError("Dataset indexes need variable specified as string")
+
             if key in self:
                 self[key][idx] = item
-            elif isinstance(item, basestring):
+            elif isinstance(idx, slice):
                 if idx.start is None and idx.stop is None:
-                    self[key] = Factor([item], rep=self.n_cases)
+                    if isinstance(item, basestring):
+                        self[key] = Factor([item], rep=self.n_cases)
+                    else:
+                        self[key] = Var([item] * self.n_cases)
                 else:
-                    err = ("Can only add Factor with general value "
-                           "(ds['name',:] = ...")
+                    err = ("Can only add Factor with general value for all "
+                           "cases (ds['name',:] = ...")
                     raise NotImplementedError(err)
             else:
-                raise NotImplementedError
+                raise NotImplementedError("Advanced Dataset indexing")
         else:
-            raise TypeError("Dataset indexes need to be strings")
+            raise NotImplementedError("Advanced Dataset indexing")
 
     def __str__(self):
         return unicode(self).encode('utf-8')
