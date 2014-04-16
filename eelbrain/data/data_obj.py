@@ -5586,6 +5586,14 @@ class SourceSpace(Dimension):
 
         ds = Dataset()
 
+        # no clusters
+        if len(x) == 0:
+            ds['n_sources'] = Var([])
+            ds['hemi'] = Factor([])
+            if self.parc is not None:
+                ds['location'] = Factor([])
+            return ds
+
         # n sources
         n_sources = np.sum(x, 1)
         ds['n_sources'] = Var(n_sources)
@@ -6022,12 +6030,19 @@ class UTS(Dimension):
             A dataset with variables describing cluster properties along this
             dimension: "tstart", "tstop", "duration".
         """
-        bounds = self._cluster_bounds(x)
+        ds = Dataset()
+
+        # no clusters
+        if len(x) == 0:
+            ds['tstart'] = Var([])
+            ds['tstop'] = Var([])
+            ds['duration'] = Var([])
+            return ds
 
         # create time values
+        bounds = self._cluster_bounds(x)
         tmin = self.times[bounds[:, 0]]
         tmax = self.times[bounds[:, 1]]
-        ds = Dataset()
         ds['tstart'] = Var(tmin)
         ds['tstop'] = Var(tmax + self.tstep)
         ds['duration'] = ds.eval("tstop - tstart")
