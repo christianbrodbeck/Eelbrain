@@ -1505,6 +1505,7 @@ class _ClusterDist:
             nad_ax = 0
             connectivity_src = None
             connectivity_dst = None
+            flat_shape = None
         else:
             if sum(adjacent) < len(adjacent) - 1:
                 err = ("more than one non-adjacent dimension")
@@ -1519,7 +1520,7 @@ class _ClusterDist:
                 cmap_dims = list(cmap_dims)
                 cmap_dims[0], cmap_dims[nad_ax] = cmap_dims[nad_ax], cmap_dims[0]
                 cmap_dims = tuple(cmap_dims)
-            self._flat_shape = (shape[0], np.prod(shape[1:]))
+            flat_shape = (shape[0], np.prod(shape[1:]))
 
             # prepare connectivity
             coo = Y_perm.dims[nad_ax + 1].connectivity()
@@ -1628,6 +1629,7 @@ class _ClusterDist:
         self.dims = Y_perm.dims
         self._cmap_dims = cmap_dims
         self.shape = shape
+        self._flat_shape = flat_shape
         self._connectivity_src = connectivity_src
         self._connectivity_dst = connectivity_dst
         self.N = N
