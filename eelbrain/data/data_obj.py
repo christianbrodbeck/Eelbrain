@@ -1446,6 +1446,10 @@ class Var(object):
         "Analogous to :py:func:`numpy.repeat`"
         return Var(self.x.repeat(repeats), name=name.format(name=self.name))
 
+    def std(self):
+        "Returns the standard deviation"
+        return self.x.std()
+
     def sort_idx(self, descending=False):
         """Create an index that could be used to sort the Var.
 
@@ -2725,6 +2729,25 @@ class NDVar(object):
         info = self.info.copy()
         name = name.format(name=self.name)
         return NDVar(x, dims, info, name)
+
+    def std(self, dims=None):
+        """Compute the standard deviation over given dimensions
+
+        Parameters
+        ----------
+        dims : None | str | tuple of str
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute the standard deviation over all values.
+
+        Returns
+        -------
+        std : NDVar | Var | float
+            The standard deviation over specified dimensions. Returns a Var if
+            only the case dimension remains, and a float if the function
+            collapses over all data.
+        """
+        return self._aggregate_over_dims(dims, np.std)
 
     def summary(self, *dims, **regions):
         r"""
