@@ -10,6 +10,7 @@ from numpy.testing import assert_array_equal
 
 from eelbrain.data.data_obj import UTS, Ordered, Sensor
 from eelbrain.data.stats.testnd import _ClusterDist
+from eelbrain.data.tests.test_data import assert_dataobj_equal
 from eelbrain.data import datasets, testnd, plot, NDVar
 
 
@@ -27,6 +28,18 @@ def test_anova():
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
     p = plot.Array(res)
     p.close()
+
+    # test multi-effect results (with persistence)
+    # UTS
+    res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5)
+    string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
+    res = pickle.loads(string)
+    tfce_clusters = res.tfce_clusters(pmin=0.05)
+    peaks = res.tfce_peaks()
+    assert_equal(tfce_clusters.eval("p.min()"), peaks.eval("p.min()"))
+    unmasked = res.f[0]
+    masked = res.masked_parameter_map(effect=0, pmin=0.05)
+    assert_array_equal(masked.x <= unmasked.x, True)
 
 
 def test_clusterdist():
@@ -163,9 +176,15 @@ def test_corr():
     p = plot.Array(res)
     p.close()
 
-    res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=2, pmin=0.05)
+    res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=10, pmin=0.05)
     p = plot.Array(res)
     p.close()
+
+    # persistence
+    string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
+    res_ = pickle.loads(string)
+    assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
+    assert_dataobj_equal(res.p, res_.p)
 
 
 def test_t_contrast():
@@ -187,14 +206,19 @@ def test_t_contrast():
                               ds=ds)
     assert_array_equal(res.t.x, np.min([res_b0.t.x, res_b1.t.x], axis=0))
 
+    # persistence
+    string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
+    res_ = pickle.loads(string)
+    assert_dataobj_equal(res.p, res_.p)
+
 
 def test_ttest_1samp():
     "Test testnd.ttest_1samp()"
-    ds = datasets.get_rand()
+    ds = datasets.get_rand(True)
 
     # no clusters
     res0 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds)
-    assert_less(res0.p_uncorrected.x.min(), 0.05)
+    assert_less(res0.p_uncorrected.min(), 0.05)
     repr0 = repr(res0)
     assert_in('against', repr0)
     assert_not_in('clusters', repr0)
@@ -210,12 +234,11 @@ def test_ttest_1samp():
     assert_in('samples', repr1)
     assert_in('mintime', repr1)
 
-
     # clusters with resampling
     res2 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=10,
                               pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
     assert_equal(res2.clusters.n_cases, 2)
-    assert_equal(res2._n_samples, 10)
+    assert_equal(res2.samples, 10)
     assert_in('p', res2.clusters)
     repr2 = repr(res2)
     assert_in('samples', repr2)
@@ -226,8 +249,56 @@ def test_ttest_1samp():
     res3 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=dss, samples=10000,
                               pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
     assert_equal(res3.clusters.n_cases, 2)
-    assert_equal(res3._n_samples, 255)
+    assert_equal(res3.samples, -1)
     assert_less(res3.clusters['p'].x.min(), 0.05)
     repr3 = repr(res3)
     assert_in('permutations', repr3)
     assert_not_in('samples', repr3)
+
+    # TFCE properties
+    res = testnd.ttest_1samp('utsnd', sub="A == 'a0'", ds=ds, samples=1)
+    string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
+    res = pickle.loads(string)
+    tfce_clusters = res.tfce_clusters(pmin=0.05)
+    peaks = res.tfce_peaks()
+    assert_equal(tfce_clusters.eval("p.min()"), peaks.eval("p.min()"))
+    masked = res.masked_parameter_map(pmin=0.05)
+    assert_array_equal(masked.abs().x <= res.t.abs().x, True)
+
+
+def test_ttest_ind():
+    "Test testnd.ttest_ind()"
+    ds = datasets.get_rand()
+
+    # basic
+    res = testnd.ttest_ind('uts', 'A', 'a1', 'a0', ds=ds)
+    assert_less(res.p_uncorrected.min(), 0.05)
+    # persistence
+    string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
+    res_ = pickle.loads(string)
+    assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
+
+    # cluster
+    res = testnd.ttest_ind('uts', 'A', 'a1', 'a0', ds=ds, tail=1, samples=1)
+    # persistence
+    string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
+    res_ = pickle.loads(string)
+    assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
+
+
+def test_ttest_rel():
+    "Test testnd.ttest_rel()"
+    ds = datasets.get_rand()
+
+    # basic
+    res = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
+                           ds=ds)
+    # persistence
+    string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
+    res_ = pickle.loads(string)
+    assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
+
+    # collapsing cells
+    res2 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=ds)
+    assert_less(res2.p_uncorrected.min(), 0.05)
+    assert_equal(res2.n, res.n)
