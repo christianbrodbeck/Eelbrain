@@ -1620,6 +1620,11 @@ class Factor(_Effect):
         state = {'name': name, 'random': random}
         labels_ = state['labels'] = {}  # {code -> label}
 
+        if rep == 0 or tile == 0:
+            state['x'] = []
+            self.__setstate__(state)
+            return
+
         try:
             n_cases = len(x)
         except TypeError:  # for generators:
