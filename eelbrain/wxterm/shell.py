@@ -1306,7 +1306,7 @@ class ShellFrame(wx.py.shell.ShellFrame):
         "Called from the Help menu to open external resources"
         Id = event.GetId()
         if Id == ID.HELP_EELBRAIN:
-            webbrowser.open("http://christianbrodbeck.github.com/Eelbrain/")
+            webbrowser.open("https://pythonhosted.org/eelbrain/")
         elif Id == ID.HELP_MPL:
             webbrowser.open("http://matplotlib.org/api/pyplot_summary.html")
         elif Id == ID.HELP_MDP:
