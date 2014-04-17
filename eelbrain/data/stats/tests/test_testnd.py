@@ -22,16 +22,24 @@ def test_anova():
     testnd.anova('utsnd', 'A*B', ds=ds)
 
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds)
+    repr(res)
     p = plot.Array(res)
     p.close()
 
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
+    repr(res)
     p = plot.Array(res)
     p.close()
+
+    # persistence
+    string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
+    res_ = pickle.loads(string)
+    assert_equal(repr(res_), repr(res))
 
     # test multi-effect results (with persistence)
     # UTS
     res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5)
+    repr(res)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res = pickle.loads(string)
     tfce_clusters = res.tfce_clusters(pmin=0.05)
@@ -173,6 +181,7 @@ def test_corr():
     utsnd.x[:, 3:5, 50:65] += Y.x[:, None, None]
 
     res = testnd.corr('utsnd', 'Y', 'rm', ds=ds)
+    repr(res)
     p = plot.Array(res)
     p.close()
 
@@ -183,6 +192,7 @@ def test_corr():
     # persistence
     string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
+    assert_equal(repr(res_), repr(res))
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
     assert_dataobj_equal(res.p, res_.p)
 
@@ -193,6 +203,7 @@ def test_t_contrast():
     # simple contrast
     res = testnd.t_contrast_rel('uts', 'A', 'a1>a0', 'rm', ds=ds, samples=100,
                                 pmin=0.05)
+    repr(res)
     res_ = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=ds)
     assert_array_equal(res.t.x, res_.t.x)
     assert_in('samples', repr(res))
@@ -209,6 +220,7 @@ def test_t_contrast():
     # persistence
     string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
+    assert_equal(repr(res_), repr(res))
     assert_dataobj_equal(res.p, res_.p)
 
 
@@ -220,7 +232,7 @@ def test_ttest_1samp():
     res0 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds)
     assert_less(res0.p_uncorrected.min(), 0.05)
     repr0 = repr(res0)
-    assert_in('against', repr0)
+    assert_in("'uts'", repr0)
     assert_not_in('clusters', repr0)
     assert_not_in('mintime', repr0)
 
@@ -234,6 +246,12 @@ def test_ttest_1samp():
     assert_in('samples', repr1)
     assert_in('mintime', repr1)
 
+    # persistence
+    string = pickle.dumps(res1, pickle.HIGHEST_PROTOCOL)
+    res1_ = pickle.loads(string)
+    assert_equal(repr(res1_), repr1)
+    assert_dataobj_equal(res1.p_uncorrected, res1_.p_uncorrected)
+
     # clusters with resampling
     res2 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=10,
                               pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
@@ -242,7 +260,6 @@ def test_ttest_1samp():
     assert_in('p', res2.clusters)
     repr2 = repr(res2)
     assert_in('samples', repr2)
-    assert_not_in('permutations', repr2)
 
     # clusters with permutations
     dss = ds.sub("logical_and(A=='a0', B=='b0')")[:8]
@@ -252,8 +269,7 @@ def test_ttest_1samp():
     assert_equal(res3.samples, -1)
     assert_less(res3.clusters['p'].x.min(), 0.05)
     repr3 = repr(res3)
-    assert_in('permutations', repr3)
-    assert_not_in('samples', repr3)
+    assert_in('samples', repr3)
 
     # TFCE properties
     res = testnd.ttest_1samp('utsnd', sub="A == 'a0'", ds=ds, samples=1)
@@ -272,10 +288,12 @@ def test_ttest_ind():
 
     # basic
     res = testnd.ttest_ind('uts', 'A', 'a1', 'a0', ds=ds)
+    repr(res)
     assert_less(res.p_uncorrected.min(), 0.05)
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
+    repr(res_)
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
 
     # cluster
@@ -283,6 +301,7 @@ def test_ttest_ind():
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
+    assert_equal(repr(res_), repr(res))
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
 
 
@@ -293,9 +312,13 @@ def test_ttest_rel():
     # basic
     res = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',
                            ds=ds)
+    repr(res)
+
     # persistence
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res_ = pickle.loads(string)
+    repr(res_)
+    assert_equal(repr(res_), repr(res))
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
 
     # collapsing cells

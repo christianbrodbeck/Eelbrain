@@ -42,7 +42,7 @@ __test__ = False
 
 
 class _TestResult(object):
-    _state_common = ('Y', 'match', 'sub', 'samples', 'name', '_cdist')
+    _state_common = ('Y', 'match', 'sub', 'samples', 'name', 'pmin', '_cdist')
     _state_specific = ()
 
     @property
@@ -57,6 +57,25 @@ class _TestResult(object):
         for k, v in state.iteritems():
             setattr(self, k, v)
         self._expand_state()
+
+    def __repr__(self):
+        temp = "<%s %%s>" % self.__class__.__name__
+
+        args = self._repr_test_args()
+        if self.sub:
+            args.append(', sub=%r' % self.sub)
+        if self._cdist:
+            args += self._cdist._repr_test_args(self.pmin)
+            args += self._cdist._repr_clusters()
+
+        out = temp % ', '.join(args)
+        return out
+
+    def _repr_test_args(self):
+        """List of strings describing parameters unique to the test, to be
+        joined by comma
+        """
+        raise NotImplementedError()
 
     def _expand_state(self):
         "override to create secondary results"
@@ -240,27 +259,20 @@ class t_contrast_rel(_TestResult):
         if sub is None or isinstance(sub, basestring):
             self.sub = sub
         else:
-            self.sub = "unsaved array"
+            self.sub = "<array>"
         self.samples = samples
+        self.pmin = pmin
         self.name = test_name
         self.t = t
         self._cdist = cdist
 
         self._expand_state()
 
-    def __repr__(self):
-        parts = ["<%s: %r ~ %r, %r" % (self.name, self.Y, self.X,
-                                       self.contrast)]
+    def _repr_test_args(self):
+        args = [repr(self.Y), repr(self.X), repr(self.contrast)]
         if self.match:
-            parts.append(', match=%r' % self.match)
-        if self.sub:
-            parts.append(', sub=%r' % self.sub)
-        if self.sub:
-            parts.append(', sub=%r' % self.sub)
-        if self._cdist:
-            parts.append(self._cdist._cluster_repr())
-        parts.append('>')
-        return ''.join(parts)
+            args.append('match=%r' % self.match)
+        return args
 
 
 def _parse_cell(cell_name):
@@ -481,8 +493,16 @@ class corr(_TestResult):
         self.Y = Y.name
         self.X = X.name
         self.norm = None if norm is None else norm.name
-        self.match = None if match is None else match.name
+        if sub is None or isinstance(sub, basestring):
+            self.sub = sub
+        else:
+            self.sub = "<array>"
+        if match:
+            self.match = match.name
+        else:
+            self.match = None
         self.samples = samples
+        self.pmin = pmin
         self.name = name
         self._cdist = cdist
 
@@ -508,6 +528,12 @@ class corr(_TestResult):
             self.r_p = self._default_plot_obj = [[r, self.p]]
         else:
             self._default_plot_obj = self.r_p_uncorrected
+
+    def _repr_test_args(self):
+        args = [repr(self.Y), repr(self.X)]
+        if self.norm:
+            args.append('norm=%r' % self.norm)
+        return args
 
 
 def _corr(y, x):
@@ -652,6 +678,7 @@ class ttest_1samp(_TestResult):
             self.sub = "<unsaved array>"
         self.tail = tail
         self.samples = samples
+        self.pmin = pmin
 
         self.name = test_name
         self.n = n
@@ -682,15 +709,15 @@ class ttest_1samp(_TestResult):
         else:
             self._default_plot_obj = self.diff_p_uncorrected
 
-    def __repr__(self):
-        parts = ["<%s against %g, n=%i" % (self.name, self.popmean, self.n)]
+    def _repr_test_args(self):
+        args = [repr(self.Y)]
+        if self.popmean:
+            args.append(repr(self.popmean))
+        if self.match:
+            args.append('match=%r' % self.match)
         if self.tail:
-            parts.append(", tail=%i" % self.tail)
-        if self._cdist:
-            txt = self._cdist._cluster_repr(perm=self.samples < 0)
-            parts.append(txt)
-        parts.append(">")
-        return ''.join(parts)
+            args.append("tail=%i" % self.tail)
+        return args
 
 
 class ttest_ind(_TestResult):
@@ -801,6 +828,7 @@ class ttest_ind(_TestResult):
             self.sub = "<unsaved array>"
         self.tail = tail
         self.samples = samples
+        self.pmin = pmin
 
         self.name = test_name
         self.n1 = n1
@@ -845,18 +873,14 @@ class ttest_ind(_TestResult):
         else:
             self._default_plot_obj = self.all_uncorrected
 
-    def __repr__(self):
-        parts = ["<%s %r-%r" % (self.name, self.c1, self.c0)]
-        if self.n1 == self.n0:
-            parts.append(", n1=n0=%i" % self.n1)
-        else:
-            parts.append(", n1=%i, n0=%i" % (self.n1, self.n0))
+    def _repr_test_args(self):
+        args = [repr(self.Y), repr(self.X), "%r (n=%i)" % (self.c1, self.n1),
+                "%r (n=%i)" % (self.c0, self.n0)]
+        if self.match:
+            args.append('match=%r' % self.match)
         if self.tail:
-            parts.append(", tail=%i" % self.tail)
-        if self._cdist:
-            parts.append(self._cdist._cluster_repr())
-        parts.append('>')
-        return ''.join(parts)
+            args.append("tail=%i" % self.tail)
+        return args
 
 
 class ttest_rel(_TestResult):
@@ -975,6 +999,7 @@ class ttest_rel(_TestResult):
             self.sub = "<unsaved array>"
         self.tail = tail
         self.samples = samples
+        self.pmin = pmin
 
         self.name = test_name
         self.n = n
@@ -1017,15 +1042,12 @@ class ttest_rel(_TestResult):
         else:
             self._default_plot_obj = self.uncorrected
 
-    def __repr__(self):
-        parts = ["<%s %r-%r" % (self.name, self._c1, self._c0)]
-        parts.append(", n=%i" % self.n)
+    def _repr_test_args(self):
+        args = [repr(self.Y), repr(self.X), repr(self.c1), repr(self.c0),
+                "%r (n=%i)" % (self.match, self.n)]
         if self.tail:
-            parts.append(", tail=%i" % self.tail)
-        if self._cdist:
-            parts.append(self._cdist._cluster_repr())
-        parts.append('>')
-        return ''.join(parts)
+            args.append("tail=%i" % self.tail)
+        return args
 
 
 def _t_1samp(a, popmean):
@@ -1346,17 +1368,20 @@ class anova(_TestResult):
             self._default_plot_obj = f_and_clusters
 
     def __repr__(self):
-        parts = [self.name]
-        if self._cdists:
-            if self.clusters is None:
-                parts.append("no clusters")
-            else:
-                parts.append(self._cdists[0]._param_repr())
-                for cdist in self._cdists:
-                    name = cdist.name
-                    clusters = cdist._cluster_repr(params=False)
-                    parts.append("%s: %s" % (name, clusters))
-        return "<%s>" % ', '.join(parts)
+        temp = "<%s %%s>" % self.__class__.__name__
+
+        args = [repr(self.Y), repr(self.X)]
+        if self.sub:
+            args.append(', sub=%r' % self.sub)
+        if self._cdist:
+            cdist = self._cdist[0]
+            args += cdist._repr_test_args(self.pmin)
+            for cdist in self._cdist:
+                effect_args = cdist._repr_clusters()
+                args += ["%r: %s" % (cdist.name, ', '.join(effect_args))]
+
+        out = temp % ', '.join(args)
+        return out
 
     def masked_parameter_map(self, effect=0, pmin=0.05):
         """Create a copy of the parameter map masked by significance
@@ -1646,12 +1671,15 @@ class _ClusterDist:
         self._struct = struct
         self.tstart = tstart
         self.tstop = tstop
+        self.dist_dim = dist_dim
+        self.dist_tstep = dist_tstep
         self.meas = meas
         self.name = name
         self._criteria = criteria_
         self.criteria = criteria
         self.has_original = False
         self._has_buffers = False
+        self.dt_perm = None
         self._allocate_memory_buffers()
 
     def _allocate_memory_buffers(self):
@@ -1710,6 +1738,7 @@ class _ClusterDist:
         attrs = ('name', 'meas',
                  # settings ...
                  'threshold', 'tail', 'criteria', 'N', 'tstart', 'tstop',
+                 'dist_dim', 'dist_tstep',
                   # data properties ...
                  'dims', 'shape', '_all_adjacent', '_nad_ax', '_struct',
                  '_flat_shape', '_connectivity_src', '_connectivity_dst',
@@ -1729,35 +1758,36 @@ class _ClusterDist:
         self._has_buffers = False
         self._finalize()
 
-    def _cluster_repr(self, params=True, perm=False):
-        """Repr fragment with cluster properties
+    def _repr_test_args(self, pmin):
+        "Argument representation for TestResult repr"
+        args = ['samples=%r' % self.N]
+        if pmin:
+            args.append("pmin=%r" % pmin)
+        if self.tstart:
+            args.append("tstart=%r" % self.tstart)
+        if self.tstop:
+            args.append("tstop=%r" % self.tstop)
+        if self.dist_dim:
+            args.append("dist_dim=%r" % self.dist_dim)
+        if self.dist_tstep:
+            args.append("dist_tstep=%r" % self.dist_tstep)
+        for item in self.criteria.iteritems():
+            args.append("%s=%r" % item)
+        return args
 
-        Parameters
-        ----------
-        params : bool
-            Include information on input parameters.
-        perm : bool
-            Whether permutation rather than random resampling was used.
-        """
-        if self.threshold and self.n_clusters == 0:
-            txt = ", no clusters"
-        else:
-            txt = []
-            if params:
-                txt.append(self._param_repr(perm))
-                if self.threshold:
-                    txt.append(": %i clusters" % self.n_clusters)
-            elif self.threshold:
-                txt.append("%i" % self.n_clusters)
-
+    def _repr_clusters(self):
+        if self.threshold is None:
             if self.N:
-                if self.threshold:
-                    minp = self.clusters['p'].min()
-                else:
-                    minp = self.probability_map.min()
-                txt.append(", p >= %.3f" % minp)
-            txt = ''.join(txt)
-        return txt
+                return ["p >= %.3f" % self.probability_map.min()]
+            else:
+                return []
+        elif self.n_clusters == 0:
+            return ["no clusters"]
+        else:
+            info = ["%i clusters" % self.n_clusters]
+            if self.N:
+                info.append("p >= %.3f" % self.clusters['p'].min())
+            return info
 
     def _crop(self, im):
         if self.crop:
@@ -2066,22 +2096,6 @@ class _ClusterDist:
                 cids.difference_update(rm)
 
         return out, cids
-
-    def _param_repr(self, perm=False):
-        "Repr fragment with clustering parameters"
-        if perm:
-            sampling = "permutations"
-        elif self.N == 1:
-            sampling = "sample"
-        else:
-            sampling = "samples"
-
-        items = [", %i %s" % (self.N, sampling)]
-
-        for item in self.criteria.iteritems():
-            items.append("%s=%s" % item)
-
-        return ', '.join(items)
 
     def _tfce(self, p_map, out):
         dh = 0.1
