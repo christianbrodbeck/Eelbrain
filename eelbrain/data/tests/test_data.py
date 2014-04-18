@@ -16,7 +16,7 @@ from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from eelbrain.data import datasets, Var, Factor, Dataset, Celltable, load
 from eelbrain.data.data_obj import (align, align1, asvar, combine, isdatalist,
-                                    isndvar, isvar, isuv, SourceSpace)
+                                    isndvar, isvar, isuv, SourceSpace, UTS)
 
 
 def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
@@ -256,6 +256,17 @@ def test_dataset_indexing():
     ds = datasets.get_uv()
     ds['C', :] = 'c'
     ok_(np.all(ds.eval("C == 'c'")))
+
+
+def test_dim_uts():
+    "Test UTS Dimension"
+    uts = UTS(-0.1, 0.005, 301)
+
+    # make sure indexing rounds correctly for floats
+    for i, s in enumerate(np.arange(0, 1.4, 0.05)):
+        idx = uts.dimindex((-0.1 + s, s))
+        assert_equal(idx.start, 10 * i)
+        assert_equal(idx.stop, 20 + 10 * i)
 
 
 def test_ndvar():
