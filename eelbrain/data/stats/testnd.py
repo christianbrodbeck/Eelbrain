@@ -18,8 +18,12 @@ clusters : Dataset | None
 '''
 from __future__ import division
 
+from datetime import timedelta
 from itertools import izip
 from math import ceil, floor
+from multiprocessing import Process, Queue, cpu_count
+from multiprocessing.sharedctypes import RawArray
+import operator
 import re
 from time import time as current_time
 
@@ -39,6 +43,9 @@ from .test import star_factor
 
 
 __test__ = False
+
+# toggle multiprocessing for _ClusterDist
+multiprocessing = 1
 
 
 class _TestResult(object):
@@ -1446,6 +1453,200 @@ class anova(_TestResult):
         return combine(dss)
 
 
+def _label_clusters(pmap, out, bin_buff, bin_buff2, int_buff, threshold, tail,
+                    struct, all_adjacent, flat_shape, conn_src, conn_dst,
+                    criteria):
+    """Find clusters on a statistical parameter map
+
+    Parameters
+    ----------
+    pmap : array
+        Statistical parameter map (non-adjacent dimension on the first
+        axis).
+
+    Returns
+    -------
+    cluster_ids : tuple
+        Identifiers of the clusters that survive the minimum duration
+        criterion.
+    """
+    if tail >= 0:
+        bin_map_above = np.greater(pmap, threshold, bin_buff)
+        cids = _label_clusters_binary(bin_map_above, out, bin_buff2, struct,
+                                      all_adjacent, flat_shape, conn_src,
+                                      conn_dst, criteria)
+
+    if tail <= 0:
+        bin_map_below = np.less(pmap, -threshold, bin_buff)
+        if tail < 0:
+            cids = _label_clusters_binary(bin_map_below, out, bin_buff2,
+                                          struct, all_adjacent, flat_shape,
+                                          conn_src, conn_dst, criteria)
+        else:
+            cids_l = _label_clusters_binary(bin_map_below, int_buff, bin_buff2,
+                                            struct, all_adjacent, flat_shape,
+                                            conn_src, conn_dst, criteria)
+            x = int(out.max())  # apparently np.uint64 + int makes a float
+            int_buff[bin_map_below] += x
+            out += int_buff
+            cids.update(c + x for c in cids_l)
+
+    return tuple(cids)
+
+
+def _label_clusters_binary(bin_map, out, bin_buff, struct, all_adjacent,
+                           flat_shape, conn_src, conn_dst, criteria):
+    """
+    Parameters
+    ----------
+    bin_map : array
+        Binary map of where the parameter map exceeds the threshold for a
+        cluster (non-adjacent dimension on the first axis).
+
+    Returns
+    -------
+    cluster_ids : set
+        Identifiers of the clusters that survive the selection criteria.
+    """
+    # find clusters
+    n = ndimage.label(bin_map, struct, out)
+    # n is 1 even when no cluster is found
+    if n == 1 and out.max() == 0:
+        n = 0
+    cids = set(xrange(1, n + 1))
+    if not all_adjacent:
+        cidx = bin_buff
+        # reshape cluster map for iteration
+        cmap_flat = out.reshape(flat_shape).swapaxes(0, 1)
+        for cmap_slice in cmap_flat:
+            if np.count_nonzero(np.unique(cmap_slice)) <= 1:
+                continue
+
+            # find connectivity of True entries
+            idx = cmap_slice.nonzero()[0]
+            c_idx = np.in1d(conn_src, idx)
+            c_idx *= np.in1d(conn_dst, idx)
+            if np.count_nonzero(c_idx) == 0:
+                continue
+
+            c_idx = c_idx.nonzero()[0]
+            for i in c_idx:
+                # find corresponding cluster indices
+                id_src = cmap_slice[conn_src[i]]
+                id_dst = cmap_slice[conn_dst[i]]
+                if id_src == id_dst:
+                    continue
+
+                # merge id_dst into id_src
+                np.equal(out, id_dst, cidx)
+                out[cidx] = id_src
+                cids.remove(id_dst)
+                if len(cids) == 1:
+                    break
+            if len(cids) == 1:
+                break
+
+    # apply minimum cluster size criteria
+    if criteria:
+        for axes, v in criteria:
+            rm = tuple(i for i in cids if
+                       np.count_nonzero(np.equal(out, i).any(axes)) < v)
+            cids.difference_update(rm)
+
+    return cids
+
+
+def _tfce(pmap, out, tail, bin_buff, bin_buff2, int_buff, struct,
+          all_adjacent, flat_shape, conn_src, conn_dst):
+    dh = 0.1
+    E = 0.5
+    H = 2.0
+
+    if tail <= 0:
+        hs = np.arange(-dh, pmap.min(), -dh)
+    if tail >= 0:
+        upper = np.arange(dh, pmap.max(), dh)
+        if tail == 0:
+            hs = np.hstack((hs, upper))
+        else:
+            hs = upper
+
+    out.fill(0)
+
+    # label clusters in slices at different heights
+    # fill each cluster with total section value
+    # each point's value is the vertical sum
+    for h in hs:
+        if h > 0:
+            np.greater_equal(pmap, h, bin_buff)
+            h_factor = h ** H
+        else:
+            np.less_equal(pmap, h, bin_buff)
+            h_factor = (-h) ** H
+
+        c_ids = _label_clusters_binary(bin_buff, int_buff, bin_buff2, struct,
+                                       all_adjacent, flat_shape, conn_src,
+                                       conn_dst, None)
+        for id_ in c_ids:
+            np.equal(int_buff, id_, bin_buff)
+            v = np.count_nonzero(bin_buff) ** E * h_factor
+            out[bin_buff] += v
+
+    return out
+
+
+def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
+                       all_adjacent, flat_shape, conn_src, conn_dst, criteria):
+    # allocate memory buffers
+    cmap = np.empty(shape, np.int_)
+    bin_buff = np.empty(shape, np.bool_)
+    bin_buff2 = np.empty(shape, np.bool_)
+    int_buff = np.empty(shape, np.int_)
+
+    while True:
+        pmap = in_queue.get()
+        if pmap is None:
+            break
+        cids = _label_clusters(pmap, cmap, bin_buff, bin_buff2, int_buff,
+                               threshold, tail, struct, all_adjacent,
+                               flat_shape, conn_src, conn_dst, criteria)
+        if cids:
+            clusters_v = ndimage.sum(pmap, cmap, cids)
+            np.abs(clusters_v, clusters_v)
+            out_queue.put(clusters_v.max())
+        else:
+            out_queue.put(0)
+
+
+def _tfce_worker(in_queue, out_queue, shape, threshold, tail, struct,
+                 all_adjacent, flat_shape, conn_src, conn_dst, stacked_shape,
+                 max_axes):
+    # allocate memory buffers
+    tfce_map = np.empty(shape)
+    tfce_map_stacked = tfce_map.reshape(stacked_shape)
+    bin_buff = np.empty(shape, np.bool_)
+    bin_buff2 = np.empty(shape, np.bool_)
+    int_buff = np.empty(shape, np.int_)
+
+    while True:
+        pmap = in_queue.get()
+        if pmap is None:
+            break
+        _tfce(pmap, tfce_map, tail, bin_buff, bin_buff2, int_buff, struct,
+              all_adjacent, flat_shape, conn_src, conn_dst)
+        out = tfce_map_stacked.max(max_axes)
+        out_queue.put(out)
+
+
+def _dist_worker(ct_dist, dist_shape, in_queue):
+    "Worker that accumulates values and places them into the distribution"
+    n = reduce(operator.mul, dist_shape)
+    dist = np.frombuffer(ct_dist, np.float64, n)
+    dist.shape = dist_shape
+    for i in xrange(dist_shape[0]):
+        dist[i] = in_queue.get()
+
+
 class _ClusterDist:
     """Accumulate information on a cluster statistic.
 
@@ -1649,6 +1850,13 @@ class _ClusterDist:
             cmap_reshape = None
             max_axes = None
 
+        # decide on multiprocessing
+        if multiprocessing and N > 1:
+            n_workers = cpu_count() - 1
+        else:
+            n_workers = 0
+        mp = bool(n_workers)
+
         self.Y_perm = Y_perm
         self.dims = Y_perm.dims
         self._cmap_dims = cmap_dims
@@ -1661,7 +1869,7 @@ class _ClusterDist:
         self._dist_dims = dist_dims
         self._cmap_reshape = cmap_reshape
         self._max_axes = max_axes
-        self.dist = np.zeros(dist_shape)
+        self.dist = None
         self._i = N
         self.threshold = threshold
         self.tail = tail
@@ -1679,6 +1887,10 @@ class _ClusterDist:
         self.has_original = False
         self._has_buffers = False
         self.dt_perm = None
+        self._mp = mp
+        self._dist_i = N
+        self._n_workers = n_workers
+
         self._allocate_memory_buffers()
 
     def _allocate_memory_buffers(self):
@@ -1690,8 +1902,14 @@ class _ClusterDist:
         self._int_buff = np.empty(shape, dtype=np.uint32)
         if self.threshold and self.tail == 0:
             self._int_buff2 = np.empty(shape, dtype=np.uint32)
-        if not self._all_adjacent:
+        else:
+            self._int_buff2 = None
+
+        if self._all_adjacent:
+            self._bin_buff2 = None
+        else:
             self._bin_buff2 = np.empty(shape, dtype=np.bool8)
+
         self._has_buffers = True
         if self._i == 0 or self.threshold:  # no permutations will be added
             return
@@ -1711,16 +1929,69 @@ class _ClusterDist:
                 delattr(self, name)
         self._has_buffers = False
 
+    def _init_permutation(self):
+        "Permutation is only performed when clusters are found"
+        if self._mp:
+            n = reduce(operator.mul, self._dist_shape)
+            ct_dist = RawArray('d', n)
+            dist = np.frombuffer(ct_dist, np.float64, n)
+            dist.shape = self._dist_shape
+            self._spawn_workers(ct_dist)
+        else:
+            dist = np.zeros(self._dist_shape)
+
+        self.dist = dist
+
+    def _spawn_workers(self, ct_dist):
+        "Spawn workers for multiprocessing"
+        logger.debug("Setting up worker processes...")
+        self._dist_queue = dist_queue = Queue()
+        self._pmap_queue = pmap_queue = Queue()
+
+        # clustering workers
+        shape = self.shape
+        threshold = self.threshold
+        tail = self.tail
+        struct = self._struct
+        all_adjacent = self._all_adjacent
+        flat_shape = self._flat_shape
+        conn_src = self._connectivity_src
+        conn_dst = self._connectivity_dst
+        if self.threshold:
+            criteria = self._criteria
+            target = _clustering_worker
+            args = (pmap_queue, dist_queue, shape, threshold, tail, struct,
+                    all_adjacent, flat_shape, conn_src, conn_dst, criteria)
+        else:
+            stacked_shape = self._cmap_reshape
+            max_axes = self._max_axes
+            target = _tfce_worker
+            args = (pmap_queue, dist_queue, shape, threshold, tail, struct,
+                    all_adjacent, flat_shape, conn_src, conn_dst,
+                    stacked_shape, max_axes)
+
+        self._workers = []
+        for _ in xrange(self._n_workers):
+            w = Process(target=target, args=args)
+            w.start()
+            self._workers.append(w)
+
+        # distribution worker
+        args = (ct_dist, self._dist_shape, dist_queue)
+        w = Process(target=_dist_worker, args=args)
+        w.start()
+        self._dist_worker = w
+
     def __repr__(self):
         items = []
         if self.has_original:
-            dt = self.dt_original / 60.
-            items.append("%i clusters (%.2f min)" % (self.n_clusters, dt))
+            dt = timedelta(seconds=round(self.dt_original))
+            items.append("%i clusters (%s)" % (self.n_clusters, dt))
 
             if self.N > 0 and self.n_clusters > 0:
                 if self._i == 0:
-                    dt = self.dt_perm / 60.
-                    item = "%i permutations (%.2f min)" % (self.N, dt)
+                    dt = timedelta(seconds=round(self.dt_perm))
+                    item = "%i permutations (%s)" % (self.N, dt)
                 else:
                     item = "%i of %i permutations" % (self.N - self._i, self.N)
                 items.append(item)
@@ -1997,143 +2268,6 @@ class _ClusterDist:
 
         return out
 
-    def _label_clusters(self, pmap, out):
-        """Find clusters on a statistical parameter map
-
-        Parameters
-        ----------
-        pmap : array
-            Statistical parameter map (non-adjacent dimension on the first
-            axis).
-
-        Returns
-        -------
-        cluster_map : array
-            Array of same shape as pmap with clusters labeled.
-        cluster_ids : tuple
-            Identifiers of the clusters that survive the minimum duration
-            criterion.
-        """
-        if self.tail >= 0:
-            bin_map_above = np.greater(pmap, self.threshold, self._bin_buff)
-            cmap, cids = self._label_clusters_binary(bin_map_above, out)
-
-        if self.tail <= 0:
-            bin_map_below = np.less(pmap, -self.threshold, self._bin_buff)
-            if self.tail < 0:
-                cmap, cids = self._label_clusters_binary(bin_map_below, out)
-            else:
-                cmap_l, cids_l = self._label_clusters_binary(bin_map_below,
-                                                             self._int_buff2)
-                x = int(cmap.max())  # apparently np.uint64 + int makes a float
-                cmap_l[bin_map_below] += x
-                cmap += cmap_l
-                cids.update(c + x for c in cids_l)
-
-        return cmap, tuple(cids)
-
-    def _label_clusters_binary(self, bin_map, out):
-        """
-        Parameters
-        ----------
-        bin_map : array
-            Binary map of where the parameter map exceeds the threshold for a
-            cluster (non-adjacent dimension on the first axis).
-
-        Returns
-        -------
-        cluster_map : array
-            Array of same shape as bin_map with clusters labeled.
-        cluster_ids : iterator over int
-            Identifiers of the clusters that survive the selection criteria.
-        """
-        # find clusters
-        n = ndimage.label(bin_map, self._struct, out)
-        # n is 1 even when no cluster is found
-        if n == 1 and out.max() == 0:
-            n = 0
-        cids = set(xrange(1, n + 1))
-        if not self._all_adjacent:
-            conn_src = self._connectivity_src
-            conn_dst = self._connectivity_dst
-            cidx = self._bin_buff2
-            # reshape cluster map for iteration
-            cmap_flat = out.reshape(self._flat_shape).swapaxes(0, 1)
-            for cmap_slice in cmap_flat:
-                if np.count_nonzero(np.unique(cmap_slice)) <= 1:
-                    continue
-
-                # find connectivity of True entries
-                idx = cmap_slice.nonzero()[0]
-                c_idx = np.in1d(conn_src, idx)
-                c_idx *= np.in1d(conn_dst, idx)
-                if np.count_nonzero(c_idx) == 0:
-                    continue
-
-                c_idx = c_idx.nonzero()[0]
-                for i in c_idx:
-                    # find corresponding cluster indices
-                    id_src = cmap_slice[conn_src[i]]
-                    id_dst = cmap_slice[conn_dst[i]]
-                    if id_src == id_dst:
-                        continue
-
-                    # merge id_dst into id_src
-                    np.equal(out, id_dst, cidx)
-                    out[cidx] = id_src
-                    cids.remove(id_dst)
-                    if len(cids) == 1:
-                        break
-                if len(cids) == 1:
-                    break
-
-        # apply minimum cluster size criteria
-        if self._criteria:
-            for axes, v in self._criteria:
-                rm = tuple(i for i in cids if
-                           np.count_nonzero(np.equal(out, i).any(axes)) < v)
-                cids.difference_update(rm)
-
-        return out, cids
-
-    def _tfce(self, p_map, out):
-        dh = 0.1
-        E = 0.5
-        H = 2.0
-
-        if self.tail <= 0:
-            hs = np.arange(-dh, p_map.min(), -dh)
-        if self.tail >= 0:
-            upper = np.arange(dh, p_map.max(), dh)
-            if self.tail == 0:
-                hs = np.hstack((hs, upper))
-            else:
-                hs = upper
-
-        # data buffers
-        out.fill(0)
-        bin_map = self._bin_buff
-        cluster_map = self._int_buff
-
-        # label clusters in slices at different heights
-        # fill each cluster with total section value
-        # each point's value is the vertical sum
-        for h in hs:
-            if h > 0:
-                np.greater_equal(p_map, h, bin_map)
-                h_factor = h ** H
-            else:
-                np.less_equal(p_map, h, bin_map)
-                h_factor = (-h) ** H
-
-            _, cluster_ids = self._label_clusters_binary(bin_map, cluster_map)
-            for id_ in cluster_ids:
-                np.equal(cluster_map, id_, bin_map)
-                v = np.count_nonzero(bin_map) ** E * h_factor
-                out[bin_map] += v
-
-        return out
-
     def _uncrop(self, im, background=0):
         if self.crop:
             im_ = np.empty(self._uncropped_shape, dtype=im.dtype)
@@ -2154,6 +2288,7 @@ class _ClusterDist:
         if self.has_original:
             raise RuntimeError("Original pmap already added")
 
+        logger.debug("Adding original parameter map...")
         t0 = current_time()
         param_map = self._crop(param_map)
         if self._nad_ax:
@@ -2161,22 +2296,33 @@ class _ClusterDist:
 
         if self.threshold is None:
             self._original_cluster_map = np.empty(self.shape)
-            self._tfce(param_map, self._original_cluster_map)
+            _tfce(param_map, self._original_cluster_map, self.tail,
+                  self._bin_buff, self._bin_buff2, self._int_buff,
+                  self._struct, self._all_adjacent, self._flat_shape,
+                  self._connectivity_src, self._connectivity_dst)
             cids = None
             n_clusters = True
         else:
             self._original_cluster_map = buff = np.empty(self.shape,
                                                          dtype=np.uint32)
-            _, cids = self._label_clusters(param_map, buff)
+            cids = _label_clusters(param_map, buff, self._bin_buff,
+                                   self._bin_buff2, self._int_buff2,
+                                   self.threshold, self.tail, self._struct,
+                                   self._all_adjacent, self._flat_shape,
+                                   self._connectivity_src,
+                                   self._connectivity_dst, self._criteria)
             n_clusters = len(cids)
+        t1 = current_time()
 
         self._cids = cids
         self.n_clusters = n_clusters
         self.has_original = True
-        self.dt_original = current_time() - t0
-        self._t0 = current_time()
+        self.dt_original = t1 - t0
+        self._t0 = t1
         self._original_param_map = param_map
-        if self.N == 0 or n_clusters == 0:
+        if self.N and n_clusters:
+            self._init_permutation()
+        else:
             self._finalize()
 
     def add_perm(self, pmap):
@@ -2190,29 +2336,58 @@ class _ClusterDist:
         if self._i <= 0:
             raise RuntimeError("Too many permutations added to _ClusterDist")
         self._i -= 1
+        finished = self._i == 0
 
         if self._nad_ax:
             pmap = pmap.swapaxes(0, self._nad_ax)
 
-        if self.threshold is None:
-            self._tfce(pmap, self._float_buff)
-            self.dist[self._i] = self._cmap_stacked.max(self._max_axes)
-        else:
-            cmap, cids = self._label_clusters(pmap, self._int_buff)
-            if cids:
-                clusters_v = ndimage.sum(pmap, cmap, cids)
-                np.abs(clusters_v, clusters_v)
-                self.dist[self._i] = clusters_v.max()
+        if self._mp:
+            # log
+            dt = current_time() - self._t0
+            elapsed = timedelta(seconds=round(dt))
+            logger.info("%s: putting %i" % (elapsed, self._i))
+            # place data in queue
+            self._pmap_queue.put(pmap)
 
-        # info
-        dt = (current_time() - self._t0)
-        if dt > 60:
-            n = self.N - self._i
-            avg_time = dt / n
-            logger.info("Sample %i, avg time: %i" % (n, avg_time))
+            if finished:
+                logger.info("Waiting for cluster distribution...")
+                for _ in xrange(self._n_workers):
+                    self._pmap_queue.put(None)
+                for w in self._workers:
+                    w.join()
+                self._dist_worker.join()
+                logger.info("Done")
+        else:
+            if self.threshold is None:
+                _tfce(pmap, self._float_buff, self.tail, self._bin_buff,
+                      self._bin_buff2, self._int_buff, self._struct,
+                      self._all_adjacent, self._flat_shape,
+                      self._connectivity_src, self._connectivity_dst)
+                v = self._cmap_stacked.max(self._max_axes)
+            else:
+                cmap = self._int_buff
+                cids = _label_clusters(pmap, cmap, self._bin_buff,
+                                       self._bin_buff2, self._int_buff2,
+                                       self.threshold, self.tail, self._struct,
+                                       self._all_adjacent, self._flat_shape,
+                                       self._connectivity_src,
+                                       self._connectivity_dst, self._criteria)
+                if cids:
+                    clusters_v = ndimage.sum(pmap, cmap, cids)
+                    np.abs(clusters_v, clusters_v)
+                    v = clusters_v.max()
+                else:
+                    v = 0
+            self.dist[self._i] = v
+            # log
+            n_done = self.N - self._i
+            dt = current_time() - self._t0
+            elapsed = timedelta(seconds=round(dt))
+            avg = timedelta(seconds=dt / n_done)
+            logger.info("%s: Sample %i, avg time: %s" % (elapsed, n_done, avg))
 
         # catch last permutation
-        if self._i == 0:
+        if finished:
             self.dt_perm = current_time() - self._t0
             self._finalize()
 
@@ -2276,7 +2451,12 @@ class _ClusterDist:
         dims = self.dims
 
         bin_map = np.less_equal(p_map, pmin, bin_buff)
-        c_map, cids = self._label_clusters_binary(bin_map, np.empty(shape))
+        c_map = np.empty(shape)
+        cids = _label_clusters_binary(bin_map, c_map, self._bin_buff,
+                                      self._struct, self._all_adjacent,
+                                      self._flat_shape,
+                                      self._connectivity_src,
+                                      self._connectivity_dst, None)
         cids = sorted(cids)
 
         ds = self._cluster_properties(c_map, cids)
@@ -2306,7 +2486,12 @@ class _ClusterDist:
         probability_map = self._probability_map
 
         peaks = self._find_peaks(self._original_cluster_map)
-        peak_map, peak_ids = self._label_clusters_binary(peaks, self._int_buff)
+        peak_map = self._int_buff
+        peak_ids = _label_clusters_binary(peaks, peak_map, self._bin_buff,
+                                          self._struct, self._all_adjacent,
+                                          self._flat_shape,
+                                          self._connectivity_src,
+                                          self._connectivity_dst, None)
 
         ds = Dataset()
         ds['id'] = Var(np.fromiter(peak_ids, np.int32, len(peak_ids)))

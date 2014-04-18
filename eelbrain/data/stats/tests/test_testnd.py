@@ -69,7 +69,9 @@ def test_clusterdist():
     np.clip(pmap, -1, 1, pmap)
     pmap[bin_map] = 2
     cdist = _ClusterDist(Y, 0, 1.5)
+    print repr(cdist)
     cdist.add_original(pmap)
+    print repr(cdist)
     assert_equal(cdist.n_clusters, 1)
     assert_array_equal(cdist._original_cluster_map == cdist._cids[0],
                        cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))
@@ -140,9 +142,12 @@ def test_clusterdist():
     # test keeping dimension
     assert_equal(cdist.dist.shape, (3,))
     cdist = _ClusterDist(Y, 5, None, dist_dim='sensor')
+    print repr(cdist)
     cdist.add_original(Y.x[0])
+    print repr(cdist)
     for i in xrange(1, 6):
         cdist.add_perm(Y.x[i])
+    print repr(cdist)
     assert_equal(cdist.dist.shape, (5, 4))
 
     # test keeping time bins
