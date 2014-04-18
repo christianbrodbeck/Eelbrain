@@ -1,6 +1,6 @@
 
 clean:
-	rm -rf coverage .coverage
+	rm -rf coverage .coverage dist build
 	
 clean-py:
 	find . -type f -name *.pyc -delete
@@ -12,3 +12,9 @@ test-coverage:
 
 test:
 	nosetests eelbrain
+
+pypi:
+	rm -rf build dist doc/build
+	python setup.py sdist upload
+	python setup.py build_sphinx
+	python setup.py upload_sphinx
