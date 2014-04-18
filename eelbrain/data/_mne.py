@@ -6,7 +6,7 @@ import numpy as np
 import scipy as sp
 
 import mne
-from mne.label import _n_colors, Label
+from mne.label import Label
 from mne.source_space import label_src_vertno_sel
 from mne import minimum_norm as mn
 
@@ -29,6 +29,8 @@ def labels_from_clusters(clusters, names=None):
     labels : list of mne.Label
         One label for each cluster.
     """
+    from mne.label import _n_colors
+
     source = clusters.source
     source_space = clusters.source.get_source_space()
     subject = source.subject
