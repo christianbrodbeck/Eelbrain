@@ -6111,7 +6111,7 @@ class UTS(Dimension):
 
     def dimindex(self, arg):
         if np.isscalar(arg):
-            i, _ = find_time_point(self.times, arg)
+            i = int(round((arg - self.tmin) / self.tstep))
             return i
         elif isinstance(arg, UTS):
             idxs = (self.times[:, None] == arg.times)
@@ -6131,12 +6131,18 @@ class UTS(Dimension):
             if tstart is None:
                 start = None
             else:
-                start, _ = find_time_point(self.times, tstart, 'up')
+                start_float = (tstart - self.tmin) / self.tstep
+                start = int(start_float)
+                if start_float - start > 0.000001:
+                    start += 1
 
             if tstop is None:
                 stop = None
             else:
-                stop, _ = find_time_point(self.times, tstop, 'up')
+                stop_float = (tstop - self.tmin) / self.tstep
+                stop = int(stop_float)
+                if stop_float - stop > 0.000001:
+                    stop += 1
 
             s = slice(start, stop)
             return s
@@ -6153,9 +6159,17 @@ class UTS(Dimension):
         rnd : 'down' | 'closest' | 'up'
             Rounding: how to handle time values that do not have an exact
             match. Round 'up', 'down', or to the 'closest' neighbor.
+
+        Returns
+        -------
+        i : int
+            Index of ``time``, rounded according to ``rnd``.
         """
-        i, _ = find_time_point(self.times, time, rnd)
-        return i
+        if rnd == 'closest':
+            return int(round((time - self.tmin) / self.tstep))
+        else:
+            i, _ = find_time_point(self.times, time, rnd)
+            return i
 
     def intersect(self, dim, check_dims=True):
         """Create a UTS dimension that is the intersection with dim
