@@ -5920,7 +5920,7 @@ class SourceSpace(Dimension):
             Add a parcellation to the source space to identify vertex location.
             Only applies to ico source spaces, default is 'aparc'.
         """
-        if parc is None:
+        if parc is None or mne.__version__ < '0.8':
             parc = None
             parc_ = None
             parc_names = None

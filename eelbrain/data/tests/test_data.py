@@ -352,6 +352,8 @@ def test_source_space():
                        np.intersect1d(source.lh_vertno, label_v1.vertices, 1))
 
     # parcellation and cluster localization
+    if mne.__version__ < '0.8':
+        return
     parc = mne.read_annot(subject, parc='aparc', subjects_dir=mri_sdir)
     indexes = [source.index_for_label(label) for label in parc
                if len(label) > 10]
