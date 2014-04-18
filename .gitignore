@@ -13,6 +13,8 @@ eggs
 fake-eggs
 parts
 dist
+doc/build
+doc/source/generated
 .installed.cfg
 .mr.developer.cfg
 .hg
