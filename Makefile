@@ -17,4 +17,4 @@ pypi:
 	rm -rf build dist doc/build
 	python setup.py sdist upload
 	python setup.py build_sphinx
-	python setup.py upload_sphinx
+	python setup.py upload_docs
