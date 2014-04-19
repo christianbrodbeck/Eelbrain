@@ -18,7 +18,6 @@ http://packages.python.org/py2app
 http://docs.python.org/distutils/index.html
 
 """
-import os
 import sys
 
 from ez_setup import use_setuptools
@@ -26,38 +25,34 @@ use_setuptools()
 
 from setuptools import setup, find_packages
 
-# VERSION must be in X.X.X format, e.g., "0.0.3dev"
-from eelbrain import __version__ as VERSION
+# version must be in X.X.X format, e.g., "0.0.3dev"
+from eelbrain import __version__ as version
+url = "https://pythonhosted.org/eelbrain"
 
 
 print sys.argv
 if len(sys.argv) > 1:
     arg = sys.argv[1]
 else:
-    print ("For more specific instructions, see "
-           "http://christianmbrodbeck.github.com/Eelbrain/")
+    print "For more specific instructions, see %s" % url
     arg = None
 
 
 kwargs = dict(
               name='eelbrain',
-              version=VERSION,
+              version=version,
               description="MEEG analysis tools",
-              url='https://pythonhosted.org/eelbrain/',
+              url=url,
               author="Christian Brodbeck",
               author_email='christianbrodbeck@nyu.edu',
               license='GPL3',
               long_description=open('README.txt').read(),
-              install_requires=[
-                                'tex',
+              install_requires=['tex',
                                 'matplotlib',
                                 'scipy >= 0.11.0',
                                 'numpy',
                                 'docutils',
-                                'mne >= 0.6',
-#                                'wxPython',
-# Does not install properly from pypi (http://stackoverflow.com/q/477573/166700)
-                                  ],
+                                'mne >= 0.7.1'],
 #               package_data={'eelbrain': ['Resources/sns/*.txt']},
               )
 
@@ -107,8 +102,8 @@ if arg == 'py2app':
 #                          'resources/License.txt'
 #                          ],
                'plist': dict(CFBundleName="Eelbrain",
-                             CFBundleShortVersionString=VERSION,
-                             CFBundleGetInfoString="Eelbrain " + VERSION,
+                             CFBundleShortVersionString=version,
+                             CFBundleGetInfoString="Eelbrain " + version,
                              CFBundleExecutable="Eelbrain",
                              CFBundleIdentifier="com.christianmbrodbeck.Eelbrain",
                              CFBundleDocumentTypes=doctypes,
