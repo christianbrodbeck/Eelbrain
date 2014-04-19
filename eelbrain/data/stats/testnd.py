@@ -1785,11 +1785,6 @@ class _ClusterDist:
 
         # prepare cluster minimum size criteria
         if criteria:
-            if threshold is None:
-                err = ("Can not use cluster size criteria in doing threshold "
-                       "free cluster evaluation")
-                raise ValueError(err)
-
             criteria_ = []
             for k, v in criteria.iteritems():
                 if k == 'mintime':
@@ -1808,6 +1803,12 @@ class _ClusterDist:
 
                 axes = tuple(i for i in xrange(ndim) if i != ax)
                 criteria_.append((axes, v))
+
+            if threshold is None:
+                # here so that invalid keywords raise explicitly
+                err = ("Can not use cluster size criteria in doing threshold "
+                       "free cluster evaluation")
+                raise ValueError(err)
         else:
             criteria_ = None
 
