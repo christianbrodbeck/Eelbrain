@@ -6069,12 +6069,21 @@ class UTS(Dimension):
         return UTS(tmin, tstep, nsamples)
 
     def _cluster_bounds(self, x):
-        """Cluster min and max in samples"""
-        # find indices of cluster extent
-        cluster_id, cluster = np.nonzero(x)
-        ts = [cluster[cluster_id == i][[0, -1]] for i in xrange(len(x))]
-        ts = np.array(ts)
+        """Cluster start and stop in samples
 
+        Parameters
+        ----------
+        x : array of bool, (n_clusters, len(self))
+            The cluster extents, with different clusters stacked along the
+            first axis.
+        """
+        # find indices of cluster extent
+        row, col = np.nonzero(x)
+        try:
+            ts = [col[row == i][[0, -1]] for i in xrange(len(x))]
+        except IndexError:
+            raise ValueError("Empty cluster")
+        ts = np.array(ts)
         return ts
 
     def _cluster_properties(self, x):
