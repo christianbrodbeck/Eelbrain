@@ -1512,9 +1512,8 @@ class _ClusterDist:
             t_ax = Y.get_axis('time') - 1
             self.crop = True
             Y_perm = Y.sub(time=(tstart, tstop))
-            istart = 0 if tstart is None else Y.time.index(tstart, 'up')
-            istop = istart + len(Y_perm.time)
-            self._crop_idx = (slice(None),) * t_ax + (slice(istart, istop),)
+            t_slice = Y.time._slice(tstart, tstop)
+            self._crop_idx = (slice(None),) * t_ax + (t_slice,)
             self._uncropped_shape = Y.shape[1:]
 
         # cluster map properties

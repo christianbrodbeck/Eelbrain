@@ -6154,27 +6154,7 @@ class UTS(Dimension):
             return arg
         elif isinstance(arg, tuple) and len(arg) == 2:
             tstart, tstop = arg
-            if (tstart is not None) and (tstop is not None) and (tstart >= tstop):
-                raise ValueError("tstart must be smaller than tstop")
-
-            if tstart is None:
-                start = None
-            else:
-                start_float = (tstart - self.tmin) / self.tstep
-                start = int(start_float)
-                if start_float - start > 0.000001:
-                    start += 1
-
-            if tstop is None:
-                stop = None
-            else:
-                stop_float = (tstop - self.tmin) / self.tstep
-                stop = int(stop_float)
-                if stop_float - stop > 0.000001:
-                    stop += 1
-
-            s = slice(start, stop)
-            return s
+            return self._slice(tstart, tstop)
         else:
             return arg
 
@@ -6230,6 +6210,30 @@ class UTS(Dimension):
         tstep = self.tstep * x
         nsamples = len(times)
         return UTS(tmin, tstep, nsamples)
+
+    def _slice(self, tstart, tstop):
+        "Create a slice into the time axis"
+        if (tstart is not None) and (tstop is not None) and (tstart >= tstop):
+            raise ValueError("tstart must be smaller than tstop")
+
+        if tstart is None:
+            start = None
+        else:
+            start_float = (tstart - self.tmin) / self.tstep
+            start = int(start_float)
+            if start_float - start > 0.000001:
+                start += 1
+
+        if tstop is None:
+            stop = None
+        else:
+            stop_float = (tstop - self.tmin) / self.tstep
+            stop = int(stop_float)
+            if stop_float - stop > 0.000001:
+                stop += 1
+
+        s = slice(start, stop)
+        return s
 
 
 def intersect_dims(dims1, dims2, check_dims=True):
