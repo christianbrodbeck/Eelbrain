@@ -742,16 +742,17 @@ class eelfigure(object):
             app = wx.GetApp()
             if app is None:
                 frame_kind = 'mpl'
-            elif hasattr(app, 'shell'):
+
+        if frame_kind == 'wx':
+            if hasattr(app, 'shell'):
                 parent = app.shell
             else:
                 parent = app.GetTopWindow()
             frame = CanvasFrame(parent, title=title, eelfigure=self, **fig_kwa)
             self._is_wx = True
-
-        if frame_kind == 'mpl':
+        elif frame_kind == 'mpl':
             frame = mpl_figure(**fig_kwa)
-        elif frame_kind != 'wx':
+        else:
             err = "Invalid backend 'frame' parameter: %r" % frame_kind
             raise RuntimeError(err)
 
