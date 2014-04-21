@@ -1309,13 +1309,15 @@ class Section(FMText):
         self._heading = heading
         FMText.__init__(self, content)
 
-    def add_figure(self, caption):
+    def add_figure(self, caption, content=None,):
         """Add a figure frame to the section
 
         Parameters
         ----------
         caption : FMText
             Figure caption.
+        content : None | FMText
+            Figure content.
 
         Returns
         -------
@@ -1326,7 +1328,9 @@ class Section(FMText):
         --------
         .add_image_figure: add figure with a single image
         """
-        figure = Figure([], caption)
+        if content is None:
+            content = []
+        figure = Figure(content, caption)
         self.append(figure)
         return figure
 
