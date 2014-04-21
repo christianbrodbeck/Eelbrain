@@ -5850,7 +5850,16 @@ class SourceSpace(Dimension):
             return obj
 
     def _dimindex_label(self, label):
-        if label.hemi == 'both':
+        if isinstance(label, str):
+            if self.parc is None:
+                raise RuntimeError("SourceSpace has no parcellation")
+            elif label not in self._parc_names:
+                err = ("SourceSpace parcellation has no label called %r"
+                       % label)
+                raise KeyError(err)
+            id_ = self._parc_names.index(label)
+            idx = self._parc == id_
+        elif label.hemi == 'both':
             lh_idx = self._dimindex_hemilabel(label.lh)
             rh_idx = self._dimindex_hemilabel(label.rh)
             idx = np.hstack((lh_idx, rh_idx))
@@ -5887,10 +5896,10 @@ class SourceSpace(Dimension):
 
         Parameters
         ----------
-        label : Label | BiHemiLabel
-            The label (as created for example by mne.read_label). If the label
-            does not match any sources in the SourceEstimate, a ValueError is
-            raised.
+        label : str | Label | BiHemiLabel
+            The name of a region in the current parcellation, or a Label object
+            (as created for example by mne.read_label). If the label does not
+            match any sources in the SourceEstimate, a ValueError is raised.
 
         Returns
         -------
@@ -5898,7 +5907,11 @@ class SourceSpace(Dimension):
             Index into the source space dim that corresponds to the label.
         """
         idx = self._dimindex_label(label)
-        return NDVar(idx, (self,), {}, label.name)
+        if isinstance(label, basestring):
+            name = label
+        else:
+            name = label.name
+        return NDVar(idx, (self,), {}, name)
 
     def intersect(self, other, check_dims=True):
         """Create a Source dimension that is the intersection with dim
