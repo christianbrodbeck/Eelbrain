@@ -5251,8 +5251,9 @@ class Sensor(Dimension):
                 if any(lower_half):
                     locs2d[lower_half] *= (1 - locs3d[lower_half][:, [2]])
             elif proj == 'z root':
-                z = max(locs3d[:, 2]) - locs3d[:, 2]  # distance form top
-                r = np.sqrt(z)  # desired 2d radius
+                z = locs3d[:, 2]
+                z_dist = (z.max() + 0.01) - z  # distance form top, buffer so that top points don't stick together
+                r = np.sqrt(z_dist)  # desired 2d radius
                 r_xy = np.sqrt(np.sum(locs3d[:, :2] ** 2, 1))  # current radius in xy
                 idx = (r_xy != 0)  # avoid zero division
                 F = r[idx] / r_xy[idx]  # stretching Factor accounting for current r
