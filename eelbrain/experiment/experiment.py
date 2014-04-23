@@ -250,7 +250,7 @@ class TreeModel(object):
         if default is None:
             self._fields[key] = default
         else:
-            kwargs = {key: default, 'add':True}
+            kwargs = {key: default, 'add': True}
             self.set(**kwargs)
 
     def _register_value(self, key, default, set_handler=None,
@@ -548,7 +548,11 @@ class TreeModel(object):
             handlers = self._eval_handlers[k]
             if handlers:
                 for handler in handlers:
-                    state[k] = handler(state[k])
+                    v = handler(state[k])
+                    if not isinstance(v, str):
+                        err = "Invalid conversion: %s=%r" % (k, v)
+                        raise RuntimeError(err)
+                    state[k] = v
             elif not match:
                 pass
             elif k not in self._field_values:
