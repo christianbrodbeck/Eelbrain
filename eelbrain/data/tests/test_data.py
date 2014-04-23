@@ -17,6 +17,7 @@ from numpy.testing import assert_array_equal, assert_array_almost_equal
 from eelbrain.data import datasets, Var, Factor, Dataset, Celltable, load
 from eelbrain.data.data_obj import (align, align1, asvar, combine, isdatalist,
                                     isndvar, isvar, isuv, SourceSpace, UTS)
+from eelbrain.data.stats import rms
 
 
 def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
@@ -291,6 +292,43 @@ def test_ndvar():
     idx = sens_mean > 0
     pos = sens_mean[idx]
     assert_array_equal(pos.x > 0, True)
+
+
+def test_ndvar_summary_methods():
+    "Test NDVar methods for summarizing data over axes"
+    ds = datasets.get_rand(utsnd=True)
+    x = ds['utsnd']
+
+    dim = 'sensor'
+    axis = x.get_axis(dim)
+    dims = ('case', 'sensor')
+    axes = tuple(x.get_axis(d) for d in dims)
+
+    # numpy functions
+    assert_equal(x.any(), x.x.any())
+    assert_array_equal(x.any(dim), x.x.any(axis))
+    assert_array_equal(x.any(dims), x.x.any(axes))
+
+    assert_equal(x.max(), x.x.max())
+    assert_array_equal(x.max(dim), x.x.max(axis))
+    assert_array_equal(x.max(dims), x.x.max(axes))
+
+    assert_equal(x.mean(), x.x.mean())
+    assert_array_equal(x.mean(dim), x.x.mean(axis))
+    assert_array_equal(x.mean(dims), x.x.mean(axes))
+
+    assert_equal(x.min(), x.x.min())
+    assert_array_equal(x.min(dim), x.x.min(axis))
+    assert_array_equal(x.min(dims), x.x.min(axes))
+
+    assert_equal(x.std(), x.x.std())
+    assert_array_equal(x.std(dim), x.x.std(axis))
+    assert_array_equal(x.std(dims), x.x.std(axes))
+
+    # non-numpy
+    assert_equal(x.rms(), rms(x.x))
+    assert_array_equal(x.rms(dim), rms(x.x, axis))
+    assert_array_equal(x.rms(dims), rms(x.x, axes))
 
 
 def test_io_pickle():

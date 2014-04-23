@@ -2588,16 +2588,12 @@ class NDVar(object):
         if dims is None:
             return func(self.x)
         elif isinstance(dims, basestring):
-            dim_name = dims
-            axis = self._dim_2_ax[dim_name]
+            axis = self._dim_2_ax[dims]
             x = func(self.x, axis=axis)
             dims = (self.dims[i] for i in xrange(self.ndim) if i != axis)
         else:
-            dim_names = dims
-            axes = [self._dim_2_ax[dim_name] for dim_name in dim_names]
-            x = self.x
-            for axis in sorted(axes, reverse=True):
-                x = func(x, axis=axis)
+            axes = tuple(self._dim_2_ax[dim_name] for dim_name in dims)
+            x = func(self.x, axes)
             dims = (self.dims[i] for i in xrange(self.ndim) if i not in axes)
 
         dims = tuple(dims)

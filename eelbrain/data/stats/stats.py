@@ -40,15 +40,17 @@ def cihw(x, p=.95):
     return c
 
 
-def rms(Y, axis=-1, rm_mean=False):
+def rms(a, axis=None, rm_mean=False):
     """Root mean square
 
     Parameters
     ----------
-    Y : array_like
+    a : array_like
         Data.
-    axis : int
-        Axis over which to calculate the RMS.
+    axis : None | int | tuple of ints
+        Axis or axes over which to calculate the RMS.
+        The default (`axis` = `None`) is the RMS over all the dimensions of
+        the input array.
     rm_mean : bool
         Remove the mean over axis before calculating the RMS (= average
         reference).
@@ -61,13 +63,21 @@ def rms(Y, axis=-1, rm_mean=False):
             analyses: a step-by-step tutorial review. Brain Topogr, 20(4),
             249-64.
     """
-    if rm_mean:  # avg reference
-        shape = list(Y.shape)
-        shape[axis] = 1
-        Y = Y - Y.mean(axis).reshape(shape)
+    if rm_mean:
+        if axis is None:
+            a = a-a.mean()
+        elif np.isscalar(axis):
+            shape = list(a.shape)
+            shape[axis] = 1
+            a = a - a.mean(axis).reshape(shape)
+        else:
+            shape = list(a.shape)
+            for i in axis:
+                shape[i] = 1
+            a = a - a.mean(axis).reshape(shape)
 
     # root mean square
-    rms = np.sqrt(np.mean(Y ** 2, axis))
+    rms = np.sqrt(np.mean(a ** 2, axis))
     return rms
 
 
