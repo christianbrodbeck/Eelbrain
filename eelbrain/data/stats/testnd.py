@@ -96,7 +96,8 @@ class _TestResult(object):
             self.tfce_map = cdist.tfce_map
             self.p = cdist.probability_map
 
-    def masked_parameter_map(self, pmin=0.05):
+    def masked_parameter_map(self, pmin=0.05, tstart=None, tstop=None,
+                             sub=None):
         """Create a copy of the parameter map masked by significance
 
         Parameters
@@ -113,9 +114,9 @@ class _TestResult(object):
         if self._cdist is None:
             err = "Method only applies to results with samples > 0"
             raise RuntimeError(err)
-        return self._cdist.masked_parameter_map(pmin)
+        return self._cdist.masked_parameter_map(pmin, tstart, tstop, sub)
 
-    def tfce_clusters(self, pmin=0.05):
+    def tfce_clusters(self, pmin=0.05, tstart=None, tstop=None, sub=None):
         """Find significant regions in a TFCE distribution
 
         Parameters
@@ -131,7 +132,7 @@ class _TestResult(object):
         if self._cdist is None:
             err = "Method only applies to results with samples > 0"
             raise RuntimeError(err)
-        return self._cdist.tfce_clusters(pmin)
+        return self._cdist.tfce_clusters(pmin, tstart, tstop, sub)
 
     def tfce_peaks(self):
         """Find peaks in a TFCE distribution
@@ -145,6 +146,28 @@ class _TestResult(object):
             err = "Method only applies to results with samples > 0"
             raise RuntimeError(err)
         return self._cdist.tfce_peaks()
+
+    def tfce_probability_map(self, tstart=None, tstop=None, sub=None):
+        """Create a probability map for a threshold-free cluster distribution
+
+        Parameters
+        ----------
+        tstart : scalar
+            Only correct against multiple comparisons from this time point
+            (vs whole epoch). Needs to correspond to the beginning of a proper
+            time bin.
+        tstop : scalar
+            Only correct against multiple comparisons up until this time point
+            (vs whole epoch). Needs to correspond to the end of a proper time
+            bin.
+        sub : boolean NDVar
+            Create the probability map for, and correct for multiple
+            comparisons in only a part of Y.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        return self._cdist.tfce_probability_map(tstart, tstop, sub)
 
 
 class t_contrast_rel(_TestResult):
@@ -2088,18 +2111,12 @@ class _ClusterDist:
         else:
             tfce_map_ = None
 
-        # prepare cluster distribution
-        if self.N:
-            dist = self.dist
-            if dist.ndim > 1:
-                axes = tuple(xrange(1, dist.ndim))
-                dist = dist.max(axes)
-
         # probability map and clusters
         if self.threshold is None and self.N:
             # probability map (TFCE)
             idx = self._bin_buff
             cpmap = np.zeros(self.shape)
+            dist = self._aggregate_dist()
             for v in dist:
                 cpmap += np.greater(v, tfce_map, idx)
             cpmap /= self.N
@@ -2119,6 +2136,7 @@ class _ClusterDist:
             # p-values: "the proportion of random partitions that resulted in a
             # larger test statistic than the observed one" (179)
             cpmap = np.ones(self.shape)  # cluster probability
+            dist = self.dist
             if self.N:
                 n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
                 cluster_p = n_larger / self.N
@@ -2392,26 +2410,40 @@ class _ClusterDist:
             self._finalize()
 
     def _cluster_properties(self, cluster_map, cids):
-        "Create a Dataset with cluster properties"
-        c_mask = self._bin_buff
-        ndim = c_mask.ndim
+        """Create a Dataset with cluster properties
+
+        Parameters
+        ----------
+        cluster_map : array of int
+            Array in which clusters are marked by bearing the same number.
+        cids : tuple of int
+            Numbers specifying the clusters (must occur in cluster_map) which
+            should be analyzes.
+
+        Returns
+        -------
+        cluster_properties : Dataset
+            Cluster properties. Which properties are included depends on the
+            dimensions.
+        """
+        ndim = cluster_map.ndim
         dims = self.dims[1:]
         n_clusters = len(cids)
+        nad_ax = self._nad_ax
+        if nad_ax:
+            dims = list(dims)
+            dims[0], dims[nad_ax] = dims[nad_ax], dims[0]
+            dims = tuple(dims)
 
         # setup compression
         compression = []
-        for ax, length in enumerate(c_mask.shape):
-            if ax == 0:
-                dim = dims[self._nad_ax]
-            elif ax == self._nad_ax:
-                dim = dims[0]
-            else:
-                dim = dims[ax]
-            extents = np.empty((n_clusters, length), dtype=np.bool8)
+        for ax, dim in enumerate(dims):
+            extents = np.empty((n_clusters, len(dim)), dtype=np.bool_)
             axes = tuple(i for i in xrange(ndim) if i != ax)
             compression.append((ax, dim, axes, extents))
 
         # find extents for all clusters
+        c_mask = np.empty(cluster_map.shape, np.bool_)
         for i, cid in enumerate(cids):
             np.equal(cluster_map, cid, c_mask)
             for ax, dim, axes, extents in compression:
@@ -2428,7 +2460,7 @@ class _ClusterDist:
 
         return ds
 
-    def tfce_clusters(self, pmin=0.05):
+    def tfce_clusters(self, pmin=0.05, tstart=None, tstop=None, sub=None):
         """Find significant regions in a TFCE distribution
 
         Parameters
@@ -2444,30 +2476,38 @@ class _ClusterDist:
         if self.threshold:
             raise RuntimeError("Not a TFCE distribution")
 
-        self._allocate_memory_buffers()
-        shape = self.shape
-        bin_buff = self._bin_buff
-        p_map = self._probability_map
-        dims = self.dims
+        p_map = self.tfce_probability_map(tstart, tstop, sub)
+        bin_map = np.less_equal(p_map.x, pmin)
 
-        bin_map = np.less_equal(p_map, pmin, bin_buff)
-        c_map = np.empty(shape)
-        cids = _label_clusters_binary(bin_map, c_map, self._bin_buff,
-                                      self._struct, self._all_adjacent,
-                                      self._flat_shape,
+        # reshape for labelling
+        if not self._all_adjacent:
+            if self._nad_ax:
+                bin_map = bin_map.swapaxes(0, self._nad_ax)
+            flat_shape = (bin_map.shape[0], np.prod(bin_map.shape[1:]))
+        else:
+            flat_shape = None
+
+        # find clusters
+        c_map = np.empty(p_map.shape)
+        bin_buff = np.empty(p_map.shape, dtype=np.bool_)
+        cids = _label_clusters_binary(bin_map, c_map, bin_buff, self._struct,
+                                      self._all_adjacent, flat_shape,
                                       self._connectivity_src,
                                       self._connectivity_dst, None)
         cids = sorted(cids)
 
         ds = self._cluster_properties(c_map, cids)
-        ds.info['clusters'] = NDVar(c_map.swapaxes(0, self._nad_ax), dims[1:],
-                                    {}, "Clusters")
 
-        min_pos = ndimage.minimum_position(p_map, c_map, cids)
-        ds['p'] = Var([p_map[pos] for pos in min_pos])
+        # reshape for output
+        if self._nad_ax:
+            c_map = c_map.swapaxes(0, self._nad_ax)
+
+        # add info to dataset
+        ds.info['clusters'] = NDVar(c_map, p_map.dims, {}, "Clusters")
+        min_pos = ndimage.minimum_position(p_map.x, c_map, cids)
+        ds['p'] = Var([p_map.x[pos] for pos in min_pos])
         ds['*'] = star_factor(ds['p'])
 
-        self._clear_memory_buffers()
         return ds
 
     def tfce_peaks(self):
@@ -2541,6 +2581,16 @@ class _ClusterDist:
 
         return dist
 
+    def _crop_result_ndvar(self, ndvar, tstart, tstop, sub, copy=False):
+        if copy and tstart is None and tstop is None and sub is None:
+            return ndvar.copy()
+
+        if (tstart is not None) or (tstop is not None):
+            ndvar = ndvar.sub(time=(tstart, tstop))
+        if sub is not None:
+            ndvar = ndvar[sub]
+        return ndvar
+
     def tfce_probability_map(self, tstart=None, tstop=None, sub=None):
         """Create a probability map for a threshold-free cluster distribution
 
@@ -2559,15 +2609,14 @@ class _ClusterDist:
             comparisons in only a part of Y.
         """
         dist = self._aggregate_dist(tstart, tstop, sub)
-        tfce_map = self._original_cluster_map
-        dims = self._cmap_dims
+        tfce_map = self._crop_result_ndvar(self.tfce_map, tstart, tstop, sub)
 
-        idx = np.empty(self.shape, dtype=np.bool8)
+        idx = np.empty(tfce_map.shape, dtype=np.bool8)
         cpmap = np.zeros(tfce_map.shape)
         for v in dist:
             cpmap += np.greater(v, tfce_map, idx)
         cpmap /= self.N
-        return NDVar(cpmap, dims)
+        return NDVar(cpmap, tfce_map.dims)
 
     def masked_parameter_map(self, pmin=0.05, tstart=None, tstop=None,
                              sub=None):
@@ -2586,6 +2635,7 @@ class _ClusterDist:
         """
         probability_map = self.tfce_probability_map(tstart, tstop, sub)
         c_mask = np.less_equal(probability_map.x, pmin)
-        masked_param_map = self._original_param_map * c_mask
-        out = NDVar(masked_param_map, self.dims[1:])
-        return out
+        param_map = self._crop_result_ndvar(self.parameter_map, tstart, tstop,
+                                            sub, True)
+        param_map.x *= c_mask
+        return param_map
