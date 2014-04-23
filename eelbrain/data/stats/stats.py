@@ -40,7 +40,7 @@ def cihw(x, p=.95):
     return c
 
 
-def rms(a, axis=None, rm_mean=False):
+def rms(a, axis=None):
     """Root mean square
 
     Parameters
@@ -51,34 +51,13 @@ def rms(a, axis=None, rm_mean=False):
         Axis or axes over which to calculate the RMS.
         The default (`axis` = `None`) is the RMS over all the dimensions of
         the input array.
-    rm_mean : bool
-        Remove the mean over axis before calculating the RMS (= average
-        reference).
-
-    Notes
-    -----
-    Used as 'Global Field Power' (Murray et al., 2008).
-
-    Murray, M. M., Brunet, D., and Michel, C. M. (2008). Topographic ERP
-            analyses: a step-by-step tutorial review. Brain Topogr, 20(4),
-            249-64.
     """
-    if rm_mean:
-        if axis is None:
-            a = a-a.mean()
-        elif np.isscalar(axis):
-            shape = list(a.shape)
-            shape[axis] = 1
-            a = a - a.mean(axis).reshape(shape)
-        else:
-            shape = list(a.shape)
-            for i in axis:
-                shape[i] = 1
-            a = a - a.mean(axis).reshape(shape)
-
-    # root mean square
-    rms = np.sqrt(np.mean(a ** 2, axis))
-    return rms
+    square = np.square(a)
+    out = square.mean(axis)
+    if np.isscalar(out):
+        return np.sqrt(out)
+    else:
+        return np.sqrt(out, out)
 
 
 def rmssd(Y):
