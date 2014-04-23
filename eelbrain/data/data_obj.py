@@ -47,7 +47,7 @@ from .. import fmtxt
 from .. import ui
 from ..utils import LazyProperty, natsorted
 from . import colorspaces as cs
-from .stats import cihw
+from .stats import cihw, rms
 
 
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
@@ -2784,6 +2784,25 @@ class NDVar(object):
         info = self.info.copy()
         name = name.format(name=self.name)
         return NDVar(x, dims, info, name)
+
+    def rms(self, axis=None):
+        """Compute the root mean square over given dimensions
+
+        Parameters
+        ----------
+        axis : None | str | tuple of str
+            Dimensions over which to operate. A str is used to specify a single
+            dimension, a tuple of str to specify several dimensions, None to
+            compute the standard deviation over all values.
+
+        Returns
+        -------
+        rms : NDVar | Var | float
+            The root mean square over specified dimensions. Returns a Var if
+            only the case dimension remains, and a float if the function
+            collapses over all data.
+        """
+        return self._aggregate_over_dims(axis, rms)
 
     def std(self, dims=None):
         """Compute the standard deviation over given dimensions
