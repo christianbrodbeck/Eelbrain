@@ -154,9 +154,6 @@ temp = {
                                     '{proj}_{epoch}-{rej}_{model}.pickled'),
 
         # Labels
-        'parc': ('aparc.a2005s', 'aparc.a2009s', 'aparc', 'PALS_B12_Brodmann',
-                 'PALS_B12_Lobes', 'PALS_B12_OrbitoFrontal',
-                 'PALS_B12_Visuotopic'),
         'hemi': ('lh', 'rh'),
         'label-dir': os.path.join('{mri-dir}', 'label'),
         'annot-file': os.path.join('{label-dir}', '{hemi}.{parc}.annot'),
@@ -359,6 +356,8 @@ class MneExperiment(FileTree):
         self._register_value('inv', 'free-3-dSPM',
                              set_handler=self._set_inv_as_str)
         self._register_value('model', '', eval_handler=self._eval_model)
+        self._register_field('parc', default='aparc',
+                             eval_handler=self._eval_parc)
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
 
         # Define make handlers
@@ -2392,6 +2391,15 @@ class MneExperiment(FileTree):
             self._mri_subjects[subject] = mri_subject
         if subject == self.get('subject'):
             self._state['mrisubject'] = mri_subject
+
+    def _eval_parc(self, parc):
+        # Freesurfer parcellations
+        if parc in ('aparc.a2005s', 'aparc.a2009s', 'aparc',
+                    'PALS_B12_Brodmann', 'PALS_B12_Lobes',
+                    'PALS_B12_OrbitoFrontal', 'PALS_B12_Visuotopic'):
+            return parc
+        else:
+            raise ValueError("Unknown parcellation:  parc=%r" % parc)
 
     def set_root(self, root, find_subjects=False):
         if root is None:
