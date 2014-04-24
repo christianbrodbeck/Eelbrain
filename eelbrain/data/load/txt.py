@@ -28,12 +28,14 @@ def _str_is_float(x):
 # could use csv module (http://docs.python.org/2/library/csv.html) but it
 # currently does not support unicode
 def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
-        start_tag=None):
+        start_tag=None, ignore_missing=False):
     """
     Load a :class:`Dataset` from a tab-separated values file.
 
     Parameters
     ----------
+    path : None | str
+        Path to the tsv file. If None, a system file dialog will open.
     names : list of str | bool
         * ``['name1', ...]`` use these names
         * ``True``: look for names on the first line of the file
@@ -48,11 +50,14 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
     skiprows : int
         Skip so many rows at the beginning of the file (for tsv files with
         headers). Column names (if names==True) are expected to come after
-        the skipped rows.
+        the skipped rows. Skiprows is applied after start_tag.
     start_tag : None | str
         Alternative way to skip header rows. The table is assumed to start
         on the line following the last line in the file that starts with
         ``start_tag``.
+    ignore_missing : bool
+        Ignore rows with missing values (default False). Append ``NaN`` for
+        numerical and ``""`` for categorial variables.
     """
     if path is None:
         path = ui.ask_file("Load TSV", "Select tsv file to import as Dataset")
@@ -63,8 +68,6 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
         lines = fid.readlines()
 
     # find start position
-    if skiprows:
-        lines = lines[skiprows:]
     if start_tag:
         start = 0
         for i, line in enumerate(lines, 1):
@@ -72,6 +75,8 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
                 start = i
         if start:
             lines = lines[start:]
+    if skiprows:
+        lines = lines[skiprows:]
 
     # read / create names
     if names == True:
@@ -79,66 +84,58 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
         names = head_line.split(delimiter)
         names = [n.strip().strip('"') for n in names]
 
-    # read table body
-    rows = []
-    for line in lines:
-        values = []
-        for v in line.split(delimiter):
-            v = v.strip()
-            values.append(v)
-        rows.append(values)
+    # separate lines into values
+    rows = [[v.strip() for v in line.split(delimiter)] for line in lines]
 
-    n_vars = len(rows[0])
+    row_lens = set(len(row) for row in rows)
+    if len(row_lens) > 1 and not ignore_missing:
+        msg = ("Not all rows have same number of entries. Set ignore_missing "
+               "to True in order to ignore this error.")
+        raise ValueError(msg)
+    n_cols = max(row_lens)
 
-    if not names:
-        names = ['v%i' % i for i in xrange(n_vars)]
-
-    n = len(names)
-    # decide whether to drop first column
-    if n_vars == n:
-        start = 0
-    elif n_vars == n + 1:
-        start = 1
+    if names:
+        if len(names) != n_cols:
+            msg = ("The number of names in the header (%i) does not "
+                   "correspond to the number of columns in the table (%i)"
+                   % (len(names), n_cols))
+            raise ValueError(msg)
     else:
-        raise ValueError("number of header different from number of data")
+        names = ['v%i' % i for i in xrange(n_cols)]
 
-    if types in ['auto', None, False, True]:
-        types = [0] * n
+    if types in ('auto', None, False, True):
+        types = [0] * n_cols
     else:
-        assert len(types) == n
+        assert len(types) == n_cols
 
-    # prepare for reading data
-    data = []
-    for _ in xrange(n):
-        data.append([])
-
-    # read rest of the data
-    for line in rows:
-        for i, v in enumerate(line[start:]):
+    data = np.empty((len(rows), n_cols), object)
+    for r, line in enumerate(rows):
+        for c, v in enumerate(line):
             for str_del in ["'", '"']:
                 if len(v) > 0 and v[0] == str_del:
                     v = v.strip(str_del)
-                    types[i] = 1
-            data[i].append(v)
+                    types[c] = 1
+            data[r, c] = v
 
     ds = _data.Dataset(name=os.path.basename(path))
 
     # convert values to data-objects
     np_vars = vars(np)
-    for name, values, type_ in zip(names, data, types):
+    bool_dict = {'True': True, 'False': False, None: False}
+    for name, values, type_ in zip(names, data.T, types):
         if type_ == 1:
-            dob = _data.Factor(values, name=name)
-        elif all(v in ('True', 'False') for v in values):
-            values = [{'True': True, 'False': False}[v] for v in values]
+            dob = _data.Factor(values, labels={None: ''}, name=name)
+        elif all(v in ('True', 'False', None) for v in values):
+            values = [bool_dict[v] for v in values]
             dob = _data.Var(values, name=name)
-        elif all(_str_is_float(v) for v in values):
-            values = [eval(v, np_vars) for v in values]
+        elif all(v is None or _str_is_float(v) for v in values):
+            values = [np.nan if v is None else eval(v, np_vars) for v in values]
             dob = _data.Var(values, name=name)
         elif type_ == 2:
             err = ("Could not convert all values to float: %s" % values)
             raise ValueError(err)
         else:
-            dob = _data.Factor(values, name=name)
+            dob = _data.Factor(values, labels={None: ''}, name=name)
         ds.add(dob)
     return ds
 
