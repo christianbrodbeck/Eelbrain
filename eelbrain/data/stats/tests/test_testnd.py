@@ -9,6 +9,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from eelbrain.data.data_obj import UTS, Ordered, Sensor
+from eelbrain.data.stats import testnd as _testnd
 from eelbrain.data.stats.testnd import _ClusterDist
 from eelbrain.data.tests.test_data import assert_dataobj_equal
 from eelbrain.data import datasets, testnd, plot, NDVar
@@ -205,6 +206,28 @@ def test_corr():
 def test_t_contrast():
     ds = datasets.get_rand()
 
+    # test aux functions
+    y = np.arange(9.).reshape((3, 3))
+    indexes = {'a': 0, 'b': 1, 'c': 2}
+
+    contrast = "+sum(a>c, b>c)"
+    contrast_ = _testnd._parse_t_contrast(contrast)
+    assert_equal(contrast_, ('func', '+', np.sum, [('comp', None, 'a', 'c'),
+                                                   ('comp', None, 'b', 'c')]))
+
+    contrast = "+sum(a>*, b>*)"
+    contrast_ = _testnd._parse_t_contrast(contrast)
+    assert_equal(contrast_, ('func', '+', np.sum, [('comp', None, 'a', '*'),
+                                                   ('comp', None, 'b', '*')]))
+    _, cells = _testnd._t_contrast_rel_properties(contrast_)
+    pc, mc = _testnd._t_contrast_rel_expand_cells(cells, ('a', 'b', 'c'))
+    data = _testnd._t_contrast_rel_data(y, indexes, pc, mc)
+    assert_array_equal(data['a'], np.arange(3.))
+    assert_array_equal(data['*'], y.mean(0))
+
+    assert_raises(ValueError, _testnd._t_contrast_rel_expand_cells, cells,
+                  ('a|c', 'b|c', 'c|c'))
+
     # simple contrast
     res = testnd.t_contrast_rel('uts', 'A', 'a1>a0', 'rm', ds=ds, samples=100,
                                 pmin=0.05)
@@ -227,6 +250,10 @@ def test_t_contrast():
     res_ = pickle.loads(string)
     assert_equal(repr(res_), repr(res))
     assert_dataobj_equal(res.p, res_.p)
+
+    # contrast with "*"
+    contrast_star = '+min(a1|b0>a0|*, a1|b1>a0|*)'
+    res = testnd.t_contrast_rel('uts', 'A%B', contrast_star, 'rm', ds=ds)
 
 
 def test_ttest_1samp():

@@ -231,9 +231,12 @@ class t_contrast_rel(_TestResult):
         """
         test_name = "t-contrast"
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
-        index = ct.data_indexes
+        indexes = ct.data_indexes
 
+        # setup contrast
         contrast_ = _parse_t_contrast(contrast)
+        n_buffers, cells_in_contrast = _t_contrast_rel_properties(contrast_)
+        pcells, mcells = _t_contrast_rel_expand_cells(cells_in_contrast, ct.cells)
         tail_ = contrast_[1]
         if tail_ is None:
             tail = 0
@@ -254,11 +257,11 @@ class t_contrast_rel(_TestResult):
 
         # buffer memory allocation
         shape = ct.Y.shape[1:]
-        n_buffers = _t_contrast_rel_setup(contrast_)
         buff = np.empty((n_buffers,) + shape)
 
         # original data
-        tmap = _t_contrast_rel(contrast_, ct.Y.x, index, buff)
+        data = _t_contrast_rel_data(ct.Y.x, indexes, pcells, mcells)
+        tmap = _t_contrast_rel(contrast_, data, buff)
         del buff
         dims = ct.Y.dims[1:]
         t = NDVar(tmap, dims, {}, 't')
@@ -275,7 +278,8 @@ class t_contrast_rel(_TestResult):
                 buff = np.empty((n_buffers,) + shape)
                 tmap_ = np.empty(shape)
                 for Y_ in resample(cdist.Y_perm, samples, unit=ct.match):
-                    _t_contrast_rel(contrast_, Y_.x, index, buff, tmap_)
+                    data = _t_contrast_rel_data(Y_.x, indexes, pcells, mcells)
+                    _t_contrast_rel(contrast_, data, buff, tmap_)
                     cdist.add_perm(tmap_)
 
         # store attributes
@@ -306,6 +310,7 @@ class t_contrast_rel(_TestResult):
 
 
 def _parse_cell(cell_name):
+    "Parse a cell name for t_contrast"
     cell = tuple(s.strip() for s in cell_name.split('|'))
     if len(cell) == 1:
         return cell[0]
@@ -314,10 +319,25 @@ def _parse_cell(cell_name):
 
 
 def _parse_t_contrast(contrast):
+    """Parse a string specifying a t-contrast into nested instruction tuples
+
+    Parameters
+    ----------
+    contrast : str
+        Contrast specification string.
+
+    Returns
+    -------
+    compiled_contrast : tuple
+        Nested tuple composed of:
+        Comparisons:  ``('comp', tail, c1, c0)`` and
+        Functions:  ``('func', tail, [arg1, arg2, ...])``
+        where ``arg1`` etc. are in turn comparisons and functions.
+    """
     depth = 0
     start = 0
     if not '(' in contrast:
-        m = re.match("\s*([+-]*)\s*([\w\|]+)\s*([<>])\s*([\w\|]+)", contrast)
+        m = re.match("\s*([+-]*)\s*([\w\|*]+)\s*([<>])\s*([\w\|*]+)", contrast)
         if m:
             clip, c1, direction, c0 = m.groups()
             if direction == '<':
@@ -358,8 +378,8 @@ def _parse_t_contrast(contrast):
                 raise ValueError(err)
 
 
-def _t_contrast_rel_setup(item):
-    """Setup t-contrast
+def _t_contrast_rel_properties(item):
+    """Find properties of a compiled t-contrast
 
     Parameters
     ----------
@@ -370,25 +390,90 @@ def _t_contrast_rel_setup(item):
     -------
     n_buffers : int
         Number of buffer maps needed.
+    cells : set
+        names of all cells that occur in the contrast.
     """
     if item[0] == 'func':
         _, _, _, items_ = item
         local_buffers = len(items_)
+        cells = set()
         for i, item_ in enumerate(items_):
             available_buffers = local_buffers - i - 1
-            needed_buffers = _t_contrast_rel_setup(item_)
+            needed_buffers, cells_ = _t_contrast_rel_properties(item_)
             additional_buffers = needed_buffers - available_buffers
             if additional_buffers > 0:
                 local_buffers += additional_buffers
-        return local_buffers
+            cells.update(cells_)
+        return local_buffers, cells
     else:
-        return 0
+        return 0, set(item[2:])
 
 
-def _t_contrast_rel(item, y, index, buff=None, out=None):
-    if out is None:
-        out = np.empty(y.shape[1:])
+def _t_contrast_rel_expand_cells(cells, all_cells):
+    """Find cells that are an average of other cells
 
+    Parameters
+    ----------
+    cells : set
+        Cells occurring in the contrast.
+    all_cells : tuple
+        All cells in the data.
+
+    Returns
+    -------
+    primary_cells : set
+        All cells that occur directly in the data.
+    mean_cells : dict
+        ``{name: components}`` dictionary (components being a tuple with all
+        cells to be averaged).
+    """
+    # check all cells have same number of components
+    ns = set(1 if isinstance(cell, str) else len(cell) for cell in all_cells)
+    ns.update(1 if isinstance(cell, str) else len(cell) for cell in cells)
+    if len(ns) > 1:
+        msg = ("Not all cells have the same number of components: %s" %
+               str(tuple(cells) + tuple(all_cells)))
+        raise ValueError(msg)
+
+    primary_cells = set()
+    mean_cells = {}
+    for cell in cells:
+        if cell in all_cells:
+            primary_cells.add(cell)
+        elif isinstance(cell, str):
+            if cell != '*':
+                raise ValueError("%s not in all_cells" % repr(cell))
+            mean_cells[cell] = all_cells
+            primary_cells.update(all_cells)
+        else:
+            base = tuple(c for c in all_cells if
+                         all(item in (ci, '*') for item, ci in izip(cell, c)))
+            mean_cells[cell] = base
+            primary_cells.update(base)
+
+    return primary_cells, mean_cells
+
+
+def _t_contrast_rel_data(y, indexes, cells, mean_cells):
+    "Create {cell: data} dictionary"
+    data = {}
+    for cell in cells:
+        index = indexes[cell]
+        data[cell] = y[index]
+
+    for name, cells_ in mean_cells.iteritems():
+        cell = cells_[0]
+        x = data[cell].copy()
+        for cell in cells_[1:]:
+            x += data[cell]
+        x /= len(cells_)
+        data[name] = x
+
+    return data
+
+
+def _t_contrast_rel(item, data, buff=None, out=None):
+    "Execute a t_contrast (recursive)"
     if item[0] == 'func':
         _, clip, func, items_ = item
         tmaps = buff[:len(items_)]
@@ -397,13 +482,11 @@ def _t_contrast_rel(item, y, index, buff=None, out=None):
                 buff_ = None
             else:
                 buff_ = buff[i + 1:]
-            _t_contrast_rel(item_, y, index, buff_, tmaps[i])
+            _t_contrast_rel(item_, data, buff_, tmaps[i])
         tmap = func(tmaps, axis=0, out=out)
     else:
         _, clip, c1, c0 = item
-        i1 = index[c1]
-        i0 = index[c0]
-        tmap = _t_rel(y[i1], y[i0], out)
+        tmap = _t_rel(data[c1], data[c0], out)
 
     if clip is not None:
         if clip == '+':
@@ -1147,13 +1230,13 @@ def _t_rel(y1, y0, out=None, buff=None):
     assert(y1.shape == y0.shape)
     n_subjects = len(y1)
     shape = y1.shape[1:]
-    if out is None:
-        out = np.empty(shape)
     n_tests = np.product(shape)
 
     if np.log2(n_tests) > 13:
         y1 = y1.reshape((n_subjects, n_tests))
         y0 = y0.reshape((n_subjects, n_tests))
+        if out is None:
+            out = np.empty(shape)
         out_flat = out.reshape(n_tests)
         step = 2 ** 13
         for i in xrange(0, n_tests, step):
@@ -1169,8 +1252,8 @@ def _t_rel(y1, y0, out=None, buff=None):
         buff = np.empty(y1.shape)
     d = np.subtract(y1, y0, buff)
     # out = mean(d) / sqrt(var(d) / n_subjects)
-    np.mean(d, 0, out=out)
-    denom = np.var(d, 0, ddof=1)
+    out = d.mean(0, out=out)
+    denom = d.var(0, ddof=1)
     denom /= n_subjects
     np.sqrt(denom, out=denom)
     out /= denom
