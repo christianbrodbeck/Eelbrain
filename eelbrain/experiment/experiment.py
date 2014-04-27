@@ -237,9 +237,13 @@ class TreeModel(object):
 
         default = self._defaults.get(key, default)
 
-        if values is not None and len(values):
+        if values is not None:
             if default is None:
-                default = values[0]
+                if len(values):
+                    default = values[0]
+                else:
+                    msg = "Values for %r empty, can`t set default" % key
+                    raise RuntimeError(msg)
             elif default not in values:
                 err = ("Default %r for %r not in values "
                        "%s" % (default, key, str(values)))
