@@ -148,6 +148,7 @@ temp = {
         'common_brain': 'fsaverage',
 
         # evoked
+        'equalize_evoked_count': ('', 'eq'),
         'evoked-dir': os.path.join('{meg-dir}', 'evoked'),
         'evoked-file': os.path.join('{evoked-dir}', '{experiment} {sns-kind} '
                                     '{epoch} {evoked-kind}.pickled'),
@@ -362,7 +363,8 @@ class MneExperiment(FileTree):
 
         # compounds
         self._register_compound('sns-kind', ('raw', 'proj'))
-        self._register_compound('evoked-kind', ('rej', 'model'))
+        self._register_compound('evoked-kind', ('rej', 'model',
+                                                'equalize_evoked_count'))
 
         # Define make handlers
         self._bind_make('evoked-file', self.make_evoked)
@@ -1517,6 +1519,7 @@ class MneExperiment(FileTree):
             return
 
         epoch_names = [ep['name'] for ep in self._params['epochs']]
+        equal_count = self.get('equalize_evoked_count') == 'eq'
 
         # load the epochs
         epoch = self.get('epoch')
@@ -1536,7 +1539,8 @@ class MneExperiment(FileTree):
             if ds_idx.sum() < len(ds_idx):
                 ds = ds[ds_idx]
 
-            dss[i] = ds.aggregate(model, drop_bad=True, drop=drop)
+            dss[i] = ds.aggregate(model, drop_bad=True, drop=drop,
+                                  equal_count=equal_count)
 
         if len(dss) == 1:
             ds = dss[0]
