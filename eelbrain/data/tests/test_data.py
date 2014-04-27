@@ -112,6 +112,31 @@ def test_print():
     print repr(Ynd)
 
 
+def test_aggregate():
+    "Test aggregation methods"
+    ds = datasets.get_rand()
+
+    # don't handle inconsistencies silently
+    assert_raises(ValueError, ds.aggregate, 'A%B')
+
+    dsa = ds.aggregate('A%B', drop_bad=True)
+    assert_array_equal(dsa['n'], [15, 15, 15, 15])
+    idx1 = ds.eval("logical_and(A=='a0', B=='b0')")
+    assert_equal(dsa['Y', 0], ds['Y', idx1].mean())
+
+    # unequal cell counts
+    ds = ds[:-3]
+    dsa = ds.aggregate('A%B', drop_bad=True)
+    assert_array_equal(dsa['n'], [15, 15, 15, 12])
+    idx1 = ds.eval("logical_and(A=='a0', B=='b0')")
+    assert_equal(dsa['Y', 0], ds['Y', idx1].mean())
+
+    dsa = ds.aggregate('A%B', drop_bad=True, equal_count=True)
+    assert_array_equal(dsa['n'], [12, 12, 12, 12])
+    idx1_12 = np.logical_and(idx1, idx1.cumsum() <= 12)
+    assert_equal(dsa['Y', 0], ds['Y', idx1_12].mean())
+
+
 def test_align():
     "Testing align() and align1() functions"
     ds = datasets.get_rand()
@@ -230,6 +255,13 @@ def test_dataset_combining():
     assert_raises(ValueError, ds.update, ds2)
 
 
+def test_dataset_indexing():
+    """Test Dataset indexing"""
+    ds = datasets.get_uv()
+    ds['C', :] = 'c'
+    ok_(np.all(ds.eval("C == 'c'")))
+
+
 def test_dataset_sorting():
     "Test Dataset sorting methods"
     test_array = np.arange(10)
@@ -250,13 +282,6 @@ def test_dataset_sorting():
     ds_shuffled.sort('f', descending=True)
     assert_dataset_equal(ds_shuffled, ds[::-1], "In-place sorted by Factor, "
                          "descending")
-
-
-def test_dataset_indexing():
-    """Test Dataset indexing"""
-    ds = datasets.get_uv()
-    ds['C', :] = 'c'
-    ok_(np.all(ds.eval("C == 'c'")))
 
 
 def test_dim_uts():

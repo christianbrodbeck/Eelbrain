@@ -1957,7 +1957,8 @@ class Factor(_Effect):
                 x_i = np.unique(self.x[idx])
                 if len(x_i) > 1:
                     err = ("ambiguous cell: Factor %r has multiple values for "
-                           "cell %r" % (self.name, cell))
+                           "cell %r. Set drop_bad=True in order to ignore "
+                           "this inconsistency." % (self.name, cell))
                     raise ValueError(err)
                 else:
                     x.append(x_i[0])
@@ -3648,7 +3649,7 @@ class Dataset(collections.OrderedDict):
         return self.aggregate(X, drop_empty, name, count, drop_bad, drop)
 
     def aggregate(self, X, drop_empty=True, name='{name}', count='n',
-                  drop_bad=False, drop=()):
+                  drop_bad=False, drop=(), equal_count=False):
         """
         Return a Dataset with one case for each cell in X.
 
@@ -3672,6 +3673,10 @@ class Dataset(collections.OrderedDict):
             when such a Factor is encountered)
         drop : sequence of str
             Additional data-objects to drop.
+        equal_count : bool
+            Make sure the same number of rows go into each average. First, the
+            cell with the smallest number of rows is determined. Then, for each
+            cell, rows beyond that number are dropped.
 
         Notes
         -----
@@ -3680,9 +3685,19 @@ class Dataset(collections.OrderedDict):
         """
         if not drop_empty:
             raise NotImplementedError('drop_empty = False')
+
         if X:
             X = ascategorial(X, ds=self)
             self._check_n_cases(X, empty_ok=False)
+            if equal_count:
+                indexes = np.array([X == cell for cell in X.cells])
+                n = indexes.sum(1).min()
+                for index in indexes:
+                    np.logical_and(index, index.cumsum() <= n, index)
+                index = indexes.any(0)
+                ds = self[index]
+                X = X[index]
+                return ds.aggregate(X, drop_empty, name, count, drop_bad, drop)
         else:
             X = Factor('a' * self.n_cases)
 
