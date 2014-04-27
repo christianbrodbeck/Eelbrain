@@ -150,7 +150,7 @@ temp = {
         # evoked
         'evoked-dir': os.path.join('{meg-dir}', 'evoked'),
         'evoked-file': os.path.join('{evoked-dir}', '{experiment} {sns-kind} '
-                                    '{epoch}-{rej}_{model}.pickled'),
+                                    '{epoch} {evoked-kind}.pickled'),
 
         # Labels
         'hemi': ('lh', 'rh'),
@@ -345,7 +345,7 @@ class MneExperiment(FileTree):
         FileTree.__init__(self, **state)
         self.set_root(root, state.pop('find_subjects', True))
 
-        # regiser variables with complex behavior
+        # register variables with complex behavior
         self._register_field('rej', self.epoch_rejection.keys(),
                              post_set_handler=self._post_set_rej)
         self._register_field('group', self.groups.keys() + ['all'], 'all',
@@ -362,6 +362,7 @@ class MneExperiment(FileTree):
 
         # compounds
         self._register_compound('sns-kind', ('raw', 'proj'))
+        self._register_compound('evoked-kind', ('rej', 'model'))
 
         # Define make handlers
         self._bind_make('evoked-file', self.make_evoked)
