@@ -3,6 +3,16 @@ Changes
 
 .. currentmodule:: eelbrain.data
 
+New in 0.2
+----------
+
+* :class:`eelbrain.lab.gui.SelectEpochs` Epoch rejection GIU has a new "GA" button 
+  to plot the grand average of all accepted trials
+* Cluster permutation tests in :mod:`~eelbrain.data.testnd` use multiple 
+  cores; To turn off multiprocessing set 
+  ``eelbrain.data.stats.testnd.multiprocessing = False``.
+
+
 New in 0.1.7
 ------------
 
