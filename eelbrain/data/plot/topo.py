@@ -17,7 +17,7 @@ class Topomap(_tb_sensors_mixin, _base.eelfigure):
     "Plot individual topogeraphies"
     def __init__(self, epochs, Xax=None, sensors=True, proj='default',
                  title=None, res=200, interpolation='nearest', ds=None,
-                 vlims={}, **layout):
+                 vmax=None, vmin=None, **layout):
         """
         Plot individual topogeraphies
 
@@ -32,8 +32,6 @@ class Topomap(_tb_sensors_mixin, _base.eelfigure):
             is removed; with 'fullname', the full name is shown.
         proj : str
             The sensor projection to use for topomaps.
-        size : scalar
-            Side length in inches of individual axes.
         title : None | string
             Figure title.
         res : int
@@ -43,6 +41,9 @@ class Topomap(_tb_sensors_mixin, _base.eelfigure):
         ds : None | Dataset
             If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
+        vmax, vmin : None | scalar
+            Override the default plot limits. If only vmax is specified, vmin
+            is set to -vmax.
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
@@ -50,11 +51,13 @@ class Topomap(_tb_sensors_mixin, _base.eelfigure):
                                  figtitle=title)
         _tb_sensors_mixin.__init__(self)
 
+        vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
+
         topo_kwargs = {'res': res,
                        'interpolation': interpolation,
                        'proj': proj,
                        'sensors': sensors,
-                       'vlims': _base.find_fig_vlims(epochs, vlims=vlims)}
+                       'vlims': vlims}
 
         self._plots = []
         self._sensor_plots = []
@@ -122,7 +125,7 @@ class TopoButterfly(_base.eelfigure):
     def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensors=True, ROI=None, ds=None, axh=3, ax_aspect=2,
-                 vlims={}, **fig_kwa):
+                 vmax=None, vmin=None, **fig_kwa):
         """
         Parameters
         ----------
@@ -149,20 +152,14 @@ class TopoButterfly(_base.eelfigure):
         ds : None | Dataset
             If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
-
-        **Figure Layout:**
-
-        size : scalar
-            in inches: height of the butterfly axes as well as side length of
-            the topomap axes
+        axh : scalar
+            Height of the butterfly axes as well as side length of the topomap
+            axes (in inches).
         ax_aspect : scalar
             multiplier for the width of butterfly plots based on their height
-        res : int
-            resolution of the topomap plots (res x res pixels)
-        interpolation : 'nearest' | ...
-            matplotlib imshow kwargs
-        vmax : None | scalar
-            Override the default plot limits.
+        vmax, vmin : None | scalar
+            Override the default plot limits. If only vmax is specified, vmin
+            is set to -vmax.
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         n_plots = len(epochs)
@@ -200,7 +197,7 @@ class TopoButterfly(_base.eelfigure):
                              'ROIcolor': color,
                              'title': False}
 
-        vlims = _base.find_fig_vlims(epochs, True, vlims)
+        vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
 
         self.bfly_axes = []
         self.topo_axes = []
@@ -577,7 +574,7 @@ class TopoArray(_base.eelfigure):
 
     """
     def __init__(self, epochs, Xax=None, title=None, axh=6, axw=5,
-                 ntopo=3, t=[], ds=None,
+                 ntopo=3, t=[], ds=None, vmax=None, vmin=None,
                  **fig_kwa):
         """
         Channel by sample array-plots with topomaps corresponding to
@@ -600,6 +597,9 @@ class TopoArray(_base.eelfigure):
         ds : None | Dataset
             If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
+        vmax, vmin : None | scalar
+            Override the default plot limits. If only vmax is specified, vmin
+            is set to -vmax.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
@@ -630,7 +630,7 @@ class TopoArray(_base.eelfigure):
             fig.suptitle(title)
         self.title = title
 
-        vlims = _base.find_fig_vlims(epochs)
+        vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
 
         # save important properties
         self._epochs = epochs

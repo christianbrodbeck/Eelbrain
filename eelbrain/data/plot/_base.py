@@ -416,7 +416,7 @@ def find_uts_ax_vlim(layers, vlims={}):
     return bottom, top
 
 
-def find_fig_vlims(plots, range_by_measure=False, vlims={}):
+def find_fig_vlims(plots, range_by_measure=False, vmax=None, vmin=None):
     """Find vmin and vmax parameters for every (meas, cmap) combination
 
     Parameters
@@ -426,22 +426,43 @@ def find_fig_vlims(plots, range_by_measure=False, vlims={}):
     range_by_measure : bool
         Constrain the vmax - vmin range such that the range is constant within
         measure (for uts plots).
-    vlims : dict
-        Predetermined vlims (take precedence).
+    vmax : None | dict | scalar
+        Dict: predetermined vlims (take precedence). Scalar: user-specified
+        vmax parameter (used for for the first meas kind).
+    vmin : None | scalar
+        User-specified vmin parameter. If vmax is user-specified but vmin is
+        None, -vmax is used.
 
     Returns
     -------
     vlims : dict
         Dictionary of im limits: {(meas, cmap): (vmin, vmax)}.
     """
+    if isinstance(vmax, dict):
+        vlims = vmax
+        user_vlim = None
+    else:
+        vlims = {}
+        if vmax is None:
+            user_vlim = None
+        elif vmin is None:
+            user_vlim = (vmax, -vmax)
+        else:
+            user_vlim = (vmax, vmin)
+
     out = {}  # (meas, cmap): (vmin, vmax)
+    first_meas = None  # what to use user-specified vmax for
     for ndvar in chain(*plots):
         vmin, vmax = find_vlim_args(ndvar)
         meas = ndvar.info.get('meas', '?')
+        if first_meas is None:
+            first_meas = meas
         cmap = ndvar.info.get('cmap', None)
         key = (meas, cmap)
         if key in vlims:
             continue
+        elif user_vlim is not None and meas == first_meas:
+            out[key] = user_vlim
         elif key in out:
             vmin_, vmax_ = out[key]
             vmin = min(vmin, vmin_)
