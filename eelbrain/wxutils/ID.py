@@ -34,6 +34,8 @@ FIG_TITLE = wx.NewId()
 FOCUS_SHELL = wx.NewId()
 FULLSCREEN = wx.NewId()
 
+GRAND_AVERAGE = wx.NewId()
+
 HELP_EELBRAIN = wx.NewId()
 HELP_HIDE = wx.NewId()
 HELP_MDP = wx.NewId()

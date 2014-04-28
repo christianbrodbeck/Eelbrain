@@ -174,6 +174,12 @@ class Document(object):
         epoch = self.data.sub(case=i, name=name)
         return epoch
 
+    def get_grand_average(self):
+        "Grand average of all accepted epochs"
+        out = self.data[self.accept].mean('case')
+        out.name = "Grand Average"
+        return out
+
     def set_bad_chs(self, bad_chs, reset=False):
         """Set the channels to treat as bad (i.e., exclude)
 
@@ -494,6 +500,13 @@ class Frame(wx.Frame):  # control
 #         tb.AddLabelTool(ID.FULLSCREEN, "Fullscreen",
 #                         Icon("tango/actions/view-fullscreen"))
 #         self.Bind(wx.EVT_TOOL, self.OnShowFullScreen, id=ID.FULLSCREEN)
+
+        # Grand-average plot
+        self.grand_av_button = wx.Button(tb, ID.GRAND_AVERAGE, "GA")
+        self.grand_av_button.SetHelpText("Plot the grand average of all "
+                                         "accepted epochs")
+        tb.AddControl(self.grand_av_button)
+
         tb.Realize()
 
         self.CreateStatusBar()
@@ -659,6 +672,10 @@ class Frame(wx.Frame):  # control
     def PlotButterfly(self, ax_index):
         epoch = self._get_ax_data(ax_index)
         plot.TopoButterfly(epoch, vmax=self._vlims)
+
+    def PlotGrandAverage(self):
+        epoch = self.doc.get_grand_average()
+        plot.TopoButterfly(epoch)
 
     def PlotTopomap(self, ax_index, time):
         tseg = self._get_ax_data(ax_index, time)
@@ -960,6 +977,7 @@ class Controller(object):
         f.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVEAS)
         f.Bind(wx.EVT_TOOL, self.OnSetLayout, id=ID.SET_LAYOUT)
         f.threshold_button.Bind(wx.EVT_BUTTON, self.OnThreshold)
+        f.grand_av_button.Bind(wx.EVT_BUTTON, self.OnPlotGrandAverage)
 
         f.Bind(wx.EVT_MENU, self.OnLoad, id=wx.ID_OPEN)
         f.Bind(wx.EVT_MENU, self.OnClose, id=wx.ID_CLOSE)
@@ -1135,6 +1153,9 @@ class Controller(object):
 
         dlg.Destroy()
         return rcode
+
+    def OnPlotGrandAverage(self, event):
+        self.frame.PlotGrandAverage()
 
     def OnRedo(self, event):
         self.history.redo()
