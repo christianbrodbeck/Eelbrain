@@ -1622,13 +1622,23 @@ class _Effect(object):
 
 
 class Factor(_Effect):
-    """
-    Container for categorial data.
+    """Container for categorial data.
 
+    Attributes
+    ----------
+    cells : tuple of str
+        All cells contained in the Factor.
+    name : None | str
+        Name given to the Factor.
+    random : bool
+        Whether the Factor is defined as random factor (influences ANOVA).
+    x : array
+        Encoded data.
     """
     _stype_ = "factor"
     def __init__(self, x, name=None, random=False, rep=1, tile=1, labels={}):
-        """
+        """Container for categorial data.
+
         Parameters
         ----------
         x : iterator
@@ -1920,9 +1930,9 @@ class Factor(_Effect):
         txt = '{0}=={1}'
         return [txt.format(cells[i], cells[-1]) for i in range(len(cells) - 1)]
 
-    @property
+    @LazyProperty
     def cells(self):
-        return natsorted(self._labels.values())
+        return tuple(natsorted(self._labels.values()))
 
     def compress(self, X, name='{name}'):
         "Deprecated. Use .aggregate()."
