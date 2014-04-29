@@ -124,8 +124,8 @@ class TopoButterfly(_base.eelfigure):
     """
     def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
                  proj='default', res=100, interpolation='nearest', color=None,
-                 sensors=True, ROI=None, ds=None, axh=3, ax_aspect=2,
-                 vmax=None, vmin=None, **fig_kwa):
+                 sensors=True, ROI=None, ds=None, vmax=None, vmin=None,
+                 **layout):
         """
         Parameters
         ----------
@@ -165,27 +165,31 @@ class TopoButterfly(_base.eelfigure):
         n_plots = len(epochs)
 
         # create figure
-        x_size = axh * (1 + ax_aspect)
-        y_size = axh * n_plots
-
-        fig_kwa.update(figsize=(x_size, y_size))
-        super(TopoButterfly, self).__init__("TopoButterfly Plot", None,
-                                        fig_kwa=fig_kwa, figtitle=title)
+        nax = 3 * n_plots  # for layout pretend butterfly & topo are 3 axes
+        if 'ncol' in layout:
+            raise NotImplementedError("`nrow` parameter not implemented")
+        layout['ncol'] = 3
+        super(TopoButterfly, self).__init__("TopoButterfly Plot", nax, layout,
+                                            1, 3, figtitle=title,
+                                            make_axes=False)
 
         # axes sizes
         frame = .05  # in inches; .4
+        w = self._layout.w
+        h = self._layout.h
+        ax_aspect = 2
 
-        xframe = frame / x_size
-        x_left_ylabel = 0.5 / x_size if ylabel else 0
-        x_left_title = 0.5 / x_size
+        xframe = frame / w
+        x_left_ylabel = 0.5 / w if ylabel else 0
+        x_left_title = 0.5 / w
         x_text = x_left_title / 3
         ax1_left = xframe + x_left_title + x_left_ylabel
         ax1_width = ax_aspect / (ax_aspect + 1) - ax1_left - xframe / 2
         ax2_left = ax_aspect / (ax_aspect + 1) + xframe / 2
         ax2_width = 1 / (ax_aspect + 1) - 1.5 * xframe
 
-        yframe = frame / y_size
-        y_bottomframe = 0.5 / y_size
+        yframe = frame / h
+        y_bottomframe = 0.5 / h
         y_sep = (1 - y_bottomframe) / n_plots
         height = y_sep - yframe
 
@@ -573,9 +577,8 @@ class TopoArray(_base.eelfigure):
      - RMB on a topomap removes the topomap
 
     """
-    def __init__(self, epochs, Xax=None, title=None, axh=6, axw=5,
-                 ntopo=3, t=[], ds=None, vmax=None, vmin=None,
-                 **fig_kwa):
+    def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
+                 vmax=None, vmin=None, **layout):
         """
         Channel by sample array-plots with topomaps corresponding to
         individual time points.
@@ -588,8 +591,6 @@ class TopoArray(_base.eelfigure):
             Create a separate plot for each cell in this model.
         title : None | string
             Figure title.
-        axh, axw : scalar
-            Axes height and width in inches.
         ntopo | int
             number of topomaps per array-plot.
         t : list of scalar (len <= ntopo)
@@ -602,13 +603,14 @@ class TopoArray(_base.eelfigure):
             is set to -vmax.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
-
-        # figure properties
         n_epochs = len(epochs)
         n_topo_total = ntopo * n_epochs
-        left_rim = axw / 4
-        fig_width, fig_height = n_epochs * axw + left_rim, axh
-        fig_kwa.update(figsize=(fig_width, fig_height))
+
+        # create figure
+        _base.eelfigure.__init__(self, 'TopoArray Plot', n_epochs, layout, 1.5,
+                                 6, make_axes=False)
+        fig = self.figure
+        axw = self._layout.axw
 
         # fig coordinates
         x_frame_l = .6 / axw / n_epochs
@@ -617,9 +619,6 @@ class TopoArray(_base.eelfigure):
 
         x_per_ax = (1 - x_frame_l - x_frame_r) / n_epochs
 
-        # create figure
-        super(TopoArray, self).__init__('TopoArray Plot', None, fig_kwa=fig_kwa)
-        fig = self.figure
 
         fig.subplots_adjust(left=x_frame_l,
                             bottom=.05,

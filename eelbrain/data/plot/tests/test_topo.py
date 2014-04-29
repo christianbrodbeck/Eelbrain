@@ -12,9 +12,10 @@ def test_plot_topomap():
     ds = datasets.get_rand(utsnd=True)
     p = plot.Topomap('utsnd.summary(time=(0.075, 0.125))', ds=ds)
     p.close()
-    p = plot.Topomap('utsnd.summary(time=(0.075, 0.125))', ds=ds, vmax=0.2)
+    p = plot.Topomap('utsnd.summary(time=(0.075, 0.125))', ds=ds, vmax=0.2,
+                     w=2)
     p.close()
-    p = plot.Topomap('utsnd.summary(time=(0.075, 0.125))', 'A%B', ds=ds)
+    p = plot.Topomap('utsnd.summary(time=(0.075, 0.125))', 'A%B', ds=ds, axw=2)
     p.close()
 
 def test_plot_butterfly():
@@ -23,9 +24,9 @@ def test_plot_butterfly():
     ds = datasets.get_rand(utsnd=True)
     p = plot.TopoButterfly('utsnd', ds=ds)
     p.close()
-    p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2)
+    p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=2)
     p.close()
-    p = plot.TopoButterfly('utsnd', 'A%B', ds=ds)
+    p = plot.TopoButterfly('utsnd', 'A%B', ds=ds, axw=2)
     p.close()
 
 def test_plot_array():
@@ -34,7 +35,7 @@ def test_plot_array():
     ds = datasets.get_rand(utsnd=True)
     p = plot.TopoArray('utsnd', ds=ds)
     p.close()
-    p = plot.TopoArray('utsnd', ds=ds, vmax=0.2)
+    p = plot.TopoArray('utsnd', ds=ds, vmax=0.2, w=2)
     p.close()
-    p = plot.TopoArray('utsnd', 'A%B', ds=ds)
+    p = plot.TopoArray('utsnd', 'A%B', ds=ds, axw=4)
     p.close()

@@ -729,7 +729,7 @@ class eelfigure(object):
     """
     def __init__(self, title="Eelbrain Figure", nax=None, layout_kwa={},
                  ax_aspect=2, axh_default=2, fig_kwa={}, ax_kwa={},
-                 figtitle=None):
+                 figtitle=None, make_axes=True):
         """
 
         Parameters
@@ -741,6 +741,12 @@ class eelfigure(object):
             produced.
         layout_kwargs : dict
             Arguments to produce a layout (optional).
+        ax_aspect : scalar
+            Width to height ration (axw / axh).
+        ...
+        make_axes : bool
+            If nax is not None, automatically create axes when self._axes is
+            accessed; otherwise set ``self._axes=[]``.
         """
         if figtitle:
             title = '%s: %s' % (title, figtitle)
@@ -749,11 +755,14 @@ class eelfigure(object):
         if nax is not None:
             layout = dict(ax_aspect=ax_aspect, axh_default=axh_default)
             layout.update(layout_kwa)
-            self._layout = Layout(nax, **layout)
+            layout_ = Layout(nax, **layout)
             fig_kwa = fig_kwa.copy()
-            fig_kwa.update(self._layout.fig_kwa)
+            fig_kwa.update(layout_.fig_kwa)
         else:
-            self._layout = None
+            layout_ = None
+            make_axes = False
+        self._layout = layout_
+        self._auto_make_axes = make_axes
 
         # find the right frame
         self._is_wx = False
@@ -797,14 +806,14 @@ class eelfigure(object):
 
     @LazyProperty
     def _axes(self):
-        if self._layout is None:
-            return []
-        else:
+        if self._auto_make_axes:
             ncol = self._layout.ncol
             nrow = self._layout.nrow
             kw = self._ax_kwa
             return [self.figure.add_subplot(nrow, ncol, i + 1, **kw)
                     for i in xrange(self._layout.nax)]
+        else:
+            return []
 
     def _on_leave_axes(self, event):
         "update the status bar when the cursor leaves axes"
