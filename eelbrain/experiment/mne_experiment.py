@@ -905,7 +905,7 @@ class MneExperiment(FileTree):
         return ds
 
     def load_events(self, subject=None, add_proj=True, add_bads=True,
-                    **kwargs):
+                    edf=True, **kwargs):
         """
         Load events from a raw file.
 
@@ -938,14 +938,15 @@ class MneExperiment(FileTree):
             ds = load.fiff.events(raw)
 
             subject = self.get('subject')
-            if self.has_edf[subject]:  # add edf
+            if edf and self.has_edf[subject]:  # add edf
                 edf = self.load_edf()
                 edf.add_t_to(ds)
                 ds.info['edf'] = edf
 
             # cache
             del ds.info['raw']
-            save.pickle(ds, evt_file)
+            if edf or not self.has_edf[subject]:
+                save.pickle(ds, evt_file)
 
         ds.info['raw'] = raw
 
