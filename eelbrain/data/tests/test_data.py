@@ -177,7 +177,17 @@ def test_celltable():
     eq_(ct.X[0], 'c')
     eq_(ct.X[-1], 'b')
 
-    # test coercion
+    # coercion of numerical X
+    X = ds.eval("A == 'a0'")
+    ct = Celltable('Y', X, cat=(None, None), ds=ds)
+    assert_equal(('False', 'True'), ct.cat)
+    assert_array_equal(ct.data['True'], ds['Y', X])
+
+    ct = Celltable('Y', X, cat=(True, False), ds=ds)
+    assert_equal(('True', 'False'), ct.cat)
+    assert_array_equal(ct.data['True'], ds['Y', X])
+
+    # test coercion of Y
     ct = Celltable(ds['Y'].x, 'A', ds=ds)
     assert_is_instance(ct.Y, np.ndarray)
     ct = Celltable(ds['Y'].x, 'A', ds=ds, coercion=asvar)

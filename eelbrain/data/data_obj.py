@@ -638,16 +638,16 @@ class Celltable(object):
                             cat = X.cells
                         else:
                             cells = [c for c in X.cells if c not in cat]
-                            cat = list(cat)
-                            for i in xrange(len(cat)):
-                                if cat[i] is None:
-                                    cat[i] = cells.pop(0)
-                            cat = tuple(cat)
+                            cat = tuple(cells.pop(0) if c is None else c
+                                        for c in cat)
                     else:
                         err = ("Categories can only be specified as None if X "
                                "contains exactly as many cells as categories are "
                                "required (%i)." % len(cat))
                         raise ValueError(err)
+
+                if not isinteraction(X):
+                    cat = tuple(str(c) for c in cat)
 
                 # apply cat
                 sort_idx = X.sort_idx(order=cat)
