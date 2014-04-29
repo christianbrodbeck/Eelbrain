@@ -1085,6 +1085,8 @@ class Controller(object):
 
         # plotting
         ax = event.inaxes
+        if ax is None:
+            return
         time = event.xdata
         ax_index = getattr(ax, 'ax_idx', None)
         if ax_index == -2:
