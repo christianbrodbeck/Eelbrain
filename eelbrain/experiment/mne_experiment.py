@@ -130,7 +130,6 @@ temp = {
         'edf-file': os.path.join('{log-dir}', '*.edf'),
 
         # mne secondary/forward modeling
-        'proj': '',
         'cov': 'bl',
         'proj-file': '{raw-base}_{proj}-proj.fif',
         'proj-plot': '{raw-base}_{proj}-proj.pdf',
@@ -150,8 +149,8 @@ temp = {
 
         # evoked
         'evoked-dir': os.path.join('{meg-dir}', 'evoked'),
-        'evoked-file': os.path.join('{evoked-dir}', '{experiment}_{raw}_'
-                                    '{proj}_{epoch}-{rej}_{model}.pickled'),
+        'evoked-file': os.path.join('{evoked-dir}', '{experiment} {sns-kind} '
+                                    '{epoch}-{rej}_{model}.pickled'),
 
         # Labels
         'hemi': ('lh', 'rh'),
@@ -161,8 +160,7 @@ temp = {
         'label-file': os.path.join('{label-dir}', '{parc}.pickled'),
 
         # compound properties
-        'sns-kind': '{raw}-{proj}',
-        'src-kind': '{sns-kind}-{cov}-{inv}',
+        'src-kind': '{sns-kind} {cov} {inv}',
 
         # (method) plots
         'plot-dir': os.path.join('{root}', 'plots'),
@@ -310,6 +308,7 @@ class MneExperiment(FileTree):
         """
         # create attributes (overwrite class attributes)
         self.groups = self.groups.copy()
+        self.projs = self.projs.copy()
         self._mri_subjects = keydefaultdict(lambda k: k)
         self._label_cache = PickleCache()
         self._templates = self._templates.copy()
@@ -358,7 +357,11 @@ class MneExperiment(FileTree):
         self._register_value('model', '', eval_handler=self._eval_model)
         self._register_field('parc', default='aparc',
                              eval_handler=self._eval_parc)
+        self._register_field('proj', [''] + self.projs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
+
+        # compounds
+        self._register_compound('sns-kind', ('raw', 'proj'))
 
         # Define make handlers
         self._bind_make('evoked-file', self.make_evoked)
