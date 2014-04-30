@@ -167,6 +167,15 @@ temp = {
         'plot-dir': os.path.join('{root}', 'plots'),
         'plot-file': os.path.join('{plot-dir}', '{analysis}', '{name}.{ext}'),
 
+        # general analysis parameters
+        'analysis': '',  # analysis parameters (sns-kind, src-kind, ...)
+
+        # test files (2nd level, cache only TFCE distributions)
+        # test-options should be test + bl_repr + pmin_repr + tw_repr
+        'test-dir': os.path.join('{root}', 'test', '{analysis} {group}'),
+        'test-file': os.path.join('{test-dir}', '{epoch} {test} '
+                                  '{test_options}.pickled'),
+
         # result output files
         # data processing parameters
         #    > group
@@ -174,7 +183,6 @@ temp = {
         #    > single-subject
         #        > kind of test
         #            > subject
-        'analysis': '',  # analysis parameters (filtering, ...)
         'folder': '',  # intermediate folder for deep files
         'resname': '',  # analysis name (GA-movie, max plot, ...)
         'ext': 'pickled',  # file extension
@@ -299,6 +307,16 @@ class MneExperiment(FileTree):
     # (default for factors not in this list is alphabetic)
     _model_order = []
 
+    # Tests
+    # -----
+    # specify tests as (test_type, model, test_parameter) tuple. For example,
+    # ("anova", "condition", "condition*subject")
+    # ("t_contrast_rel", "ref%loc", "+min(ref|left>nref|*, ref|right>nref|*)")
+    # Make sure dictionary keys (test names) are appropriate for filenames.
+    # tests imply a model which is set automatically
+    tests = {}
+    cluster_criteria = {'mintime': 0.025, 'minsensor': 4, 'minsource': 10}
+
     def __init__(self, root=None, **state):
         """
         Parameters
@@ -310,6 +328,8 @@ class MneExperiment(FileTree):
         # create attributes (overwrite class attributes)
         self.groups = self.groups.copy()
         self.projs = self.projs.copy()
+        self.tests = self.tests.copy()
+        self.cluster_criteria = self.cluster_criteria.copy()
         self._mri_subjects = keydefaultdict(lambda k: k)
         self._label_cache = PickleCache()
         self._templates = self._templates.copy()
@@ -356,6 +376,8 @@ class MneExperiment(FileTree):
         self._register_value('inv', 'free-3-dSPM',
                              set_handler=self._set_inv_as_str)
         self._register_value('model', '', eval_handler=self._eval_model)
+        self._register_field('test', self.tests.keys(),
+                             post_set_handler=self._post_set_test)
         self._register_field('parc', default='aparc',
                              eval_handler=self._eval_parc)
         self._register_field('proj', [''] + self.projs.keys())
@@ -1640,7 +1662,8 @@ class MneExperiment(FileTree):
         kwargs['model'] = ''
         subject, group = self._process_subject_arg(subject, kwargs)
 
-        self.set(analysis='{src-kind}',
+        self.set(equalize_evoked_count='',
+                 analysis='{src-kind} {evoked-kind}',
                  resname="GA dSPM %s %s" % (surf, fmin),
                  ext='mov')
         if group is not None:
@@ -1689,7 +1712,8 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("Unknown p0: %s" % p0)
 
-        self.set(analysis='{src-kind}',
+        self.set(equalize_evoked_count='',
+                 analysis='{src-kind} {evoked-kind}',
                  resname="GA %s %s" % (surf, p0),
                  ext='mov')
         if group is not None:
@@ -1753,7 +1777,7 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("Unknown p0: %s" % p0)
 
-        self.set(analysis='{src-kind}',
+        self.set(analysis='{src-kind} {evoked-kind}',
                  resname="T-Test %s-%s %s %s" % (str(c1), str(c0), surf, p0),
                  ext='mov')
         if group is not None:
@@ -2036,6 +2060,128 @@ class MneExperiment(FileTree):
                                              subjects_dir=subjects_dir)
                 mne.add_source_space_distances(src)
                 src.save(dst)
+
+    def make_test(self, data, pmin, tstart, tstop, group='all', samples=1000,
+                  sns_baseline=(None, 0), src_baseline=None, y=None, ds=None,
+                  redo=False):
+        """Compute spatio-temporal cluster permutation test
+
+        Parameters
+        ----------
+        data : 'sns' | 'src'
+            Whether the analysis is in sensor or source space.
+        pmin :
+        ...
+        parc : None
+            Find clusters in whole area covered by parc and then in each label.
+        pmin : None | scalar, 1 > pmin > 0
+            Equivalent p-value for cluster threshold.
+        tstart, tstop : None | scalar
+            Time window for finding clusters.
+        group : str
+            Group for which to perform the test.
+        samples : int
+            Number of samples used to determine cluster p values for spatio-
+            temporal clusters.
+        sns_baseline : None | tuple
+            Sensor space baseline interval.
+        src_baseline : None | tuple
+            Source space baseline interval.
+        y : str | NDVar
+            Preloaded dependent variable for the test, optional.
+        ds : Dataset
+            Preloaded Dataset for the test, options.
+        redo : bool
+            If the target file already exists, delete and recreate it (only
+            applies for tests that are cached).
+
+        Returns
+        -------
+        res : TestResult
+            Test result for the specified test.
+        """
+        self._set_test_options(data, sns_baseline, src_baseline, pmin, tstart,
+                               tstop)
+        dst = self.get('test-file', mkdir=True)
+        if not redo and os.path.exists(dst):
+            return load.unpickle(dst)
+
+        # figure out what test to do
+        test, model, contrast = self.tests[self.get('test')]
+
+        # load data
+        if ds is None:
+            if data == 'sns':
+                ds = self.load_evoked(group, sns_baseline, True, model=model)
+            elif data == 'src':
+                ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
+                                          morph_ndvar=True, model=model)
+
+        # retrieve dependent variable
+        if y is None:
+            if data == 'sns':
+                y = 'meg'
+            elif data == 'src':
+                y = 'srcm'
+
+        if isinstance(y, str):
+            y = ds[y]
+
+        # compute test
+        res = self._make_test(y, ds, test, model, contrast, samples, pmin,
+                              tstart, tstop)
+
+        # cache, is applicable
+        if pmin is None and (y.has_dim('source') or y.has_dim('sensor')):
+            save.pickle(res, dst)
+        return res
+
+    def _make_test(self, y, ds, test, model, contrast, samples, pmin, tstart, tstop):
+        """just compute the test result"""
+        # find cluster criteria
+        kwargs = {'samples': samples, 'pmin': pmin, 'tstart': tstart,
+                  'tstop': tstop}
+        if pmin:
+            if 'mintime' in self.cluster_criteria:
+                kwargs['mintime'] = self.cluster_criteria['mintime']
+
+            if y.has_dim('source') and 'minsource' in self.cluster_criteria:
+                kwargs['minsource'] = self.cluster_criteria['minsource']
+            elif y.has_dim('sensor') and 'minsensor' in self.cluster_criteria:
+                kwargs['minsensor'] = self.cluster_criteria['minsensor']
+        elif pmin is None and (y.has_dim('source') or y.has_dim('sensor')):
+            kwargs['dist_tstep'] = 0.05
+            if y.has_dim('source'):
+                kwargs['dist_dim'] = 'source'
+
+        # perform test
+        if test == 'ttest_rel':
+            c1, tail, c0 = re.match(r"\s*([\w|]+)\s*([<=>])\s*([\w|]+)",
+                                    contrast).groups()
+            if '|' in c1:
+                c1 = tuple(c1.split('|'))
+                c0 = tuple(c0.split('|'))
+
+            if tail == '=':
+                tail = 0
+            elif tail == '>':
+                tail = 1
+            elif tail == '<':
+                tail = -1
+            else:
+                raise ValueError("%r in t-test contrast=%r" % (tail, contrast))
+
+            res = testnd.ttest_rel(y, model, c1, c0, 'subject', ds=ds,
+                                   tail=tail, **kwargs)
+        elif test == 't_contrast_rel':
+            res = testnd.t_contrast_rel(y, model, contrast, 'subject', ds=ds,
+                                        **kwargs)
+        elif test == 'anova':
+            res = testnd.anova(y, contrast, match='subject', ds=ds, **kwargs)
+        else:
+            raise ValueError("test=%s" % repr(test))
+
+        return res
 
     def makeplt_coreg(self, redo=False, **kwargs):
         """
@@ -2455,6 +2601,69 @@ class MneExperiment(FileTree):
         if subject not in subjects:
             subject = subjects[0]
         self.set(subject=subject, add=True)
+
+    def _post_set_test(self, _, test):
+        _, model, _ = self.tests[test]
+        self.set(model=model)
+
+    def _set_test_options(self, data, sns_baseline, src_baseline, pmin, tstart,
+                          tstop):
+        """Set templates for test paths with test parameters
+
+        Can be set before or after the test template.
+
+        Parameters
+        ----------
+        data : 'sns' | 'src'
+            Whether the analysis is in sensor or source space.
+        ...
+        """
+        # data kind (sensor or source space)
+        if data == 'sns':
+            analysis = '{sns-kind} {evoked-kind}'
+        elif data == 'src':
+            analysis = '{src-kind} {evoked-kind}'
+        else:
+            raise ValueError("data needs to be 'sns' or 'src'")
+
+        # test properties
+        items = []
+
+        # baseline
+        if src_baseline is None:
+            if sns_baseline is None:
+                items.append('nobl')
+            elif sns_baseline != (None, 0):
+                pass
+        elif sns_baseline == (None, 0):
+            items.append('snsbl')
+        elif sns_baseline:
+            items.append('snsbl=%s' % str(sns_baseline))
+
+        if src_baseline == (None, 0):
+            items.append('srcbl')
+        elif src_baseline:
+            items.append('srcbl=%s' % str(src_baseline))
+
+        # pmin
+        if pmin is not None:
+            items.append(str(pmin))
+
+        # time window
+        if tstart is None:
+            tstart_repr = ''
+        else:
+            tstart_repr = '%i' % round(tstart * 1000)
+
+        if tstop is None:
+            tstop_repr = ''
+        else:
+            tstop_repr = '%i' % round(tstop * 1000)
+
+        if tstart_repr or tstop_repr:
+            items.append('-'.join((tstart_repr, tstop_repr)))
+
+        self.set(test_options=' '.join(items), analysis=analysis, add=True)
 
     def show_subjects(self, mri=True, mrisubject=False, caption=True):
         """Create a Dataset with subject information
