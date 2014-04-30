@@ -1553,6 +1553,9 @@ class MneExperiment(FileTree):
             ds = combine(dss)
             ds.info['evoked'] = tuple(epoch_names)
 
+        if 'raw' in ds.info:
+            del ds.info['raw']
+
         save.pickle(ds, dest)
 
     def make_fwd(self, redo=False):
