@@ -2282,7 +2282,7 @@ class MneExperiment(FileTree):
             model.extend(unordered_factors)
         return '%'.join(model)
 
-    def _post_set_rej(self, rej):
+    def _post_set_rej(self, _, rej):
         rej_args = self.epoch_rejection[rej]
         self._params['rej'] = rej_args
         cov_rej = rej_args.get('cov-rej', rej)

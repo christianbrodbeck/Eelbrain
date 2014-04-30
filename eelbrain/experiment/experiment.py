@@ -131,6 +131,8 @@ class TreeModel(object):
         self._params = LayeredDict()
 
         # scaffold for hooks
+        self._compound_members = {}
+        self._compounds = defaultdict(list)
         self._eval_handlers = defaultdict(list)
         self._post_set_handlers = defaultdict(list)
         self._set_handlers = {}
@@ -178,7 +180,9 @@ class TreeModel(object):
         self._eval_handlers[key].append(handler)
 
     def _bind_post_set(self, key, handler):
-        self._post_set_handlers[key].append(handler)
+        handlers = self._post_set_handlers[key]
+        if handler not in handlers:
+            handlers.append(handler)
 
     def _bind_set(self, key, handler):
         if key in self._set_handlers:
@@ -205,6 +209,25 @@ class TreeModel(object):
                 self._register_value(field, '')
 
         return fields
+
+    def _register_compound(self, key, elements):
+        """Register a field that is composed out of other fields
+
+        The compound always reflects ``' '.join(elements)`` including only
+        elements that are not empty.
+
+        Parameters
+        ----------
+        key : str
+            The name of the compound field.
+        elements : tuple of str
+            The field names of the elements.
+        """
+        self._compound_members[key] = elements
+        for e in elements:
+            self._compounds[e].append(key)
+            self._bind_post_set(e, self._update_compounds)
+        self._update_compound(key)
 
     def _register_field(self, key, values=None, default=None, set_handler=None,
                         eval_handler=None, post_set_handler=None):
@@ -575,7 +598,7 @@ class TreeModel(object):
         # call post_set handlers
         for k, v in state.iteritems():
             for handler in self._post_set_handlers[k]:
-                handler(v)
+                handler(k, v)
 
     def show_fields(self, str_out=False):
         """
@@ -687,6 +710,18 @@ class TreeModel(object):
         self._fields.store_state()
         self._field_values.store_state()
         self._params.store_state()
+
+    def _update_compound(self, key):
+        items = []
+        for item_key in self._compound_members[key]:
+            value = self.get(item_key)
+            if value:
+                items.append(value)
+        self.set(add=True, **{key: ' '.join(items)})
+
+    def _update_compounds(self, key, _):
+        for compound in self._compounds[key]:
+            self._update_compound(compound)
 
 
 class FileTree(TreeModel):
