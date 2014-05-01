@@ -592,25 +592,68 @@ class Stars(FMTextElement):
 
 
 class List(FMTextElement):
-    def __init__(self, ordered=False, items=None):
+    """Bulletted list of FMText elements"""
+    def __init__(self, head=None, items=None, ordered=False):
+        """Bulletted list of FMText elements
+
+        Parameters
+        ----------
+        head : None | FMText
+            First line on higher level (no bullet for highest list, or list
+            element for subordinate list).
+        items : None | list of FMText
+            List items.
+        ordered : bool
+            Whether to use the "ol" HTML tag (instead of "ul").
+        """
         self.ordered = ordered
+        self.head = head
         if items is None:
             items = []
-        self.items = []
+        self.items = items
 
     def __repr_items__(self):
-        if self.items:
-            return [repr(self.ordered), repr(self.items)]
-        elif self.ordered:
-            return [repr(self.ordered)]
+        if self.ordered:
+            return [repr(self.head), repr(self.items), repr(self.ordered)]
+        elif self.items:
+            return [repr(self.head), repr(self.items)]
+        elif self.head:
+            return [repr(self.head)]
         else:
             return []
 
     def add_item(self, item):
+        "Add an item to the list"
         self.items.append(item)
+
+    def add_sublist(self, head, items=None, ordered=None):
+        """Add an item with a subordinate list
+
+        Parameters
+        ----------
+        head : FMText
+            Text for the parent item
+        items : None | list of FMText
+            Subordinate list items.
+        ordered : None | bool
+            Whether to use the "ol" HTML tag (instead of "ul"). If None, the
+            parent List's setting is used.
+
+        Returns
+        -------
+        sublist : List
+            The subordinate list.
+        """
+        if ordered is None:
+            ordered = self.ordered
+        sublist = List(head, items, ordered)
+        self.add_item(sublist)
+        return sublist
 
     def get_html(self, options={}):
         items = []
+        if self.head is not None:
+            items.append(self.head)
         tag = 'ol' if self.ordered else 'ul'
         items.append('<%s>' % tag)
 
@@ -622,8 +665,18 @@ class List(FMTextElement):
         return os.linesep.join(items)
 
     def get_str(self, options={}):
-        items = (' - ' + str(item) for item in self.items)
-        return os.linesep.join(items)
+        out = []
+        if self.head is not None:
+            out.append(self.head)
+
+        for item in self.items:
+            if isinstance(item, List):
+                lines = item.get_str(options).splitlines()
+                out.append('- %s' % lines[0])
+                out.extend('  %s' % line for line in lines[1:])
+            else:
+                out.append('- %s' % str(item))
+        return os.linesep.join(out)
 
 
 # Table ---
