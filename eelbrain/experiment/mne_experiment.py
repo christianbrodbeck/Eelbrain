@@ -55,13 +55,17 @@ the interval form 0 to 500 ms used for rejection.
 '''
 
 from collections import defaultdict
+import datetime
 import inspect
+from operator import add
 import os
 from Queue import Queue
 import re
 import shutil
+import socket
 import subprocess
 from threading import Thread
+import time
 from warnings import warn
 
 import numpy as np
@@ -71,13 +75,15 @@ from mne.baseline import rescale
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
 
-from .. import fmtxt
+from .. import fmtxt, __version__
 from ..data import load
 from ..data import plot
 from ..data import save
+from ..data import table
 from ..data import testnd
 from ..data import Dataset, Factor, Var, NDVar, combine, source_induced_power
 from ..data.data_obj import isdatalist, UTS, DimensionMismatchError
+from ..fmtxt import List, Report
 from .. import ui
 from ..utils import keydefaultdict
 from ..utils import subp
@@ -2013,6 +2019,285 @@ class MneExperiment(FileTree):
         mark = rej_args.get('eog_sns', None)
         SelectEpochs(ds, data='meg', path=path, vlim=2e-12, mark=mark,
                      **kwargs)
+
+    def make_report_clusters(self, test, parc=None, pmin=None, tstart=0.15,
+                             tstop=None, samples=1000, data='src',
+                             sns_baseline=(None, 0), src_baseline=None,
+                             redo=False, **state):
+        """Create an HTML report on clusters
+
+        Parameters
+        ----------
+        model : str
+            Model (currently only repeated measures t-tests).
+        contrast : None | str
+            Define a non-standard contrast. Lead with + or - for one-tailed
+            tests.
+        parc : None
+            Find clusters in whole area covered by parc and then in each label.
+        pmin : None | scalar, 1 > pmin > 0
+            Equivalent p-value for cluster threshold.
+        samples : int
+            Number of samples used to determine cluster p values for spatio-
+            temporal clusters.
+        sns_baseline : None | tuple
+            Sensor space baseline interval.
+        src_baseline : None | tuple
+            Source space baseline interval.
+        tstart, tstop : None | scalar
+            Time window for finding clusters.
+        redo : bool
+            If the target file already exists, delete and recreate it.
+        """
+        # determine report file name
+        if parc is None:
+            folder = "Whole Brain Clusters"
+        else:
+            state['parc'] = parc
+            folder = "{parc} Clusters"
+        self.set(test=test, **state)
+        self._set_test_options(data, sns_baseline, src_baseline, pmin, tstart,
+                               tstop)
+        resname = "{epoch} {test} {test_options}"
+        dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
+                       folder=folder, resname=resname, ext='html', test=test,
+                       **state)
+        if not redo and os.path.exists(dst):
+            return
+
+        # start report
+        t0 = time.time()
+        title = self.format('{experiment} {epoch} {test} {test_options}')
+        report = Report(title, site_title=title)
+
+        # method intro
+        include = 0.2  # uncorrected p to plot clusters
+        info = List("Test Parameters:")
+        info.add_item(self.format('{epoch} ~ {model}'))
+        test_kind, model, contrast = self.tests[test]
+        info.add_item("Test: %s, %s" % (test_kind, contrast))
+        # cluster info
+        cinfo = info.add_sublist("Cluster Permutation Test")
+        if pmin is None:
+            cinfo.add_item("Threshold-free cluster enhancement (Smith & "
+                           "Nichols, 2009)")
+        else:
+            cinfo.add_item("Cluster threshold equivalent to p = %s" % pmin)
+        cinfo.add_item("%i permutations" % samples)
+        cinfo.add_item("Time interval: %i - %i ms." % (round(tstart * 1000),
+                                                      round(tstop * 1000)))
+        mintime = self.cluster_criteria.get('mintime', None)
+        if mintime is None:
+            cinfo.add_item("No cluster minimum duration")
+        else:
+            cinfo.add_item("Cluster minimum duration: %i ms" %
+                           round(mintime * 1000))
+        if data == 'src':
+            minsource = self.cluster_criteria.get('minsource', None)
+            if minsource is not None:
+                cinfo.add_item("At least %i contiguous sources." % minsource)
+        elif data == 'sns':
+            minsensor = self.cluster_criteria.get('minsensor', None)
+            if minsensor is not None:
+                cinfo.add_item("At least %i contiguous sensors." % minsensor)
+
+        info.add_item("Separate plots of all clusters with a p-value "
+                      "< %s" % include)
+        report.append(info)
+
+        # load data
+        group = self.get('group')
+        ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
+                                  morph_ndvar=True)
+
+        # add subject information to experiment
+        s_ds = table.repmeas('n', model, 'subject', ds=ds)
+        s_ds2 = self.show_subjects(asds=True)
+        s_ds.update(s_ds2[('subject', 'mri')])
+        s_table = s_ds.as_table(midrule=True, count=True, caption="All "
+                                "subjects included in the analysis with "
+                                "trials per condition")
+        report.append(s_table)
+
+        # add experiment state to report
+        t = self.show_state(hide=['annot', 'epoch-bare',
+                                  'epoch-stim', 'ext', 'hemi', 'label',
+                                  'subject', 'model', 'mrisubject'])
+        report.append(t)
+
+
+        if parc is None:
+            section = report.add_section("Clusters in Whole Brain")
+            self._source_time_clusters(section, ds['srcm'], ds, test_kind, model,
+                                       contrast, samples, pmin, tstart, tstop,
+                                       include, bin_table=True)
+        else:
+            section = report.add_section("Clusters in %s" % parc)
+
+            # add picture of parc
+            brain = self.plot_annot(w=1000)
+            image = plot.brain.image(brain, '%s parc.png' % parc, close=True)
+            caption = "Labels in the %s parcellation." % parc
+            section.add_image_figure(image, caption)
+
+            # load labels
+            lbls = self.load_labels(mrisubject='fsaverage')
+            labels = [lbls[n] for n in lbls if not n.startswith("unknown")]
+            grand_label = reduce(add, labels)
+            grand_label.name = parc
+
+            # add section for combined label
+            src = ds['srcm'].sub(source=grand_label)
+            legend = self._source_time_clusters(section, src, ds, test_kind, model,
+                                                contrast, samples, pmin,
+                                                tstart, tstop, include,
+                                                bin_table=True)
+
+            # add subsections for individual labels
+            for label in labels:
+                subsection = section = report.add_section("Clusters in %s" %
+                                                          label.name)
+                src_label = src.sub(source=label)
+                self._source_time_clusters(subsection, src_label, ds, test_kind,
+                                           model, contrast, samples, pmin,
+                                           tstart, tstop, include, legend)
+
+        # report signature
+        t1 = time.time()
+        dt = t1 - t0
+        info = ["Written by %s" % socket.gethostname(),
+                "Finished on %s" % time.strftime("%c"),
+                "Processing time: %s" % str(datetime.timedelta(seconds=round(dt))),
+                "Eelbrain version %s" % __version__,
+                "MNE-Python version %s" % mne.__version__]
+        signature = ' &#8212 \n'.join(info)
+        report.append(signature)
+
+        report.save_html(dst)
+
+    def _source_time_clusters(self, section, y, ds, test, model, contrast,
+                              samples, pmin, tstart, tstop,
+                              include, legend=None, bin_table=False):
+        """
+        legend : None | fmtxt.Image
+            Legend (if shared with other figures).
+        bin_table : bool
+            Add an image table with 100 ms time bins including all clusters.
+
+        Returns
+        -------
+        legend : fmtxt.Image
+            Legend to share with other figures.
+        """
+        if tstop is None:
+            tstop_rep = int((y.time.tmax + y.time.tstep) * 1000)
+        else:
+            tstop_rep = int(tstop * 1000)
+
+        # compute clusters
+        res = self._make_test(y, ds, test, model, contrast, samples, pmin, tstart, tstop)
+        if res.clusters is None:
+            section.append("No clusters found.")
+            return
+
+        # time-bin plot table
+        if bin_table:
+            caption = ("All clusters in time bins. Each plot shows all sources "
+                       "that are part of a cluster at any time during the "
+                       "relevant time bin. Only the general minimum duration and "
+                       "source number criterion are applied.")
+
+            if test == 'anova':
+                cdists = [(cdist, "%s: %s" % (cdist.name.capitalize(), caption))
+                          for cdist in res._cdist]
+            else:
+                cdists = [(res._cdist, caption)]
+
+            for cdist, caption in cdists:
+                ndvar = cdist.clusters.eval("cluster.sum('case')")
+                im = plot.brain.bin_table(ndvar, tstart, tstop)
+                section.add_image_figure(im, caption)
+
+        # cluster table
+        clusters = res.clusters.sub("p < 1")
+        if clusters.n_cases == 0:
+            section.append("No clusters with p < 1 found.")
+            return
+        caption = "Clusters with p < 1"
+        table_ = clusters.as_table(midrule=True, count=True, caption=caption)
+        section.append(table_)
+
+        # plot individual clusters
+        clusters = clusters.sub("p < %s" % include)
+        layout = dict(w=7, colors='2group-ob')
+        for i in xrange(clusters.n_cases):
+            # cluster info
+            p = clusters[i, 'p']
+            c_start = clusters[i, 'tstart']
+            c_stop = clusters[i, 'tstop']
+            mark = clusters[i, '*']
+            if 'effect' in clusters:
+                effect = clusters[i, 'effect']
+            else:
+                effect = None
+
+            c_name = "Cluster %i" % i
+
+            title_ = [c_name]
+            if effect is not None:
+                title_.append(effect)
+            title_.append("(p=%.3f)" % p)
+            if mark:
+                title_.append(mark)
+            title = ' '.join(title_)
+            subsection = section.add_section(title)
+
+            # extract cluster
+            cluster = clusters[i, 'cluster']
+            c_spatial = cluster.sum('time')
+
+            # add cluster image to report
+            brain = plot.brain.cluster(c_spatial, surf='inflated')
+            image = plot.brain.image(brain, c_name + '.png', close=True)
+            caption_ = ["Cluster"]
+            if effect is not None:
+                caption_.extend(('effect of', effect))
+            caption_.append("%i - %i ms." % (c_start * 1000, c_stop * 1000))
+            caption = ' '.join(caption_)
+            subsection.add_image_figure(image, caption)
+
+            # cluster time course
+            idx = cluster.any('time')
+            tc = y[idx].mean('source')
+            res_tc = self._make_test(tc, ds, test, model, contrast, 10000,
+                                     pmin, tstart, tstop)
+            caption = ("Cluster average time course, clusters exceeding p "
+                       "= %s in the time window %i - %s "
+                       "ms." % (pmin, tstart * 1000, tstop_rep))
+            p = plot.UTSStat(tc, model, match='subject', ds=ds,
+                             clusters=res_tc.clusters, legend=None, **layout)
+            # mark original cluster
+            for ax in p._axes:
+                ax.axvspan(c_start, c_stop, color='r', alpha=0.2, zorder=-2)
+            # legend
+            if legend is None:
+                legend = fmtxt.Image("Legend.svg")
+                legend_p = p.plot_legend()
+                legend_p.figure.savefig(legend, format='svg')
+            image = fmtxt.Image(c_name + '.svg')
+            p.figure.savefig(image, format='svg')
+            p.close()
+            # add to report
+            figure = subsection.add_figure(caption)
+            figure.append(image)
+            figure.append(legend)
+            # time course cluster table
+            if res_tc.clusters:
+                caption = "Time course clusters."
+                table_ = res_tc.clusters.as_table(midrule=True, caption=caption)
+                subsection.append(table_)
+
+        return legend
 
     def make_src(self, redo=False):
         """Make the source space
