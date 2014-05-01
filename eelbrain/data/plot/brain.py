@@ -18,7 +18,7 @@ from tempfile import mkdtemp
 
 import numpy as np
 
-from ...fmtxt import im_table
+from ...fmtxt import Image, im_table
 from ..data_obj import asndvar, NDVar, UTS
 
 
@@ -597,6 +597,27 @@ def connectivity(source):
     mlab.pipeline.surface(lines, colormap='Accent', line_width=1, opacity=1.,
                           figure=figure)
     return figure
+
+
+def image(brain, filename, alt=None, close=False):
+    """Create an FMText Image from a brain instance
+
+    Parameters
+    ----------
+    brain : Brain
+        Pysurfer Brain instance.
+    filename : str
+        Filename for the image (should end with the desired extension).
+    alt : None | str
+        Alternate text, placeholder in case the image can not be found
+        (HTML `alt` tag).
+    close : bool
+        Close the brain window after creating the image.
+    """
+    im = brain.screenshot('rgba', True)
+    if close:
+        brain.close()
+    return Image.from_array(im, filename, alt)
 
 
 def copy(brain):

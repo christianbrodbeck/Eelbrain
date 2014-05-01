@@ -1195,8 +1195,26 @@ class Image(FMTextElement, StringIO):
         self._alt = alt or name
 
     @classmethod
+    def from_array(cls, array, filename='array.png', alt=None):
+        """Create an Image object from an array.
+
+        Parameters
+        ----------
+        array : array_like
+            RGBA image array.
+        filename : None | str
+            Filename for the target image.
+        alt : None | str
+            Alternate text, placeholder in case the image can not be found
+            (HTML `alt` tag).
+        """
+        im = Image(filename, alt)
+        imsave(im, np.asarray(array), format='png')
+        return im
+
+    @classmethod
     def from_file(cls, path, filename=None, alt=None):
-        """Create an Image object from an existsing image file.
+        """Create an Image object from an existing image file.
 
         Parameters
         ----------
