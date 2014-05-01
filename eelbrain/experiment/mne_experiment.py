@@ -2664,18 +2664,22 @@ class MneExperiment(FileTree):
 
         self.set(test_options=' '.join(items), analysis=analysis, add=True)
 
-    def show_subjects(self, mri=True, mrisubject=False, caption=True):
+    def show_subjects(self, mri=True, mrisubject=False, caption=True,
+                      asds=False):
         """Create a Dataset with subject information
 
         Parameters
         ----------
-        group : str
-            Group of subjects to display.
         mri : bool
             Add a column specifying whether the subject is using a scaled MRI
             or whether it has its own MRI.
         mrisubject : bool
             Add a column showing the MRI subject corresponding to each subject.
+        caption : bool | str
+            Caption for the table (For True, use the default "Subject in group
+            {group}".
+        asds : bool
+            Return the table as Dataset instead of an FMTxt Table.
         """
         # caption
         if caption is True:
@@ -2708,7 +2712,10 @@ class MneExperiment(FileTree):
         if mrisubject:
             ds['mrisubject'] = Factor(mrisubject_list)
 
-        return ds
+        if asds:
+            return ds
+        else:
+            return ds.as_table(midrule=True, count=True)
 
     def show_summary(self, templates=['raw-file'], missing='-', link=' > ',
                      count=True):
