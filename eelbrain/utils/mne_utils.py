@@ -62,7 +62,7 @@ def is_fake_mri(mri_dir):
     """
     items = os.listdir(mri_dir)
     # need to contain:
-    nc = [c for c in ['bem', 'label', 'surf'] if c not in items]
+    nc = [c for c in ['bem', 'surf'] if c not in items]
     # does not contain:
     c = [c for c in ['mri', 'src', 'stats'] if c in items]
     if c or nc:
