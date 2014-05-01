@@ -151,7 +151,7 @@ temp = {
         'equalize_evoked_count': ('', 'eq'),
         'evoked-dir': os.path.join('{meg-dir}', 'evoked'),
         'evoked-file': os.path.join('{evoked-dir}', '{experiment} {sns-kind} '
-                                    '{epoch} {evoked-kind}.pickled'),
+                                    '{epoch} {model} {evoked-kind}.pickled'),
 
         # Labels
         'hemi': ('lh', 'rh'),
@@ -385,8 +385,7 @@ class MneExperiment(FileTree):
 
         # compounds
         self._register_compound('sns-kind', ('raw', 'proj'))
-        self._register_compound('evoked-kind', ('rej', 'model',
-                                                'equalize_evoked_count'))
+        self._register_compound('evoked-kind', ('rej', 'equalize_evoked_count'))
 
         # Define make handlers
         self._bind_make('evoked-file', self.make_evoked)
