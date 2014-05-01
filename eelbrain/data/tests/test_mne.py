@@ -7,11 +7,18 @@ from numpy.testing import assert_array_equal
 import mne
 
 from eelbrain.lab import datasets, testnd, morph_source_space
+from eelbrain.data.data_obj import asndvar
 
 
 def test_source_estimate():
     "Test SourceSpace dimension"
     ds = datasets.get_mne_sample(src='ico')
+    dsa = ds.aggregate('side')
+
+    # test auto-conversion
+    asndvar('epochs', ds=ds)
+    asndvar('epochs', ds=dsa)
+    asndvar(dsa['epochs'][0])
 
     # source space clustering
     res = testnd.ttest_ind('src', 'side', ds=ds, samples=0, pmin=0.05,
