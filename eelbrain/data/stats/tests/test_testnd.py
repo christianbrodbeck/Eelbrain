@@ -21,7 +21,7 @@ def test_anova():
 
     testnd.anova('utsnd', 'A*B', ds=ds)
 
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds)
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=0, pmin=0.05)
     repr(res)
     p = plot.Array(res)
     p.close()

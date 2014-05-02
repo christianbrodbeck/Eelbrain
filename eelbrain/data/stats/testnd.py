@@ -1392,10 +1392,10 @@ class anova(_TestResult):
             p_uncorr.append(p_)
         self.p_uncorrected = p_uncorr
 
-        if self.samples is None:
-            self._default_plot_obj = self.f
-        else:
+        if self.samples:
             self._default_plot_obj = f_and_clusters
+        else:
+            self._default_plot_obj = self.f
 
     def __repr__(self):
         temp = "<%s %%s>" % self.__class__.__name__
