@@ -10,12 +10,13 @@ def test_plot_topomap():
     "Test plot.Topomap"
     plot.configure_backend(False, False)
     ds = datasets.get_rand(utsnd=True)
-    p = plot.Topomap('utsnd.summary(time=(0.075, 0.125))', ds=ds)
+    topo = ds.eval('utsnd.summary(time=(0.075, 0.125))')
+
+    p = plot.Topomap(topo, ds=ds)
     p.close()
-    p = plot.Topomap('utsnd.summary(time=(0.075, 0.125))', ds=ds, vmax=0.2,
-                     w=2)
+    p = plot.Topomap(topo, ds=ds, vmax=0.2, w=2)
     p.close()
-    p = plot.Topomap('utsnd.summary(time=(0.075, 0.125))', 'A%B', ds=ds, axw=2)
+    p = plot.Topomap(topo, 'A%B', ds=ds, axw=2)
     p.close()
 
 def test_plot_butterfly():
@@ -27,6 +28,8 @@ def test_plot_butterfly():
     p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=2)
     p.close()
     p = plot.TopoButterfly('utsnd', 'A%B', ds=ds, axw=2)
+    p.close()
+    p = plot.TopoButterfly('utsnd', mark=[1, 2], ds=ds)
     p.close()
 
 def test_plot_array():

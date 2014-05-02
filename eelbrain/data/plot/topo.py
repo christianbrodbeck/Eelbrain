@@ -124,8 +124,8 @@ class TopoButterfly(_base.eelfigure):
     """
     def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
                  proj='default', res=100, interpolation='nearest', color=None,
-                 sensors=True, ROI=None, ds=None, vmax=None, vmin=None,
-                 **layout):
+                 sensors=True, mark=None, mcolor=None, ds=None, vmax=None,
+                 vmin=None, **layout):
         """
         Parameters
         ----------
@@ -147,8 +147,10 @@ class TopoButterfly(_base.eelfigure):
             Color of the butterfly plots.
         sensors : bool
             determines whether all sensors are marked in the topo-maps
-        ROI : None | list of indices
-            plot a subset of sensors
+        mark : None | list of sensor indices
+            Highlight a subset of the sensors.
+        mcolor : matplotlib color
+            Color for marked sensors.
         ds : None | Dataset
             If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
@@ -197,8 +199,8 @@ class TopoButterfly(_base.eelfigure):
                              'res': res,
                              'interpolation': interpolation,
                              'sensors': sensors,
-                             'ROI': ROI,
-                             'ROIcolor': color,
+                             'mark': mark,
+                             'mcolor': mcolor,
                              'title': False}
 
         vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
@@ -235,7 +237,7 @@ class TopoButterfly(_base.eelfigure):
             show_x_axis = (i == n_plots - 1)
 
             # plot data
-            p = _utsnd._ax_butterfly(ax1, layers, sensors=ROI, title=False,
+            p = _utsnd._ax_butterfly(ax1, layers, sensors=mark, title=False,
                                     xlabel=show_x_axis, ylabel=ylabel,
                                     color=color, vlims=vlims)
             self.bfly_plots.append(p)
@@ -439,15 +441,15 @@ class _plt_topomap(_utsnd._plt_im_array):
 
 
 class _ax_topomap(_utsnd._ax_im_array):
-    def __init__(self, ax, layers, title=True, sensors=None, ROI=None,
-                 ROIcolor=True, proj='default', res=100, interpolation=None,
+    def __init__(self, ax, layers, title=True, sensors=None, mark=None,
+                 mcolor=None, proj='default', res=100, interpolation=None,
                  xlabel=None, im_frame=0.02, vlims={}, cmaps={}, contours={}):
         """
         Parameters
         ----------
         sensors : bool | str
             plot sensor markers (str to add label:
-        ROI : list of IDs
+        mark : list of IDs
             highlight a subset of the sensors
 
         """
@@ -475,17 +477,17 @@ class _ax_topomap(_utsnd._ax_im_array):
                 text = None
             self.sensors.show_labels(text=text)
 
-        if ROI is not None:
+        if mark is not None:
             sensor_dim = layers[0].sensor
             kw = dict(marker='.',  # symbol
                     ms=3,  # marker size
                     markeredgewidth=1,
                     ls='')
 
-            if ROIcolor is not True:
-                kw['color'] = ROIcolor
+            if mcolor is not None:
+                kw['color'] = mcolor
 
-            _plt_map2d(ax, sensor_dim, proj=proj, ROI=ROI, kwargs=kw)
+            _plt_map2d(ax, sensor_dim, proj=proj, mark=mark, kwargs=kw)
 
 
         ax.set_xlim(-im_frame, 1 + im_frame)

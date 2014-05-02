@@ -87,9 +87,13 @@ class _ax_map2d:
 
         ax.set_xlim(-frame, 1 + frame)
 
+    def remove(self):
+        "remove from axes"
+        self.sensors.remove()
+
 
 class _plt_map2d:
-    def __init__(self, ax, sensors, proj='default', extent=1, ROI=None,
+    def __init__(self, ax, sensors, proj='default', extent=1, mark=None,
                  kwargs=dict(
                              marker='.',  # symbol
                              color='k',  # mpl plot kwargs ...
@@ -101,11 +105,11 @@ class _plt_map2d:
         self.ax = ax
         self.sensors = sensors
         self.locs = sensors.get_locs_2d(proj=proj, extent=extent)
-        self.ROI = ROI
+        self.mark = mark
         self._mark_handles = None
 
-        if ROI is not None:
-            locs = self.locs[ROI]
+        if mark is not None:
+            locs = self.locs[mark]
         else:
             locs = self.locs
 
@@ -143,6 +147,13 @@ class _plt_map2d:
         locs = self.locs[idx]
         self._mark_handles = self.ax.plot(locs[:, 0], locs[:, 1], *args,
                                           **kwargs)
+
+    def remove(self):
+        "remove from axes"
+        while self._mark_handles:
+            self._mark_handles.pop().remove()
+        while self.markers:
+            self.markers.pop().remove()
 
     def show_labels(self, text='idx', xpos=0, ypos=.01, **text_kwargs):
         """Plot labels for the sensors
@@ -183,9 +194,9 @@ class _plt_map2d:
             raise NotImplementedError(err)
 
         locs = self.locs
-        if self.ROI is not None:
-            labels = Datalist(labels)[self.ROI]
-            locs = locs[self.ROI]
+        if self.mark is not None:
+            labels = Datalist(labels)[self.mark]
+            locs = locs[self.mark]
 
         locs = locs + [[xpos, ypos]]
         for loc, txt in zip(locs, labels):
@@ -298,26 +309,26 @@ class SensorMaps(_base.eelfigure):
     """
     GUI with multiple views on a sensor layout.
 
-    Allows selecting sensor groups (ROIs) and retrieving corresponding indices.
+    Allows selecting sensor groups and retrieving corresponding indices.
 
 
-    **Selecting ROIs:**
+    **Selecting Sensor Groups:**
 
-     - Dragging with the left mouse button adds sensors to the ROI.
+     - Dragging with the left mouse button adds sensors to the selection.
      - Dragging with the right mouse button removes sensors from the current
-       ROI.
-     - The 'Clear' button (or :meth:`clear`) removes the ROI.
+       selection.
+     - The 'Clear' button (or :meth:`clear`) clears the selection.
 
     """
-    def __init__(self, sensors, ROI=[], proj='default', frame=0.05,
+    def __init__(self, sensors, select=[], proj='default', frame=0.05,
                  title=None, **layout):
         """
         Parameters
         ----------
         sensors : Sensor | NDVar
             The sensors to use, or an NDVar with a sensor dimension.
-        ROI : list of int
-            Initial ROI.
+        select : list of int
+            Initial selection.
         proj : str
             Sensor projection for the fourth plot.
         frame : scalar
@@ -396,17 +407,17 @@ class SensorMaps(_base.eelfigure):
         self._sensor_maps = (self._h0, self._h1, self._h2, self._h3)
         self._show(tight=False)
 
-        # ROI
-        self.ROI_kwargs = dict(marker='o',  # symbol
+        # selection
+        self.sel_kwargs = dict(marker='o',  # symbol
                                color='r',  # mpl plot kwargs ...
                                ms=5,  # marker size
                                markeredgewidth=.9,
                                ls='')
-        self._ROI_h = []
-        if ROI is not None:
-            self.set_ROI(ROI)
+        self._sel_h = []
+        if select is not None:
+            self.set_selection(select)
         else:
-            self.ROI = None
+            self.select = None
 
         # setup mpl event handling
         self.canvas.mpl_connect("button_press_event", self._on_button_press)
@@ -421,21 +432,21 @@ class SensorMaps(_base.eelfigure):
         btn.Bind(wx.EVT_BUTTON, self._OnClear)
 
     def clear(self):
-        "Clear the current ROI selection."
-        self.ROI = None
-        self.update_ROI_plot()
+        "Clear the current sensor selection."
+        self.select = None
+        self.update_mark_plot()
 
-    def get_ROI(self):
+    def get_selection(self):
         """
         Returns
         -------
-        ROI : list
-            Returns the current ROI as a list of indices.
+        selection : list
+            Returns the current selection as a list of indices.
         """
-        if self.ROI is None:
+        if self.select is None:
             return []
         else:
-            return np.where(self.ROI)[0]
+            return np.where(self.select)[0]
 
     def _on_button_press(self, event):
         ax = event.inaxes
@@ -467,12 +478,12 @@ class SensorMaps(_base.eelfigure):
         y = locs[:, 1]
         sel = (x > xmin) & (x < xmax) & (y > ymin) & (y < ymax)
 
-        if self.ROI is None:
-            self.ROI = sel
+        if self.select is None:
+            self.select = sel
         elif event.button == 1:
-            self.ROI[sel] = True
+            self.select[sel] = True
         else:
-            self.ROI[sel] = False
+            self.select[sel] = False
 
         # clear dragging-related attributes
         self._drag_rect.remove()
@@ -481,7 +492,7 @@ class SensorMaps(_base.eelfigure):
         self._drag_x = None
         self._drag_y = None
 
-        self.update_ROI_plot()
+        self.update_mark_plot()
 
     def _on_motion(self, event):
         super(self.__class__, self)._on_motion(event)
@@ -499,23 +510,23 @@ class SensorMaps(_base.eelfigure):
     def _OnClear(self, event):
         self.clear()
 
-    def set_ROI(self, ROI):
+    def set_selection(self, select):
         """
-        Set the current ROI with a list of indices.
+        Set the current selection with a list of indices.
 
         Parameters
         ----------
-        ROI : list of int
-            List of sensor indices in the new ROI.
+        select : list of int
+            List of sensor indices in the new selection.
         """
-        idx = self._sensors.dimindex(ROI)
-        self.ROI = np.zeros(len(self._sensors), dtype=bool)
-        self.ROI[idx] = True
-        self.update_ROI_plot()
+        idx = self._sensors.dimindex(select)
+        self.select = np.zeros(len(self._sensors), dtype=bool)
+        self.select[idx] = True
+        self.update_mark_plot()
 
-    def update_ROI_plot(self):
+    def update_mark_plot(self):
         for h in self._sensor_maps:
-            h.sensors.mark_sensors(self.ROI, **self.ROI_kwargs)
+            h.sensors.mark_sensors(self.select, **self.sel_kwargs)
         self.canvas.draw()
 
 
@@ -527,7 +538,7 @@ class SensorMap2d(_tb_sensors_mixin, _base.eelfigure):
     Plot a 2d Sensor Map.
 
     """
-    def __init__(self, sensors, labels='name', proj='default', ROI=None,
+    def __init__(self, sensors, labels='name', proj='default', mark=None,
                  frame=.05, title=None, **layout):
         """Plot sensor positions in 2 dimensions
 
@@ -541,7 +552,7 @@ class SensorMap2d(_tb_sensors_mixin, _base.eelfigure):
         proj:
             Transform to apply to 3 dimensional sensor coordinates for plotting
             locations in a plane
-        ROI : None | list of int
+        mark : None | list of int
             List of sensor indices to mark.
         frame : scalar
             Size of the empty space around sensors in axes.
@@ -564,7 +575,7 @@ class SensorMap2d(_tb_sensors_mixin, _base.eelfigure):
         # store args
         self._sensors = sensors
         self._proj = proj
-        self._ROIs = []
+        self._marker_handles = []
         self._connectivity = None
 
         ax = self.figure.add_axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
@@ -573,22 +584,22 @@ class SensorMap2d(_tb_sensors_mixin, _base.eelfigure):
         self._sensor_plots = [self._markers.sensors]
         if labels:
             self.set_label_text(labels)
-        if ROI is not None:
-            self.plot_ROI(ROI)
+        if mark is not None:
+            self.mark_sensors(mark)
 
         self._show(tight=False)
 
-    def plot_ROI(self, ROI, kwargs=dict(marker='o',  # symbol
-                                        color='r',  # mpl plot kwargs ...
-                                        ms=5,  # marker size
-                                        markeredgewidth=.9,
-                                        ls='',
-                                        )):
-        """Mark sensors in a ROI.
+    def mark_sensors(self, mark, kwargs=dict(marker='o',  # symbol
+                                             color='r',  # mpl plot kwargs ...
+                                             ms=5,  # marker size
+                                             markeredgewidth=.9,
+                                             ls='',
+                                             )):
+        """Mark specific sensors.
 
         Parameters
         ----------
-        ROI : list of int
+        mark : list of int
             List of sensor indices.
         kwargs : dict
             Dict with kwargs for customizing the sensor plot (matplotlib plot
@@ -596,17 +607,17 @@ class SensorMap2d(_tb_sensors_mixin, _base.eelfigure):
 
         See Also
         --------
-        .remove_ROIs() : Remove the plotted ROIs
+        .remove_markers() : Remove the markers
         """
-        h = _plt_map2d(self.axes, self._sensors, proj=self._proj, ROI=ROI,
+        h = _plt_map2d(self.axes, self._sensors, proj=self._proj, mark=mark,
                        kwargs=kwargs)
-        self._ROIs.append(h)
+        self._marker_handles.append(h)
         self.canvas.draw()
 
-    def remove_ROIs(self):
-        "Remove all marked ROIs."
-        while len(self._ROIs) > 0:
-            h = self._ROIs.pop(0)
+    def remove_markers(self):
+        "Remove all sensor markers."
+        while len(self._marker_handles) > 0:
+            h = self._marker_handles.pop(0)
             h.remove()
         self.canvas.draw()
 
