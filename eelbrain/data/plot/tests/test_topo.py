@@ -31,6 +31,8 @@ def test_plot_butterfly():
     p.close()
     p = plot.TopoButterfly('utsnd', mark=[1, 2], ds=ds)
     p.close()
+    p = plot.TopoButterfly('utsnd', mark=['1', '2'], ds=ds)
+    p.close()
 
 def test_plot_array():
     "Test plot.TopoArray"

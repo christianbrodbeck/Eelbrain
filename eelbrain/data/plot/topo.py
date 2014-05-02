@@ -147,7 +147,7 @@ class TopoButterfly(_base.eelfigure):
             Color of the butterfly plots.
         sensors : bool
             determines whether all sensors are marked in the topo-maps
-        mark : None | list of sensor indices
+        mark : None | list of sensor names or indices
             Highlight a subset of the sensors.
         mcolor : matplotlib color
             Color for marked sensors.

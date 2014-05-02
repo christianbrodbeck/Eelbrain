@@ -102,17 +102,28 @@ class _plt_map2d:
                              ls='',
                              ),
                  ):
+        """
+        Parameters
+        ----------
+        ax : matplotlib Axes
+            Axes.
+        sensors : Sensor
+            Sensor dimension.
+        """
         self.ax = ax
         self.sensors = sensors
         self.locs = sensors.get_locs_2d(proj=proj, extent=extent)
-        self.mark = mark
         self._mark_handles = None
 
         if mark is not None:
-            locs = self.locs[mark]
+            mark_idx = sensors.dimindex(mark)
+            locs = self.locs[mark_idx]
         else:
             locs = self.locs
+            mark_idx = None
 
+        self.mark = mark
+        self._mark_idx = mark_idx
         self.markers = []
         self.labels = []
 
@@ -194,9 +205,9 @@ class _plt_map2d:
             raise NotImplementedError(err)
 
         locs = self.locs
-        if self.mark is not None:
-            labels = Datalist(labels)[self.mark]
-            locs = locs[self.mark]
+        if self._mark_idx is not None:
+            labels = Datalist(labels)[self._mark_idx]
+            locs = locs[self._mark_idx]
 
         locs = locs + [[xpos, ypos]]
         for loc, txt in zip(locs, labels):
