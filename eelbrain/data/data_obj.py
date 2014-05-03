@@ -5662,7 +5662,7 @@ class SourceSpace(Dimension):
         if self.parc is None:
             parc = None
         else:
-            parc = (self.parc, self._parc[index], self._parc_names)
+            parc = self.parc[index]
 
         new_vert = [vert[space_i == i] for i in xrange(len(self.vertno))]
         dim = SourceSpace(new_vert, self.subject, self.src, self.subjects_dir,
@@ -5721,9 +5721,9 @@ class SourceSpace(Dimension):
         if self.parc is not None:
             locations = []
             for x_ in x:
-                parc_entries = self._parc[x_]
-                argmax = np.argmax(np.bincount(parc_entries))
-                location = self._parc_names[argmax]
+                parc_entries = self.parc[x_]
+                argmax = np.argmax(np.bincount(parc_entries.x))
+                location = parc_entries[argmax]
                 locations.append(location)
             ds['location'] = Factor(locations)
 
@@ -5856,13 +5856,13 @@ class SourceSpace(Dimension):
                     return slice(None, self.lh_n)
                 else:
                     raise IndexError("lh is empty")
-            if obj == 'rh':
+            elif obj == 'rh':
                 if self.rh_n:
                     return slice(self.lh_n, None)
                 else:
                     raise IndexError("rh is empty")
             else:
-                raise IndexError('%r' % obj)
+                return self._dimindex_label(obj)
         elif isinstance(obj, SourceSpace):
             sv = self.vertno
             ov = obj.vertno
@@ -5879,12 +5879,11 @@ class SourceSpace(Dimension):
         if isinstance(label, str):
             if self.parc is None:
                 raise RuntimeError("SourceSpace has no parcellation")
-            elif label not in self._parc_names:
+            elif label not in self.parc:
                 err = ("SourceSpace parcellation has no label called %r"
                        % label)
                 raise KeyError(err)
-            id_ = self._parc_names.index(label)
-            idx = self._parc == id_
+            idx = self.parc == label
         elif label.hemi == 'both':
             lh_idx = self._dimindex_hemilabel(label.lh)
             rh_idx = self._dimindex_hemilabel(label.rh)
@@ -5971,35 +5970,30 @@ class SourceSpace(Dimension):
 
         Parameters
         ----------
-        parc : None | str
+        parc : None | str | Factor
             Add a parcellation to the source space to identify vertex location.
-            Only applies to ico source spaces, default is 'aparc'.
+            Can be specified as Factor assigning a label to each source, or a
+            string specifying a freesurfer parcellation (stored as *.annot
+            files with the MRI). Only applies to ico source spaces, default is
+            'aparc'.
         """
         if parc is None or mne.__version__ < '0.8':
-            parc = None
             parc_ = None
-            parc_names = None
-        elif isinstance(parc, tuple):
-            parc, parc_, parc_names = parc
+        elif isfactor(parc):
+            if len(parc) != len(self):
+                raise ValueError("Wrong length (%i)" % len(parc))
+            parc_ = parc
         elif isinstance(parc, basestring):
             labels = mne.read_annot(self.subject, parc,
                                     subjects_dir=self.subjects_dir)
-            if len(labels) > 255:
-                dtype = np.uint16
-            else:
-                dtype = np.uint8
-            parc_names = ['unknown']
-            parc_ = np.zeros(self._n_vert, dtype=dtype)
-            for i, label in enumerate(labels, 1):
-                parc_names.append(label.name)
+            parc_ = Factor(['unknown'], rep=len(self), name=parc)
+            for label in labels:
                 index = self.dimindex(label)
-                parc_[index] = i
+                parc_[index] = label.name
         else:
             raise ValueError("Parc needs to be string, got %s" % repr(parc))
 
-        self.parc = parc
-        self._parc = parc_
-        self._parc_names = parc_names
+        self.parc = parc_
 
 
 class UTS(Dimension):

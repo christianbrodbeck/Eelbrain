@@ -143,7 +143,10 @@ def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None):
         x_ = x_.swapaxes(axis, 0)
 
     # package output NDVar
-    parc = ndvar.source.parc
+    if ndvar.source.parc is None:
+        parc = None
+    else:
+        parc = ndvar.source.parc.name
     source = SourceSpace(vertices_to, subject_to, src, subjects_dir, parc)
     dims = ndvar.dims[:axis] + (source,) + ndvar.dims[axis + 1:]
     info = ndvar.info.copy()
