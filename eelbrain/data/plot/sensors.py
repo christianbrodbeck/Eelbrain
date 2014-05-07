@@ -46,7 +46,7 @@ class _plt_connectivity:
         if connectivity is None:
             return
 
-        for c, r in zip(connectivity.col, connectivity.row):
+        for c, r in connectivity:
             x = self.locs[[c, r], 0]
             y = self.locs[[c, r], 1]
             line = plt.Line2D(x, y, **linestyle)

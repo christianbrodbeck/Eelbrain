@@ -1854,15 +1854,7 @@ class _ClusterDist:
             flat_shape = (shape[0], np.prod(shape[1:]))
 
             # prepare connectivity
-            coo = Y_perm.dims[nad_ax + 1].connectivity()
-            pairs = set()
-            for v0, v1, d in izip(coo.row, coo.col, coo.data):
-                if not d or v0 == v1:
-                    continue
-                src = min(v0, v1)
-                dst = max(v0, v1)
-                pairs.add((src, dst))
-            connectivity = np.array(sorted(pairs), dtype=np.int32)
+            connectivity = Y_perm.dims[nad_ax + 1].connectivity()
             connectivity_src = connectivity[:, 0]
             connectivity_dst = connectivity[:, 1]
 

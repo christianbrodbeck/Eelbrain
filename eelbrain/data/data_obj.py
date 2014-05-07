@@ -4736,6 +4736,25 @@ class Model(object):
 
 # ---NDVar dimensions---
 
+def _connectivity_from_coo(coo):
+    """Convert a coo matrix to Eelbrain internal connectivity
+
+    Returns
+    -------
+    connetivity : array of int, (n_pairs, 2)
+        array of sorted [src, dst] pairs, with all src < dts.
+    """
+    pairs = set()
+    for v0, v1, d in izip(coo.row, coo.col, coo.data):
+        if not d or v0 == v1:
+            continue
+        src = min(v0, v1)
+        dst = max(v0, v1)
+        pairs.add((src, dst))
+    connectivity = np.array(sorted(pairs), dtype=np.int32)
+    return connectivity
+
+
 def find_time_point(times, time, rnd='closest'):
     """
     Returns (index, time) for the closest point to ``time`` in ``times``
@@ -5147,8 +5166,8 @@ class Sensor(Dimension):
 
         Returns
         -------
-        connectivity : scipy.sparse.coo_matrix
-            Connectivity.
+        connetivity : array of int, (n_pairs, 2)
+            array of sorted [src, dst] pairs, with all src < dts.
 
         See Also
         --------
@@ -5157,25 +5176,15 @@ class Sensor(Dimension):
         mult = connect_dist or self._connect_dist
         nb = self.neighbors(mult)
 
-        # sparse representation (remove duplicate connections)
-        nbs = collections.defaultdict(set)
+        pairs = set()
         for k, vals in nb.iteritems():
             for v in vals:
                 if k < v:
-                    nbs[k].add(v)
+                    pairs.add((k, v))
                 else:
-                    nbs[v].add(k)
+                    pairs.add((v, k))
 
-        # sparse matrix
-        row = []
-        col = []
-        for k in sorted(nbs):
-            v = sorted(nbs[k])
-            row.extend([k] * len(v))
-            col.extend(sorted(v))
-        data = np.ones(len(row))
-        N = len(self)
-        connectivity = coo_matrix((data, (row, col)), shape=(N, N))
+        connectivity = np.array(sorted(pairs), dtype=np.int32)
         return connectivity
 
     @classmethod
@@ -5631,18 +5640,14 @@ class SourceSpace(Dimension):
         else:
             c = self._connectivity
             int_index = np.arange(len(self))[index]
-            idx = np.logical_and(np.in1d(c.row, int_index),
-                                 np.in1d(c.col, int_index))
+            idx = np.logical_and(np.in1d(c[:, 0], int_index),
+                                 np.in1d(c[:, 1], int_index))
             if np.any(idx):
-                row = c.row[idx]
-                col = c.col[idx]
-                data = c.data[idx]
+                new_c = c[idx]
 
                 # remap to new vertex ids
-                row = np.digitize(row, int_index, True)
-                col = np.digitize(col, int_index, True)
-
-                connectivity = coo_matrix((data, (row, col)))
+                binned = np.digitize(new_c.ravel(), int_index, True)
+                connectivity = binned.reshape((-1, 2))
             else:
                 connectivity = None
 
@@ -5734,7 +5739,13 @@ class SourceSpace(Dimension):
         return "SourceSpace (MNE) [%s], %r, %r>" % (ns, self.subject, self.src)
 
     def connectivity(self):
-        "Create source space connectivity"
+        """Create source space connectivity
+
+        Returns
+        -------
+        connetivity : array of int, (n_pairs, 2)
+            array of sorted [src, dst] pairs, with all src < dts.
+        """
         if self._connectivity is not None:
             return self._connectivity
 
@@ -5758,7 +5769,7 @@ class SourceSpace(Dimension):
             row = row[idx]
             col = col[idx]
             data = np.ones(col.shape)
-            c = coo_matrix((data, (row, col)), shape=(n, n))
+            coo = coo_matrix((data, (row, col)), shape=(n, n))
         else:
             # find applicable triangles for each hemisphere
             if self.lh_n:
@@ -5776,8 +5787,9 @@ class SourceSpace(Dimension):
                 tris = rh_tris
 
             # connectivity
-            c = mne.spatial_tris_connectivity(tris)
+            coo = mne.spatial_tris_connectivity(tris)
 
+        c = _connectivity_from_coo(coo)
         self._connectivity = c
         return c
 
