@@ -5738,14 +5738,31 @@ class SourceSpace(Dimension):
         ns = ', '.join(str(len(v)) for v in self.vertno)
         return "SourceSpace (MNE) [%s], %r, %r>" % (ns, self.subject, self.src)
 
-    def connectivity(self):
+    def connectivity(self, disconnect_parc=False):
         """Create source space connectivity
+
+        Parameters
+        ----------
+        disconnect_parc : bool
+            Reduce connectivity to label-internal connections.
 
         Returns
         -------
         connetivity : array of int, (n_pairs, 2)
             array of sorted [src, dst] pairs, with all src < dts.
         """
+        connectivity = self._connectivity_full()
+        if disconnect_parc:
+            parc = self.parc
+            if parc is None:
+                raise RuntimeError("SourceSpace has no parcellation (use "
+                                   ".set_parc())")
+            idx = np.array([parc[s] == parc[d] for s, d in connectivity])
+            connectivity = connectivity[idx]
+
+        return connectivity
+
+    def _connectivity_full(self):
         if self._connectivity is not None:
             return self._connectivity
 
