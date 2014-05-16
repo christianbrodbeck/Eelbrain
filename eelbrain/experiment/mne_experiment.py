@@ -487,7 +487,9 @@ class MneExperiment(FileTree):
             subject = self.get('mrisubject')
             src = self.get('src')
             mri_sdir = self.get('mri-sdir')
-            src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir, dst)
+            parc = self.get('parc') or None
+            src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir, dst,
+                                      parc=parc)
             if baseline is not None:
                 src -= src.summary(time=baseline)
             ds[dst] = src
@@ -615,6 +617,7 @@ class MneExperiment(FileTree):
         else:
             keys = ('%s',)
         src = self.get('src')
+        parc = self.get('parc') or None
         for name, key in zip(do, keys):
             if ind_stc:
                 ds[key % 'stc'] = stcs[name]
@@ -623,7 +626,8 @@ class MneExperiment(FileTree):
                     subject = ds['subject'].cells[0]
                 else:
                     subject = common_brain
-                ndvar = load.fiff.stc_ndvar(stcs[name], subject, src, mri_sdir)
+                ndvar = load.fiff.stc_ndvar(stcs[name], subject, src, mri_sdir,
+                                            parc=parc)
                 ds[key % 'src'] = ndvar
             if morph_stc:
                 if all_are_common_brain:
@@ -636,7 +640,8 @@ class MneExperiment(FileTree):
                     stcm = stcs[name]
                 else:
                     stcm = mstcs[name]
-                ndvar = load.fiff.stc_ndvar(stcm, common_brain, src, mri_sdir)
+                ndvar = load.fiff.stc_ndvar(stcm, common_brain, src, mri_sdir,
+                                            parc=parc)
                 ds[key % 'srcm'] = ndvar
 
     def add_stc_label(self, ds, label, src='stc'):
