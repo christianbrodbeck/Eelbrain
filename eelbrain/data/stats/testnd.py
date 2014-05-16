@@ -31,7 +31,6 @@ import numpy as np
 import scipy.stats
 from scipy import ndimage
 
-from ... import fmtxt
 from ...utils import logger
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
@@ -116,8 +115,8 @@ class _TestResult(object):
             raise RuntimeError(err)
         return self._cdist.masked_parameter_map(pmin, tstart, tstop, sub)
 
-    def tfce_clusters(self, pmin=0.05, tstart=None, tstop=None, sub=None):
-        """Find significant regions in a TFCE distribution
+    def find_clusters(self, pmin=0.05, tstart=None, tstop=None, sub=None):
+        """Find significant regions in a threshold-free cluster distribution
 
         Parameters
         ----------
@@ -132,10 +131,10 @@ class _TestResult(object):
         if self._cdist is None:
             err = "Method only applies to results with samples > 0"
             raise RuntimeError(err)
-        return self._cdist.tfce_clusters(pmin, tstart, tstop, sub)
+        return self._cdist.find_clusters(pmin, tstart, tstop, sub)
 
-    def tfce_peaks(self):
-        """Find peaks in a TFCE distribution
+    def find_peaks(self):
+        """Find peaks in a threshold-free cluster distribution
 
         Returns
         -------
@@ -145,10 +144,10 @@ class _TestResult(object):
         if self._cdist is None:
             err = "Method only applies to results with samples > 0"
             raise RuntimeError(err)
-        return self._cdist.tfce_peaks()
+        return self._cdist.find_peaks()
 
-    def tfce_probability_map(self, tstart=None, tstop=None, sub=None):
-        """Create a probability map for a threshold-free cluster distribution
+    def compute_probability_map(self, tstart=None, tstop=None, sub=None):
+        """Compute a probability map for a threshold-free cluster distribution
 
         Parameters
         ----------
@@ -167,7 +166,7 @@ class _TestResult(object):
         if self._cdist is None:
             err = "Method only applies to results with samples > 0"
             raise RuntimeError(err)
-        return self._cdist.tfce_probability_map(tstart, tstop, sub)
+        return self._cdist.compute_probability_map(tstart, tstop, sub)
 
 
 class t_contrast_rel(_TestResult):
@@ -175,8 +174,8 @@ class t_contrast_rel(_TestResult):
     _state_specific = ('X', 'contrast', 't')
 
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None,
-                 samples=None, pmin=None, tstart=None, tstop=None,
-                 dist_dim=None, dist_tstep=None, **criteria):
+                 samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
+                 tstop=None, dist_dim=None, dist_tstep=None, **criteria):
         """Contrast with t-values from multiple comparisons
 
         Parameters
@@ -199,12 +198,14 @@ class t_contrast_rel(_TestResult):
             clusters are formed. Use 0 to compute clusters without performing
             any permutations.
         pmin : None | scalar (0 < pmin < 1)
-            Threshold p value for forming clusters: a t-value equivalent to p
-            for a related samples t-test (with df = len(match.cells) - 1) is
-            used. Alternatively, in order to directly specify the threshold as
-            t-value you can supply ``tmin`` as keyword argument. This overrides
-            the ``pmin`` parameter. None for threshold-free cluster
-            enhancement.
+            Threshold for forming clusters:  use a t-value equivalent to an
+            uncorrected p-value for a related samples t-test (with df =
+            len(match.cells) - 1).
+        tmin : None | scalar
+            Threshold for forming clusters.
+        tfce : bool
+            Use threshold-free cluster enhancement (Smith & Nichols, 2009).
+            Default is False.
         tstart, tstop : None | scalar
             Restrict time window for permutation cluster test.
         mintime : scalar
@@ -247,14 +248,6 @@ class t_contrast_rel(_TestResult):
         else:
             raise RuntimeError("Invalid tail in parse: %s" % repr(tail_))
 
-        if 'tmin' in criteria:
-            tmin = criteria.pop('tmin')
-        elif pmin is None:
-            tmin = None
-        else:
-            df = len(ct.match.cells) - 1
-            tmin = _ttest_t(pmin, df, tail)
-
         # buffer memory allocation
         shape = ct.Y.shape[1:]
         buff = np.empty((n_buffers,) + shape)
@@ -269,7 +262,21 @@ class t_contrast_rel(_TestResult):
         if samples is None:
             cdist = None
         else:
-            cdist = _ClusterDist(ct.Y, samples, tmin, tail, 't', test_name,
+            # threshold
+            if sum((pmin is not None, tmin is not None, tfce)) > 1:
+                msg = "Only one of pmin, tmin and tfce can be specified"
+                raise ValueError(msg)
+            elif pmin is not None:
+                df = len(ct.match.cells) - 1
+                threshold = _ttest_t(pmin, df, tail)
+            elif tmin is not None:
+                threshold = abs(tmin)
+            elif tfce:
+                threshold = 'tfce'
+            else:
+                threshold = None
+
+            cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't', test_name,
                                  tstart, tstop, criteria, dist_dim, dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
@@ -296,6 +303,8 @@ class t_contrast_rel(_TestResult):
             self.sub = "<array>"
         self.samples = samples
         self.pmin = pmin
+        self.tmin = tmin
+        self.tfce = tfce
         self.name = test_name
         self.t = t
         self._cdist = cdist
@@ -511,8 +520,8 @@ class corr(_TestResult):
     _state_specific = ('X', 'norm', 'n', 'df', 'r')
 
     def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=None,
-                 pmin=None, tstart=None, tstop=None, match=None,
-                 dist_dim=None, dist_tstep=None, **criteria):
+                 pmin=None, rmin=None, tfce=False, tstart=None, tstop=None,
+                 match=None, dist_dim=None, dist_tstep=None, **criteria):
         """Correlation.
 
         Parameters
@@ -533,8 +542,13 @@ class corr(_TestResult):
             clusters are formed. Use 0 to compute clusters without performing
             any permutations.
         pmin : None | scalar (0 < pmin < 1)
-            Threshold p value for forming clusters. None for threshold-free
-            cluster enhancement.
+            Threshold for forming clusters:  use an r-value equivalent to an
+            uncorrected p-value.
+        rmin : None | scalar
+            Threshold for forming clusters.
+        tfce : bool
+            Use threshold-free cluster enhancement (Smith & Nichols, 2009).
+            Default is False.
         tstart, tstop : None | scalar
             Restrict time window for permutation cluster test.
         match : None | categorial
@@ -583,11 +597,18 @@ class corr(_TestResult):
             r0, r1, r2 = _rtest_r((.05, .01, .001), df)
             info = _cs.stat_info('r', r0, r1, r2)
         else:
-            # calculate r threshold for clusters
-            if pmin is None:
-                threshold = None
-            else:
+            # threshold
+            if sum((pmin is not None, rmin is not None, tfce)) > 1:
+                msg = "Only one of pmin, rmin and tfce can be specified"
+                raise ValueError(msg)
+            elif pmin is not None:
                 threshold = _rtest_r(pmin, df)
+            elif rmin is not None:
+                threshold = abs(rmin)
+            elif tfce:
+                threshold = 'tfce'
+            else:
+                threshold = None
 
             cdist = _ClusterDist(Y, samples, threshold, 0, 'r', name,
                                  tstart, tstop, criteria, dist_dim, dist_tstep)
@@ -616,6 +637,8 @@ class corr(_TestResult):
             self.match = None
         self.samples = samples
         self.pmin = pmin
+        self.rmin = rmin
+        self.tfce = tfce
         self.name = name
         self._cdist = cdist
 
@@ -700,8 +723,8 @@ class ttest_1samp(_TestResult):
     _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'y', 'diff')
 
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
-                 samples=None, pmin=None, tstart=None, tstop=None,
-                 dist_dim=None, dist_tstep=None, **criteria):
+                 samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
+                 tstop=None, dist_dim=None, dist_tstep=None, **criteria):
         """Element-wise one sample t-test
 
         Parameters
@@ -727,8 +750,13 @@ class ttest_1samp(_TestResult):
             clusters are formed. Use 0 to compute clusters without performing
             any permutations.
         pmin : None | scalar (0 < pmin < 1)
-            Threshold p value for forming clusters. None for threshold-free
-            cluster enhancement.
+            Threshold for forming clusters:  use a t-value equivalent to an
+            uncorrected p-value.
+        tmin : None | scalar
+            Threshold for forming clusters.
+        tfce : bool
+            Use threshold-free cluster enhancement (Smith & Nichols, 2009).
+            Default is False.
         tstart, tstop : None | scalar
             Restrict time window for permutation cluster test.
         mintime : scalar
@@ -753,10 +781,19 @@ class ttest_1samp(_TestResult):
         if samples is None:
             cdist = None
         else:
-            if pmin is None:
-                threshold = None
-            else:
+            # threshold
+            if sum((pmin is not None, tmin is not None, tfce)) > 1:
+                msg = "Only one of pmin, tmin and tfce can be specified"
+                raise ValueError(msg)
+            elif pmin is not None:
                 threshold = _ttest_t(pmin, df, tail)
+            elif tmin is not None:
+                threshold = abs(tmin)
+            elif tfce:
+                threshold = 'tfce'
+            else:
+                threshold = None
+
             if popmean:
                 y_perm = ct.Y - popmean
             else:
@@ -792,6 +829,8 @@ class ttest_1samp(_TestResult):
         self.tail = tail
         self.samples = samples
         self.pmin = pmin
+        self.tmin = tmin
+        self.tfce = tfce
 
         self.name = test_name
         self.n = n
@@ -847,8 +886,9 @@ class ttest_ind(_TestResult):
                        'c0_mean')
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
-                 tail=0, samples=None, pmin=None, tstart=None, tstop=None,
-                 dist_dim=None, dist_tstep=None, **criteria):
+                 tail=0, samples=None, pmin=None, tmin=None, tfce=False,
+                 tstart=None, tstop=None, dist_dim=None, dist_tstep=None,
+                 **criteria):
         """Element-wise t-test
 
         Parameters
@@ -902,10 +942,18 @@ class ttest_ind(_TestResult):
         if samples is None:
             cdist = None
         else:
-            if pmin is None:
-                threshold = None
-            else:
+            # threshold
+            if sum((pmin is not None, tmin is not None, tfce)) > 1:
+                msg = "Only one of pmin, tmin and tfce can be specified"
+                raise ValueError(msg)
+            elif pmin is not None:
                 threshold = _ttest_t(pmin, df, tail)
+            elif tmin is not None:
+                threshold = abs(tmin)
+            elif tfce:
+                threshold = 'tfce'
+            else:
+                threshold = None
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
                                  test_name, tstart, tstop, criteria, dist_dim,
@@ -942,6 +990,8 @@ class ttest_ind(_TestResult):
         self.tail = tail
         self.samples = samples
         self.pmin = pmin
+        self.tmin = tmin
+        self.tfce = tfce
 
         self.name = test_name
         self.n1 = n1
@@ -1010,8 +1060,9 @@ class ttest_rel(_TestResult):
                        'c0_mean')
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
-                 tail=0, samples=None, pmin=None, tstart=None, tstop=None,
-                 dist_dim=None, dist_tstep=None, **criteria):
+                 tail=0, samples=None, pmin=None, tmin=None, tfce=False,
+                 tstart=None, tstop=None, dist_dim=None, dist_tstep=None,
+                 **criteria):
         """Element-wise t-test
 
         Parameters
@@ -1043,8 +1094,13 @@ class ttest_rel(_TestResult):
             clusters are formed. Use 0 to compute clusters without performing
             any permutations.
         pmin : None | scalar (0 < pmin < 1)
-            Threshold p value for forming clusters. None for threshold-free
-            cluster enhancement.
+            Threshold for forming clusters:  use a t-value equivalent to an
+            uncorrected p-value.
+        tmin : None | scalar
+            Threshold for forming clusters.
+        tfce : bool
+            Use threshold-free cluster enhancement (Smith & Nichols, 2009).
+            Default is False.
         tstart, tstop : None | scalar
             Restrict time window for permutation cluster test.
         mintime : scalar
@@ -1074,10 +1130,18 @@ class ttest_rel(_TestResult):
         if samples is None:
             cdist = None
         else:
-            if pmin is None:
-                threshold = None
-            else:
+            # threshold
+            if sum((pmin is not None, tmin is not None, tfce)) > 1:
+                msg = "Only one of pmin, tmin and tfce can be specified"
+                raise ValueError(msg)
+            elif pmin is not None:
                 threshold = _ttest_t(pmin, df, tail)
+            elif tmin is not None:
+                threshold = abs(tmin)
+            elif tfce:
+                threshold = 'tfce'
+            else:
+                threshold = None
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
                                  test_name, tstart, tstop, criteria, dist_dim,
@@ -1113,6 +1177,8 @@ class ttest_rel(_TestResult):
         self.tail = tail
         self.samples = samples
         self.pmin = pmin
+        self.tmin = tmin
+        self.tfce = tfce
 
         self.name = test_name
         self.n = n
@@ -1325,8 +1391,8 @@ class anova(_TestResult):
     _state_specific = ('X', 'pmin', 'effects', 'df_den', 'f')
 
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
-                 tstart=None, tstop=None, match=None, dist_dim=None,
-                 dist_tstep=None, **criteria):
+                 fmin=None, tfce=False, tstart=None, tstop=None, match=None,
+                 dist_dim=None, dist_tstep=None, **criteria):
         """ANOVA with cluster permutation test
 
         Parameters
@@ -1345,8 +1411,13 @@ class anova(_TestResult):
             clusters are formed. Use 0 to compute clusters without performing
             any permutations.
         pmin : None | scalar (0 < pmin < 1)
-            Threshold p value for forming clusters. None for threshold-free
-            cluster enhancement.
+            Threshold for forming clusters:  use an f-value equivalent to an
+            uncorrected p-value.
+        fmin : None | scalar
+            Threshold for forming clusters.
+        tfce : bool
+            Use threshold-free cluster enhancement (Smith & Nichols, 2009).
+            Default is False.
         replacement : bool
             whether random samples should be drawn with replacement or
             without
@@ -1374,14 +1445,22 @@ class anova(_TestResult):
         if samples is None:
             cdists = None
         else:
-            # find F-thresholds for clusters
-            if pmin is None:
-                fmins = [None] * len(effects)
+            # threshold
+            if sum((pmin is not None, fmin is not None, tfce)) > 1:
+                msg = "Only one of pmin, fmin and tfce can be specified"
+                raise ValueError(msg)
+            elif pmin is not None:
+                thresholds = (ftest_f(pmin, e.df, df_den[e]) for e in effects)
+            elif fmin is not None:
+                thresholds = (abs(fmin) for _ in xrange(len(effects)))
+            elif tfce:
+                thresholds = ('tfce' for _ in xrange(len(effects)))
             else:
-                fmins = [ftest_f(pmin, e.df, df_den[e]) for e in effects]
-            cdists = [_ClusterDist(Y, samples, fmin, 1, 'F', e.name, tstart,
+                thresholds = (None for _ in xrange(len(effects)))
+
+            cdists = [_ClusterDist(Y, samples, thresh, 1, 'F', e.name, tstart,
                                    tstop, criteria, dist_dim, dist_tstep)
-                      for e, fmin in izip(effects, fmins)]
+                      for e, thresh in izip(effects, thresholds)]
 
             # Find clusters in the actual data
             n_clusters = 0
@@ -1518,7 +1597,7 @@ class anova(_TestResult):
             raise RuntimeError(err)
         return self._cdist[effect].masked_parameter_map(pmin)
 
-    def tfce_clusters(self, pmin=0.05):
+    def find_clusters(self, pmin=0.05):
         """Find significant regions in a TFCE distribution
 
         Parameters
@@ -1536,12 +1615,12 @@ class anova(_TestResult):
             raise RuntimeError(err)
         dss = []
         for cdist in self._cdist:
-            ds = cdist.tfce_clusters(pmin)
+            ds = cdist.find_clusters(pmin)
             ds[:, 'effect'] = cdist.name
             dss.append(ds)
         return combine(dss)
 
-    def tfce_peaks(self):
+    def find_peaks(self):
         """Find peaks in a TFCE distribution
 
         Returns
@@ -1554,7 +1633,7 @@ class anova(_TestResult):
             raise RuntimeError(err)
         dss = []
         for cdist in self._cdist:
-            ds = cdist.tfce_peaks()
+            ds = cdist.find_peaks()
             ds[:, 'effect'] = cdist.name
             dss.append(ds)
         return combine(dss)
@@ -1725,9 +1804,8 @@ def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
             out_queue.put(0)
 
 
-def _tfce_worker(in_queue, out_queue, shape, threshold, tail, struct,
-                 all_adjacent, flat_shape, conn_src, conn_dst, stacked_shape,
-                 max_axes):
+def _tfce_worker(in_queue, out_queue, shape, tail, struct, all_adjacent,
+                 flat_shape, conn_src, conn_dst, stacked_shape, max_axes):
     # allocate memory buffers
     tfce_map = np.empty(shape)
     tfce_map_stacked = tfce_map.reshape(stacked_shape)
@@ -1772,7 +1850,7 @@ class _ClusterDist:
     """
     def __init__(self, Y, N, threshold, tail=0, meas='?', name=None,
                  tstart=None, tstop=None, criteria={}, dist_dim=(),
-                 dist_tstep=None):
+                 dist_tstep=None, n_workers=-1):
         """Accumulate information on a cluster statistic.
 
         Parameters
@@ -1781,9 +1859,10 @@ class _ClusterDist:
             Dependent variable.
         N : int
             Number of permutations.
-        threshold : None | scalar > 0
-            Threshold for finding clusters. None for threshold free cluster
-            evaluation.
+        threshold : None | scalar > 0 | 'tfce'
+            Threshold for finding clusters. None for forming distribution of
+            largest value in parameter map. 'TFCE' for threshold-free cluster
+            enhancement.
         tail : 1 | 0 | -1
             Which tail(s) of the distribution to consider. 0 is two-tailed,
             whereas 1 only considers positive values and -1 only considers
@@ -1808,9 +1887,29 @@ class _ClusterDist:
             collect the maximum in several time bins. The value of tstep has to
             divide the time between tstart and tstop in even sections. TFCE
             only.
+        n_workers : int
+            Number of clustering workers (for threshold based clusters and
+            TFCE). Negative numbers are added to the cpu-count, 0 to disable
+            multiprocessing.
         """
         assert Y.has_case
-        assert threshold is None or threshold > 0
+        if threshold is None:
+            kind = 'raw'
+        elif isinstance(threshold, str):
+            if threshold.lower() == 'tfce':
+                kind = 'tfce'
+            else:
+                raise ValueError("Invalid value for pmin: %s" % repr(threshold))
+        else:
+            try:
+                threshold = float(threshold)
+            except:
+                raise TypeError("Invalid value for pmin: %s" % repr(threshold))
+
+            if threshold > 0:
+                kind = 'cluster'
+            else:
+                raise ValueError("Invalid value for pmin: %s" % repr(threshold))
 
         # prepare temporal cropping
         if (tstart is None) and (tstop is None):
@@ -1880,10 +1979,10 @@ class _ClusterDist:
                 axes = tuple(i for i in xrange(ndim) if i != ax)
                 criteria_.append((axes, v))
 
-            if threshold is None:
+            if kind != 'cluster':
                 # here so that invalid keywords raise explicitly
-                err = ("Can not use cluster size criteria in doing threshold "
-                       "free cluster evaluation")
+                err = ("Can not use cluster size criteria when doing "
+                       "threshold free cluster evaluation")
                 raise ValueError(err)
         else:
             criteria_ = None
@@ -1891,7 +1990,7 @@ class _ClusterDist:
         # prepare distribution
         N = int(N)
         if (dist_dim or dist_tstep):
-            if threshold:
+            if kind == 'custer':
                 err = ("The dist_dim and dist_tstep parameters only apply to "
                        "threshold-free cluster distributions.")
                 raise ValueError(err)
@@ -1950,13 +2049,15 @@ class _ClusterDist:
             cmap_reshape = None
             max_axes = None
 
-        # decide on multiprocessing
-        if multiprocessing and N > 1:
-            n_workers = cpu_count() - 1
-        else:
-            n_workers = 0
-        mp = bool(n_workers)
+        # multiprocessing
+        if n_workers:
+            if multiprocessing and N > 1 and kind != 'raw':
+                if n_workers < 0:
+                    n_workers = max(1, cpu_count() + n_workers)
+            else:
+                n_workers = 0
 
+        self.kind = kind
         self.Y_perm = Y_perm
         self.dims = Y_perm.dims
         self._cmap_dims = cmap_dims
@@ -1987,20 +2088,21 @@ class _ClusterDist:
         self.has_original = False
         self._has_buffers = False
         self.dt_perm = None
-        self._mp = mp
         self._dist_i = N
         self._n_workers = n_workers
 
-        self._allocate_memory_buffers()
+        if kind != 'raw':
+            self._allocate_memory_buffers()
 
     def _allocate_memory_buffers(self):
         "Pre-allocate memory buffers used for cluster processing"
         if self._has_buffers:
             return
+
         shape = self.shape
         self._bin_buff = np.empty(shape, dtype=np.bool8)
         self._int_buff = np.empty(shape, dtype=np.uint32)
-        if self.threshold and self.tail == 0:
+        if self.kind == 'cluster' and self.tail == 0:
             self._int_buff2 = np.empty(shape, dtype=np.uint32)
         else:
             self._int_buff2 = None
@@ -2011,7 +2113,7 @@ class _ClusterDist:
             self._bin_buff2 = np.empty(shape, dtype=np.bool8)
 
         self._has_buffers = True
-        if self._i == 0 or self.threshold:  # no permutations will be added
+        if self._i == 0 or self.kind == 'cluster':
             return
 
         # only for TFCE
@@ -2031,7 +2133,7 @@ class _ClusterDist:
 
     def _init_permutation(self):
         "Permutation is only performed when clusters are found"
-        if self._mp:
+        if self._n_workers:
             n = reduce(operator.mul, self._dist_shape)
             ct_dist = RawArray('d', n)
             dist = np.frombuffer(ct_dist, np.float64, n)
@@ -2050,25 +2152,24 @@ class _ClusterDist:
 
         # clustering workers
         shape = self.shape
-        threshold = self.threshold
         tail = self.tail
         struct = self._struct
         all_adjacent = self._all_adjacent
         flat_shape = self._flat_shape
         conn_src = self._connectivity_src
         conn_dst = self._connectivity_dst
-        if self.threshold:
+        if self.kind == 'cluster':
             criteria = self._criteria
             target = _clustering_worker
+            threshold = self.threshold
             args = (pmap_queue, dist_queue, shape, threshold, tail, struct,
                     all_adjacent, flat_shape, conn_src, conn_dst, criteria)
         else:
             stacked_shape = self._cmap_reshape
             max_axes = self._max_axes
             target = _tfce_worker
-            args = (pmap_queue, dist_queue, shape, threshold, tail, struct,
-                    all_adjacent, flat_shape, conn_src, conn_dst,
-                    stacked_shape, max_axes)
+            args = (pmap_queue, dist_queue, shape, tail, struct, all_adjacent,
+                    flat_shape, conn_src, conn_dst, stacked_shape, max_axes)
 
         self._workers = []
         for _ in xrange(self._n_workers):
@@ -2107,8 +2208,8 @@ class _ClusterDist:
             raise RuntimeError(err)
         attrs = ('name', 'meas',
                  # settings ...
-                 'threshold', 'tail', 'criteria', 'N', 'tstart', 'tstop',
-                 'dist_dim', 'dist_tstep',
+                 'kind', 'threshold', 'tail', 'criteria', 'N', 'tstart',
+                 'tstop', 'dist_dim', 'dist_tstep',
                   # data properties ...
                  'dims', 'shape', '_all_adjacent', '_nad_ax', '_struct',
                  '_flat_shape', '_connectivity_src', '_connectivity_dst',
@@ -2146,18 +2247,18 @@ class _ClusterDist:
         return args
 
     def _repr_clusters(self):
-        if self.threshold is None:
-            if self.N:
-                return ["p >= %.3f" % self.probability_map.min()]
+        if self.kind == 'cluster':
+            if self.n_clusters == 0:
+                return ["no clusters"]
             else:
-                return []
-        elif self.n_clusters == 0:
-            return ["no clusters"]
+                info = ["%i clusters" % self.n_clusters]
+                if self.N:
+                    info.append("p >= %.3f" % self.clusters['p'].min())
+                return info
+        elif self.N:
+            return ["p >= %.3f" % self.probability_map.min()]
         else:
-            info = ["%i clusters" % self.n_clusters]
-            if self.N:
-                info.append("p >= %.3f" % self.clusters['p'].min())
-            return info
+            return []
 
     def _crop(self, im):
         if self.crop:
@@ -2171,7 +2272,7 @@ class _ClusterDist:
         self._allocate_memory_buffers()
         dims = self.dims
         param_contours = {}
-        if self.threshold:
+        if self.kind == 'cluster':
             if self.tail >= 0:
                 param_contours[self.threshold] = (0.7, 0.7, 0)
             if self.tail <= 0:
@@ -2181,24 +2282,25 @@ class _ClusterDist:
         param_map = self._original_param_map
 
         # TFCE map
-        if self.threshold is None:
-            tfce_map = self._original_cluster_map
-            x = tfce_map.swapaxes(0, self._nad_ax)
+        if self.kind == 'tfce':
+            stat_map = self._original_cluster_map
+            x = stat_map.swapaxes(0, self._nad_ax)
             tfce_map_ = NDVar(x, dims[1:], {}, self.name)
         else:
+            stat_map = self._original_param_map
             tfce_map_ = None
 
         # probability map and clusters
-        if self.threshold is None and self.N:
+        if self.kind in ('tfce', 'raw') and self.N:
             # probability map (TFCE)
             idx = self._bin_buff
             cpmap = np.zeros(self.shape)
             dist = self._aggregate_dist()
             for v in dist:
-                cpmap += np.greater(v, tfce_map, idx)
+                cpmap += np.greater(v, stat_map, idx)
             cpmap /= self.N
             clusters = None
-        elif self.threshold and self.n_clusters:
+        elif self.kind == 'cluster' and self.n_clusters:
             # traditional clusters
             cluster_map = self._original_cluster_map
             cids = self._cids
@@ -2389,17 +2491,16 @@ class _ClusterDist:
         if self._nad_ax:
             param_map = param_map.swapaxes(0, self._nad_ax)
 
-        if self.threshold is None:
-            self._original_cluster_map = np.empty(self.shape)
-            _tfce(param_map, self._original_cluster_map, self.tail,
+        if self.kind == 'tfce':
+            original_cluster_map = np.empty(self.shape)
+            _tfce(param_map, original_cluster_map, self.tail,
                   self._bin_buff, self._bin_buff2, self._int_buff,
                   self._struct, self._all_adjacent, self._flat_shape,
                   self._connectivity_src, self._connectivity_dst)
             cids = None
             n_clusters = True
-        else:
-            self._original_cluster_map = buff = np.empty(self.shape,
-                                                         dtype=np.uint32)
+        elif self.kind == 'cluster':
+            original_cluster_map = buff = np.empty(self.shape, dtype=np.uint32)
             cids = _label_clusters(param_map, buff, self._bin_buff,
                                    self._bin_buff2, self._int_buff2,
                                    self.threshold, self.tail, self._struct,
@@ -2407,8 +2508,13 @@ class _ClusterDist:
                                    self._connectivity_src,
                                    self._connectivity_dst, self._criteria)
             n_clusters = len(cids)
-        t1 = current_time()
+        else:
+            original_cluster_map = param_map
+            cids = None
+            n_clusters = True
 
+        t1 = current_time()
+        self._original_cluster_map = original_cluster_map
         self._cids = cids
         self.n_clusters = n_clusters
         self.has_original = True
@@ -2436,7 +2542,7 @@ class _ClusterDist:
         if self._nad_ax:
             pmap = pmap.swapaxes(0, self._nad_ax)
 
-        if self._mp:
+        if self._n_workers:
             # log
             dt = current_time() - self._t0
             elapsed = timedelta(seconds=round(dt))
@@ -2453,13 +2559,13 @@ class _ClusterDist:
                 self._dist_worker.join()
                 logger.info("Done")
         else:
-            if self.threshold is None:
+            if self.kind == 'tfce':
                 _tfce(pmap, self._float_buff, self.tail, self._bin_buff,
                       self._bin_buff2, self._int_buff, self._struct,
                       self._all_adjacent, self._flat_shape,
                       self._connectivity_src, self._connectivity_dst)
                 v = self._cmap_stacked.max(self._max_axes)
-            else:
+            elif self.kind == 'cluster':
                 cmap = self._int_buff
                 cids = _label_clusters(pmap, cmap, self._bin_buff,
                                        self._bin_buff2, self._int_buff2,
@@ -2473,6 +2579,9 @@ class _ClusterDist:
                     v = clusters_v.max()
                 else:
                     v = 0
+            else:
+                v = pmap.reshape(self._cmap_reshape).max(self._max_axes)
+
             self.dist[self._i] = v
             # log
             n_done = self.N - self._i
@@ -2537,8 +2646,8 @@ class _ClusterDist:
 
         return ds
 
-    def tfce_clusters(self, pmin=0.05, tstart=None, tstop=None, sub=None):
-        """Find significant regions in a TFCE distribution
+    def find_clusters(self, pmin=0.05, tstart=None, tstop=None, sub=None):
+        """Find significant regions in a threshold-free distribution
 
         Parameters
         ----------
@@ -2550,10 +2659,10 @@ class _ClusterDist:
         ds : Dataset
             Dataset with information about the clusters.
         """
-        if self.threshold:
-            raise RuntimeError("Not a TFCE distribution")
+        if self.kind == 'cluster':
+            raise RuntimeError("Not a threshold-free distribution")
 
-        p_map = self.tfce_probability_map(tstart, tstop, sub)
+        p_map = self.compute_probability_map(tstart, tstop, sub)
         bin_map = np.less_equal(p_map.x, pmin)
 
         # reshape for labelling
@@ -2587,7 +2696,7 @@ class _ClusterDist:
 
         return ds
 
-    def tfce_peaks(self):
+    def find_peaks(self):
         """Find peaks in a TFCE distribution
 
         Returns
@@ -2595,8 +2704,8 @@ class _ClusterDist:
         ds : Dataset
             Dataset with information about the peaks.
         """
-        if self.threshold:
-            raise RuntimeError("Not a TFCE distribution")
+        if self.kind == 'cluster':
+            raise RuntimeError("Not a threshold-free distribution")
 
         self._allocate_memory_buffers()
         param_map = self._original_param_map
@@ -2668,7 +2777,7 @@ class _ClusterDist:
             ndvar = ndvar[sub]
         return ndvar
 
-    def tfce_probability_map(self, tstart=None, tstop=None, sub=None):
+    def compute_probability_map(self, tstart=None, tstop=None, sub=None):
         """Create a probability map for a threshold-free cluster distribution
 
         Parameters
@@ -2685,15 +2794,23 @@ class _ClusterDist:
             Create the probability map for, and correct for multiple
             comparisons in only a part of Y.
         """
-        dist = self._aggregate_dist(tstart, tstop, sub)
-        tfce_map = self._crop_result_ndvar(self.tfce_map, tstart, tstop, sub)
+        if self.kind == 'cluster':
+            raise RuntimeError("For threshold cluster tests use "
+                               ".probability_map")
+        elif self.kind == 'tfce':
+            stat_map = self.tfce_map
+        else:
+            stat_map = self.parameter_map
 
-        idx = np.empty(tfce_map.shape, dtype=np.bool8)
-        cpmap = np.zeros(tfce_map.shape)
+        dist = self._aggregate_dist(tstart, tstop, sub)
+        stat_map = self._crop_result_ndvar(stat_map, tstart, tstop, sub)
+
+        idx = np.empty(stat_map.shape, dtype=np.bool8)
+        cpmap = np.zeros(stat_map.shape)
         for v in dist:
-            cpmap += np.greater(v, tfce_map, idx)
+            cpmap += np.greater(v, stat_map, idx)
         cpmap /= self.N
-        return NDVar(cpmap, tfce_map.dims)
+        return NDVar(cpmap, stat_map.dims)
 
     def masked_parameter_map(self, pmin=0.05, tstart=None, tstop=None,
                              sub=None):
@@ -2710,7 +2827,7 @@ class _ClusterDist:
             NDVar with data from the original parameter map wherever p <= pmin
             and 0 everywhere else.
         """
-        probability_map = self.tfce_probability_map(tstart, tstop, sub)
+        probability_map = self.compute_probability_map(tstart, tstop, sub)
         c_mask = np.less_equal(probability_map.x, pmin)
         param_map = self._crop_result_ndvar(self.parameter_map, tstart, tstop,
                                             sub, True)

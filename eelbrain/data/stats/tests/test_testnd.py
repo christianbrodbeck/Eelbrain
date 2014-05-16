@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
+from itertools import product
 import cPickle as pickle
 import logging
 
@@ -8,6 +9,7 @@ from nose.tools import (assert_equal, assert_in, assert_less, assert_not_in,
 import numpy as np
 from numpy.testing import assert_array_equal
 
+from eelbrain import logger
 from eelbrain.data.data_obj import UTS, Ordered, Sensor
 from eelbrain.data.stats import testnd as _testnd
 from eelbrain.data.stats.testnd import _ClusterDist
@@ -21,6 +23,11 @@ def test_anova():
     ds = datasets.get_rand(True)
 
     testnd.anova('utsnd', 'A*B', ds=ds)
+    for samples in (0, 2):
+        logger.info("TEST:  samples=%r" % samples)
+        testnd.anova('utsnd', 'A*B', ds=ds, samples=samples)
+        testnd.anova('utsnd', 'A*B', ds=ds, samples=samples, pmin=0.05)
+        testnd.anova('utsnd', 'A*B', ds=ds, samples=samples, tfce=True)
 
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=0, pmin=0.05)
     repr(res)
@@ -43,8 +50,8 @@ def test_anova():
     repr(res)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res = pickle.loads(string)
-    tfce_clusters = res.tfce_clusters(pmin=0.05)
-    peaks = res.tfce_peaks()
+    tfce_clusters = res.find_clusters(pmin=0.05)
+    peaks = res.find_peaks()
     assert_equal(tfce_clusters.eval("p.min()"), peaks.eval("p.min()"))
     unmasked = res.f[0]
     masked = res.masked_parameter_map(effect=0, pmin=0.05)
@@ -64,6 +71,7 @@ def test_clusterdist():
     Y = NDVar(x, dims)
 
     # test connecting sensors
+    logger.info("TEST:  connecting sensors")
     bin_map = np.zeros(shape[1:], dtype=np.bool8)
     bin_map[:3, :3, :2] = True
     pmap = np.random.normal(0, 1, shape[1:])
@@ -79,6 +87,7 @@ def test_clusterdist():
     assert_equal(cdist.parameter_map.dims, Y.dims[1:])
 
     # test connecting many sensors
+    logger.info("TEST:  connecting sensors")
     bin_map = np.zeros(shape[1:], dtype=np.bool8)
     bin_map[:3, :3] = True
     pmap = np.random.normal(0, 1, shape[1:])
@@ -91,6 +100,7 @@ def test_clusterdist():
                        cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))
 
     # test keeping sensors separate
+    logger.info("TEST:  keeping sensors separate")
     bin_map = np.zeros(shape[1:], dtype=np.bool8)
     bin_map[:3, :3, 0] = True
     bin_map[:3, :3, 2] = True
@@ -102,6 +112,7 @@ def test_clusterdist():
     assert_equal(cdist.n_clusters, 2)
 
     # TFCE
+    logger.info("TEST:  TFCE")
     dims = ('case', UTS(-0.1, 0.1, 4),
             Sensor(locs, ['0', '1', '2', '3'], connect_dist=1.1),
             Ordered('dim2', range(10), 'unit'))
@@ -110,6 +121,7 @@ def test_clusterdist():
     cdist.add_original(Y.x[0])
     for i in xrange(1, 4):
         cdist.add_perm(Y.x[i])
+    assert_equal(cdist.dist.shape, (3,))
     # I/O
     string = pickle.dumps(cdist, pickle.HIGHEST_PROTOCOL)
     cdist_ = pickle.loads(string)
@@ -140,39 +152,44 @@ def test_clusterdist():
     logging.debug(' target: \n%s' % (tgt.astype(int)))
     assert_array_equal(peaks, tgt)
 
-    # test keeping dimension
-    assert_equal(cdist.dist.shape, (3,))
-    cdist = _ClusterDist(Y, 5, None, dist_dim='sensor')
-    print repr(cdist)
-    cdist.add_original(Y.x[0])
-    print repr(cdist)
-    for i in xrange(1, 6):
-        cdist.add_perm(Y.x[i])
-    print repr(cdist)
-    assert_equal(cdist.dist.shape, (5, 4))
+    mps = False, True
+    thresholds = (None, 'tfce')
+    for mp, threshold in product(mps, thresholds):
+        logger.info("TEST:  multiprocessing=%r, threshold=%r" % (mp, threshold))
+        _testnd.multiprocessing = mp
 
-    # test keeping time bins
-    cdist = _ClusterDist(Y, 5, None, dist_tstep=0.2)
-    cdist.add_original(Y.x[0])
-    for i in xrange(1, 6):
-        cdist.add_perm(Y.x[i])
-    assert_equal(cdist.dist.shape, (5, 2))
-    assert_raises(ValueError, _ClusterDist, Y, 5, None, dist_tstep=0.3)
+        # test keeping dimension
+        cdist = _ClusterDist(Y, 5, threshold, dist_dim='sensor')
+        print repr(cdist)
+        cdist.add_original(Y.x[0])
+        print repr(cdist)
+        for i in xrange(1, 6):
+            cdist.add_perm(Y.x[i])
+        print repr(cdist)
+        assert_equal(cdist.dist.shape, (5, 4))
 
-    # test keeping dimension and time bins
-    cdist = _ClusterDist(Y, 5, None, dist_dim='sensor', dist_tstep=0.2)
-    cdist.add_original(Y.x[0])
-    for i in xrange(1, 6):
-        cdist.add_perm(Y.x[i])
-    assert_equal(cdist.dist.shape, (5, 4, 2))
+        # test keeping time bins
+        cdist = _ClusterDist(Y, 5, threshold, dist_tstep=0.2)
+        cdist.add_original(Y.x[0])
+        for i in xrange(1, 6):
+            cdist.add_perm(Y.x[i])
+        assert_equal(cdist.dist.shape, (5, 2))
+        assert_raises(ValueError, _ClusterDist, Y, 5, threshold, dist_tstep=0.3)
 
-    # test keeping 2 dimensions and time bins
-    cdist = _ClusterDist(Y, 5, None, dist_dim=('sensor', 'dim2'),
-                         dist_tstep=0.2)
-    cdist.add_original(Y.x[0])
-    for i in xrange(1, 6):
-        cdist.add_perm(Y.x[i])
-    assert_equal(cdist.dist.shape, (5, 4, 2, 10))
+        # test keeping dimension and time bins
+        cdist = _ClusterDist(Y, 5, threshold, dist_dim='sensor', dist_tstep=0.2)
+        cdist.add_original(Y.x[0])
+        for i in xrange(1, 6):
+            cdist.add_perm(Y.x[i])
+        assert_equal(cdist.dist.shape, (5, 4, 2))
+
+        # test keeping 2 dimensions and time bins
+        cdist = _ClusterDist(Y, 5, threshold, dist_dim=('sensor', 'dim2'),
+                             dist_tstep=0.2)
+        cdist.add_original(Y.x[0])
+        for i in xrange(1, 6):
+            cdist.add_perm(Y.x[i])
+        assert_equal(cdist.dist.shape, (5, 4, 2, 10))
 
 
 def test_corr():
@@ -229,7 +246,7 @@ def test_t_contrast():
                   ('a|c', 'b|c', 'c|c'))
 
     # simple contrast
-    res = testnd.t_contrast_rel('uts', 'A', 'a1>a0', 'rm', ds=ds, samples=100,
+    res = testnd.t_contrast_rel('uts', 'A', 'a1>a0', 'rm', ds=ds, samples=10,
                                 pmin=0.05)
     repr(res)
     res_ = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=ds)
@@ -238,7 +255,7 @@ def test_t_contrast():
 
     # complex contrast
     res = testnd.t_contrast_rel('uts', 'A%B', 'min(a0|b0>a1|b0, a0|b1>a1|b1)',
-                                'rm', ds=ds, samples=100, pmin=0.05)
+                                'rm', ds=ds, samples=10, pmin=0.05)
     res_b0 = testnd.ttest_rel('uts', 'A%B', ('a0', 'b0'), ('a1', 'b0'), 'rm',
                               ds=ds)
     res_b1 = testnd.ttest_rel('uts', 'A%B', ('a0', 'b1'), ('a1', 'b1'), 'rm',
@@ -307,8 +324,8 @@ def test_ttest_1samp():
     res = testnd.ttest_1samp('utsnd', sub="A == 'a0'", ds=ds, samples=1)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res = pickle.loads(string)
-    tfce_clusters = res.tfce_clusters(pmin=0.05)
-    peaks = res.tfce_peaks()
+    tfce_clusters = res.find_clusters(pmin=0.05)
+    peaks = res.find_peaks()
     assert_equal(tfce_clusters.eval("p.min()"), peaks.eval("p.min()"))
     masked = res.masked_parameter_map(pmin=0.05)
     assert_array_equal(masked.abs().x <= res.t.abs().x, True)
