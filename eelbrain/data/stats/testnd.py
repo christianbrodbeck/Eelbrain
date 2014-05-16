@@ -1394,7 +1394,8 @@ class anova(_TestResult):
                 for Y_ in resample(cdist.Y_perm, samples, unit=match):
                     lm.map(Y_.x)
                     for cdist, fmap in izip(cdists, fmaps_):
-                        cdist.add_perm(fmap)
+                        if cdist.n_clusters:
+                            cdist.add_perm(fmap)
 
         # create ndvars
         dims = Y.dims[1:]
