@@ -31,7 +31,7 @@ import numpy as np
 import scipy.stats
 from scipy import ndimage
 
-from ...utils import logger
+from ...utils import logger, LazyProperty
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                         NDVar, Var, Celltable, cellname, combine, UTS)
@@ -87,11 +87,9 @@ class _TestResult(object):
         "override to create secondary results"
         cdist = self._cdist
         if cdist is None:
-            self.clusters = None
             self.tfce_map = None
             self.p = None
         else:
-            self.clusters = cdist.clusters
             self.tfce_map = cdist.tfce_map
             self.p = cdist.probability_map
 
@@ -115,13 +113,26 @@ class _TestResult(object):
             raise RuntimeError(err)
         return self._cdist.masked_parameter_map(pmin, tstart, tstop, sub)
 
-    def find_clusters(self, pmin=0.05, tstart=None, tstop=None, sub=None):
-        """Find significant regions in a threshold-free cluster distribution
+    @LazyProperty
+    def clusters(self):
+        if self._cdist is None:
+            return None
+        else:
+            return self._clusters(None, True)
+
+    def _clusters(self, pmin=None, maps=False, tstart=None, tstop=None,
+                  sub=None):
+        """Find significant regions as clusters
 
         Parameters
         ----------
-        pmin : scalar
-            Threshold p-value for forming clusters (default 0.05).
+        pmin : None | scalar, 1 >= p  >= 0
+            Threshold p-value for clusters (for thresholded cluster tests the
+            default is 1, for others 0.05).
+        maps : bool
+            Include in the output a map of every cluster (can be memory
+            intensive if there are large statistical maps and/or many
+            clusters; default False).
 
         Returns
         -------
@@ -129,9 +140,10 @@ class _TestResult(object):
             Dataset with information about the clusters.
         """
         if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
+            err = ("Test results have no clustering (set samples to an int "
+                   " >= 0 to find clusters")
             raise RuntimeError(err)
-        return self._cdist.find_clusters(pmin, tstart, tstop, sub)
+        return self._cdist.clusters(pmin, maps, tstart, tstop, sub)
 
     def find_peaks(self):
         """Find peaks in a threshold-free cluster distribution
@@ -1518,18 +1530,6 @@ class anova(_TestResult):
             self.tfce_maps = [cdist.tfce_map for cdist in cdists]
             self.probability_maps = [cdist.probability_map for cdist in cdists]
 
-            clusters = []
-            for cdist in cdists:
-                if cdist.clusters is not None:
-                    cdist.clusters[:, 'effect'] = cdist.name
-                    clusters.append(cdist.clusters)
-            if clusters:
-                self.clusters = combine(clusters)
-            else:
-                self.clusters = None
-        else:
-            self.clusters = None
-
         # f-maps with clusters
         pmin = self.pmin or 0.05
         if self.samples:
@@ -1597,13 +1597,19 @@ class anova(_TestResult):
             raise RuntimeError(err)
         return self._cdist[effect].masked_parameter_map(pmin)
 
-    def find_clusters(self, pmin=0.05):
+    def _clusters(self, pmin=None, maps=False, tstart=None, tstop=None,
+                  sub=None):
         """Find significant regions in a TFCE distribution
 
         Parameters
         ----------
-        pmin : scalar
-            Threshold p-value for forming clusters (default 0.05).
+        pmin : None | scalar, 1 >= p  >= 0
+            Threshold p-value for clusters (for thresholded cluster tests the
+            default is 1, for others 0.05).
+        maps : bool
+            Include in the output a map of every cluster (can be memory
+            intensive if there are large statistical maps and/or many
+            clusters; default False).
 
         Returns
         -------
@@ -1611,14 +1617,20 @@ class anova(_TestResult):
             Dataset with information about the clusters.
         """
         if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
+            err = ("Test results have no clustering (set samples to an int "
+                   " >= 0 to find clusters")
             raise RuntimeError(err)
         dss = []
+        info = {}
         for cdist in self._cdist:
-            ds = cdist.find_clusters(pmin)
+            ds = cdist.clusters(pmin, maps, tstart, tstop, sub)
             ds[:, 'effect'] = cdist.name
+            if 'clusters' in ds.info:
+                info['%s clusters' % cdist.name] = ds.info.pop('clusters')
             dss.append(ds)
-        return combine(dss)
+        out = combine(dss)
+        out.info.update(info)
+        return out
 
     def find_peaks(self):
         """Find peaks in a TFCE distribution
@@ -2247,18 +2259,17 @@ class _ClusterDist:
         return args
 
     def _repr_clusters(self):
+        info = []
         if self.kind == 'cluster':
             if self.n_clusters == 0:
-                return ["no clusters"]
+                info.append("no clusters")
             else:
-                info = ["%i clusters" % self.n_clusters]
-                if self.N:
-                    info.append("p >= %.3f" % self.clusters['p'].min())
-                return info
-        elif self.N:
-            return ["p >= %.3f" % self.probability_map.min()]
-        else:
-            return []
+                info.append("%i clusters" % self.n_clusters)
+
+        if self.N:
+            info.append("p >= %.3f" % self.probability_map.min())
+
+        return info
 
     def _crop(self, im):
         if self.crop:
@@ -2290,7 +2301,7 @@ class _ClusterDist:
             stat_map = self._original_param_map
             tfce_map_ = None
 
-        # probability map and clusters
+        # probability map
         if self.kind in ('tfce', 'raw') and self.N:
             # probability map (TFCE)
             idx = self._bin_buff
@@ -2299,49 +2310,27 @@ class _ClusterDist:
             for v in dist:
                 cpmap += np.greater(v, stat_map, idx)
             cpmap /= self.N
-            clusters = None
-        elif self.kind == 'cluster' and self.n_clusters:
-            # traditional clusters
-            cluster_map = self._original_cluster_map
-            cids = self._cids
+        elif self.kind == 'cluster' and self.N:
+            cpmap = np.ones(self.shape)
 
-            # custer extent properties
-            clusters = self._cluster_properties(cluster_map, cids)
+            if self.n_clusters:
+                cluster_map = self._original_cluster_map
+                cids = self._cids
+                dist = self._aggregate_dist()
 
-            # measure original clusters
-            cluster_v = ndimage.sum(param_map, cluster_map, cids)
-            clusters['v'] = Var(cluster_v)
+                # measure clusters
+                cluster_v = ndimage.sum(param_map, cluster_map, cids)
 
-            # p-values: "the proportion of random partitions that resulted in a
-            # larger test statistic than the observed one" (179)
-            cpmap = np.ones(self.shape)  # cluster probability
-            dist = self.dist
-            if self.N:
+                # p-values: "the proportion of random partitions that resulted
+                # in a larger test statistic than the observed one" (179)
                 n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
                 cluster_p = n_larger / self.N
-                clusters['p'] = Var(cluster_p)
-                clusters['*'] = star_factor(clusters['p'])
 
-            # expand clusters and find cluster properties
-            cmaps = np.empty((self.n_clusters,) + self.shape,
-                             dtype=param_map.dtype)
-            c_mask = self._bin_buff
-            for i, cid in enumerate(cids):
-                # cluster extent
-                np.equal(cluster_map, cid, c_mask)
-                # cluster value map
-                np.multiply(param_map, c_mask, cmaps[i])
-                if self.N:
+                c_mask = self._bin_buff
+                for i, cid in enumerate(cids):
+                    np.equal(cluster_map, cid, c_mask)
                     cpmap[c_mask] = cluster_p[i]
-
-            # store cluster NDVar
-            if self._nad_ax:
-                cmaps = cmaps.swapaxes(1, self._nad_ax + 1)
-            info = _cs.stat_info(self.meas, contours=param_contours,
-                                 summary_func=np.sum)
-            clusters['cluster'] = NDVar(cmaps, dims=dims, info=info)
         else:
-            clusters = None
             cpmap = None
 
         # original parameter map
@@ -2364,7 +2353,6 @@ class _ClusterDist:
             all_ = [[param_map_, probability_map]]
 
         # store attributes
-        self.clusters = clusters
         self.parameter_map = param_map_
         self.tfce_map = tfce_map_
         self.probability_map = probability_map
@@ -2646,53 +2634,123 @@ class _ClusterDist:
 
         return ds
 
-    def find_clusters(self, pmin=0.05, tstart=None, tstop=None, sub=None):
-        """Find significant regions in a threshold-free distribution
+    def clusters(self, pmin=None, maps=True, tstart=None, tstop=None, sub=None):
+        """Find significant clusters
 
         Parameters
         ----------
-        pmin : scalar
-            Threshold p-value for forming clusters (default 0.05).
+        pmin : None | scalar, 1 >= p  >= 0
+            Threshold p-value for clusters (for thresholded cluster tests the
+            default is 1, for others 0.05).
+        maps : bool
+            Include in the output a map of every cluster (can be memory
+            intensive if there are large statistical maps and/or many
+            clusters; default True).
 
         Returns
         -------
         ds : Dataset
             Dataset with information about the clusters.
         """
+        if pmin is None:
+            if self.kind != 'cluster':
+                pmin = 0.05
+        if pmin is not None and self.N == 0:
+            msg = ("Can not determine p values in distribution without "
+                   "permutations.")
+            if self.kind == 'cluster':
+                msg += " Find clusters with pmin=None."
+            raise RuntimeError(msg)
+
         if self.kind == 'cluster':
-            raise RuntimeError("Not a threshold-free distribution")
+            param_map = self._original_param_map
+            cluster_map = self._original_cluster_map
+            cids = np.array(self._cids)
 
-        p_map = self.compute_probability_map(tstart, tstop, sub)
-        bin_map = np.less_equal(p_map.x, pmin)
+            if len(cids):
+                # measure original clusters
+                cluster_v = ndimage.sum(param_map, cluster_map, cids)
 
-        # reshape for labelling
-        if not self._all_adjacent:
-            if self._nad_ax:
-                bin_map = bin_map.swapaxes(0, self._nad_ax)
-            flat_shape = (bin_map.shape[0], np.prod(bin_map.shape[1:]))
+                # p-values
+                if self.N:
+                    # p-values: "the proportion of random partitions that
+                    # resulted in a larger test statistic than the observed
+                    # one" (179)
+                    dist = self._aggregate_dist(tstart, tstop, sub)
+                    n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
+                    cluster_p = n_larger / self.N
+
+                    # select clusters
+                    if pmin is not None:
+                        idx = cluster_p <= pmin
+                        cids = cids[idx]
+                        cluster_p = cluster_p[idx]
+                        cluster_v = cluster_v[idx]
+            else:
+                cluster_v = cluster_p = []
+
+            ds = self._cluster_properties(cluster_map, cids)
+            ds['v'] = Var(cluster_v)
+            if self.N:
+                ds['p'] = Var(cluster_p)
+
+            # expand clusters
+            if maps:
+                c_maps = np.empty((ds.n_cases,) + self.shape,
+                                  dtype=param_map.dtype)
+                c_mask = np.empty(self.shape, dtype=np.bool_)
+                for i, cid in enumerate(cids):
+                    np.equal(cluster_map, cid, c_mask)
+                    np.multiply(param_map, c_mask, c_maps[i])
+                if self._nad_ax:
+                    c_maps = c_maps.swapaxes(1, self._nad_ax + 1)
+
+                # package ndvar
+                param_contours = {}
+                if self.tail >= 0:
+                    param_contours[self.threshold] = (0.7, 0.7, 0)
+                if self.tail <= 0:
+                    param_contours[-self.threshold] = (0.7, 0, 0.7)
+                info = _cs.stat_info(self.meas, contours=param_contours,
+                                     summary_func=np.sum)
+                ds['cluster'] = NDVar(c_maps, dims=self.dims, info=info)
+            else:
+                ds.info['clusters'] = NDVar(cluster_map, self.dims[1:], {},
+                                            "clusters")
         else:
-            flat_shape = None
+            p_map = self.compute_probability_map(tstart, tstop, sub)
+            bin_map = np.less_equal(p_map.x, pmin)
 
-        # find clusters
-        c_map = np.empty(p_map.shape)
-        bin_buff = np.empty(p_map.shape, dtype=np.bool_)
-        cids = _label_clusters_binary(bin_map, c_map, bin_buff, self._struct,
-                                      self._all_adjacent, flat_shape,
-                                      self._connectivity_src,
-                                      self._connectivity_dst, None)
-        cids = sorted(cids)
+            # reshape for labelling
+            if not self._all_adjacent:
+                if self._nad_ax:
+                    bin_map = bin_map.swapaxes(0, self._nad_ax)
+                flat_shape = (bin_map.shape[0], np.prod(bin_map.shape[1:]))
+            else:
+                flat_shape = None
 
-        ds = self._cluster_properties(c_map, cids)
+            # find clusters
+            c_map = np.empty(p_map.shape)
+            bin_buff = np.empty(p_map.shape, dtype=np.bool_)
+            cids = _label_clusters_binary(bin_map, c_map, bin_buff, self._struct,
+                                          self._all_adjacent, flat_shape,
+                                          self._connectivity_src,
+                                          self._connectivity_dst, None)
+            cids = sorted(cids)
 
-        # reshape for output
-        if self._nad_ax:
-            c_map = c_map.swapaxes(0, self._nad_ax)
+            ds = self._cluster_properties(c_map, cids)
 
-        # add info to dataset
-        ds.info['clusters'] = NDVar(c_map, p_map.dims, {}, "Clusters")
-        min_pos = ndimage.minimum_position(p_map.x, c_map, cids)
-        ds['p'] = Var([p_map.x[pos] for pos in min_pos])
-        ds['*'] = star_factor(ds['p'])
+            # reshape for output
+            if self._nad_ax:
+                c_map = c_map.swapaxes(0, self._nad_ax)
+
+            # add info to dataset
+            ds.info['clusters'] = NDVar(c_map, p_map.dims, {}, "clusters")
+            min_pos = ndimage.minimum_position(p_map.x, c_map, cids)
+            ds['p'] = Var([p_map.x[pos] for pos in min_pos])
+
+        if 'p' in ds:
+            ds['*'] = star_factor(ds['p'])
 
         return ds
 

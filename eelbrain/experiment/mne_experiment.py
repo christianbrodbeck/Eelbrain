@@ -2206,7 +2206,7 @@ class MneExperiment(FileTree):
 
         # compute clusters
         res = self._make_test(y, ds, test, model, contrast, samples, pmin, tstart, tstop)
-        if res.clusters is None:
+        if res.clusters.n_cases == 0:
             section.append("No clusters found.")
             return
 

@@ -44,13 +44,27 @@ def test_anova():
     res_ = pickle.loads(string)
     assert_equal(repr(res_), repr(res))
 
+    # threshold-free
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=10)
+    repr(res)
+    assert_in('A clusters', res.clusters.info)
+    assert_in('B clusters', res.clusters.info)
+    assert_in('A x B clusters', res.clusters.info)
+
+    # no clusters
+    res = testnd.anova('uts', 'B', sub="A=='a1'", ds=ds, samples=5, pmin=0.05,
+                       mintime=0.02)
+    repr(res)
+    assert_in('v', res.clusters)
+    assert_in('p', res.clusters)
+
     # test multi-effect results (with persistence)
     # UTS
     res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5)
     repr(res)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res = pickle.loads(string)
-    tfce_clusters = res.find_clusters(pmin=0.05)
+    tfce_clusters = res._clusters(pmin=0.05)
     peaks = res.find_peaks()
     assert_equal(tfce_clusters.eval("p.min()"), peaks.eval("p.min()"))
     unmasked = res.f[0]
@@ -324,7 +338,7 @@ def test_ttest_1samp():
     res = testnd.ttest_1samp('utsnd', sub="A == 'a0'", ds=ds, samples=1)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res = pickle.loads(string)
-    tfce_clusters = res.find_clusters(pmin=0.05)
+    tfce_clusters = res._clusters(pmin=0.05)
     peaks = res.find_peaks()
     assert_equal(tfce_clusters.eval("p.min()"), peaks.eval("p.min()"))
     masked = res.masked_parameter_map(pmin=0.05)
