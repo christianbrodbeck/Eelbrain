@@ -860,8 +860,8 @@ class MneExperiment(FileTree):
         subject : str
             Subject(s) for which to load evoked files. Can be a group name
             such as 'all' or a single subject.
-        epoch : str
-            Epoch definition.
+        baseline : None | (tmin, tmax)
+            Baseline to apply to epochs.
         ndvar : bool | str
             Convert epochs to an NDVar with the given name (if True, 'meg' is
             uesed).
@@ -872,10 +872,15 @@ class MneExperiment(FileTree):
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
             employed depends on the :attr:`.epoch_rejection` class attribute.
+        add_proj : bool
+            Add the projections to the Raw object.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         decim : None | int
             override the epoch decim factor.
+        pad : scalar
+            Pad the epochs with this much time (in seconds; e.g. for spectral
+            analysis).
         """
         subject, group = self._process_subject_arg(subject, kwargs)
         if group is not None:
