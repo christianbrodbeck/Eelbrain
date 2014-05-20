@@ -1026,7 +1026,7 @@ class ttest_ind(_TestResult):
 
         # difference
         diff = c1_mean - c0_mean
-        if np.any(diff < 0):
+        if np.any(diff.x < 0):
             diff.info['cmap'] = 'xpolar'
         self.difference = diff
 
@@ -1211,7 +1211,7 @@ class ttest_rel(_TestResult):
 
         # difference
         diff = self.c1_mean - self.c0_mean
-        if np.any(diff < 0):
+        if np.any(diff.x < 0):
             diff.info['cmap'] = 'xpolar'
         self.difference = diff
 
@@ -2866,7 +2866,7 @@ class _ClusterDist:
         idx = np.empty(stat_map.shape, dtype=np.bool8)
         cpmap = np.zeros(stat_map.shape)
         for v in dist:
-            cpmap += np.greater(v, stat_map, idx)
+            cpmap += np.greater(v, stat_map.x, idx)
         cpmap /= self.N
         return NDVar(cpmap, stat_map.dims)
 

@@ -2436,67 +2436,48 @@ class NDVar(object):
 
     # container ---
     def __getitem__(self, index):
-        if isvar(index):
-            index = index.x
-        elif isndvar(index):
-            if index.x.dtype.kind != 'b':
-                err = "Only NDVars with boolean data can serve as indexes"
-                raise ValueError(err)
-            if index.ndim == 1:
-                index_dim = index.dims[0]
+        '''Options for NDVar indexing:
+
+         - First element only: numpy-like case index (int, array).
+         - All elements: 1d boolean NDVar.
+        '''
+        if not isinstance(index, tuple):
+            index = (index,)
+
+        sub = {}
+        for i, idx in enumerate(index):
+            if isvar(idx):
+                dim_name = 'case'
+                idx = idx.x
+            elif isndvar(idx):
+                if idx.x.dtype.kind != 'b':
+                    err = "Only NDVars with boolean data can serve as indexes"
+                    raise ValueError(err)
+                elif idx.ndim != 1:
+                    msg = "Only NDVars with ndim 1 can serve as indexes"
+                    raise NotImplementedError(msg)
+
+                index_dim = idx.dims[0]
                 if index_dim == 'case':
-                    if self.has_case:
-                        axis = 0
-                    else:
-                        raise ValueError("Index dimension case not in data")
+                    dim_name = 'case'
                 else:
                     dim_name = index_dim.name
-                    if self.has_dim(dim_name):
-                        axis = self._dim_2_ax[dim_name]
-                    else:
-                        err = ("Index dimension %s not in data" % dim_name)
-                        raise ValueError(err)
+                idx = idx.x
 
-                if self.shape[axis] != index.shape[0]:
-                    err = ("NDVar and index have different length on "
-                           "dimension %s" % dim_name)
-                    raise ValueError(err)
-
-                dim = self.dims[axis]
-                if index_dim != dim:
+                if self.get_dim(dim_name) != index_dim:
                     err = ("Index dimension %s is different from data "
                            "dimension" % dim_name)
                     raise ValueError(err)
-                index_ = (slice(None),) * axis + (index.x,)
-                x = self.x[index_]
-                dims = tuple(dim[index.x] if i == axis else dim for i, dim in
-                             enumerate(self.dims))
+            elif i == 0:
+                dim_name = 'case'
             else:
-                raise NotImplementedError("NDVar index with ndim > 1")
-            info = self.info.copy()
-            return NDVar(x, dims, info, self.name)
+                msg = ("NDVar index can only contain dimension-neutral index "
+                       "for case (at first position)")
+                raise ValueError(msg)
 
-        if np.iterable(index) or isinstance(index, slice):
-            x = self.x[index]
-            if x.shape[1:] != self.x.shape[1:]:
-                err = ("Use .sub() method for indexing dimensions other than "
-                       "case")
-                raise NotImplementedError(err)
-            info = self.info.copy()
-            return NDVar(x, self.dims, info, self.name)
-        else:
-            index = int(index)
-            x = self.x[index]
-            if self.ndim == 1:
-                return x
+            sub[dim_name] = idx
 
-            dims = self.dims[1:]
-            if self.name:
-                name = '%s_%i' % (self.name, index)
-            else:
-                name = None
-            info = self.info.copy()
-            return NDVar(x, dims, info, name)
+        return self.sub(**sub)
 
     def __len__(self):
         return self._len
