@@ -2334,6 +2334,8 @@ class NDVar(object):
 
             for dim in i_self:
                 if dim in other.dimnames:
+                    if self.get_dim(dim) != other.get_dim(dim):
+                        raise ValueError("Dimension unequal: %r" % dim)
                     i_other.append(dim)
                 else:
                     i_other.append(None)
@@ -2710,9 +2712,6 @@ class NDVar(object):
         "Returns the Dimension object named ``name``"
         i = self.get_axis(name)
         dim = self.dims[i]
-        if isinstance(dim, str) and dim == 'case':
-            dim = Var(np.arange(len(self)), 'case')
-
         return dim
 
     def get_dims(self, names):
