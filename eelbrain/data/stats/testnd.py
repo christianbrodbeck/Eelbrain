@@ -24,6 +24,7 @@ from math import ceil, floor
 from multiprocessing import Process, Queue, cpu_count
 from multiprocessing.sharedctypes import RawArray
 import operator
+import os
 import re
 from time import time as current_time
 
@@ -1470,8 +1471,10 @@ class anova(_TestResult):
             else:
                 thresholds = (None for _ in xrange(len(effects)))
 
+            n_workers = max(1, int(ceil(cpu_count() / len(effects))))
             cdists = [_ClusterDist(Y, samples, thresh, 1, 'F', e.name, tstart,
-                                   tstop, criteria, dist_dim, dist_tstep)
+                                   tstop, criteria, dist_dim, dist_tstep,
+                                   n_workers)
                       for e, thresh in izip(effects, thresholds)]
 
             # Find clusters in the actual data
@@ -1795,6 +1798,8 @@ def _tfce(pmap, out, tail, bin_buff, bin_buff2, int_buff, struct,
 
 def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
                        all_adjacent, flat_shape, conn_src, conn_dst, criteria):
+    os.nice(20)
+
     # allocate memory buffers
     cmap = np.empty(shape, np.int_)
     bin_buff = np.empty(shape, np.bool_)
@@ -1818,6 +1823,8 @@ def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
 
 def _tfce_worker(in_queue, out_queue, shape, tail, struct, all_adjacent,
                  flat_shape, conn_src, conn_dst, stacked_shape, max_axes):
+    os.nice(20)
+
     # allocate memory buffers
     tfce_map = np.empty(shape)
     tfce_map_stacked = tfce_map.reshape(stacked_shape)
@@ -1862,7 +1869,7 @@ class _ClusterDist:
     """
     def __init__(self, Y, N, threshold, tail=0, meas='?', name=None,
                  tstart=None, tstop=None, criteria={}, dist_dim=(),
-                 dist_tstep=None, n_workers=-1):
+                 dist_tstep=None, n_workers=cpu_count()):
         """Accumulate information on a cluster statistic.
 
         Parameters
