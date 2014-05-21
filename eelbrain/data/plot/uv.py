@@ -188,6 +188,8 @@ class _simple_fig():
             label = handle.get_label()
             if not self.legend_has_label(label):
                 self._handles.append(handle)
+    def close(self):
+        plt.close(self.fig)
     def legend_has_label(self, label):
             return any(label == h.get_label() for h in self._handles)
     def legend(self, loc=0, fig=False, zorder=-1, ncol=1):

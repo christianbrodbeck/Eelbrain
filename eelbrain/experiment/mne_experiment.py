@@ -80,6 +80,7 @@ from ..data import load
 from ..data import plot
 from ..data import save
 from ..data import table
+from ..data import test as _test
 from ..data import testnd
 from ..data import Dataset, Factor, Var, NDVar, combine, source_induced_power
 from ..data.data_obj import isdatalist, UTS, DimensionMismatchError
@@ -2306,6 +2307,21 @@ class MneExperiment(FileTree):
                 caption = "Time course clusters."
                 table_ = res_tc.clusters.as_table(midrule=True, caption=caption)
                 subsection.append(table_)
+
+            # cluster value
+            idx = cluster > 0
+            v = y.mean(idx)
+            p = plot.uv.boxplot(v, model, 'subject', ds=ds)
+            image = fmtxt.Image(c_name + '_boxplot.svg')
+            p.fig.savefig(image, format='svg')
+            p.close()
+            caption = "Average value in cluster by condition."
+            figure = subsection.add_figure(caption)
+            figure.append(image)
+            # pairwise test table
+            res = _test.pairwise(v, model, 'subject', ds=ds)
+            figure = subsection.add_figure(caption)
+            figure.append(res)
 
         return legend
 
