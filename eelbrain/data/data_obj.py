@@ -2507,10 +2507,13 @@ class NDVar(object):
 
         Parameters
         ----------
-        dims : None | str | tuple of str
+        dims : None | str | tuple of str | NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute whether there are any nonzero values at all.
+            An boolean NDVar with the same dimensions as the data can be used
+            to find nonzero values in specific elements (if the NDVar has cases
+            on a per case basis).
 
         Returns
         -------
@@ -2577,15 +2580,26 @@ class NDVar(object):
         out = NDVar(x, self.dims, info, name)
         return out
 
-    def _aggregate_over_dims(self, dims, func):
-        if dims is None:
+    def _aggregate_over_dims(self, axis, func):
+        if axis is None:
             return func(self.x)
-        elif isinstance(dims, basestring):
-            axis = self._dim_2_ax[dims]
+        elif isndvar(axis):
+            dims, self_x, index = self._align(axis)
+            if self.has_case:
+                if axis.has_case:
+                    x = np.array([func(x_[i]) for x_, i in izip(self_x, index)])
+                else:
+                    index = index[0]
+                    x = np.array([func(x_[index]) for x_ in self_x])
+                return Var(x, self.name)
+            else:
+                return func(self_x[index])
+        elif isinstance(axis, basestring):
+            axis = self._dim_2_ax[axis]
             x = func(self.x, axis=axis)
             dims = (self.dims[i] for i in xrange(self.ndim) if i != axis)
         else:
-            axes = tuple(self._dim_2_ax[dim_name] for dim_name in dims)
+            axes = tuple(self._dim_2_ax[dim_name] for dim_name in axis)
             x = func(self.x, axes)
             dims = (self.dims[i] for i in xrange(self.ndim) if i not in axes)
 
@@ -2709,6 +2723,9 @@ class NDVar(object):
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the maximum over all dimensions.
+            An boolean NDVar with the same dimensions as the data can be used
+            to compute the maximum in specific elements (if the NDVar has cases
+            on a per case basis).
 
         Returns
         -------
@@ -2728,6 +2745,9 @@ class NDVar(object):
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the mean over all dimensions.
+            An boolean NDVar with the same dimensions as the data can be used
+            to compute the mean in specific elements (if the NDVar has cases
+            on a per case basis).
 
         Returns
         -------
@@ -2747,6 +2767,9 @@ class NDVar(object):
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the minimum over all dimensions.
+            An boolean NDVar with the same dimensions as the data can be used
+            to compute the minimum in specific elements (if the NDVar has cases
+            on a per case basis).
 
         Returns
         -------
@@ -2783,6 +2806,9 @@ class NDVar(object):
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the standard deviation over all values.
+            An boolean NDVar with the same dimensions as the data can be used
+            to compute the RMS in specific elements (if the NDVar has cases
+            on a per case basis).
 
         Returns
         -------
@@ -2802,6 +2828,9 @@ class NDVar(object):
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the standard deviation over all values.
+            An boolean NDVar with the same dimensions as the data can be used
+            to compute the standard deviation in specific elements (if the
+            NDVar has cases on a per case basis).
 
         Returns
         -------
@@ -2973,6 +3002,9 @@ class NDVar(object):
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the sum over all dimensions.
+            An boolean NDVar with the same dimensions as the data can be used
+            to compute the sum in specific elements (if the NDVar has cases on
+            a per case basis).
 
         Returns
         -------

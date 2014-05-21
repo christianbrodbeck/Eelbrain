@@ -3,6 +3,7 @@ Created on Dec 2, 2012
 
 @author: christian
 '''
+from itertools import izip
 import os
 import cPickle as pickle
 import shutil
@@ -338,32 +339,53 @@ def test_ndvar_summary_methods():
     axis = x.get_axis(dim)
     dims = ('case', 'sensor')
     axes = tuple(x.get_axis(d) for d in dims)
+    idx = x > 0
+    x0 = x[0]
+    idx0 = idx[0]
 
     # numpy functions
     assert_equal(x.any(), x.x.any())
     assert_array_equal(x.any(dim).x, x.x.any(axis))
     assert_array_equal(x.any(dims).x, x.x.any(axes))
+    assert_array_equal(x.any(idx0), [x_[idx0.x].any() for x_ in x.x])
+    assert_array_equal(x.any(idx), [x_[i].any() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x0.any(idx0), x0.x[idx0.x].any())
 
     assert_equal(x.max(), x.x.max())
     assert_array_equal(x.max(dim).x, x.x.max(axis))
     assert_array_equal(x.max(dims).x, x.x.max(axes))
+    assert_array_equal(x.max(idx0), [x_[idx0.x].max() for x_ in x.x])
+    assert_array_equal(x.max(idx), [x_[i].max() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x0.max(idx0), x0.x[idx0.x].max())
 
     assert_equal(x.mean(), x.x.mean())
     assert_array_equal(x.mean(dim).x, x.x.mean(axis))
     assert_array_equal(x.mean(dims).x, x.x.mean(axes))
+    assert_array_equal(x.mean(idx0), [x_[idx0.x].mean() for x_ in x.x])
+    assert_array_equal(x.mean(idx), [x_[i].mean() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x0.mean(idx0), x0.x[idx0.x].mean())
 
     assert_equal(x.min(), x.x.min())
     assert_array_equal(x.min(dim).x, x.x.min(axis))
     assert_array_equal(x.min(dims).x, x.x.min(axes))
+    assert_array_equal(x.min(idx0), [x_[idx0.x].min() for x_ in x.x])
+    assert_array_equal(x.min(idx), [x_[i].min() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x0.min(idx0), x0.x[idx0.x].min())
 
     assert_equal(x.std(), x.x.std())
     assert_array_equal(x.std(dim).x, x.x.std(axis))
     assert_array_equal(x.std(dims).x, x.x.std(axes))
+    assert_array_equal(x.std(idx0), [x_[idx0.x].std() for x_ in x.x])
+    assert_array_equal(x.std(idx), [x_[i].std() for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x0.std(idx0), x0.x[idx0.x].std())
 
     # non-numpy
     assert_equal(x.rms(), rms(x.x))
     assert_array_equal(x.rms(dim).x, rms(x.x, axis))
     assert_array_equal(x.rms(dims).x, rms(x.x, axes))
+    assert_array_equal(x.rms(idx0), [rms(x_[idx0.x]) for x_ in x.x])
+    assert_array_equal(x.rms(idx), [rms(x_[i]) for x_, i in izip(x.x, idx.x)])
+    assert_array_equal(x0.rms(idx0), rms(x0.x[idx0.x]))
 
 
 def test_io_pickle():
