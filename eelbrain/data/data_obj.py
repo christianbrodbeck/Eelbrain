@@ -1103,6 +1103,10 @@ class Var(object):
     def __str__(self):
         return self.__repr__(True)
 
+    @property
+    def __array_interface__(self):
+        return self.x.__array_interface__
+
     # container ---
     def __len__(self):
         return self._n_cases
@@ -2272,6 +2276,10 @@ class NDVar(object):
                  'name': self.name,
                  'info': self.info}
         return state
+
+    @property
+    def __array_interface__(self):
+        return self.x.__array_interface__
 
     # numeric ---
     def __neg__(self):
