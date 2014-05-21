@@ -2224,7 +2224,7 @@ class MneExperiment(FileTree):
                 cdists = [(res._cdist, caption)]
 
             for cdist, caption in cdists:
-                ndvar = cdist.clusters.eval("cluster.sum('case')")
+                ndvar = cdist.masked_parameter_map(None)
                 im = plot.brain.bin_table(ndvar, tstart, tstop)
                 section.add_image_figure(im, caption)
 

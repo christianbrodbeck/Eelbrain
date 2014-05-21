@@ -2301,6 +2301,14 @@ class _ClusterDist:
             stat_map = self._original_param_map
             tfce_map_ = None
 
+        # cluster map
+        if self.kind == 'cluster':
+            cluster_map = self._original_cluster_map
+            x = cluster_map.swapaxes(0, self._nad_ax)
+            cluster_map_ = NDVar(x, dims[1:], {}, self.name)
+        else:
+            cluster_map_ = None
+
         # probability map
         if self.kind in ('tfce', 'raw') and self.N:
             # probability map (TFCE)
@@ -2314,7 +2322,6 @@ class _ClusterDist:
             cpmap = np.ones(self.shape)
 
             if self.n_clusters:
-                cluster_map = self._original_cluster_map
                 cids = self._cids
                 dist = self._aggregate_dist()
 
@@ -2354,6 +2361,7 @@ class _ClusterDist:
 
         # store attributes
         self.parameter_map = param_map_
+        self.cluster_map = cluster_map_
         self.tfce_map = tfce_map_
         self.probability_map = probability_map
         self._default_plot_obj = all_
@@ -2496,6 +2504,10 @@ class _ClusterDist:
                                    self._connectivity_src,
                                    self._connectivity_dst, self._criteria)
             n_clusters = len(cids)
+            # clean original cluster map
+            idx = (np.in1d(original_cluster_map, cids, invert=True)
+                   .reshape(original_cluster_map.shape))
+            original_cluster_map[idx] = 0
         else:
             original_cluster_map = param_map
             cids = None
@@ -2715,8 +2727,7 @@ class _ClusterDist:
                                      summary_func=np.sum)
                 ds['cluster'] = NDVar(c_maps, dims=self.dims, info=info)
             else:
-                ds.info['clusters'] = NDVar(cluster_map, self.dims[1:], {},
-                                            "clusters")
+                ds.info['clusters'] = self.cluster_map
         else:
             p_map = self.compute_probability_map(tstart, tstop, sub)
             bin_map = np.less_equal(p_map.x, pmin)
@@ -2808,6 +2819,11 @@ class _ClusterDist:
         sub : boolean NDVar
             Create the probability map for, and correct for multiple
             comparisons in only a part of Y.
+
+        Returns
+        -------
+        dist : array, shape = (N,)
+            Maximum value for each permutation in the given region.
         """
         if any(i is not None for i in (tstart, tstop, sub)):
             dist_ndvar = NDVar(self.dist, self._dist_dims)
@@ -2876,8 +2892,9 @@ class _ClusterDist:
 
         Parameters
         ----------
-        pmin : scalar
-            Threshold p-value for masking (default 0.05).
+        pmin : None | scalar
+            Threshold p-value for masking (default 0.05). For threshold-based
+            cluster tests, pmin=None uses all clusters.
 
         Returns
         -------
@@ -2885,9 +2902,15 @@ class _ClusterDist:
             NDVar with data from the original parameter map wherever p <= pmin
             and 0 everywhere else.
         """
-        probability_map = self.compute_probability_map(tstart, tstop, sub)
-        c_mask = np.less_equal(probability_map.x, pmin)
         param_map = self._crop_result_ndvar(self.parameter_map, tstart, tstop,
                                             sub, True)
+        if pmin is None:
+            if self.kind != 'cluster':
+                msg = "pmin can only be None for thresholded cluster tests"
+                raise ValueError(msg)
+            c_mask = self.cluster_map.x != 0
+        else:
+            probability_map = self.compute_probability_map(tstart, tstop, sub)
+            c_mask = np.less_equal(probability_map.x, pmin)
         param_map.x *= c_mask
         return param_map
