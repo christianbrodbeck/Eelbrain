@@ -1,10 +1,15 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
-import mne
 import os
 
 from nose.tools import eq_
 from numpy.testing import assert_array_equal, assert_array_almost_equal
+
+import mne
+try:
+    from mne import pick_types
+except ImportError:
+    from mne.fiff import pick_types
 
 from eelbrain.lab import load
 
@@ -30,7 +35,7 @@ def test_load_fiff_from_raw():
     ds_mne = load.fiff.add_mne_epochs(ds, -0.1, 0.3, decim=10, proj=False,
                                       reject={'mag': 2e-12})
     epochs = ds_mne['epochs']
-    picks = mne.fiff.pick_types(epochs.info, meg='mag')
+    picks = pick_types(epochs.info, meg='mag')
     mne_data = epochs.get_data()[:, picks]
     eq_(meg.sensor.names, [epochs.info['ch_names'][i] for i in picks])
     assert_array_equal(data, mne_data)
@@ -40,6 +45,6 @@ def test_load_fiff_from_raw():
                            reject=2e-12)
     epochs = load.fiff.mne_epochs(ds, -0.1, 0.3, decim=10, proj=True,
                                   reject={'mag': 2e-12})
-    picks = mne.fiff.pick_types(epochs.info, meg='mag')
+    picks = pick_types(epochs.info, meg='mag')
     mne_data = epochs.get_data()[:, picks]
     assert_array_almost_equal(meg.x, mne_data, 10)

@@ -34,6 +34,10 @@ import re
 from warnings import warn
 
 import mne
+try:
+    from mne.io import Evoked as _mne_Evoked  # new in 0.9
+except ImportError:
+    from mne.fiff import Evoked as _mne_Evoked
 import numpy as np
 from numpy import dot
 import scipy
@@ -362,12 +366,12 @@ def asndvar(Y, sub=None, ds=None):
     if isinstance(Y, mne.Epochs):
         from .load.fiff import epochs_ndvar
         Y = epochs_ndvar(Y)
-    elif isinstance(Y, mne.fiff.Evoked):
+    elif isinstance(Y, _mne_Evoked):
         from .load.fiff import evoked_ndvar
         Y = evoked_ndvar(Y)
     elif isinstance(Y, list):
         item_0 = Y[0]
-        if isinstance(item_0, mne.fiff.Evoked):
+        if isinstance(item_0, _mne_Evoked):
             from .load.fiff import evoked_ndvar
             Y = evoked_ndvar(Y)
 

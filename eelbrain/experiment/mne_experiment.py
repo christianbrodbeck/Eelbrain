@@ -74,6 +74,12 @@ import mne
 from mne.baseline import rescale
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
+try:
+    from mne.io import Evoked as _mne_Evoked
+    from mne.io import Raw as _mne_Raw
+except ImportError:
+    from mne.fiff import Evoked as _mne_Evoked
+    from mne.fiff import Raw as _mne_Raw
 
 from .. import fmtxt, __version__
 from ..data import load
@@ -563,7 +569,7 @@ class MneExperiment(FileTree):
         # find vars to work on
         do = []
         for name in ds:
-            if isinstance(ds[name][0], mne.fiff.Evoked):
+            if isinstance(ds[name][0], _mne_Evoked):
                 do.append(name)
 
         # prepare data containers
@@ -1027,7 +1033,7 @@ class MneExperiment(FileTree):
 
             # check consistency
             for name in ds:
-                if isinstance(ds[name][0], (mne.fiff.Evoked, mne.SourceEstimate)):
+                if isinstance(ds[name][0], (_mne_Evoked, mne.SourceEstimate)):
                     lens = np.array([len(e.times) for e in ds[name]])
                     ulens = np.unique(lens)
                     if len(ulens) > 1:
@@ -1061,7 +1067,7 @@ class MneExperiment(FileTree):
             if ndvar is True:
                 ndvar = 'meg'
 
-            keys = [k for k in ds if isdatalist(ds[k], mne.fiff.Evoked, False)]
+            keys = [k for k in ds if isdatalist(ds[k], _mne_Evoked, False)]
             for k in keys:
                 if len(keys) > 1:
                     ndvar_key = '_'.join((k, ndvar))
@@ -2609,7 +2615,7 @@ class MneExperiment(FileTree):
     def plot_coreg(self, **kwargs):
         from ..data.plot.coreg import dev_mri
         self.set(**kwargs)
-        raw = mne.fiff.Raw(self.get('raw-file'))
+        raw = _mne_Raw(self.get('raw-file'))
         return dev_mri(raw)
 
     def plot_label(self, label, surf='inflated', w=600, clear=False):

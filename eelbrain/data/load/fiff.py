@@ -80,8 +80,21 @@ from warnings import warn
 import numpy as np
 
 import mne
-from mne.fiff import FIFF
 from mne.source_estimate import _BaseSourceEstimate
+try:  # API change in 0.9 (mne.io module)
+    from mne.constants import FIFF
+    from mne.io import Evoked as _mne_Evoked
+    from mne.io import Raw as _mne_Raw
+    from mne import pick_types as _mne_pick_types
+    from mne import pick_channels as _mne_pick_channels
+    from mne.io import read_raw_kit as _mne_read_raw_kit
+except ImportError:
+    from mne.fiff import FIFF
+    from mne.fiff import Evoked as _mne_Evoked
+    from mne.fiff import Raw as _mne_Raw
+    from mne.fiff import pick_types as _mne_pick_types
+    from mne.fiff import pick_channels as _mne_pick_channels
+    from mne.fiff.kit import read_raw_kit as _mne_read_raw_kit
 
 from ... import ui
 from .. import colorspaces as _cs
@@ -90,7 +103,7 @@ from ..data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS
 
 def mne_raw(path=None, proj=False, **kwargs):
     """
-    Returns a mne.fiff.Raw object with added projections if appropriate.
+    Returns a mne Raw object with added projections if appropriate.
 
     Parameters
     ----------
@@ -107,8 +120,7 @@ def mne_raw(path=None, proj=False, **kwargs):
         **``str``**: A custom path template can be provided, ``'{raw}'`` and
         ``'*'`` will be treated as with ``True``.
     kwargs
-        Additional keyword arguments are forwarded to mne.fiff.Raw
-        initialization.
+        Additional keyword arguments are forwarded to mne Raw initialization.
 
     """
     if path is None:
@@ -124,14 +136,13 @@ def mne_raw(path=None, proj=False, **kwargs):
     if isinstance(path, basestring):
         _, ext = os.path.splitext(path)
         if ext.startswith('.fif'):
-            raw = mne.fiff.Raw(path, **kwargs)
+            raw = _mne_Raw(path, **kwargs)
         elif ext in ('.sqd', '.con'):
-            from mne.fiff.kit import read_raw_kit
-            raw = read_raw_kit(path, **kwargs)
+            raw = _mne_read_raw_kit(path, **kwargs)
         else:
             raise ValueError("Unknown extension: %r" % ext)
     else:
-        raw = mne.fiff.Raw(path, **kwargs)
+        raw = _mne_Raw(path, **kwargs)
 
     if proj:
         if proj == True:
@@ -171,7 +182,7 @@ def events(raw=None, merge=-1, proj=False, name=None,
 
     Parameters
     ----------
-    raw : str(path) | None | mne.fiff.Raw
+    raw : str(path) | None | mne Raw
         The raw fiff file from which to extract events (if ``None``, a file
         dialog will be displayed).
     merge : int
@@ -274,8 +285,7 @@ def _ndvar_epochs_picks(info, data, exclude):
     else:
         err = "data=%r (needs to be 'eeg', 'grad' or 'mag')" % data
         raise ValueError(err)
-    picks = mne.fiff.pick_types(info, meg=meg, eeg=eeg, stim=False,
-                                exclude=exclude)
+    picks = _mne_pick_types(info, meg=meg, eeg=eeg, stim=False, exclude=exclude)
     return picks
 
 
@@ -323,14 +333,14 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
         Threshold for rejecting epochs (peak to peak). Requires a for of
         mne-python which implements the Epochs.model['index'] variable.
     exclude : list of string | str
-        Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
+        Channels to exclude (:func:`mne.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
     info : None | dict
         Entries for the ndvar's info dict.
     name : str
         name for the new NDVar.
-    raw : None | mne.fiff.Raw
+    raw : None | mne Raw
         Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
     sensors : None | Sensor
         The default (``None``) reads the sensor locations from the fiff file.
@@ -398,14 +408,14 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
         Threshold for rejecting epochs (peak to peak). Requires a for of
         mne-python which implements the Epochs.model['index'] variable.
     exclude : list of string | str
-        Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
+        Channels to exclude (:func:`mne.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
     info : None | dict
         Entries for the ndvar's info dict.
     name : str
         name for the new NDVar.
-    raw : None | mne.fiff.Raw
+    raw : None | mne Raw
         Raw file providing the data; if ``None``, ``ds.info['raw']`` is used.
     sensors : None | Sensor
         The default (``None``) reads the sensor locations from the fiff file.
@@ -529,7 +539,7 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
         correction (default).
     i_start : str
         name of the variable containing the index of the events.
-    raw : None | mne.fiff.Raw
+    raw : None | mne Raw
         If None, ds.info['raw'] is used.
     drop_bad_chs : bool
         Drop all channels in raw.info['bads'] form the Epochs. This argument is
@@ -541,8 +551,8 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
         raw = ds.info['raw']
 
     if drop_bad_chs and ('picks' not in kwargs) and raw.info['bads']:
-        kwargs['picks'] = mne.fiff.pick_channels(raw.info['ch_names'], [],
-                                                 raw.info['bads'])
+        kwargs['picks'] = _mne_pick_channels(raw.info['ch_names'], [],
+                                             raw.info['bads'])
 
     events = _mne_events(ds=ds, i_start=i_start)
     # epochs with (event_id == None) does not use columns 1 and 2 of events
@@ -619,7 +629,7 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
     data : 'eeg' | 'mag' | 'grad' | None
         The kind of data to include. If None, guess based on ``epochs.info``.
     exclude : list of string | str
-        Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
+        Channels to exclude (:func:`mne.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
     mult : scalar
@@ -670,7 +680,7 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
 
 def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
     """
-    Convert one or more :class:`mne.Evoked` objects to an :class:`NDVar`.
+    Convert one or more mne :class:`Evoked` objects to an :class:`NDVar`.
 
     Parameters
     ----------
@@ -682,7 +692,7 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
     data : 'eeg' | 'mag' | 'grad'
         The kind of data to include.
     exclude : list of string | string
-        Channels to exclude (:func:`mne.fiff.pick_types` kwarg).
+        Channels to exclude (:func:`mne.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
         If empty do not exclude any.
     vmax : None | scalar
@@ -694,9 +704,9 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
     only the channels present in all objects are retained).
     """
     if isinstance(evoked, basestring):
-        evoked = mne.fiff.Evoked(evoked)
+        evoked = _mne_Evoked(evoked)
 
-    if isinstance(evoked, mne.fiff.Evoked):
+    if isinstance(evoked, _mne_Evoked):
         picks = _ndvar_epochs_picks(evoked.info, data, exclude)
 
         x = evoked.data[picks]

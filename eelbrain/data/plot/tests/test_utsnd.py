@@ -7,6 +7,10 @@ import os
 
 import mne
 import numpy as np
+try:
+    from mne.io import Evoked, Raw
+except ImportError:
+    from mne.fiff import Evoked, Raw
 
 from eelbrain.data import datasets, plot
 
@@ -34,7 +38,7 @@ def test_plot_mne_evoked():
     data_path = mne.datasets.sample.data_path()
     evoked_path = os.path.join(data_path, 'MEG', 'sample',
                                'sample_audvis-ave.fif')
-    evoked = mne.fiff.Evoked(evoked_path, setno="Left Auditory")
+    evoked = Evoked(evoked_path, setno="Left Auditory")
     p = plot.Array(evoked)
     p.close()
 
@@ -48,7 +52,7 @@ def test_plot_mne_epochs():
                                'sample_audvis_filt-0-40_raw-eve.fif')
 
     # read epochs
-    raw = mne.fiff.Raw(raw_path)
+    raw = Raw(raw_path)
     events = mne.read_events(events_path)
     idx = np.logical_or(events[:, 2] == 5, events[:, 2] == 32)
     events = events[idx]
