@@ -305,6 +305,14 @@ def test_dim_uts():
         assert_equal(idx.start, 10 * i)
         assert_equal(idx.stop, 20 + 10 * i)
 
+    # intersection
+    uts1 = UTS(-0.1, 0.01, 50)
+    uts2 = UTS(0, 0.01, 20)
+    intersection = uts1.intersect(uts2)
+    assert_equal(intersection, uts2)
+    idx = uts1.dimindex((0, 0.2))
+    assert_equal(uts1[idx], uts2)
+
 
 def test_ndvar():
     "Test the NDVar class"

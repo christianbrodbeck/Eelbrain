@@ -6045,6 +6045,8 @@ class SourceSpace(Dimension):
         self.parc = parc_
 
 
+_uts_tol = 0.000001  # tolerance for deciding if time values are equal
+
 class UTS(Dimension):
     """Dimension object for representing uniform time series
 
@@ -6221,15 +6223,40 @@ class UTS(Dimension):
             i = int(round((arg - self.tmin) / self.tstep))
             return i
         elif isinstance(arg, UTS):
-            idxs = (self.times[:, None] == arg.times)
-            if not np.all(np.any(idxs, 0)):
-                err = ("The index dimension has time values not in self")
+            if self.tmin == arg.tmin:
+                start = None
+                stop = arg.nsamples
+            elif arg.tmin < self.tmin:
+                err = ("The index time dimension starts before the reference "
+                       "time dimension")
                 raise DimensionMismatchError(err)
-            start = self.dimindex(arg.tmin)
-            step = int(round(arg.tstep / self.tstep))
-            stop = start + len(arg) * step
-            arg = slice(start, stop, step)
-            return arg
+            else:
+                start_float = (arg.tmin - self.tmin) / self.tstep
+                start = int(round(start_float))
+                if abs(start_float - start) > _uts_tol:
+                    err = ("The index time dimension contains values not "
+                           "contained in the reference time dimension")
+                    raise DimensionMismatchError(err)
+                stop = start + arg.nsamples
+
+            if self.tstep == arg.tstep:
+                step = None
+            elif self.tstep > arg.tstep:
+                err = ("The index time dimension has a higher sampling rate "
+                       "than the reference time dimension")
+                raise DimensionMismatchError(err)
+            else:
+                step_float = arg.tstep / self.tstep
+                step = int(round(step_float))
+                if abs(step_float - step) > _uts_tol:
+                    err = ("The index time dimension contains values not "
+                           "contained in the reference time dimension")
+                    raise DimensionMismatchError(err)
+
+            if stop == self.nsamples:
+                stop = None
+
+            return slice(start, stop, step)
         elif isinstance(arg, tuple) and len(arg) == 2:
             tstart, tstop = arg
             return self._slice(tstart, tstop)
@@ -6274,19 +6301,21 @@ class UTS(Dimension):
             The intersection with dim (returns itself if dim and self are
             equal)
         """
-        idx = self.times[:, None] == dim.times
-        if np.all(np.any(idx, 0)):
-            return dim
-        elif np.all(np.any(idx, 1)):
-            return self
+        if self.tstep == dim.tstep:
+            tstep = self.tstep
+        else:
+            raise NotImplementedError("Intersection of UTS with unequal tstep :(")
 
-        times = np.intersect1d(self.times, dim.times)
-        tmin = times[0]
-        # guess tstep :(
-        tstep_est = np.mean(np.unique(np.diff(times)))
-        x = int(round(tstep_est / self.tstep))
-        tstep = self.tstep * x
-        nsamples = len(times)
+        tmin_diff = abs(self.tmin - dim.tmin) / tstep
+        if abs(tmin_diff - round(tmin_diff)) > _uts_tol:
+            raise DimensionMismatchError("UTS dimensions have different times")
+        tmin = max(self.tmin, dim.tmin)
+
+        tmax = min(self.tmax, dim.tmax)
+        nsamples = int(round((tmax - tmin) / tstep)) + 1
+        if nsamples <= 0:
+            raise DimensionMismatchError("UTS dimensions don't overlap")
+
         return UTS(tmin, tstep, nsamples)
 
     def _slice(self, tstart, tstop):
