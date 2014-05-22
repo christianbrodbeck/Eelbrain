@@ -2324,35 +2324,64 @@ class NDVar(object):
         return NDVar(x, self.dims, self.info.copy(), self.name)
 
     def _align(self, other):
-        "align data from 2 ndvars"
+        """Align data from 2 NDVars.
+
+        Notes
+        -----
+        For unequal but overlapping dimensions, the intersection is used.
+        """
         if isvar(other):
             return self.dims, self.x, self._ialign(other)
         elif isndvar(other):
-            i_self = list(self.dimnames)
-            dims = list(self.dims)
-            i_other = []
+            dimnames = list(self.dimnames)
+            i_add = 0
+            for dimname in other.dimnames:
+                if dimname not in dimnames:
+                    dimnames.append(dimname)
+                    i_add += 1
 
-            for dim in i_self:
-                if dim in other.dimnames:
-                    if self.get_dim(dim) != other.get_dim(dim):
-                        raise ValueError("Dimension unequal: %r" % dim)
-                    i_other.append(dim)
+            # find data axes
+            self_axes = self.dimnames
+            if i_add:
+                self_axes += (None,) * i_add
+            other_axes = tuple(name if name in other.dimnames else None
+                               for name in dimnames)
+
+            # find dims
+            dims = []
+            crop = False
+            crop_self = []
+            crop_other = []
+            for name, other_name in izip(self_axes, other_axes):
+                if name is None:
+                    dim = other.get_dim(other_name)
+                    cs = co = slice(None)
+                elif other_name is None:
+                    dim = self.get_dim(name)
+                    cs = co = slice(None)
                 else:
-                    i_other.append(None)
+                    self_dim = self.get_dim(name)
+                    other_dim = other.get_dim(other_name)
+                    if self_dim == other_dim:
+                        dim = self_dim
+                        cs = co = slice(None)
+                    else:
+                        dim = self_dim.intersect(other_dim)
+                        crop = True
+                        cs = self_dim.dimindex(dim)
+                        os = other_dim.dimindex(dim)
+                dims.append(dim)
+                crop_self.append(cs)
+                crop_other.append(co)
 
-            for dim in other.dimnames:
-                if dim in i_self:
-                    pass
-                else:
-                    i_self.append(None)
-                    i_other.append(dim)
-                    dims.append(other.get_dim(dim))
-
-            x_self = self.get_data(i_self)
-            x_other = other.get_data(i_other)
+            x_self = self.get_data(self_axes)
+            x_other = other.get_data(other_axes)
+            if crop:
+                x_self = x_self[tuple(crop_self)]
+                x_other = x_other[tuple(crop_other)]
             return dims, x_self, x_other
         else:
-            raise TypeError
+            raise TypeError("Need Var or NDVar")
 
     def _ialign(self, other):
         "align for self-modifying operations (+=, ...)"
