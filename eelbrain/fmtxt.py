@@ -299,7 +299,7 @@ def asfmtext(text):
 class FMTextElement(object):
     "Represent a value along with formatting properties."
     def __init__(self, content, property=None, mat=False, drop0=False,
-                 fmt='%.6g'):
+                 fmt='%s'):
         """Represent a value along with formatting properties.
 
         Parameters
