@@ -76,6 +76,8 @@ _html_tags = {r'_': 'sub',
               r'\textbf': 'b',
               r'\textit': 'i'}
 
+_str_substitutes = {r'_': '(%s)'}
+
 _html_doc_template = """<!DOCTYPE html>
 <html>
 <head>
@@ -353,6 +355,22 @@ class FMTextElement(object):
 
         return FMText([self, other])
 
+    def _get_core(self, options):
+        if isstr(self._content):
+            return self._content
+        elif self._content is not None and np.isnan(self._content):
+            return 'NaN'
+        elif isinstance(self._content, (bool, np.bool_, np.bool8)):
+            return str(self._content)
+        elif np.isscalar(self._content) or getattr(self._content, 'ndim', None) == 0:
+            fmt = options.get('fmt', self.fmt)
+            txt = fmt % self._content
+            if self.drop0 and len(txt) > 2 and txt.startswith('0.'):
+                txt = txt[1:]
+            return txt
+        else:
+            return str(self._content)
+
     def get_html(self, options):
         txt = self._get_html_core(options)
 
@@ -363,29 +381,15 @@ class FMTextElement(object):
         return txt
 
     def _get_html_core(self, options):
-        return self.get_str(options)
+        return self._get_core(options)
 
     def get_str(self, options={}):
-        if isstr(self._content):
-            return self._content.replace('\\', '')
-        elif self._content is None:
-            return ''
-        elif np.isnan(self._content):
-            return 'NaN'
-        elif isinstance(self._content, (bool, np.bool_, np.bool8)):
-            return '%s' % self._content
-        elif np.isscalar(self._content) or getattr(self._content, 'ndim', None) == 0:
-            fmt = options.get('fmt', self.fmt)
-            txt = fmt % self._content
-            if self.drop0 and len(txt) > 2 and txt.startswith('0.'):
-                txt = txt[1:]
-            return txt
-        elif not self._content:
-            return ''
-        else:
-            msg = "Unknown text in FMTextElement: %s" % str(self._content)
-            logging.warning(msg)
-            return ''
+        text = self._get_core(options)
+        if self.property:
+            fmt = _str_substitutes.get(self.property, None)
+            if fmt:
+                text = fmt % text
+        return text
 
     def get_tex(self, options):
         txt = self._get_tex_core(options)
@@ -399,7 +403,7 @@ class FMTextElement(object):
         return txt
 
     def _get_tex_core(self, options):
-        return self.get_str(options)
+        return self._get_core(options)
 
 
 class FMText(FMTextElement):
@@ -477,41 +481,13 @@ class FMText(FMTextElement):
         return ''.join(i.get_tex(options) for i in self._content)
 
 
-class symbol(FMTextElement):
-    "Print df neatly in plain text as well as formatted"
-    def __init__(self, symbol, df=None):
-        assert (df is None) or np.isscalar(df) or isstr(df) or np.iterable(df)
-        self._df = df
-        FMTextElement.__init__(self, symbol, mat=True)
-
-    def get_df_str(self):
-        if np.isscalar(self._df):
-            return '%s' % self._df
-        elif isstr(self._df):
-            return self._df
-        else:
-            return ','.join(str(i) for i in self._df)
-
-    def _get_html_core(self, options):
-        symbol = FMTextElement._get_html_core(self, options)
-        if self._df is None:
-            return symbol
-        else:
-            text = '%s<sub>%s<\sub>' % (symbol, self.get_df_str())
-            return text
-
-    def get_str(self, options={}):
-        symbol = FMTextElement.get_str(self, options)
-        if self._df is None:
-            return symbol
-        else:
-            return '%s(%s)' % (symbol, self.get_df_str())
-
-    def _get_tex_core(self, options):
-        out = FMTextElement._get_tex_core(self, options)
-        if self._df is not None:
-            out += '_{%s}' % self.get_df_str()
-        return out
+def symbol(symbol, df=None):
+    assert (df is None) or np.isscalar(df) or isstr(df) or np.iterable(df)
+    out = FMTextElement(symbol, mat=True)
+    if df is not None:
+        df_ = FMTextElement(df, '_', mat=True)
+        out = FMText([out, df_], mat=True)
+    return out
 
 
 def p(p, digits=3, stars=None, of=3):
@@ -586,7 +562,7 @@ class Stars(FMTextElement):
         FMTextElement.__init__(self, text, property, mat=True)
 
     def _get_tex_core(self, options):
-        txt = str(self)
+        txt = self._get_core(options)
         spaces = r'\ ' * (self.of - self.n)
         return txt + spaces
 
