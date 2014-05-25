@@ -2623,16 +2623,36 @@ class NDVar(object):
         if axis is None:
             return func(self.x)
         elif isndvar(axis):
-            dims, self_x, index = self._align(axis)
-            if self.has_case:
-                if axis.has_case:
-                    x = np.array([func(x_[i]) for x_, i in izip(self_x, index)])
-                else:
-                    index = index[0]
-                    x = np.array([func(x_[index]) for x_ in self_x])
-                return Var(x, self.name)
+            if axis.ndim == 1:
+                dim = axis.dims[0]
+                dim_axis = self.get_axis(dim.name)
+                if self.get_dim(dim.name) != dim:
+                    msg = "Index dimension does not match data dimension"
+                    raise DimensionMismatchError(msg)
+                index = (slice(None),) * dim_axis + (axis.x,)
+                x = func(self.x[index], dim_axis)
+                dims = (dim_ for dim_ in self.dims if not dim_ == dim)
             else:
-                return func(self_x[index])
+                # if the index does not contain all dimensions, numpy indexing
+                # is weird
+                if self.ndim - self.has_case != axis.ndim - axis.has_case:
+                    msg = ("If the index is not one dimensional, it needs to "
+                           "have the same dimensions as the data.")
+                    raise NotImplementedError(msg)
+                dims, self_x, index = self._align(axis)
+                if self.has_case:
+                    if axis.has_case:
+                        x = np.array([func(x_[i]) for x_, i in izip(self_x, index)])
+                    else:
+                        index = index[0]
+                        x = np.array([func(x_[index]) for x_ in self_x])
+                    return Var(x, self.name)
+                elif axis.has_case:
+                    msg = ("Index with case dimension can not be applied to "
+                           "data without case dimension")
+                    raise IndexError(msg)
+                else:
+                    return func(self_x[index])
         elif isinstance(axis, basestring):
             axis = self._dim_2_ax[axis]
             x = func(self.x, axis=axis)

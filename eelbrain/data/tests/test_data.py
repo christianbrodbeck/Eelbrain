@@ -352,6 +352,7 @@ def test_ndvar_summary_methods():
     idx0 = idx[0]
     xsub = x.sub(time=(0, 0.5))
     idxsub = xsub > 0
+    idx1d = x.mean(('case', 'time')) > 0
 
     # numpy functions
     assert_equal(x.any(), x.x.any())
@@ -361,6 +362,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.any(idx), [x_[i].any() for x_, i in izip(x.x, idx.x)])
     assert_array_equal(x0.any(idx0), x0.x[idx0.x].any())
     assert_array_equal(x.any(idxsub), xsub.any(idxsub))
+    assert_array_equal(x.any(idx1d), x.x[:, idx1d.x].any(1))
 
     assert_equal(x.max(), x.x.max())
     assert_array_equal(x.max(dim), x.x.max(axis))
@@ -369,6 +371,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.max(idx), [x_[i].max() for x_, i in izip(x.x, idx.x)])
     assert_array_equal(x0.max(idx0), x0.x[idx0.x].max())
     assert_array_equal(x.max(idxsub), xsub.max(idxsub))
+    assert_array_equal(x.max(idx1d), x.x[:, idx1d.x].max(1))
 
     assert_equal(x.mean(), x.x.mean())
     assert_array_equal(x.mean(dim), x.x.mean(axis))
@@ -377,6 +380,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.mean(idx), [x_[i].mean() for x_, i in izip(x.x, idx.x)])
     assert_array_equal(x0.mean(idx0), x0.x[idx0.x].mean())
     assert_array_equal(x.mean(idxsub), xsub.mean(idxsub))
+    assert_array_equal(x.mean(idx1d), x.x[:, idx1d.x].mean(1))
 
     assert_equal(x.min(), x.x.min())
     assert_array_equal(x.min(dim), x.x.min(axis))
@@ -385,6 +389,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.min(idx), [x_[i].min() for x_, i in izip(x.x, idx.x)])
     assert_array_equal(x0.min(idx0), x0.x[idx0.x].min())
     assert_array_equal(x.min(idxsub), xsub.min(idxsub))
+    assert_array_equal(x.min(idx1d), x.x[:, idx1d.x].min(1))
 
     assert_equal(x.std(), x.x.std())
     assert_array_equal(x.std(dim), x.x.std(axis))
@@ -393,6 +398,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.std(idx), [x_[i].std() for x_, i in izip(x.x, idx.x)])
     assert_array_equal(x0.std(idx0), x0.x[idx0.x].std())
     assert_array_equal(x.std(idxsub), xsub.std(idxsub))
+    assert_array_equal(x.std(idx1d), x.x[:, idx1d.x].std(1))
 
     # non-numpy
     assert_equal(x.rms(), rms(x.x))
@@ -402,6 +408,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.rms(idx), [rms(x_[i]) for x_, i in izip(x.x, idx.x)])
     assert_array_equal(x0.rms(idx0), rms(x0.x[idx0.x]))
     assert_array_equal(x.rms(idxsub), xsub.rms(idxsub))
+    assert_array_equal(x.rms(idx1d), rms(x.x[:, idx1d.x], 1))
 
 
 def test_io_pickle():
