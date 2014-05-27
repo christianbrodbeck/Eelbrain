@@ -713,16 +713,16 @@ def _loc(name, size=(0, 0), title_space=0, frame=.01):
     return x, y
 
 
-class eelfigure(object):
+class _EelFigure(object):
     """
     Parent class for eelbrain figures.
 
     In order to subclass:
 
      - find desired figure properties and then use them to initialize
-       the eelfigure superclass; then use the
-       :py:attr:`eelfigure.figure` and :py:attr:`eelfigure.canvas` attributes.
-     - end the initialization by calling `eelfigure._show()`
+       the _EelFigure superclass; then use the
+       :py:attr:`_EelFigure.figure` and :py:attr:`_EelFigure.canvas` attributes.
+     - end the initialization by calling `_EelFigure._show()`
      - add the :py:meth:`_fill_toolbar` method
 
 
@@ -778,7 +778,7 @@ class eelfigure(object):
                 parent = app.shell
             else:
                 parent = app.GetTopWindow()
-            frame = CanvasFrame(parent, title=title, eelfigure=self, **fig_kwa)
+            frame = CanvasFrame(parent, title=title, _EelFigure=self, **fig_kwa)
             self._is_wx = True
         elif frame_kind == 'mpl':
             frame = mpl_figure(**fig_kwa)
@@ -788,7 +788,9 @@ class eelfigure(object):
 
         figure = frame.figure
         if figtitle:
-            figure.suptitle(figtitle)
+            self._figtitle = figure.suptitle(figtitle)
+        else:
+            self._figtitle = None
 
         # store attributes
         self._frame = frame
@@ -836,6 +838,12 @@ class eelfigure(object):
     def _show(self, tight=True):
         if tight:
             self.figure.tight_layout()
+            if self._figtitle:
+                trans = self.figure.transFigure.inverted()
+                extent = self._figtitle.get_window_extent(self.figure.canvas.renderer)
+                bbox = trans.transform(extent)
+                t_bottom = bbox[0, 1]
+                self.figure.subplots_adjust(top=1 - 2 * (1 - t_bottom))
 
         self.draw()
         self._frame.Show()
@@ -855,21 +863,6 @@ class eelfigure(object):
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
         self._frame.canvas.draw()
-
-
-
-class subplot_figure(eelfigure):
-    def _show(self, figtitle=None):
-        self.figure.tight_layout()
-        if figtitle:
-            t = self.figure.suptitle(figtitle)
-            trans = self.figure.transFigure.inverted()
-            bbox = trans.transform(t.get_window_extent(self.figure.canvas.renderer))
-            print bbox
-            t_bottom = bbox[0, 1]
-            self.figure.subplots_adjust(top=1 - 2 * (1 - t_bottom))
-
-        super(subplot_figure, self)._show()
 
 
 class Layout():
@@ -1015,7 +1008,7 @@ class Layout():
         self.fig_kwa = dict(figsize=(w, h), dpi=dpi or defaults['DPI'])
 
 
-class legend(eelfigure):
+class legend(_EelFigure):
     def __init__(self, handles, labels, dpi=90, figsize=(2, 2)):
         fig_kwa = dict(dpi=dpi, figsize=figsize)
         super(legend, self).__init__(title="Legend", fig_kwa=fig_kwa)

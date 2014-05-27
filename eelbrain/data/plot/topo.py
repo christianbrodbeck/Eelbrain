@@ -13,7 +13,7 @@ from .sensors import _plt_map2d
 
 
 
-class Topomap(_tb_sensors_mixin, _base.eelfigure):
+class Topomap(_tb_sensors_mixin, _base._EelFigure):
     "Plot individual topogeraphies"
     def __init__(self, epochs, Xax=None, sensors=True, proj='default',
                  title=None, res=200, interpolation='nearest', ds=None,
@@ -47,7 +47,7 @@ class Topomap(_tb_sensors_mixin, _base.eelfigure):
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
-        _base.eelfigure.__init__(self, "Topomap Plot", nax, layout, 1, 7,
+        _base._EelFigure.__init__(self, "Topomap Plot", nax, layout, 1, 7,
                                  figtitle=title)
         _tb_sensors_mixin.__init__(self)
 
@@ -111,7 +111,7 @@ class Topomap(_tb_sensors_mixin, _base.eelfigure):
         self.draw()
 
 
-class TopoButterfly(_base.eelfigure):
+class TopoButterfly(_base._EelFigure):
     """
     Butterfly plot with corresponding topomaps.
 
@@ -570,7 +570,7 @@ class _TopoWindow:
             self.pointer = None
 
 
-class TopoArray(_base.eelfigure):
+class TopoArray(_base._EelFigure):
     """
     Channel by sample plots with corresponding topomaps
 
@@ -609,7 +609,7 @@ class TopoArray(_base.eelfigure):
         n_topo_total = ntopo * n_epochs
 
         # create figure
-        _base.eelfigure.__init__(self, 'TopoArray Plot', n_epochs, layout, 1.5,
+        _base._EelFigure.__init__(self, 'TopoArray Plot', n_epochs, layout, 1.5,
                                  6, make_axes=False)
         fig = self.figure
         axw = self._layout.axw

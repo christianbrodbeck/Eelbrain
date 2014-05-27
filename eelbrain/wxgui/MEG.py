@@ -19,7 +19,7 @@ from ..data.data_obj import Dataset, Var, corr, asndvar
 from ..data import load, save
 from ..data import plot
 from ..data import process
-from ..data.plot._base import eelfigure, find_fig_vlims
+from ..data.plot._base import _EelFigure, find_fig_vlims
 from ..data.plot.utsnd import _ax_bfly_epoch
 from ..data.plot.nuts import _plt_bin_nuts
 from .. import ui
@@ -28,7 +28,7 @@ from ..wxutils import mpl_canvas, Icon, ID
 __all__ = ['SelectEpochs', 'pca']
 
 
-class SelectEpochs(eelfigure):
+class SelectEpochs(_EelFigure):
     """
     Interfaces showing individual cases in an NDVar as butterfly plots, with
     the option to interactively manipulate a boolean list (i.e., select cases).

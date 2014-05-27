@@ -17,7 +17,7 @@ from ..data_obj import ascategorial, asndvar, cellname, Celltable
 from . import _base
 
 
-class UTSStat(_base.subplot_figure):
+class UTSStat(_base._EelFigure):
     "Plots statistics for a one-dimensional NDVar"
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, dev=scipy.stats.sem, legend='upper right',
@@ -34,7 +34,7 @@ class UTSStat(_base.subplot_figure):
     X : categorial or None
         Model: specification of conditions which should be plotted separately.
     Xax : None | categorial
-        Make separate axes for each category in this categoral model.
+        Make separate axes for each category in this categorial model.
     match : Factor
         Identifier for repeated measures data.
     sub : None | index array
@@ -53,9 +53,9 @@ class UTSStat(_base.subplot_figure):
     legend : str | None
         matplotlib figure legend location argument
     title : str | None
-        axes title; '{name}' will be formatted to ``Y.name``
+        Figure title; '{name}' will be formatted to ``Y.name``
     axtitle : str | None
-        Title for individual axes.
+        Axes title. '{name}' is formatted to the category name.
     xlabel, ylabel : True |str | None
         X- and y axis label. If True the labels will be inferred from the data.
     invy : bool
@@ -131,7 +131,7 @@ class UTSStat(_base.subplot_figure):
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
         super(UTSStat, self).__init__("UTSStat Plot", nax, layout,
-                                   figtitle=title)
+                                      figtitle=title)
 
         self._plots = []
         self._legend_handles = {}
@@ -309,18 +309,25 @@ class UTSStat(_base.subplot_figure):
 
 
 
-class UTS(_base.subplot_figure):
-    "Value by time plot for uts data."
-    def __init__(self, epochs, Xax=None, title='plot.UTS', figtitle=None,
-                 axtitle='{name}', ds=None, ax_aspect=2, **layout):
-        """
+class UTS(_base._EelFigure):
+    "Value by time plot for UTS data."
+    def __init__(self, epochs, Xax=None, title=None, axtitle='{name}', ds=None,
+                 **layout):
+        """Value by time plot for UTS data
+
         Parameters
         ----------
         epochs : epochs
             Uts data epochs to plot.
-        ncol : int
-            number of columns when plotting multiple axes.
-
+        Xax : None | categorial
+            Make separate axes for each category in this categorial model.
+        title : None | str
+            Figure title.
+        axtitle : None | str
+            Axes title. '{name}' is formatted to the category name.
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables.
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         super(UTS, self).__init__("UTS", len(epochs), layout, 1.5, 2,
@@ -329,7 +336,7 @@ class UTS(_base.subplot_figure):
         for ax, epoch in zip(self._axes, epochs):
             _ax_uts(ax, epoch, title=axtitle)
 
-        self._show(figtitle=figtitle)
+        self._show()
 
 
 class _ax_stat:
@@ -407,7 +414,7 @@ class _ax_stat:
         self.title = title
 
 
-class UTSClusters(_base.subplot_figure):
+class UTSClusters(_base._EelFigure):
     "Plotting of ANOVA permutation cluster test results"
     def __init__(self, res, pmax=0.05, ptrend=0.1, title=None,
                  axtitle='{name}', cm='jet', overlay=False, **layout):
@@ -424,7 +431,7 @@ class UTSClusters(_base.subplot_figure):
             Maximum p-value of clusters to plot as trend.
         title : str
             Figure title.
-        axtitle : str | None
+        axtitle : None | str
             Axes title pattern. '{name}' is formatted to the effect name.
         cm : str
             Colormap to use for coloring different effects.

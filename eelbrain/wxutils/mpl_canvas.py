@@ -122,7 +122,7 @@ class CanvasFrame(wx.Frame):
 
     """
     def __init__(self, parent=None, title="Matplotlib Frame",
-                 figsize=(8, 6), dpi=50, facecolor='w', eelfigure=None,
+                 figsize=(8, 6), dpi=50, facecolor='w', _EelFigure=None,
                  statusbar=True, toolbar=True, mpl_toolbar=False):
         size = (figsize[0] * dpi, figsize[1] * dpi + 45)
         wx.Frame.__init__(self, parent, -1, title=title, size=size)
@@ -149,16 +149,16 @@ class CanvasFrame(wx.Frame):
         if toolbar:
             tb = self.CreateToolBar(wx.TB_HORIZONTAL)
             tb.SetToolBitmapSize(size=(32, 32))
-            self.FillToolBar(tb, eelfigure)
+            self.FillToolBar(tb, _EelFigure)
             tb.Realize()
 
         if mpl_toolbar:
             self.add_mpl_toolbar()
 
-        self._eelfigure = eelfigure
+        self._eelfigure = _EelFigure
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
-    def FillToolBar(self, tb, eelfigure):
+    def FillToolBar(self, tb, _EelFigure):
         "subclasses should call this after adding their own items"
         if hasattr(self.Parent, 'attach'):
             tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
@@ -169,8 +169,8 @@ class CanvasFrame(wx.Frame):
         self.Bind(wx.EVT_TOOL, self.OnFileSave, id=wx.ID_SAVE)
 
         # intermediate, custom part
-        if eelfigure is not None:
-            eelfigure._fill_toolbar(tb)
+        if _EelFigure is not None:
+            _EelFigure._fill_toolbar(tb)
 
         # right-most part
         if wx.__version__ >= '2.9':

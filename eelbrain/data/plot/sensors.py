@@ -316,7 +316,7 @@ class _tb_sensors_mixin:
         self.draw()
 
 
-class SensorMaps(_base.eelfigure):
+class SensorMaps(_base._EelFigure):
     """
     GUI with multiple views on a sensor layout.
 
@@ -544,7 +544,7 @@ class SensorMaps(_base.eelfigure):
 
 
 
-class SensorMap2d(_tb_sensors_mixin, _base.eelfigure):
+class SensorMap2d(_tb_sensors_mixin, _base._EelFigure):
     """
     Plot a 2d Sensor Map.
 
@@ -580,7 +580,7 @@ class SensorMap2d(_tb_sensors_mixin, _base.eelfigure):
         sens_name = getattr(sensors, 'sysname', None)
         if sens_name:
             ftitle = '%s: %s' % (ftitle, sens_name)
-        _base.eelfigure.__init__(self, ftitle, 1, layout, 1, 7, figtitle=title)
+        _base._EelFigure.__init__(self, ftitle, 1, layout, 1, 7, figtitle=title)
         _tb_sensors_mixin.__init__(self)
 
         # store args
