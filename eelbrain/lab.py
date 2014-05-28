@@ -3,6 +3,7 @@ The eelbrain.lab module contains a collection of Eelbrain components that
 are useful for interactive data analysis.
 '''
 from .data import *
+from .fmtxt import Report
 
 # mne
 import eelbrain.data.load.fiff
