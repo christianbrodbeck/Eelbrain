@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 from eelbrain.lab import *
 from eelbrain import fmtxt
 
@@ -29,11 +28,11 @@ s12 = s1.add_section("Figure")
 s12.append("And now finally we will show a figure")
 print s12
 
-# add a figure 
+# add a figure
 image = report.add_image_figure("boxplot.svg", "Boxplot of all the data")
 p = plot.uv.boxplot('fltvar', 'A%B', 'rm', ds=ds)
-p.fig.savefig(image, format='svg')
-plt.close(p.fig)
+p.figure.savefig(image, format='svg')
+p.close()
 
 # print string representation and save
 print report.get_str()

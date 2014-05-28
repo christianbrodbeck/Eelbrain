@@ -2313,7 +2313,7 @@ class MneExperiment(FileTree):
             v = y.mean(idx)
             p = plot.uv.boxplot(v, model, 'subject', ds=ds)
             image = fmtxt.Image(c_name + '_boxplot.svg')
-            p.fig.savefig(image, format='svg')
+            p.figure.savefig(image, format='svg')
             p.close()
             caption = "Average value in cluster by condition."
             figure = subsection.add_figure(caption)
