@@ -90,7 +90,7 @@ import PIL
 
 from ...utils import LazyProperty
 from ...utils.subp import cmd_exists
-from ...fmtxt import texify
+from ...fmtxt import Image, texify
 from ..colorspaces import symmetric_cmaps, zerobased_cmaps
 from ..data_obj import ascategorial, asndvar, DimensionMismatchError
 
@@ -863,6 +863,25 @@ class _EelFigure(object):
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
         self._frame.canvas.draw()
+
+    def image(self, filename="image.svg"):
+        """Create FMTXT Image from the figure
+
+        Parameters
+        ----------
+        filename : str
+            Filename (for saving inside an HTML file) including extension.
+            Extension determines the format (e.g. *.svg for vector and *.png
+            for pixel graphics).
+
+        Returns
+        -------
+        image : fmtxt.Image
+            Image FMTXT object.
+        """
+        image = Image(filename)
+        self.figure.savefig(image, format=image._ext)
+        return image
 
 
 class Layout():
