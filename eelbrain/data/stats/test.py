@@ -12,8 +12,7 @@ from matplotlib import pyplot as P
 
 from ... import fmtxt
 from ..data_obj import (ascategorial, asfactor, assub, asvar, cellname,
-                        Celltable, Factor, iscategorial, isfactor, ismodel,
-                        isndvar, isvar)
+                        Celltable, Factor, isvar)
 from .permutation import resample
 
 
