@@ -728,7 +728,7 @@ class _EelFigure(object):
 
     """
     def __init__(self, title="Eelbrain Figure", nax=None, layout_kwa={},
-                 ax_aspect=2, axh_default=2, fig_kwa={}, ax_kwa={},
+                 ax_aspect=2, axh_default=4, fig_kwa={}, ax_kwa={},
                  figtitle=None, make_axes=True):
         """
 
