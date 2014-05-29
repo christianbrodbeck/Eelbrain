@@ -566,6 +566,16 @@ class MneExperiment(FileTree):
         collect_ind_stcs = (ind_stc or ind_ndvar) or (morph_requested and
                                                       all_are_common_brain)
 
+        # make sure annot files are available
+        make_annot_for = set()
+        if all_are_common_brain or collect_morphed_stcs:
+            make_annot_for.add(common_brain)
+        if collect_ind_stcs and not all_are_common_brain:
+            make_annot_for.update(from_subjects.values())
+        for subject in make_annot_for:
+            self.set(mrisubject=subject)
+            self.make_annot()
+
         # find vars to work on
         do = []
         for name in ds:
