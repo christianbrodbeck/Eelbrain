@@ -466,7 +466,7 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
         for subrow in subrows:  # contains t/p
             # names column
             if subrow is 0:
-                table.cell(cellnames[row], r"\textbf")
+                table.cell(cellnames[row])
             else:
                 table.cell()
             # rows
