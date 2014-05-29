@@ -2,7 +2,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from eelbrain.data import Var, datasets, plot
+from eelbrain.data import Factor, Var, datasets, plot
 
 
 def test_barplot():
@@ -17,9 +17,15 @@ def test_barplot():
 def test_boxplot():
     "Test plot.uv.boxplot"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand()
-    plot.uv.Boxplot('Y', 'A%B', match='rm', ds=ds)
+    ds = datasets.get_uv()
+    plot.uv.Boxplot('fltvar', 'A%B', match='rm', ds=ds)
     plt.close('all')
+
+    # many pairwise significances
+    ds['fltvar'][ds.eval("A%B==('a1','b1')")] += 1
+    ds['fltvar'][ds.eval("A%B==('a2','b2')")] -= 1
+    ds['C'] = Factor('qw', rep=10, tile=4)
+    plot.uv.Boxplot('fltvar', 'A%B%C', ds=ds)
 
 
 def test_histogram():
