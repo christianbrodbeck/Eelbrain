@@ -638,13 +638,17 @@ class _plt_uts_clusters:
         clusters = self.clusters
         if clusters is None:
             return
+
         p_include = self.ptrend or self.pmax
         for cluster in clusters.itercases():
-            p = cluster['p']
-            if p > p_include:
-                continue
+            if 'p' in cluster:
+                p = cluster['p']
+                if p > p_include:
+                    continue
+                alpha = 0.5 if p < self.pmax else 0.2
+            else:
+                alpha = 0.5
 
-            alpha = 0.5 if p < self.pmax else 0.2
             x0 = cluster['tstart']
             x1 = cluster['tstop']
             h = self.ax.axvspan(x0, x1, color=self.color,  # , hatch=self.hatch,
