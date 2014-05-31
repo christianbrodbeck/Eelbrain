@@ -49,10 +49,10 @@ from StringIO import StringIO
 import tempfile
 
 try:
-    import tex
+    import tex as _tex
 except:
     logging.warning("module tex not found; pdf export not available")
-    tex = None
+    _tex = None
 
 import numpy as np
 from matplotlib.image import imsave
@@ -108,7 +108,7 @@ def isstr(obj):
 
 def get_pdf(tex_obj):
     "creates a pdf from an fmtxt object (using tex)"
-    txt = tex_obj.get_tex()
+    txt = tex(tex_obj)
     document = u"""
 \\documentclass{article}
 \\usepackage{booktabs}
@@ -116,7 +116,7 @@ def get_pdf(tex_obj):
 %s
 \\end{document}
 """ % txt
-    pdf = tex.latex2pdf(document)
+    pdf = _tex.latex2pdf(document)
     return pdf
 
 
@@ -164,7 +164,7 @@ def save_pdf(tex_obj, path=None):
 
 def save_tex(tex_obj, path=None):
     "saves an fmtxt object as a pdf"
-    txt = tex_obj.get_tex()
+    txt = tex(tex_obj)
     if path is None:
         path = ui.ask_saveas(title="Save tex", ext=[('tex', 'tex source code')])
     if path:
@@ -195,7 +195,7 @@ def copy_pdf(tex_obj=-1):
 
 def copy_tex(tex_obj):
     "copies an fmtxt object to the clipboard as tex code"
-    txt = tex_obj.get_tex()
+    txt = tex(tex_obj)
     ui.copy_text(txt)
 
 
@@ -248,6 +248,21 @@ def make_html_doc(body, root, resource_dir=None, title=None):
     txt_body = html(body, options)
     txt = _html_doc_template.format(title=title, body=txt_body)
     return txt
+
+
+def tex(text, options={}):
+    """Create html code for any object with a string representation
+
+    Parameters
+    ----------
+    text : any
+        Object to be converted to HTML. If the object has a ``.get_html()``
+        method the result of this method is returned, otherwise ``str(text)``.
+    """
+    if hasattr(text, 'get_tex'):
+        return text.get_tex(options)
+    else:
+        return str(text)
 
 
 def texify(txt):
@@ -771,9 +786,9 @@ class Row(list):
         return delimiter.join(out)
 
     def get_tex(self, options={}):
-        tex = ' & '.join(cell.get_tex(options) for cell in self)
-        tex += r" \\"
-        return tex
+        out = ' & '.join(cell.get_tex(options) for cell in self)
+        out += r" \\"
+        return out
 
     def get_tsv(self, delimiter, fmt=None):
         options = {'fmt': fmt}
