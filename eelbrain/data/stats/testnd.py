@@ -467,9 +467,15 @@ def _t_contrast_rel_expand_cells(cells, all_cells):
                 raise ValueError("%s not in all_cells" % repr(cell))
             mean_cells[cell] = all_cells
             primary_cells.update(all_cells)
+        elif not '*' in cell:
+            msg = "Contrast contains cell not in data: %s" % repr(cell)
+            raise ValueError(msg)
         else:
-            base = tuple(c for c in all_cells if
-                         all(item in (ci, '*') for item, ci in izip(cell, c)))
+            # find cells that should be averaged ("base")
+            base = tuple(cell_ for cell_ in all_cells if
+                         all(i in (i_, '*') for i, i_ in izip(cell, cell_)))
+            if len(base) == 0:
+                raise ValueError("No cells in data match %s" % repr(cell))
             mean_cells[cell] = base
             primary_cells.update(base)
 
