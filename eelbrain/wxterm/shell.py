@@ -1475,7 +1475,8 @@ class ShellFrame(wx.py.shell.ShellFrame):
         # close all windows
         for w in wx.GetTopLevelWindows():
             if w is not self:
-                w.Close()
+                if not w.Close():
+                    return
 
         if self.help_viewer:
             self.help_viewer.Close()
