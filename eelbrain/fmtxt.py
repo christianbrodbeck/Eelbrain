@@ -76,9 +76,9 @@ _html_tags = {r'_': 'sub',
               r'\textbf': 'b',
               r'\textit': 'i'}
 
-_str_substitutes = {r'_': '(%s)'}
+_str_substitutes = {r'_': u'(%s)'}
 
-_html_doc_template = """<!DOCTYPE html>
+_html_doc_template = u"""<!DOCTYPE html>
 <html>
 <head>
     <title>{title}</title>
@@ -147,8 +147,9 @@ def save_html(fmtxt, path=None, embed_images=True):
         resource_dir = os.path.relpath(resource_dir, root)
 
     buf = make_html_doc(fmtxt, root, resource_dir)
+    buf_enc = buf.encode('utf-8')
     with open(file_path, 'wb') as fid:
-        fid.write(buf)
+        fid.write(buf_enc)
 
 
 def save_pdf(tex_obj, path=None):
@@ -215,7 +216,7 @@ def html(text, options={}):
     if hasattr(text, 'get_html'):
         return text.get_html(options)
     else:
-        return str(text)
+        return unicode(text)
 
 
 def make_html_doc(body, root, resource_dir=None, title=None):
@@ -281,8 +282,8 @@ def texify(txt):
     return out
 
 
-_html_temp = '<{tag}>{body}</{tag}>'
-_html_temp_opt = '<{tag} {options}>{body}</{tag}>'
+_html_temp = u'<{tag}>{body}</{tag}>'
+_html_temp_opt = u'<{tag} {options}>{body}</{tag}>'
 def _html_element(tag, body, options=None):
     """Format an HTML element
 
@@ -358,7 +359,7 @@ class FMTextElement(object):
         return items
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return unicode(self).encode('utf-8')  # , 'xmlcharrefreplace')
 
     def __unicode__(self):
         return self.get_str()
@@ -371,6 +372,7 @@ class FMTextElement(object):
         return FMText([self, other])
 
     def _get_core(self, options):
+        "return unicode"
         if isstr(self._content):
             return self._content
         elif self._content is not None and np.isnan(self._content):
@@ -384,7 +386,7 @@ class FMTextElement(object):
                 txt = txt[1:]
             return txt
         else:
-            return str(self._content)
+            return unicode(self._content)
 
     def get_html(self, options):
         txt = self._get_html_core(options)
@@ -399,6 +401,7 @@ class FMTextElement(object):
         return self._get_core(options)
 
     def get_str(self, options={}):
+        "return unicode"
         text = self._get_core(options)
         if self.property:
             fmt = _str_substitutes.get(self.property, None)
@@ -1293,7 +1296,10 @@ class Image(FMTextElement, StringIO):
         if resource_dir is None:
             buf = self.getvalue()
             if self._ext == 'svg':  # special case for embedded svg
-                return buf
+                # SVGs can contain non-ASCII characters which cause
+                # UnicodeDecodeError when combined with unicode
+                out = ''.join(map(unichr, map(ord, buf)))
+                return out
             # http://stackoverflow.com/a/7389616/166700
             data = buf.encode('base64').replace('\n', '')
             src = 'data:image/{};base64,{}'.format(self._ext, data)
@@ -1499,7 +1505,7 @@ class Section(FMText):
     def get_str(self, options={}):
         level = options.get('level', (1,))
         number = '.'.join(map(str, level))
-        title = ' '.join((number, str(self._heading)))
+        title = ' '.join((number, unicode(self._heading)))
         if len(level) == 1:
             underline_char = '='
         else:
