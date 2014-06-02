@@ -5952,7 +5952,7 @@ class SourceSpace(Dimension):
     def dimindex(self, obj):
         if isinstance(obj, (mne.Label, mne.label.BiHemiLabel)):
             return self._dimindex_label(obj)
-        elif isinstance(obj, str):
+        elif isinstance(obj, basestring):
             if obj == 'lh':
                 if self.lh_n:
                     return slice(None, self.lh_n)
@@ -5978,7 +5978,7 @@ class SourceSpace(Dimension):
             return obj
 
     def _dimindex_label(self, label):
-        if isinstance(label, str):
+        if isinstance(label, basestring):
             if self.parc is None:
                 raise RuntimeError("SourceSpace has no parcellation")
             elif label not in self.parc:
