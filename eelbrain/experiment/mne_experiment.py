@@ -2152,12 +2152,9 @@ class MneExperiment(FileTree):
                                   'subject', 'model', 'mrisubject'])
         report.append(t)
 
-
+        src = ds['srcm']
         if parc is None:
             section = report.add_section("Clusters in Whole Brain")
-            self._source_time_clusters(section, ds['srcm'], ds, test_kind, model,
-                                       contrast, samples, pmin, tstart, tstop,
-                                       include, bin_table=True)
         else:
             section = report.add_section("Clusters in %s" % parc)
 
@@ -2167,27 +2164,32 @@ class MneExperiment(FileTree):
             caption = "Labels in the %s parcellation." % parc
             section.add_image_figure(image, caption)
 
-            # load labels
-            lbls = self.load_labels(mrisubject='fsaverage')
-            labels = [lbls[n] for n in lbls if not n.startswith("unknown")]
-            grand_label = reduce(add, labels)
-            grand_label.name = parc
+            # reduce data to parc
+            idx = np.invert(src.source.parc.startswith('unknown'))
+            src = src.sub(source=idx)
 
-            # add section for combined label
-            src = ds['srcm'].sub(source=grand_label)
-            legend = self._source_time_clusters(section, src, ds, test_kind, model,
-                                                contrast, samples, pmin,
-                                                tstart, tstop, include,
-                                                bin_table=True)
+        res = self._make_test(src, ds, test_kind, model, contrast,
+                              samples, pmin, tstart, tstop)
 
-            # add subsections for individual labels
-            for label in labels:
-                subsection = section = report.add_section("Clusters in %s" %
-                                                          label.name)
-                src_label = src.sub(source=label)
-                self._source_time_clusters(subsection, src_label, ds, test_kind,
-                                           model, contrast, samples, pmin,
-                                           tstart, tstop, include, legend)
+        # time-bin table and cluster
+        self._source_bin_table(section, test_kind, res)
+        legend = self._source_time_clusters(section, res.clusters, src, ds,
+                                            test_kind, model, contrast,
+                                            samples, pmin, tstart, tstop,
+                                            include)
+
+        # add subsections for individual labels
+        if parc is not None:
+            for label in src.source.parc.cells:
+                src_ = src.sub(source=label)
+                res = self._make_test(src_, ds, test_kind, model, contrast,
+                                      samples, pmin, tstart, tstop)
+
+                section = report.add_section("Clusters in %s" % label)
+                self._source_time_clusters(section, res.clusters, src_, ds,
+                                           test_kind, model, contrast, samples,
+                                           pmin, tstart, tstop, include,
+                                           legend)
 
         # report signature
         t1 = time.time()
@@ -2202,14 +2204,32 @@ class MneExperiment(FileTree):
 
         report.save_html(dst)
 
-    def _source_time_clusters(self, section, y, ds, test, model, contrast,
-                              samples, pmin, tstart, tstop,
-                              include, legend=None, bin_table=False):
+    def _source_bin_table(self, section, test_kind, res):
+        caption = ("All clusters in time bins. Each plot shows all sources "
+                   "that are part of a cluster at any time during the "
+                   "relevant time bin. Only the general minimum duration and "
+                   "source number criterion are applied.")
+
+        if test_kind == 'anova':
+            cdists = [(cdist, "%s: %s" % (cdist.name.capitalize(), caption))
+                      for cdist in res._cdist]
+        else:
+            cdists = [(res._cdist, caption)]
+
+        for cdist, caption in cdists:
+            ndvar = cdist.masked_parameter_map(None)
+            im = plot.brain.bin_table(ndvar)
+            section.add_image_figure(im, caption)
+
+    def _source_time_clusters(self, section, clusters, y, ds, test_kind, model,
+                              contrast, samples, pmin, tstart, tstop,
+                              include, legend=None):
         """
+        Parameters
+        ----------
+        ...
         legend : None | fmtxt.Image
             Legend (if shared with other figures).
-        bin_table : bool
-            Add an image table with 100 ms time bins including all clusters.
 
         Returns
         -------
@@ -2222,31 +2242,10 @@ class MneExperiment(FileTree):
             tstop_rep = int(tstop * 1000)
 
         # compute clusters
-        res = self._make_test(y, ds, test, model, contrast, samples, pmin, tstart, tstop)
-        if res.clusters.n_cases == 0:
+        if clusters.n_cases == 0:
             section.append("No clusters found.")
             return
-
-        # time-bin plot table
-        if bin_table:
-            caption = ("All clusters in time bins. Each plot shows all sources "
-                       "that are part of a cluster at any time during the "
-                       "relevant time bin. Only the general minimum duration and "
-                       "source number criterion are applied.")
-
-            if test == 'anova':
-                cdists = [(cdist, "%s: %s" % (cdist.name.capitalize(), caption))
-                          for cdist in res._cdist]
-            else:
-                cdists = [(res._cdist, caption)]
-
-            for cdist, caption in cdists:
-                ndvar = cdist.masked_parameter_map(None)
-                im = plot.brain.bin_table(ndvar, tstart, tstop)
-                section.add_image_figure(im, caption)
-
-        # cluster table
-        clusters = res.clusters.sub("p < 1")
+        clusters = clusters.sub("p < 1")
         if clusters.n_cases == 0:
             section.append("No clusters with p < 1 found.")
             return
@@ -2296,7 +2295,7 @@ class MneExperiment(FileTree):
             # cluster time course
             idx = cluster.any('time')
             tc = y[idx].mean('source')
-            res_tc = self._make_test(tc, ds, test, model, contrast, 10000,
+            res_tc = self._make_test(tc, ds, test_kind, model, contrast, 10000,
                                      pmin, tstart, tstop)
             caption = ("Cluster average time course, clusters exceeding p "
                        "= %s in the time window %i - %s "
@@ -2460,7 +2459,8 @@ class MneExperiment(FileTree):
             save.pickle(res, dst)
         return res
 
-    def _make_test(self, y, ds, test, model, contrast, samples, pmin, tstart, tstop):
+    def _make_test(self, y, ds, test, model, contrast, samples, pmin, tstart,
+                   tstop):
         """just compute the test result"""
         # find cluster criteria
         kwargs = {'samples': samples, 'pmin': pmin, 'tstart': tstart,
