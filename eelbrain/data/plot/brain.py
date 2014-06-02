@@ -482,7 +482,7 @@ def _voxel_brain(data, lut, vmin, vmax):
     return figure
 
 
-def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1,
+def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
               views=['lat', 'med']):
     """Create a table with images for time bins
 
@@ -498,6 +498,8 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1,
         in ndvar).
     tstep : scalar
         Size of each bin (in seconds).
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+        Freesurfer surface to use as brain geometry.
     views : list of str
         Views to display (for each hemisphere, lh first).
 
@@ -512,8 +514,8 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1,
     vmax = max(abs(data.min()), data.max())
     for hemi in ('lh', 'rh'):
         hemi_data = data.sub(source=hemi)
-        brain = cluster(hemi_data, vmax, w=300, h=250, views=views[0],
-                        colorbar=False, time_label=None)
+        brain = cluster(hemi_data, vmax, surf, views[0], colorbar=False, w=300,
+                        h=250, time_label=None)
         fig = brain._figures[0][0]
         fig.scene.camera.parallel_projection = True
         fig.scene.camera.parallel_scale = 70
