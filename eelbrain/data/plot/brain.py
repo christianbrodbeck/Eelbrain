@@ -483,7 +483,7 @@ def _voxel_brain(data, lut, vmin, vmax):
 
 
 def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
-              views=['lat', 'med']):
+              views=['lat', 'med'], summary=np.sum):
     """Create a table with images for time bins
 
     Parameters
@@ -502,6 +502,10 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         Freesurfer surface to use as brain geometry.
     views : list of str
         Views to display (for each hemisphere, lh first).
+    summary : callable
+        How to summarize data in each time bin. The value should be a function
+        that takes an axis parameter (e.g., numpy summary functions like
+        numpy.sum, numpy.mean, numpy.max, ..., default is numpy.sum).
 
     Returns
     -------
@@ -509,7 +513,7 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         FMTXT Image object that can be saved as SVG or integrated into an
         FMTXT document.
     """
-    data = _bin_data(ndvar, tstart, tstop, tstep)
+    data = _bin_data(ndvar, tstart, tstop, tstep, summary)
     ims = []
     vmax = max(abs(data.min()), data.max())
     for hemi in ('lh', 'rh'):
@@ -539,7 +543,7 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     return im
 
 
-def _bin_data(ndvar, tstart, tstop, tstep, summary=np.sum):
+def _bin_data(ndvar, tstart, tstop, tstep, summary):
     data = ndvar.get_data(('source', 'time'))
 
     # times
