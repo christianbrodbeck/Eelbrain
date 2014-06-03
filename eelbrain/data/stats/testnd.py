@@ -1670,6 +1670,8 @@ def _label_clusters(pmap, out, bin_buff, bin_buff2, int_buff, threshold, tail,
     pmap : array
         Statistical parameter map (non-adjacent dimension on the first
         axis).
+    out : array of int
+        Buffer for the cluster id map (will be modified).
 
     Returns
     -------
@@ -2290,6 +2292,13 @@ class _ClusterDist:
         else:
             return im
 
+    @LazyProperty
+    def _default_plot_obj(self):
+        if self.N:
+            return [[self.self.parameter_map, self.probability_map]]
+        else:
+            return [[self.self.parameter_map]]
+
     def _finalize(self):
         "Package results and delete temporary data"
         # prepare container for clusters
@@ -2322,62 +2331,16 @@ class _ClusterDist:
         else:
             cluster_map_ = None
 
-        # probability map
-        if self.kind in ('tfce', 'raw') and self.N:
-            # probability map (TFCE)
-            idx = self._bin_buff
-            cpmap = np.zeros(self.shape)
-            dist = self._aggregate_dist()
-            for v in dist:
-                cpmap += np.greater(v, stat_map, idx)
-            cpmap /= self.N
-        elif self.kind == 'cluster' and self.N:
-            cpmap = np.ones(self.shape)
-
-            if self.n_clusters:
-                cids = self._cids
-                dist = self._aggregate_dist()
-
-                # measure clusters
-                cluster_v = ndimage.sum(param_map, cluster_map, cids)
-
-                # p-values: "the proportion of random partitions that resulted
-                # in a larger test statistic than the observed one" (179)
-                n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
-                cluster_p = n_larger / self.N
-
-                c_mask = self._bin_buff
-                for i, cid in enumerate(cids):
-                    np.equal(cluster_map, cid, c_mask)
-                    cpmap[c_mask] = cluster_p[i]
-        else:
-            cpmap = None
-
         # original parameter map
         info = _cs.stat_info(self.meas, contours=param_contours)
         if self._nad_ax:
             param_map = param_map.swapaxes(0, self._nad_ax)
         param_map_ = NDVar(param_map, dims[1:], info, self.name)
 
-        # cluster probability map
-        self._probability_map = cpmap
-        if cpmap is None:
-            probability_map = None
-            all_ = [[param_map_]]
-        else:
-            # revert to original shape
-            if self._nad_ax:
-                cpmap = cpmap.swapaxes(0, self._nad_ax)
-            info = _cs.cluster_pmap_info()
-            probability_map = NDVar(cpmap, dims[1:], info, self.name)
-            all_ = [[param_map_, probability_map]]
-
         # store attributes
+        self.tfce_map = tfce_map_
         self.parameter_map = param_map_
         self.cluster_map = cluster_map_
-        self.tfce_map = tfce_map_
-        self.probability_map = probability_map
-        self._default_plot_obj = all_
 
         self._clear_memory_buffers()
 
@@ -2594,7 +2557,13 @@ class _ClusterDist:
                 else:
                     v = 0
             else:
-                v = pmap.reshape(self._cmap_reshape).max(self._max_axes)
+                pmap_ = pmap.reshape(self._cmap_reshape)
+                if self.tail == 0:
+                    v = np.abs(pmap_, pmap_).max(self._max_axes)
+                elif self.tail > 0:
+                    v = pmap_.max(self._max_axes)
+                else:
+                    v = -pmap_.min(self._max_axes)
 
             self.dist[self._i] = v
             # log
@@ -2792,7 +2761,7 @@ class _ClusterDist:
 
         self._allocate_memory_buffers()
         param_map = self._original_param_map
-        probability_map = self._probability_map
+        probability_map = self.probability_map.x.swapaxes(0, self._nad_ax)
 
         peaks = self._find_peaks(self._original_cluster_map)
         peak_map = self._int_buff
@@ -2882,23 +2851,62 @@ class _ClusterDist:
             Create the probability map for, and correct for multiple
             comparisons in only a part of Y.
         """
+        if not self.N:
+            raise RuntimeError("Can't compute probability without permutations")
+
         if self.kind == 'cluster':
-            raise RuntimeError("For threshold cluster tests use "
-                               ".probability_map")
-        elif self.kind == 'tfce':
-            stat_map = self.tfce_map
+            if any(x is not None for x in (tstart, tstop, sub)):
+                msg = ("tstart, tstop and sub have to be non for cluster "
+                       "permutations tests")
+                raise ValueError(msg)
+
+            cpmap = np.ones(self.shape)
+            if self.n_clusters:
+                cids = self._cids
+                dist = self._aggregate_dist()
+                cluster_map = self._original_cluster_map
+                param_map = self._original_param_map
+
+                # measure clusters
+                cluster_v = ndimage.sum(param_map, cluster_map, cids)
+
+                # p-values: "the proportion of random partitions that resulted
+                # in a larger test statistic than the observed one" (179)
+                n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
+                cluster_p = n_larger / self.N
+
+                c_mask = np.empty(self.shape, dtype=np.bool8)
+                for i, cid in enumerate(cids):
+                    np.equal(cluster_map, cid, c_mask)
+                    cpmap[c_mask] = cluster_p[i]
+            # revert to original shape
+            if self._nad_ax:
+                cpmap = cpmap.swapaxes(0, self._nad_ax)
+
+            dims = self.dims[1:]
         else:
-            stat_map = self.parameter_map
+            if self.kind == 'tfce':
+                stat_map = self.tfce_map
+            else:
+                if self.tail == 0:
+                    stat_map = self.parameter_map.abs()
+                elif self.tail < 0:
+                    stat_map = -self.parameter_map
+                else:
+                    stat_map = self.parameter_map
 
-        dist = self._aggregate_dist(tstart, tstop, sub)
-        stat_map = self._crop_result_ndvar(stat_map, tstart, tstop, sub)
+            dist = self._aggregate_dist(tstart, tstop, sub)
+            stat_map = self._crop_result_ndvar(stat_map, tstart, tstop, sub)
 
-        idx = np.empty(stat_map.shape, dtype=np.bool8)
-        cpmap = np.zeros(stat_map.shape)
-        for v in dist:
-            cpmap += np.greater(v, stat_map.x, idx)
-        cpmap /= self.N
-        return NDVar(cpmap, stat_map.dims)
+            idx = np.empty(stat_map.shape, dtype=np.bool8)
+            cpmap = np.zeros(stat_map.shape)
+            for v in dist:
+                cpmap += np.greater(v, stat_map.x, idx)
+            cpmap /= self.N
+            dims = stat_map.dims
+
+        info = _cs.cluster_pmap_info()
+        return NDVar(cpmap, dims, info, self.name)
 
     def masked_parameter_map(self, pmin=0.05, tstart=None, tstop=None,
                              sub=None):
@@ -2928,3 +2936,10 @@ class _ClusterDist:
             c_mask = np.less_equal(probability_map.x, pmin)
         param_map.x *= c_mask
         return param_map
+
+    @LazyProperty
+    def probability_map(self):
+        if self.N:
+            return self.compute_probability_map()
+        else:
+            return None
