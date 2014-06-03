@@ -57,7 +57,6 @@ the interval form 0 to 500 ms used for rejection.
 from collections import defaultdict
 import datetime
 import inspect
-from operator import add
 import os
 from Queue import Queue
 import re
@@ -2154,9 +2153,9 @@ class MneExperiment(FileTree):
 
         src = ds['srcm']
         if parc is None:
-            section = report.add_section("Clusters in Whole Brain")
+            section = report.add_section("Whole Brain")
         else:
-            section = report.add_section("Clusters in %s" % parc)
+            section = report.add_section("Union of %s" % parc)
 
             # add picture of parc
             brain = self.plot_annot(w=1000)
@@ -2185,7 +2184,7 @@ class MneExperiment(FileTree):
                 res = self._make_test(src_, ds, test_kind, model, contrast,
                                       samples, pmin, tstart, tstop)
 
-                section = report.add_section("Clusters in %s" % label)
+                section = report.add_section(label.capitalize())
                 self._source_time_clusters(section, res.clusters, src_, ds,
                                            test_kind, model, contrast, samples,
                                            pmin, tstart, tstop, include,
