@@ -2537,6 +2537,7 @@ class _ClusterDist:
         if self.N and n_clusters:
             self._init_permutation()
         else:
+            self._i = 0  # set to 0 so it can be saved
             self._finalize()
 
     def add_perm(self, pmap):

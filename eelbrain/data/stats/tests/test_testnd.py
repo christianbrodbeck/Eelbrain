@@ -58,6 +58,13 @@ def test_anova():
     assert_in('v', res.clusters)
     assert_in('p', res.clusters)
 
+    # some effects with clusters, some without
+    res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5, pmin=0.05,
+                       tstart=0.37, mintime=0.02)
+    string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
+    res_ = pickle.loads(string)
+    assert_dataobj_equal(res.clusters, res_.clusters)
+
     # test multi-effect results (with persistence)
     # UTS
     res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5)
