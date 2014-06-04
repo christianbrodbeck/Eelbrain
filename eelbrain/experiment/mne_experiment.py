@@ -74,7 +74,7 @@ from mne.baseline import rescale
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
 try:
-    from mne.io import Evoked as _mne_Evoked
+    from mne import Evoked as _mne_Evoked
     from mne.io import Raw as _mne_Raw
 except ImportError:
     from mne.fiff import Evoked as _mne_Evoked
@@ -855,7 +855,7 @@ class MneExperiment(FileTree):
         mri_sdir = self.get('mri-sdir')
         if not self._annot_exists():
             self.make_annot()
-        labels = mne.read_annot(subject, parc, 'both', subjects_dir=mri_sdir)
+        labels = mne.read_labels_from_annot(subject, parc, 'both', subjects_dir=mri_sdir)
         return labels
 
     def load_edf(self, **kwargs):
@@ -1437,7 +1437,7 @@ class MneExperiment(FileTree):
         if mrisubject == common_brain:
             labels = self._make_annot(parc, mrisubject)
             mri_sdir = self.get('mri-sdir')
-            mne.write_annot(labels, mrisubject, parc, True, mri_sdir)
+            mne.write_labels_to_annot(labels, mrisubject, parc, True, mri_sdir)
         else:
             # make sure annot exists for common brain
             self.set(mrisubject=common_brain, match=False)

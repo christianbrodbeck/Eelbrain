@@ -35,7 +35,7 @@ from warnings import warn
 
 import mne
 try:
-    from mne.io import Evoked as _mne_Evoked  # new in 0.9
+    from mne import Evoked as _mne_Evoked  # new in 0.9
 except ImportError:
     from mne.fiff import Evoked as _mne_Evoked
 import numpy as np
@@ -6084,8 +6084,8 @@ class SourceSpace(Dimension):
                 raise ValueError("Wrong length (%i)" % len(parc))
             parc_ = parc
         elif isinstance(parc, basestring):
-            labels = mne.read_annot(self.subject, parc,
-                                    subjects_dir=self.subjects_dir)
+            labels = mne.read_labels_from_annot(self.subject, parc,
+                                                subjects_dir=self.subjects_dir)
             parc_ = Factor(['unknown'], rep=len(self), name=parc)
             for label in labels:
                 index = self.dimindex(label)

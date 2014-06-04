@@ -8,7 +8,8 @@ import os
 import mne
 import numpy as np
 try:
-    from mne.io import Evoked, Raw
+    from mne import Evoked
+    from mne.io import Raw
 except ImportError:
     from mne.fiff import Evoked, Raw
 

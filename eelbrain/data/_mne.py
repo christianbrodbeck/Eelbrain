@@ -68,7 +68,7 @@ def labels_from_clusters(clusters, names=None):
         vertices = hemi_vertices[where]
 
         label = Label(vertices, hemi=hemi, name=name, subject=subject,
-                      color=color, src=source_space)
+                      color=color).fill(source_space)
         labels.append(label)
 
     return labels
