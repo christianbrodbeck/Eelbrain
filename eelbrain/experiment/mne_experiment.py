@@ -448,7 +448,7 @@ class MneExperiment(FileTree):
         elif subject in self.get_field_values('group'):
             group = subject
             subject_ = None
-            self.set(**kwargs)
+            self.set(group=group, **kwargs)
         else:
             group = None
             subject_ = subject
