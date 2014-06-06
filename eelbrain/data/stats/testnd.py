@@ -100,8 +100,10 @@ class _TestResult(object):
 
         Parameters
         ----------
-        pmin : scalar
-            Threshold p-value for masking (default 0.05).
+        pmin : None | scalar
+            Threshold p-value for masking (default 0.05). For threshold-based
+            cluster tests, pmin=None includes all clusters regardless of their
+            p-value.
 
         Returns
         -------
@@ -1592,8 +1594,10 @@ class anova(_TestResult):
         ----------
         effect : int
             Index of the effect from which to use the parameter map.
-        pmin : scalar
-            Threshold p-value for masking (default 0.05).
+        pmin : None | scalar
+            Threshold p-value for masking (default 0.05). For threshold-based
+            cluster tests, pmin=None includes all clusters regardless of their
+            p-value.
 
         Returns
         -------
@@ -2916,7 +2920,8 @@ class _ClusterDist:
         ----------
         pmin : None | scalar
             Threshold p-value for masking (default 0.05). For threshold-based
-            cluster tests, pmin=None uses all clusters.
+            cluster tests, pmin=None includes all clusters regardless of their
+            p-value.
 
         Returns
         -------
