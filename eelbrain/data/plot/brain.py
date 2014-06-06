@@ -516,7 +516,14 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     data = _bin_data(ndvar, tstart, tstop, tstep, summary)
     ims = []
     vmax = max(abs(data.min()), data.max())
-    for hemi in ('lh', 'rh'):
+
+    hemis = []
+    if data.source.lh_n:
+        hemis.append('lh')
+    if data.source.rh_n:
+        hemis.append('rh')
+
+    for hemi in hemis:
         hemi_data = data.sub(source=hemi)
         brain = cluster(hemi_data, vmax, surf, views[0], colorbar=False, w=300,
                         h=250, time_label=None)
