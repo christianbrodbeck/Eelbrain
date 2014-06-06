@@ -58,6 +58,11 @@ def test_anova():
     assert_in('v', res.clusters)
     assert_in('p', res.clusters)
 
+    # all effects with clusters
+    res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5, pmin=0.05,
+                       tstart=0.1, mintime=0.02)
+    assert_equal(set(res.clusters['effect'].cells), set(res.effects))
+
     # some effects with clusters, some without
     res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5, pmin=0.05,
                        tstart=0.37, mintime=0.02)

@@ -1401,6 +1401,9 @@ class anova(_TestResult):
 
     Attributes
     ----------
+    effects : tuple of str
+        Name of all the effects as they occur in the ``.clusters`` Dataset
+        (e.g., ``('A', 'B', 'A x B')``).
     clusters : None | Dataset
         When performing a cluster permutation test, a Dataset listing all
         clusters.
@@ -1409,7 +1412,7 @@ class anova(_TestResult):
     p : list
         Maps of p values.
     """
-    _state_specific = ('X', 'pmin', 'effects', 'df_den', 'f')
+    _state_specific = ('X', 'pmin', 'effects', '_effects', 'df_den', 'f')
 
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
@@ -1524,7 +1527,8 @@ class anova(_TestResult):
         self.pmin = pmin
 
         self.name = "ANOVA"
-        self.effects = effects
+        self._effects = effects
+        self.effects = tuple(e.name for e in effects)
         self.df_den = df_den
         self.f = f
 
@@ -1545,7 +1549,7 @@ class anova(_TestResult):
         pmin = self.pmin or 0.05
         if self.samples:
             f_and_clusters = []
-            for e, fmap, cdist in izip(self.effects, self.f, cdists):
+            for e, fmap, cdist in izip(self._effects, self.f, cdists):
                 # create f-map with cluster threshold
                 f0 = ftest_f(pmin, e.df, df_den[e])
                 info = _cs.stat_info('f', f0)
@@ -1559,7 +1563,7 @@ class anova(_TestResult):
 
         # uncorrected probability
         p_uncorr = []
-        for e, f in izip(self.effects, self.f):
+        for e, f in izip(self._effects, self.f):
             info = _cs.sig_info()
             pmap = ftest_p(f.x, e.df, self.df_den[e])
             p_ = NDVar(pmap, f.dims, info, e.name)
@@ -1592,8 +1596,8 @@ class anova(_TestResult):
 
         Parameters
         ----------
-        effect : int
-            Index of the effect from which to use the parameter map.
+        effect : int | str
+            Index or name of the effect from which to use the parameter map.
         pmin : None | scalar
             Threshold p-value for masking (default 0.05). For threshold-based
             cluster tests, pmin=None includes all clusters regardless of their
@@ -1608,6 +1612,8 @@ class anova(_TestResult):
         if self._cdist is None:
             err = "Method only applies to results with samples > 0"
             raise RuntimeError(err)
+        elif isinstance(effect, basestring):
+            effect = self.effects.index(effect)
         return self._cdist[effect].masked_parameter_map(pmin)
 
     def _clusters(self, pmin=None, maps=False, tstart=None, tstop=None,
