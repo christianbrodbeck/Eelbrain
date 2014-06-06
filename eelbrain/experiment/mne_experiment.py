@@ -187,6 +187,8 @@ temp = {
         'test-dir': os.path.join('{root}', 'test', '{analysis} {group}'),
         'test-file': os.path.join('{test-dir}', '{epoch} {test} '
                                   '{test_options}.pickled'),
+        'test-parc-file': os.path.join('{test-dir}', '{epoch} {test} '
+                                       '{test_options} {parc}.pickled'),
 
         # result output files
         # data processing parameters
@@ -1425,6 +1427,106 @@ class MneExperiment(FileTree):
         src = mne.read_source_spaces(fpath, add_geom)
         return src
 
+    def load_test(self, tstart, tstop, pmin, parc=None, samples=1000,
+                  group='all', data='src', sns_baseline=(None, 0),
+                  src_baseline=None, return_data=False, redo=False, **kwargs):
+        """Load thrshold-free spatio-temporal cluster permutation test
+
+        Parameters
+        ----------
+        tstart, tstop : None | scalar
+            Time window for finding clusters.
+        pmin : None | 'tfce'
+            Kind of test.
+        parc : None | str
+            Parcellation for which to collect distribution.
+        samples : int
+            Number of samples used to determine cluster p values for spatio-
+            temporal clusters.
+        group : str
+            Group for which to perform the test.
+        data : 'sns' | 'src'
+            Whether the analysis is in sensor or source space.
+        sns_baseline : None | tuple
+            Sensor space baseline interval.
+        src_baseline : None | tuple
+            Source space baseline interval.
+        return_data : bool
+            Return the data along with the test result (see below).
+        redo : bool
+            If the target file already exists, delete and recreate it (only
+            applies for tests that are cached).
+
+        Returns
+        -------
+        ds : Dataset (if return_data==True)
+            Data that forms the basis of the test.
+        res : TestResult
+            Test result for the specified test.
+        """
+        self._set_test_options(data, sns_baseline, src_baseline, pmin, tstart,
+                               tstop)
+
+        # figure out what test to do
+        test, model, contrast = self.tests[self.get('test')]
+        self.set(model=model)
+
+        if pmin == 'tfce':
+            raise NotImplementedError("tfce")
+
+        # find cached file path
+        if parc:
+            if pmin == 'tfce':
+                raise NotImplementedError("tfce analysis can't have parc")
+            elif data == 'sns':
+                raise NotImplementedError("sns analysis can't have parc")
+            dst = self.get('test-parc-file', mkdir=True, parc=parc)
+            parc_dim = 'source'
+        else:
+            self.set(parc='aparc')
+            dst = self.get('test-file', mkdir=True)
+            parc_dim = None
+
+        # try to load cached test
+        if not redo and os.path.exists(dst):
+            res = load.unpickle(dst)
+            if res.samples < samples:
+                msg = ("Cached test has %i samples (vs %i requested). To get "
+                       "the requested number of samples, specify redo=True."
+                       % (res.samples, samples))
+                raise ValueError(msg)
+            load_data = return_data
+        else:
+            res = None
+            load_data = True
+
+        # load data
+        if load_data:
+            if data == 'sns':
+                ds = self.load_evoked(group, sns_baseline, ndvar=True)
+            elif data == 'src':
+                ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
+                                          morph_ndvar=True)
+            else:
+                raise ValueError(data)
+
+        # perform the test if it was not cached
+        if res is None:
+            if data == 'sns':
+                y = ds['meg']
+            elif data == 'src':
+                y = ds['srcm']
+
+            res = self._make_test(y, ds, test, model, contrast, samples, pmin,
+                                  tstart, tstop, None, parc_dim)
+            # cache
+            save.pickle(res, dst)
+
+        if return_data:
+            return ds, res
+        else:
+            return res
+
     def make_annot(self, redo=False):
         if not redo and self._annot_exists():
             return
@@ -2383,88 +2485,13 @@ class MneExperiment(FileTree):
                 mne.add_source_space_distances(src)
                 src.save(dst)
 
-    def make_test(self, data, pmin, tstart, tstop, group='all', samples=1000,
-                  sns_baseline=(None, 0), src_baseline=None, y=None, ds=None,
-                  redo=False):
-        """Compute spatio-temporal cluster permutation test
-
-        Parameters
-        ----------
-        data : 'sns' | 'src'
-            Whether the analysis is in sensor or source space.
-        pmin :
-        ...
-        parc : None
-            Find clusters in whole area covered by parc and then in each label.
-        pmin : None | scalar, 1 > pmin > 0
-            Equivalent p-value for cluster threshold.
-        tstart, tstop : None | scalar
-            Time window for finding clusters.
-        group : str
-            Group for which to perform the test.
-        samples : int
-            Number of samples used to determine cluster p values for spatio-
-            temporal clusters.
-        sns_baseline : None | tuple
-            Sensor space baseline interval.
-        src_baseline : None | tuple
-            Source space baseline interval.
-        y : str | NDVar
-            Preloaded dependent variable for the test, optional.
-        ds : Dataset
-            Preloaded Dataset for the test, options.
-        redo : bool
-            If the target file already exists, delete and recreate it (only
-            applies for tests that are cached).
-
-        Returns
-        -------
-        res : TestResult
-            Test result for the specified test.
-        """
-        self._set_test_options(data, sns_baseline, src_baseline, pmin, tstart,
-                               tstop)
-        dst = self.get('test-file', mkdir=True)
-        if not redo and os.path.exists(dst):
-            return load.unpickle(dst)
-
-        # figure out what test to do
-        test, model, contrast = self.tests[self.get('test')]
-
-        # load data
-        if ds is None:
-            if data == 'sns':
-                ds = self.load_evoked(group, sns_baseline, True, model=model)
-            elif data == 'src':
-                ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
-                                          morph_ndvar=True, model=model)
-
-        # retrieve dependent variable
-        if y is None:
-            if data == 'sns':
-                y = 'meg'
-            elif data == 'src':
-                y = 'srcm'
-
-        if isinstance(y, str):
-            y = ds[y]
-
-        # compute test
-        res = self._make_test(y, ds, test, model, contrast, samples, pmin,
-                              tstart, tstop)
-
-        # cache, is applicable
-        if pmin is None and (y.has_dim('source') or y.has_dim('sensor')):
-            save.pickle(res, dst)
-        return res
-
     def _make_test(self, y, ds, test, model, contrast, samples, pmin, tstart,
-                   tstop):
+                   tstop, dist_dim, parc_dim):
         """just compute the test result"""
         # find cluster criteria
         kwargs = {'samples': samples, 'pmin': pmin, 'tstart': tstart,
-                  'tstop': tstop}
-        if pmin:
+                  'tstop': tstop, 'dist_dim': dist_dim, 'parc':parc_dim}
+        if pmin not in (None, 'tfce'):
             if 'mintime' in self.cluster_criteria:
                 kwargs['mintime'] = self.cluster_criteria['mintime']
 
@@ -2472,10 +2499,6 @@ class MneExperiment(FileTree):
                 kwargs['minsource'] = self.cluster_criteria['minsource']
             elif y.has_dim('sensor') and 'minsensor' in self.cluster_criteria:
                 kwargs['minsensor'] = self.cluster_criteria['minsensor']
-        elif pmin is None and (y.has_dim('source') or y.has_dim('sensor')):
-            kwargs['dist_tstep'] = 0.05
-            if y.has_dim('source'):
-                kwargs['dist_dim'] = 'source'
 
         # perform test
         if test == 'ttest_rel':
