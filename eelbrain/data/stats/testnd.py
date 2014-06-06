@@ -1412,7 +1412,7 @@ class anova(_TestResult):
     p : list
         Maps of p values.
     """
-    _state_specific = ('X', 'pmin', 'effects', '_effects', 'df_den', 'f')
+    _state_specific = ('X', 'pmin', '_effects', 'df_den', 'f')
 
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
@@ -1528,7 +1528,6 @@ class anova(_TestResult):
 
         self.name = "ANOVA"
         self._effects = effects
-        self.effects = tuple(e.name for e in effects)
         self.df_den = df_den
         self.f = f
 
@@ -1538,7 +1537,10 @@ class anova(_TestResult):
 
     def _expand_state(self):
         cdists = self._cdist
-        df_den = self.df_den
+        # backwards compatibility
+        if hasattr(self, 'effects'):
+            self._effects = self.effects
+        self.effects = tuple(e.name for e in self._effects)
 
         # clusters
         if cdists is not None:
@@ -1551,7 +1553,7 @@ class anova(_TestResult):
             f_and_clusters = []
             for e, fmap, cdist in izip(self._effects, self.f, cdists):
                 # create f-map with cluster threshold
-                f0 = ftest_f(pmin, e.df, df_den[e])
+                f0 = ftest_f(pmin, e.df, self.df_den[e])
                 info = _cs.stat_info('f', f0)
                 f_ = NDVar(fmap.x, fmap.dims, info, e.name)
                 # add overlay with cluster
