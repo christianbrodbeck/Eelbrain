@@ -81,6 +81,7 @@ except ImportError:
     from mne.fiff import Raw as _mne_Raw
 
 from .. import fmtxt, __version__
+from ..fmtxt import FMText
 from ..data import load
 from ..data import plot
 from ..data import save
@@ -2165,10 +2166,10 @@ class MneExperiment(FileTree):
         SelectEpochs(ds, data='meg', path=path, vlim=2e-12, mark=mark,
                      **kwargs)
 
-    def make_report_clusters(self, test, parc=None, pmin=None, tstart=0.15,
-                             tstop=None, samples=1000, data='src',
-                             sns_baseline=(None, 0), src_baseline=None,
-                             redo=False, **state):
+    def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
+                    tstop=None, samples=1000, data='src',
+                    sns_baseline=(None, 0), src_baseline=None, redo=False,
+                    **state):
         """Create an HTML report on clusters
 
         Parameters
@@ -2180,6 +2181,8 @@ class MneExperiment(FileTree):
             tests.
         parc : None
             Find clusters in whole area covered by parc and then in each label.
+        mask : None | str
+            Parcellation to apply as mask. Can only be specified if parc==None.
         pmin : None | scalar, 1 > pmin > 0
             Equivalent p-value for cluster threshold.
         samples : int
@@ -2196,10 +2199,15 @@ class MneExperiment(FileTree):
         """
         # determine report file name
         if parc is None:
-            folder = "Whole Brain Clusters"
+            if mask:
+                folder = "%s Masked" % mask.capitalize()
+            else:
+                folder = "Whole Brain"
+        elif mask:
+            raise ValueError("Can't specify mask together with parc")
         else:
             state['parc'] = parc
-            folder = "{parc} Clusters"
+            folder = "{parc}"
         self.set(test=test, **state)
         self._set_test_options(data, sns_baseline, src_baseline, pmin, tstart,
                                tstop)
@@ -2209,6 +2217,11 @@ class MneExperiment(FileTree):
                        **state)
         if not redo and os.path.exists(dst):
             return
+
+        # load data
+        group = self.get('group')
+        ds, res = self.load_test(tstart, tstop, pmin, parc, mask, samples,
+                                 group, data, sns_baseline, src_baseline, True)
 
         # start report
         t0 = time.time()
@@ -2224,36 +2237,33 @@ class MneExperiment(FileTree):
         # cluster info
         cinfo = info.add_sublist("Cluster Permutation Test")
         if pmin is None:
+            cinfo.add_item("P-values based on maximum value in randomizations")
+        elif pmin == 'tfce':
             cinfo.add_item("Threshold-free cluster enhancement (Smith & "
                            "Nichols, 2009)")
         else:
             cinfo.add_item("Cluster threshold equivalent to p = %s" % pmin)
-        cinfo.add_item("%i permutations" % samples)
+            mintime = self.cluster_criteria.get('mintime', None)
+            # cluster criteria
+            if mintime is None:
+                cinfo.add_item("No cluster minimum duration")
+            else:
+                cinfo.add_item("Cluster minimum duration: %i ms" %
+                               round(mintime * 1000))
+            if data == 'src':
+                minsource = self.cluster_criteria.get('minsource', None)
+                if minsource is not None:
+                    cinfo.add_item("At least %i contiguous sources." % minsource)
+            elif data == 'sns':
+                minsensor = self.cluster_criteria.get('minsensor', None)
+                if minsensor is not None:
+                    cinfo.add_item("At least %i contiguous sensors." % minsensor)
+            info.add_item("Separate plots of all clusters with a p-value "
+                          "< %s" % include)
+        cinfo.add_item("%i permutations" % res.samples)
         cinfo.add_item("Time interval: %i - %i ms." % (round(tstart * 1000),
-                                                      round(tstop * 1000)))
-        mintime = self.cluster_criteria.get('mintime', None)
-        if mintime is None:
-            cinfo.add_item("No cluster minimum duration")
-        else:
-            cinfo.add_item("Cluster minimum duration: %i ms" %
-                           round(mintime * 1000))
-        if data == 'src':
-            minsource = self.cluster_criteria.get('minsource', None)
-            if minsource is not None:
-                cinfo.add_item("At least %i contiguous sources." % minsource)
-        elif data == 'sns':
-            minsensor = self.cluster_criteria.get('minsensor', None)
-            if minsensor is not None:
-                cinfo.add_item("At least %i contiguous sensors." % minsensor)
-
-        info.add_item("Separate plots of all clusters with a p-value "
-                      "< %s" % include)
+                                                       round(tstop * 1000)))
         report.append(info)
-
-        # load data
-        group = self.get('group')
-        ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
-                                  morph_ndvar=True)
 
         # add subject information to experiment
         s_ds = table.repmeas('n', model, 'subject', ds=ds)
@@ -2270,44 +2280,80 @@ class MneExperiment(FileTree):
                                   'subject', 'model', 'mrisubject'])
         report.append(t)
 
-        src = ds['srcm']
-        if parc is None:
-            section = report.add_section("Whole Brain")
-        else:
-            section = report.add_section("Union of %s" % parc)
+        y = ds['srcm']
+        legend = None
+        if parc is None and pmin in (None, 'tfce'):
+            section = report.add_section("P<=.05")
+            self._source_bin_table(section, test_kind, res, 0.05)
+            clusters = res._clusters(0.05, maps=True)
+            clusters.sort('tstart')
+            title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
+            for cluster in clusters.itercases():
+                legend = self._source_time_cluster(section, title, cluster, y,
+                                                   model, ds, legend)
 
+            # trend section
+            section = report.add_section("Trend: p<=.1")
+            self._source_bin_table(section, test_kind, res, 0.1)
+
+            # not quite there section
+            section = report.add_section("Anything: P<=.2")
+            self._source_bin_table(section, test_kind, res, 0.2)
+        elif parc and pmin in (None, 'tfce'):
             # add picture of parc
-            brain = self.plot_annot(w=1000)
-            image = plot.brain.image(brain, '%s parc.png' % parc, close=True)
+            section = report.add_section(parc)
             caption = "Labels in the %s parcellation." % parc
-            section.add_image_figure(image, caption)
+            self._source_parc_image(section, caption)
 
-            # reduce data to parc
-            idx = np.invert(src.source.parc.startswith('unknown'))
-            src = src.sub(source=idx)
-
-        res = self._make_test(src, ds, test_kind, model, contrast,
-                              samples, pmin, tstart, tstop)
-
-        # time-bin table and cluster
-        self._source_bin_table(section, test_kind, res)
-        legend = self._source_time_clusters(section, res.clusters, src, ds,
-                                            test_kind, model, contrast,
-                                            samples, pmin, tstart, tstop,
-                                            include)
-
-        # add subsections for individual labels
-        if parc is not None:
-            for label in src.source.parc.cells:
-                src_ = src.sub(source=label)
-                res = self._make_test(src_, ds, test_kind, model, contrast,
-                                      samples, pmin, tstart, tstop)
-
+            # add subsections for individual labels
+            title = "{tstart}-{tstop} p={p}{mark} {effect}"
+            for label in y.source.parc.cells:
                 section = report.add_section(label.capitalize())
-                self._source_time_clusters(section, res.clusters, src_, ds,
-                                           test_kind, model, contrast, samples,
-                                           pmin, tstart, tstop, include,
-                                           legend)
+
+                clusters_sig = res._clusters(0.05, True, source=label)
+                clusters_trend = res._clusters(0.1, True, source=label)
+                clusters_trend = clusters_trend.sub("p>0.05")
+                clusters_all = res._clusters(0.2, True, source=label)
+                clusters_all = clusters_all.sub("p>0.1")
+                clusters = combine((clusters_sig, clusters_trend, clusters_all))
+                clusters.sort('tstart')
+                src_ = y.sub(source=label)
+                legend = self._source_time_clusters(section, clusters, src_,
+                                                    ds, model, include,
+                                                    title, legend)
+        elif parc is None:  # thresholded, whole brain
+            if mask:
+                title = "Whole Brain Masked by %s" % mask.capitalize()
+                section = report.add_section(title)
+                caption = "Mask: %s" % mask.capitalize()
+                self._source_parc_image(section, caption)
+            else:
+                section = report.add_section("Whole Brain")
+
+            self._source_bin_table(section, test_kind, res)
+
+            clusters = res._clusters(include, maps=True)
+            clusters.sort('tstart')
+            title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
+            legend = self._source_time_clusters(section, clusters, y, ds,
+                                                model, include, title, legend)
+        else:  # thresholded, parc
+            # add picture of parc
+            section = report.add_section(parc)
+            caption = "Labels in the %s parcellation." % parc
+            self._source_parc_image(section, caption)
+            self._source_bin_table(section, test_kind, res)
+
+            # add subsections for individual labels
+            title = "{tstart}-{tstop} p={p}{mark} {effect}"
+            for label in y.source.parc.cells:
+                section = report.add_section(label.capitalize())
+
+                clusters = res._clusters(None, True, source=label)
+                src_ = y.sub(source=label)
+                legend = self._source_time_clusters(section, clusters, src_,
+                                                    ds, model, include,
+                                                    title, legend)
 
         # report signature
         t1 = time.time()
@@ -2322,26 +2368,41 @@ class MneExperiment(FileTree):
 
         report.save_html(dst)
 
-    def _source_bin_table(self, section, test_kind, res):
+    def _source_parc_image(self, section, caption):
+        "Add picture of the current parcellation"
+        brain = self.plot_annot(w=1000)
+        image = plot.brain.image(brain, 'parc.png')
+        section.add_image_figure(image, caption)
+
+    def _source_bin_table(self, section, test_kind, res, pmin=None):
         caption = ("All clusters in time bins. Each plot shows all sources "
                    "that are part of a cluster at any time during the "
                    "relevant time bin. Only the general minimum duration and "
                    "source number criterion are applied.")
 
         if test_kind == 'anova':
-            cdists = [(cdist, "%s: %s" % (cdist.name.capitalize(), caption))
-                      for cdist in res._cdist]
+            cdists = [(cdist, cdist.name.capitalize()) for cdist in res._cdist]
         else:
-            cdists = [(res._cdist, caption)]
+            cdists = [(res._cdist, None)]
 
-        for cdist, caption in cdists:
-            ndvar = cdist.masked_parameter_map(None)
-            im = plot.brain.bin_table(ndvar)
-            section.add_image_figure(im, caption)
+        for cdist, effect in cdists:
+            ndvar = cdist.masked_parameter_map(pmin)
+            if not ndvar.any():
+                if effect:
+                    text = '%s: nothing\n' % effect
+                else:
+                    text = 'Nothing\n'
+                section.add_paragraph(text)
+                continue
+            elif effect:
+                caption_ = "%s: %s" % (effect, caption)
+            else:
+                caption_ = caption
+            im = plot.brain.bin_table(ndvar, surf='inflated')
+            section.add_image_figure(im, caption_)
 
-    def _source_time_clusters(self, section, clusters, y, ds, test_kind, model,
-                              contrast, samples, pmin, tstart, tstop,
-                              include, legend=None):
+    def _source_time_clusters(self, section, clusters, y, ds, model, include,
+                              title, legend=None):
         """
         Parameters
         ----------
@@ -2354,11 +2415,6 @@ class MneExperiment(FileTree):
         legend : fmtxt.Image
             Legend to share with other figures.
         """
-        if tstop is None:
-            tstop_rep = int((y.time.tmax + y.time.tstep) * 1000)
-        else:
-            tstop_rep = int(tstop * 1000)
-
         # compute clusters
         if clusters.n_cases == 0:
             section.append("No clusters found.")
@@ -2373,86 +2429,85 @@ class MneExperiment(FileTree):
 
         # plot individual clusters
         clusters = clusters.sub("p < %s" % include)
-        layout = dict(w=7, colors='2group-ob')
-        for i in xrange(clusters.n_cases):
-            # cluster info
-            p = clusters[i, 'p']
-            c_start = clusters[i, 'tstart']
-            c_stop = clusters[i, 'tstop']
-            mark = clusters[i, '*']
-            if 'effect' in clusters:
-                effect = clusters[i, 'effect']
-            else:
-                effect = None
+        for cluster in clusters.itercases():
+            legend = self._source_time_cluster(section, cluster, y, model,
+                                               ds, title, legend)
 
-            c_name = "Cluster %i" % i
+        return legend
 
-            title_ = [c_name]
-            if effect is not None:
-                title_.append(effect)
-            title_.append("(p=%.3f)" % p)
-            if mark:
-                title_.append(mark)
-            title = ' '.join(title_)
-            subsection = section.add_section(title)
+    def _source_time_cluster(self, section, cluster, y, model, ds, title,
+                             legend):
+        # extract cluster
+        c_tstart = cluster['tstart']
+        c_tstop = cluster['tstop']
+        c_extent = cluster['cluster']
+        c_spatial = c_extent.sum('time')
 
-            # extract cluster
-            cluster = clusters[i, 'cluster']
-            c_spatial = cluster.sum('time')
+        # section/title
+        tstart = int(round(c_tstart * 1000))
+        tstop = int(round(c_tstop * 1000))
+        if title is not None:
+            title_ = title.format(tstart=tstart, tstop=tstop,
+                                  p='%.3f' % cluster['p'],
+                                  effect=cluster.get('effect', ''),
+                                  location=cluster.get('location', ''),
+                                  mark=cluster['*']).strip()
+            while '  ' in title_:
+                title_ = title_.replace('  ', ' ')
+            section = section.add_section(title_)
 
-            # add cluster image to report
-            brain = plot.brain.cluster(c_spatial, surf='inflated')
-            image = plot.brain.image(brain, c_name + '.png', close=True)
-            caption_ = ["Cluster"]
-            if effect is not None:
-                caption_.extend(('effect of', effect))
-            caption_.append("%i - %i ms." % (c_start * 1000, c_stop * 1000))
-            caption = ' '.join(caption_)
-            subsection.add_image_figure(image, caption)
+        # descriton
+        if 'p_parc' in cluster:
+            txt = section.add_paragraph()
+            txt.append("Corrected across all ROIs: ")
+            eq = FMText('p=', mat=True)
+            eq.append(cluster['p_parc'], drop0=True, fmt='%s')
+            txt.append(eq)
+            txt.append('.')
 
-            # cluster time course
-            idx = cluster.any('time')
-            tc = y[idx].mean('source')
-            res_tc = self._make_test(tc, ds, test_kind, model, contrast, 10000,
-                                     pmin, tstart, tstop)
-            caption = ("Cluster average time course, clusters exceeding p "
-                       "= %s in the time window %i - %s "
-                       "ms." % (pmin, tstart * 1000, tstop_rep))
-            p = plot.UTSStat(tc, model, match='subject', ds=ds,
-                             clusters=res_tc.clusters, legend=None, **layout)
-            # mark original cluster
-            for ax in p._axes:
-                ax.axvspan(c_start, c_stop, color='r', alpha=0.2, zorder=-2)
-            # legend
-            if legend is None:
-                legend = fmtxt.Image("Legend.svg")
-                legend_p = p.plot_legend()
-                legend_p.figure.savefig(legend, format='svg')
-            image = p.image(c_name + '.svg')
-            p.close()
-            # add to report
-            figure = subsection.add_figure(caption)
-            figure.append(image)
-            figure.append(legend)
-            # time course cluster table
-            if res_tc.clusters:
-                caption = "Time course clusters."
-                table_ = res_tc.clusters.as_table(midrule=True, caption=caption)
-                subsection.append(table_)
+        # add cluster image to report
+        brain = plot.brain.cluster(c_spatial, surf='inflated')
+        image = plot.brain.image(brain, 'cluster_spatial.png', close=True)
+        caption_ = ["Cluster"]
+        if 'effect' in cluster:
+            caption_.extend(('effect of', cluster['effect']))
+        caption_.append("%i - %i ms." % (tstart, tstop))
+        caption = ' '.join(caption_)
+        section.add_image_figure(image, caption)
 
-            # cluster value
-            idx = cluster > 0
-            v = y.mean(idx)
-            p = plot.uv.boxplot(v, model, 'subject', ds=ds)
-            image = p.image(c_name + '_boxplot.png')
-            p.close()
-            caption = "Average value in cluster by condition."
-            figure = subsection.add_figure(caption)
-            figure.append(image)
-            # pairwise test table
-            res = _test.pairwise(v, model, 'subject', ds=ds)
-            figure = subsection.add_figure(caption)
-            figure.append(res)
+        # cluster time course
+        idx = c_extent.any('time')
+        tc = y[idx].mean('source')
+        caption = ("Cluster average time course")
+        p = plot.UTSStat(tc, model, match='subject', ds=ds, legend=None, w=7,
+                         colors='2group-ob')
+        # mark original cluster
+        for ax in p._axes:
+            ax.axvspan(c_tstart, c_tstop, color='r', alpha=0.2, zorder=-2)
+        # legend
+        if legend is None:
+            legend_p = p.plot_legend()
+            legend = legend_p.image("Legend.svg")
+        image = p.image('cluster_time_course.svg')
+        p.close()
+        # add to report
+        figure = section.add_figure(caption)
+        figure.append(image)
+        figure.append(legend)
+
+        # cluster value
+        idx = c_extent > 0
+        v = y.mean(idx)
+        p = plot.uv.boxplot(v, model, 'subject', ds=ds)
+        image = p.image('cluster_boxplot.png')
+        p.close()
+        caption = "Average value in cluster by condition."
+        figure = section.add_figure(caption)
+        figure.append(image)
+        # pairwise test table
+        res = _test.pairwise(v, model, 'subject', ds=ds)
+        figure = section.add_figure(caption)
+        figure.append(res)
 
         return legend
 
