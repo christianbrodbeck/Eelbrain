@@ -17,7 +17,8 @@ from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from eelbrain.data import datasets, Var, Factor, Dataset, Celltable, load
 from eelbrain.data.data_obj import (align, align1, asvar, combine, isdatalist,
-                                    isndvar, isvar, isuv, SourceSpace, UTS)
+                                    isndvar, isvar, isuv, Categorial,
+                                    SourceSpace, UTS)
 from eelbrain.data.stats import rms
 
 
@@ -320,6 +321,41 @@ def test_dataset_sorting():
     ds_shuffled.sort('f', descending=True)
     assert_dataset_equal(ds_shuffled, ds[::-1], "In-place sorted by Factor, "
                          "descending")
+
+
+def test_dim_categorial():
+    "Test Categorial Dimension"
+    values = ['a', 'b', 'c', 'abc']
+    name = 'cat'
+    dim = Categorial(name, values)
+
+    # basic properties
+    print dim
+    assert_equal(len(dim), len(values))
+
+    # persistence
+    s = pickle.dumps(dim, pickle.HIGHEST_PROTOCOL)
+    dim_ = pickle.loads(s)
+    assert_equal(dim_, dim)
+
+    # indexing
+    sub_values = values[:2]
+    idx = dim.dimindex(sub_values)
+    assert_array_equal(dim.dimindex(tuple(sub_values)), idx)
+    assert_equal(dim[idx], Categorial(name, sub_values))
+    assert_equal(dim.dimindex('a'), values.index('a'))
+    assert_equal(dim.dimindex('abc'), values.index('abc'))
+
+    # intersection
+    dim2 = Categorial(name, ['c', 'b', 'e'])
+    dim_i = dim.intersect(dim2)
+    assert_equal(dim_i, Categorial(name, ['b', 'c']))
+
+    # unicode
+    dimu = Categorial(name, [u'c', 'b', 'e'])
+    assert_equal(dimu.values.dtype.kind, 'U')
+    assert_equal(dim2.values.dtype.kind, 'S')
+    assert_equal(dimu, dim2)
 
 
 def test_dim_uts():

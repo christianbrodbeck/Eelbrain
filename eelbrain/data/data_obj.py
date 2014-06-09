@@ -4963,6 +4963,97 @@ class Dimension(object):
         return None
 
 
+class Categorial(Dimension):
+    def __init__(self, name, values):
+        """Simple categorial dimension
+
+        Parameters
+        ----------
+        name : str
+            Dimension name.
+        values : list of str
+            Names of the entries.
+        """
+        if len(set(values)) < len(values):
+            raise ValueError("Dimension can not have duplicate values")
+        values = np.asarray(values)
+        if values.dtype.kind not in 'SU':
+            raise ValueError("All Categorial values must be strings")
+        self.name = name
+        self.values = values
+
+    def __getstate__(self):
+        state = {'name': self.name,
+                 'values': self.values}
+        return state
+
+    def __setstate__(self, state):
+        name = state['name']
+        values = state['values']
+        self.__init__(name, values)
+
+    def __repr__(self):
+        args = (repr(self.name), str(self.values))
+        return "%s(%s)" % (self.__class__.__name__, ', '.join(args))
+
+    def __len__(self):
+        return len(self.values)
+
+    def __eq__(self, other):
+        is_equal = (Dimension.__eq__(self, other)
+                    and np.all(self.values == other.values))
+        return is_equal
+
+    def __getitem__(self, index):
+        if isinstance(index, int):
+            return self.values[index]
+
+        values = self.values[index]
+        return Categorial(self.name, values)
+
+    def dimindex(self, arg):
+        if isinstance(arg, self.__class__):
+            s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
+            idx = s_idx[np.argsort(a_idx)]
+        elif isinstance(arg, basestring):
+            idx = np.flatnonzero(self.values == arg)[0]
+        else:
+            idx = np.array([self.dimindex(a) for a in arg])
+        return idx
+
+    def _diminfo(self):
+        return "%s" % self.name.capitalize()
+
+    def intersect(self, dim, check_dims=False):
+        """Create a dimension object that is the intersection with dim
+
+        Parameters
+        ----------
+        dim : type(self)
+            Dimension to intersect with.
+        check_dims : bool
+            Check dimensions for consistency (not applicaple to this subclass).
+
+        Returns
+        -------
+        intersection : type(self)
+            The intersection with dim (returns itself if dim and self are
+            equal)
+        """
+        if self.name != dim.name:
+            raise DimensionMismatchError("Dimensions don't match")
+
+        if np.array_equal(self.values, dim.values):
+            return self
+        values = np.intersect1d(self.values, dim.values)
+        if np.array_equal(self.values, values):
+            return self
+        elif np.array_equal(dim.values, values):
+            return dim
+
+        return self.__class__(self.name, values)
+
+
 class Scalar(Dimension):
     def __init__(self, name, values, unit=None):
         "Simple scalar dimension"
@@ -5003,7 +5094,7 @@ class Scalar(Dimension):
             return self.values[index]
 
         values = self.values[index]
-        return Scalar(self.name, values)
+        return Scalar(self.name, values, self.unit)
 
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
