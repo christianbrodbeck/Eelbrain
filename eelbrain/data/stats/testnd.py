@@ -1582,6 +1582,26 @@ class anova(_TestResult):
         out = temp % ', '.join(args)
         return out
 
+    def compute_probability_map(self, effect=0, **sub):
+        """Compute a probability map
+
+        Parameters
+        ----------
+        effect : int | str
+            Index or name of the effect from which to use the parameter map.
+
+        Returns
+        -------
+        probability : NDVar
+            Map of p-values.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        elif isinstance(effect, basestring):
+            effect = self.effects.index(effect)
+        return self._cdist[effect].compute_probability_map(**sub)
+
     def masked_parameter_map(self, effect=0, pmin=0.05, **sub):
         """Create a copy of the parameter map masked by significance
 
