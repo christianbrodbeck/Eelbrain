@@ -94,8 +94,7 @@ class _TestResult(object):
             self.tfce_map = cdist.tfce_map
             self.p = cdist.probability_map
 
-    def masked_parameter_map(self, pmin=0.05, tstart=None, tstop=None,
-                             sub=None):
+    def masked_parameter_map(self, pmin=0.05, **sub):
         """Create a copy of the parameter map masked by significance
 
         Parameters
@@ -114,7 +113,7 @@ class _TestResult(object):
         if self._cdist is None:
             err = "Method only applies to results with samples > 0"
             raise RuntimeError(err)
-        return self._cdist.masked_parameter_map(pmin, tstart, tstop, sub)
+        return self._cdist.masked_parameter_map(pmin, **sub)
 
     @LazyProperty
     def clusters(self):
@@ -123,8 +122,7 @@ class _TestResult(object):
         else:
             return self._clusters(None, True)
 
-    def _clusters(self, pmin=None, maps=False, tstart=None, tstop=None,
-                  sub=None):
+    def _clusters(self, pmin=None, maps=False, **sub):
         """Find significant regions as clusters
 
         Parameters
@@ -146,7 +144,7 @@ class _TestResult(object):
             err = ("Test results have no clustering (set samples to an int "
                    " >= 0 to find clusters")
             raise RuntimeError(err)
-        return self._cdist.clusters(pmin, maps, tstart, tstop, sub)
+        return self._cdist.clusters(pmin, maps, **sub)
 
     def find_peaks(self):
         """Find peaks in a threshold-free cluster distribution
@@ -161,27 +159,18 @@ class _TestResult(object):
             raise RuntimeError(err)
         return self._cdist.find_peaks()
 
-    def compute_probability_map(self, tstart=None, tstop=None, sub=None):
-        """Compute a probability map for a threshold-free cluster distribution
+    def compute_probability_map(self, **sub):
+        """Compute a probability map
 
-        Parameters
-        ----------
-        tstart : scalar
-            Only correct against multiple comparisons from this time point
-            (vs whole epoch). Needs to correspond to the beginning of a proper
-            time bin.
-        tstop : scalar
-            Only correct against multiple comparisons up until this time point
-            (vs whole epoch). Needs to correspond to the end of a proper time
-            bin.
-        sub : boolean NDVar
-            Create the probability map for, and correct for multiple
-            comparisons in only a part of Y.
+        Returns
+        -------
+        probability : NDVar
+            Map of p-values.
         """
         if self._cdist is None:
             err = "Method only applies to results with samples > 0"
             raise RuntimeError(err)
-        return self._cdist.compute_probability_map(tstart, tstop, sub)
+        return self._cdist.compute_probability_map(**sub)
 
 
 class t_contrast_rel(_TestResult):
@@ -1593,7 +1582,7 @@ class anova(_TestResult):
         out = temp % ', '.join(args)
         return out
 
-    def masked_parameter_map(self, effect=0, pmin=0.05):
+    def masked_parameter_map(self, effect=0, pmin=0.05, **sub):
         """Create a copy of the parameter map masked by significance
 
         Parameters
@@ -1616,10 +1605,9 @@ class anova(_TestResult):
             raise RuntimeError(err)
         elif isinstance(effect, basestring):
             effect = self.effects.index(effect)
-        return self._cdist[effect].masked_parameter_map(pmin)
+        return self._cdist[effect].masked_parameter_map(pmin, **sub)
 
-    def _clusters(self, pmin=None, maps=False, tstart=None, tstop=None,
-                  sub=None):
+    def _clusters(self, pmin=None, maps=False, **sub):
         """Find significant regions in a TFCE distribution
 
         Parameters
@@ -1644,7 +1632,7 @@ class anova(_TestResult):
         dss = []
         info = {}
         for cdist in self._cdist:
-            ds = cdist.clusters(pmin, maps, tstart, tstop, sub)
+            ds = cdist.clusters(pmin, maps, **sub)
             ds[:, 'effect'] = cdist.name
             if 'clusters' in ds.info:
                 info['%s clusters' % cdist.name] = ds.info.pop('clusters')
@@ -2641,7 +2629,7 @@ class _ClusterDist:
 
         return ds
 
-    def clusters(self, pmin=None, maps=True, tstart=None, tstop=None, sub=None):
+    def clusters(self, pmin=None, maps=True, **sub):
         """Find significant clusters
 
         Parameters
@@ -2653,6 +2641,8 @@ class _ClusterDist:
             Include in the output a map of every cluster (can be memory
             intensive if there are large statistical maps and/or many
             clusters; default True).
+        [dimname] : index
+            Limit the data for the distribution.
 
         Returns
         -------
@@ -2683,7 +2673,7 @@ class _ClusterDist:
                     # p-values: "the proportion of random partitions that
                     # resulted in a larger test statistic than the observed
                     # one" (179)
-                    dist = self._aggregate_dist(tstart, tstop, sub)
+                    dist = self._aggregate_dist(**sub)
                     n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
                     cluster_p = n_larger / self.N
 
@@ -2724,7 +2714,7 @@ class _ClusterDist:
             else:
                 ds.info['clusters'] = self.cluster_map
         else:
-            p_map = self.compute_probability_map(tstart, tstop, sub)
+            p_map = self.compute_probability_map(**sub)
             bin_map = np.less_equal(p_map.x, pmin)
 
             # reshape for labelling
@@ -2798,35 +2788,23 @@ class _ClusterDist:
         self._clear_memory_buffers()
         return ds
 
-    def _aggregate_dist(self, tstart=None, tstop=None, sub=None):
+    def _aggregate_dist(self, **sub):
         """Aggregate permutation distribution to one value per permutation
 
         Parameters
         ----------
-        tstart : scalar
-            Only correct against multiple comparisons from this time point
-            (vs whole epoch). Needs to correspond to the beginning of a proper
-            time bin.
-        tstop : scalar
-            Only correct against multiple comparisons up until this time point
-            (vs whole epoch). Needs to correspond to the end of a proper time
-            bin.
-        sub : boolean NDVar
-            Create the probability map for, and correct for multiple
-            comparisons in only a part of Y.
+        [dimname] : index
+            Limit the data for the distribution.
 
         Returns
         -------
         dist : array, shape = (N,)
             Maximum value for each permutation in the given region.
         """
-        if any(i is not None for i in (tstart, tstop, sub)):
-            dist_ndvar = NDVar(self.dist, self._dist_dims)
-            if tstart is not None or tstop is not None:
-                dist_ndvar = dist_ndvar.sub(time=(tstart, tstop))
-            if sub is not None:
-                dist_ndvar = dist_ndvar[sub]
-            dist = dist_ndvar.x
+        if sub:
+            dist_ = NDVar(self.dist, self._dist_dims)
+            dist_sub = dist_.sub(**sub)
+            dist = dist_sub.x
         else:
             dist = self.dist
 
@@ -2836,46 +2814,27 @@ class _ClusterDist:
 
         return dist
 
-    def _crop_result_ndvar(self, ndvar, tstart, tstop, sub, copy=False):
-        if copy and tstart is None and tstop is None and sub is None:
-            return ndvar.copy()
-
-        if (tstart is not None) or (tstop is not None):
-            ndvar = ndvar.sub(time=(tstart, tstop))
-        if sub is not None:
-            ndvar = ndvar[sub]
-        return ndvar
-
-    def compute_probability_map(self, tstart=None, tstop=None, sub=None):
-        """Create a probability map for a threshold-free cluster distribution
+    def compute_probability_map(self, **sub):
+        """Compute a probability map
 
         Parameters
         ----------
-        tstart : scalar
-            Only correct against multiple comparisons from this time point
-            (vs whole epoch). Needs to correspond to the beginning of a proper
-            time bin.
-        tstop : scalar
-            Only correct against multiple comparisons up until this time point
-            (vs whole epoch). Needs to correspond to the end of a proper time
-            bin.
-        sub : boolean NDVar
-            Create the probability map for, and correct for multiple
-            comparisons in only a part of Y.
+        [dimname] : index
+            Limit the data for the distribution.
+
+        Returns
+        -------
+        probability : NDVar
+            Map of p-values.
         """
         if not self.N:
             raise RuntimeError("Can't compute probability without permutations")
 
         if self.kind == 'cluster':
-            if any(x is not None for x in (tstart, tstop, sub)):
-                msg = ("tstart, tstop and sub have to be non for cluster "
-                       "permutations tests")
-                raise ValueError(msg)
-
             cpmap = np.ones(self.shape)
             if self.n_clusters:
                 cids = self._cids
-                dist = self._aggregate_dist()
+                dist = self._aggregate_dist(**sub)
                 cluster_map = self._original_cluster_map
                 param_map = self._original_param_map
 
@@ -2907,8 +2866,9 @@ class _ClusterDist:
                 else:
                     stat_map = self.parameter_map
 
-            dist = self._aggregate_dist(tstart, tstop, sub)
-            stat_map = self._crop_result_ndvar(stat_map, tstart, tstop, sub)
+            dist = self._aggregate_dist(**sub)
+            if sub:
+                stat_map = stat_map.sub(**sub)
 
             idx = np.empty(stat_map.shape, dtype=np.bool8)
             cpmap = np.zeros(stat_map.shape)
@@ -2920,8 +2880,7 @@ class _ClusterDist:
         info = _cs.cluster_pmap_info()
         return NDVar(cpmap, dims, info, self.name)
 
-    def masked_parameter_map(self, pmin=0.05, tstart=None, tstop=None,
-                             sub=None):
+    def masked_parameter_map(self, pmin=0.05, **sub):
         """Create a copy of the parameter map masked by significance
 
         Parameters
@@ -2937,15 +2896,18 @@ class _ClusterDist:
             NDVar with data from the original parameter map wherever p <= pmin
             and 0 everywhere else.
         """
-        param_map = self._crop_result_ndvar(self.parameter_map, tstart, tstop,
-                                            sub, True)
+        if sub:
+            param_map = self.parameter_map.sub(**sub)
+        else:
+            param_map = self.parameter_map.copy()
+
         if pmin is None:
             if self.kind != 'cluster':
                 msg = "pmin can only be None for thresholded cluster tests"
                 raise ValueError(msg)
             c_mask = self.cluster_map.x != 0
         else:
-            probability_map = self.compute_probability_map(tstart, tstop, sub)
+            probability_map = self.compute_probability_map(**sub)
             c_mask = np.less_equal(probability_map.x, pmin)
         param_map.x *= c_mask
         return param_map
