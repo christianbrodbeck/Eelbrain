@@ -1,7 +1,8 @@
 """Test mne interaction"""
 import os
 
-from nose.tools import assert_equal, assert_not_equal, assert_true
+from nose.tools import (assert_equal, assert_less_equal, assert_not_equal,
+                        assert_true, assert_in)
 from numpy.testing import assert_array_equal
 
 import mne
@@ -40,6 +41,35 @@ def test_source_estimate():
             assert_equal(parc[s], parc[d])
         else:
             assert_not_equal(parc[s], parc[d])
+
+    # threshold-based test with parc
+    srcl = src.sub(source='lh')
+    res = testnd.ttest_ind(srcl, 'side', ds=ds, samples=10, pmin=0.05,
+                           tstart=0.05, mintime=0.02, minsource=10,
+                           parc='source')
+    assert_equal(res._cdist.dist.shape[1], len(srcl.source.parc.cells))
+    label = 'superiortemporal-lh'
+    c_all = res._clusters(maps=True)
+    c_label = res._clusters(maps=True, source=label)
+    assert_array_equal(c_label['location'], label)
+    for case in c_label.itercases():
+        id_ = case['id']
+        idx = c_all['id'].index(id_)[0]
+        assert_equal(case['v'], c_all[idx, 'v'])
+        assert_equal(case['tstart'], c_all[idx, 'tstart'])
+        assert_equal(case['tstop'], c_all[idx, 'tstop'])
+        assert_less_equal(case['p'], c_all[idx, 'p'])
+        assert_dataobj_equal(case['cluster'],
+                             c_all[idx, 'cluster'].sub(source=label))
+
+    # threshold-free test with parc
+    res = testnd.ttest_ind(srcl, 'side', ds=ds, samples=10, tstart=0.05,
+                           parc='source')
+    cl = res._clusters(0.05)
+    assert_equal(cl.eval("p.min()"), res.p.min())
+    mp = res.masked_parameter_map()
+    assert_in(mp.min(), (0, res.t.min()))
+    assert_in(mp.max(), (0, res.t.max()))
 
     # indexing source space
     s_sub = src.sub(source='fusiform-lh')

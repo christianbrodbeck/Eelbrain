@@ -19,7 +19,7 @@ clusters : Dataset | None
 from __future__ import division
 
 from datetime import timedelta
-from itertools import izip
+from itertools import chain, izip
 from math import ceil, floor
 from multiprocessing import Process, Queue, cpu_count
 from multiprocessing.sharedctypes import RawArray
@@ -35,7 +35,8 @@ from scipy import ndimage
 from ...utils import logger, LazyProperty
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
-                        NDVar, Var, Celltable, cellname, combine, UTS)
+                        NDVar, Var, Celltable, cellname, combine, Categorial,
+                        UTS)
 from .glm import LMFitter
 from .permutation import resample, _resample_params
 from .stats import ftest_f, ftest_p
@@ -179,7 +180,8 @@ class t_contrast_rel(_TestResult):
 
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None,
                  samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
-                 tstop=None, dist_dim=None, dist_tstep=None, **criteria):
+                 tstop=None, dist_dim=(), parc=(), dist_tstep=None,
+                 **criteria):
         """Contrast with t-values from multiple comparisons
 
         Parameters
@@ -281,7 +283,8 @@ class t_contrast_rel(_TestResult):
                 threshold = None
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't', test_name,
-                                 tstart, tstop, criteria, dist_dim, dist_tstep)
+                                 tstart, tstop, criteria, dist_dim, parc,
+                                 dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 # buffer memory allocation
@@ -531,7 +534,8 @@ class corr(_TestResult):
 
     def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=None,
                  pmin=None, rmin=None, tfce=False, tstart=None, tstop=None,
-                 match=None, dist_dim=None, dist_tstep=None, **criteria):
+                 match=None, dist_dim=(), parc=(), dist_tstep=None,
+                 **criteria):
         """Correlation.
 
         Parameters
@@ -621,7 +625,8 @@ class corr(_TestResult):
                 threshold = None
 
             cdist = _ClusterDist(Y, samples, threshold, 0, 'r', name,
-                                 tstart, tstop, criteria, dist_dim, dist_tstep)
+                                 tstart, tstop, criteria, dist_dim, parc,
+                                 dist_tstep)
             cdist.add_original(rmap)
             if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples, unit=match):
@@ -734,7 +739,8 @@ class ttest_1samp(_TestResult):
 
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
                  samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
-                 tstop=None, dist_dim=None, dist_tstep=None, **criteria):
+                 tstop=None, dist_dim=(), parc=(), dist_tstep=None,
+                 **criteria):
         """Element-wise one sample t-test
 
         Parameters
@@ -811,7 +817,7 @@ class ttest_1samp(_TestResult):
             n_samples, samples = _resample_params(len(y_perm), samples)
             cdist = _ClusterDist(y_perm, n_samples, threshold, tail, 't',
                                  test_name, tstart, tstop, criteria, dist_dim,
-                                 dist_tstep)
+                                 parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples, sign_flip=True):
@@ -897,8 +903,8 @@ class ttest_ind(_TestResult):
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tmin=None, tfce=False,
-                 tstart=None, tstop=None, dist_dim=None, dist_tstep=None,
-                 **criteria):
+                 tstart=None, tstop=None, dist_dim=(), parc=(),
+                 dist_tstep=None, **criteria):
         """Element-wise t-test
 
         Parameters
@@ -967,7 +973,7 @@ class ttest_ind(_TestResult):
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
                                  test_name, tstart, tstop, criteria, dist_dim,
-                                 dist_tstep)
+                                 parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 for Y_ in resample(cdist.Y_perm, samples):
@@ -1071,8 +1077,8 @@ class ttest_rel(_TestResult):
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tmin=None, tfce=False,
-                 tstart=None, tstop=None, dist_dim=None, dist_tstep=None,
-                 **criteria):
+                 tstart=None, tstop=None, dist_dim=(), parc=(),
+                 dist_tstep=None, **criteria):
         """Element-wise t-test
 
         Parameters
@@ -1155,7 +1161,7 @@ class ttest_rel(_TestResult):
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
                                  test_name, tstart, tstop, criteria, dist_dim,
-                                 dist_tstep)
+                                 parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 tmap_ = np.empty(cdist.Y_perm.shape[1:])
@@ -1405,7 +1411,7 @@ class anova(_TestResult):
 
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
-                 dist_dim=None, dist_tstep=None, **criteria):
+                 dist_dim=(), parc=(), dist_tstep=None, **criteria):
         """ANOVA with cluster permutation test
 
         Parameters
@@ -1473,8 +1479,8 @@ class anova(_TestResult):
 
             n_workers = max(1, int(ceil(cpu_count() / len(effects))))
             cdists = [_ClusterDist(Y, samples, thresh, 1, 'F', e.name, tstart,
-                                   tstop, criteria, dist_dim, dist_tstep,
-                                   n_workers)
+                                   tstop, criteria, dist_dim, parc,
+                                   dist_tstep, n_workers)
                       for e, thresh in izip(effects, thresholds)]
 
             # Find clusters in the actual data
@@ -1825,7 +1831,8 @@ def _tfce(pmap, out, tail, bin_buff, bin_buff2, int_buff, struct,
 
 
 def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
-                       all_adjacent, flat_shape, conn_src, conn_dst, criteria):
+                       all_adjacent, flat_shape, conn_src, conn_dst, criteria,
+                       parc):
     os.nice(20)
 
     # allocate memory buffers
@@ -1833,6 +1840,8 @@ def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
     bin_buff = np.empty(shape, np.bool_)
     bin_buff2 = np.empty(shape, np.bool_)
     int_buff = np.empty(shape, np.int_)
+    if parc is not None:
+        out = np.empty(len(parc))
 
     while True:
         pmap = in_queue.get()
@@ -1841,7 +1850,14 @@ def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
         cids = _label_clusters(pmap, cmap, bin_buff, bin_buff2, int_buff,
                                threshold, tail, struct, all_adjacent,
                                flat_shape, conn_src, conn_dst, criteria)
-        if cids:
+        if parc is not None:
+            out.fill(0)
+            for i, idx in enumerate(parc):
+                clusters_v = ndimage.sum(pmap[idx], cmap[idx], cids)
+                np.abs(clusters_v, clusters_v)
+                out[i] = clusters_v.max()
+            out_queue.put(out)
+        elif cids:
             clusters_v = ndimage.sum(pmap, cmap, cids)
             np.abs(clusters_v, clusters_v)
             out_queue.put(clusters_v.max())
@@ -1896,7 +1912,7 @@ class _ClusterDist:
         ``cdist.add_perm(pmap)``.
     """
     def __init__(self, Y, N, threshold, tail=0, meas='?', name=None,
-                 tstart=None, tstop=None, criteria={}, dist_dim=(),
+                 tstart=None, tstop=None, criteria={}, dist_dim=(), parc=(),
                  dist_tstep=None, n_workers=cpu_count()):
         """Accumulate information on a cluster statistic.
 
@@ -1924,11 +1940,15 @@ class _ClusterDist:
         criteria : dict
             Dictionary with threshold criteria for cluster size: 'mintime'
             (seconds) and 'minsource' (n_sources).
-        dist_dim : None | str | list of str
+        dist_dim : str | sequence of str
             Collect permutation extrema for all points in this dimension(s)
             instead of only collecting the overall maximum. This allows
             deriving p-values for regions of interest from the same set of
-            permutations. TFCE only.
+            permutations. Threshold-free distributions only.
+        parc : str | sequence of str
+            Collect permutation extrema for all regions of the parcellation of
+            this dimension(s). For threshold-based test, the regions are
+            disconnected.
         dist_tstep : None | scalar [seconds]
             Instead of collecting the distribution for the maximum across time,
             collect the maximum in several time bins. The value of tstep has to
@@ -1957,6 +1977,17 @@ class _ClusterDist:
                 kind = 'cluster'
             else:
                 raise ValueError("Invalid value for pmin: %s" % repr(threshold))
+
+        # adapt arguments
+        if isinstance(dist_dim, basestring):
+            dist_dim = (dist_dim,)
+        elif dist_dim is None:
+            dist_dim = ()
+
+        if isinstance(parc, basestring):
+            parc = (parc,)
+        elif parc is None:
+            parc = ()
 
         # prepare temporal cropping
         if (tstart is None) and (tstop is None):
@@ -2001,7 +2032,9 @@ class _ClusterDist:
             flat_shape = (shape[0], np.prod(shape[1:]))
 
             # prepare connectivity
-            connectivity = Y_perm.dims[nad_ax + 1].connectivity()
+            nad_dim = cmap_dims[0]
+            disconnect_parc = (nad_dim.name in parc)
+            connectivity = nad_dim.connectivity(disconnect_parc)
             connectivity_src = connectivity[:, 0]
             connectivity_dst = connectivity[:, 1]
 
@@ -2036,38 +2069,66 @@ class _ClusterDist:
 
         # prepare distribution
         N = int(N)
-        if (dist_dim or dist_tstep):
-            if kind == 'custer':
+        if (dist_dim or parc or dist_tstep):
+            # raise for incompatible cases
+            if (dist_dim or dist_tstep) and kind == 'cluster':
                 err = ("The dist_dim and dist_tstep parameters only apply to "
                        "threshold-free cluster distributions.")
                 raise ValueError(err)
+            if parc and kind == 'tfce':
+                msg = "parc does not apply to TFCE"
+                raise NotImplementedError(msg)
 
-            if isinstance(dist_dim, basestring):
-                dist_dim = (dist_dim,)
-
-            # checks
+            # check all dims are in order
+            if dist_tstep and not Y.has_dim('time'):
+                msg = "dist_tstep specified but data has no time dimension"
+                raise ValueError(msg)
             dim_names = tuple(dim.name for dim in Y_perm.dims[1:])
-            err = tuple(name for name in dist_dim if name not in dim_names)
+            err = tuple(name for name in chain(dist_dim, parc) if name not in
+                        dim_names)
             if err:
                 if len(err) == 1:
-                    msg = ("%r is contained in dist_dim but is not a valid "
-                           "dimension in the input ndvar" % err)
+                    msg = ("%r is contained in dist_dim or parc but is not a "
+                           "valid dimension in the input ndvar" % err)
                 else:
-                    msg = ("%r are contained in dist_dim but are not valid "
-                           "dimensions in the input ndvar" % str(err))
+                    msg = ("%r are contained in dist_dim or parc but are not "
+                           "valid dimensions in the input ndvar" % str(err))
+                raise ValueError(msg)
+            duplicates = set(dist_dim)
+            duplicates.intersection_update(parc)
+            if duplicates:
+                msg = ("%s were specified as dist_dim as well as parc. Each "
+                       "dimension can only be either dist_dim or parc.")
                 raise ValueError(msg)
 
+            # find parameters for aggregating dist
             dist_shape = [N]
             dist_dims = ['case']
-            cmap_reshape = []
-            max_axes = []
+            cmap_reshape = []  # reshape value map for dist_tstep before .max()
+            max_axes = []  # v_map.max(max_axes)
             reshaped_ax_shift = 0  # number of inserted axes after reshaping cmap
+            parc_indexes = None  # (ax, parc-Factor) tuples
             for i, dim in enumerate(cmap_dims):
                 if dim.name in dist_dim:  # keep the dimension
                     length = len(dim)
                     dist_shape.append(length)
                     dist_dims.append(dim)
                     cmap_reshape.append(length)
+                elif dim.name in parc:
+                    if not hasattr(dim, 'parc'):
+                        msg = "%r dimension has no parcellation" % dim.name
+                        raise NotImplementedError(msg)
+                    elif i != 0:
+                        msg = "parc that is not non-adjacent axis"
+                        raise NotImplementedError(msg)
+                    parc_ = dim.parc
+                    parc_dim = Categorial(dim.name, parc_.cells)
+                    length = len(parc_dim)
+                    dist_shape.append(length)
+                    dist_dims.append(parc_dim)
+                    cmap_reshape.append(len(dim))
+                    indexes = [parc_ == cell for cell in parc_.cells]
+                    parc_indexes = np.array(indexes)
                 elif dim.name == 'time' and dist_tstep:
                     step = int(round(dist_tstep / dim.tstep))
                     if dim.nsamples % step != 0:
@@ -2089,12 +2150,14 @@ class _ClusterDist:
 
             dist_shape = tuple(dist_shape)
             dist_dims = tuple(dist_dims)
+            cmap_reshape = tuple(cmap_reshape)
             max_axes = tuple(max_axes)
         else:
             dist_shape = (N,)
             dist_dims = None
             cmap_reshape = None
             max_axes = None
+            parc_indexes = None
 
         # multiprocessing
         if n_workers:
@@ -2117,6 +2180,7 @@ class _ClusterDist:
         self._dist_dims = dist_dims
         self._cmap_reshape = cmap_reshape
         self._max_axes = max_axes
+        self._parc = parc_indexes
         self.dist = None
         self._i = N
         self.threshold = threshold
@@ -2127,6 +2191,7 @@ class _ClusterDist:
         self.tstart = tstart
         self.tstop = tstop
         self.dist_dim = dist_dim
+        self.parc = parc
         self.dist_tstep = dist_tstep
         self.meas = meas
         self.name = name
@@ -2205,12 +2270,14 @@ class _ClusterDist:
         flat_shape = self._flat_shape
         conn_src = self._connectivity_src
         conn_dst = self._connectivity_dst
+        parc = self._parc
         if self.kind == 'cluster':
             criteria = self._criteria
             target = _clustering_worker
             threshold = self.threshold
             args = (pmap_queue, dist_queue, shape, threshold, tail, struct,
-                    all_adjacent, flat_shape, conn_src, conn_dst, criteria)
+                    all_adjacent, flat_shape, conn_src, conn_dst, criteria,
+                    parc)
         else:
             stacked_shape = self._cmap_reshape
             max_axes = self._max_axes
@@ -2570,7 +2637,14 @@ class _ClusterDist:
                                        self._all_adjacent, self._flat_shape,
                                        self._connectivity_src,
                                        self._connectivity_dst, self._criteria)
-                if cids:
+                if self._parc is not None:
+                    v = np.empty(len(self._parc))
+                    v.fill(0)
+                    for i, idx in enumerate(self._parc):
+                        clusters_v = ndimage.sum(pmap[idx], cmap[idx], cids)
+                        np.abs(clusters_v, clusters_v)
+                        v[i] = clusters_v.max()
+                elif cids:
                     clusters_v = ndimage.sum(pmap, cmap, cids)
                     np.abs(clusters_v, clusters_v)
                     v = clusters_v.max()
@@ -2584,6 +2658,9 @@ class _ClusterDist:
                     v = pmap_.max(self._max_axes)
                 else:
                     v = -pmap_.min(self._max_axes)
+
+                if self._parc is not None:
+                    v = [v[idx].max() for idx in self._parc]
 
             self.dist[self._i] = v
             # log
@@ -2603,11 +2680,11 @@ class _ClusterDist:
 
         Parameters
         ----------
-        cluster_map : array of int
-            Array in which clusters are marked by bearing the same number.
+        cluster_map : NDVar
+            NDVar in which clusters are marked by bearing the same number.
         cids : tuple of int
             Numbers specifying the clusters (must occur in cluster_map) which
-            should be analyzes.
+            should be analyzed.
 
         Returns
         -------
@@ -2616,17 +2693,11 @@ class _ClusterDist:
             dimensions.
         """
         ndim = cluster_map.ndim
-        dims = self.dims[1:]
         n_clusters = len(cids)
-        nad_ax = self._nad_ax
-        if nad_ax:
-            dims = list(dims)
-            dims[0], dims[nad_ax] = dims[nad_ax], dims[0]
-            dims = tuple(dims)
 
         # setup compression
         compression = []
-        for ax, dim in enumerate(dims):
+        for ax, dim in enumerate(cluster_map.dims):
             extents = np.empty((n_clusters, len(dim)), dtype=np.bool_)
             axes = tuple(i for i in xrange(ndim) if i != ax)
             compression.append((ax, dim, axes, extents))
@@ -2680,13 +2751,18 @@ class _ClusterDist:
             raise RuntimeError(msg)
 
         if self.kind == 'cluster':
-            param_map = self._original_param_map
-            cluster_map = self._original_cluster_map
-            cids = np.array(self._cids)
+            if sub:
+                param_map = self.parameter_map.sub(**sub)
+                cluster_map = self.cluster_map.sub(**sub)
+                cids = np.setdiff1d(cluster_map.x, [0])
+            else:
+                param_map = self.parameter_map
+                cluster_map = self.cluster_map
+                cids = np.array(self._cids)
 
             if len(cids):
                 # measure original clusters
-                cluster_v = ndimage.sum(param_map, cluster_map, cids)
+                cluster_v = ndimage.sum(param_map.x, cluster_map.x, cids)
 
                 # p-values
                 if self.N:
@@ -2713,16 +2789,15 @@ class _ClusterDist:
 
             # expand clusters
             if maps:
-                c_maps = np.empty((ds.n_cases,) + self.shape,
-                                  dtype=param_map.dtype)
-                c_mask = np.empty(self.shape, dtype=np.bool_)
+                shape = (ds.n_cases,) + param_map.shape
+                c_maps = np.empty(shape, dtype=param_map.x.dtype)
+                c_mask = np.empty(param_map.shape, dtype=np.bool_)
                 for i, cid in enumerate(cids):
-                    np.equal(cluster_map, cid, c_mask)
-                    np.multiply(param_map, c_mask, c_maps[i])
-                if self._nad_ax:
-                    c_maps = c_maps.swapaxes(1, self._nad_ax + 1)
+                    np.equal(cluster_map.x, cid, c_mask)
+                    np.multiply(param_map.x, c_mask, c_maps[i])
 
                 # package ndvar
+                dims = ('case',) + param_map.dims
                 param_contours = {}
                 if self.tail >= 0:
                     param_contours[self.threshold] = (0.7, 0.7, 0)
@@ -2730,38 +2805,36 @@ class _ClusterDist:
                     param_contours[-self.threshold] = (0.7, 0, 0.7)
                 info = _cs.stat_info(self.meas, contours=param_contours,
                                      summary_func=np.sum)
-                ds['cluster'] = NDVar(c_maps, dims=self.dims, info=info)
+                ds['cluster'] = NDVar(c_maps, dims, info=info)
             else:
                 ds.info['clusters'] = self.cluster_map
         else:
             p_map = self.compute_probability_map(**sub)
             bin_map = np.less_equal(p_map.x, pmin)
-
-            # reshape for labelling
-            if not self._all_adjacent:
-                if self._nad_ax:
-                    bin_map = bin_map.swapaxes(0, self._nad_ax)
-                flat_shape = (bin_map.shape[0], np.prod(bin_map.shape[1:]))
-            else:
-                flat_shape = None
+            shape = p_map.shape
 
             # find clusters
-            c_map = np.empty(p_map.shape)
-            bin_buff = np.empty(p_map.shape, dtype=np.bool_)
-            cids = _label_clusters_binary(bin_map, c_map, bin_buff, self._struct,
-                                          self._all_adjacent, flat_shape,
-                                          self._connectivity_src,
+            c_map = np.empty(shape)  # cluster map
+            # reshape to internal shape for labelling
+            bin_map_is = bin_map.swapaxes(0, self._nad_ax)
+            c_map_is = c_map.swapaxes(0, self._nad_ax)
+            if not self._all_adjacent:
+                ishape = bin_map_is.shape  # internal shape
+                flat_shape = (ishape[0], np.prod(ishape[1:]))
+            else:
+                ishape = shape
+                flat_shape = None
+            bin_buff = np.empty(ishape, dtype=np.bool_)
+            cids = _label_clusters_binary(bin_map_is, c_map_is, bin_buff,
+                                          self._struct, self._all_adjacent,
+                                          flat_shape, self._connectivity_src,
                                           self._connectivity_dst, None)
             cids = sorted(cids)
 
-            ds = self._cluster_properties(c_map, cids)
-
-            # reshape for output
-            if self._nad_ax:
-                c_map = c_map.swapaxes(0, self._nad_ax)
-
-            # add info to dataset
-            ds.info['clusters'] = NDVar(c_map, p_map.dims, {}, "clusters")
+            # Dataset with cluster info
+            cluster_map = NDVar(c_map, p_map.dims, {}, "clusters")
+            ds = self._cluster_properties(cluster_map, cids)
+            ds.info['clusters'] = cluster_map
             min_pos = ndimage.minimum_position(p_map.x, c_map, cids)
             ds['p'] = Var([p_map.x[pos] for pos in min_pos])
 
