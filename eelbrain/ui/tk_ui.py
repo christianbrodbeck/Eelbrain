@@ -9,15 +9,16 @@ http://tkinter.unpythonic.net/wiki/tkFileDialog
 '''
 import logging
 import tkFileDialog
-from tkFileDialog import Open
+from tkFileDialog import Open, SaveAs
 import tkMessageBox
 from Tkinter import Tk
 
 
 
 def ask_saveas(title, message, filetypes, defaultDir=None, defaultFile=None):
-    return tkFileDialog.asksaveasfile(title=title, message=message,
-                                      filetypes=filetypes)
+    dlg = SaveAs(title=title, message=message, filetypes=filetypes)
+    filename = dlg.show()
+    return filename
 
 
 def ask_dir(title="Select Folder",
