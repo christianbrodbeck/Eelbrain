@@ -2779,13 +2779,21 @@ class _ClusterDist:
                         cids = cids[idx]
                         cluster_p = cluster_p[idx]
                         cluster_v = cluster_v[idx]
+
+                    # p-value corrected across parc
+                    if sub:
+                        dist = self._aggregate_dist()
+                        n_larger = np.sum(dist > np.abs(cluster_v[:, None]), 1)
+                        cluster_p_corr = n_larger / self.N
             else:
-                cluster_v = cluster_p = []
+                cluster_v = cluster_p = cluster_p_corr = []
 
             ds = self._cluster_properties(cluster_map, cids)
             ds['v'] = Var(cluster_v)
             if self.N:
                 ds['p'] = Var(cluster_p)
+                if sub:
+                    ds['p_parc'] = Var(cluster_p_corr)
 
             # expand clusters
             if maps:
