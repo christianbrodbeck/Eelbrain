@@ -185,10 +185,9 @@ temp = {
         # test files (2nd level, cache only TFCE distributions)
         # test-options should be test + bl_repr + pmin_repr + tw_repr
         'test-dir': os.path.join('{root}', 'test', '{analysis} {group}'),
+        'data_parc': 'unmasked',
         'test-file': os.path.join('{test-dir}', '{epoch} {test} '
-                                  '{test_options}.pickled'),
-        'test-parc-file': os.path.join('{test-dir}', '{epoch} {test} '
-                                       '{test_options} {parc}.pickled'),
+                                  '{test_options} {data_parc}.pickled'),
 
         # result output files
         # data processing parameters
@@ -1427,7 +1426,7 @@ class MneExperiment(FileTree):
         src = mne.read_source_spaces(fpath, add_geom)
         return src
 
-    def load_test(self, tstart, tstop, pmin, parc=None, samples=1000,
+    def load_test(self, tstart, tstop, pmin, parc=None, mask=None, samples=1000,
                   group='all', data='src', sns_baseline=(None, 0),
                   src_baseline=None, return_data=False, redo=False, **kwargs):
         """Load thrshold-free spatio-temporal cluster permutation test
@@ -1440,6 +1439,8 @@ class MneExperiment(FileTree):
             Kind of test.
         parc : None | str
             Parcellation for which to collect distribution.
+        mask : None | str
+            Mask whole brain.
         samples : int
             Number of samples used to determine cluster p values for spatio-
             temporal clusters.
@@ -1468,11 +1469,8 @@ class MneExperiment(FileTree):
                                tstop)
 
         # figure out what test to do
-        test, model, contrast = self.tests[self.get('test')]
+        test, model, contrast = self.tests[self.get('test', **kwargs)]
         self.set(model=model)
-
-        if pmin == 'tfce':
-            raise NotImplementedError("tfce")
 
         # find cached file path
         if parc:
@@ -1480,22 +1478,36 @@ class MneExperiment(FileTree):
                 raise NotImplementedError("tfce analysis can't have parc")
             elif data == 'sns':
                 raise NotImplementedError("sns analysis can't have parc")
-            dst = self.get('test-parc-file', mkdir=True, parc=parc)
+            mask = True
+            parc_ = parc
             parc_dim = 'source'
+            data_parc = parc
+        elif mask:
+            if data == 'sns':
+                raise NotImplementedError("sns analysis can't have mask")
+            parc_ = mask
+            if pmin is None:  # can as well collect dist for on parc
+                parc_dim = 'source'
+                data_parc = mask
+            else:  # parc means disconnecting
+                parc_dim = None
+                data_parc = '%s-mask' % mask
         else:
-            self.set(parc='aparc')
-            dst = self.get('test-file', mkdir=True)
+            parc_ = 'aparc'
             parc_dim = None
+            data_parc = 'unmasked'
+
+        dst = self.get('test-file', mkdir=True, data_parc=data_parc,
+                       parc=parc_)
 
         # try to load cached test
         if not redo and os.path.exists(dst):
             res = load.unpickle(dst)
-            if res.samples < samples:
-                msg = ("Cached test has %i samples (vs %i requested). To get "
-                       "the requested number of samples, specify redo=True."
-                       % (res.samples, samples))
-                raise ValueError(msg)
-            load_data = return_data
+            if res.samples >= samples:
+                load_data = return_data
+            else:
+                res = None
+                load_data = True
         else:
             res = None
             load_data = True
@@ -1507,6 +1519,11 @@ class MneExperiment(FileTree):
             elif data == 'src':
                 ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
                                           morph_ndvar=True)
+                if mask:
+                    # reduce data to parc
+                    y = ds['srcm']
+                    idx = np.invert(y.source.parc.startswith('unknown'))
+                    ds['srcm'] = y.sub(source=idx)
             else:
                 raise ValueError(data)
 
