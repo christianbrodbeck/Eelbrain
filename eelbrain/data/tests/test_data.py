@@ -557,6 +557,15 @@ def test_source_space():
 
 def test_var():
     "Test Var objects"
+    values = np.array([  6, -6, 6, -2, -1, 0, -10, -5, -10, -6])
+    v = values[0]
+    v2 = values[:2]
+
+    var = Var(values)
+    assert_array_equal(var.index(v), np.flatnonzero(values == v))
+    target = np.logical_or(values == v2[0], values == v2[1])
+    assert_array_equal(var.isin(v2), target)
+
     base = Factor('aabbcde')
     Y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
     assert_array_equal(Y.x, [5, 5, 0, 0, 0, 0, 8])

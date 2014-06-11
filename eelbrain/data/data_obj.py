@@ -1465,17 +1465,9 @@ class Var(object):
         name = name.format(func=func.__name__, name=base_name)
         return cls(x, name=name)
 
-    def index(self, *values):
-        """
-        v.index(*values) returns an array of indices of where v has one of
-        *values.
-
-        """
-        idx = []
-        for v in values:
-            where = np.where(self == v)[0]
-            idx.extend(where)
-        return sorted(idx)
+    def index(self, value):
+        "``v.index(value)`` returns an array of indices where v equals value"
+        return np.flatnonzero(self == value)
 
     def isany(self, *values):
         return np.any([self.x == v for v in values], axis=0)
@@ -1564,7 +1556,7 @@ class _Effect(object):
 
     def index(self, cell):
         "``e.index(cell)`` returns an array of indices where e equals cell"
-        return np.nonzero(self == cell)[0]
+        return np.flatnonzero(self == cell)
 
     def index_opt(self, cell):
         """Find an optimized index for a given cell.
@@ -1575,7 +1567,7 @@ class _Effect(object):
             If possible, a ``slice`` object is returned. Otherwise, an array
             of indices (as with ``e.index(cell)``).
         """
-        index = self.index(cell)
+        index = np.flatnonzero(self == cell)
         d_values = np.unique(np.diff(index))
         if len(d_values) == 1:
             start = index.min() or None
