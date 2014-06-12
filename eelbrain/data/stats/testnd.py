@@ -2750,13 +2750,16 @@ class _ClusterDist:
                 msg += " Find clusters with pmin=None."
             raise RuntimeError(msg)
 
+        if sub:
+            param_map = self.parameter_map.sub(**sub)
+        else:
+            param_map = self.parameter_map
+
         if self.kind == 'cluster':
             if sub:
-                param_map = self.parameter_map.sub(**sub)
                 cluster_map = self.cluster_map.sub(**sub)
                 cids = np.setdiff1d(cluster_map.x, [0])
             else:
-                param_map = self.parameter_map
                 cluster_map = self.cluster_map
                 cids = np.array(self._cids)
 
@@ -2795,31 +2798,19 @@ class _ClusterDist:
                 if sub:
                     ds['p_parc'] = Var(cluster_p_corr)
 
-            # expand clusters
-            if maps:
-                shape = (ds.n_cases,) + param_map.shape
-                c_maps = np.empty(shape, dtype=param_map.x.dtype)
-                c_mask = np.empty(param_map.shape, dtype=np.bool_)
-                for i, cid in enumerate(cids):
-                    np.equal(cluster_map.x, cid, c_mask)
-                    np.multiply(param_map.x, c_mask, c_maps[i])
-
-                # package ndvar
-                dims = ('case',) + param_map.dims
-                param_contours = {}
-                if self.tail >= 0:
-                    param_contours[self.threshold] = (0.7, 0.7, 0)
-                if self.tail <= 0:
-                    param_contours[-self.threshold] = (0.7, 0, 0.7)
-                info = _cs.stat_info(self.meas, contours=param_contours,
-                                     summary_func=np.sum)
-                ds['cluster'] = NDVar(c_maps, dims, info=info)
-            else:
-                ds.info['clusters'] = self.cluster_map
+            threshold = self.threshold
         else:
             p_map = self.compute_probability_map(**sub)
             bin_map = np.less_equal(p_map.x, pmin)
             shape = p_map.shape
+
+            # threshold for maps
+            if maps:
+                values = np.abs(param_map.x)[bin_map]
+                if len(values):
+                    threshold = values.min() / 2
+                else:
+                    threshold = 1.
 
             # find clusters
             c_map = np.empty(shape)  # cluster map
@@ -2848,6 +2839,28 @@ class _ClusterDist:
 
         if 'p' in ds:
             ds['*'] = star_factor(ds['p'])
+
+        # expand clusters
+        if maps:
+            shape = (ds.n_cases,) + param_map.shape
+            c_maps = np.empty(shape, dtype=param_map.x.dtype)
+            c_mask = np.empty(param_map.shape, dtype=np.bool_)
+            for i, cid in enumerate(cids):
+                np.equal(cluster_map.x, cid, c_mask)
+                np.multiply(param_map.x, c_mask, c_maps[i])
+
+            # package ndvar
+            dims = ('case',) + param_map.dims
+            param_contours = {}
+            if self.tail >= 0:
+                param_contours[threshold] = (0.7, 0.7, 0)
+            if self.tail <= 0:
+                param_contours[-threshold] = (0.7, 0, 0.7)
+            info = _cs.stat_info(self.meas, contours=param_contours,
+                                 summary_func=np.sum)
+            ds['cluster'] = NDVar(c_maps, dims, info=info)
+        else:
+            ds.info['clusters'] = self.cluster_map
 
         return ds
 
