@@ -2045,10 +2045,12 @@ class _ClusterDist:
                 if k == 'mintime':
                     ax = Y.get_axis('time') - 1
                     v = int(ceil(v / Y.time.tstep))
-                elif k == 'minsource':
-                    ax = Y.get_axis('source') - 1
                 else:
-                    raise ValueError("Unknown criterion: %r" % k)
+                    m = re.match('min(\w+)', k)
+                    if m:
+                        ax = Y.get_axis(m.group(1)) - 1
+                    else:
+                        raise ValueError("Unknown argument: %s" % k)
 
                 if nad_ax:
                     if ax == 0:
