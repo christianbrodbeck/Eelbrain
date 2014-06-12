@@ -745,7 +745,7 @@ class FileTree(TreeModel):
             raise IOError("Root does not exist: %r" % root)
         self._fields['root'] = root
 
-    def get(self, temp, fmatch=True, vmatch=True, match=True, mkdir=False,
+    def get(self, temp, fmatch=False, vmatch=True, match=True, mkdir=False,
             make=False, **kwargs):
         """
         Retrieve a formatted template
