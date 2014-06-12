@@ -65,6 +65,8 @@ preferences = dict(
                    html_tables_in_fig=True,
                    )
 
+_tex_substitutes = {'paragraph': "\n\n%s\n\n"}
+
 _html_alignments = {'l': 'left',
                     'r': 'right',
                     'c': 'center'}
@@ -74,7 +76,8 @@ _html_tags = {r'_': 'sub',
               r'\author': 'author',
               r'\emph': 'em',
               r'\textbf': 'b',
-              r'\textit': 'i'}
+              r'\textit': 'i',
+              'paragraph': 'p'}
 
 _str_substitutes = {r'_': u'(%s)'}
 
@@ -404,16 +407,18 @@ class FMTextElement(object):
         "return unicode"
         text = self._get_core(options)
         if self.property:
-            fmt = _str_substitutes.get(self.property, None)
-            if fmt:
-                text = fmt % text
+            if self.property in _str_substitutes:
+                text = _str_substitutes[self.property] % text
         return text
 
     def get_tex(self, options):
         txt = self._get_tex_core(options)
 
         if self.property:
-            txt = r"%s{%s}" % (self.property, txt)
+            if self.property in _tex_substitutes:
+                txt = _tex_substitutes[self.property] % txt
+            else:
+                txt = r"%s{%s}" % (self.property, txt)
 
         if self.mat and not options.get('mat', False):
             txt = "$%s$" % txt
@@ -448,8 +453,7 @@ class FMText(FMTextElement):
             Any item with a string representation (str, FMText, scalar, ...)
             or an object that iterates over such items (e.g. a list of FMText).
         property : str
-            TeX property that is followed by ``{}`` (e.g.,
-            ``property=r'\textbf'`` for bold)
+            Formatting command for the content (e.g. r'\textbf', see below).
         mat : bool
             For TeX output, content is enclosed in ``'$...$'``
         drop0 : bool
@@ -457,6 +461,18 @@ class FMText(FMTextElement):
             point (e.g., for p values).
         fmt : str
             Format-str for numerical values.
+
+        Notes
+        -----
+        The ``property`` argument is primarily used for TeX commands; for
+        example, ``txt = FMText('Brie', r'\textbf')`` will result in the
+        following TeX representation: r"\textbf{Brie}". Some properties are
+        automatically translated into HTML; thus, the HTML representation of
+        ``txt`` would be "<b>Brie</b>". The following are additional proprties
+        that don't exist in TeX:
+
+        'paragraph'
+            A <p> tag in HTML, and simple line breaks in TeX.
         """
         # np integers are not instance of int
         if isinstance(content, np.integer):
@@ -1456,6 +1472,11 @@ class Section(FMText):
         figure = Figure(image, caption)
         self.append(figure)
         return image
+
+    def add_paragraph(self, content=[]):
+        paragraph = FMText(content, 'paragraph')
+        self.append(paragraph)
+        return paragraph
 
     def add_section(self, heading, content=[]):
         """Add a new subordinate section
