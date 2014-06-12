@@ -523,13 +523,18 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     if data.source.rh_n:
         hemis.append('rh')
 
+    if surf == 'inflated':
+        camera_scale = 95
+    else:
+        camera_scale = 70
+
     for hemi in hemis:
         hemi_data = data.sub(source=hemi)
         brain = cluster(hemi_data, vmax, surf, views[0], colorbar=False, w=300,
                         h=250, time_label=None)
         fig = brain._figures[0][0]
         fig.scene.camera.parallel_projection = True
-        fig.scene.camera.parallel_scale = 70
+        fig.scene.camera.parallel_scale = camera_scale
         fig.scene.render()
         im = brain.screenshot_single('rgba', True)
 
