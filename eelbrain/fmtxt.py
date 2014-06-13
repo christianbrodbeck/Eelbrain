@@ -488,8 +488,28 @@ class FMText(FMTextElement):
 
         FMTextElement.__init__(self, content, property, mat, drop0, fmt)
 
-    def append(self, content):
-        self._content.append(asfmtext(content))
+    def append(self, content, *args, **kwargs):
+        """Append content to the FMText item
+
+        Parameters
+        ----------
+        content : str | object | iterable
+            Any item with a string representation (str, FMText, scalar, ...)
+            or an object that iterates over such items (e.g. a list of FMText).
+        property : str
+            Formatting command for the content (e.g. r'\textbf', see below).
+        mat : bool
+            For TeX output, content is enclosed in ``'$...$'``
+        drop0 : bool
+            For  numbers smaller than 0, drop the '0' before the decimal
+            point (e.g., for p values).
+        fmt : str
+            Format-str for numerical values.
+        """
+        if args or kwargs:
+            self._content.append(FMText(content, *args, **kwargs))
+        else:
+            self._content.append(asfmtext(content))
 
     def _get_html_core(self, options):
         return ''.join(i.get_html(options) for i in self._content)
