@@ -1042,6 +1042,12 @@ class Var(object):
     :py:class:`numpy.array` which can be used for anything more complicated.
     :py:attr:`Var.x` can be read and modified, but should not be replaced.
 
+    Attributes
+    ----------
+    x : numpy.ndarray
+        The data stored in the Var.
+    name : None | str
+        The Var's name.
     """
     _stype_ = "var"
     ndim = 1
@@ -1624,14 +1630,13 @@ class Factor(_Effect):
 
     Attributes
     ----------
-    cells : tuple of str
-        All cells contained in the Factor.
-    name : None | str
-        Name given to the Factor.
-    random : bool
-        Whether the Factor is defined as random factor (influences ANOVA).
-    x : array
-        Encoded data.
+    .name : None | str
+        The Factor's name.
+    .cells : tuple of str
+        Sorted names of all cells.
+    .random : bool
+        Whether the Factor is defined as random factor (for ANOVA).
+
     """
     _stype_ = "factor"
     def __init__(self, x, name=None, random=False, rep=1, tile=1, labels={}):
@@ -1920,6 +1925,7 @@ class Factor(_Effect):
         return codes
 
     def as_labels(self):
+        "Convert the Factor to a list of str"
         return [self._labels[v] for v in self.x]
 
     @property
@@ -3070,14 +3076,7 @@ class Datalist(list):
     :py:class:`list` subclass for including lists in in a Dataset.
 
     The subclass adds certain methods that makes indexing behavior more
-    similar to numpy and other data objects. The following methods are
-    modified:
-
-    __getitem__:
-        Add support for list and array indexes.
-    __init__:
-        Store a name attribute.
-
+    similar to numpy and other data objects.
     """
     _stype_ = 'list'
     def __init__(self, items=None, name=None):
@@ -3154,8 +3153,11 @@ class Dataset(collections.OrderedDict):
     """
     A Dataset is a dictionary that represents a data table.
 
-    Attributes
-    ----------
+    Superclass: :class:`collections.OrderedDict`
+
+
+    **Attributes**
+
     n_cases : None | int
         The number of cases in the Dataset (corresponding to the number of
         rows in the table representation). None if no variables have been
@@ -3164,34 +3166,6 @@ class Dataset(collections.OrderedDict):
         The number of items (variables) in the Dataset (corresponding to the
         number of columns in the table representation).
 
-    Methods
-    -------
-    add:
-        Add a variable to the Dataset.
-    as_table:
-        Create a data table representation of the Dataset.
-    aggregate:
-        For a given categorial description, reduce the number of cases in the
-        Dataset per cell to one (e.g., average by subject and condition).
-    copy:
-        Create a shallow copy (i.e., return a new Dataset containing the same
-        data objects).
-    export:
-        Save the Dataset in different formats.
-    eval:
-        Evaluate an expression in the Dataset's namespace.
-    index:
-        Add an index to the Dataset (to keep track of cases when selecting
-        subsets).
-    itercases:
-        Iterate through each case as a dictionary.
-    subset:
-        Create a Dataset form a subset of cases (slightly faster than normal
-        indexing).
-
-    See Also
-    --------
-    collections.OrderedDict: superclass
 
     Notes
     -----
@@ -3208,7 +3182,7 @@ class Dataset(collections.OrderedDict):
     retrieved as  :py:attr:`Dataset.n_items`).
 
 
-    **Accessing Data:**
+    **Accessing Data**
 
     Standard indexing with *strings* is used to access the contained Var and
     Factor objects. Nesting is possible:
@@ -3232,7 +3206,7 @@ class Dataset(collections.OrderedDict):
     retrieve individual cases/rows as {name: value} dictionaries.
 
 
-    **Naming:**
+    **Naming**
 
     While Var and Factor objects themselves need not be named, they need
     to be named when added to a Dataset. This can be done by a) adding a
@@ -3263,7 +3237,6 @@ class Dataset(collections.OrderedDict):
 
         Parameters
         ----------
-
         name : str
             name describing the Dataset
         info : dict
@@ -3482,8 +3455,7 @@ class Dataset(collections.OrderedDict):
             raise ValueError(err)
 
     def add(self, item, replace=False):
-        """
-        ``ds.add(item)`` -> ``ds[item.name] = item``
+        """``ds.add(item)`` -> ``ds[item.name] = item``
 
         unless the Dataset already contains a variable named item.name, in
         which case a KeyError is raised. In order to replace existing
@@ -3527,7 +3499,7 @@ class Dataset(collections.OrderedDict):
                  title=None, caption=None, ifmt='%s', bfmt='%s',
                  f_fmt='deprecated'):
         r"""
-        Create a fmtxt.Table containing all Vars and Factors in the Dataset.
+        Create an fmtxt.Table containing all Vars and Factors in the Dataset.
         Can be used for exporting in different formats such as csv.
 
         Parameters

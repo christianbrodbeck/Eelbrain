@@ -44,7 +44,7 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary',  # default
               'numpydoc',  # https://github.com/numpy/numpy/tree/master/doc/sphinxext
               ]
 autosummary_generate = True
-numpydoc_show_class_members = True
+numpydoc_show_class_members = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
