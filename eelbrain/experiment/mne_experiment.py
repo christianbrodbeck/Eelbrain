@@ -582,6 +582,8 @@ class MneExperiment(FileTree):
         for name in ds:
             if isinstance(ds[name][0], _mne_Evoked):
                 do.append(name)
+        if len(do) == 0:
+            raise RuntimeError("No Evoked found")
 
         # prepare data containers
         invs = {}
