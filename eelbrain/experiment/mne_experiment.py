@@ -390,8 +390,9 @@ class MneExperiment(FileTree):
         self._register_value('inv', 'free-3-dSPM',
                              set_handler=self._set_inv_as_str)
         self._register_value('model', '', eval_handler=self._eval_model)
-        self._register_field('test', self.tests.keys(),
-                             post_set_handler=self._post_set_test)
+        if self.tests:
+            self._register_field('test', self.tests.keys(),
+                                 post_set_handler=self._post_set_test)
         self._register_field('parc', default='aparc',
                              eval_handler=self._eval_parc)
         self._register_field('proj', [''] + self.projs.keys())
