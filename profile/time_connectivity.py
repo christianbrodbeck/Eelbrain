@@ -24,7 +24,6 @@ y, source = load.unpickle(%r)
 
 out = np.empty(y.shape, np.uint32)
 bin_buff = np.empty(y.shape, np.bool_)
-bin_buff2 = np.empty(y.shape, np.bool_)
 int_buff = np.empty(y.shape, np.uint32)
 threshold = 1
 tail = 0
@@ -33,13 +32,14 @@ struct[::2] = False
 all_adjacent = False
 flat_shape = (y.shape[0], np.prod(y.shape[1:]))
 connectivity_src, connectivity_dst = source.connectivity().T
+conn = {src:[] for src in np.unique(connectivity_src)}
+for src, dst in izip(connectivity_src, connectivity_dst):
+    conn[src].append(dst)
 criteria=None
 ''' % fname
 
 stmt = '''
-stats.testnd._label_clusters(y, out, bin_buff, bin_buff2, int_buff, threshold,
-                             tail, struct, all_adjacent, flat_shape,
-                             connectivity_src, connectivity_dst, criteria)
+stats.testnd._label_clusters(y, out, bin_buff, int_buff, threshold, tail, struct, all_adjacent, flat_shape, conn, criteria)
 '''
 
 timer = timeit.Timer(stmt, setup)

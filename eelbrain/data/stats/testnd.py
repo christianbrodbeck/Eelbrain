@@ -38,6 +38,7 @@ from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                         NDVar, Var, Celltable, cellname, combine, Categorial,
                         UTS)
 from .glm import LMFitter
+from ._opt import merge_labels
 from .permutation import resample, _resample_params
 from .stats import ftest_f, ftest_p
 from .test import star_factor
@@ -1686,9 +1687,8 @@ class anova(_TestResult):
         return combine(dss)
 
 
-def _label_clusters(pmap, out, bin_buff, bin_buff2, int_buff, threshold, tail,
-                    struct, all_adjacent, flat_shape, conn_src, conn_dst,
-                    criteria):
+def _label_clusters(pmap, out, bin_buff, int_buff, threshold, tail, struct,
+                    all_adjacent, flat_shape, conn, criteria):
     """Find clusters on a statistical parameter map
 
     Parameters
@@ -1707,30 +1707,29 @@ def _label_clusters(pmap, out, bin_buff, bin_buff2, int_buff, threshold, tail,
     """
     if tail >= 0:
         bin_map_above = np.greater(pmap, threshold, bin_buff)
-        cids = _label_clusters_binary(bin_map_above, out, bin_buff2, struct,
-                                      all_adjacent, flat_shape, conn_src,
-                                      conn_dst, criteria)
+        cids = _label_clusters_binary(bin_map_above, out, struct, all_adjacent,
+                                      flat_shape, conn, criteria)
 
     if tail <= 0:
         bin_map_below = np.less(pmap, -threshold, bin_buff)
         if tail < 0:
-            cids = _label_clusters_binary(bin_map_below, out, bin_buff2,
-                                          struct, all_adjacent, flat_shape,
-                                          conn_src, conn_dst, criteria)
+            cids = _label_clusters_binary(bin_map_below, out, struct,
+                                          all_adjacent, flat_shape, conn,
+                                          criteria)
         else:
-            cids_l = _label_clusters_binary(bin_map_below, int_buff, bin_buff2,
-                                            struct, all_adjacent, flat_shape,
-                                            conn_src, conn_dst, criteria)
+            cids_l = _label_clusters_binary(bin_map_below, int_buff, struct,
+                                            all_adjacent, flat_shape, conn,
+                                            criteria)
             x = int(out.max())  # apparently np.uint64 + int makes a float
             int_buff[bin_map_below] += x
             out += int_buff
-            cids.update(c + x for c in cids_l)
+            cids = np.concatenate((cids, cids_l + x))
 
-    return tuple(cids)
+    return cids
 
 
-def _label_clusters_binary(bin_map, out, bin_buff, struct, all_adjacent,
-                           flat_shape, conn_src, conn_dst, criteria):
+def _label_clusters_binary(bin_map, out, struct, all_adjacent, flat_shape,
+                           conn, criteria):
     """
     Parameters
     ----------
@@ -1740,59 +1739,34 @@ def _label_clusters_binary(bin_map, out, bin_buff, struct, all_adjacent,
 
     Returns
     -------
-    cluster_ids : set
-        Identifiers of the clusters that survive the selection criteria.
+    cluster_ids : np.ndarray
+        Sorted identifiers of the clusters that survive the selection criteria.
     """
     # find clusters
     n = ndimage.label(bin_map, struct, out)
     # n is 1 even when no cluster is found
     if n == 1 and out.max() == 0:
         n = 0
-    cids = set(xrange(1, n + 1))
-    if not all_adjacent:
-        cidx = bin_buff
-        # reshape cluster map for iteration
-        cmap_flat = out.reshape(flat_shape).swapaxes(0, 1)
-        for cmap_slice in cmap_flat:
-            if np.count_nonzero(np.unique(cmap_slice)) <= 1:
-                continue
 
-            # find connectivity of True entries
-            idx = cmap_slice.nonzero()[0]
-            c_idx = np.in1d(conn_src, idx)
-            c_idx *= np.in1d(conn_dst, idx)
-            if np.count_nonzero(c_idx) == 0:
-                continue
-
-            c_idx = c_idx.nonzero()[0]
-            for i in c_idx:
-                # find corresponding cluster indices
-                id_src = cmap_slice[conn_src[i]]
-                id_dst = cmap_slice[conn_dst[i]]
-                if id_src == id_dst:
-                    continue
-
-                # merge id_dst into id_src
-                np.equal(out, id_dst, cidx)
-                out[cidx] = id_src
-                cids.remove(id_dst)
-                if len(cids) == 1:
-                    break
-            if len(cids) == 1:
-                break
+    if all_adjacent or n <= 1:
+        cids = np.arange(1, n + 1)
+    else:
+        cmap_flat = out.reshape(flat_shape)
+        cids = merge_labels(cmap_flat, n, conn)
 
     # apply minimum cluster size criteria
     if criteria:
+        rm_cids = set()
         for axes, v in criteria:
-            rm = tuple(i for i in cids if
-                       np.count_nonzero(np.equal(out, i).any(axes)) < v)
-            cids.difference_update(rm)
+            rm_cids.update(i for i in cids if
+                           np.count_nonzero(np.equal(out, i).any(axes)) < v)
+        cids = np.setdiff1d(cids, rm_cids)
 
     return cids
 
 
-def _tfce(pmap, out, tail, bin_buff, bin_buff2, int_buff, struct,
-          all_adjacent, flat_shape, conn_src, conn_dst):
+def _tfce(pmap, out, tail, bin_buff, int_buff, struct, all_adjacent,
+          flat_shape, conn):
     dh = 0.1
     E = 0.5
     H = 2.0
@@ -1819,9 +1793,8 @@ def _tfce(pmap, out, tail, bin_buff, bin_buff2, int_buff, struct,
             np.less_equal(pmap, h, bin_buff)
             h_factor = (-h) ** H
 
-        c_ids = _label_clusters_binary(bin_buff, int_buff, bin_buff2, struct,
-                                       all_adjacent, flat_shape, conn_src,
-                                       conn_dst, None)
+        c_ids = _label_clusters_binary(bin_buff, int_buff, struct,
+                                       all_adjacent, flat_shape, conn, None)
         for id_ in c_ids:
             np.equal(int_buff, id_, bin_buff)
             v = np.count_nonzero(bin_buff) ** E * h_factor
@@ -1831,15 +1804,13 @@ def _tfce(pmap, out, tail, bin_buff, bin_buff2, int_buff, struct,
 
 
 def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
-                       all_adjacent, flat_shape, conn_src, conn_dst, criteria,
-                       parc):
+                       all_adjacent, flat_shape, conn, criteria, parc):
     os.nice(20)
 
     # allocate memory buffers
-    cmap = np.empty(shape, np.int_)
+    cmap = np.empty(shape, np.uint32)
     bin_buff = np.empty(shape, np.bool_)
-    bin_buff2 = np.empty(shape, np.bool_)
-    int_buff = np.empty(shape, np.int_)
+    int_buff = np.empty(shape, np.uint32)
     if parc is not None:
         out = np.empty(len(parc))
 
@@ -1847,9 +1818,8 @@ def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
         pmap = in_queue.get()
         if pmap is None:
             break
-        cids = _label_clusters(pmap, cmap, bin_buff, bin_buff2, int_buff,
-                               threshold, tail, struct, all_adjacent,
-                               flat_shape, conn_src, conn_dst, criteria)
+        cids = _label_clusters(pmap, cmap, bin_buff, int_buff, threshold, tail,
+                               struct, all_adjacent, flat_shape, conn, criteria)
         if parc is not None:
             out.fill(0)
             for i, idx in enumerate(parc):
@@ -1857,7 +1827,7 @@ def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
                 np.abs(clusters_v, clusters_v)
                 out[i] = clusters_v.max()
             out_queue.put(out)
-        elif cids:
+        elif len(cids):
             clusters_v = ndimage.sum(pmap, cmap, cids)
             np.abs(clusters_v, clusters_v)
             out_queue.put(clusters_v.max())
@@ -1866,22 +1836,21 @@ def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
 
 
 def _tfce_worker(in_queue, out_queue, shape, tail, struct, all_adjacent,
-                 flat_shape, conn_src, conn_dst, stacked_shape, max_axes):
+                 flat_shape, conn, stacked_shape, max_axes):
     os.nice(20)
 
     # allocate memory buffers
     tfce_map = np.empty(shape)
     tfce_map_stacked = tfce_map.reshape(stacked_shape)
     bin_buff = np.empty(shape, np.bool_)
-    bin_buff2 = np.empty(shape, np.bool_)
-    int_buff = np.empty(shape, np.int_)
+    int_buff = np.empty(shape, np.uint32)
 
     while True:
         pmap = in_queue.get()
         if pmap is None:
             break
-        _tfce(pmap, tfce_map, tail, bin_buff, bin_buff2, int_buff, struct,
-              all_adjacent, flat_shape, conn_src, conn_dst)
+        _tfce(pmap, tfce_map, tail, bin_buff, int_buff, struct, all_adjacent,
+              flat_shape, conn)
         out = tfce_map_stacked.max(max_axes)
         out_queue.put(out)
 
@@ -2012,6 +1981,7 @@ class _ClusterDist:
         all_adjacent = all(adjacent)
         if all_adjacent:
             nad_ax = 0
+            connectivity = None
             connectivity_src = None
             connectivity_dst = None
             flat_shape = None
@@ -2221,11 +2191,6 @@ class _ClusterDist:
         else:
             self._int_buff2 = None
 
-        if self._all_adjacent:
-            self._bin_buff2 = None
-        else:
-            self._bin_buff2 = np.empty(shape, dtype=np.bool8)
-
         self._has_buffers = True
         if self._i == 0 or self.kind == 'cluster':
             return
@@ -2239,8 +2204,7 @@ class _ClusterDist:
 
     def _clear_memory_buffers(self):
         "Remove memory buffers used for cluster processing"
-        for name in ('_bin_buff', '_int_buff', '_float_buff', '_int_buff2',
-                     '_bin_buff2'):
+        for name in ('_bin_buff', '_int_buff', '_float_buff', '_int_buff2'):
             if hasattr(self, name):
                 delattr(self, name)
         self._has_buffers = False
@@ -2270,22 +2234,20 @@ class _ClusterDist:
         struct = self._struct
         all_adjacent = self._all_adjacent
         flat_shape = self._flat_shape
-        conn_src = self._connectivity_src
-        conn_dst = self._connectivity_dst
+        conn = self._connectivity
         parc = self._parc
         if self.kind == 'cluster':
             criteria = self._criteria
             target = _clustering_worker
             threshold = self.threshold
             args = (pmap_queue, dist_queue, shape, threshold, tail, struct,
-                    all_adjacent, flat_shape, conn_src, conn_dst, criteria,
-                    parc)
+                    all_adjacent, flat_shape, conn, criteria, parc)
         else:
             stacked_shape = self._cmap_reshape
             max_axes = self._max_axes
             target = _tfce_worker
             args = (pmap_queue, dist_queue, shape, tail, struct, all_adjacent,
-                    flat_shape, conn_src, conn_dst, stacked_shape, max_axes)
+                    flat_shape, conn, stacked_shape, max_axes)
 
         self._workers = []
         for _ in xrange(self._n_workers):
@@ -2374,6 +2336,16 @@ class _ClusterDist:
             info.append("p >= %.3f" % self.probability_map.min())
 
         return info
+
+    @LazyProperty
+    def _connectivity(self):
+        if self._connectivity_src is None:
+            return None
+
+        connectivity = {src:[] for src in np.unique(self._connectivity_src)}
+        for src, dst in izip(self._connectivity_src, self._connectivity_dst):
+            connectivity[src].append(dst)
+        return connectivity
 
     def _crop(self, im):
         if self.crop:
@@ -2555,19 +2527,17 @@ class _ClusterDist:
         if self.kind == 'tfce':
             original_cluster_map = np.empty(self.shape)
             _tfce(param_map, original_cluster_map, self.tail,
-                  self._bin_buff, self._bin_buff2, self._int_buff,
-                  self._struct, self._all_adjacent, self._flat_shape,
-                  self._connectivity_src, self._connectivity_dst)
+                  self._bin_buff, self._int_buff, self._struct,
+                  self._all_adjacent, self._flat_shape, self._connectivity)
             cids = None
             n_clusters = True
         elif self.kind == 'cluster':
             original_cluster_map = buff = np.empty(self.shape, dtype=np.uint32)
             cids = _label_clusters(param_map, buff, self._bin_buff,
-                                   self._bin_buff2, self._int_buff2,
-                                   self.threshold, self.tail, self._struct,
-                                   self._all_adjacent, self._flat_shape,
-                                   self._connectivity_src,
-                                   self._connectivity_dst, self._criteria)
+                                   self._int_buff2, self.threshold,
+                                   self.tail, self._struct, self._all_adjacent,
+                                   self._flat_shape, self._connectivity,
+                                   self._criteria)
             n_clusters = len(cids)
             # clean original cluster map
             idx = (np.in1d(original_cluster_map, cids, invert=True)
@@ -2627,18 +2597,16 @@ class _ClusterDist:
         else:
             if self.kind == 'tfce':
                 _tfce(pmap, self._float_buff, self.tail, self._bin_buff,
-                      self._bin_buff2, self._int_buff, self._struct,
-                      self._all_adjacent, self._flat_shape,
-                      self._connectivity_src, self._connectivity_dst)
+                      self._int_buff, self._struct, self._all_adjacent,
+                      self._flat_shape, self._connectivity)
                 v = self._cmap_stacked.max(self._max_axes)
             elif self.kind == 'cluster':
                 cmap = self._int_buff
                 cids = _label_clusters(pmap, cmap, self._bin_buff,
-                                       self._bin_buff2, self._int_buff2,
-                                       self.threshold, self.tail, self._struct,
+                                       self._int_buff2, self.threshold,
+                                       self.tail, self._struct,
                                        self._all_adjacent, self._flat_shape,
-                                       self._connectivity_src,
-                                       self._connectivity_dst, self._criteria)
+                                       self._connectivity, self._criteria)
                 if self._parc is not None:
                     v = np.empty(len(self._parc))
                     v.fill(0)
@@ -2646,7 +2614,7 @@ class _ClusterDist:
                         clusters_v = ndimage.sum(pmap[idx], cmap[idx], cids)
                         np.abs(clusters_v, clusters_v)
                         v[i] = clusters_v.max()
-                elif cids:
+                elif len(cids):
                     clusters_v = ndimage.sum(pmap, cmap, cids)
                     np.abs(clusters_v, clusters_v)
                     v = clusters_v.max()
@@ -2684,7 +2652,7 @@ class _ClusterDist:
         ----------
         cluster_map : NDVar
             NDVar in which clusters are marked by bearing the same number.
-        cids : tuple of int
+        cids : array_like of int
             Numbers specifying the clusters (must occur in cluster_map) which
             should be analyzed.
 
@@ -2815,7 +2783,7 @@ class _ClusterDist:
                     threshold = 1.
 
             # find clusters
-            c_map = np.empty(shape)  # cluster map
+            c_map = np.empty(shape, np.uint32)  # cluster map
             # reshape to internal shape for labelling
             bin_map_is = bin_map.swapaxes(0, self._nad_ax)
             c_map_is = c_map.swapaxes(0, self._nad_ax)
@@ -2825,12 +2793,9 @@ class _ClusterDist:
             else:
                 ishape = shape
                 flat_shape = None
-            bin_buff = np.empty(ishape, dtype=np.bool_)
-            cids = _label_clusters_binary(bin_map_is, c_map_is, bin_buff,
-                                          self._struct, self._all_adjacent,
-                                          flat_shape, self._connectivity_src,
-                                          self._connectivity_dst, None)
-            cids = sorted(cids)
+            cids = _label_clusters_binary(bin_map_is, c_map_is, self._struct,
+                                          self._all_adjacent, flat_shape,
+                                          self._connectivity, None)
 
             # Dataset with cluster info
             cluster_map = NDVar(c_map, p_map.dims, {}, "clusters")
@@ -2883,14 +2848,12 @@ class _ClusterDist:
 
         peaks = self._find_peaks(self._original_cluster_map)
         peak_map = self._int_buff
-        peak_ids = _label_clusters_binary(peaks, peak_map, self._bin_buff,
-                                          self._struct, self._all_adjacent,
-                                          self._flat_shape,
-                                          self._connectivity_src,
-                                          self._connectivity_dst, None)
+        peak_ids = _label_clusters_binary(peaks, peak_map, self._struct,
+                                          self._all_adjacent, self._flat_shape,
+                                          self._connectivity, None)
 
         ds = Dataset()
-        ds['id'] = Var(np.fromiter(peak_ids, np.int32, len(peak_ids)))
+        ds['id'] = Var(peak_ids)
         v = ds.add_empty_var('v')
         if self.N:
             p = ds.add_empty_var('p')

@@ -20,6 +20,7 @@ doc/source/generated
 .hg
 .bzr
 .svn
+*.so
 *.pyc
 *.pyo
 *.tmp*

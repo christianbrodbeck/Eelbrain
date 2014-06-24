@@ -18,12 +18,12 @@ http://packages.python.org/py2app
 http://docs.python.org/distutils/index.html
 
 """
-import sys
-
 from ez_setup import use_setuptools
 use_setuptools()
 
-from setuptools import setup, find_packages
+import sys
+from setuptools import setup, find_packages, Extension
+import numpy as np
 
 # version must be in X.X.X format, e.g., "0.0.3dev"
 from eelbrain import __version__ as version
@@ -38,6 +38,11 @@ else:
     arg = None
 
 
+# Cython extensions
+ext = [Extension("eelbrain.data.stats._opt", ["eelbrain/data/stats/_opt.c"])]
+
+
+# basic setup arguments
 kwargs = dict(
               name='eelbrain',
               version=version,
@@ -53,7 +58,8 @@ kwargs = dict(
                                 'numpy',
                                 'docutils',
                                 'mne >= 0.7.1'],
-#               package_data={'eelbrain': ['Resources/sns/*.txt']},
+              include_dirs=[np.get_include()],
+              ext_modules=ext,
               )
 
 # py2app -----------------------------------------------------------------------
