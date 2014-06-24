@@ -82,7 +82,7 @@ import numpy as np
 import mne
 from mne.source_estimate import _BaseSourceEstimate
 try:  # API change in 0.9 (mne.io module)
-    from mne.constants import FIFF
+    from mne.io.constants import FIFF
     from mne import Evoked as _mne_Evoked
     from mne.io import Raw as _mne_Raw
     from mne import pick_types as _mne_pick_types
