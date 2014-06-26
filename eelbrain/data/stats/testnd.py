@@ -1730,12 +1730,26 @@ def _label_clusters(pmap, out, bin_buff, int_buff, threshold, tail, struct,
 
 def _label_clusters_binary(bin_map, out, struct, all_adjacent, flat_shape,
                            conn, criteria):
-    """
+    """Label clusters in a binary array
+
     Parameters
     ----------
-    bin_map : array
+    bin_map : np.ndarray
         Binary map of where the parameter map exceeds the threshold for a
         cluster (non-adjacent dimension on the first axis).
+    out : np.ndarray
+        Array in which to label the clusters.
+    struct : np.ndarray
+        Struct to use for scipy.ndimage.label
+    all_adjacent : bool
+        Whether all dimensions have line-graph connectivity.
+    flat_shape : tuple
+        Shape for making bin_map 2-dimensional.
+    conn : dict
+        Connectivity (if first dimension is not a line graph).
+    criteria : None | list
+        Cluster size criteria, list of (axes, v) tuples. Collapse over axes
+        and apply v minimum length).
 
     Returns
     -------
