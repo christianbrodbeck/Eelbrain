@@ -377,6 +377,19 @@ def test_dim_uts():
     assert_equal(uts1[idx], uts2)
 
 
+def test_effect():
+    "Test _Effect class"
+    # .enumerate_cells()
+    f1 = Factor('aabbccaabbcc')
+    f2 = Factor('abababababab')
+    i = f1 % f2
+
+    n1 = np.concatenate((np.tile([0, 1], 3), np.tile([2, 3], 3)))
+    assert_array_equal(f1.enumerate_cells(), n1)
+    assert_array_equal(f2.enumerate_cells(), np.arange(6).repeat(2))
+    assert_array_equal(i.enumerate_cells(), np.arange(2).repeat(6))
+
+
 def test_ndvar():
     "Test the NDVar class"
     ds = datasets.get_rand(utsnd=True)

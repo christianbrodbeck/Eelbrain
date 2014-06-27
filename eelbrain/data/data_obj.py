@@ -1560,6 +1560,32 @@ class _Effect(object):
         count = np.cumsum(self == value) + start
         return count
 
+    def enumerate_cells(self, name=None):
+        """Enumerate the occurrence of each cell value throughout the data
+
+        Parameters
+        ----------
+        name : None | str
+            Name for the returned Var.
+
+        Returns
+        -------
+        enum : Var
+            Result.
+
+        Examples
+        --------
+        >>> f = Factor('aabbccabc')
+        >>> f.enumerate_cells()
+        Var([0, 1, 0, 1, 0, 1, 2, 2, 2])
+        """
+        counts = {cell: 0 for cell in self.cells}
+        enum = np.empty(len(self), int)
+        for i, value in enumerate(self):
+            enum[i] = counts[value]
+            counts[value] += 1
+        return Var(enum, name)
+
     def index(self, cell):
         "``e.index(cell)`` returns an array of indices where e equals cell"
         return np.flatnonzero(self == cell)
