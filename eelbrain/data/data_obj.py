@@ -3733,17 +3733,9 @@ class Dataset(collections.OrderedDict):
             raise NotImplementedError('drop_empty = False')
 
         if X:
-            X = ascategorial(X, ds=self)
-            self._check_n_cases(X, empty_ok=False)
             if equal_count:
-                indexes = np.array([X == cell for cell in X.cells])
-                n = indexes.sum(1).min()
-                for index in indexes:
-                    np.logical_and(index, index.cumsum() <= n, index)
-                index = indexes.any(0)
-                ds = self[index]
-                X = X[index]
-                return ds.aggregate(X, drop_empty, name, count, drop_bad, drop)
+                self = self.equalize_counts(X)
+            X = ascategorial(X, ds=self)
         else:
             X = Factor('a' * self.n_cases)
 
@@ -3784,6 +3776,33 @@ class Dataset(collections.OrderedDict):
         ds = Dataset(name=self.name, info=self.info.copy())
         ds.update(self)
         return ds
+
+    def equalize_counts(self, X):
+        """Create a copy of the Dataset with equal counts in each cell of X
+
+        Parameters
+        ----------
+        X : categorial
+            Model which defines the cells in which to equalize the counts.
+
+        Returns
+        -------
+        equalized_ds : Dataset
+            Dataset with equal number of cases in each cell of X.
+
+        Notes
+        -----
+        First, the cell with the smallest number of rows is determined. Then,
+        for each cell, rows beyond that number are dropped.
+        """
+        X = ascategorial(X, ds=self)
+        self._check_n_cases(X, empty_ok=False)
+        indexes = np.array([X == cell for cell in X.cells])
+        n = indexes.sum(1).min()
+        for index in indexes:
+            np.logical_and(index, index.cumsum() <= n, index)
+        index = indexes.any(0)
+        return self[index]
 
     def index(self, name='index', start=0):
         """
