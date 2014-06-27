@@ -1313,7 +1313,7 @@ class Var(object):
         "for effect initialization"
         return self.centered()[:, None]
 
-    def as_factor(self, name=None, labels='%r'):
+    def as_factor(self, name=None, labels='%r', random=False):
         """
         Convert the Var into a Factor
 
@@ -1324,6 +1324,8 @@ class Var(object):
         labels : dict | str
             Dictionary mapping values to labels, or format string for
             converting values into labels (default: ``'%r'``).
+        random : bool
+            Whether the Factor is a random Factor (default False).
         """
         if name is None:
             name = self.name
@@ -1334,7 +1336,7 @@ class Var(object):
             for value in np.unique(self.x):
                 labels[value] = fmt % value
 
-        f = Factor(self.x, name=name, labels=labels)
+        f = Factor(self.x, name, random, labels=labels)
         return f
 
     def centered(self):
