@@ -15,7 +15,7 @@ from .design import permute
 
 def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
                    src=None, sub="modality=='A'", fixed=False, snr=2,
-                   method='dSPM'):
+                   method='dSPM', rm=False):
     """Load events and epochs from the MNE sample data
 
     Parameters
@@ -34,6 +34,8 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
         MNE inverse parameter.
     method : str
         MNE inverse parameter.
+    rm : bool
+        Pretend to be a repeated measures dataset (adds 'subject' variable).
 
     Returns
     -------
@@ -62,6 +64,12 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
                                          5:'None', 32:'None'})
     ds['modality'] = Factor(trigger, labels={1: 'A', 2:'A', 3:'V', 4:'V',
                                              5:'None', 32:'None'})
+
+    if rm:
+        ds = ds.sub('trigger < 5')
+        ds = ds.equalize_counts('side % modality')
+        subject_f = ds.eval('side % modality').enumerate_cells()
+        ds['subject'] = subject_f.as_factor(labels='s%r', random=True)
 
     if sub:
         ds = ds.sub(sub)
