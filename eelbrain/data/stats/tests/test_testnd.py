@@ -8,11 +8,12 @@ from nose.tools import (assert_equal, assert_in, assert_less, assert_not_in,
                         assert_raises)
 import numpy as np
 from numpy.testing import assert_array_equal
+from scipy import ndimage
 
 from eelbrain import logger
 from eelbrain.data.data_obj import UTS, Ordered, Sensor
 from eelbrain.data.stats import testnd as _testnd
-from eelbrain.data.stats.testnd import _ClusterDist
+from eelbrain.data.stats.testnd import _ClusterDist, _label_clusters
 from eelbrain.data.tests.test_data import assert_dataobj_equal
 from eelbrain.data import datasets, testnd, plot, NDVar
 
@@ -297,6 +298,37 @@ def test_t_contrast():
     # contrast with "*"
     contrast_star = '+min(a1|b0>a0|*, a1|b1>a0|*)'
     res = testnd.t_contrast_rel('uts', 'A%B', contrast_star, 'rm', ds=ds)
+
+
+def test_labeling():
+    "Test cluster labeling"
+    shape = flat_shape = (4, 20)
+    pmap = np.empty(shape, np.float_)
+    out = np.empty(shape, np.uint32)
+    bin_buff = np.empty(shape, np.bool_)
+    int_buff = np.empty(shape, np.uint32)
+    struct = ndimage.generate_binary_structure(2, 1)
+    struct[::2] = False
+    conn = {0: (1, 3), 1: (2,), 2: (3,)}
+    criteria = None
+
+    # some clusters
+    pmap[:] = [[ 3, 3, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0],
+               [ 0, 1, 0, 0, 0, 0, 8, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 0],
+               [ 0, 3, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 4],
+               [ 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0]]
+    cids = _label_clusters(pmap, out, bin_buff, int_buff, 2, 0, struct, False,
+                           flat_shape, conn, criteria)
+    assert_equal(len(cids), 6)
+
+    # some other clusters
+    pmap[:] = [[ 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0],
+               [ 0, 4, 0, 0, 0, 0, 0, 4, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0],
+               [ 0, 0, 4, 4, 0, 4, 4, 0, 4, 0, 0, 0, 4, 4, 1, 0, 4, 4, 0, 0],
+               [ 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0]]
+    cids = _label_clusters(pmap, out, bin_buff, int_buff, 2, 0, struct, False,
+                           flat_shape, conn, criteria)
+    assert_equal(len(cids), 6)
 
 
 def test_ttest_1samp():
