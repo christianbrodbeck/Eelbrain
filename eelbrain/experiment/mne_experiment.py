@@ -1743,7 +1743,7 @@ class MneExperiment(FileTree):
         info = self.get('raw-file', make=True)
         mri = self.get('trans-file')
         src = self.get('src-file', make=True)
-        bem = self.get('bem-sol-file')
+        bem = self.get('bem-sol-file', fmatch=True)
 
         mne.make_forward_solution(info, mri, src, bem, fname, ignore_ref=True,
                                   overwrite=True)
@@ -2547,7 +2547,7 @@ class MneExperiment(FileTree):
         else:
             if kind == 'vol':
                 mri = self.get('mri-file')
-                bem = self.get('bem-file')
+                bem = self.get('bem-file', fmatch=True)
                 mne.setup_volume_source_space(subject, dst, pos=float(param),
                                               mri=mri, bem=bem, mindist=0.,
                                               exclude=0.,
