@@ -840,6 +840,9 @@ class MneExperiment(FileTree):
             sfreq = raw.info['sfreq']
             ds['T'] = ds['i_start'] / sfreq
             ds['SOA'] = Var(np.ediff1d(ds['T'].x, 0))
+
+        # add subject label
+        ds['subject'] = Factor([subject] * ds.n_cases, random=True)
         return ds
 
     def label_subjects(self, ds):
