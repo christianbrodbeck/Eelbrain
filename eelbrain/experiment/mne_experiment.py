@@ -127,7 +127,7 @@ temp = {
         # raw
         'experiment': '???',
         # use iir with "l-h" labels, "hp..." labels are legacy
-        'raw': ('clm', '0-40', '1-40', 'lp40', 'hp1-lp40'),
+        'raw': ('clm', '0-40', '1-40'),
         # key necessary for identifying raw file info (used for bad channels):
         'raw-key': '{subject}',
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
@@ -2131,10 +2131,6 @@ class MneExperiment(FileTree):
             raw.filter(None, 40, n_jobs=n_jobs, method='iir')
         elif raw_dst == '1-40':
             raw.filter(1, 40, n_jobs=n_jobs, method='iir')
-        elif raw_dst == 'lp40':
-            raw.filter(None, 40, n_jobs=n_jobs)
-        elif raw_dst == 'hp1-lp40':
-            raw.filter(1, 40, n_jobs=n_jobs)
         else:
             raise ValueError('raw = %r' % raw_dst)
 
