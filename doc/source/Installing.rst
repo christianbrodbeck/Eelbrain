@@ -27,13 +27,16 @@ Optional Dependencies
 
 The following modules provide additional functionality if they are installed:
     
+* `rpy2 <http://rpy.sourceforge.net>`_ - in order to install it, first install 
+  `R <http://www.r-project.org>`_, then use pip to install ``rpy2``: 
+  ``$ pip install rpy2``.
+* A working `LaTeX <http://www.latex-project.org/>`_ installation (enables 
+  exporting tables as pdf).
 * `wxPython <http://www.wxpython.org>`_ for using the GUI based on pyshell. 
   WxPython can be installed through the `EPD <https://www.enthought.com>`_. 
   `Currently it can not be installed through distutils 
   <http://stackoverflow.com/q/477573/166700>`_. 
   Installers are provided `here <http://www.wxpython.org/download.php>`_. 
-* A working `LaTeX <http://www.latex-project.org/>`_ installation (enables 
-  exporting tables as pdf).
 
 
 .. _obtain-source:
