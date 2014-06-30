@@ -4753,7 +4753,24 @@ class Model(object):
             table.cell('...')
         return table
 
-    # coding
+    # coding ---
+    @LazyProperty
+    def _effect_to_beta(self):
+        """An array idicating for each effect which beta weights it occupies
+
+        Returns
+        -------
+        effects_to_beta : np.ndarray (n_effects, 2)
+            For each effect, indicating the first index in betas and df
+        """
+        out = np.empty((len(self.effects), 2), np.int16)
+        beta_start = 1
+        for i, e in enumerate(self.effects):
+            out[i, 0] = beta_start
+            out[i, 1] = e.df
+            beta_start += e.df
+        return out
+
     @LazyProperty
     def as_effects(self):
         return np.hstack((e.as_effects for e in self.effects))
