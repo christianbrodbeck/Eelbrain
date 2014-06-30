@@ -572,8 +572,8 @@ class MneExperiment(FileTree):
         make_annot_for = set()
         if all_are_common_brain or collect_morphed_stcs:
             make_annot_for.add(common_brain)
-        if collect_ind_stcs and not all_are_common_brain:
-            make_annot_for.update(from_subjects.values())
+        if collect_ind_stcs:
+            make_annot_for.update(from_subjects.keys())
         for subject in make_annot_for:
             self.set(mrisubject=subject)
             self.make_annot()
