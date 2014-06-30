@@ -23,7 +23,6 @@ from itertools import izip
 import logging, os
 
 import numpy as np
-from numpy import dot
 from scipy.linalg import lstsq
 import scipy.stats
 
@@ -32,16 +31,14 @@ from ...utils import LazyProperty
 from ...utils.print_funcs import strdict
 from ..data_obj import (isvar, asvar, assub, isbalanced, isnestedin, hasrandom,
                         find_factors, Model, asmodel)
+from ._opt import _anova_fmaps, _anova_full_fmaps
 from .stats import ftest_p
 from . import test
 
 
-_max_array_size = 26  # constant for max array size in LMFitter
-
 # Method to use for least squares estimation:
 # (0) Use scipy.linalg.lstsq
 # (1) Use lstsq after Fox (2008) with caching of the model transformation
-_lmf_lsq = 1  # for the LMFitter class
 _lm_lsq = 0  # for the LM class
 
 
@@ -80,6 +77,7 @@ class hopkins_ems(dict):
         elif not isbalanced(X):
             logging.warn('X is not balanced')
 
+        self.x = X
         for e in X.effects:
             self[e] = _find_hopkins_ems(e, X)
 
@@ -90,6 +88,17 @@ class hopkins_ems(dict):
             vstr = '(%s)' % ''.join(e.name + ', ' for e in v)
             items[kstr] = vstr
         return strdict(items, fmt='%s')
+
+
+def _hopkins_ems_array(x):
+    """Construct E(MS) array
+    """
+    n = len(x.effects)
+    out = np.zeros((n, n), dtype=np.int8)
+    for row, erow in enumerate(x.effects):
+        for col, ecol in enumerate(x.effects):
+            out[row, col] = _hopkins_test(erow, ecol)
+    return out
 
 
 def _hopkins_test(e, e2):
@@ -108,8 +117,8 @@ def _hopkins_test(e, e2):
         e_factors = find_factors(e)
         e2_factors = find_factors(e2)
 
-        a = np.all([(f in e_factors or f.random) for f in e2_factors])
-        b = np.all([(f in e2_factors or isnestedin(e2, f)) for f in e_factors])
+        a = all((f in e_factors or f.random) for f in e2_factors)
+        b = all((f in e2_factors or isnestedin(e2, f)) for f in e_factors)
 
         return a and b
 
@@ -394,21 +403,24 @@ class LMFitter(object):
 
         full_model = (x.df_error == 0)
         if full_model:
-            E_MS = hopkins_ems(x)
-            df_den = {e: sum(e_.df for e_ in E_MS[e]) for e in x.effects}
+            e_ms = hopkins_ems(x)
+            df_den = {e: sum(e_.df for e_ in e_ms[e]) for e in x.effects}
             effects = tuple(e for e in x.effects if df_den[e])
+            dfs_denom = [df_den[e] for e in effects]
+            e_ms_array = _hopkins_ems_array(x)
         elif hasrandom(x):
             err = ("Models containing random effects need to be fully "
                    "specified.")
             raise NotImplementedError(err)
         else:
-            E_MS = None
+            e_ms = None
             effects = x.effects
             df_den = {e: x.df_error for e in effects}
+            e_ms_array = np.empty((0, 0), np.int8)
+            dfs_denom = [x.df_error] * len(effects)
 
         # pre-compute dfs
         dfs_nom = [e.df for e in effects]
-        dfs_denom = [df_den[e] for e in effects]
 
         # determine how many tests can be done in one call
         self._max_n_tests = int(2 ** _max_array_size // x.df ** 2)
@@ -429,26 +441,9 @@ class LMFitter(object):
         self.df_den = df_den
         self.dfs_nom = dfs_nom
         self.dfs_denom = dfs_denom
-        self.E_MS = E_MS
-        self._flat_f_maps = None
-
-        # preallocate large arrays
-        self._preallocate_internals(y_shape)
-
-    def _preallocate_internals(self, y_shape):
-        self.y_shape = y_shape
-        if y_shape is None:
-            self._buffer_obt = None
-            self._buffer_ot = None
-            self._buffer_bt = None
-            self._buffer_t = None
-        else:
-            n_obs, n_betas = self._x_full.shape
-            n_tests = min(self._max_n_tests, np.product(y_shape[1:]))
-            self._buffer_obt = np.empty((n_obs, n_betas, n_tests))
-            self._buffer_ot = np.empty((n_obs, n_tests))
-            self._buffer_bt = np.empty((n_betas, n_tests))
-            self._buffer_t = np.empty(n_tests)
+        self.e_ms = e_ms
+        self._e_ms_array = e_ms_array
+        self._flat_f_map = None
 
     def __repr__(self):
         return 'LMFitter((%s))' % self.x.name
@@ -480,114 +475,45 @@ class LMFitter(object):
             raise ValueError("first dimension of Y must contain cases")
         if len(original_shape) > 2:
             Y = Y.reshape((n_obs, -1))
-        out_shape = original_shape[1:]
-        n_tests = Y.shape[1]
 
         # find result container
         if out is None:
-            if self._flat_f_maps is None:
-                f_maps = [np.empty(out_shape) for _ in xrange(self.n_effects)]
-                flat_maps = tuple(f_map.ravel() for f_map in f_maps)
+            if self._flat_f_map is None:
+                shape = (self.n_effects,) + original_shape[1:]
+                f_map = np.empty(shape)
+                flat_fmap = f_map.reshape((self.n_effects, -1))
             else:
-                f_maps = None
-                flat_maps = self._flat_f_maps
+                f_map = None
+                flat_fmap = self._flat_f_map
         else:
-            f_maps = None
-            flat_maps = out
+            f_map = None
+            flat_fmap = out
 
-        # Split Y that are too long
-        if n_tests > self._max_n_tests:
-            splits = xrange(0, n_tests, self._max_n_tests)
+        if self.full_model:
+            _anova_full_fmaps(Y, self._x_full, self._Xsinv, flat_fmap,
+                              self.x._effect_to_beta, self._e_ms_array)
+        else:
+            _anova_fmaps(Y, self._x_full, self._Xsinv, flat_fmap,
+                         self.x._effect_to_beta, self.x.df_error)
 
-            msg = ("LMFitter: Y.shape=%s; splitting Y at %s" %
-                   (Y.shape, list(splits)))
-            logging.debug(msg)
-
-            # compute f-maps
-            for s in splits:
-                s1 = s + self._max_n_tests
-                y_sub = Y[:, s:s1]
-                out_ = tuple(f_map[s:s1] for f_map in flat_maps)
-                self.map(y_sub, out_)
-
-            return f_maps
-
-        # do the actual estimation
-        x = self.x
-        x_full = self._x_full
-        full_model = self.full_model
-
-        # pre-allocated memory
-        _buffer_obt = self._buffer_obt
-        _buffer_ot = self._buffer_ot
-        _buffer_bt = self._buffer_bt
-        _buffer_t = self._buffer_t
-        if _buffer_obt is not None and n_tests != _buffer_obt.shape[2]:
-            _buffer_obt = _buffer_obt[:, :, :n_tests]
-            _buffer_ot = _buffer_ot[:, :n_tests]
-            _buffer_t = _buffer_t[:n_tests]
-            _buffer_bt = None  # needs to be C-contiguous
-
-        # beta: coefficient X test
-        if _lmf_lsq == 0:
-            beta, SS_res, _, _ = lstsq(x_full, Y)
-        elif _lmf_lsq == 1:
-            beta = dot(self._Xsinv, Y, _buffer_bt)
-
-        # values: observation x coefficient x test
-        values = np.multiply(beta[None, :, :], x_full[:, :, None], _buffer_obt)
-
-        # MS of the residuals
-        if not full_model:
-            df_res = x.df_error
-            if _lmf_lsq == 1:
-                Yp = values.sum(1)  # case x test
-                SS_res = ((Y - Yp) ** 2).sum(0)
-            MS_d = SS_res / df_res
-
-        # collect MS of effects
-        MSs = {}
-        for e in x.effects:
-            index = x.beta_index[e]
-            # observation x test
-            Yp = np.sum(values[:, index, :], 1, out=_buffer_ot)
-            Sq = np.power(Yp, 2, Yp)
-            # test
-            SS = np.sum(Sq, 0, out=_buffer_t)
-            MS = SS / e.df
-            MSs[e] = MS
-
-        # F Tests
-        # n = numerator, d = denominator
-        for e_n, f_map in izip(self.effects, flat_maps):
-            if full_model:
-                E_MS_cmp = self.E_MS[e_n]
-                MS_d = _buffer_t  # re-use memory
-                MS_d.fill(0)
-                for e_d in E_MS_cmp:
-                    MS_d += MSs[e_d]
-
-            MS_n = MSs[e_n]
-            np.divide(MS_n, MS_d, f_map)
-
-        return f_maps
+        return f_map
 
     def p_maps(self, f_maps):
         """Convert F-maps for uncorrected p-maps
 
         Parameters
         ----------
-        f_maps : list
-            List of f_maps in the same order as self.effects, as returned by
-            self.map().
+        f_maps : numpy array (n_effects, ...)
+            Maps of f-values as returned by self.map().
 
         Returns
         -------
-        p_maps : list, optional
-            A list with maps of uncorrected p values (order corresponding to
-            self.effects).
+        p_maps : numpy array (n_effects, ...)
+            Maps of uncorrected p values (corresponding to f_maps).
         """
-        p_maps = map(ftest_p, f_maps, self.dfs_nom, self.dfs_denom)
+        p_maps = np.empty_like(f_maps)
+        for i in xrange(len(f_maps)):
+            p_maps[i] = ftest_p(f_maps[i], self.dfs_nom[i], self.dfs_denom[i])
         return p_maps
 
     def preallocate(self, y_shape):
@@ -603,11 +529,10 @@ class LMFitter(object):
         if y_shape is None:
             err = "Can only preallocate output of LMFitter with known y_shape"
             raise RuntimeError(err)
-        self._preallocate_internals(y_shape)
-        out_shape = y_shape[1:]
-        f_maps = [np.empty(out_shape) for _ in xrange(self.n_effects)]
-        self._flat_f_maps = tuple(f_map.ravel() for f_map in f_maps)
-        return f_maps
+        shape = (self.n_effects,) + y_shape[1:]
+        f_map = np.empty(shape)
+        self._flat_f_map = f_map.reshape((self.n_effects, -1))
+        return f_map
 
 
 class incremental_F_test:

@@ -28,7 +28,7 @@ def run_on_lm_fitter(y, x, ds):
     x = ds.eval(x)
     fitter = LMFitter(x, y.shape)
     fmaps = fitter.map(y)
-    fs = [f_[0] for f_ in fmaps]
+    fs = fmaps[:, 0]
     return fs
 
 
