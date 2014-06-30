@@ -3694,6 +3694,63 @@ class Dataset(collections.OrderedDict):
                 ds[name] = Var(values)
         return ds
 
+    @classmethod
+    def from_r(cls, name):
+        """Create a Dataset from an R data frame through ``rpy2``
+
+        Parameters
+        ----------
+        name : str
+            Name of the dataframe in R.
+
+        Examples
+        --------
+        Getting an example dataset from R:
+
+        >>> from rpy2.robjects import r
+        >>> r('data(sleep)')
+        >>> ds = Dataset.from_r('sleep')
+        >>> print ds
+        extra   group   ID
+        ------------------
+        0.7     1       1
+        -1.6    1       2
+        -0.2    1       3
+        -1.2    1       4
+        -0.1    1       5
+        3.4     1       6
+        3.7     1       7
+        0.8     1       8
+        0       1       9
+        2       1       10
+        1.9     2       1
+        0.8     2       2
+        1.1     2       3
+        0.1     2       4
+        -0.1    2       5
+        4.4     2       6
+        5.5     2       7
+        1.6     2       8
+        4.6     2       9
+        3.4     2       10
+        """
+        from rpy2 import robjects as ro
+        df = ro.r[name]
+        if not isinstance(df, ro.DataFrame):
+            raise ValueError("R object %r is not a DataFrame")
+        ds = Dataset(name=name)
+        for item_name, item in df.items():
+            if isinstance(item, ro.FloatVector):
+                x = np.array(item)
+                ds[item_name] = Var(x)
+            elif isinstance(item, ro.FactorVector):
+                x = np.array(item)
+                labels = {i:l for i, l in enumerate(item.levels, 1)}
+                ds[item_name] = Factor(x, labels=labels)
+            else:
+                raise NotImplementedError(str(type(item)))
+        return ds
+
     def get_case(self, i):
         "returns the i'th case as a dictionary"
         return dict((k, v[i]) for k, v in self.iteritems())

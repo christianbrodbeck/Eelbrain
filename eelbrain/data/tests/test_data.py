@@ -524,6 +524,20 @@ def test_io_txt():
     assert_dataset_equal(ds, ds2, decimal=6)
 
 
+def test_r():
+    "Test interaction with R thorugh rpy2"
+    from rpy2.robjects import r
+
+    r("data(sleep)")
+    ds = Dataset.from_r("sleep")
+    assert_equal(ds.name, 'sleep')
+    extra = (0.7, -1.6, -0.2, -1.2, -0.1, 3.4, 3.7, 0.8, 0.0, 2.0, 1.9, 0.8,
+             1.1, 0.1, -0.1, 4.4, 5.5, 1.6, 4.6, 3.4)
+    assert_array_equal(ds.eval('extra'), extra)
+    assert_array_equal(ds.eval('ID'), map(str, xrange(1, 11)) * 2)
+    assert_array_equal(ds.eval('group'), ['1'] * 10 + ['2'] * 10)
+
+
 def test_source_space():
     "Test SourceSpace Dimension"
     subject = 'fsaverage'
