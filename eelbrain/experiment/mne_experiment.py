@@ -238,7 +238,13 @@ class MneExperiment(FileTree):
               'bl': dict(sel_epoch='epoch', tmin=-0.1, tmax=0)}
     # Rejection
     # =========
-    # how to reject data epochs.
+    # eog_sns: The sensors to plot separately in the rejection GUI. The default
+    # is the two MEG sensors closest to the eyes for Abu Dhabi KIT data. For NY
+    # KIT data set _eog_sns = ['MEG 143', 'MEG 151']
+    _eog_sns = ['MEG 087', 'MEG 130']
+    #
+    # epoch_rejection dict:
+    #
     # kind : 'auto', 'manual', 'make'
     #     How the rejection is derived; 'auto': use the parameters to do the
     #     selection on the fly; 'manual': manually create a rejection file (use
@@ -249,11 +255,6 @@ class MneExperiment(FileTree):
     #
     # For manual rejection
     # ^^^^^^^^^^^^^^^^^^^^
-    # eog_sns : list of str
-    #     The sensors to plot separately in the rejection GUI.
-    #     The default is the two MEG sensors closest to the eyes
-    #     for Abu Dhabi KIT data. For NY KIT data those are
-    #     ['MEG 143', 'MEG 151'].
     # decim : int
     #     Decim factor for the rejection GUI (default is 5).
     #
@@ -267,7 +268,6 @@ class MneExperiment(FileTree):
     #     automatically.
     _epoch_rejection = {'': {'kind': None},
                         'man': {'kind': 'manual',
-                                'eog_sns': ['MEG 087', 'MEG 130'],
                                 'decim': 5,
                                 },
                         'et': {'kind': 'auto',
@@ -2165,8 +2165,7 @@ class MneExperiment(FileTree):
         path = self.get('rej-file', mkdir=True)
 
         from ..gui import SelectEpochs
-        mark = rej_args.get('eog_sns', None)
-        SelectEpochs(ds, data='meg', path=path, vlim=2e-12, mark=mark,
+        SelectEpochs(ds, data='meg', path=path, vlim=2e-12, mark=self._eog_sns,
                      **kwargs)
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
