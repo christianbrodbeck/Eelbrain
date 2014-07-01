@@ -5,14 +5,20 @@ Installing
 
 The easiest way to use the Eelbrain library is to install it from the 
 `Python Package Index <https://pypi.python.org/pypi/eelbrain>`_ 
-with easy_install::
+with ``easy_install``::
 
-    $ sudo easy_install eelbrain
+    $ easy_install eelbrain
 
 And it can be updated similarly::
 
-    $ sudo easy_install -U eelbrain
-    
+    $ easy_install -U eelbrain
+
+.. note:: 
+    Since version 0.3 Eelbrain comes with a C extension. For Intel Macs, 
+    ``easy_install`` has access to a precompiled "egg" and should install 
+    automatically as before. ``Pip`` on the other hand always compiles from 
+    source and requires a recent version of XCode.
+
 
 .. _dependencies:
 

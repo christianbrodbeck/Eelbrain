@@ -16,5 +16,6 @@ test:
 pypi:
 	rm -rf build dist doc/build doc/source/generated
 	python setup.py sdist upload
+	python setup.py bdist_egg upload
 	python setup.py build_sphinx
 	python setup.py upload_docs
