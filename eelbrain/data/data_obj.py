@@ -3780,7 +3780,7 @@ class Dataset(collections.OrderedDict):
         return self.aggregate(X, drop_empty, name, count, drop_bad, drop)
 
     def aggregate(self, X, drop_empty=True, name='{name}', count='n',
-                  drop_bad=False, drop=(), equal_count=False):
+                  drop_bad=False, drop=(), equal_count=False, never_drop=()):
         """
         Return a Dataset with one case for each cell in X.
 
@@ -3808,6 +3808,9 @@ class Dataset(collections.OrderedDict):
             Make sure the same number of rows go into each average. First, the
             cell with the smallest number of rows is determined. Then, for each
             cell, rows beyond that number are dropped.
+        never_drop : sequence of str
+            If the drop_bad=True setting would lead to dropping a variable
+            whose name is in never_drop, raise an error instead.
 
         Notes
         -----
@@ -3849,7 +3852,7 @@ class Dataset(collections.OrderedDict):
                         err = ("Unsupported value type: %s" % type(v))
                         raise TypeError(err)
             except:
-                if drop_bad:
+                if drop_bad and k not in never_drop:
                     pass
                 else:
                     raise

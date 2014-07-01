@@ -1720,7 +1720,8 @@ class MneExperiment(FileTree):
                 ds = ds[ds_idx]
 
             dss[i] = ds.aggregate(model, drop_bad=True, drop=drop,
-                                  equal_count=equal_count)
+                                  equal_count=equal_count,
+                                  never_drop=('epochs',))
 
         if len(dss) == 1:
             ds = dss[0]
