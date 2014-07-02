@@ -372,90 +372,45 @@ class LM(object):
         return self.Y.x - Y_est
 
 
+def _nd_anova(x):
+    "Create an appropriate anova mapper"
+    x = asmodel(x)
+    if x.df_error == 0:
+        return _FullNDANOVA(x)
+    elif hasrandom(x):
+        err = ("Models containing random effects need to be fully "
+               "specified.")
+        raise NotImplementedError(err)
+    elif isbalanced(x):
+        return _BalancedNDANOVA(x)
+    else:
+        return _IncrementalNDANOVA(x)
 
-class LMFitter(object):
+
+class _NDANOVA(object):
     """
     Object for efficiently fitting a model to multiple dependent variables.
-
-    Notes
-    -----
-    Currently only implemented for balanced models.
-    E(MS) for F statistic after Hopkins (1976)
-
     """
-    def __init__(self, x, y_shape=None):
-        """
-        Object for efficiently fitting a model to multiple dependent variables.
-
-        Parameters
-        ----------
-        x : Model
-            Model which will be fitted to the data.
-        y_shape : None | tuple
-            Data shape (if known) will allow preallocation of containers for
-            intermediate results.
-        """
-        # prepare input
-        x = asmodel(x)
-        if not isbalanced(x):
-            raise NotImplementedError("Unbalanced models")
-        self._x_full = x.full
-
-        full_model = (x.df_error == 0)
-        if full_model:
-            e_ms = hopkins_ems(x)
-            df_den = {e: sum(e_.df for e_ in e_ms[e]) for e in x.effects}
-            effects = tuple(e for e in x.effects if df_den[e])
-            dfs_denom = [df_den[e] for e in effects]
-            e_ms_array = _hopkins_ems_array(x)
-        elif hasrandom(x):
-            err = ("Models containing random effects need to be fully "
-                   "specified.")
-            raise NotImplementedError(err)
-        else:
-            e_ms = None
-            effects = x.effects
-            df_den = {e: x.df_error for e in effects}
-            e_ms_array = np.empty((0, 0), np.int8)
-            dfs_denom = [x.df_error] * len(effects)
-
-        # pre-compute dfs
-        dfs_nom = [e.df for e in effects]
-
-        # determine how many tests can be done in one call
-        self._max_n_tests = int(2 ** _max_array_size // x.df ** 2)
-
-        if _lmf_lsq == 0:
-            pass
-        elif _lmf_lsq == 1:
-            self._Xsinv = x.Xsinv
-        else:
-            raise ValueError('version')
-
-        # store public attributes
+    def __init__(self, x, effects, dfs_denom):
         self.x = x
-        self.n_obs = len(x)
-        self.full_model = full_model
+        self._n_obs = len(x)
         self.effects = effects
         self.n_effects = len(effects)
-        self.df_den = df_den
-        self.dfs_nom = dfs_nom
+        self.dfs_nom = [e.df for e in effects]
         self.dfs_denom = dfs_denom
-        self.e_ms = e_ms
-        self._e_ms_array = e_ms_array
         self._flat_f_map = None
 
     def __repr__(self):
-        return 'LMFitter((%s))' % self.x.name
+        return '%s(%s)' % (self.__class__.__name__, self.x.name)
 
-    def map(self, Y, out=None):
+    def map(self, y):
         """
         Fits the model to multiple dependent variables and returns arrays of
         F-values and optionally p-values.
 
         Parameters
         ----------
-        Y : np.array
+        y : np.array
             Assumes that the first dimension of Y provides cases.
             Other than that, shape is free to vary and output shape will match
             input shape.
@@ -468,35 +423,28 @@ class LMFitter(object):
         f_maps : list
             A list with maps of F values (order corresponding to self.effects).
         """
-        n_obs = self.n_obs
-
-        original_shape = Y.shape
-        if original_shape[0] != n_obs:
-            raise ValueError("first dimension of Y must contain cases")
-        if len(original_shape) > 2:
-            Y = Y.reshape((n_obs, -1))
+        if y.shape[0] != self._n_obs:
+            msg = ("Y has wrong number of observations (%i, model has %i)" %
+                   (y.shape[0], self._n_obs))
+            raise ValueError(msg)
 
         # find result container
-        if out is None:
-            if self._flat_f_map is None:
-                shape = (self.n_effects,) + original_shape[1:]
-                f_map = np.empty(shape)
-                flat_fmap = f_map.reshape((self.n_effects, -1))
-            else:
-                f_map = None
-                flat_fmap = self._flat_f_map
+        if self._flat_f_map is None:
+            shape = (self.n_effects,) + y.shape[1:]
+            f_map = np.empty(shape)
+            flat_f_map = f_map.reshape((self.n_effects, -1))
         else:
             f_map = None
-            flat_fmap = out
+            flat_f_map = self._flat_f_map
 
-        if self.full_model:
-            _anova_full_fmaps(Y, self._x_full, self._Xsinv, flat_fmap,
-                              self.x._effect_to_beta, self._e_ms_array)
-        else:
-            _anova_fmaps(Y, self._x_full, self._Xsinv, flat_fmap,
-                         self.x._effect_to_beta, self.x.df_error)
+        if y.ndim > 2:
+            y = y.reshape((self._n_obs, -1))
 
+        self._map(y, flat_f_map)
         return f_map
+
+    def _map(self, y, flat_f_map):
+        raise NotImplementedError
 
     def p_maps(self, f_maps):
         """Convert F-maps for uncorrected p-maps
@@ -519,6 +467,11 @@ class LMFitter(object):
     def preallocate(self, y_shape):
         """Pre-allocate an output array container.
 
+        Parameters
+        ----------
+        y_shape : tuple
+            Data shape, will allow preallocation of containers for results.
+
         Returns
         -------
         f_maps : array
@@ -526,13 +479,54 @@ class LMFitter(object):
             content of this array will change (and map() will not return
             anything)
         """
-        if y_shape is None:
-            err = "Can only preallocate output of LMFitter with known y_shape"
-            raise RuntimeError(err)
         shape = (self.n_effects,) + y_shape[1:]
         f_map = np.empty(shape)
         self._flat_f_map = f_map.reshape((self.n_effects, -1))
         return f_map
+
+
+class _BalancedNDANOVA(_NDANOVA):
+    "For balanced but not fully specified models"
+    def __init__(self, x):
+        effects = x.effects
+        dfs_denom = (x.df_error,) * len(effects)
+        _NDANOVA.__init__(self, x, effects, dfs_denom)
+
+    def _map(self, y, flat_f_map):
+        x = self.x
+        _anova_fmaps(y, x.full, x.Xsinv, flat_f_map, x._effect_to_beta,
+                     x.df_error)
+
+
+class _FullNDANOVA(_NDANOVA):
+    """for balanced models.
+    E(MS) for F statistic after Hopkins (1976)
+    """
+    def __init__(self, x):
+        """
+        Object for efficiently fitting a model to multiple dependent variables.
+
+        Parameters
+        ----------
+        x : Model
+            Model which will be fitted to the data.
+        y_shape : None | tuple
+            Data shape (if known) will allow preallocation of containers for
+            intermediate results.
+        """
+        e_ms = hopkins_ems(x)
+        df_den = {e: sum(e_.df for e_ in e_ms[e]) for e in x.effects}
+        effects = tuple(e for e in x.effects if df_den[e])
+        dfs_denom = [df_den[e] for e in effects]
+        _NDANOVA.__init__(self, x, effects, dfs_denom)
+
+        self.e_ms = e_ms
+        self._e_ms_array = _hopkins_ems_array(x)
+
+    def _map(self, y, flat_f_map):
+        x = self.x
+        _anova_full_fmaps(y, x.full, x.Xsinv, flat_f_map, x._effect_to_beta,
+                          self._e_ms_array)
 
 
 class incremental_F_test:

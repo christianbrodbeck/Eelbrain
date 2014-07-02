@@ -8,7 +8,7 @@ from numpy.testing import assert_allclose
 
 from eelbrain.data import Dataset, datasets
 from eelbrain.data.test import anova
-from eelbrain.data.stats.glm import LMFitter
+from eelbrain.data.stats.glm import _nd_anova
 
 
 @nottest
@@ -26,7 +26,7 @@ def run_on_lm_fitter(y, x, ds):
     y = ds.eval(y)
     y = np.hstack((y.x[:, newaxis], y.x[:, newaxis]))
     x = ds.eval(x)
-    fitter = LMFitter(x, y.shape)
+    fitter = _nd_anova(x)
     fmaps = fitter.map(y)
     fs = fmaps[:, 0]
     return fs
@@ -79,7 +79,7 @@ def test_anova_r_sleep():
 
 
 def test_lmfitter():
-    "Test the LMFitter class"
+    "Test the _nd_anova class"
     ds = datasets.get_rand()
 
     # independent, residuals vs. Hopkins
@@ -87,12 +87,12 @@ def test_lmfitter():
     y_shape = y.shape
 
     x = ds.eval("A * B")
-    lm = LMFitter(x, y_shape)
+    lm = _nd_anova(x)
     f_maps = lm.map(y)
     p_maps = lm.p_maps(f_maps)
 
     x_full = ds.eval("A * B + ind(A%B)")
-    lm_full = LMFitter(x_full, y_shape)
+    lm_full = _nd_anova(x_full)
     f_maps_full = lm_full.map(y)
     p_maps_full = lm_full.p_maps(f_maps)
 
@@ -103,7 +103,7 @@ def test_lmfitter():
 
     # repeated measures
     x = ds.eval("A * B * rm")
-    lm = LMFitter(x, y_shape)
+    lm = _nd_anova(x)
     f_maps = lm.map(y)
     p_maps = lm.p_maps(f_maps)
 

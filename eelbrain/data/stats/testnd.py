@@ -37,7 +37,7 @@ from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                         NDVar, Var, Celltable, cellname, combine, Categorial,
                         UTS)
-from .glm import LMFitter
+from .glm import _nd_anova
 from ._opt import merge_labels
 from .permutation import resample, _resample_params
 from .stats import ftest_f, ftest_p
@@ -1408,7 +1408,7 @@ class anova(_TestResult):
     p : list
         Maps of p values.
     """
-    _state_specific = ('X', 'pmin', '_effects', 'df_den', 'f')
+    _state_specific = ('X', 'pmin', '_effects', '_dfs_denom', 'f')
 
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
@@ -1457,9 +1457,9 @@ class anova(_TestResult):
         if match is not None:
             match = ascategorial(match, sub, ds)
 
-        lm = LMFitter(X, Y.x.shape)
+        lm = _nd_anova(X)
         effects = lm.effects
-        df_den = lm.df_den
+        dfs_denom = lm.dfs_denom
         fmaps = lm.map(Y.x)
 
         if samples is None:
@@ -1470,7 +1470,8 @@ class anova(_TestResult):
                 msg = "Only one of pmin, fmin and tfce can be specified"
                 raise ValueError(msg)
             elif pmin is not None:
-                thresholds = (ftest_f(pmin, e.df, df_den[e]) for e in effects)
+                thresholds = (ftest_f(pmin, e.df, df_den) for e, df_den in
+                              izip(effects, dfs_denom))
             elif fmin is not None:
                 thresholds = (abs(fmin) for _ in xrange(len(effects)))
             elif tfce:
@@ -1502,8 +1503,8 @@ class anova(_TestResult):
         dims = Y.dims[1:]
 
         f = []
-        for e, fmap in izip(effects, fmaps):
-            f0, f1, f2 = ftest_f((0.05, 0.01, 0.001), e.df, df_den[e])
+        for e, fmap, df_den in izip(effects, fmaps, dfs_denom):
+            f0, f1, f2 = ftest_f((0.05, 0.01, 0.001), e.df, df_den)
             info = _cs.stat_info('f', f0, f1, f2)
             f_ = NDVar(fmap, dims, info, e.name)
             f.append(f_)
@@ -1524,7 +1525,7 @@ class anova(_TestResult):
 
         self.name = "ANOVA"
         self._effects = effects
-        self.df_den = df_den
+        self._dfs_denom = dfs_denom
         self.f = f
 
         self._cdist = cdists
@@ -1537,6 +1538,9 @@ class anova(_TestResult):
         if hasattr(self, 'effects'):
             self._effects = self.effects
         self.effects = tuple(e.name for e in self._effects)
+        if hasattr(self, 'df_den'):
+            self._dfs_denom = tuple(self.df_den[e] for e in self.effects)
+            del self.df_den
 
         # clusters
         if cdists is not None:
@@ -1547,9 +1551,9 @@ class anova(_TestResult):
         pmin = self.pmin or 0.05
         if self.samples:
             f_and_clusters = []
-            for e, fmap, cdist in izip(self._effects, self.f, cdists):
+            for e, fmap, df_den, cdist in izip(self._effects, self.f, self._dfs_denom, cdists):
                 # create f-map with cluster threshold
-                f0 = ftest_f(pmin, e.df, self.df_den[e])
+                f0 = ftest_f(pmin, e.df, df_den)
                 info = _cs.stat_info('f', f0)
                 f_ = NDVar(fmap.x, fmap.dims, info, e.name)
                 # add overlay with cluster
@@ -1561,9 +1565,9 @@ class anova(_TestResult):
 
         # uncorrected probability
         p_uncorr = []
-        for e, f in izip(self._effects, self.f):
+        for e, f, df_den in izip(self._effects, self.f, self._dfs_denom):
             info = _cs.sig_info()
-            pmap = ftest_p(f.x, e.df, self.df_den[e])
+            pmap = ftest_p(f.x, e.df, df_den)
             p_ = NDVar(pmap, f.dims, info, e.name)
             p_uncorr.append(p_)
         self.p_uncorrected = p_uncorr
