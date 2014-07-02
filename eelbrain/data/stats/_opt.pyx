@@ -211,3 +211,74 @@ def _anova_fmaps(double[:, :] y, double[:, :] x, double[:, :] xsinv,
                 SS += v ** 2
             MS = SS / df
             f_map[i_effect, i] = MS / MS_res
+
+
+def _ss(double[:,:] y, double[:] ss):
+    """Compute sum squares in the data (after subtracting the intercept)
+
+    Parameters
+    ----------
+    y : array (n_cases, n_tests)
+        Dependent Measurement.
+    ss : array (n_tests,)
+        container for output.
+    """
+    cdef int i, case
+    cdef double mean, SS
+
+    cdef int n_tests = y.shape[1]
+    cdef int n_cases = y.shape[0]
+
+    for i in range(n_tests):
+        # find mean
+        mean = 0
+        for case in range(n_cases):
+            mean += y[case, i]
+        mean /= n_cases
+
+        # find SS of residuals
+        SS = 0
+        for case in range(n_cases):
+            SS += (y[case, i] - mean) ** 2
+
+        ss[i] = SS
+
+
+def _lm_ss_res(double[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
+    """Fit a linear model and compute the residual sum squares
+
+    Parameters
+    ----------
+    y : array (n_cases, n_tests)
+        Dependent Measurement.
+    x : array (n_cases, n_betas)
+        model matrix for the model.
+    xsinv : array
+        xsinv for x.
+    ss : array (n_tests,)
+        container for output.
+    """
+    cdef int i, i_beta, case
+    cdef double predicted_y, SS_res
+
+    cdef int n_tests = y.shape[1]
+    cdef int n_cases = y.shape[0]
+    cdef int df_x = xsinv.shape[0]
+    cdef double [:] betas = cvarray((df_x,), sizeof(double), 'd')
+
+    for i in range(n_tests):
+        # betas (xsinv * y)
+        for i_beta in range(df_x):
+            betas[i_beta] = 0
+            for case in range(n_cases):
+                betas[i_beta] += xsinv[i_beta, case] * y[case, i]
+
+        # predict y and find residual sum squares
+        SS_res = 0
+        for case in range(n_cases):
+            predicted_y = 0
+            for i_beta in range(df_x):
+                predicted_y += x[case, i_beta] * betas[i_beta]
+            SS_res += (y[case, i] - predicted_y) ** 2
+
+        ss[i] = SS_res

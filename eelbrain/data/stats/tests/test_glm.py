@@ -71,11 +71,11 @@ def test_anova_r_sleep():
     ds2 = ds[1:]
     print r('sleep2 <- subset(sleep, (group == 2) | (ID != 1))')
     aov = anova('extra', 'group', ds=ds2)
-#     fs = run_on_lm_fitter('extra', 'group', ds2)
+    fs = run_on_lm_fitter('extra', 'group', ds2)
     print r('sleep2.aov <- aov(extra ~ group, sleep2)')
     print r('sleep2.summary <- summary(sleep2.aov)')
     r_res = r['sleep2.summary'][0]
-    assert_f_test_equal(aov.f_tests[0], r_res, 0)
+    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0])
 
 
 def test_lmfitter():

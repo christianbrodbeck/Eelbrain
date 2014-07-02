@@ -31,7 +31,7 @@ from ...utils import LazyProperty
 from ...utils.print_funcs import strdict
 from ..data_obj import (isvar, asvar, assub, isbalanced, isnestedin, hasrandom,
                         find_factors, Model, asmodel)
-from ._opt import _anova_fmaps, _anova_full_fmaps
+from ._opt import _anova_fmaps, _anova_full_fmaps, _lm_ss_res, _ss
 from .stats import ftest_p
 from . import test
 
@@ -529,6 +529,144 @@ class _FullNDANOVA(_NDANOVA):
                           self._e_ms_array)
 
 
+class _IncrementalNDANOVA(_NDANOVA):
+    def __init__(self, x):
+        if hasrandom(x):
+            raise NotImplementedError("Models containing random effects")
+        comparisons, models, skipped = _incremental_comparisons(x)
+        effects = tuple(item[0] for item in comparisons)
+        dfs_denom = (x.df_error,) * len(effects)
+        _NDANOVA.__init__(self, x, effects, dfs_denom)
+
+        self._comparisons = comparisons
+        self._models = models
+        self._skipped = skipped
+        self._SS_diff = None
+        self._MS_e = None
+        self._SS_res = None
+
+    def preallocate(self, y_shape):
+        _NDANOVA.preallocate(self, y_shape)
+
+        shape = self._flat_f_map.shape[1]
+        self._SS_diff = np.empty(shape)
+        self._MS_e = np.empty(shape)
+        self._SS_res = {}
+        for i in self._models:
+            self._SS_res[i] = np.empty(shape)
+
+    def _map(self, y, flat_f_map):
+        if self._SS_diff is None:
+            shape = y.shape[1]
+            SS_diff = MS_diff = np.empty(shape)
+            MS_e = np.empty(shape)
+            SS_res = {}
+            for i in self._models:
+                SS_res[i] = np.empty(shape)
+        else:
+            SS_diff = MS_diff = self._SS_diff
+            MS_e = self._MS_e
+            SS_res = self._SS_res
+
+        # calculate SS_res and MS_res for all models
+        for i, x in self._models.iteritems():
+            ss = SS_res[i]
+            if x is None:
+                _ss(y, ss)
+            else:
+                _lm_ss_res(y, x.full, x.Xsinv, ss)
+
+        # incremental comparisons
+        np.divide(SS_res[0], self.x.df_error, MS_e)
+        for i in xrange(self.n_effects):
+            e, i1, i0 = self._comparisons[i]
+            np.subtract(SS_res[i0], SS_res[i1], SS_diff)
+            np.divide(SS_diff, e.df, MS_diff)
+            np.divide(MS_diff, MS_e, flat_f_map[i])
+
+
+def _incremental_comparisons(x):
+    """
+    Parameters
+    ----------
+    x : Model
+        Model for which to derive incremental comparisons.
+
+    Returns
+    -------
+    comparisons : list of (effect, int model_1, int model_0) tuples
+        Comparisons to test each effect in x.
+    models : dict {int -> Model}
+        Models as indexed from comparisons.
+    skipped : list of (effect, reason) tuples
+        Effects that can't be tested.
+    """
+    comparisons = []  # (Effect, int m1, int m0)
+    model_idxs = {}  # effect tuple -> ind
+    models = {}  # int -> Model
+    next_idx = 1
+
+    # add full model
+    model_idxs[tuple(x.effects)] = 0
+    models[0] = x
+
+    # Find comparisons for each effect
+    skipped = []
+    for e_test in x.effects:
+        # find effects in model 0
+        effects = []
+        for e in x.effects:
+            # determine whether e_test
+            if e is e_test:
+                pass
+            elif is_higher_order(e, e_test):
+                pass
+            else:
+                effects.append(e)
+
+        # get model 0
+        e_tuple = tuple(effects)
+        if e_tuple in model_idxs:
+            idx0 = model_idxs[e_tuple]
+            model0 = models[idx0]
+        else:
+            idx0 = next_idx
+            next_idx += 1
+            model_idxs[e_tuple] = idx0
+            if len(effects):
+                model0 = Model(*effects)
+            else:
+                model0 = None
+
+        # test whether comparison is feasible
+        if model0 is None:
+            df_res_0 = x.df_total
+        else:
+            df_res_0 = model0.df_error
+
+        if e_test.df > df_res_0:
+            skipped.append((e_test, "overspecified"))
+            continue
+        elif idx0 not in models:
+            models[idx0] = model0
+
+        # get model 1
+        effects.append(e_test)
+        e_tuple = tuple(effects)
+        if e_tuple in model_idxs:
+            idx1 = model_idxs[e_tuple]
+        else:
+            idx1 = next_idx
+            next_idx += 1
+            model_idxs[e_tuple] = idx1
+            models[idx1] = Model(*effects)
+
+        # store comparison
+        comparisons.append((e_test, idx1, idx0))
+
+    return comparisons, models, skipped
+
+
 class incremental_F_test:
     """
     Attributes
@@ -673,9 +811,8 @@ class anova(object):
         """
 #  TODO:
 #         - sort model
-#          - reuse lms which are used repeatedly
-#          - provide threshold for including interaction effects when testing lower
-#            level effects
+#         - provide threshold for including interaction effects when testing lower
+#           level effects
 #
 #        Problem with unbalanced models
 #        ------------------------------
@@ -733,56 +870,48 @@ class anova(object):
                 MS_e = full_lm.MS_res
                 df_e = full_lm.df_res
 
+            comparisons, models, skipped = _incremental_comparisons(X)
 
-            for e_test in X.effects:
-                skip = False
+            # store info on skipped effects
+            for e_test, reason in skipped:
+                self._log.append("SKIPPING: %s (%s)" % (e_test.name, reason))
+
+            # fit the models
+            lms = {}
+            for idx, model in models.iteritems():
+                if model.df_error > 0:
+                    lm = LM(Y, model)
+                else:
+                    lm = None
+                lms[idx] = lm
+
+            # incremental F-tests
+            for e_test, i1, i0 in comparisons:
                 name = e_test.name
+                skip = None
 
                 # find model 0
-                effects = []
-                excluded_e = []
-                for e in X.effects:
-                    # determine whether e_test
-                    if e is e_test:
-                        pass
+                lm0 = lms[i0]
+                lm1 = lms[i1]
+
+                if rfx:
+                    # find E(MS)
+                    EMS_effects = _find_hopkins_ems(e_test, X)
+
+                    if len(EMS_effects) > 0:
+                        lm_EMS = LM(Y, Model(*EMS_effects))
+                        MS_e = lm_EMS.MS_model
+                        df_e = lm_EMS.df_model
                     else:
-                        if is_higher_order(e, e_test):
-                            excluded_e.append(e)
+                        if lm1 is None:
+                            SS = lm0.SS_res
+                            df = lm0.df_res
                         else:
-                            effects.append(e)
-
-                model0 = Model(*effects)
-                if e_test.df > model0.df_error:
-                    skip = "overspecified"
-                else:
-                    lm0 = LM(Y, model0)
-
-                    # find model 1
-                    effects.append(e_test)
-                    model1 = Model(*effects)
-                    if model1.df_error > 0:
-                        lm1 = LM(Y, model1)
-                    else:
-                        lm1 = None
-
-                    if rfx:
-                        # find E(MS)
-                        EMS_effects = _find_hopkins_ems(e_test, X)
-
-                        if len(EMS_effects) > 0:
-                            lm_EMS = LM(Y, Model(*EMS_effects))
-                            MS_e = lm_EMS.MS_model
-                            df_e = lm_EMS.df_model
-                        else:
-                            if lm1 is None:
-                                SS = lm0.SS_res
-                                df = lm0.df_res
-                            else:
-                                SS = lm0.SS_res - lm1.SS_res
-                                df = lm0.df_res - lm1.df_res
-                            MS = SS / df
-                            skip = ("no Hopkins E(MS); SS=%.2f, df=%i, "
-                                    "MS=%.2f" % (SS, df, MS))
+                            SS = lm0.SS_res - lm1.SS_res
+                            df = lm0.df_res - lm1.df_res
+                        MS = SS / df
+                        skip = ("no Hopkins E(MS); SS=%.2f, df=%i, "
+                                "MS=%.2f" % (SS, df, MS))
 
                 if skip:
                     self._log.append("SKIPPING: %s (%s)" % (e_test.name, skip))
