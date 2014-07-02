@@ -122,41 +122,38 @@ def _hopkins_test(e, e2):
 
         return a and b
 
-def _find_hopkins_ems(e, X):
-    return tuple(e2 for e2 in X.effects if _hopkins_test(e, e2))
 
+def _find_hopkins_ems(e, x):
+    "tuple with all effects included in the Hopkins E(MS)"
+    return tuple(e2 for e2 in x.effects if _hopkins_test(e, e2))
 
 
 def is_higher_order(e1, e0):
-    """
-    Returns True if e1 is a higher order term of e0 (i.e., all factors in e0
-    are contained in e1).
+    """Determine whether e1 is a higher order term of e0
 
+    Returns True if e1 is a higher order term of e0 (i.e., if all factors in
+    e0 are contained in e1).
+
+    Parameters
+    ----------
     e1, e0 : effects
         The effects to compare.
-
     """
     f1s = find_factors(e1)
     return all(f in f1s for f in find_factors(e0))
 
 
-
 class LM(object):
-    """
-    Fit a linear model to a dependent variable
-
+    """Fit a linear model to a dependent variable
 
     Attributes
     ----------
-
     F, p : scalar
         Test of the null-hypothesis that the model does not explain a
         significant amount of the variance in the dependent variable.
-
     """
     def __init__(self, Y, X, sub=None, ds=None):
-        """
-        Fit the model X to the dependent variable Y.
+        """Fit the model X to the dependent variable Y
 
         Parameters
         ----------
@@ -204,7 +201,6 @@ class LM(object):
         self.MS_res = SS_res / df_res
 
         # SS explained
-#        SS_model = self.SS_model = np.sum((Y_est - Y.mean())**2)
         SS_model = self.SS = self.SS_model = SS_total - SS_res
         df_model = self.df = self.df_model = X.df
         self.MS_model = self.MS = SS_model / df_model
@@ -350,9 +346,6 @@ class LM(object):
             table.endline()
             for i, name in enumerate(e.beta_labels):  # Fox pp. 106 ff.
                 beta = self.beta[q + i]
-#                    Evar_pt_est = self.SS_res / df
-                # SEB
-#                    SS = (self.values[q+i])**2
                 T = 0
                 p = 0
                 # todo: T/p
@@ -668,23 +661,22 @@ def _incremental_comparisons(x):
 
 
 class incremental_F_test:
-    """
+    """Incremental F-Test between two linear models
+
     Attributes
     ----------
-
     lm1 : Model
-        The extended model
+        The extended model.
     lm0 : Model
-        The control model
+        The control model.
     SS : scalar
-        the difference in the SS explained by the two models
+        the difference in the SS explained by the two models.
     df : int
-        The difference in df between the two models
+        The difference in df between the two models.
     MS : scalar
-        The MS of the difference
+        The MS of the difference.
     F, p : scalar
-        F and p valuer of the comparison
-
+        F and p valuer of the comparison.
     """
     def __init__(self, lm1, lm0, MS_e=None, df_e=None, name=None):
         """
@@ -744,8 +736,6 @@ class incremental_F_test:
         return "<incremental_F_test%s: F=%.2f, p=%.3f>" % (name, self.F, self.p)
 
 
-
-
 def comparelm(lm1, lm2):
     """
     Fox (p. 109)
@@ -766,8 +756,6 @@ def comparelm(lm1, lm2):
     difftxt = "Residual SS reduction: {SS}, df difference: {df}, " + \
               "F = {F:.3f}{s}, p = {p:.4f}"
     return difftxt.format(SS=SS_diff, df=df_diff, F=F, s=stars, p=p)
-
-
 
 
 class anova(object):
@@ -982,8 +970,6 @@ class anova(object):
         table.cell(fmtxt.stat(SS))
         table.cell(fmtxt.stat(len(self.Y) - 1, fmt='%i'))
         return table
-
-
 
 
 def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,

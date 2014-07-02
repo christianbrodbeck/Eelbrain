@@ -4613,7 +4613,8 @@ class Model(object):
 
         """
         if len(x) == 0:
-            raise ValueError("Model needs to be initialized with effects")
+            msg = ("Model needs to be initialized with one or more effects")
+            raise ValueError(msg)
 
         # try to find effects in input
         self.effects = effects = EffectList()
