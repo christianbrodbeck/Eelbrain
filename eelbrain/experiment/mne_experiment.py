@@ -2562,9 +2562,12 @@ class MneExperiment(FileTree):
                    tstop, dist_dim, parc_dim):
         """just compute the test result"""
         # find cluster criteria
-        kwargs = {'samples': samples, 'pmin': pmin, 'tstart': tstart,
-                  'tstop': tstop, 'dist_dim': dist_dim, 'parc':parc_dim}
-        if pmin not in (None, 'tfce'):
+        kwargs = {'samples': samples, 'tstart': tstart, 'tstop': tstop,
+                  'dist_dim': dist_dim, 'parc':parc_dim}
+        if pmin == 'tfce':
+            kwargs['tfce'] = True
+        elif pmin is not None:
+            kwargs['pmin'] = pmin
             if 'mintime' in self.cluster_criteria:
                 kwargs['mintime'] = self.cluster_criteria['mintime']
 
