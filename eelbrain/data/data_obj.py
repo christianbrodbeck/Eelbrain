@@ -3740,13 +3740,13 @@ class Dataset(collections.OrderedDict):
             raise ValueError("R object %r is not a DataFrame")
         ds = Dataset(name=name)
         for item_name, item in df.items():
-            if isinstance(item, ro.FloatVector):
-                x = np.array(item)
-                ds[item_name] = Var(x)
-            elif isinstance(item, ro.FactorVector):
+            if isinstance(item, ro.FactorVector):
                 x = np.array(item)
                 labels = {i:l for i, l in enumerate(item.levels, 1)}
                 ds[item_name] = Factor(x, labels=labels)
+            elif isinstance(item, (ro.FloatVector, ro.IntVector)):
+                x = np.array(item)
+                ds[item_name] = Var(x)
             else:
                 raise NotImplementedError(str(type(item)))
         return ds
