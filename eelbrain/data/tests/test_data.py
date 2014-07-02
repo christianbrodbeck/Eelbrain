@@ -35,7 +35,8 @@ def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
     decimal : None | int
         Desired precision (default is exact match).
     """
-    assert_equal(ds1.keys(), ds2.keys(), "%s: different keys" % msg)
+    assert_equal(ds1.keys(), ds2.keys(), "%s: different keys (%s vs %s)" %
+                 (msg, ds1.keys(), ds2.keys()))
     for k in ds1.keys():
         assert_dataobj_equal(ds1[k], ds2[k], msg=msg, decimal=decimal)
     assert_equal(ds1.info.keys(), ds2.info.keys(), "%s: keys in info" % msg)
@@ -536,6 +537,11 @@ def test_r():
     assert_array_equal(ds.eval('extra'), extra)
     assert_array_equal(ds.eval('ID'), map(str, xrange(1, 11)) * 2)
     assert_array_equal(ds.eval('group'), ['1'] * 10 + ['2'] * 10)
+
+    # test putting
+    ds.to_r('sleep_copy')
+    ds_copy = Dataset.from_r('sleep_copy')
+    assert_dataset_equal(ds_copy, ds)
 
 
 def test_source_space():

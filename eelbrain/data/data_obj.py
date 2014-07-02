@@ -4200,6 +4200,43 @@ class Dataset(collections.OrderedDict):
              "(with identical functionality).", DeprecationWarning)
         return self.sub(index, name)
 
+    def to_r(self, name=None):
+        """Place the Dataset into R as dataframe using rpy2
+
+        Parameters
+        ----------
+        name : str
+            Name for the R dataframe (default is self.name).
+        """
+        import rpy2.robjects as ro
+
+        if name is None:
+            name = self.name
+            if name is None:
+                raise TypeError('Need a valid name for the R data frame')
+
+        items = collections.OrderedDict()
+        for k, v in self.iteritems():
+            if isvar(v):
+                if v.x.dtype.kind == 'b':
+                    item = ro.BoolVector(v.x)
+                elif v.x.dtype.kind == 'i':
+                    item = ro.IntVector(v.x)
+                else:
+                    item = ro.FloatVector(v.x)
+            elif isfactor(v):
+                x = ro.IntVector(v.x)
+                codes = sorted(v._labels)
+                levels = ro.IntVector(codes)
+                labels = ro.StrVector(tuple(v._labels[c] for c in codes))
+                item = ro.FactorVector(x, levels, labels)
+            else:
+                continue
+            items[k] = item
+
+        df = ro.DataFrame(items)
+        ro.globalenv[name] = df
+
     def update(self, ds, replace=False, info=True):
         """Update the Dataset with all variables in ``ds``.
 
