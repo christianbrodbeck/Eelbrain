@@ -12,19 +12,36 @@ from eelbrain.data.stats.glm import _nd_anova
 
 
 @nottest
-def assert_f_test_equal(f_test, r_res, r_row, f=None):
-    assert_equal(f_test.df, r_res[0][r_row])
-    assert_almost_equal(f_test.SS, r_res[1][r_row])
-    assert_almost_equal(f_test.MS, r_res[2][r_row])
-    assert_almost_equal(f_test.F, r_res[3][r_row])
-    assert_almost_equal(f_test.p, r_res[4][r_row])
+def assert_f_test_equal(f_test, r_res, r_row, f=None, r_kind='aov'):
+    if r_kind == 'aov':
+        r_df = 0
+        r_SS = 1
+        r_MS = 2
+        r_F = 3
+        r_p = 4
+    elif r_kind == 'Anova':
+        r_df = 1
+        r_SS = 0
+        r_MS = None
+        r_F = 2
+        r_p = 3
+    else:
+        raise ValueError("invalid r_kind=%r" % r_kind)
+
+    assert_equal(f_test.df, r_res[r_df][r_row])
+    assert_almost_equal(f_test.SS, r_res[r_SS][r_row])
+    if r_MS is not None:
+        assert_almost_equal(f_test.MS, r_res[r_MS][r_row])
+    assert_almost_equal(f_test.F, r_res[r_F][r_row])
+    assert_almost_equal(f_test.p, r_res[r_p][r_row])
     if f is not None:
-        assert_almost_equal(f, r_res[3][r_row])
+        assert_almost_equal(f, r_res[r_F][r_row])
 
 
 def run_on_lm_fitter(y, x, ds):
     y = ds.eval(y)
-    y = np.hstack((y.x[:, newaxis], y.x[:, newaxis]))
+    y = np.asarray(y.x[:, newaxis], float)
+    y = np.hstack((y, y))
     x = ds.eval(x)
     fitter = _nd_anova(x)
     fmaps = fitter.map(y)
@@ -40,6 +57,50 @@ def test_anova():
 
     # not fully specified model with random effects
     assert_raises(NotImplementedError, anova, 'Y', 'A*rm', ds=ds)
+
+
+def test_anova_r_adler():
+    """Test ANOVA accuracy by comparing with R (Adler dataset of car package)
+
+    An unbalanced 3 by 2 independent measures design.
+    """
+    from rpy2.robjects import r
+
+    # "Adler" dataset
+    success = r('require(car)')[0]
+    if not success:
+        print r("install.packages('car', repos='http://cran.us.r-project.org')")
+        success = r('require(car)')[0]
+        if not success:
+            raise RuntimeError("Could not install car R package")
+
+    ds = Dataset.from_r('Adler')
+
+    # with balanced data
+    dsb = ds.equalize_counts('expectation % instruction')
+    dsb.to_r('AdlerB')
+    aov = anova('rating', 'instruction * expectation', ds=dsb)
+    fs = run_on_lm_fitter('rating', 'instruction * expectation', dsb)
+    print r('a.aov <- aov(rating ~ instruction * expectation, AdlerB)')
+    print r('a.summary <- summary(a.aov)')
+    r_res = r['a.summary'][0]
+    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0])
+    assert_f_test_equal(aov.f_tests[1], r_res, 1, fs[1])
+    assert_f_test_equal(aov.f_tests[2], r_res, 2, fs[2])
+
+    # with unbalanced data; for Type II SS use car package
+    aov = anova('rating', 'instruction * expectation', ds=ds)
+    fs = run_on_lm_fitter('rating', 'instruction * expectation', ds)
+    r_res = r("Anova(lm(rating ~ instruction * expectation, Adler, type=2))")
+    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], 'Anova')
+    assert_f_test_equal(aov.f_tests[1], r_res, 1, fs[1], 'Anova')
+    assert_f_test_equal(aov.f_tests[2], r_res, 2, fs[2], 'Anova')
+
+    # single predictor
+    aov = anova('rating', 'instruction', ds=ds)
+    fs = run_on_lm_fitter('rating', 'instruction', ds)
+    r_res = r("Anova(lm(rating ~ instruction, Adler, type=2))")
+    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], 'Anova')
 
 
 def test_anova_r_sleep():
