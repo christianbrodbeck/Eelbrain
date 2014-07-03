@@ -85,6 +85,12 @@ def test_anova():
     assert_array_equal(masked.x <= unmasked.x, True)
 
 
+def test_anova_incremental():
+    "Test testnd.anova() with incremental f-tests"
+    ds = datasets.get_rand()
+    testnd.anova('uts', 'A*B', ds=ds[3:], pmin=0.05, samples=10)
+
+
 def test_clusterdist():
     "Test _ClusterDist class"
     shape = (10, 6, 6, 4)
