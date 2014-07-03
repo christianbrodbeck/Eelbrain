@@ -1,3 +1,3 @@
 '''Eelbrain GUIs'''
 
-from .wxgui import SelectEpochs, SelectEpochsOld
+from .wxgui import SelectEpochs
