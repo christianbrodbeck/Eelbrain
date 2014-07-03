@@ -5,7 +5,12 @@ import numpy as np
 cimport numpy as np
 
 ctypedef np.uint32_t NP_UINT32
-
+ctypedef fused scalar:
+    cython.int
+    cython.long
+    cython.longlong
+    cython.float
+    cython.double
 
 @cython.boundscheck(False)
 def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in, dict conn):
@@ -83,7 +88,7 @@ def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in, dict conn)
 
 
 @cython.boundscheck(False)
-def _anova_full_fmaps(double[:, :] y, double[:, :] x, double[:, :] xsinv,
+def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                       double[:, :] f_map, np.int16_t[:, :] effects, 
                       np.int8_t[:, :] e_ms):
     """Compute f-maps for a balanced, fully specified ANOVA model
@@ -147,7 +152,7 @@ def _anova_full_fmaps(double[:, :] y, double[:, :] x, double[:, :] xsinv,
                     
                     
 @cython.boundscheck(False)
-def _anova_fmaps(double[:, :] y, double[:, :] x, double[:, :] xsinv,
+def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                  double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
     """Compute f-maps for a balanced ANOVA model with residuals
 
@@ -213,7 +218,7 @@ def _anova_fmaps(double[:, :] y, double[:, :] x, double[:, :] xsinv,
             f_map[i_effect, i] = MS / MS_res
 
 
-def _ss(double[:,:] y, double[:] ss):
+def _ss(scalar[:,:] y, double[:] ss):
     """Compute sum squares in the data (after subtracting the intercept)
 
     Parameters
@@ -244,7 +249,7 @@ def _ss(double[:,:] y, double[:] ss):
         ss[i] = SS
 
 
-def _lm_ss_res(double[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
+def _lm_ss_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     """Fit a linear model and compute the residual sum squares
 
     Parameters
