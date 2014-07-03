@@ -539,7 +539,7 @@ class _IncrementalNDANOVA(_NDANOVA):
         self._SS_res = None
 
     def preallocate(self, y_shape):
-        _NDANOVA.preallocate(self, y_shape)
+        f_map = _NDANOVA.preallocate(self, y_shape)
 
         shape = self._flat_f_map.shape[1]
         self._SS_diff = np.empty(shape)
@@ -547,6 +547,7 @@ class _IncrementalNDANOVA(_NDANOVA):
         self._SS_res = {}
         for i in self._models:
             self._SS_res[i] = np.empty(shape)
+        return f_map
 
     def _map(self, y, flat_f_map):
         if self._SS_diff is None:
