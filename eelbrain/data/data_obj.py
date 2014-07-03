@@ -2964,20 +2964,20 @@ class NDVar(object):
 
             >>> Y = data.summary(time=(.1, .2), func=np.max)
 
-        Assuming MEG is an NDVar with dimensions time and sensor. Get the
+        Assuming ``meg`` is an NDVar with dimensions time and sensor. Get the
         average across sensors 5, 6, and 8 in a time window::
 
-            >>> ROI = [5, 6, 8]
-            >>> Y = MEG.summary(sensor=ROI, time=(.1, .2))
+            >>> roi = [5, 6, 8]
+            >>> Y = meg.summary(sensor=roi, time=(.1, .2))
 
         Get the peak in the same data:
 
-            >>> ROI = [5, 6, 8]
-            >>> Y = MEG.summary(sensor=ROI, time=(.1, .2), func=np.max)
+            >>> roi = [5, 6, 8]
+            >>> peak = meg.summary(sensor=roi, time=(.1, .2), func=np.max)
 
         Get the RMS over all sensors
 
-            >>> MEG_RMS = MEG.summary('sensor', func=rms)
+            >>> meg_rms = meg.summary('sensor', func=rms)
 
         """
         func = regions.pop('func', self.info.get('summary_func', np.mean))
