@@ -40,7 +40,7 @@ def assert_f_test_equal(f_test, r_res, r_row, f=None, r_kind='aov'):
 
 def run_on_lm_fitter(y, x, ds):
     y = ds.eval(y)
-    y = np.asarray(y.x[:, newaxis], float)
+    y = y.x[:, newaxis]
     y = np.hstack((y, y))
     x = ds.eval(x)
     fitter = _nd_anova(x)
