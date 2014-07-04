@@ -1539,8 +1539,9 @@ class anova(_TestResult):
             self._effects = self.effects
         self.effects = tuple(e.name for e in self._effects)
         if hasattr(self, 'df_den'):
-            self._dfs_denom = tuple(self.df_den[e] for e in self.effects)
+            df_den_temp = {e.name: df for e, df in self.df_den.iteritems()}
             del self.df_den
+            self._dfs_denom = tuple(df_den_temp[e] for e in self.effects)
 
         # clusters
         if cdists is not None:
