@@ -1,4 +1,4 @@
 from .basic import (IdDict, intervals, LazyProperty, logger, keydefaultdict,
-                    natsorted)
+                    natsorted, _set_log_level)
 
 from . import kit

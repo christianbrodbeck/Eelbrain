@@ -21,6 +21,26 @@ _hdlr = logging.StreamHandler()
 logger.addHandler(_hdlr)
 
 
+def _set_log_level(level):
+    """Set the minimum level of messages to be logged from Eelbrain
+
+    Parameters
+    ----------
+    level : str | int
+        Level as string (debug, info, warning, error, critical) or
+        corresponding constant from the logging module.
+    """
+    if isinstance(level, basestring):
+        level = level.upper()
+        levels = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
+                  'WARNING': logging.WARNING, 'ERROR': logging.ERROR,
+                  'CRITICAL': logging.CRITICAL}
+        if level not in levels:
+            raise ValueError('level must be of a valid type')
+        level = levels[level]
+    logger.setLevel(level)
+
+
 class intervals:
     """Iterate over each successive pair in a sequence.
 
