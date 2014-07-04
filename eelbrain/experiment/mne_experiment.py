@@ -1652,11 +1652,13 @@ class MneExperiment(FileTree):
         redo : bool
             If the target file already exists, overwrite it.
         """
-        dst_path = self.get(temp, **{field: dst})
+        dst_path = self.get(temp, mkdir=True, **{field: dst})
         if not redo and os.path.exists(dst_path):
             return
 
         src_path = self.get(temp, **{field: src})
+        if os.path.isdir(src_path):
+            raise ValueError("Can only copy files, not directories.")
         shutil.copyfile(src_path, dst_path)
 
     def make_cov(self, redo=False):
