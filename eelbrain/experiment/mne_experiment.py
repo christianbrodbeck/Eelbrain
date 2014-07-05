@@ -2293,8 +2293,8 @@ class MneExperiment(FileTree):
             clusters.sort('tstart')
             title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
             for cluster in clusters.itercases():
-                legend = self._source_time_cluster(section, title, cluster, y,
-                                                   model, ds, legend)
+                legend = self._source_time_cluster(section, cluster, y, model,
+                                                   ds, title, legend)
 
             # trend section
             section = report.add_section("Trend: p<=.1")
