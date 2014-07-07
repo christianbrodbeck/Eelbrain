@@ -34,15 +34,15 @@ def send_email(to, subject, body):
 
 class Notifier(object):
     """
-    A notification sender supporting ``with`` statements
+    A notification email sender supporting ``with`` statements
 
     Examples
     --------
     To receive a message after a task has been executed:
 
     >>> notifier = Notifier('me@somewhere.com')
-    >>> with notification:
-    ...     do_task
+    >>> with notifier:
+    ...     do_task()
     ...
 
     """
@@ -57,6 +57,8 @@ class Notifier(object):
         state_func : None | callable
             Will be called upon crash to produce a string that will be included
             in the crash report.
+        debug : bool
+            If the task crashes, start pdb instead of exiting.
         """
         if not os.path.exists(_pwd_fname):
             err = "File required for notification not found: %r" % _pwd_fname
@@ -71,8 +73,12 @@ class Notifier(object):
         return self
 
     def __exit__(self, type_, value, traceback_):
+        host = socket.gethostname()
         if isinstance(value, Exception):
-            event = '%s: %s' % (type_.__name__, value)
+            error = type_.__name__
+            temp = '{host} encountered {error}: {value} in {task}'
+            event = temp.format(host=host, error=error, value=value,
+                                task=self.name)
             info = []
 
             # state description
@@ -84,7 +90,9 @@ class Notifier(object):
             tb_items = traceback.format_tb(traceback_)
             tb_str = '\n'.join(tb_items)
             info.append(tb_str)
-            info.append(event)
+
+            # error
+            info.append("%s: %s" % (error, value))
 
             if self.debug:
                 info.append("Starting PDB...")
@@ -98,19 +106,18 @@ class Notifier(object):
                 traceback.print_exc()
                 pdb.post_mortem(traceback_)
         else:
-            self.send('finished')
+            event = '{host} finished {task}'.format(host=host, task=self.name)
+            self.send(event)
 
-    def send(self, event, info=[]):
+    def send(self, subject, info=[]):
         """Send an email message
 
         Parameters
         ----------
-        event : str
-            Event description.
+        subject : str
+            Email subject line.
         info : list of str
-            Infomation that is added to the email body.
+            Email body; successive entries are joined with two line breaks.
         """
         body = '\n\n'.join(map(unicode, info))
-        subject = '%s %s' % (self.name, event)
         send_email(self.to, subject, body)
-

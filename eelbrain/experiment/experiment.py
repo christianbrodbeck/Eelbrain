@@ -154,7 +154,7 @@ class TreeModel(object):
                 raise TypeError(err)
 
         if self.owner:
-            task = '%s task' % self.__class__.__name__
+            task = self.__class__.__name__
             self.notification = Notifier(self.owner, task, self.show_state)
 
     def __repr__(self):
