@@ -55,7 +55,7 @@ kwargs = dict(
               install_requires=['tex',
                                 'matplotlib >= 1.1',
                                 'scipy >= 0.11.0',
-                                'numpy >= 1.3',
+                                'numpy >= 1.8',
                                 'docutils',
                                 'mne >= 0.7.1'],
               include_dirs=[np.get_include()],
