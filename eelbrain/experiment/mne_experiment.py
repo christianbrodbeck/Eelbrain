@@ -57,6 +57,7 @@ the interval form 0 to 500 ms used for rejection.
 from collections import defaultdict
 import datetime
 import inspect
+from itertools import izip
 import os
 from Queue import Queue
 import re
@@ -523,7 +524,8 @@ class MneExperiment(FileTree):
             Add source estimates on individual brains as list of
             :class:`mne.SourceEstimate`.
         ind_ndvar : bool
-            Add source estimates on individual brains as :class:`NDVar`.
+            Add source estimates on individual brain as :class:`NDVar` (only
+            possible for datasets containing data of a single subject).
         morph_stc : bool
             Add source estimates morphed to the common brain as list of
             :class:`mne.SourceEstimate`.
@@ -546,19 +548,21 @@ class MneExperiment(FileTree):
             raise NotImplementedError("Baseline form different epoch")
 
         # find from subjects
-        n_subjects = ds.eval('len(subject.cells)')
         common_brain = self.get('common_brain')
-        from_subjects = {}
-        for subject in ds.eval('subject.cells'):
+        meg_subjects = ds.eval('subject.cells')
+        n_subjects = len(meg_subjects)
+        if ind_ndvar and n_subjects > 1:
+            err = ("Can't use ind_ndvar with data from more than one "
+                   "subjects; an NDVar can only be created from stcs that are "
+                   "estimated on the same brain. Use morph_ndvar=True "
+                   "instead.")
+            raise ValueError(err)
+        from_subjects = {}  # from-subject for the purpose of morphing
+        for subject in meg_subjects:
             if is_fake_mri(self.get('mri-dir', subject=subject)):
                 subject_from = common_brain
-            elif ind_ndvar and n_subjects > 1:
-                err = ("Subject %r has its own MRI; An ndvar can only be "
-                       "created form indivdual stcs if all stcs were "
-                       "estimated on the common brain." % subject)
-                raise ValueError(err)
             else:
-                subject_from = subject
+                subject_from = self.get('mrisubject', subject=subject)
             from_subjects[subject] = subject_from
 
         morph_requested = (morph_stc or morph_ndvar)
@@ -568,15 +572,11 @@ class MneExperiment(FileTree):
         collect_ind_stcs = (ind_stc or ind_ndvar) or (morph_requested and
                                                       all_are_common_brain)
 
-        # make sure annot files are available
-        make_annot_for = set()
-        if all_are_common_brain or collect_morphed_stcs:
-            make_annot_for.add(common_brain)
-        if collect_ind_stcs:
-            make_annot_for.update(from_subjects.keys())
-        for subject in make_annot_for:
-            self.set(mrisubject=subject)
-            self.make_annot()
+        # make sure annot files are available (needed only for NDVar)
+        if (ind_ndvar and all_are_common_brain) or morph_ndvar:
+            self.make_annot(mrisubject=common_brain)
+        if ind_ndvar and not all_are_common_brain:
+            self.make_annot(mrisubject=from_subjects[meg_subjects[0]])
 
         # find vars to work on
         do = []
@@ -587,7 +587,6 @@ class MneExperiment(FileTree):
             raise RuntimeError("No Evoked found")
 
         # prepare data containers
-        invs = {}
         if collect_ind_stcs:
             stcs = defaultdict(list)
         if collect_morphed_stcs:
@@ -595,14 +594,15 @@ class MneExperiment(FileTree):
 
         # convert evoked objects
         mri_sdir = self.get('mri-sdir')
+        invs = {}
         mms = {}
-        for case in ds.itercases():
-            subject = case['subject']
+        for i in xrange(ds.n_cases):
+            subject = ds[i, 'subject']
             subject_from = from_subjects[subject]
 
             # create stcs from sns data
             for name in do:
-                evoked = case[name]
+                evoked = ds[i, name]
 
                 # get inv
                 if subject in invs:
@@ -639,14 +639,11 @@ class MneExperiment(FileTree):
             keys = ('%s',)
         src = self.get('src')
         parc = self.get('parc') or None
-        for name, key in zip(do, keys):
+        for name, key in izip(do, keys):
             if ind_stc:
                 ds[key % 'stc'] = stcs[name]
             if ind_ndvar:
-                if n_subjects == 1:
-                    subject = ds['subject'].cells[0]
-                else:
-                    subject = common_brain
+                subject = from_subjects[meg_subjects[0]]
                 ndvar = load.fiff.stc_ndvar(stcs[name], subject, src, mri_sdir,
                                             parc=parc)
                 ds[key % 'src'] = ndvar
@@ -858,11 +855,10 @@ class MneExperiment(FileTree):
             ds[name] = Var(subject.isin(subjects))
 
     def load_annot(self, **state):
-        parc = self.get('parc', **state)
+        self.make_annot(**state)
+        parc = self.get('parc')
         subject = self.get('mrisubject')
         mri_sdir = self.get('mri-sdir')
-        if not self._annot_exists():
-            self.make_annot()
         labels = mne.read_labels_from_annot(subject, parc, 'both', subjects_dir=mri_sdir)
         return labels
 
@@ -1551,7 +1547,8 @@ class MneExperiment(FileTree):
         else:
             return res
 
-    def make_annot(self, redo=False):
+    def make_annot(self, redo=False, **state):
+        self.set(**state)
         if not redo and self._annot_exists():
             return
 
