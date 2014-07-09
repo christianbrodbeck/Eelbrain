@@ -1843,8 +1843,9 @@ def _clustering_worker(in_queue, out_queue, shape, threshold, tail, struct,
             out.fill(0)
             for i, idx in enumerate(parc):
                 clusters_v = ndimage.sum(pmap[idx], cmap[idx], cids)
-                np.abs(clusters_v, clusters_v)
-                out[i] = clusters_v.max()
+                if len(clusters_v):
+                    np.abs(clusters_v, clusters_v)
+                    out[i] = clusters_v.max()
             out_queue.put(out)
         elif len(cids):
             clusters_v = ndimage.sum(pmap, cmap, cids)
@@ -2631,8 +2632,9 @@ class _ClusterDist:
                     v.fill(0)
                     for i, idx in enumerate(self._parc):
                         clusters_v = ndimage.sum(pmap[idx], cmap[idx], cids)
-                        np.abs(clusters_v, clusters_v)
-                        v[i] = clusters_v.max()
+                        if len(clusters_v):
+                            np.abs(clusters_v, clusters_v)
+                            v[i] = clusters_v.max()
                 elif len(cids):
                     clusters_v = ndimage.sum(pmap, cmap, cids)
                     np.abs(clusters_v, clusters_v)
