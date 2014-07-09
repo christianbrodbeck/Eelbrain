@@ -10,7 +10,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 from scipy import ndimage
 
-from eelbrain import logger
+from eelbrain.utils import logger
 from eelbrain.data.data_obj import UTS, Ordered, Sensor
 from eelbrain.data.stats import testnd as _testnd
 from eelbrain.data.stats.testnd import _ClusterDist, _label_clusters
