@@ -2170,7 +2170,7 @@ class MneExperiment(FileTree):
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
                     tstop=None, samples=1000, data='src',
                     sns_baseline=(None, 0), src_baseline=None, redo=False,
-                    **state):
+                    redo_test=False, **state):
         """Create an HTML report on clusters
 
         Parameters
@@ -2196,7 +2196,10 @@ class MneExperiment(FileTree):
         tstart, tstop : None | scalar
             Time window for finding clusters.
         redo : bool
-            If the target file already exists, delete and recreate it.
+            If the target file already exists, delete and recreate it. This
+            only applies to the HTML result file, not to the test.
+        redo_test : bool
+            Redo the test even if a cached file exists.
         """
         # determine report file name
         if parc is None:
@@ -2222,7 +2225,8 @@ class MneExperiment(FileTree):
         # load data
         group = self.get('group')
         ds, res = self.load_test(tstart, tstop, pmin, parc, mask, samples,
-                                 group, data, sns_baseline, src_baseline, True)
+                                 group, data, sns_baseline, src_baseline, True,
+                                 redo_test)
 
         # start report
         t0 = time.time()
