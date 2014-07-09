@@ -954,10 +954,10 @@ class Layout():
                 if axw:
                     nrow = round(h / (axw / ax_aspect))
                 else:
-                    nrow = round(h / (axh_default))
+                    nrow = round(h / axh_default)
                 nrow = min(nax, nrow)
                 axh = h / nrow
-                ncol = math.ceil(nrow / nax)
+                ncol = math.ceil(nax / nrow)
                 if w:
                     axw = w / ncol
                 else:
@@ -978,7 +978,7 @@ class Layout():
                 # try default
                 axh = axh_default
                 axw = axh_default * ax_aspect
-                ncol = min(nax, maxw / axw)
+                ncol = min(nax, math.floor(maxw / axw))
                 nrow = math.ceil(nax / ncol)
                 h = axh * nrow
                 if h > maxh:
