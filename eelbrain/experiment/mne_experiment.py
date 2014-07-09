@@ -2159,6 +2159,14 @@ class MneExperiment(FileTree):
                    ".epoch_rejection class attribute." % self.get('rej'))
             raise RuntimeError(err)
 
+        epoch = self._epoch_state
+        if 'sel_epoch' in epoch:
+            msg = ("The current epoch {cur!r} inherits rejections from "
+                   "{sel!r}. To access a rejection file for this epoch, call "
+                   "`e.set(epoch={sel!r})` and then `e.make_rej()` "
+                   "again.".format(cur=epoch['name'], sel=epoch['sel_epoch']))
+            raise ValueError(msg)
+
         ds = self.load_epochs(ndvar=True, reject=False,
                               decim=rej_args.get('decim', 5))
         path = self.get('rej-file', mkdir=True)
