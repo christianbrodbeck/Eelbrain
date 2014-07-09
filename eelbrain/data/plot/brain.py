@@ -62,6 +62,9 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
         Figure background color.
+    smoothing_steps : None | int
+        Number of smoothing steps if data is spatially undersampled (pysurfer
+        ``Brain.add_data()`` argument).
 
     Returns
     -------
@@ -101,6 +104,9 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
         Figure background color.
+    smoothing_steps : None | int
+        Number of smoothing steps if data is spatially undersampled (pysurfer
+        ``Brain.add_data()`` argument).
 
     Returns
     -------
@@ -137,6 +143,9 @@ def activation(src, threshold=None, vmax=None, *args, **kwargs):
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
         Figure background color.
+    smoothing_steps : None | int
+        Number of smoothing steps if data is spatially undersampled (pysurfer
+        ``Brain.add_data()`` argument).
 
     Returns
     -------
@@ -178,6 +187,9 @@ def cluster(cluster, vmax=None, *args, **kwargs):
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
         Figure background color.
+    smoothing_steps : None | int
+        Number of smoothing steps if data is spatially undersampled (pysurfer
+        ``Brain.add_data()`` argument).
 
     Returns
     -------
@@ -193,7 +205,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
                  views=['lat', 'med'], colorbar=True, time_label='%.3g s',
-                 **layout):
+                 w=None, h=None, axw=None, axh=None, background=None,
+                 smoothing_steps=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -215,6 +228,9 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
         Figure background color.
+    smoothing_steps : None | int
+        Number of smoothing steps if data is spatially undersampled (pysurfer
+        ``Brain.add_data()`` argument).
 
     Returns
     -------
@@ -241,22 +257,22 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
 
     title = None
     config_opts = {}
-    if 'w' in layout:
-        config_opts['width'] = layout['w']
-    elif 'axw' in layout:
-        config_opts['width'] = layout['axw'] * n_hemi
+    if w is not None:
+        config_opts['width'] = w
+    elif axw is not None:
+        config_opts['width'] = axw * n_hemi
     else:
         config_opts['width'] = 500 * n_hemi
 
-    if 'h' in layout:
-        config_opts['height'] = layout['h']
-    elif 'axh' in layout:
-        config_opts['height'] = layout['axh'] * len(views)
+    if h is not None:
+        config_opts['height'] = h
+    elif axh is not None:
+        config_opts['height'] = axh * len(views)
     else:
         config_opts['height'] = 400 * len(views)
 
-    if 'background' in layout:
-        config_opts['background'] = layout['background']
+    if background is not None:
+        config_opts['background'] = background
 
     brain = Brain(src.source.subject, hemi, surf, True, title,
                   config_opts=config_opts, views=views,
@@ -264,12 +280,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
 
     # general PySurfer data args
     alpha = 1
-    if 'smoothing_steps' in layout:
-        smoothing_steps = layout['smoothing_steps']
-    elif src.source.kind == 'ico':
+    if smoothing_steps is None and src.source.kind == 'ico':
         smoothing_steps = src.source.grade + 1
-    else:
-        smoothing_steps = None
 
     if src.has_dim('time'):
         times = src.time.times
