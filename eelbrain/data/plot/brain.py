@@ -65,6 +65,8 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
+    subjects_dir : None | str
+        Override the subjects_dir associated with the source space dimension.
 
     Returns
     -------
@@ -107,6 +109,8 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
+    subjects_dir : None | str
+        Override the subjects_dir associated with the source space dimension.
 
     Returns
     -------
@@ -146,6 +150,8 @@ def activation(src, threshold=None, vmax=None, *args, **kwargs):
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
+    subjects_dir : None | str
+        Override the subjects_dir associated with the source space dimension.
 
     Returns
     -------
@@ -190,6 +196,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
+    subjects_dir : None | str
+        Override the subjects_dir associated with the source space dimension.
 
     Returns
     -------
@@ -206,7 +214,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
                  views=['lat', 'med'], colorbar=True, time_label='%.3g s',
                  w=None, h=None, axw=None, axh=None, background=None,
-                 smoothing_steps=None):
+                 smoothing_steps=None, subjects_dir=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -231,6 +239,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
+    subjects_dir : None | str
+        Override the subjects_dir associated with the source space dimension.
 
     Returns
     -------
@@ -274,9 +284,12 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     if background is not None:
         config_opts['background'] = background
 
+    if subjects_dir is None:
+        subjects_dir = src.source.subjects_dir
+
     brain = Brain(src.source.subject, hemi, surf, True, title,
                   config_opts=config_opts, views=views,
-                  subjects_dir=src.source.subjects_dir)
+                  subjects_dir=subjects_dir)
 
     # general PySurfer data args
     alpha = 1
