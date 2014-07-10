@@ -27,8 +27,8 @@ from scipy.linalg import lstsq
 import scipy.stats
 
 from ... import fmtxt
-from ...utils import LazyProperty
-from ...utils.print_funcs import strdict
+from ..._utils import LazyProperty
+from ..._utils.print_funcs import strdict
 from ..data_obj import (isvar, asvar, assub, isbalanced, isnestedin, hasrandom,
                         find_factors, Model, asmodel)
 from ._opt import _anova_fmaps, _anova_full_fmaps, _lm_ss_res, _ss

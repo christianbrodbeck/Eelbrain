@@ -19,7 +19,7 @@ import wx.grid
 # import wx.lib.mixins.grid
 
 from ..wxutils import Icon, ID
-from ..utils.basic import add_ext, loadtable
+from .._utils.basic import add_ext, loadtable
 
 
 

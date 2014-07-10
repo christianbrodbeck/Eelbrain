@@ -49,7 +49,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 
 from .. import fmtxt
 from .. import ui
-from ..utils import LazyProperty, natsorted
+from .._utils import LazyProperty, natsorted
 from . import colorspaces as cs
 from .stats import cihw, rms
 

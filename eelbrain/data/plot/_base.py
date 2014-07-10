@@ -88,8 +88,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import PIL
 
-from ...utils import LazyProperty
-from ...utils.subp import cmd_exists
+from ..._utils import LazyProperty
+from ..._utils.subp import cmd_exists
 from ...fmtxt import Image, texify
 from ..colorspaces import symmetric_cmaps, zerobased_cmaps
 from ..data_obj import ascategorial, asndvar, DimensionMismatchError

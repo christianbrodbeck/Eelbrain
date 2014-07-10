@@ -32,7 +32,7 @@ import numpy as np
 import scipy.stats
 from scipy import ndimage
 
-from ...utils import logger, LazyProperty
+from ..._utils import logger, LazyProperty
 from .. import colorspaces as _cs
 from ..data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                         NDVar, Var, Celltable, cellname, combine, Categorial,

@@ -12,7 +12,7 @@ import numpy as np
 
 from .. import fmtxt
 from .. import ui
-from ..utils.com import send_email, Notifier
+from .._utils.com import send_email, Notifier
 
 
 def _etree_expand(node, state):

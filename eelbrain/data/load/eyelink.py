@@ -14,7 +14,7 @@ from warnings import warn
 import numpy as np
 
 from ... import ui
-from ...utils.subp import get_bin
+from ..._utils.subp import get_bin
 from ..data_obj import Dataset, Datalist, Var
 
 __all__ = ['Edf', 'read_edf', 'read_edf_events', 'read_edf_samples']

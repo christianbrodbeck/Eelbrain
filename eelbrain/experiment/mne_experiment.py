@@ -93,9 +93,9 @@ from ..data import Dataset, Factor, Var, NDVar, combine, source_induced_power
 from ..data.data_obj import isdatalist, UTS, DimensionMismatchError
 from ..fmtxt import List, Report
 from .. import ui
-from ..utils import keydefaultdict
-from ..utils import subp
-from ..utils.mne_utils import fix_annot_names, is_fake_mri
+from .._utils import keydefaultdict
+from .._utils import subp
+from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .experiment import FileTree
 
 

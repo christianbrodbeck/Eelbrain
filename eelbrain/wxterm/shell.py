@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 from .. import __version__
 from .. import fmtxt
 from .. import ui
-from ..utils import print_funcs
+from .._utils import print_funcs
 from ..wxutils import droptarget, Icon, ID
 from ..wxutils.mpl_canvas import CanvasFrame
 from .about_dialog import AboutFrame

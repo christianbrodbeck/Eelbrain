@@ -22,6 +22,6 @@ Copyright (c) 2012. All rights reserved.
 
 """
 
-from .utils import _set_log_level
+from ._utils import _set_log_level
 
 __version__ = '0.4dev'
