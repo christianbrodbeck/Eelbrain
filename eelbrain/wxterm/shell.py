@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 
 from .. import __version__
 from .. import fmtxt
-from .. import ui
+from .._utils import ui
 from .._utils import print_funcs
 from ..wxutils import droptarget, Icon, ID
 from ..wxutils.mpl_canvas import CanvasFrame

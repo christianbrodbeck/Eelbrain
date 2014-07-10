@@ -28,7 +28,7 @@ import tempfile
 
 from mne.utils import get_subjects_dir, run_subprocess
 
-from .. import ui
+from . import ui
 from ..data.load.brainvision import vhdr as _vhdr
 from .kit import MarkerFile
 

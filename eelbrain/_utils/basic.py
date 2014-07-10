@@ -12,8 +12,7 @@ import re
 
 import numpy as np
 
-from eelbrain import ui
-
+from . import ui
 
 logger = logging.getLogger('eelbrain')
 logger.propagate = False

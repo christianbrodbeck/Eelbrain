@@ -51,7 +51,7 @@ import scipy.io
 from .data_obj import (Dataset, Factor, ascategorial, asfactor, assub,
                        check_length)
 from . import save
-from .. import ui
+from .._utils import ui
 
 
 

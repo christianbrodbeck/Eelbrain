@@ -13,7 +13,7 @@ from warnings import warn
 
 import numpy as np
 
-from ... import ui
+from ..._utils import ui
 from ..._utils.subp import get_bin
 from ..data_obj import Dataset, Datalist, Var
 

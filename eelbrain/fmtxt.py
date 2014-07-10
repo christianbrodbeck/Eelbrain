@@ -57,7 +57,7 @@ except:
 import numpy as np
 from matplotlib.image import imsave
 
-from . import ui
+from ._utils import ui
 
 
 preferences = dict(

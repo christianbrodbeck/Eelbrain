@@ -12,7 +12,7 @@ import re
 
 import numpy as np
 
-from ... import ui
+from ..._utils import ui
 from ..data_obj import Dataset, Factor, Var
 
 

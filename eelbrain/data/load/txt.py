@@ -8,7 +8,7 @@ import re
 
 import numpy as np
 
-from ... import ui
+from ..._utils import ui
 from .. import data_obj as _data
 
 

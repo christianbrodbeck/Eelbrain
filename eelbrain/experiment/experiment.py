@@ -11,7 +11,7 @@ import subprocess
 import numpy as np
 
 from .. import fmtxt
-from .. import ui
+from .._utils import ui
 from .._utils.com import send_email, Notifier
 
 

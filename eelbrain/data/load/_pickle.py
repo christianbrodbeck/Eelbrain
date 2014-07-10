@@ -1,7 +1,7 @@
 from cPickle import Unpickler
 from importlib import import_module
 
-from ... import ui
+from ..._utils import ui
 
 
 def map_paths(self, module_name, class_name):

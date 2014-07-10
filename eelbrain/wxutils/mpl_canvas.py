@@ -16,9 +16,9 @@ from matplotlib.backends import backend_wx
 from matplotlib.figure import Figure
 import wx
 
-from basic import Icon
-from eelbrain import ui
-import ID
+from .._utils import ui
+from . import ID
+from .basic import Icon
 
 
 class FigureCanvasPanel(FigureCanvasWxAgg):

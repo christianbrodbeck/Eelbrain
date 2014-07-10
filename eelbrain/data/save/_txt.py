@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import os
 
-from ... import ui
+from ..._utils import ui
 
 __all__ = ['txt']
 

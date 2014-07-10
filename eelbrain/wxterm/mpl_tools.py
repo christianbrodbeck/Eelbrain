@@ -3,7 +3,8 @@ import logging, tempfile, os
 import matplotlib.pyplot as P
 import wx
 
-from .. import fmtxt, ui
+from .. import fmtxt
+from .._utils import ui
 from ..wxutils import Icon
 
 

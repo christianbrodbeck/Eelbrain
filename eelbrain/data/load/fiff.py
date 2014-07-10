@@ -96,7 +96,7 @@ except ImportError:
     from mne.fiff import pick_channels as _mne_pick_channels
     from mne.fiff.kit import read_raw_kit as _mne_read_raw_kit
 
-from ... import ui
+from ..._utils import ui
 from .. import colorspaces as _cs
 from ..data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS
 

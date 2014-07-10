@@ -6,7 +6,7 @@ use :func:`besa_evt` to export a corresponding .evt file.
 '''
 import numpy as np
 
-from ... import ui
+from ..._utils import ui
 from ..data_obj import Var, Dataset
 from . import _txt
 

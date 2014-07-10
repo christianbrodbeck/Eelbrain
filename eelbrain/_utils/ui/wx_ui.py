@@ -161,6 +161,10 @@ class progress_monitor:
     catches calls meant to create a progress indicator, because the wx
     ProgressDialog was way too slow.
 
+    To clean up after a crash, call
+
+        >>> ui.kill_progress_monitors()
+
     """
     def __init__(self, i_max=None,
                  title="Task Progress",

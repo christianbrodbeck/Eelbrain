@@ -2,7 +2,7 @@
 import os
 import cPickle
 
-from ... import ui
+from ..._utils import ui
 
 __all__ = ('pickle',)
 

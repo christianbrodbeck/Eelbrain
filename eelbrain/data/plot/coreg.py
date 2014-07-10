@@ -25,7 +25,7 @@ from mne import fiff
 from mne.fiff import write
 from mne.fiff.constants import FIFF
 
-from ... import ui
+from ..._utils import ui
 from .. import load
 import _base
 
