@@ -487,19 +487,6 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, target='epochs',
     return ds
 
 
-def brainvision_events_to_fiff(ds, raw=None, i_start='i_start', proj=False):
-    """
-    ..Warning:
-        modifies the Dataset ``ds`` in place
-
-    """
-    ds[i_start] -= 1
-    if raw is None or isinstance(raw, basestring):
-        raw = mne_raw(raw, proj=proj)
-
-    ds.info['raw'] = raw
-
-
 def _mne_events(ds=None, i_start='i_start', trigger='trigger'):
     """
     Convert events from a Dataset into mne events.

@@ -3,9 +3,6 @@ Tools for loading data.
 
 The following submodules are available:
 
-brainvision:
-    Load brainvision ``.vhdr`` header files (no other files supported yet)
-
 eyelink:
     Load eyelink ``.edf`` files to datasets. Requires eyelink api available from
     SR Research
@@ -19,7 +16,6 @@ txt:
 """
 
 from . import besa
-from . import brainvision
 from . import eyelink
 from . import fiff
 from . import txt
