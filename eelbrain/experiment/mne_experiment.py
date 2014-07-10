@@ -302,6 +302,9 @@ class MneExperiment(FileTree):
     # for subfolders matching subject_re.
     _subject_loc = 'meg-sdir'
 
+    # Custom parcellations. Set to disable checking on set().
+    parcs = ()
+
     # basic templates to use. Can be a string referring to a templates
     # dictionary in the module level _temp dictionary, or a templates
     # dictionary
@@ -1584,7 +1587,9 @@ class MneExperiment(FileTree):
 
     def _make_annot(self, parc, subject):
         "Only called to make custom annotation files for the common_brain"
-        msg = "Custom parcellations %r is not implemented." % parc
+        msg = ("At least one of the annot files for the custom parcellation "
+               "%r is missing for %r, and a make function is not "
+               "implemented." % (parc, subject))
         raise NotImplementedError(msg)
 
     def make_besa_evt(self, redo=False, **state):
@@ -2987,6 +2992,8 @@ class MneExperiment(FileTree):
         if parc in ('aparc.a2005s', 'aparc.a2009s', 'aparc',
                     'PALS_B12_Brodmann', 'PALS_B12_Lobes',
                     'PALS_B12_OrbitoFrontal', 'PALS_B12_Visuotopic'):
+            return parc
+        elif self.parcs == None or parc in self.parcs:
             return parc
         else:
             raise ValueError("Unknown parcellation:  parc=%r" % parc)
