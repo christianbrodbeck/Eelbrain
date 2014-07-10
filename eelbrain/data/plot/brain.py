@@ -628,10 +628,9 @@ def connectivity(source):
     if isinstance(source, NDVar):
         source = source.get_dim('source')
 
-    con = source.connectivity()
+    connections = source.connectivity()
     coords = source.coordinates
     x, y, z = coords.T
-    connections = np.hstack((con.row[:, None], con.col[:, None]))
 
     figure = mlab.figure()
     src = mlab.pipeline.scalar_scatter(x, y, z, figure=figure)
