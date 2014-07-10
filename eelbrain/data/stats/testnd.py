@@ -697,10 +697,20 @@ def _corr(y, x):
         Dependent variable with case in the first axis and case mean zero.
     x : array_like, shape = (n_cases, )
         Covariate.
+
+    Returns
+    -------
+    r : array, shape = (...)
+        The correlation. Occurrence of NaN due to 0 variance in either y or x
+        are replaced with 0.
     """
     x = x.reshape((len(x),) + (1,) * (y.ndim - 1))
     r = np.sum(y * x, axis=0) / (np.sqrt(np.sum(y ** 2, axis=0)) *
                                  np.sqrt(np.sum(x ** 2, axis=0)))
+    # replace NaN values
+    isnan = np.isnan(r)
+    if np.any(isnan):
+        r[isnan] = 0
     return r
 
 def _corr_alt(y, x):
