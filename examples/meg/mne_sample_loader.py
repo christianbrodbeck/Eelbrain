@@ -1,11 +1,11 @@
 """
-This example demonstrates how to define a function to load data form a specific 
+This example demonstrates how to define a function to load data form a specific
 experiment.
 
-Since there is usually just one event structure per experiment, it makes 
+Since there is usually just one event structure per experiment, it makes
 sense to write a function for labeling events that can be re-used in
 different analyses. Such a function is defined in this script. In order to use
-it from another within another script, this file has to be in the same folder 
+it from another within another script, this file has to be in the same folder
 as the other script. if this is the case, the function can be used like::
 
     >>> import mne_sample_loader
@@ -14,7 +14,7 @@ as the other script. if this is the case, the function can be used like::
 
 """
 
-import eelbrain.lab as EL
+import eelbrain as eel
 
 
 def load_evts(path):
@@ -31,18 +31,18 @@ def load_evts(path):
         Events from the raw file as dataset.
     """
     # load the events in the raw file as a dataset
-    ds = EL.load.fiff.events(path, stim_channel='STI 014') 
+    ds = eel.load.fiff.events(path, stim_channel='STI 014')
 
     # get the trigger variable form the dataset for eaier access
     trigger = ds['trigger']
 
     # use trigger to add various labels to the dataset
-    ds['condition'] = EL.Factor(trigger, labels={1:'LA', 2:'RA', 3:'LV', 4:'RV', 
-                                                 5:'smiley', 32:'button'})
-    ds['side'] = EL.Factor(trigger, labels={1: 'L', 2:'R', 3:'L', 4:'R', 
-                                            5:'None', 32:'None'})
-    ds['modality'] = EL.Factor(trigger, labels={1: 'A', 2:'A', 3:'V', 4:'V', 
-                                                5:'None', 32:'None'})
+    ds['condition'] = eel.Factor(trigger, labels={1:'LA', 2:'RA', 3:'LV', 4:'RV',
+                                                  5:'smiley', 32:'button'})
+    ds['side'] = eel.Factor(trigger, labels={1: 'L', 2:'R', 3:'L', 4:'R',
+                                             5:'None', 32:'None'})
+    ds['modality'] = eel.Factor(trigger, labels={1: 'A', 2:'A', 3:'V', 4:'V',
+                                                 5:'None', 32:'None'})
 
     return ds
 
@@ -52,16 +52,16 @@ if __name__ == '__main__':
     import os
     import mne
     datapath = mne.datasets.sample.data_path()
-    raw_path = os.path.join(datapath, 'MEG', 'sample', 
+    raw_path = os.path.join(datapath, 'MEG', 'sample',
                             'sample_audvis_filt-0-40_raw.fif')
 
     ds = load_evts(raw_path)
-    print EL.table.frequencies('condition', ds=ds)
+    print eel.table.frequencies('condition', ds=ds)
     ds = ds.sub('modality == "A"')
 
-    ds = EL.load.fiff.add_epochs(ds, tmin=-0.1, tmax=0.3, baseline=(None, 0), 
-                                 proj=False, data='mag', reject=2e-12, 
-                                 name='meg')
+    ds = eel.load.fiff.add_epochs(ds, tmin=-0.1, tmax=0.3, baseline=(None, 0),
+                                  proj=False, data='mag', reject=2e-12,
+                                  name='meg')
 
     p = plot.TopoButterfly('meg', 'side', ds=ds)
     p.set_vlim(1e-12)

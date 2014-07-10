@@ -2,23 +2,24 @@
 Introduction
 ************
 
+.. currentmodule:: eelbrain
+
 
 There are two primary data-objects: 
 
-* :class:`~eelbrain.data.Var` for scalar variables
-* :class:`~eelbrain.data.Factor` for categorial variables
+* :class:`Var` for scalar variables
+* :class:`Factor` for categorial variables
 
 Multiple variables belonging to the same dataset can be grouped in a 
-:class:`~eelbrain.data.Dataset` object.
+:class:`Dataset` object.
 
 
 Factor
 ======
 
-A :py:class:`~eelbrain.data.Factor` is a container for 
-one-dimensional, categorial data: Each case is 
-described by a string label. The most obvious way to initialize a Factor 
-is a list of strings::
+A :class:`Factor` is a container for one-dimensional, categorial data: Each 
+case is described by a string label. The most obvious way to initialize a 
+:class:`Factor` is a list of strings::
 
     >>> A = Factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b'], name='A')
 
@@ -29,7 +30,7 @@ same Factor can be initialized with::
     Factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b'], name='A')
  
 There are other shortcuts to initialize factors  (see also 
-the :py:class:`~eelbrain.data.Factor` class documentation)::
+the :class:`Factor` class documentation)::
 
     >>> A = Factor(['a', 'b', 'c'], rep=4, name='A')
     >>> A
@@ -43,7 +44,7 @@ Indexing works like for arrays::
     Factor(['a', 'a', 'a', 'a', 'b', 'b'], name='A')
 
 All values present in a Factor are accessible in its 
-:py:attr:`~eelbrain.data.Factor.cells` attribute::
+:attr:`Factor.cells` attribute::
 
     >>> A.cells
     ['a', 'b', 'c']
@@ -82,13 +83,11 @@ where a categorial model is required::
 Var
 ===
 
-The :py:class:`~eelbrain.data.Var` class is basically a container to 
-associate one-dimensional
-:py:class:`numpy.array` objects with a name. While simple operations can be 
+The :class:`Var` class is basically a container to associate one-dimensional
+:py:class:`numpy.ndarray` objects with a name. While simple operations can be 
 performed on the object directly, for any more complex operations on the data
-the corresponding :py:class:`numpy.array` can be retrieved in the 
-:py:class:`~eelbrain.data.Var`'s
-:py:attr:`~eelbrain.data.Var.x` attribute::
+the corresponding :py:class:`numpy.ndarray` can be retrieved in the 
+:attr:`Var.x` attribute::
 
     >>> Y = Var(np.random.rand(10), name='Y')
     >>> Y
@@ -102,28 +101,25 @@ the corresponding :py:class:`numpy.array` can be retrieved in the
             0.88807645,  0.28807859,  0.01645504,  0.90112081,  0.71991843])
 
 .. Note::
-    Note however that the ``Var.x`` attribute is not intended to be replaced;
-    rather, a new ``Var`` object should be created for a new array. 
+    Note however that the :attr:`Var.x` attribute is not intended to be 
+    replaced; rather, a new :class:`Var` object should be created for a new 
+    array.
 
 
 Dataset
 =======
 
-The :py:class:`~eelbrain.data.Dataset` class is a subclass of 
-:py:class:`collections.OrderedDict` from which it inherits much of its 
-behavior.
-Its intended purpose is to be a vessel for variable objects  
-(:py:class:`~eelbrain.data.Factor`, 
-:py:class:`~eelbrain.data.Var` and
-:py:class:`~eelbrain.data.NDVar`) 
-describing the same cases. 
+The :class:`Dataset` class is a subclass of :py:class:`collections.OrderedDict` 
+from which it inherits much of its behavior.
+Its intended purpose is to be a vessel for variable objects (:class:`Factor`,
+:class:`Var` and :class:`NDVar`) describing the same cases.
 As a dictionary, its keys are strings and its values are data-objects.
 
-The :py:class:`~eelbrain.data.Dataset` class interacts with 
-data-objects' :py:attr:`name` attribute:
+The :class:`Dataset` class interacts with data-objects' :attr:`.name`
+attribute:
 
-* A :py:class:`~eelbrain.data.Dataset` initialized with 
-  data-objects automatically uses their names as keys::
+* A :class:`Dataset` initialized with data-objects automatically uses their
+  names as keys::
 
         >>> A = Factor('aabb', name='A')
         >>> B = Factor('cdcd', name='B')
@@ -138,8 +134,8 @@ data-objects' :py:attr:`name` attribute:
         >>> ds['A']
         Factor(['a', 'a', 'b', 'b'], name='A')
 
-* When an unnamed data-object is asigned to a Dataset, the data-object is 
-  automatically assigned its key as a name::
+* When an unnamed data-object is assigned to a :class:`Dataset`, the
+  data-object is automatically assigned its key as a name::
         
         >>> ds['Y'] = Var([2,1,4,2])
         >>> print ds
@@ -152,27 +148,25 @@ data-objects' :py:attr:`name` attribute:
         >>> ds['Y']
         Var([2, 1, 4, 2], name='Y')
 
-The "official" string representation of a Dataset contains information on the 
-variables stored in it::
+The "official" string representation of a :class:`Dataset` contains information
+on the variables stored in it::
 
     >>> ds
-    <Dataset N=4 {'A':F, 'B':F, 'Y':V}>    
+    <Dataset n_cases=4 {'A':F, 'B':F, 'Y':V}>
 
-``N=4`` indicates that the Dataset contains four cases (rows). The subsequent 
-dict-like representation shows the keys and the types of the corresponding 
-values 
-(``F``:   :py:class:`~eelbrain.data.Factor`,
-``V``:   :py:class:`~eelbrain.data.Var`,
-``Vnd``: :py:class:`~eelbrain.data.NDVar`).
+``n_cases=4`` indicates that the Dataset contains four cases (rows). The 
+subsequent dictionary-like representation shows the keys and the types of the 
+corresponding values (``F``:   :class:`Factor`, ``V``:   :class:`Var`,
+``Vnd``: :class:`NDVar`).
 If a variable's name does not match its key in the Dataset, this is also 
 indicated::
 
     >>> ds['C'] = Factor('qwer', name='another_name')
     >>> ds
-    <Dataset N=4 {'A':F, 'B':F, 'Y':V, 'C':<F 'another_name'>}>
+    <Dataset n_cases=4 {'A':F, 'B':F, 'Y':V, 'C':<F 'another_name'>}>
 
 While indexing a Dataset with strings returns the corresponding data-objects,
-:py:class:`numpy.array`-like indexing on the Dataset can be used to access a 
+:class:`numpy.ndarray`-like indexing on the Dataset can be used to access a
 subset of cases::
 
     >>> ds2 = ds[2:]
@@ -234,8 +228,9 @@ The same can be achieved generally with::
 Example
 =======
 
-Below is a simple example using data objects. For more examples, see the 
-``Eelbrain/examples/statistics`` folder::
+Below is a simple example using data objects (for more, see the
+`statistics examples 
+<https://github.com/christianbrodbeck/Eelbrain/tree/master/examples>`_)::
 
     >>> import numpy as np
     >>> from eelbrain.lab import *
@@ -275,7 +270,7 @@ Below is a simple example using data objects. For more examples, see the
     0.75213     c
     1.509       c
     0.62189     c
-    >>> table.frequencies(A)
+    >>> print table.frequencies(A)
     
     Frequencies of A
     
@@ -328,12 +323,9 @@ Below is a simple example using data objects. For more examples, see the
 Exporting Data
 ==============
 
-:class:`~eelbrain.data.Dataset` objects have an 
-:py:meth:`~eelbrain.data.Dataset.export` method for
-saving in various formats. In addition, the Dataset's
-:py:meth:`~eelbrain.data.Dataset.as_table` method can create tables with 
-more flexibility.
+:class:`Dataset` objects have an :meth:`Dataset.export` method for
+saving in various formats. In addition, the Dataset's :meth:`Dataset.as_table` 
+method can create tables with more flexibility.
 
-Iterators (such as :class:`~eelbrain.data.Var` and 
-:class:`~eelbrain.data.Factor`) can be exported using the
-:func:`eelbrain.data.save.txt` function.
+Iterators (such as :class:`Var` and :class:`Factor`) can be exported using the
+:func:`save.txt` function.

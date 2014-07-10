@@ -1,4 +1,4 @@
-from eelbrain.lab import *
+from eelbrain import *
 import numpy as np
 
 np.random.seed(2)

@@ -6,7 +6,7 @@ import tempfile
 
 from eelbrain import fmtxt
 from eelbrain.fmtxt import html, tex
-from eelbrain.lab import datasets, plot
+from eelbrain import datasets, plot
 
 
 def test_symbol():

@@ -11,7 +11,7 @@ try:
 except ImportError:
     from mne.fiff import pick_types
 
-from eelbrain.lab import load
+from eelbrain import load
 
 data_path = mne.datasets.sample.data_path()
 raw_path = os.path.join(data_path, 'MEG', 'sample',

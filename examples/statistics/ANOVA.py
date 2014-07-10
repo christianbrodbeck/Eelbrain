@@ -1,4 +1,4 @@
-from eelbrain.lab import *
+from eelbrain import *
 
 ds = datasets.get_uv()
 

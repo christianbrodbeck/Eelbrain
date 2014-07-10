@@ -1,4 +1,4 @@
-import eelbrain.lab as e
+import eelbrain as e
 
 
 # settings
@@ -19,7 +19,7 @@ pmap = res.masked_parameter_map(pmin=0.05)
 ##e.plot.brain.cluster(pmap.sum('time'), surf='inflated')
 
 
-# create an HTML report with the results form the test 
+# create an HTML report with the results form the test
 report = e.Report("Permutation Test", author="Prof. Enid Gumby")
 # add some information about the test
 section = report.add_section("Introduction")

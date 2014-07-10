@@ -1,5 +1,4 @@
-from eelbrain.lab import *
-from eelbrain import fmtxt
+from eelbrain import *
 
 ds = datasets.get_uv()
 path = 'test_report'

@@ -11,11 +11,11 @@ the data and could be left out for a pure analysis script.
 """
 import os
 import mne
-from eelbrain.lab import *
+from eelbrain import *
 
 # find the path for the mne sample data file
 datapath = mne.datasets.sample.data_path()
-raw_path = os.path.join(datapath, 'MEG', 'sample', 
+raw_path = os.path.join(datapath, 'MEG', 'sample',
                         'sample_audvis_filt-0-40_raw.fif')
 
 # Load the events from the samepl data file
@@ -50,7 +50,7 @@ ds_sub = ds.sub("modality != 'None'")
 ##index = side == 'left'
 ##ds_left = ds.sub(index)
 
-# Load epochs for our selection. Baseline correct from the beginning of the 
+# Load epochs for our selection. Baseline correct from the beginning of the
 # epoch to the trigger i.e., t=0). Reject trials with peak to peak values larger
 # than 3 pico tesla.
 ds_sub = load.fiff.add_epochs(ds_sub, -0.1, 0.6, baseline=(None, 0), reject=3e-12)
@@ -62,9 +62,9 @@ plot.TopoButterfly('meg', ds=ds_sub)
 # plot all conditions separately ('%' is to specify an interaction)
 plot.TopoButterfly('meg', 'side % modality', ds=ds_sub)
 
-# compare left and right visual stimulation in a cluster t-test (this might 
+# compare left and right visual stimulation in a cluster t-test (this might
 # take a minute -- increase samples to 10000 for a better test)
-res = testnd.ttest_ind('meg', 'side', 'L', 'R', sub="modality == 'V'", 
+res = testnd.ttest_ind('meg', 'side', 'L', 'R', sub="modality == 'V'",
                         ds=ds_sub, samples=100, pmin=0.05, tstart=0,
                         tstop=0.4, mintime=0.01)
 # show parameters for all clusters

@@ -2,13 +2,11 @@
 Reference
 *********
 
-All references are relative to :mod:`eelbrain.data` or :mod:`eelbrain.lab`.
-
 ^^^^^^^^^^^^
 Data Classes
 ^^^^^^^^^^^^
 
-.. currentmodule:: eelbrain.data
+.. currentmodule:: eelbrain
 
 Primary data classes:
 
@@ -28,7 +26,8 @@ on primary data-objects):
 .. autosummary::
    :toctree: generated
 
-   data_obj.Interaction
+   Interaction
+   Model
 
 
 ^^^^^^^^
@@ -43,7 +42,7 @@ Load
 .. autosummary::
    :toctree: generated
 
-   load.eyelink.Edf
+   load.eyelink
    load.fiff
    load.tsv
    load.txt.var
@@ -75,7 +74,7 @@ Data Processing
 Sorting and reordering
 ======================
 
-.. currentmodule:: eelbrain.data
+.. currentmodule:: eelbrain
 
 .. autosummary::
    :toctree: generated
@@ -128,15 +127,6 @@ Modules with statistical tests:
    
    test
    testnd
-
-   
-Functions for some statistics:
-
-.. autosummary::
-   :toctree: generated
-   
-   rms
-   rmssd
 
 
 ^^^^^^^^

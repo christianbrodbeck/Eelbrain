@@ -2,11 +2,11 @@
 Example performes a permutation cluster test on source space data and creates
 an HTML file describing he output.
 '''
-import eelbrain.lab as e
+import eelbrain as e
 
 
 # settings
-n_samples = 100 # increase this number for a reliable test!
+n_samples = 100  # increase this number for a reliable test!
 
 
 # create an HTML report in which to document results

@@ -16,7 +16,7 @@
 ##Total            	39.6250 	23 	       	           	     
 
 import numpy as np
-from eelbrain.lab import *
+from eelbrain import *
 
 Y = Var([2, 3, 3, 4,
          3, 4, 5, 6,

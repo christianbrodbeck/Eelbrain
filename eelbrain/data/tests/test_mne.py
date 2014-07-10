@@ -7,7 +7,7 @@ from numpy.testing import assert_array_equal
 
 import mne
 
-from eelbrain.lab import datasets, testnd, morph_source_space
+from eelbrain import datasets, testnd, morph_source_space
 from eelbrain.data.data_obj import asndvar
 from eelbrain.data.tests.test_data import assert_dataobj_equal
 

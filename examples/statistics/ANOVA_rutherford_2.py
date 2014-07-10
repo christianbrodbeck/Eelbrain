@@ -27,7 +27,7 @@
 ##Total           	    1708 	47 	         	           	     
 
 import numpy as np
-from eelbrain.lab import *
+from eelbrain import *
 
 
 Y = np.array([ 7, 3, 6, 6, 5, 8, 6, 7,

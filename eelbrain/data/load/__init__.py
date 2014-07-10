@@ -21,6 +21,8 @@ txt:
 from . import besa
 from . import brainvision
 from . import eyelink
+from . import fiff
 from . import txt
+
 from .txt import tsv
 from ._pickle import unpickle

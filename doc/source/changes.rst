@@ -1,7 +1,14 @@
 Changes
 =======
 
-.. currentmodule:: eelbrain.data
+.. currentmodule:: eelbrain
+
+New in 0.5
+----------
+
+* The :mod:`eelbrain.lab` and :mod:`eelbrain.eellab` modules are deprecated. 
+  Everything can now me imported from :mod:`eelbrain` directly.
+
 
 New in 0.4
 ----------
@@ -23,9 +30,8 @@ New in 0.2
 
 * :class:`eelbrain.lab.gui.SelectEpochs` Epoch rejection GIU has a new "GA" button 
   to plot the grand average of all accepted trials
-* Cluster permutation tests in :mod:`~eelbrain.data.testnd` use multiple 
-  cores; To turn off multiprocessing set 
-  ``eelbrain.data.stats.testnd.multiprocessing = False``.
+* Cluster permutation tests in :mod:`~data.testnd` use multiple cores; To turn off 
+  multiprocessing set ``eelbrain.data.stats.testnd.multiprocessing = False``.
 
 
 New in 0.1.7

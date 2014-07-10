@@ -5,8 +5,7 @@ Performs ANOVA and copies the ANOVA table to the clip-board. Requires the
 """
 
 import numpy as np
-from eelbrain.lab import *
-from eelbrain.fmtxt import copy_pdf
+from eelbrain import *
 
 Y = np.array([ 7, 3, 6, 6, 5, 8, 6, 7,
                7, 11, 9, 11, 10, 10, 11, 11,
@@ -24,6 +23,6 @@ anova = test.anova(Y, A * B + subject(A % B), title="Independent Measures:")
 anova_table = anova.table()
 
 # Copy pdf to clipboard:
-copy_pdf(anova_table)
+fmtxt.copy_pdf(anova_table)
 
 # The table could also be saved as pdf using eelbrain.fmtxt.save_pdf()

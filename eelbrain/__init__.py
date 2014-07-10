@@ -24,4 +24,10 @@ Copyright (c) 2012. All rights reserved.
 
 from ._utils import _set_log_level
 
+from .data import *
+from .fmtxt import Report
+
+from . import gui
+
+
 __version__ = '0.4dev'
