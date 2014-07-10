@@ -39,14 +39,22 @@ Load
 
 .. currentmodule:: eelbrain.data
 
+Functions:
+
+.. autosummary::
+   :toctree: generated
+
+   load.unpickle
+
+Modules:
+
 .. autosummary::
    :toctree: generated
 
    load.eyelink
    load.fiff
-   load.tsv
-   load.txt.var
-   load.unpickle
+   load.txt
+   load.besa
 
 
 Save

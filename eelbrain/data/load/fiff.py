@@ -1,5 +1,5 @@
 '''
-Tools for loading data from mne's fiff files:
+Tools for loading data from mne's fiff files.
 
 .. autosummary::
    :toctree: generated

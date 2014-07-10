@@ -1,14 +1,10 @@
 About
 =====
 
-Eelbrain is a collection of pure Python scripts, with two
-main components
+Eelbrain is a collection of Python scripts for data analysis and plotting 
+based on the `SciPy <http://www.scipy.org/>`_ libraries. The main focus is MEG 
+and EEG data.
 
-*   Tools for data analysis and plotting, based on the 
-    `SciPy <http://www.scipy.org/>`_ libraries.
-    For an example see :ref:`here <statistics-example>`.
-*   An interactive terminal and Python editor based on 
-    `WxPython <http://www.wxpython.org/>`_, optimized for OS X.
 
  .. toctree::
    :maxdepth: 2

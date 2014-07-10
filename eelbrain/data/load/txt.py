@@ -1,7 +1,11 @@
 '''
-Created on Jun 9, 2012
+Tools for loading data from text files.
 
-@author: christian
+.. autosummary::
+   :toctree: generated
+
+   tsv
+   var
 '''
 import os
 import re

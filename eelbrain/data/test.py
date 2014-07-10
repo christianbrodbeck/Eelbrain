@@ -1,4 +1,4 @@
-"""Some basic statistical tests.
+"""Some basic statistical tests for univariate data.
 
 .. autosummary::
    :toctree: generated

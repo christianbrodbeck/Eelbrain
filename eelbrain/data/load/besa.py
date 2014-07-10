@@ -1,5 +1,13 @@
 '''
-Loading data from the besa-mn pipeline
+Tools for loading data from the BESA-MN pipeline.
+
+.. autosummary::
+   :toctree: generated
+
+   mrat_data
+   dat_file
+   dat_set
+   roi
 '''
 # Authors: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
