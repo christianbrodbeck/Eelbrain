@@ -6,7 +6,7 @@ import eelbrain as e
 
 
 # settings
-n_samples = 100  # increase this number for a reliable test!
+n_samples = 1000
 
 
 # create an HTML report in which to document results

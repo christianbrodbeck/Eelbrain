@@ -18,10 +18,14 @@ def test_{i}():
     # find required files
     with open(exa_file) as fid:
         text = fid.read()
-    filenames = [{filename!r}] + re.findall("# requires: (\w+.\w+)", text)
+    filenames = re.findall("# requires: (\w+.\w+)", text)
+    text = text.replace("n_samples = 1000", "n_samples = 2")
 
     # copy all files to temporary dir
     tempdir = mkdtemp()
+    dst = os.path.join(tempdir, {filename!r})
+    with open(dst, 'w') as fid:
+        fid.write(text)
     for filename in filenames:
         src = os.path.join(exa_dir, filename)
         shutil.copy(src, tempdir)
