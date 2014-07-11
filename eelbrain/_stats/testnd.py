@@ -1408,11 +1408,9 @@ class anova(_TestResult):
     Attributes
     ----------
     effects : tuple of str
-        Name of all the effects as they occur in the ``.clusters`` Dataset
-        (e.g., ``('A', 'B', 'A x B')``).
+        Names of all the effects as they occur in the ``.clusters`` Dataset.
     clusters : None | Dataset
-        When performing a cluster permutation test, a Dataset listing all
-        clusters.
+        When performing a cluster permutation test, a Dataset of all clusters.
     f : list
         Maps of f values with probability contours.
     p : list

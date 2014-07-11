@@ -220,7 +220,7 @@ temp = {
 
 
 class MneExperiment(FileTree):
-    """Class for managing data for an experiment
+    """Manage and analyze data from an experiment with MNE
 
     """
     # Experiment Constants
@@ -2186,32 +2186,36 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
-        model : str
-            Model (currently only repeated measures t-tests).
-        contrast : None | str
-            Define a non-standard contrast. Lead with + or - for one-tailed
-            tests.
+        test : str
+            Test for which to create a report (entry in MneExperiment.tests).
         parc : None
-            Find clusters in whole area covered by parc and then in each label.
+            Find clusters in each label of parc (as opposed to the whole
+            brain).
         mask : None | str
             Parcellation to apply as mask. Can only be specified if parc==None.
-        pmin : None | scalar, 1 > pmin > 0
-            Equivalent p-value for cluster threshold.
+        pmin : None | scalar, 1 > pmin > 0 | 'tfce'
+            Equivalent p-value for cluster threshold, or 'tfce' for
+            threshold-free cluster enhancement.
+        tstart, tstop : None | scalar
+            Time window for finding clusters.
         samples : int
             Number of samples used to determine cluster p values for spatio-
             temporal clusters.
+        data : 'src'
+            Kind of data to analyse (currently only 'src' is possible).
         sns_baseline : None | tuple
             Sensor space baseline interval.
         src_baseline : None | tuple
             Source space baseline interval.
-        tstart, tstop : None | scalar
-            Time window for finding clusters.
         redo : bool
             If the target file already exists, delete and recreate it. This
             only applies to the HTML result file, not to the test.
         redo_test : bool
             Redo the test even if a cached file exists.
         """
+        if data != 'src':
+            raise NotImplementedError("Data has to be 'src'")
+
         # determine report file name
         if parc is None:
             if mask:
