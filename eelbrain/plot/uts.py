@@ -8,11 +8,6 @@ import numpy as np
 import scipy.stats
 import matplotlib.cm as _cm
 
-try:
-    import wx
-except:
-    pass
-
 from .._data_obj import ascategorial, asndvar, cellname, Celltable
 from . import _base
 
@@ -171,6 +166,8 @@ class UTSStat(_base._EelFigure):
         self._show()
 
     def _fill_toolbar(self, tb):
+        import wx
+
         btn = self._cluster_btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
         btn.Enable(False)
         tb.AddControl(btn)
@@ -480,6 +477,8 @@ class UTSClusters(_base._EelFigure):
         self._show()
 
     def _fill_toolbar(self, tb):
+        import wx
+
         btn = wx.Button(tb, wx.ID_ABOUT, "Clusters")
         tb.AddControl(btn)
         btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)

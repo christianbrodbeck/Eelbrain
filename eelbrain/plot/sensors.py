@@ -13,15 +13,6 @@ import matplotlib.pyplot as plt
 from .._data_obj import Datalist
 from . import _base
 
-try:
-    import wx
-    _ID_label_Ids = wx.NewId()
-    _ID_label_names = wx.NewId()
-    _ID_label_None = wx.NewId()
-except:
-    pass
-
-
 
 # some useful kwarg dictionaries for different plot layouts
 kwargs_mono = dict(mc='k',
