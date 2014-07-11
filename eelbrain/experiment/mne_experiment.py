@@ -83,14 +83,14 @@ except ImportError:
 
 from .. import fmtxt, __version__
 from ..fmtxt import FMText
-from ..data import load
-from ..data import plot
-from ..data import save
-from ..data import table
-from ..data import test as _test
-from ..data import testnd
-from ..data import Dataset, Factor, Var, NDVar, combine, source_induced_power
-from ..data.data_obj import isdatalist, UTS, DimensionMismatchError
+from .. import load
+from .. import plot
+from .. import save
+from .. import table
+from .. import test as _test
+from .. import testnd
+from .. import Dataset, Factor, Var, NDVar, combine, source_induced_power
+from .._data_obj import isdatalist, UTS, DimensionMismatchError
 from ..fmtxt import List, Report
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri

@@ -37,8 +37,6 @@ File I/O
 Load
 ====
 
-.. currentmodule:: eelbrain.data
-
 Functions:
 
 .. autosummary::
@@ -82,8 +80,6 @@ Data Processing
 Sorting and reordering
 ======================
 
-.. currentmodule:: eelbrain
-
 .. autosummary::
    :toctree: generated
 
@@ -111,8 +107,6 @@ Tables
 
 Manipulate data tables and compile information about data objects such as cell 
 frequencies:
-
-.. currentmodule:: eelbrain.data
 
 .. autosummary::
    :toctree: generated

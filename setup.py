@@ -21,33 +21,35 @@ http://docs.python.org/distutils/index.html
 from ez_setup import use_setuptools
 use_setuptools()
 
+import re
 import sys
 from setuptools import setup, find_packages, Extension
 import numpy as np
 
 # version must be in X.X.X format, e.g., "0.0.3dev"
-from eelbrain import __version__ as version
-url = "https://pythonhosted.org/eelbrain"
+with open('eelbrain/__init__.py') as fid:
+    text = fid.read()
+match = re.search("__version__ = '([.\w]+)'", text)
+if match is None:
+    raise ValueError("No valid version string found in:\n\n" + text)
+version = match.group(1)
+if version.count('.') != 2 and not version.endswith('dev'):
+    raise ValueError("Invalid version string extracted: %r" % version)
 
-
-print sys.argv
 if len(sys.argv) > 1:
     arg = sys.argv[1]
 else:
-    print "For more specific instructions, see %s" % url
     arg = None
 
-
 # Cython extensions
-ext = [Extension("eelbrain.data.stats._opt", ["eelbrain/data/stats/_opt.c"])]
-
+ext = [Extension("eelbrain._stats.opt", ["eelbrain/_stats/opt.c"])]
 
 # basic setup arguments
 kwargs = dict(
               name='eelbrain',
               version=version,
               description="MEG/EEG analysis tools",
-              url=url,
+              url="https://pythonhosted.org/eelbrain",
               author="Christian Brodbeck",
               author_email='christianbrodbeck@nyu.edu',
               license='GPL3',

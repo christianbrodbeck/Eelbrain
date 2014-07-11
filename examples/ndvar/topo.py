@@ -1,7 +1,7 @@
 import numpy as np
 from eelbrain import *
 # dimension objects
-from eelbrain.data.data_obj import UTS, Sensor
+from eelbrain._data_obj import UTS, Sensor
 
 
 """

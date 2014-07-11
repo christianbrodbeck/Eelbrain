@@ -1,7 +1,7 @@
 import numpy as np
 from eelbrain import *
 # the time dimension object
-from eelbrain.data.data_obj import UTS
+from eelbrain._data_obj import UTS
 
 T = UTS(-.2, .01, 100)
 

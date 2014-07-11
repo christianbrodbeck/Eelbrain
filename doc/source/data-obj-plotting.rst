@@ -4,4 +4,4 @@
 Plotting Notes
 **************
 
-.. automodule:: eelbrain.data.plot._base
+.. automodule:: eelbrain.plot._base
