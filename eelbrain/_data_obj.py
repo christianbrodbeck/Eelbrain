@@ -3919,12 +3919,6 @@ class Dataset(collections.OrderedDict):
             yield self.get_case(i)
 
     @property
-    def N(self):
-        warn("Dataset.N s deprecated; use Dataset.n_cases instead",
-             DeprecationWarning)
-        return self.n_cases
-
-    @property
     def n_items(self):
         return super(Dataset, self).__len__()
 
