@@ -100,6 +100,14 @@ def test_anova():
     # not fully specified model with random effects
     assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*rm', ds=ds)
 
+    # empty cells
+    dss = ds.sub("A%B != ('a2', 'b2')")
+    assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*B', ds=dss)
+    assert_raises(NotImplementedError, run_on_lm_fitter, 'fltvar', 'A*B', ds=dss)
+    dss = ds.sub("A%B != ('a1', 'b1')")
+    assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*B', ds=dss)
+    assert_raises(NotImplementedError, run_on_lm_fitter, 'fltvar', 'A*B', ds=dss)
+
 
 def test_anova_r_adler():
     """Test ANOVA accuracy by comparing with R (Adler dataset of car package)

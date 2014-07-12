@@ -244,6 +244,26 @@ def isintvar(Y):
     return isint
 
 
+def hasemptycells(x):
+    "True iff a categorial has one or more empty cells"
+    if isfactor(x):
+        return False
+    elif isinteraction(x):
+        if x.is_categorial:
+            for cell in x.cells:
+                if not np.any(x == cell):
+                    return True
+        return False
+    elif ismodel(x):
+        for e in x.effects:
+            if isinteraction(e) and e.is_categorial:
+                for cell in e.cells:
+                    if not np.any(e == cell):
+                        return True
+        return False
+    raise TypeError("Need categorial (got %s)" % type(x))
+
+
 def hasrandom(Y):
     """True if Y is or contains a random effect, False otherwise"""
     if isfactor(Y):

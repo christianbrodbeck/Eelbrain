@@ -29,8 +29,8 @@ import scipy.stats
 from .. import fmtxt
 from .._utils import LazyProperty
 from .._utils.print_funcs import strdict
-from .._data_obj import (isvar, asvar, assub, isbalanced, isnestedin,
-                         hasrandom, find_factors, Model, asmodel)
+from .._data_obj import (isvar, asvar, assub, isbalanced, hasemptycells,
+                         isnestedin, hasrandom, find_factors, Model, asmodel)
 from .opt import _anova_fmaps, _anova_full_fmaps, _lm_ss_res, _ss
 from .stats import ftest_p
 from . import test
@@ -368,7 +368,9 @@ class LM(object):
 def _nd_anova(x):
     "Create an appropriate anova mapper"
     x = asmodel(x)
-    if x.df_error == 0:
+    if hasemptycells(x):
+        raise NotImplementedError("Model has empty cells")
+    elif x.df_error == 0:
         return _FullNDANOVA(x)
     elif hasrandom(x):
         err = ("Models containing random effects need to be fully "
@@ -816,6 +818,8 @@ class anova(object):
 
         if len(Y) != len(X):
             raise ValueError("Y and X must describe same number of cases")
+        elif hasemptycells(X):
+            raise NotImplementedError("Model has empty cells")
 
         # save args
         self.Y = Y
