@@ -10,9 +10,20 @@ from eelbrain import datasets, test, Dataset
 from eelbrain._stats.glm import _nd_anova
 
 
+def r_require(package):
+    from rpy2.robjects import r
+
+    success = r('require(%s)' % package)[0]
+    if not success:
+        print r("install.packages('%s', repos='http://cran.us.r-project.org')"
+                % package)
+        success = r('require(%s)' % package)[0]
+        if not success:
+            raise RuntimeError("Could not install R package %r" % package)
+
 @nottest
 def assert_f_test_equal(f_test, r_res, r_row, f=None, r_kind='aov'):
-    if r_kind == 'aov':
+    if r_kind in ('aov', 'rmaov'):
         r_df = 0
         r_SS = 1
         r_MS = 2
@@ -36,6 +47,20 @@ def assert_f_test_equal(f_test, r_res, r_row, f=None, r_kind='aov'):
     if f is not None:
         assert_almost_equal(f, r_res[r_F][r_row])
 
+@nottest
+def assert_f_tests_equal(f_tests, r_res, fs, r_kind='aov'):
+    if r_kind == 'rmaov':
+        r_row = 0
+    else:
+        r_res_ = r_res
+
+    for i in xrange(len(f_tests)):
+        if r_kind == 'rmaov':
+            r_res_ = r_res[i][0]
+        else:
+            r_row = i
+        assert_f_test_equal(f_tests[i], r_res_, r_row, fs[i], r_kind)
+
 
 def run_on_lm_fitter(y, x, ds):
     y = ds.eval(y)
@@ -49,13 +74,31 @@ def run_on_lm_fitter(y, x, ds):
 
 
 def test_anova():
-    "Test univariate ANOVA"
-    ds = datasets.get_rand()
-    aov = anova('Y', 'A*B*rm', ds=ds)
+    "Test ANOVA"
+    from rpy2.robjects import r
+    r_require('car')
+
+    ds = datasets.get_uv()
+    ds.to_r('ds')
+
+    # fixed effects
+    aov = test.anova('fltvar', 'A*B', ds=ds)
     print aov
+    fs = run_on_lm_fitter('fltvar', 'A*B', ds)
+    r_res = r("Anova(lm(fltvar ~ A * B, ds, type=2))")
+    assert_f_tests_equal(aov.f_tests, r_res, fs, 'Anova')
+
+    # random effects
+    aov = test.anova('fltvar', 'A*B*rm', ds=ds)
+    print aov
+    fs = run_on_lm_fitter('fltvar', 'A*B*rm', ds)
+    r('test.aov <- aov(fltvar ~ A * B + Error(rm / (A * B)), ds)')
+    print r('test.summary <- summary(test.aov)')
+    r_res = r['test.summary'][1:]
+    assert_f_tests_equal(aov.f_tests, r_res, fs, 'rmaov')
 
     # not fully specified model with random effects
-    assert_raises(NotImplementedError, anova, 'Y', 'A*rm', ds=ds)
+    assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*rm', ds=ds)
 
 
 def test_anova_r_adler():
@@ -66,37 +109,27 @@ def test_anova_r_adler():
     from rpy2.robjects import r
 
     # "Adler" dataset
-    success = r('require(car)')[0]
-    if not success:
-        print r("install.packages('car', repos='http://cran.us.r-project.org')")
-        success = r('require(car)')[0]
-        if not success:
-            raise RuntimeError("Could not install car R package")
-
+    r_require('car')
     ds = Dataset.from_r('Adler')
 
     # with balanced data
     dsb = ds.equalize_counts('expectation % instruction')
     dsb.to_r('AdlerB')
-    aov = anova('rating', 'instruction * expectation', ds=dsb)
+    aov = test.anova('rating', 'instruction * expectation', ds=dsb)
     fs = run_on_lm_fitter('rating', 'instruction * expectation', dsb)
     print r('a.aov <- aov(rating ~ instruction * expectation, AdlerB)')
     print r('a.summary <- summary(a.aov)')
     r_res = r['a.summary'][0]
-    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0])
-    assert_f_test_equal(aov.f_tests[1], r_res, 1, fs[1])
-    assert_f_test_equal(aov.f_tests[2], r_res, 2, fs[2])
+    assert_f_tests_equal(aov.f_tests, r_res, fs)
 
     # with unbalanced data; for Type II SS use car package
-    aov = anova('rating', 'instruction * expectation', ds=ds)
+    aov = test.anova('rating', 'instruction * expectation', ds=ds)
     fs = run_on_lm_fitter('rating', 'instruction * expectation', ds)
     r_res = r("Anova(lm(rating ~ instruction * expectation, Adler, type=2))")
-    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], 'Anova')
-    assert_f_test_equal(aov.f_tests[1], r_res, 1, fs[1], 'Anova')
-    assert_f_test_equal(aov.f_tests[2], r_res, 2, fs[2], 'Anova')
+    assert_f_tests_equal(aov.f_tests, r_res, fs, 'Anova')
 
     # single predictor
-    aov = anova('rating', 'instruction', ds=ds)
+    aov = test.anova('rating', 'instruction', ds=ds)
     fs = run_on_lm_fitter('rating', 'instruction', ds)
     r_res = r("Anova(lm(rating ~ instruction, Adler, type=2))")
     assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], 'Anova')
@@ -112,7 +145,7 @@ def test_anova_r_sleep():
     ds['ID'].random = True
 
     # independent measures
-    aov = anova('extra', 'group', ds=ds)
+    aov = test.anova('extra', 'group', ds=ds)
     fs = run_on_lm_fitter('extra', 'group', ds)
     print r('sleep.aov <- aov(extra ~ group, sleep)')
     print r('sleep.summary <- summary(sleep.aov)')
@@ -120,7 +153,7 @@ def test_anova_r_sleep():
     assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0])
 
     # repeated measures
-    aov = anova('extra', 'group * ID', ds=ds)
+    aov = test.anova('extra', 'group * ID', ds=ds)
     fs = run_on_lm_fitter('extra', 'group * ID', ds)
     print r('sleep.aov <- aov(extra ~ group + Error(ID / group), sleep)')
     print r('sleep.summary <- summary(sleep.aov)')
@@ -130,7 +163,7 @@ def test_anova_r_sleep():
     # unbalanced (independent measures)
     ds2 = ds[1:]
     print r('sleep2 <- subset(sleep, (group == 2) | (ID != 1))')
-    aov = anova('extra', 'group', ds=ds2)
+    aov = test.anova('extra', 'group', ds=ds2)
     fs = run_on_lm_fitter('extra', 'group', ds2)
     print r('sleep2.aov <- aov(extra ~ group, sleep2)')
     print r('sleep2.summary <- summary(sleep2.aov)')
@@ -144,7 +177,6 @@ def test_lmfitter():
 
     # independent, residuals vs. Hopkins
     y = ds['uts'].x
-    y_shape = y.shape
 
     x = ds.eval("A * B")
     lm = _nd_anova(x)
@@ -167,7 +199,7 @@ def test_lmfitter():
     f_maps = lm.map(y)
     p_maps = lm.p_maps(f_maps)
 
-    aov = anova(y[:, 0], x)
+    aov = test.anova(y[:, 0], x)
     for f_test, f_map, p_map in izip(aov.f_tests, f_maps, p_maps):
         assert_almost_equal(f_map[0], f_test.F)
         assert_almost_equal(p_map[0], f_test.p)
