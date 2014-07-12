@@ -710,7 +710,10 @@ def _corr(y, x):
     # replace NaN values
     isnan = np.isnan(r)
     if np.any(isnan):
-        r[isnan] = 0
+        if np.isscalar(r):
+            r = 0
+        else:
+            r[isnan] = 0
     return r
 
 def _corr_alt(y, x):
