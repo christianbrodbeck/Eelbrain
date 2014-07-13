@@ -17,8 +17,8 @@ from .._data_obj import Dataset, Factor, Var, corr, asndvar
 from ..plot._base import find_fig_vlims
 from ..plot.utsnd import _ax_bfly_epoch
 from ..plot.nuts import _plt_bin_nuts
-from ..wxutils import Icon, ID, logger, REValidator
-from ..wxutils.mpl_canvas import FigureCanvasPanel
+from .._wxutils import Icon, ID, logger, REValidator
+from .._wxutils.mpl_canvas import FigureCanvasPanel
 from .history import History
 
 

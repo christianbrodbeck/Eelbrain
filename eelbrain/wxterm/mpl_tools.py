@@ -5,7 +5,7 @@ import wx
 
 from .. import fmtxt
 from .._utils import ui
-from ..wxutils import Icon
+from .._wxutils import Icon
 
 
 class PyplotManager(wx.MiniFrame):

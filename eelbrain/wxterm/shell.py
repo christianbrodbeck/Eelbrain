@@ -25,8 +25,8 @@ from .. import __version__
 from .. import fmtxt
 from .._utils import ui
 from .._utils import print_funcs
-from ..wxutils import droptarget, Icon, ID
-from ..wxutils.mpl_canvas import CanvasFrame
+from .._wxutils import droptarget, Icon, ID
+from .._wxutils.mpl_canvas import CanvasFrame
 from .about_dialog import AboutFrame
 from .help import HelpFrame
 from .mpl_tools import PyplotManager

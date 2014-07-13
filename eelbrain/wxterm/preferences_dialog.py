@@ -9,7 +9,7 @@ import os
 import wx
 from wx.py.frame import ID_SAVEHISTORY, ID_AUTO_SAVESETTINGS
 
-from ..wxutils import ID
+from .._wxutils import ID
 
 
 class PreferencesDialog(wx.Frame):

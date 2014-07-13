@@ -7,7 +7,7 @@ import wx.py
 # import wx.lib.mixins.listctrl
 
 from .. import fmtxt
-from ..wxutils import droptarget, Icon, ID, key_mod
+from .._wxutils import droptarget, Icon, ID, key_mod
 
 
 # replace Document to allow unicode i/o

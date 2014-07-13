@@ -11,7 +11,7 @@ import wx
 from wx.lib.agw import hyperlink
 
 from .. import __version__
-from ..wxutils import Icon
+from .._wxutils import Icon
 
 
 class AboutFrame(wx.MiniFrame):

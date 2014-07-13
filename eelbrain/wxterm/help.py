@@ -14,7 +14,7 @@ import wx.html
 import docutils.core
 
 from .. import fmtxt
-from ..wxutils import Icon, ID
+from .._wxutils import Icon, ID
 
 
 
