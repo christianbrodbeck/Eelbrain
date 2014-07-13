@@ -75,7 +75,7 @@ def labels_from_clusters(clusters, names=None):
 
 
 def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None):
-    """Morph source estimate between subjects using a precomputed matrix
+    """Morph source estimate between subjects using a precomputed morph-matrix
 
     Parameters
     ----------

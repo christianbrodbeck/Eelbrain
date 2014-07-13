@@ -89,7 +89,8 @@ from .. import save
 from .. import table
 from .. import test as _test
 from .. import testnd
-from .. import Dataset, Factor, Var, NDVar, combine, source_induced_power
+from .. import Dataset, Factor, Var, NDVar, combine
+from .._mne import source_induced_power
 from .._data_obj import isdatalist, UTS, DimensionMismatchError
 from ..fmtxt import List, Report
 from .._utils import subp, ui, keydefaultdict

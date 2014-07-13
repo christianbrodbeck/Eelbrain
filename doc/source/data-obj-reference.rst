@@ -61,7 +61,7 @@ Save
 * `Pickling <http://docs.python.org/library/pickle.html>`_: 
   All data-objects can be pickled. :func:`save.pickle` provides a 
   shortcut for pickling objects.
-* Text file export: Save a Dataset using it's 
+* Text file export: Save a Dataset using its 
   :py:meth:`~Dataset.save_txt` method. 
   Save any iterator with 
   :py:func:`save.txt`.
@@ -98,7 +98,6 @@ NDVar Transformations
    cwt_morlet
    labels_from_clusters
    morph_source_space
-   source_induced_power
 
 
 ^^^^^^
