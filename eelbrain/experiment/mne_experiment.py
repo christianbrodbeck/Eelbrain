@@ -2517,7 +2517,7 @@ class MneExperiment(FileTree):
         figure.append(legend)
 
         # cluster value
-        idx = c_extent > 0
+        idx = (c_extent != 0)
         v = y.mean(idx)
         p = plot.uv.boxplot(v, model, 'subject', ds=ds)
         image = p.image('cluster_boxplot.png')
