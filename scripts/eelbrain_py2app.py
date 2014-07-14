@@ -1,7 +1,7 @@
 # py2app startup script
 
 import os
-import eelbrain.wxterm
+import eelbrain._wxterm
 
 os.chdir(os.path.expanduser('~'))
-eelbrain.wxterm.launch(True)
+eelbrain._wxterm.launch(True)
