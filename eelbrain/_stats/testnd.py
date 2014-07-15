@@ -1077,7 +1077,7 @@ class ttest_ind(_TestResult):
 
 
 class ttest_rel(_TestResult):
-    """Element-wise t-test
+    """Element-wise related samples t-test
 
     Attributes
     ----------
