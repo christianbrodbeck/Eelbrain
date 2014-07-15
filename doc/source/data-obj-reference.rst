@@ -144,3 +144,28 @@ Modules for plotting:
     plot.uv
 
 .. seealso:: :ref:`plotting-notes`
+
+
+^^^^
+GUIs
+^^^^
+
+.. autosummary::
+   :toctree: generated
+
+    gui.select_epochs
+
+
+^^^^^^^^^^^^^^^^^^
+Experiment Classes
+^^^^^^^^^^^^^^^^^^
+
+The :mod:`eelbrain.experiment` module contains tools for managing hierarchical
+collections of templates.
+
+.. autosummary::
+   :toctree: generated
+
+   experiment.TreeModel
+   experiment.FileTree
+

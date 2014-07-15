@@ -17,10 +17,9 @@ Contents:
    :maxdepth: 2
    
    About
-   data-obj
-   experiment
-   Interface
-   Various
+   data-obj-intro
+   data-obj-reference
+   data-obj-plotting
 
 
 .. seealso:: `Eelbrain on GitHub <http://github.com/christianbrodbeck/Eelbrain>`_,
