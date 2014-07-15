@@ -84,7 +84,7 @@ Var
 ===
 
 The :class:`Var` class is basically a container to associate one-dimensional
-:py:class:`numpy.ndarray` objects with a name. While simple operations can be 
+:py:class:`numpy.ndarray` objects with a name. While simple operations can be
 performed on the object directly, for any more complex operations on the data
 the corresponding :py:class:`numpy.ndarray` can be retrieved in the 
 :attr:`Var.x` attribute::
@@ -93,7 +93,7 @@ the corresponding :py:class:`numpy.ndarray` can be retrieved in the
     >>> Y
     Var([0.185, 0.285, 0.105, 0.916, 0.76, 0.888, 0.288, 0.0165, 0.901, 0.72], name='Y')
     >>> Y[5:]
-    Var([0.888, 0.288, 0.0165, 0.901, 0.72], name='Y')    
+    Var([0.888, 0.288, 0.0165, 0.901, 0.72], name='Y')
     >>> Y + 1
     Var([1.18, 1.28, 1.11, 1.92, 1.76, 1.89, 1.29, 1.02, 1.9, 1.72], name='Y+1')
     >>> Y.x
@@ -105,6 +105,45 @@ the corresponding :py:class:`numpy.ndarray` can be retrieved in the
     replaced; rather, a new :class:`Var` object should be created for a new 
     array.
 
+
+NDVar
+=====
+
+:class:`NDVar` object are containers for multidimensional data, and manage the
+description of the dimensions along with the data. :class:`NDVars` are usually
+derived from some import function, for example :func:`load.fiff.stc_ndvar`,
+rather than being constructed manually. As an example, consider single trial
+data from the mne sample dataset::
+
+    >>> src
+    <NDVar 'src': 145 (case) X 5120 (source) X 76 (time)>
+
+This representation shows that ``src`` contains 145 trials of data, with
+5120 sources and 76 time points. :class:`NDVars` offer :mod:`numpy`
+functionality that takes into account the dimensions. Through the
+:meth:`NDVar.sub` method, indexing can be done using meaningful descriptions,
+such as selecting data for only the left hemisphere::
+
+    >>> src.sub(source='lh')
+    <NDVar 'src': 145 (case) X 2559 (source) X 76 (time)>
+
+Throught several methods data can be aggregated, for example a mean over time::
+
+    >>> src.mean('time')
+    <NDVar 'src': 145 (case) X 5120 (source)>
+
+Or a root mean square over sources::
+
+    >>> src.rms('source')
+    <NDVar 'src': 145 (case) X 76 (time)>
+
+As with a :class:`Var`, the corresponding :class:`numpy.ndarray` can always be
+accessed in the :attr:`NDVar.x` attribute::
+
+    >>> type(src.x)
+    numpy.ndarray
+    >>> src.x.shape
+    (145, 5120, 76)
 
 Dataset
 =======
