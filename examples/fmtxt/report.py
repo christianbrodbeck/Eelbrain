@@ -4,7 +4,7 @@ ds = datasets.get_uv()
 path = 'test_report'
 
 # create the initial report
-report = fmtxt.Report("Test Report", "Test Author")
+report = Report("Test Report", "Test Author")
 
 # add a new section to the report and add some text
 s1 = report.add_section("The Big Analysis")
