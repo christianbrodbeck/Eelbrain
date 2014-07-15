@@ -5,9 +5,20 @@ Plot :class:`NDVar` objects containing source estimates with mayavi/pysurfer.
    :toctree: generated
 
    activation
+   cluster
    dspm
    stat
    surfer_brain
+
+Functions that can be applied to the :class:`surfer.Brain` instances that are
+returned by the plotting functions:
+
+.. autosummary::
+   :toctree: generated
+
+    bin_table
+    copy
+    image
 
 '''
 # author: Christian Brodbeck
@@ -663,7 +674,7 @@ def image(brain, filename, alt=None, close=False):
 
 
 def copy(brain):
-    "Copy figure to clip board"
+    "Copy the figure to the clip board"
     import wx
 
     tempdir = mkdtemp()
