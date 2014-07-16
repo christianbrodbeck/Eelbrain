@@ -1,1 +1,1 @@
-from .select_epochs import TerminalInterface as SelectEpochs
+from . import select_epochs

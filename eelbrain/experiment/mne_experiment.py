@@ -83,6 +83,7 @@ except ImportError:
 
 from .. import fmtxt, __version__
 from ..fmtxt import FMText
+from .. import gui
 from .. import load
 from .. import plot
 from .. import save
@@ -2175,9 +2176,8 @@ class MneExperiment(FileTree):
                               decim=rej_args.get('decim', 5))
         path = self.get('rej-file', mkdir=True)
 
-        from ..gui import SelectEpochs
-        SelectEpochs(ds, data='meg', path=path, vlim=2e-12, mark=self._eog_sns,
-                     **kwargs)
+        gui.select_epochs(ds, data='meg', path=path, vlim=2e-12,
+                          mark=self._eog_sns, **kwargs)
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
                     tstop=None, samples=1000, data='src',
