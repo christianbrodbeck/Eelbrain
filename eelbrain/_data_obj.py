@@ -26,6 +26,7 @@ import collections
 from fnmatch import fnmatchcase
 import itertools
 from itertools import izip
+from keyword import iskeyword
 from math import ceil, log10
 import cPickle as pickle
 import operator
@@ -3277,6 +3278,16 @@ class Datalist(list):
         return x
 
 
+legal_dataset_key_re = re.compile("[_A-Za-z][_a-zA-Z0-9]*$")
+def assert_is_legal_dataset_key(key):
+    if iskeyword(key):
+        msg = ("%r is a reserved keyword and can not be used as variable name "
+               "in a Dataset" % key)
+        raise ValueError(msg)
+    elif not legal_dataset_key_re.match(key):
+        msg = ("%r is not a valid keyword and can not be used as variable name "
+               "in a Dataset" % key)
+        raise ValueError(msg)
 
 
 class Dataset(collections.OrderedDict):
@@ -3498,6 +3509,7 @@ class Dataset(collections.OrderedDict):
             # test if name already exists
             if (not overwrite) and (index in self):
                 raise KeyError("Dataset already contains variable of name %r" % index)
+            assert_is_legal_dataset_key(index)
 
             # coerce item to data-object
             if isdataobject(item) or isinstance(object, Datalist):

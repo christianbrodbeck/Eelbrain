@@ -2628,7 +2628,7 @@ class MneExperiment(FileTree):
                                   p='%.3f' % cluster['p'],
                                   effect=cluster.get('effect', ''),
                                   location=cluster.get('location', ''),
-                                  mark=cluster['*']).strip()
+                                  mark=cluster['sig']).strip()
             while '  ' in title_:
                 title_ = title_.replace('  ', ' ')
             section = section.add_section(title_)

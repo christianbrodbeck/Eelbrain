@@ -302,6 +302,21 @@ def test_dataset_indexing():
     ds['C', :] = 'c'
     ok_(np.all(ds.eval("C == 'c'")))
 
+    # assigning new Var
+    ds['D1', :] = 5.
+    ds[:, 'D2'] = 5.
+    assert_array_equal(ds['D1'], 5)
+    assert_array_equal(ds['D2'], 5)
+
+    # test illegal names
+    f = Factor('aaabbb')
+    assert_raises(ValueError, ds.__setitem__, '%dsa', f)
+    assert_raises(ValueError, ds.__setitem__, '432', f)
+    assert_raises(ValueError, ds.__setitem__, ('%dsa', slice(None)), 'value')
+    assert_raises(ValueError, ds.__setitem__, (slice(None), '%dsa'), 'value')
+    assert_raises(ValueError, ds.__setitem__, ('432', slice(None)), 4.)
+    assert_raises(ValueError, ds.__setitem__, (slice(None), '432'), 4.)
+
 
 def test_dataset_sorting():
     "Test Dataset sorting methods"

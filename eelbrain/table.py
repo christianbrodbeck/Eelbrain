@@ -142,7 +142,7 @@ def frequencies(Y, X=None, of=None, sub=None, ds=None):
     for y_cell in Y.cells:
         n = (np.sum(np.logical_and(y_idx[y_cell], x_idx[x_cell]))
              for x_cell in X.cells)
-        name = cellname(y_cell)
+        name = cellname(y_cell, '_')
         out[name] = Var(np.fromiter(n, int, len(X.cells)))
 
     return out

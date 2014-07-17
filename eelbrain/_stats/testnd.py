@@ -2837,7 +2837,7 @@ class _ClusterDist:
             ds['p'] = Var([p_map.x[pos] for pos in min_pos])
 
         if 'p' in ds:
-            ds['*'] = star_factor(ds['p'])
+            ds['sig'] = star_factor(ds['p'])
 
         # expand clusters
         if maps:
