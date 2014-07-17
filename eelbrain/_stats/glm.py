@@ -630,7 +630,7 @@ def _incremental_comparisons(x):
             next_idx += 1
             model_idxs[e_tuple] = idx0
             if len(effects):
-                model0 = Model(*effects)
+                model0 = Model(effects)
             else:
                 model0 = None
 
@@ -655,7 +655,7 @@ def _incremental_comparisons(x):
             idx1 = next_idx
             next_idx += 1
             model_idxs[e_tuple] = idx1
-            models[idx1] = Model(*effects)
+            models[idx1] = Model(effects)
 
         # store comparison
         comparisons.append((e_test, idx1, idx0))
@@ -892,7 +892,7 @@ class anova(object):
                     EMS_effects = _find_hopkins_ems(e_test, X)
 
                     if len(EMS_effects) > 0:
-                        lm_EMS = LM(Y, Model(*EMS_effects))
+                        lm_EMS = LM(Y, Model(EMS_effects))
                         MS_e = lm_EMS.MS_model
                         df_e = lm_EMS.df_model
                     else:

@@ -363,8 +363,6 @@ def asmodel(X, sub=None, ds=None):
 
     if ismodel(X):
         pass
-    elif isinstance(X, (list, tuple)):
-        X = Model(*X)
     else:
         X = Model(X)
 
@@ -1174,7 +1172,7 @@ class Var(object):
     def __add__(self, other):
         if isdataobject(other):
             # ??? should Var + Var return sum or Model?
-            return Model(self, other)
+            return Model((self, other))
         else:
             x = self.x + other
             if np.isscalar(other):
@@ -1204,7 +1202,7 @@ class Var(object):
 
     def __mul__(self, other):
         if iscategorial(other):
-            return Model(self, other, self % other)
+            return Model((self, other, self % other))
         elif isvar(other):
             x = self.x * other.x
             name = '%s*%s' % (self.name, other.name)
@@ -1549,7 +1547,7 @@ class _Effect(object):
         return Model(self) + other
 
     def __mul__(self, other):
-        return Model(self, other, self % other)
+        return Model((self, other, self % other))
 
     def __mod__(self, other):
         return Interaction((self, other))
@@ -4653,41 +4651,51 @@ class Model(object):
 
     """
     _stype_ = "model"
-    def __init__(self, *x):
+    def __init__(self, x):
+        """Model
+
+        Parameters
+        ----------
+        x : effect | iterator of effects
+            Effects to be included in the model (Var, Factor, Interaction ,
+            ...). Can also contain models, in which case all the model's
+            effects will be added.
         """
+        effects = EffectList()
 
-        Parameters : factors | effects | models
-            factors and secondary effects contained in the Model.
-            Can also contain models, in which case all the models' effects
-            will be added.
+        # find effects in input
+        if iseffect(x):
+            effects.append(x)
+            n_cases = len(x)
+        elif ismodel(x):
+            effects += x.effects
+            n_cases = len(x)
+        else:
+            n_cases = None
+            for e in x:
+                # check n_cases
+                if n_cases is None:
+                    n_cases = len(e)
+                elif len(e) != n_cases:
+                    e0 = effects[0]
+                    err = ("All effects contained in a Model need to describe"
+                           " the same number of cases. %r has %i cases, %r has"
+                           " %i cases." % (e0.name, len(e0), e.name, len(e)))
+                    raise ValueError(err)
 
-        """
-        if len(x) == 0:
-            msg = ("Model needs to be initialized with one or more effects")
-            raise ValueError(msg)
+                # find effects
+                if iseffect(e):
+                    effects.append(e)
+                elif ismodel(e):
+                    effects += e.effects
+                else:
+                    err = ("Model needs to be initialized with effect (Var, "
+                           "Factor, Interaction, ...) and/or Model objects "
+                           "(got %s)" % type(e))
+                    raise TypeError(err)
 
-        # try to find effects in input
-        self.effects = effects = EffectList()
-        self._n_cases = n_cases = len(x[0])
-        for e in x:
-            # check that all effects have same number of cases
-            if len(e) != n_cases:
-                e0 = effects[0]
-                err = ("All effects contained in a Model need to describe"
-                       " the same number of cases. %r has %i cases, %r has"
-                       " %i cases." % (e0.name, len(e0), e.name, len(e)))
-                raise ValueError(err)
-
-            #
-            if iseffect(e):
-                effects.append(e)
-            elif ismodel(e):
-                effects += e.effects
-            else:
-                err = ("Model needs to be initialized with effects (vars, "
-                       "factors, interactions, ...) and/or models (got %s)"
-                       % type(e))
-                raise TypeError(err)
+        self.effects = effects
+        self._n_cases = n_cases
 
         # beta indices
         self.beta_index = beta_index = {}
@@ -4714,7 +4722,7 @@ class Model(object):
             return ' + '.join(names)
         else:
             x = ', '.join(names)
-            return "Model(%s)" % x
+            return "Model((%s))" % x
 
     def __str__(self):
         return str(self.get_table(cases=50))
@@ -4730,7 +4738,7 @@ class Model(object):
                     return e
             raise ValueError("No effect named %r" % sub)
         else:
-            return Model(*(x[sub] for x in self.effects))
+            return Model((x[sub] for x in self.effects))
 
     def __contains__(self, effect):
         return id(effect) in map(id, self.effects)
@@ -4747,21 +4755,21 @@ class Model(object):
                 if len(e.factors) == i:
                     out.append(e)
             i += 1
-        return Model(*out)
+        return Model(out)
 
     # numeric ---
     def __add__(self, other):
-        return Model(self, other)
+        return Model((self, other))
 
     def __mul__(self, other):
-        return Model(self, other, self % other)
+        return Model((self, other, self % other))
 
     def __mod__(self, other):
         out = []
         for e_self in self.effects:
             for e_other in Model(other).effects:
                 out.append(e_self % e_other)
-        return Model(*out)
+        return Model(out)
 
     # repr ---
     @property
