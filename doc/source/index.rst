@@ -19,6 +19,7 @@ Contents:
    About
    data-obj-intro
    data-obj-reference
+   recipes
    data-obj-plotting
 
 
