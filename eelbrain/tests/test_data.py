@@ -10,8 +10,8 @@ import shutil
 import tempfile
 
 import mne
-from nose.tools import (assert_equal, assert_is_instance, assert_true, eq_,
-                        ok_, assert_raises)
+from nose.tools import (assert_equal, assert_almost_equal, assert_is_instance,
+                        assert_true, eq_, ok_, assert_raises)
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
@@ -486,6 +486,38 @@ def test_ndvar_summary_methods():
     assert_array_equal(x0.rms(idx0), rms(x0.x[idx0.x]))
     assert_array_equal(x.rms(idxsub), xsub.rms(idxsub))
     assert_array_equal(x.rms(idx1d), rms(x.x[:, idx1d.x], 1))
+
+
+def test_ols():
+    "Test NDVar.ols() method"
+    from rpy2.robjects import r
+
+    # simulate data
+    ds = datasets.get_rand()
+    n_times = len(ds['uts'].time)
+    x = np.zeros(n_times)
+    x[20:40] = np.hanning(20)
+    utsc = ds.eval("uts.copy()")
+    utsc.x += ds['Y'].x[:, None] * x[None, :]
+    ds_ = Dataset()
+    ds_['x'] = Var(ds['Y'].x)
+    ds_['x2'] = ds_['x'] + np.random.normal(0, 1, ds.n_cases)
+
+    # ols regression
+    b = utsc.ols(ds_['x'])
+    b2 = utsc.ols((ds_['x'], ds_['x2']))
+    # compare with R
+    for i in xrange(n_times):
+        ds_['y'] = Var(utsc.x[:, i])
+        ds_.to_r('ds')
+        # 1 predictor
+        r('lm1 <- lm(y ~ x, ds)')
+        beta = r('coef(lm1)')[1]
+        assert_almost_equal(b.x[0, i], beta)
+        # 2 predictors
+        r('lm2 <- lm(y ~ x + x2, ds)')
+        beta = r('coef(lm2)')[1:]
+        assert_array_almost_equal(b2.x[:, i], beta)
 
 
 def test_io_pickle():

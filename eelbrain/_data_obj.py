@@ -42,7 +42,7 @@ import numpy as np
 from numpy import dot
 import scipy
 import scipy.stats
-from scipy.linalg import inv
+from scipy.linalg import inv, lstsq
 from scipy.optimize import leastsq
 from scipy.sparse import coo_matrix
 from scipy.spatial.distance import cdist, pdist, squareform
@@ -2879,6 +2879,46 @@ class NDVar(object):
             all data.
         """
         return self._aggregate_over_dims(dims, np.min)
+
+    def ols(self, x, name="ols"):
+        """
+        Sample-wise ordinary least squares regressions
+
+        Parameters
+        ----------
+        x : Model
+            Predictor or predictors. Can also be supplied as argument that can
+            be converted to a Model, for example ``Var`` or list of ``Var``.
+        name : str
+            Name for the output NDVar.
+
+        Returns
+        -------
+        beta : NDVar
+            Per sample beta weights. The case dimension reflects the predictor
+            variables in the same order as the Model's effects.
+
+        Notes
+        -----
+        The model is fit with :func:`scipy.linalg.leastsq`. The intercept is
+        generated internally, and betas for the intercept are not returned.
+        """
+        if not self.has_case:
+            msg = ("Can only apply regression to NDVar with case dimension")
+            raise DimensionMismatchError(msg)
+
+        n = len(self)
+        a = asmodel(x).full
+        if len(a) != n:
+            msg = ("Predictors do not have same number of cases (%i) as the "
+                   "dependent variable (%i)" % (len(a), n))
+            raise DimensionMismatchError(msg)
+        b = self.x.reshape((n, -1))
+        x_ = lstsq(a, b)[0][1:]
+        x_ = x_.reshape((len(x_),) + self.shape[1:])
+
+        info = self.info.copy()
+        return NDVar(x_, self.dims, info, name)
 
     def repeat(self, repeats, dim='case', name='{name}'):
         """
