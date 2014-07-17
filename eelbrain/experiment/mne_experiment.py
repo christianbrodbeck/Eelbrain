@@ -218,6 +218,13 @@ temp = {
                                   '{experiment}_{epoch}_triggers.txt'),
         'besa-evt': os.path.join('{besa-root}', '{subject}', '{subject}_'
                                  '{experiment}_{epoch}[{rej}].evt'),
+
+        # MRAT
+        'mrat_condition': '',
+        'mrat-root': os.path.join('{root}', 'mrat', '{src-kind}', '{model}'),
+        'mrat_info-file': os.path.join('{mrat-root}', '{subject} info.txt'),
+        'mrat-file': os.path.join('{mrat-root}', '{mrat_condition}',
+                                  '{mrat_condition}_{subject}'),
          }
 
 
@@ -1965,6 +1972,36 @@ class MneExperiment(FileTree):
                                 dtmin=0.01)
         brain.save_movie(dst)
         brain.close()
+
+    def make_mrat_stcs(self, **kwargs):
+        """Produce the STC files needed for the MRAT analysis tool
+
+        Parameters
+        ----------
+        kwargs :
+            State arguments
+
+        Examples
+        --------
+        >>> experiment.set_inv('free')
+        >>> for _ in experiment:
+        >>>     experiment.make_mrat_stcs()
+        ...
+        """
+        ds = self.load_evoked_stc(morph_stc=True, **kwargs)
+
+        # save condition info
+        info_file = self.get('mrat_info-file', mkdir=True)
+        ds.save_txt(info_file)
+
+        # create stcs
+        model = self.get('model')
+        factors = [f.strip() for f in model.split('%')]
+        for case in ds.itercases():
+            condition = '_'.join(case[f] for f in factors)
+            path = self.get('mrat-file', mkdir=True, mrat_condition=condition)
+            stc = case['stcm']
+            stc.save(path)
 
     def make_plot_annot(self, surf='inflated', redo=False, **state):
         mrisubject = self.get('mrisubject', **state)
