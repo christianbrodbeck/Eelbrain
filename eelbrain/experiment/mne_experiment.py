@@ -2898,7 +2898,7 @@ class MneExperiment(FileTree):
         """
         env['SUBJECTS_DIR'] = self.get('mri-sdir')
 
-    def set_inv(self, ori='free', depth=0.8, reg=False, snr=2, method='dSPM',
+    def set_inv(self, ori='free', depth=None, reg=False, snr=3, method='dSPM',
                 pick_normal=False):
         """Alternative method to set the ``inv`` state.
         """
