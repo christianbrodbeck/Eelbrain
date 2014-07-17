@@ -1302,15 +1302,15 @@ class Var(object):
         return Var(np.abs(self.x), name)
 
     def argmax(self):
-        """:fun:`numpy.argmax`"""
+        """:func:`numpy.argmax`"""
         return np.argmax(self.x)
 
     def argmin(self):
-        """:fun:`numpy.argmin`"""
+        """:func:`numpy.argmin`"""
         return np.argmin(self.x)
 
     def argsort(self, kind='quicksort'):
-        """:fun:`numpy.argsort`
+        """:func:`numpy.argsort`
 
         Parameters
         ----------
@@ -2924,6 +2924,15 @@ class NDVar(object):
         """
         Analogous to :py:func:`numpy.repeat`
 
+        Parameters
+        ----------
+        repeats : int | array of ints
+            The number of repetitions for each element. `repeats` is
+            broadcasted to fit the shape of the given dimension.
+        dim : str
+            The dimension along which to repeat values (default 'case').
+        name : str
+            Name for the output NDVar.
         """
         ax = self.get_axis(dim)
         x = self.x.repeat(repeats, axis=ax)
