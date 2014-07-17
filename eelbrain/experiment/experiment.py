@@ -103,7 +103,8 @@ class LayeredDict(dict):
 
 
 class TreeModel(object):
-    """A hierarchical collection of format strings and field values
+    """
+    A hierarchical collection of format strings and field values
 
     Notes
     -----
@@ -726,7 +727,7 @@ class TreeModel(object):
 
 class FileTree(TreeModel):
     """
-    :class:`TreeModel` subclass for representing a file system hierarchy.
+    :class:`TreeModel` subclass for representing a file system hierarchy
     """
     _repr_args = ('root',)
     def __init__(self, **state):
