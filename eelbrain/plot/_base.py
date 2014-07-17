@@ -98,13 +98,7 @@ from .._data_obj import ascategorial, asndvar, DimensionMismatchError
 # defaults
 defaults = {'DPI': 72, 'maxw': 16, 'maxh': 10}
 backend = {'block': False,  # plt.show() parameter for mpl_figure
-           'frame': 'mpl'}
-if mpl.get_backend().lower().startswith('wx'):
-    try:
-        from ..._wxutils.mpl_canvas import CanvasFrame
-        backend['frame'] = 'wx'
-    except:
-        pass
+           'frame': 'wx'}
 
 # store callback figures (they need to be preserved)
 figs = []
@@ -643,7 +637,7 @@ def str2tex(txt):
 
 
 class mpl_figure:
-    "cf. wxutils.mpl_canvas"
+    "cf. _wxgui.mpl_canvas"
     def __init__(self, **fig_kwargs):
         "creates self.figure and self.canvas attributes and returns the figure"
         self.figure = plt.figure(**fig_kwargs)
@@ -768,16 +762,14 @@ class _EelFigure(object):
         self._is_wx = False
         frame_kind = backend['frame']
         if frame_kind == 'wx':
-            import wx
-            app = wx.GetApp()
-            if app is None:
-                frame_kind = 'mpl'
+            from .._wxgui import get_app
+            from .._wxgui.mpl_canvas import CanvasFrame
 
-        if frame_kind == 'wx':
+            app = get_app()
             if hasattr(app, 'shell'):
                 parent = app.shell
             else:
-                parent = app.GetTopWindow()
+                parent = None
             frame = CanvasFrame(parent, title=title, _EelFigure=self, **fig_kwa)
             self._is_wx = True
         elif frame_kind == 'mpl':

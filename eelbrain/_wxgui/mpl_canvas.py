@@ -17,8 +17,8 @@ from matplotlib.figure import Figure
 import wx
 
 from .._utils import ui
-from . import ID
-from .basic import Icon
+from .._wxutils import ID, Icon
+from .frame import EelbrainFrame
 
 
 class FigureCanvasPanel(FigureCanvasWxAgg):
@@ -40,7 +40,6 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         self.figure = Figure(figsize, dpi, facecolor)
         FigureCanvasWxAgg.__init__(self, parent, -1, self.figure)
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
-        self.Bind(wx.EVT_MENU, self.OnFileSave, id=wx.ID_SAVE)
 
     def CanCopy(self):
         "pretend to be wx.py.frame.Frame to enable 'copy' menu command"
@@ -77,19 +76,6 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
             self.draw()
             self.Copy_to_Clipboard()
 
-    def OnFileSaveAs(self, event):
-        self.OnFileSave(event)
-
-    def OnFileSave(self, event):
-        """
-        FIXME: maybe start search at wx.py.frame.Frame.OnUpdateMenu()
-
-        """
-        path = ui.ask_saveas("Save Figure", "Save the current figure. The "
-                             "format is determined from the extension.", None)
-        if path:
-            self.figure.savefig(path)
-
     def redraw(self, axes=[], artists=[]):
         self.restore_region(self._background)
         for ax in axes:
@@ -111,10 +97,7 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         self._background = self.copy_from_bbox(self.figure.bbox)
 
 
-
-
-
-class CanvasFrame(wx.Frame):
+class CanvasFrame(EelbrainFrame):
     """
 
     after:
@@ -135,10 +118,6 @@ class CanvasFrame(wx.Frame):
         sizer.Add(self.canvas, 1, flag=wx.EXPAND)
 #        sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
         sizer.Layout()
-
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUI)
-        self.Bind(wx.EVT_MENU, self.OnFileSave, id=wx.ID_SAVE)
-        self.Bind(wx.EVT_MENU, self.OnFileSaveAs, id=wx.ID_SAVEAS)
 
         # get figure
         self.figure = self.canvas.figure
@@ -166,7 +145,8 @@ class CanvasFrame(wx.Frame):
 
         tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"),
                         shortHelp="Save Document")
-        self.Bind(wx.EVT_TOOL, self.OnFileSave, id=wx.ID_SAVE)
+        self.Bind(wx.EVT_TOOL, self.OnSave, id=wx.ID_SAVE)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
 
         # intermediate, custom part
         if _EelFigure is not None:
@@ -206,30 +186,17 @@ class CanvasFrame(wx.Frame):
         # update the axes menu on the toolbar
         self.toolbar.update()
 
+    def OnAttach(self, event):
+        items = {'p': self._eelfigure}
+        self.Parent.attach(items, detach=False, _internal_call=True)
+        self.Parent.Raise()
+
     def OnClose(self, event):
         # remove circular reference
         if hasattr(self, '_eelfigure') and self._eelfigure:
             del self._eelfigure._frame
             del self._eelfigure
         event.Skip()
-
-    def OnAttach(self, event):
-        items = {'p': self._eelfigure}
-        self.Parent.attach(items, detach=False, _internal_call=True)
-        self.Parent.Raise()
-
-    def OnFileSave(self, event):
-        self.OnFileSaveAs(event)
-
-    def OnFileSaveAs(self, event):
-        """
-        FIXME: maybe start search at wx.py.frame.Frame.OnUpdateMenu()
-
-        """
-        path = ui.ask_saveas("Save Figure", "Save the current figure. The format is "
-                             "determined from the extension.", None)
-        if path:
-            self.figure.savefig(path)
 
     def OnHelp(self, event):
         app = wx.GetApp()
@@ -239,21 +206,29 @@ class CanvasFrame(wx.Frame):
         else:
             print self.__doc__
 
+    def OnSave(self, event):
+        self.Save()
+
     def OnShowFullScreen(self, event):
         self.ShowFullScreen(not self.IsFullScreen())
 
-    def OnUpdateUI(self, event):
-        Id = event.GetId()
-#        logging.warning("CanvasFrame.OnUpdateUI")
-        if Id == wx.ID_SAVE:
-            event.Enable(True)
-        elif Id == wx.ID_SAVEAS:
-            event.Enable(True)
-        else:
-            pass
+    def OnUpdateUISave(self, event):
+        event.Enable(True)
+
+    def OnUpdateUISaveAs(self, event):
+        event.Enable(True)
 
     def redraw(self, axes=[], artists=[]):
         self.canvas.redraw(axes=axes, artists=artists)
+
+    def Save(self):
+        self.SaveAs()
+
+    def SaveAs(self):
+        path = ui.ask_saveas("Save Figure", "Save the current figure. The "
+                             "format is determined from the extension.", None)
+        if path:
+            self.figure.savefig(path)
 
     def store_canvas(self):
         self.canvas.store_canvas()

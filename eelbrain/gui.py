@@ -1,5 +1,10 @@
 '''Eelbrain GUIs'''
 
+def run():
+    "Hand over command to the GUI (quit the GUI to return to the terminal)"
+    from . import _wxgui
+    _wxgui.run()
+
 def select_epochs(*args, **kwargs):
     """GUI for rejecting trials
 
