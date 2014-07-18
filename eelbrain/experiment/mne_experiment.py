@@ -869,6 +869,14 @@ class MneExperiment(FileTree):
             ds[name] = Var(subject.isin(subjects))
 
     def load_annot(self, **state):
+        """Load a parcellation (from an annot file)
+
+        Returns
+        -------
+        labels : list of Label
+            Labels in the parcellation (output of
+            :func:`mne.read_labels_from_annot`).
+        """
         self.make_annot(**state)
         parc = self.get('parc')
         subject = self.get('mrisubject')
@@ -1040,8 +1048,8 @@ class MneExperiment(FileTree):
         baseline : None | (tmin, tmax)
             Baseline to apply to evoked response.
         ndvar : bool | str
-            Convert the mne Evoked objects to an NDVar. If True, the target
-            name is 'meg'.
+            Convert the mne Evoked objects to an NDVar. If True (default), the
+            target name is 'meg'.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         model : str (state)
@@ -1699,8 +1707,7 @@ class MneExperiment(FileTree):
 
     def make_evoked(self, redo=False, **kwargs):
         """
-        Creates datasets with evoked files for the current subject/experiment
-        pair.
+        Creates datasets with evoked sensor data.
 
         Parameters
         ----------
