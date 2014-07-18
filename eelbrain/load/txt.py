@@ -70,6 +70,11 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
 
     with open(path) as fid:
         lines = fid.readlines()
+        if len(lines) == 1:
+            # tsv file exported by excel had carriage return only
+            text = lines[0]
+            if text.count('\r') > 1:
+                lines = text.split('\r')
 
     # find start position
     if start_tag:
