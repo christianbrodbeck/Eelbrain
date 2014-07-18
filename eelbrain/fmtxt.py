@@ -40,13 +40,16 @@ The module also provides functions that work with fmtxt objects:
 
 
 import datetime
+from importlib import import_module
 from itertools import izip
 import logging
 import os
 import cPickle as pickle
 import shutil
+import socket
 from StringIO import StringIO
 import tempfile
+import time
 
 try:
     import tex as _tex
@@ -1708,6 +1711,39 @@ class Report(Section):
             path = path[:-5]
 
         save_html(self, path, embed_images)
+
+    def sign(self, packages=('eelbrain',)):
+        """Add a signature to the report
+
+        Parameters
+        ----------
+        packages : iterator of str
+            Packages whose ``__version__`` to include in the signature (default
+            is eelbrain only).
+
+        Notes
+        -----
+        Includes informationon on the computer that created the report, time
+        of creation, and version of selected packages.
+        """
+        info = ["Created by %s on %s" % (socket.gethostname(),
+                                         time.strftime("%c"))]
+        for package in packages:
+            if package == 'eelbrain':
+                name = 'Eelbrain'
+            elif package == 'mne':
+                name = 'MNE-Python'
+            elif package == 'surfer':
+                name = 'PySurfer'
+            else:
+                name = package
+
+            mod = import_module(package)
+            text = "%s version %s" % (name, mod.__version__)
+            info.append(text)
+
+        signature = ' &#8212 \n'.join(info)
+        self.add_paragraph(signature)
 
 
 def unindent(text, skip1=False):

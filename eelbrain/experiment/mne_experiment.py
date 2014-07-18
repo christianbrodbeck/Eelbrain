@@ -55,14 +55,12 @@ the interval form 0 to 500 ms used for rejection.
 '''
 
 from collections import defaultdict
-import datetime
 import inspect
 from itertools import izip
 import os
 from Queue import Queue
 import re
 import shutil
-import socket
 import subprocess
 from threading import Thread
 import time
@@ -81,7 +79,7 @@ except ImportError:
     from mne.fiff import Evoked as _mne_Evoked
     from mne.fiff import Raw as _mne_Raw
 
-from .. import fmtxt, __version__
+from .. import fmtxt
 from ..fmtxt import FMText
 from .. import gui
 from .. import load
@@ -2328,7 +2326,6 @@ class MneExperiment(FileTree):
                                  redo_test)
 
         # start report
-        t0 = time.time()
         title = self.format('{experiment} {epoch} {test} {test_options}')
         report = Report(title, site_title=title)
 
@@ -2460,15 +2457,7 @@ class MneExperiment(FileTree):
                                                     title, legend)
 
         # report signature
-        t1 = time.time()
-        dt = t1 - t0
-        info = ["Written by %s" % socket.gethostname(),
-                "Finished on %s" % time.strftime("%c"),
-                "Processing time: %s" % str(datetime.timedelta(seconds=round(dt))),
-                "Eelbrain version %s" % __version__,
-                "MNE-Python version %s" % mne.__version__]
-        signature = ' &#8212 \n'.join(info)
-        report.append(signature)
+        report.sign(('eelbrain', 'mne', 'surfer'))
 
         report.save_html(dst)
 

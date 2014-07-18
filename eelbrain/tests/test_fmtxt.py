@@ -30,6 +30,7 @@ def test_fmtext():
     print html(ts)
     print tex(ts)
 
+
 def test_report():
     "Test fmtxt.Report class"
     tempdir = tempfile.mkdtemp()
@@ -40,6 +41,8 @@ def test_report():
     p = plot.uv.barplot('fltvar', 'A', sub="B=='b1'", ds=ds)
     image = p.image()
     section.add_figure("test", image)
+
+    report.sign()
 
     # report output
     print report
