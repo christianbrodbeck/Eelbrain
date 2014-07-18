@@ -20,12 +20,14 @@ Converting mne objects to :class:`NDVar`:
    stc_ndvar
 
 
+.. currentmodule:: eelbrain
+
 Managing events with a :class:`Dataset`
 ---------------------------------------
 
-To load events as a :class:`~elbrain.data.Dataset`::
+To load events as :class:`Dataset`::
 
-    >>> ds = load.fiff.events(path)
+    >>> ds = load.fiff.events(raw_file_path)
 
 By default, the :class:`Dataset` contains a variable called ``"trigger"``
 with trigger values, and a variable called ``"i_start"`` with the indices of
@@ -45,30 +47,51 @@ the events::
     2         31240
     3         31665
 
-These events can be modified in ``ds`` (adding variables, discarding events,
-...) before being used to load data epochs. Epochs will be loaded based only
-on the ``"i_start"`` variable.
+These events can be modified in ``ds`` (discarding events, modifying
+``i_start``) before being used to load data epochs.
 
-Epochs can then be added to the :class:`Dataset` as an NDVar object with
-:func:`add_epochs`::
+Epochs can be loaded as :class:`NDVar` with :func:`load.fiff.epochs`. Epochs
+will be loaded based only on the ``"i_start"`` variable, so any modification
+to this variable will affect the epochs that are loaded.::
 
-    >>> ds2 = load.fiff.add_epochs(ds, -0.1, 0.6)
+    >>> ds['epochs'] = load.fiff.epochs(ds)
 
-The returned ``ds2`` will contain the epochs as NDVar as ``ds['meg']``. If no
-epochs got rejected during loading, ``ds2`` is identical with the input ``ds``.
-If epochs were rejected, ``ds2`` is a shorter copy of the original ``ds``.
+:class:`mne.Epochs` can be loaded with::
+
+    >>> mne_epochs = load.fiff.mne_epochs(ds)
+
+Note that the returned ``mne_epochs`` event does not contain meaningful event
+ids, and ``mne_epochs.event_id`` is None.
+
+
+Using Threshold Rejection
+-------------------------
+
+In case threshold rejection is used, the number of the epochs returned by
+``load.fiff.epochs(ds, reject=reject_options)`` might not be the same as the
+number of events in ``ds`` (whenever epochs are rejected). For those cases,
+:func:`load.fiff.add_epochs`` will automatically resize the :class:`Dataset`::
+
+    >>> epoch_ds = load.fiff.add_epochs(ds, -0.1, 0.6, reject=reject_options)
+
+The returned ``epoch_ds`` will contain the epochs as NDVar as ``ds['meg']``.
+If no epochs got rejected during loading, the length of ``epoch_ds`` is
+identical with the input ``ds``. If epochs were rejected, ``epoch_ds`` is a
+shorter copy of the original ``ds``.
 
 :class:`mne.Epochs` can be added to ``ds`` in the same fashion with::
 
-    >>> ds = load.fiff.add_mne_epochs(ds, -0.1, 0.6)
+    >>> ds = load.fiff.add_mne_epochs(ds, -0.1, 0.6, reject=reject_options)
 
-The epochs can also be loaded as separate objects using::
 
-    >>> epochs = load.fiff.epochs(ds)
-    >>> mne_epochs = load.fiff.mne_epochs(ds)
+Separate events files
+---------------------
 
-Note that the returned epochs event does not contain meaningful event ids,
-and ``epochs.event_id`` is None.
+If events are stored separately form the raw files, they can be loaded in
+:func:`load.fiff.events` by supplying the path to the events file as
+``events`` parameter::
+
+    >>> ds = load.fiff.events(raw_file_path, events=events_file_path)
 
 '''
 from __future__ import division
@@ -173,18 +196,16 @@ def mne_raw(path=None, proj=False, **kwargs):
     return raw
 
 
-def events(raw=None, merge=-1, proj=False, name=None,
-           bads=None, stim_channel=None, **kwargs):
+def events(raw=None, merge=-1, proj=False, name=None, bads=None,
+           stim_channel=None, events=None, **kwargs):
     """
     Load events from a raw fiff file.
-
-    Use :func:`fiff_epochs` to load MEG data corresponding to those events.
 
     Parameters
     ----------
     raw : str(path) | None | mne Raw
-        The raw fiff file from which to extract events (if ``None``, a file
-        dialog will be displayed).
+        The raw fiff file from which to extract events (if raw and events are
+        both ``None``, a file dialog will be displayed to select a raw file).
     merge : int
         Merge steps occurring in neighboring samples. The integer value
         indicates over how many samples events should be merged, and the sign
@@ -207,6 +228,10 @@ def events(raw=None, merge=-1, proj=False, name=None,
         'MNE_STIM_CHANNEL', 'MNE_STIM_CHANNEL_1', 'MNE_STIM_CHANNEL_2',
         etc. are read. If these are not found, it will default to
         'STI 014'.
+    events : None | str
+        If events are stored in a fiff file separate from the Raw object, the
+        path to the events file can be supplied here. The events in the Dataset
+        will reflect the event sin the events file rather than the raw file.
     others :
         Keyword arguments for loading the raw file.
 
@@ -220,23 +245,25 @@ def events(raw=None, merge=-1, proj=False, name=None,
          - *raw*: the mne Raw object.
 
     """
-    if raw is None or isinstance(raw, basestring):
+    if (raw is None and events is None) or isinstance(raw, basestring):
         raw = mne_raw(raw, proj=proj, **kwargs)
 
-    if bads is not None:
+    if bads is not None and raw is not None :
         raw.info['bads'].extend(bads)
 
-    if name is None:
+    if name is None and raw is not None:
         raw_path = raw.info['filename']
         if isinstance(raw_path, basestring):
             name = os.path.basename(raw_path)
         else:
             name = None
 
-    # stim_channel_bl: see commit 52796ad1267b5ad4fba10f6ca5f2b7cfba65ba9b or earlier
-    evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
-    idx = np.nonzero(evts[:, 2])
-    evts = evts[idx]
+    if events is None:
+        evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
+        idx = np.nonzero(evts[:, 2])
+        evts = evts[idx]
+    else:
+        evts = mne.read_events(events)
 
     if len(evts) == 0:
         raise ValueError("No events found!")
