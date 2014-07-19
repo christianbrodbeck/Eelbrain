@@ -7,6 +7,8 @@ import smtplib
 import socket
 import traceback
 
+from .basic import logger
+
 
 _pwd_fname = os.path.expanduser('~/.eelbrain_n00b')
 
@@ -70,6 +72,7 @@ class Notifier(object):
         self.debug = debug
 
     def __enter__(self):
+        logger.info("Notification enabled...")
         return self
 
     def __exit__(self, type_, value, traceback_):
