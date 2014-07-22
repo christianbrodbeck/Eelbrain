@@ -18,7 +18,7 @@ def map_paths(module_name, class_name):
         elif module_name.startswith('eelbrain.data.stats'):
             rev = module_name.replace('.data.stats', '._stats')
         elif module_name.startswith('eelbrain.data.data_obj'):
-            rev = module_name.replace('.data.data_obj', '')
+            rev = module_name.replace('.data.data_obj', '._data_obj')
         else:
             raise NotImplementedError("%r / %r" % (module_name, class_name))
 #         logger.debug("Legacy pickle %r: %r -> %r" % (class_name, module_name, rev))
