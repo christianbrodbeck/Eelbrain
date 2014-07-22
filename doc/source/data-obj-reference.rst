@@ -168,4 +168,5 @@ collections of templates.
 
    experiment.TreeModel
    experiment.FileTree
+   experiment.MneExperiment
 
