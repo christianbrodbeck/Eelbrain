@@ -222,8 +222,10 @@ temp = {
         # MRAT
         'mrat_condition': '',
         'mrat-root': os.path.join('{root}', 'mrat'),
-        'mrat-sns-root': os.path.join('{mrat-root}', '{sns-kind}', '{model}'),
-        'mrat-src-root': os.path.join('{mrat-root}', '{src-kind}', '{model}'),
+        'mrat-sns-root': os.path.join('{mrat-root}', '{sns-kind}',
+                                      '{epoch} {model} {evoked-kind}'),
+        'mrat-src-root': os.path.join('{mrat-root}', '{src-kind}',
+                                      '{epoch} {model} {evoked-kind}'),
         'mrat-sns-file': os.path.join('{mrat-sns-root}', '{mrat_condition}',
                                       '{mrat_condition}_{subject}-ave.fif'),
         'mrat_info-file': os.path.join('{mrat-root}', '{subject} info.txt'),
@@ -1994,6 +1996,8 @@ class MneExperiment(FileTree):
 
         Examples
         --------
+        To produce evoked files for all subjects in the experiment:
+
         >>> experiment.set(model='factor1%factor2')
         >>> for _ in experiment:
         >>>     experiment.make_mrat_evoked()
@@ -2021,6 +2025,8 @@ class MneExperiment(FileTree):
 
         Examples
         --------
+        To produce stc files for all subjects in the experiment:
+
         >>> experiment.set_inv('free')
         >>> experiment.set(model='factor1%factor2')
         >>> for _ in experiment:
