@@ -221,10 +221,14 @@ temp = {
 
         # MRAT
         'mrat_condition': '',
-        'mrat-root': os.path.join('{root}', 'mrat', '{src-kind}', '{model}'),
+        'mrat-root': os.path.join('{root}', 'mrat'),
+        'mrat-sns-root': os.path.join('{mrat-root}', '{sns-kind}', '{model}'),
+        'mrat-src-root': os.path.join('{mrat-root}', '{src-kind}', '{model}'),
+        'mrat-sns-file': os.path.join('{mrat-sns-root}', '{mrat_condition}',
+                                      '{mrat_condition}_{subject}-ave.fif'),
         'mrat_info-file': os.path.join('{mrat-root}', '{subject} info.txt'),
-        'mrat-file': os.path.join('{mrat-root}', '{mrat_condition}',
-                                  '{mrat_condition}_{subject}'),
+        'mrat-src-file': os.path.join('{mrat-src-root}', '{mrat_condition}',
+                                      '{mrat_condition}_{subject}'),
          }
 
 
@@ -1973,6 +1977,33 @@ class MneExperiment(FileTree):
         brain.save_movie(dst)
         brain.close()
 
+    def make_mrat_evoked(self, **kwargs):
+        """Produce the sensor data fiff files needed for MRAT sensor analysis
+
+        Parameters
+        ----------
+        kwargs :
+            State arguments
+
+        Examples
+        --------
+        >>> experiment.set(model='factor1%factor2')
+        >>> for _ in experiment:
+        >>>     experiment.make_mrat_evoked()
+        ...
+        """
+        ds = self.load_evoked(ndvar=False, **kwargs)
+
+        # create fiffs
+        model = self.get('model')
+        factors = [f.strip() for f in model.split('%')]
+        for case in ds.itercases():
+            condition = '_'.join(case[f] for f in factors)
+            path = self.get('mrat-sns-file', mkdir=True,
+                            mrat_condition=condition)
+            evoked = case['evoked']
+            evoked.save(path)
+
     def make_mrat_stcs(self, **kwargs):
         """Produce the STC files needed for the MRAT analysis tool
 
@@ -1984,6 +2015,7 @@ class MneExperiment(FileTree):
         Examples
         --------
         >>> experiment.set_inv('free')
+        >>> experiment.set(model='factor1%factor2')
         >>> for _ in experiment:
         >>>     experiment.make_mrat_stcs()
         ...
@@ -1999,7 +2031,8 @@ class MneExperiment(FileTree):
         factors = [f.strip() for f in model.split('%')]
         for case in ds.itercases():
             condition = '_'.join(case[f] for f in factors)
-            path = self.get('mrat-file', mkdir=True, mrat_condition=condition)
+            path = self.get('mrat-src-file', mkdir=True,
+                            mrat_condition=condition)
             stc = case['stcm']
             stc.save(path)
 
