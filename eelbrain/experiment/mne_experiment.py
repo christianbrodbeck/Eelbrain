@@ -129,6 +129,7 @@ temp = {
         'raw': ('clm', '0-40', '1-40'),
         # key necessary for identifying raw file info (used for bad channels):
         'raw-key': '{subject}',
+        'bads-file': os.path.join('{raw-dir}', '{subject}_{experiment}-bad_channels.txt'),
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
         'raw-file': '{raw-base}-raw.fif',
         'raw-evt-file': '{raw-base}-evts.pickled',
@@ -238,9 +239,6 @@ class MneExperiment(FileTree):
     """
     # Experiment Constants
     # ====================
-
-    # Bad channels dictionary: (sub, exp) -> list of str
-    bad_channels = defaultdict(list)
 
     # Default values for epoch definitions
     epoch_default = {'tmin':-0.1, 'tmax': 0.6, 'decim': 5}
@@ -882,6 +880,21 @@ class MneExperiment(FileTree):
         labels = mne.read_labels_from_annot(subject, parc, 'both', subjects_dir=mri_sdir)
         return labels
 
+    def load_bad_channels(self, **kwargs):
+        """Load bad channels
+
+        Returns
+        -------
+        bad_chs : list of str
+            Bad chnnels.
+        """
+        path = self.get('bads-file', **kwargs)
+        if not os.path.exists(path):
+            raise IOError("Bad channel definitions not found: %r" % path)
+        with open(path) as fid:
+            names = [l for l in fid.read().splitlines() if l]
+        return names
+
     def load_edf(self, **kwargs):
         """Load the edf file ("edf-file" template)"""
         kwargs['fmatch'] = False
@@ -907,7 +920,7 @@ class MneExperiment(FileTree):
             uesed).
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
-            information is retrieved from self.bad_channels. Alternatively,
+            information is retrieved from the 'bads-file'. Alternatively,
             a list of bad channels can be sumbitted.
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
@@ -997,7 +1010,7 @@ class MneExperiment(FileTree):
             Add the projections to the Raw object.
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
-            information is retrieved from self.bad_channels. Alternatively,
+            information is retrieved from the 'bads-file'. Alternatively,
             a list of bad channels can be sumbitted.
         edf : bool
             Loads edf and add it as ``ds.info['edf']``. Edf will only be added
@@ -1294,7 +1307,7 @@ class MneExperiment(FileTree):
             proj variable.
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
-            information is retrieved from self.bad_channels. Alternatively,
+            information is retrieved from the 'bads-file'. Alternatively,
             a list of bad channels can be sumbitted.
         preload : bool
             Mne Raw parameter.
@@ -1314,12 +1327,11 @@ class MneExperiment(FileTree):
         raw = load.fiff.mne_raw(raw_file, proj, preload=preload)
         if add_bads:
             if add_bads is True:
-                key = self.get('raw-key')
-                bad_chs = self.bad_channels[key]
+                bad_chs = self.load_bad_channels()
             else:
                 bad_chs = add_bads
 
-            raw.info['bads'].extend(bad_chs)
+            raw.info['bads'] = bad_chs
 
         return raw
 
@@ -1341,7 +1353,7 @@ class MneExperiment(FileTree):
             Add the projections to the Raw object.
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
-            information is retrieved from self.bad_channels. Alternatively,
+            information is retrieved from the 'bads-file'. Alternatively,
             a list of bad channels can be sumbitted.
         index : bool | str
             Index the Dataset before rejection (provide index name as str).
@@ -1612,6 +1624,59 @@ class MneExperiment(FileTree):
                "%r is missing for %r, and a make function is not "
                "implemented." % (parc, subject))
         raise NotImplementedError(msg)
+
+    def make_bad_channels(self, bad_chs, redo=False, **kwargs):
+        """Write the bad channel definition file for a raw file
+
+        Parameters
+        ----------
+        bad_chs : iterator of str
+            Names of the channels to set as bad. Numerical entries are
+            interpreted as "MEG XXX". If bad_chs contains entries not present
+            in the raw data, a ValueError is raised.
+        redo : bool
+            If the file already exists, replace it.
+
+        See Also
+        --------
+        load_bad_channels : load the current bad_channels file
+        """
+        dst = self.get('bads-file', **kwargs)
+        if os.path.exists(dst):
+            old_bads = self.load_bad_channels()
+            if not redo:
+                msg = ("Bads file already exists with %s. In oder to replace "
+                       "it, use `redo=True`." % old_bads)
+                raise IOError(msg)
+        else:
+            old_bads = None
+
+        raw = self.load_raw(add_bads=False)
+        raw_ch_names = frozenset(raw.info['ch_names'])
+        valid_chs = []
+        missing_chs = []
+        for name in bad_chs:
+            if str(name).isdigit():
+                name = 'MEG %03i' % int(name)
+
+            if name in raw_ch_names:
+                valid_chs.append(name)
+            else:
+                missing_chs.append(name)
+
+        if missing_chs:
+            msg = ("The following channels are not in the raw data: "
+                   "%s" % missing_chs)
+            raise ValueError(msg)
+
+        chs = sorted(valid_chs)
+        if old_bads is None:
+            print "-> %s" % chs
+        else:
+            print "%s -> %s" % (old_bads, chs)
+        text = os.linesep.join(chs)
+        with open(dst, 'w') as fid:
+            fid.write(text)
 
     def make_besa_evt(self, redo=False, **state):
         """Make the trigger and event files needed for besa
