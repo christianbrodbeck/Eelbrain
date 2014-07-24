@@ -2980,7 +2980,7 @@ class NDVar(object):
         opt.lm_res(y_, x.full, x.xsinv, res_)
 
         info = self.info.copy()
-        return NDVar(res_, self.dims, info, name)
+        return NDVar(res, self.dims, info, name)
 
     def rms(self, axis=None):
         """Compute the root mean square over given dimensions

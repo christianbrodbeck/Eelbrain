@@ -493,7 +493,7 @@ def test_ols():
     from rpy2.robjects import r
 
     # simulate data
-    ds = datasets.get_rand()
+    ds = datasets.get_rand(True)
     n_times = len(ds['uts'].time)
     x = np.zeros(n_times)
     x[20:40] = np.hanning(20)
@@ -526,6 +526,21 @@ def test_ols():
         assert_array_almost_equal(b2.x[:, i], beta)
         res = r('residuals(lm2)')
         assert_array_almost_equal(res2.x[:, i], res)
+
+    # 3d
+    utsnd = ds['utsnd']
+    ds_['utsnd'] = utsnd
+    b1 = ds_.eval("utsnd.ols(x)")
+    res1 = ds_.eval("utsnd.residuals(x)")
+    for i in xrange(len(b1.time)):
+        ds_['y'] = Var(utsnd.x[:, 1, i])
+        ds_.to_r('ds')
+        # 1 predictor
+        r('lm1 <- lm(y ~ x, ds)')
+        beta = r('coef(lm1)')[1]
+        assert_almost_equal(b1.x[0, 1, i], beta)
+        res = r('residuals(lm1)')
+        assert_array_almost_equal(res1.x[:, 1, i], res)
 
 
 def test_io_pickle():
