@@ -504,8 +504,12 @@ def test_ols():
     ds_['x2'] = ds_['x'] + np.random.normal(0, 1, ds.n_cases)
 
     # ols regression
-    b = utsc.ols(ds_['x'])
-    b2 = utsc.ols((ds_['x'], ds_['x2']))
+    m1 = ds_['x']
+    b1 = utsc.ols(m1)
+    res1 = utsc.residuals(m1)
+    m2 = ds_.eval("x + x2")
+    b2 = utsc.ols(m2)
+    res2 = utsc.residuals(m2)
     # compare with R
     for i in xrange(n_times):
         ds_['y'] = Var(utsc.x[:, i])
@@ -513,11 +517,15 @@ def test_ols():
         # 1 predictor
         r('lm1 <- lm(y ~ x, ds)')
         beta = r('coef(lm1)')[1]
-        assert_almost_equal(b.x[0, i], beta)
+        assert_almost_equal(b1.x[0, i], beta)
+        res = r('residuals(lm1)')
+        assert_array_almost_equal(res1.x[:, i], res)
         # 2 predictors
         r('lm2 <- lm(y ~ x + x2, ds)')
         beta = r('coef(lm2)')[1:]
         assert_array_almost_equal(b2.x[:, i], beta)
+        res = r('residuals(lm2)')
+        assert_array_almost_equal(res2.x[:, i], res)
 
 
 def test_io_pickle():

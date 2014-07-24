@@ -50,7 +50,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 from . import fmtxt
 from ._utils import ui, LazyProperty, natsorted
 from . import _colorspaces as cs
-from ._stats import cihw, rms
+from ._stats import cihw, rms, opt
 
 
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
@@ -2945,6 +2945,42 @@ class NDVar(object):
         info = self.info.copy()
         name = name.format(name=self.name)
         return NDVar(x, dims, info, name)
+
+    def residuals(self, x, name="residuals"):
+        """
+        Residuals of sample-wise ordinary least squares regressions
+
+        Parameters
+        ----------
+        x : Model
+            Predictor or predictors. Can also be supplied as argument that can
+            be converted to a Model, for example ``Var`` or list of ``Var``.
+        name : str
+            Name for the output NDVar.
+
+        Returns
+        -------
+        residuals : NDVar
+            Residual for each case and sample (same dimensions as data).
+        """
+        if not self.has_case:
+            msg = ("Can only apply regression to NDVar with case dimension")
+            raise DimensionMismatchError(msg)
+
+        n = len(self)
+        x = asmodel(x)
+        if len(x) != n:
+            msg = ("Predictors do not have same number of cases (%i) as the "
+                   "dependent variable (%i)" % (len(a), n))
+            raise DimensionMismatchError(msg)
+
+        res = np.empty(self.shape)
+        y_ = self.x.reshape((n, -1))
+        res_ = res.reshape((n, -1))
+        opt.lm_res(y_, x.full, x.xsinv, res_)
+
+        info = self.info.copy()
+        return NDVar(res_, self.dims, info, name)
 
     def rms(self, axis=None):
         """Compute the root mean square over given dimensions

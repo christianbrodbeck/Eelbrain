@@ -275,6 +275,42 @@ cdef int lm_betas(scalar[:] y, double[:,:] xsinv, double[:] betas) nogil:
 
 
 @cython.boundscheck(False)
+def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
+    """Fit a linear model and compute the residuals
+
+    Parameters
+    ----------
+    y : array (n_cases, n_tests)
+        Dependent Measurement.
+    x : array (n_cases, n_betas)
+        Model matrix for the model.
+    xsinv : array (n_betas, n_cases)
+        xsinv for x.
+    res : array (n_cases, n_tests)
+        Container for output.
+    """
+    cdef int i, i_beta, case
+    cdef double predicted_y, SS_res
+    cdef scalar [:] yi
+
+    cdef int n_tests = y.shape[1]
+    cdef int n_cases = y.shape[0]
+    cdef int df_x = xsinv.shape[0]
+    cdef double [:] betas = cvarray((df_x,), sizeof(double), 'd')
+
+    for i in range(n_tests):
+        yi = y[:,i]
+        lm_betas(yi, xsinv, betas)
+
+        # predict y and find residuals
+        for case in range(n_cases):
+            predicted_y = 0
+            for i_beta in range(df_x):
+                predicted_y += x[case, i_beta] * betas[i_beta]
+            res[case,i] = yi[case] - predicted_y
+
+
+@cython.boundscheck(False)
 def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     """Fit a linear model and compute the residual sum squares
 
