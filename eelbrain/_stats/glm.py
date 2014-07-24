@@ -31,7 +31,7 @@ from .._utils import LazyProperty
 from .._utils.print_funcs import strdict
 from .._data_obj import (isvar, asvar, assub, isbalanced, hasemptycells,
                          isnestedin, hasrandom, find_factors, Model, asmodel)
-from .opt import _anova_fmaps, _anova_full_fmaps, _lm_ss_res, _ss
+from .opt import _anova_fmaps, _anova_full_fmaps, _ss, lm_res_ss
 from .stats import ftest_p
 from . import test
 
@@ -570,7 +570,7 @@ class _IncrementalNDANOVA(_NDANOVA):
             if x is None:
                 _ss(y, ss)
             else:
-                _lm_ss_res(y, x.full, x.Xsinv, ss)
+                lm_res_ss(y, x.full, x.Xsinv, ss)
 
         # incremental comparisons
         np.divide(SS_res[0], self.x.df_error, MS_e)

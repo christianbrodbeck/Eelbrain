@@ -249,7 +249,7 @@ def _ss(scalar[:,:] y, double[:] ss):
         ss[i] = SS
 
 
-def _lm_ss_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
+def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     """Fit a linear model and compute the residual sum squares
 
     Parameters
