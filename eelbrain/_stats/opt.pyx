@@ -247,7 +247,7 @@ def _ss(scalar[:,:] y, double[:] ss):
 
 
 @cython.boundscheck(False)
-cdef int lm_betas(scalar[:] y, double[:,:] xsinv, double[:] betas) nogil:
+cdef void lm_betas(scalar[:] y, double[:,:] xsinv, double[:] betas) nogil:
     """Fit a linear model
 
     Parameters
