@@ -99,7 +99,7 @@ def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
         Dependent Measurement.
     x : array (n_cases, n_betas)
         model matrix.
-    xsinv : array
+    xsinv : array (n_betas, n_cases)
         xsinv for regression.
     f_map : array (n_fs, n_tests)
         container for output.
@@ -160,7 +160,7 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
         Dependent Measurement.
     x : array (n_cases, n_betas)
         model matrix.
-    xsinv : array
+    xsinv : array (n_betas, n_cases)
         xsinv for regression.
     f_map : array (n_fs, n_tests)
         container for output.
@@ -283,11 +283,11 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     y : array (n_cases, n_tests)
         Dependent Measurement.
     x : array (n_cases, n_betas)
-        model matrix for the model.
-    xsinv : array
+        Model matrix for the model.
+    xsinv : array (n_betas, n_cases)
         xsinv for x.
     ss : array (n_tests,)
-        container for output.
+        Container for output.
     """
     cdef int i, i_beta, case
     cdef double predicted_y, SS_res
