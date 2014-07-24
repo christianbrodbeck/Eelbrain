@@ -4,6 +4,8 @@
 Recipes
 *******
 
+.. _recipe-regression:
+
 ^^^^^^^^^^^^^^^^^
 Regression Design
 ^^^^^^^^^^^^^^^^^

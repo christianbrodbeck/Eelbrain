@@ -3,6 +3,12 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.6
+----------
+
+* New recipes for :ref:`recipe-regression`.
+
+
 New in 0.5
 ----------
 
