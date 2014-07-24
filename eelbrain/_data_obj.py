@@ -1160,7 +1160,7 @@ class Var(object):
     # numeric ---
     def __neg__(self):
         x = -self.x
-        return Var(x, self.name)
+        return Var(x)
 
     def __pos__(self):
         return self
@@ -1172,60 +1172,41 @@ class Var(object):
         if isdataobject(other):
             # ??? should Var + Var return sum or Model?
             return Model((self, other))
-        else:
-            x = self.x + other
-            if np.isscalar(other):
-                name = '%s+%s' % (self.name, other)
-            else:
-                name = self.name
 
-            return Var(x, name=name)
+        x = self.x + other
+        return Var(x)
 
     def __sub__(self, other):
         "subtract: values are assumed to be ordered. Otherwise use .sub method."
         if np.isscalar(other):
-            return Var(self.x - other,
-                       name='%s-%s' % (self.name, other))
+            x = self.x - other
         elif len(other) != len(self):
             err = ("Objects have different length (%i vs "
                    "%i)" % (len(self), len(other)))
             raise ValueError(err)
         else:
             x = self.x - other.x
-            n1, n2 = self.name, other.name
-            if n1 == n2:
-                name = n1
-            else:
-                name = "%s-%s" % (n1, n2)
-            return Var(x, name)
+
+        return Var(x)
 
     def __mul__(self, other):
         if iscategorial(other):
             return Model((self, other, self % other))
         elif isvar(other):
             x = self.x * other.x
-            name = '%s*%s' % (self.name, other.name)
-        else:  #  np.isscalar(other)
+        else:
             x = self.x * other
-            other_name = str(other)
-            if len(other_name) < 12:
-                name = '%s*%s' % (self.name, other_name)
-            else:
-                name = self.name
 
-        return Var(x, name=name)
+        return Var(x)
 
     def __floordiv__(self, other):
         if isvar(other):
             x = self.x // other.x
-            name = '%s//%s' % (self.name, other.name)
         elif np.isscalar(other):
             x = self.x // other
-            name = '%s//%s' % (self.name, other)
         else:
             x = self.x // other
-            name = '%s//%s' % (self.name, '?')
-        return Var(x, name=name)
+        return Var(x)
 
     def __mod__(self, other):
         if  ismodel(other):
@@ -1234,13 +1215,8 @@ class Var(object):
             return Interaction((self, other))
         elif isvar(other):
             other = other.x
-            other_name = other.name
-        else:
-            other_name = str(other)[:10]
 
-        name = '{name}%{other}'
-        name = name.format(name=self.name, other=other_name)
-        return Var(self.x % other, name=name)
+        return Var(self.x % other)
 
     def __lt__(self, y):
         return self.x < y
@@ -1274,11 +1250,9 @@ class Var(object):
 
         """
         if np.isscalar(other):
-            return Var(self.x / other,
-                       name='%s/%s' % (self.name, other))
+            return Var(self.x / other)
         elif isvar(other):
-            return Var(self.x / other.x,
-                       name='%s/%s' % (self.name, other.name))
+            return Var(self.x / other.x)
         else:
             categories = other
             if not hasattr(categories, 'as_dummy_complete'):
@@ -1329,31 +1303,29 @@ class Var(object):
         "for effect initialization"
         return self.centered()[:, None]
 
-    def as_factor(self, name=None, labels='%r', random=False):
+    def as_factor(self, name='{name}', labels='%r', random=False):
         """
         Convert the Var into a Factor
 
         Parameters
         ----------
-        name : None | str
-            Name for the Factor. If None (default), it will be the Var's name.
+        name : str
+            Name of the output Factor ("{name}" is converted to the current
+            Var's name).
         labels : dict | str
             Dictionary mapping values to labels, or format string for
             converting values into labels (default: ``'%r'``).
         random : bool
             Whether the Factor is a random Factor (default False).
         """
-        if name is None:
-            name = self.name
-
-        if type(labels) is not dict:
+        if not isinstance(labels, dict):
             fmt = labels
             labels = {}
             for value in np.unique(self.x):
                 labels[value] = fmt % value
 
-        f = Factor(self.x, name, random, labels=labels)
-        return f
+        name = name.format(name=self.name)
+        return Factor(self.x, name, random, labels=labels)
 
     def centered(self):
         return self.x - self.x.mean()
@@ -1462,7 +1434,7 @@ class Var(object):
         return Y
 
     @classmethod
-    def from_apply(cls, base, func, name='{func}({name})'):
+    def from_apply(cls, base, func, name=None):
         """
         Construct a Var instance by applying a function to each value in a base
 
@@ -1475,7 +1447,6 @@ class Var(object):
             A function that when applied to each element in ``base`` returns
             the desired value for the resulting Var.
         """
-        base_name = getattr(base, 'name', 'x')
         if isvar(base) or isndvar(base):
             base = base.x
 
@@ -1486,7 +1457,6 @@ class Var(object):
         else:
             x = np.array([func(val) for val in base])
 
-        name = name.format(func=func.__name__, name=base_name)
         return cls(x, name=name)
 
     def index(self, value):
@@ -3052,7 +3022,7 @@ class NDVar(object):
             Function used to collapse the data. Needs to accept an "axis"
             kwarg (default: np.mean)
         name : str
-            Name for the new NDVar. Default: "{func}({name})".
+            Name for the new NDVar.
 
 
         Examples
@@ -3110,7 +3080,7 @@ class NDVar(object):
             if len(dims) == 0:
                 return x
             elif dims == ['case']:
-                return Var(x, name=name)
+                return Var(x, name)
             else:
                 return NDVar(x, dims, info, name)
 
@@ -4612,18 +4582,18 @@ def box_cox_transform(X, p, name=True):
     """
     if isvar(X):
         if name is True:
-            name = "Box-Cox(%s)" % X.name
+            name = "boxcox_%s" % X.name
         X = X.x
     else:
         if name is True:
-            name = "Box-Cox(x)"
+            name = "boxcox_x"
 
     if p == 0:
         y = np.log(X)
     else:
         y = (X ** p - 1) / p
 
-    return Var(y, name=name)
+    return Var(y, name)
 
 
 
