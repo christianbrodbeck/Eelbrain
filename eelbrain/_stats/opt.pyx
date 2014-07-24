@@ -111,6 +111,7 @@ def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef int i, i_beta, i_effect, i_effect_ms, i_effect_beta, i_fmap, case
     cdef int df
     cdef double v, SS, MS_den
+    cdef scalar [:] yi
 
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
@@ -120,7 +121,8 @@ def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef double [:] MSs = cvarray((n_effects,), sizeof(double), 'd')
 
     for i in range(n_tests):
-        lm_betas(y[:,i], xsinv, betas)
+        yi = y[:,i]
+        lm_betas(yi, xsinv, betas)
 
         # find MS of effects
         for i_effect in range(n_effects):
@@ -170,6 +172,7 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef int i, i_beta, i_effect, i_effect_ms, i_effect_beta, i_fmap, case
     cdef int df
     cdef double v, SS, MS, MS_res, MS_den
+    cdef scalar [:] yi
 
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
@@ -180,7 +183,8 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef double [:] predicted_y = cvarray((n_cases,), sizeof(double), 'd')
 
     for i in range(n_tests):
-        lm_betas(y[:,i], xsinv, betas)
+        yi = y[:,i]
+        lm_betas(yi, xsinv, betas)
 
         # expand accounted variance
         for case in range(n_cases):
@@ -193,7 +197,7 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
         # residuals
         SS = 0
         for case in range(n_cases):
-            SS += (y[case, i] - predicted_y[case]) ** 2
+            SS += (yi[case] - predicted_y[case]) ** 2
         MS_res = SS / df_res
 
         # find MS of effects
@@ -287,6 +291,7 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     """
     cdef int i, i_beta, case
     cdef double predicted_y, SS_res
+    cdef scalar [:] yi
 
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
@@ -294,7 +299,8 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     cdef double [:] betas = cvarray((df_x,), sizeof(double), 'd')
 
     for i in range(n_tests):
-        lm_betas(y[:,i], xsinv, betas)
+        yi = y[:, i]
+        lm_betas(yi, xsinv, betas)
 
         # predict y and find residual sum squares
         SS_res = 0
@@ -302,6 +308,6 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
             predicted_y = 0
             for i_beta in range(df_x):
                 predicted_y += x[case, i_beta] * betas[i_beta]
-            SS_res += (y[case, i] - predicted_y) ** 2
+            SS_res += (yi[case] - predicted_y) ** 2
 
         ss[i] = SS_res
