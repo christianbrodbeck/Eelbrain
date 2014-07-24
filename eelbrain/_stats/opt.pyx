@@ -120,12 +120,8 @@ def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef double [:] MSs = cvarray((n_effects,), sizeof(double), 'd')
 
     for i in range(n_tests):
-        # betas (xsinv * y)
-        for i_beta in range(n_betas):
-            betas[i_beta] = 0
-            for case in range(n_cases):
-                betas[i_beta] += xsinv[i_beta, case] * y[case, i]
-        
+        lm_betas(y[:,i], xsinv, betas)
+
         # find MS of effects
         for i_effect in range(n_effects):
             i_effect_beta = effects[i_effect, 0]
@@ -149,8 +145,8 @@ def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
             if MS_den > 0:
                 f_map[i_fmap, i] = MSs[i_effect] / MS_den
                 i_fmap += 1
-                    
-                    
+
+
 @cython.boundscheck(False)
 def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                  double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
@@ -184,12 +180,8 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef double [:] predicted_y = cvarray((n_cases,), sizeof(double), 'd')
 
     for i in range(n_tests):
-        # betas (xsinv * y)
-        for i_beta in range(n_betas):
-            betas[i_beta] = 0
-            for case in range(n_cases):
-                betas[i_beta] += xsinv[i_beta, case] * y[case, i]
-        
+        lm_betas(y[:,i], xsinv, betas)
+
         # expand accounted variance
         for case in range(n_cases):
             predicted_y[case] = 0
@@ -218,6 +210,7 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
             f_map[i_effect, i] = MS / MS_res
 
 
+@cython.boundscheck(False)
 def _ss(scalar[:,:] y, double[:] ss):
     """Compute sum squares in the data (after subtracting the intercept)
 
@@ -249,6 +242,35 @@ def _ss(scalar[:,:] y, double[:] ss):
         ss[i] = SS
 
 
+@cython.boundscheck(False)
+cdef int lm_betas(scalar[:] y, double[:,:] xsinv, double[:] betas) nogil:
+    """Fit a linear model
+
+    Parameters
+    ----------
+    y : array (n_cases,)
+        Dependent Measurement.
+    xsinv : array (n_betas, n_cases)
+        xsinv for x.
+    betas : array (n_betas,)
+        Output container.
+    df_x : int
+        Degrees of freedom of the model (n_betas).
+    n_cases : int
+        Number of cases in y.
+    """
+    cdef int i_beta, case
+    cdef int n_cases = y.shape[0]
+    cdef int df_x = xsinv.shape[0]
+
+    # betas = xsinv * y
+    for i_beta in range(df_x):
+        betas[i_beta] = 0
+        for case in range(n_cases):
+            betas[i_beta] += xsinv[i_beta, case] * y[case]
+
+
+@cython.boundscheck(False)
 def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     """Fit a linear model and compute the residual sum squares
 
@@ -272,11 +294,7 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     cdef double [:] betas = cvarray((df_x,), sizeof(double), 'd')
 
     for i in range(n_tests):
-        # betas (xsinv * y)
-        for i_beta in range(df_x):
-            betas[i_beta] = 0
-            for case in range(n_cases):
-                betas[i_beta] += xsinv[i_beta, case] * y[case, i]
+        lm_betas(y[:,i], xsinv, betas)
 
         # predict y and find residual sum squares
         SS_res = 0
