@@ -13,13 +13,13 @@ except ImportError:
 
 from eelbrain import load
 
-from ..tests.test_data import assert_dataobj_equal
+from ...tests.test_data import assert_dataobj_equal
 
 
 data_path = mne.datasets.sample.data_path()
 meg_path = os.path.join(data_path, 'MEG', 'sample')
 raw_path = os.path.join(meg_path, 'sample_audvis_filt-0-40_raw.fif')
-evt_path = os.path.join(meg_path, 'sample_audvis_filt-0-40_raw-evt.fif')
+evt_path = os.path.join(meg_path, 'sample_audvis_filt-0-40_raw-eve.fif')
 
 
 def test_load_fiff_from_raw():
@@ -28,6 +28,7 @@ def test_load_fiff_from_raw():
 
     # test separate events
     ds_evt = load.fiff.events(events=evt_path)
+    ds_evt.name = ds.name
     assert_dataobj_equal(ds_evt, ds)
 
     # add epochs as ndvar
