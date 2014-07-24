@@ -4898,7 +4898,7 @@ class Model(object):
             The beta weights.
         """
         Y = asvar(Y)
-        beta = dot(self.Xsinv, Y.x)
+        beta = dot(self.xsinv, Y.x)
         return beta
 
     @LazyProperty
@@ -4994,11 +4994,11 @@ class Model(object):
         return out
 
     @LazyProperty
-    def Xsinv(self):
+    def xsinv(self):
         X = self.full
         XT = X.T
-        Xsinv = dot(inv(dot(XT, X)), XT)
-        return Xsinv
+        xsinv = dot(inv(dot(XT, X)), XT)
+        return xsinv
 
 
 # ---NDVar dimensions---

@@ -489,7 +489,7 @@ class _BalancedNDANOVA(_NDANOVA):
 
     def _map(self, y, flat_f_map):
         x = self.x
-        _anova_fmaps(y, x.full, x.Xsinv, flat_f_map, x._effect_to_beta,
+        _anova_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
                      x.df_error)
 
 
@@ -520,7 +520,7 @@ class _FullNDANOVA(_NDANOVA):
 
     def _map(self, y, flat_f_map):
         x = self.x
-        _anova_full_fmaps(y, x.full, x.Xsinv, flat_f_map, x._effect_to_beta,
+        _anova_full_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
                           self._e_ms_array)
 
 
@@ -570,7 +570,7 @@ class _IncrementalNDANOVA(_NDANOVA):
             if x is None:
                 _ss(y, ss)
             else:
-                lm_res_ss(y, x.full, x.Xsinv, ss)
+                lm_res_ss(y, x.full, x.xsinv, ss)
 
         # incremental comparisons
         np.divide(SS_res[0], self.x.df_error, MS_e)
