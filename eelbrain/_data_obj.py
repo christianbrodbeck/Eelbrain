@@ -1034,7 +1034,8 @@ class EffectList(list):
 
     def __contains__(self, item):
         for f in self:
-            if (len(f) == len(item)) and np.all(item == f):
+            if ((f.name == item.name) and (f._stype_ == item._stype_)
+                and (len(f) == len(item)) and np.all(item == f)):
                 return True
         return False
 
@@ -1495,13 +1496,20 @@ class Var(object):
         return np.flatnonzero(self == value)
 
     def isany(self, *values):
-        return np.any([self.x == v for v in values], axis=0)
+        "Boolean index, True where the Var is equal to one of the values"
+        return np.in1d(self.x, values)
 
     def isin(self, values):
-        return np.any([self.x == v for v in values], axis=0)
+        "Boolean index, True where the Var value is in values"
+        return np.in1d(self.x, values)
 
     def isnot(self, *values):
-        return np.all([self.x != v for v in values], axis=0)
+        "Boolean index, True where the Var is not equal to one of the values"
+        return np.in1d(self.x, values, invert=True)
+
+    def isnotin(self, values):
+        "Boolean index, True where the Var value is not in values"
+        return np.in1d(self.x, values, invert=True)
 
     def max(self):
         "Returns the highest value"
@@ -1877,19 +1885,25 @@ class Factor(_Effect):
 
     # numeric ---
     def __eq__(self, other):
-        return self.x == self._encode_(other)
+        return self.x == self._encode(other)
 
     def __ne__(self, other):
-        return self.x != self._encode_(other)
+        return self.x != self._encode(other)
 
-    def _encode_(self, Y):
-        if isinstance(Y, basestring):
-            return self._codes.get(Y, -1)
+    def _encode(self, x):
+        if isinstance(x, basestring):
+            return self._encode_1(x)
         else:
-            out = np.empty(len(Y), dtype=self.x.dtype)
-            for i, v in enumerate(Y):
-                out[i] = self._codes.get(v, -1)
-            return out
+            return self._encode_seq(x)
+
+    def _encode_1(self, value):
+        return self._codes.get(value, -1)
+
+    def _encode_seq(self, values):
+        if not all(isinstance(v, basestring) for v in values):
+            err = "Factor indexes need to be strings, got %r" % str(values)
+            raise TypeError(err)
+        return np.array([self._codes.get(value, -1) for value in values])
 
     def __call__(self, other):
         """
@@ -2099,9 +2113,6 @@ class Factor(_Effect):
         >>> b.isany('b', 'c')
         array([False, False,  True,  True,  True,  True], dtype=bool)
         """
-        if not all(isinstance(v, basestring) for v in values):
-            err = "Factor indexes need to be str, got %r" % str(values)
-            raise ValueError(err)
         return self.isin(values)
 
     def isin(self, values):
@@ -2118,8 +2129,7 @@ class Factor(_Effect):
         >>> b.isany(('b', 'c'))
         array([False, False,  True,  True,  True,  True], dtype=bool)
         """
-        is_v = [self.x == self._codes.get(v, np.nan) for v in values]
-        return np.any(is_v, 0)
+        return np.in1d(self.x, self._encode_seq(values))
 
     def isnot(self, *values):
         """Find the index of entries not in ``values``
@@ -2129,9 +2139,6 @@ class Factor(_Effect):
         index : array of bool
             For each case False if the value is in values, else True.
         """
-        if not all(isinstance(v, basestring) for v in values):
-            err = "Factor indexes need to be str, got %r" % str(values)
-            raise ValueError(err)
         return self.isnotin(values)
 
     def isnotin(self, values):
@@ -2142,11 +2149,7 @@ class Factor(_Effect):
         index : array of bool
             For each case False if the value is in values, else True.
         """
-        is_not_v = [self.x != self._codes.get(v, np.nan) for v in values]
-        if is_not_v:
-            return np.all(is_not_v, axis=0)
-        else:
-            return np.ones(len(self), dtype=bool)
+        return np.in1d(self.x, self._encode_seq(values), invert=True)
 
     def startswith(self, substr):
         """Create an index that is true for all cases whose name starts with
