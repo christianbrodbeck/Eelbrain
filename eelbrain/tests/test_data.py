@@ -7,6 +7,7 @@ from itertools import izip
 import os
 import cPickle as pickle
 import shutil
+from string import ascii_lowercase
 import tempfile
 
 import mne
@@ -391,6 +392,47 @@ def test_effect():
     assert_array_equal(i.enumerate_cells(), np.arange(2).repeat(6))
 
 
+def test_isin():
+    "Test .isin() methods"
+    values = np.array([  6, -6, 6, -2, -1, 0, -10, -5, -10, -6])
+    v = values[0]
+    v2 = values[:2]
+    labels = {i: c for i, c in enumerate(ascii_lowercase, -10)}
+    vl = labels[v]
+    v2l = [labels[v_] for v_ in v2]
+
+    target = np.logical_or(values == v2[0], values == v2[1])
+    inv_target = np.invert(target)
+    index_target = np.flatnonzero(values == v)
+    empty = np.array([])
+
+    var = Var(values)
+    assert_array_equal(var.index(v), index_target)
+    assert_array_equal(var.isin(v2), target)
+    assert_array_equal(var.isany(*v2), target)
+    assert_array_equal(var.isnot(*v2), inv_target)
+    assert_array_equal(var.isnotin(v2), inv_target)
+
+    var0 = Var([])
+    assert_array_equal(var0.isin(v2), empty)
+    assert_array_equal(var0.isany(*v2), empty)
+    assert_array_equal(var0.isnot(*v2), empty)
+    assert_array_equal(var0.isnotin(v2), empty)
+
+    f = Factor(values, labels=labels)
+    assert_array_equal(f.index(vl), index_target)
+    assert_array_equal(f.isin(v2l), target)
+    assert_array_equal(f.isany(*v2l), target)
+    assert_array_equal(f.isnot(*v2l), inv_target)
+    assert_array_equal(f.isnotin(v2l), inv_target)
+
+    f0 = Factor([])
+    assert_array_equal(f0.isin(v2l), empty)
+    assert_array_equal(f0.isany(*v2l), empty)
+    assert_array_equal(f0.isnot(*v2l), empty)
+    assert_array_equal(f0.isnotin(v2l), empty)
+
+
 def test_ndvar():
     "Test the NDVar class"
     ds = datasets.get_rand(utsnd=True)
@@ -645,15 +687,6 @@ def test_source_space():
 
 def test_var():
     "Test Var objects"
-    values = np.array([  6, -6, 6, -2, -1, 0, -10, -5, -10, -6])
-    v = values[0]
-    v2 = values[:2]
-
-    var = Var(values)
-    assert_array_equal(var.index(v), np.flatnonzero(values == v))
-    target = np.logical_or(values == v2[0], values == v2[1])
-    assert_array_equal(var.isin(v2), target)
-
     base = Factor('aabbcde')
     Y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
     assert_array_equal(Y.x, [5, 5, 0, 0, 0, 0, 8])
