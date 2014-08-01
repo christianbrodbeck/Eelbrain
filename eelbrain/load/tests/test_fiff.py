@@ -6,10 +6,7 @@ from nose.tools import eq_
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 import mne
-try:
-    from mne import pick_types
-except ImportError:
-    from mne.fiff import pick_types
+from mne import pick_types
 
 from eelbrain import load
 

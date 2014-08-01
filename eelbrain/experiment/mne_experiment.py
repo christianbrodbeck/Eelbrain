@@ -72,12 +72,8 @@ import mne
 from mne.baseline import rescale
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
-try:
-    from mne import Evoked as _mne_Evoked
-    from mne.io import Raw as _mne_Raw
-except ImportError:
-    from mne.fiff import Evoked as _mne_Evoked
-    from mne.fiff import Raw as _mne_Raw
+from mne import Evoked as _mne_Evoked
+from mne.io import Raw as _mne_Raw
 
 from .. import fmtxt
 from ..fmtxt import FMText

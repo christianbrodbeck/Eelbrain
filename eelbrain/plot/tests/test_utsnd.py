@@ -7,11 +7,8 @@ import os
 
 import mne
 import numpy as np
-try:
-    from mne import Evoked
-    from mne.io import Raw
-except ImportError:
-    from mne.fiff import Evoked, Raw
+from mne import Evoked
+from mne.io import Raw
 
 from eelbrain import datasets, plot
 

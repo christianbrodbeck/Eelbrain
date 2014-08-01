@@ -59,7 +59,7 @@ kwargs = dict(
                                 'scipy >= 0.11.0',
                                 'numpy >= 1.8',
                                 'docutils',
-                                'mne >= 0.7.1'],
+                                'mne >= 0.8'],
               extras_require={'plot.brain': ['nibabel', 'pysurfer']},
               include_dirs=[np.get_include()],
               ext_modules=ext,

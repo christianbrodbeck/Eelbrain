@@ -104,20 +104,12 @@ import numpy as np
 
 import mne
 from mne.source_estimate import _BaseSourceEstimate
-try:  # API change in 0.9 (mne.io module)
-    from mne.io.constants import FIFF
-    from mne import Evoked as _mne_Evoked
-    from mne.io import Raw as _mne_Raw
-    from mne import pick_types as _mne_pick_types
-    from mne import pick_channels as _mne_pick_channels
-    from mne.io import read_raw_kit as _mne_read_raw_kit
-except ImportError:
-    from mne.fiff import FIFF
-    from mne.fiff import Evoked as _mne_Evoked
-    from mne.fiff import Raw as _mne_Raw
-    from mne.fiff import pick_types as _mne_pick_types
-    from mne.fiff import pick_channels as _mne_pick_channels
-    from mne.fiff.kit import read_raw_kit as _mne_read_raw_kit
+from mne.io.constants import FIFF
+from mne import Evoked as _mne_Evoked
+from mne.io import Raw as _mne_Raw
+from mne import pick_types as _mne_pick_types
+from mne import pick_channels as _mne_pick_channels
+from mne.io import read_raw_kit as _mne_read_raw_kit
 
 from .. import _colorspaces as _cs
 from .._utils import ui

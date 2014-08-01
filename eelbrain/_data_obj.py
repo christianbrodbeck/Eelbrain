@@ -34,10 +34,7 @@ import re
 from warnings import warn
 
 import mne
-try:
-    from mne import Evoked as _mne_Evoked  # new in 0.9
-except ImportError:
-    from mne.fiff import Evoked as _mne_Evoked
+from mne import Evoked as _mne_Evoked
 import numpy as np
 from numpy import dot
 import scipy
@@ -6403,7 +6400,7 @@ class SourceSpace(Dimension):
             files with the MRI). Only applies to ico source spaces, default is
             'aparc'.
         """
-        if parc is None or mne.__version__ < '0.8':
+        if parc is None:
             parc_ = None
         elif isfactor(parc):
             if len(parc) != len(self):
