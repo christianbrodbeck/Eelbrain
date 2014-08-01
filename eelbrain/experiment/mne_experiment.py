@@ -132,7 +132,7 @@ temp = {
         'bads-file': os.path.join('{raw-dir}', '{subject}_{experiment}-bad_channels.txt'),
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
         'raw-file': '{raw-base}-raw.fif',
-        'raw-evt-file': '{raw-base}-evts.pickled',
+        'event-file': '{raw-base}-evts.pickled',
         'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),  # mne p. 196
 
         # log-files (eye-tracker etc.)
@@ -704,12 +704,12 @@ class MneExperiment(FileTree):
         ds[label] = NDVar(np.array(x), dims=('case', time))
 
     def cache_events(self, redo=False):
-        """Create the 'raw-evt-file'.
+        """Create the 'event-file'.
 
         This is done automatically the first time the events are loaded, but
         caching them will allow faster loading times form the beginning.
         """
-        evt_file = self.get('raw-evt-file')
+        evt_file = self.get('event-file')
         exists = os.path.exists(evt_file)
         if exists and redo:
             os.remove(evt_file)
@@ -1020,28 +1020,32 @@ class MneExperiment(FileTree):
         raw = self.load_raw(add_proj=add_proj, add_bads=add_bads,
                             subject=subject, **kwargs)
 
-        evt_file = self.get('raw-evt-file')
+        evt_file = self.get('event-file')
+        subject = self.get('subject')
+        experiment = self.get('experiment')
+
+        # search for and check cached version
+        ds = None
         if os.path.exists(evt_file):
-            ds = load.unpickle(evt_file)
-        else:
+            event_mtime = os.path.getmtime(evt_file)
+            raw_mtime = os.path.getmtime(self.get('raw-file'))
+            if event_mtime > raw_mtime:
+                ds = load.unpickle(evt_file)
+
+        # refresh cache
+        if ds is None:
             ds = load.fiff.events(raw)
 
-            subject = self.get('subject')
             if edf and self.has_edf[subject]:  # add edf
                 edf = self.load_edf()
                 edf.add_t_to(ds)
                 ds.info['edf'] = edf
 
-            # cache
             del ds.info['raw']
             if edf or not self.has_edf[subject]:
                 save.pickle(ds, evt_file)
 
         ds.info['raw'] = raw
-
-        subject = subject or self.get('subject')
-        experiment = self.get('experiment')
-
         ds = self.label_events(ds, experiment, subject)
         return ds
 
