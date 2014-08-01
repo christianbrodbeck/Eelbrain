@@ -733,10 +733,28 @@ class FileTree(TreeModel):
     def __init__(self, **state):
         TreeModel.__init__(self, **state)
         self._make_handlers = {}
+        self._cache_handlers = {}
         self._register_field('root', set_handler=self.set_root)
 
+    def _bind_cache(self, key, handler):
+        """
+        The cache function is called every time the file name is retrieved and
+        should recreate the file if it is outdated.
+        """
+        if key in self._cache_handlers:
+            raise RuntimeError("Cache handler for %r already defined." % key)
+        elif key in self._make_handlers:
+            raise RuntimeError("Make handler for %r already defined." % key)
+        self._cache_handlers[key] = handler
+
     def _bind_make(self, key, handler):
-        if key in self._make_handlers:
+        """
+        The make funciton is called only when the file name is retrieved and
+        the file does not exist.
+        """
+        if key in self._cache_handlers:
+            raise RuntimeError("Cache handler for %r already defined." % key)
+        elif key in self._make_handlers:
             raise RuntimeError("Make handler for %r already defined." % key)
         self._make_handlers[key] = handler
 
@@ -801,15 +819,18 @@ class FileTree(TreeModel):
                 os.makedirs(dirname)
 
         # make the file
-        if make and not os.path.exists(path):
-            if temp in self._make_handlers:
-                self.store_state()
-                self._make_handlers[temp]()
-                self.restore_state()
-            elif temp.endswith('-dir'):
-                os.makedirs(path)
-            else:
-                raise RuntimeError("No make handler for %r." % temp)
+        if make:
+            if temp in self._cache_handlers:
+                self._cache_handlers[temp]()
+            elif not os.path.exists(path):
+                if temp in self._make_handlers:
+                    self.store_state()
+                    self._make_handlers[temp]()
+                    self.restore_state()
+                elif temp.endswith('-dir'):
+                    os.makedirs(path)
+                else:
+                    raise RuntimeError("No make handler for %r." % temp)
 
         return path
 
