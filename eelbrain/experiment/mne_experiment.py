@@ -414,9 +414,9 @@ class MneExperiment(FileTree):
         self._register_compound('evoked-kind', ('rej', 'equalize_evoked_count'))
 
         # Define make handlers
-        self._bind_make('evoked-file', self.make_evoked)
         self._bind_make('raw-file', self.make_raw)
-        self._bind_make('cov-file', self.make_cov)
+        self._bind_cache('evoked-file', self.make_evoked)
+        self._bind_cache('cov-file', self.make_cov)
         self._bind_make('src-file', self.make_src)
         self._bind_make('fwd-file', self.make_fwd)
         self._bind_make('label-file', self.make_labels)
@@ -1758,12 +1758,17 @@ class MneExperiment(FileTree):
         """
         dest = self.get('cov-file')
         if (not redo) and os.path.exists(dest):
-            return
+            cov_mtime = os.path.getmtime(dest)
+            raw_mtime = os.path.getmtime(self.get('raw-file'))
+            bads_mtime = os.path.getmtime(self.get('bads-file'))
+            if cov_mtime > max(raw_mtime, bads_mtime):
+                return
 
         cov = self.get('cov')
         rej = self.get('cov-rej')
-        ds = self.load_epochs(baseline=(None, 0), ndvar=False, decim=1,
-                              epoch=cov, rej=rej)
+        with self._temporary_state:
+            ds = self.load_epochs(baseline=(None, 0), ndvar=False, decim=1,
+                                  epoch=cov, rej=rej)
         epochs = ds['epochs']
         cov = mne.cov.compute_covariance(epochs)
         cov.save(dest)
@@ -1781,7 +1786,12 @@ class MneExperiment(FileTree):
         """
         dest = self.get('evoked-file', mkdir=True, **kwargs)
         if not redo and os.path.exists(dest):
-            return
+            evoked_mtime = os.path.getmtime(dest)
+            raw_mtime = os.path.getmtime(self.get('raw-file', make=True))
+            bads_mtime = os.path.getmtime(self.get('bads-file'))
+            rej_mtime = os.path.getmtime(self.get('rej-file'))
+            if evoked_mtime > max(raw_mtime, bads_mtime, rej_mtime):
+                return
 
         epoch_names = [ep['name'] for ep in self._params['epochs']]
         equal_count = self.get('equalize_evoked_count') == 'eq'
