@@ -1276,9 +1276,9 @@ class MneExperiment(FileTree):
 
         Returns
         -------
-        mm :
+        mm : sparse matrix
             Morph matrix.
-        vertices_to : array
+        vertices_to : list of 2 array
             Vertices of the morphed data.
         """
         subjects_dir = self.get('mri-sdir', **state)
@@ -2359,9 +2359,9 @@ class MneExperiment(FileTree):
             threshold-free cluster enhancement.
         tstart, tstop : None | scalar
             Time window for finding clusters.
-        samples : int
+        samples : int > 0
             Number of samples used to determine cluster p values for spatio-
-            temporal clusters.
+            temporal clusters (default 1000).
         data : 'src'
             Kind of data to analyse (currently only 'src' is possible).
         sns_baseline : None | tuple
@@ -2376,6 +2376,8 @@ class MneExperiment(FileTree):
         """
         if data != 'src':
             raise NotImplementedError("Data has to be 'src'")
+        elif samples < 1:
+            raise ValueError("samples needs to be > 0")
 
         # determine report file name
         if parc is None:
