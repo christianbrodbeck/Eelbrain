@@ -3160,6 +3160,7 @@ class MneExperiment(FileTree):
             find_subjects = False
         else:
             root = os.path.expanduser(root)
+            root = os.path.normpath(root)
         self._fields['root'] = root
         if not find_subjects:
             self._field_values['subject'] = []
