@@ -418,7 +418,7 @@ class MneExperiment(FileTree):
         self._bind_cache('evoked-file', self.make_evoked)
         self._bind_cache('cov-file', self.make_cov)
         self._bind_make('src-file', self.make_src)
-        self._bind_make('fwd-file', self.make_fwd)
+        self._bind_cache('fwd-file', self.make_fwd)
         self._bind_make('label-file', self.make_labels)
 
         # set initial values
@@ -1839,16 +1839,22 @@ class MneExperiment(FileTree):
 
     def make_fwd(self, redo=False):
         """Make the forward model"""
-        fname = self.get('fwd-file')
-        if not redo and os.path.exists(fname):
-            return
-
-        info = self.get('raw-file', make=True)
-        mri = self.get('trans-file')
+        dst = self.get('fwd-file')
+        raw = self.get('raw-file', make=True)
+        trans = self.get('trans-file')
         src = self.get('src-file', make=True)
         bem = self.get('bem-sol-file', fmatch=True)
 
-        mne.make_forward_solution(info, mri, src, bem, fname, ignore_ref=True,
+        if not redo and os.path.exists(dst):
+            fwd_mtime = os.path.getmtime(dst)
+            raw_mtime = os.path.getmtime(raw)
+            trans_mtime = os.path.getmtime(trans)
+            src_mtime = os.path.getmtime(src)
+            bem_mtime = os.path.getmtime(bem)
+            if fwd_mtime > max(raw_mtime, trans_mtime, src_mtime, bem_mtime):
+                return
+
+        mne.make_forward_solution(raw, trans, src, bem, dst, ignore_ref=True,
                                   overwrite=True)
 
     def make_labels(self, redo=False):
