@@ -2690,7 +2690,7 @@ class MneExperiment(FileTree):
 
         return legend
 
-    def make_src(self, redo=False):
+    def make_src(self, redo=False, **kwargs):
         """Make the source space
 
         Parameters
@@ -2699,7 +2699,7 @@ class MneExperiment(FileTree):
             Recreate the source space even if the corresponding file already
             exists.
         """
-        dst = self.get('src-file')
+        dst = self.get('src-file', **kwargs)
         if not redo and os.path.exists(dst):
             return
 
@@ -2707,19 +2707,14 @@ class MneExperiment(FileTree):
         kind, param = src.split('-')
 
         subject = self.get('mrisubject')
+        common_brain = self.get('common_brain')
         subjects_dir = self.get('mri-sdir')
-        try:
-            cfg = mne.coreg.read_mri_cfg(subject, subjects_dir)
-            is_scaled = True
-        except IOError:
-            is_scaled = False
 
-        if is_scaled:
+        if (subject != common_brain) and is_fake_mri(self.get('mri-dir')):
             # make sure the source space exists for the original
-            subject_from = cfg['subject_from']
-            self.set(mrisubject=subject_from)
-            self.make_src()
-            self.set(mrisubject=subject)
+            with self._temporary_state:
+                self.make_src(mrisubject=common_brain)
+            # scale the source space
             mne.scale_source_space(subject, src, subjects_dir=subjects_dir)
         else:
             if kind == 'vol':
@@ -2731,10 +2726,8 @@ class MneExperiment(FileTree):
                                               subjects_dir=subjects_dir)
             else:
                 spacing = kind + param
-                src = mne.setup_source_space(subject, None, spacing=spacing,
-                                             subjects_dir=subjects_dir)
-                mne.add_source_space_distances(src)
-                src.save(dst)
+                mne.setup_source_space(subject, dst, spacing, overwrite=redo,
+                                       subjects_dir=subjects_dir, add_dist=True)
 
     def _make_test(self, y, ds, test, model, contrast, samples, pmin, tstart,
                    tstop, dist_dim, parc_dim):
