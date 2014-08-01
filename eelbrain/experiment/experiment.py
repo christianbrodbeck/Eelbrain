@@ -11,7 +11,7 @@ import subprocess
 import numpy as np
 
 from .. import fmtxt
-from .._utils import ui
+from .._utils import LazyProperty, ui
 from .._utils.com import send_email, Notifier
 
 
@@ -100,6 +100,17 @@ class LayeredDict(dict):
     def store_state(self):
         "Store the current state"
         self._states.append(self.copy())
+
+
+class _TempStateController(object):
+    def __init__(self, experiment):
+        self.experiment = experiment
+
+    def __enter__(self):
+        self.experiment.store_state()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.experiment.restore_state()
 
 
 class TreeModel(object):
@@ -712,6 +723,10 @@ class TreeModel(object):
         self._field_values.store_state()
         self._params.store_state()
 
+    @LazyProperty
+    def _temporary_state(self):
+        return _TempStateController(self)
+
     def _update_compound(self, key):
         items = []
         for item_key in self._compound_members[key]:
@@ -824,9 +839,8 @@ class FileTree(TreeModel):
                 self._cache_handlers[temp]()
             elif not os.path.exists(path):
                 if temp in self._make_handlers:
-                    self.store_state()
-                    self._make_handlers[temp]()
-                    self.restore_state()
+                    with self._temporary_state:
+                        self._make_handlers[temp]()
                 elif temp.endswith('-dir'):
                     os.makedirs(path)
                 else:

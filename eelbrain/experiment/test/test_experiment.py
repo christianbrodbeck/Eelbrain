@@ -34,3 +34,9 @@ def test_tree():
     assert_equal(tree.get('cmp'), 'a1 value')
     tree.set(field2='')
     assert_equal(tree.get('cmp'), 'a1')
+
+    # test temporary state
+    with tree._temporary_state:
+        tree.set(afield='a2')
+        assert_equal(tree.get('afield'), 'a2')
+    assert_equal(tree.get('afield'), 'a1')

@@ -810,12 +810,11 @@ class MneExperiment(FileTree):
         idx = slice(start, stop)
         values = values[idx]
 
-        self.store_state()
-        for value in values:
-            self.restore_state(discard_tip=False)
-            self.set(**{field: value})
-            yield value
-        self.restore_state()
+        with self._temporary_state:
+            for value in values:
+                self.restore_state(discard_tip=False)
+                self.set(**{field: value})
+                yield value
 
     def iter_vars(self, *args, **kwargs):
         """Deprecated. Use :attr:`.iter()`"""
@@ -1399,10 +1398,9 @@ class MneExperiment(FileTree):
 
         # case 2: rejection comes from a different epoch
         if sel_epoch is not None:
-            self.store_state()
-            ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
-                                           index, epoch=sel_epoch)
-            self.restore_state()
+            with self._temporary_state:
+                ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
+                                               index, epoch=sel_epoch)
 
             if sel is not None:
                 ds = ds.sub(sel)
