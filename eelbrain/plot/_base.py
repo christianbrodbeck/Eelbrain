@@ -101,7 +101,7 @@ backend = {'block': False,  # plt.show() parameter for mpl_figure
            'frame': 'mpl'}
 if mpl.get_backend().lower().startswith('wx'):
     try:
-        from ..._wxutils.mpl_canvas import CanvasFrame
+        from .._wxutils.mpl_canvas import CanvasFrame
         backend['frame'] = 'wx'
     except:
         pass
