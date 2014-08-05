@@ -65,8 +65,8 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
         half way between fmin and fmax.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
-    views : list of str | str
-        Views to show in the figure.
+    views : str | iterator of str
+        View or views to show in the figure.
     colorbar : bool
         Whether to add a colorbar to the figure.
     w, h, axw, axh : scalar
@@ -109,8 +109,8 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
         transparency between p0 and p1).
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
-    views : list of str | str
-        Views to show in the figure.
+    views : str | iterator of str
+        View or views to show in the figure.
     colorbar : bool
         Whether to add a colorbar to the figure.
     w, h, axw, axh : scalar
@@ -150,8 +150,8 @@ def activation(src, threshold=None, vmax=None, *args, **kwargs):
         mean.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
-    views : list of str | str
-        Views to show in the figure.
+    views : str | iterator of str
+        View or views to show in the figure.
     colorbar : bool
         Whether to add a colorbar to the figure.
     w, h, axw, axh : scalar
@@ -196,8 +196,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
         cluster.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
-    views : list of str | str
-        Views to show in the figure.
+    views : str | iterator of str
+        View or views to show in the figure.
     colorbar : bool
         Whether to add a colorbar to the figure.
     w, h, axw, axh : scalar
@@ -239,8 +239,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         Endpoints for the colormap.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
-    views : list of str | str
-        Views to show in the figure.
+    views : str | iterator of str
+        View or views to show in the figure.
     colorbar : bool
         Whether to add a colorbar to the figure.
     w, h, axw, axh : scalar
@@ -259,6 +259,11 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         PySurfer Brain instance containing the plot.
     """
     from surfer import Brain
+
+    if isinstance(views, basestring):
+        views = [views]
+    elif not isinstance(views, list):
+        views = list(views)
 
     src = asndvar(src)  # , sub=None, ds=ds)
     if src.has_case:
