@@ -18,6 +18,8 @@ from ..plot._base import find_fig_vlims
 from ..plot.utsnd import _ax_bfly_epoch
 from ..plot.nuts import _plt_bin_nuts
 from .._wxutils import Icon, ID, logger, REValidator
+from .app import get_app
+from .frame import EelbrainFrame, EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
 from .history import History
 
@@ -388,10 +390,10 @@ class Model(object):
         self.history.do(action)
 
 
-class Frame(wx.Frame):  # control
+class Frame(EelbrainFrame):  # control
     "View object of the epoch selection GUI"
 
-    def __init__(self, parent, model, config, nplots, topo, mean, vlim,
+    def __init__(self, parent, model, nplots, topo, mean, vlim,
                  plot_range, color, lw, mark, mcolor, mlw, antialiased, pos,
                  size):
         """View object of the epoch selection GUI
@@ -403,6 +405,9 @@ class Frame(wx.Frame):  # control
         others :
             See TerminalInterface constructor.
         """
+        config = wx.Config("Eelbrain")
+        config.SetPath("SelectEpochs")
+
         if pos is None:
             pos = (config.ReadInt("pos_horizontal", -1),
                    config.ReadInt("pos_vertical", -1))
@@ -422,33 +427,29 @@ class Frame(wx.Frame):  # control
             config.Flush()
 
         super(Frame, self).__init__(parent, -1, "Select Epochs", pos, size)
+        doc = model.doc
+        history = model.history
 
-        # bind close event to save window properties in config
+        # bind events
         self.Bind(wx.EVT_CLOSE, self.OnClose, self)
+        doc.subscribe_to_case_change(self.CaseChanged)
+        doc.subscribe_to_path_change(self.UpdateTitle)
+        history.subscribe_to_saved_change(self.UpdateTitle)
 
         self.config = config
         self.model = model
-        self.doc = model.doc
-        self.history = model.history
-
-#         self._topo_fig = None
-        self._saved = True
+        self.doc = doc
+        self.history = history
 
         # setup figure canvas
         self.canvas = FigureCanvasPanel(self)
         self.figure = self.canvas.figure
         self.figure.subplots_adjust(left=.01, right=.99, bottom=.05,
                                     top=.95, hspace=.5)
-        self.canvas.mpl_connect('motion_notify_event', self.OnPointerMotion)
-        self.canvas.mpl_connect('axes_leave_event', self.OnPointerLeaveAxes)
 
         # Toolbar
         tb = self.CreateToolBar(wx.TB_HORIZONTAL)
         tb.SetToolBitmapSize(size=(32, 32))
-
-        if hasattr(parent, 'shell') and hasattr(parent.shell, 'attach'):
-            tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
-
         tb.AddLabelTool(wx.ID_SAVE, "Save",
                         Icon("tango/actions/document-save"), shortHelp="Save")
         tb.AddLabelTool(wx.ID_SAVEAS, "Save As",
@@ -457,7 +458,6 @@ class Frame(wx.Frame):  # control
         tb.AddLabelTool(wx.ID_OPEN, "Load",
                         Icon("tango/actions/document-open"),
                         shortHelp="Open Rejections")
-
         tb.AddLabelTool(ID.UNDO, "Undo", Icon("tango/actions/edit-undo"),
                         shortHelp="Undo")
         tb.AddLabelTool(ID.REDO, "Redo", Icon("tango/actions/edit-redo"),
@@ -479,8 +479,9 @@ class Frame(wx.Frame):  # control
         tb.AddSeparator()
 
         # --> Thresholding
-        self.threshold_button = wx.Button(tb, ID.THRESHOLD, "Threshold")
-        tb.AddControl(self.threshold_button)
+        button = wx.Button(tb, ID.THRESHOLD, "Threshold")
+        button.Bind(wx.EVT_BUTTON, self.OnThreshold)
+        tb.AddControl(button)
 
         # exclude channels
 #         btn = wx.Button(tb, ID.EXCLUDE_CHANNELS, "Exclude Channel")
@@ -501,10 +502,10 @@ class Frame(wx.Frame):  # control
 #         self.Bind(wx.EVT_TOOL, self.OnShowFullScreen, id=ID.FULLSCREEN)
 
         # Grand-average plot
-        self.grand_av_button = wx.Button(tb, ID.GRAND_AVERAGE, "GA")
-        self.grand_av_button.SetHelpText("Plot the grand average of all "
-                                         "accepted epochs")
-        tb.AddControl(self.grand_av_button)
+        button = wx.Button(tb, ID.GRAND_AVERAGE, "GA")
+        button.SetHelpText("Plot the grand average of all accepted epochs")
+        button.Bind(wx.EVT_BUTTON, self.OnPlotGrandAverage)
+        tb.AddControl(button)
 
         tb.Realize()
 
@@ -522,60 +523,37 @@ class Frame(wx.Frame):  # control
         self._SetPlotStyle(mark=mark)
         self._SetLayout(nplots, topo, mean)
 
+        # Bind Events ---
+        self.Bind(wx.EVT_CLOSE, self.OnClose)
+        self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
+        self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
+        self.Bind(wx.EVT_TOOL, self.OnOpen, id=ID.OPEN)
+        self.Bind(wx.EVT_TOOL, self.OnSave, id=wx.ID_SAVE)
+        self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVEAS)
+        self.Bind(wx.EVT_TOOL, self.OnSetLayout, id=ID.SET_LAYOUT)
+        self.canvas.mpl_connect('axes_leave_event', self.OnPointerLeaveAxes)
+        self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
+        self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
+        self.canvas.mpl_connect('motion_notify_event', self.OnPointerMotion)
+
         # Finalize
         self.ShowPage(0)
         self.UpdateTitle()
 
-    def _create_menu(self):
-        # Menu
-        m = self.fileMenu = wx.Menu()
-        m.Append(wx.ID_OPEN, '&Open... \tCtrl+O', 'Open file')
-#         m.Append(wx.ID_REVERT, '&Revert', 'Revert to the last saved version')
-        m.AppendSeparator()
-        m.Append(wx.ID_CLOSE, '&Close \tCtrl+W', 'Close Window')
-        m.Append(wx.ID_SAVE, '&Save \tCtrl+S', 'Save file')
-        m.Append(wx.ID_SAVEAS, 'Save &As... \tCtrl+Shift+S', 'Save file with '
-                 'new name')
-#         m.Append(ID.SAVEACOPY, 'Save A Cop&y', 'Save a copy of the file '
-#                  'without changing the current file')
+    def CanBackward(self):
+        return self._current_page_i > 0
 
-        # Edit
-        m = self.editMenu = wx.Menu()
-        m.Append(ID.UNDO, '&Undo \tCtrl+Z', 'Undo the last action')
-        m.Append(ID.REDO, '&Redo \tCtrl+Shift+Z', 'Redo the last undone '
-                 'action')
-        m.AppendSeparator()
-        m.Append(wx.ID_CLEAR, 'Cle&ar', 'Select all epochs')
+    def CanForward(self):
+        return self._current_page_i < self._n_pages - 1
 
-        # View
-        m = self.viewMenu = wx.Menu()
-        m.Append(ID.SET_VLIM, "Set Y-Axis Limit... \tCtrl+l", "Change the Y-"
-                 "axis limit in epoch plots")
-        m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+Shift+l", "Change the "
-                 "page layout")
-        m.AppendCheckItem(ID.PLOT_RANGE, "&Plot Data Range \tCtrl+r", "Plot "
-                          "data range instead of individual sensor traces")
-#         m.Append(wx.ID_TOGGLE_MAXIMIZE, '&Toggle Maximize\tF11', 'Maximize/'
-#                  'Restore Application')
+    def CanRedo(self):
+        return self.history.can_redo()
 
-        # Go
-        m = self.goMenu = wx.Menu()
-        m.Append(wx.ID_FORWARD, '&Forward \tCtrl+]', 'Go One Page Forward')
-        m.Append(wx.ID_BACKWARD, '&Back \tCtrl+[', 'Go One Page Back')
+    def CanSave(self):
+        return bool(self.doc.path)
 
-#         m = self.helpMenu = wx.Menu()
-#         m.Append(wx.ID_HELP, '&Help\tF1', 'Help!')
-#         m.AppendSeparator()
-#         m.Append(wx.ID_ABOUT, '&About...', 'About this program')
-
-        b = wx.MenuBar()
-        b.Append(self.fileMenu, '&File')
-        b.Append(self.editMenu, '&Edit')
-        b.Append(self.viewMenu, '&View')
-        b.Append(self.goMenu, '&Go')
-#         b.Append(self.helpMenu, '&Help')
-#         self.menuBar = b
-        self.SetMenuBar(b)
+    def CanUndo(self):
+        return self.history.can_undo()
 
     def CaseChanged(self, index):
         "updates the states of the segments on the current page"
@@ -607,8 +585,81 @@ class Frame(wx.Frame):  # control
 
         self.canvas.redraw(axes=axes)
 
+    def OnBackward(self, event):
+        "turns the page backward"
+        self.ShowPage(self._current_page_i - 1)
+
+    def OnCanvasClick(self, event):
+        "called by mouse clicks"
+        log_msg = "Canvas Click:"
+        ax = event.inaxes
+        if ax:
+            log_msg += " ax.ax_idx=%i" % ax.ax_idx
+            if ax.ax_idx >= 0:
+                idx = ax.epoch_idx
+                state = not self.doc.accept[idx]
+                tag = "manual"
+                desc = "Epoch %i %s" % (idx, state)
+                self.model.set_case(idx, state, tag, desc)
+            elif ax.ax_idx == -2:
+                self.open_topomap()
+
+        logger.debug(log_msg)
+
+    def OnCanvasKey(self, event):
+        # GUI Control events
+        if event.key == 'right':
+            if self.CanForward():
+                self.OnForward(None)
+            return
+        elif event.key == 'left':
+            if self.CanBackward():
+                self.OnBackward(None)
+            return
+        elif event.key == 'u':
+            if self.CanUndo():
+                self.OnUndo(None)
+            return
+        elif event.key == 'U':
+            if self.CanRedo():
+                self.OnRedo(None)
+            return
+
+        # plotting
+        ax = event.inaxes
+        if ax is None:
+            return
+        time = event.xdata
+        ax_index = getattr(ax, 'ax_idx', None)
+        if ax_index == -2:
+            return
+        if event.key == 't':
+            self.PlotTopomap(ax_index, time)
+        elif (event.key == 'b'):
+            self.PlotButterfly(ax_index)
+        elif (event.key == 'c'):
+            self.PlotCorrelation(ax_index)
+
+    def OnClear(self, event):
+        self.model.clear()
+
     def OnClose(self, event):
-        logger.debug("Frame.OnClose(), saving window properties...")
+        "Ask to save unsaved changes"
+        if event.CanVeto() and not self.history.is_saved():
+            msg = ("The current document has unsaved changes. Would you like "
+                   "to save them?")
+            cap = ("Saved Unsaved Changes?")
+            style = wx.YES | wx.NO | wx.CANCEL | wx.YES_DEFAULT
+            cmd = wx.MessageBox(msg, cap, style)
+            if cmd == wx.YES:
+                if self.Save() != wx.ID_OK:
+                    event.Veto()
+            elif cmd == wx.CANCEL:
+                event.Veto()
+            elif cmd != wx.NO:
+                raise RuntimeError("Unknown answer: %r" % cmd)
+
+        logger.debug("SelectEpochsFrame.OnClose(), saving window properties...")
         pos_h, pos_v = self.GetPosition()
         w, h = self.GetSize()
 
@@ -620,10 +671,44 @@ class Frame(wx.Frame):  # control
 
         event.Skip()
 
+    def OnForward(self, event):
+        "turns the page forward"
+        self.ShowPage(self._current_page_i + 1)
+
+    def OnOpen(self, event):
+        msg = ("Load the epoch selection from a file.")
+        if self.doc.path:
+            default_dir, default_name = os.path.split(self.doc.path)
+        else:
+            default_dir = ''
+            default_name = ''
+        wildcard = ("Tab Separated Text (*.txt)|*.txt|"
+                    "Pickle (*.pickled)|*.pickled")
+        dlg = wx.FileDialog(self, msg, default_dir, default_name,
+                            wildcard, wx.FD_OPEN)
+        rcode = dlg.ShowModal()
+        dlg.Destroy()
+
+        if rcode != wx.ID_OK:
+            return rcode
+
+        path = dlg.GetPath()
+        try:
+            self.model.load(path)
+        except Exception as ex:
+            msg = str(ex)
+            title = "Error Loading Rejections"
+            wx.MessageBox(msg, title, wx.ICON_ERROR)
+            raise
+
+
     def OnPageChoice(self, event):
         "called by the page Choice control"
         page = event.GetSelection()
         self.ShowPage(page)
+
+    def OnPlotGrandAverage(self, event):
+        self.PlotGrandAverage()
 
     def OnPointerLeaveAxes(self, event):
         sb = self.GetStatusBar()
@@ -656,6 +741,181 @@ class Frame(wx.Frame):  # control
             tseg = self._get_ax_data(ax.ax_idx, t)
             plot.topo._ax_topomap(self._topo_ax, [tseg], **self._topo_kwargs)
             self.canvas.redraw(axes=[self._topo_ax])
+
+    def OnRedo(self, event):
+        self.history.redo()
+
+    def OnSave(self, event):
+        if self.doc.path:
+            self.model.save()
+            return wx.ID_OK
+        else:
+            return self.SaveAs()
+
+    def OnSaveAs(self, event):
+        msg = ("Save the epoch selection to a file.")
+        if self.doc.path:
+            default_dir, default_name = os.path.split(self.doc.path)
+        else:
+            default_dir = ''
+            default_name = ''
+        wildcard = ("Tab Separated Text (*.txt)|*.txt|"
+                    "Pickle (*.pickled)|*.pickled")
+        dlg = wx.FileDialog(self, msg, default_dir, default_name, wildcard,
+                            wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        rcode = dlg.ShowModal()
+        if rcode == wx.ID_OK:
+            path = dlg.GetPath()
+            self.model.save_as(path)
+
+        dlg.Destroy()
+        return rcode
+
+    def OnSetLayout(self, event):
+        caption = "Set Plot Layout"
+        msg = ("Number of epoch plots for square layout (e.g., '10') or \n"
+               "exact n_rows and n_columns (e.g., '5 4'). Add 'nomean' to \n"
+               "turn off plotting the page mean at the bottom right (e.g., "
+               "'3 nomean').")
+        default = ""
+        dlg = wx.TextEntryDialog(self, msg, caption, default)
+        while True:
+            if dlg.ShowModal() == wx.ID_OK:
+                nplots = None
+                topo = True
+                mean = True
+                err = []
+
+                # separate options from layout
+                value = dlg.GetValue()
+                items = value.split(' ')
+                options = []
+                while not items[-1].isdigit():
+                    options.append(items.pop(-1))
+
+                # extract options
+                for option in options:
+                    if option == 'nomean':
+                        mean = False
+                    elif option == 'notopo':
+                        topo = False
+                    else:
+                        err.append('Unknown option: "%s"' % option)
+
+                # extract layout info
+                if len(items) == 1 and items[0].isdigit():
+                    nplots = int(items[0])
+                elif len(items) == 2 and all(item.isdigit() for item in items):
+                    nplots = tuple(int(item) for item in items)
+                else:
+                    value_ = ' '.join(items)
+                    err = 'Invalid layout specification: "%s"' % value_
+
+                # if all ok: break
+                if nplots and not err:
+                    break
+
+                # error
+                caption = 'Invalid Layout Entry: "%s"' % value
+                err.append('Please read the instructions and try again.')
+                msg = '\n'.join(err)
+                style = wx.OK | wx.ICON_ERROR
+                wx.MessageBox(msg, caption, style)
+            else:
+                dlg.Destroy()
+                return
+
+        dlg.Destroy()
+        self.SetLayout(nplots, topo, mean)
+
+    def OnSetVLim(self, event):
+        default = str(self._vlims.values()[0][1])
+        dlg = wx.TextEntryDialog(self, "New Y-axis limit:",
+                                 "Set Y-Axis Limit", default)
+
+        if dlg.ShowModal() == wx.ID_OK:
+            value = dlg.GetValue()
+            try:
+                vlim = abs(float(value))
+            except Exception as exception:
+                msg = wx.MessageDialog(self, str(exception), "Invalid "
+                                        "Entry", wx.ICON_ERROR)
+                msg.ShowModal()
+                msg.Destroy()
+                raise
+            self.SetVLim(vlim)
+        dlg.Destroy()
+
+    def OnThreshold(self, event):
+        method = self.config.Read("Threshold/method", "p2p")
+        mark_above = self.config.ReadBool("Threshold/mark_above", True)
+        mark_below = self.config.ReadBool("Threshold/mark_below", False)
+        threshold = self.config.ReadFloat("Threshold/threshold", 2e-12)
+
+        dlg = ThresholdDialog(self, method, mark_above, mark_below, threshold)
+        if dlg.ShowModal() == wx.ID_OK:
+            threshold = dlg.GetThreshold()
+            method = dlg.GetMethod()
+            mark_above = dlg.GetMarkAbove()
+            if mark_above:
+                above = False
+            else:
+                above = None
+
+            mark_below = dlg.GetMarkBelow()
+            if mark_below:
+                below = True
+            else:
+                below = None
+
+            self.model.auto_reject(threshold, method, above, below)
+
+            self.config.Write("Threshold/method", method)
+            self.config.WriteBool("Threshold/mark_above", mark_above)
+            self.config.WriteBool("Threshold/mark_below", mark_below)
+            self.config.WriteFloat("Threshold/threshold", threshold)
+            self.config.Flush()
+
+        dlg.Destroy()
+
+    def OnTogglePlotRange(self, event):
+        plot_range = event.IsChecked()
+        self.SetPlotStyle(plot_range=plot_range)
+
+    def OnUndo(self, event):
+        self.history.undo()
+
+    def OnUpdateUIBackward(self, event):
+        event.Enable(self.CanBackward())
+
+    def OnUpdateUIForward(self, event):
+        event.Enable(self.CanForward())
+
+    def OnUpdateUIOpen(self, event):
+        event.Enable(True)
+
+    def OnUpdateUIPlotRange(self, event):
+        event.Enable(True)
+        check = self._bfly_kwargs['plot_range']
+        event.Check(check)
+
+    def OnUpdateUIRedo(self, event):
+        event.Enable(self.CanRedo())
+
+    def OnUpdateUISave(self, event):
+        event.Enable(self.CanSave())
+
+    def OnUpdateUISaveAs(self, event):
+        event.Enable(self.CanSave())
+
+    def OnUpdateUISetLayout(self, event):
+        event.Enable(True)
+
+    def OnUpdateUISetVLim(self, event):
+        event.Enable(True)
+
+    def OnUpdateUIUndo(self, event):
+        event.Enable(self.CanUndo())
 
     def PlotCorrelation(self, ax_index):
         if ax_index == -1:
@@ -901,13 +1161,16 @@ class Frame(wx.Frame):  # control
         wx.EndBusyCursor()
 
     def UpdateTitle(self):
+        is_modified = not self.doc.saved
+
+        self.OSXSetModified(is_modified)
+
         if self.doc.path:
             title = os.path.basename(self.doc.path)
-            if not self.doc.saved:
+            if is_modified:
                 title = '* ' + title
         else:
             title = 'Unsaved'
-
         self.SetTitle(title)
 
     def _get_page_mean_seg(self, sensor=None):
@@ -936,396 +1199,6 @@ class Frame(wx.Frame):  # control
             seg = seg.sub(time=time, name=name)
 
         return seg
-
-
-class Controller(object):
-
-    def __init__(self, parent, model, nplots, topo, mean, vlim, plot_range,
-                 color, lw, mark, mcolor, mlw, antialiased, pos, size):
-        """Controller object for SelectEpochs GUI
-
-        Parameters
-        ----------
-        parent : wx.Frame
-            Parent window.
-        model : Model
-            Document model.
-        others :
-            See TerminalInterface constructor.
-        """
-        self.config = wx.Config("Eelbrain")
-        self.config.SetPath("SelectEpochs")
-        self.frame = Frame(parent, model, self.config, nplots, topo, mean, vlim,
-                           plot_range, color, lw, mark, mcolor, mlw,
-                           antialiased, pos, size)
-        self.model = model
-        self.doc = model.doc
-        self.history = model.history
-
-        self.doc.subscribe_to_case_change(self.CaseChanged)
-        self.doc.subscribe_to_path_change(self.frame.UpdateTitle)
-        self.history.subscribe_to_saved_change(self.frame.UpdateTitle)
-
-        f = self.frame
-        f.Bind(wx.EVT_CLOSE, self.OnCloseEvent)
-        f.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
-        f.Bind(wx.EVT_TOOL, self.OnGoBackward, id=wx.ID_BACKWARD)
-        f.Bind(wx.EVT_TOOL, self.OnGoForward, id=wx.ID_FORWARD)
-        f.Bind(wx.EVT_TOOL, self.OnLoad, id=ID.OPEN)
-        f.Bind(wx.EVT_TOOL, self.OnSave, id=wx.ID_SAVE)
-        f.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVEAS)
-        f.Bind(wx.EVT_TOOL, self.OnSetLayout, id=ID.SET_LAYOUT)
-        f.threshold_button.Bind(wx.EVT_BUTTON, self.OnThreshold)
-        f.grand_av_button.Bind(wx.EVT_BUTTON, self.OnPlotGrandAverage)
-
-        f.Bind(wx.EVT_MENU, self.OnLoad, id=wx.ID_OPEN)
-        f.Bind(wx.EVT_MENU, self.OnClose, id=wx.ID_CLOSE)
-        f.Bind(wx.EVT_MENU, self.OnSave, id=wx.ID_SAVE)
-        f.Bind(wx.EVT_MENU, self.OnSaveAs, id=wx.ID_SAVEAS)
-        f.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
-        f.Bind(wx.EVT_MENU, self.OnRedo, id=ID.REDO)
-        f.Bind(wx.EVT_MENU, self.OnClear, id=wx.ID_CLEAR)
-        f.Bind(wx.EVT_MENU, self.OnSetVLim, id=ID.SET_VLIM)
-        f.Bind(wx.EVT_MENU, self.OnSetLayout, id=ID.SET_LAYOUT)
-        f.Bind(wx.EVT_MENU, self.OnTogglePlotRange, id=ID.PLOT_RANGE)
-
-        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_BACKWARD)
-        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_FORWARD)
-        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.REDO)
-        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=wx.ID_SAVE)
-        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.UNDO)
-        f.Bind(wx.EVT_UPDATE_UI, self.OnUpdateMenu, id=ID.PLOT_RANGE)
-
-        # canvas events
-        f.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
-        f.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
-#         f.Bind(wx.EVT_KEY_DOWN, self.OnKeyDown)
-
-        self.frame.Show()
-
-    def CanGoBackward(self):
-        return self.frame._current_page_i > 0
-
-    def CanGoForward(self):
-        return self.frame._current_page_i < self.frame._n_pages - 1
-
-    def CanRedo(self):
-        return self.history.can_redo()
-
-    def CanSave(self):
-        return bool(self.doc.path)
-
-    def CanUndo(self):
-        return self.history.can_undo()
-
-    def CaseChanged(self, index):
-        self.frame.CaseChanged(index)
-
-    def GetActiveWindow(self):
-        "returns the active window (self, editor, help viewer, ...)"
-        if self.frame.IsActive():
-            return self.frame
-        for c in self.frame.Children:
-            if hasattr(c, 'IsActive') and c.IsActive():
-                return c
-        for w in  wx.GetTopLevelWindows():
-            if hasattr(w, 'IsActive') and w.IsActive():
-                return w
-        return wx.GetActiveWindow()
-
-    def Load(self, path):
-        try:
-            self.model.load(path)
-#             self.frame.ShowPage()
-        except Exception as ex:
-            msg = str(ex)
-            title = "Error Loading Rejections"
-            wx.MessageBox(msg, title, wx.ICON_ERROR)
-            raise
-
-    def OnAttach(self, event):
-        pass
-
-    def OnCanvasClick(self, event):
-        "called by mouse clicks"
-        log_msg = "Canvas Click:"
-        ax = event.inaxes
-        if ax:
-            log_msg += " ax.ax_idx=%i" % ax.ax_idx
-            if ax.ax_idx >= 0:
-                idx = ax.epoch_idx
-                state = not self.doc.accept[idx]
-                tag = "manual"
-                desc = "Epoch %i %s" % (idx, state)
-                self.model.set_case(idx, state, tag, desc)
-            elif ax.ax_idx == -2:
-                self.frame.open_topomap()
-
-        logger.debug(log_msg)
-
-    def OnCanvasKey(self, event):
-        # GUI Control events
-        if event.key == 'right':
-            if self.CanGoForward():
-                self.OnGoForward(None)
-            return
-        elif event.key == 'left':
-            if self.CanGoBackward():
-                self.OnGoBackward(None)
-            return
-        elif event.key == 'u':
-            if self.CanUndo():
-                self.OnUndo(None)
-            return
-        elif event.key == 'U':
-            if self.CanRedo():
-                self.OnRedo(None)
-            return
-
-        # plotting
-        ax = event.inaxes
-        if ax is None:
-            return
-        time = event.xdata
-        ax_index = getattr(ax, 'ax_idx', None)
-        if ax_index == -2:
-            return
-        if event.key == 't':
-            self.frame.PlotTopomap(ax_index, time)
-        elif (event.key == 'b'):
-            self.frame.PlotButterfly(ax_index)
-        elif (event.key == 'c'):
-            self.frame.PlotCorrelation(ax_index)
-
-    def OnClear(self, event):
-        self.model.clear()
-
-    def OnClose(self, event):
-        win = self.GetActiveWindow()
-        if win:
-            win.Close()
-        else:
-            event.Skip()
-
-    def OnCloseEvent(self, event):
-        "Ask to save unsaved changes"
-        if event.CanVeto() and not self.history.is_saved():
-            msg = ("The current document has unsaved changes. Would you like "
-                   "to save them?")
-            cap = ("Saved Unsaved Changes?")
-            style = wx.YES | wx.NO | wx.CANCEL | wx.YES_DEFAULT
-            cmd = wx.MessageBox(msg, cap, style)
-            if cmd == wx.YES:
-                if self.Save() != wx.ID_OK:
-                    return
-            elif cmd == wx.CANCEL:
-                return
-            elif cmd != wx.NO:
-                raise RuntimeError("Unknown answer: %r" % cmd)
-
-        event.Skip()
-
-    def OnGoBackward(self, event):
-        "turns the page backward"
-        self.ShowPage(self.frame._current_page_i - 1)
-
-    def OnGoForward(self, event):
-        "turns the page forward"
-        self.ShowPage(self.frame._current_page_i + 1)
-
-#     def OnKeyDown(self, event):
-#         logger.debug("OnKeyDown: %s" % event)
-
-    def OnLoad(self, event):
-        msg = ("Load the epoch selection from a file.")
-        if self.doc.path:
-            default_dir, default_name = os.path.split(self.doc.path)
-        else:
-            default_dir = ''
-            default_name = ''
-        wildcard = ("Tab Separated Text (*.txt)|*.txt|"
-                    "Pickle (*.pickled)|*.pickled")
-        dlg = wx.FileDialog(self.frame, msg, default_dir, default_name,
-                            wildcard, wx.FD_OPEN)
-        rcode = dlg.ShowModal()
-        if rcode == wx.ID_OK:
-            path = dlg.GetPath()
-            self.Load(path)
-
-        dlg.Destroy()
-        return rcode
-
-    def OnPlotGrandAverage(self, event):
-        self.frame.PlotGrandAverage()
-
-    def OnRedo(self, event):
-        self.history.redo()
-
-    def OnSave(self, event):
-        self.Save()
-
-    def OnSaveAs(self, event):
-        self.SaveAs()
-
-    def OnSetLayout(self, event):
-        caption = "Set Plot Layout"
-        msg = ("Number of epoch plots for square layout (e.g., '10') or \n"
-               "exact n_rows and n_columns (e.g., '5 4'). Add 'nomean' to \n"
-               "turn off plotting the page mean at the bottom right (e.g., "
-               "'3 nomean').")
-        default = ""
-        dlg = wx.TextEntryDialog(self.frame, msg, caption, default)
-        while True:
-            if dlg.ShowModal() == wx.ID_OK:
-                nplots = None
-                topo = True
-                mean = True
-                err = []
-
-                # separate options from layout
-                value = dlg.GetValue()
-                items = value.split(' ')
-                options = []
-                while not items[-1].isdigit():
-                    options.append(items.pop(-1))
-
-                # extract options
-                for option in options:
-                    if option == 'nomean':
-                        mean = False
-                    elif option == 'notopo':
-                        topo = False
-                    else:
-                        err.append('Unknown option: "%s"' % option)
-
-                # extract layout info
-                if len(items) == 1 and items[0].isdigit():
-                    nplots = int(items[0])
-                elif len(items) == 2 and all(item.isdigit() for item in items):
-                    nplots = tuple(int(item) for item in items)
-                else:
-                    value_ = ' '.join(items)
-                    err = 'Invalid layout specification: "%s"' % value_
-
-                # if all ok: break
-                if nplots and not err:
-                    break
-
-                # error
-                caption = 'Invalid Layout Entry: "%s"' % value
-                err.append('Please read the instructions and try again.')
-                msg = '\n'.join(err)
-                style = wx.OK | wx.ICON_ERROR
-                wx.MessageBox(msg, caption, style)
-            else:
-                dlg.Destroy()
-                return
-
-        dlg.Destroy()
-        self.frame.SetLayout(nplots, topo, mean)
-
-    def OnSetVLim(self, event):
-        default = str(self.frame._vlims.values()[0][1])
-        dlg = wx.TextEntryDialog(self.frame, "New Y-axis limit:",
-                                 "Set Y-Axis Limit", default)
-
-        if dlg.ShowModal() == wx.ID_OK:
-            value = dlg.GetValue()
-            try:
-                vlim = abs(float(value))
-            except Exception as exception:
-                msg = wx.MessageDialog(self.frame, str(exception), "Invalid "
-                                        "Entry", wx.ICON_ERROR)
-                msg.ShowModal()
-                msg.Destroy()
-                raise
-            self.frame.SetVLim(vlim)
-        dlg.Destroy()
-
-    def OnThreshold(self, event):
-        method = self.config.Read("Threshold/method", "p2p")
-        mark_above = self.config.ReadBool("Threshold/mark_above", True)
-        mark_below = self.config.ReadBool("Threshold/mark_below", False)
-        threshold = self.config.ReadFloat("Threshold/threshold", 2e-12)
-
-        dlg = ThresholdDialog(self.frame, method, mark_above, mark_below,
-                              threshold)
-        if dlg.ShowModal() == wx.ID_OK:
-            threshold = dlg.GetThreshold()
-            method = dlg.GetMethod()
-            mark_above = dlg.GetMarkAbove()
-            if mark_above:
-                above = False
-            else:
-                above = None
-
-            mark_below = dlg.GetMarkBelow()
-            if mark_below:
-                below = True
-            else:
-                below = None
-
-            self.model.auto_reject(threshold, method, above, below)
-
-            self.config.Write("Threshold/method", method)
-            self.config.WriteBool("Threshold/mark_above", mark_above)
-            self.config.WriteBool("Threshold/mark_below", mark_below)
-            self.config.WriteFloat("Threshold/threshold", threshold)
-            self.config.Flush()
-
-        dlg.Destroy()
-
-    def OnTogglePlotRange(self, event):
-        plot_range = event.IsChecked()
-        self.frame.SetPlotStyle(plot_range=plot_range)
-
-    def OnUndo(self, event):
-        self.history.undo()
-
-    def OnUpdateMenu(self, event):
-        id_ = event.GetId()
-        if id_ == wx.ID_BACKWARD:
-            event.Enable(self.CanGoBackward())
-        elif id_ == wx.ID_FORWARD:
-            event.Enable(self.CanGoForward())
-        elif id_ == ID.UNDO:
-            event.Enable(self.CanUndo())
-        elif id_ == ID.REDO:
-            event.Enable(self.CanRedo())
-        elif id_ == wx.ID_SAVE:
-            event.Enable(self.CanSave())
-        elif id_ == ID.PLOT_RANGE:
-            check = self.frame._bfly_kwargs['plot_range']
-            event.Check(check)
-
-    def Save(self):
-        if self.doc.path:
-            self.model.save()
-            return wx.ID_OK
-        else:
-            return self.SaveAs()
-
-    def SaveAs(self):
-        msg = ("Save the epoch selection to a file.")
-        if self.doc.path:
-            default_dir, default_name = os.path.split(self.doc.path)
-        else:
-            default_dir = ''
-            default_name = ''
-        wildcard = ("Tab Separated Text (*.txt)|*.txt|"
-                    "Pickle (*.pickled)|*.pickled")
-        dlg = wx.FileDialog(self.frame, msg, default_dir, default_name,
-                            wildcard, wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
-        rcode = dlg.ShowModal()
-        if rcode == wx.ID_OK:
-            path = dlg.GetPath()
-            self.model.save_as(path)
-
-        dlg.Destroy()
-        return rcode
-
-    def ShowPage(self, page):
-        self.frame.ShowPage(page)
 
 
 class TerminalInterface(object):
@@ -1359,34 +1232,19 @@ class TerminalInterface(object):
         self.model = Model(self.doc)
         self.history = self.model.history
 
-        app = wx.GetApp()
-        if app is None:
-            logger.debug("No WX App found")
-            app = wx.App()
-            parent = None
-            create_menu = True
-        elif hasattr(app, 'shell'):
-            logger.debug("Eelbrain found")
-            parent = app.shell
-            create_menu = False
-        else:
-            logger.debug("WX App found: %s" % app.AppName)
-            parent = app.GetTopWindow()
-            create_menu = True
+        app = get_app()
 
-        self.controller = Controller(parent, self.model, nplots, topo, mean,
-                                     vlim, plot_range, color, lw, mark, mcolor,
-                                     mlw, antialiased, pos, size)
-        self.frame = self.controller.frame
-        if create_menu:
-            self.frame._create_menu()
+        self.frame = Frame(None, self.model, nplots, topo, mean, vlim,
+                           plot_range, color, lw, mark, mcolor, mlw,
+                           antialiased, pos, size)
+        self.frame.Show()
         app.SetTopWindow(self.frame)
         if not app.IsMainLoopRunning():
             logger.info("Entering MainLoop for Epoch Selection GUI")
             app.MainLoop()
 
 
-class ThresholdDialog(wx.Dialog):
+class ThresholdDialog(EelbrainDialog):
 
     _methods = (('absolute', 'abs'),
                 ('peak-to-peak', 'p2p'))

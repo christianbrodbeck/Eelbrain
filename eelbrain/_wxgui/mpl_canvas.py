@@ -42,7 +42,6 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
 
     def CanCopy(self):
-        "pretend to be wx.py.frame.Frame to enable 'copy' menu command"
         return True
 
     def bufferHasChanged(self):
@@ -143,9 +142,8 @@ class CanvasFrame(EelbrainFrame):
             tb.AddLabelTool(ID.ATTACH, "Attach", Icon("actions/attach"))
             self.Bind(wx.EVT_TOOL, self.OnAttach, id=ID.ATTACH)
 
-        tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"),
-                        shortHelp="Save Document")
-        self.Bind(wx.EVT_TOOL, self.OnSave, id=wx.ID_SAVE)
+        tb.AddLabelTool(wx.ID_SAVE, "Save", Icon("tango/actions/document-save"))
+        self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
 
         # intermediate, custom part
@@ -207,7 +205,13 @@ class CanvasFrame(EelbrainFrame):
             print self.__doc__
 
     def OnSave(self, event):
-        self.Save()
+        self.OnSaveAs(event)
+
+    def OnSaveAs(self, event):
+        path = ui.ask_saveas("Save Figure", "Save the current figure. The "
+                             "format is determined from the extension.", None)
+        if path:
+            self.figure.savefig(path)
 
     def OnShowFullScreen(self, event):
         self.ShowFullScreen(not self.IsFullScreen())
@@ -220,15 +224,6 @@ class CanvasFrame(EelbrainFrame):
 
     def redraw(self, axes=[], artists=[]):
         self.canvas.redraw(axes=axes, artists=artists)
-
-    def Save(self):
-        self.SaveAs()
-
-    def SaveAs(self):
-        path = ui.ask_saveas("Save Figure", "Save the current figure. The "
-                             "format is determined from the extension.", None)
-        if path:
-            self.figure.savefig(path)
 
     def store_canvas(self):
         self.canvas.store_canvas()
