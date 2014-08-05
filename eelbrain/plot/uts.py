@@ -280,7 +280,7 @@ class UTSStat(_base._EelFigure):
         self.draw()
 
         # update GUI
-        if self._is_wx:
+        if hasattr(self, '_cluster_btn'):
             if clusters is not None:
                 self._cluster_btn.Enable(True)
             elif self._clusters_all_same or all(c is None for c in self._clusters):

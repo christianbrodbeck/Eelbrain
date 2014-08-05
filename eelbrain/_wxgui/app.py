@@ -259,7 +259,6 @@ def get_app():
 
 def run():
     app = get_app()
-    if app.IsMainLoopRunning():
-        raise RuntimeError("MainLoop is already running")
-    else:
+    if not app.IsMainLoopRunning():
+        print "Starting GUI. Quit the Python application to return to the shell..."
         app.MainLoop()

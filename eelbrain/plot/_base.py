@@ -75,6 +75,7 @@ functions executed are:
 
 """
 from __future__ import division
+import __main__
 
 from itertools import chain
 import math
@@ -97,8 +98,7 @@ from .._data_obj import ascategorial, asndvar, DimensionMismatchError
 
 # defaults
 defaults = {'DPI': 72, 'maxw': 16, 'maxh': 10}
-backend = {'block': False,  # plt.show() parameter for mpl_figure
-           'frame': 'wx'}
+backend = {'eelbrain': True, 'autorun': None}
 
 # store callback figures (they need to be preserved)
 figs = []
@@ -108,20 +108,30 @@ default_cmap = None
 default_meas = '?'
 
 
-def configure_backend(frame=True, block=False):
-    """Set basic configuration parameters
+def do_autorun():
+    # http://stackoverflow.com/a/2356420/166700
+    if backend['autorun'] is None:
+        return not hasattr(__main__, '__file__')
+    else:
+        backend['autorun']
+
+
+def configure_backend(frame=True, autorun=None):
+    """Set basic configuration parameters for the current session
 
     Parameters
     ----------
     frame : bool
         Use a custom frame with a different toolbar from matplotlib.
-    block : bool
-        pyplot.show() parameters: Block the interpreter when showing a figure.
-        This parameter only applies when using the Matplotlib wx-backend and
-        frame.
+    autorun : bool
+        When a figure is created, automatically enter the GUI mainloop. By
+        default, this is True when the figure is created in interactive mode
+        but False when the figure is created in a script.
     """
-    backend['frame'] = 'wx' if frame else 'mpl'
-    backend['block'] = block
+    if autorun is not None:
+        autorun = bool(autorun)
+    backend['eelbrain'] = bool(frame)
+    backend['autorun'] = autorun
 
 
 _unit = {'time': 'ms'}
@@ -651,8 +661,8 @@ class mpl_figure:
         pass
 
     def Show(self):
-        if mpl.get_backend() == 'WXAgg':
-            plt.show(block=backend['block'])
+        if mpl.get_backend() == 'WXAgg' and do_autorun():
+            plt.show()
 
     def redraw(self, axes=[], artists=[]):
         "Adapted duplicate of mpl_canvas.FigureCanvasPanel"
@@ -759,24 +769,13 @@ class _EelFigure(object):
         self._auto_make_axes = make_axes
 
         # find the right frame
-        self._is_wx = False
-        frame_kind = backend['frame']
-        if frame_kind == 'wx':
+        if backend['eelbrain']:
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
-
-            app = get_app()
-            if hasattr(app, 'shell'):
-                parent = app.shell
-            else:
-                parent = None
-            frame = CanvasFrame(parent, title=title, _EelFigure=self, **fig_kwa)
-            self._is_wx = True
-        elif frame_kind == 'mpl':
-            frame = mpl_figure(**fig_kwa)
+            get_app()
+            frame = CanvasFrame(None, title=title, _EelFigure=self, **fig_kwa)
         else:
-            err = "Invalid backend 'frame' parameter: %r" % frame_kind
-            raise RuntimeError(err)
+            frame = mpl_figure(**fig_kwa)
 
         figure = frame.figure
         if figtitle:
@@ -839,6 +838,10 @@ class _EelFigure(object):
 
         self.draw()
         self._frame.Show()
+
+        if backend['eelbrain'] and do_autorun():
+            from .._wxgui import run
+            run()
 
     def _fill_toolbar(self, tb):
         """
