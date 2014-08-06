@@ -1547,8 +1547,10 @@ class MneExperiment(FileTree):
                 if mask:
                     # reduce data to parc
                     y = ds['srcm']
-                    idx = np.invert(y.source.parc.startswith('unknown'))
-                    ds['srcm'] = y.sub(source=idx)
+                    idx_masked = y.source.parc.startswith('unknown')
+                    if np.any(idx_masked):
+                        idx = np.invert(idx_masked)
+                        ds['srcm'] = y.sub(source=idx)
             else:
                 raise ValueError(data)
 
