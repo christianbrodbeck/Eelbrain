@@ -73,6 +73,8 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
         Figure background color.
+    parallel : bool
+        Set views to parallel projection (default ``False``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -117,6 +119,8 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
         Figure background color.
+    parallel : bool
+        Set views to parallel projection (default ``False``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -158,6 +162,8 @@ def activation(src, threshold=None, vmax=None, *args, **kwargs):
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
         Figure background color.
+    parallel : bool
+        Set views to parallel projection (default ``False``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -204,6 +210,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
         Figure background color.
+    parallel : bool
+        Set views to parallel projection (default ``False``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -225,7 +233,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
                  views=['lat', 'med'], colorbar=True, time_label='%.3g s',
                  w=None, h=None, axw=None, axh=None, background=None,
-                 smoothing_steps=None, subjects_dir=None):
+                 parallel=False, smoothing_steps=None, subjects_dir=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -247,6 +255,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
         Figure background color.
+    parallel : bool
+        Set views to parallel projection (default ``False``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -341,6 +351,17 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         vertices = src.source.rh_vertno
         brain.add_data(data, vmin, vmax, None, colormap, alpha, vertices,
                        smoothing_steps, times, time_label, colorbar, 'rh')
+
+    if parallel:  # set parallel view
+        if surf == 'inflated':
+            camera_scale = 95
+        else:
+            camera_scale = 65
+
+        for figs in brain._figures:
+            for fig in figs:
+                fig.scene.camera.parallel_scale = camera_scale
+                fig.scene.camera.parallel_projection = True
 
     return brain
 
@@ -564,19 +585,10 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     if data.source.rh_n:
         hemis.append('rh')
 
-    if surf == 'inflated':
-        camera_scale = 95
-    else:
-        camera_scale = 70
-
     for hemi in hemis:
         hemi_data = data.sub(source=hemi)
         brain = cluster(hemi_data, vmax, surf, views[0], colorbar=False, w=300,
-                        h=250, time_label=None)
-        fig = brain._figures[0][0]
-        fig.scene.camera.parallel_projection = True
-        fig.scene.camera.parallel_scale = camera_scale
-        fig.scene.render()
+                        h=250, time_label=None, parallel=True)
         im = brain.screenshot_single('rgba', True)
 
         hemi_lines = [[] for _ in views]
