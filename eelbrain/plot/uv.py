@@ -297,8 +297,8 @@ class Boxplot(_SimpleFigure):
         test : bool | scalar
             True (default): perform pairwise tests;  False/None: no tests;
             scalar: 1-sample tests against this value.
-        corr : str
-            Method for multiple comparison correction.
+        corr : None | 'hochberg' | 'bonferroni' | 'holm'
+            Method for multiple comparison correction (default 'hochberg').
 
         Returns
         -------

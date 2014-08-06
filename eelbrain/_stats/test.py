@@ -109,35 +109,48 @@ def _hochberg_threshold(N, alpha=.05):
 
 
 def mcp_adjust(ps, method='Hochberg'):
-    """
-    http://www.technion.ac.il/docs/sas/stat/chap43/sect14.htm
+    """Adjust p-values for multiple comparison
 
+    Parameters
+    ----------
+    ps : sequence of scalar
+        P-values.
+    method : 'hochberg' | 'bonferroni' | 'holm'
+        Correction method. Default is 'hochberg'.
+
+    Returns
+    -------
+    adjusted_ps : list of scalar
+        Adjusted p-values.
     """
     n = len(ps)
-    if method == 'Bonferroni':
-        return [p * n for p in ps]
-    elif method in ['Hochberg', 'Holm']:
+    method_ = method.lower()
+    if method_ == 'bonferroni':
+        ps_adjusted = [p * n for p in ps]
+    elif method_ in ('hochberg', 'holm'):
         ascsort = np.argsort(ps)
         ps_asc = np.array(ps)[ascsort]
         iout_asc = np.arange(n)[ascsort]
-        ps_adjusted = np.empty(n)
+        ps_adjusted = [-1] * n
         p_buffer = 1
-        if method == 'Holm':
+        if method_ == 'holm':
             for i in range(n):
                 p = ps_asc[i]
                 p_adj = (n - i) * p
                 p_buffer = max(p_buffer, p_adj)
                 ps_adjusted[iout_asc[i]] = p_buffer
-        elif method == 'Hochberg':
+        elif method_ == 'hochberg':
             for i in range(1, n + 1):
                 p = ps_asc[-i]
                 p_adj = (i) * p
                 p_buffer = min(p_adj, p_buffer)
                 ps_adjusted[iout_asc[-i]] = p_buffer
-        return ps_adjusted
     else:
-        msg = '%r multiple comparison correction not available' % method
-        raise NotImplementedError(msg)
+        msg = ('%r is not a valid argument for multiple comparison correction '
+               'method' % method)
+        raise ValueError(msg)
+
+    return ps_adjusted
 
 
 
@@ -310,8 +323,8 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
         Baseline against which to test (scalar or category in X).
     sub : index
         Only use part of the data.
-    corr : str
-        Multiple comparison correction method.
+    corr : None | 'hochberg' | 'bonferroni' | 'holm'
+        Method for multiple comparison correction (default 'hochberg').
     title : str
         Title for the table.
     """
