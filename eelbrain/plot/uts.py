@@ -198,34 +198,45 @@ class UTSStat(_base._EelFigure):
     def plot_legend(self, loc='fig', figsize=(2, 2)):
         """Plots (or removes) the legend from the figure.
 
-        Possible values for the ``loc`` argument:
+        Parameters
+        ----------
+        loc : False | 'fig' | str | int
+            Where to plot the legend (see Notes; default 'fig').
+        figsize : tuple of 2 int
+            Figure size if plotting to figure (i.e., loc == 'fig').
 
-        ``False``/``None``:
-            Make the current legend invisible
-        'fig':
-            Plot the legend in a new figure
-        str | int
-            Matplotlib position argument: plot the legend on the figure
+        Returns
+        -------
+        legend_figure : None | legend
+            If loc=='fig' the Figure, otherwise None.
 
-
+        Notes
+        -----
         legend content can be modified through the figure's
         ``legend_handles`` and ``legend_labels`` attributes.
 
+        Possible values for the ``loc`` argument:
 
-        Matplotlib Position Arguments
-        -----------------------------
+        ``False``:
+            Make the current legend invisible
+        'fig':
+            Plot the legend in a new figure
+        str | int:
+            Matplotlib position argument: plot the legend on the figure
 
-        'upper right'  : 1,
-        'upper left'   : 2,
-        'lower left'   : 3,
-        'lower right'  : 4,
-        'right'        : 5,
-        'center left'  : 6,
-        'center right' : 7,
-        'lower center' : 8,
-        'upper center' : 9,
-        'center'       : 10,
 
+        Matplotlib Position Arguments:
+
+         - 'upper right'  : 1,
+         - 'upper left'   : 2,
+         - 'lower left'   : 3,
+         - 'lower right'  : 4,
+         - 'right'        : 5,
+         - 'center left'  : 6,
+         - 'center right' : 7,
+         - 'lower center' : 8,
+         - 'upper center' : 9,
+         - 'center'       : 10,
         """
         if loc and len(self._legend_handles) > 1:
             cells = sorted(self._legend_handles)

@@ -297,21 +297,51 @@ class Boxplot(_SimpleFigure):
             Dependent variable.
         X : categorial
             Category definition (draw one box for every cell in X).
+        match : None | categorial
+            Match cases for a repeated measures test.
+        sub : None | index-array
+            Perform test with a subset of the data.
         datalabels : scalar
             Threshold for labeling outliers (in standard-deviation).
+        bottom : scalar
+            Lowest possible value on the y axis (default is 0 or slightly
+            below the lowest value).
+        top : scalar
+            Set the upper x axis limit (default is to fit all the data).
+        title : None | str
+            Axis title (default is ``Y.name``).
+        ylabel : None | str
+            Y axis label (default is ``Y.info['unit']`` if present, otherwise
+            no label).
+        xlabel : None | str
+            X axis label (default is ``X.name``).
+        xtick_delim : str
+            Delimiter for x axis category descriptors (default is ``'\n'``,
+            i.e. the level on each Factor of ``X`` on a separate line).
+        titlekwargs : dict
+            Keyword arguments for the figure title.
         test : bool | scalar
             True (default): perform pairwise tests;  False/None: no tests;
             scalar: 1-sample tests against this value.
+        par : bool
+            Use parametric test for pairwise comparisons (use non-parametric
+            tests if False).
+        trend : None | str
+            Marker for a trend in pairwise comparisons.
         corr : None | 'hochberg' | 'bonferroni' | 'holm'
             Method for multiple comparison correction (default 'hochberg').
+        hatch : bool | str
+            Matplotlib Hatch pattern to fill boxes (True to use the module
+            default; default is False).
+        colors : bool | sequence of matplitlib colors
+            Matplotlib colors to use for boxes (True to use the module default;
+            default is False, i.e. no colors).
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables
         frame : bool
             Draw a frame containing the figure from the top and the right
             (default ``True``).
-
-        Returns
-        -------
-        fig : matplotlib figure
-            Reference to the matplotlib figure.
         """
         # get data
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
@@ -434,22 +464,52 @@ class Barplot(_SimpleFigure):
             Dependent variable.
         X : categorial
             Model (Factor or Interaction)
-        bottom : scalar
-            Lowest possible value on the y axis (default is 0).
+        match : None | categorial
+            Match cases for a repeated measures test.
+        sub : None | index-array
+            Perform test with a subset of the data.
         test : bool | scalar
             True (default): perform pairwise tests;  False: no tests;
             scalar: 1-sample tests against this value
-        pwcolors : list of colors
-            list of mpl colors corresponding to the cells in X (e.g. ['#FFCC00',
-            '#FF6600','#FF3300'] with 3 levels
+        par : bool
+            Use parametric test for pairwise comparisons (use non-parametric
+            tests if False).
+        corr : None | 'hochberg' | 'bonferroni' | 'holm'
+            Method for multiple comparison correction (default 'hochberg').
+        title : None | str
+            Axis title (default is ``Y.name``).
+        trend : None | str
+            Marker for a trend in pairwise comparisons.
+        ylabel : None | str
+            Y axis label (default is ``Y.info['unit']`` if present, followed
+            by the error bar description).
         err: func | "[x][type]"
             The magnitude of the error bars to display. Examples:
             'std' : 1 standard deviation;
             '.95ci' : 95% confidence interval (see :func:`..ci`);
             '2sem' : 2 standard error of the mean
-        ylabel : str
-            The following
-            {err} = error bar description
+        ec : matplotlib color
+            Error bar color.
+        xlabel : None | str
+            X axis label (default is ``X.name``).
+        xtick_delim : str
+            Delimiter for x axis category descriptors (default is ``'\n'``,
+            i.e. the level on each Factor of ``X`` on a separate line).
+        hatch : bool | str
+            Matplotlib Hatch pattern to fill boxes (True to use the module
+            default; default is False).
+        colors : bool | sequence of matplitlib colors
+            Matplotlib colors to use for boxes (True to use the module default;
+            default is False, i.e. no colors).
+        bottom : scalar
+            Lowest possible value on the y axis (default is 0).
+        c : matplotlib color
+            Bar color (ignored if colors is specified).
+        edgec : matplotlib color
+            Barplot edge color.
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables
         frame : bool
             Draw a frame containing the figure from the top and the right
             (default ``True``).
