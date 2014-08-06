@@ -144,7 +144,8 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, corr='Hochberg',
 class _SimpleFigure(_EelFigure):
     def __init__(self, wintitle, title=None, xlabel=None, ylabel=None,
                  titlekwargs=defaults['title_kwargs'], yticks=None,
-                 figsize=(5, 5), xtick_rotation=0, ytick_rotation=0):
+                 figsize=(5, 5), xtick_rotation=0, ytick_rotation=0,
+                 frame=True):
         _EelFigure.__init__(self, wintitle, fig_kwa={'figsize': figsize})
 
         # axes
@@ -154,6 +155,11 @@ class _SimpleFigure(_EelFigure):
         ax_dy = .95 - ax_y0 - .08 * bool(title)
         rect = [ax_x0, ax_y0, ax_dx, ax_dy]
         ax = self.figure.add_axes(rect)
+        if not frame:
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+            ax.yaxis.set_ticks_position('left')
+            ax.xaxis.set_ticks_position('bottom')
         self._axes.append(ax)
         self._ax = ax
 
@@ -298,6 +304,9 @@ class Boxplot(_SimpleFigure):
             scalar: 1-sample tests against this value.
         corr : None | 'hochberg' | 'bonferroni' | 'holm'
             Method for multiple comparison correction (default 'hochberg').
+        frame : bool
+            Draw a frame containing the figure from the top and the right
+            (default ``True``).
 
         Returns
         -------
@@ -441,6 +450,9 @@ class Barplot(_SimpleFigure):
         ylabel : str
             The following
             {err} = error bar description
+        frame : bool
+            Draw a frame containing the figure from the top and the right
+            (default ``True``).
         """
         if title is True:
             title = getattr(Y, 'name', None)
@@ -620,6 +632,9 @@ class Timeplot(_SimpleFigure):
             Plot a legend; with `fig`, plot as figlegend.
         loc :
             The legend location.
+        frame : bool
+            Draw a frame containing the figure from the top and the right
+            (default ``True``).
         """
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)

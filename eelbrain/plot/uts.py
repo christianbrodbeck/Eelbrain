@@ -18,7 +18,8 @@ class UTSStat(_base._EelFigure):
                  main=np.mean, dev=scipy.stats.sem, legend='upper right',
                  title=None, axtitle='{name}', xlabel=True, ylabel=True,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
-                 xlim=None, color='b', colors='jet', clusters=None, **layout):
+                 xlim=None, color='b', colors='jet', clusters=None,
+                 frame=True, **layout):
         """
     Plot statistics for a one-dimensional NDVar
 
@@ -78,6 +79,9 @@ class UTSStat(_base._EelFigure):
     clusters : None | Dataset
         Clusters to add to the plots. The clusters should be provided as
         Dataset, as stored in test results' :py:attr:`.clusters`.
+    frame : bool
+        Draw a frame containing the figure from the top and the right (default
+        ``True``).
         """
         if Xax is None:
             nax = 1
@@ -121,7 +125,7 @@ class UTSStat(_base._EelFigure):
 
         kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
                       invy=invy, bottom=bottom, top=top, hline=hline,
-                      xlabel=xlabel, xlim=xlim)
+                      xlabel=xlabel, xlim=xlim, frame=frame)
 
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
@@ -340,7 +344,7 @@ class _ax_stat:
     def __init__(self, ax, ct, colors, dev=scipy.stats.sem,
                  main=np.mean, title=True, ylabel=True, xdim='time', xlim=None,
                  xlabel=True, invy=False, bottom=None, top=None, hline=None,
-                 clusters=None, pmax=0.05, ptrend=0.1):
+                 clusters=None, pmax=0.05, ptrend=0.1, frame=True):
         ax.x_fmt = "t = %.3f s"
 
         # stat plots
@@ -405,6 +409,12 @@ class _ax_stat:
             xlim = (min(x), max(x))
         xmin, xmax = xlim
         ax.set_xlim(xmin, xmax)
+
+        if not frame:
+            ax.spines['right'].set_visible(False)
+            ax.spines['top'].set_visible(False)
+            ax.yaxis.set_ticks_position('left')
+            ax.xaxis.set_ticks_position('bottom')
 
         # store attributes
         self.ax = ax
