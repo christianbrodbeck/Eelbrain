@@ -74,7 +74,7 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     background : mayavi color
         Figure background color.
     parallel : bool
-        Set views to parallel projection (default ``False``).
+        Set views to parallel projection (default ``True``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -120,7 +120,7 @@ def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
     background : mayavi color
         Figure background color.
     parallel : bool
-        Set views to parallel projection (default ``False``).
+        Set views to parallel projection (default ``True``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -163,7 +163,7 @@ def activation(src, threshold=None, vmax=None, *args, **kwargs):
     background : mayavi color
         Figure background color.
     parallel : bool
-        Set views to parallel projection (default ``False``).
+        Set views to parallel projection (default ``True``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -211,7 +211,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     background : mayavi color
         Figure background color.
     parallel : bool
-        Set views to parallel projection (default ``False``).
+        Set views to parallel projection (default ``True``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -233,7 +233,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
                  views=['lat', 'med'], colorbar=True, time_label='%.3g s',
                  w=None, h=None, axw=None, axh=None, background=None,
-                 parallel=False, smoothing_steps=None, subjects_dir=None):
+                 parallel=True, smoothing_steps=None, subjects_dir=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -256,7 +256,7 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     background : mayavi color
         Figure background color.
     parallel : bool
-        Set views to parallel projection (default ``False``).
+        Set views to parallel projection (default ``True``).
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
@@ -588,7 +588,7 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     for hemi in hemis:
         hemi_data = data.sub(source=hemi)
         brain = cluster(hemi_data, vmax, surf, views[0], colorbar=False, w=300,
-                        h=250, time_label=None, parallel=True)
+                        h=250, time_label=None)
         im = brain.screenshot_single('rgba', True)
 
         hemi_lines = [[] for _ in views]
