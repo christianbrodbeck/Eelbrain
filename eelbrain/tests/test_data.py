@@ -705,3 +705,9 @@ def test_var():
     base = Factor('aabbcde')
     Y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
     assert_array_equal(Y.x, [5, 5, 0, 0, 0, 0, 8])
+
+    # .split()
+    y = Var(np.arange(16))
+    for i in xrange(1, 9):
+        split = y.split(i)
+        assert_equal(len(split.cells), i)

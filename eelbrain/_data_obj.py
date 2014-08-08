@@ -1510,6 +1510,39 @@ class Var(object):
             name = self.name
         return Var(self.x.repeat(repeats), name)
 
+    def split(self, n=2, name=None):
+        """
+        A Factor splitting Y in ``n`` categories with equal number of cases
+
+        Parameters
+        ----------
+        n : int
+            number of categories
+        name : str
+            Name of the output Factor.
+
+        Examples
+        --------
+        Use n = 2 for a median split::
+
+        >>> y = Var([1,2,3,4])
+        >>> y.split(2)
+        Factor(['0', '0', '1', '1'])
+
+        >>> z = Var([7, 6, 5, 4, 3, 2])
+        >>> z.split(3)
+        Factor(['2', '2', '1', '1', '0', '0'])
+        """
+        y = self.x
+
+        d = 100. / n
+        percentile = np.arange(d, 100., d)
+        values = [scipy.stats.scoreatpercentile(y, p) for p in percentile]
+        x = np.zeros(len(y), dtype=int)
+        for v in values:
+            x += y > v
+        return Factor(x, name)
+
     def std(self):
         "Returns the standard deviation"
         return self.x.std()
@@ -4604,33 +4637,6 @@ def box_cox_transform(X, p, name=None):
         y = (X ** p - 1) / p
 
     return Var(y, name)
-
-
-def split(y, n=2, name=None):
-    """
-    Returns a Factor splitting Y in n categories with equal number of cases
-    (e.g. n=2 for a median split)
-
-    Y : array-like
-        variable to split
-    n : int
-        number of categories
-    name : str
-        Name of the output Factor.
-
-    """
-    if isinstance(Y, Var):
-        y = Y.x
-
-    d = 100. / n
-    percentile = np.arange(d, 100., d)
-    values = [scipy.stats.scoreatpercentile(y, p) for p in percentile]
-    x = np.zeros(len(y))
-    for v in values:
-        x += y > v
-
-    return Factor(x, name=name)
-
 
 
 class NestedEffect(object):
