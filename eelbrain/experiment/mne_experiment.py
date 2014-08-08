@@ -2465,7 +2465,10 @@ class MneExperiment(FileTree):
 
     def _source_parc_image(self, section, caption):
         "Add picture of the current parcellation"
+        self.store_state()
+        self.set(mrisubject=self.get('common_brain'))
         brain = self.plot_annot(w=1000)
+        self.restore_state()
         image = plot.brain.image(brain, 'parc.png')
         section.add_image_figure(image, caption)
 
