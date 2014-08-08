@@ -2155,25 +2155,6 @@ class Factor(_Effect):
             table.cell(np.sum(self.x == code))
         return table
 
-    def project(self, target, name='{name}'):
-        """
-        Project the Factor onto an index array ``target``
-
-        Example::
-
-            >>> f = Factor('abc')
-            >>> f.as_labels()
-            ['a', 'b', 'c']
-            >>> fp = f.project([1,2,1,2,0,0])
-            >>> fp.as_labels()
-            ['b', 'c', 'b', 'c', 'a', 'a']
-
-        """
-        if isvar(target):
-            target = target.x
-        x = self.x[target]
-        return Factor(x, **self._child_kwargs(name))
-
     def repeat(self, repeats, name='{name}'):
         "Repeat elements of a Factor (analogous to :py:func:`numpy.repeat`)"
         return Factor(self.x.repeat(repeats), **self._child_kwargs(name))
