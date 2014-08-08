@@ -268,7 +268,7 @@ class MneExperiment(FileTree):
     # For manual rejection
     # ^^^^^^^^^^^^^^^^^^^^
     # decim : int
-    #     Decim factor for the rejection GUI (default is 5).
+    #     Decim factor for the rejection GUI (default is to use epoch setting).
     #
     # For automatic rejection
     # ^^^^^^^^^^^^^^^^^^^^^^^
@@ -279,9 +279,7 @@ class MneExperiment(FileTree):
     #     causes edf files to be loaded but not used
     #     automatically.
     _epoch_rejection = {'': {'kind': None},
-                        'man': {'kind': 'manual',
-                                'decim': 5,
-                                },
+                        'man': {'kind': 'manual'},
                         'et': {'kind': 'auto',
                                'threshold': dict(mag=3e-12),
                                'edf': ['EBLINK'],
@@ -2256,7 +2254,7 @@ class MneExperiment(FileTree):
             raise ValueError(msg)
 
         ds = self.load_epochs(ndvar=True, reject=False,
-                              decim=rej_args.get('decim', 5))
+                              decim=rej_args.get('decim', None))
         path = self.get('rej-file', mkdir=True)
 
         gui.select_epochs(ds, data='meg', path=path, vlim=2e-12,
