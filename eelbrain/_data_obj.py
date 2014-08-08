@@ -964,13 +964,13 @@ def combine(items, name=None, check_dims=True):
         x = np.hstack(i.x for i in items)
         return Var(x, name=name)
     elif isfactor(item0):
-        if all(f._labels == item0._labels for f in items[1:]):
+        labels = item0._labels
+        if all(f._labels == labels for f in items[1:]):
             x = np.hstack(f.x for f in items)
-            kwargs = item0._child_kwargs(name=name)
+            return Factor(x, name, item0.random, labels=labels)
         else:
             x = sum((i.as_labels() for i in items), [])
-            kwargs = dict(name=name, random=item0.random)
-        return Factor(x, **kwargs)
+            return Factor(x, name, item0.random)
     elif isndvar(item0):
         has_case = np.array([v.has_case for v in items])
         if np.all(has_case):
@@ -991,7 +991,7 @@ def combine(items, name=None, check_dims=True):
         else:
             x = np.array([v.x for v in items])
         dims = ('case',) + dims
-        return NDVar(x, dims=dims, name=name, info=item0.info)
+        return NDVar(x, dims, item0.info, name)
     elif isdatalist(item0):
         out = sum(items[1:], item0)
         out.name = name
@@ -1269,9 +1269,8 @@ class Var(object):
                                   beta_labels=labels)
             return out
 
-    def abs(self, name='abs_{name}'):
+    def abs(self, name=None):
         "Return a Var with the absolute value."
-        name = name.format(name=self.name)
         return Var(np.abs(self.x), name)
 
     def argmax(self):
@@ -1303,15 +1302,15 @@ class Var(object):
         "for effect initialization"
         return self.centered()[:, None]
 
-    def as_factor(self, name='{name}', labels='%r', random=False):
+    def as_factor(self, name=True, labels='%r', random=False):
         """
         Convert the Var into a Factor
 
         Parameters
         ----------
-        name : str
-            Name of the output Factor ("{name}" is converted to the current
-            Var's name).
+        name : None | True | str
+            Name of the output Factor, ``True`` to keep the current name
+            (default ``True``).
         labels : dict | str
             Dictionary mapping values to labels, or format string for
             converting values into labels (default: ``'%r'``).
@@ -1324,25 +1323,28 @@ class Var(object):
             for value in np.unique(self.x):
                 labels[value] = fmt % value
 
-        name = name.format(name=self.name)
+        if name is True:
+            name = self.name
+
         return Factor(self.x, name, random, labels=labels)
 
     def centered(self):
         return self.x - self.x.mean()
 
-    def copy(self, name='{name}'):
+    def copy(self, name=True):
         "returns a deep copy of itself"
         x = self.x.copy()
-        name = name.format(name=self.name)
-        return Var(x, name=name)
+        if name is True:
+            name = self.name
+        return Var(x, name)
 
-    def compress(self, X, func=np.mean, name='{name}'):
+    def compress(self, X, func=np.mean, name=True):
         "Deprecated. Use .aggregate()."
         warn("Var.compress s deprecated; use Var.aggregate instead"
              "(with identical functionality).", DeprecationWarning)
         self.aggregate(X, func, name)
 
-    def aggregate(self, X, func=np.mean, name='{name}'):
+    def aggregate(self, X, func=np.mean, name=True):
         """Summarize cases within cells of X
 
         Parameters
@@ -1352,9 +1354,9 @@ class Var(object):
         func : callable
             Function that converts arrays into scalars, used to summarize data
             within each cell of X.
-        name : str
-            Name of the output Var ("{name}" is converted to the current Var's
-            name).
+        name : None | True | str
+            Name of the output Var, ``True`` to keep the current name (default
+            ``True``).
 
         Returns
         -------
@@ -1371,10 +1373,11 @@ class Var(object):
             if len(x_cell) > 0:
                 x.append(func(x_cell))
 
+        if name is True:
+            name = self.name
+
         x = np.array(x)
-        name = name.format(name=self.name)
-        out = Var(x, name=name)
-        return out
+        return Var(x, name)
 
     @property
     def beta_labels(self):
@@ -1430,7 +1433,7 @@ class Var(object):
         Var([5, 5, 0, 0, 0, 0, 8])
 
         """
-        Y = cls([values.get(b, default) for b in base], name=name)
+        Y = cls([values.get(b, default) for b in base], name)
         return Y
 
     @classmethod
@@ -1457,7 +1460,7 @@ class Var(object):
         else:
             x = np.array([func(val) for val in base])
 
-        return cls(x, name=name)
+        return cls(x, name)
 
     def index(self, value):
         "``v.index(value)`` returns an array of indices where v equals value"
@@ -1491,9 +1494,21 @@ class Var(object):
         "Returns the smallest value"
         return self.x.min()
 
-    def repeat(self, repeats, name='{name}'):
-        "Analogous to :py:func:`numpy.repeat`"
-        return Var(self.x.repeat(repeats), name=name.format(name=self.name))
+    def repeat(self, repeats, name=True):
+        """
+        Repeat each element ``repeats`` times
+
+        Parameters
+        ----------
+        repeats : int
+            Number of repeats.
+        name : None | True | str
+            Name of the output Var, ``True`` to keep the current name (default
+            ``True``).
+        """
+        if name is True:
+            name = self.name
+        return Var(self.x.repeat(repeats), name)
 
     def std(self):
         "Returns the standard deviation"
@@ -1802,7 +1817,7 @@ class Factor(_Effect):
 
         x = self.x[index]
         if np.iterable(x):
-            return Factor(x, **self._child_kwargs())
+            return Factor(x, self.name, self.random, labels=self._labels)
         else:
             return self._labels[x]
 
@@ -1880,15 +1895,6 @@ class Factor(_Effect):
 
         """
         return NestedEffect(self, other)
-
-    def _child_kwargs(self, name='{name}'):
-        if name is not None:
-            if self.name is None:
-                name.format(name='')
-            else:
-                name.format(name=self.name)
-
-        return dict(labels=self._labels, name=name, random=self.random)
 
     def _interpret_y(self, Y, create=False):
         """
@@ -1968,13 +1974,13 @@ class Factor(_Effect):
     def cells(self):
         return tuple(natsorted(self._labels.values()))
 
-    def compress(self, X, name='{name}'):
+    def compress(self, X, name=None):
         "Deprecated. Use .aggregate()."
         warn("Factor.compress s deprecated; use Factor.aggregate instead"
              "(with identical functionality).", DeprecationWarning)
         self.aggregate(X, name)
 
-    def aggregate(self, X, name='{name}'):
+    def aggregate(self, X, name=True):
         """
         Summarize the Factor by collapsing within cells in `X`.
 
@@ -1984,6 +1990,9 @@ class Factor(_Effect):
         ----------
         X : categorial
             A categorial model defining cells to collapse.
+        name : None | True | str
+            Name of the output Factor, ``True`` to keep the current name
+            (default ``True``).
 
         Returns
         -------
@@ -2007,16 +2016,17 @@ class Factor(_Effect):
                 else:
                     x.append(x_i[0])
 
-        x = np.array(x)
-        name = name.format(name=self.name)
-        out = Factor(x, name=name, labels=self._labels, random=self.random)
+        if name is True:
+            name = self.name
+
+        out = Factor(x, name, self.random, labels=self._labels)
         return out
 
-    def copy(self, name='{name}', rep=1, tile=1):
+    def copy(self, name=True, rep=1, tile=1):
         "returns a deep copy of itself"
-        f = Factor(self.x.copy(), rep=rep, tile=tile,
-                   **self._child_kwargs(name))
-        return f
+        if name is True:
+            name = self.name
+        return Factor(self.x.copy(), name, self.random, rep, tile, self._labels)
 
     @property
     def df(self):
@@ -2158,9 +2168,21 @@ class Factor(_Effect):
             table.cell(np.sum(self.x == code))
         return table
 
-    def repeat(self, repeats, name='{name}'):
-        "Repeat elements of a Factor (analogous to :py:func:`numpy.repeat`)"
-        return Factor(self.x.repeat(repeats), **self._child_kwargs(name))
+    def repeat(self, repeats, name=True):
+        """
+        Repeat each element ``repeats`` times
+
+        Parameters
+        ----------
+        repeats : int
+            Number of repeats.
+        name : None | True | str
+            Name of the output Var, ``True`` to keep the current name (default
+            ``True``).
+        """
+        if name is True:
+            name = self.name
+        return Factor(self.x, name, self.random, repeats, labels=self._labels)
 
 
 
@@ -2532,12 +2554,11 @@ class NDVar(object):
         args = dict(dims=dims, name=self.name or '')
         return rep % args
 
-    def abs(self, name="{name}"):
+    def abs(self, name=None):
         """Compute the absolute value"""
         x = np.abs(self.x)
         dims = self.dims
         info = self.info.copy()
-        name = name.format(name=self.name)
         return NDVar(x, dims, info, name)
 
     def any(self, dims=None):
@@ -2567,13 +2588,13 @@ class NDVar(object):
             err = "Dimensions of %r do not match %r" % (self, dims)
             raise DimensionMismatchError(err)
 
-    def compress(self, X, func=np.mean, name='{name}'):
+    def compress(self, X, func=np.mean, name=None):
         "Deprecated. Use .aggregate()."
         warn("NDVar.compress s deprecated; use NDVar.aggregate instead"
              "(with identical functionality).", DeprecationWarning)
         self.aggregate(X, func, name)
 
-    def aggregate(self, X, func=np.mean, name='{name}'):
+    def aggregate(self, X, func=np.mean, name=True):
         """
         Summarize data in each cell of ``X``.
 
@@ -2586,9 +2607,9 @@ class NDVar(object):
             into each cell of X. The function needs to accept the data as
             first argument and ``axis`` as keyword-argument. Default is
             ``numpy.mean``.
-        name : str
-            Name for the resulting NDVar. ``'{name}'`` is formatted to the
-            current NDVar's ``.name``.
+        name : None | True | str
+            Name of the output NDVar, ``True`` to keep the current name
+            (default ``True``).
 
         Returns
         -------
@@ -2613,8 +2634,10 @@ class NDVar(object):
         if 'summary_info' in info:
             info.update(info.pop('summary_info'))
 
+        if name is True:
+            name = self.name
+
         x = np.array(x)
-        name = name.format(name=self.name)
         out = NDVar(x, self.dims, info, name)
         return out
 
@@ -2671,13 +2694,13 @@ class NDVar(object):
             info = self.info.copy()
             return NDVar(x, dims, info, name)
 
-    def copy(self, name='{name}'):
+    def copy(self, name=True):
         "returns a deep copy of itself"
         x = self.x.copy()
-        name = name.format(name=self.name)
         info = self.info.copy()
-        return self.__class__(x, dims=self.dims, name=name,
-                              info=info)
+        if name is True:
+            name = self.name
+        return NDVar(x, self.dims, info, name)
 
     def diminfo(self, str_out=False):
         """Information about the dimensions
@@ -2835,7 +2858,7 @@ class NDVar(object):
         """
         return self._aggregate_over_dims(dims, np.min)
 
-    def ols(self, x, name="ols"):
+    def ols(self, x, name=None):
         """
         Sample-wise ordinary least squares regressions
 
@@ -2875,7 +2898,7 @@ class NDVar(object):
         info = self.info.copy()
         return NDVar(x_, self.dims, info, name)
 
-    def repeat(self, repeats, dim='case', name='{name}'):
+    def repeat(self, repeats, dim='case', name=True):
         """
         Analogous to :py:func:`numpy.repeat`
 
@@ -2886,8 +2909,9 @@ class NDVar(object):
             broadcasted to fit the shape of the given dimension.
         dim : str
             The dimension along which to repeat values (default 'case').
-        name : str
-            Name for the output NDVar.
+        name : None | True | str
+            Name of the output NDVar, ``True`` to keep the current name
+            (default ``True``).
         """
         ax = self.get_axis(dim)
         x = self.x.repeat(repeats, axis=ax)
@@ -2898,10 +2922,11 @@ class NDVar(object):
 
         dims = self.dims[:ax] + (repdim,) + self.dims[ax + 1:]
         info = self.info.copy()
-        name = name.format(name=self.name)
+        if name is True:
+            name = self.name
         return NDVar(x, dims, info, name)
 
-    def residuals(self, x, name="residuals"):
+    def residuals(self, x, name=None):
         """
         Residuals of sample-wise ordinary least squares regressions
 
@@ -3038,8 +3063,7 @@ class NDVar(object):
 
         """
         func = regions.pop('func', self.info.get('summary_func', np.mean))
-        name = regions.pop('name', '{func}({name})')
-        name = name.format(func=func.__name__, name=self.name)
+        name = regions.pop('name', None)
         if len(dims) + len(regions) == 0:
             dims = ('case',)
 
@@ -3191,7 +3215,7 @@ class Datalist(list):
 
     def __add__(self, other):
         lst = super(Datalist, self).__add__(other)
-        return Datalist(lst, name=self.name)
+        return Datalist(lst)
 
     def compress(self, X, merge='mean'):
         "Deprecated. Use .aggregate()."
@@ -3927,9 +3951,11 @@ class Dataset(collections.OrderedDict):
 
         return ds
 
-    def copy(self):
+    def copy(self, name=True):
         "ds.copy() returns an shallow copy of ds"
-        ds = Dataset(name=self.name, info=self.info.copy())
+        if name is True:
+            name = self.name
+        ds = Dataset(name=name, info=self.info.copy())
         ds.update(self)
         return ds
 
@@ -4023,9 +4049,14 @@ class Dataset(collections.OrderedDict):
 
     def repeat(self, n, name='{name}'):
         """
-        Analogous to :py:func:`numpy.repeat`. Returns a new Dataset with each
-        row repeated ``n`` times.
+        Returns a new Dataset with each row repeated ``n`` times.
 
+        Parameters
+        ----------
+        n : int
+            Number of repeats.
+        name : str
+            Name for the new Dataset.
         """
         ds = Dataset(name=name.format(name=self.name))
         for k, v in self.iteritems():
@@ -4555,7 +4586,7 @@ class diff(object):
         return np.sum(self.I1)
 
 
-def box_cox_transform(X, p, name=True):
+def box_cox_transform(X, p, name=None):
     """
     :returns: a variable with the Box-Cox transform applied to X. With p==0,
         this is the log of X; otherwise (X**p - 1) / p
@@ -4565,12 +4596,7 @@ def box_cox_transform(X, p, name=True):
 
     """
     if isvar(X):
-        if name is True:
-            name = "boxcox_%s" % X.name
         X = X.x
-    else:
-        if name is True:
-            name = "boxcox_x"
 
     if p == 0:
         y = np.log(X)
@@ -4580,8 +4606,7 @@ def box_cox_transform(X, p, name=True):
     return Var(y, name)
 
 
-
-def split(Y, n=2, name='{name}_{split}'):
+def split(y, n=2, name=None):
     """
     Returns a Factor splitting Y in n categories with equal number of cases
     (e.g. n=2 for a median split)
@@ -4590,7 +4615,8 @@ def split(Y, n=2, name='{name}_{split}'):
         variable to split
     n : int
         number of categories
-    name : str |
+    name : str
+        Name of the output Factor.
 
     """
     if isinstance(Y, Var):
@@ -4603,13 +4629,6 @@ def split(Y, n=2, name='{name}_{split}'):
     for v in values:
         x += y > v
 
-    fmt = {'name': Y.name}
-    if n == 2:
-        fmt['split'] = "mediansplit"
-    else:
-        fmt['split'] = "split%i" % n
-
-    name = name.format(fmt)
     return Factor(x, name=name)
 
 
@@ -6705,7 +6724,7 @@ def intersect_dims(dims1, dims2, check_dims=True):
 
 # ---NDVar functions---
 
-def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}_r_nbr'):
+def corr(x, dim='sensor', obs='time', neighbors=None, name=None):
     """Calculate Neighbor correlation
 
     Parameter
@@ -6724,10 +6743,8 @@ def corr(x, dim='sensor', obs='time', neighbors=None, name='{name}_r_nbr'):
     for i in xrange(len(dim_obj)):
         y[i] = np.mean(cc[i, neighbors[i]])
 
-    xname = x.name or ''
-    name = name.format(name=xname)
     info = cs.set_info_cs(x.info, cs.stat_info('r'))
-    out = NDVar(y, (dim_obj,), info=info, name=name)
+    out = NDVar(y, (dim_obj,), info, name)
     return out
 
 
