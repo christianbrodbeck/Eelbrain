@@ -1882,10 +1882,13 @@ class Factor(_Effect):
         return NestedEffect(self, other)
 
     def _child_kwargs(self, name='{name}'):
-        kwargs = dict(labels=self._labels,
-                      name=name.format(name=self.name),
-                      random=self.random)
-        return kwargs
+        if name is not None:
+            if self.name is None:
+                name.format(name='')
+            else:
+                name.format(name=self.name)
+
+        return dict(labels=self._labels, name=name, random=self.random)
 
     def _interpret_y(self, Y, create=False):
         """
