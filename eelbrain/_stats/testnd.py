@@ -763,7 +763,7 @@ class ttest_1samp(_TestResult):
             Dependent variable.
         popmean : scalar
             Value to compare Y against (default is 0).
-        match : None | Factor
+        match : None | categorial
             Combine data for these categories before testing.
         sub : None | index-array
             Perform test with a subset of the data.
@@ -1107,7 +1107,7 @@ class ttest_rel(_TestResult):
         c0 : str | tuple | None
             Control condition (cell of X). Can be None if X only contains two
             cells.
-        match : Factor
+        match : None | categorial
             Match cases for a repeated measures test.
         sub : None | index-array
             Perform the test with a subset of the data.
