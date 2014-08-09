@@ -85,7 +85,7 @@ from .. import table
 from .. import test as _test
 from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
-from .._mne import source_induced_power
+from .._mne import source_induced_power, dissolve_label, rename_label
 from .._data_obj import isdatalist, UTS, DimensionMismatchError
 from ..fmtxt import List, Report
 from .._utils import subp, ui, keydefaultdict
@@ -1618,10 +1618,33 @@ class MneExperiment(FileTree):
 
     def _make_annot(self, parc, subject):
         "Only called to make custom annotation files for the common_brain"
-        msg = ("At least one of the annot files for the custom parcellation "
-               "%r is missing for %r, and a make function is not "
-               "implemented." % (parc, subject))
-        raise NotImplementedError(msg)
+        if parc == 'lobes':
+            # load source annot
+            labels = self.load_annot(parc='PALS_B12_Lobes')
+            self.set(parc='lobes')
+
+            # sort labels
+            labels = [l for l in labels if l.name[:-3] != 'MEDIAL.WALL']
+
+            # rename good labels
+            rename_label(labels, 'LOBE.FRONTAL', 'frontal')
+            rename_label(labels, 'LOBE.OCCIPITAL', 'occipital')
+            rename_label(labels, 'LOBE.PARIETAL', 'parietal')
+            rename_label(labels, 'LOBE.TEMPORAL', 'temporal')
+
+            # reassign unwanted labels
+            targets = ('frontal', 'occipital', 'parietal', 'temporal')
+            dissolve_label(labels, 'LOBE.LIMBIC', targets)
+            dissolve_label(labels, 'GYRUS', targets, hemis=('rh',))
+            dissolve_label(labels, '???', targets)
+            dissolve_label(labels, '????', targets, hemis=('rh',))
+            dissolve_label(labels, '???????', targets, hemis=('rh',))
+        else:
+            msg = ("At least one of the annot files for the custom parcellation "
+                   "%r is missing for %r, and a make function is not "
+                   "implemented." % (parc, subject))
+            raise NotImplementedError(msg)
+        return labels
 
     def make_bad_channels(self, bad_chs, redo=False, **kwargs):
         """Write the bad channel definition file for a raw file

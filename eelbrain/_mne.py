@@ -1,14 +1,17 @@
 from itertools import izip
 from math import ceil, log
+import os
 import re
 
 import numpy as np
 import scipy as sp
+from scipy.spatial.distance import cdist
 
 import mne
+from mne import minimum_norm as mn
 from mne.label import Label
 from mne.source_space import label_src_vertno_sel
-from mne import minimum_norm as mn
+from mne.utils import get_subjects_dir
 
 from ._data_obj import (ascategorial, asepochs, isfactor, isinteraction,
                         Dataset, Factor, NDVar, Ordered, SourceSpace, UTS)
@@ -311,3 +314,80 @@ def source_induced_power(epochs='epochs', x=None, ds=None, src='ico-4',
     else:
         raise TypeError("x=%s" % repr(x))
     return out
+
+
+# label operations ---
+
+def dissolve_label(labels, source, targets, subjects_dir=None,
+                   hemis=('lh', 'rh')):
+    """
+    Assign every point from source to the target that is closest to it.
+
+    Parameters
+    ----------
+    labels : list
+        List of labels (as returned by mne.read_annot).
+    source : str
+        Name of the source label (without hemi affix).
+    targets : list of str
+        List of target label names (without hemi affix).
+
+    Notes
+    -----
+    Modifies ``labels`` in-place, returns None.
+    """
+    subjects_dir = get_subjects_dir(subjects_dir)
+    subject = labels[0].subject
+
+    idx = {l.name: i for i, l in enumerate(labels)}
+
+    rm = set()
+    for hemi in hemis:
+        fpath = os.path.join(subjects_dir, subject, 'surf', hemi + '.inflated')
+        points, _ = mne.read_surface(fpath)
+
+        src_name = '-'.join((source, hemi))
+        src_idx = idx[src_name]
+        rm.add(src_idx)
+        src_label = labels[src_idx]
+        tgt_names = ['-'.join((name, hemi)) for name in targets]
+        tgt_idxs = [idx[name] for name in tgt_names]
+        tgt_labels = [labels[i] for i in tgt_idxs]
+        tgt_points = [points[label.vertices] for label in tgt_labels]
+
+        vert_by_tgt = {i: [] for i in xrange(len(targets))}
+        for src_vert in src_label.vertices:
+            point = points[src_vert:src_vert + 1]
+            dist = [cdist(point, pts).min() for pts in tgt_points]
+            tgt = np.argmin(dist)
+            vert_by_tgt[tgt].append(src_vert)
+
+        for i, label in enumerate(tgt_labels):
+            new_vertices = vert_by_tgt[i]
+            label.vertices = np.union1d(label.vertices, new_vertices)
+
+    for i in sorted(rm, reverse=True):
+        del labels[i]
+
+
+def rename_label(labels, old, new):
+    """Rename a label in a parcellation
+
+    Parameters
+    ----------
+    labels : list of Label
+        The labels
+    old, new : str
+        Old and new names without hemi affix.
+
+    Notes
+    -----
+    Modifies ``labels`` in-place, returns None.
+    """
+    delim = '-'
+    for hemi in ('lh', 'rh'):
+        old_ = delim.join((old, hemi))
+        for label in labels:
+            if label.name == old_:
+                new_ = delim.join((new, hemi))
+                label.name = new_
