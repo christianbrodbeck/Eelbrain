@@ -975,7 +975,7 @@ class MneExperiment(FileTree):
         return ds
 
     def load_epochs_stc(self, subject=None, sns_baseline=None,
-                        src_baseline=None, ndvar=False, cat=None):
+                        src_baseline=None, ndvar=False, cat=None, **kwargs):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -983,9 +983,18 @@ class MneExperiment(FileTree):
         subject : str
             Subject(s) for which to load evoked files. Can be a group name
             such as 'all' or a single subject.
+        sns_baseline : None | tuple
+            Sensor space baseline interval.
+        src_baseline : None | tuple
+            Source space baseline interval.
+        ndvar : bool
+            Add the source estimates as NDVar named "src" instead of a list of
+            SourceEstimate objects named "stc" (default False).
+        cat : sequence of cell-names
+            Only load data for these cells (cells of model).
         """
         ds = self.load_epochs(subject, baseline=sns_baseline, ndvar=False,
-                              cat=cat)
+                              cat=cat, **kwargs)
         self.add_epochs_stc(ds, ndvar=ndvar, baseline=src_baseline)
         return ds
 
