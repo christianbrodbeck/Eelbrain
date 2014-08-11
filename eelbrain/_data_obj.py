@@ -2728,7 +2728,23 @@ class NDVar(object):
             return NDVar(x, dims, info, name)
 
     def copy(self, name=True):
-        "returns a deep copy of itself"
+        """returns an NDVar with a deep copy of its data
+
+        Parameters
+        ----------
+        name : None | True | str
+            Name of the output NDVar, ``True`` to keep the current name
+            (default ``True``).
+
+        Returns
+        -------
+        ndvar_copy : NDVar
+            An copy of the ndvar with a deep copy of the data.
+
+        Notes
+        -----
+        The info dictionary is still a shallow copy.
+        """
         x = self.x.copy()
         info = self.info.copy()
         if name is True:
@@ -6369,11 +6385,18 @@ class SourceSpace(Dimension):
             equal)
         """
         if self.subject != other.subject:
-            raise ValueError("Different subject")
+            msg = ("Source spaces can not be compared because they are "
+                   "defined on different MRI subjects. Consider using "
+                   "eelbrain.morph_source_space().")
+            raise ValueError(msg)
         elif self.src != other.src:
-            raise ValueError("Different src")
+            msg = ("Source spaces can not be compared because they are "
+                   "defined with different spatial decimation parameters.")
+            raise ValueError(msg)
         elif self.subjects_dir != other.subjects_dir:
-            raise ValueError("Different subjects_dir")
+            msg = ("Source spaces can not be compared because they have "
+                   "differing subjects_dir parameters.")
+            raise ValueError(msg)
 
         index = np.hstack(np.in1d(s, o) for s, o
                           in izip(self.vertno, other.vertno))
