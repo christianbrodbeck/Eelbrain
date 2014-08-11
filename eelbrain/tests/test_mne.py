@@ -9,10 +9,14 @@ from numpy.testing import assert_array_equal
 
 import mne
 
-from eelbrain import datasets, testnd, morph_source_space
+from eelbrain import datasets, load, testnd, morph_source_space
 from eelbrain._data_obj import asndvar, SourceSpace
 
 from .test_data import assert_dataobj_equal
+
+# mne paths
+data_dir = mne.datasets.sample.data_path()
+subjects_dir = os.path.join(data_dir, 'subjects')
 
 
 def connectivity_from_coo(coo):
@@ -99,34 +103,29 @@ def test_source_estimate():
     s_idx = src[idx]
     assert_dataobj_equal(s_sub, s_idx)
 
-    # test morphing
-    dsa = ds.aggregate('side')
-    ndvar = dsa['src']
-    stc = mne.SourceEstimate(ndvar.x[0], ndvar.source.vertno,
-                             ndvar.time.tmin, ndvar.time.tstep,
-                             ndvar.source.subject)
-    subjects_dir = ndvar.source.subjects_dir
-    path = ndvar.source._src_pattern.format(subject='fsaverage',
-                                            src=ndvar.source.src,
-                                            subjects_dir=subjects_dir)
-    if os.path.exists(path):
-        src_to = mne.read_source_spaces(path)
-    else:
-        src_to = mne.setup_source_space('fsaverage', path, 'ico4',
-                                        subjects_dir=subjects_dir)
-    vertices_to = [src_to[0]['vertno'], src_to[1]['vertno']]
-    mm = mne.compute_morph_matrix('sample', 'fsaverage', ndvar.source.vertno,
-                                  vertices_to, None, subjects_dir)
-    stc_to = mne.morph_data_precomputed('sample', 'fsaverage', stc,
-                                        vertices_to, mm)
 
-    ndvar_m = morph_source_space(ndvar, 'fsaverage')
-    assert_array_equal(ndvar_m.x[0], stc_to.data)
+def test_morphing():
+    mne.set_log_level('warning')
+    sss_path = os.path.join(subjects_dir, 'fsaverage', 'bem', 'fsaverage-ico-4-src.fif')
+    sss = mne.read_source_spaces(sss_path, False)
+    vertices_to = [sss[0]['vertno'], sss[1]['vertno']]
+    ds = datasets.get_mne_sample(-0.1, 0.1, src='ico', sub='index==0', stc=True)
+    stc = ds['stc', 0]
+    morph_mat = mne.compute_morph_matrix('sample', 'fsaverage', stc.vertno,
+                                         vertices_to, None, subjects_dir)
+    ndvar = ds['src']
+
+    morphed_ndvar = morph_source_space(ndvar, 'fsaverage')
+    morphed_stc = mne.morph_data_precomputed('sample', 'fsaverage', stc,
+                                             vertices_to, morph_mat)
+    assert_array_equal(morphed_ndvar.x[0], morphed_stc.data)
+    morphed_stc_ndvar = load.fiff.stc_ndvar([morphed_stc], 'fsaverage', 'ico-4',
+                                            subjects_dir, 'src', parc=None)
+    assert_dataobj_equal(morphed_ndvar, morphed_stc_ndvar)
 
 
 def test_source_space():
     "Test SourceSpace dimension"
-    subjects_dir = os.path.join(mne.datasets.sample.data_path(), 'subjects')
     for subject in ['fsaverage', 'sample']:
         path = os.path.join(subjects_dir, subject, 'bem', subject + '-ico-4-src.fif')
         mne_src = mne.read_source_spaces(path)

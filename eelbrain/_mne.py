@@ -17,6 +17,11 @@ from ._data_obj import (ascategorial, asepochs, isfactor, isinteraction,
                         Dataset, Factor, NDVar, Ordered, SourceSpace, UTS)
 
 
+def _vertices_equal(v1, v0):
+    "Test whether v1 and v0 are equal"
+    return np.array_equal(v1[0], v0[0]) and np.array_equal(v1[1], v0[1])
+
+
 def labels_from_clusters(clusters, names=None):
     """Create Labels from source space clusters
 
@@ -77,8 +82,9 @@ def labels_from_clusters(clusters, names=None):
     return labels
 
 
-def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None):
-    """Morph source estimate between subjects using a precomputed morph-matrix
+def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None,
+                       copy=False):
+    """Morph source estimate to a different MRI subject
 
     Parameters
     ----------
@@ -94,16 +100,28 @@ def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None):
         The vertices on the destination subject's brain. If ndvar contains a
         whole source space, vertices_to can be automatically loaded, although
         providing them as argument can speed up processing by a second or two.
+    copy : bool
+        Make sure that the data of ``morphed_ndvar`` is separate from
+        ``ndvar`` (default False).
 
     Returns
     -------
     morphed_ndvar : NDVar
         NDVar morphed to the destination subject.
+
+    Notes
+    -----
+    This function is used to make sure a number of different NDVars are defined
+    on the same MRI subject and handles scaled MRIs efficiently. If the MRI
+    subject on which ``ndvar`` is defined is a scaled copy of ``subject_to``,
+    by default a shallow copy of ``ndvar`` is returned. That means that it is
+    not safe to assume that ``morphed_ndvar`` can be modified in place without
+    altering ``ndvar``. To make sure the date of the output is independent from
+    the data of the input, set the argument ``copy=True``.
     """
-    src = ndvar.source.src
-    subject_from = ndvar.source.subject
     subjects_dir = ndvar.source.subjects_dir
-    vertices_from = ndvar.source.vertno
+    subject_from = ndvar.source.subject
+    src = ndvar.source.src
     if vertices_to is None:
         path = SourceSpace._src_pattern.format(subjects_dir=subjects_dir,
                                                subject=subject_to, src=src)
@@ -112,38 +130,64 @@ def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None):
     elif not isinstance(vertices_to, list) or not len(vertices_to) == 2:
         raise ValueError('vertices_to must be a list of length 2')
 
-    if morph_mat is None:
-        morph_mat = mne.compute_morph_matrix(subject_from, subject_to,
-                                             vertices_from, vertices_to, None,
-                                             subjects_dir)
-    elif not sp.sparse.issparse(morph_mat):
-        raise ValueError('morph_mat must be a sparse matrix')
-    elif not sum(len(v) for v in vertices_to) == morph_mat.shape[0]:
-        raise ValueError('morph_mat.shape[0] must match number of vertices in '
-                         'vertices_to')
+    if subject_from == subject_to and _vertices_equal(ndvar.source.vertno,
+                                                      vertices_to):
+        if copy:
+            return ndvar.copy()
+        else:
+            return ndvar
 
-    # flatten data
     axis = ndvar.get_axis('source')
     x = ndvar.x
-    if axis != 0:
-        x = x.swapaxes(0, axis)
-    n_sources = len(x)
-    if not n_sources == morph_mat.shape[1]:
-        raise ValueError('ndvar source dimension length must be the same as '
-                         'morph_mat.shape[0]')
-    if ndvar.ndim > 2:
-        shape = x.shape
-        x = x.reshape((n_sources, -1))
 
-    # apply morph matrix
-    x_ = morph_mat * x
+    # check whether it is a scaled brain
+    do_morph = True
+    cfg_path = os.path.join(subjects_dir, subject_from,
+                            'MRI scaling parameters.cfg')
+    if os.path.exists(cfg_path):
+        cfg = mne.coreg.read_mri_cfg(subject_from, subjects_dir)
+        subject_from = cfg['subject_from']
+        if subject_to == subject_from and _vertices_equal(ndvar.source.vertno,
+                                                          vertices_to):
+            if copy:
+                x_ = x.copy()
+            else:
+                x_ = x
+            vertices_to = ndvar.source.vertno
+            do_morph = False
 
-    # restore data shape
-    if ndvar.ndim > 2:
-        shape_ = (len(x_),) + shape[1:]
-        x_ = x_.reshape(shape_)
-    if axis != 0:
-        x_ = x_.swapaxes(axis, 0)
+    if do_morph:
+        vertices_from = ndvar.source.vertno
+        if morph_mat is None:
+            morph_mat = mne.compute_morph_matrix(subject_from, subject_to,
+                                                 vertices_from, vertices_to,
+                                                 None, subjects_dir)
+        elif not sp.sparse.issparse(morph_mat):
+            raise ValueError('morph_mat must be a sparse matrix')
+        elif not sum(len(v) for v in vertices_to) == morph_mat.shape[0]:
+            raise ValueError('morph_mat.shape[0] must match number of '
+                             'vertices in vertices_to')
+
+        # flatten data
+        if axis != 0:
+            x = x.swapaxes(0, axis)
+        n_sources = len(x)
+        if not n_sources == morph_mat.shape[1]:
+            raise ValueError('ndvar source dimension length must be the same '
+                             'as morph_mat.shape[0]')
+        if ndvar.ndim > 2:
+            shape = x.shape
+            x = x.reshape((n_sources, -1))
+
+        # apply morph matrix
+        x_ = morph_mat * x
+
+        # restore data shape
+        if ndvar.ndim > 2:
+            shape_ = (len(x_),) + shape[1:]
+            x_ = x_.reshape(shape_)
+        if axis != 0:
+            x_ = x_.swapaxes(axis, 0)
 
     # package output NDVar
     if ndvar.source.parc is None:
