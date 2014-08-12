@@ -82,7 +82,7 @@ def labels_from_clusters(clusters, names=None):
     return labels
 
 
-def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None,
+def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
                        copy=False):
     """Morph source estimate to a different MRI subject
 
@@ -92,14 +92,14 @@ def morph_source_space(ndvar, subject_to, morph_mat=None, vertices_to=None,
         NDVar with SourceSpace dimension.
     subject_to : string
         Name of the subject on which to morph.
-    morph_mat : None | sparse matrix
-        The morphing matrix. If ndvar contains a whole source space, the morph
-        matrix can be automatically loaded, although providing a cached matrix
-        can speed up processing by a second or two.
     vertices_to : None | list of array of int
         The vertices on the destination subject's brain. If ndvar contains a
         whole source space, vertices_to can be automatically loaded, although
         providing them as argument can speed up processing by a second or two.
+    morph_mat : None | sparse matrix
+        The morphing matrix. If ndvar contains a whole source space, the morph
+        matrix can be automatically loaded, although providing a cached matrix
+        can speed up processing by a second or two.
     copy : bool
         Make sure that the data of ``morphed_ndvar`` is separate from
         ``ndvar`` (default False).
