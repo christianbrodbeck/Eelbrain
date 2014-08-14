@@ -201,6 +201,71 @@ def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
     return out
 
 
+def combine_source_spaces(ndvars, subject='fsaverage', src='ico-4',
+                          parc='aparc', name=None):
+    """Combine NDVars with source space dimension from different MRI subjects
+
+    Parameters
+    ----------
+    ndvars : sequence of NDVar
+        NDVars with SourceSpace dimension.
+    subject_to : string
+        Name of the subject on which to morph.
+    morph_mat : None | sparse matrix
+        The morphing matrix. If ndvar contains a whole source space, the morph
+        matrix can be automatically loaded, although providing a cached matrix
+        can speed up processing by a second or two.
+    vertices_to : None | list of array of int
+        The vertices on the destination subject's brain. If ndvar contains a
+        whole source space, vertices_to can be automatically loaded, although
+        providing them as argument can speed up processing by a second or two.
+    copy : bool
+        Make sure that the data of ``morphed_ndvar`` is separate from
+        ``ndvar`` (default False).
+
+    Returns
+    -------
+    ndvar : NDVar
+        NDVar combining all ndvars, morphed to the destination subject.
+
+    Notes
+    -----
+    This function is used to make sure a number of different NDVars are defined
+    on the same MRI subject and handles scaled MRIs efficiently. If the MRI
+    subject on which ``ndvar`` is defined is a scaled copy of ``subject_to``,
+    by default a shallow copy of ``ndvar`` is returned. That means that it is
+    not safe to assume that ``morphed_ndvar`` can be modified in place without
+    altering ``ndvar``. To make sure the date of the output is independent from
+    the data of the input, set the argument ``copy=True``.
+    """
+    ndvar0 = ndvars[0]
+    subjects_dir = ndvar0.source.subjects_dir
+
+    # read the target source space
+    path = SourceSpace._src_pattern.format(subjects_dir=subjects_dir,
+                                           subject=subject, src=src)
+    ss = mne.read_source_spaces(path)
+    vertices = [ss[0]['vertno'], ss[1]['vertno']]
+    source = SourceSpace(vertices, subject, src, subjects_dir, parc)
+
+    # preallocate memory
+    shape0 = ndvar0.shape
+    axis = ndvar0.get_axis('source')
+    dims = ndvar0.dims[:axis] + (source,) + ndvar0.dims[axis + 1:]
+    shape = (len(ndvars),) + shape0[:axis] + (len(source),) + shape0[axis + 1:]
+    x = np.empty(shape)
+
+    # get data
+    for i, ndvar in enumerate(ndvars):
+        morphed_ndvar = morph_source_space(ndvar, subject, vertices)
+        if morphed_ndvar.dims != dims:
+            raise ValueError("NDVars have different dimensions")
+        x[i] = morphed_ndvar.x
+
+    info = {}
+    return NDVar(x, dims, info, name)
+
+
 def source_induced_power(epochs='epochs', x=None, ds=None, src='ico-4',
                          label=None, sub=None, inv=None, subjects_dir=None,
                          frequencies='4:40:0.1', *args, **kwargs):
