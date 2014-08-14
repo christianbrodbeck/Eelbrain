@@ -32,6 +32,7 @@ from ._mne import labels_from_clusters, morph_source_space
 from . import datasets
 from . import gui
 from . import load
+from . import mne_fixes
 from . import plot
 from . import save
 from . import table

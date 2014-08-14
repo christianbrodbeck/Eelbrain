@@ -86,6 +86,7 @@ from .. import test as _test
 from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
 from .._mne import source_induced_power, dissolve_label, rename_label
+from ..mne_fixes import write_labels_to_annot
 from .._data_obj import isdatalist, UTS, DimensionMismatchError
 from ..fmtxt import List, Report
 from .._utils import subp, ui, keydefaultdict
@@ -1601,7 +1602,7 @@ class MneExperiment(FileTree):
         if mrisubject == common_brain:
             labels = self._make_annot(parc, mrisubject)
             mri_sdir = self.get('mri-sdir')
-            mne.write_labels_to_annot(labels, mrisubject, parc, True, mri_sdir)
+            write_labels_to_annot(labels, mrisubject, parc, True, mri_sdir)
         else:
             # make sure annot exists for common brain
             self.set(mrisubject=common_brain, match=False)
