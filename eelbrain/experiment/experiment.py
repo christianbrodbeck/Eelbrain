@@ -558,13 +558,16 @@ class TreeModel(object):
         self._field_values.restore_state(index, discard_tip)
         self._params.restore_state(index, discard_tip)
 
-    def set(self, match=True, **state):
+    def set(self, match=True, allow_asterisk=False, **state):
         """Set the value of one or more fields.
 
         Parameters
         ----------
         match : bool
             For fields with stored values, only allow valid values.
+        allow_asterisk : bool
+            If a value contains '*', set the value without the normal value
+            evakuation and checking mechanism.
         kwargs :
             Fields and values to set. Invalid fields raise a KeyError. Unless
             match == False, Invalid values raise a ValueError.
@@ -584,9 +587,11 @@ class TreeModel(object):
 
         # eval all values
         for k in state.keys():
-            handlers = self._eval_handlers[k]
-            if handlers:
-                for handler in handlers:
+            eval_handlers = self._eval_handlers[k]
+            if '*' in state[k] and allow_asterisk:
+                pass
+            elif eval_handlers:
+                for handler in eval_handlers:
                     v = handler(state[k])
                     if not isinstance(v, str):
                         err = "Invalid conversion: %s=%r" % (k, v)
@@ -609,8 +614,9 @@ class TreeModel(object):
 
         # call post_set handlers
         for k, v in state.iteritems():
-            for handler in self._post_set_handlers[k]:
-                handler(k, v)
+            if not (allow_asterisk and '*' in v):
+                for handler in self._post_set_handlers[k]:
+                    handler(k, v)
 
     def show_fields(self, str_out=False):
         """
@@ -847,6 +853,24 @@ class FileTree(TreeModel):
                     raise RuntimeError("No make handler for %r." % temp)
 
         return path
+
+    def glob(self, temp, **state):
+        """Find all files matching a certain pattern
+
+        Parameters
+        ----------
+        temp : str
+            Name of the path template for which to find files.
+
+        Notes
+        -----
+        State parameters can include an asterisk ('*') to match multiple files.
+        Uses :func:`glob.glob`.
+        """
+        with self._temporary_state:
+            pattern = self.get(temp, allow_asterisk=True, **state)
+        file_paths = glob(pattern)
+        return file_paths
 
     def show_file_status(self, temp, row, col=None, count=True, present='X',
                          absent='-', **kwargs):
