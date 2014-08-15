@@ -557,6 +557,18 @@ def align1(d, idx, d_idx='index', out='data'):
         d.
     """
     idx = asvar(idx)
+    if not isinstance(d_idx, basestring):
+        # check d_idx length
+        if isdataset(d):
+            if len(d_idx) != d.n_cases:
+                msg = ("d_idx does not have the same number of cases as d "
+                       "(d_idx: %i, d: %i)" % (len(d_idx), d.n_cases))
+                raise ValueError(msg)
+        else:
+            if len(d_idx) != len(d):
+                msg = ("d_idx does not have the same number of cases as d "
+                       "(d_idx: %i, d: %i)" % (len(d_idx), len(d)))
+                raise ValueError(msg)
     d_idx = asvar(d_idx, ds=d)
 
     align_idx = np.empty(len(idx), int)

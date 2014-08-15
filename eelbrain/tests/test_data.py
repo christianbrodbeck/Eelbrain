@@ -149,11 +149,15 @@ def test_align():
     idx4i = idx4[::-1]
     ds2 = ds.sub(np.arange(0, ds.n_cases, 2))
 
-    # align Dataset to index
+    # align1: align Dataset to index
     dsa = align1(ds2, idx4)
     assert_array_equal(dsa['index'], idx4, "align1() failure")
     dsa = align1(ds2, idx4i)
     assert_array_equal(dsa['index'], idx4i, "align1() failure")
+    # d_idx as Var
+    dsa = align1(ds2[::2], idx4, idx4i)
+    assert_array_equal(dsa['index'], idx4i, "align1() failure")
+    assert_raises(ValueError, align1, ds2, idx4, idx4i)
 
     # align two datasets
     dsa1, dsa2 = align(ds, ds2)
