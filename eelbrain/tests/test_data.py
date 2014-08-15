@@ -143,7 +143,7 @@ def test_aggregate():
 
 def test_align():
     "Testing align() and align1() functions"
-    ds = datasets.get_rand()
+    ds = datasets.get_uv()
     ds.index()
     idx4 = np.arange(0, ds.n_cases, 4)
     idx4i = idx4[::-1]
@@ -158,6 +158,12 @@ def test_align():
     dsa = align1(ds2[::2], idx4, idx4i)
     assert_array_equal(dsa['index'], idx4i, "align1() failure")
     assert_raises(ValueError, align1, ds2, idx4, idx4i)
+
+    # Factor index
+    assert_raises(ValueError, align1, ds, ds['rm', ::-1], 'rm')
+    fds = ds[:20]
+    dsa = align1(fds, fds['rm', ::-1], 'rm')
+    assert_array_equal(dsa['index'], np.arange(19, -1, -1), "align1 Factor")
 
     # align two datasets
     dsa1, dsa2 = align(ds, ds2)

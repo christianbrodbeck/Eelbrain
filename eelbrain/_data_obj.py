@@ -425,22 +425,43 @@ def assub(sub, ds=None):
         sub = ds.eval(sub)
     return sub
 
-def asvar(Y, sub=None, ds=None):
-    if isinstance(Y, str):
+def asuv(y, sub=None, ds=None):
+    "As Var or Factor"
+    if isinstance(y, str):
         if ds is None:
-            err = ("Var was specified as string, but no Dataset was specified")
+            err = ("Parameter was specified as string, but no Dataset was "
+                   "specified")
             raise TypeError(err)
-        Y = ds.eval(Y)
+        y = ds.eval(y)
 
-    if isvar(Y):
+    if isuv(y):
+        pass
+    elif all(isinstance(v, basestring) for v in y):
+        y = Factor(y)
+    else:
+        y = Var(y)
+
+    if sub is None:
+        return y
+    else:
+        return y[sub]
+
+def asvar(y, sub=None, ds=None):
+    if isinstance(y, str):
+        if ds is None:
+            err = "Var was specified as string, but no Dataset was specified"
+            raise TypeError(err)
+        y = ds.eval(y)
+
+    if isvar(y):
         pass
     else:
-        Y = Var(Y)
+        y = Var(y)
 
-    if sub is not None:
-        return Y[sub]
+    if sub is None:
+        return y
     else:
-        return Y
+        return y[sub]
 
 
 def index_ndim(index):
@@ -556,7 +577,7 @@ def align1(d, idx, d_idx='index', out='data'):
         Return a restructured copy of d or an array of numerical indices into
         d.
     """
-    idx = asvar(idx)
+    idx = asuv(idx)
     if not isinstance(d_idx, basestring):
         # check d_idx length
         if isdataset(d):
@@ -569,7 +590,7 @@ def align1(d, idx, d_idx='index', out='data'):
                 msg = ("d_idx does not have the same number of cases as d "
                        "(d_idx: %i, d: %i)" % (len(d_idx), len(d)))
                 raise ValueError(msg)
-    d_idx = asvar(d_idx, ds=d)
+    d_idx = asuv(d_idx, ds=d)
 
     align_idx = np.empty(len(idx), int)
     for i, v in enumerate(idx):
