@@ -1083,8 +1083,8 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_epochs_stc(self, subject=None, sns_baseline=None,
-                        src_baseline=None, ndvar=False, cat=None, **kwargs):
+    def load_epochs_stc(self, subject=None, sns_baseline=(None, 0),
+                        src_baseline=None, ndvar=True, cat=None, **kwargs):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -1098,7 +1098,7 @@ class MneExperiment(FileTree):
             Source space baseline interval.
         ndvar : bool
             Add the source estimates as NDVar named "src" instead of a list of
-            SourceEstimate objects named "stc" (default False).
+            SourceEstimate objects named "stc" (default True).
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         """
@@ -2139,8 +2139,7 @@ class MneExperiment(FileTree):
                                       morph_ndvar=True)
             src = 'srcm'
         else:
-            ds = self.load_epochs_stc(group, sns_baseline, src_baseline,
-                                      ndvar=True)
+            ds = self.load_epochs_stc(group, sns_baseline, src_baseline)
             src = 'src'
 
         res = testnd.ttest_1samp(src, match=None, ds=ds)
@@ -2196,7 +2195,7 @@ class MneExperiment(FileTree):
             res = testnd.ttest_rel('srcm', x, c1, c0, match='subject', ds=ds)
         else:
             ds = self.load_epochs_stc(group, sns_baseline, src_baseline,
-                                      ndvar=True, cat=(c1, c0), model=x)
+                                      cat=(c1, c0), model=x)
             res = testnd.ttest_ind('src', x, c1, c0, ds=ds)
 
         brain = plot.brain.stat(res.p, res.t, p0=p0, p1=p1, surf=surf,
