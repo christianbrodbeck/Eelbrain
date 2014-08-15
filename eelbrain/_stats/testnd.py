@@ -1153,7 +1153,7 @@ class ttest_rel(_TestResult):
         test_name = 'Related Samples t-Test'
         n = len(ct.Y) // 2
         if n <= 2:
-            raise ValueError("Not enough observations for t-test (n=%n)" % n)
+            raise ValueError("Not enough observations for t-test (n=%i)" % n)
         df = n - 1
         tmap = _t_rel(ct.Y.x[:n], ct.Y.x[n:])
 
