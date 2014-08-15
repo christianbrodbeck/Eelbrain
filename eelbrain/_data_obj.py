@@ -25,7 +25,7 @@ from __future__ import division
 import collections
 from fnmatch import fnmatchcase
 import itertools
-from itertools import izip
+from itertools import chain, izip
 from keyword import iskeyword
 from math import ceil, log10
 import cPickle as pickle
@@ -5046,25 +5046,6 @@ class Model(object):
 
 # ---NDVar dimensions---
 
-def _connectivity_from_coo(coo):
-    """Convert a coo matrix to Eelbrain internal connectivity
-
-    Returns
-    -------
-    connetivity : array of int, (n_pairs, 2)
-        array of sorted [src, dst] pairs, with all src < dts.
-    """
-    pairs = set()
-    for v0, v1, d in izip(coo.row, coo.col, coo.data):
-        if not d or v0 == v1:
-            continue
-        src = min(v0, v1)
-        dst = max(v0, v1)
-        pairs.add((src, dst))
-    connectivity = np.array(sorted(pairs), dtype=np.int32)
-    return connectivity
-
-
 def find_time_point(times, time, rnd='closest'):
     """
     Returns (index, time) for the closest point to ``time`` in ``times``
@@ -6175,10 +6156,11 @@ class SourceSpace(Dimension):
 
         src = self.get_source_space()
 
+        n = len(self)
         if self.kind == 'vol':
+            raise NotImplementedError("Connectivity for volume source space")
             vertno = self.vertno[0]
             s = src[0]
-            n = len(self)
             coords = s['rr'][vertno]
             dist = pdist(coords)
             sf = squareform(dist)
@@ -6198,16 +6180,23 @@ class SourceSpace(Dimension):
             # combine applicable triangles
             if self.lh_n and self.rh_n:
                 rh_tris += self.lh_n
-                tris = np.vstack((lh_tris, rh_tris))
+                tris = chain(lh_tris, rh_tris)
             elif self.lh_n:
                 tris = lh_tris
             else:
                 tris = rh_tris
 
             # connectivity
-            coo = mne.spatial_tris_connectivity(tris)
+            pairs = set()
+            for tri in tris:
+                a, b, c = sorted(tri)
+                pairs.add((a, b))
+                pairs.add((a, c))
+                pairs.add((b, c))
+            c = np.array(sorted(pairs), dtype=np.int32)
 
-        c = _connectivity_from_coo(coo)
+        if c.max() >= n:
+            raise RuntimeError
         self._connectivity = c
         return c
 
@@ -6234,13 +6223,13 @@ class SourceSpace(Dimension):
         if not np.all(np.in1d(vertices, src_vertices)):
             raise RuntimeError("Not all vertices are in the source space")
 
-        if np.all(np.in1d(src_vertices, vertices, True)):
-            return src_tris
-
         # find applicable triangles
-        pt_in_use = np.in1d(src_tris, vertices).reshape(src_tris.shape)
-        tris_in_use = np.all(pt_in_use, axis=1)
-        tris = src_tris[tris_in_use]
+        if not np.all(np.in1d(src_vertices, vertices, True)):
+            tris = src_tris
+        else:
+            pt_in_use = np.in1d(src_tris, vertices).reshape(src_tris.shape)
+            tris_in_use = np.all(pt_in_use, axis=1)
+            tris = src_tris[tris_in_use]
 
         # reassign vertex ids based on present vertices
         if len(vertices) != vertices.max() - 1:
