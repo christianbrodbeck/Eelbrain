@@ -57,6 +57,7 @@ the interval form 0 to 500 ms used for rejection.
 from collections import defaultdict
 import inspect
 from itertools import izip
+import logging
 import os
 from Queue import Queue
 import re
@@ -95,6 +96,7 @@ from .experiment import FileTree
 
 
 __all__ = ['MneExperiment']
+logger = logging.getLogger('eelbrain.experiment')
 
 
 class PickleCache(dict):
@@ -130,7 +132,7 @@ temp = {
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
         'raw-file': '{raw-base}-raw.fif',
         'event-file': '{raw-base}-evts.pickled',
-        'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),  # mne p. 196
+        'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),
 
         # log-files (eye-tracker etc.)
         'log-dir': os.path.join('{meg-dir}', 'logs'),
@@ -139,15 +141,19 @@ temp = {
         'log-file': '{log-dir}/log.txt',
         'edf-file': os.path.join('{log-dir}', '*.edf'),
 
+        # MRI base files
+        'mri-cfg-file': os.path.join('{mri-dir}', 'MRI scaling parameters.cfg'),
+        'mri-file': os.path.join('{mri-dir}', 'mri', 'orig.mgz'),
+        'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
+        'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
+        'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
+
+
         # mne secondary/forward modeling
         'cov': 'bl',
         'proj-file': '{raw-base}_{proj}-proj.fif',
         'proj-plot': '{raw-base}_{proj}-proj.pdf',
         'cov-file': '{raw-base}_{cov}-{cov-rej}-{proj}-cov.fif',
-        'mri-file': os.path.join('{mri-dir}', 'mri', 'orig.mgz'),
-        'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
-        'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
-        'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
         'fwd-file': '{raw-base}_{mrisubject}-{src}-fwd.fif',
 
         # epochs
@@ -328,6 +334,19 @@ class MneExperiment(FileTree):
     # model order: list of factors in the order in which models should be built
     # (default for factors not in this list is alphabetic)
     _model_order = []
+
+    # Backup
+    # ------
+    # basic state for a backup
+    _backup_state = {'subject': '*', 'mrisubject': '*', 'experiment': '*',
+                     'raw': 'clm'}
+    # files to back up, together with state modifications on the basic state
+    _backup_files = (('raw-file', {}),
+                     ('bads-file', {}),
+                     ('rej-file', {'raw': '*', 'epoch': '*', 'rej': '*'}),
+                     ('trans-file', {}),
+                     ('mri-cfg-file', {}),
+                     ('log-dir', {}),)
 
     # Tests
     # -----
@@ -714,6 +733,95 @@ class MneExperiment(FileTree):
             return
 
         self.load_events(add_proj=False)
+
+    def backup(self, dst_root):
+        """Backup all essential files to ``dst_root``.
+
+        Parameters
+        ----------
+        dst_root : str
+            Directory to use as root for the backup.
+
+        Notes
+        -----
+        For repeated backups ``dst_root`` can be the same. If a file has been
+        previously backed up, it is only copied if the local copy has been
+        modified more recently than the previous backup. If the backup has been
+        modified more recently than the local copy, a warning is displayed.
+
+        Currently, the following files are included in the backup::
+
+         * Calmed raw file (raw='clm')
+         * Bad channels file
+         * All rejection files
+         * The trans-file
+         * All files in the ``meg/{subject}/logs`` directory
+         * For scaled MRIs, the file specifying the scale parameters
+
+        MRIs are currently not backed up.
+        """
+        root = self.get('root')
+        root_len = len(root) + 1
+
+        dirs = []  # directories to create
+        pairs = []  # (src, dst) pairs to copy
+        for temp, state_mod in self._backup_files:
+            # determine state
+            if state_mod:
+                state = self._backup_state.copy()
+                state.update(state_mod)
+            else:
+                state = self._backup_state
+
+            # find files to back up
+            if temp.endswith('dir'):
+                paths = []
+                for dirpath in self.glob(temp, **state):
+                    for root_, _, filenames in os.walk(dirpath):
+                        paths.extend(os.path.join(root_, fn) for fn in filenames)
+            else:
+                paths = self.glob(temp, **state)
+
+            # convert to (src, dst) pairs
+            for src in paths:
+                if not src.startswith(root):
+                    raise ValueError("Can only backup files in root directory")
+                tail = src[root_len:]
+                dst = os.path.join(dst_root, tail)
+                if os.path.exists(dst):
+                    src_m = os.path.getmtime(src)
+                    dst_m = os.path.getmtime(dst)
+                    if dst_m == src_m:
+                        continue
+                    elif dst_m > src_m:
+                        msg = "Backup more recent than original: %s" % tail
+                        logger.warn(msg)
+                        continue
+                else:
+                    i = 0
+                    while True:
+                        i = tail.find(os.sep, i + 1)
+                        if i == -1:
+                            break
+                        path = tail[:i]
+                        if path not in dirs:
+                            dirs.append(path)
+
+                pairs.append((src, dst))
+
+        if len(pairs) == 0:
+            logger.info("All files backed up.")
+            return
+
+        logger.info("Backing up %i files ..." % len(pairs))
+        # create directories
+        for dirname in dirs:
+            dirpath = os.path.join(dst_root, dirname)
+            if not os.path.exists(dirpath):
+                os.mkdir(dirpath)
+        # copy files
+        for src, dst in pairs:
+            shutil.copy2(src, dst)
 
     def get_field_values(self, field, exclude=True):
         """Find values for a field taking into account exclusion
