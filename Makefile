@@ -19,8 +19,7 @@ test-coverage:
 
 pypi: doc
 	rm -rf build dist
-	python setup.py sdist upload
-	python setup.py bdist_egg upload
+	python setup.py sdist bdist_wheel bdist_egg upload
 	python setup.py upload_docs
 
 .PHONY: clean clean-py doc test test-coverage pypi
