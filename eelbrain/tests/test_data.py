@@ -145,13 +145,21 @@ def test_align():
     "Testing align() and align1() functions"
     ds = datasets.get_rand()
     ds.index()
-    idx = np.arange(0, ds.n_cases, 4)
-    ds_sub = ds.sub(np.arange(0, ds.n_cases, 2))
-    dsa = align1(ds_sub, idx)
-    assert_array_equal(dsa['index'].x, idx, "align1() failure")
+    idx4 = np.arange(0, ds.n_cases, 4)
+    idx4i = idx4[::-1]
+    ds2 = ds.sub(np.arange(0, ds.n_cases, 2))
 
-    dsa1, dsa2 = align(dsa, ds_sub)
-    assert_array_equal(dsa1['index'].x, dsa2['index'].x, "align() failed")
+    # align Dataset to index
+    dsa = align1(ds2, idx4)
+    assert_array_equal(dsa['index'], idx4, "align1() failure")
+    dsa = align1(ds2, idx4i)
+    assert_array_equal(dsa['index'], idx4i, "align1() failure")
+
+    # align two datasets
+    dsa1, dsa2 = align(ds, ds2)
+    assert_array_equal(dsa1['index'], dsa2['index'], "align() failure")
+    dsa1, dsa2 = align(ds, ds2[::-1])
+    assert_array_equal(dsa1['index'], dsa2['index'], "align() failure")
 
 
 def test_celltable():

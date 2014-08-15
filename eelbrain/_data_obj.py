@@ -548,24 +548,31 @@ def align1(d, idx, d_idx='index', out='data'):
     ----------
     d : data object, n_cases = n1
         Data object with cases that should be aligned to idx.
-    idx : index array, len = n2
-        index to which d should be aligned.
+    idx : Var | array_like, len = n2
+        Index array to which d should be aligned.
     d_idx : str | index array, len = n1
         Indices of cases in d. If d is a Dataset, d_idx can be a name in d.
-    out : 'data' | 'index' | 'bool'
-        Return a subset of d, an array of numerical indices into d, or a
-        boolean array into d.
+    out : 'data' | 'index'
+        Return a restructured copy of d or an array of numerical indices into
+        d.
     """
     idx = asvar(idx)
     d_idx = asvar(d_idx, ds=d)
 
-    where = np.in1d(d_idx, idx, True)
-    if out == 'bool':
-        return where
+    align_idx = np.empty(len(idx), int)
+    for i, v in enumerate(idx):
+        where = d_idx.index(v)
+        if len(where) == 1:
+            align_idx[i] = where[0]
+        elif len(where) == 0:
+            raise ValueError("%s does not occur in d_idx" % v)
+        else:
+            raise ValueError("%s occurs more than once in d_idx" % v)
+
+    if out == 'data':
+        return d[align_idx]
     elif out == 'index':
-        return np.nonzero(where)
-    elif out == 'data':
-        return d[where]
+        return align_idx
     else:
         ValueError("Invalid value for out parameter: %r" % out)
 
