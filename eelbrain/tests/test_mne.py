@@ -1,16 +1,37 @@
 """Test mne interaction"""
+from itertools import izip
 import os
 
 from nose.tools import (assert_equal, assert_less_equal, assert_not_equal,
                         assert_true, assert_in)
+import numpy as np
 from numpy.testing import assert_array_equal
 
 import mne
 
 from eelbrain import datasets, testnd, morph_source_space
-from eelbrain._data_obj import asndvar
+from eelbrain._data_obj import asndvar, SourceSpace
 
 from .test_data import assert_dataobj_equal
+
+
+def connectivity_from_coo(coo):
+    """Convert a coo matrix to Eelbrain internal connectivity
+
+    Returns
+    -------
+    connetivity : array of int, (n_pairs, 2)
+        array of sorted [src, dst] pairs, with all src < dts.
+    """
+    pairs = set()
+    for v0, v1, d in izip(coo.row, coo.col, coo.data):
+        if not d or v0 == v1:
+            continue
+        src = min(v0, v1)
+        dst = max(v0, v1)
+        pairs.add((src, dst))
+    connectivity = np.array(sorted(pairs), dtype=np.int32)
+    return connectivity
 
 
 def test_source_estimate():
@@ -101,3 +122,18 @@ def test_source_estimate():
 
     ndvar_m = morph_source_space(ndvar, 'fsaverage')
     assert_array_equal(ndvar_m.x[0], stc_to.data)
+
+
+def test_source_space():
+    "Test SourceSpace dimension"
+    subjects_dir = os.path.join(mne.datasets.sample.data_path(), 'subjects')
+    for subject in ['fsaverage', 'sample']:
+        path = os.path.join(subjects_dir, subject, 'bem', subject + '-ico-4-src.fif')
+        mne_src = mne.read_source_spaces(path)
+        vertno = [mne_src[0]['vertno'], mne_src[1]['vertno']]
+        ss = SourceSpace(vertno, subject, 'ico-4', subjects_dir, None)
+
+        # connectivity
+        conn = ss.connectivity()
+        mne_conn = mne.spatial_src_connectivity(mne_src)
+        assert_array_equal(conn, connectivity_from_coo(mne_conn))
