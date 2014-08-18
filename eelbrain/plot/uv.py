@@ -19,7 +19,6 @@ from __future__ import division
 
 from itertools import izip
 import logging
-from math import factorial
 
 import numpy as np
 import scipy.stats  # without this sp.stats is not available
@@ -76,7 +75,7 @@ def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, x0=0,
     k = len(ct.cells)
     tests = test._pairwise(ct.get_data(), within=ct.all_within, parametric=par, trend=trend,
                             levels=levels, corr=corr)
-    reservation = np.zeros((factorial(k - 1), k - 1))
+    reservation = np.zeros((sum(xrange(1, k)), k - 1))
     y_top = y_min  # track top of plot
     y_start = y_min + 2 * y_unit
     # loop through possible connections
