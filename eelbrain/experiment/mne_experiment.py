@@ -99,6 +99,18 @@ __all__ = ['MneExperiment']
 logger = logging.getLogger('eelbrain.experiment')
 
 
+def _time_str(t):
+    "String for representing a time value"
+    if t is None:
+        return ''
+    else:
+        return '%i' % round(t * 1000)
+
+def _time_window_str(window, delim='-'):
+    "String for representing a time window"
+    return delim.join(map(_time_str, window))
+
+
 class PickleCache(dict):
     def __getitem__(self, path):
         if path in self:
@@ -3364,38 +3376,30 @@ class MneExperiment(FileTree):
         items = []
 
         # baseline
+        # default is baseline correcting in sensor space
         if src_baseline is None:
             if sns_baseline is None:
                 items.append('nobl')
             elif sns_baseline != (None, 0):
-                pass
-        elif sns_baseline == (None, 0):
-            items.append('snsbl')
-        elif sns_baseline:
-            items.append('snsbl=%s' % str(sns_baseline))
+                items.append('bl=%s' % _time_window_str(sns_baseline))
+        else:
+            if sns_baseline == (None, 0):
+                items.append('snsbl')
+            elif sns_baseline:
+                items.append('snsbl=%s' % _time_window_str(sns_baseline))
 
-        if src_baseline == (None, 0):
-            items.append('srcbl')
-        elif src_baseline:
-            items.append('srcbl=%s' % str(src_baseline))
+            if src_baseline == (None, 0):
+                items.append('srcbl')
+            else:
+                items.append('srcbl=%s' % _time_window_str(src_baseline))
 
         # pmin
         if pmin is not None:
             items.append(str(pmin))
 
         # time window
-        if tstart is None:
-            tstart_repr = ''
-        else:
-            tstart_repr = '%i' % round(tstart * 1000)
-
-        if tstop is None:
-            tstop_repr = ''
-        else:
-            tstop_repr = '%i' % round(tstop * 1000)
-
-        if tstart_repr or tstop_repr:
-            items.append('-'.join((tstart_repr, tstop_repr)))
+        if tstart is not None or tstop is not None:
+            items.append(_time_window_str((tstart, tstop)))
 
         self.set(test_options=' '.join(items), analysis=analysis, add=True)
 
