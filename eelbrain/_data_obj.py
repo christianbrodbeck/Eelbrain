@@ -5935,6 +5935,80 @@ class Sensor(Dimension):
         return nb
 
 
+def _point_graph(coords, dist_threshold):
+    "Connectivity graph for points based on distance"
+    n = len(coords)
+    dist = pdist(coords)
+
+    # construct vertex pairs corresponding to dist
+    graph = np.empty((len(dist), 2), np.int32)
+    i0 = 0
+    for vert, di in enumerate(xrange(n - 1, 0, -1)):
+        i1 = i0 + di
+        graph[i0:i1, 0] = vert
+        graph[i0:i1, 1] = np.arange(vert + 1, n)
+        i0 = i1
+
+    return graph[dist < dist_threshold]
+
+
+def _tri_graph(tris):
+    """Create connectivity graph from triangles
+
+    Parameters
+    ----------
+    tris : array_like, (n_tris, 3)
+        Triangles.
+
+    Returns
+    -------
+    edges : array (n_edges, 2)
+        All edges between vertices of tris.
+    """
+    pairs = set()
+    for tri in tris:
+        a, b, c = sorted(tri)
+        pairs.add((a, b))
+        pairs.add((a, c))
+        pairs.add((b, c))
+    return np.array(sorted(pairs), np.int32)
+
+
+def _mne_tri_soure_space_graph(source_space, vertices_list):
+    "Connectivity graph for a triangulated mne source space"
+    i = 0
+    graphs = []
+    for ss, verts in izip(source_space, vertices_list):
+        if len(verts) == 0:
+            continue
+
+        # graph for the whole source space
+        src_vertices = ss['vertno']
+        tris = ss['use_tris']
+        graph = _tri_graph(tris)
+
+        # select relevant edges
+        if not np.array_equal(verts, src_vertices):
+            if not np.all(np.in1d(verts, src_vertices)):
+                raise RuntimeError("Not all vertices are in the source space")
+            edge_in_use = np.logical_and(np.in1d(graph[:, 0], verts),
+                                         np.in1d(graph[:, 1], verts))
+            graph = graph[edge_in_use]
+
+        # reassign vertex ids based on present vertices
+        if len(verts) != verts.max() + 1:
+            graph = (np.digitize(graph.ravel(), verts, True)
+                     .reshape(graph.shape).astype(np.int32))
+
+        # account for index of previous source spaces
+        if i > 0:
+            graph += i
+        i += len(verts)
+
+        graphs.append(graph)
+    return np.vstack(graphs)
+
+
 class SourceSpace(Dimension):
     """
     Indexing
@@ -6024,11 +6098,15 @@ class SourceSpace(Dimension):
         return is_equal
 
     def __getitem__(self, index):
+        arange = np.arange(len(self))
+        int_index = arange[index]
+        bool_index = np.in1d(arange, int_index, True)
+
+        # connectivity
         if self._connectivity is None:
             connectivity = None
         else:
             c = self._connectivity
-            int_index = np.arange(len(self))[index]
             idx = np.logical_and(np.in1d(c[:, 0], int_index),
                                  np.in1d(c[:, 1], int_index))
             if np.any(idx):
@@ -6036,21 +6114,14 @@ class SourceSpace(Dimension):
 
                 # remap to new vertex ids
                 binned = np.digitize(new_c.ravel(), int_index, True)
-                connectivity = binned.reshape((-1, 2))
+                connectivity = binned.reshape(new_c.shape)
             else:
                 connectivity = None
 
-        # apply index to combined vertices
-        vert = np.hstack(self.vertno)
-        space_i = np.empty_like(vert, dtype=np.uint8)
-        i0 = 0
-        for i, space in enumerate(self.vertno):
-            i1 = i0 + len(space)
-            space_i[i0:i1] = i
-            i0 = i1
-
-        vert = vert[index]
-        space_i = space_i[index]
+        # vertno
+        boundaries = np.cumsum(tuple(chain((0,), (len(v) for v in self.vertno))))
+        vertno = [v[bool_index[boundaries[i]:boundaries[i + 1]]]
+                  for i, v in enumerate(self.vertno)]
 
         # parc
         if self.parc is None:
@@ -6058,8 +6129,7 @@ class SourceSpace(Dimension):
         else:
             parc = self.parc[index]
 
-        new_vert = [vert[space_i == i] for i in xrange(len(self.vertno))]
-        dim = SourceSpace(new_vert, self.subject, self.src, self.subjects_dir,
+        dim = SourceSpace(vertno, self.subject, self.src, self.subjects_dir,
                           parc, connectivity)
         return dim
 
@@ -6140,7 +6210,30 @@ class SourceSpace(Dimension):
         connetivity : array of int, (n_pairs, 2)
             array of sorted [src, dst] pairs, with all src < dts.
         """
-        connectivity = self._connectivity_full()
+        if self._connectivity is None:
+            if any(x is None for x in (self.src, self.subject, self.subjects_dir)):
+                err = ("In order for a SourceSpace dimension to provide "
+                       "connectivity information it needs to be initialized with "
+                       "src, subject and subjects_dir parameters")
+                raise ValueError(err)
+
+            src = self.get_source_space()
+            if self.kind == 'vol':
+                coords = src[0]['rr'][self.vertno[0]]
+                dist_threshold = self.grade * 0.0011
+                connectivity = _point_graph(coords, dist_threshold)
+            elif self.kind == 'ico':
+                connectivity = _mne_tri_soure_space_graph(src, self.vertno)
+            else:
+                msg = "Connectivity for %r source space" % self.kind
+                raise NotImplementedError(msg)
+
+            if connectivity.max() >= len(self):
+                raise RuntimeError("SourceSpace connectivity failed")
+            self._connectivity = connectivity
+        else:
+            connectivity = self._connectivity
+
         if disconnect_parc:
             parc = self.parc
             if parc is None:
@@ -6150,99 +6243,6 @@ class SourceSpace(Dimension):
             connectivity = connectivity[idx]
 
         return connectivity
-
-    def _connectivity_full(self):
-        if self._connectivity is not None:
-            return self._connectivity
-
-        if any(x is None for x in (self.src, self.subject, self.subjects_dir)):
-            err = ("In order for a SourceSpace dimension to provide "
-                   "connectivity information it needs to be initialized with "
-                   "src, subject and subjects_dir parameters")
-            raise ValueError(err)
-
-        src = self.get_source_space()
-
-        n = len(self)
-        if self.kind == 'vol':
-            raise NotImplementedError("Connectivity for volume source space")
-            vertno = self.vertno[0]
-            s = src[0]
-            coords = s['rr'][vertno]
-            dist = pdist(coords)
-            sf = squareform(dist)
-            row, col = np.where(sf < 0.011)
-            idx = row != col
-            row = row[idx]
-            col = col[idx]
-            data = np.ones(col.shape)
-            coo = coo_matrix((data, (row, col)), shape=(n, n))
-        else:
-            # find applicable triangles for each hemisphere
-            if self.lh_n:
-                lh_tris = self._hemi_tris(0, src)
-            if self.rh_n:
-                rh_tris = self._hemi_tris(1, src)
-
-            # combine applicable triangles
-            if self.lh_n and self.rh_n:
-                rh_tris += self.lh_n
-                tris = chain(lh_tris, rh_tris)
-            elif self.lh_n:
-                tris = lh_tris
-            else:
-                tris = rh_tris
-
-            # connectivity
-            pairs = set()
-            for tri in tris:
-                a, b, c = sorted(tri)
-                pairs.add((a, b))
-                pairs.add((a, c))
-                pairs.add((b, c))
-            c = np.array(sorted(pairs), dtype=np.int32)
-
-        if c.max() >= n:
-            raise RuntimeError
-        self._connectivity = c
-        return c
-
-    def _hemi_tris(self, i, src):
-        """Triangles in one hemisphere
-
-        Parameters
-        ----------
-        i : 0 | 1
-            Hemisphere index (0 = lh, 11 = rh).
-        src : list of dict
-            Source spaces (as returned by mne.read_source_spaces).
-
-        Returns
-        -------
-        tris : array, shape (n_trid, 3)
-            Triangles present in the source space, with point ids equal to
-            vertex position within hemisphere.
-        """
-        vertices = self.vertno[i]
-        src_vertices = src[i]['vertno']
-        src_tris = src[i]['use_tris']
-
-        if not np.all(np.in1d(vertices, src_vertices)):
-            raise RuntimeError("Not all vertices are in the source space")
-
-        # find applicable triangles
-        if not np.all(np.in1d(src_vertices, vertices, True)):
-            tris = src_tris
-        else:
-            pt_in_use = np.in1d(src_tris, vertices).reshape(src_tris.shape)
-            tris_in_use = np.all(pt_in_use, axis=1)
-            tris = src_tris[tris_in_use]
-
-        # reassign vertex ids based on present vertices
-        if len(vertices) != vertices.max() - 1:
-            flat_tris = np.digitize(tris.ravel(), vertices, True)
-            tris = flat_tris.reshape(tris.shape)
-        return tris
 
     def circular_index(self, seeds, extent=0.05, name="globe"):
         """Returns an index into all vertices within extent of seed
