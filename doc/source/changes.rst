@@ -3,6 +3,13 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.8
+----------
+
+* Randomization/Monte Carlo tests now seed the random state to make results
+  replicable.
+
+
 New in 0.6
 ----------
 
@@ -12,7 +19,7 @@ New in 0.6
 New in 0.5
 ----------
 
-* The :mod:`eelbrain.lab` and :mod:`eelbrain.eellab` modules are deprecated. 
+* The :mod:`eelbrain.lab` and :mod:`eelbrain.eellab` modules are deprecated.
   Everything can now me imported from :mod:`eelbrain` directly.
 
 
@@ -34,23 +41,23 @@ New in 0.3
 New in 0.2
 ----------
 
-* :class:`gui.SelectEpochs` Epoch rejection GIU has a new "GA" button 
-  to plot the grand average of all accepted trials
-* Cluster permutation tests in :mod:`testnd` use multiple cores; To disable 
+* :class:`gui.SelectEpochs` Epoch rejection GIU has a new "GA" button to plot
+  the grand average of all accepted trials
+* Cluster permutation tests in :mod:`testnd` use multiple cores; To disable
   multiprocessing set ``eelbrain._stats.testnd.multiprocessing = False``.
 
 
 New in 0.1.7
 ------------
 
-* :class:`gui.SelectEpochs` can now be initialized with a single 
+* :class:`gui.SelectEpochs` can now be initialized with a single
   :class:`mne.Epochs` instance (data needs to be preloaded).
-* Parameters that take :class:`NDVar` objects now also accept 
+* Parameters that take :class:`NDVar` objects now also accept
   :class:`mne.Epochs` and :class:`mne.fiff.Evoked` objects.
 
 
 New in 0.1.5
 ------------
 
-* :py:class:`plot.topo.TopoButterfly` plot: new keyboard commands (``t``, 
+* :py:class:`plot.topo.TopoButterfly` plot: new keyboard commands (``t``,
   ``left arrow``, ``right arrow``).

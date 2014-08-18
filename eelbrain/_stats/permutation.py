@@ -41,7 +41,8 @@ def _resample_params(N, samples):
     return n_samples, samples
 
 
-def resample(Y, samples=10000, replacement=False, unit=None, sign_flip=False):
+def resample(Y, samples=10000, replacement=False, unit=None, sign_flip=False,
+             seed=0):
     """
     Generator function to resample a dependent variable (Y) multiple times
 
@@ -64,6 +65,10 @@ def resample(Y, samples=10000, replacement=False, unit=None, sign_flip=False):
         do or do not flip the sign of each observation. If the number of
         possible permutations is smaller than ``samples``, ``resample(...,
         sign_flip=True)`` iterates over all possible permutations.
+    seed : None | int
+        Seed the random state of the relevant randomization module
+        (:mod:`random` or :mod:`numpy.random`) to make replication possible.
+        None to skip seeding (default 0).
 
     Returns
     -------
@@ -84,6 +89,12 @@ def resample(Y, samples=10000, replacement=False, unit=None, sign_flip=False):
     if samples < 0 and not sign_flip:
         err = "Complete permutation for resampling through reordering"
         raise NotImplementedError(err)
+
+    if seed is not None:
+        if sign_flip:
+            random.seed(seed)
+        else:
+            np.random.seed(seed)
 
     if sign_flip:
         if replacement is not False:
