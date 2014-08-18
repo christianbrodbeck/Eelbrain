@@ -131,9 +131,15 @@ def test_source_space():
         path = os.path.join(subjects_dir, subject, 'bem', subject + '-ico-4-src.fif')
         mne_src = mne.read_source_spaces(path)
         vertno = [mne_src[0]['vertno'], mne_src[1]['vertno']]
-        ss = SourceSpace(vertno, subject, 'ico-4', subjects_dir, None)
+        ss = SourceSpace(vertno, subject, 'ico-4', subjects_dir, 'aparc')
 
         # connectivity
         conn = ss.connectivity()
         mne_conn = mne.spatial_src_connectivity(mne_src)
         assert_array_equal(conn, connectivity_from_coo(mne_conn))
+
+        # sub-space connectivity
+        sssub = ss[ss.dimindex('superiortemporal-rh')]
+        ss2 = SourceSpace(vertno, subject, 'ico-4', subjects_dir, 'aparc')
+        ss2sub = ss2[ss2.dimindex('superiortemporal-rh')]
+        assert_array_equal(sssub.connectivity(), ss2sub.connectivity())
