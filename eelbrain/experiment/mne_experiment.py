@@ -532,6 +532,7 @@ class MneExperiment(FileTree):
             if dst is None:
                 dst = 'src'
 
+            self.make_annot()
             subject = self.get('mrisubject')
             src = self.get('src')
             mri_sdir = self.get('mri-sdir')
