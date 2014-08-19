@@ -2952,20 +2952,27 @@ class MneExperiment(FileTree):
         """
         current = self.get(field)
         values = self.get_field_values(field)
+
+        # find the index of the next value
         if current in values:
             idx = values.index(current) + 1
             if idx == len(values):
-                next_ = values[0]
-                print("The last %s was reached; rewinding to "
-                      "%r" % (field, next_))
-            else:
-                next_ = values[idx]
-                print("%s: %r -> %r" % (field, current, next_))
+                idx = -1
         else:
-            err = ("The current %s %r is not in %s "
-                   "values." % (field, current, field))
-            raise RuntimeError(err)
+            for idx in xrange(len(values)):
+                if values[idx] > current:
+                    break
+            else:
+                idx = -1
 
+        # set the next value
+        if idx == -1:
+            next_ = values[0]
+            print("The last %s was reached; rewinding to "
+                  "%r" % (field, next_))
+        else:
+            next_ = values[idx]
+            print("%s: %r -> %r" % (field, current, next_))
         self.set(**{field: next_})
 
     def plot_annot(self, surf='inflated', views=['lat', 'med'], hemi='split',
