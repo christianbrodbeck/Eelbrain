@@ -3,7 +3,7 @@ Created on Feb 12, 2013
 
 @author: Christian M Brodbeck
 '''
-
+from itertools import izip
 import os
 
 from mne.label import _get_annot_fname
@@ -31,16 +31,18 @@ def fix_annot_names(subject, parc, clean_subject=None, clean_parc=None,
     clean_fpaths, _ = _get_annot_fname(None, clean_subject, hemi, clean_parc,
                                        subjects_dir)
 
-    for fpath, clean_fpath, hemi in zip(fpaths, clean_fpaths, hemis):
+    for fpath, clean_fpath, hemi in izip(fpaths, clean_fpaths, hemis):
         labels, ctab, names = read_annot(fpath)
         _, _, clean_names = read_annot(clean_fpath)
+        if all(n == nc for n, nc in izip(names, clean_names)):
+            continue
 
         if len(clean_names) != len(names):
             err = ("Different names in %s annot files: %s vs. "
                    "%s" % (hemi, str(names), str(clean_names)))
             raise ValueError(err)
 
-        for clean_name, name in zip(clean_names, names):
+        for clean_name, name in izip(clean_names, names):
             if not name.startswith(clean_name):
                 err = "%s does not start with %s" % (str(name), clean_name)
                 raise ValueError(err)
