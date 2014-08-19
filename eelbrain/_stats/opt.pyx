@@ -13,7 +13,8 @@ ctypedef fused scalar:
     cython.double
 
 @cython.boundscheck(False)
-def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in, dict conn):
+def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in, 
+                 np.ndarray[NP_UINT32, ndim=2] edges):
     """Merge adjacent labels with non-standard connectivity
 
     Parameters
@@ -23,45 +24,46 @@ def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in, dict conn)
         modified in-place.
     n_labels_in : int
         Number of labels in cmap.
-    conn : dict
-        Connectivity, as a {src_i: [dst_i_1, dst_i_2, ...]} dict.
+    edges : array of int (n_edges, 2)
+        Edges of the connectivity graph.
     """
     n_labels_in += 1
 
     cdef unsigned int slice_i, i, dst_i
     cdef unsigned int n_vert = cmap.shape[0]
     cdef unsigned int n_slices = cmap.shape[1]
+    cdef unsigned int n_edges = edges.shape[0]
     cdef NP_UINT32 label, connected_label
     cdef NP_UINT32 relabel_src, relabel_dst
     cdef np.ndarray[NP_UINT32, ndim = 1] relabel = np.arange(n_labels_in,
-                                                           dtype=np.uint32)
+                                                             dtype=np.uint32)
 
     # find targets for relabeling
     for slice_i in range(n_slices):
-        for i in conn:
-            label = cmap[i, slice_i]
+        for i in range(n_edges):
+            src = edges[i, 0]
+            label = cmap[src, slice_i]
             if label == 0:
                 continue
+            dst = edges[i, 1]
+            connected_label = cmap[dst, slice_i]
+            if connected_label == 0:
+                continue
 
-            for dst_i in conn[i]:
-                connected_label = cmap[dst_i, slice_i]
-                if connected_label == 0:
-                    continue
+            while relabel[label] < label:
+                label = relabel[label]
 
-                while relabel[label] < label:
-                    label = relabel[label]
+            while relabel[connected_label] < connected_label:
+                connected_label = relabel[connected_label]
 
-                while relabel[connected_label] < connected_label:
-                    connected_label = relabel[connected_label]
+            if label > connected_label:
+                relabel_src = label
+                relabel_dst = connected_label
+            else:
+                relabel_src = connected_label
+                relabel_dst = label
 
-                if label > connected_label:
-                    relabel_src = label
-                    relabel_dst = connected_label
-                else:
-                    relabel_src = connected_label
-                    relabel_dst = label
-
-                relabel[relabel_src] = relabel_dst
+            relabel[relabel_src] = relabel_dst
 
     # find lowest labels
     for i in range(n_labels_in):

@@ -5606,7 +5606,7 @@ class Sensor(Dimension):
                 else:
                     pairs.add((v, k))
 
-        connectivity = np.array(sorted(pairs), dtype=np.int32)
+        connectivity = np.array(sorted(pairs), np.uint32)
         return connectivity
 
     @classmethod
@@ -5974,7 +5974,7 @@ def _point_graph(coords, dist_threshold):
     dist = pdist(coords)
 
     # construct vertex pairs corresponding to dist
-    graph = np.empty((len(dist), 2), np.int32)
+    graph = np.empty((len(dist), 2), np.uint32)
     i0 = 0
     for vert, di in enumerate(xrange(n - 1, 0, -1)):
         i1 = i0 + di
@@ -6004,7 +6004,7 @@ def _tri_graph(tris):
         pairs.add((a, b))
         pairs.add((a, c))
         pairs.add((b, c))
-    return np.array(sorted(pairs), np.int32)
+    return np.array(sorted(pairs), np.uint32)
 
 
 def _mne_tri_soure_space_graph(source_space, vertices_list):
@@ -6031,7 +6031,7 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
         # reassign vertex ids based on present vertices
         if len(verts) != verts.max() + 1:
             graph = (np.digitize(graph.ravel(), verts, True)
-                     .reshape(graph.shape).astype(np.int32))
+                     .reshape(graph.shape).astype(np.uint32))
 
         # account for index of previous source spaces
         if i > 0:
@@ -6146,8 +6146,8 @@ class SourceSpace(Dimension):
                 new_c = c[idx]
 
                 # remap to new vertex ids
-                binned = np.digitize(new_c.ravel(), int_index, True)
-                connectivity = binned.reshape(new_c.shape)
+                connectivity = (np.digitize(new_c.ravel(), int_index, True)
+                                .reshape(new_c.shape).astype(np.uint32))
             else:
                 connectivity = None
 

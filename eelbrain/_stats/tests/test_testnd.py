@@ -319,7 +319,7 @@ def test_labeling():
     int_buff = np.empty(shape, np.uint32)
     struct = ndimage.generate_binary_structure(2, 1)
     struct[::2] = False
-    conn = {0: (1, 3), 1: (2,), 2: (3,)}
+    conn = np.array([(0, 1), (0, 3), (1, 2), (2, 3)], np.uint32)
     criteria = None
 
     # some clusters

@@ -2036,8 +2036,6 @@ class _ClusterDist:
             nad_dim = cmap_dims[0]
             disconnect_parc = (nad_dim.name in parc)
             connectivity = nad_dim.connectivity(disconnect_parc)
-            connectivity_src = connectivity[:, 0]
-            connectivity_dst = connectivity[:, 1]
 
         # prepare cluster minimum size criteria
         if criteria:
@@ -2176,8 +2174,7 @@ class _ClusterDist:
         self._cmap_dims = cmap_dims
         self.shape = shape
         self._flat_shape = flat_shape
-        self._connectivity_src = connectivity_src
-        self._connectivity_dst = connectivity_dst
+        self._connectivity = connectivity
         self.N = N
         self._dist_shape = dist_shape
         self._dist_dims = dist_dims
@@ -2321,8 +2318,7 @@ class _ClusterDist:
                  'tstop', 'dist_dim', 'dist_tstep',
                   # data properties ...
                  'dims', 'shape', '_all_adjacent', '_nad_ax', '_struct',
-                 '_flat_shape', '_connectivity_src', '_connectivity_dst',
-                 '_criteria', '_cmap_dims',
+                 '_flat_shape', '_connectivity', '_criteria', '_cmap_dims',
                  # results ...
                  'dt_original', 'dt_perm', 'n_clusters',
                  '_dist_shape', '_dist_dims', 'dist',
@@ -2331,6 +2327,11 @@ class _ClusterDist:
         return state
 
     def __setstate__(self, state):
+        if '_connectivity_src' in state:
+            # backwards compatibility
+            state['_connectivity'] = np.hstack(state.pop('_connectivity_src'),
+                                               state.pop('_connectivity_dst'))
+
         for k, v in state.iteritems():
             setattr(self, k, v)
         self._i = 0
@@ -2367,16 +2368,6 @@ class _ClusterDist:
             info.append("p >= %.3f" % self.probability_map.min())
 
         return info
-
-    @LazyProperty
-    def _connectivity(self):
-        if self._connectivity_src is None:
-            return None
-
-        connectivity = {src:[] for src in np.unique(self._connectivity_src)}
-        for src, dst in izip(self._connectivity_src, self._connectivity_dst):
-            connectivity[src].append(dst)
-        return connectivity
 
     def _crop(self, im):
         if self.crop:
@@ -2459,8 +2450,8 @@ class _ClusterDist:
                 outsa = out.reshape(shape)
                 axlen = xsa.shape[1]
 
-                conn_src = self._connectivity_src
-                conn_dst = self._connectivity_dst
+                conn_src = self._connectivity[:, 0]
+                conn_dst = self._connectivity[:, 1]
                 for i in xrange(axlen):
                     data = xsa[:, i]
                     outslice = outsa[:, i]
