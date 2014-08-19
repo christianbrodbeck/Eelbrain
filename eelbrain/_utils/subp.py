@@ -144,7 +144,7 @@ _verbose = 1
 
 
 
-def cmd_exists(cmd):
+def command_exists(cmd):
     """
     Return True if the corresponding command exists (based on stackoverflow_
     answer).

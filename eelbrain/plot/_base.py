@@ -89,7 +89,7 @@ import numpy as np
 import PIL
 
 from .._utils import LazyProperty
-from .._utils.subp import cmd_exists
+from .._utils.subp import command_exists
 from ..fmtxt import Image, texify
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps
 from .._data_obj import ascategorial, asndvar, DimensionMismatchError
@@ -1159,7 +1159,7 @@ class ImageTiler(object):
             else:
                 dest = dest + '.mov'
 
-        if not cmd_exists('ffmpeg'):
+        if not command_exists('ffmpeg'):
             err = ("Need ffmpeg for saving movies. Download from "
                    "http://ffmpeg.org/download.html")
             raise RuntimeError(err)

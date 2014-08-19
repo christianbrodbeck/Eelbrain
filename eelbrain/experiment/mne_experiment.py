@@ -1736,6 +1736,23 @@ class MneExperiment(FileTree):
                     self.make_copy('annot-file', 'mrisubject', common_brain,
                                    mrisubject)
             else:
+                # check FreeSurfer availability
+                have_fs_home = 'FREESURFER_HOME' in os.environ
+                have_fs_command = subp.command_exists('mri_surf2surf')
+                if not have_fs_home or not have_fs_command:
+                    msgs = []
+                    if not have_fs_home:
+                        msg = ("FREESURFER_HOME environment variable not set. "
+                               "Please set FREESURFER_HOME.")
+                        msgs.append(msg)
+                    if not have_fs_command:
+                        msg = ("Can not find the FreeSurfer mri_surf2surf "
+                               "command. Please add freesurfer/bin to your "
+                               "path.")
+                        msgs.append(msg)
+                    raise RuntimeError('  '.join(msgs))
+
+                # morph the annot files
                 self.get('label-dir', make=True)
                 for hemi in ('lh', 'rh'):
                     cmd = ["mri_surf2surf", "--srcsubject", common_brain,
