@@ -60,8 +60,10 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
     msg = "%s:" % msg
     assert_equal(d1.name, d2.name, "%s unequal names (%r vs %r"
                  ")" % (msg, d1.name, d2.name))
-    msg += ' %r have' % d1.name
-    assert_equal(len(d1), len(d2), "%s unequal length" % msg)
+    msg += 'Two objects named %r have' % d1.name
+    len1 = len(d1)
+    len2 = len(d2)
+    assert_equal(len1, len2, "%s unequal length: %i/%i" % (msg, len1, len2))
     if isvar(d1) and decimal:
         assert_array_almost_equal(d1.x, d2.x, decimal)
     elif isuv(d1):
