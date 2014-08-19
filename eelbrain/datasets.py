@@ -45,11 +45,17 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     data_dir = mne.datasets.sample.data_path()
     meg_dir = os.path.join(data_dir, 'MEG', 'sample')
     raw_file = os.path.join(meg_dir, 'sample_audvis_filt-0-40_raw.fif')
+    event_file = os.path.join(meg_dir, 'sample_audvis_filt-0-40_evt.fif')
     subjects_dir = os.path.join(data_dir, 'subjects')
     subject = 'sample'
     label_path = os.path.join(subjects_dir, subject, 'label', '%s.label')
 
-    ds = load.fiff.events(raw_file, stim_channel='STI 014')
+    if not os.path.exists(event_file):
+        raw = mne.io.Raw(raw_file)
+        events = mne.find_events(raw, stim_channel='STI 014')
+        mne.write_events(event_file, events)
+    ds = load.fiff.events(raw_file, events=event_file)
+    ds.index()
     ds.info['subjects_dir'] = subjects_dir
     ds.info['subject'] = subject
     ds.info['label'] = label_path
@@ -78,43 +84,49 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     if sns:
         ds['sns'] = load.fiff.epochs_ndvar(ds['epochs'])
 
-    if not src:
+    if src is None:
         return ds
-
-    bem_dir = os.path.join(subjects_dir, subject, 'bem')
-    bem_file = os.path.join(bem_dir, 'sample-5120-5120-5120-bem-sol.fif')
-    trans_file = os.path.join(meg_dir, 'sample_audvis_raw-trans.fif')
-    epochs = ds['epochs']
-    if src == 'ico':
+    elif src == 'ico':
         src_tag = 'ico-4'
     elif src == 'vol':
         src_tag = 'vol-10'
     else:
         raise ValueError("src = %r" % src)
+    epochs = ds['epochs']
 
-    fwd_file = os.path.join(meg_dir, 'sample-%s-fwd.fif' % src_tag)
-    if os.path.exists(fwd_file):
-        fwd = mne.read_forward_solution(fwd_file)
+    # get inverse operator
+    inv_file = os.path.join(meg_dir, 'sample_eelbrain_%s-inv.fif' % src_tag)
+    if os.path.exists(inv_file):
+        inv = mne.minimum_norm.read_inverse_operator(inv_file)
     else:
-        src_file = os.path.join(bem_dir, 'sample-%s-src.fif' % src_tag)
-        if os.path.exists(src_file):
-            src_ = src_file
-        elif src == 'ico':
-            src_ = mne.setup_source_space(subject, src_file, 'ico4',
-                                          subjects_dir=subjects_dir)
-        elif src == 'vol':
-            mri_file = os.path.join(subjects_dir, subject, 'mri', 'orig.mgz')
-            src_ = mne.setup_volume_source_space(subject, src_file, pos=10.,
-                                                 mri=mri_file, bem=bem_file,
-                                                 mindist=0., exclude=0.,
-                                                 subjects_dir=subjects_dir)
-        fwd = mne.make_forward_solution(epochs.info, trans_file, src_,
-                                        bem_file, fwd_file)
+        fwd_file = os.path.join(meg_dir, 'sample-%s-fwd.fif' % src_tag)
+        bem_dir = os.path.join(subjects_dir, subject, 'bem')
+        bem_file = os.path.join(bem_dir, 'sample-5120-5120-5120-bem-sol.fif')
+        trans_file = os.path.join(meg_dir, 'sample_audvis_raw-trans.fif')
 
-    cov_file = os.path.join(meg_dir, 'sample_audvis-cov.fif')
-    cov = mne.read_cov(cov_file)
-    inv = mn.make_inverse_operator(epochs.info, fwd, cov, None, None,
-                                   fixed)
+        if os.path.exists(fwd_file):
+            fwd = mne.read_forward_solution(fwd_file)
+        else:
+            src_file = os.path.join(bem_dir, 'sample-%s-src.fif' % src_tag)
+            if os.path.exists(src_file):
+                src_ = src_file
+            elif src == 'ico':
+                src_ = mne.setup_source_space(subject, src_file, 'ico4',
+                                              subjects_dir=subjects_dir)
+            elif src == 'vol':
+                mri_file = os.path.join(subjects_dir, subject, 'mri', 'orig.mgz')
+                src_ = mne.setup_volume_source_space(subject, src_file, pos=10.,
+                                                     mri=mri_file, bem=bem_file,
+                                                     mindist=0., exclude=0.,
+                                                     subjects_dir=subjects_dir)
+            fwd = mne.make_forward_solution(epochs.info, trans_file, src_,
+                                            bem_file, fwd_file)
+
+        cov_file = os.path.join(meg_dir, 'sample_audvis-cov.fif')
+        cov = mne.read_cov(cov_file)
+        inv = mn.make_inverse_operator(epochs.info, fwd, cov, None, None,
+                                       fixed)
+        mne.minimum_norm.write_inverse_operator(inv_file, inv)
     ds.info['inv'] = inv
 
     stcs = mn.apply_inverse_epochs(epochs, inv, 1. / (snr ** 2), method)
