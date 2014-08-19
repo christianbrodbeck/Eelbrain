@@ -9,6 +9,8 @@ import os
 from mne.label import _get_annot_fname
 from mne.utils import get_subjects_dir
 
+from .nibabel_fs_io import read_annot, write_annot
+
 
 def fix_annot_names(subject, parc, clean_subject=None, clean_parc=None,
                     hemi='both', subjects_dir=None):
@@ -18,7 +20,6 @@ def fix_annot_names(subject, parc, clean_subject=None, clean_parc=None,
     -----
     Requires nibabel > 1.3.0 for annot file I/O
     """
-    import nibabel.freesurfer as fs
     # process args
     subjects_dir = get_subjects_dir(subjects_dir)
     if clean_subject is None:
@@ -31,8 +32,8 @@ def fix_annot_names(subject, parc, clean_subject=None, clean_parc=None,
                                        subjects_dir)
 
     for fpath, clean_fpath, hemi in zip(fpaths, clean_fpaths, hemis):
-        labels, ctab, names = fs.read_annot(fpath)
-        _, _, clean_names = fs.read_annot(clean_fpath)
+        labels, ctab, names = read_annot(fpath)
+        _, _, clean_names = read_annot(clean_fpath)
 
         if len(clean_names) != len(names):
             err = ("Different names in %s annot files: %s vs. "
@@ -44,7 +45,7 @@ def fix_annot_names(subject, parc, clean_subject=None, clean_parc=None,
                 err = "%s does not start with %s" % (str(name), clean_name)
                 raise ValueError(err)
 
-        fs.write_annot(fpath, labels, ctab, clean_names)
+        write_annot(fpath, labels, ctab, clean_names)
 
 
 def is_fake_mri(mri_dir):
