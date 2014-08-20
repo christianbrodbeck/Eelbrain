@@ -1964,7 +1964,15 @@ class MneExperiment(FileTree):
             evoked_mtime = os.path.getmtime(dest)
             raw_mtime = os.path.getmtime(self.get('raw-file', make=True))
             bads_mtime = os.path.getmtime(self.get('bads-file'))
-            rej_mtime = os.path.getmtime(self.get('rej-file'))
+
+            sel_epoch = self._epoch_state.get('sel_epoch', None)
+            if sel_epoch is None:
+                sel_file = self.get('rej-file')
+            else:
+                with self._temporary_state:
+                    sel_file = self.get('rej-file', epoch=sel_epoch)
+            rej_mtime = os.path.getmtime(sel_file)
+
             if evoked_mtime > max(raw_mtime, bads_mtime, rej_mtime):
                 return
 
