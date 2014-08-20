@@ -156,8 +156,8 @@ class CanvasFrame(EelbrainFrame):
         else:
             tb.AddSeparator()
 
-        tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
-        self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
+#         tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
+#         self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
 
         tb.AddLabelTool(ID.FULLSCREEN, "Fullscreen", Icon("tango/actions/view-fullscreen"))
         logging.debug('filltb')
@@ -196,13 +196,13 @@ class CanvasFrame(EelbrainFrame):
             del self._eelfigure
         event.Skip()
 
-    def OnHelp(self, event):
-        app = wx.GetApp()
-        shell = getattr(app, 'shell', None)
-        if hasattr(shell, 'help_lookup'):
-            shell.help_lookup(self._eelfigure)
-        else:
-            print self.__doc__
+#     def OnHelp(self, event):
+#         app = wx.GetApp()
+#         shell = getattr(app, 'shell', None)
+#         if hasattr(shell, 'help_lookup'):
+#             shell.help_lookup(self._eelfigure)
+#         else:
+#             print self.__doc__
 
     def OnSave(self, event):
         self.OnSaveAs(event)
