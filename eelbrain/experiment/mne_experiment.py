@@ -1717,6 +1717,8 @@ class MneExperiment(FileTree):
 
         # variables
         parc = self.get('parc')
+        if parc == '':
+            return
         mrisubject = self.get('mrisubject')
         common_brain = self.get('common_brain')
 
