@@ -6,8 +6,9 @@ Changes
 New in 0.8
 ----------
 
-* Randomization/Monte Carlo tests now seed the random state to make results
-  replicable.
+* A new GUI application controls plots as well as the epoch selection GUI (see
+  notes in the reference sections on :ref:`ref-plotting` and :ref:`ref-guis`).
+* Randomization/Monte Carlo tests now seed the random state to make results replicable.
 
 
 New in 0.6

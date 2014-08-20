@@ -1,23 +1,4 @@
 """
-Matplotlib and Backends
-=======================
-
-Some Eelbrain figures come with a toolbar with additional functionality. This
-toolbar requires a running wxPython application. This is automatically
-available if the plot is created from within a wxPython application such as
-PyShell or Eelbrain's WxTerm. In IPython, the wx gui can be made available by
-invoking it with::
-
-    $ ipython --gui=wx
-
-In order to use a different matplotlib backend (or the wx backend with the
-matplotlib toolbar), a call to::
-
-    >>> plot.configure_backend(False)
-
-determines the frame used for any subsequently created plots.
-
-
 Implementation
 ==============
 
