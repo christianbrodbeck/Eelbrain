@@ -363,7 +363,7 @@ def source_induced_power(epochs='epochs', x=None, ds=None, src='ico-4',
 # label operations ---
 
 def dissolve_label(labels, source, targets, subjects_dir=None,
-                   hemis=('lh', 'rh')):
+                   hemi='both'):
     """
     Assign every point from source to the target that is closest to it.
 
@@ -375,6 +375,10 @@ def dissolve_label(labels, source, targets, subjects_dir=None,
         Name of the source label (without hemi affix).
     targets : list of str
         List of target label names (without hemi affix).
+    subjects_dir : str
+        subjects_dir.
+    hemi : 'both', 'lh', 'rh'
+        Hemisphere(s) for which to dissolve the label.
 
     Notes
     -----
@@ -382,6 +386,12 @@ def dissolve_label(labels, source, targets, subjects_dir=None,
     """
     subjects_dir = get_subjects_dir(subjects_dir)
     subject = labels[0].subject
+    if hemi == 'both':
+        hemis = ('lh', 'rh')
+    elif hemi == 'lh' or hemi == 'rh':
+        hemis = (hemi,)
+    else:
+        raise ValueError("hemi=%r" % hemi)
 
     idx = {l.name: i for i, l in enumerate(labels)}
 

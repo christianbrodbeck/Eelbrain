@@ -1769,9 +1769,11 @@ class MneExperiment(FileTree):
     def _make_annot(self, parc, subject):
         "Only called to make custom annotation files for the common_brain"
         if parc == 'lobes':
+            sdir = self.get('mri-sdir')
+
             # load source annot
-            labels = self.load_annot(parc='PALS_B12_Lobes')
-            self.set(parc='lobes')
+            with self._temporary_state:
+                labels = self.load_annot(parc='PALS_B12_Lobes')
 
             # sort labels
             labels = [l for l in labels if l.name[:-3] != 'MEDIAL.WALL']
@@ -1784,11 +1786,11 @@ class MneExperiment(FileTree):
 
             # reassign unwanted labels
             targets = ('frontal', 'occipital', 'parietal', 'temporal')
-            dissolve_label(labels, 'LOBE.LIMBIC', targets)
-            dissolve_label(labels, 'GYRUS', targets, hemis=('rh',))
-            dissolve_label(labels, '???', targets)
-            dissolve_label(labels, '????', targets, hemis=('rh',))
-            dissolve_label(labels, '???????', targets, hemis=('rh',))
+            dissolve_label(labels, 'LOBE.LIMBIC', targets, sdir)
+            dissolve_label(labels, 'GYRUS', targets, sdir, 'rh')
+            dissolve_label(labels, '???', targets, sdir)
+            dissolve_label(labels, '????', targets, sdir, 'rh')
+            dissolve_label(labels, '???????', targets, sdir, 'rh')
         else:
             msg = ("At least one of the annot files for the custom parcellation "
                    "%r is missing for %r, and a make function is not "
