@@ -3321,7 +3321,7 @@ class MneExperiment(FileTree):
     def _eval_parc(self, parc):
         # Freesurfer parcellations
         if parc in ('', 'aparc.a2005s', 'aparc.a2009s', 'aparc',
-                    'PALS_B12_Brodmann', 'PALS_B12_Lobes',
+                    'PALS_B12_Brodmann', 'PALS_B12_Lobes', 'lobes',
                     'PALS_B12_OrbitoFrontal', 'PALS_B12_Visuotopic'):
             return parc
         elif self.parcs == None or parc in self.parcs:
