@@ -50,7 +50,7 @@ from tempfile import mkdtemp
 
 from matplotlib import pyplot as plt
 
-from eelbrain.lab import plot
+from eelbrain import plot
 
 dir_ = os.path.dirname(__file__)
 examples_dir = os.path.join(dir_, '..', '..', 'examples')
