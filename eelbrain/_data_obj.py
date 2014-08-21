@@ -2179,8 +2179,8 @@ class Factor(_Effect):
 
         Examples
         --------
-        >>> a = Factor('aabbcc')
-        >>> b.isany(('b', 'c'))
+        >>> f = Factor('aabbcc')
+        >>> f.isin(('b', 'c'))
         array([False, False,  True,  True,  True,  True], dtype=bool)
         """
         return np.in1d(self.x, self._encode_seq(values))
