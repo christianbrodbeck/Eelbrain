@@ -3,6 +3,7 @@ import webbrowser
 import wx
 
 from .._wxutils import ID, logger
+from .about import AboutFrame
 
 
 class App(wx.App):
@@ -47,6 +48,8 @@ class App(wx.App):
         m = help_menu = wx.Menu()
         m.Append(ID.HELP_EELBRAIN, 'Eelbrain Help')
         m.Append(ID.HELP_PYTHON, "Python Help")
+        m.AppendSeparator()
+        m.Append(wx.ID_ABOUT, '&About Eelbrain')
 
         # Menu Bar
         menu_bar = wx.MenuBar()
@@ -59,6 +62,7 @@ class App(wx.App):
         self.menubar = menu_bar
 
         # Bind Menu Commands
+        self.Bind(wx.EVT_MENU, self.OnAbout, id=wx.ID_ABOUT)
         self.Bind(wx.EVT_MENU, self.OnOpen, id=wx.ID_OPEN)
         self.Bind(wx.EVT_MENU, self.OnClear, id=wx.ID_CLEAR)
         self.Bind(wx.EVT_MENU, self.OnCloseWindow, id=wx.ID_CLOSE)
@@ -101,6 +105,14 @@ class App(wx.App):
             if hasattr(w, 'IsActive') and w.IsActive():
                 return w
         return wx.GetActiveWindow()
+
+    def OnAbout(self, event):
+        if hasattr(self, '_about_frame') and hasattr(self._about_frame, 'Raise'):
+            self._about_frame.Raise()
+        else:
+            self._about_frame = AboutFrame(None)
+            self._about_frame.Show()
+#             frame.SetFocus()
 
     def OnClear(self, event):
         frame = self._get_active_frame()
