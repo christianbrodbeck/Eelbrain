@@ -1,3 +1,5 @@
+import webbrowser
+
 import wx
 
 from .._wxutils import ID, logger
@@ -41,12 +43,18 @@ class App(wx.App):
         m.Append(wx.ID_FORWARD, '&Forward \tCtrl+]', 'Go One Page Forward')
         m.Append(wx.ID_BACKWARD, '&Back \tCtrl+[', 'Go One Page Back')
 
+        # Help Menu
+        m = help_menu = wx.Menu()
+        m.Append(ID.HELP_EELBRAIN, 'Eelbrain Help')
+        m.Append(ID.HELP_PYTHON, "Python Help")
+
         # Menu Bar
         menu_bar = wx.MenuBar()
         menu_bar.Append(file_menu, "File")
         menu_bar.Append(edit_menu, "Edit")
         menu_bar.Append(view_menu, "View")
         menu_bar.Append(go_menu, "Go")
+        menu_bar.Append(help_menu, self.GetMacHelpMenuTitleName())
         wx.MenuBar.MacSetCommonMenuBar(menu_bar)
         self.menubar = menu_bar
 
@@ -56,6 +64,8 @@ class App(wx.App):
         self.Bind(wx.EVT_MENU, self.OnCloseWindow, id=wx.ID_CLOSE)
         self.Bind(wx.EVT_MENU, self.OnCopy, id=wx.ID_COPY)
         self.Bind(wx.EVT_MENU, self.OnCut, id=wx.ID_CUT)
+        self.Bind(wx.EVT_MENU, self.OnOnlineHelp, id=ID.HELP_EELBRAIN)
+        self.Bind(wx.EVT_MENU, self.OnOnlineHelp, id=ID.HELP_PYTHON)
         self.Bind(wx.EVT_MENU, self.OnPaste, id=wx.ID_PASTE)
         self.Bind(wx.EVT_MENU, self.OnRedo, id=ID.REDO)
         self.Bind(wx.EVT_MENU, self.OnSave, id=wx.ID_SAVE)
@@ -111,6 +121,16 @@ class App(wx.App):
         win = wx.Window.FindFocus()
         logger.debug("Cut %r" % win)
         win.Cut()
+
+    def OnOnlineHelp(self, event):
+        "Called from the Help menu to open external resources"
+        Id = event.GetId()
+        if Id == ID.HELP_EELBRAIN:
+            webbrowser.open("https://pythonhosted.org/eelbrain/")
+        elif Id == ID.HELP_PYTHON:
+            webbrowser.open("http://docs.python.org/2.7/")
+        else:
+            raise RuntimeError("Invalid help ID")
 
     def OnOpen(self, event):
         frame = self._get_active_frame()
