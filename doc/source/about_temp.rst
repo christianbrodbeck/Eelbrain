@@ -9,6 +9,6 @@ and EEG data.
  .. toctree::
    :maxdepth: 2
 
-   Installing
+   installing
    changes
  

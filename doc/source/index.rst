@@ -16,11 +16,10 @@ Contents:
 .. toctree::
    :maxdepth: 2
    
-   About
-   data-obj-intro
-   data-obj-reference
+   about
+   intro
+   reference
    recipes
-   data-obj-plotting
 
 
 .. seealso:: `Eelbrain on GitHub <http://github.com/christianbrodbeck/Eelbrain>`_,
