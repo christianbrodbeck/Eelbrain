@@ -1592,14 +1592,15 @@ class MneExperiment(FileTree):
 
     def load_test(self, tstart, tstop, pmin, parc=None, mask=None, samples=1000,
                   group='all', data='src', sns_baseline=(None, 0),
-                  src_baseline=None, return_data=False, redo=False, **kwargs):
-        """Load thrshold-free spatio-temporal cluster permutation test
+                  src_baseline=None, return_data=False, make=False, redo=False,
+                  **kwargs):
+        """Create and load spatio-temporal cluster test results
 
         Parameters
         ----------
         tstart, tstop : None | scalar
             Time window for finding clusters.
-        pmin : None | 'tfce'
+        pmin : float | 'tfce' | None
             Kind of test.
         parc : None | str
             Parcellation for which to collect distribution.
@@ -1618,6 +1619,9 @@ class MneExperiment(FileTree):
             Source space baseline interval.
         return_data : bool
             Return the data along with the test result (see below).
+        make : bool
+            If the target file does not exist, create it (could take a long
+            time depending on the test; if False, raise an IOError).
         redo : bool
             If the target file already exists, delete and recreate it (only
             applies for tests that are cached).
@@ -1669,12 +1673,22 @@ class MneExperiment(FileTree):
             res = load.unpickle(dst)
             if res.samples >= samples:
                 load_data = return_data
-            else:
+            elif make:
                 res = None
                 load_data = True
-        else:
+            else:
+                msg = ("The cached test was performed with fewer samples than "
+                       "requested (%i vs %i). Set a lower number of samples, "
+                       "or set make=True to perform the test with the higher "
+                       "number of samples." % (res.samples, samples))
+                raise IOError(msg)
+        elif redo or make:
             res = None
             load_data = True
+        else:
+            msg = ("The requested test is not cached. Set make=True to "
+                   "perform the test.")
+            raise IOError(msg)
 
         # load data
         if load_data:
@@ -2586,7 +2600,7 @@ class MneExperiment(FileTree):
         group = self.get('group')
         ds, res = self.load_test(tstart, tstop, pmin, parc, mask, samples,
                                  group, data, sns_baseline, src_baseline, True,
-                                 redo_test)
+                                 True, redo_test)
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
