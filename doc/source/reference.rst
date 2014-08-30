@@ -37,7 +37,9 @@ File I/O
 Load
 ====
 
-Functions:
+Eelbrain has its own function for unpickling. In contrast to `normal unpickling
+<https://docs.python.org/2/library/pickle.html>`_, this function can also load 
+files pickled with earlier Eelbrain versions:
 
 .. autosummary::
    :toctree: generated
