@@ -1590,14 +1590,17 @@ class MneExperiment(FileTree):
         src = mne.read_source_spaces(fpath, add_geom)
         return src
 
-    def load_test(self, tstart, tstop, pmin, parc=None, mask=None, samples=1000,
-                  group='all', data='src', sns_baseline=(None, 0),
+    def load_test(self, test, tstart, tstop, pmin, parc=None, mask=None,
+                  samples=1000, group='all', data='src', sns_baseline=(None, 0),
                   src_baseline=None, return_data=False, make=False, redo=False,
                   **kwargs):
         """Create and load spatio-temporal cluster test results
 
         Parameters
         ----------
+        test : None | str
+            Test for which to create a report (entry in MneExperiment.tests;
+            None to use the test that was specified most recently).
         tstart, tstop : None | scalar
             Time window for finding clusters.
         pmin : float | 'tfce' | None
@@ -1637,6 +1640,8 @@ class MneExperiment(FileTree):
                                tstop)
 
         # figure out what test to do
+        if test is not None:
+            kwargs['test'] = test
         test, model, contrast = self.tests[self.get('test', **kwargs)]
         self.set(model=model)
 
@@ -2598,7 +2603,7 @@ class MneExperiment(FileTree):
 
         # load data
         group = self.get('group')
-        ds, res = self.load_test(tstart, tstop, pmin, parc, mask, samples,
+        ds, res = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
                                  group, data, sns_baseline, src_baseline, True,
                                  True, redo_test)
 
