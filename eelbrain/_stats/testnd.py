@@ -2329,8 +2329,8 @@ class _ClusterDist:
     def __setstate__(self, state):
         if '_connectivity_src' in state:
             # backwards compatibility
-            state['_connectivity'] = np.hstack(state.pop('_connectivity_src'),
-                                               state.pop('_connectivity_dst'))
+            state['_connectivity'] = np.hstack((state.pop('_connectivity_src'),
+                                                state.pop('_connectivity_dst')))
 
         for k, v in state.iteritems():
             setattr(self, k, v)
