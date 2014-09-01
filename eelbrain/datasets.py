@@ -162,6 +162,22 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     return ds
 
 
+def get_ols(numeric=('predictor',), uts='y', seed=0):
+    if seed is not None:
+        np.random.seed(seed)
+
+    ds = Dataset()
+    for name in numeric:
+        ds[name] = Var(np.random.normal(0, 1, 120))
+
+    if uts:
+        time = UTS(-.2, .01, 100)
+        x = np.random.normal(0, 1, (120, len(time)))
+        ds[uts] = NDVar(x, dims=('case', time))
+
+    return ds
+
+
 def get_uts(utsnd=False, seed=0):
     """Create a sample Dataset with 60 cases and random data.
 
