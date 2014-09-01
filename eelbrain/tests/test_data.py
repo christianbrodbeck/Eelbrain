@@ -427,6 +427,18 @@ def test_effect():
     assert_array_equal(i.enumerate_cells(), np.arange(2).repeat(6))
 
 
+def test_factor_relabel():
+    "Test Factor.relabel() method"
+    f = Factor('aaabbbccc')
+    f.relabel({'a': 'd'})
+    assert_array_equal(f, Factor('dddbbbccc'))
+    f.relabel({'d': 'c', 'c': 'd'})
+    assert_array_equal(f, Factor('cccbbbddd'))
+    f.relabel({'d': 'c'})
+    assert_array_equal(f, Factor('cccbbbccc'))
+    assert_raises(KeyError, f.relabel, {'a':'c'})
+
+
 def test_isin():
     "Test .isin() methods"
     values = np.array([  6, -6, 6, -2, -1, 0, -10, -5, -10, -6])
