@@ -371,7 +371,7 @@ class FMTextElement(object):
         return self.get_str()
 
     def __add__(self, other):
-        if isinstance(other, str) and other == '':
+        if isinstance(other, basestring) and other == '':
             # added to prevent matplotlib from thinking Image is a file path
             raise ValueError("Can't add empty string")
 
