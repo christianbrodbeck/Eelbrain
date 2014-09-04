@@ -963,10 +963,10 @@ def combine(items, name=None, check_dims=True):
     -----
     For Datasets:
 
-     - Missing variables are filled in with empty values ('' for factors, NaN
-       for variables).
-     - The info dict inherits only entries that are equal (``np.all(x == y)``
-       for all items.
+    - Missing variables are filled in with empty values ('' for factors, NaN
+      for variables).
+    - The info dict inherits only entries that are equal (``x is y or
+      np.array_equal(x, y)``) for all items.
     """
     if name is None:
         names = filter(None, (item.name for item in items))
@@ -974,6 +974,7 @@ def combine(items, name=None, check_dims=True):
 
     item0 = items[0]
     if isdataset(item0):
+        other_items = items[1:]
         # find all keys and data types
         keys = item0.keys()
         sample = dict(item0)
@@ -985,13 +986,15 @@ def combine(items, name=None, check_dims=True):
 
         # info dict
         info_keys = set(item0.info.keys())
-        for ds in items[1:]:
+        for ds in other_items:
             info_keys.intersection_update(ds.info.keys())
         info = {}
         for key in info_keys:
-            value = item0.info[key]
-            if all(np.all(ds.info[key] == value) for ds in items[1:]):
-                info[key] = value
+            v0 = item0.info[key]
+            other_values = [ds.info[key] for ds in other_items]
+            if all(v is v0 for v in other_values) or all(np.array_equal(v, v0)
+                                                         for v in other_values):
+                info[key] = v0
 
         # create new Dataset
         out = Dataset(name=name, info=info)
