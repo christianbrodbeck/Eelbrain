@@ -33,6 +33,13 @@ tag : str
     Optional tag to identify epochs that differ in ways not captured by the
     above.
 
+Superset epochs can be defined as a dictionary with only one entry:
+
+sub_epochs : tuple of str
+    Tuple of epoch names. These epochs are combined to form the current epoch.
+    The current epoch can not have any additional specification, and parameters
+    from the sub_epochs must match.
+
 
 Epochs can be
 specified in the :attr:`MneExperiment.epochs` dictionary. All keys in this
@@ -389,9 +396,22 @@ class MneExperiment(FileTree):
         for cls in reversed(inspect.getmro(self.__class__)):
             if hasattr(cls, '_values'):
                 self._templates.update(cls._values)
+
+
         # epochs
         epochs = {}
-        for name in self.epochs:
+        super_epochs = {}
+        for name, parameters in self.epochs.iteritems():
+            # filter out super_epochs
+            if 'sub_epochs' in parameters:
+                if len(parameters) > 1:
+                    msg = ("Super-epochs can only have one parameters called "
+                           "'sub_epochs'; got %r" % parameters)
+                    raise ValueError(msg)
+                epoch = parameters.copy()
+                epoch['name'] = name
+                super_epochs[name] = epoch
+
             # expand epoch dict
             epoch = self.epoch_default.copy()
             epoch.update(self.epochs[name])
@@ -408,6 +428,27 @@ class MneExperiment(FileTree):
                 epoch['tmax'] += pad
 
             epochs[name] = epoch
+        # re-integrate super-epochs
+        for name, parameters in super_epochs.iteritems():
+            sub_epochs = self.epochs[name]['sub_epochs']
+
+            # make sure definition is not recursive
+            if any('sub_epochs' in epochs[n] for n in sub_epochs):
+                msg = ("Super-epochs can't be defined recursively (%r)" % name)
+                raise ValueError(msg)
+
+            # find params
+            for param in ('tmin', 'tmax', 'decim'):
+                values = set(epochs[n][param] for n in sub_epochs)
+                if len(values) > 1:
+                    param_repr = ', '.join(repr(v) for v in values)
+                    msg = ("All sub_epochs of a super-epoch must have the "
+                           "same setting for %r; %r got {%s}."
+                           % (param, name, param_repr))
+                    raise ValueError(msg)
+                parameters[param] = values.pop()
+
+        epochs.update(super_epochs)
         self.epochs = epochs
 
 
@@ -1514,9 +1555,20 @@ class MneExperiment(FileTree):
         epoch = self._epoch_state
         sel = epoch.get('sel', None)
         sel_epoch = epoch.get('sel_epoch', None)
+        sub_epochs = epoch.get('sub_epochs', None)
         rej_kind = self._params['rej']['kind']
         if rej_kind not in ('manual', 'make', 'auto'):
             raise ValueError("Unknown rej_kind value: %r" % rej_kind)
+
+        # super-epoch
+        if sub_epochs is not None:
+            with self._temporary_state:
+                dss = [self.load_selected_events(subject, reject, add_proj,
+                                                 add_bads, index, epoch=sub_epoch)
+                       for sub_epoch in sub_epochs]
+                ds = combine(dss)
+                ds.info['raw'] = dss[0].info['raw']
+            return ds
 
         # case 1: no rejection
         if not reject or rej_kind == '':
@@ -2328,6 +2380,15 @@ class MneExperiment(FileTree):
             stc.save(path)
 
     def make_plot_annot(self, surf='inflated', redo=False, **state):
+        """Create a figure for the contents of an annotation file
+
+        Parameters
+        ----------
+        surf : str
+            FreeSurfer surface on which to plot the annotation.
+        redo : bool
+            If the target file already exists, overwrite it.
+        """
         mrisubject = self.get('mrisubject', **state)
         if is_fake_mri(self.get('mri-dir')):
             mrisubject = self.get('common_brain')
