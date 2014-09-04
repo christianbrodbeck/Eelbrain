@@ -1102,13 +1102,14 @@ class ttest_rel(_TestResult):
         X : categorial
             Model containing the cells which should be compared.
         c1 : str | tuple | None
-            Test condition (cell of X). Can be None is X only contains two
-            cells.
+            Test condition (cell of X). Can be omitted (or ``None``) if X only
+            contains two cells.
         c0 : str | tuple | None
-            Control condition (cell of X). Can be None if X only contains two
-            cells.
-        match : None | categorial
-            Match cases for a repeated measures test.
+            Control condition (cell of X). Can be omitted (or ``None``) if X
+            only contains two cells.
+        match : categorial
+            Units within which measurements are related (e.g. 'subject' in a
+            within-subject comparison).
         sub : None | index-array
             Perform the test with a subset of the data.
         ds : None | Dataset
@@ -1143,6 +1144,10 @@ class ttest_rel(_TestResult):
         In the permutation cluster test, permutations are done within the
         categories of ``match``.
         """
+        if match is None:
+            msg = ("The `match` argument needs to be specified for a related "
+                   "samples t-test.")
+            raise TypeError(msg)
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
         c1, c0 = ct.cat
         if not ct.all_within:
