@@ -111,10 +111,9 @@ def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     e_ms : array (n_effects, n_effects)
         Each row represents the expected MS of one effect.
     """
-    cdef int i, i_beta, i_effect, i_effect_ms, i_effect_beta, i_fmap, case
+    cdef int i, i_beta, i_effect, i_effect_ms, i_start, i_stop, i_fmap, case
     cdef int df
     cdef double v, SS, MS_den
-    cdef scalar [:] yi
 
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
@@ -124,17 +123,17 @@ def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef double [:] MSs = cvarray((n_effects,), sizeof(double), 'd')
 
     for i in range(n_tests):
-        yi = y[:,i]
-        lm_betas(yi, xsinv, betas)
+        lm_betas(y, i, xsinv, betas)
 
         # find MS of effects
         for i_effect in range(n_effects):
-            i_effect_beta = effects[i_effect, 0]
+            i_start = effects[i_effect, 0]
             df = effects[i_effect, 1]
+            i_stop = i_start + df
             SS = 0
             for case in range(n_cases):
                 v = 0
-                for i_beta in range(i_effect_beta, i_effect_beta + df):
+                for i_beta in range(i_start, i_stop):
                     v += x[case, i_beta] * betas[i_beta]
                 SS += v ** 2
             MSs[i_effect] = SS / df
@@ -174,7 +173,6 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef int i, i_beta, i_effect, i_effect_ms, i_effect_beta, i_fmap, case
     cdef int df
     cdef double v, SS, MS, MS_res, MS_den
-    cdef scalar [:] yi
 
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
@@ -185,8 +183,7 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef double [:] predicted_y = cvarray((n_cases,), sizeof(double), 'd')
 
     for i in range(n_tests):
-        yi = y[:,i]
-        lm_betas(yi, xsinv, betas)
+        lm_betas(y, i, xsinv, betas)
 
         # expand accounted variance
         for case in range(n_cases):
@@ -199,7 +196,7 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
         # residuals
         SS = 0
         for case in range(n_cases):
-            SS += (yi[case] - predicted_y[case]) ** 2
+            SS += (y[case, i] - predicted_y[case]) ** 2
         MS_res = SS / df_res
 
         # find MS of effects
@@ -247,13 +244,15 @@ def _ss(scalar[:,:] y, double[:] ss):
         ss[i] = SS
 
 
-cdef void lm_betas(scalar[:] y, double[:,:] xsinv, double[:] betas) nogil:
+cdef void lm_betas(scalar[:,:] y, int i, double[:,:] xsinv, double[:] betas) nogil:
     """Fit a linear model
 
     Parameters
     ----------
-    y : array (n_cases,)
+    y : array (n_cases, n_tests)
         Dependent Measurement.
+    i : int
+        Index of the test for which to calculate betas.
     xsinv : array (n_betas, n_cases)
         xsinv for x.
     betas : array (n_betas,)
@@ -271,7 +270,7 @@ cdef void lm_betas(scalar[:] y, double[:,:] xsinv, double[:] betas) nogil:
     for i_beta in range(df_x):
         betas[i_beta] = 0
         for case in range(n_cases):
-            betas[i_beta] += xsinv[i_beta, case] * y[case]
+            betas[i_beta] += xsinv[i_beta, case] * y[case, i]
 
 
 def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
@@ -290,7 +289,6 @@ def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
     """
     cdef int i, i_beta, case
     cdef double predicted_y, SS_res
-    cdef scalar [:] yi
 
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
@@ -298,15 +296,14 @@ def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
     cdef double [:] betas = cvarray((df_x,), sizeof(double), 'd')
 
     for i in range(n_tests):
-        yi = y[:,i]
-        lm_betas(yi, xsinv, betas)
+        lm_betas(y, i, xsinv, betas)
 
         # predict y and find residuals
         for case in range(n_cases):
             predicted_y = 0
             for i_beta in range(df_x):
                 predicted_y += x[case, i_beta] * betas[i_beta]
-            res[case,i] = yi[case] - predicted_y
+            res[case,i] = y[case, i] - predicted_y
 
 
 def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
@@ -325,7 +322,6 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     """
     cdef int i, i_beta, case
     cdef double predicted_y, SS_res
-    cdef scalar [:] yi
 
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
@@ -333,8 +329,7 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     cdef double [:] betas = cvarray((df_x,), sizeof(double), 'd')
 
     for i in range(n_tests):
-        yi = y[:, i]
-        lm_betas(yi, xsinv, betas)
+        lm_betas(y, i, xsinv, betas)
 
         # predict y and find residual sum squares
         SS_res = 0
@@ -342,6 +337,6 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
             predicted_y = 0
             for i_beta in range(df_x):
                 predicted_y += x[case, i_beta] * betas[i_beta]
-            SS_res += (yi[case] - predicted_y) ** 2
+            SS_res += (y[case, i] - predicted_y) ** 2
 
         ss[i] = SS_res
