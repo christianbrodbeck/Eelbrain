@@ -1,4 +1,6 @@
 # optimized statistics functions
+#cython: boundscheck=False, wraparound=False
+
 cimport cython
 from cython.view cimport array as cvarray
 import numpy as np
@@ -12,7 +14,7 @@ ctypedef fused scalar:
     cython.float
     cython.double
 
-@cython.boundscheck(False)
+
 def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in, 
                  np.ndarray[NP_UINT32, ndim=2] edges):
     """Merge adjacent labels with non-standard connectivity
@@ -89,7 +91,6 @@ def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in,
     return label_ids
 
 
-@cython.boundscheck(False)
 def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                       double[:, :] f_map, np.int16_t[:, :] effects, 
                       np.int8_t[:, :] e_ms):
@@ -151,7 +152,6 @@ def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                 i_fmap += 1
 
 
-@cython.boundscheck(False)
 def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                  double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
     """Compute f-maps for a balanced ANOVA model with residuals
@@ -216,7 +216,6 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
             f_map[i_effect, i] = MS / MS_res
 
 
-@cython.boundscheck(False)
 def _ss(scalar[:,:] y, double[:] ss):
     """Compute sum squares in the data (after subtracting the intercept)
 
@@ -248,7 +247,6 @@ def _ss(scalar[:,:] y, double[:] ss):
         ss[i] = SS
 
 
-@cython.boundscheck(False)
 cdef void lm_betas(scalar[:] y, double[:,:] xsinv, double[:] betas) nogil:
     """Fit a linear model
 
@@ -276,7 +274,6 @@ cdef void lm_betas(scalar[:] y, double[:,:] xsinv, double[:] betas) nogil:
             betas[i_beta] += xsinv[i_beta, case] * y[case]
 
 
-@cython.boundscheck(False)
 def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
     """Fit a linear model and compute the residuals
 
@@ -312,7 +309,6 @@ def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
             res[case,i] = yi[case] - predicted_y
 
 
-@cython.boundscheck(False)
 def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     """Fit a linear model and compute the residual sum squares
 
