@@ -447,8 +447,20 @@ class MneExperiment(FileTree):
                            % (param, name, param_repr))
                     raise ValueError(msg)
                 parameters[param] = values.pop()
-
         epochs.update(super_epochs)
+        # find relevant rej-files (for cache checking)
+        def _rej_epochs(epoch):
+            "Find which rej-files an epoch depends on"
+            if 'sub_epochs' in epoch:
+                names = epoch['sub_epochs']
+                return sum((_rej_epochs(epochs[n]) for n in names), ())
+            elif 'sel_epoch' in epoch:
+                return _rej_epochs(epochs[epoch['sel_epoch']])
+            else:
+                return (epoch['name'],)
+        for name, epoch in epochs.iteritems():
+            if 'sub_epochs' in epoch or 'sel_epoch' in epoch:
+                epoch['_rej_file_epochs'] = _rej_epochs(epoch)
         self.epochs = epochs
 
 
@@ -2036,13 +2048,14 @@ class MneExperiment(FileTree):
             raw_mtime = os.path.getmtime(self.get('raw-file', make=True))
             bads_mtime = os.path.getmtime(self.get('bads-file'))
 
-            sel_epoch = self._epoch_state.get('sel_epoch', None)
-            if sel_epoch is None:
+            rej_file_epochs = self._epoch_state.get('_rej_file_epochs', None)
+            if rej_file_epochs is None:
                 sel_file = self.get('rej-file')
+                rej_mtime = os.path.getmtime(sel_file)
             else:
                 with self._temporary_state:
-                    sel_file = self.get('rej-file', epoch=sel_epoch)
-            rej_mtime = os.path.getmtime(sel_file)
+                    paths = [self.get('rej-file', epoch=e) for e in rej_file_epochs]
+                rej_mtime = max(map(os.path.getmtime, paths))
 
             if evoked_mtime > max(raw_mtime, bads_mtime, rej_mtime):
                 return
