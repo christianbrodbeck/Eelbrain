@@ -2018,8 +2018,6 @@ class _ClusterDist:
         if all_adjacent:
             nad_ax = 0
             connectivity = None
-            connectivity_src = None
-            connectivity_dst = None
             flat_shape = None
         else:
             if sum(adjacent) < len(adjacent) - 1:
@@ -2369,7 +2367,7 @@ class _ClusterDist:
             else:
                 info.append("%i clusters" % self.n_clusters)
 
-        if self.N:
+        if self.n_clusters and self.N:
             info.append("p >= %.3f" % self.probability_map.min())
 
         return info
