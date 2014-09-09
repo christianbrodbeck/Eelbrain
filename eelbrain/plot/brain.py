@@ -57,9 +57,10 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     src : NDVar, dims = ([case,] source, [time])
         NDVar with SourceSpace dimension. If stc contains a case dimension,
         the average across cases is taken.
-    fmin, fmax : scalar
-        Start- and endpoint for the color gradient. Values between -fmin
-        and fmin are transparent.
+    fmin, fmax : scalar >= 0
+        Start- and end-point for the color gradient for positive values. The
+        gradient for negative values goes from -fmin to -fmax. Values between
+        -fmin and fmin are transparent.
     fmid : None | scalar
         Midpoint for the color gradient. If fmid is None (default) it is set
         half way between fmin and fmax.
@@ -376,6 +377,10 @@ def _dspm_lut(fmin, fmid, fmax):
     """
     if not (fmin < fmid < fmax):
         raise ValueError("Invalid colormap, we need fmin < fmid < fmax")
+    elif fmin < 0:
+        msg = ("The dSPM color gradient is symmetric around 0, fmin needs to "
+               "be > 0.")
+        raise ValueError(msg)
 
     n = 256
     lut = np.zeros((n, 4), dtype=np.uint8)
