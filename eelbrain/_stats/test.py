@@ -195,7 +195,7 @@ def star(p_list, out=str, levels=True, trend=False, corr='Hochberg',
         elif fmtxt.isstr(trend):
             levels[.1] = trend
     elif trend:
-        raise AssertionError("'trend' kwarg only meaningful when levels==True")
+        raise AssertionError("'trend' kwarg only meaningful when levels is True")
 
     a_levels = sorted(levels.keys(), reverse=True)
     symbols = [''] + [levels[p] for p in a_levels]
@@ -208,10 +208,10 @@ def star(p_list, out=str, levels=True, trend=False, corr='Hochberg',
         p_list = [p_list]
 
     N = len(p_list)
-    p_list = np.asarray(p_list)
     nstars = np.zeros(N, dtype=int)
     if corr:
         p_list = mcp_adjust(p_list, corr)
+    p_list = np.asarray(p_list)
     for a in a_levels:
         nstars += (p_list <= a)
 
