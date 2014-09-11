@@ -78,6 +78,8 @@ class App(wx.App):
         self.Bind(wx.EVT_MENU, self.OnSetVLim, id=ID.SET_VLIM)
         self.Bind(wx.EVT_MENU, self.OnTogglePlotRange, id=ID.PLOT_RANGE)
         self.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
+        if wx.__version__ < '3':
+            self.Bind(wx.EVT_MENU, self.LegacyOnQuit, id=wx.ID_EXIT)
 
         # bind update UI
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIBackward, id=wx.ID_BACKWARD)
@@ -277,6 +279,9 @@ class App(wx.App):
             frame.OnUpdateUIUndo(event)
         else:
             event.Enable(False)
+
+    def LegacyOnQuit(self, event):
+        self.ExitMainLoop()
 
 
 def get_app():
