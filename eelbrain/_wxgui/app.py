@@ -281,11 +281,9 @@ class App(wx.App):
 
 def get_app():
     app = wx.GetApp()
-    if app is None:
-        logger.debug("No wx.App found, initializing Eelbrain App")
+    if app is None or not isinstance(app, App):
+        logger.debug("Initializing Eelbrain App")
         app = App()
-    elif not isinstance(app, App):
-        logger.debug("Non Eelbrain wx.App found")
     return app
 
 
