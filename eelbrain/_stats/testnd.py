@@ -50,7 +50,7 @@ __test__ = False
 multiprocessing = 1
 
 
-class _TestResult(object):
+class _Result(object):
     _state_common = ('Y', 'match', 'sub', 'samples', 'name', 'pmin', '_cdist')
     _state_specific = ()
 
@@ -175,7 +175,7 @@ class _TestResult(object):
         return self._cdist.compute_probability_map(**sub)
 
 
-class t_contrast_rel(_TestResult):
+class t_contrast_rel(_Result):
 
     _state_specific = ('X', 'contrast', 't')
 
@@ -523,7 +523,7 @@ def _t_contrast_rel(item, data, buff=None, out=None):
     return tmap
 
 
-class corr(_TestResult):
+class corr(_Result):
     """Correlation
 
     Attributes
@@ -665,7 +665,7 @@ class corr(_TestResult):
         self._expand_state()
 
     def _expand_state(self):
-        _TestResult._expand_state(self)
+        _Result._expand_state(self)
 
         r = self.r
 
@@ -739,7 +739,7 @@ def _rtest_r(p, df):
     return r
 
 
-class ttest_1samp(_TestResult):
+class ttest_1samp(_Result):
     """Element-wise one sample t-test
 
     Attributes
@@ -874,7 +874,7 @@ class ttest_1samp(_TestResult):
         self._expand_state()
 
     def _expand_state(self):
-        _TestResult._expand_state(self)
+        _Result._expand_state(self)
 
         t = self.t
         pmap = _ttest_p(t.x, self.df, self.tail)
@@ -902,7 +902,7 @@ class ttest_1samp(_TestResult):
         return args
 
 
-class ttest_ind(_TestResult):
+class ttest_ind(_Result):
     """Element-wise independent samples t-test
 
     Attributes
@@ -1036,7 +1036,7 @@ class ttest_ind(_TestResult):
         self._expand_state()
 
     def _expand_state(self):
-        _TestResult._expand_state(self)
+        _Result._expand_state(self)
 
         c1_mean = self.c1_mean
         c0_mean = self.c0_mean
@@ -1076,7 +1076,7 @@ class ttest_ind(_TestResult):
         return args
 
 
-class ttest_rel(_TestResult):
+class ttest_rel(_Result):
     """Element-wise related samples t-test
 
     Attributes
@@ -1227,7 +1227,7 @@ class ttest_rel(_TestResult):
         self._expand_state()
 
     def _expand_state(self):
-        _TestResult._expand_state(self)
+        _Result._expand_state(self)
 
         cdist = self._cdist
         t = self.t
@@ -1410,7 +1410,132 @@ def _ttest_t(p, df, tail=0):
     return t
 
 
-class anova(_TestResult):
+class _MultiEffectResult(_Result):
+
+    def __repr__(self):
+        temp = "<%s %%s>" % self.__class__.__name__
+
+        args = [repr(self.Y), repr(self.X)]
+        if self.sub:
+            args.append(', sub=%r' % self.sub)
+        if self._cdist:
+            cdist = self._cdist[0]
+            args += cdist._repr_test_args(self.pmin)
+            for cdist in self._cdist:
+                effect_args = cdist._repr_clusters()
+                args += ["%r: %s" % (cdist.name, ', '.join(effect_args))]
+
+        out = temp % ', '.join(args)
+        return out
+
+    def _expand_state(self):
+        self.effects = tuple(e.name for e in self._effects)
+
+        # clusters
+        cdists = self._cdist
+        if cdists is not None:
+            self.tfce_maps = [cdist.tfce_map for cdist in cdists]
+            self.probability_maps = [cdist.probability_map for cdist in cdists]
+
+    def compute_probability_map(self, effect=0, **sub):
+        """Compute a probability map
+
+        Parameters
+        ----------
+        effect : int | str
+            Index or name of the effect from which to use the parameter map.
+
+        Returns
+        -------
+        probability : NDVar
+            Map of p-values.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        elif isinstance(effect, basestring):
+            effect = self.effects.index(effect)
+        return self._cdist[effect].compute_probability_map(**sub)
+
+    def masked_parameter_map(self, effect=0, pmin=0.05, **sub):
+        """Create a copy of the parameter map masked by significance
+
+        Parameters
+        ----------
+        effect : int | str
+            Index or name of the effect from which to use the parameter map.
+        pmin : None | scalar
+            Threshold p-value for masking (default 0.05). For threshold-based
+            cluster tests, pmin=None includes all clusters regardless of their
+            p-value.
+
+        Returns
+        -------
+        masked_map : NDVar
+            NDVar with data from the original parameter map wherever p <= pmin
+            and 0 everywhere else.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        elif isinstance(effect, basestring):
+            effect = self.effects.index(effect)
+        return self._cdist[effect].masked_parameter_map(pmin, **sub)
+
+    def _clusters(self, pmin=None, maps=False, **sub):
+        """Find significant regions in a TFCE distribution
+
+        Parameters
+        ----------
+        pmin : None | scalar, 1 >= p  >= 0
+            Threshold p-value for clusters (for thresholded cluster tests the
+            default is 1, for others 0.05).
+        maps : bool
+            Include in the output a map of every cluster (can be memory
+            intensive if there are large statistical maps and/or many
+            clusters; default False).
+
+        Returns
+        -------
+        ds : Dataset
+            Dataset with information about the clusters.
+        """
+        if self._cdist is None:
+            err = ("Test results have no clustering (set samples to an int "
+                   " >= 0 to find clusters")
+            raise RuntimeError(err)
+        dss = []
+        info = {}
+        for cdist in self._cdist:
+            ds = cdist.clusters(pmin, maps, **sub)
+            ds[:, 'effect'] = cdist.name
+            if 'clusters' in ds.info:
+                info['%s clusters' % cdist.name] = ds.info.pop('clusters')
+            dss.append(ds)
+        out = combine(dss)
+        out.info.update(info)
+        return out
+
+    def find_peaks(self):
+        """Find peaks in a TFCE distribution
+
+        Returns
+        -------
+        ds : Dataset
+            Dataset with information about the peaks.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        dss = []
+        for cdist in self._cdist:
+            ds = cdist.find_peaks()
+            ds[:, 'effect'] = cdist.name
+            dss.append(ds)
+        return combine(dss)
+
+
+class anova(_MultiEffectResult):
     """Element-wise ANOVA
 
     Attributes
@@ -1549,26 +1674,24 @@ class anova(_TestResult):
         self._expand_state()
 
     def _expand_state(self):
-        cdists = self._cdist
         # backwards compatibility
         if hasattr(self, 'effects'):
             self._effects = self.effects
-        self.effects = tuple(e.name for e in self._effects)
+
+        _MultiEffectResult._expand_state(self)
+
+        # backwards compatibility
         if hasattr(self, 'df_den'):
             df_den_temp = {e.name: df for e, df in self.df_den.iteritems()}
             del self.df_den
             self._dfs_denom = tuple(df_den_temp[e] for e in self.effects)
 
-        # clusters
-        if cdists is not None:
-            self.tfce_maps = [cdist.tfce_map for cdist in cdists]
-            self.probability_maps = [cdist.probability_map for cdist in cdists]
-
         # f-maps with clusters
         pmin = self.pmin or 0.05
         if self.samples:
             f_and_clusters = []
-            for e, fmap, df_den, cdist in izip(self._effects, self.f, self._dfs_denom, cdists):
+            for e, fmap, df_den, cdist in izip(self._effects, self.f,
+                                               self._dfs_denom, self._cdist):
                 # create f-map with cluster threshold
                 f0 = ftest_f(pmin, e.df, df_den)
                 info = _cs.stat_info('f', f0)
@@ -1593,119 +1716,6 @@ class anova(_TestResult):
             self._default_plot_obj = f_and_clusters
         else:
             self._default_plot_obj = self.f
-
-    def __repr__(self):
-        temp = "<%s %%s>" % self.__class__.__name__
-
-        args = [repr(self.Y), repr(self.X)]
-        if self.sub:
-            args.append(', sub=%r' % self.sub)
-        if self._cdist:
-            cdist = self._cdist[0]
-            args += cdist._repr_test_args(self.pmin)
-            for cdist in self._cdist:
-                effect_args = cdist._repr_clusters()
-                args += ["%r: %s" % (cdist.name, ', '.join(effect_args))]
-
-        out = temp % ', '.join(args)
-        return out
-
-    def compute_probability_map(self, effect=0, **sub):
-        """Compute a probability map
-
-        Parameters
-        ----------
-        effect : int | str
-            Index or name of the effect from which to use the parameter map.
-
-        Returns
-        -------
-        probability : NDVar
-            Map of p-values.
-        """
-        if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
-            raise RuntimeError(err)
-        elif isinstance(effect, basestring):
-            effect = self.effects.index(effect)
-        return self._cdist[effect].compute_probability_map(**sub)
-
-    def masked_parameter_map(self, effect=0, pmin=0.05, **sub):
-        """Create a copy of the parameter map masked by significance
-
-        Parameters
-        ----------
-        effect : int | str
-            Index or name of the effect from which to use the parameter map.
-        pmin : None | scalar
-            Threshold p-value for masking (default 0.05). For threshold-based
-            cluster tests, pmin=None includes all clusters regardless of their
-            p-value.
-
-        Returns
-        -------
-        masked_map : NDVar
-            NDVar with data from the original parameter map wherever p <= pmin
-            and 0 everywhere else.
-        """
-        if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
-            raise RuntimeError(err)
-        elif isinstance(effect, basestring):
-            effect = self.effects.index(effect)
-        return self._cdist[effect].masked_parameter_map(pmin, **sub)
-
-    def _clusters(self, pmin=None, maps=False, **sub):
-        """Find significant regions in a TFCE distribution
-
-        Parameters
-        ----------
-        pmin : None | scalar, 1 >= p  >= 0
-            Threshold p-value for clusters (for thresholded cluster tests the
-            default is 1, for others 0.05).
-        maps : bool
-            Include in the output a map of every cluster (can be memory
-            intensive if there are large statistical maps and/or many
-            clusters; default False).
-
-        Returns
-        -------
-        ds : Dataset
-            Dataset with information about the clusters.
-        """
-        if self._cdist is None:
-            err = ("Test results have no clustering (set samples to an int "
-                   " >= 0 to find clusters")
-            raise RuntimeError(err)
-        dss = []
-        info = {}
-        for cdist in self._cdist:
-            ds = cdist.clusters(pmin, maps, **sub)
-            ds[:, 'effect'] = cdist.name
-            if 'clusters' in ds.info:
-                info['%s clusters' % cdist.name] = ds.info.pop('clusters')
-            dss.append(ds)
-        out = combine(dss)
-        out.info.update(info)
-        return out
-
-    def find_peaks(self):
-        """Find peaks in a TFCE distribution
-
-        Returns
-        -------
-        ds : Dataset
-            Dataset with information about the peaks.
-        """
-        if self._cdist is None:
-            err = "Method only applies to results with samples > 0"
-            raise RuntimeError(err)
-        dss = []
-        for cdist in self._cdist:
-            ds = cdist.find_peaks()
-            ds[:, 'effect'] = cdist.name
-            dss.append(ds)
-        return combine(dss)
 
 
 def _label_clusters(pmap, out, bin_buff, int_buff, threshold, tail, struct,
