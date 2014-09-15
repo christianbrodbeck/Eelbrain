@@ -62,7 +62,9 @@ kwargs = dict(
                                 'mne >= 0.8'],
               extras_require={'plot.brain': ['mayavi >= 4.3.1',
                                              'nibabel >= 1.3',
-                                             'pysurfer >= 0.5']},
+#                                              'pysurfer >= 0.5'
+# PySurfer break the setup because it raises an error when nibabel is not installed
+                                             ]},
               include_dirs=[np.get_include()],
               ext_modules=ext,
               )

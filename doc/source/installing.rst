@@ -19,7 +19,11 @@ And it can be updated similarly::
     $ easy_install -U eelbrain[plot.brain]
 
 The optional ``[plot.brain]`` flag installs optional dependencies for plotting
-brain data with pysurfer.
+brain data with pysurfer. Since PySurfer itself does not yet support automatic
+dependency management, it has to be installed separately::
+
+    $ easy_install -U pysurfer
+
 
 .. note:: 
     Since version 0.3 Eelbrain comes with a C extension. For Intel Macs, 
