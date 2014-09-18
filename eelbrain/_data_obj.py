@@ -4175,6 +4175,7 @@ class Dataset(collections.OrderedDict):
             raise KeyError("No item named %r" % old)
         if new in self:
             raise ValueError("Dataset already has variable named %r" % new)
+        assert_is_legal_dataset_key(new)
 
         # update map
         node = self._OrderedDict__map.pop(old)
