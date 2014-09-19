@@ -1110,7 +1110,7 @@ class Var(object):
     """
     _stype_ = "var"
     ndim = 1
-    def __init__(self, x, name=None):
+    def __init__(self, x, name=None, repeat=1, tile=1):
         """Represents a univariate variable.
 
         Parameters
@@ -1120,6 +1120,10 @@ class Var(object):
             are flattened as long as only 1 dimension is longer than 1.
         name : str | None
             Name of the variable
+        repeat : int
+            Repeat each element in ``x`` ``repeat`` many times.
+        tile : int
+            Repeat ``x`` as a whole ``tile`` many times.
         """
         x = np.asarray(x)
         if x.ndim > 1:
@@ -1129,6 +1133,13 @@ class Var(object):
                 err = ("X needs to be one-dimensional. Use NDVar class for "
                        "data with more than one dimension.")
                 raise ValueError(err)
+
+        if repeat > 1:
+            x = np.repeat(x, repeat)
+
+        if tile > 1:
+            x = np.tile(x, tile)
+
         self.__setstate__((x, name))
 
     def __setstate__(self, state):
