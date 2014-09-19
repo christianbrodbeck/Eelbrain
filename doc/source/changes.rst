@@ -7,6 +7,8 @@ New in 0.9
 ----------
 
 * :class:`Factor` API change:  The ``rep`` argument was renamed to ``repeat``.
+* :class:`~experiment.MneExperiment`: subject name patterns and eog_sns are
+  now handled automatically.
 
 
 New in 0.8

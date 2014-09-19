@@ -271,9 +271,9 @@ class MneExperiment(FileTree):
     # Rejection
     # =========
     # eog_sns: The sensors to plot separately in the rejection GUI. The default
-    # is the two MEG sensors closest to the eyes for Abu Dhabi KIT data. For NY
-    # KIT data set _eog_sns = ['MEG 143', 'MEG 151']
-    _eog_sns = ['MEG 087', 'MEG 130']
+    # is the two MEG sensors closest to the eyes.
+    _eog_sns = {'KIT-NY': ['MEG 143', 'MEG 151'],
+                'KIT-AD': ['MEG 087', 'MEG 130']}
     #
     # epoch_rejection dict:
     #
@@ -322,15 +322,18 @@ class MneExperiment(FileTree):
     # r.g. {'ironcross': {'base': 'adj', 'rej': 'man'}}
     projs = {}
 
-    # Pattern for subject names
-    subject_re = re.compile('R\d{4}$')
+    # Pattern for subject names. The first group is used to determine what
+    # MEG-system the data was recorded from
+    _subject_re = '(R|A|AD|QP)(\d{3,})$'
+    _meg_systems = {'R': 'KIT-NY',
+                    'A': 'KIT-AD', 'AD': 'KIT-AD', 'QP': 'KIT-AD'}
 
     # state variables that are always shown in self.__repr__():
     _repr_kwargs = ('subject', 'rej')
 
     # Where to search for subjects (defined as a template name). If the
     # experiment searches for subjects automatically, it scans this directory
-    # for subfolders matching subject_re.
+    # for subfolders matching _subject_re.
     _subject_loc = 'meg-sdir'
 
     # Custom parcellations. Set to disable checking on set().
@@ -386,6 +389,7 @@ class MneExperiment(FileTree):
             containing the 'meg' and 'mri' directories)
         """
         # create attributes (overwrite class attributes)
+        self._subject_re = re.compile(self._subject_re)
         self.groups = self.groups.copy()
         self.projs = self.projs.copy()
         self.tests = self.tests.copy()
@@ -2611,8 +2615,13 @@ class MneExperiment(FileTree):
                               decim=rej_args.get('decim', None))
         path = self.get('rej-file', mkdir=True)
 
-        gui.select_epochs(ds, data='meg', path=path, vlim=2e-12,
-                          mark=self._eog_sns, **kwargs)
+        subject = self.get('subject')
+        subject_prefix = self._subject_re.match(subject).group(1)
+        meg_system = self._meg_systems[subject_prefix]
+        eog_sns = self._eog_sns[meg_system]
+
+        gui.select_epochs(ds, data='meg', path=path, vlim=2e-12, mark=eog_sns,
+                          **kwargs)
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
                     tstop=None, samples=1000, data='src',
@@ -3451,7 +3460,7 @@ class MneExperiment(FileTree):
         if os.path.exists(sub_dir):
             for dirname in os.listdir(sub_dir):
                 isdir = os.path.isdir(os.path.join(sub_dir, dirname))
-                if isdir and self.subject_re.match(dirname):
+                if isdir and self._subject_re.match(dirname):
                     subjects.add(dirname)
         else:
             err = ("Subjects directory not found: %r. Initialize with "
