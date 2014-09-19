@@ -29,7 +29,7 @@ Y = NDVar(x, dims=('case', sensor, time), name='Y', info=info)
 
 
 # To describe the cases ('case' dimension), create a condition and a subject Factor
-A = Factor(['a0', 'a1'], rep=15, name='A')
+A = Factor(['a0', 'a1'], repeat=15, name='A')
 subject = Factor(xrange(15), tile=2, random=True, name='subject')
 
 # uncorrected related measures t-test

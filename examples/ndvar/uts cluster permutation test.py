@@ -16,8 +16,8 @@ y[:30, 50:80] += np.hanning(30) * 1
 
 
 Y = NDVar(y, dims=('case', T), name='Y')
-A = Factor(['a0', 'a1'], rep=30, name='A')
-B = Factor(['b0', 'b1'], rep=15, tile=2, name='B')
+A = Factor(['a0', 'a1'], repeat=30, name='A')
+B = Factor(['b0', 'b1'], repeat=15, tile=2, name='B')
 
 
 # fixed effects model

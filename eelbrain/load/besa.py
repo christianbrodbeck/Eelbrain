@@ -179,7 +179,7 @@ def dat_set_paths(path, subjects=[], conditions=[]):
     info = {'path': path}
     ds = Dataset(info=info)
     ds['subject'] = Factor(subjects, tile=len(conditions), random=True)
-    ds['condition'] = Factor(conditions, rep=len(subjects))
+    ds['condition'] = Factor(conditions, repeat=len(subjects))
     ds['path'] = paths
     return ds
 
@@ -285,7 +285,7 @@ def roi_results(path=None, varname=None):
     ds['meg'] = NDVar(x, dims=('case', time))
 
     conds = [c[0] for c in res['conditions'][0][0][0]]
-    ds['condition'] = Factor(conds, rep=n_s)
+    ds['condition'] = Factor(conds, repeat=n_s)
 
     ds['subject'] = Factor(map(str, xrange(n_s)), tile=n_c, random=True)
 
@@ -357,7 +357,7 @@ def mrat_data(path=None, tstart=-0.1, roi=None, varname=None):
     time = UTS(tstart, .001, n_samples)
     ds['meg'] = NDVar(x, dims=('case', time))
 
-    ds['condition'] = Factor(conds, rep=n_s)
+    ds['condition'] = Factor(conds, repeat=n_s)
 
     ds['subject'] = Factor(map(str, xrange(n_s)), tile=len(conds), random=True)
 

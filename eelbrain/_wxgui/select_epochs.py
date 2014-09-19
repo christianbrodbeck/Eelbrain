@@ -95,7 +95,7 @@ class Document(object):
         if tag in ds:
             tag = ds[tag]
         else:
-            tag = Factor([''], rep=n, name=tag)
+            tag = Factor([''], repeat=n, name=tag)
             ds.add(tag)
 
         if not isinstance(trigger, basestring):
@@ -251,7 +251,7 @@ class Document(object):
         if 'rej_tag' in ds:
             tag = ds['rej_tag']
         else:
-            tag = Factor([''], rep=self.n_epochs, name='rej_tag')
+            tag = Factor([''], repeat=self.n_epochs, name='rej_tag')
 
         return accept, tag
 

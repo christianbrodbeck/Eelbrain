@@ -493,7 +493,7 @@ def _empty_like(obj, n=None, name=None):
     n = n or len(obj)
     name = name or obj.name
     if isfactor(obj):
-        return Factor([''], rep=n, name=name)
+        return Factor([''], repeat=n, name=name)
     elif isvar(obj):
         return Var(np.empty(n) * np.NaN, name=name)
     elif isndvar(obj):
@@ -1751,7 +1751,8 @@ class Factor(_Effect):
 
     """
     _stype_ = "factor"
-    def __init__(self, x, name=None, random=False, rep=1, tile=1, labels={}):
+    def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={},
+                 rep=None):
         """Container for categorial data.
 
         Parameters
@@ -1762,10 +1763,10 @@ class Factor(_Effect):
             Name of the Factor.
         random : bool
             Treat Factor as random factor (for ANOVA; default is False).
-        rep : int
-            Repeat each element in ``x`` ``rep`` many times.
+        repeat : int
+            Repeat each element in ``x`` ``repeat`` many times.
         tile : int
-            Repeat x as a whole ``tile`` many times.
+            Repeat ``x`` as a whole ``tile`` many times.
         labels : dict or None
             If provided, these labels are used to replace values in x when
             constructing the labels dictionary. All labels for values of
@@ -1792,10 +1793,16 @@ class Factor(_Effect):
             Factor(['i', 'i', 'i', 'o', 'o', 'o'])
 
         """
+        if rep is not None:
+            if repeat != 1:
+                raise TypeError("Specified rep and repeat")
+            repeat = rep
+            warn("The rep argument has been renamed to repeat", DeprecationWarning)
+
         state = {'name': name, 'random': random}
         labels_ = state['labels'] = {}  # {code -> label}
 
-        if rep == 0 or tile == 0:
+        if repeat == 0 or tile == 0:
             state['x'] = []
             self.__setstate__(state)
             return
@@ -1822,8 +1829,8 @@ class Factor(_Effect):
 
             x_[i] = code
 
-        if rep > 1:
-            x_ = x_.repeat(rep)
+        if repeat > 1:
+            x_ = x_.repeat(repeat)
 
         if tile > 1:
             x_ = np.tile(x_, tile)
@@ -2098,11 +2105,17 @@ class Factor(_Effect):
         out = Factor(x, name, self.random, labels=self._labels)
         return out
 
-    def copy(self, name=True, rep=1, tile=1):
+    def copy(self, name=True, repeat=1, tile=1, rep=None):
         "returns a deep copy of itself"
+        if rep is not None:
+            if repeat != 1:
+                raise TypeError("Specified rep and repeat")
+            repeat = rep
+            warn("The rep argument has been renamed to repeat", DeprecationWarning)
+
         if name is True:
             name = self.name
-        return Factor(self.x.copy(), name, self.random, rep, tile, self._labels)
+        return Factor(self.x.copy(), name, self.random, repeat, tile, self._labels)
 
     @property
     def df(self):
@@ -3673,7 +3686,7 @@ class Dataset(collections.OrderedDict):
             elif isinstance(idx, slice):
                 if idx.start is None and idx.stop is None:
                     if isinstance(item, basestring):
-                        self[key] = Factor([item], rep=self.n_cases)
+                        self[key] = Factor([item], repeat=self.n_cases)
                     else:
                         self[key] = Var([item] * self.n_cases)
                 else:
@@ -6508,7 +6521,7 @@ class SourceSpace(Dimension):
         elif isinstance(parc, basestring):
             labels = mne.read_labels_from_annot(self.subject, parc,
                                                 subjects_dir=self.subjects_dir)
-            parc_ = Factor(['unknown'], rep=len(self), name=parc)
+            parc_ = Factor(['unknown'], repeat=len(self), name=parc)
             for label in labels:
                 index = self.dimindex(label)
                 parc_[index] = label.name

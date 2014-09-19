@@ -3,6 +3,12 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.9
+----------
+
+* :class:`Factor` API change:  The ``rep`` argument was renamed to ``repeat``.
+
+
 New in 0.8
 ----------
 

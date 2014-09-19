@@ -24,7 +24,7 @@ def test_boxplot():
     # many pairwise significances
     ds['fltvar'][ds.eval("A%B==('a1','b1')")] += 1
     ds['fltvar'][ds.eval("A%B==('a2','b2')")] -= 1
-    ds['C'] = Factor('qw', rep=10, tile=4)
+    ds['C'] = Factor('qw', repeat=10, tile=4)
     plot.uv.Boxplot('fltvar', 'A%B%C', ds=ds)
 
 

@@ -240,7 +240,7 @@ def random_factor(values, n=None, name=None, rand=True, balance=None, urn=None,
         else:
             if sub is not None:
                 f_sub = f
-                f = Factor([''], rep=n_tgt, name=name)
+                f = Factor([''], repeat=n_tgt, name=name)
                 f[sub] = f_sub
             return f
 

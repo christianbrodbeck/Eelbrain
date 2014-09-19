@@ -1343,7 +1343,7 @@ class MneExperiment(FileTree):
                                       None, inv, subjects_dir, frequencies,
                                       n_cycles=3,
                                       **self._params['apply_inv_kw'])
-            ds['subject'] = Factor([subject], rep=ds.n_cases, random=True)
+            ds['subject'] = Factor([subject], repeat=ds.n_cases, random=True)
         return ds
 
     def load_evoked_stc(self, subject=None, sns_baseline=(None, 0),

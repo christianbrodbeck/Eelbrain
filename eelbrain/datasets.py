@@ -160,8 +160,8 @@ def get_rand(utsnd=False, seed=0):
     ds = Dataset()
 
     # add a model
-    ds['A'] = Factor(['a0', 'a1'], rep=30)
-    ds['B'] = Factor(['b0', 'b1'], rep=15, tile=2)
+    ds['A'] = Factor(['a0', 'a1'], repeat=30)
+    ds['B'] = Factor(['b0', 'b1'], repeat=15, tile=2)
     ds['rm'] = Factor(('R%.2i' % i for i in xrange(15)), tile=4, random=True)
     ds['ind'] = Factor(('R%.2i' % i for i in xrange(60)), random=True)
 

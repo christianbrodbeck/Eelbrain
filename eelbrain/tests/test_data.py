@@ -177,7 +177,7 @@ def test_align():
 def test_celltable():
     "Test the Celltable class."
     ds = datasets.get_rand()
-    ds['cat'] = Factor('abcd', rep=15)
+    ds['cat'] = Factor('abcd', repeat=15)
 
     ct = Celltable('Y', 'A', ds=ds)
     eq_(ct.n_cases, 60)
@@ -230,16 +230,16 @@ def test_celltable():
 
     # test rm sorting
     ds = Dataset()
-    ds['rm'] = Factor('abc', rep=4)
+    ds['rm'] = Factor('abc', repeat=4)
     ds['Y'] = Var(np.arange(3.).repeat(4))
-    ds['X'] = Factor('ab', rep=2, tile=3)
+    ds['X'] = Factor('ab', repeat=2, tile=3)
     idx = np.arange(12)
     np.random.shuffle(idx)
     ds = ds[idx]
     ct = Celltable('Y', 'X', 'rm', ds=ds)
     assert_array_equal(ct.match, Factor('abc', tile=2))
     assert_array_equal(ct.Y, np.tile(np.arange(3.), 2))
-    assert_array_equal(ct.X, Factor('ab', rep=3))
+    assert_array_equal(ct.X, Factor('ab', repeat=3))
 
 
 def test_combine():
