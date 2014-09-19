@@ -514,7 +514,7 @@ def fix_vlim_for_cmap(vmin, vmax, cmap):
     return vmin, vmax
 
 
-def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
+def unpack_epochs_arg(Y, ndim, Xax=None, ds=None):
     """Unpack the first argument to top-level NDVar plotting functions
 
     Parameters
@@ -528,22 +528,14 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
         the first level, i.e., it assumes that Y's first dimension is cases.
     ds : None | Dataset
         Dataset containing data objects which are provided as str.
-    levels : int
-        Current levels of nesting (0 is the lowest level where the output is a
-        list of layers).
 
     Returns
     -------
-    data : list of list of NDVar
+    axes_data : list of list of NDVar
         The processed data to plot.
 
     Notes
     -----
-    low level functions (``_plt_...``) work with two levels:
-
-     - list of lists axes
-     - list of layers
-
     Ndvar plotting functions above 1-d UTS level should support the following
     API:
 
@@ -552,10 +544,9 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
      - NDVar and Xax argument: summary for each  ``plot(meg, Xax=subject)
      - nested list of layers (e.g., ttest results: [c1, c0, [c1-c0, p]])
     """
+    # get proper Y
     if hasattr(Y, '_default_plot_obj'):
         Y = Y._default_plot_obj
-    elif hasattr(Y, 'all'):
-        Y = Y.all
     if not isinstance(Y, (tuple, list)):
         Y = asndvar(Y, ds=ds)
 
@@ -564,6 +555,7 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
                "a single NDVar (got a %s)." % Y.__class__.__name__)
         raise TypeError(err)
 
+    # create list of plots
     if isinstance(Xax, str) and Xax.startswith('.'):
         dimname = Xax[1:]
         if dimname == 'case':
@@ -581,40 +573,42 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None, levels=1):
         name = dimname.capitalize() + ' = %s'
         if unit:
             name += ' ' + unit
-        Y = [Y.sub(name=name % v, **{dimname: v}) for v in values]
+        axes = [Y.sub(name=name % v, **{dimname: v}) for v in values]
     elif Xax is not None:
         Xax = ascategorial(Xax, ds=ds)
-        Ys = []
+        axes = []
         for cell in Xax.cells:
             v = Y[Xax == cell]
             v.name = cell
-            Ys.append(v)
-        Y = Ys
-    elif not isinstance(Y, (tuple, list)):
-        Y = [Y]
-
-    if levels > 0:
-        return [unpack_epochs_arg(v, ndim, None, ds, levels - 1) for v in Y]
+            axes.append(v)
+    elif isinstance(Y, (tuple, list)):
+        axes = Y
     else:
-        # every value needs to be a NDVar
-        out = []
-        for ndvar in Y:
-            ndvar = asndvar(ndvar, ds=ds)
+        axes = [Y]
 
-            if ndvar.ndim == ndim + 1:
-                if ndvar.has_case:
-                    if len(ndvar) == 1:
-                        ndvar = ndvar.summary(name='{name}')
-                    else:
-                        ndvar = ndvar.summary()
+    return [unpack_ax(ax, ndim, ds) for ax in axes]
 
-            if ndvar.ndim != ndim:
-                err = ("Plot requires ndim=%i; %r ndim==%i" %
-                       (ndim, ndvar, ndvar.ndim))
-                raise DimensionMismatchError(err)
+def unpack_ax(ax, ndim, ds):
+    # returns list of NDVar
+    if isinstance(ax, (tuple, list)):
+        return [_unpack_layer(layer, ndim, ds) for layer in ax]
+    else:
+        return [_unpack_layer(ax, ndim, ds)]
 
-            out.append(ndvar)
-        return out
+def _unpack_layer(y, ndim, ds):
+    # returns NDVar
+    ndvar = asndvar(y, ds=ds)
+
+    if ndvar.ndim == ndim + 1:
+        if ndvar.has_case:
+            ndvar = ndvar.mean('case')
+
+    if ndvar.ndim != ndim:
+        err = ("Plot requires ndim=%i, got %r with ndim=%i" %
+               (ndim, ndvar, ndvar.ndim))
+        raise DimensionMismatchError(err)
+
+    return ndvar
 
 
 def str2tex(txt):
