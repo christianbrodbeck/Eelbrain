@@ -21,7 +21,7 @@ from eelbrain.tests.test_data import assert_dataobj_equal
 def test_anova():
     "Test testnd.anova()"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand(True)
+    ds = datasets.get_uts(True)
 
     testnd.anova('utsnd', 'A*B', ds=ds)
     for samples in (0, 2):
@@ -87,7 +87,7 @@ def test_anova():
 
 def test_anova_incremental():
     "Test testnd.anova() with incremental f-tests"
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
     testnd.anova('uts', 'A*B', ds=ds[3:], pmin=0.05, samples=10)
 
 
@@ -228,7 +228,7 @@ def test_clusterdist():
 def test_corr():
     "Test testnd.corr()"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand(True)
+    ds = datasets.get_uts(True)
 
     # add correlation
     Y = ds['Y']
@@ -258,7 +258,7 @@ def test_corr():
 
 
 def test_t_contrast():
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
 
     # test aux functions
     y = np.arange(9.).reshape((3, 3))
@@ -343,7 +343,7 @@ def test_labeling():
 
 def test_ttest_1samp():
     "Test testnd.ttest_1samp()"
-    ds = datasets.get_rand(True)
+    ds = datasets.get_uts(True)
 
     # no clusters
     res0 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds)
@@ -401,7 +401,7 @@ def test_ttest_1samp():
 
 def test_ttest_ind():
     "Test testnd.ttest_ind()"
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
 
     # basic
     res = testnd.ttest_ind('uts', 'A', 'a1', 'a0', ds=ds)
@@ -424,7 +424,7 @@ def test_ttest_ind():
 
 def test_ttest_rel():
     "Test testnd.ttest_rel()"
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
 
     # basic
     res = testnd.ttest_rel('uts', 'A%B', ('a1', 'b1'), ('a0', 'b0'), 'rm',

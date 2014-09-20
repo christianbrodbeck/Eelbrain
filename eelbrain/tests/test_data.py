@@ -104,7 +104,7 @@ def assert_source_space_equal(src1, src2, msg="SourceSpace Dimension objects "
 
 def test_print():
     "Run the string representation methods"
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
     print ds
     print repr(ds)
     A = ds['A']
@@ -120,7 +120,7 @@ def test_print():
 
 def test_aggregate():
     "Test aggregation methods"
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
 
     # don't handle inconsistencies silently
     assert_raises(ValueError, ds.aggregate, 'A%B')
@@ -176,7 +176,7 @@ def test_align():
 
 def test_celltable():
     "Test the Celltable class."
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
     ds['cat'] = Factor('abcd', repeat=15)
 
     ct = Celltable('Y', 'A', ds=ds)
@@ -244,8 +244,8 @@ def test_celltable():
 
 def test_combine():
     "Test combine()"
-    ds1 = datasets.get_rand()
-    ds2 = datasets.get_rand()
+    ds1 = datasets.get_uts()
+    ds2 = datasets.get_uts()
     ds = combine((ds1, ds2))
     assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:], "Basic combine")
     del ds1['Y']
@@ -257,7 +257,7 @@ def test_combine():
                 "with missing Factor")
 
     # combine NDVar with unequel dimensions
-    ds = datasets.get_rand(utsnd=True)
+    ds = datasets.get_uts(utsnd=True)
     y = ds['utsnd']
     y1 = y.sub(sensor=['0', '1', '2', '3'])
     y2 = y.sub(sensor=['1', '2', '3', '4'])
@@ -482,7 +482,7 @@ def test_isin():
 
 def test_ndvar():
     "Test the NDVar class"
-    ds = datasets.get_rand(utsnd=True)
+    ds = datasets.get_uts(utsnd=True)
     x = ds['utsnd']
 
     # slicing
@@ -506,7 +506,7 @@ def test_ndvar():
 
 def test_ndvar_summary_methods():
     "Test NDVar methods for summarizing data over axes"
-    ds = datasets.get_rand(utsnd=True)
+    ds = datasets.get_uts(utsnd=True)
     x = ds['utsnd']
 
     dim = 'sensor'
@@ -582,7 +582,7 @@ def test_ols():
     from rpy2.robjects import r
 
     # simulate data
-    ds = datasets.get_rand(True)
+    ds = datasets.get_uts(True)
     n_times = len(ds['uts'].time)
     x = np.zeros(n_times)
     x[20:40] = np.hanning(20)
@@ -634,7 +634,7 @@ def test_ols():
 
 def test_io_pickle():
     "Test io by pickling"
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
     ds.info['info'] = "Some very useful information about the Dataset"
     tempdir = tempfile.mkdtemp()
     try:

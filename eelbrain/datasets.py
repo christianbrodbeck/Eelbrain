@@ -139,7 +139,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     return ds
 
 
-def get_rand(utsnd=False, seed=0):
+def get_uts(utsnd=False, seed=0):
     """Create a sample Dataset with 60 cases and random data.
 
     Parameters

@@ -9,7 +9,7 @@ from eelbrain import Factor, datasets, plot, testnd
 def test_stat():
     "test plot.UTSStat plotting function"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
     p = plot.UTSStat('uts', ds=ds)
     p.close()
     p = plot.UTSStat('uts', 'A%B', ds=ds)
@@ -34,7 +34,7 @@ def test_stat():
 def test_uts():
     "test plot.UTS plotting function"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
     p = plot.UTS('uts', ds=ds)
     p.close()
     p = plot.UTS('uts', 'A%B', ds=ds)
@@ -44,7 +44,7 @@ def test_uts():
 def test_clusters():
     "test plot.uts cluster plotting functions"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
 
     A = ds['A']
     B = ds['B']

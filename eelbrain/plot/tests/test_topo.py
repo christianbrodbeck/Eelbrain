@@ -9,7 +9,7 @@ from eelbrain import datasets, plot
 def test_plot_topomap():
     "Test plot.Topomap"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand(utsnd=True)
+    ds = datasets.get_uts(utsnd=True)
     topo = ds.eval('utsnd.summary(time=(0.075, 0.125))')
 
     p = plot.Topomap(topo, ds=ds)
@@ -22,7 +22,7 @@ def test_plot_topomap():
 def test_plot_butterfly():
     "Test plot.TopoButterfly"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand(utsnd=True)
+    ds = datasets.get_uts(utsnd=True)
     p = plot.TopoButterfly('utsnd', ds=ds)
     p.close()
     p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=2)
@@ -37,7 +37,7 @@ def test_plot_butterfly():
 def test_plot_array():
     "Test plot.TopoArray"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand(utsnd=True)
+    ds = datasets.get_uts(utsnd=True)
     p = plot.TopoArray('utsnd', ds=ds)
     p.close()
     p = plot.TopoArray('utsnd', ds=ds, vmax=0.2, w=2)

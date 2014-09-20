@@ -31,7 +31,7 @@ def test_boxplot():
 def test_histogram():
     "Test plot.uv.histogram"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
     plot.uv.Histogram('Y', 'A%B', ds=ds)
     plot.uv.Histogram('Y', 'A%B', match='rm', ds=ds)
     plt.close('all')
@@ -40,7 +40,7 @@ def test_histogram():
 def test_scatterplot():
     "Test plot.uv.corrplot and lot.uv.regplot"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
     ds['cov'] = ds['Y'] + np.random.normal(0, 1, (60,))
 
     plot.uv.Correlation('Y', 'cov', ds=ds)
@@ -55,7 +55,7 @@ def test_scatterplot():
 def test_timeplot():
     "Test plot.uv.timeplot"
     plot.configure_backend(False, False)
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
     ds['seq'] = Var(np.arange(2).repeat(30))
     plot.uv.Timeplot('Y', 'B', 'seq', match='rm', ds=ds)
     plt.close('all')

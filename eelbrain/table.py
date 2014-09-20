@@ -204,7 +204,7 @@ def stats(Y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
 
     Examples
     --------
-    >>> ds = datasets.get_rand()
+    >>> ds = datasets.get_uts()
     >>> table.stats('Y', 'A', 'B', ds=ds)
                 B
          -----------------

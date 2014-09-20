@@ -26,7 +26,7 @@ def test_difference():
 
 def test_frequencies():
     "test table.frequencies"
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
     A = ds['A']
     B = ds['B']
     Cat = ds['YCat']

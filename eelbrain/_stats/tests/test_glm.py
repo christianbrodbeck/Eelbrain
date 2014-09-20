@@ -181,7 +181,7 @@ def test_anova_r_sleep():
 
 def test_lmfitter():
     "Test the _nd_anova class"
-    ds = datasets.get_rand()
+    ds = datasets.get_uts()
 
     # independent, residuals vs. Hopkins
     y = ds['uts'].x
