@@ -748,7 +748,7 @@ class _EelFigure(object):
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
-            frame = CanvasFrame(None, title=title, _EelFigure=self, **fig_kwa)
+            frame = CanvasFrame(None, title, eelfigure=self, **fig_kwa)
         else:
             frame = mpl_figure(**fig_kwa)
 
