@@ -491,7 +491,8 @@ class Butterfly(_base._EelFigure):
     def __init__(self, epochs, Xax=None, sensors=None, title=None,
                  axtitle='{name}', xlabel=True, ylabel=True, color=None,
                  ds=None, **layout):
-        """
+        """Butterfly plot for NDVars
+
         Parameters
         ----------
         epochs : (list of) NDVar
@@ -502,9 +503,16 @@ class Butterfly(_base._EelFigure):
             sensors to plot (``None`` = all)
         title : None | string
             Figure title.
+        axtitle : str | None
+            Title to plot for axes. Default is the NDVar names.
+        xlabel, ylabel : bool | string
+            Labels for x and y axes. If True, labels are automatically chosen.
         color : matplotlib color
             default (``None``): use segment color if available, otherwise
             black; ``True``: alternate colors (mpl default)
+        ds : None | Dataset
+            If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+            as strings.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         super(Butterfly, self).__init__('Butterfly Plot', len(epochs), layout,
