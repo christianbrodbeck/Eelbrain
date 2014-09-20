@@ -123,10 +123,6 @@ class UTSStat(_base._EelFigure):
                 N = len(cells)
                 colors = {cell: cm(i / N) for i, cell in enumerate(cells)}
 
-        kwargs = dict(dev=dev, main=main, ylabel=ylabel, xdim=xdim,
-                      invy=invy, bottom=bottom, top=top, hline=hline,
-                      xlabel=xlabel, xlim=xlim, frame=frame)
-
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
         super(UTSStat, self).__init__("UTSStat Plot", nax, layout,
@@ -140,22 +136,29 @@ class UTSStat(_base._EelFigure):
                 title_ = axtitle.format(name=ct.Y.name)
             else:
                 title_ = axtitle
-            p = _ax_stat(ax, ct, colors, title=title_, **kwargs)
+            p = _ax_stat(ax, ct, colors, main, dev, title, ylabel, xdim, xlim,
+                         xlabel, invy, bottom, top, hline, frame)
             self._plots.append(p)
             self._legend_handles.update(p.legend_handles)
             if len(ct) < 2:
                 legend = False
         else:
             for i, ax, cell in zip(xrange(nax), self._axes, ct.cells):
-                kwargs['xlabel'] = xlabel if i == len(ct) - 1 else False
+                if i == len(ct) - 1:
+                    xlabel_ = xlabel
+                else:
+                    xlabel_ = False
+
                 if X is not None:
                     X_ = Xct.data[cell]
+
                 if match is not None:
                     match = matchct.data[cell]
-                cct = Celltable(ct.data[cell], X_, match=match,
-                                coercion=asndvar)
+
+                ct_ = Celltable(ct.data[cell], X_, match=match, coercion=asndvar)
                 title_ = axtitle.format(name=cellname(cell))
-                p = _ax_stat(ax, cct, colors, title=title_, **kwargs)
+                p = _ax_stat(ax, ct_, colors, main, dev, title_, ylabel, xdim,
+                             xlim, xlabel_, invy, bottom, top, hline, frame)
                 self._plots.append(p)
                 self._legend_handles.update(p.legend_handles)
 
@@ -352,10 +355,9 @@ class UTS(_base._EelFigure):
 
 
 class _ax_stat:
-    def __init__(self, ax, ct, colors, dev=scipy.stats.sem,
-                 main=np.mean, title=True, ylabel=True, xdim='time', xlim=None,
-                 xlabel=True, invy=False, bottom=None, top=None, hline=None,
-                 clusters=None, pmax=0.05, ptrend=0.1, frame=True):
+    def __init__(self, ax, ct, colors, main, dev, title, ylabel, xdim, xlim,
+                 xlabel, invy, bottom, top, hline, frame, clusters=None,
+                 pmax=0.05, ptrend=0.1):
         ax.x_fmt = "t = %.3f s"
 
         # stat plots
