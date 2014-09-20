@@ -248,14 +248,14 @@ class TopoButterfly(_base._EelFigure):
             self._xvalues = np.union1d(self._xvalues, p._xvalues)
 
             # find and print epoch title
-            title = True
             for l in layers:
-                if title is True:
-                    title = getattr(l, 'name', True)
-            if isinstance(title, str):
+                if l.name is None:
+                    continue
                 y_text = bottom + y_sep / 2
-                ax1.text(x_text, y_text, title, transform=self.figure.transFigure,
+                ax1.text(x_text, y_text, l.name,
+                         transform=self.figure.transFigure,
                          ha='center', va='center', rotation='vertical')
+                break
 
         # setup callback
         self.canvas.mpl_connect('button_press_event', self._on_click)
