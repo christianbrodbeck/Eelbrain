@@ -23,11 +23,22 @@ def test_stat():
     sds = ds.sub("B == 'b0'")
     res = testnd.ttest_rel('uts', 'A', 'a1', 'a0', match='rm', ds=sds,
                            samples=0, pmin=0.05, mintime=0.02)
-    p = plot.UTSStat('uts', 'A', clusters=res.clusters, ds=ds)
+    p = plot.UTSStat('uts', 'A', ds=ds)
+    p.set_clusters(res.clusters)
+    p.close()
+    p = plot.UTSStat('uts', 'A', ds=ds, clusters=res.clusters)
     p.close()
     res = testnd.ttest_rel('uts', 'A', 'a1', 'a0', match='rm', ds=sds,
                            samples=100, pmin=0.05, mintime=0.02)
-    p = plot.UTSStat('uts', 'A', clusters=res.clusters, ds=ds)
+    p = plot.UTSStat('uts', 'A', ds=ds, clusters=res.clusters)
+    p.close()
+    p = plot.UTSStat('uts', 'A', 'B', ds=ds, clusters=res.clusters)
+    p.set_clusters(None)
+    p.set_clusters(res.clusters, ax=0)
+    p.close()
+    p = plot.UTSStat('uts', 'A', 'B', ds=ds)
+    p.set_clusters(res.clusters)
+    p.set_clusters(None, ax=1)
     p.close()
 
 

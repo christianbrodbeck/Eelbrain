@@ -18,8 +18,8 @@ class UTSStat(_base._EelFigure):
                  main=np.mean, dev=scipy.stats.sem, legend='upper right',
                  title=None, axtitle='{name}', xlabel=True, ylabel=True,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
-                 xlim=None, color='b', colors='jet', clusters=None,
-                 frame=True, **layout):
+                 xlim=None, color='b', colors='jet', frame=True, clusters=None,
+                 pmax=0.05, ptrend=0.1, **layout):
         """
     Plot statistics for a one-dimensional NDVar
 
@@ -76,12 +76,16 @@ class UTSStat(_base._EelFigure):
         **dict**: A dictionary mapping each cell in X to a color.
         Colors are specified as `matplotlib compatible color arguments
         <http://matplotlib.org/api/colors_api.html>`_.
-    clusters : None | Dataset
-        Clusters to add to the plots. The clusters should be provided as
-        Dataset, as stored in test results' :py:attr:`.clusters`.
     frame : bool
         Draw a frame containing the figure from the top and the right (default
         ``True``).
+    clusters : None | Dataset
+        Clusters to add to the plots. The clusters should be provided as
+        Dataset, as stored in test results' :py:attr:`.clusters`.
+    pmax : scalar
+        Maximum p-value of clusters to plot as solid.
+    ptrend : scalar
+        Maximum p-value of clusters to plot as trend.
         """
         if Xax is None:
             nax = 1
@@ -137,7 +141,8 @@ class UTSStat(_base._EelFigure):
             else:
                 title_ = axtitle
             p = _ax_stat(ax, ct, colors, main, dev, title, ylabel, xdim, xlim,
-                         xlabel, invy, bottom, top, hline, frame)
+                         xlabel, invy, bottom, top, hline, frame, clusters,
+                         pmax, ptrend)
             self._plots.append(p)
             self._legend_handles.update(p.legend_handles)
             if len(ct) < 2:
@@ -158,18 +163,13 @@ class UTSStat(_base._EelFigure):
                 ct_ = Celltable(ct.data[cell], X_, match=match, coercion=asndvar)
                 title_ = axtitle.format(name=cellname(cell))
                 p = _ax_stat(ax, ct_, colors, main, dev, title_, ylabel, xdim,
-                             xlim, xlabel_, invy, bottom, top, hline, frame)
+                             xlim, xlabel_, invy, bottom, top, hline, frame,
+                             clusters, pmax, ptrend)
                 self._plots.append(p)
                 self._legend_handles.update(p.legend_handles)
 
         self.plot_legend(legend)
-
-        # prepare cluster plots
-        self._clusters = [None] * nax
-        self._clusters_all_same = True
-        if clusters is not None:
-            self.set_clusters(clusters)
-
+        self._update_ui_cluster_button()
         self._show()
 
     def _fill_toolbar(self, tb):
@@ -181,12 +181,24 @@ class UTSStat(_base._EelFigure):
         btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
 
     def _OnShowClusterInfo(self, event):
-        from ..._wxutils import show_text_dialog
-        if self._clusters_all_same:
-            info = str(self._clusters)
+        from .._wxutils import show_text_dialog
+
+        if len(self._plots) == 1:
+            clusters = self._plots[0].cluster_plt.clusters
+            all_plots_same = True
+        else:
+            all_clusters = [p.cluster_plt.clusters is None for p in self._plots]
+            clusters = all_clusters[0]
+            if all(c is clusters for c in all_clusters[1:]):
+                all_plots_same = True
+            else:
+                all_plots_same = False
+
+        if all_plots_same:
+            info = str(clusters)
         else:
             info = []
-            for i, clusters in enumerate(self._clusters):
+            for i, clusters in enumerate(all_clusters):
                 if clusters is None:
                     continue
                 title = "Axes %i" % i
@@ -197,6 +209,11 @@ class UTSStat(_base._EelFigure):
             info = '\n'.join(info)
 
         show_text_dialog(self._frame, info, "Clusters")
+
+    def _update_ui_cluster_button(self):
+        if hasattr(self, '_cluster_btn'):
+            enable = not all(p.cluster_plt.clusters is None for p in self._plots)
+            self._cluster_btn.Enable(enable)
 
     def plot_legend(self, loc='fig', figsize=(2, 2)):
         """Plots (or removes) the legend from the figure.
@@ -279,14 +296,8 @@ class UTSStat(_base._EelFigure):
         """
         nax = len(self._axes)
         if ax is None:
-            self._clusters_all_same = True
-            self._clusters = clusters
             axes = xrange(nax)
         else:
-            if self._clusters_all_same:
-                self._clusters = [self._clusters] * nax
-                self._clusters_all_same = False
-            self._clusters[ax] = clusters
             axes = [ax]
 
         # update plots
@@ -297,31 +308,19 @@ class UTSStat(_base._EelFigure):
             p.set_pmax(pmax, ptrend)
         self.draw()
 
-        # update GUI
-        if hasattr(self, '_cluster_btn'):
-            if clusters is not None:
-                self._cluster_btn.Enable(True)
-            elif self._clusters_all_same or all(c is None for c in self._clusters):
-                self._cluster_btn.Enable(False)
+        self._update_ui_cluster_button()
 
     def set_xlim(self, xmin, xmax):
-        """Adjust the x-axis limits on all axes
-        """
+        "Adjust the x-axis limits on all axes"
         for ax in self._axes:
             ax.set_xlim(xmin, xmax)
         self.draw()
 
     def set_ylim(self, bottom=None, top=None):
-        """
-        Adjust the y-axis limits on all axes (see matplotlib's
-        :py:meth:`axes.set_ylim`)
-
-        """
+        "Adjust the y-axis limits on all axes"
         for ax in self._axes:
             ax.set_ylim(bottom, top)
-
         self.draw()
-
 
 
 class UTS(_base._EelFigure):
@@ -356,8 +355,7 @@ class UTS(_base._EelFigure):
 
 class _ax_stat:
     def __init__(self, ax, ct, colors, main, dev, title, ylabel, xdim, xlim,
-                 xlabel, invy, bottom, top, hline, frame, clusters=None,
-                 pmax=0.05, ptrend=0.1):
+                 xlabel, invy, bottom, top, hline, frame, clusters, pmax, ptrend):
         ax.x_fmt = "t = %.3f s"
 
         # stat plots
