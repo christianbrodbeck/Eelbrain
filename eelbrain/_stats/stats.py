@@ -7,15 +7,19 @@ Statistics functions that work on numpy arrays.
 import numpy as np
 import scipy.stats
 
+from .._data_obj import asfactor, asmodel
+from . import opt
 
 
-def confidence_interval(y, confidence=.95):
+def confidence_interval(y, x=None, confidence=.95):
     """Confidence interval based on the inverse t-test
 
     Parameters
     ----------
     y : array [n, ...]
         Data, first dimension reflecting cases.
+    x : Categorial
+        Categorial predictor for using pooled variance.
     confidence : scalar
         Confidence in the interval (i.e., .95 for 95% CI).
 
@@ -30,12 +34,71 @@ def confidence_interval(y, confidence=.95):
     See
     `<http://en.wikipedia.org/wiki/Confidence_interval#Statistical_hypothesis_testing>`_
     """
-    n = len(y)
-    df = n - 1
-    out = y.std(0, ddof=1)
+    if x is None:
+        n = len(y)
+        df = n - 1
+        out = y.std(0, ddof=1)
+    else:
+        x = asfactor(x)
+        df = len(x) - 1 - x.df
+        n = x._cellsize()
+        if n < 0:
+            raise NotImplementedError()
+        out = residual_mean_square(y, x)
+        np.sqrt(out, out)
+
     t = scipy.stats.t.isf((1 - confidence) / 2, df)
     out *= t / np.sqrt(n)
     return out
+
+
+def residual_mean_square(y, x=None):
+    """Mean square of the residuals
+
+    Parameters
+    ----------
+    y : array [n, ...]
+        Dependent measure.
+    x : Model
+        Model to account for a part of the variance.
+
+    Returns
+    -------
+    mean_square : array [...]
+        Estimate of the mean square within x.
+    """
+    n = len(y)
+    out = np.empty(y.shape[1:])
+    out_ = out.ravel()
+    y_ = y.reshape((n, -1))
+    if x is None:
+        opt.ss(y_, out_)
+        out_ /= n - 1
+    else:
+        x = asmodel(x)
+        res = residuals(y_, x)
+        opt.sum_square(res, out_)
+        out_ /= x.df_error
+    return out
+
+
+def residuals(y, x):
+    """Calculate residuals of y regressed on x (over the first axis)
+
+    Parameters
+    ----------
+    y : array
+        Data
+    x : Model
+        Predictors
+    """
+    n = len(y)
+    x = asmodel(x)
+    res = np.empty(y.shape)
+    y_ = y.reshape((n, -1))
+    res_ = res.reshape((n, -1))
+    opt.lm_res(y_, x.full, x.xsinv, res_)
+    return res
 
 
 def rms(a, axis=None):

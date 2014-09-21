@@ -213,6 +213,30 @@ def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
             f_map[i_effect, i] = MS / MS_res
 
 
+def sum_square(scalar[:,:] y, double[:] out):
+    """Compute the Sum Square of the data
+
+    Parameters
+    ----------
+    y : array (n_cases, n_tests)
+        Dependent Measurement.
+    out : array (n_tests,)
+        container for output.
+    """
+    cdef int i, case
+    cdef double ss
+
+    cdef int n_tests = y.shape[1]
+    cdef int n_cases = y.shape[0]
+
+    for i in range(n_tests):
+        ss = 0
+        for case in range(n_cases):
+            ss += y[case, i] ** 2
+
+        out[i] = ss
+
+
 def ss(scalar[:,:] y, double[:] out):
     """Compute sum squares in the data (after subtracting the intercept)
 

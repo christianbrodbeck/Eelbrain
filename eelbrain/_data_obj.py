@@ -46,7 +46,6 @@ from scipy.spatial.distance import cdist, pdist, squareform
 from . import fmtxt
 from ._utils import ui, LazyProperty, natsorted
 from . import _colorspaces as cs
-from ._stats import confidence_interval, rms, opt
 
 
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
@@ -915,6 +914,7 @@ class Celltable(object):
                     a = float(func[:-2])
                 elif a == 1:
                     a = .95
+                from ._stats.stats import confidence_interval
                 func = confidence_interval
             elif func.endswith('sem'):
                 if len(func) > 3:
@@ -2066,6 +2066,17 @@ class Factor(_Effect):
     def cells(self):
         return tuple(natsorted(self._labels.values()))
 
+    def _cellsize(self):
+        "-1 if cell size is not equal"
+        codes = self._labels.keys()
+        buf = self.x == codes[0]
+        n = buf.sum()
+        for code in codes[1:]:
+            n_ = np.equal(self.x, code, buf).sum()
+            if n_ != n:
+                return -1
+        return n
+
     def compress(self, X, name=None):
         "Deprecated. Use .aggregate()."
         warn("Factor.compress s deprecated; use Factor.aggregate instead"
@@ -3113,18 +3124,14 @@ class NDVar(object):
             msg = ("Can only apply regression to NDVar with case dimension")
             raise DimensionMismatchError(msg)
 
-        n = len(self)
         x = asmodel(x)
-        if len(x) != n:
+        if len(x) != len(self):
             msg = ("Predictors do not have same number of cases (%i) as the "
-                   "dependent variable (%i)" % (len(a), n))
+                   "dependent variable (%i)" % (len(x), len(self)))
             raise DimensionMismatchError(msg)
 
-        res = np.empty(self.shape)
-        y_ = self.x.reshape((n, -1))
-        res_ = res.reshape((n, -1))
-        opt.lm_res(y_, x.full, x.xsinv, res_)
-
+        from ._stats import stats
+        res = stats.residuals(self.x, x)
         info = self.info.copy()
         return NDVar(res, self.dims, info, name)
 
@@ -3148,6 +3155,7 @@ class NDVar(object):
             only the case dimension remains, and a float if the function
             collapses over all data.
         """
+        from ._stats.stats import rms
         return self._aggregate_over_dims(axis, rms)
 
     def std(self, dims=None):

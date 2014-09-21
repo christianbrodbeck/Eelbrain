@@ -1,8 +1,4 @@
-'''
-Created on Dec 2, 2012
-
-@author: christian
-'''
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import izip
 import os
 import cPickle as pickle
@@ -20,7 +16,7 @@ from eelbrain import (datasets, load, Var, Factor, Dataset, Celltable,
                       align, align1, combine)
 from eelbrain._data_obj import (asvar, isdatalist, isndvar, isvar, isuv,
                                 Categorial, SourceSpace, UTS)
-from eelbrain._stats import rms
+from eelbrain._stats.stats import rms
 
 
 def assert_dataset_equal(ds1, ds2, msg="Datasets unequal", decimal=None):
