@@ -38,17 +38,15 @@ import mne
 from mne import Evoked as _mne_Evoked
 import numpy as np
 from numpy import dot
-import scipy
 import scipy.stats
 from scipy.linalg import inv, lstsq
 from scipy.optimize import leastsq
-from scipy.sparse import coo_matrix
 from scipy.spatial.distance import cdist, pdist, squareform
 
 from . import fmtxt
 from ._utils import ui, LazyProperty, natsorted
 from . import _colorspaces as cs
-from ._stats import cihw, rms, opt
+from ._stats import confidence_interval, rms, opt
 
 
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
@@ -917,7 +915,7 @@ class Celltable(object):
                     a = float(func[:-2])
                 elif a == 1:
                     a = .95
-                func = cihw
+                func = confidence_interval
             elif func.endswith('sem'):
                 if len(func) > 3:
                     a = float(func[:-3])

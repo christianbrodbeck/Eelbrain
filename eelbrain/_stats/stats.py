@@ -7,37 +7,35 @@ Statistics functions that work on numpy arrays.
 import numpy as np
 import scipy.stats
 
-__all__ = ['ci', 'cihw', 'rms', 'rmssd', 'ftest_f', 'ftest_p']
 
 
-def ci(x, p=.95):
+def confidence_interval(y, confidence=.95):
+    """Confidence interval based on the inverse t-test
+
+    Parameters
+    ----------
+    y : array [n, ...]
+        Data, first dimension reflecting cases.
+    confidence : scalar
+        Confidence in the interval (i.e., .95 for 95% CI).
+
+    Returns
+    -------
+    ci : array [...]
+        Confidence interval (i.e., the mean of y lies within m +- ci with the
+        specified confidence).
+
+    Notes
+    -----
+    See
+    `<http://en.wikipedia.org/wiki/Confidence_interval#Statistical_hypothesis_testing>`_
     """
-    :returns: list with the endpoints of the confidence interval based on the
-        inverse t-test
-        (`<http://en.wikipedia.org/wiki/Confidence_interval#Statistical_hypothesis_testing>`_).
-
-    :arg array x: data
-    :arg float p: p value for confidence interval
-
-    """
-    M = np.mean(x)
-    c = cihw(x, p)
-    return [M - c, M + c]
-
-
-def cihw(x, p=.95):
-    """
-    :returns: half-width of the confidence interval based on the inverse t-test
-        (`<http://en.wikipedia.org/wiki/Confidence_interval#Statistical_hypothesis_testing>`_).
-
-    :arg array x: data
-    :arg float p: p value for confidence interval
-
-    """
-    N = len(x)
-    t = scipy.stats.t.isf((1 - p) / 2, N - 1)
-    c = (np.std(x, ddof=1) * t) / np.sqrt(N)
-    return c
+    n = len(y)
+    df = n - 1
+    out = y.std(0, ddof=1)
+    t = scipy.stats.t.isf((1 - confidence) / 2, df)
+    out *= t / np.sqrt(n)
+    return out
 
 
 def rms(a, axis=None):

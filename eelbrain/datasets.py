@@ -13,6 +13,17 @@ from ._data_obj import Dataset, Factor, Var, NDVar, Sensor, UTS
 from .design import permute
 
 
+def get_loftus_masson_1994():
+    "Dataset used for illustration purposes by Loftus and Masson (1994)"
+    ds = Dataset()
+    ds['subject'] = Factor(range(1, 11), tile=3)
+    ds['exposure'] = Var([1, 2, 5], repeat=10)
+    ds['n_recalled'] = Var([10, 6, 11, 22, 16, 15, 1, 12, 9, 8,
+                            13, 8, 14, 23, 18, 17, 1, 15, 12, 9,
+                            13, 8, 14, 25, 20, 17, 4, 17, 12, 12])
+    return ds
+
+
 def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
                    src=None, sub="modality=='A'", fixed=False, snr=2,
                    method='dSPM', rm=False, stc=False):
