@@ -2062,7 +2062,7 @@ class Factor(_Effect):
         txt = '{0}=={1}'
         return [txt.format(cells[i], cells[-1]) for i in range(len(cells) - 1)]
 
-    @LazyProperty
+    @property
     def cells(self):
         return tuple(natsorted(self._labels.values()))
 

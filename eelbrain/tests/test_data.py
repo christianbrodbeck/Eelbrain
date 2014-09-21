@@ -427,6 +427,16 @@ def test_effect():
     assert_array_equal(i.enumerate_cells(), np.arange(2).repeat(6))
 
 
+def test_factor():
+    "Test basic Factor functionality"
+    f = Factor('aabbcc')
+
+    # removing a cell
+    assert_equal(f.cells, ('a', 'b', 'c'))
+    f[f == 'c'] = 'a'
+    assert_equal(f.cells, ('a', 'b'))
+
+
 def test_factor_relabel():
     "Test Factor.relabel() method"
     f = Factor('aaabbbccc')
