@@ -7,11 +7,11 @@ Statistics functions that work on numpy arrays.
 import numpy as np
 import scipy.stats
 
-from .._data_obj import asfactor, asmodel
+from .._data_obj import asfactor, asmodel, Model
 from . import opt
 
 
-def confidence_interval(y, x=None, confidence=.95):
+def confidence_interval(y, x=None, match=None, confidence=.95):
     """Confidence interval based on the inverse t-test
 
     Parameters
@@ -20,6 +20,8 @@ def confidence_interval(y, x=None, confidence=.95):
         Data, first dimension reflecting cases.
     x : Categorial
         Categorial predictor for using pooled variance.
+    match : Factor
+        Specifies which cases are related.
     confidence : scalar
         Confidence in the interval (i.e., .95 for 95% CI).
 
@@ -37,16 +39,19 @@ def confidence_interval(y, x=None, confidence=.95):
     if x is None:
         n = len(y)
         df = n - 1
-        out = y.std(0, ddof=1)
     else:
         x = asfactor(x)
-        df = len(x) - 1 - x.df
         n = x._cellsize()
         if n < 0:
             raise NotImplementedError()
-        out = residual_mean_square(y, x)
-        np.sqrt(out, out)
 
+        if match is None:
+            x = Model(x)
+        else:
+            x = x + match
+        df = x.df_error
+    out = residual_mean_square(y, x)
+    np.sqrt(out, out)
     t = scipy.stats.t.isf((1 - confidence) / 2, df)
     out *= t / np.sqrt(n)
     return out

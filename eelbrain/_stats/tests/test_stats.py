@@ -12,6 +12,7 @@ def test_confidence_interval():
     ds = datasets.get_loftus_masson_1994()
     y = ds['n_recalled'].x[:, None]
     x = ds['exposure'].as_factor()
+    subject = ds['subject']
     ds.to_r('ds')
 
     # simple confidence interval of the mean
@@ -25,3 +26,7 @@ def test_confidence_interval():
     ci = stats.confidence_interval(y, x)[0]
     assert_almost_equal(ci, 3.85, delta=0.01)
     assert_raises(NotImplementedError, stats.confidence_interval, y[1:], x[1:])
+
+    # within subject confidence interval
+    ci = stats.confidence_interval(y, x, subject)[0]
+    assert_almost_equal(ci, 0.52, 2)
