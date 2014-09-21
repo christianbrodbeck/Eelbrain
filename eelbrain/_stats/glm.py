@@ -31,7 +31,7 @@ from .._utils import LazyProperty
 from .._utils.print_funcs import strdict
 from .._data_obj import (isvar, asvar, assub, isbalanced, hasemptycells,
                          isnestedin, hasrandom, find_factors, Model, asmodel)
-from .opt import _anova_fmaps, _anova_full_fmaps, _ss, lm_res_ss
+from .opt import anova_fmaps, anova_full_fmaps, lm_res_ss, ss
 from .stats import ftest_p
 from . import test
 
@@ -489,7 +489,7 @@ class _BalancedNDANOVA(_NDANOVA):
 
     def _map(self, y, flat_f_map):
         x = self.x
-        _anova_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
+        anova_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
                      x.df_error)
 
 
@@ -520,7 +520,7 @@ class _FullNDANOVA(_NDANOVA):
 
     def _map(self, y, flat_f_map):
         x = self.x
-        _anova_full_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
+        anova_full_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
                           self._e_ms_array)
 
 
@@ -566,11 +566,11 @@ class _IncrementalNDANOVA(_NDANOVA):
 
         # calculate SS_res and MS_res for all models
         for i, x in self._models.iteritems():
-            ss = SS_res[i]
+            ss_ = SS_res[i]
             if x is None:
-                _ss(y, ss)
+                ss(y, ss_)
             else:
-                lm_res_ss(y, x.full, x.xsinv, ss)
+                lm_res_ss(y, x.full, x.xsinv, ss_)
 
         # incremental comparisons
         np.divide(SS_res[0], self.x.df_error, MS_e)

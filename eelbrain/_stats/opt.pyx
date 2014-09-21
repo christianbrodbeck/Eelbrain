@@ -91,9 +91,9 @@ def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in,
     return label_ids
 
 
-def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
-                      double[:, :] f_map, np.int16_t[:, :] effects, 
-                      np.int8_t[:, :] e_ms):
+def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
+                     double[:, :] f_map, np.int16_t[:, :] effects, 
+                     np.int8_t[:, :] e_ms):
     """Compute f-maps for a balanced, fully specified ANOVA model
     
     Parameters
@@ -151,8 +151,8 @@ def _anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                 i_fmap += 1
 
 
-def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
-                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
+                double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
     """Compute f-maps for a balanced ANOVA model with residuals
 
     Parameters
@@ -213,18 +213,18 @@ def _anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
             f_map[i_effect, i] = MS / MS_res
 
 
-def _ss(scalar[:,:] y, double[:] ss):
+def ss(scalar[:,:] y, double[:] out):
     """Compute sum squares in the data (after subtracting the intercept)
 
     Parameters
     ----------
     y : array (n_cases, n_tests)
         Dependent Measurement.
-    ss : array (n_tests,)
+    out : array (n_tests,)
         container for output.
     """
     cdef int i, case
-    cdef double mean, SS
+    cdef double mean, ss_
 
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
@@ -237,11 +237,11 @@ def _ss(scalar[:,:] y, double[:] ss):
         mean /= n_cases
 
         # find SS of residuals
-        SS = 0
+        ss_ = 0
         for case in range(n_cases):
-            SS += (y[case, i] - mean) ** 2
+            ss_ += (y[case, i] - mean) ** 2
 
-        ss[i] = SS
+        out[i] = ss_
 
 
 cdef void lm_betas(scalar[:,:] y, int i, double[:,:] xsinv, double[:] betas) nogil:
