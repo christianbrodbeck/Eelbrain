@@ -514,66 +514,30 @@ class Barplot(_SimpleFigure):
             Draw a frame containing the figure from the top and the right
             (default ``True``).
         """
-        if title is True:
-            title = getattr(Y, 'name', None)
+        ct = Celltable(Y, X, match, sub, ds=ds, coercion=asvar)
 
-        if isinstance(err, basestring):
-            if err.endswith('ci'):
-                if len(err) > 2:
-                    a = float(err[:-2])
-                else:
-                    a = .95
-                err_desc = '$\pm %g ci$' % a
-            elif err.endswith('sem'):
-                if len(err) > 3:
-                    a = float(err[:-3])
-                else:
-                    a = 1
-                err_desc = '$\pm %g sem$' % a
-            elif err.endswith('std'):
-                if len(err) > 3:
-                    a = float(err[:-3])
-                else:
-                    a = 1
-                err_desc = '$\pm %g std$' % a
-            else:
-                raise ValueError('unrecognized statistic: %r' % err)
-        else:
-            err_desc = getattr(err, '__name__', '')
+        if title is True:
+            title = ct.Y.name
 
         # ylabel
         if ylabel:
-            if hasattr(Y, 'info'):
-                unit = Y.info.get('unit', '')
-            else:
-                unit = ''
-
-            if ylabel is True:
-                if unit:
-                    ylabel = unit
-                else:
-                    ylabel = False
-            elif isinstance(ylabel, str):
-                ylabel = ylabel.format(unit=unit, err=err_desc)
+            unit = ct.Y.info.get('unit', '')
+            ylabel = ylabel.format(unit=unit)
 
         # xlabel
         if xlabel is True:
-            if hasattr(X, 'name'):
-                xlabel = X.name.replace('_', ' ')
+            if ct.X:
+                xlabel = ct.X.name.replace('_', ' ')
             else:
                 xlabel = False
 
         _SimpleFigure.__init__(self, "BarPlot", title, xlabel, ylabel, **kwargs)
 
-        ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
 
-        x0, x1, y0, y1 = _barplot(self._ax, ct,
-                                  test=test, par=par, trend=trend, corr=corr,
-                                  # bar settings:
-                                  err=err, ec=ec,
-                                  hatch=hatch, colors=colors,
-                                  bottom=bottom, c=c, edgec=edgec,
-                                  return_lim=True)
+        x0, x1, y0, y1 = _plt_barplot(self._ax, ct, err, hatch, colors,
+                                      bottom=bottom, c=c, edgec=edgec, ec=ec,
+                                      test=test, par=par, trend=trend,
+                                      corr=corr, return_lim=True)
 
         self._ax.set_xlim(x0, x1)
         self._ax.set_ylim(y0, y1)
@@ -585,19 +549,20 @@ class Barplot(_SimpleFigure):
         self._show()
 
 
-def _barplot(ax, ct,
-             test=True, par=True, trend=".", corr='Hochberg',
-             # bar settings:
-             err='2sem', ec='k',
-             hatch=False, colors=False,
-             bottom=0, c='#0099FF', edgec=None,
-             left=None, width=.5,
-             return_lim=False,
-             ):
-    """
-    draw a barplot to axes ax for Celltable ct.
+def _plt_barplot(ax, ct, err, hatch, colors, bottom=0, left=None, width=.5,
+                 c='#0099FF', edgec=None, ec='k', test=True, par=True,
+                 trend=".", corr='Hochberg', return_lim=False):
+    """Draw a barplot to axes ax for Celltable ct.
 
-    return_lim: return axes limits (x0, x1, y0, y1)
+    Parameters
+    ----------
+    ax : mpl Axes
+        Axes to which to plot
+    ct : Celltable
+        Data to plot.
+    ...
+    return_lim : bool
+        Return axes limits ``(x0, x1, y0, y1)`` (default False).
     """
     # kwargs
     if hatch == True:
@@ -636,23 +601,19 @@ def _barplot(ax, ct,
 
     # pairwise tests
     # prepare pairwise plotting
-    if y_error == None:
-        y_min = np.max(height)
-    else:
-        y_min = np.max(height + y_error)
-    y_unit = (y_min - y_bottom) / 15
+    y_unit = (plot_max - y_bottom) / 15
     if test is True:
-        y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit,
+        y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit,
                                     corr=corr, trend=trend)
     elif (test is False) or (test is None):
-        y_top = y_min + y_unit
+        y_top = plot_max + y_unit
     else:
         ax.axhline(test, color='black')
-        y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit,
+        y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit,
                                    popmean=test, corr=corr, trend=trend)
 
-    #      x0,                 x1,                  y0,       y1
     if return_lim:
+        #      x0,                     x1,                      y0,       y1
         lim = (min(left) - .5 * width, max(left) + 1.5 * width, y_bottom, y_top)
         return lim
 
@@ -820,10 +781,8 @@ class Timeplot(_SimpleFigure):
                     for itemname in bp:
                         plt.setp(bp[itemname], color='black')
             elif local_plot == 'bar':
-                lim = _barplot(ax, ct, test=False, err=spread,  # ec=ec,
-                               # bar settings:
-                               hatch=hatch, colors=color_list,
-                               bottom=0, left=pos, width=within_spacing)
+                lim = _plt_barplot(ax, ct, spread, hatch, color_list, bottom=0,
+                                   left=pos, width=within_spacing, test=False)
             elif spread:
                 yerr[:, i_t] = ct.get_statistic(spread)
 
@@ -1114,10 +1073,8 @@ class MultiTimeplot(_SimpleFigure):
                     for itemname in bp:
                         plt.setp(bp[itemname], color='black')
             elif local_plot == 'bar':
-                lim = _barplot(ax, ct, test=False, err=spread,  # ec=ec,
-                               # bar settings:
-                               hatch=hatch, colors=color_list,
-                               bottom=0, left=pos, width=within_spacing)
+                lim = _plt_barplot(ax, ct, spread, hatch, color_list, bottom=0,
+                                   left=pos, width=within_spacing, test=False)
                 ymax_loc = lim[1]
                 ymin_loc = lim[0]
             elif spread:
