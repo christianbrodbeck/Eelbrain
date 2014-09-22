@@ -1,21 +1,21 @@
-'''
-Plot uniform time-series of one variable.
-'''
+"""Plot uniform time-series of one variable."""
 # author: Christian Brodbeck
 from __future__ import division
 
+import operator
+
 import numpy as np
-import scipy.stats
 import matplotlib.cm as _cm
 
-from .._data_obj import ascategorial, asndvar, cellname, Celltable
+from .._data_obj import ascategorial, asndvar, assub, cellname, Celltable
+from .._stats import stats
 from . import _base
 
 
 class UTSStat(_base._EelFigure):
     "Plots statistics for a one-dimensional NDVar"
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
-                 main=np.mean, dev=scipy.stats.sem, legend='upper right',
+                 main=np.mean, dev='sem', pool_error=None, legend='upper right',
                  title=None, axtitle='{name}', xlabel=True, ylabel=True,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
                  xlim=None, color='b', colors='jet', frame=True, clusters=None,
@@ -41,11 +41,16 @@ class UTSStat(_base._EelFigure):
     main : func | None
         Measure for the central tendency (function that takes an ``axis``
         argument). The default is numpy.mean.
-    dev : func | 'all' | float
-        Measure for spread / deviation from the central tendency. Either a
-        function that takes an ``axis`` argument, 'all' to plot all traces, or
-        a float to plot all traces with a certain alpha value. The default is
-        numpy.stats.sem which plots the standard error of the mean.
+    dev : None | str
+        Measure of variability to plot (default: 1 SEM). Examples:
+        'ci': 95% confidence interval;
+        '99%ci': 99% confidence interval (default);
+        '2sem': 2 standard error of the mean;
+        'all': plot all traces.
+    pool_error : bool
+        Pool the errors for the estimate of variability (default is True
+        for related measures designs, False otherwise). See Loftus & Masson
+        (1994).
     legend : str | None
         matplotlib figure legend location argument
     title : str | None
@@ -87,24 +92,49 @@ class UTSStat(_base._EelFigure):
     ptrend : scalar
         Maximum p-value of clusters to plot as trend.
         """
+        # coerce input variables
+        sub = assub(sub, ds)
+        Y = asndvar(Y, sub, ds)
+        if X is not None:
+            X = ascategorial(X, sub, ds)
+        if Xax is not None:
+            Xax = ascategorial(Xax, sub, ds)
+        if match is not None:
+            match = ascategorial(match, sub, ds)
+
+        if pool_error is None:
+            pool_error = match is not None
+
+        if pool_error:
+            all_x = [i for i in (Xax, X) if i is not None]
+            if len(all_x) > 0:
+                full_x = reduce(operator.mod, all_x)
+                ct = Celltable(Y, full_x, match)
+                dev_data = stats.variability(ct.Y.x, ct.X, ct.match, dev, pool_error)
+                dev = 'data'
+            else:
+                pool_error = False
+                dev_data = None
+        else:
+            dev_data = None
+
         if Xax is None:
             nax = 1
-            ct = Celltable(Y, X, sub=sub, match=match, ds=ds, coercion=asndvar)
+            ct = Celltable(Y, X, match)
             if X is None:
                 cells = None
             else:
                 cells = ct.X.cells
         else:
-            ct = Celltable(Y, Xax, sub=sub, ds=ds, coercion=asndvar)
+            ct = Celltable(Y, Xax)
             if X is None:
                 cells = None
                 X_ = None
             else:
-                Xct = Celltable(X, Xax, sub=sub, ds=ds, coercion=ascategorial)
+                Xct = Celltable(X, Xax)
                 cells = Xct.Y.cells
             if match is not None:
-                matchct = Celltable(match, Xax, sub=sub, ds=ds,
-                                    coercion=ascategorial)
+                matchct = Celltable(match, Xax)
             nax = len(ct.cells)
 
         # assemble colors
@@ -132,6 +162,7 @@ class UTSStat(_base._EelFigure):
         super(UTSStat, self).__init__("UTSStat Plot", nax, layout,
                                       figtitle=title)
 
+        # create plots
         self._plots = []
         self._legend_handles = {}
         if Xax is None:
@@ -140,9 +171,9 @@ class UTSStat(_base._EelFigure):
                 title_ = axtitle.format(name=ct.Y.name)
             else:
                 title_ = axtitle
-            p = _ax_stat(ax, ct, colors, main, dev, title, ylabel, xdim, xlim,
-                         xlabel, invy, bottom, top, hline, frame, clusters,
-                         pmax, ptrend)
+            p = _ax_uts_stat(ax, ct, colors, main, dev, dev_data, title,
+                             ylabel, xdim, xlim, xlabel, invy, bottom, top,
+                             hline, frame, clusters, pmax, ptrend)
             self._plots.append(p)
             self._legend_handles.update(p.legend_handles)
             if len(ct) < 2:
@@ -162,9 +193,9 @@ class UTSStat(_base._EelFigure):
 
                 ct_ = Celltable(ct.data[cell], X_, match=match, coercion=asndvar)
                 title_ = axtitle.format(name=cellname(cell))
-                p = _ax_stat(ax, ct_, colors, main, dev, title_, ylabel, xdim,
-                             xlim, xlabel_, invy, bottom, top, hline, frame,
-                             clusters, pmax, ptrend)
+                p = _ax_uts_stat(ax, ct_, colors, main, dev, dev_data, title_,
+                                 ylabel, xdim, xlim, xlabel_, invy, bottom, top,
+                                 hline, frame, clusters, pmax, ptrend)
                 self._plots.append(p)
                 self._legend_handles.update(p.legend_handles)
 
@@ -353,9 +384,11 @@ class UTS(_base._EelFigure):
         self._show()
 
 
-class _ax_stat:
-    def __init__(self, ax, ct, colors, main, dev, title, ylabel, xdim, xlim,
-                 xlabel, invy, bottom, top, hline, frame, clusters, pmax, ptrend):
+class _ax_uts_stat:
+
+    def __init__(self, ax, ct, colors, main, dev, dev_data, title, ylabel,
+                 xdim, xlim, xlabel, invy, bottom, top, hline, frame, clusters,
+                 pmax, ptrend):
         ax.x_fmt = "t = %.3f s"
 
         # stat plots
@@ -368,7 +401,8 @@ class _ax_stat:
             c = colors[cell]
             ndvar = ct.data[cell]
             y = ndvar.get_data(('case', xdim))
-            plt = _plt_stat(ax, x, y, main, dev, label=cell_label, color=c)
+            plt = _plt_uts_stat(ax, x, y, main, dev, dev_data, label=cell_label,
+                                color=c)
             self.stat_plots.append(plt)
             if plt.main is not None:
                 self.legend_handles[cell] = plt.main[0]
@@ -417,8 +451,10 @@ class _ax_stat:
             ax.set_ylim(bottom, top)
 
         if xlim is None:
-            xlim = (min(x), max(x))
-        xmin, xmax = xlim
+            xmin = x[0]
+            xmax = x[-1]
+        else:
+            xmin, xmax = xlim
         ax.set_xlim(xmin, xmax)
 
         if not frame:
@@ -676,28 +712,15 @@ class _plt_uts_clusters:
             self.h.append(h)
 
 
-class _plt_stat(object):
-    def __init__(self, ax, x, y, main, dev, label=None, color=None, **kwargs):
-        if color:
-            kwargs['color'] = color
+class _plt_uts_stat(object):
 
+    def __init__(self, ax, x, y, main, dev, dev_data, label=None, **kwargs):
         main_kwargs = kwargs.copy()
         dev_kwargs = kwargs.copy()
         if label:
             main_kwargs['label'] = label
 
-        if isinstance(dev, basestring):
-            if dev == 'all':
-                dev_kwargs['alpha'] = .3
-            else:
-                err = ("The only possible str value for dev is 'all'; got "
-                       "%r." % dev)
-                raise ValueError(err)
-        elif np.isscalar(dev):
-            dev_kwargs['alpha'] = dev
-            dev = 'all'
-        else:
-            dev_kwargs['alpha'] = .3
+        dev_kwargs['alpha'] = 0.3
 
         if dev == 'all':
             if 'linewidth' in kwargs:
@@ -709,18 +732,25 @@ class _plt_stat(object):
 
         # plot main
         if hasattr(main, '__call__'):
-            y_ct = main(y, axis=0)
-            self.main = ax.plot(x, y_ct, zorder=5, **main_kwargs)
+            y_main = main(y, axis=0)
+            self.main = ax.plot(x, y_main, zorder=5, **main_kwargs)
         elif dev == 'all':
             self.main = None
         else:
             raise ValueError("Invalid argument: main=%r" % main)
 
         # plot dev
-        if hasattr(dev, '__call__'):
-            ydev = dev(y, axis=0)
-            self.dev = ax.fill_between(x, y_ct - ydev, y_ct + ydev, zorder=0, **dev_kwargs)
-        elif dev == 'all':
-            self.dev = ax.plot(x, y.T, **dev_kwargs)
+        if dev == 'all':
+            self.dev = ax.plot(x, dev_data, **dev_kwargs)
+        elif dev:
+            if dev == 'data':
+                pass
+            elif hasattr(dev, '__call__'):
+                dev_data = dev(y, axis=0)
+            else:
+                dev_data = stats.variability(y, None, None, dev, False)
+            lower = y_main - dev_data
+            upper = y_main + dev_data
+            self.dev = ax.fill_between(x, lower, upper, zorder=0, **dev_kwargs)
         else:
             self.dev = None

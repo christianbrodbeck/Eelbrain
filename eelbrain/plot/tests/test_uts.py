@@ -6,7 +6,7 @@ Created on Dec 2, 2012
 from eelbrain import Factor, datasets, plot, testnd
 
 
-def test_stat():
+def test_uts_stat():
     "test plot.UTSStat plotting function"
     plot.configure_backend(False, False)
     ds = datasets.get_uts()
@@ -17,6 +17,9 @@ def test_stat():
     p = plot.UTSStat('uts', 'A', Xax='B', ds=ds)
     p.close()
     p = plot.UTSStat('uts', 'A%B', 'rm', sub="rm.isin(('R00', 'R01'))", ds=ds)
+    p.close()
+    p = plot.UTSStat('uts', 'A%B', 'rm', sub="rm.isin(('R00', 'R01'))", ds=ds,
+                     pool_error=False)
     p.close()
 
     # clusters
