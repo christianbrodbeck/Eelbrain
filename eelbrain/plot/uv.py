@@ -25,7 +25,7 @@ import scipy.stats  # without this sp.stats is not available
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-from .._stats import test
+from .._stats import test, stats
 from .._data_obj import (asfactor, isvar, asvar, ascategorial, assub, cellname,
                          Celltable)
 from ._base import _EelFigure, str2tex
@@ -451,9 +451,8 @@ class Boxplot(_SimpleFigure):
 
 class Barplot(_SimpleFigure):
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
-                 corr='Hochberg', title=True, trend=".",
-                 # bar settings:
-                 ylabel='{unit}{err}', err='2sem', ec='k', xlabel=True,
+                 corr='Hochberg', title=True, trend=".", ylabel=None,
+                 err='sem', pool_error=None, ec='k', xlabel=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0,
                  c='#0099FF', edgec=None, ds=None, **kwargs):
         """Barplot
@@ -481,13 +480,17 @@ class Barplot(_SimpleFigure):
         trend : None | str
             Marker for a trend in pairwise comparisons.
         ylabel : None | str
-            Y axis label (default is ``Y.info['unit']`` if present, followed
-            by the error bar description).
-        err: func | "[x][type]"
-            The magnitude of the error bars to display. Examples:
-            'std' : 1 standard deviation;
-            '.95ci' : 95% confidence interval (see :func:`..ci`);
-            '2sem' : 2 standard error of the mean
+            Y axis label (default is None).
+        err : str
+            Measure of variability to display in the error bars (default: 1
+            SEM). Examples:
+            'ci': 95% confidence interval;
+            '99%ci': 99% confidence interval (default);
+            '2sem': 2 standard error of the mean.
+        pool_error : bool
+            Pool the errors for the estimate of variability (default is True
+            for related measures designs, False for others). See Loftus & Masson
+            (1994).
         ec : matplotlib color
             Error bar color.
         xlabel : None | str
@@ -516,13 +519,11 @@ class Barplot(_SimpleFigure):
         """
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asvar)
 
+        if pool_error is None:
+            pool_error = ct.all_within
+
         if title is True:
             title = ct.Y.name
-
-        # ylabel
-        if ylabel:
-            unit = ct.Y.info.get('unit', '')
-            ylabel = ylabel.format(unit=unit)
 
         # xlabel
         if xlabel is True:
@@ -534,7 +535,7 @@ class Barplot(_SimpleFigure):
         _SimpleFigure.__init__(self, "BarPlot", title, xlabel, ylabel, **kwargs)
 
 
-        x0, x1, y0, y1 = _plt_barplot(self._ax, ct, err, hatch, colors,
+        x0, x1, y0, y1 = _plt_barplot(self._ax, ct, err, pool_error, hatch, colors,
                                       bottom=bottom, c=c, edgec=edgec, ec=ec,
                                       test=test, par=par, trend=trend,
                                       corr=corr, return_lim=True)
@@ -549,7 +550,7 @@ class Barplot(_SimpleFigure):
         self._show()
 
 
-def _plt_barplot(ax, ct, err, hatch, colors, bottom=0, left=None, width=.5,
+def _plt_barplot(ax, ct, err, pool_error, hatch, colors, bottom=0, left=None, width=.5,
                  c='#0099FF', edgec=None, ec='k', test=True, par=True,
                  trend=".", corr='Hochberg', return_lim=False):
     """Draw a barplot to axes ax for Celltable ct.
@@ -560,6 +561,10 @@ def _plt_barplot(ax, ct, err, hatch, colors, bottom=0, left=None, width=.5,
         Axes to which to plot
     ct : Celltable
         Data to plot.
+    err : str
+        Variability description (e.g., "95%ci").
+    pool_error : bool
+        Pool the errors for the estimate of variability.
     ...
     return_lim : bool
         Return axes limits ``(x0, x1, y0, y1)`` (default False).
@@ -577,7 +582,7 @@ def _plt_barplot(ax, ct, err, hatch, colors, bottom=0, left=None, width=.5,
     if left is None:
         left = np.arange(k) - width / 2
     height = np.array(ct.get_statistic(np.mean))
-    y_error = np.array(ct.get_statistic(err))
+    y_error = stats.variability(ct.Y.x, ct.X, ct.match, err, pool_error)
 
 
     # fig spacing
@@ -781,7 +786,7 @@ class Timeplot(_SimpleFigure):
                     for itemname in bp:
                         plt.setp(bp[itemname], color='black')
             elif local_plot == 'bar':
-                lim = _plt_barplot(ax, ct, spread, hatch, color_list, bottom=0,
+                lim = _plt_barplot(ax, ct, spread, False, hatch, color_list, bottom=0,
                                    left=pos, width=within_spacing, test=False)
             elif spread:
                 yerr[:, i_t] = ct.get_statistic(spread)
@@ -1073,7 +1078,7 @@ class MultiTimeplot(_SimpleFigure):
                     for itemname in bp:
                         plt.setp(bp[itemname], color='black')
             elif local_plot == 'bar':
-                lim = _plt_barplot(ax, ct, spread, hatch, color_list, bottom=0,
+                lim = _plt_barplot(ax, ct, spread, False, hatch, color_list, bottom=0,
                                    left=pos, width=within_spacing, test=False)
                 ymax_loc = lim[1]
                 ymin_loc = lim[0]

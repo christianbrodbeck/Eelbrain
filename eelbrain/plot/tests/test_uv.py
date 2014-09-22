@@ -10,6 +10,7 @@ def test_barplot():
     plot.configure_backend(False, False)
     ds = datasets.get_uv()
     plot.uv.Barplot('fltvar', 'A%B', match='rm', ds=ds)
+    plot.uv.Barplot('fltvar', 'A%B', match='rm', ds=ds, pool_error=False)
     plot.uv.Barplot('fltvar', 'A%B', match='rm', test=0, ds=ds)
     plt.close('all')
 
