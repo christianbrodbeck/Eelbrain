@@ -1,8 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-'''
-Statistics functions that work on numpy arrays.
-
-'''
+"""Statistics functions that work on numpy arrays."""
+import re
 
 import numpy as np
 import scipy.stats
@@ -139,6 +137,34 @@ def rmssd(Y):
     return np.sqrt(X)
 
 
+def standard_error_of_the_mean(y, x=None, match=None):
+    """Standard error of the mean
+
+    Parameters
+    ----------
+    y : array [n, ...]
+        Data, first dimension reflecting cases.
+    x : Categorial
+        Categorial predictor for using pooled variance.
+    """
+    if x is None:
+        n = len(y)
+        if match is not None:
+            x = match
+    else:
+        x = asfactor(x)
+        n = x._cellsize()
+        if n < 0:
+            raise NotImplementedError()
+
+        if match is not None:
+            x = x + match
+    out = residual_mean_square(y, x)
+    out /= n
+    np.sqrt(out, out)
+    return out
+
+
 def ftest_f(p, df_num, df_den):
     "F values for given probabilities."
     p = np.asanyarray(p)
@@ -151,3 +177,70 @@ def ftest_p(f, df_num, df_den):
     f = np.asanyarray(f)
     p = scipy.stats.f.sf(f, df_num, df_den)
     return p
+
+
+def variability(y, x, match, spec, pool):
+    """Calculate data variability
+
+    Parameters
+    ----------
+    y : array
+        Dependent measure.
+    x : None | Categorial
+        Cells for pooling variance.
+    match : Factor
+        Calculate variability for related measures (Loftus & Masson 1994).
+    spec : str
+        Specification of the kind of variability estimate. Contains an optional
+        number, an optional percent-sign, and a kind ('ci' or 'sem'). Examples:
+        'ci': 95% confidence interval;
+        '99%ci': 99% confidence interval (default);
+        '2sem': 2 standard error of the mean.
+    pool : bool
+        Pool the variability to create a single estimate (as opposed to one for
+        each cell in x).
+
+    Returns
+    -------
+    var : scalar | array
+        Variability estimate. A single estimate if errors are pooled, otherwise
+        an estimate for every cell in x.
+    """
+    try:
+        m = re.match("^([.\d]*)(\%?)(ci|sem)$", spec.lower())
+        scale, perc, kind = m.groups()
+        if scale:
+            scale = float(scale)
+            if perc:
+                scale /= 100
+        elif kind == 'ci':
+            scale = .95
+        else:
+            scale = 1
+    except:
+        raise ValueError("Invalid variability specification: %r" % spec)
+
+    if kind == 'ci':
+        if pool or x is None:
+            out = confidence_interval(y, x, match, scale)
+        else:
+            cis = [confidence_interval(y[x == cell], confidence=scale) for cell
+                                       in x.cells]
+            out = np.array(cis)
+    elif kind == 'sem':
+        if pool or x is None:
+            out = standard_error_of_the_mean(y, x, match)
+        else:
+            sems = [standard_error_of_the_mean(y[x == cell]) for cell in x.cells]
+            out = np.array(sems)
+
+        if scale != 1:
+            out *= scale
+    else:
+        raise RuntimeError
+
+    # return scalars for 1d-arrays
+    if out.ndim == 0:
+        return out.item()
+    else:
+        return out
