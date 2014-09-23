@@ -438,6 +438,8 @@ class SensorMaps(_base._EelFigure):
         self.canvas.mpl_connect("button_release_event", self._on_button_release)
 
     def _fill_toolbar(self, tb):
+        import wx
+
         tb.AddSeparator()
 
         # plot labels
