@@ -15,7 +15,7 @@ from .sensors import _plt_map2d
 
 class Topomap(_tb_sensors_mixin, _base._EelFigure):
     "Plot individual topogeraphies"
-    def __init__(self, epochs, Xax=None, sensors=True, proj='default',
+    def __init__(self, epochs, Xax=None, sensors='name', proj='default',
                  title=None, res=200, interpolation='nearest', ds=None,
                  vmax=None, vmin=None, **layout):
         """
