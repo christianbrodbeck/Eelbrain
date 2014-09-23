@@ -3,6 +3,7 @@
 from __future__ import division
 
 import operator
+from warnings import warn
 
 import numpy as np
 import matplotlib.cm as _cm
@@ -15,7 +16,7 @@ from . import _base
 class UTSStat(_base._EelFigure):
     "Plots statistics for a one-dimensional NDVar"
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
-                 main=np.mean, dev='sem', pool_error=None, legend='upper right',
+                 main=np.mean, error='sem', pool_error=None, legend='upper right',
                  title=None, axtitle='{name}', xlabel=True, ylabel=True,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
                  xlim=None, color='b', colors='jet', frame=True, clusters=None,
@@ -41,7 +42,7 @@ class UTSStat(_base._EelFigure):
     main : func | None
         Measure for the central tendency (function that takes an ``axis``
         argument). The default is numpy.mean.
-    dev : None | str
+    error : None | str
         Measure of variability to plot (default: 1 SEM). Examples:
         'ci': 95% confidence interval;
         '99%ci': 99% confidence interval (default);
@@ -92,6 +93,11 @@ class UTSStat(_base._EelFigure):
     ptrend : scalar
         Maximum p-value of clusters to plot as trend.
         """
+        if 'dev' in layout:
+            error = layout.pop('dev')
+            warn("The 'dev' keyword is deprecated, use 'error'",
+                 DeprecationWarning)
+
         # coerce input variables
         sub = assub(sub, ds)
         Y = asndvar(Y, sub, ds)
@@ -110,8 +116,8 @@ class UTSStat(_base._EelFigure):
             if len(all_x) > 0:
                 full_x = reduce(operator.mod, all_x)
                 ct = Celltable(Y, full_x, match)
-                dev_data = stats.variability(ct.Y.x, ct.X, ct.match, dev, pool_error)
-                dev = 'data'
+                dev_data = stats.variability(ct.Y.x, ct.X, ct.match, error, pool_error)
+                error = 'data'
             else:
                 pool_error = False
                 dev_data = None
@@ -171,7 +177,7 @@ class UTSStat(_base._EelFigure):
                 title_ = axtitle.format(name=ct.Y.name)
             else:
                 title_ = axtitle
-            p = _ax_uts_stat(ax, ct, colors, main, dev, dev_data, title,
+            p = _ax_uts_stat(ax, ct, colors, main, error, dev_data, title,
                              ylabel, xdim, xlim, xlabel, invy, bottom, top,
                              hline, frame, clusters, pmax, ptrend)
             self._plots.append(p)
@@ -193,7 +199,7 @@ class UTSStat(_base._EelFigure):
 
                 ct_ = Celltable(ct.data[cell], X_, match=match, coercion=asndvar)
                 title_ = axtitle.format(name=cellname(cell))
-                p = _ax_uts_stat(ax, ct_, colors, main, dev, dev_data, title_,
+                p = _ax_uts_stat(ax, ct_, colors, main, error, dev_data, title_,
                                  ylabel, xdim, xlim, xlabel_, invy, bottom, top,
                                  hline, frame, clusters, pmax, ptrend)
                 self._plots.append(p)
@@ -386,7 +392,7 @@ class UTS(_base._EelFigure):
 
 class _ax_uts_stat:
 
-    def __init__(self, ax, ct, colors, main, dev, dev_data, title, ylabel,
+    def __init__(self, ax, ct, colors, main, error, dev_data, title, ylabel,
                  xdim, xlim, xlabel, invy, bottom, top, hline, frame, clusters,
                  pmax, ptrend):
         ax.x_fmt = "t = %.3f s"
@@ -401,7 +407,7 @@ class _ax_uts_stat:
             c = colors[cell]
             ndvar = ct.data[cell]
             y = ndvar.get_data(('case', xdim))
-            plt = _plt_uts_stat(ax, x, y, main, dev, dev_data, label=cell_label,
+            plt = _plt_uts_stat(ax, x, y, main, error, dev_data, label=cell_label,
                                 color=c)
             self.stat_plots.append(plt)
             if plt.main is not None:
@@ -711,7 +717,7 @@ class _plt_uts_clusters:
 
 class _plt_uts_stat(object):
 
-    def __init__(self, ax, x, y, main, dev, dev_data, label=None, **kwargs):
+    def __init__(self, ax, x, y, main, error, dev_data, label=None, **kwargs):
         main_kwargs = kwargs.copy()
         dev_kwargs = kwargs.copy()
         if label:
@@ -719,7 +725,7 @@ class _plt_uts_stat(object):
 
         dev_kwargs['alpha'] = 0.3
 
-        if dev == 'all':
+        if error == 'all':
             if 'linewidth' in kwargs:
                 main_kwargs['linewidth'] = kwargs['linewidth'] * 2
             elif 'lw' in kwargs:
@@ -731,23 +737,23 @@ class _plt_uts_stat(object):
         if hasattr(main, '__call__'):
             y_main = main(y, axis=0)
             self.main = ax.plot(x, y_main, zorder=5, **main_kwargs)
-        elif dev == 'all':
+        elif error == 'all':
             self.main = None
         else:
             raise ValueError("Invalid argument: main=%r" % main)
 
-        # plot dev
-        if dev == 'all':
-            self.dev = ax.plot(x, dev_data, **dev_kwargs)
-        elif dev:
-            if dev == 'data':
+        # plot error
+        if error == 'all':
+            self.error = ax.plot(x, dev_data, **dev_kwargs)
+        elif error:
+            if error == 'data':
                 pass
-            elif hasattr(dev, '__call__'):
-                dev_data = dev(y, axis=0)
+            elif hasattr(error, '__call__'):
+                dev_data = error(y, axis=0)
             else:
-                dev_data = stats.variability(y, None, None, dev, False)
+                dev_data = stats.variability(y, None, None, error, False)
             lower = y_main - dev_data
             upper = y_main + dev_data
-            self.dev = ax.fill_between(x, lower, upper, zorder=0, **dev_kwargs)
+            self.error = ax.fill_between(x, lower, upper, zorder=0, **dev_kwargs)
         else:
-            self.dev = None
+            self.error = None

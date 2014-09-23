@@ -13,6 +13,9 @@ New in 0.9
   for variability estimates (on by default for related measures designs, can be
   turned off using the ``pool_error`` argument).
 
+  - API: for consistency, the argument to specify the kind of error to plot
+    changed to ``error`` in both plots.
+
 
 New in 0.8
 ----------

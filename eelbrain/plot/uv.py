@@ -452,7 +452,7 @@ class Boxplot(_SimpleFigure):
 class Barplot(_SimpleFigure):
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
                  corr='Hochberg', title=True, trend=".", ylabel=None,
-                 err='sem', pool_error=None, ec='k', xlabel=True,
+                 error='sem', pool_error=None, ec='k', xlabel=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0,
                  c='#0099FF', edgec=None, ds=None, **kwargs):
         """Barplot
@@ -481,7 +481,7 @@ class Barplot(_SimpleFigure):
             Marker for a trend in pairwise comparisons.
         ylabel : None | str
             Y axis label (default is None).
-        err : str
+        error : str
             Measure of variability to display in the error bars (default: 1
             SEM). Examples:
             'ci': 95% confidence interval;
@@ -535,7 +535,7 @@ class Barplot(_SimpleFigure):
         _SimpleFigure.__init__(self, "BarPlot", title, xlabel, ylabel, **kwargs)
 
 
-        x0, x1, y0, y1 = _plt_barplot(self._ax, ct, err, pool_error, hatch, colors,
+        x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors,
                                       bottom=bottom, c=c, edgec=edgec, ec=ec,
                                       test=test, par=par, trend=trend,
                                       corr=corr, return_lim=True)
@@ -550,8 +550,8 @@ class Barplot(_SimpleFigure):
         self._show()
 
 
-def _plt_barplot(ax, ct, err, pool_error, hatch, colors, bottom=0, left=None, width=.5,
-                 c='#0099FF', edgec=None, ec='k', test=True, par=True,
+def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0, left=None,
+                 width=.5, c='#0099FF', edgec=None, ec='k', test=True, par=True,
                  trend=".", corr='Hochberg', return_lim=False):
     """Draw a barplot to axes ax for Celltable ct.
 
@@ -561,7 +561,7 @@ def _plt_barplot(ax, ct, err, pool_error, hatch, colors, bottom=0, left=None, wi
         Axes to which to plot
     ct : Celltable
         Data to plot.
-    err : str
+    error : str
         Variability description (e.g., "95%ci").
     pool_error : bool
         Pool the errors for the estimate of variability.
@@ -582,7 +582,7 @@ def _plt_barplot(ax, ct, err, pool_error, hatch, colors, bottom=0, left=None, wi
     if left is None:
         left = np.arange(k) - width / 2
     height = np.array(ct.get_statistic(np.mean))
-    y_error = stats.variability(ct.Y.x, ct.X, ct.match, err, pool_error)
+    y_error = stats.variability(ct.Y.x, ct.X, ct.match, error, pool_error)
 
 
     # fig spacing
