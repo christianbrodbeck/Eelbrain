@@ -430,7 +430,11 @@ class _ax_uts_stat:
             ax.set_title(title)
 
         # format x axis
-        ax.set_xlim(x[0], x[-1])
+        if xlim is None:
+            ax.set_xlim(x[0], x[-1])
+        else:
+            xmin, xmax = xlim
+            ax.set_xlim(xmin, xmax)
         ax.x_fmt = "t = %.3f s"
         ticks = ax.xaxis.get_ticklocs()
         ticklabels = _base._ticklabels(ticks, 'time')
@@ -449,13 +453,6 @@ class _ax_uts_stat:
             top = top if (top is not None) else y0
         if (bottom is not None) or (top is not None):
             ax.set_ylim(bottom, top)
-
-        if xlim is None:
-            xmin = x[0]
-            xmax = x[-1]
-        else:
-            xmin, xmax = xlim
-        ax.set_xlim(xmin, xmax)
 
         if not frame:
             ax.spines['right'].set_visible(False)
