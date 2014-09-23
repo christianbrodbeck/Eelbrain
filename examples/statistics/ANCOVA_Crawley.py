@@ -38,5 +38,5 @@ print m
 print test.anova(Y, hrs*genot, title="ANOVA")
 
 # plot the slopes
-plot.uv.regplot(Y, hrs, genot)
+plot.Regression(Y, hrs, genot)
 

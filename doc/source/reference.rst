@@ -135,14 +135,15 @@ Modules with statistical tests:
 Plotting
 ^^^^^^^^
 
-Modules for plotting:
+Modules for plotting. General Matplotlib-based plots are described in the
+:mod:`.plot` module; Mayavi/PySurfer based plots for MNE current source
+estimates are described in :mod:`.plot.brain`.
 
 .. autosummary::
    :toctree: generated
    
     plot
     plot.brain
-    plot.uv
 
 
 Backend Configuration

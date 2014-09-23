@@ -80,7 +80,7 @@ for i in xrange(clusters.n_cases):
     c_value = ds['src'].sum(index)
     # index is a boolean NDVar over space and time, so here we are summing in the
     # whole spatio-temporal cluster
-    plt_box = e.plot.uv.boxplot(c_value, 'side', ds=ds)
+    plt_box = e.plot.Boxplot(c_value, 'side', ds=ds)
     pw_table = e.test.pairwise(c_value, 'side', ds=ds)
     # add to report (create an image from an eelbrain matplotlib plot with .image())
     # use PNG because SVG boxplots do not render correctly in Safari

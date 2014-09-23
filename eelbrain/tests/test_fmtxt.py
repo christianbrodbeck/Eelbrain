@@ -38,7 +38,7 @@ def test_report():
 
     section = report.add_section(u'unicode: \xe2 abc')
     ds = datasets.get_uv()
-    p = plot.uv.barplot('fltvar', 'A', sub="B=='b1'", ds=ds)
+    p = plot.Barplot('fltvar', 'A', sub="B=='b1'", ds=ds)
     image = p.image()
     section.add_figure("test", image)
 

@@ -29,7 +29,7 @@ print s12
 
 # add a figure
 image = report.add_image_figure("boxplot.svg", "Boxplot of all the data")
-p = plot.uv.boxplot('fltvar', 'A%B', 'rm', ds=ds)
+p = plot.Boxplot('fltvar', 'A%B', 'rm', ds=ds)
 p.figure.savefig(image, format='svg')
 p.close()
 

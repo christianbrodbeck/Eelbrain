@@ -18,4 +18,4 @@ print test.pairwise(Y, A, corr='Hochberg')
 t = test.pairwise(Y, A, corr='Hochberg')
 print t.get_tex()
 
-plot.uv.boxplot(Y, A, title="My Boxplot", ylabel="value", corr='Hochberg')
+plot.Boxplot(Y, A, title="My Boxplot", ylabel="value", corr='Hochberg')

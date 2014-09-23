@@ -3,6 +3,10 @@
 Plotting multidimensional data (:class:`NDVar` objects)
 -------------------------------------------------------
 
+
+.. automodule:: eelbrain.plot.uv
+
+
 .. automodule:: eelbrain.plot.uts
 
 .. autosummary::
@@ -50,7 +54,6 @@ Submodules
    :toctree: generated
 
     plot.brain
-    plot.uv
 
 
 .. _plotting-general:
@@ -98,10 +101,11 @@ Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.
 
 """
-from sensors import SensorMaps, SensorMap2d
-from topo import TopoArray, TopoButterfly, Topomap
-from uts import UTSStat, UTS, UTSClusters
-from utsnd import Array, Butterfly
-from . import brain, uv
+from .sensors import SensorMaps, SensorMap2d
+from .topo import TopoArray, TopoButterfly, Topomap
+from .uts import UTSStat, UTS, UTSClusters
+from .utsnd import Array, Butterfly
+from .uv import Barplot, Boxplot, Correlation, Histogram, Regression, Timeplot
+from . import brain
 
 from ._base import configure_backend
