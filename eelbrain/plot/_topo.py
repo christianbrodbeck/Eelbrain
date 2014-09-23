@@ -7,9 +7,9 @@ from __future__ import division
 import numpy as np
 
 from . import _base
-from . import utsnd as _utsnd
-from .sensors import _tb_sensors_mixin
-from .sensors import _plt_map2d
+from . import _utsnd as _utsnd
+from ._sensors import _tb_sensors_mixin
+from ._sensors import _plt_map2d
 
 
 

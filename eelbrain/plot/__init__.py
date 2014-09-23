@@ -101,11 +101,11 @@ Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.
 
 """
-from .sensors import SensorMaps, SensorMap2d
-from .topo import TopoArray, TopoButterfly, Topomap
-from .uts import UTSStat, UTS, UTSClusters
-from .utsnd import Array, Butterfly
-from .uv import Barplot, Boxplot, Correlation, Histogram, Regression, Timeplot
+from ._sensors import SensorMaps, SensorMap2d
+from ._topo import TopoArray, TopoButterfly, Topomap
+from ._uts import UTSStat, UTS, UTSClusters
+from ._utsnd import Array, Butterfly
+from ._uv import Barplot, Boxplot, Correlation, Histogram, Regression, Timeplot
 from . import brain
 
 from ._base import configure_backend

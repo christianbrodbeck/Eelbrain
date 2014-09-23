@@ -15,8 +15,8 @@ import wx
 from .. import load, save, plot
 from .._data_obj import Dataset, Factor, Var, corr, asndvar
 from ..plot._base import find_fig_vlims
-from ..plot.utsnd import _ax_bfly_epoch
-from ..plot.nuts import _plt_bin_nuts
+from ..plot._utsnd import _ax_bfly_epoch
+from ..plot._nuts import _plt_bin_nuts
 from .._wxutils import Icon, ID, logger, REValidator
 from .app import get_app
 from .frame import EelbrainFrame, EelbrainDialog
