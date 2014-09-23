@@ -177,8 +177,10 @@ def get_uts(utsnd=False, seed=0):
     ds['ind'] = Factor(('R%.2i' % i for i in xrange(60)), random=True)
 
     # add dependent variables
-    Y = np.hstack((np.random.normal(size=45), np.random.normal(1, size=15)))
-    ds['Y'] = Var(Y)
+    rm_var = np.tile(np.random.normal(size=15), 4)
+    y = np.hstack((np.random.normal(size=45), np.random.normal(1, size=15)))
+    y += rm_var
+    ds['Y'] = Var(y)
     ybin = np.random.randint(0, 2, size=60)
     ds['YBin'] = Factor(ybin, labels={0:'c1', 1:'c2'})
     ycat = np.random.randint(0, 3, size=60)
@@ -186,8 +188,8 @@ def get_uts(utsnd=False, seed=0):
 
     # add a uts NDVar
     time = UTS(-.2, .01, 100)
-
     y = np.random.normal(0, .5, (60, len(time)))
+    y += rm_var[:, None]
     y[:15, 20:60] += np.hanning(40) * 1  # interaction
     y[:30, 50:80] += np.hanning(30) * 1  # main effect
     ds['uts'] = NDVar(y, dims=('case', time))
@@ -201,15 +203,16 @@ def get_uts(utsnd=False, seed=0):
                          [ 0.0, 0.0, 1.0]])
         sensor = Sensor(locs, sysname='test_sens')
 
-        Y = np.random.normal(0, 1, (60, 5, len(time)))
+        y = np.random.normal(0, 1, (60, 5, len(time)))
+        y += rm_var[:, None, None]
         for i in xrange(15):
             phi = np.random.uniform(0, 2 * np.pi, 1)
             x = np.sin(10 * 2 * np.pi * (time.times + phi))
             x *= np.hanning(len(time))
-            Y[i, 0] += x
+            y[i, 0] += x
 
         dims = ('case', sensor, time)
-        ds['utsnd'] = NDVar(Y, dims=dims)
+        ds['utsnd'] = NDVar(y, dims=dims)
 
     return ds
 

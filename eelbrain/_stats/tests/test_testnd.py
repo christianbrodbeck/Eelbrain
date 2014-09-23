@@ -356,7 +356,7 @@ def test_ttest_1samp():
     # clusters without resampling
     res1 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=0,
                               pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
-    assert_equal(res1.clusters.n_cases, 2)
+    assert_equal(res1.clusters.n_cases, 1)
     assert_not_in('p', res1.clusters)
     repr1 = repr(res1)
     assert_in('clusters', repr1)
@@ -372,7 +372,7 @@ def test_ttest_1samp():
     # clusters with resampling
     res2 = testnd.ttest_1samp('uts', sub="A == 'a0'", ds=ds, samples=10,
                               pmin=0.05, tstart=0, tstop=0.6, mintime=0.05)
-    assert_equal(res2.clusters.n_cases, 2)
+    assert_equal(res2.clusters.n_cases, 1)
     assert_equal(res2.samples, 10)
     assert_in('p', res2.clusters)
     repr2 = repr(res2)
