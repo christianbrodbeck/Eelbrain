@@ -9,6 +9,9 @@ New in 0.9
 * :class:`Factor` API change:  The ``rep`` argument was renamed to ``repeat``.
 * :class:`~experiment.MneExperiment`: subject name patterns and eog_sns are
   now handled automatically.
+* :class:`plot.UTSStat` and :class:`plot.uv.Barplot` can use pooled error
+  for variability estimates (on by default for related measures designs, can be
+  turned off using the ``pool_error`` argument).
 
 
 New in 0.8
