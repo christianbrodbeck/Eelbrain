@@ -13,12 +13,12 @@ def test_map2d():
     "Test plot.SensorMap2d"
     plot.configure_backend(False, False)
     ds = datasets.get_uts(utsnd=True)
-    Y = ds['utsnd']
-    p = plot.SensorMap2d(Y)
+    utsnd = ds['utsnd']
+    p = plot.SensorMap2d(utsnd)
 
     # plot attributes
     p.set_label_color('g')
-    p.set_label_text('idx')
+    p.set_label_text('index')
 
     # connectivity
     p.show_connectivity()

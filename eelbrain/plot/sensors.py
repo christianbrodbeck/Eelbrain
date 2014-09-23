@@ -157,12 +157,12 @@ class _plt_map2d:
         while self.markers:
             self.markers.pop().remove()
 
-    def show_labels(self, text='idx', xpos=0, ypos=.01, **text_kwargs):
+    def show_labels(self, text='name', xpos=0, ypos=.01, **text_kwargs):
         """Plot labels for the sensors
 
         Parameters
         ----------
-        text : None | 'idx' | 'name' | 'fullname'
+        text : None | 'index' | 'name' | 'fullname'
             Content of the labels. For 'name', any prefix common to all names
             is removed; with 'fullname', the full name is shown.
         xpos, ypos : scalar
@@ -182,7 +182,7 @@ class _plt_map2d:
         kwargs.update(text_kwargs)
 
         sensors = self.sensors
-        if text == 'idx':
+        if text == 'index':
             labels = map(str, xrange(len(sensors)))
         elif text == 'name':
             labels = sensors.names
@@ -192,7 +192,7 @@ class _plt_map2d:
         elif text == 'fullname':
             labels = sensors.names
         else:
-            err = "text has to be 'idx' or 'name', can't be %r" % text
+            err = "text has to be 'index' or 'name', can't be %r" % text
             raise NotImplementedError(err)
 
         locs = self.locs
@@ -220,8 +220,13 @@ class _plt_map2d:
 
 class _tb_sensors_mixin:
     # expects self._sensor_plots to be list of _plt_map2d
-    def __init__(self):
+    _label_options = ['None', 'Index', 'Name', 'Full Name']
+    _label_option_args = [None, 'index', 'name', 'fullname']
+
+    def __init__(self, label=None):
         self._label_color = 'k'
+        self._check_label_arg(label)
+        self._initial_label_arg = label
 
     def _fill_toolbar(self, tb):
         import wx
@@ -230,7 +235,9 @@ class _tb_sensors_mixin:
         # sensor labels
         lbl = wx.StaticText(tb, -1, "Labels:")
         tb.AddControl(lbl)
-        choice = wx.Choice(tb, -1, choices=['None', 'Index', 'Name'])
+        choice = wx.Choice(tb, -1, choices=self._label_options)
+        sel = self._label_option_args.index(self._initial_label_arg)
+        choice.SetSelection(sel)
         tb.AddControl(choice)
         self._SensorLabelChoice = choice
         choice.Bind(wx.EVT_CHOICE, self._OnSensorLabelChoice)
@@ -246,6 +253,10 @@ class _tb_sensors_mixin:
         btn = wx.Button(tb, label="Mark")  # , style=wx.BU_EXACTFIT)
         btn.Bind(wx.EVT_BUTTON, self._OnMarkSensor)
         tb.AddControl(btn)
+
+    def _check_label_arg(self, arg):
+        if arg not in self._label_option_args:
+            raise ValueError("Invalid sensor label argument: %s" % repr(arg))
 
     def _OnMarkSensor(self, event):
         import wx
@@ -264,8 +275,8 @@ class _tb_sensors_mixin:
 
     def _OnSensorLabelChoice(self, event):
         sel = event.GetSelection()
-        text = [None, 'idx', 'name'][sel]
-        self.set_label_text(text)
+        sel_arg = self._label_option_args[sel]
+        self.set_label_text(sel_arg)
 
     def _OnSensorLabelColorChoice(self, event):
         sel = event.GetSelection()
@@ -289,17 +300,18 @@ class _tb_sensors_mixin:
             p.set_label_color(color)
         self.draw()
 
-    def set_label_text(self, text='idx'):
+    def set_label_text(self, text='name'):
         """Add/remove sensor labels
 
         Parameters
         ----------
-        labels : None | 'idx' | 'name' | 'fullname'
+        labels : None | 'name' | 'index'
             Content of the labels. For 'name', any prefix common to all names
             is removed; with 'fullname', the full name is shown.
         """
+        self._check_label_arg(text)
         if hasattr(self, '_SensorLabelChoice'):
-            sel = [None, 'idx', 'name'].index(text)
+            sel = self._label_option_args.index(text)
             self._SensorLabelChoice.SetSelection(sel)
 
         for p in self._sensor_plots:
@@ -548,7 +560,7 @@ class SensorMap2d(_tb_sensors_mixin, _base._EelFigure):
         ----------
         sensors : NDVar | Sensor
             sensor-net object or object containing sensor-net
-        labels : None | 'idx' | 'name' | 'fullname'
+        labels : None | 'index' | 'name' | 'fullname'
             Content of the labels. For 'name', any prefix common to all names
             is removed; with 'fullname', the full name is shown.
         proj:

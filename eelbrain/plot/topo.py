@@ -27,7 +27,7 @@ class Topomap(_tb_sensors_mixin, _base._EelFigure):
             Data to plot.
         Xax : None | categorial
             Create a separate plot for each cell in this model.
-        sensors : None | 'idx' | 'name' | 'fullname'
+        sensors : None | 'index' | 'name' | 'fullname'
             Show sensor labels. For 'name', any prefix common to all names
             is removed; with 'fullname', the full name is shown.
         proj : str
@@ -47,9 +47,9 @@ class Topomap(_tb_sensors_mixin, _base._EelFigure):
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
+        _tb_sensors_mixin.__init__(self, sensors)
         _base._EelFigure.__init__(self, "Topomap Plot", nax, layout, 1, 7,
-                                 figtitle=title)
-        _tb_sensors_mixin.__init__(self)
+                                  figtitle=title)
 
         vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
 
@@ -66,9 +66,6 @@ class Topomap(_tb_sensors_mixin, _base._EelFigure):
             h = _ax_topomap(ax, layers, title=True, **topo_kwargs)
             self._plots.append(h)
             self._sensor_plots.append(h.sensors)
-
-        if isinstance(sensors, str):
-            self.set_label_text(sensors)
 
         self._show()
 
