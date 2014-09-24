@@ -202,7 +202,7 @@ class LM(object):
 
         # SS explained
         SS_model = self.SS = self.SS_model = SS_total - SS_res
-        df_model = self.df = self.df_model = X.df
+        df_model = self.df = self.df_model = X.df - 1 # don't count intercept
         self.MS_model = self.MS = SS_model / df_model
 
         # store stuff

@@ -4924,8 +4924,8 @@ class Model(object):
             i = k
 
         # dfs
-        self.df_total = df_total = n_cases - 1  # 1=intercept
-        self.df = df = sum(e.df for e in effects)
+        self.df_total = df_total = n_cases
+        self.df = df = sum(e.df for e in effects) + 1  # intercept
         self.df_error = df_error = df_total - df
 
         if df_error < 0:
@@ -5073,7 +5073,7 @@ class Model(object):
     @LazyProperty
     def full(self):
         "returns the full model including an intercept"
-        out = np.empty((self._n_cases, self.df + 1))
+        out = np.empty((self._n_cases, self.df))
 
         # intercept
         out[:, 0] = np.ones(self._n_cases)
