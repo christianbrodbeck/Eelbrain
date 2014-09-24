@@ -2959,12 +2959,19 @@ class MneExperiment(FileTree):
         # cluster value
         idx = (c_extent != 0)
         v = y.mean(idx)
-        p = plot.Boxplot(v, model, 'subject', ds=ds)
-        image = p.image('cluster_boxplot.png')
+        # Barplot
+        p = plot.Barplot(v, model, 'subject', ds=ds, corr=None)
+        image_bar = p.image('cluster_barplot.svg')
         p.close()
-        caption = "Average value in cluster by condition."
+        # Boxplot
+        p = plot.Boxplot(v, model, 'subject', ds=ds, corr=None)
+        image_box = p.image('cluster_boxplot.png')
+        p.close()
+        # add figure to report
+        caption = "Average value in cluster by condition, with pairwise t-tests."
         figure = section.add_figure(caption)
-        figure.append(image)
+        figure.append(image_bar)
+        figure.append(image_box)
         # pairwise test table
         res = _test.pairwise(v, model, 'subject', ds=ds)
         figure = section.add_figure(caption)
