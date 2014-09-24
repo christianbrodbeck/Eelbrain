@@ -287,14 +287,17 @@ cdef void _lm_betas(scalar[:,:] y, int i, double[:,:] xsinv, double[:] betas) no
         Number of cases in y.
     """
     cdef int i_beta, case
+    cdef double beta
+
     cdef int n_cases = y.shape[0]
     cdef int df_x = xsinv.shape[0]
 
     # betas = xsinv * y
     for i_beta in range(df_x):
-        betas[i_beta] = 0
+        beta = 0
         for case in range(n_cases):
-            betas[i_beta] += xsinv[i_beta, case] * y[case, i]
+            beta += xsinv[i_beta, case] * y[case, i]
+        betas[i_beta] = beta
 
 
 def lm_betas(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:,:] out):
