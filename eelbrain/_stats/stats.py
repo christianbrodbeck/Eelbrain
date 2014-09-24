@@ -9,6 +9,39 @@ from .._data_obj import asfactor, asmodel, Model
 from . import opt
 
 
+def betas(y, x, use_scipy=True):
+    """Regression coefficients
+
+    Parameters
+    ----------
+    y : array  [n_cases, ...]
+        Dependent measure.
+    x : Model
+        Predictors
+    use_scipy : bool
+        Use scipy.linalg.lstsq (faster, default True).
+
+    Returns
+    -------
+    betas : array  [n_predictors, ...]
+        Beta coefficients for the regression. The first beta is always the
+        intercept (see Model).
+    """
+    n = len(y)
+    x = asmodel(x)
+    shape = (x.df,) + y.shape[1:]
+    y_ = y.reshape((n, -1))
+    if use_scipy:
+        out = scipy.linalg.lstsq(x.full, y_)[0]
+        if y.ndim > 2:
+            out = out.reshape(shape)
+    else:
+        out = np.empty(shape)
+        out_ = out.reshape((x.df, -1))
+        opt.lm_betas(y_, x.full, x.xsinv, out_)
+    return out
+
+
 def confidence_interval(y, x=None, match=None, confidence=.95):
     """Confidence interval based on the inverse t-test
 

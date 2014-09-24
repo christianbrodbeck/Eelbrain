@@ -36,6 +36,27 @@ def test_confidence_interval():
     assert_almost_equal(ci, 0.52, 2)
 
 
+def test_lm():
+    "Test linear model function against scipy lstsq"
+    ds = datasets.get_uts(True)
+    uts = ds['uts']
+    utsnd = ds['utsnd']
+    x = ds.eval("A*B")
+    n = ds.n_cases
+
+    # 1d betas
+    betas = stats.betas(uts.x, x, False)
+    sp_betas = scipy.linalg.lstsq(x.full, uts.x.reshape((n, -1)))[0]
+    # sp_betas = sp_betas.reshape((x.df,) + uts.shape[1:])
+    assert_array_almost_equal(betas, sp_betas)
+
+    # 2d betas
+    betas = stats.betas(utsnd.x, x, False)
+    sp_betas = scipy.linalg.lstsq(x.full, utsnd.x.reshape((n, -1)))[0]
+    sp_betas = sp_betas.reshape((x.df,) + utsnd.shape[1:])
+    assert_array_almost_equal(betas, sp_betas)
+
+
 def test_sem_and_variability():
     "Test variability() and standard_error_of_the_mean() functions"
     ds = datasets.get_loftus_masson_1994()
