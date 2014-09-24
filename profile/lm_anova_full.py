@@ -3,7 +3,7 @@ from eelbrain import *
 import eelbrain
 from eelbrain._stats import opt
 
-ds = datasets.get_rand(True)
+ds = datasets.get_uts(True)
 y = ds['utsnd'].x
 n_cases = len(y)
 n_tests = np.product(y.shape[1:])

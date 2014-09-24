@@ -3,10 +3,11 @@ from optparse import OptionParser
 import pstats
 
 import mne
-from eelbrain.lab import *
+from eelbrain import *
+import eelbrain
 
 mne.set_log_level('warning')
-stats.testnd.multiprocessing = False
+eelbrain._stats.testnd.multiprocessing = False
 
 
 # option parser

@@ -2,7 +2,7 @@ import os
 import timeit
 
 import mne
-from eelbrain.lab import datasets, save
+from eelbrain import datasets, save
 
 mne.set_log_level('warning')
 
