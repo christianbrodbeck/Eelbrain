@@ -157,16 +157,16 @@ def rms(a, axis=None):
         return np.sqrt(out, out)
 
 
-def rmssd(Y):
+def rmssd(y):
     """Root mean square of successive differences
 
     Used for heart rate variance analysis.
     """
-    assert np.ndim(Y) == 1
-    N = len(Y)
+    assert np.ndim(y) == 1
+    N = len(y)
     assert N > 1
-    dY = np.diff(Y)
-    X = N / (N - 1) * np.sum(dY ** 2)
+    dy = np.diff(y)
+    X = N / (N - 1) * np.sum(dy ** 2)
     return np.sqrt(X)
 
 
