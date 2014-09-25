@@ -3056,6 +3056,10 @@ class NDVar(object):
         -----
         The model is fit with :func:`scipy.linalg.leastsq`. The intercept is
         generated internally, and betas for the intercept are not returned.
+
+        See Also
+        --------
+        .ols_t : T-values for regression coefficients
         """
         from ._stats import stats
 
@@ -3072,6 +3076,47 @@ class NDVar(object):
         betas = stats.betas(self.x, x)[1:]  # drop intercept
         info = self.info.copy()
         return NDVar(betas, self.dims, info, name)
+
+    def ols_t(self, x, name=None):
+        """T-values for sample-wise ordinary least squares regressions
+
+        Parameters
+        ----------
+        x : Model
+            Predictor or predictors. Can also be supplied as argument that can
+            be converted to a Model, for example ``Var`` or list of ``Var``.
+        name : str
+            Name for the output NDVar.
+
+        Returns
+        -------
+        t : NDVar
+            Per sample t-values. The case dimension reflects the predictor
+            variables in the same order as the Model's effects.
+
+        Notes
+        -----
+        Betas for the intercept are not returned.
+
+        See Also
+        --------
+        .ols : Regression coefficients
+        """
+        from ._stats import stats
+
+        if not self.has_case:
+            msg = ("Can only apply regression to NDVar with case dimension")
+            raise DimensionMismatchError(msg)
+
+        x = asmodel(x)
+        if len(x) != len(self):
+            msg = ("Predictors do not have same number of cases (%i) as the "
+                   "dependent variable (%i)" % (len(x), len(self)))
+            raise DimensionMismatchError(msg)
+
+        t = stats.lm_t(self.x, x)[1:]  # drop intercept
+        info = self.info.copy()
+        return NDVar(t, self.dims, info, name)
 
     def repeat(self, repeats, dim='case', name=True):
         """

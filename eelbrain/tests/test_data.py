@@ -602,9 +602,11 @@ def test_ols():
     m1 = ds_['x']
     b1 = utsc.ols(m1)
     res1 = utsc.residuals(m1)
+    t1 = utsc.ols_t(m1)
     m2 = ds_.eval("x + x2")
     b2 = utsc.ols(m2)
     res2 = utsc.residuals(m2)
+    t2 = utsc.ols_t(m2)
     # compare with R
     for i in xrange(n_times):
         ds_['y'] = Var(utsc.x[:, i])
@@ -615,18 +617,24 @@ def test_ols():
         assert_almost_equal(b1.x[0, i], beta)
         res = r('residuals(lm1)')
         assert_array_almost_equal(res1.x[:, i], res)
+        t = r('coef(summary(lm1))')[5]
+        assert_almost_equal(t1.x[0, i], t)
         # 2 predictors
         r('lm2 <- lm(y ~ x + x2, ds)')
         beta = r('coef(lm2)')[1:]
         assert_array_almost_equal(b2.x[:, i], beta)
         res = r('residuals(lm2)')
         assert_array_almost_equal(res2.x[:, i], res)
+        lm2_coefs = r('coef(summary(lm2))')
+        t = [lm2_coefs[7], lm2_coefs[8]]
+        assert_array_almost_equal(t2.x[:, i], t)
 
     # 3d
     utsnd = ds['utsnd']
     ds_['utsnd'] = utsnd
     b1 = ds_.eval("utsnd.ols(x)")
     res1 = ds_.eval("utsnd.residuals(x)")
+    t1 = ds_.eval("utsnd.ols_t(x)")
     for i in xrange(len(b1.time)):
         ds_['y'] = Var(utsnd.x[:, 1, i])
         ds_.to_r('ds')
@@ -636,6 +644,8 @@ def test_ols():
         assert_almost_equal(b1.x[0, 1, i], beta)
         res = r('residuals(lm1)')
         assert_array_almost_equal(res1.x[:, 1, i], res)
+        t = r('coef(summary(lm1))')[5]
+        assert_almost_equal(t1.x[0, 1, i], t)
 
 
 def test_io_pickle():

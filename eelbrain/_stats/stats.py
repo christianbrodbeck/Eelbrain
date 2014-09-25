@@ -4,6 +4,7 @@ import re
 
 import numpy as np
 import scipy.stats
+from scipy.linalg import inv
 
 from .._data_obj import asfactor, asmodel, Model
 from . import opt
@@ -85,6 +86,38 @@ def confidence_interval(y, x=None, match=None, confidence=.95):
     np.sqrt(out, out)
     t = scipy.stats.t.isf((1 - confidence) / 2, df)
     out *= t / np.sqrt(n)
+    return out
+
+
+def lm_t(y, x):
+    """Calculate t-values for regression coefficients
+
+    Parameters
+    ----------
+    y : array  [n_cases, ...]
+        Dependent measure.
+    x : Model
+        Predictors
+    """
+    # t = beta / se(beta)
+    # se(beta) = sqrt(ms_e / a)
+    # t = sqrt(a) * (beta / sqrt(ms_e))
+    x = asmodel(x)
+
+    # calculate a
+    a = np.empty(x.df)
+    x_ = np.empty((len(x), x.df - 1))
+    for i in xrange(x.df):
+        y_ = x.full[:, i:i+1]
+        x_[:, :i] = x.full[:, :i]
+        x_[:, i:] = x.full[:, i + 1:]
+        opt.lm_res_ss(y_, x_, xsinv(x_), a[i:i+1])
+    np.sqrt(a, a)
+
+    y_ = y.reshape((len(y), -1))
+    out = np.empty((x.df,) + y.shape[1:])
+    out_ = out.reshape((x.df, -1))
+    opt.lm_t(y_, x.full, x.xsinv, a, out_)
     return out
 
 
@@ -277,3 +310,8 @@ def variability(y, x, match, spec, pool):
         return out.item()
     else:
         return out
+
+
+def xsinv(x):
+    xt = x.T
+    return inv(xt.dot(x)).dot(xt)

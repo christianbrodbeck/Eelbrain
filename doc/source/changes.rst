@@ -7,6 +7,7 @@ New in 0.9
 ----------
 
 * :class:`Factor` API change:  The ``rep`` argument was renamed to ``repeat``.
+* T-values for regression coefficients through :meth:`NDVar.ols_t`.
 * :class:`~experiment.MneExperiment`: subject name patterns and eog_sns are
   now handled automatically.
 * :class:`~plot.uts.UTSStat` and :class:`~plot.uv.Barplot` plots can use pooled

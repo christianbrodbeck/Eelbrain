@@ -300,6 +300,36 @@ cdef void _lm_betas(scalar[:,:] y, int i, double[:,:] xsinv, double[:] betas) no
         betas[i_beta] = beta
 
 
+cdef double _lm_res_ss(scalar[:,:] y, int i, double[:,:] x, double[:] betas):
+    """Residual sum squares
+
+    Parameters
+    ----------
+    y : array (n_cases, n_tests)
+        Dependent Measurement.
+    i : int
+        Index of the test for which to calculate betas.
+    x : array (n_cases, df_model)
+        Model matrix.
+    betas : array (n_betas,)
+        Fitted regression coefficients.
+    """
+    cdef int case, i_beta
+    cdef double predicted_y
+
+    cdef double ss = 0
+    cdef int n_cases = y.shape[0]
+    cdef int df_x = betas.shape[0]
+
+    for case in range(n_cases):
+        predicted_y = 0
+        for i_beta in range(df_x):
+            predicted_y += x[case, i_beta] * betas[i_beta]
+        ss += (y[case, i] - predicted_y) ** 2
+
+    return ss
+
+
 def lm_betas(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:,:] out):
     """Fit a linear model
 
@@ -393,3 +423,35 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
             SS_res += (y[case, i] - predicted_y) ** 2
 
         ss[i] = SS_res
+
+
+def lm_t(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] a, double[:,:] out):
+    """T-values for linear multiple regression
+
+    Parameters
+    ----------
+    y : array (n_cases, n_tests)
+        Dependent Measurement.
+    x : array (n_cases, df_model)
+        Model matrix.
+    xsinv : array (df_model, n_cases)
+        xsinv for x.
+    out : array (df_model, n_tests)
+        Container for output.
+    """
+    cdef int i, i_beta
+    cdef double ss_res, ms_res, se_res
+
+    cdef int n_tests = y.shape[1]
+    cdef int n_cases = y.shape[0]
+    cdef int df_x = xsinv.shape[0]
+    cdef double df_res = n_cases - df_x
+    cdef double [:] betas = cvarray((df_x,), sizeof(double), 'd')
+
+    for i in range(n_tests):
+        _lm_betas(y, i, xsinv, betas)
+        ss_res = _lm_res_ss(y, i, x, betas)
+        ms_res = ss_res / df_res
+        se_res = ms_res ** 0.5
+        for i_beta in range(df_x):
+            out[i_beta, i] = betas[i_beta] * a[i_beta] / se_res
