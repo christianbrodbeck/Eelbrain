@@ -3114,14 +3114,27 @@ class MneExperiment(FileTree):
             print("%s: %r -> %r" % (field, current, next_))
         self.set(**{field: next_})
 
-    def plot_annot(self, surf='inflated', views=['lat', 'med'], hemi='split',
-                   alpha=0.7, borders=False, w=600, parc=None):
+    def plot_annot(self, surf='inflated', views=['lat', 'med'], hemi=None,
+                   borders=False, alpha=0.7, w=600, parc=None):
         """Plot the annot file on which the current parcellation is based
 
         kwargs are for self.plot_brain().
 
         Parameters
         ----------
+        surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+            Freesurfer surface to use as brain geometry.
+        views : str | iterator of str
+            View or views to show in the figure.
+        hemi : 'lh' | 'rh' | 'both' | 'split'
+            Which hemispheres to plot (default includes hemisphere with more than one
+            label in the annot file).
+        borders : bool | int
+            Show only label borders (PySurfer Brain.add_annotation() argument).
+        alpha : scalar
+            Alpha of the annotation (1=opaque, 0=transparent, default 0.7).
+        w : int
+            Figure width per hemisphere.
         parc : None | str
             Parcellation to plot. If None, use parc from the current state.
         """
@@ -3130,10 +3143,15 @@ class MneExperiment(FileTree):
         else:
             parc = self.get('parc', parc=parc)
 
-        title = parc
-        brain = self.plot_brain(surf, title, hemi, views, w, True)
         self.make_annot()
-        brain.add_annotation(parc, borders, alpha)
+        mri_sdir = self.get('mri-sdir')
+        if is_fake_mri(self.get('mri-dir')):
+            subject = self.get('common_brain')
+        else:
+            subject = self.get('mrisubject')
+
+        brain = plot.brain.annot(parc, subject, surf, borders, alpha, hemi, views,
+                                 w, subjects_dir=mri_sdir)
         return brain
 
     def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat'],
