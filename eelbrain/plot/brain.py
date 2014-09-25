@@ -28,16 +28,79 @@ import os
 from tempfile import mkdtemp
 
 import numpy as np
+import mne
 
 from .._data_obj import asndvar, NDVar, UTS
 from ..fmtxt import Image, im_table
 
 
-__all__ = ['activation', 'dspm', 'surfer_brain', 'stat']
-
-
 def _idx(i):
     return int(round(i))
+
+
+def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
+          hemi=None, views=['lat', 'med'], w=None, h=None, axw=None, axh=None,
+          background=None, parallel=True, subjects_dir=None):
+    """Plot the parcellation in an annotation file
+
+    Parameters
+    ----------
+    annot : str
+        Name of the annotation (e.g., "PALS_B12_LOBES").
+    subject : str
+        Name of the subject (default 'fsaverage').
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+        Freesurfer surface to use as brain geometry.
+    borders : bool | int
+        Show only label borders (PySurfer Brain.add_annotation() argument).
+    alpha : scalar
+        Alpha of the annotation (1=opaque, 0=transparent, default 0.7).
+    hemi : 'lh' | 'rh' | 'both' | 'split'
+        Which hemispheres to plot (default includes hemisphere with more than one
+        label in the annot file).
+    views : str | iterator of str
+        View or views to show in the figure.
+    w, h, axw, axh : scalar
+        Layout parameters (figure width/height, subplot width/height).
+    background : mayavi color
+        Figure background color.
+    parallel : bool
+        Set views to parallel projection (default ``True``).
+    smoothing_steps : None | int
+        Number of smoothing steps if data is spatially undersampled (pysurfer
+        ``Brain.add_data()`` argument).
+    subjects_dir : None | str
+        Override the subjects_dir associated with the source space dimension.
+
+    Returns
+    -------
+    brain : surfer.Brain
+        PySurfer Brain instance.
+    """
+    if hemi is None:
+        annot_lh = mne.read_labels_from_annot(subject, annot, 'lh',
+                                              subjects_dir=subjects_dir)
+        use_lh = len(annot_lh) > 1
+        annot_rh = mne.read_labels_from_annot(subject, annot, 'rh',
+                                              subjects_dir=subjects_dir)
+        use_rh = len(annot_rh) > 1
+        if use_lh and use_rh:
+            hemi = 'split'
+        elif use_lh:
+            hemi = 'lh'
+        elif use_rh:
+            hemi = 'rh'
+        else:
+            raise ValueError("Neither hemisphere contains more than one label")
+
+    brain = _surfer_brain(subject, surf, hemi, views, w, h, axw, axh, background,
+                          subjects_dir)
+    brain.add_annotation(annot, borders, alpha)
+
+    if parallel:
+        _set_parallel(brain, surf)
+
+    return brain
 
 
 def _plot(data, lut, vmin, vmax, *args, **kwargs):
@@ -231,6 +294,74 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     return _plot(cluster, lut, -vmax, vmax, *args, **kwargs)
 
 
+def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
+                  views=['lat', 'med'], w=None, h=None, axw=None, axh=None,
+                  background=None, subjects_dir=None):
+    """Create surfer.Brain instance
+
+    Parameters
+    ----------
+    subject : str
+        Name of the subject (default 'fsaverage').
+    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+        Freesurfer surface to use as brain geometry.
+    hemi : 'lh' | 'rh' | 'both' | 'split'
+        Which hemispheres to plot.
+    views : str | iterator of str
+        View or views to show in the figure.
+    colorbar : bool
+        Whether to add a colorbar to the figure.
+    w, h, axw, axh : scalar
+        Layout parameters (figure width/height, subplot width/height).
+    background : mayavi color
+        Figure background color.
+    subjects_dir : None | str
+        Override the subjects_dir associated with the source space dimension.
+
+    Returns
+    -------
+    brain : surfer.Brain
+        PySurfer Brain instance.
+    """
+    from surfer import Brain
+
+    if isinstance(views, basestring):
+        views = [views]
+    elif not isinstance(views, list):
+        views = list(views)
+
+    if hemi == 'split':
+        n_views_x = 2
+    elif hemi in ('lh', 'rh', 'both', 'split'):
+        n_views_x = 1
+    else:
+        raise ValueError("Unknown value for hemi parameter: %s" % repr(hemi))
+
+    title = None
+    config_opts = {}
+    if w is not None:
+        config_opts['width'] = w
+    elif axw is not None:
+        config_opts['width'] = axw * n_views_x
+    else:
+        config_opts['width'] = 500 * n_views_x
+
+    if h is not None:
+        config_opts['height'] = h
+    elif axh is not None:
+        config_opts['height'] = axh * len(views)
+    else:
+        config_opts['height'] = 400 * len(views)
+
+    if background is not None:
+        config_opts['background'] = background
+
+    brain = Brain(subject, hemi, surf, True, title, config_opts=config_opts,
+                  views=views, subjects_dir=subjects_dir)
+
+    return brain
+
+
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
                  views=['lat', 'med'], colorbar=True, time_label='%.3g s',
                  w=None, h=None, axw=None, axh=None, background=None,
@@ -269,54 +400,24 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     brain : surfer.Brain
         PySurfer Brain instance containing the plot.
     """
-    from surfer import Brain
-
-    if isinstance(views, basestring):
-        views = [views]
-    elif not isinstance(views, list):
-        views = list(views)
-
     src = asndvar(src)  # , sub=None, ds=ds)
     if src.has_case:
         src = src.summary()
 
     if src.source.lh_n and src.source.rh_n:
         hemi = 'split'
-        n_hemi = 2
     elif src.source.lh_n:
         hemi = 'lh'
-        n_hemi = 1
     elif not src.source.rh_n:
         raise ValueError('No data')
     else:
         hemi = 'rh'
-        n_hemi = 1
-
-    title = None
-    config_opts = {}
-    if w is not None:
-        config_opts['width'] = w
-    elif axw is not None:
-        config_opts['width'] = axw * n_hemi
-    else:
-        config_opts['width'] = 500 * n_hemi
-
-    if h is not None:
-        config_opts['height'] = h
-    elif axh is not None:
-        config_opts['height'] = axh * len(views)
-    else:
-        config_opts['height'] = 400 * len(views)
-
-    if background is not None:
-        config_opts['background'] = background
 
     if subjects_dir is None:
         subjects_dir = src.source.subjects_dir
 
-    brain = Brain(src.source.subject, hemi, surf, True, title,
-                  config_opts=config_opts, views=views,
-                  subjects_dir=subjects_dir)
+    brain = _surfer_brain(src.source.subject, surf, hemi, views, w, h, axw, axh,
+                          background, subjects_dir)
 
     # general PySurfer data args
     alpha = 1
@@ -330,6 +431,7 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         times = None
         data_dims = ('source',)
 
+    # add data
     if src.source.lh_n:
         if hemi == 'lh':
             colorbar_ = colorbar
@@ -353,18 +455,23 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         brain.add_data(data, vmin, vmax, None, colormap, alpha, vertices,
                        smoothing_steps, times, time_label, colorbar, 'rh')
 
-    if parallel:  # set parallel view
-        if surf == 'inflated':
-            camera_scale = 95
-        else:
-            camera_scale = 65
-
-        for figs in brain._figures:
-            for fig in figs:
-                fig.scene.camera.parallel_scale = camera_scale
-                fig.scene.camera.parallel_projection = True
+    # set parallel view
+    if parallel:
+        _set_parallel(brain, surf)
 
     return brain
+
+
+def _set_parallel(brain, surf):
+    if surf == 'inflated':
+        camera_scale = 95
+    else:
+        camera_scale = 65
+
+    for figs in brain._figures:
+        for fig in figs:
+            fig.scene.camera.parallel_scale = camera_scale
+            fig.scene.camera.parallel_projection = True
 
 
 def _dspm_lut(fmin, fmid, fmax):
