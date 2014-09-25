@@ -39,13 +39,13 @@ from mne import Evoked as _mne_Evoked
 import numpy as np
 from numpy import dot
 import scipy.stats
-from scipy.linalg import inv, lstsq
+from scipy.linalg import inv
 from scipy.optimize import leastsq
 from scipy.spatial.distance import cdist, pdist, squareform
 
 from . import fmtxt
-from ._utils import ui, LazyProperty, natsorted
 from . import _colorspaces as cs
+from ._utils import ui, LazyProperty, natsorted
 
 
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
@@ -3036,8 +3036,7 @@ class NDVar(object):
         return self._aggregate_over_dims(dims, np.min)
 
     def ols(self, x, name=None):
-        """
-        Sample-wise ordinary least squares regressions
+        """Sample-wise ordinary least squares regressions
 
         Parameters
         ----------
@@ -3058,22 +3057,21 @@ class NDVar(object):
         The model is fit with :func:`scipy.linalg.leastsq`. The intercept is
         generated internally, and betas for the intercept are not returned.
         """
+        from ._stats import stats
+
         if not self.has_case:
             msg = ("Can only apply regression to NDVar with case dimension")
             raise DimensionMismatchError(msg)
 
-        n = len(self)
-        a = asmodel(x).full
-        if len(a) != n:
+        x = asmodel(x)
+        if len(x) != len(self):
             msg = ("Predictors do not have same number of cases (%i) as the "
-                   "dependent variable (%i)" % (len(a), n))
+                   "dependent variable (%i)" % (len(x), len(self)))
             raise DimensionMismatchError(msg)
-        b = self.x.reshape((n, -1))
-        x_ = lstsq(a, b)[0][1:]
-        x_ = x_.reshape((len(x_),) + self.shape[1:])
 
+        betas = stats.betas(self.x, x)[1:]  # drop intercept
         info = self.info.copy()
-        return NDVar(x_, self.dims, info, name)
+        return NDVar(betas, self.dims, info, name)
 
     def repeat(self, repeats, dim='case', name=True):
         """
