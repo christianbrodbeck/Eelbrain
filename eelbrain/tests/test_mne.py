@@ -106,8 +106,7 @@ def test_source_estimate():
 
 def test_morphing():
     mne.set_log_level('warning')
-    sss_path = os.path.join(subjects_dir, 'fsaverage', 'bem', 'fsaverage-ico-4-src.fif')
-    sss = mne.read_source_spaces(sss_path, False)
+    sss = datasets._mne_source_space('fsaverage', 'ico-4', subjects_dir)
     vertices_to = [sss[0]['vertno'], sss[1]['vertno']]
     ds = datasets.get_mne_sample(-0.1, 0.1, src='ico', sub='index==0', stc=True)
     stc = ds['stc', 0]
@@ -127,8 +126,7 @@ def test_morphing():
 def test_source_space():
     "Test SourceSpace dimension"
     for subject in ['fsaverage', 'sample']:
-        path = os.path.join(subjects_dir, subject, 'bem', subject + '-ico-4-src.fif')
-        mne_src = mne.read_source_spaces(path)
+        mne_src = datasets._mne_source_space(subject, 'ico-4', subjects_dir)
         vertno = [mne_src[0]['vertno'], mne_src[1]['vertno']]
         ss = SourceSpace(vertno, subject, 'ico-4', subjects_dir, 'aparc')
 

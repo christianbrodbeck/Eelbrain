@@ -24,6 +24,28 @@ def get_loftus_masson_1994():
     return ds
 
 
+def _mne_source_space(subject, src_tag, subjects_dir):
+    """Load mne source space"""
+    src_file = os.path.join(subjects_dir, subject, 'bem',
+                            '%s-%s-src.fif' % (subject, src_tag))
+    src = src_tag[:3]
+    if os.path.exists(src_file):
+        return mne.read_source_spaces(src_file, False)
+    elif src == 'ico':
+        return mne.setup_source_space(subject, src_file, 'ico4',
+                                      subjects_dir=subjects_dir)
+    elif src == 'vol':
+        mri_file = os.path.join(subjects_dir, subject, 'mri', 'orig.mgz')
+        bem_file = os.path.join(subjects_dir, subject, 'bem',
+                                'sample-5120-5120-5120-bem-sol.fif')
+        return mne.setup_volume_source_space(subject, src_file, pos=10.,
+                                             mri=mri_file, bem=bem_file,
+                                             mindist=0., exclude=0.,
+                                             subjects_dir=subjects_dir)
+    else:
+        raise ValueError("src_tag=%s" % repr(src_tag))
+
+
 def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
                    src=None, sub="modality=='A'", fixed=False, snr=2,
                    method='dSPM', rm=False, stc=False):
@@ -120,18 +142,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
         if os.path.exists(fwd_file):
             fwd = mne.read_forward_solution(fwd_file)
         else:
-            src_file = os.path.join(bem_dir, 'sample-%s-src.fif' % src_tag)
-            if os.path.exists(src_file):
-                src_ = src_file
-            elif src == 'ico':
-                src_ = mne.setup_source_space(subject, src_file, 'ico4',
-                                              subjects_dir=subjects_dir)
-            elif src == 'vol':
-                mri_file = os.path.join(subjects_dir, subject, 'mri', 'orig.mgz')
-                src_ = mne.setup_volume_source_space(subject, src_file, pos=10.,
-                                                     mri=mri_file, bem=bem_file,
-                                                     mindist=0., exclude=0.,
-                                                     subjects_dir=subjects_dir)
+            src_ = _mne_source_space(subject, src_tag, subjects_dir)
             fwd = mne.make_forward_solution(epochs.info, trans_file, src_,
                                             bem_file, fwd_file)
 
