@@ -44,6 +44,11 @@ class App(wx.App):
         m.Append(wx.ID_FORWARD, '&Forward \tCtrl+]', 'Go One Page Forward')
         m.Append(wx.ID_BACKWARD, '&Back \tCtrl+[', 'Go One Page Back')
 
+        # Window Menu
+        m = window_menu = wx.Menu()
+        m.Append(ID.WINDOW_MINIMIZE, '&Minimize \tCtrl+M')
+        m.Append(ID.WINDOW_ZOOM, '&Zoom')
+
         # Help Menu
         m = help_menu = wx.Menu()
         m.Append(ID.HELP_EELBRAIN, 'Eelbrain Help')
@@ -57,6 +62,7 @@ class App(wx.App):
         menu_bar.Append(edit_menu, "Edit")
         menu_bar.Append(view_menu, "View")
         menu_bar.Append(go_menu, "Go")
+        menu_bar.Append(window_menu, "Window")
         menu_bar.Append(help_menu, self.GetMacHelpMenuTitleName())
         wx.MenuBar.MacSetCommonMenuBar(menu_bar)
         self.menubar = menu_bar
@@ -78,6 +84,8 @@ class App(wx.App):
         self.Bind(wx.EVT_MENU, self.OnSetVLim, id=ID.SET_VLIM)
         self.Bind(wx.EVT_MENU, self.OnTogglePlotRange, id=ID.PLOT_RANGE)
         self.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
+        self.Bind(wx.EVT_MENU, self.OnWindowMinimize, id=ID.WINDOW_MINIMIZE)
+        self.Bind(wx.EVT_MENU, self.OnWindowZoom, id=ID.WINDOW_ZOOM)
         if wx.__version__ < '3':
             self.Bind(wx.EVT_MENU, self.LegacyOnQuit, id=wx.ID_EXIT)
 
@@ -279,6 +287,16 @@ class App(wx.App):
             frame.OnUpdateUIUndo(event)
         else:
             event.Enable(False)
+
+    def OnWindowMinimize(self, event):
+        frame = self._get_active_frame()
+        if frame:
+            frame.Iconize()
+
+    def OnWindowZoom(self, event):
+        frame = self._get_active_frame()
+        if frame:
+            frame.Maximize()
 
     def LegacyOnQuit(self, event):
         self.ExitMainLoop()

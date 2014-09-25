@@ -91,3 +91,6 @@ TABLE_SAVE = wx.NewId()
 THRESHOLD = wx.NewId()
 
 UNDO = wx.NewId()
+
+WINDOW_MINIMIZE = wx.NewId()
+WINDOW_ZOOM = wx.NewId()
