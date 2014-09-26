@@ -389,7 +389,7 @@ def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
             res[case,i] = y[case, i] - predicted_y
 
 
-def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
+def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] ss):
     """Fit a linear model and compute the residual sum squares
 
     Parameters
@@ -403,8 +403,7 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
     ss : array (n_tests,)
         Container for output.
     """
-    cdef int i, i_beta, case
-    cdef double predicted_y, SS_res
+    cdef int i
 
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
@@ -413,16 +412,7 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:] ss):
 
     for i in range(n_tests):
         _lm_betas(y, i, xsinv, betas)
-
-        # predict y and find residual sum squares
-        SS_res = 0
-        for case in range(n_cases):
-            predicted_y = 0
-            for i_beta in range(df_x):
-                predicted_y += x[case, i_beta] * betas[i_beta]
-            SS_res += (y[case, i] - predicted_y) ** 2
-
-        ss[i] = SS_res
+        ss[i] = _lm_res_ss(y, i, x, betas)
 
 
 def lm_t(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] a, double[:,:] out):
