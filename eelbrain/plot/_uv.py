@@ -1202,7 +1202,6 @@ class MultiTimeplot(_SimpleFigure):
         self._show()
 
 
-
 def _reg_line(Y, reg):
     coeff = np.hstack([np.ones((len(reg), 1)), reg[:, None]])
     (a, b), residues, rank, s = np.linalg.lstsq(coeff, Y)
@@ -1535,13 +1534,3 @@ def boxcox_explore(Y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=Tru
     ax.set_xlabel("p")
     if crange:
         ax.set_ylabel("Value (Range Corrected)")
-
-
-# backwards comp
-barplot = Barplot
-boxplot = Boxplot
-corrplot = Correlation
-histogram = Histogram
-multitimeplot = MultiTimeplot
-regplot = Regression
-timeplot = Timeplot
