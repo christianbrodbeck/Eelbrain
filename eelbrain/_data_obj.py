@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-'''
+"""
 Data Representation
 ===================
 
@@ -18,7 +18,7 @@ managed by
 
     * Dataset
 
-'''
+"""
 
 from __future__ import division
 
@@ -71,22 +71,21 @@ class DimensionMismatchError(Exception):
     pass
 
 
-
 def _effect_eye(n):
-    """
-    Returns effect coding for n categories. E.g.::
+    """Effect coding for n categories. E.g.::
 
-        >>> _effect_eye(4)
-        array([[ 1,  0,  0],
-               [ 0,  1,  0],
-               [ 0,  0,  1],
-               [-1, -1, -1]])
-
+    Examples
+    --------
+    >>> _effect_eye(4)
+    array([[ 1,  0,  0],
+           [ 0,  1,  0],
+           [ 0,  0,  1],
+           [-1, -1, -1]])
     """
-    X = np.empty((n, n - 1), dtype=np.int8)
-    X[:n - 1] = np.eye(n - 1, dtype=np.int8)
-    X[n - 1] = -1
-    return X
+    x = np.empty((n, n - 1), dtype=np.int8)
+    x[:n - 1] = np.eye(n - 1, dtype=np.int8)
+    x[n - 1] = -1
+    return x
 
 
 def _effect_interaction(a, b):
@@ -111,13 +110,13 @@ def cellname(cell, delim=' '):
         return str(cell)
 
 
-def rank(A, tol=1e-8):
+def rank(x, tol=1e-8):
     """
     Rank of a matrix, from
     http://mail.scipy.org/pipermail/numpy-discussion/2008-February/031218.html
 
     """
-    s = np.linalg.svd(A, compute_uv=0)
+    s = np.linalg.svd(x, compute_uv=0)
     return np.sum(np.where(s > tol, 1, 0))
 
 
@@ -133,72 +132,84 @@ def check_length(objs, n=None):
             raise ValueError(err)
 
 
-def isbalanced(X):
-    """
-    returns True if X is balanced, False otherwise.
-
-    X : categorial
-        categorial model (Factor or Interaction)
-
-    """
-    if ismodel(X):
-        return all(isbalanced(e) for e in X.effects)
-    else:
-        ns = (np.sum(X == c) for c in X.cells)
-        return len(np.unique(ns)) <= 1
-
-def iscategorial(Y):
-    "factors as well as interactions are categorial"
-    if isfactor(Y):
-        return True
-    elif isinteraction(Y):
-        return Y.is_categorial
-    else:
-        return False
-
-def isdataobject(Y):
-    dataob = ["model", "var", "ndvar", "factor", "interaction", "nonbasic",
-              "nested", "list"]
-    return hasattr(Y, '_stype_') and  Y._stype_ in dataob
-
-def isdataset(Y):
-    return hasattr(Y, '_stype_') and Y._stype_ == 'dataset'
-
-def iseffect(Y):
-    effectnames = ["factor", "var", "interaction", "nonbasic", "nested"]
-    return hasattr(Y, '_stype_') and  Y._stype_ in effectnames
-
-def isdatalist(Y, contains=None, test_all=True):
-    """Test whether Y is a Datalist instance
+def isbalanced(x):
+    """Determine whether x is balanced
 
     Parameters
     ----------
+    x : categorial
+        Categorial Model, Factor or Interaction.
+    """
+    if ismodel(x):
+        return all(isbalanced(e) for e in x.effects)
+    else:
+        ns = (np.sum(x == c) for c in x.cells)
+        return len(np.unique(ns)) <= 1
+
+
+def iscategorial(x):
+    "factors as well as interactions are categorial"
+    if isfactor(x):
+        return True
+    elif isinteraction(x):
+        return x.is_categorial
+    else:
+        return False
+
+
+def isdataobject(x):
+    dataob = ["model", "var", "ndvar", "factor", "interaction", "nonbasic",
+              "nested", "list"]
+    return hasattr(x, '_stype_') and  x._stype_ in dataob
+
+
+def isdataset(x):
+    return hasattr(x, '_stype_') and x._stype_ == 'dataset'
+
+
+def iseffect(x):
+    effectnames = ["factor", "var", "interaction", "nonbasic", "nested"]
+    return hasattr(x, '_stype_') and  x._stype_ in effectnames
+
+
+def isdatalist(x, contains=None, test_all=True):
+    """Test whether x is a Datalist instance
+
+    Parameters
+    ----------
+    x : object
+        Object to test.
     contains : None | class
         Test whether the content is instances of a specific class.
     test_all : bool
         If contains is provided, test all items' class (otherwise just test the
         first item).
     """
-    is_dl = isinstance(Y, Datalist)
+    is_dl = isinstance(x, Datalist)
     if is_dl and contains:
         if test_all:
-            is_dl = all(isinstance(item, contains) for item in Y)
+            is_dl = all(isinstance(item, contains) for item in x)
         else:
-            is_dl = isinstance(Y[0], contains)
+            is_dl = isinstance(x[0], contains)
     return is_dl
 
-def isfactor(Y):
-    return hasattr(Y, '_stype_') and Y._stype_ == "factor"
 
-def isinteraction(Y):
-    return hasattr(Y, '_stype_') and Y._stype_ == "interaction"
+def isfactor(x):
+    return hasattr(x, '_stype_') and x._stype_ == "factor"
 
-def ismodel(X):
-    return hasattr(X, '_stype_') and X._stype_ == "model"
 
-def isnested(Y):
-    "Determine whether Y is nested"
-    return hasattr(Y, '_stype_') and Y._stype_ == "nested"
+def isinteraction(x):
+    return hasattr(x, '_stype_') and x._stype_ == "interaction"
+
+
+def ismodel(x):
+    return hasattr(x, '_stype_') and x._stype_ == "model"
+
+
+def isnested(x):
+    "Determine whether x is nested"
+    return hasattr(x, '_stype_') and x._stype_ == "nested"
+
 
 def isnestedin(item, item2):
     "Returns True if item is nested in item2, False otherwise"
@@ -207,35 +218,41 @@ def isnestedin(item, item2):
     else:
         return False
 
-def isndvar(Y):
-    "Determine whether Y is an NDVar"
-    return hasattr(Y, '_stype_') and Y._stype_ == "ndvar"
 
-def isnumeric(Y):
-    "Determine wether Y is numeric (a Var or an NDVar)"
-    return hasattr(Y, '_stype_') and Y._stype_ in ["ndvar", "var"]
+def isndvar(x):
+    "Determine whether x is an NDVar"
+    return hasattr(x, '_stype_') and x._stype_ == "ndvar"
 
-def isuv(Y):
-    "Determine whether Y is univariate (a Var or a Factor)"
-    return hasattr(Y, '_stype_') and Y._stype_ in ["factor", "var"]
 
-def isvar(Y):
-    "Determine whether Y is a Var"
-    return hasattr(Y, '_stype_') and Y._stype_ == "var"
+def isnumeric(x):
+    "Determine wether x is numeric (a Var or an NDVar)"
+    return hasattr(x, '_stype_') and x._stype_ in ["ndvar", "var"]
 
-def isboolvar(Y):
-    "Determine whether Y is a Var whose data type is boolean"
-    if not isvar(Y):
+
+def isuv(x):
+    "Determine whether x is univariate (a Var or a Factor)"
+    return hasattr(x, '_stype_') and x._stype_ in ["factor", "var"]
+
+
+def isvar(x):
+    "Determine whether x is a Var"
+    return hasattr(x, '_stype_') and x._stype_ == "var"
+
+
+def isboolvar(x):
+    "Determine whether x is a Var whose data type is boolean"
+    if not isvar(x):
         return False
-    isbool = Y.x.dtype.kind == 'b'
+    isbool = x.x.dtype.kind == 'b'
     return isbool
 
-def isintvar(Y):
-    "Determine whether Y is a Var whose data type is integer"
-    if not isvar(Y):
+
+def isintvar(x):
+    "Determine whether x is a Var whose data type is integer"
+    if not isvar(x):
         return False
     # http://stackoverflow.com/a/934652/166700
-    isint = Y.x.dtype.kind in 'iu'
+    isint = x.x.dtype.kind in 'iu'
     return isint
 
 
@@ -259,158 +276,165 @@ def hasemptycells(x):
     raise TypeError("Need categorial (got %s)" % type(x))
 
 
-def hasrandom(Y):
-    """True if Y is or contains a random effect, False otherwise"""
-    if isfactor(Y):
-        return Y.random
-    elif isinteraction(Y):
-        for e in Y.base:
+def hasrandom(x):
+    """True if x is or contains a random effect, False otherwise"""
+    if isfactor(x):
+        return x.random
+    elif isinteraction(x):
+        for e in x.base:
             if isfactor(e) and e.random:
                 return True
-    elif ismodel(Y):
-        return any(map(hasrandom, Y.effects))
+    elif ismodel(x):
+        return any(map(hasrandom, x.effects))
     return False
 
 
-def ascategorial(Y, sub=None, ds=None):
-    if isinstance(Y, str):
+def ascategorial(x, sub=None, ds=None):
+    if isinstance(x, str):
         if ds is None:
             err = ("Parameter was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
-        Y = ds.eval(Y)
+        x = ds.eval(x)
 
-    if iscategorial(Y):
+    if iscategorial(x):
         pass
     else:
-        Y = asfactor(Y)
+        x = asfactor(x)
 
     if sub is not None:
-        return Y[sub]
+        return x[sub]
     else:
-        return Y
+        return x
 
-def asdataobject(Y, sub=None, ds=None):
+
+def asdataobject(x, sub=None, ds=None):
     "Convert to any data object or numpy array."
-    if isinstance(Y, str):
+    if isinstance(x, str):
         if ds is None:
             err = ("Data object was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
-        Y = ds.eval(Y)
+        x = ds.eval(x)
 
-    if isdataobject(Y):
+    if isdataobject(x):
         pass
-    elif isinstance(Y, np.ndarray):
+    elif isinstance(x, np.ndarray):
         pass
     else:
-        Y = Datalist(Y)
+        x = Datalist(x)
 
     if sub is not None:
-        Y = Y[sub]
-    return Y
+        x = x[sub]
+    return x
 
-def asepochs(y, sub=None, ds=None):
+
+def asepochs(x, sub=None, ds=None):
     "Convert to mne Epochs object"
-    if isinstance(y, str):
+    if isinstance(x, str):
         if ds is None:
             err = ("Epochs object was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
-        y = ds.eval(y)
+        x = ds.eval(x)
 
-    if isinstance(y, mne.Epochs):
+    if isinstance(x, mne.Epochs):
         pass
     else:
-        raise TypeError("Need mne Epochs object, got %s" % repr(y))
+        raise TypeError("Need mne Epochs object, got %s" % repr(x))
 
     if sub is not None:
-        y = y[sub]
-    return y
+        x = x[sub]
+    return x
 
-def asfactor(Y, sub=None, ds=None):
-    if isinstance(Y, str):
+
+def asfactor(x, sub=None, ds=None):
+    if isinstance(x, str):
         if ds is None:
             err = ("Factor was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
-        Y = ds.eval(Y)
+        x = ds.eval(x)
 
-    if isfactor(Y):
+    if isfactor(x):
         pass
-    elif hasattr(Y, 'as_factor'):
-        Y = Y.as_factor()
+    elif hasattr(x, 'as_factor'):
+        x = x.as_factor()
     else:
-        Y = Factor(Y)
+        x = Factor(x)
 
     if sub is not None:
-        return Y[sub]
+        return x[sub]
     else:
-        return Y
+        return x
 
-def asmodel(X, sub=None, ds=None):
-    if isinstance(X, str):
+
+def asmodel(x, sub=None, ds=None):
+    if isinstance(x, str):
         if ds is None:
             err = ("Model was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
-        X = ds.eval(X)
+        x = ds.eval(x)
 
-    if ismodel(X):
+    if ismodel(x):
         pass
     else:
-        X = Model(X)
+        x = Model(x)
 
     if sub is not None:
-        return X[sub]
+        return x[sub]
     else:
-        return X
+        return x
 
-def asndvar(Y, sub=None, ds=None):
-    if isinstance(Y, str):
+
+def asndvar(x, sub=None, ds=None):
+    if isinstance(x, str):
         if ds is None:
             err = ("Ndvar was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
-        Y = ds.eval(Y)
+        x = ds.eval(x)
 
     # convert MNE objects
-    if isinstance(Y, mne.Epochs):
+    if isinstance(x, mne.Epochs):
         from .load.fiff import epochs_ndvar
-        Y = epochs_ndvar(Y)
-    elif isinstance(Y, _mne_Evoked):
+        x = epochs_ndvar(x)
+    elif isinstance(x, _mne_Evoked):
         from .load.fiff import evoked_ndvar
-        Y = evoked_ndvar(Y)
-    elif isinstance(Y, list):
-        item_0 = Y[0]
+        x = evoked_ndvar(x)
+    elif isinstance(x, list):
+        item_0 = x[0]
         if isinstance(item_0, _mne_Evoked):
             from .load.fiff import evoked_ndvar
-            Y = evoked_ndvar(Y)
+            x = evoked_ndvar(x)
 
-    if not isndvar(Y):
+    if not isndvar(x):
         raise TypeError("NDVar required")
 
     if sub is not None:
-        return Y[sub]
+        return x[sub]
     else:
-        return Y
+        return x
 
-def asnumeric(Y, sub=None, ds=None):
+
+def asnumeric(x, sub=None, ds=None):
     "Var, NDVar"
-    if isinstance(Y, str):
+    if isinstance(x, str):
         if ds is None:
             err = ("Numeric argument was specified as string, but no Dataset "
                    "was specified")
             raise TypeError(err)
-        Y = ds.eval(Y)
+        x = ds.eval(x)
 
-    if not isnumeric(Y):
+    if not isnumeric(x):
         raise TypeError("Numeric argument required (Var or NDVar)")
 
     if sub is not None:
-        return Y[sub]
+        return x[sub]
     else:
-        return Y
+        return x
+
 
 def assub(sub, ds=None):
     "Interpret the sub argument."
@@ -422,43 +446,45 @@ def assub(sub, ds=None):
         sub = ds.eval(sub)
     return sub
 
-def asuv(y, sub=None, ds=None):
+
+def asuv(x, sub=None, ds=None):
     "As Var or Factor"
-    if isinstance(y, str):
+    if isinstance(x, str):
         if ds is None:
             err = ("Parameter was specified as string, but no Dataset was "
                    "specified")
             raise TypeError(err)
-        y = ds.eval(y)
+        x = ds.eval(x)
 
-    if isuv(y):
+    if isuv(x):
         pass
-    elif all(isinstance(v, basestring) for v in y):
-        y = Factor(y)
+    elif all(isinstance(v, basestring) for v in x):
+        x = Factor(x)
     else:
-        y = Var(y)
+        x = Var(x)
 
     if sub is None:
-        return y
+        return x
     else:
-        return y[sub]
+        return x[sub]
 
-def asvar(y, sub=None, ds=None):
-    if isinstance(y, str):
+
+def asvar(x, sub=None, ds=None):
+    if isinstance(x, str):
         if ds is None:
             err = "Var was specified as string, but no Dataset was specified"
             raise TypeError(err)
-        y = ds.eval(y)
+        x = ds.eval(x)
 
-    if isvar(y):
+    if isvar(x):
         pass
     else:
-        y = Var(y)
+        x = Var(x)
 
     if sub is None:
-        return y
+        return x
     else:
-        return y[sub]
+        return x[sub]
 
 
 def index_ndim(index):
@@ -616,7 +642,7 @@ class Celltable(object):
         Y and X after sub was applied.
     .sub, .match:
         Input arguments.
-    .cells : list of (str | tupel)
+    .cells : list of (str | tuple)
         List of all cells in X.
     .data : dict(cell -> data)
         Data (``Y[index]``) in each cell.
