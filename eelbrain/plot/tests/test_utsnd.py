@@ -36,7 +36,7 @@ def test_plot_mne_evoked():
     data_path = mne.datasets.sample.data_path()
     evoked_path = os.path.join(data_path, 'MEG', 'sample',
                                'sample_audvis-ave.fif')
-    evoked = Evoked(evoked_path, setno="Left Auditory")
+    evoked = Evoked(evoked_path, "Left Auditory")
     p = plot.Array(evoked)
     p.close()
 
