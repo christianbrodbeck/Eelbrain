@@ -48,6 +48,8 @@ class App(wx.App):
         m = window_menu = wx.Menu()
         m.Append(ID.WINDOW_MINIMIZE, '&Minimize \tCtrl+M')
         m.Append(ID.WINDOW_ZOOM, '&Zoom')
+        m.AppendSeparator()
+        self.window_menu_window_items = []
 
         # Help Menu
         m = help_menu = wx.Menu()
@@ -68,6 +70,7 @@ class App(wx.App):
         self.menubar = menu_bar
 
         # Bind Menu Commands
+        self.Bind(wx.EVT_MENU_OPEN, self.OnMenuOpened)
         self.Bind(wx.EVT_MENU, self.OnAbout, id=wx.ID_ABOUT)
         self.Bind(wx.EVT_MENU, self.OnOpen, id=wx.ID_OPEN)
         self.Bind(wx.EVT_MENU, self.OnClear, id=wx.ID_CLEAR)
@@ -143,6 +146,22 @@ class App(wx.App):
         win = wx.Window.FindFocus()
         logger.debug("Cut %r" % win)
         win.Cut()
+
+    def OnMenuOpened(self, event):
+        "Updates window names in the window menu"
+        menu = event.GetMenu()
+        if menu.GetTitle() == 'Window':
+            # clear old entries
+            while self.window_menu_window_items:
+                item = self.window_menu_window_items.pop()
+                menu.RemoveItem(item)
+                self.Unbind(wx.EVT_MENU, id=item.GetId())
+            # add new entries
+            for window in wx.GetTopLevelWindows():
+                id_ = window.GetId()
+                item = menu.Append(id_, window.GetTitle())
+                self.Bind(wx.EVT_MENU, self.OnWindowRaise, id=id_)
+                self.window_menu_window_items.append(item)
 
     def OnOnlineHelp(self, event):
         "Called from the Help menu to open external resources"
@@ -292,6 +311,11 @@ class App(wx.App):
         frame = self._get_active_frame()
         if frame:
             frame.Iconize()
+
+    def OnWindowRaise(self, event):
+        id_ = event.GetId()
+        window = wx.FindWindowById(id_)
+        window.Raise()
 
     def OnWindowZoom(self, event):
         frame = self._get_active_frame()
