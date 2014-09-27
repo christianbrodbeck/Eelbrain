@@ -718,7 +718,11 @@ class MneExperiment(FileTree):
                     stcs[name].append(stc)
 
                 if collect_morphed_stcs:
-                    if subject_from != common_brain:
+                    if subject_from == common_brain:
+                        if ind_stc:
+                            stc = stc.copy()
+                        stc.subject = common_brain
+                    else:
                         if subject_from in mms:
                             v_to, mm = mms[subject_from]
                         else:
