@@ -3,6 +3,7 @@
 
 cimport cython
 from cython.view cimport array as cvarray
+from libc.stdlib cimport malloc, free
 import numpy as np
 cimport numpy as np
 
@@ -38,8 +39,9 @@ def merge_labels(unsigned int [:,:] cmap, int n_labels_in,
     cdef unsigned int label, connected_label, src, dst
     cdef unsigned int relabel_src, relabel_dst
 
-    narr = np.arange(n_labels_in, dtype=np.uint32)
-    cdef unsigned int [:] relabel = narr
+    cdef unsigned int* relabel = <unsigned int*> malloc(sizeof(unsigned int) * n_labels_in)
+    for i in range(n_labels_in):
+        relabel[i] = i
 
     # find targets for relabeling
     for slice_i in range(n_slices):
@@ -97,6 +99,7 @@ def merge_labels(unsigned int [:,:] cmap, int n_labels_in,
             label_ids[dst_i] = i
             dst_i += 1
 
+    free(relabel)
     return out
 
 
