@@ -114,7 +114,7 @@ class App(wx.App):
     def _get_active_frame(self):
         win = wx.Window.FindFocus()
         return wx.GetTopLevelParent(win)
-        for w in  wx.GetTopLevelWindows():
+        for w in wx.GetTopLevelWindows():
             if hasattr(w, 'IsActive') and w.IsActive():
                 return w
         return wx.GetActiveWindow()
