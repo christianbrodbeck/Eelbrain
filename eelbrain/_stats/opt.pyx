@@ -69,9 +69,12 @@ def merge_labels(unsigned int [:,:] cmap, int n_labels_in,
             relabel[relabel_src] = relabel_dst
 
     # find lowest labels
+    cdef int n_labels_out = -1
     for i in range(n_labels_in):
         relabel_dst = relabel[i]
-        if relabel_dst < i:
+        if relabel_dst == i:
+            n_labels_out += 1
+        else:
             while relabel[relabel_dst] < relabel_dst:
                 relabel_dst = relabel[relabel_dst]
             relabel[i] = relabel_dst
@@ -86,9 +89,15 @@ def merge_labels(unsigned int [:,:] cmap, int n_labels_in,
                     cmap[i, slice_i] = relabel_dst
 
     # find all label ids in cmap
-    cdef np.ndarray[NP_UINT32, ndim = 1] label_ids = np.unique(narr)
-    label_ids = label_ids[1:]
-    return label_ids
+    out = np.empty(n_labels_out, dtype=np.uint32)
+    cdef unsigned int [:] label_ids = out
+    dst_i = 0
+    for i in range(1, n_labels_in):
+        if i == relabel[i]:
+            label_ids[dst_i] = i
+            dst_i += 1
+
+    return out
 
 
 def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
