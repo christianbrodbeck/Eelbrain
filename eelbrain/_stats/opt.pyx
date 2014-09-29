@@ -15,8 +15,8 @@ ctypedef fused scalar:
     cython.double
 
 
-def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in, 
-                 np.ndarray[NP_UINT32, ndim=2] edges):
+def merge_labels(unsigned int [:,:] cmap, int n_labels_in,
+                 unsigned int [:,:] edges):
     """Merge adjacent labels with non-standard connectivity
 
     Parameters
@@ -35,10 +35,11 @@ def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in,
     cdef unsigned int n_vert = cmap.shape[0]
     cdef unsigned int n_slices = cmap.shape[1]
     cdef unsigned int n_edges = edges.shape[0]
-    cdef NP_UINT32 label, connected_label
-    cdef NP_UINT32 relabel_src, relabel_dst
-    cdef np.ndarray[NP_UINT32, ndim = 1] relabel = np.arange(n_labels_in,
-                                                             dtype=np.uint32)
+    cdef unsigned int label, connected_label, src, dst
+    cdef unsigned int relabel_src, relabel_dst
+
+    narr = np.arange(n_labels_in, dtype=np.uint32)
+    cdef unsigned int [:] relabel = narr
 
     # find targets for relabeling
     for slice_i in range(n_slices):
@@ -85,9 +86,8 @@ def merge_labels(np.ndarray[NP_UINT32, ndim=2] cmap, int n_labels_in,
                     cmap[i, slice_i] = relabel_dst
 
     # find all label ids in cmap
-    cdef np.ndarray[NP_UINT32, ndim = 1] label_ids = np.unique(cmap)
-    if label_ids[0] == 0:
-        label_ids = label_ids[1:]
+    cdef np.ndarray[NP_UINT32, ndim = 1] label_ids = np.unique(narr)
+    label_ids = label_ids[1:]
     return label_ids
 
 
