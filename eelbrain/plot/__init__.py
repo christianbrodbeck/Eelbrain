@@ -101,6 +101,7 @@ Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.
 
 """
+from ._colors import colors_for_interaction, Colors
 from ._sensors import SensorMaps, SensorMap2d
 from ._topo import TopoArray, TopoButterfly, Topomap
 from ._uts import UTSStat, UTS, UTSClusters
