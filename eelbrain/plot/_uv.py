@@ -501,7 +501,7 @@ class Barplot(_SimpleFigure):
         hatch : bool | str
             Matplotlib Hatch pattern to fill boxes (True to use the module
             default; default is False).
-        colors : bool | sequence of matplitlib colors
+        colors : bool | dict | sequence of matplitlib colors
             Matplotlib colors to use for boxes (True to use the module default;
             default is False, i.e. no colors).
         bottom : scalar
@@ -532,12 +532,12 @@ class Barplot(_SimpleFigure):
             else:
                 xlabel = False
 
-        _SimpleFigure.__init__(self, "BarPlot", title, xlabel, ylabel, **kwargs)
+        _SimpleFigure.__init__(self, "Barplot", title, xlabel, ylabel, **kwargs)
 
 
-        x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch, colors,
-                                      bottom=bottom, c=c, edgec=edgec, ec=ec,
-                                      test=test, par=par, trend=trend,
+        x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
+                                      colors, bottom=bottom, c=c, edgec=edgec,
+                                      ec=ec, test=test, par=par, trend=trend,
                                       corr=corr, return_lim=True)
 
         self._ax.set_xlim(x0, x1)
@@ -570,13 +570,17 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0, left=None,
         Return axes limits ``(x0, x1, y0, y1)`` (default False).
     """
     # kwargs
-    if hatch == True:
+    if hatch is True:
         hatch = defaults['hatch']
-    if colors == True:
+
+    if colors is True:
         if defaults['mono']:
             colors = defaults['cm']['colors']
         else:
             colors = defaults['c']['colors']
+    elif isinstance(colors, dict):
+        colors = [colors[cell] for cell in ct.cells]
+
     # data
     k = len(ct.cells)
     if left is None:
