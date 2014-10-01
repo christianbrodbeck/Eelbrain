@@ -853,6 +853,10 @@ class _EelFigure(object):
         self.figure.savefig(image, format=image._ext)
         return image
 
+    def save(self, *args, **kwargs):
+        "Short-cut for Matplotlib's figure.savefig()"
+        self.figure.savefig(*args, **kwargs)
+
 
 class Layout():
     """Create layouts for figures with several axes of the same size
