@@ -144,9 +144,9 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, corr='Hochberg',
 class _SimpleFigure(_EelFigure):
     def __init__(self, wintitle, title=None, xlabel=None, ylabel=None,
                  titlekwargs=defaults['title_kwargs'], yticks=None,
-                 figsize=(5, 5), xtick_rotation=0, ytick_rotation=0,
+                 w=5, h=5, xtick_rotation=0, ytick_rotation=0,
                  frame=True):
-        _EelFigure.__init__(self, wintitle, fig_kwa={'figsize': figsize})
+        _EelFigure.__init__(self, wintitle, fig_kwa={'figsize': (w, h)})
 
         # axes
         ax_x0 = .025 + .07 * bool(ylabel)
