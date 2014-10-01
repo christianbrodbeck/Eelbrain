@@ -552,7 +552,7 @@ class Barplot(_SimpleFigure):
                                **kwargs)
 
         x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
-                                      colors, bottom=bottom, c=c, edgec=edgec,
+                                      colors, bottom, c=c, edgec=edgec,
                                       ec=ec, test=test, par=par, trend=trend,
                                       corr=corr, test_markers=test_markers,
                                       return_lim=True)
@@ -808,7 +808,7 @@ class Timeplot(_SimpleFigure):
                     for itemname in bp:
                         plt.setp(bp[itemname], color='black')
             elif local_plot == 'bar':
-                lim = _plt_barplot(ax, ct, spread, False, hatch, color_list, bottom=0,
+                lim = _plt_barplot(ax, ct, spread, False, hatch, color_list, 0,
                                    left=pos, width=within_spacing, test=False)
             elif spread:
                 yerr[:, i_t] = ct.get_statistic(spread)
@@ -1100,7 +1100,7 @@ class MultiTimeplot(_SimpleFigure):
                     for itemname in bp:
                         plt.setp(bp[itemname], color='black')
             elif local_plot == 'bar':
-                lim = _plt_barplot(ax, ct, spread, False, hatch, color_list, bottom=0,
+                lim = _plt_barplot(ax, ct, spread, False, hatch, color_list, 0,
                                    left=pos, width=within_spacing, test=False)
                 ymax_loc = lim[1]
                 ymin_loc = lim[0]
