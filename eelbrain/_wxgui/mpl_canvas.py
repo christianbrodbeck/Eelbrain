@@ -22,23 +22,42 @@ from .frame import EelbrainFrame
 
 
 class FigureCanvasPanel(FigureCanvasWxAgg):
-    """
-    Subclass mpl's Canvas to allow interaction with wx.py (such as copying the
-    contents to the clipboard)
-    start search at wx.py.frame.Frame.OnUpdateMenu()
+    """wx.Panel with a matplotlib figure
 
+    Notes
+    -----
+    Subclass of mpl's Canvas to allow for more interaction with Eelbrain (such
+    as copying the contents to the clipboard).
     """
     _copy_as_pdf = True
-    def __init__(self, parent, figsize=(8, 6), dpi=100, facecolor='w'):
-        """
-        figsize : (w, h)
-            size in inches
-        dpi : int
-            dits per inch
+    def __init__(self, parent, *args, **kwargs):
+        """wx.Panel with a matplotlib figure
 
+        Parameters
+        ----------
+        figsize : tuple
+            Figure dimensions (width, height) in inches
+        dpi : int
+            Dots per inch.
+        facecolor : mpl color
+            The figure patch facecolor; defaults to rc ``figure.facecolor``
+        edgecolor : mpl color
+            The figure patch edge color; defaults to rc ``figure.edgecolor``
+        linewidth : scalar
+            The figure patch edge linewidth; the default linewidth of the frame
+        frameon : bool
+            If ``False``, suppress drawing the figure frame
+        subplotpars :
+            A :class:`SubplotParams` instance, defaults to rc
+        tight_layout : bool | dict
+            If ``False`` use ``subplotpars``; if ``True`` adjust subplot
+            parameters using :meth:`tight_layout` with default padding.
+            When providing a dict containing the keys `pad`, `w_pad`, `h_pad`
+            and `rect`, the default :meth:`tight_layout` paddings will be
+            overridden. Defaults to rc ``figure.autolayout``.
         """
-        self.figure = Figure(figsize, dpi, facecolor)
-        FigureCanvasWxAgg.__init__(self, parent, -1, self.figure)
+        self.figure = Figure(*args, **kwargs)
+        FigureCanvasWxAgg.__init__(self, parent, wx.ID_ANY, self.figure)
         self.Bind(wx.EVT_ENTER_WINDOW, self.ChangeCursor)
 
     def CanCopy(self):
@@ -104,19 +123,17 @@ class CanvasFrame(EelbrainFrame):
 
     """
     def __init__(self, parent=None, title="Matplotlib Frame",
-                 figsize=(8, 6), dpi=50, facecolor='w', eelfigure=None,
-                 statusbar=True, toolbar=True, mpl_toolbar=False):
-        size = (figsize[0] * dpi, figsize[1] * dpi + 45)
-        wx.Frame.__init__(self, parent, -1, title=title, size=size)
+                 eelfigure=None,
+                 statusbar=True, toolbar=True, mpl_toolbar=False,
+                 *args, **kwargs):
+        wx.Frame.__init__(self, parent, -1, title=title)
 
     # set up the canvas
         # prepare the plot panel
-        sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer = sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(sizer)
-        self.canvas = FigureCanvasPanel(self, figsize, dpi, facecolor)
-        sizer.Add(self.canvas, 1, flag=wx.EXPAND)
-#        sizer.Add(self.canvas, 1, wx.LEFT | wx.TOP | wx.GROW)
-        sizer.Layout()
+        self.canvas = FigureCanvasPanel(self, *args, **kwargs)
+        sizer.Add(self.canvas, 1, wx.EXPAND)
 
         # get figure
         self.figure = self.canvas.figure
@@ -133,6 +150,7 @@ class CanvasFrame(EelbrainFrame):
         if mpl_toolbar:
             self.add_mpl_toolbar()
 
+        sizer.Fit(self)
         self._eelfigure = eelfigure
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
