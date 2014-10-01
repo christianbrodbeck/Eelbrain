@@ -448,7 +448,7 @@ class Boxplot(_SimpleFigure):
 
 class Barplot(_SimpleFigure):
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
-                 corr='Hochberg', title=True, trend="'", ylabel=None,
+                 corr='Hochberg', trend="'", title=None, ylabel=None,
                  error='sem', pool_error=None, ec='k', xlabel=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0,
                  top=None, c='#0099FF', edgec=None, ds=None, **kwargs):
@@ -472,8 +472,8 @@ class Barplot(_SimpleFigure):
             tests if False).
         corr : None | 'hochberg' | 'bonferroni' | 'holm'
             Method for multiple comparison correction (default 'hochberg').
-        title : None | str
-            Axis title (default is ``Y.name``).
+        title : True | str
+            Axis title (default is no title, True to use ``Y.name``).
         trend : None | str
             Marker for a trend in pairwise comparisons.
         ylabel : None | str
