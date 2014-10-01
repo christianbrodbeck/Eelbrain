@@ -59,10 +59,8 @@ defaults = dict(title_kwargs={'size': 14,
 
 
 
-def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, x0=0,
-                        corr='Hochberg', levels=True, trend=".", pwcolors=None,
-                        font_size=plt.rcParams['font.size'] * 1.5
-                        ):
+def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, levels=True,
+                        pwcolors=None, x0=0):
     "returns y_max"
     if levels is not True:  # to avoid test.star() conflict
         trend = False
@@ -73,9 +71,10 @@ def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, x0=0,
         else:
             pwcolors = defaults['c']['pw'][1 - bool(trend):]
     k = len(ct.cells)
-    tests = test._pairwise(ct.get_data(), within=ct.all_within, parametric=par, trend=trend,
-                            levels=levels, corr=corr)
+    tests = test._pairwise(ct.get_data(), within=ct.all_within, parametric=par,
+                           trend=trend, levels=levels, corr=corr)
     reservation = np.zeros((sum(xrange(1, k)), k - 1))
+    font_size = mpl.rcParams['font.size'] * 1.5
     y_top = y_min  # track top of plot
     y_start = y_min + 2 * y_unit
     # loop through possible connections
@@ -99,13 +98,14 @@ def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, x0=0,
                 x2 = (x0 + j) - .025
                 ax.plot([x1, x1, x2, x2], [y1, y2, y2, y1], color=c)
                 ax.text((x1 + x2) / 2, y2, symbol, color=c, size=font_size,
-                        horizontalalignment='center', clip_on=False,
-                        verticalalignment='center', backgroundcolor='w')
-    y_top = y_top + 2 * y_unit
+                        ha='center', va='center', clip_on=False)
+
+    y_top += 2 * y_unit
     return y_top
 
+
 def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, corr='Hochberg',
-                        levels=True, trend=".", pwcolors=None,
+                        levels=True, trend="'", pwcolors=None,
                         popmean=0,  # <- mod
                         font_size=plt.rcParams['font.size'] * 1.5
                         ):
@@ -285,7 +285,7 @@ class Boxplot(_SimpleFigure):
                  bottom=None, top=None,
                  title=True, ylabel='{unit}', xlabel=True, xtick_delim='\n',
                  titlekwargs=defaults['title_kwargs'],
-                 test=True, par=True, trend=".", corr='Hochberg',
+                 test=True, par=True, trend="'", corr='Hochberg',
                  pwcolors=None, hatch=False, colors=False,
                  ds=None, **kwargs):
         """
@@ -424,8 +424,8 @@ class Boxplot(_SimpleFigure):
 
         # tests
         if test is True:
-            y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr=corr,
-                                        x0=1, trend=trend)
+            y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend,
+                                        x0=1)
         else:
             ax.axhline(test, color='black')
             y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit,
@@ -451,7 +451,7 @@ class Boxplot(_SimpleFigure):
 
 class Barplot(_SimpleFigure):
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
-                 corr='Hochberg', title=True, trend=".", ylabel=None,
+                 corr='Hochberg', title=True, trend="'", ylabel=None,
                  error='sem', pool_error=None, ec='k', xlabel=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0,
                  c='#0099FF', edgec=None, ds=None, **kwargs):
@@ -552,7 +552,7 @@ class Barplot(_SimpleFigure):
 
 def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0, left=None,
                  width=.5, c='#0099FF', edgec=None, ec='k', test=True, par=True,
-                 trend=".", corr='Hochberg', return_lim=False):
+                 trend="'", corr='Hochberg', return_lim=False):
     """Draw a barplot to axes ax for Celltable ct.
 
     Parameters
@@ -588,7 +588,6 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0, left=None,
     height = np.array(ct.get_statistic(np.mean))
     y_error = stats.variability(ct.Y.x, ct.X, ct.match, error, pool_error)
 
-
     # fig spacing
     plot_max = np.max(height + y_error)
     plot_min = np.min(height - y_error)
@@ -597,8 +596,7 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0, left=None,
 
     # main BARPLOT
     bars = ax.bar(left, height - bottom, width, bottom=bottom,
-                  color=c, edgecolor=edgec, linewidth=1,
-                  ecolor=ec, yerr=y_error)
+                  color=c, edgecolor=edgec, ecolor=ec, yerr=y_error)
 
     # hatch
     if hatch:
@@ -612,8 +610,7 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0, left=None,
     # prepare pairwise plotting
     y_unit = (plot_max - y_bottom) / 15
     if test is True:
-        y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit,
-                                    corr=corr, trend=trend)
+        y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend)
     elif (test is False) or (test is None):
         y_top = plot_max + y_unit
     else:
