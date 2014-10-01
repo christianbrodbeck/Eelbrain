@@ -952,7 +952,12 @@ class Layout():
                     nrow = round(h / (axw / ax_aspect))
                 else:
                     nrow = round(h / axh_default)
-                nrow = min(nax, nrow)
+
+                if nax < nrow:
+                    nrow = nax
+                elif nrow < 1:
+                    nrow = 1
+
                 axh = h / nrow
                 ncol = math.ceil(nax / nrow)
                 if w:
