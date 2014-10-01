@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from .. import _data_obj as _dta
 from . import _base
+from ._base import _EelFigure
 
 
 class _plt_im_array(object):
@@ -206,7 +207,7 @@ class _ax_im_array(object):
             l.set_vlim(vmax, meas, vmin)
 
 
-class Array(_base._EelFigure):
+class Array(_EelFigure):
     def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
                  ds=None, **layout):
         """
@@ -229,8 +230,7 @@ class Array(_base._EelFigure):
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
         nax = len(epochs)
-        _base._EelFigure.__init__(self, "Array Plot", nax, layout,
-                                 figtitle=title)
+        _EelFigure.__init__(self, "Array Plot", nax, layout, figtitle=title)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs)
@@ -486,7 +486,7 @@ class _ax_butterfly(object):
         self.vmax = vmax
 
 
-class Butterfly(_base._EelFigure):
+class Butterfly(_EelFigure):
     "Plot data in a butterfly plot."
     def __init__(self, epochs, Xax=None, sensors=None, title=None,
                  axtitle='{name}', xlabel=True, ylabel=True, color=None,
@@ -515,8 +515,8 @@ class Butterfly(_base._EelFigure):
             as strings.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
-        super(Butterfly, self).__init__('Butterfly Plot', len(epochs), layout,
-                                        figtitle=title)
+        _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), layout,
+                            figtitle=title)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, True)

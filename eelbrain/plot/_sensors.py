@@ -11,7 +11,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from .._data_obj import Datalist
-from . import _base
+from ._base import _EelFigure
 
 
 # some useful kwarg dictionaries for different plot layouts
@@ -319,7 +319,7 @@ class _tb_sensors_mixin:
         self.draw()
 
 
-class SensorMaps(_base._EelFigure):
+class SensorMaps(_EelFigure):
     """
     GUI with multiple views on a sensor layout.
 
@@ -366,7 +366,7 @@ class SensorMaps(_base._EelFigure):
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
-        super(SensorMaps, self).__init__(ftitle, 4, layout, 1, 3, figtitle=title)
+        _EelFigure.__init__(self, ftitle, 4, layout, 1, 3, figtitle=title)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)
 
@@ -549,7 +549,7 @@ class SensorMaps(_base._EelFigure):
 
 
 
-class SensorMap2d(_tb_sensors_mixin, _base._EelFigure):
+class SensorMap2d(_tb_sensors_mixin, _EelFigure):
     """
     Plot a 2d Sensor Map.
 
@@ -585,7 +585,7 @@ class SensorMap2d(_tb_sensors_mixin, _base._EelFigure):
         sens_name = getattr(sensors, 'sysname', None)
         if sens_name:
             ftitle = '%s: %s' % (ftitle, sens_name)
-        _base._EelFigure.__init__(self, ftitle, 1, layout, 1, 7, figtitle=title)
+        _EelFigure.__init__(self, ftitle, 1, layout, 1, 7, figtitle=title)
         _tb_sensors_mixin.__init__(self)
 
         # store args

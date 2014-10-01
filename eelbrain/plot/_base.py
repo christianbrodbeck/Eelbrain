@@ -1002,7 +1002,7 @@ class Layout():
 class legend(_EelFigure):
     def __init__(self, handles, labels, dpi=90, figsize=(2, 2)):
         fig_kwa = dict(dpi=dpi, figsize=figsize)
-        super(legend, self).__init__(title="Legend", fig_kwa=fig_kwa)
+        _EelFigure.__init__(self, "Legend", fig_kwa=fig_kwa)
 
         self.legend = self.figure.legend(handles, labels, loc=2)
 

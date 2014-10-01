@@ -11,9 +11,10 @@ import matplotlib.cm as _cm
 from .._data_obj import ascategorial, asndvar, assub, cellname, Celltable
 from .._stats import stats
 from . import _base
+from ._base import _EelFigure
 
 
-class UTSStat(_base._EelFigure):
+class UTSStat(_EelFigure):
     "Plots statistics for a one-dimensional NDVar"
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
@@ -165,8 +166,7 @@ class UTSStat(_base._EelFigure):
 
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
-        super(UTSStat, self).__init__("UTSStat Plot", nax, layout,
-                                      figtitle=title)
+        _EelFigure.__init__(self, "UTSStat Plot", nax, layout, figtitle=title)
 
         # create plots
         self._plots = []
@@ -360,7 +360,7 @@ class UTSStat(_base._EelFigure):
         self.draw()
 
 
-class UTS(_base._EelFigure):
+class UTS(_EelFigure):
     "Value by time plot for UTS data."
     def __init__(self, epochs, Xax=None, title=None, axtitle='{name}', ds=None,
                  **layout):
@@ -381,8 +381,8 @@ class UTS(_base._EelFigure):
             names of Dataset variables.
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
-        super(UTS, self).__init__("UTS", len(epochs), layout, 1.5, 2,
-                                  figtitle=title)
+        _EelFigure.__init__(self, "UTS", len(epochs), layout, 1.5, 2,
+                            figtitle=title)
 
         for ax, epoch in zip(self._axes, epochs):
             _ax_uts(ax, epoch, title=axtitle)
@@ -471,7 +471,7 @@ class _ax_uts_stat:
         self.title = title
 
 
-class UTSClusters(_base._EelFigure):
+class UTSClusters(_EelFigure):
     "Plotting of ANOVA permutation cluster test results"
     def __init__(self, res, pmax=0.05, ptrend=0.1, title=None,
                  axtitle='{name}', cm='jet', overlay=False, **layout):
@@ -504,8 +504,7 @@ class UTSClusters(_base._EelFigure):
         # create figure
         N = len(epochs)
         nax = 1 if overlay else N
-        super(UTSClusters, self).__init__("UTSClusters", nax, layout,
-                                          figtitle=title)
+        _EelFigure.__init__(self, "UTSClusters", nax, layout, figtitle=title)
 
         ylabel = True
         self._caxes = []

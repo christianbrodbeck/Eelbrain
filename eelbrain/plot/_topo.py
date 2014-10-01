@@ -7,13 +7,14 @@ from __future__ import division
 import numpy as np
 
 from . import _base
+from ._base import _EelFigure
 from . import _utsnd as _utsnd
 from ._sensors import _tb_sensors_mixin
 from ._sensors import _plt_map2d
 
 
 
-class Topomap(_tb_sensors_mixin, _base._EelFigure):
+class Topomap(_tb_sensors_mixin, _EelFigure):
     "Plot individual topogeraphies"
     def __init__(self, epochs, Xax=None, sensors='name', proj='default',
                  title=None, res=200, interpolation='nearest', ds=None,
@@ -48,8 +49,8 @@ class Topomap(_tb_sensors_mixin, _base._EelFigure):
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
         _tb_sensors_mixin.__init__(self, sensors)
-        _base._EelFigure.__init__(self, "Topomap Plot", nax, layout, 1, 7,
-                                  figtitle=title)
+        _EelFigure.__init__(self, "Topomap Plot", nax, layout, 1, 7,
+                            figtitle=title)
 
         vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
 
@@ -108,7 +109,7 @@ class Topomap(_tb_sensors_mixin, _base._EelFigure):
         self.draw()
 
 
-class TopoButterfly(_base._EelFigure):
+class TopoButterfly(_EelFigure):
     """
     Butterfly plot with corresponding topomaps.
 
@@ -168,9 +169,8 @@ class TopoButterfly(_base._EelFigure):
         if 'ncol' in layout:
             raise NotImplementedError("`nrow` parameter not implemented")
         layout['ncol'] = 3
-        super(TopoButterfly, self).__init__("TopoButterfly Plot", nax, layout,
-                                            1, 3, figtitle=title,
-                                            make_axes=False)
+        _EelFigure.__init__(self, "TopoButterfly Plot", nax, layout, 1, 3,
+                            figtitle=title, make_axes=False)
 
         # axes sizes
         frame = .05  # in inches; .4
@@ -567,7 +567,7 @@ class _TopoWindow:
             self.pointer = None
 
 
-class TopoArray(_base._EelFigure):
+class TopoArray(_EelFigure):
     """
     Channel by sample plots with corresponding topomaps
 
@@ -606,8 +606,8 @@ class TopoArray(_base._EelFigure):
         n_topo_total = ntopo * n_epochs
 
         # create figure
-        _base._EelFigure.__init__(self, 'TopoArray Plot', n_epochs, layout, 1.5,
-                                 6, make_axes=False)
+        _EelFigure.__init__(self, 'TopoArray Plot', n_epochs, layout, 1.5, 6,
+                            make_axes=False)
         fig = self.figure
         axw = self._layout.axw
 
