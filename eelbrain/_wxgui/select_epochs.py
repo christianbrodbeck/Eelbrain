@@ -419,7 +419,7 @@ class Frame(EelbrainFrame):  # control
 
         if size is None:
             size = (config.ReadInt("size_width", 800),
-                   config.ReadInt("size_height", 600))
+                    config.ReadInt("size_height", 600))
         else:
             w, h = pos
             config.WriteInt("size_width", w)
