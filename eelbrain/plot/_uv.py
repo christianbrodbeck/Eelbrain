@@ -53,15 +53,23 @@ defaults = dict(title_kwargs={'size': 14,
                 )  # set by __init__
 
 
+def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, markers=True,
+                        levels=True, pwcolors=None, x0=0):
+    """Mark pairwise significance
 
+    Parameters
+    ----------
+    ...
+    trend : None | str
+        Symbol to mark trends.
+    markers : bool
+        Plot markers indicating significance level (stars).
 
-
-
-
-
-def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, levels=True,
-                        pwcolors=None, x0=0):
-    "returns y_max"
+    Returns
+    -------
+    top : scalar
+        The top most value on the y axis.
+    """
     if levels is not True:  # to avoid test.star() conflict
         trend = False
     # tests
@@ -83,20 +91,22 @@ def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, levels=True,
             j = i + distance  # i, j are data indexes for the categories being compared
             index = tests['pw_indexes'][(i, j)]
             stars = tests['stars'][index]
-            if stars:
-                c = pwcolors[stars - 1]
+            if not stars:
+                continue
+
+            c = pwcolors[stars - 1]
+            free_levels = np.where(reservation[:, i:j].sum(1) == 0)[0]
+            level = min(free_levels)
+            reservation[level, i:j] = 1
+
+            y1 = y_start + 2 * y_unit * level
+            y2 = y1 + y_unit
+            y_top = max(y2, y_top)
+            x1 = (x0 + i) + .025
+            x2 = (x0 + j) - .025
+            ax.plot([x1, x1, x2, x2], [y1, y2, y2, y1], color=c)
+            if markers:
                 symbol = tests['symbols'][index]
-
-                free_levels = np.where(reservation[:, i:j].sum(1) == 0)[0]
-                level = min(free_levels)
-                reservation[level, i:j] = 1
-
-                y1 = y_start + 2 * y_unit * level
-                y2 = y1 + y_unit
-                y_top = max(y2, y_top)
-                x1 = (x0 + i) + .025
-                x2 = (x0 + j) - .025
-                ax.plot([x1, x1, x2, x2], [y1, y2, y2, y1], color=c)
                 ax.text((x1 + x2) / 2, y2, symbol, color=c, size=font_size,
                         ha='center', va='center', clip_on=False)
 
@@ -283,8 +293,8 @@ class Boxplot(_SimpleFigure):
     def __init__(self, Y, X=None, match=None, sub=None, datalabels=None,
                  bottom=None, top=None,
                  title=True, ylabel='{unit}', xlabel=True, xtick_delim='\n',
-                 test=True, par=True, trend="'", corr='Hochberg',
-                 pwcolors=None, hatch=False, colors=False,
+                 test=True, par=True, trend="'", test_markers=True,
+                 corr='Hochberg', pwcolors=None, hatch=False, colors=False,
                  ds=None, **kwargs):
         """
         Make a boxplot.
@@ -326,6 +336,9 @@ class Boxplot(_SimpleFigure):
             tests if False).
         trend : None | str
             Marker for a trend in pairwise comparisons.
+        test_markers : bool
+            For pairwise tests, plot markers indicating significance level
+            (stars).
         corr : None | 'hochberg' | 'bonferroni' | 'holm'
             Method for multiple comparison correction (default 'hochberg').
         hatch : bool | str
@@ -422,7 +435,7 @@ class Boxplot(_SimpleFigure):
         # tests
         if test is True:
             y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend,
-                                        x0=1)
+                                        test_markers, x0=1)
         else:
             ax.axhline(test, color='black')
             y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit,
@@ -448,8 +461,8 @@ class Boxplot(_SimpleFigure):
 
 class Barplot(_SimpleFigure):
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
-                 corr='Hochberg', trend="'", title=None, ylabel=None,
-                 error='sem', pool_error=None, ec='k', xlabel=True,
+                 corr='Hochberg', trend="'", test_markers=True, title=None,
+                 ylabel=None, error='sem', pool_error=None, ec='k', xlabel=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0,
                  top=None, c='#0099FF', edgec=None, ds=None, **kwargs):
         """Barplot
@@ -476,6 +489,9 @@ class Barplot(_SimpleFigure):
             Axis title (default is no title, True to use ``Y.name``).
         trend : None | str
             Marker for a trend in pairwise comparisons.
+        test_markers : bool
+            For pairwise tests, plot markers indicating significance level
+            (stars).
         ylabel : None | str
             Y axis label (default is None).
         error : str
@@ -538,7 +554,8 @@ class Barplot(_SimpleFigure):
         x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
                                       colors, bottom=bottom, c=c, edgec=edgec,
                                       ec=ec, test=test, par=par, trend=trend,
-                                      corr=corr, return_lim=True)
+                                      corr=corr, test_markers=test_markers,
+                                      return_lim=True)
 
         if top is None:
             top = y1
@@ -552,9 +569,10 @@ class Barplot(_SimpleFigure):
         self._show()
 
 
-def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0, left=None,
-                 width=.5, c='#0099FF', edgec=None, ec='k', test=True, par=True,
-                 trend="'", corr='Hochberg', return_lim=False):
+def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0,
+                 left=None, width=.5, c='#0099FF', edgec=None, ec='k',
+                 test=True, par=True, trend="'", corr='Hochberg',
+                 test_markers=True, return_lim=False):
     """Draw a barplot to axes ax for Celltable ct.
 
     Parameters
@@ -612,7 +630,8 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0, left=None,
     # prepare pairwise plotting
     y_unit = (plot_max - y_bottom) / 15
     if test is True:
-        y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend)
+        y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend,
+                                    test_markers)
     elif (test is False) or (test is None):
         y_top = plot_max + y_unit
     else:
