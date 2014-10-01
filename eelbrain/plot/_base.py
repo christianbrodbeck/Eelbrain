@@ -999,7 +999,7 @@ class Layout():
         self.fig_kwa = dict(figsize=(w, h), dpi=dpi)
 
 
-class legend(_EelFigure):
+class Legend(_EelFigure):
     def __init__(self, handles, labels, dpi=90, figsize=(2, 2)):
         fig_kwa = dict(dpi=dpi, figsize=figsize)
         _EelFigure.__init__(self, "Legend", fig_kwa=fig_kwa)

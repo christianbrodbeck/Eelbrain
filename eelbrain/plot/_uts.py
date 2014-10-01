@@ -300,7 +300,7 @@ class UTSStat(_EelFigure):
             labels = [cellname(cell) for cell in cells]
             handles = [self._legend_handles[cell] for cell in cells]
             if loc == 'fig':
-                return _base.legend(handles, labels, figsize=figsize)
+                return _base.Legend(handles, labels, figsize=figsize)
             else:
                 # take care of old legend; remove() not implemented as of mpl 1.3
                 if hasattr(self, 'legend'):
