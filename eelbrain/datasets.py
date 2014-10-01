@@ -228,7 +228,17 @@ def get_uts(utsnd=False, seed=0):
     return ds
 
 
-def get_uv():
+def get_uv(seed=0):
+    """Dataset with random univariate data
+
+    Parameters
+    ----------
+    seed : None | int
+        Seed the numpy random state before generating random data.
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
     ds = permute([('A', ('a1', 'a2')),
                   ('B', ('b1', 'b2')),
                   ('rm', ['s%03i' % i for i in xrange(20)])])
