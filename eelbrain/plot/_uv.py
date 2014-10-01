@@ -451,7 +451,7 @@ class Barplot(_SimpleFigure):
                  corr='Hochberg', title=True, trend="'", ylabel=None,
                  error='sem', pool_error=None, ec='k', xlabel=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0,
-                 c='#0099FF', edgec=None, ds=None, **kwargs):
+                 top=None, c='#0099FF', edgec=None, ds=None, **kwargs):
         """Barplot
 
         Parameters
@@ -502,7 +502,9 @@ class Barplot(_SimpleFigure):
             Matplotlib colors to use for boxes (True to use the module default;
             default is False, i.e. no colors).
         bottom : scalar
-            Lowest possible value on the y axis (default is 0).
+            Lower end of the y axis (default is 0).
+        top : scalar
+            Upper end of the y axis (default is determined from the data).
         c : matplotlib color
             Bar color (ignored if colors is specified).
         edgec : matplotlib color
@@ -538,8 +540,10 @@ class Barplot(_SimpleFigure):
                                       ec=ec, test=test, par=par, trend=trend,
                                       corr=corr, return_lim=True)
 
+        if top is None:
+            top = y1
         self._ax.set_xlim(x0, x1)
-        self._ax.set_ylim(y0, y1)
+        self._ax.set_ylim(y0, top)
 
         # figure decoration
         self._ax.set_xticks(np.arange(len(ct.cells)))
