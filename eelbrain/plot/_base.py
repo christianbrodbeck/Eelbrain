@@ -692,6 +692,31 @@ def _loc(name, size=(0, 0), title_space=0, frame=.01):
     return x, y
 
 
+def frame_title(plot, y, x=None, xax=None):
+    """Generate frame title from common data structure
+
+    Parameters
+    ----------
+    plot : str
+        Name of the plot.
+    y : data-obj
+        Dependent variable.
+    x : data-obj
+        Predictor.
+    xax : data-obj
+        Grouping variable for axes.
+    """
+    if xax is None:
+        if x is None:
+            return "%s: %s" % (plot, y.name)
+        else:
+            return "%s: %s ~ %s" % (plot, y.name, x.name)
+    elif x is None:
+        return "%s: %s | %s" % (plot, y.name, xax.name)
+    else:
+        return "%s: %s ~ %s | %s" % (plot, y.name, x.name, xax.name)
+
+
 class _EelFigure(object):
     """
     Parent class for eelbrain figures.

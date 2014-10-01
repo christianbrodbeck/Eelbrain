@@ -49,8 +49,8 @@ class Topomap(_tb_sensors_mixin, _EelFigure):
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
         _tb_sensors_mixin.__init__(self, sensors)
-        _EelFigure.__init__(self, "Topomap Plot", nax, layout, 1, 7,
-                            figtitle=title)
+
+        _EelFigure.__init__(self, "Topomap", nax, layout, 1, 7, figtitle=title)
 
         vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
 

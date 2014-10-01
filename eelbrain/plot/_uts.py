@@ -166,7 +166,8 @@ class UTSStat(_EelFigure):
 
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
-        _EelFigure.__init__(self, "UTSStat Plot", nax, layout, figtitle=title)
+        frame_title = _base.frame_title("UTSStat", Y, X, Xax)
+        _EelFigure.__init__(self, frame_title, nax, layout, figtitle=title)
 
         # create plots
         self._plots = []

@@ -28,7 +28,7 @@ import matplotlib as mpl
 from .._stats import test, stats
 from .._data_obj import (asfactor, isvar, asvar, ascategorial, assub, cellname,
                          Celltable)
-from ._base import _EelFigure, str2tex
+from ._base import _EelFigure, str2tex, frame_title
 
 
 defaults = dict(title_kwargs={'size': 14,
@@ -279,12 +279,10 @@ class _SimpleFigure(_EelFigure):
         _EelFigure._show(self, False)
 
 
-
 class Boxplot(_SimpleFigure):
     def __init__(self, Y, X=None, match=None, sub=None, datalabels=None,
                  bottom=None, top=None,
                  title=True, ylabel='{unit}', xlabel=True, xtick_delim='\n',
-                 titlekwargs=defaults['title_kwargs'],
                  test=True, par=True, trend="'", corr='Hochberg',
                  pwcolors=None, hatch=False, colors=False,
                  ds=None, **kwargs):
@@ -372,10 +370,9 @@ class Boxplot(_SimpleFigure):
             xlabel = str2tex(X.name or False)
 
         # get axes
-
-
-        _SimpleFigure.__init__(self, "Boxplot", title, xlabel, ylabel,
-                               titlekwargs, **kwargs)
+        frame_title_ = frame_title("Boxplot", ct.Y, ct.X)
+        _SimpleFigure.__init__(self, frame_title_, title, xlabel, ylabel,
+                               **kwargs)
         ax = self._axes[0]
 
         # determine ax lim
@@ -532,8 +529,9 @@ class Barplot(_SimpleFigure):
             else:
                 xlabel = False
 
-        _SimpleFigure.__init__(self, "Barplot", title, xlabel, ylabel, **kwargs)
-
+        frame_title_ = frame_title("Barplot", ct.Y, ct.X)
+        _SimpleFigure.__init__(self, frame_title_, title, xlabel, ylabel,
+                               **kwargs)
 
         x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
                                       colors, bottom=bottom, c=c, edgec=edgec,
@@ -1227,14 +1225,15 @@ class Correlation(_EelFigure):
         rinxlabel :
             print the correlation in the xlabel
         """
-        _EelFigure.__init__(self, "Correlation", 1, layout, 1, 5,
-                            figtitle=title)
-
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
         X = asvar(X, sub, ds)
         if cat is not None:
             cat = ascategorial(cat, sub, ds)
+
+        # figure
+        frame_title_ = frame_title("Correlation", Y, X, cat)
+        _EelFigure.__init__(self, frame_title_, 1, layout, 1, 5, figtitle=title)
 
         # determine labels
         if xlabel is True:
@@ -1310,7 +1309,9 @@ class Regression(_EelFigure):
         if ylabel is True:
             ylabel = Y.name
 
-        _EelFigure.__init__(self, "Regression", 1, layout, 1, 5, figtitle=title)
+        # figure
+        frame_title_ = frame_title("Regression", Y, X, cat)
+        _EelFigure.__init__(self, frame_title_, 1, layout, 1, 5, figtitle=title)
         ax = self._axes[0]
 
         # labels
@@ -1434,7 +1435,8 @@ class Histogram(_EelFigure):
             if title is True:
                 title = "Tests for Normality"
 
-        _EelFigure.__init__(self, "Histogram", nax, layout, 1, 4,
+        frame_title_ = frame_title("Histogram", Y, X)
+        _EelFigure.__init__(self, frame_title_, nax, layout, 1, 4,
                             figtitle=title)
 
         if X is None:
