@@ -78,7 +78,7 @@ from .._data_obj import ascategorial, asndvar, DimensionMismatchError
 
 
 # defaults
-defaults = {'DPI': 72, 'maxw': 16, 'maxh': 10}
+defaults = {'maxw': 16, 'maxh': 10}
 backend = {'eelbrain': True, 'autorun': None}
 
 # store callback figures (they need to be preserved)
@@ -732,15 +732,13 @@ class _EelFigure(object):
 
         # layout
         if nax is not None:
-            layout = dict(ax_aspect=ax_aspect, axh_default=axh_default)
-            layout.update(layout_kwa)
-            layout_ = Layout(nax, **layout)
+            layout = Layout(nax, ax_aspect, axh_default, **layout_kwa)
             fig_kwa = fig_kwa.copy()
-            fig_kwa.update(layout_.fig_kwa)
+            fig_kwa.update(layout.fig_kwa)
         else:
-            layout_ = None
+            layout = None
             make_axes = False
-        self._layout = layout_
+        self._layout = layout
         self._auto_make_axes = make_axes
 
         # find the right frame
@@ -861,14 +859,19 @@ class _EelFigure(object):
 class Layout():
     """Create layouts for figures with several axes of the same size
     """
-    def __init__(self, nax, h=None, w=None, axh=None, axw=None, nrow=None,
-                 ncol=None, ax_aspect=1.5, axh_default=1, dpi=None):
+    def __init__(self, nax, ax_aspect=1.5, axh_default=2, h=None, w=None,
+                 axh=None, axw=None, nrow=None, ncol=None, dpi=None):
         """Create a grid of axes based on variable parameters.
 
         Parameters
         ----------
         nax : int
             Number of axes required.
+        ax_aspect : scalar
+            Width / height aspect of the axes.
+        axh_default : scalar
+            The default axes height if it can not be determined from the other
+            parameters.
         h, w : scalar
             Height and width of the figure.
         axh, axw : scalar
@@ -876,11 +879,6 @@ class Layout():
         nrow, ncol : None | int
             Limit number of rows/columns. If both are  None, a square layout is
             produced
-        ax_aspect : scalar
-            Width / height aspect of the axes.
-        axh_default : scalar
-            The default axes height if it can not be determined from the other
-            parameters.
         """
         if h and axh:
             if h < axh:
@@ -998,7 +996,7 @@ class Layout():
         self.axw = axw
         self.nrow = int(nrow)
         self.ncol = int(ncol)
-        self.fig_kwa = dict(figsize=(w, h), dpi=dpi or defaults['DPI'])
+        self.fig_kwa = dict(figsize=(w, h), dpi=dpi)
 
 
 class legend(_EelFigure):
