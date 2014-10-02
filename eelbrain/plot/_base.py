@@ -757,12 +757,9 @@ class _EelFigure(object):
             title = '%s: %s' % (title, figtitle)
 
         # layout
-        self._layout = Layout(nax, ax_aspect, axh_default, **layout_kwa)
+        layout = Layout(nax, ax_aspect, axh_default, **layout_kwa)
         fig_kwa = fig_kwa.copy()
-        fig_kwa.update(self._layout.fig_kwa)
-        if nax is None:
-            make_axes = False
-        self._auto_make_axes = make_axes
+        fig_kwa.update(layout.fig_kwa)
 
         # find the right frame
         if backend['eelbrain']:
@@ -779,30 +776,27 @@ class _EelFigure(object):
         else:
             self._figtitle = None
 
+        # make axes
+        axes = []
+        if make_axes and nax is not None:
+            for i in xrange(1, nax + 1):
+                ax = figure.add_subplot(layout.nrow, layout.ncol, i, **ax_kwa)
+                axes.append(ax)
+
         # store attributes
         self._frame = frame
         self.figure = figure
+        self._axes = axes
         self.canvas = frame.canvas
-        self._subplots = None
-        self._ax_kwa = ax_kwa
+        self._layout = layout
 
+        # add callbacks
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
         self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
 
     def _get_statusbar_text(self, event):
         "subclass to add figure-specific content"
         return '%s'
-
-    @LazyProperty
-    def _axes(self):
-        if self._auto_make_axes:
-            ncol = self._layout.ncol
-            nrow = self._layout.nrow
-            kw = self._ax_kwa
-            return [self.figure.add_subplot(nrow, ncol, i + 1, **kw)
-                    for i in xrange(self._layout.nax)]
-        else:
-            return []
 
     def _on_leave_axes(self, event):
         "update the status bar when the cursor leaves axes"
