@@ -60,7 +60,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Eelbrain'
-copyright = u'2012, Christian Brodbeck'
+copyright = u'2014, Christian Brodbeck'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -159,7 +159,7 @@ html_static_path = ['static']
 # html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
-# html_sidebars = {}
+html_sidebars = {'**': ['globaltoc.html', 'searchbox.html']}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
