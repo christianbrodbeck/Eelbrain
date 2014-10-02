@@ -6,12 +6,12 @@ import operator
 from warnings import warn
 
 import numpy as np
-import matplotlib.cm as _cm
 
 from .._data_obj import ascategorial, asndvar, assub, cellname, Celltable
 from .._stats import stats
 from . import _base
 from ._base import _EelFigure
+from ._colors import colors_for_oneway
 
 
 class UTSStat(_EelFigure):
@@ -159,10 +159,10 @@ class UTSStat(_EelFigure):
                 for cell in cells:
                     if cell not in colors:
                         raise KeyError("%s not in colors" % repr(cell))
+            elif isinstance(colors, basestring):
+                colors = colors_for_oneway(cells, colors)
             else:
-                cm = _cm.get_cmap(colors)
-                N = len(cells)
-                colors = {cell: cm(i / N) for i, cell in enumerate(cells)}
+                raise TypeError("Invalid type: colors=%s" % repr(colors))
 
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
@@ -499,35 +499,34 @@ class UTSClusters(_EelFigure):
         clusters_ = res.clusters
 
         epochs = self.epochs = _base.unpack_epochs_arg(res, 1)
-        cm = _cm.get_cmap(cm)
 
         # create figure
-        N = len(epochs)
-        nax = 1 if overlay else N
+        n = len(epochs)
+        nax = 1 if overlay else n
         _EelFigure.__init__(self, "UTSClusters", nax, 4, 2, layout, figtitle=title)
 
+        colors = colors_for_oneway(range(n), cm)
         ylabel = True
         self._caxes = []
         if overlay:
             ax = self._axes[0]
             axtitle = None
+
         for i, layers in enumerate(epochs):
+            stat = layers[0]
             if not overlay:
                 ax = self._axes[i]
-
-            color = cm(i / N)
-            stat = layers[0]
 
             # ax clusters
             if clusters_:
                 if 'effect' in clusters_:
-                    cs = clusters_.sub('effect == %r' % layers[0].name)
+                    cs = clusters_.sub('effect == %r' % stat.name)
                 else:
                     cs = clusters_
             else:
                 cs = None
 
-            cax = _ax_uts_clusters(ax, stat, cs, color, pmax, ptrend, 'time',
+            cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, 'time',
                                    axtitle, ylabel)
             self._caxes.append(cax)
             ylabel = None
