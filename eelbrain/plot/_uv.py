@@ -634,7 +634,6 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0,
             bar.set_facecolor(c)
 
     # pairwise tests
-    # prepare pairwise plotting
     y_unit = (plot_max - y_bottom) / 15
     if test is True:
         y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend,
@@ -657,10 +656,9 @@ class Timeplot(_SimpleFigure):
                  # data plotting
                  main=np.mean,
                  spread='box', x_jitter=False,
-                 datalabels=None,
                  # labelling
                  ylabel=True, xlabel=True,
-                 legend=True, loc=0,
+                 legend=True,
                  colors=True, hatch=False, markers=True,
                  **kwargs
                  ):
@@ -678,15 +676,11 @@ class Timeplot(_SimpleFigure):
         main : numpy function
             draw lines to connect values across time (default: np.mean)
             can be 'bar' for barplots or False
-        datalabels : scalar
-            Label outlier data. The argument is provided in std.
         diff : scalar
             Use this value as baseline for plotting; test other conditions
             agaist baseline (instead of pairwise)
-        legend : bool | 'fig'
-            Plot a legend; with `fig`, plot as figlegend.
-        loc :
-            The legend location.
+        legend : bool | 'fig' | matplotlib legend location
+            Plot a legend in the given location; with `fig`, plot as figlegend.
         frame : bool
             Draw a frame containing the figure from the top and the right
             (default ``True``).
@@ -716,9 +710,9 @@ class Timeplot(_SimpleFigure):
         del main
 
         # hatch/marker
-        if hatch == True:
+        if hatch is True:
             hatch = defaults['hatch']
-        if markers == True:
+        if markers is True:
             if defaults['mono']:
                 markers = defaults['cm']['markers']
             else:
@@ -808,8 +802,9 @@ class Timeplot(_SimpleFigure):
                         h = hatch[i]
                     except:
                         h = ''
-                    boxPolygon = mpl.patches.Polygon(boxCoords, facecolor=c, hatch=h, zorder=-999)
-                    ax.add_patch(boxPolygon)
+                    patch = mpl.patches.Polygon(boxCoords, facecolor=c, hatch=h,
+                                                zorder=-999)
+                    ax.add_patch(patch)
 
                 if True:  # defaults['mono']:
                     for itemname in bp:
