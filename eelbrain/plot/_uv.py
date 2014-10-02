@@ -1458,7 +1458,7 @@ class Histogram(_EelFigure):
             if title is True:
                 title = "Tests for Normality"
 
-        frame_title_ = frame_title("Histogram", Y, X)
+        frame_title_ = frame_title("Histogram", ct.Y, ct.X)
         _EelFigure.__init__(self, frame_title_, nax, 4, 1, layout, figtitle=title)
 
         if X is None:
