@@ -787,11 +787,32 @@ class _EelFigure(object):
         self._axes = axes
         self.canvas = frame.canvas
         self._layout = layout
-        self._tight = tight
+        self._tight_arg = tight
 
         # add callbacks
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
         self.canvas.mpl_connect('axes_leave_event', self._on_leave_axes)
+
+    def _show(self):
+        if self._tight_arg:
+            self._tight()
+
+        self.draw()
+        self._frame.Show()
+
+        if backend['eelbrain'] and do_autorun():
+            from .._wxgui import run
+            run()
+
+    def _tight(self):
+        "Default implementation based on matplotlib"
+        self.figure.tight_layout()
+        if self._figtitle:
+            trans = self.figure.transFigure.inverted()
+            extent = self._figtitle.get_window_extent(self.figure.canvas.renderer)
+            bbox = trans.transform(extent)
+            t_bottom = bbox[0, 1]
+            self.figure.subplots_adjust(top=1 - 2 * (1 - t_bottom))
 
     def _get_statusbar_text(self, event):
         "subclass to add figure-specific content"
@@ -814,23 +835,6 @@ class _EelFigure(object):
 
             txt = self._get_statusbar_text(event)
             self._frame.SetStatusText(txt % pos_txt)
-
-    def _show(self):
-        if self._tight:
-            self.figure.tight_layout()
-            if self._figtitle:
-                trans = self.figure.transFigure.inverted()
-                extent = self._figtitle.get_window_extent(self.figure.canvas.renderer)
-                bbox = trans.transform(extent)
-                t_bottom = bbox[0, 1]
-                self.figure.subplots_adjust(top=1 - 2 * (1 - t_bottom))
-
-        self.draw()
-        self._frame.Show()
-
-        if backend['eelbrain'] and do_autorun():
-            from .._wxgui import run
-            run()
 
     def _fill_toolbar(self, tb):
         """

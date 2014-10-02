@@ -102,9 +102,10 @@ class ColorGrid(_EelFigure):
                        ((row_cell_0, col_cell_0), (col_cell_0, row_cell_0)))
                 raise KeyError(msg)
 
-        _EelFigure.__init__(self, "ColorGrid", None, 3, 1, layout)
+        _EelFigure.__init__(self, "ColorGrid", None, 3, 1, layout, True)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
+        self._ax = ax
 
         # reverse rows so we can plot upwards
         row_cells = tuple(reversed(row_cells))
@@ -123,21 +124,64 @@ class ColorGrid(_EelFigure):
                 ax.add_patch(patch)
 
         # labels
+        self._labels = []
         y = n_rows + 0.1
         for col in xrange(n_cols):
             label = col_cells[col]
-            ax.text(col + 0.5, y, label, va='bottom', ha='left',
-                    rotation=40)
+            h = ax.text(col + 0.5, y, label, va='bottom', ha='left',
+                        rotation=40)
+            self._labels.append(h)
         x = n_cols + 0.1
         for row in xrange(n_rows):
             label = row_cells[row]
-            ax.text(x, row + 0.5, label, va='center', ha='left')
-
-        ymax = n_rows + 4
-        ax.set_ylim(0, ymax)
-        ax.set_xlim(0, ymax * self._layout.w / self._layout.h)
+            h = ax.text(x, row + 0.5, label, va='center', ha='left')
+            self._labels.append(h)
 
         self._show()
+
+    def _tight(self):
+        # arbitrary default with equal aspect
+        self._ax.set_ylim(0, 1)
+        self._ax.set_xlim(0, 1 * self._layout.w / self._layout.h)
+
+        # draw to compute text coordinates
+        self.draw()
+
+        # find label bounding box
+        xmax = 0
+        ymax = 0
+        for h in self._labels:
+            bbox = h.get_window_extent()
+            if bbox.xmax > xmax:
+                xmax = bbox.xmax
+                xpos = h.get_position()[0]
+            if bbox.ymax > ymax:
+                ymax = bbox.ymax
+                ypos = h.get_position()[1]
+        xmax += 2
+        ymax += 2
+
+        # transform from display coordinates -> data coordinates
+        trans = self._ax.transData.inverted()
+        xmax, ymax = trans.transform((xmax, ymax))
+
+        # calculate required movement
+        _, ax_xmax = self._ax.get_xlim()
+        _, ax_ymax = self._ax.get_ylim()
+        xtrans = ax_xmax - xmax
+        ytrans = ax_ymax - ymax
+
+        # calculate the scale factor:
+        # new_coord = x * coord
+        # new_coord = coord + trans
+        # x = (coord + trans) / coord
+        scale = (xpos + xtrans) / xpos
+        scale_y = (ypos + ytrans) / ypos
+        if scale_y <= scale:
+            scale = scale_y
+
+        self._ax.set_xlim(0, ax_xmax / scale)
+        self._ax.set_ylim(0, ax_ymax / scale)
 
 
 class Colors(_EelFigure):
