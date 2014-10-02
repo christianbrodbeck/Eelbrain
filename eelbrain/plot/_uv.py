@@ -292,7 +292,7 @@ class _SimpleFigure(_EelFigure):
 class Boxplot(_SimpleFigure):
     def __init__(self, Y, X=None, match=None, sub=None, datalabels=None,
                  bottom=None, top=None,
-                 title=True, ylabel='{unit}', xlabel=True, xtick_delim='\n',
+                 title=None, ylabel='{unit}', xlabel=True, xtick_delim='\n',
                  test=True, par=True, trend="'", test_markers=True,
                  corr='Hochberg', pwcolors=None, hatch=False, colors=False,
                  ds=None, **kwargs):
@@ -316,8 +316,8 @@ class Boxplot(_SimpleFigure):
             below the lowest value).
         top : scalar
             Set the upper x axis limit (default is to fit all the data).
-        title : None | str
-            Axis title (default is ``Y.name``).
+        title : True | str
+            Axis title (default is no title, True to use ``Y.name``).
         ylabel : None | str
             Y axis label (default is ``Y.info['unit']`` if present, otherwise
             no label).
