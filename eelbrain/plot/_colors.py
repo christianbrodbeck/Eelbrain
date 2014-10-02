@@ -104,5 +104,5 @@ class Colors(_EelFigure):
         ax.set_ylim(0, n)
         ax.set_xlim(0, n * self._layout.w / self._layout.h)
 
-        self._show(False)
+        self._show()
 

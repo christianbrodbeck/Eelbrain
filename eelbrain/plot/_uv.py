@@ -285,7 +285,7 @@ class _SimpleFigure(_EelFigure):
         p.y1 -= ymax
         self._ax.set_position(p)
 
-        _EelFigure._show(self, False)
+        _EelFigure._show(self)
 
 
 class Boxplot(_SimpleFigure):
@@ -1237,7 +1237,7 @@ class Correlation(_EelFigure):
     def __init__(self, Y, X, cat=None, sub=None, ds=None, title=None,
                  c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], delim=' ',
                  lloc='lower center', lncol=2, figlegend=True, xlabel=True,
-                 ylabel=True, rinxlabel=True, **layout):
+                 ylabel=True, rinxlabel=True, tight=True, **layout):
         """
         Plot the correlation between two variables.
 
@@ -1247,6 +1247,9 @@ class Correlation(_EelFigure):
             categories
         rinxlabel :
             print the correlation in the xlabel
+        tight : bool
+            Use matplotlib's tight_layout to expand all axes to fill the figure
+            (default True)
         """
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
@@ -1256,7 +1259,8 @@ class Correlation(_EelFigure):
 
         # figure
         frame_title_ = frame_title("Correlation", Y, X, cat)
-        _EelFigure.__init__(self, frame_title_, 1, 5, 1, layout, figtitle=title)
+        _EelFigure.__init__(self, frame_title_, 1, 5, 1, layout, tight,
+                            figtitle=title)
 
         # determine labels
         if xlabel is True:
@@ -1305,21 +1309,24 @@ class Regression(_EelFigure):
     def __init__(self, Y, X, cat=None, match=None, sub=None, ds=None,
                  ylabel=True, title=None, alpha=.2, legend=True, delim=' ',
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
-                 **layout):
+                 tight=True, **layout):
         """
         Plot the regression of Y on a regressor X.
 
 
         parameters
         ----------
-
+        ...
         alpha : scalar
             alpha for individual data points (to control visualization of
             overlap)
         legend : bool | str
             applies if cat != None: can be mpl ax.legend() loc kwarg
             http://matplotlib.sourceforge.net/api/axes_api.html#matplotlib.axes.Axes.legend
-
+        ...
+        tight : bool
+            Use matplotlib's tight_layout to expand all axes to fill the figure
+            (default True)
         """
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
@@ -1334,7 +1341,8 @@ class Regression(_EelFigure):
 
         # figure
         frame_title_ = frame_title("Regression", Y, X, cat)
-        _EelFigure.__init__(self, frame_title_, 1, 5, 1, layout, figtitle=title)
+        _EelFigure.__init__(self, frame_title_, 1, 5, 1, layout, tight,
+                            figtitle=title)
         ax = self._axes[0]
 
         # labels
@@ -1426,7 +1434,7 @@ def _normality_plot(ax, data, **kwargs):
 
 class Histogram(_EelFigure):
     def __init__(self, Y, X=None, match=None, sub=None, ds=None, pooled=True,
-                title=True, ylabel=True, **layout):
+                title=True, ylabel=True, tight=True, **layout):
         """Make histogram plots and test normality.
 
         Parameters
@@ -1437,6 +1445,9 @@ class Histogram(_EelFigure):
             Figure title.
         titlekwargs : dict
             Forwarded to :py:func:`pyplot.suptitle`.
+        tight : bool
+            Use matplotlib's tight_layout to expand all axes to fill the figure
+            (default True)
         """
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
 
@@ -1459,7 +1470,8 @@ class Histogram(_EelFigure):
                 title = "Tests for Normality"
 
         frame_title_ = frame_title("Histogram", ct.Y, ct.X)
-        _EelFigure.__init__(self, frame_title_, nax, 4, 1, layout, figtitle=title)
+        _EelFigure.__init__(self, frame_title_, nax, 4, 1, layout, tight,
+                            figtitle=title)
 
         if X is None:
             ax = self._axes[0]

@@ -209,7 +209,7 @@ class _ax_im_array(object):
 
 class Array(_EelFigure):
     def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
-                 ds=None, **layout):
+                 ds=None, tight=True, **layout):
         """
         Plot uts data to a rectangular grid.
 
@@ -226,11 +226,15 @@ class Array(_EelFigure):
         ds : None | Dataset
             If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
+        tight : bool
+            Use matplotlib's tight_layout to expand all axes to fill the figure
+            (default True)
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
         nax = len(epochs)
-        _EelFigure.__init__(self, "Array Plot", nax, 4, 2, layout, figtitle=title)
+        _EelFigure.__init__(self, "Array Plot", nax, 4, 2, layout, tight,
+                            figtitle=title)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs)
@@ -490,7 +494,7 @@ class Butterfly(_EelFigure):
     "Plot data in a butterfly plot."
     def __init__(self, epochs, Xax=None, sensors=None, title=None,
                  axtitle='{name}', xlabel=True, ylabel=True, color=None,
-                 ds=None, **layout):
+                 ds=None, tight=True, **layout):
         """Butterfly plot for NDVars
 
         Parameters
@@ -513,10 +517,13 @@ class Butterfly(_EelFigure):
         ds : None | Dataset
             If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
+        tight : bool
+            Use matplotlib's tight_layout to expand all axes to fill the figure
+            (default True)
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, layout,
-                            figtitle=title)
+                            tight, figtitle=title)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, True)

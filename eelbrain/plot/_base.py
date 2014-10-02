@@ -732,7 +732,8 @@ class _EelFigure(object):
 
     """
     def __init__(self, title, nax, axh_default, ax_aspect, layout_kwa,
-                 fig_kwa={}, ax_kwa={}, figtitle=None, make_axes=True):
+                 tight=False, fig_kwa={}, ax_kwa={}, figtitle=None,
+                 make_axes=True):
         """
 
         Parameters
@@ -789,6 +790,7 @@ class _EelFigure(object):
         self._axes = axes
         self.canvas = frame.canvas
         self._layout = layout
+        self._tight = tight
 
         # add callbacks
         self.canvas.mpl_connect('motion_notify_event', self._on_motion)
@@ -816,8 +818,8 @@ class _EelFigure(object):
             txt = self._get_statusbar_text(event)
             self._frame.SetStatusText(txt % pos_txt)
 
-    def _show(self, tight=True):
-        if tight:
+    def _show(self):
+        if self._tight:
             self.figure.tight_layout()
             if self._figtitle:
                 trans = self.figure.transFigure.inverted()
@@ -1039,7 +1041,7 @@ class Legend(_EelFigure):
 
         self.legend = self.figure.legend(handles, labels, loc=2)
 
-        self._show(tight=False)
+        self._show()
 
 
 class ImageTiler(object):

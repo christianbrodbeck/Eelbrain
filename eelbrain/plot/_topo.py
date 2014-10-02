@@ -18,7 +18,7 @@ class Topomap(_tb_sensors_mixin, _EelFigure):
     "Plot individual topogeraphies"
     def __init__(self, epochs, Xax=None, sensors='name', proj='default',
                  title=None, res=200, interpolation='nearest', ds=None,
-                 vmax=None, vmin=None, **layout):
+                 vmax=None, vmin=None, tight=True, **layout):
         """
         Plot individual topogeraphies
 
@@ -45,12 +45,16 @@ class Topomap(_tb_sensors_mixin, _EelFigure):
         vmax, vmin : None | scalar
             Override the default plot limits. If only vmax is specified, vmin
             is set to -vmax.
+        tight : bool
+            Use matplotlib's tight_layout to expand all axes to fill the figure
+            (default True)
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
         _tb_sensors_mixin.__init__(self, sensors)
 
-        _EelFigure.__init__(self, "Topomap", nax, 7, 1, layout, figtitle=title)
+        _EelFigure.__init__(self, "Topomap", nax, 7, 1, layout, tight,
+                            figtitle=title)
 
         vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
 
@@ -261,7 +265,7 @@ class TopoButterfly(_EelFigure):
         self._t_label = None
         self._frame.store_canvas()
         self._draw_topo(0, draw=False)
-        self._show(tight=False)
+        self._show()
 
     def _draw_topo(self, t, draw=True):
         self._current_t = t
@@ -677,7 +681,7 @@ class TopoArray(_EelFigure):
         self.canvas.mpl_connect('pick_event', self._pick_handler)
         self.canvas.mpl_connect('motion_notify_event', self._motion_handler)
         self._frame.store_canvas()
-        self._show(tight=False)
+        self._show()
 
     def __repr__(self):
         e_repr = []

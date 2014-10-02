@@ -21,7 +21,7 @@ class UTSStat(_EelFigure):
                  title=None, axtitle='{name}', xlabel=True, ylabel=True,
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
                  xlim=None, color='b', colors='jet', frame=True, clusters=None,
-                 pmax=0.05, ptrend=0.1, **layout):
+                 pmax=0.05, ptrend=0.1, tight=True, **layout):
         """
     Plot statistics for a one-dimensional NDVar
 
@@ -93,6 +93,9 @@ class UTSStat(_EelFigure):
         Maximum p-value of clusters to plot as solid.
     ptrend : scalar
         Maximum p-value of clusters to plot as trend.
+    tight : bool
+        Use matplotlib's tight_layout to expand all axes to fill the figure
+        (default True)
         """
         if 'dev' in layout:
             error = layout.pop('dev')
@@ -167,7 +170,8 @@ class UTSStat(_EelFigure):
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
         frame_title = _base.frame_title("UTSStat", Y, X, Xax)
-        _EelFigure.__init__(self, frame_title, nax, 4, 2, layout, figtitle=title)
+        _EelFigure.__init__(self, frame_title, nax, 4, 2, layout, tight,
+                            figtitle=title)
 
         # create plots
         self._plots = []
@@ -364,7 +368,7 @@ class UTSStat(_EelFigure):
 class UTS(_EelFigure):
     "Value by time plot for UTS data."
     def __init__(self, epochs, Xax=None, title=None, axtitle='{name}', ds=None,
-                 **layout):
+                 tight=True, **layout):
         """Value by time plot for UTS data
 
         Parameters
@@ -380,9 +384,13 @@ class UTS(_EelFigure):
         ds : None | Dataset
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables.
+        tight : bool
+            Use matplotlib's tight_layout to expand all axes to fill the figure
+            (default True)
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
-        _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, layout, figtitle=title)
+        _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, layout, tight,
+                            figtitle=title)
 
         for ax, epoch in zip(self._axes, epochs):
             _ax_uts(ax, epoch, title=axtitle)
@@ -474,7 +482,8 @@ class _ax_uts_stat:
 class UTSClusters(_EelFigure):
     "Plotting of ANOVA permutation cluster test results"
     def __init__(self, res, pmax=0.05, ptrend=0.1, title=None,
-                 axtitle='{name}', cm='jet', overlay=False, **layout):
+                 axtitle='{name}', cm='jet', overlay=False, tight=True,
+                 **layout):
         """
         Plotting of permutation cluster test results
 
@@ -495,6 +504,9 @@ class UTSClusters(_EelFigure):
         overlay : bool
             Plot epochs (time course for different effects) on top of each
             other (as opposed to on separate axes).
+        tight : bool
+            Use matplotlib's tight_layout to expand all axes to fill the figure
+            (default True)
         """
         clusters_ = res.clusters
 
@@ -503,7 +515,8 @@ class UTSClusters(_EelFigure):
         # create figure
         n = len(epochs)
         nax = 1 if overlay else n
-        _EelFigure.__init__(self, "UTSClusters", nax, 4, 2, layout, figtitle=title)
+        _EelFigure.__init__(self, "UTSClusters", nax, 4, 2, layout, tight,
+                            figtitle=title)
 
         colors = colors_for_oneway(range(n), cm)
         ylabel = True

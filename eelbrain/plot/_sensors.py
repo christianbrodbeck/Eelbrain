@@ -419,7 +419,7 @@ class SensorMaps(_EelFigure):
         self.ax3.set_ylim(-frame, 1 + frame)
 
         self._sensor_maps = (self._h0, self._h1, self._h2, self._h3)
-        self._show(tight=False)
+        self._show()
 
         # selection
         self.sel_kwargs = dict(marker='o',  # symbol
@@ -603,7 +603,7 @@ class SensorMap2d(_tb_sensors_mixin, _EelFigure):
         if mark is not None:
             self.mark_sensors(mark)
 
-        self._show(tight=False)
+        self._show()
 
     def mark_sensors(self, mark, kwargs=dict(marker='o',  # symbol
                                              color='r',  # mpl plot kwargs ...
