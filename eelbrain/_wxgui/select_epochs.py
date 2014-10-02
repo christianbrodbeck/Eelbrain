@@ -15,8 +15,9 @@ import wx
 from .. import load, save, plot
 from .._data_obj import Dataset, Factor, Var, corr, asndvar
 from ..plot._base import find_fig_vlims
-from ..plot._utsnd import _ax_bfly_epoch
 from ..plot._nuts import _plt_bin_nuts
+from ..plot._topo import _ax_topomap
+from ..plot._utsnd import _ax_bfly_epoch
 from .._wxutils import Icon, ID, logger, REValidator
 from .app import get_app
 from .frame import EelbrainFrame, EelbrainDialog
@@ -739,7 +740,7 @@ class Frame(EelbrainFrame):  # control
         if self._plot_topo and ax.ax_idx > -2:  # topomap ax_idx is -2
             t = event.xdata
             tseg = self._get_ax_data(ax.ax_idx, t)
-            plot.topo._ax_topomap(self._topo_ax, [tseg], **self._topo_kwargs)
+            _ax_topomap(self._topo_ax, [tseg], **self._topo_kwargs)
             self.canvas.redraw(axes=[self._topo_ax])
 
     def OnRedo(self, event):
