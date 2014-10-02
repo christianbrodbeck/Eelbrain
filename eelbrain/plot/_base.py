@@ -731,9 +731,8 @@ class _EelFigure(object):
 
 
     """
-    def __init__(self, title="Eelbrain Figure", nax=None, layout_kwa={},
-                 ax_aspect=2, axh_default=4, fig_kwa={}, ax_kwa={},
-                 figtitle=None, make_axes=True):
+    def __init__(self, title, nax, axh_default, ax_aspect, layout_kwa,
+                 fig_kwa={}, ax_kwa={}, figtitle=None, make_axes=True):
         """
 
         Parameters
@@ -743,10 +742,12 @@ class _EelFigure(object):
         nax : None | int
             Number of axes to produce layout for. If None, no layout is
             produced.
-        layout_kwargs : dict
-            Arguments to produce a layout (optional).
+        axh_default : scalar
+            Default height per axes.
         ax_aspect : scalar
             Width to height ration (axw / axh).
+        layout_kwargs : dict
+            Arguments to produce a layout (optional).
         ...
         make_axes : bool
             If nax is not None, automatically create axes when self._axes is
@@ -756,14 +757,11 @@ class _EelFigure(object):
             title = '%s: %s' % (title, figtitle)
 
         # layout
-        if nax is not None:
-            layout = Layout(nax, ax_aspect, axh_default, **layout_kwa)
-            fig_kwa = fig_kwa.copy()
-            fig_kwa.update(layout.fig_kwa)
-        else:
-            layout = None
+        self._layout = Layout(nax, ax_aspect, axh_default, **layout_kwa)
+        fig_kwa = fig_kwa.copy()
+        fig_kwa.update(self._layout.fig_kwa)
+        if nax is None:
             make_axes = False
-        self._layout = layout
         self._auto_make_axes = make_axes
 
         # find the right frame
@@ -912,7 +910,14 @@ class Layout():
             if w < axw:
                 raise ValueError("w < axw")
 
-        if nrow is None and ncol is None:
+        if nax is None:
+            if w is None:
+                if h is None:
+                    h = axh_default
+                w = ax_aspect * h
+            elif h is None:
+                h = w / ax_aspect
+        elif nrow is None and ncol is None:
             if w and axw:
                 ncol = math.floor(w / axw)
                 nrow = math.ceil(nax / ncol)
@@ -1014,25 +1019,29 @@ class Layout():
             if axh and not axw:
                 axw = axh * ax_aspect
             elif axw and not axh:
-                axh = axh = axw / ax_aspect
+                axh = axw / ax_aspect
 
-        w = w or axw * ncol
-        h = h or axh * nrow
+        if nax is not None:
+            nrow = int(nrow)
+            ncol = int(ncol)
+            if w is None:
+                w = axw * ncol
+            if h is None:
+                h = axh * nrow
 
         self.nax = nax
         self.h = h
         self.w = w
         self.axh = axh
         self.axw = axw
-        self.nrow = int(nrow)
-        self.ncol = int(ncol)
+        self.nrow = nrow
+        self.ncol = ncol
         self.fig_kwa = dict(figsize=(w, h), dpi=dpi)
 
 
 class Legend(_EelFigure):
-    def __init__(self, handles, labels, dpi=90, figsize=(2, 2)):
-        fig_kwa = dict(dpi=dpi, figsize=figsize)
-        _EelFigure.__init__(self, "Legend", fig_kwa=fig_kwa)
+    def __init__(self, handles, labels, **layout):
+        _EelFigure.__init__(self, "Legend", None, 2, 1, layout)
 
         self.legend = self.figure.legend(handles, labels, loc=2)
 

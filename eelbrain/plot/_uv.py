@@ -154,9 +154,8 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, corr='Hochberg',
 class _SimpleFigure(_EelFigure):
     def __init__(self, wintitle, title=None, xlabel=None, ylabel=None,
                  titlekwargs=defaults['title_kwargs'], yticks=None,
-                 w=5, h=5, xtick_rotation=0, ytick_rotation=0,
-                 frame=True):
-        _EelFigure.__init__(self, wintitle, fig_kwa={'figsize': (w, h)})
+                 xtick_rotation=0, ytick_rotation=0, frame=True, **layout):
+        _EelFigure.__init__(self, wintitle, None, 5, 1, layout)
 
         # axes
         ax_x0 = .025 + .07 * bool(ylabel)
@@ -879,8 +878,7 @@ class Timeplot(_SimpleFigure):
 
 
 class MultiTimeplot(_SimpleFigure):
-    def __init__(self, figsize=(7, 2.5),
-                 tpad=.5, ylim=None,
+    def __init__(self, w=7, h=2.5, tpad=.5, ylim=None,
                  main=np.mean,
                  spread='box', x_jitter=False,
                  datalabels=None,
@@ -951,8 +949,7 @@ class MultiTimeplot(_SimpleFigure):
         self._y_unit = 0
 
         # get axes
-        _SimpleFigure.__init__(self, title, xlabel, ylabel, titlekwargs,
-                               figsize=figsize)
+        _SimpleFigure.__init__(self, title, xlabel, ylabel, titlekwargs, w=w, h=h)
 
     def plot(self, Y, categories, time, match=None, sub=None,
              tskip=1,
@@ -1264,7 +1261,7 @@ class Correlation(_EelFigure):
 
         # figure
         frame_title_ = frame_title("Correlation", Y, X, cat)
-        _EelFigure.__init__(self, frame_title_, 1, layout, 1, 5, figtitle=title)
+        _EelFigure.__init__(self, frame_title_, 1, 5, 1, layout, figtitle=title)
 
         # determine labels
         if xlabel is True:
@@ -1342,7 +1339,7 @@ class Regression(_EelFigure):
 
         # figure
         frame_title_ = frame_title("Regression", Y, X, cat)
-        _EelFigure.__init__(self, frame_title_, 1, layout, 1, 5, figtitle=title)
+        _EelFigure.__init__(self, frame_title_, 1, 5, 1, layout, figtitle=title)
         ax = self._axes[0]
 
         # labels
@@ -1467,8 +1464,7 @@ class Histogram(_EelFigure):
                 title = "Tests for Normality"
 
         frame_title_ = frame_title("Histogram", Y, X)
-        _EelFigure.__init__(self, frame_title_, nax, layout, 1, 4,
-                            figtitle=title)
+        _EelFigure.__init__(self, frame_title_, nax, 4, 1, layout, figtitle=title)
 
         if X is None:
             ax = self._axes[0]

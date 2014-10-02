@@ -50,7 +50,7 @@ class Topomap(_tb_sensors_mixin, _EelFigure):
         nax = len(epochs)
         _tb_sensors_mixin.__init__(self, sensors)
 
-        _EelFigure.__init__(self, "Topomap", nax, layout, 1, 7, figtitle=title)
+        _EelFigure.__init__(self, "Topomap", nax, 7, 1, layout, figtitle=title)
 
         vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
 
@@ -169,7 +169,7 @@ class TopoButterfly(_EelFigure):
         if 'ncol' in layout:
             raise NotImplementedError("`nrow` parameter not implemented")
         layout['ncol'] = 3
-        _EelFigure.__init__(self, "TopoButterfly Plot", nax, layout, 1, 3,
+        _EelFigure.__init__(self, "TopoButterfly Plot", nax, 3, 1, layout,
                             figtitle=title, make_axes=False)
 
         # axes sizes
@@ -606,7 +606,7 @@ class TopoArray(_EelFigure):
         n_topo_total = ntopo * n_epochs
 
         # create figure
-        _EelFigure.__init__(self, 'TopoArray Plot', n_epochs, layout, 1.5, 6,
+        _EelFigure.__init__(self, 'TopoArray Plot', n_epochs, 6, 1.5, layout,
                             make_axes=False)
         fig = self.figure
         axw = self._layout.axw

@@ -230,7 +230,7 @@ class Array(_EelFigure):
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
         nax = len(epochs)
-        _EelFigure.__init__(self, "Array Plot", nax, layout, figtitle=title)
+        _EelFigure.__init__(self, "Array Plot", nax, 4, 2, layout, figtitle=title)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs)
@@ -515,7 +515,7 @@ class Butterfly(_EelFigure):
             as strings.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
-        _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), layout,
+        _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, layout,
                             figtitle=title)
 
         self.plots = []

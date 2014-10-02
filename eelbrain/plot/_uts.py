@@ -167,7 +167,7 @@ class UTSStat(_EelFigure):
         if title is not None and '{name}' in title:
             title = title.format(name=ct.Y.name)
         frame_title = _base.frame_title("UTSStat", Y, X, Xax)
-        _EelFigure.__init__(self, frame_title, nax, layout, figtitle=title)
+        _EelFigure.__init__(self, frame_title, nax, 4, 2, layout, figtitle=title)
 
         # create plots
         self._plots = []
@@ -382,8 +382,7 @@ class UTS(_EelFigure):
             names of Dataset variables.
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
-        _EelFigure.__init__(self, "UTS", len(epochs), layout, 1.5, 2,
-                            figtitle=title)
+        _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, layout, figtitle=title)
 
         for ax, epoch in zip(self._axes, epochs):
             _ax_uts(ax, epoch, title=axtitle)
@@ -505,7 +504,7 @@ class UTSClusters(_EelFigure):
         # create figure
         N = len(epochs)
         nax = 1 if overlay else N
-        _EelFigure.__init__(self, "UTSClusters", nax, layout, figtitle=title)
+        _EelFigure.__init__(self, "UTSClusters", nax, 4, 2, layout, figtitle=title)
 
         ylabel = True
         self._caxes = []

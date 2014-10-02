@@ -56,7 +56,7 @@ class Colors(_EelFigure):
         cells : tuple
             Cells for which to plot colors (default is ``colors.keys()``).
         """
-        _EelFigure.__init__(self, "Colors", None, layout, figtitle=None)
+        _EelFigure.__init__(self, "Colors", None, 2, 1, layout)
 
         if cells is None:
             cells = colors.keys()

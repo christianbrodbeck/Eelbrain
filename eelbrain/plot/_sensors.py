@@ -366,7 +366,7 @@ class SensorMaps(_EelFigure):
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
-        _EelFigure.__init__(self, ftitle, 4, layout, 1, 3, figtitle=title)
+        _EelFigure.__init__(self, ftitle, 4, 3, 1, layout, figtitle=title)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)
 
@@ -585,7 +585,7 @@ class SensorMap2d(_tb_sensors_mixin, _EelFigure):
         sens_name = getattr(sensors, 'sysname', None)
         if sens_name:
             ftitle = '%s: %s' % (ftitle, sens_name)
-        _EelFigure.__init__(self, ftitle, 1, layout, 1, 7, figtitle=title)
+        _EelFigure.__init__(self, ftitle, 1, 7, 1, layout, figtitle=title)
         _tb_sensors_mixin.__init__(self)
 
         # store args
