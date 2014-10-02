@@ -1,13 +1,19 @@
 """Plotting for data-objects
 
-Plotting multidimensional data (:class:`NDVar` objects)
--------------------------------------------------------
+.. automodule:: eelbrain.plot._uv
+
+.. autosummary::
+   :toctree: generated
+
+   Barplot
+   Boxplot
+   Correlation
+   Histogram
+   Regression
+   Timeplot
 
 
-.. automodule:: eelbrain.plot.uv
-
-
-.. automodule:: eelbrain.plot.uts
+.. automodule:: eelbrain.plot._uts
 
 .. autosummary::
    :toctree: generated
@@ -17,7 +23,7 @@ Plotting multidimensional data (:class:`NDVar` objects)
    UTS
 
 
-.. automodule:: eelbrain.plot.utsnd
+.. automodule:: eelbrain.plot._utsnd
 
 .. autosummary::
    :toctree: generated
@@ -26,7 +32,7 @@ Plotting multidimensional data (:class:`NDVar` objects)
    Butterfly
 
 
-.. automodule:: eelbrain.plot.topo
+.. automodule:: eelbrain.plot._topo
 
 .. autosummary::
    :toctree: generated
@@ -36,7 +42,7 @@ Plotting multidimensional data (:class:`NDVar` objects)
    Topomap
 
 
-.. automodule:: eelbrain.plot.sensors
+.. automodule:: eelbrain.plot._sensors
 
 .. autosummary::
    :toctree: generated
@@ -45,8 +51,7 @@ Plotting multidimensional data (:class:`NDVar` objects)
    SensorMaps
 
 
-Submodules
-----------
+Plot source estimates using a submodule.
 
 .. currentmodule:: eelbrain
 

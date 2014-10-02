@@ -1,18 +1,4 @@
-'''Plot univariate data (:class:`Var` objects).
-
-.. autosummary::
-   :toctree: generated
-
-   Barplot
-   boxcox_explore
-   Boxplot
-   Correlation
-   Histogram
-   MultiTimeplot
-   Regression
-   Timeplot
-
-'''
+"""Plot univariate data (:class:`~eelbrain.Var` objects)."""
 # author: Christian Brodbeck
 
 from __future__ import division
@@ -289,14 +275,14 @@ class _SimpleFigure(_EelFigure):
 
 
 class Boxplot(_SimpleFigure):
+    "Boxplot for a continuous variable"
     def __init__(self, Y, X=None, match=None, sub=None, datalabels=None,
                  bottom=None, top=None,
                  title=None, ylabel='{unit}', xlabel=True, xtick_delim='\n',
                  test=True, par=True, trend="'", test_markers=True,
                  corr='Hochberg', pwcolors=None, hatch=False, colors=False,
                  ds=None, **kwargs):
-        """
-        Make a boxplot.
+        """Boxplot for a continuous variable
 
         Parameters
         ----------
@@ -305,9 +291,9 @@ class Boxplot(_SimpleFigure):
         X : categorial
             Category definition (draw one box for every cell in X).
         match : None | categorial
-            Match cases for a repeated measures test.
+            Match cases for a repeated measures design.
         sub : None | index-array
-            Perform test with a subset of the data.
+            Use a subset of the data.
         datalabels : scalar
             Threshold for labeling outliers (in standard-deviation).
         bottom : scalar
@@ -459,23 +445,24 @@ class Boxplot(_SimpleFigure):
 
 
 class Barplot(_SimpleFigure):
+    "Barplot for a continuous variable"
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
                  corr='Hochberg', trend="'", test_markers=True, title=None,
                  ylabel=None, error='sem', pool_error=None, ec='k', xlabel=True,
                  xticks=True, xtick_delim='\n', hatch=False, colors=False, bottom=0,
                  top=None, c='#0099FF', edgec=None, ds=None, **kwargs):
-        """Barplot
+        """Barplot for a continuous variable
 
         Parameters
         ----------
-        Y : scalar Var
+        Y : Var
             Dependent variable.
         X : categorial
             Model (Factor or Interaction)
         match : None | categorial
-            Match cases for a repeated measures test.
+            Match cases for a repeated measures design.
         sub : None | index-array
-            Perform test with a subset of the data.
+            Use a subset of the data.
         test : bool | scalar
             True (default): perform pairwise tests;  False: no tests;
             scalar: 1-sample tests against this value
@@ -652,6 +639,7 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0,
 
 
 class Timeplot(_SimpleFigure):
+    "Plot a variable over time"
     def __init__(self, Y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
                  main=np.mean,
@@ -662,10 +650,24 @@ class Timeplot(_SimpleFigure):
                  colors=True, hatch=False, markers=True,
                  **kwargs
                  ):
-        """Plot a variable over time.
+        """Plot a variable over time
 
         Parameters
         ----------
+        Y : Var
+            Dependent variable.
+        categories : categorial
+            Model (Factor or Interaction)
+        match : None | categorial
+            Match cases for a repeated measures design.
+        sub : None | index-array
+            Use a subset of the data.
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables
+        main : numpy function
+            draw lines to connect values across time (default: np.mean)
+            can be 'bar' for barplots or False
         spread : str
             How to indicator data spread.
             None - without
@@ -673,9 +675,6 @@ class Timeplot(_SimpleFigure):
             for lineplots:
             'Xsem' X standard error of the means
             'Xstd' X standard deviations
-        main : numpy function
-            draw lines to connect values across time (default: np.mean)
-            can be 'bar' for barplots or False
         diff : scalar
             Use this value as baseline for plotting; test other conditions
             agaist baseline (instead of pairwise)
@@ -1233,18 +1232,26 @@ def _reg_line(Y, reg):
 
 
 class Correlation(_EelFigure):
-
+    "Correlation between two variables"
     def __init__(self, Y, X, cat=None, sub=None, ds=None, title=None,
                  c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], delim=' ',
                  lloc='lower center', lncol=2, figlegend=True, xlabel=True,
                  ylabel=True, rinxlabel=True, tight=True, **layout):
-        """
-        Plot the correlation between two variables.
+        """Correlation between two variables
 
         Parameters
         ----------
-        cat :
-            categories
+        Y : Var
+            Variable for the y-axis.
+        X : Var
+            Variable for the x-axis.
+        cat : categorial
+            Plot the correlation separately for different categories.
+        sub : None | index-array
+            Use a subset of the data.
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables
         rinxlabel :
             print the correlation in the xlabel
         tight : bool
@@ -1306,16 +1313,28 @@ class Correlation(_EelFigure):
 
 
 class Regression(_EelFigure):
+    "Regression of Y on X"
     def __init__(self, Y, X, cat=None, match=None, sub=None, ds=None,
                  ylabel=True, title=None, alpha=.2, legend=True, delim=' ',
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
                  tight=True, **layout):
-        """
-        Plot the regression of Y on a regressor X.
-
+        """Regression of Y on X
 
         parameters
         ----------
+        Y : Var
+            Variable for the y-axis.
+        X : Var
+            Variable for the x-axis.
+        cat : categorial
+            Plot the regression separately for different categories.
+        match : None | categorial
+            Match cases for a repeated measures design.
+        sub : None | index-array
+            Use a subset of the data.
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables
         ...
         alpha : scalar
             alpha for individual data points (to control visualization of
@@ -1431,12 +1450,24 @@ def _normality_plot(ax, data, **kwargs):
 
 
 class Histogram(_EelFigure):
+    "Histogram plots with tests of normality"
     def __init__(self, Y, X=None, match=None, sub=None, ds=None, pooled=True,
                 title=True, tight=True, **layout):
-        """Make histogram plots and test normality.
+        """Histogram plots with tests of normality
 
         Parameters
         ----------
+        Y : Var
+            Dependent variable.
+        X : categorial
+            Categories for separate histograms.
+        match : None | categorial
+            Match cases for a repeated measures design.
+        sub : None | index-array
+            Use a subset of the data.
+        ds : None | Dataset
+            If a Dataset is specified, all data-objects can be specified as
+            names of Dataset variables
         pooled : bool
             Add one plot with all values/differences pooled.
         title : None | str

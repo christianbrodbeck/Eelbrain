@@ -718,8 +718,7 @@ def frame_title(plot, y, x=None, xax=None):
 
 
 class _EelFigure(object):
-    """
-    Parent class for eelbrain figures.
+    """Parent class for Eelbrain figures.
 
     In order to subclass:
 
@@ -728,13 +727,11 @@ class _EelFigure(object):
        :py:attr:`_EelFigure.figure` and :py:attr:`_EelFigure.canvas` attributes.
      - end the initialization by calling `_EelFigure._show()`
      - add the :py:meth:`_fill_toolbar` method
-
-
     """
     def __init__(self, title, nax, axh_default, ax_aspect, layout_kwa,
                  tight=False, fig_kwa={}, ax_kwa={}, figtitle=None,
                  make_axes=True):
-        """
+        """Parent class for Eelbrain figures.
 
         Parameters
         ----------
