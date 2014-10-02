@@ -1398,8 +1398,6 @@ def _difference(data, names):
     return data_differences, diffnames, diffnames_2lines
 
 
-
-
 def _normality_plot(ax, data, **kwargs):
     """helper fubction for creating normality test figure"""
     n, bins, patches = ax.hist(data, normed=True, **kwargs)
@@ -1434,7 +1432,7 @@ def _normality_plot(ax, data, **kwargs):
 
 class Histogram(_EelFigure):
     def __init__(self, Y, X=None, match=None, sub=None, ds=None, pooled=True,
-                title=True, ylabel=True, tight=True, **layout):
+                title=True, tight=True, **layout):
         """Make histogram plots and test normality.
 
         Parameters
@@ -1451,56 +1449,54 @@ class Histogram(_EelFigure):
         """
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
 
-        # ylabel
-        if ylabel is True:
-            ylabel = str2tex(getattr(ct.Y, 'name', False))
-
         # layout
         if X is None:
             nax = 1
+            make_axes = True
             if title is True:
                 title = "Test for Normality"
         elif ct.all_within:
-            nax = None
+            n_comp = len(ct.cells) - 1
+            nax = n_comp ** 2
+            layout['nrow'] = n_comp
+            layout['ncol'] = n_comp
+            make_axes = False
             if title is True:
                 title = "Tests for Normality of the Differences"
         else:
             nax = len(ct.cells)
+            make_axes = True
             if title is True:
                 title = "Tests for Normality"
 
         frame_title_ = frame_title("Histogram", ct.Y, ct.X)
-        _EelFigure.__init__(self, frame_title_, nax, 4, 1, layout, tight,
-                            figtitle=title)
+        _EelFigure.__init__(self, frame_title_, nax, 3, 1, layout, tight,
+                            figtitle=title, make_axes=make_axes)
 
         if X is None:
             ax = self._axes[0]
             _normality_plot(ax, ct.Y.x)
-        elif ct.all_within:
-            # temporary:
+        elif ct.all_within:  # distribution of differences
             data = ct.get_data()
             names = ct.cellnames()
 
-#             plt.subplots_adjust(hspace=.5)
-
-            n_cmp = len(ct.cells) - 1
             pooled = []
             # i: row
             # j: -column
-            for i in range(0, n_cmp + 1):
-                for j in range(i + 1, n_cmp + 1):
+            for i in xrange(n_comp + 1):
+                for j in range(i + 1, n_comp + 1):
                     difference = data[i] - data[j]
                     pooled.append(scipy.stats.zscore(difference))  # z transform?? (scipy.stats.zs())
-                    ax_i = n_cmp * i + (n_cmp + 1 - j)
-                    ax = self.figure.add_subplot(n_cmp, n_cmp, ax_i)
+                    ax_i = n_comp * i + (n_comp + 1 - j)
+                    ax = self.figure.add_subplot(n_comp, n_comp, ax_i)
                     _normality_plot(ax, difference)
                     if i == 0:
                         ax.set_title(names[j], size=12)
-                    if j == n_cmp:
+                    if j == n_comp:
                         ax.set_ylabel(names[i], size=12)
             # pooled diffs
             if len(names) > 2:
-                ax = self.figure.add_subplot(n_cmp, n_cmp, n_cmp ** 2)
+                ax = self.figure.add_subplot(n_comp, n_comp, n_comp ** 2)
                 _normality_plot(ax, pooled, facecolor='g')
                 ax.set_title("Pooled Differences (n=%s)" % len(pooled),
                              weight='bold')
@@ -1510,10 +1506,11 @@ class Histogram(_EelFigure):
                                  verticalalignment='bottom',
                                  horizontalalignment='right')
         else:  # independent measures
-#             plt.subplots_adjust(hspace=.5, left=.1, right=.9, bottom=.1, top=.8)
             for cell, ax in izip(ct.cells, self._axes):
                 ax.set_title(cellname(cell))
                 _normality_plot(ax, ct.data[cell])
+
+        self._show()
 
 
 def boxcox_explore(Y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=True):
