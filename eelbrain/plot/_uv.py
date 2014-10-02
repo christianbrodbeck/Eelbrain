@@ -463,7 +463,7 @@ class Barplot(_SimpleFigure):
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
                  corr='Hochberg', trend="'", test_markers=True, title=None,
                  ylabel=None, error='sem', pool_error=None, ec='k', xlabel=True,
-                 xtick_delim='\n', hatch=False, colors=False, bottom=0,
+                 xticks=True, xtick_delim='\n', hatch=False, colors=False, bottom=0,
                  top=None, c='#0099FF', edgec=None, ds=None, **kwargs):
         """Barplot
 
@@ -508,6 +508,9 @@ class Barplot(_SimpleFigure):
             Error bar color.
         xlabel : None | str
             X axis label (default is ``X.name``).
+        xticks : None | sequence of str
+            X-axis tick labels describing the categories. None to plot no labels
+            (Default uses cell names from ``X``).
         xtick_delim : str
             Delimiter for x axis category descriptors (default is ``'\n'``,
             i.e. the level on each Factor of ``X`` on a separate line).
@@ -563,8 +566,13 @@ class Barplot(_SimpleFigure):
         self._ax.set_ylim(y0, top)
 
         # figure decoration
-        self._ax.set_xticks(np.arange(len(ct.cells)))
-        self._ax.set_xticklabels(ct.cellnames(xtick_delim))
+        if xticks:
+            if xticks is True:
+                xticks = ct.cellnames(xtick_delim)
+            self._ax.set_xticklabels(xticks)
+            self._ax.set_xticks(range(len(ct.cells)))
+        else:
+            self._ax.set_xticks(())
 
         self._show()
 
