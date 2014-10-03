@@ -324,9 +324,9 @@ class MneExperiment(FileTree):
 
     # Pattern for subject names. The first group is used to determine what
     # MEG-system the data was recorded from
-    _subject_re = '(R|A|AD|QP)(\d{3,})$'
+    _subject_re = '(R|A|Y|AD|QP)(\d{3,})$'
     _meg_systems = {'R': 'KIT-NY',
-                    'A': 'KIT-AD', 'AD': 'KIT-AD', 'QP': 'KIT-AD'}
+                    'A': 'KIT-AD', 'Y': 'KIT-AD', 'AD': 'KIT-AD', 'QP': 'KIT-AD'}
 
     # state variables that are always shown in self.__repr__():
     _repr_kwargs = ('subject', 'rej')
