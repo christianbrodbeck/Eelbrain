@@ -758,7 +758,7 @@ class _EelFigure(object):
             title = '%s: %s' % (title, figtitle)
 
         # layout
-        layout = Layout(nax, ax_aspect, axh_default, **layout_kwa)
+        layout = Layout(nax, ax_aspect, axh_default, tight, **layout_kwa)
         fig_kwa = fig_kwa.copy()
         fig_kwa.update(layout.fig_kwa)
 
@@ -882,7 +882,7 @@ class _EelFigure(object):
 class Layout():
     """Create layouts for figures with several axes of the same size
     """
-    def __init__(self, nax, ax_aspect=1.5, axh_default=2, h=None, w=None,
+    def __init__(self, nax, ax_aspect, axh_default, tight, h=None, w=None,
                  axh=None, axw=None, nrow=None, ncol=None, dpi=None):
         """Create a grid of axes based on variable parameters.
 
@@ -1029,6 +1029,21 @@ class Layout():
             if h is None:
                 h = axh * nrow
 
+        fig_kwa = dict(figsize=(w, h), dpi=dpi)
+
+        # make subplot parameters absolute
+        if nax and not tight:
+            size = 2
+            bottom = mpl.rcParams['figure.subplot.bottom'] * size / h
+            left = mpl.rcParams['figure.subplot.left'] * size / w
+            right = 1 - (1 - mpl.rcParams['figure.subplot.right']) * size / w
+            top = 1 - (1 - mpl.rcParams['figure.subplot.top']) * size / h
+            hspace = mpl.rcParams['figure.subplot.hspace'] * size / h
+            wspace = mpl.rcParams['figure.subplot.wspace'] * size / w
+            subplotpars = mpl.figure.SubplotParams(left, bottom, right, top,
+                                                   wspace, hspace)
+            fig_kwa['subplotpars'] = subplotpars
+
         self.nax = nax
         self.h = h
         self.w = w
@@ -1036,7 +1051,7 @@ class Layout():
         self.axw = axw
         self.nrow = nrow
         self.ncol = ncol
-        self.fig_kwa = dict(figsize=(w, h), dpi=dpi)
+        self.fig_kwa = fig_kwa
 
 
 class Legend(_EelFigure):
