@@ -74,7 +74,7 @@ def colors_for_twoway(x1_cells, x2_cells, cmap=None):
 
 class ColorGrid(_EelFigure):
 
-    def __init__(self, row_cells, col_cells, colors, row_first=None,
+    def __init__(self, row_cells, col_cells, colors, size=None, row_first=None,
                  **layout):
         """Plot colors in a grid
 
@@ -86,6 +86,9 @@ class ColorGrid(_EelFigure):
             Cells contained in the columns.
         colors : dict
             Colors for cells.
+        size : scalar
+            Size (width and height) of the color squares (the default is to
+            scale them to fit the figure).
         row_first : bool
             Whether the row cell precedes the column cell in color keys. By
             default this is inferred from the existing keys.
@@ -102,7 +105,11 @@ class ColorGrid(_EelFigure):
                        ((row_cell_0, col_cell_0), (col_cell_0, row_cell_0)))
                 raise KeyError(msg)
 
-        _EelFigure.__init__(self, "ColorGrid", None, 3, 1, layout, True)
+        if size is None:
+            tight = True
+        else:
+            tight = False
+        _EelFigure.__init__(self, "ColorGrid", None, 3, 1, layout, tight)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
         self._ax = ax
@@ -136,6 +143,10 @@ class ColorGrid(_EelFigure):
             label = row_cells[row]
             h = ax.text(x, row + 0.5, label, va='center', ha='left')
             self._labels.append(h)
+
+        if size is not None:
+            self._ax.set_xlim(0, self._layout.w / size)
+            self._ax.set_ylim(0, self._layout.h / size)
 
         self._show()
 
