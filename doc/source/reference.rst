@@ -146,20 +146,6 @@ estimates are described in :mod:`.plot.brain`.
     plot.brain
 
 
-Backend Configuration
-=====================
-
-By default, Matplotlib-based Eelbrain figures (all except :mod:`.plot.brain`)
-are opened in a wxPython based application (see :ref:`gui` below). By default,
-the GUI is activated whenever a figure is created in interactive mode. These
-defaults can be changed with :func:`plot.configure_backend`.
-
-.. autosummary::
-   :toctree: generated
-
-    plot.configure_backend
-
-
 .. _ref-guis:
 
 ^^^^

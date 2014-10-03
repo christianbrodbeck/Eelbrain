@@ -103,11 +103,14 @@ def configure_backend(frame=True, autorun=None):
     Parameters
     ----------
     frame : bool
-        Use a custom frame with a different toolbar from matplotlib.
+        Open figures in the Eelbrain application. This provides additional
+        functionality such as copying a figure to the clipboard. If False, open
+        figures as normal matplotlib figures.
     autorun : bool
         When a figure is created, automatically enter the GUI mainloop. By
         default, this is True when the figure is created in interactive mode
-        but False when the figure is created in a script.
+        but False when the figure is created in a script (in order to run the
+        GUI at a specific point in a script, call :func:`eelbrain.gui.run`).
     """
     if autorun is not None:
         autorun = bool(autorun)
