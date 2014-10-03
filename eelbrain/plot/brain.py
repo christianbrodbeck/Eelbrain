@@ -323,7 +323,7 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
     brain : surfer.Brain
         PySurfer Brain instance.
     """
-    from surfer import Brain
+    from ._brain_fix import Brain
 
     if isinstance(views, basestring):
         views = [views]
