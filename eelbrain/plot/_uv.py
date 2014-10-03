@@ -138,30 +138,19 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, corr='Hochberg',
 
 
 class _SimpleFigure(_EelFigure):
-    def __init__(self, wintitle, title=None, xlabel=None, ylabel=None,
-                 titlekwargs=defaults['title_kwargs'], yticks=None,
-                 xtick_rotation=0, ytick_rotation=0, frame=True, **layout):
-        _EelFigure.__init__(self, wintitle, None, 5, 1, layout)
+    def __init__(self, wintitle, title, xlabel, ylabel, tight=True, frame=True,
+                 **layout):
+        _EelFigure.__init__(self, wintitle, 1, 5, 1, layout, tight,
+                            figtitle=title)
+        self._ax = ax = self._axes[0]
 
-        # axes
-        ax_x0 = .025 + .07 * bool(ylabel)
-        ax_y0 = .065 + .055 * bool(xlabel)
-        ax_dx = .975 - ax_x0
-        ax_dy = .95 - ax_y0 - .08 * bool(title)
-        rect = [ax_x0, ax_y0, ax_dx, ax_dy]
-        ax = self.figure.add_axes(rect)
         if not frame:
             ax.spines['right'].set_visible(False)
             ax.spines['top'].set_visible(False)
             ax.yaxis.set_ticks_position('left')
             ax.xaxis.set_ticks_position('bottom')
-        self._axes.append(ax)
-        self._ax = ax
 
-        # ticks / tick labels
-        self._yticks = yticks
-        self._x_tick_rotation = xtick_rotation
-        self._y_tick_rotation = ytick_rotation
+        # remove x-axis ticks
         xax = ax.get_xaxis()
         xax.set_ticks_position('none')
 
@@ -170,12 +159,8 @@ class _SimpleFigure(_EelFigure):
         self._legend = None
 
         # title and labels
-        if title:
-            if 'verticalalignment' not in titlekwargs:
-                titlekwargs['verticalalignment'] = 'bottom'
-            ax.set_title(title, **titlekwargs)
         if ylabel:
-            ax.set_ylabel(ylabel)  # , labelpad=-20.)
+            ax.set_ylabel(ylabel)
         if xlabel:
             ax.set_xlabel(xlabel)
 
@@ -200,78 +185,6 @@ class _SimpleFigure(_EelFigure):
                 l.set_zorder(-1)
             else:
                 raise ValueError("No labeled plot elements for legend")
-
-    def _show(self):
-        "resizes the axes to take into account tick spacing"
-
-        if self._yticks:
-            yticks = self._yticks
-            if np.iterable(yticks[0]):
-                locations, labels = yticks
-            else:
-                locations = yticks
-                labels = None
-            self._ax.set_yticks(locations)
-            if labels:
-                self._ax.set_yticklabels(labels)
-        if self._x_tick_rotation:
-            for t in self._ax.get_xticklabels():
-                t.set_rotation(self._x_tick_rotation)
-        if self._y_tick_rotation:
-            for t in self._ax.get_yticklabels():
-                t.set_rotation(self._y_tick_rotation)
-
-        # adjust the position of the axes to show all labels
-        self.draw()
-        x_in, y_in = self.figure.get_size_inches()
-        dpi = self.figure.get_dpi()
-        border_x0 = 0.05  # in inches
-        border_x1 = 0.05  # in inches
-        border_y0 = 0.05  # in inches
-        border_y1 = 0.05  # in inches
-        if self._legend:
-            w = self._legend.get_window_extent()
-            border_y0 += w.ymax / dpi
-
-        xmin = x_in * dpi
-        ymin = y_in * dpi
-        xmax = 0
-        ymax = 0
-        for c in self._ax.get_children():
-            try:
-                w = c.get_window_extent()
-            except:
-                pass
-            else:
-                xmin = min(xmin, w.xmin)
-                ymin = min(ymin, w.ymin)
-                xmax = max(xmax, w.xmax)
-                ymax = max(ymax, w.ymax)
-
-        for label in self._ax.get_ymajorticklabels() + \
-                     [self._ax.get_yaxis().get_label()]:
-            w = label.get_window_extent()
-            xmin = min(xmin, w.xmin)
-
-        for label in self._ax.get_xmajorticklabels() + \
-                     [self._ax.get_xaxis().get_label()]:
-            w = label.get_window_extent()
-            ymin = min(ymin, w.ymin)
-
-        # to figure proportion
-        xmin = (xmin / dpi - border_x0) / x_in
-        xmax = (xmax / dpi + border_x1 - x_in) / x_in
-        ymin = (ymin / dpi - border_y0) / y_in
-        ymax = (ymax / dpi + border_y1 - y_in) / y_in
-
-        p = self._ax.get_position()
-        p.x0 -= xmin
-        p.x1 -= xmax
-        p.y0 -= ymin
-        p.y1 -= ymax
-        self._ax.set_position(p)
-
-        _EelFigure._show(self)
 
 
 class Boxplot(_SimpleFigure):
@@ -338,6 +251,9 @@ class Boxplot(_SimpleFigure):
         frame : bool
             Draw a frame containing the figure from the top and the right
             (default ``True``).
+        tight : bool
+            Use matplotlib's tight_layout to resize all axes to fill the figure
+            (default True).
         """
         # get data
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
@@ -520,6 +436,9 @@ class Barplot(_SimpleFigure):
         frame : bool
             Draw a frame containing the figure from the top and the right
             (default ``True``).
+        tight : bool
+            Use matplotlib's tight_layout to resize all axes to fill the figure
+            (default True).
         """
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asvar)
 
@@ -642,14 +561,10 @@ class Timeplot(_SimpleFigure):
     "Plot a variable over time"
     def __init__(self, Y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
-                 main=np.mean,
-                 spread='box', x_jitter=False,
+                 main=np.mean, spread='box', x_jitter=False,
                  # labelling
-                 ylabel=True, xlabel=True,
-                 legend=True,
-                 colors=True, hatch=False, markers=True,
-                 **kwargs
-                 ):
+                 title=None, ylabel=True, xlabel=True, legend=True,
+                 colors=True, hatch=False, markers=True, **kwargs):
         """Plot a variable over time
 
         Parameters
@@ -658,6 +573,8 @@ class Timeplot(_SimpleFigure):
             Dependent variable.
         categories : categorial
             Model (Factor or Interaction)
+        time : Var
+            Variable describing the time.
         match : None | categorial
             Match cases for a repeated measures design.
         sub : None | index-array
@@ -675,14 +592,23 @@ class Timeplot(_SimpleFigure):
             for lineplots:
             'Xsem' X standard error of the means
             'Xstd' X standard deviations
-        diff : scalar
-            Use this value as baseline for plotting; test other conditions
-            agaist baseline (instead of pairwise)
+        x_jitter : bool
+            When plotting error bars, jitter their location on the x-axis to
+            increase readability.
+        title : True | str
+            Axis title (default is no title, True to use ``Y.name``).
+        ylabel : None | str
+            Y axis label (default is ``Y.name``).
+        xlabel : None | str
+            X axis label (default is ``time.name``).
         legend : bool | 'fig' | matplotlib legend location
             Plot a legend in the given location; with `fig`, plot as figlegend.
         frame : bool
             Draw a frame containing the figure from the top and the right
             (default ``True``).
+        tight : bool
+            Use matplotlib's tight_layout to resize all axes to fill the figure
+            (default True).
         """
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
@@ -736,14 +662,14 @@ class Timeplot(_SimpleFigure):
 
         # ylabel
         if ylabel is True:
-            ylabel = str2tex(getattr(Y, 'name', None))
+            ylabel = Y.name
 
         # xlabel
         if xlabel is True:
-            xlabel = str2tex(time.name)
+            xlabel = time.name
 
         # get axes
-        _SimpleFigure.__init__(self, "Timeplot", xlabel=xlabel, ylabel=ylabel,
+        _SimpleFigure.__init__(self, "Timeplot", title, xlabel, ylabel,
                                **kwargs)
         ax = self._ax
 
@@ -773,7 +699,7 @@ class Timeplot(_SimpleFigure):
         # prepare array for timelines
         if line_plot:
             line_values = np.empty((n_cat, n_time_points))
-        if spread  and  local_plot != 'bar':
+        if spread and local_plot != 'bar':
             yerr = np.empty((n_cat, n_time_points))
 
         # loop through time points
@@ -878,7 +804,6 @@ class MultiTimeplot(_SimpleFigure):
                  datalabels=None,
                  # labelling
                  title=None, ylabel=True, xlabel=True,
-                 titlekwargs=defaults['title_kwargs'],
                  ):
         """
         Template for a figure including multiple timeplots.
@@ -943,7 +868,8 @@ class MultiTimeplot(_SimpleFigure):
         self._y_unit = 0
 
         # get axes
-        _SimpleFigure.__init__(self, title, xlabel, ylabel, titlekwargs, w=w, h=h)
+        _SimpleFigure.__init__(self, "MultiTimeplot", title, xlabel, ylabel,
+                               w=w, h=h)
 
     def plot(self, Y, categories, time, match=None, sub=None,
              tskip=1,
