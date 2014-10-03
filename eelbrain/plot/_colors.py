@@ -184,7 +184,7 @@ class ColorGrid(_EelFigure):
         self._ax.set_ylim(0, ax_ymax / scale)
 
 
-class Colors(_EelFigure):
+class ColorList(_EelFigure):
 
     def __init__(self, colors, cells=None, **layout):
         """Plot colors with labels
@@ -217,4 +217,3 @@ class Colors(_EelFigure):
         ax.set_xlim(0, n * self._layout.w / self._layout.h)
 
         self._show()
-

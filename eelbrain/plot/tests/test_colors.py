@@ -28,9 +28,9 @@ def test_plot_colors():
     cells_2 = ('a', 'b', 'c')
 
     colors = plot.colors_for_oneway(cells_1)
-    p = plot.Colors(colors)
+    p = plot.ColorList(colors)
     p.close()
 
     colors = plot.colors_for_twoway(cells_1, cells_2)
-    p = plot.Colors(colors)
+    p = plot.ColorList(colors)
     p.close()
