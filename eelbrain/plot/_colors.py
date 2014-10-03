@@ -73,7 +73,7 @@ def colors_for_twoway(x1_cells, x2_cells, cmap=None):
 
 
 class ColorGrid(_EelFigure):
-
+    "Plot colors for a two-way design in a grid"
     def __init__(self, row_cells, col_cells, colors, size=None, row_first=None,
                  **layout):
         """Plot colors in a grid
@@ -196,7 +196,7 @@ class ColorGrid(_EelFigure):
 
 
 class ColorList(_EelFigure):
-
+    "Plot colors with labels"
     def __init__(self, colors, cells=None, **layout):
         """Plot colors with labels
 

@@ -13,6 +13,17 @@
    Timeplot
 
 
+.. automodule:: eelbrain.plot._colors
+
+.. autosummary::
+   :toctree: generated
+
+   colors_for_oneway
+   colors_for_twoway
+   ColorGrid
+   ColorList
+
+
 .. automodule:: eelbrain.plot._uts
 
 .. autosummary::
