@@ -20,6 +20,19 @@ def test_generate_colors():
                   cells_2)
 
 
+def test_plot_colorbar():
+    "Test plot.ColorBar()"
+    p = plot.ColorBar('jet', -1, 1)
+    p.close()
+    p = plot.ColorBar('jet', -1, 1, orientation='vertical')
+    p.close()
+    p = plot.ColorBar('jet', -1, 1, label_position='top')
+    p.close()
+    p = plot.ColorBar('jet', -1, 1, orientation='vertical',
+                      label_position='right')
+    p.close()
+
+
 def test_plot_colors():
     "Test plotting color schemes"
     plot.configure_backend(False, False)

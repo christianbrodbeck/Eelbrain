@@ -229,3 +229,69 @@ class ColorList(_EelFigure):
         ax.set_xlim(0, n * self._layout.w / self._layout.h)
 
         self._show()
+
+
+class ColorBar(_EelFigure):
+    "A color-bar for a matplotlib color-map"
+    def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
+                 clipmin=None, clipmax=None, orientation='horizontal',
+                 *args, **kwargs):
+        """Plot a color-bar for a color-map
+
+        Parameters
+        ----------
+        cmap : str | Colormap
+            Name of the color-map, or a matplotlib Colormap.
+        vmin : scalar
+            Lower end of the scale mapped onto cmap.
+        vmax : scalar
+            Upper end of the scale mapped onto cmap.
+        label : None | str
+            Label for the x-axis (default is the name of the colormap).
+        label_position : 'left' | 'right' | 'top' | 'bottom'
+            Position of the axis label. Valid values depend on orientation.
+        clipmin : scalar
+            Clip the color-bar below this value.
+        clipmax : scalar
+            Clip the color-bar above this value.
+        orientation : 'horizontal' | 'vertical'
+            Orientation of the bar (default is horizontal).
+        """
+        cm = mpl.cm.get_cmap(cmap)
+        lut = cm(np.arange(cm.N))
+        if orientation == 'horizontal':
+            h = 1
+            ax_aspect = 4
+            im = lut.reshape((1, cm.N, 4))
+        elif orientation == 'vertical':
+            h = 4
+            ax_aspect = 0.3
+            im = lut.reshape((cm.N, 1, 4))
+        else:
+            raise ValueError("orientation=%s" % repr(orientation))
+
+        if label is True:
+            label = cm.name
+
+        title = "ColorBar: %s" % cm.name
+        _EelFigure.__init__(self, title, 1, h, ax_aspect, *args, **kwargs)
+        ax = self._axes[0]
+
+        if orientation == 'horizontal':
+            ax.imshow(im, extent=(vmin, vmax, 0, 1), aspect='auto')
+            ax.set_xlim(clipmin, clipmax)
+            ax.yaxis.set_ticks(())
+            if label is not None:
+                ax.set_xlabel(label)
+                if label_position is not None:
+                    ax.xaxis.set_label_position(label_position)
+        else:
+            ax.imshow(im, extent=(0, 1, vmin, vmax), aspect='auto', origin='lower')
+            ax.set_ylim(clipmin, clipmax)
+            ax.xaxis.set_ticks(())
+            if label is not None:
+                ax.set_ylabel(label)
+                if label_position is not None:
+                    ax.yaxis.set_label_position(label_position)
+
+        self._show()
