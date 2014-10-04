@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from nose.tools import eq_
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -12,6 +13,12 @@ def test_barplot():
     plot.Barplot('fltvar', 'A%B', match='rm', ds=ds)
     plot.Barplot('fltvar', 'A%B', match='rm', ds=ds, pool_error=False)
     plot.Barplot('fltvar', 'A%B', match='rm', test=0, ds=ds)
+
+    # Fixed top
+    p = plot.Barplot('fltvar', 'A%B', ds=ds, top=2, test_markers=False)
+    ax = p._axes[0]
+    eq_(ax.get_ylim()[1], 2)
+
     plt.close('all')
 
 

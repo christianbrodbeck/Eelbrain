@@ -39,17 +39,33 @@ defaults = dict(title_kwargs={'size': 14,
                 )  # set by __init__
 
 
-def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, markers=True,
-                        levels=True, pwcolors=None, x0=0):
+def _mark_plot_pairwise(ax, ct, parametric, bottom, y_unit, corr, trend, markers,
+                        levels=True, pwcolors=None, x0=0, top=None):
     """Mark pairwise significance
 
     Parameters
     ----------
-    ...
+    ax : Axes
+        Axes to plot to.
+    ct : Celltable
+        Data for the tests.
+    parametric : bool
+        Whether to perform parametric tests.
+    bottom : scalar
+        Bottom of the space to use for the connectors (in data coordinates, i.e.
+        highest point reached by the data plot).
+    y_unit : scalar
+        Suggested scale for half the vertical distance between connectors (only used
+        if top is None).
+    corr : None | 'hochberg' | 'bonferroni' | 'holm'
+        Method for multiple comparison correction.
     trend : None | str
         Symbol to mark trends.
     markers : bool
         Plot markers indicating significance level (stars).
+    ...
+    top : scalar
+        Impose a fixed top end of the y-axis.
 
     Returns
     -------
@@ -58,46 +74,64 @@ def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, markers=True,
     """
     if levels is not True:  # to avoid test.star() conflict
         trend = False
-    # tests
+
+    # visual parameters
     if not pwcolors:
         if defaults['mono']:
             pwcolors = defaults['cm']['pw'][1 - bool(trend):]
         else:
             pwcolors = defaults['c']['pw'][1 - bool(trend):]
-    k = len(ct.cells)
-    tests = test._pairwise(ct.get_data(), within=ct.all_within, parametric=par,
-                           trend=trend, levels=levels, corr=corr)
-    reservation = np.zeros((sum(xrange(1, k)), k - 1))
     font_size = mpl.rcParams['font.size'] * 1.5
-    y_top = y_min  # track top of plot
-    y_start = y_min + 2 * y_unit
-    # loop through possible connections
+
+    tests = test._pairwise(ct.get_data(), ct.all_within, parametric, corr, levels,
+                           trend)
+
+    # plan grid layout
+    k = len(ct.cells)
+    reservation = np.zeros((sum(xrange(1, k)), k - 1))
+    connections = []
     for distance in xrange(1, k):
         for i in xrange(0, k - distance):
-            j = i + distance  # i, j are data indexes for the categories being compared
+            # i, j are data indexes for the categories being compared
+            j = i + distance
             index = tests['pw_indexes'][(i, j)]
             stars = tests['stars'][index]
             if not stars:
                 continue
 
-            c = pwcolors[stars - 1]
-            free_levels = np.where(reservation[:, i:j].sum(1) == 0)[0]
-            level = min(free_levels)
+            free_levels = np.flatnonzero(reservation[:, i:j].sum(1) == 0)
+            level = free_levels.min()
             reservation[level, i:j] = 1
+            connections.append((level, i, j, index, stars))
 
-            y1 = y_start + 2 * y_unit * level
-            y2 = y1 + y_unit
-            y_top = max(y2, y_top)
-            x1 = (x0 + i) + .025
-            x2 = (x0 + j) - .025
-            ax.plot([x1, x1, x2, x2], [y1, y2, y2, y1], color=c)
-            if markers:
-                symbol = tests['symbols'][index]
-                ax.text((x1 + x2) / 2, y2, symbol, color=c, size=font_size,
-                        ha='center', va='center', clip_on=False)
+    # plan spatial distances
+    used_levels = np.flatnonzero(reservation[:, i:j].sum(1) > 0)
+    if len(used_levels) == 0:
+        if top is None:
+            return bottom + y_unit
+        else:
+            return top
+    n_levels = used_levels.max() + 1
+    n_steps = n_levels * 2 + 1 + bool(markers)
+    if top is None:
+        top = bottom + y_unit * n_steps
+    else:
+        y_unit = (top - bottom) / n_steps
 
-    y_top += 2 * y_unit
-    return y_top
+    # draw connections
+    for level, i, j, index, stars in connections:
+        c = pwcolors[stars - 1]
+        y1 = bottom + y_unit * (level * 2 + 1)
+        y2 = y1 + y_unit
+        x1 = (x0 + i) + .025
+        x2 = (x0 + j) - .025
+        ax.plot([x1, x1, x2, x2], [y1, y2, y2, y1], color=c)
+        if markers:
+            symbol = tests['symbols'][index]
+            ax.text((x1 + x2) / 2, y2, symbol, color=c, size=font_size,
+                    ha='center', va='center', clip_on=False)
+
+    return top
 
 
 def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
@@ -440,14 +474,12 @@ class Barplot(_SimpleFigure):
         _SimpleFigure.__init__(self, frame_title_, xlabel, ylabel, *args, **kwargs)
 
         x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
-                                      colors, bottom, c=c, edgec=edgec,
+                                      colors, bottom, top, c=c, edgec=edgec,
                                       ec=ec, test=test, par=par, trend=trend,
                                       corr=corr, test_markers=test_markers)
 
-        if top is None:
-            top = y1
         self._ax.set_xlim(x0, x1)
-        self._ax.set_ylim(y0, top)
+        self._ax.set_ylim(y0, y1)
 
         # figure decoration
         if xticks:
@@ -461,7 +493,7 @@ class Barplot(_SimpleFigure):
         self._show()
 
 
-def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0,
+def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
                  left=None, width=.5, c='#0099FF', edgec=None, ec='k',
                  test=True, par=True, trend="'", corr='Hochberg',
                  test_markers=True):
@@ -520,15 +552,18 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0,
     y_unit = (plot_max - y_bottom) / 15
     if test is True:
         y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend,
-                                    test_markers)
+                                    test_markers, top=top)
     elif (test is False) or (test is None):
         y_top = plot_max + y_unit
     else:
         ax.axhline(test, color='black')
         y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit, test, corr, trend)
 
+    if top is None:
+        top = y_top
+
     #      x0,                     x1,                      y0,       y1
-    lim = (min(left) - .5 * width, max(left) + 1.5 * width, y_bottom, y_top)
+    lim = (min(left) - .5 * width, max(left) + 1.5 * width, y_bottom, top)
     return lim
 
 
