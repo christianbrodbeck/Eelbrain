@@ -878,6 +878,12 @@ class _EelFigure(object):
         "Short-cut for Matplotlib's figure.savefig()"
         self.figure.savefig(*args, **kwargs)
 
+    def set_xtick_rotation(self, rotation):
+        for ax in self._axes:
+            for t in ax.get_xticklabels():
+                t.set_rotation(rotation)
+        self.draw()
+
 
 class Layout():
     """Create layouts for figures with several axes of the same size
