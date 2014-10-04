@@ -20,7 +20,7 @@ class UTSStat(_EelFigure):
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
                  axtitle='{name}', xlabel=True, ylabel=True, invy=False,
                  bottom=None, top=None, hline=None, xdim='time', xlim=None,
-                 color='b', colors='jet', frame=True, clusters=None, pmax=0.05,
+                 color='b', colors='jet', clusters=None, pmax=0.05,
                  ptrend=0.1, *args, **kwargs):
         """
     Plot statistics for a one-dimensional NDVar
@@ -81,9 +81,6 @@ class UTSStat(_EelFigure):
         **dict**: A dictionary mapping each cell in X to a color.
         Colors are specified as `matplotlib compatible color arguments
         <http://matplotlib.org/api/colors_api.html>`_.
-    frame : bool
-        Draw a frame containing the figure from the top and the right (default
-        ``True``).
     clusters : None | Dataset
         Clusters to add to the plots. The clusters should be provided as
         Dataset, as stored in test results' :py:attr:`.clusters`.
@@ -96,6 +93,9 @@ class UTSStat(_EelFigure):
         (default True)
     title : str | None
         Figure title.
+    frame : bool
+        Draw a frame containing the figure from the top and the right (default
+        ``True``).
         """
         if 'dev' in kwargs:
             error = kwargs.pop('dev')
@@ -181,7 +181,7 @@ class UTSStat(_EelFigure):
                 title_ = axtitle
             p = _ax_uts_stat(ax, ct, colors, main, error, dev_data, title_,
                              ylabel, xdim, xlim, xlabel, invy, bottom, top,
-                             hline, frame, clusters, pmax, ptrend)
+                             hline, clusters, pmax, ptrend)
             self._plots.append(p)
             self._legend_handles.update(p.legend_handles)
             if len(ct) < 2:
@@ -203,7 +203,7 @@ class UTSStat(_EelFigure):
                 title_ = axtitle.format(name=cellname(cell))
                 p = _ax_uts_stat(ax, ct_, colors, main, error, dev_data, title_,
                                  ylabel, xdim, xlim, xlabel_, invy, bottom, top,
-                                 hline, frame, clusters, pmax, ptrend)
+                                 hline, clusters, pmax, ptrend)
                 self._plots.append(p)
                 self._legend_handles.update(p.legend_handles)
 
@@ -395,9 +395,8 @@ class UTS(_EelFigure):
 
 class _ax_uts_stat:
 
-    def __init__(self, ax, ct, colors, main, error, dev_data, title, ylabel,
-                 xdim, xlim, xlabel, invy, bottom, top, hline, frame, clusters,
-                 pmax, ptrend):
+    def __init__(self, ax, ct, colors, main, error, dev_data, title, ylabel, xdim,
+                 xlim, xlabel, invy, bottom, top, hline, clusters, pmax, ptrend):
         ax.x_fmt = "t = %.3f s"
 
         # stat plots
@@ -462,12 +461,6 @@ class _ax_uts_stat:
             top = top if (top is not None) else y0
         if (bottom is not None) or (top is not None):
             ax.set_ylim(bottom, top)
-
-        if not frame:
-            ax.spines['right'].set_visible(False)
-            ax.spines['top'].set_visible(False)
-            ax.yaxis.set_ticks_position('left')
-            ax.xaxis.set_ticks_position('bottom')
 
         # store attributes
         self.ax = ax

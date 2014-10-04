@@ -138,15 +138,9 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, corr='Hochberg',
 
 
 class _SimpleFigure(_EelFigure):
-    def __init__(self, wintitle, xlabel, ylabel, frame=True, *args, **kwargs):
+    def __init__(self, wintitle, xlabel, ylabel, *args, **kwargs):
         _EelFigure.__init__(self, wintitle, 1, 5, 1, *args, **kwargs)
         self._ax = ax = self._axes[0]
-
-        if not frame:
-            ax.spines['right'].set_visible(False)
-            ax.spines['top'].set_visible(False)
-            ax.yaxis.set_ticks_position('left')
-            ax.xaxis.set_ticks_position('bottom')
 
         # remove x-axis ticks
         xax = ax.get_xaxis()

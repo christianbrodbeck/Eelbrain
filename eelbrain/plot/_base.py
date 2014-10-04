@@ -734,7 +734,7 @@ class _EelFigure(object):
     _make_axes = True
 
     def __init__(self, frame_title, nax, axh_default, ax_aspect, tight=False,
-                 title=None, *args, **kwargs):
+                 title=None, frame=True, yaxis=True, *args, **kwargs):
         """Parent class for Eelbrain figures.
 
         Parameters
@@ -766,11 +766,11 @@ class _EelFigure(object):
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
-            frame = CanvasFrame(None, frame_title, eelfigure=self, **layout.fig_kwa)
+            frame_ = CanvasFrame(None, frame_title, eelfigure=self, **layout.fig_kwa)
         else:
-            frame = mpl_figure(**layout.fig_kwa)
+            frame_ = mpl_figure(**layout.fig_kwa)
 
-        figure = frame.figure
+        figure = frame_.figure
         if title:
             self._figtitle = figure.suptitle(title)
         else:
@@ -783,11 +783,21 @@ class _EelFigure(object):
                 ax = figure.add_subplot(layout.nrow, layout.ncol, i)
                 axes.append(ax)
 
+                # axes modifications
+                if not frame:
+                    ax.yaxis.set_ticks_position('left')
+                    ax.spines['right'].set_visible(False)
+                    ax.xaxis.set_ticks_position('bottom')
+                    ax.spines['top'].set_visible(False)
+                if not yaxis:
+                    ax.yaxis.set_ticks(())
+                    ax.spines['left'].set_visible(False)
+
         # store attributes
-        self._frame = frame
+        self._frame = frame_
         self.figure = figure
         self._axes = axes
-        self.canvas = frame.canvas
+        self.canvas = frame_.canvas
         self._layout = layout
         self._tight_arg = tight
 
