@@ -445,8 +445,7 @@ class Barplot(_SimpleFigure):
         x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
                                       colors, bottom, c=c, edgec=edgec,
                                       ec=ec, test=test, par=par, trend=trend,
-                                      corr=corr, test_markers=test_markers,
-                                      return_lim=True)
+                                      corr=corr, test_markers=test_markers)
 
         if top is None:
             top = y1
@@ -468,7 +467,7 @@ class Barplot(_SimpleFigure):
 def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0,
                  left=None, width=.5, c='#0099FF', edgec=None, ec='k',
                  test=True, par=True, trend="'", corr='Hochberg',
-                 test_markers=True, return_lim=False):
+                 test_markers=True):
     """Draw a barplot to axes ax for Celltable ct.
 
     Parameters
@@ -482,8 +481,6 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0,
     pool_error : bool
         Pool the errors for the estimate of variability.
     ...
-    return_lim : bool
-        Return axes limits ``(x0, x1, y0, y1)`` (default False).
     """
     # kwargs
     if hatch is True:
@@ -534,10 +531,9 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0,
         y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit,
                                    popmean=test, corr=corr, trend=trend)
 
-    if return_lim:
-        #      x0,                     x1,                      y0,       y1
-        lim = (min(left) - .5 * width, max(left) + 1.5 * width, y_bottom, y_top)
-        return lim
+    #      x0,                     x1,                      y0,       y1
+    lim = (min(left) - .5 * width, max(left) + 1.5 * width, y_bottom, y_top)
+    return lim
 
 
 class Timeplot(_SimpleFigure):
@@ -717,8 +713,8 @@ class Timeplot(_SimpleFigure):
                     for itemname in bp:
                         plt.setp(bp[itemname], color='black')
             elif local_plot == 'bar':
-                lim = _plt_barplot(ax, ct, spread, False, hatch, color_list, 0,
-                                   left=pos, width=within_spacing, test=False)
+                _plt_barplot(ax, ct, spread, False, hatch, color_list, 0, left=pos,
+                             width=within_spacing, test=False)
             elif spread:
                 yerr[:, i_t] = ct.get_statistic(spread)
 
