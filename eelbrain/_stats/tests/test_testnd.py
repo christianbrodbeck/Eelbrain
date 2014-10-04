@@ -77,7 +77,7 @@ def test_anova():
     repr(res)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res = pickle.loads(string)
-    tfce_clusters = res._clusters(pmin=0.05)
+    tfce_clusters = res.find_clusters(pmin=0.05)
     peaks = res.find_peaks()
     assert_equal(tfce_clusters.eval("p.min()"), peaks.eval("p.min()"))
     unmasked = res.f[0]
@@ -392,7 +392,7 @@ def test_ttest_1samp():
     res = testnd.ttest_1samp('utsnd', sub="A == 'a0'", ds=ds, samples=1)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
     res = pickle.loads(string)
-    tfce_clusters = res._clusters(pmin=0.05)
+    tfce_clusters = res.find_clusters(pmin=0.05)
     peaks = res.find_peaks()
     assert_equal(tfce_clusters.eval("p.min()"), peaks.eval("p.min()"))
     masked = res.masked_parameter_map(pmin=0.05)

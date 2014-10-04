@@ -75,8 +75,8 @@ def test_source_estimate():
                            parc='source')
     assert_equal(res._cdist.dist.shape[1], len(srcl.source.parc.cells))
     label = 'superiortemporal-lh'
-    c_all = res._clusters(maps=True)
-    c_label = res._clusters(maps=True, source=label)
+    c_all = res.find_clusters(maps=True)
+    c_label = res.find_clusters(maps=True, source=label)
     assert_array_equal(c_label['location'], label)
     for case in c_label.itercases():
         id_ = case['id']
@@ -91,7 +91,7 @@ def test_source_estimate():
     # threshold-free test with parc
     res = testnd.ttest_ind(srcl, 'side', ds=ds, samples=10, tstart=0.05,
                            parc='source')
-    cl = res._clusters(0.05)
+    cl = res.find_clusters(0.05)
     assert_equal(cl.eval("p.min()"), res.p.min())
     mp = res.masked_parameter_map()
     assert_in(mp.min(), (0, res.t.min()))

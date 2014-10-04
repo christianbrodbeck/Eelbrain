@@ -122,9 +122,9 @@ class _Result(object):
         if self._cdist is None:
             return None
         else:
-            return self._clusters(None, True)
+            return self.find_clusters(None, True)
 
-    def _clusters(self, pmin=None, maps=False, **sub):
+    def find_clusters(self, pmin=None, maps=False, **sub):
         """Find significant regions as clusters
 
         Parameters
@@ -1482,7 +1482,7 @@ class _MultiEffectResult(_Result):
             effect = self.effects.index(effect)
         return self._cdist[effect].masked_parameter_map(pmin, **sub)
 
-    def _clusters(self, pmin=None, maps=False, **sub):
+    def find_clusters(self, pmin=None, maps=False, **sub):
         """Find significant regions in a TFCE distribution
 
         Parameters

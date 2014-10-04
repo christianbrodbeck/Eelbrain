@@ -2755,7 +2755,7 @@ class MneExperiment(FileTree):
         if parc is None and pmin in (None, 'tfce'):
             section = report.add_section("P<=.05")
             self._source_bin_table(section, test_kind, res, 0.05)
-            clusters = res._clusters(0.05, maps=True)
+            clusters = res.find_clusters(0.05, maps=True)
             clusters.sort('tstart')
             title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
             for cluster in clusters.itercases():
@@ -2780,10 +2780,10 @@ class MneExperiment(FileTree):
             for label in y.source.parc.cells:
                 section = report.add_section(label.capitalize())
 
-                clusters_sig = res._clusters(0.05, True, source=label)
-                clusters_trend = res._clusters(0.1, True, source=label)
+                clusters_sig = res.find_clusters(0.05, True, source=label)
+                clusters_trend = res.find_clusters(0.1, True, source=label)
                 clusters_trend = clusters_trend.sub("p>0.05")
-                clusters_all = res._clusters(0.2, True, source=label)
+                clusters_all = res.find_clusters(0.2, True, source=label)
                 clusters_all = clusters_all.sub("p>0.1")
                 clusters = combine((clusters_sig, clusters_trend, clusters_all))
                 clusters.sort('tstart')
@@ -2802,7 +2802,7 @@ class MneExperiment(FileTree):
 
             self._source_bin_table(section, test_kind, res)
 
-            clusters = res._clusters(include, maps=True)
+            clusters = res.find_clusters(include, maps=True)
             clusters.sort('tstart')
             title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
             legend = self._source_time_clusters(section, clusters, y, ds,
@@ -2819,7 +2819,7 @@ class MneExperiment(FileTree):
             for label in y.source.parc.cells:
                 section = report.add_section(label.capitalize())
 
-                clusters = res._clusters(None, True, source=label)
+                clusters = res.find_clusters(None, True, source=label)
                 src_ = y.sub(source=label)
                 legend = self._source_time_clusters(section, clusters, src_,
                                                     ds, model, include,
