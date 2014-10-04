@@ -324,7 +324,7 @@ class Boxplot(_SimpleFigure):
         if test is True:
             y_top = _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend,
                                         test_markers, x0=1)
-        else:
+        elif test is not False and test is not None:
             ax.axhline(test, color='black')
             y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit,
                                        x0=1, corr=corr, popmean=test, trend=trend)
