@@ -548,7 +548,7 @@ class UTSClusters(_EelFigure):
         btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
 
     def _OnShowClusterInfo(self, event):
-        from ..._wxutils import show_text_dialog
+        from .._wxutils import show_text_dialog
         info = str(self.clusters)
         show_text_dialog(self._frame, info, "Clusters")
 
