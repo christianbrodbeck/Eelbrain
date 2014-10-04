@@ -733,7 +733,7 @@ class _EelFigure(object):
     """
     _make_axes = True
 
-    def __init__(self, frame_title, nax, axh_default, ax_aspect, tight=False,
+    def __init__(self, frame_title, nax, axh_default, ax_aspect, tight=True,
                  title=None, frame=True, yaxis=True, *args, **kwargs):
         """Parent class for Eelbrain figures.
 
