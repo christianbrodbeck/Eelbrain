@@ -16,9 +16,9 @@ from ._sensors import _plt_map2d
 
 class Topomap(_tb_sensors_mixin, _EelFigure):
     "Plot individual topogeraphies"
-    def __init__(self, epochs, Xax=None, sensors='name', proj='default',
-                 title=None, res=200, interpolation='nearest', ds=None,
-                 vmax=None, vmin=None, tight=True, **layout):
+    def __init__(self, epochs, Xax=None, sensors='name', proj='default', res=200,
+                 interpolation='nearest', ds=None, vmax=None, vmin=None, *args,
+                 **kwargs):
         """
         Plot individual topogeraphies
 
@@ -33,8 +33,6 @@ class Topomap(_tb_sensors_mixin, _EelFigure):
             is removed; with 'fullname', the full name is shown.
         proj : str
             The sensor projection to use for topomaps.
-        title : None | string
-            Figure title.
         res : int
             Resolution of the topomaps (width = height = ``res``).
         interpolation : str
@@ -48,13 +46,14 @@ class Topomap(_tb_sensors_mixin, _EelFigure):
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
             (default True)
+        title : None | string
+            Figure title.
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
         _tb_sensors_mixin.__init__(self, sensors)
 
-        _EelFigure.__init__(self, "Topomap", nax, 7, 1, layout, tight,
-                            figtitle=title)
+        _EelFigure.__init__(self, "Topomap", nax, 7, 1, *args, **kwargs)
 
         vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
 
@@ -124,10 +123,12 @@ class TopoButterfly(_EelFigure):
      - ``Left arrow``: Decrement the current topomap time.
      - ``t``: open a TopoMap plot for the region under the mouse pointer.
     """
-    def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
+    _make_axes = False
+
+    def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensors=True, mark=None, mcolor=None, ds=None, vmax=None,
-                 vmin=None, **layout):
+                 vmin=None, *args, **kwargs):
         """
         Parameters
         ----------
@@ -135,8 +136,6 @@ class TopoButterfly(_EelFigure):
             Epoch(s) to plot.
         Xax : None | categorial
             Create a separate plot for each cell in this model.
-        title : None | string
-            Figure title.
         xlabel, ylabel : bool | string
             Labels for x and y axes. If True, labels are automatically chosen.
         proj : str
@@ -164,17 +163,17 @@ class TopoButterfly(_EelFigure):
         vmax, vmin : None | scalar
             Override the default plot limits. If only vmax is specified, vmin
             is set to -vmax.
+        title : None | string
+            Figure title.
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         n_plots = len(epochs)
 
         # create figure
         nax = 3 * n_plots  # for layout pretend butterfly & topo are 3 axes
-        if 'ncol' in layout:
-            raise NotImplementedError("`nrow` parameter not implemented")
-        layout['ncol'] = 3
-        _EelFigure.__init__(self, "TopoButterfly Plot", nax, 3, 1, layout,
-                            figtitle=title, make_axes=False)
+        kwargs['ncol'] = 3
+        _EelFigure.__init__(self, "TopoButterfly Plot", nax, 3, 1, False, *args,
+                            **kwargs)
 
         # axes sizes
         frame = .05  # in inches; .4
@@ -580,8 +579,10 @@ class TopoArray(_EelFigure):
      - RMB on a topomap removes the topomap
 
     """
+    _make_axes = False
+
     def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
-                 vmax=None, vmin=None, **layout):
+                 vmax=None, vmin=None, *args, **kwargs):
         """
         Channel by sample array-plots with topomaps corresponding to
         individual time points.
@@ -610,8 +611,8 @@ class TopoArray(_EelFigure):
         n_topo_total = ntopo * n_epochs
 
         # create figure
-        _EelFigure.__init__(self, 'TopoArray Plot', n_epochs, 6, 1.5, layout,
-                            make_axes=False)
+        _EelFigure.__init__(self, 'TopoArray Plot', n_epochs, 6, 1.5, False, None,
+                            *args, **kwargs)
         fig = self.figure
         axw = self._layout.axw
 

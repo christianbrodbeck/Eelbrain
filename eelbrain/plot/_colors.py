@@ -75,7 +75,7 @@ def colors_for_twoway(x1_cells, x2_cells, cmap=None):
 class ColorGrid(_EelFigure):
     "Plot colors for a two-way design in a grid"
     def __init__(self, row_cells, col_cells, colors, size=None, row_first=None,
-                 **layout):
+                 *args, **kwargs):
         """Plot colors in a grid
 
         Parameters
@@ -109,7 +109,7 @@ class ColorGrid(_EelFigure):
             tight = True
         else:
             tight = False
-        _EelFigure.__init__(self, "ColorGrid", None, 3, 1, layout, tight)
+        _EelFigure.__init__(self, "ColorGrid", None, 3, 1, tight, *args, **kwargs)
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
         self._ax = ax
@@ -197,7 +197,7 @@ class ColorGrid(_EelFigure):
 
 class ColorList(_EelFigure):
     "Plot colors with labels"
-    def __init__(self, colors, cells=None, **layout):
+    def __init__(self, colors, cells=None, *args, **kwargs):
         """Plot colors with labels
 
         Parameters
@@ -207,7 +207,8 @@ class ColorList(_EelFigure):
         cells : tuple
             Cells for which to plot colors (default is ``colors.keys()``).
         """
-        _EelFigure.__init__(self, "Colors", None, 2, 1.5, layout)
+        _EelFigure.__init__(self, "Colors", None, 2, 1.5, False, None, *args,
+                            **kwargs)
 
         if cells is None:
             cells = colors.keys()

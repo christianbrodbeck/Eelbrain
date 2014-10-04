@@ -731,9 +731,10 @@ class _EelFigure(object):
      - end the initialization by calling `_EelFigure._show()`
      - add the :py:meth:`_fill_toolbar` method
     """
-    def __init__(self, title, nax, axh_default, ax_aspect, layout_kwa,
-                 tight=False, fig_kwa={}, ax_kwa={}, figtitle=None,
-                 make_axes=True):
+    _make_axes = True
+
+    def __init__(self, frame_title, nax, axh_default, ax_aspect, tight=False,
+                 title=None, *args, **kwargs):
         """Parent class for Eelbrain figures.
 
         Parameters
@@ -754,34 +755,32 @@ class _EelFigure(object):
             If nax is not None, automatically create axes when self._axes is
             accessed; otherwise set ``self._axes=[]``.
         """
-        if figtitle:
-            title = '%s: %s' % (title, figtitle)
+        if title:
+            frame_title = '%s: %s' % (frame_title, title)
 
         # layout
-        layout = Layout(nax, ax_aspect, axh_default, tight, **layout_kwa)
-        fig_kwa = fig_kwa.copy()
-        fig_kwa.update(layout.fig_kwa)
+        layout = Layout(nax, ax_aspect, axh_default, tight, *args, **kwargs)
 
         # find the right frame
         if backend['eelbrain']:
             from .._wxgui import get_app
             from .._wxgui.mpl_canvas import CanvasFrame
             get_app()
-            frame = CanvasFrame(None, title, eelfigure=self, **fig_kwa)
+            frame = CanvasFrame(None, frame_title, eelfigure=self, **layout.fig_kwa)
         else:
-            frame = mpl_figure(**fig_kwa)
+            frame = mpl_figure(**layout.fig_kwa)
 
         figure = frame.figure
-        if figtitle:
-            self._figtitle = figure.suptitle(figtitle)
+        if title:
+            self._figtitle = figure.suptitle(title)
         else:
             self._figtitle = None
 
         # make axes
         axes = []
-        if make_axes and nax is not None:
+        if self._make_axes and nax is not None:
             for i in xrange(1, nax + 1):
-                ax = figure.add_subplot(layout.nrow, layout.ncol, i, **ax_kwa)
+                ax = figure.add_subplot(layout.nrow, layout.ncol, i)
                 axes.append(ax)
 
         # store attributes
@@ -1061,8 +1060,8 @@ class Layout():
 
 
 class Legend(_EelFigure):
-    def __init__(self, handles, labels, **layout):
-        _EelFigure.__init__(self, "Legend", None, 2, 1, layout)
+    def __init__(self, handles, labels, *args, **kwargs):
+        _EelFigure.__init__(self, "Legend", None, 2, 1, False, *args, **kwargs)
 
         self.legend = self.figure.legend(handles, labels, loc=2)
 

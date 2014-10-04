@@ -208,8 +208,8 @@ class _ax_im_array(object):
 
 
 class Array(_EelFigure):
-    def __init__(self, epochs, Xax=None, title=None, xlabel=True, ylabel=True,
-                 ds=None, tight=True, **layout):
+    def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True, ds=None,
+                 *args, **kwargs):
         """
         Plot uts data to a rectangular grid.
 
@@ -219,8 +219,6 @@ class Array(_EelFigure):
             If data has only 1 dimension, the x-axis defines epochs.
         Xax : None | categorial
             Create a separate plot for each cell in this model.
-        title : None | string
-            Figure title.
         xlabel, ylabel : bool | str
             I True, determine from the data.
         ds : None | Dataset
@@ -229,19 +227,20 @@ class Array(_EelFigure):
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
             (default True)
+        title : None | string
+            Figure title.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
         nax = len(epochs)
-        _EelFigure.__init__(self, "Array Plot", nax, 4, 2, layout, tight,
-                            figtitle=title)
+        _EelFigure.__init__(self, "Array Plot", nax, 4, 2, *args, **kwargs)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs)
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
-            _ylabel = ylabel if i == 1 else None
-            _xlabel = xlabel if i == nax - 1 else None
-            p = _ax_im_array(ax, layers, xlabel=_xlabel, ylabel=ylabel,
+            ylabel_ = ylabel if i == 1 else None
+            xlabel_ = xlabel if i == nax - 1 else None
+            p = _ax_im_array(ax, layers, xlabel=xlabel_, ylabel=ylabel_,
                              vlims=vlims)
             self.plots.append(p)
 
@@ -492,9 +491,8 @@ class _ax_butterfly(object):
 
 class Butterfly(_EelFigure):
     "Plot data in a butterfly plot."
-    def __init__(self, epochs, Xax=None, sensors=None, title=None,
-                 axtitle='{name}', xlabel=True, ylabel=True, color=None,
-                 ds=None, tight=True, **layout):
+    def __init__(self, epochs, Xax=None, sensors=None, axtitle='{name}',
+                 xlabel=True, ylabel=True, color=None, ds=None, *args, **kwargs):
         """Butterfly plot for NDVars
 
         Parameters
@@ -505,8 +503,6 @@ class Butterfly(_EelFigure):
             Create a separate plot for each cell in this model.
         sensors: None or list of sensor IDs
             sensors to plot (``None`` = all)
-        title : None | string
-            Figure title.
         axtitle : str | None
             Title to plot for axes. Default is the NDVar names.
         xlabel, ylabel : bool | string
@@ -520,10 +516,12 @@ class Butterfly(_EelFigure):
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
             (default True)
+        title : None | string
+            Figure title.
         """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
-        _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, layout,
-                            tight, figtitle=title)
+        _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, *args,
+                            **kwargs)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, True)

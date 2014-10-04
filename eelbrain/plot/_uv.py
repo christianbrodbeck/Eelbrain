@@ -138,10 +138,8 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, corr='Hochberg',
 
 
 class _SimpleFigure(_EelFigure):
-    def __init__(self, wintitle, title, xlabel, ylabel, tight=True, frame=True,
-                 **layout):
-        _EelFigure.__init__(self, wintitle, 1, 5, 1, layout, tight,
-                            figtitle=title)
+    def __init__(self, wintitle, xlabel, ylabel, frame=True, *args, **kwargs):
+        _EelFigure.__init__(self, wintitle, 1, 5, 1, *args, **kwargs)
         self._ax = ax = self._axes[0]
 
         if not frame:
@@ -190,11 +188,10 @@ class _SimpleFigure(_EelFigure):
 class Boxplot(_SimpleFigure):
     "Boxplot for a continuous variable"
     def __init__(self, Y, X=None, match=None, sub=None, datalabels=None,
-                 bottom=None, top=None,
-                 title=None, ylabel='{unit}', xlabel=True, xtick_delim='\n',
-                 test=True, par=True, trend="'", test_markers=True,
-                 corr='Hochberg', pwcolors=None, hatch=False, colors=False,
-                 ds=None, **kwargs):
+                 bottom=None, top=None, ylabel='{unit}', xlabel=True,
+                 xtick_delim='\n', test=True, par=True, trend="'", test_markers=True,
+                 corr='Hochberg', hatch=False, colors=False, ds=None, *args,
+                 **kwargs):
         """Boxplot for a continuous variable
 
         Parameters
@@ -214,8 +211,6 @@ class Boxplot(_SimpleFigure):
             below the lowest value).
         top : scalar
             Set the upper x axis limit (default is to fit all the data).
-        title : True | str
-            Axis title (default is no title, True to use ``Y.name``).
         ylabel : None | str
             Y axis label (default is ``Y.info['unit']`` if present, otherwise
             no label).
@@ -254,6 +249,8 @@ class Boxplot(_SimpleFigure):
         tight : bool
             Use matplotlib's tight_layout to resize all axes to fill the figure
             (default True).
+        title : str
+            Figure title.
         """
         # get data
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
@@ -261,16 +258,13 @@ class Boxplot(_SimpleFigure):
         X = ct.X
 
         # kwargs
-        if hatch == True:
+        if hatch is True:
             hatch = defaults['hatch']
-        if colors == True:
+        if colors is True:
             if defaults['mono']:
                 colors = defaults['cm']['colors']
             else:
                 colors = defaults['c']['colors']
-
-        if title is True:
-            title = str2tex(getattr(Y, 'name', None))
 
         # ylabel
         if hasattr(Y, 'info'):
@@ -285,8 +279,7 @@ class Boxplot(_SimpleFigure):
 
         # get axes
         frame_title_ = frame_title("Boxplot", ct.Y, ct.X)
-        _SimpleFigure.__init__(self, frame_title_, title, xlabel, ylabel,
-                               **kwargs)
+        _SimpleFigure.__init__(self, frame_title_, xlabel, ylabel, *args, **kwargs)
         ax = self._axes[0]
 
         # determine ax lim
@@ -363,10 +356,10 @@ class Boxplot(_SimpleFigure):
 class Barplot(_SimpleFigure):
     "Barplot for a continuous variable"
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
-                 corr='Hochberg', trend="'", test_markers=True, title=None,
-                 ylabel=None, error='sem', pool_error=None, ec='k', xlabel=True,
-                 xticks=True, xtick_delim='\n', hatch=False, colors=False, bottom=0,
-                 top=None, c='#0099FF', edgec=None, ds=None, **kwargs):
+                 corr='Hochberg', trend="'", test_markers=True, ylabel=None,
+                 error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
+                 xtick_delim='\n', hatch=False, colors=False, bottom=0, top=None,
+                 c='#0099FF', edgec=None, ds=None, *args, **kwargs):
         """Barplot for a continuous variable
 
         Parameters
@@ -387,8 +380,6 @@ class Barplot(_SimpleFigure):
             tests if False).
         corr : None | 'hochberg' | 'bonferroni' | 'holm'
             Method for multiple comparison correction (default 'hochberg').
-        title : True | str
-            Axis title (default is no title, True to use ``Y.name``).
         trend : None | str
             Marker for a trend in pairwise comparisons.
         test_markers : bool
@@ -439,14 +430,13 @@ class Barplot(_SimpleFigure):
         tight : bool
             Use matplotlib's tight_layout to resize all axes to fill the figure
             (default True).
+        title : str
+            Figure title.
         """
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asvar)
 
         if pool_error is None:
             pool_error = ct.all_within
-
-        if title is True:
-            title = ct.Y.name
 
         # xlabel
         if xlabel is True:
@@ -456,8 +446,7 @@ class Barplot(_SimpleFigure):
                 xlabel = False
 
         frame_title_ = frame_title("Barplot", ct.Y, ct.X)
-        _SimpleFigure.__init__(self, frame_title_, title, xlabel, ylabel,
-                               **kwargs)
+        _SimpleFigure.__init__(self, frame_title_, xlabel, ylabel, *args, **kwargs)
 
         x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
                                       colors, bottom, c=c, edgec=edgec,
@@ -563,8 +552,8 @@ class Timeplot(_SimpleFigure):
                  # data plotting
                  main=np.mean, spread='box', x_jitter=False,
                  # labelling
-                 title=None, ylabel=True, xlabel=True, legend=True,
-                 colors=True, hatch=False, markers=True, **kwargs):
+                 ylabel=True, xlabel=True, legend=True,
+                 colors=True, hatch=False, markers=True, *args, **kwargs):
         """Plot a variable over time
 
         Parameters
@@ -595,8 +584,6 @@ class Timeplot(_SimpleFigure):
         x_jitter : bool
             When plotting error bars, jitter their location on the x-axis to
             increase readability.
-        title : True | str
-            Axis title (default is no title, True to use ``Y.name``).
         ylabel : None | str
             Y axis label (default is ``Y.name``).
         xlabel : None | str
@@ -609,6 +596,8 @@ class Timeplot(_SimpleFigure):
         tight : bool
             Use matplotlib's tight_layout to resize all axes to fill the figure
             (default True).
+        title : str
+            Figure title.
         """
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
@@ -669,8 +658,7 @@ class Timeplot(_SimpleFigure):
             xlabel = time.name
 
         # get axes
-        _SimpleFigure.__init__(self, "Timeplot", title, xlabel, ylabel,
-                               **kwargs)
+        _SimpleFigure.__init__(self, "Timeplot", xlabel, ylabel, *args, **kwargs)
         ax = self._ax
 
         # categories
@@ -868,7 +856,7 @@ class MultiTimeplot(_SimpleFigure):
         self._y_unit = 0
 
         # get axes
-        _SimpleFigure.__init__(self, "MultiTimeplot", title, xlabel, ylabel,
+        _SimpleFigure.__init__(self, "MultiTimeplot", xlabel, ylabel, title=title,
                                w=w, h=h)
 
     def plot(self, Y, categories, time, match=None, sub=None,
@@ -1159,10 +1147,10 @@ def _reg_line(Y, reg):
 
 class Correlation(_EelFigure):
     "Correlation between two variables"
-    def __init__(self, Y, X, cat=None, sub=None, ds=None, title=None,
+    def __init__(self, Y, X, cat=None, sub=None, ds=None,
                  c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], delim=' ',
                  lloc='lower center', lncol=2, figlegend=True, xlabel=True,
-                 ylabel=True, rinxlabel=True, tight=True, **layout):
+                 ylabel=True, rinxlabel=True, *args, **kwargs):
         """Correlation between two variables
 
         Parameters
@@ -1183,6 +1171,8 @@ class Correlation(_EelFigure):
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
             (default True)
+        title : str
+            Figure title.
         """
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
@@ -1192,8 +1182,7 @@ class Correlation(_EelFigure):
 
         # figure
         frame_title_ = frame_title("Correlation", Y, X, cat)
-        _EelFigure.__init__(self, frame_title_, 1, 5, 1, layout, tight,
-                            figtitle=title)
+        _EelFigure.__init__(self, frame_title_, 1, 5, 1, *args, **kwargs)
 
         # determine labels
         if xlabel is True:
@@ -1241,9 +1230,9 @@ class Correlation(_EelFigure):
 class Regression(_EelFigure):
     "Regression of Y on X"
     def __init__(self, Y, X, cat=None, match=None, sub=None, ds=None,
-                 ylabel=True, title=None, alpha=.2, legend=True, delim=' ',
+                 ylabel=True, alpha=.2, legend=True,
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
-                 tight=True, **layout):
+                 *args, **kwargs):
         """Regression of Y on X
 
         parameters
@@ -1261,7 +1250,8 @@ class Regression(_EelFigure):
         ds : None | Dataset
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables
-        ...
+        ylabel : str
+            Y-axis label (default is ``Y.name``).
         alpha : scalar
             alpha for individual data points (to control visualization of
             overlap)
@@ -1272,6 +1262,8 @@ class Regression(_EelFigure):
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
             (default True)
+        title : str
+            Figure title.
         """
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
@@ -1286,16 +1278,13 @@ class Regression(_EelFigure):
 
         # figure
         frame_title_ = frame_title("Regression", Y, X, cat)
-        _EelFigure.__init__(self, frame_title_, 1, 5, 1, layout, tight,
-                            figtitle=title)
+        _EelFigure.__init__(self, frame_title_, 1, 5, 1, *args, **kwargs)
         ax = self._axes[0]
 
         # labels
         if ylabel:
             ax.set_ylabel(ylabel)
         ax.set_xlabel(X.name)
-        if title:
-            ax.set_title(title, **defaults['title_kwargs'])
         # regplot
         scatter_kwargs = {'s': 100,
                           'alpha': alpha,
@@ -1322,9 +1311,9 @@ class Regression(_EelFigure):
                 # regression line
                 x, y = _reg_line(y, reg)
                 ax.plot(x, y, c=color, label=cellname(cell))
-            if legend == True:
+            if legend is True:
                 ax.legend()
-            elif legend != False:
+            elif legend is not False:
                 ax.legend(loc=legend)
 
         self._show()
@@ -1378,7 +1367,7 @@ def _normality_plot(ax, data, **kwargs):
 class Histogram(_EelFigure):
     "Histogram plots with tests of normality"
     def __init__(self, Y, X=None, match=None, sub=None, ds=None, pooled=True,
-                title=True, tight=True, **layout):
+                 tight=True, title=True, *args, **kwargs):
         """Histogram plots with tests of normality
 
         Parameters
@@ -1396,39 +1385,35 @@ class Histogram(_EelFigure):
             names of Dataset variables
         pooled : bool
             Add one plot with all values/differences pooled.
-        title : None | str
-            Figure title.
-        titlekwargs : dict
-            Forwarded to :py:func:`pyplot.suptitle`.
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
             (default True)
+        title : None | str
+            Figure title.
         """
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
 
         # layout
         if X is None:
             nax = 1
-            make_axes = True
             if title is True:
                 title = "Test for Normality"
         elif ct.all_within:
             n_comp = len(ct.cells) - 1
             nax = n_comp ** 2
-            layout['nrow'] = n_comp
-            layout['ncol'] = n_comp
-            make_axes = False
+            kwargs['nrow'] = n_comp
+            kwargs['ncol'] = n_comp
+            self._make_axes = False
             if title is True:
                 title = "Tests for Normality of the Differences"
         else:
             nax = len(ct.cells)
-            make_axes = True
             if title is True:
                 title = "Tests for Normality"
 
         frame_title_ = frame_title("Histogram", ct.Y, ct.X)
-        _EelFigure.__init__(self, frame_title_, nax, 3, 1, layout, tight,
-                            figtitle=title, make_axes=make_axes)
+        _EelFigure.__init__(self, frame_title_, nax, 3, 1, tight, title, *args,
+                            **kwargs)
 
         if X is None:
             ax = self._axes[0]

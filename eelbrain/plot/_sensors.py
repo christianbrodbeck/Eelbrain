@@ -335,7 +335,7 @@ class SensorMaps(_EelFigure):
 
     """
     def __init__(self, sensors, select=[], proj='default', frame=0.05,
-                 title=None, **layout):
+                 *args, **kwargs):
         """
         Parameters
         ----------
@@ -357,7 +357,6 @@ class SensorMaps(_EelFigure):
             sensors = sensors.sensor
 
         # layout figure
-        layout.update(ncol=2, nrow=2)
         ftitle = 'SensorMaps'
         sens_name = getattr(sensors, 'sysname', None)
         if sens_name:
@@ -366,7 +365,8 @@ class SensorMaps(_EelFigure):
         self._drag_ax = None
         self._drag_x = None
         self._drag_y = None
-        _EelFigure.__init__(self, ftitle, 4, 3, 1, layout, figtitle=title)
+        _EelFigure.__init__(self, ftitle, 4, 3, 1, False, ncol=2, nrow=2, *args,
+                            **kwargs)
         self.figure.subplots_adjust(left=0, bottom=0, right=1, top=1,
                                     wspace=.1, hspace=.1)
 
@@ -555,7 +555,7 @@ class SensorMap2d(_tb_sensors_mixin, _EelFigure):
 
     """
     def __init__(self, sensors, labels='name', proj='default', mark=None,
-                 frame=.05, title=None, **layout):
+                 frame=.05, *args, **kwargs):
         """Plot sensor positions in 2 dimensions
 
         Parameters
@@ -585,7 +585,7 @@ class SensorMap2d(_tb_sensors_mixin, _EelFigure):
         sens_name = getattr(sensors, 'sysname', None)
         if sens_name:
             ftitle = '%s: %s' % (ftitle, sens_name)
-        _EelFigure.__init__(self, ftitle, 1, 7, 1, layout, figtitle=title)
+        _EelFigure.__init__(self, ftitle, 1, 7, 1, False, *args, **kwargs)
         _tb_sensors_mixin.__init__(self)
 
         # store args
