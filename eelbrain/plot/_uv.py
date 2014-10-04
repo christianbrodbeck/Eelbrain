@@ -100,11 +100,8 @@ def _mark_plot_pairwise(ax, ct, par, y_min, y_unit, corr, trend, markers=True,
     return y_top
 
 
-def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, corr='Hochberg',
-                        levels=True, trend="'", pwcolors=None,
-                        popmean=0,  # <- mod
-                        font_size=plt.rcParams['font.size'] * 1.5
-                        ):
+def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
+                       trend="'", levels=True, pwcolors=None, x0=0):
     "returns y_max"
     if levels is not True:  # to avoid test.star() conflict
         trend = False
@@ -124,14 +121,14 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, x0=0, corr='Hochberg',
         raise NotImplementedError("nonparametric 1-sample test")
     stars = test.star(ps, int, levels, trend, corr)
     stars_str = test.star(ps, levels=levels, trend=trend)
+    font_size = mpl.rcParams['font.size'] * 1.5
     if any(stars):
         y_stars = y_min + 1.75 * y_unit
         for i, n_stars in enumerate(stars):
             if n_stars > 0:
                 c = pwcolors[n_stars - 1]
                 ax.text(x0 + i, y_stars, stars_str[i], color=c, size=font_size,
-                        horizontalalignment='center', clip_on=False,
-                        verticalalignment='center')
+                        ha='center', va='center', clip_on=False)
         return y_min + 4 * y_unit
     else:
         return y_min
@@ -326,8 +323,8 @@ class Boxplot(_SimpleFigure):
                                         test_markers, x0=1)
         elif test is not False and test is not None:
             ax.axhline(test, color='black')
-            y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit,
-                                       x0=1, corr=corr, popmean=test, trend=trend)
+            y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, test, corr, trend,
+                                       x0=1)
         if top is None:
             top = y_top
 
@@ -528,8 +525,7 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom=0,
         y_top = plot_max + y_unit
     else:
         ax.axhline(test, color='black')
-        y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit,
-                                   popmean=test, corr=corr, trend=trend)
+        y_top = _mark_plot_1sample(ax, ct, par, plot_max, y_unit, test, corr, trend)
 
     #      x0,                     x1,                      y0,       y1
     lim = (min(left) - .5 * width, max(left) + 1.5 * width, y_bottom, y_top)
