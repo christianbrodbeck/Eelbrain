@@ -1422,13 +1422,13 @@ class Histogram(_EelFigure):
             data = ct.get_data()
             names = ct.cellnames()
 
-            pooled = []
+            pooled_data = []
             # i: row
             # j: -column
             for i in xrange(n_comp + 1):
                 for j in range(i + 1, n_comp + 1):
                     difference = data[i] - data[j]
-                    pooled.append(scipy.stats.zscore(difference))  # z transform?? (scipy.stats.zs())
+                    pooled_data.append(scipy.stats.zscore(difference))  # z transform?? (scipy.stats.zs())
                     ax_i = n_comp * i + (n_comp + 1 - j)
                     ax = self.figure.add_subplot(n_comp, n_comp, ax_i)
                     _normality_plot(ax, difference)
@@ -1437,10 +1437,10 @@ class Histogram(_EelFigure):
                     if j == n_comp:
                         ax.set_ylabel(names[i], size=12)
             # pooled diffs
-            if len(names) > 2:
+            if pooled and len(names) > 2:
                 ax = self.figure.add_subplot(n_comp, n_comp, n_comp ** 2)
-                _normality_plot(ax, pooled, facecolor='g')
-                ax.set_title("Pooled Differences (n=%s)" % len(pooled),
+                _normality_plot(ax, pooled_data, facecolor='g')
+                ax.set_title("Pooled Differences (n=%s)" % len(pooled_data),
                              weight='bold')
                 self.figure.text(.99, .01, "$^{*}$ Anderson and Darling test "
                                  "thresholded at $[ .15,   .10,    .05,    "
