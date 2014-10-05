@@ -365,7 +365,7 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
                  views=('lat', 'med'), colorbar=True, time_label='%.3g s',
                  w=None, h=None, axw=None, axh=None, background=None,
-                 parallel=True, smoothing_steps=None, subjects_dir=None):
+                 parallel=True, smoothing_steps=None, mask=True, subjects_dir=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -392,6 +392,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     smoothing_steps : None | int
         Number of smoothing steps if data is spatially undersampled (pysurfer
         ``Brain.add_data()`` argument).
+    mask : bool
+        Shade areas that are not in ``src``.
     subjects_dir : None | str
         Override the subjects_dir associated with the source space dimension.
 
@@ -454,6 +456,14 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         vertices = src.source.rh_vertno
         brain.add_data(data, vmin, vmax, None, colormap, alpha, vertices,
                        smoothing_steps, times, time_label, colorbar, 'rh')
+
+    # mask
+    if mask:
+        lh, rh = src.source._mask_label()
+        if src.source.lh_n and lh:
+            brain.add_label(lh, alpha=0.5)
+        if src.source.rh_n and rh:
+            brain.add_label(rh, alpha=0.5)
 
     # set parallel view
     if parallel:

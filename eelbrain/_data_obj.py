@@ -6586,6 +6586,20 @@ class SourceSpace(Dimension):
                           in izip(self.vertno, other.vertno))
         return self[index]
 
+    def _mask_label(self):
+        "Create a Label that masks the areas not covered in this SourceSpace"
+        lh = rh = None
+        sss = self.get_source_space()
+        if self.lh_n:
+            lh_verts = np.setdiff1d(sss[0]['vertno'], self.lh_vertno)
+            if len(lh_verts):
+                lh = mne.Label(lh_verts, hemi='lh', color=(0, 0, 0)).fill(sss, 'unknown')
+        if self.rh_n:
+            rh_verts = np.setdiff1d(sss[1]['vertno'], self.rh_vertno)
+            if len(rh_verts):
+                rh = mne.Label(rh_verts, hemi='rh', color=(0, 0, 0)).fill(sss, 'unknown')
+        return lh, rh
+
     def set_parc(self, parc):
         """Set the source space parcellation
 

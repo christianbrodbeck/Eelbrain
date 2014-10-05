@@ -33,7 +33,7 @@ def _mne_source_space(subject, src_tag, subjects_dir):
         return mne.read_source_spaces(src_file, False)
     elif src == 'ico':
         return mne.setup_source_space(subject, src_file, 'ico4',
-                                      subjects_dir=subjects_dir)
+                                      subjects_dir=subjects_dir, add_dist=True)
     elif src == 'vol':
         mri_file = os.path.join(subjects_dir, subject, 'mri', 'orig.mgz')
         bem_file = os.path.join(subjects_dir, subject, 'bem',
