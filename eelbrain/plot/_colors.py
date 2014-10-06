@@ -74,28 +74,30 @@ def colors_for_twoway(x1_cells, x2_cells, cmap=None):
 
 class ColorGrid(_EelFigure):
     "Plot colors for a two-way design in a grid"
-    def __init__(self, row_cells, col_cells, colors, size=None, row_first=None,
-                 *args, **kwargs):
+    def __init__(self, row_cells, column_cells, colors, size=None,
+                 column_label_position='top', row_first=None, *args, **kwargs):
         """Plot colors in a grid
 
         Parameters
         ----------
         row_cells : tuple of str
             Cells contained in the rows.
-        col_cells : tuple of str
+        column_cells : tuple of str
             Cells contained in the columns.
         colors : dict
             Colors for cells.
         size : scalar
             Size (width and height) of the color squares (the default is to
             scale them to fit the figure).
+        column_label_position : 'top' | 'bottom'
+            Where to place the column labels (default is 'top').
         row_first : bool
             Whether the row cell precedes the column cell in color keys. By
             default this is inferred from the existing keys.
         """
         if row_first is None:
             row_cell_0 = row_cells[0]
-            col_cell_0 = col_cells[0]
+            col_cell_0 = column_cells[0]
             if (row_cell_0, col_cell_0) in colors:
                 row_first = True
             elif (col_cell_0, row_cell_0) in colors:
@@ -117,27 +119,43 @@ class ColorGrid(_EelFigure):
         # reverse rows so we can plot upwards
         row_cells = tuple(reversed(row_cells))
         n_rows = len(row_cells)
-        n_cols = len(col_cells)
+        n_cols = len(column_cells)
 
         # color patches
         for col in xrange(n_cols):
             for row in xrange(n_rows):
                 if row_first:
-                    cell = (row_cells[row], col_cells[col])
+                    cell = (row_cells[row], column_cells[col])
                 else:
-                    cell = (col_cells[col], row_cells[row])
+                    cell = (column_cells[col], row_cells[row])
                 patch = mpl.patches.Rectangle((col, row), 1, 1, fc=colors[cell],
                                               ec='none')
                 ax.add_patch(patch)
 
-        # labels
+        # column labels
         self._labels = []
-        y = n_rows + 0.1
+        if column_label_position == 'top':
+            y = n_rows + 0.1
+            va = 'bottom'
+            rotation = 40
+            ymin = 0
+            ymax = self._layout.h / size
+        elif column_label_position == 'bottom':
+            y = -0.1
+            va = 'top'
+            rotation = -40
+            ymax = n_rows
+            ymin = n_rows - self._layout.h / size
+        else:
+            msg = "column_label_position=%s" % repr(column_label_position)
+            raise ValueError(msg)
+
         for col in xrange(n_cols):
-            label = col_cells[col]
-            h = ax.text(col + 0.5, y, label, va='bottom', ha='left',
-                        rotation=40)
+            label = column_cells[col]
+            h = ax.text(col + 0.5, y, label, va=va, ha='left', rotation=rotation)
             self._labels.append(h)
+
+        # row labels
         x = n_cols + 0.1
         for row in xrange(n_rows):
             label = row_cells[row]
@@ -146,7 +164,7 @@ class ColorGrid(_EelFigure):
 
         if size is not None:
             self._ax.set_xlim(0, self._layout.w / size)
-            self._ax.set_ylim(0, self._layout.h / size)
+            self._ax.set_ylim(ymin, ymax)
 
         self._show()
 
