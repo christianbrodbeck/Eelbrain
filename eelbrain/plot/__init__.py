@@ -7,6 +7,7 @@
 
    Barplot
    Boxplot
+   PairwiseLegend
    Correlation
    Histogram
    Regression
@@ -137,7 +138,8 @@ from ._sensors import SensorMaps, SensorMap2d
 from ._topo import TopoArray, TopoButterfly, Topomap
 from ._uts import UTSStat, UTS, UTSClusters
 from ._utsnd import Array, Butterfly
-from ._uv import Barplot, Boxplot, Correlation, Histogram, Regression, Timeplot
+from ._uv import (Barplot, Boxplot, Correlation, Histogram, PairwiseLegend,
+                  Regression, Timeplot)
 from . import brain
 
 from ._base import configure_backend

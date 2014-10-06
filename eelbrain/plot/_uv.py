@@ -168,6 +168,50 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
         return y_min
 
 
+class PairwiseLegend(_EelFigure):
+    "Legend for colors used in pairwise comparison markers"
+    def __init__(self, size=.3, trend=True, *args, **kwargs):
+        """Legend for colors used in pairwise comparisons
+
+        Parameters
+        ----------
+        size : scalar
+            Side length in inches of a virtual square containing each bar.
+        trend : bool
+            Also include a bar for trends (p<0.1). Default is True.
+        """
+        if trend:
+            levels = [.1, .05, .01, .001]
+            colors = defaults['c']['pw']
+        else:
+            levels = [.05, .01, .001]
+            colors = defaults['c']['pw'][1:]
+
+        # layout
+        n_levels = len(levels)
+        ax_h = n_levels * size
+        y_unit = size / 5
+        ax_aspect = 4 / n_levels
+        _EelFigure.__init__(self, "ColorGrid", None, ax_h, ax_aspect, False, *args, **kwargs)
+        ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
+        ax.set_axis_off()
+
+        x1 = .1 * size
+        x2 = .9 * size
+        x = (x1, x1, x2, x2)
+        x_text = 1.2 * size
+        for i, level, color in izip(xrange(n_levels), levels, colors):
+            y1 = y_unit * (i * 5 + 2)
+            y2 = y1 + y_unit
+            ax.plot(x, (y1, y2, y2, y1), color=color)
+            label = "p<%s" % (str(level)[1:])
+            ax.text(x_text, y1 + y_unit / 2, label, ha='left', va='center')
+
+        ax.set_ylim(0, self._layout.h)
+        ax.set_xlim(0, self._layout.w)
+        self._show()
+
+
 class _SimpleFigure(_EelFigure):
     def __init__(self, wintitle, xlabel, ylabel, *args, **kwargs):
         _EelFigure.__init__(self, wintitle, 1, 5, 1, *args, **kwargs)
