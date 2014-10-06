@@ -5,10 +5,11 @@ import shutil
 import tempfile
 
 import numpy as np
+from numpy.testing import assert_array_equal
 
-from eelbrain import datasets, load
+from eelbrain import Dataset, datasets, load
 
-from ...tests.test_data import assert_dataset_equal
+from ...tests.test_data import assert_dataobj_equal, assert_dataset_equal
 
 
 def test_tsv_io():
@@ -28,8 +29,18 @@ def test_tsv_io():
         ds.save_txt(dst)
         ds1 = load.tsv(dst)
         ds2 = load.tsv(dst, skiprows=1, names=names)
+
+        assert_dataset_equal(ds1, ds, "TSV write/read test failed", 10)
+        assert_dataset_equal(ds2, ds, "TSV write/read test failed", 10)
+
+        # guess data types with missing
+        intvar2 = ds['intvar'].as_factor()
+        intvar2[10:] = ''
+        ds_intvar = Dataset(intvar2)
+        ds_intvar.save_txt(dst)
+        ds_intvar1 = load.tsv(dst, empty='nan')
+        assert_dataobj_equal(ds_intvar1['intvar', :10], ds['intvar', :10])
+        assert_array_equal(ds_intvar1['intvar', 10:], np.nan)
+
     finally:
         shutil.rmtree(tempdir)
-
-    assert_dataset_equal(ds1, ds, "TSV write/read test failed", 10)
-    assert_dataset_equal(ds2, ds, "TSV write/read test failed", 10)

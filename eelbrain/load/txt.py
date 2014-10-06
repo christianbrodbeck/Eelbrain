@@ -32,7 +32,7 @@ def _str_is_float(x):
 # could use csv module (http://docs.python.org/2/library/csv.html) but it
 # currently does not support unicode
 def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
-        start_tag=None, ignore_missing=False):
+        start_tag=None, ignore_missing=False, empty=None):
     """
     Load a :class:`Dataset` from a tab-separated values file.
 
@@ -61,7 +61,15 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
         ``start_tag``.
     ignore_missing : bool
         Ignore rows with missing values (default False). Append ``NaN`` for
-        numerical and ``""`` for categorial variables.
+        numerical and ``""`` for categorial variables. Missing values occur when
+        not all lines in a file contain the same number of occurrences of the
+        delimiter. For reading empty values (i.e., "") see the empty_to_nan
+        argument.
+    empty : str
+        For numerical variables, substitute this value for empty entries (i.e., for
+        ""). For example, if a column in a file contains ``"5", "3", ""``, this is
+        read by default as ``Factor(['5', '3', ''])``. With ``empty='nan'``, it is
+        read as ``Var([5, 3, nan])``.
     """
     if path is None:
         path = ui.ask_file("Load TSV", "Select tsv file to import as Dataset")
@@ -88,7 +96,7 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
         lines = lines[skiprows:]
 
     # read / create names
-    if names == True:
+    if names is True:
         head_line = lines.pop(0)
         names = head_line.split(delimiter)
         names = [n.strip().strip('"') for n in names]
@@ -102,6 +110,7 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
                "to True in order to ignore this error.")
         raise ValueError(msg)
     n_cols = max(row_lens)
+    n_rows = len(rows)
 
     if names:
         if len(names) != n_cols:
@@ -117,35 +126,52 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
     else:
         assert len(types) == n_cols
 
-    data = np.empty((len(rows), n_cols), object)
+    # find quotes (imply type 1)
+    quotes = "'\""
+    data = np.empty((n_rows, n_cols), object)
     for r, line in enumerate(rows):
         for c, v in enumerate(line):
-            for str_del in ["'", '"']:
+            for str_del in quotes:
                 if len(v) > 0 and v[0] == str_del:
                     v = v.strip(str_del)
                     types[c] = 1
             data[r, c] = v
 
-    ds = _data.Dataset(name=os.path.basename(path))
-
     # convert values to data-objects
+    ds = _data.Dataset(name=os.path.basename(path))
     np_vars = vars(np)
     bool_dict = {'True': True, 'False': False, None: False}
     for name, values, type_ in zip(names, data.T, types):
+        # infer type
+        if type_ > 0:
+            pass
+        elif all(v in bool_dict for v in values):
+            type_ = 3
+        elif empty is not None:
+            if all(v in (None, '') or _str_is_float(v) for v in values):
+                type_ = 2
+            else:
+                type_ = 1
+        elif all(v is None or _str_is_float(v) for v in values):
+            type_ = 2
+        else:
+            type_ = 1
+
+        # substitute values
+        if type_ == 2:
+            if empty is not None:
+                values = [empty if v == '' else v for v in values]
+            values = [np.nan if v is None else eval(v, np_vars) for v in values]
+        elif type_ == 3:
+            values = [bool_dict[v] for v in values]
+
+        # create data-object
         if type_ == 1:
             dob = _data.Factor(values, labels={None: ''}, name=name)
-        elif all(v in ('True', 'False', None) for v in values):
-            values = [bool_dict[v] for v in values]
-            dob = _data.Var(values, name=name)
-        elif all(v is None or _str_is_float(v) for v in values):
-            values = [np.nan if v is None else eval(v, np_vars) for v in values]
-            dob = _data.Var(values, name=name)
-        elif type_ == 2:
-            err = ("Could not convert all values to float: %s" % values)
-            raise ValueError(err)
         else:
-            dob = _data.Factor(values, labels={None: ''}, name=name)
+            dob = _data.Var(values, name=name)
         ds.add(dob)
+
     return ds
 
 
