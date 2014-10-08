@@ -509,7 +509,7 @@ def _t_contrast_rel(item, data, buff=None, out=None):
         tmap = func(tmaps, axis=0, out=out)
     else:
         _, clip, c1, c0 = item
-        tmap = _t_rel(data[c1], data[c0], out)
+        tmap = stats.t_1samp(data[c1] - data[c0], out)
 
     if clip is not None:
         if clip == '+':
@@ -1162,7 +1162,8 @@ class ttest_rel(_Result):
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
         df = n - 1
-        tmap = _t_rel(ct.Y.x[:n], ct.Y.x[n:])
+        diff = ct.Y[:n] - ct.Y[n:]
+        tmap = stats.t_1samp(diff.x)
 
         if samples is None:
             cdist = None
@@ -1180,14 +1181,14 @@ class ttest_rel(_Result):
             else:
                 threshold = None
 
-            cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
+            cdist = _ClusterDist(diff, samples, threshold, tail, 't',
                                  test_name, tstart, tstop, criteria, dist_dim,
                                  parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 tmap_ = np.empty(cdist.Y_perm.shape[1:])
-                for Y_ in resample(cdist.Y_perm, samples, unit=ct.match):
-                    _t_rel(Y_.x[:n], Y_.x[n:], tmap_)
+                for Y_ in resample(cdist.Y_perm, samples, sign_flip=True):
+                    stats.t_1samp(Y_.x, tmap_)
                     cdist.add_perm(tmap_)
 
         dims = ct.Y.dims[1:]
@@ -1285,62 +1286,6 @@ def _t_ind(x, n1, n2, equal_var=True):
     d = np.mean(a, 0) - np.mean(b, 0)
     t = np.divide(d, denom)
     return t
-
-
-def _t_rel(y1, y0, out=None, buff=None):
-    """
-    Calculates the T statistic on two related samples.
-
-    Parameters
-    ----------
-    y1, y0 : array_like, shape (n_cases, ...)
-        Dependent variable for the two samples.
-    out : None | array, shape (...)
-        array in which to place the result.
-    buff : None | array, shape (n_cases, ...)
-        Array to serve as buffer for the difference y1 - y0.
-
-    Returns
-    -------
-    t : array, shape (...)
-        t-statistic.
-
-    Notes
-    -----
-    Based on scipy.stats.ttest_rel
-    df = n - 1
-    """
-    assert(y1.shape == y0.shape)
-    n_subjects = len(y1)
-    shape = y1.shape[1:]
-    n_tests = np.product(shape)
-
-    if np.log2(n_tests) > 13:
-        y1 = y1.reshape((n_subjects, n_tests))
-        y0 = y0.reshape((n_subjects, n_tests))
-        if out is None:
-            out = np.empty(shape)
-        out_flat = out.reshape(n_tests)
-        step = 2 ** 13
-        for i in xrange(0, n_tests, step):
-            i1 = i + step
-            if buff is None:
-                buff_ = None
-            else:
-                buff_ = buff[:, i:i1]
-            _t_rel(y1[:, i:i1], y0[:, i:i1], out_flat[i:i1], buff_)
-        return out
-
-    if buff is None:
-        buff = np.empty(y1.shape)
-    d = np.subtract(y1, y0, buff)
-    # out = mean(d) / sqrt(var(d) / n_subjects)
-    out = d.mean(0, out=out)
-    denom = d.var(0, ddof=1)
-    denom /= n_subjects
-    np.sqrt(denom, out=denom)
-    out /= denom
-    return out
 
 
 def _ttest_p(t, df, tail=0):
