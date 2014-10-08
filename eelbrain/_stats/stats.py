@@ -231,6 +231,15 @@ def standard_error_of_the_mean(y, x=None, match=None):
     return out
 
 
+def t_1samp(y, out=None):
+    "T-value for 1-sample t-test"
+    n_cases = len(y)
+    if out is None:
+        out = np.empty(y.shape[1:])
+    opt.t_1samp(y.reshape(n_cases, -1), out.ravel())
+    return out
+
+
 def ftest_f(p, df_num, df_den):
     "F values for given probabilities."
     p = np.asanyarray(p)

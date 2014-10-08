@@ -85,3 +85,16 @@ def test_sem_and_variability():
     stats.variability(y, None, None, '95%ci', False)
     stats.variability(y, x, None, '95%ci', True)
     stats.variability(y, x, match, '95%ci', True)
+
+
+def test_t_1samp():
+    "Test 1-sample t-test"
+    ds = datasets.get_uts(True)
+
+    y = ds['uts'].x
+    t = scipy.stats.ttest_1samp(y, 0, 0)[0]
+    assert_array_almost_equal(stats.t_1samp(y), t, 10)
+
+    y = ds['utsnd'].x
+    t = scipy.stats.ttest_1samp(y, 0, 0)[0]
+    assert_array_almost_equal(stats.t_1samp(y), t, 10)

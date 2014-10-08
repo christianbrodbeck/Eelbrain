@@ -457,3 +457,36 @@ def lm_t(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] a, double[:,
         se_res = ms_res ** 0.5
         for i_beta in range(df_x):
             out[i_beta, i] = betas[i_beta] * a[i_beta] / se_res
+
+
+def t_1samp(scalar[:,:] y, double[:] out):
+    """T-values for 1-sample t-test
+
+    Parameters
+    ----------
+    y : array (n_cases, n_tests)
+        Dependent Measurement.
+    out : array (n_tests,)
+        Container for output.
+    """
+    cdef long i, case
+    cdef double mean, denom
+
+    cdef int n_cases = y.shape[0]
+    cdef int n_tests = y.shape[1]
+    cdef double div = (n_cases - 1) * n_cases
+
+    for i in range(n_tests):
+        # mean
+        mean = 0
+        for case in range(n_cases):
+            mean += y[case, i]
+        mean /= n_cases
+
+        # variance
+        denom = 0
+        for case in range(n_cases):
+            denom += (y[case, i] - mean) ** 2
+        denom /= div
+        denom **= 0.5
+        out[i] = mean / denom

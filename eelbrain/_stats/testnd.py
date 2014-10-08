@@ -37,10 +37,10 @@ from .._utils import logger, LazyProperty
 from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                          NDVar, Var, Celltable, cellname, combine, Categorial,
                          UTS)
+from . import stats
 from .glm import _nd_anova
 from .opt import merge_labels
 from .permutation import resample, _resample_params
-from .stats import ftest_f, ftest_p
 from .test import star_factor
 
 
@@ -800,8 +800,9 @@ class ttest_1samp(_Result):
         n = len(ct.Y)
         df = n - 1
         y = ct.Y.summary()
-        tmap = _t_1samp(ct.Y.x, popmean)
+        tmap = stats.t_1samp(ct.Y.x)
         if popmean:
+            raise NotImplementedError("popmean != 0")
             diff = y - popmean
             if np.any(diff < 0):
                 diff.info['cmap'] = 'xpolar'
@@ -834,8 +835,9 @@ class ttest_1samp(_Result):
                                  parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
+                tmap_ = np.empty(np.prod(cdist.Y_perm.shape[1:]))
                 for Y_ in resample(cdist.Y_perm, samples, sign_flip=True):
-                    tmap_ = _t_1samp(Y_.x, 0)
+                    stats.t_1samp(Y_.x, tmap_)
                     cdist.add_perm(tmap_)
 
         # NDVar map of t-values
@@ -1264,26 +1266,6 @@ class ttest_rel(_Result):
         return args
 
 
-def _t_1samp(a, popmean):
-    "Based on scipy.stats.ttest_1samp"
-    n = len(a)
-    if np.prod(a.shape) > 2 ** 25:
-        a_flat = a.reshape((n, -1))
-        n_samp = a_flat.shape[1]
-        step = int(floor(2 ** 25 / n))
-        t_flat = np.empty(n_samp)
-        for i in xrange(0, n_samp, step):
-            t_flat[i:i + step] = _t_1samp(a_flat[:, i:i + step], popmean)
-        t = t_flat.reshape(a.shape[1:])
-        return t
-
-    d = np.mean(a, 0) - popmean
-    v = np.var(a, 0, ddof=1)
-    denom = np.sqrt(v / n)
-    t = np.divide(d, denom)
-    return t
-
-
 def _t_ind(x, n1, n2, equal_var=True):
     "Based on scipy.stats.ttest_ind"
     a = x[:n1]
@@ -1611,7 +1593,7 @@ class anova(_MultiEffectResult):
                 msg = "Only one of pmin, fmin and tfce can be specified"
                 raise ValueError(msg)
             elif pmin is not None:
-                thresholds = (ftest_f(pmin, e.df, df_den) for e, df_den in
+                thresholds = (stats.ftest_f(pmin, e.df, df_den) for e, df_den in
                               izip(effects, dfs_denom))
             elif fmin is not None:
                 thresholds = (abs(fmin) for _ in xrange(len(effects)))
@@ -1645,7 +1627,7 @@ class anova(_MultiEffectResult):
 
         f = []
         for e, fmap, df_den in izip(effects, fmaps, dfs_denom):
-            f0, f1, f2 = ftest_f((0.05, 0.01, 0.001), e.df, df_den)
+            f0, f1, f2 = stats.ftest_f((0.05, 0.01, 0.001), e.df, df_den)
             info = _cs.stat_info('f', f0, f1, f2)
             f_ = NDVar(fmap, dims, info, e.name)
             f.append(f_)
@@ -1693,7 +1675,7 @@ class anova(_MultiEffectResult):
             for e, fmap, df_den, cdist in izip(self._effects, self.f,
                                                self._dfs_denom, self._cdist):
                 # create f-map with cluster threshold
-                f0 = ftest_f(pmin, e.df, df_den)
+                f0 = stats.ftest_f(pmin, e.df, df_den)
                 info = _cs.stat_info('f', f0)
                 f_ = NDVar(fmap.x, fmap.dims, info, e.name)
                 # add overlay with cluster
@@ -1707,7 +1689,7 @@ class anova(_MultiEffectResult):
         p_uncorr = []
         for e, f, df_den in izip(self._effects, self.f, self._dfs_denom):
             info = _cs.sig_info()
-            pmap = ftest_p(f.x, e.df, df_den)
+            pmap = stats.ftest_p(f.x, e.df, df_den)
             p_ = NDVar(pmap, f.dims, info, e.name)
             p_uncorr.append(p_)
         self.p_uncorrected = p_uncorr
