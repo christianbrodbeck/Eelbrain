@@ -585,8 +585,8 @@ class SensorMap2d(_tb_sensors_mixin, _EelFigure):
         sens_name = getattr(sensors, 'sysname', None)
         if sens_name:
             ftitle = '%s: %s' % (ftitle, sens_name)
-        _EelFigure.__init__(self, ftitle, 1, 7, 1, False, *args, **kwargs)
         _tb_sensors_mixin.__init__(self)
+        _EelFigure.__init__(self, ftitle, 1, 7, 1, False, *args, **kwargs)
 
         # store args
         self._sensors = sensors
