@@ -11,7 +11,6 @@ from eelbrain import datasets, plot
 
 def test_map2d():
     "Test plot.SensorMap2d"
-    plot.configure_backend(False, False)
     ds = datasets.get_uts(utsnd=True)
     utsnd = ds['utsnd']
     p = plot.SensorMap2d(utsnd)
@@ -34,7 +33,6 @@ def test_map2d():
 
 def test_multi():
     "Test plot.SensorMaps"
-    plot.configure_backend(False, False)
     ds = datasets.get_uts(utsnd=True)
     Y = ds['utsnd']
     p = plot.SensorMaps(Y)

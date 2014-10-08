@@ -6,7 +6,6 @@ from eelbrain import plot
 
 def test_generate_colors():
     "Test functions for assigning colors to cells"
-
     cells_1 = ('A', 'B')
     cells_2 = ('a', 'b', 'c')
 
@@ -35,8 +34,6 @@ def test_plot_colorbar():
 
 def test_plot_colors():
     "Test plotting color schemes"
-    plot.configure_backend(False, False)
-
     cells_1 = ('A', 'B')
     cells_2 = ('a', 'b', 'c')
 

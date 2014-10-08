@@ -33,7 +33,6 @@ def test_{i}():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile({filename!r}, {{}})
     plt.close('all')
 

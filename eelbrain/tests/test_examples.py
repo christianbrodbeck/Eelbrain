@@ -37,7 +37,6 @@ def test_0():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('align.py', {})
     plt.close('all')
 
@@ -67,7 +66,6 @@ def test_1():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('report.py', {})
     plt.close('all')
 
@@ -97,7 +95,6 @@ def test_2():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('table.py', {})
     plt.close('all')
 
@@ -127,7 +124,6 @@ def test_3():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('mne_sample_loader.py', {})
     plt.close('all')
 
@@ -157,7 +153,6 @@ def test_4():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('simple meg.py', {})
     plt.close('all')
 
@@ -187,7 +182,6 @@ def test_5():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('source permutation cluster.py', {})
     plt.close('all')
 
@@ -217,7 +211,6 @@ def test_6():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('source permutation.py', {})
     plt.close('all')
 
@@ -247,7 +240,6 @@ def test_7():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('topo.py', {})
     plt.close('all')
 
@@ -277,7 +269,6 @@ def test_8():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('uts cluster permutation test.py', {})
     plt.close('all')
 
@@ -307,7 +298,6 @@ def test_9():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('uts.py', {})
     plt.close('all')
 
@@ -337,7 +327,6 @@ def test_10():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('ANCOVA_Crawley.py', {})
     plt.close('all')
 
@@ -367,7 +356,6 @@ def test_11():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('ANCOVA_rutherford.py', {})
     plt.close('all')
 
@@ -397,7 +385,6 @@ def test_12():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('ANOVA.py', {})
     plt.close('all')
 
@@ -427,7 +414,6 @@ def test_13():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('ANOVA_rutherford_1.py', {})
     plt.close('all')
 
@@ -457,7 +443,6 @@ def test_14():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('ANOVA_rutherford_2.py', {})
     plt.close('all')
 
@@ -487,7 +472,6 @@ def test_15():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('Fox_Prestige.py', {})
     plt.close('all')
 
@@ -517,7 +501,6 @@ def test_16():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('pdf.py', {})
     plt.close('all')
 
@@ -547,7 +530,6 @@ def test_17():
     # execute example
     logging.info("executing from %s" % tempdir)
     os.chdir(tempdir)
-    plot.configure_backend(False, False)
     execfile('simple.py', {})
     plt.close('all')
 
