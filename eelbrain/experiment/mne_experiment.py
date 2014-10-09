@@ -2631,13 +2631,13 @@ class MneExperiment(FileTree):
                     tstop=None, samples=1000, data='src',
                     sns_baseline=(None, 0), src_baseline=None, redo=False,
                     redo_test=False, **state):
-        """Create an HTML report on clusters
+        """Create an HTML report on spatio-temporal clusters
 
         Parameters
         ----------
         test : str
             Test for which to create a report (entry in MneExperiment.tests).
-        parc : None
+        parc : None | str
             Find clusters in each label of parc (as opposed to the whole
             brain).
         mask : None | str
@@ -2693,6 +2693,7 @@ class MneExperiment(FileTree):
         ds, res = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
                                  group, data, sns_baseline, src_baseline, True,
                                  True, redo_test)
+        test_kind, model, contrast = self.tests[test]
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
@@ -2702,7 +2703,6 @@ class MneExperiment(FileTree):
         include = 0.2  # uncorrected p to plot clusters
         info = List("Test Parameters:")
         info.add_item(self.format('{epoch} ~ {model}'))
-        test_kind, model, contrast = self.tests[test]
         info.add_item("Test: %s, %s" % (test_kind, contrast))
         # cluster info
         cinfo = info.add_sublist("Cluster Permutation Test")
@@ -2733,22 +2733,10 @@ class MneExperiment(FileTree):
         cinfo.add_item("%i permutations" % res.samples)
         cinfo.add_item("Time interval: %i - %i ms." % (round(tstart * 1000),
                                                        round(tstop * 1000)))
+
         report.append(info)
-
-        # add subject information to experiment
-        s_ds = table.repmeas('n', model, 'subject', ds=ds)
-        s_ds2 = self.show_subjects(asds=True)
-        s_ds.update(s_ds2[('subject', 'mri')])
-        s_table = s_ds.as_table(midrule=True, count=True, caption="All "
-                                "subjects included in the analysis with "
-                                "trials per condition")
-        report.append(s_table)
-
-        # add experiment state to report
-        t = self.show_state(hide=['annot', 'epoch-bare',
-                                  'epoch-stim', 'ext', 'hemi', 'label',
-                                  'subject', 'model', 'mrisubject'])
-        report.append(t)
+        report.append(self._report_subject_info(ds, model))
+        report.append(self._report_state())
 
         y = ds['srcm']
         legend = None
@@ -2829,6 +2817,135 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne', 'surfer'))
 
         report.save_html(dst)
+
+    def make_report_rois(self, test, parc=None, pmin=None, tstart=0.15, tstop=None,
+                         samples=10000, sns_baseline=(None, 0), src_baseline=None,
+                         redo=False, **state):
+        """Create an HTML report on ROI time courses
+
+        Parameters
+        ----------
+        test : str
+            Test for which to create a report (entry in MneExperiment.tests).
+        parc : str
+            Parcellation that defines ROIs.
+        pmin : None | scalar, 1 > pmin > 0 | 'tfce'
+            Equivalent p-value for cluster threshold, or 'tfce' for
+            threshold-free cluster enhancement.
+        tstart, tstop : None | scalar
+            Time window for finding clusters.
+        samples : int > 0
+            Number of samples used to determine cluster p values for spatio-
+            temporal clusters (default 1000).
+        sns_baseline : None | tuple
+            Sensor space baseline interval.
+        src_baseline : None | tuple
+            Source space baseline interval.
+        redo : bool
+            If the target file already exists, delete and recreate it.
+        """
+        parc = self.get('parc', parc=parc, test=test, **state)
+        if not parc:
+            raise ValueError("No parcellation specified")
+        folder = "%s ROIs" % parc.capitalize()
+        self._set_test_options('src', sns_baseline, src_baseline, pmin, tstart,
+                               tstop)
+        resname = "{epoch} {test} {test_options}"
+        dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
+                       folder=folder, resname=resname, ext='html', test=test,
+                       **state)
+        if not redo and os.path.exists(dst):
+            return
+
+        # load data
+        group = self.get('group')
+        ds = self.load_evoked_stc(group, sns_baseline, src_baseline, ind_stc=True)
+        test_kind, model, contrast = self.tests[test]
+
+        # start report
+        title = self.format('{experiment} {epoch} {test} {test_options}')
+        report = Report(title, site_title=title)
+
+        # method intro
+        info = List("Test Parameters:")
+        info.add_item(self.format('{epoch} ~ {model}'))
+        info.add_item("Test: %s, %s" % (test_kind, contrast))
+        # cluster info
+        cinfo = info.add_sublist("Cluster Permutation Test")
+        if pmin is None:
+            cinfo.add_item("P-values based on maximum value in randomizations")
+        elif pmin == 'tfce':
+            cinfo.add_item("Threshold-free cluster enhancement (Smith & "
+                           "Nichols, 2009)")
+        else:
+            cinfo.add_item("Cluster threshold equivalent to p = %s" % pmin)
+            mintime = self.cluster_criteria.get('mintime', None)
+            # cluster criteria
+            if mintime is None:
+                cinfo.add_item("No cluster minimum duration")
+            else:
+                cinfo.add_item("Cluster minimum duration: %i ms" %
+                               round(mintime * 1000))
+        cinfo.add_item("%i permutations" % samples)
+        cinfo.add_item("Time interval: %i - %i ms." % (round(tstart * 1000),
+                                                       round(tstop * 1000)))
+
+        report.append(info)
+        report.append(self._report_subject_info(ds, model))
+        report.append(self._report_state())
+
+        # add parc image
+        section = report.add_section(parc)
+        caption = "ROIs in the %s parcellation." % parc
+        self._source_parc_image(section, caption)
+
+        # load labels
+        with self._temporary_state:
+            labels = self.load_labels(mrisubject=self.get('common_brain'),
+                                      match=False)
+        labels_lh = []
+        labels_rh = []
+        for label in labels:
+            if label.startswith('unknown'):
+                continue
+            elif label.endswith('_lh'):
+                labels_lh.append(label)
+            elif label.endswith('_rh'):
+                labels_rh.append(label)
+            else:
+                raise NotImplementedError("Label named %s" % repr(label.name))
+        labels_lh.sort()
+        labels_rh.sort()
+
+        # add content body
+        for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
+            section = report.add_section("%s Hemisphere" % hemi)
+            for label in label_names:
+                self.add_stc_label(ds, label)
+                y = ds[label]
+                res = self._make_test(y, ds, test_kind, model, contrast,
+                                      samples, pmin, tstart, tstop, None, None)
+                self._report_roi_tc(section, ds, label, model, res, tstart,
+                                    tstop, samples)
+
+        report.sign(('eelbrain', 'mne', 'surfer'))
+        report.save_html(dst)
+
+    def _report_state(self):
+        t = self.show_state(hide=['annot', 'epoch-bare',
+                                  'epoch-stim', 'ext', 'hemi', 'label',
+                                  'subject', 'model', 'mrisubject'])
+        return t
+
+    def _report_subject_info(self, ds, model):
+        # add subject information to experiment
+        s_ds = table.repmeas('n', model, 'subject', ds=ds)
+        s_ds2 = self.show_subjects(asds=True)
+        s_ds.update(s_ds2[('subject', 'mri')])
+        s_table = s_ds.as_table(midrule=True, count=True, caption="All "
+                                "subjects included in the analysis with "
+                                "trials per condition")
+        return s_table
 
     def _source_parc_image(self, section, caption):
         "Add picture of the current parcellation"
@@ -2982,6 +3099,48 @@ class MneExperiment(FileTree):
         figure.append(res)
 
         return legend
+
+    def _report_roi_tc(self, doc, ds, label, model, res, tstart, tstop, samples):
+        "Plot ROI time course with cluster permutation test"
+        # add title with significance
+        label_name = label[:-3].capitalize()
+        hemi = label[-2].capitalize()
+        title = ' '.join((label_name, hemi))
+        clusters = res.find_clusters()
+        if clusters.n_cases:
+            idx = clusters.eval("p.argmin()")
+            max_sig = clusters['sig'][idx]
+            if max_sig:
+                title += max_sig
+        section = doc.add_section(title)
+
+        # compose captions
+        tc_caption = "Source estimates in %s (%s)." % (label_name, hemi)
+        if clusters.n_cases:
+            c_caption = ("Clusters between %i and %i ms with %i permutations."
+                         % (tstart * 1000, tstop * 1000, samples))
+        else:
+            c_caption = ("No clusters found between %i and %i ms."
+                         % (tstart * 1000, tstop * 1000))
+            tc_caption = ' '.join((tc_caption, c_caption))
+
+        # add UTSStat plot
+        p = plot.UTSStat(label, model, match='subject', ds=ds, legend=None,
+                         clusters=clusters)
+        ax = p._axes[0]
+        ax.axvline(tstart, color='k')
+        ax.axvline(tstop, color='k')
+        image = p.image('%s_cluster.svg')
+        legend_p = p.plot_legend()
+        legend = legend_p.image("Legend.svg")
+        section.add_figure(tc_caption, [image, legend])
+        p.close()
+        legend_p.close()
+
+        # add cluster table
+        if clusters.n_cases:
+            t = clusters.as_table(midrule=True, caption=c_caption)
+            section.append(t)
 
     def make_src(self, redo=False, **kwargs):
         """Make the source space
