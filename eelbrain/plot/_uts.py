@@ -251,15 +251,13 @@ class UTSStat(_EelFigure):
             enable = not all(p.cluster_plt.clusters is None for p in self._plots)
             self._cluster_btn.Enable(enable)
 
-    def plot_legend(self, loc='fig', figsize=(2, 2)):
+    def plot_legend(self, loc='fig', *args, **kwargs):
         """Plots (or removes) the legend from the figure.
 
         Parameters
         ----------
         loc : False | 'fig' | str | int
             Where to plot the legend (see Notes; default 'fig').
-        figsize : tuple of 2 int
-            Figure size if plotting to figure (i.e., loc == 'fig').
 
         Returns
         -------
@@ -299,7 +297,7 @@ class UTSStat(_EelFigure):
             labels = [cellname(cell) for cell in cells]
             handles = [self._legend_handles[cell] for cell in cells]
             if loc == 'fig':
-                return _base.Legend(handles, labels, figsize=figsize)
+                return _base.Legend(handles, labels, *args, **kwargs)
             else:
                 # take care of old legend; remove() not implemented as of mpl 1.3
                 if hasattr(self, 'legend'):
