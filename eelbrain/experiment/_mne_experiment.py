@@ -3181,12 +3181,12 @@ class MneExperiment(FileTree):
                 mne.setup_source_space(subject, dst, spacing, overwrite=redo,
                                        subjects_dir=subjects_dir, add_dist=True)
 
-    def _make_test(self, y, ds, test, model, contrast, samples, pmin, tstart,
-                   tstop, dist_dim, parc_dim):
+    def _make_test(self, y, ds, test_kind, model, contrast, samples, pmin,
+                   tstart, tstop, dist_dim, parc_dim):
         """just compute the test result"""
         # find cluster criteria
         kwargs = {'samples': samples, 'tstart': tstart, 'tstop': tstop,
-                  'dist_dim': dist_dim, 'parc':parc_dim}
+                  'dist_dim': dist_dim, 'parc': parc_dim}
         if pmin == 'tfce':
             kwargs['tfce'] = True
         elif pmin is not None:
@@ -3200,7 +3200,7 @@ class MneExperiment(FileTree):
                 kwargs['minsensor'] = self.cluster_criteria['minsensor']
 
         # perform test
-        if test == 'ttest_rel':
+        if test_kind == 'ttest_rel':
             c1, tail, c0 = re.match(r"\s*([\w|]+)\s*([<=>])\s*([\w|]+)",
                                     contrast).groups()
             if '|' in c1:
@@ -3218,13 +3218,13 @@ class MneExperiment(FileTree):
 
             res = testnd.ttest_rel(y, model, c1, c0, 'subject', ds=ds,
                                    tail=tail, **kwargs)
-        elif test == 't_contrast_rel':
+        elif test_kind == 't_contrast_rel':
             res = testnd.t_contrast_rel(y, model, contrast, 'subject', ds=ds,
                                         **kwargs)
-        elif test == 'anova':
+        elif test_kind == 'anova':
             res = testnd.anova(y, contrast, match='subject', ds=ds, **kwargs)
         else:
-            raise ValueError("test=%s" % repr(test))
+            raise ValueError("test_kind=%s" % repr(test_kind))
 
         return res
 
