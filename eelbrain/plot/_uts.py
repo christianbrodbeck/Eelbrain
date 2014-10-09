@@ -56,7 +56,8 @@ class UTSStat(_EelFigure):
     legend : str | None
         matplotlib figure legend location argument
     axtitle : str | None
-        Axes title. '{name}' is formatted to the category name.
+        Axes title, '{name}' is formatted to the category name. When plotting
+        only one axes, use the `title` argument.
     xlabel, ylabel : True |str | None
         X- and y axis label. If True the labels will be inferred from the data.
     invy : bool
@@ -175,11 +176,7 @@ class UTSStat(_EelFigure):
         self._legend_handles = {}
         if Xax is None:
             ax = self._axes[0]
-            if axtitle and '{name}' in axtitle:
-                title_ = axtitle.format(name=ct.Y.name)
-            else:
-                title_ = axtitle
-            p = _ax_uts_stat(ax, ct, colors, main, error, dev_data, title_,
+            p = _ax_uts_stat(ax, ct, colors, main, error, dev_data, None,
                              ylabel, xdim, xlim, xlabel, invy, bottom, top,
                              hline, clusters, pmax, ptrend)
             self._plots.append(p)
