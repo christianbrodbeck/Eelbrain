@@ -10,7 +10,8 @@ import wx
 from .._wxgui import get_app
 
 
-def draw_text(text, face='Scheherazade', size=42, spo2=False, w=None, h=None, color=None):
+def draw_text(text, face='Scheherazade', size=42, spo2=False, w=None, h=None,
+              fg=None, bg=None):
     """
     Use wxPython's text rendering engine to convert unicode text to an image
     in the form of a numpy array.
@@ -29,26 +30,34 @@ def draw_text(text, face='Scheherazade', size=42, spo2=False, w=None, h=None, co
     w, h : None | int
         Specify the desired width and/or height for the output array.
         If None, the shape is determined based on the text size.
-    color : None | array, len = 3
-        Color of the text. If None (monochrome), an array of shape (h, w) is
-        returned. If an array of three numbers, they are interpreted as RGB
-        values and an array of shape (h, w, 3) is returned.
-        .
+    fg : 0-255 RGB tuple
+        Text foreground color (overrides ``color``)
+    bg : 0-255 RGB tuple
+        Text background color.
+
+    Returns
+    -------
+    array : (h, w, 3) | (h, w)
+        If fg and/or bg are specified an RGB array, otherwise a monochromatic
+        array.
     """
     if (w is not None or h is not None) and spo2:
         err = ("spo2 can not be true when providing custom width and/ir "
                "height values.")
         raise TypeError(err)
+    mono = not (fg or bg)
 
     get_app()
     font = wx.Font(size, family=wx.FONTFAMILY_UNKNOWN, style=wx.FONTSTYLE_NORMAL,
                    weight=wx.FONTWEIGHT_NORMAL, face=face)
 
+    # device context for drawing
     dc = wx.MemoryDC()
     dc.SetFont(font)
+
+    # determine scales using temporary bitmap
     res = 512
     dc.SelectObject(wx.EmptyBitmap(res, res))
-
     tw, th = dc.GetTextExtent(text)
     if w is None:
         w = tw
@@ -65,18 +74,25 @@ def draw_text(text, face='Scheherazade', size=42, spo2=False, w=None, h=None, co
                "(w=%i, h=%i)." % (tw, th, w, h))
         raise ValueError(err)
 
+    # draw in nea bitmap
     bmp = wx.EmptyBitmap(w, h)
     dc.SelectObject(bmp)
+    if fg is not None:
+        dc.SetTextForeground(fg)
+    if bg is not None:
+        dc.SetTextBackground(bg)
+        brush = wx.Brush(bg, wx.SOLID)
+        dc.SetBackground(brush)
     dc.Clear()
 
     dc.DrawText(text, (w - tw) / 2, (h - th) / 2)
 
     im = bmp.ConvertToImage()
     a = np.fromstring(im.GetData(), dtype='uint8').reshape((h, w, 3))
-    if color is None:
+    if mono:
         return 255 - a[:, :, 0]
     else:
-        return a * np.reshape(color, (1, 1, 3))
+        return a
 
 
 def draw_paragraph(lines, face='Scheherazade', size=42, align='center'):
