@@ -26,10 +26,9 @@ import shutil
 import subprocess
 import tempfile
 
-from mne.utils import get_subjects_dir, run_subprocess
+from mne.utils import get_subjects_dir
 
 from . import ui
-from .kit import MarkerFile
 
 
 # handling binaries ---
@@ -127,21 +126,7 @@ def set_bin_dir(package):
             raise IOError("%r bin directory not set" % package)
 
 
-
-
-
-# create dictionary of available sns files
-_sns_files = {}
-_sns_dir = __file__
-for i in xrange(2):
-    _sns_dir = os.path.dirname(_sns_dir)
-_sns_dir = os.path.join(_sns_dir, 'Resources', 'sns')
-for name in ['NYU-nellab-2008', 'NYU-nellab-2010']:
-    _sns_files[name] = os.path.join(_sns_dir, name + '.txt')
-
-
 _verbose = 1
-
 
 
 def command_exists(cmd):
@@ -601,137 +586,3 @@ def _fs_subjects(arg, exclude=[], subjects_dir=None):
     else:
         subjects = [arg]
     return subjects
-
-
-def mri_annotation2label(subject='*', annot='aparc',
-                         dest=os.path.join("{sdir}", "label", "{annot}"),
-                         hemi='*', subjects_dir=None):
-    """
-    Calls ``mri_annotation2label`` (`freesurfer wiki
-    <http://surfer.nmr.mgh.harvard.edu/fswiki/mri_annotation2label>`_)
-
-    mri_dir : str(path)
-        Path containing mri subject directories (freesurfer's ``SUBJECTS_DIR``).
-
-    subject : str
-        Name of the subject ('*' uses fnmatch to find folders in ``mri_dir``).
-
-    annot : str
-        Name of the annotation file (e.g., ``'aparc'``, ...).
-
-    dest : str(path)
-        Destination for the label files. {sdir}" and "{annot}" are filled in
-        appropriately.
-
-    hemi : 'lh' | 'rh' | '*'
-        Hemisphere to process; '*' proceses both.
-
-    """
-    hemis = _fs_hemis(hemi)
-    subjects = _fs_subjects(subject)
-    subjects_dir = get_subjects_dir(subjects_dir)
-
-    # progress monitor
-    i_max = len(subjects) * len(hemis)
-    if len(subjects) > 1:
-        prog = ui.progress_monitor(i_max, "mri_annotation2label", "")
-    else:
-        prog = None
-
-    for subject in subjects:
-        sdir = os.path.join(subjects_dir, subject)
-        outdir = dest.format(sdir=sdir, annot=annot)
-
-        for hemi in hemis:
-            if prog:
-                prog.message("Processing: %s - %s" % (subject, hemi))
-
-            cmd = [get_bin("freesurfer", "mri_annotation2label"),
-                   '--annotation', annot,
-                   '--subject', subject,
-                   '--hemi', hemi,
-                   '--outdir', outdir,
-                   ]
-
-            _run(cmd, cwd=subjects_dir)
-            if prog:
-                prog.advance()
-
-
-
-# def mri_label2label(mri_dir, src_subject='fsaverage', tgt_subject='*',
-#                    label='{sdir}/label/*-{hemi}', hemi='*',
-#                    regmethod='surface'):
-#    """
-#    Calls the freesurfer command ``mri_label2label``.
-#
-#    mri_dir : str
-#        Path containing mri subject directories (freesurfer's ``SUBJECTS_DIR``)
-#    src_subject : str
-#        Subject for which the label exists (default: ``'fsaverage'``)
-#    tgt_subject : str
-#        subject for which the label should be created (default ``'*'``: all
-#        subjects except ``src_subjects``)
-#    label : str
-#        '{sdir}' and '{hemi}' are filled in using :py:meth:`str.format`;
-#        '*' is expanded using fnmatch;
-#    hemi : 'lh' | 'rh' | '*'
-#        only required for ``regmethod=='surface'``
-#
-#    """
-#    src_sdir = os.path.join(mri_dir, src_subject)
-#
-#    # find subjects
-#    subjects = _fs_subjects(tgt_subject, mri_dir, [src_subject]) # !!! function changed
-#
-#    # find hemispheres
-#    hemis = _fs_hemis(hemi)
-#
-#    # test label pattern (TODO: use glob)
-#    pattern_head, _ = os.path.split(label)
-#    if '{hemi}' in pattern_head:
-#        raise NotImplementedError("{hemi} in directory in %r" % label)
-#    if '*' in pattern_head:
-#        raise NotImplementedError("'*' in directory in %r" % label)
-#
-#    # find labels
-#    labels = []  # [(label, hemi), ...] paths to labels with {sdir}
-#    for hemi in hemis:
-#        label_pattern = label.format(sdir=src_sdir, hemi=hemi)
-#        label_dir, label_name = os.path.split(label_pattern)
-#        pattern = os.extsep.join((label_name, 'label'))
-#        label_names = fnmatch.filter(os.listdir(label_dir), pattern)
-#        labels.extend((os.path.join(pattern_head, name), hemi) for name in label_names)
-#
-#    # setup fs
-#    os.environ['SUBJECTS_DIR'] = mri_dir
-#
-#    # convert all labels
-#    prog = ui.progress_monitor(len(subjects) * len(labels), "mri_label2label", "")
-#    for tgt_subject in subjects:
-#        tgt_sdir = os.path.join(mri_dir, tgt_subject)
-#        tgt_dir = pattern_head.format(sdir=tgt_sdir)
-#        if not os.path.exists(tgt_dir):
-#            os.mkdir(tgt_dir)
-#
-#        for label, hemi in labels:
-#            prog.message("%s" % label.format(sdir=tgt_subject))
-#            tgt_label = label.format(sdir=tgt_sdir)
-#            cmd = [get_bin("freesurfer", "mri_label2label"),
-#                   '--srcsubject', src_subject,
-#                   '--trgsubject', tgt_subject,
-#                   '--srclabel', label.format(sdir=src_sdir),
-#                   '--trglabel', tgt_label,
-#                   '--regmethod', regmethod,
-#                   ]
-#            if regmethod == 'surface':
-#                cmd.extend(('--hemi', hemi))
-#
-#            sout, serr = _run(cmd, cwd=mri_dir)
-#            if not os.path.exists(tgt_label):
-#                err = "$ mri_label2label failed: %r not created" % tgt_label
-#                scmd = "Complete commend:\n  %s" % ('\n  '.join(cmd))
-#                msg = '\n\n'.join((scmd, sout, serr, err))
-#                raise RuntimeError(msg)
-#
-#            prog.advance()
