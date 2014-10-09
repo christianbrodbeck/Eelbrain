@@ -99,7 +99,7 @@ from .._data_obj import isdatalist, UTS, DimensionMismatchError
 from ..fmtxt import List, Report
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from .experiment import FileTree
+from ._experiment import FileTree
 
 
 __all__ = ['MneExperiment']

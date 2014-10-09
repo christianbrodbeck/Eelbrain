@@ -2,5 +2,5 @@
 
 """Objects for managing files"""
 
-from .experiment import TreeModel, FileTree
-from .mne_experiment import MneExperiment
+from ._experiment import TreeModel, FileTree
+from ._mne_experiment import MneExperiment
