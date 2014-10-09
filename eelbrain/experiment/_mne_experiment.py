@@ -1851,7 +1851,7 @@ class MneExperiment(FileTree):
                     cmd = ["mri_surf2surf", "--srcsubject", common_brain,
                            "--trgsubject", mrisubject, "--sval-annot", parc,
                            "--tval", parc, "--hemi", hemi]
-                    self.run_subp(cmd, 0)
+                    self._run_subp(cmd)
 
                 mri_sdir = self.get('mri-sdir')
                 fix_annot_names(mrisubject, parc, common_brain,
@@ -3394,52 +3394,21 @@ class MneExperiment(FileTree):
         fif_dir = self.get('raw-dir', subject=subject)
         subp.run_mne_browse_raw(fif_dir, modal)
 
-    def run_subp(self, cmd, workers=2):
-        """
-        Add a command to the processing queue.
-
-        Commands should have a form that can be submitted to
-        :func:`subprocess.call`.
+    def _run_subp(self, cmd):
+        """Run a command as subprocess.
 
         Parameters
         ----------
         cmd : list of str
-            The command.
-        workers : int
-            The number of workers to create. For 0, the process is executed in
-            interpreter's thread. If > 0, the parameter is only used the
-            first time the method is called.
-
-        Notes
-        -----
-        The task queue can be inspected in the :attr:`queue` attribute
+            The command. Should have a form that can be submitted to
+            :func:`subprocess.call`.
         """
         if cmd is None:
             return
 
-        if workers == 0:
-            env = os.environ.copy()
-            self.set_env(env)
-            mne.utils.run_subprocess(cmd, env=env)
-            return
-
-        if not hasattr(self, 'queue'):
-            self.queue = Queue()
-            env = os.environ.copy()
-            self.set_env(env)
-
-            def worker():
-                while True:
-                    cmd = self.queue.get()
-                    subprocess.call(cmd, env=env)
-                    self.queue.task_done()
-
-            for _ in xrange(workers):
-                t = Thread(target=worker)
-                t.daemon = True
-                t.start()
-
-        self.queue.put(cmd)
+        env = os.environ.copy()
+        env['SUBJECTS_DIR'] = self.get('mri-sdir')
+        mne.utils.run_subprocess(cmd, env=env)
 
     def set(self, subject=None, **state):
         """
@@ -3515,16 +3484,6 @@ class MneExperiment(FileTree):
         self._params['rej'] = rej_args
         cov_rej = rej_args.get('cov-rej', rej)
         self._fields['cov-rej'] = cov_rej
-
-    def set_env(self, env=os.environ):
-        """
-        Set environment variables
-
-        for mne/freesurfer:
-
-         - SUBJECTS_DIR
-        """
-        env['SUBJECTS_DIR'] = self.get('mri-sdir')
 
     def set_inv(self, ori='free', depth=None, reg=False, snr=3, method='dSPM',
                 pick_normal=False):
