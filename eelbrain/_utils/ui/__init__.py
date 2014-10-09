@@ -2,34 +2,27 @@
 Module to deploy GUI elements depending on the current environment.
 
 """
-
-import logging
 import os
 
-try:
-    import wx
-    import wx_ui
-except ImportError:
-    logging.info("wx unavailable; using tk_ui")
-    wx_ui = False
-
-
-__all__ = ['ask', 'ask_color', 'ask_dir', 'ask_saveas', 'ask_str',
-           'copy_file'
-           'message',
-           'progress_monitor', 'kill_progress_monitors',
-           'test_targetpath',
-           ]
+USE_WX = True
 
 _progress_monitors = []
 
 
 def get_ui():
-    if wx_ui and bool(wx.GetApp()):
-        return wx_ui
-    else:
-        import tk_ui
-        return tk_ui
+    global USE_WX
+
+    if USE_WX:
+        try:
+            from . import wx_ui
+            from ..._wxgui import  get_app
+            get_app()
+            return wx_ui
+        except ImportError:
+            USE_WX = False
+
+    from . import tk_ui
+    return tk_ui
 
 
 def ask_saveas(title="Save File", message="Please Pick a File Name",
@@ -114,9 +107,6 @@ def kill_progress_monitors():
     while len(_progress_monitors) > 0:
         p = _progress_monitors.pop()
         p.terminate()
-
-def show_help(obj):
-    return get_ui().show_help(obj)
 
 
 def message(title, message="", icon='i'):

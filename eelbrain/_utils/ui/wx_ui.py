@@ -7,10 +7,6 @@ import wx
 _ext_re = re.compile(r"\*\.(\w+)")
 
 
-def GetWxParent():
-    return wx.GetApp().GetTopWindow()
-
-
 def _wildcard(filetypes):
     return '|'.join(map('|'.join, filetypes))
 
@@ -22,7 +18,7 @@ def ask_saveas(title, message, filetypes, defaultDir, defaultFile):
     else:
         wildcard = ""
 
-    dialog = wx.FileDialog(GetWxParent(), message, wildcard=wildcard,
+    dialog = wx.FileDialog(None, message, wildcard=wildcard,
                            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
     dialog.SetTitle(title)
     if defaultDir:
@@ -53,7 +49,7 @@ def ask_dir(title="Select Folder",
     if must_exist:
         style = style | wx.DD_DIR_MUST_EXIST
 
-    dialog = wx.DirDialog(GetWxParent(), message, name=title,
+    dialog = wx.DirDialog(None, message, name=title,
                           style=style)
     dialog.SetTitle(title)
     if dialog.ShowModal() == wx.ID_OK:
@@ -73,7 +69,7 @@ def ask_file(title, message, filetypes, directory, mult):
     if mult:
         style = style | wx.FD_MULTIPLE
     wildcard = _wildcard(filetypes)
-    dialog = wx.FileDialog(GetWxParent(), message, directory,
+    dialog = wx.FileDialog(None, message, directory,
                            wildcard=wildcard, style=style)
     dialog.SetTitle(title)
     if dialog.ShowModal() == wx.ID_OK:
@@ -103,7 +99,7 @@ def ask(title="Overwrite File?",
         style = style | wx.YES_DEFAULT
     elif default == False:
         style = style | wx.NO_DEFAULT
-    dialog = wx.MessageDialog(GetWxParent(), message, title, style)
+    dialog = wx.MessageDialog(None, message, title, style)
     answer = dialog.ShowModal()
     if answer == wx.ID_NO:
         return False
@@ -113,7 +109,7 @@ def ask(title="Overwrite File?",
         return None
 
 def ask_color(default=(0, 0, 0)):
-    dlg = wx.ColourDialog(GetWxParent())
+    dlg = wx.ColourDialog(None)
     dlg.GetColourData().SetChooseFull(True)
     if dlg.ShowModal() == wx.ID_OK:
         data = dlg.GetColourData()
@@ -126,7 +122,7 @@ def ask_color(default=(0, 0, 0)):
 
 
 def ask_str(msg, title, default=''):
-    dlg = wx.TextEntryDialog(GetWxParent(), msg, title, default)
+    dlg = wx.TextEntryDialog(None, msg, title, default)
     if dlg.ShowModal() == wx.ID_OK:
         return str(dlg.GetValue()).strip()
     else:
@@ -152,7 +148,7 @@ def message(title, message="", icon='i'):
         pass
     else:
         raise ValueError("Invalid icon argument: %r" % icon)
-    dlg = wx.MessageDialog(GetWxParent(), message, title, style)
+    dlg = wx.MessageDialog(None, message, title, style)
     dlg.ShowModal()
 
 
@@ -180,9 +176,6 @@ class progress_monitor:
             self.indeterminate = False
 
         self.dialog = wx.ProgressDialog(title, message, i_max, None, style)
-        # parent=None instead of GetWxParent() because the dialog's parent
-        # is unresponsive as long as progress dialog is shown
-        # (and stays unresponsive if the underlaying process raises an error)
         self.i = 0
         if self.indeterminate:
             self.dialog.Pulse()
@@ -214,11 +207,6 @@ class progress_monitor:
         if hasattr(self.dialog, 'Close'):
             self.dialog.Close()
             self.dialog.Destroy()
-
-
-def show_help(obj):
-    app = GetWxParent()
-    app.help_lookup(obj)
 
 
 def copy_file(path):
