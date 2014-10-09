@@ -7,6 +7,7 @@ import numpy as np
 from scipy.io import savemat
 import wx
 
+from .._wxgui import get_app
 
 
 def draw_text(text, face='Scheherazade', size=42, spo2=False, w=None, h=None, color=None):
@@ -39,6 +40,7 @@ def draw_text(text, face='Scheherazade', size=42, spo2=False, w=None, h=None, co
                "height values.")
         raise TypeError(err)
 
+    get_app()
     font = wx.Font(size, family=wx.FONTFAMILY_UNKNOWN, style=wx.FONTSTYLE_NORMAL,
                    weight=wx.FONTWEIGHT_NORMAL, face=face)
 
