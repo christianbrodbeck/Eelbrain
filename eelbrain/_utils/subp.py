@@ -60,13 +60,13 @@ _bin_dirs = {'mne': 'None',
              'freesurfer': 'None',
              'edfapi': 'None'}
 
-try:
-    with open(_cfg_path, 'rb') as fid:
-        _saved_dirs = pickle.load(fid)
-    _bin_dirs.update(_saved_dirs)
-    _set_bin_dirs(**_bin_dirs)
-except:
-    logging.info("subp: loading paths failed at %r" % _cfg_path)
+# try:
+#     with open(_cfg_path, 'rb') as fid:
+#         _saved_dirs = pickle.load(fid)
+#     _bin_dirs.update(_saved_dirs)
+#     _set_bin_dirs(**_bin_dirs)
+# except:
+#     logging.info("subp: loading paths failed at %r" % _cfg_path)
 
 def get_bin(package, name):
     if package not in _bin_dirs:
