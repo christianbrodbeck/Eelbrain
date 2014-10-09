@@ -290,7 +290,7 @@ def hasrandom(x):
 
 
 def ascategorial(x, sub=None, ds=None):
-    if isinstance(x, str):
+    if isinstance(x, basestring):
         if ds is None:
             err = ("Parameter was specified as string, but no Dataset was "
                    "specified")
@@ -310,7 +310,7 @@ def ascategorial(x, sub=None, ds=None):
 
 def asdataobject(x, sub=None, ds=None):
     "Convert to any data object or numpy array."
-    if isinstance(x, str):
+    if isinstance(x, basestring):
         if ds is None:
             err = ("Data object was specified as string, but no Dataset was "
                    "specified")
@@ -331,7 +331,7 @@ def asdataobject(x, sub=None, ds=None):
 
 def asepochs(x, sub=None, ds=None):
     "Convert to mne Epochs object"
-    if isinstance(x, str):
+    if isinstance(x, basestring):
         if ds is None:
             err = ("Epochs object was specified as string, but no Dataset was "
                    "specified")
@@ -349,7 +349,7 @@ def asepochs(x, sub=None, ds=None):
 
 
 def asfactor(x, sub=None, ds=None):
-    if isinstance(x, str):
+    if isinstance(x, basestring):
         if ds is None:
             err = ("Factor was specified as string, but no Dataset was "
                    "specified")
@@ -370,7 +370,7 @@ def asfactor(x, sub=None, ds=None):
 
 
 def asmodel(x, sub=None, ds=None):
-    if isinstance(x, str):
+    if isinstance(x, basestring):
         if ds is None:
             err = ("Model was specified as string, but no Dataset was "
                    "specified")
@@ -389,7 +389,7 @@ def asmodel(x, sub=None, ds=None):
 
 
 def asndvar(x, sub=None, ds=None):
-    if isinstance(x, str):
+    if isinstance(x, basestring):
         if ds is None:
             err = ("Ndvar was specified as string, but no Dataset was "
                    "specified")
@@ -420,7 +420,7 @@ def asndvar(x, sub=None, ds=None):
 
 def asnumeric(x, sub=None, ds=None):
     "Var, NDVar"
-    if isinstance(x, str):
+    if isinstance(x, basestring):
         if ds is None:
             err = ("Numeric argument was specified as string, but no Dataset "
                    "was specified")
@@ -438,7 +438,7 @@ def asnumeric(x, sub=None, ds=None):
 
 def assub(sub, ds=None):
     "Interpret the sub argument."
-    if isinstance(sub, str):
+    if isinstance(sub, basestring):
         if ds is None:
             err = ("the sub parameter was specified as string, but no Dataset "
                    "was specified")
@@ -449,7 +449,7 @@ def assub(sub, ds=None):
 
 def asuv(x, sub=None, ds=None):
     "As Var or Factor"
-    if isinstance(x, str):
+    if isinstance(x, basestring):
         if ds is None:
             err = ("Parameter was specified as string, but no Dataset was "
                    "specified")
@@ -470,7 +470,7 @@ def asuv(x, sub=None, ds=None):
 
 
 def asvar(x, sub=None, ds=None):
-    if isinstance(x, str):
+    if isinstance(x, basestring):
         if ds is None:
             err = "Var was specified as string, but no Dataset was specified"
             raise TypeError(err)
@@ -3726,7 +3726,7 @@ class Dataset(collections.OrderedDict):
         return rep_tmp % fmt
 
     def __setitem__(self, index, item, overwrite=True):
-        if isinstance(index, str):
+        if isinstance(index, basestring):
             # test if name already exists
             if (not overwrite) and (index in self):
                 raise KeyError("Dataset already contains variable of name %r" % index)
@@ -3762,9 +3762,9 @@ class Dataset(collections.OrderedDict):
                        "access to NDVars is not implemented")
                 raise NotImplementedError(err)
             key, idx = index
-            if isinstance(idx, str):
+            if isinstance(idx, basestring):
                 key, idx = idx, key
-            elif not isinstance(key, str):
+            elif not isinstance(key, basestring):
                 TypeError("Dataset indexes need variable specified as string")
 
             if key in self:
