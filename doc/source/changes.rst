@@ -3,6 +3,15 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.10
+-----------
+
+* Tools for generating colors for categories (see :ref:`ref-plotting`).
+* Plots now all largely respect matplotlib rc-parameters (see
+  `Customizing Matplotlib <http://matplotlib.org/users/customizing.html>`_).
+* Fixed a memory leak in the :mod:`testnd` module that could slightly affect
+  permutation based p-values.
+
 New in 0.9
 ----------
 
