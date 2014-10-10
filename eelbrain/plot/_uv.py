@@ -306,7 +306,7 @@ class Boxplot(_SimpleFigure):
         hatch : bool | str
             Matplotlib Hatch pattern to fill boxes (True to use the module
             default; default is False).
-        colors : bool | sequence of matplitlib colors
+        colors : bool | sequence | dict of matplitlib colors
             Matplotlib colors to use for boxes (True to use the module default;
             default is False, i.e. no colors).
         ds : None | Dataset
@@ -323,28 +323,39 @@ class Boxplot(_SimpleFigure):
         """
         # get data
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
-        Y = ct.Y
-        X = ct.X
 
         # kwargs
         if hatch is True:
             hatch = defaults['hatch']
+
+        if hatch and len(hatch) < ct.n_cells:
+            msg = ("hatch needs at least as many values as there are cells "
+                   "(%i) got %s" % (ct.n_cells, repr(hatch)))
+            raise ValueError(msg)
+
         if colors is True:
             if defaults['mono']:
                 colors = defaults['cm']['colors']
             else:
                 colors = defaults['c']['colors']
+        elif isinstance(colors, dict):
+            colors = [colors[cell] for cell in ct.cells]
+
+        if colors and len(colors) < ct.n_cells:
+            msg = ("colors needs at least as many values as there are cells "
+                   "(%i) got %s" % (ct.n_cells, repr(colors)))
+            raise ValueError(msg)
 
         # ylabel
-        if hasattr(Y, 'info'):
-            unit = Y.info.get('unit', '')
+        if hasattr(ct.Y, 'info'):
+            unit = ct.Y.info.get('unit', '')
         else:
             unit = ''
         ylabel = ylabel.format(unit=unit)
 
         # xlabel
         if xlabel is True:
-            xlabel = str2tex(X.name or False)
+            xlabel = str2tex(ct.X.name or False)
 
         # get axes
         frame_title_ = frame_title("Boxplot", ct.Y, ct.X)
@@ -368,23 +379,24 @@ class Boxplot(_SimpleFigure):
 
         # Now fill the boxes with desired colors
         if hatch or colors:
-            numBoxes = len(bp['boxes'])
-            for i in range(numBoxes):
+            for i in xrange(ct.n_cells):
                 box = bp['boxes'][i]
-                boxX = box.get_xdata()[:5]  # []
-                boxY = box.get_ydata()[:5]  # []
-                boxCoords = zip(boxX, boxY)
-                # Alternate between Dark Khaki and Royal Blue
-                if len(colors) >= numBoxes:
+                box_x = box.get_xdata()[:5]  # []
+                box_y = box.get_ydata()[:5]  # []
+                box_coords = zip(box_x, box_y)
+                if colors:
                     c = colors[i]
                 else:
                     c = '.5'
-                if len(hatch) >= numBoxes:
+
+                if hatch:
                     h = hatch[i]
                 else:
                     h = ''
-                boxPolygon = mpl.patches.Polygon(boxCoords, facecolor=c, hatch=h, zorder=-999)
-                ax.add_patch(boxPolygon)
+
+                poly = mpl.patches.Polygon(box_coords, facecolor=c, hatch=h,
+                                           zorder=-999)
+                ax.add_patch(poly)
         if defaults['mono']:
             for itemname in bp:
                 plt.setp(bp[itemname], color='black')
