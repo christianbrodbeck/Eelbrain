@@ -2678,7 +2678,6 @@ class MneExperiment(FileTree):
         else:
             state['parc'] = parc
             folder = "{parc}"
-        self.set(test=test, **state)
         self._set_test_options(data, sns_baseline, src_baseline, pmin, tstart,
                                tstop)
         resname = "{epoch} {test} {test_options}"
@@ -2761,7 +2760,7 @@ class MneExperiment(FileTree):
             # add picture of parc
             section = report.add_section(parc)
             caption = "Labels in the %s parcellation." % parc
-            self._source_parc_image(section, caption)
+            self._report_parc_image(section, caption)
 
             # add subsections for individual labels
             title = "{tstart}-{tstop} p={p}{mark} {effect}"
@@ -2784,7 +2783,7 @@ class MneExperiment(FileTree):
                 title = "Whole Brain Masked by %s" % mask.capitalize()
                 section = report.add_section(title)
                 caption = "Mask: %s" % mask.capitalize()
-                self._source_parc_image(section, caption)
+                self._report_parc_image(section, caption)
             else:
                 section = report.add_section("Whole Brain")
 
@@ -2799,7 +2798,7 @@ class MneExperiment(FileTree):
             # add picture of parc
             section = report.add_section(parc)
             caption = "Labels in the %s parcellation." % parc
-            self._source_parc_image(section, caption)
+            self._report_parc_image(section, caption)
             self._source_bin_table(section, test_kind, res)
 
             # add subsections for individual labels
@@ -2844,7 +2843,7 @@ class MneExperiment(FileTree):
         redo : bool
             If the target file already exists, delete and recreate it.
         """
-        parc = self.get('parc', parc=parc, test=test, **state)
+        parc = self.get('parc', parc=parc)
         if not parc:
             raise ValueError("No parcellation specified")
         folder = "%s ROIs" % parc.capitalize()
@@ -2897,7 +2896,7 @@ class MneExperiment(FileTree):
         # add parc image
         section = report.add_section(parc)
         caption = "ROIs in the %s parcellation." % parc
-        self._source_parc_image(section, caption)
+        self._report_parc_image(section, caption)
 
         # load labels
         with self._temporary_state:
@@ -2947,7 +2946,7 @@ class MneExperiment(FileTree):
                                 "trials per condition")
         return s_table
 
-    def _source_parc_image(self, section, caption):
+    def _report_parc_image(self, section, caption):
         "Add picture of the current parcellation"
         self.store_state()
         self.set(mrisubject=self.get('common_brain'))
