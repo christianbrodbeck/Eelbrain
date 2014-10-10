@@ -135,16 +135,85 @@ Modules with statistical tests:
 Plotting
 ^^^^^^^^
 
-Modules for plotting. General Matplotlib-based plots are described in the
-:mod:`.plot` module; Mayavi/PySurfer based plots for MNE current source
-estimates are described in :mod:`.plot.brain`.
+The :mod:`.plot` module contains all general Matplotlib-based plots, listed
+below. See the module documentation for general information on plotting.
+Mayavi/PySurfer based plots for MNE source estimates are separately located in
+the :mod:`.plot.brain` module:
+
 
 .. autosummary::
    :toctree: generated
-   
+
     plot
     plot.brain
 
+
+.. automodule:: eelbrain.plot._uv
+
+.. autosummary::
+   :toctree: generated
+
+   Barplot
+   Boxplot
+   PairwiseLegend
+   Correlation
+   Histogram
+   Regression
+   Timeplot
+
+
+.. automodule:: eelbrain.plot._colors
+
+.. autosummary::
+   :toctree: generated
+
+   colors_for_categorial
+   colors_for_oneway
+   colors_for_twoway
+   ColorBar
+   ColorGrid
+   ColorList
+
+
+.. automodule:: eelbrain.plot._uts
+
+.. autosummary::
+   :toctree: generated
+
+   UTSClusters
+   UTSStat
+   UTS
+
+
+.. automodule:: eelbrain.plot._utsnd
+
+.. autosummary::
+   :toctree: generated
+
+   Array
+   Butterfly
+
+
+.. automodule:: eelbrain.plot._topo
+
+.. autosummary::
+   :toctree: generated
+
+   TopoArray
+   TopoButterfly
+   Topomap
+
+
+.. automodule:: eelbrain.plot._sensors
+
+.. autosummary::
+   :toctree: generated
+
+   SensorMap2d
+   SensorMaps
+
+
+.. currentmodule:: eelbrain
 
 .. _ref-guis:
 

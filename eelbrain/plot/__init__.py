@@ -1,87 +1,9 @@
 """Plotting for data-objects
 
-.. automodule:: eelbrain.plot._uv
-
-.. autosummary::
-   :toctree: generated
-
-   Barplot
-   Boxplot
-   PairwiseLegend
-   Correlation
-   Histogram
-   Regression
-   Timeplot
-
-
-.. automodule:: eelbrain.plot._colors
-
-.. autosummary::
-   :toctree: generated
-
-   colors_for_categorial
-   colors_for_oneway
-   colors_for_twoway
-   ColorBar
-   ColorGrid
-   ColorList
-
-
-.. automodule:: eelbrain.plot._uts
-
-.. autosummary::
-   :toctree: generated
-
-   UTSClusters
-   UTSStat
-   UTS
-
-
-.. automodule:: eelbrain.plot._utsnd
-
-.. autosummary::
-   :toctree: generated
-
-   Array
-   Butterfly
-
-
-.. automodule:: eelbrain.plot._topo
-
-.. autosummary::
-   :toctree: generated
-
-   TopoArray
-   TopoButterfly
-   Topomap
-
-
-.. automodule:: eelbrain.plot._sensors
-
-.. autosummary::
-   :toctree: generated
-
-   SensorMap2d
-   SensorMaps
-
-
-Plot source estimates using a submodule.
-
-.. currentmodule:: eelbrain
-
-.. autosummary::
-   :toctree: generated
-
-    plot.brain
-
-
 .. _plotting-general:
 
-General Parameters
-------------------
-
-Xax
-^^^
+Xax parameter
+^^^^^^^^^^^^^
 
 Many plots have an ``Xax`` parameter. This parameter takes a categorial data
 object. The data of the plotted variable will be split into the catories in
