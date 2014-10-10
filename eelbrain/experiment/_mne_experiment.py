@@ -3061,13 +3061,13 @@ class MneExperiment(FileTree):
         tc = y[idx].mean('source')
         caption = ("Cluster average time course")
         p = plot.UTSStat(tc, model, match='subject', ds=ds, legend=None, w=7,
-                         colors='2group-ob')
+                         colors='2group-ob', show=False)
         # mark original cluster
         for ax in p._axes:
             ax.axvspan(c_tstart, c_tstop, color='r', alpha=0.2, zorder=-2)
         # legend
         if legend is None:
-            legend_p = p.plot_legend()
+            legend_p = p.plot_legend(show=False)
             legend = legend_p.image("Legend.svg")
         image = p.image('cluster_time_course.svg')
         p.close()
@@ -3080,11 +3080,11 @@ class MneExperiment(FileTree):
         idx = (c_extent != 0)
         v = y.mean(idx)
         # Barplot
-        p = plot.Barplot(v, model, 'subject', ds=ds, corr=None)
+        p = plot.Barplot(v, model, 'subject', ds=ds, corr=None, show=False)
         image_bar = p.image('cluster_barplot.svg')
         p.close()
         # Boxplot
-        p = plot.Boxplot(v, model, 'subject', ds=ds, corr=None)
+        p = plot.Boxplot(v, model, 'subject', ds=ds, corr=None, show=False)
         image_box = p.image('cluster_boxplot.png')
         p.close()
         # add figure to report
@@ -3125,12 +3125,12 @@ class MneExperiment(FileTree):
 
         # add UTSStat plot
         p = plot.UTSStat(label, model, match='subject', ds=ds, legend=None,
-                         clusters=clusters)
+                         clusters=clusters, show=False)
         ax = p._axes[0]
         ax.axvline(tstart, color='k')
         ax.axvline(tstop, color='k')
         image = p.image('%s_cluster.svg')
-        legend_p = p.plot_legend()
+        legend_p = p.plot_legend(show=False)
         legend = legend_p.image("Legend.svg")
         section.add_figure(tc_caption, [image, legend])
         p.close()

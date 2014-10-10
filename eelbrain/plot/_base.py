@@ -773,6 +773,9 @@ class _EelFigure(object):
             neither nrow or ncol is specified, a square layout is preferred.
         dpi : int
             DPI for the figure (default is to use matplotlib rc parameters).
+        show : bool
+            Show the figure in the GUI (default True). Use False for creating
+            figures and saving them without displaying them on the screen.
         """
         if title:
             frame_title = '%s: %s' % (frame_title, title)
@@ -829,11 +832,11 @@ class _EelFigure(object):
             self._tight()
 
         self.draw()
-        self._frame.Show()
-
-        if backend['eelbrain'] and do_autorun():
-            from .._wxgui import run
-            run()
+        if self._layout.show:
+            self._frame.Show()
+            if backend['eelbrain'] and do_autorun():
+                from .._wxgui import run
+                run()
 
     def _tight(self):
         "Default implementation based on matplotlib"
@@ -917,7 +920,7 @@ class Layout():
     """Create layouts for figures with several axes of the same size
     """
     def __init__(self, nax, ax_aspect, axh_default, tight, h=None, w=None,
-                 axh=None, axw=None, nrow=None, ncol=None, dpi=None):
+                 axh=None, axw=None, nrow=None, ncol=None, dpi=None, show=True):
         """Create a grid of axes based on variable parameters.
 
         Parameters
@@ -947,6 +950,9 @@ class Layout():
             neither nrow or ncol is specified, a square layout is preferred.
         dpi : int
             DPI for the figure (default is to use matplotlib rc parameters).
+        show : bool
+            Show the figure in the GUI (default True). Use False for creating
+            figures and saving them without displaying them on the screen.
         """
         if h and axh:
             if h < axh:
@@ -1097,6 +1103,7 @@ class Layout():
         self.nrow = nrow
         self.ncol = ncol
         self.fig_kwa = fig_kwa
+        self.show = show
 
 
 class Legend(_EelFigure):
