@@ -16,17 +16,17 @@ from eelbrain import datasets, plot
 def test_plot_butterfly():
     "Test plot.Butterfly"
     ds = datasets.get_uts(utsnd=True)
-    p = plot.Butterfly('utsnd', ds=ds)
+    p = plot.Butterfly('utsnd', ds=ds, show=False)
     p.close()
-    p = plot.Butterfly('utsnd', 'A%B', ds=ds)
+    p = plot.Butterfly('utsnd', 'A%B', ds=ds, show=False)
     p.close()
 
 def test_plot_array():
     "Test plot.Array"
     ds = datasets.get_uts(utsnd=True)
-    p = plot.Array('utsnd', 'A%B', ds=ds)
+    p = plot.Array('utsnd', 'A%B', ds=ds, show=False)
     p.close()
-    p = plot.Array('utsnd', ds=ds)
+    p = plot.Array('utsnd', ds=ds, show=False)
     p.close()
 
 def test_plot_mne_evoked():
@@ -35,7 +35,7 @@ def test_plot_mne_evoked():
     evoked_path = os.path.join(data_path, 'MEG', 'sample',
                                'sample_audvis-ave.fif')
     evoked = Evoked(evoked_path, "Left Auditory")
-    p = plot.Array(evoked)
+    p = plot.Array(evoked, show=False)
     p.close()
 
 def test_plot_mne_epochs():
@@ -55,9 +55,9 @@ def test_plot_mne_epochs():
     epochs = mne.Epochs(raw, events, None, -0.1, 0.3)
 
     # grand average
-    p = plot.Array(epochs)
+    p = plot.Array(epochs, show=False)
     p.close()
 
     # with model
-    p = plot.Array(epochs, events[:, 2])
+    p = plot.Array(epochs, events[:, 2], show=False)
     p.close()

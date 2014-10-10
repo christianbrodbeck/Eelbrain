@@ -35,14 +35,14 @@ def test_generate_colors():
 
 def test_plot_colorbar():
     "Test plot.ColorBar()"
-    p = plot.ColorBar('jet', -1, 1)
+    p = plot.ColorBar('jet', -1, 1, show=False)
     p.close()
-    p = plot.ColorBar('jet', -1, 1, orientation='vertical')
+    p = plot.ColorBar('jet', -1, 1, orientation='vertical', show=False)
     p.close()
-    p = plot.ColorBar('jet', -1, 1, label_position='top')
+    p = plot.ColorBar('jet', -1, 1, label_position='top', show=False)
     p.close()
     p = plot.ColorBar('jet', -1, 1, orientation='vertical',
-                      label_position='right')
+                      label_position='right', show=False)
     p.close()
 
 
@@ -52,9 +52,9 @@ def test_plot_colors():
     cells_2 = ('a', 'b', 'c')
 
     colors = plot.colors_for_oneway(cells_1)
-    p = plot.ColorList(colors)
+    p = plot.ColorList(colors, show=False)
     p.close()
 
     colors = plot.colors_for_twoway(cells_1, cells_2)
-    p = plot.ColorList(colors)
+    p = plot.ColorList(colors, show=False)
     p.close()

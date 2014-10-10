@@ -13,7 +13,7 @@ def test_map2d():
     "Test plot.SensorMap2d"
     ds = datasets.get_uts(utsnd=True)
     utsnd = ds['utsnd']
-    p = plot.SensorMap2d(utsnd)
+    p = plot.SensorMap2d(utsnd, show=False)
 
     # plot attributes
     p.set_label_color('g')
@@ -35,7 +35,7 @@ def test_multi():
     "Test plot.SensorMaps"
     ds = datasets.get_uts(utsnd=True)
     Y = ds['utsnd']
-    p = plot.SensorMaps(Y)
+    p = plot.SensorMaps(Y, show=False)
     roi = [1, 2]
     p.set_selection(roi)
     roi2 = p.get_selection()
