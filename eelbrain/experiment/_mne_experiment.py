@@ -762,7 +762,7 @@ class MneExperiment(FileTree):
                                             parc=parc)
                 ds[key % 'srcm'] = ndvar
 
-    def add_stc_label(self, ds, label, src='stc'):
+    def _add_stc_label(self, ds, label, src='stc'):
         """
         Extract the label time course from a list of SourceEstimates.
 
@@ -777,7 +777,24 @@ class MneExperiment(FileTree):
             the label's name (e.g., 'fusiform_lh').
         src : str
             Name of the variable in ds containing the SourceEstimates.
+
+        Returns
+        -------
+        key : str
+            The key under which the label was added to the Dataset.
         """
+        label_id = 0
+        if 'label_ids' not in ds.info:
+            key = 'label_tc_0'
+            ds.info['label_ids'] = {}
+        elif label in ds.info['label_ids']:
+            raise RuntimeError("Label already added: %r" % label)
+        else:
+            while 'label_tc_%i' % label_id in ds.info['label_ids']:
+                label_id += 1
+            key = 'label_tc_%i' % label_id
+        ds.info['label_ids'][label] = key
+
         x = []
         for case in ds.itercases():
             # find appropriate label
@@ -791,7 +808,8 @@ class MneExperiment(FileTree):
             x.append(label_avg)
 
         time = UTS(stc.tmin, stc.tstep, stc.shape[1])
-        ds[label] = NDVar(np.array(x), dims=('case', time))
+        ds[key] = NDVar(np.array(x), dims=('case', time))
+        return key
 
     def cache_events(self, redo=False):
         """Create the 'event-file'.
@@ -1442,7 +1460,7 @@ class MneExperiment(FileTree):
             additional labels. Labels can be overlapping. Labels are marked
             "*_?h".
         """
-        labels = self.load_labels(**kwargs)
+        labels = self._load_labels(**kwargs)
         if label in labels:
             return labels[label]
         elif label.endswith('_bh'):
@@ -1457,7 +1475,7 @@ class MneExperiment(FileTree):
             msg = ("Label %r could not be found in parc %r." % (label, parc))
             raise ValueError(msg)
 
-    def load_labels(self, **kwargs):
+    def _load_labels(self, **kwargs):
         """Load labels from an annotation file."""
         fpath = self.get('label-file', make=True, **kwargs)
         labels = self._label_cache[fpath]
@@ -2427,8 +2445,7 @@ class MneExperiment(FileTree):
         brain.save_image(dst)
 
     def make_plot_label(self, label, surf='inflated', redo=False, **state):
-        mrisubject = self.get('mrisubject', **state)
-        if is_fake_mri(self.get('mri-dir')):
+        if is_fake_mri(self.get('mri-dir', **state)):
             mrisubject = self.get('common_brain')
             self.set(mrisubject=mrisubject, match=False)
 
@@ -2445,7 +2462,7 @@ class MneExperiment(FileTree):
             mrisubject = self.get('common_brain')
             self.set(mrisubject=mrisubject, match=False)
 
-        labels = self.load_labels().values()
+        labels = self._load_labels().values()
         dsts = [self._make_plot_label_dst(surf, label.name)
                 for label in labels]
         if not redo and all(os.path.exists(dst) for dst in dsts):
@@ -2906,8 +2923,8 @@ class MneExperiment(FileTree):
 
         # load labels
         with self._temporary_state:
-            labels = self.load_labels(mrisubject=self.get('common_brain'),
-                                      match=False)
+            labels = self._load_labels(mrisubject=self.get('common_brain'),
+                                       match=False)
         labels_lh = []
         labels_rh = []
         for label in labels:
@@ -2927,8 +2944,8 @@ class MneExperiment(FileTree):
         for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
             section = report.add_section("%s Hemisphere" % hemi)
             for label in label_names:
-                self.add_stc_label(ds, label)
-                y = ds[label]
+                key = self._add_stc_label(ds, label)
+                y = ds[key]
                 res = self._make_test(y, ds, test_kind, model, contrast,
                                       samples, pmin, tstart, tstop, None, None)
                 self._report_roi_tc(section, ds, label, model, res, tstart,
@@ -3134,7 +3151,8 @@ class MneExperiment(FileTree):
             tc_caption = ' '.join((tc_caption, c_caption))
 
         # add UTSStat plot
-        p = plot.UTSStat(label, model, match='subject', ds=ds, colors=colors,
+        key = ds.info['label_ids'][label]
+        p = plot.UTSStat(key, model, match='subject', ds=ds, colors=colors,
                          legend=None, clusters=clusters, show=False)
         ax = p._axes[0]
         ax.axvline(tstart, color='k')
@@ -3391,6 +3409,7 @@ class MneExperiment(FileTree):
 
         brain = self.plot_brain(surf, title, 'split', ['lat', 'med'], w, clear)
         brain.add_label(label, alpha=0.75)
+        return brain
 
     def run_mne_analyze(self, subject=None, modal=False):
         subjects_dir = self.get('mri-sdir')
