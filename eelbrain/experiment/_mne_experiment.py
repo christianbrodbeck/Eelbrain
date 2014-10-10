@@ -2738,6 +2738,7 @@ class MneExperiment(FileTree):
         report.append(self._report_state())
 
         y = ds['srcm']
+        colors = plot.colors_for_categorial(ds.eval(model))
         legend = None
         if parc is None and pmin in (None, 'tfce'):
             section = report.add_section("P<=.05")
@@ -2747,7 +2748,7 @@ class MneExperiment(FileTree):
             title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
             for cluster in clusters.itercases():
                 legend = self._source_time_cluster(section, cluster, y, model,
-                                                   ds, title, legend)
+                                                   ds, title, colors, legend)
 
             # trend section
             section = report.add_section("Trend: p<=.1")
@@ -2777,7 +2778,7 @@ class MneExperiment(FileTree):
                 src_ = y.sub(source=label)
                 legend = self._source_time_clusters(section, clusters, src_,
                                                     ds, model, include,
-                                                    title, legend)
+                                                    title, colors, legend)
         elif parc is None:  # thresholded, whole brain
             if mask:
                 title = "Whole Brain Masked by %s" % mask.capitalize()
@@ -2793,7 +2794,8 @@ class MneExperiment(FileTree):
             clusters.sort('tstart')
             title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
             legend = self._source_time_clusters(section, clusters, y, ds,
-                                                model, include, title, legend)
+                                                model, include, title, colors,
+                                                legend)
         else:  # thresholded, parc
             # add picture of parc
             section = report.add_section(parc)
@@ -2810,7 +2812,7 @@ class MneExperiment(FileTree):
                 src_ = y.sub(source=label)
                 legend = self._source_time_clusters(section, clusters, src_,
                                                     ds, model, include,
-                                                    title, legend)
+                                                    title, colors, legend)
 
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer'))
@@ -2917,6 +2919,7 @@ class MneExperiment(FileTree):
         labels_rh.sort()
 
         # add content body
+        colors = plot.colors_for_categorial(ds.eval(model))
         for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
             section = report.add_section("%s Hemisphere" % hemi)
             for label in label_names:
@@ -2925,7 +2928,7 @@ class MneExperiment(FileTree):
                 res = self._make_test(y, ds, test_kind, model, contrast,
                                       samples, pmin, tstart, tstop, None, None)
                 self._report_roi_tc(section, ds, label, model, res, tstart,
-                                    tstop, samples)
+                                    tstop, samples, colors)
 
         report.sign(('eelbrain', 'mne', 'surfer'))
         report.save_html(dst)
@@ -2983,7 +2986,7 @@ class MneExperiment(FileTree):
             section.add_image_figure(im, caption_)
 
     def _source_time_clusters(self, section, clusters, y, ds, model, include,
-                              title, legend=None):
+                              title, colors, legend=None):
         """
         Parameters
         ----------
@@ -3012,12 +3015,12 @@ class MneExperiment(FileTree):
         clusters = clusters.sub("p < %s" % include)
         for cluster in clusters.itercases():
             legend = self._source_time_cluster(section, cluster, y, model,
-                                               ds, title, legend)
+                                               ds, title, colors, legend)
 
         return legend
 
     def _source_time_cluster(self, section, cluster, y, model, ds, title,
-                             legend):
+                             colors, legend):
         # extract cluster
         c_tstart = cluster['tstart']
         c_tstop = cluster['tstop']
@@ -3061,7 +3064,7 @@ class MneExperiment(FileTree):
         tc = y[idx].mean('source')
         caption = ("Cluster average time course")
         p = plot.UTSStat(tc, model, match='subject', ds=ds, legend=None, w=7,
-                         colors='2group-ob', show=False)
+                         colors=colors, show=False)
         # mark original cluster
         for ax in p._axes:
             ax.axvspan(c_tstart, c_tstop, color='r', alpha=0.2, zorder=-2)
@@ -3080,11 +3083,13 @@ class MneExperiment(FileTree):
         idx = (c_extent != 0)
         v = y.mean(idx)
         # Barplot
-        p = plot.Barplot(v, model, 'subject', ds=ds, corr=None, show=False)
+        p = plot.Barplot(v, model, 'subject', ds=ds, corr=None, colors=colors,
+                         show=False)
         image_bar = p.image('cluster_barplot.svg')
         p.close()
         # Boxplot
-        p = plot.Boxplot(v, model, 'subject', ds=ds, corr=None, show=False)
+        p = plot.Boxplot(v, model, 'subject', ds=ds, corr=None, colors=colors,
+                         show=False)
         image_box = p.image('cluster_boxplot.png')
         p.close()
         # add figure to report
@@ -3099,7 +3104,8 @@ class MneExperiment(FileTree):
 
         return legend
 
-    def _report_roi_tc(self, doc, ds, label, model, res, tstart, tstop, samples):
+    def _report_roi_tc(self, doc, ds, label, model, res, tstart, tstop, samples,
+                       colors):
         "Plot ROI time course with cluster permutation test"
         # add title with significance
         label_name = label[:-3].capitalize()
@@ -3124,8 +3130,8 @@ class MneExperiment(FileTree):
             tc_caption = ' '.join((tc_caption, c_caption))
 
         # add UTSStat plot
-        p = plot.UTSStat(label, model, match='subject', ds=ds, legend=None,
-                         clusters=clusters, show=False)
+        p = plot.UTSStat(label, model, match='subject', ds=ds, colors=colors,
+                         legend=None, clusters=clusters, show=False)
         ax = p._axes[0]
         ax.axvline(tstart, color='k')
         ax.axvline(tstop, color='k')
