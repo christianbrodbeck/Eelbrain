@@ -21,7 +21,8 @@ from __future__ import division
 from datetime import timedelta
 from itertools import chain, izip
 from math import ceil
-from multiprocessing import Process, Queue, cpu_count
+from multiprocessing import Process, cpu_count
+from multiprocessing.queues import SimpleQueue
 from multiprocessing.sharedctypes import RawArray
 import operator
 import os
@@ -2193,8 +2194,8 @@ class _ClusterDist:
     def _spawn_workers(self, ct_dist):
         "Spawn workers for multiprocessing"
         logger.debug("Setting up worker processes...")
-        self._dist_queue = dist_queue = Queue()
-        self._pmap_queue = pmap_queue = Queue()
+        self._dist_queue = dist_queue = SimpleQueue()
+        self._pmap_queue = pmap_queue = SimpleQueue()
 
         # clustering workers
         shape = self.shape
