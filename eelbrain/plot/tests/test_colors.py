@@ -16,8 +16,8 @@ def test_generate_colors():
     colors = plot.colors_for_twoway(cells_1, cells_2)
     assert_equal(len(colors), len(cells_1) * len(cells_2))
 
-    assert_raises(NotImplementedError, plot.colors_for_twoway, ('A', 'B', 'C'),
-                  cells_2)
+    colors = plot.colors_for_twoway(cells_2, cells_1)
+    assert_equal(len(colors), len(cells_1) * len(cells_2))
 
     # colors_for_categorial()
     f = ds['A']
@@ -26,6 +26,11 @@ def test_generate_colors():
         assert_in(cell, colors)
 
     i = ds.eval("A%B")
+    colors = plot.colors_for_categorial(i)
+    for cell in i.cells:
+        assert_in(cell, colors)
+
+    i = ds.eval("A%B%rm")
     colors = plot.colors_for_categorial(i)
     for cell in i.cells:
         assert_in(cell, colors)

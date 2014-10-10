@@ -13,6 +13,11 @@ In addition to matplotlib colormaps, the following names can be used:
 "symsig"
     Symmetric bipolar significance map.
 """
+from __future__ import division
+
+from colorsys import hsv_to_rgb
+
+import numpy as np
 import matplotlib as mpl
 
 
@@ -34,6 +39,54 @@ def make_seq_cmap(seq, val, name):
     cdict = {'red': red, 'green': green, 'blue':blue}
     cm = mpl.colors.LinearSegmentedColormap(name, cdict)
     return cm
+
+
+def twoway_cmap(n1, hue_start=0.1, internal_hue_shift=0.5, name=None, hue=None):
+    """Create colormap for two-way interaction
+
+    Parameters
+    ----------
+    n1 : int
+        Number of levels on the first factor.
+    hue_start : 0 <= scalar < 1
+        First hue value.
+    internal_hue_shift : 0 <= scalar < 1
+        Use that part of the hue continuum between categories to shift hue
+        within categories.
+    name : str
+        Name of the colormap.
+    hue : list of scalar
+        List of hue values corresponding to the levels of the first factor
+        (overrides regular hue distribution).
+    """
+    # within each hue, create values for [-1, -0.5, 0.5, 1]
+    # return list of [i, (r, g, b), (r, g, b)]
+    if hue is None:
+        hue = np.linspace(hue_start, hue_start + 1, n1, False) % 1.
+    h_shift = internal_hue_shift * (1 / n1 / 2)
+
+    seqs = []
+    for h in hue:
+        h_pre = (h - h_shift) % 1
+        h_post = (h + h_shift) % 1
+        seqs.append((hsv_to_rgb(h_pre, .9, .4),
+                     hsv_to_rgb(h, 1, 1.),
+                     hsv_to_rgb(h_post, .3, 1.)))
+
+    seq = []
+    for i in xrange(n1):
+        seq.append((seqs[i - 1][-1], seqs[i][0]))
+        seq.append(seqs[i][1])
+        if i == n1 - 1:
+            seq.append((seqs[i][2], seqs[0][0]))
+
+    loc = np.linspace(0, 1, n1 * 2 + 1)
+
+    if name is None:
+        name = "%i_by_n" % n1
+
+    cmap = make_seq_cmap(seq, loc, name)
+    return cmap
 
 
 def make_cmaps():

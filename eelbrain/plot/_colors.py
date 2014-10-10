@@ -2,11 +2,13 @@
 """Color tools for plotting."""
 from __future__ import division
 
-from itertools import product
+from itertools import izip, product
+import operator
 
 import numpy as np
 import matplotlib as mpl
 
+from .. import _colorspaces as cs
 from .._data_obj import cellname, isfactor, isinteraction
 from ._base import _EelFigure
 
@@ -27,12 +29,7 @@ def colors_for_categorial(x):
     if isfactor(x):
         return colors_for_oneway(x.cells)
     elif isinteraction(x):
-        n = len(x.base)
-        if n == 2:
-            a, b = x.base
-            if len(a.cells) == 2:
-                return colors_for_twoway(a.cells, b.cells)
-        return colors_for_oneway(x.cells)
+        return colors_for_nway([f.cells for f in x.base])
     else:
         msg = ("x needs to be Factor or Interaction, got %s" % repr(x))
         raise TypeError(msg)
@@ -83,19 +80,49 @@ def colors_for_twoway(x1_cells, x2_cells, cmap=None):
         raise ValueError("Need at least 2 cells on each factor")
 
     if cmap is None:
-        if n1 == 2:
-            cmap = "2group-ob"
-        else:
-            raise NotImplementedError("Major factor with more than 2 cells")
-    cm = mpl.cm.get_cmap(cmap)
+        cm = cs.twoway_cmap(n1)
+    else:
+        cm = mpl.cm.get_cmap(cmap)
 
     # find locations in the color-space to sample
     n_colors = n1 * n2
     stop = (n_colors - 1) / n_colors
     samples = np.linspace(0, stop, n_colors)
 
-    cs = map(tuple, cm(samples))
-    colors = {cell: cs[i] for i, cell in enumerate(product(x1_cells, x2_cells))}
+    colors = dict(izip(product(x1_cells, x2_cells), map(tuple, cm(samples))))
+    return colors
+
+
+def colors_for_nway(cell_lists, cmap=None):
+    """Define cell colors for a two-way design
+
+    Parameters
+    ----------
+    cell_lists : sequence of of tuple of str
+        List of cells of the factors.
+    cmap : str
+        Name of a matplotlib colormap to use (Default picks depending on number
+        of cells in primary factor).
+
+    Returns
+    -------
+    dict : {tuple: tuple}
+        Mapping from cells to colors.
+    """
+    ns = map(len, cell_lists)
+
+    if cmap is None:
+        cm = cs.twoway_cmap(ns[0])
+    else:
+        cm = mpl.cm.get_cmap(cmap)
+
+    # find locations in the color-space to sample
+    n_colors = reduce(operator.mul, ns)
+    edge = 0.5 / n_colors
+    samples = np.linspace(edge, 1 - edge, n_colors)
+
+    colors = {cell: tuple(color) for cell, color in
+              izip(product(*cell_lists), cm(samples))}
     return colors
 
 
