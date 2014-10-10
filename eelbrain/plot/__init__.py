@@ -19,6 +19,7 @@
 .. autosummary::
    :toctree: generated
 
+   colors_for_categorial
    colors_for_oneway
    colors_for_twoway
    ColorBar
@@ -132,8 +133,8 @@ defaults can be changed with :func:`configure_backend`:
 .. autofunction:: configure_backend
 
 """
-from ._colors import (colors_for_oneway, colors_for_twoway, ColorBar, ColorGrid,
-                      ColorList)
+from ._colors import (colors_for_categorial, colors_for_oneway,
+                      colors_for_twoway, ColorBar, ColorGrid, ColorList)
 from ._sensors import SensorMaps, SensorMap2d
 from ._topo import TopoArray, TopoButterfly, Topomap
 from ._uts import UTSStat, UTS, UTSClusters

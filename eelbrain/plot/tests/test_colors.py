@@ -1,11 +1,12 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import assert_equal, assert_raises
+from nose.tools import assert_equal, assert_in, assert_raises
 
-from eelbrain import plot
+from eelbrain import datasets, plot
 
 
 def test_generate_colors():
     "Test functions for assigning colors to cells"
+    ds = datasets.get_uv()
     cells_1 = ('A', 'B')
     cells_2 = ('a', 'b', 'c')
 
@@ -17,6 +18,19 @@ def test_generate_colors():
 
     assert_raises(NotImplementedError, plot.colors_for_twoway, ('A', 'B', 'C'),
                   cells_2)
+
+    # colors_for_categorial()
+    f = ds['A']
+    colors = plot.colors_for_categorial(f)
+    for cell in f.cells:
+        assert_in(cell, colors)
+
+    i = ds.eval("A%B")
+    colors = plot.colors_for_categorial(i)
+    for cell in i.cells:
+        assert_in(cell, colors)
+
+    assert_raises(TypeError, plot.colors_for_categorial, "A%B")
 
 
 def test_plot_colorbar():

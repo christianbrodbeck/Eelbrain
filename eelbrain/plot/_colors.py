@@ -7,8 +7,35 @@ from itertools import product
 import numpy as np
 import matplotlib as mpl
 
-from .._data_obj import cellname
+from .._data_obj import cellname, isfactor, isinteraction
 from ._base import _EelFigure
+
+
+def colors_for_categorial(x):
+    """Automatically select colors for a categorial model
+
+    Parameters
+    ----------
+    x : categorial
+        Model defining the cells for which to define colors.
+
+    Returns
+    -------
+    colors : dict {cell -> color}
+        Dictionary providing colors for the cells in x.
+    """
+    if isfactor(x):
+        return colors_for_oneway(x.cells)
+    elif isinteraction(x):
+        n = len(x.base)
+        if n == 2:
+            a, b = x.base
+            return colors_for_twoway(a.cells, b.cells)
+        else:
+            return colors_for_oneway(x.cells)
+    else:
+        msg = ("x needs to be Factor or Interaction, got %s" % repr(x))
+        raise TypeError(msg)
 
 
 def colors_for_oneway(cells, cmap='jet'):
