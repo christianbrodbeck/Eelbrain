@@ -739,7 +739,7 @@ class _EelFigure(object):
 
         Parameters
         ----------
-        title : str
+        frame_title : str
             Frame title.
         nax : None | int
             Number of axes to produce layout for. If None, no layout is
@@ -748,12 +748,31 @@ class _EelFigure(object):
             Default height per axes.
         ax_aspect : scalar
             Width to height ration (axw / axh).
-        layout_kwargs : dict
-            Arguments to produce a layout (optional).
-        ...
-        make_axes : bool
-            If nax is not None, automatically create axes when self._axes is
-            accessed; otherwise set ``self._axes=[]``.
+        tight : bool
+            Rescale axes so that the space in the figure is used optimally
+            (default True).
+        title : str
+            Figure title (default is no title).
+        frame : bool
+            Draw lines framing axes from above and from the right (default
+            True).
+        yaxis : bool
+            Draw the y-axis (default True).
+        h : scalar
+            Height of the figure.
+        w : scalar
+            Width of the figure.
+        axh : scalar
+            Height of the axes.
+        axw : scalar
+            Width of the axes.
+        nrow : int
+            Set a limit to the number of rows (default is no limit).
+        ncol : int
+            Set a limit to the number of columns (defaut is no limit). If
+            neither nrow or ncol is specified, a square layout is preferred.
+        dpi : int
+            DPI for the figure (default is to use matplotlib rc parameters).
         """
         if title:
             frame_title = '%s: %s' % (frame_title, title)
@@ -910,13 +929,24 @@ class Layout():
         axh_default : scalar
             The default axes height if it can not be determined from the other
             parameters.
-        h, w : scalar
-            Height and width of the figure.
-        axh, axw : scalar
-            Height and width of the axes.
-        nrow, ncol : None | int
-            Limit number of rows/columns. If both are  None, a square layout is
-            produced
+        tight : bool
+            Rescale axes so that the space in the figure is used optimally
+            (default True).
+        h : scalar
+            Height of the figure.
+        w : scalar
+            Width of the figure.
+        axh : scalar
+            Height of the axes.
+        axw : scalar
+            Width of the axes.
+        nrow : int
+            Set a limit to the number of rows (default is no limit).
+        ncol : int
+            Set a limit to the number of columns (defaut is no limit). If
+            neither nrow or ncol is specified, a square layout is preferred.
+        dpi : int
+            DPI for the figure (default is to use matplotlib rc parameters).
         """
         if h and axh:
             if h < axh:
