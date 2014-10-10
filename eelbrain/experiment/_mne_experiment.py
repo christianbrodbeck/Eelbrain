@@ -2624,6 +2624,10 @@ class MneExperiment(FileTree):
         meg_system = self._meg_systems[subject_prefix]
         eog_sns = self._eog_sns[meg_system]
 
+        # don't mark eog sns if it is bad
+        bad_channels = self.load_bad_channels()
+        eog_sns = [c for c in eog_sns if c not in bad_channels]
+
         gui.select_epochs(ds, data='meg', path=path, vlim=2e-12, mark=eog_sns,
                           **kwargs)
 
