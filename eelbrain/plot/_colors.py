@@ -30,9 +30,9 @@ def colors_for_categorial(x):
         n = len(x.base)
         if n == 2:
             a, b = x.base
-            return colors_for_twoway(a.cells, b.cells)
-        else:
-            return colors_for_oneway(x.cells)
+            if len(a.cells) == 2:
+                return colors_for_twoway(a.cells, b.cells)
+        return colors_for_oneway(x.cells)
     else:
         msg = ("x needs to be Factor or Interaction, got %s" % repr(x))
         raise TypeError(msg)
