@@ -20,7 +20,7 @@ from __future__ import division
 
 from datetime import timedelta
 from itertools import chain, izip
-from math import ceil, floor
+from math import ceil
 from multiprocessing import Process, Queue, cpu_count
 from multiprocessing.sharedctypes import RawArray
 import operator
@@ -47,7 +47,7 @@ from .test import star_factor
 __test__ = False
 
 # toggle multiprocessing for _ClusterDist
-multiprocessing = 1
+MULTIPROCESSING = 1
 
 
 class _Result(object):
@@ -835,7 +835,7 @@ class ttest_1samp(_Result):
                                  parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
-                tmap_ = np.empty(np.prod(cdist.Y_perm.shape[1:]))
+                tmap_ = np.empty(reduce(operator.mul, cdist.Y_perm.shape[1:]))
                 for Y_ in resample(cdist.Y_perm, samples, sign_flip=True):
                     stats.t_1samp(Y_.x, tmap_)
                     cdist.add_perm(tmap_)
@@ -1970,7 +1970,7 @@ class _ClusterDist:
                 cmap_dims = list(cmap_dims)
                 cmap_dims[0], cmap_dims[nad_ax] = cmap_dims[nad_ax], cmap_dims[0]
                 cmap_dims = tuple(cmap_dims)
-            flat_shape = (shape[0], np.prod(shape[1:]))
+            flat_shape = (shape[0], reduce(operator.mul, shape[1:]))
 
             # prepare connectivity
             nad_dim = cmap_dims[0]
@@ -2102,7 +2102,7 @@ class _ClusterDist:
 
         # multiprocessing
         if n_workers:
-            if multiprocessing and N > 1 and kind != 'raw':
+            if MULTIPROCESSING and N > 1 and kind != 'raw':
                 if n_workers < 0:
                     n_workers = max(1, cpu_count() + n_workers)
             else:
@@ -2752,9 +2752,8 @@ class _ClusterDist:
             c_map_is = c_map.swapaxes(0, self._nad_ax)
             if not self._all_adjacent:
                 ishape = bin_map_is.shape  # internal shape
-                flat_shape = (ishape[0], np.prod(ishape[1:]))
+                flat_shape = (ishape[0], reduce(operator.mul, ishape[1:]))
             else:
-                ishape = shape
                 flat_shape = None
             cids = _label_clusters_binary(bin_map_is, c_map_is, self._struct,
                                           self._all_adjacent, flat_shape,
