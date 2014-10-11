@@ -26,7 +26,8 @@ import shutil
 import subprocess
 import tempfile
 
-from mne.utils import get_subjects_dir
+import mne
+from mne.utils import get_subjects_dir, run_subprocess
 
 from . import ui
 
@@ -212,6 +213,54 @@ def open_in_finder(path):
     Open ``path`` in the finder.
     """
     os.system('open %s' % path)
+
+
+def run_freesurfer_command(command, subjects_dir):
+    "Run a FreeSurfer command"
+    env = os.environ.copy()
+    env['SUBJECTS_DIR'] = subjects_dir
+
+    # find FREESURFER_HOME
+    fs_home = mne.get_config('FREESURFER_HOME')
+    save_fs_home = False
+    while True:
+        problem = fs_home_problem(fs_home)
+        if problem:
+            save_fs_home = True
+            message = "Please select the directory where FreeSurfer is installed"
+            print problem
+            print message
+            fs_home = ui.ask_dir("Select FreeSurfer Directory", message)
+            if fs_home is False:
+                raise RuntimeError("Could not find FreeSurfer")
+        else:
+            break
+    if save_fs_home:
+        mne.set_config('FREESURFER_HOME', fs_home)
+
+    # adjust environment
+    env['FREESURFER_HOME'] = fs_home
+    bin_path = os.path.join(fs_home, 'bin')
+    if bin_path not in env['PATH']:
+        env['PATH'] = ':'.join((bin_path, env['PATH']))
+
+    # run command
+    run_subprocess(command, env=env)
+
+
+def fs_home_problem(fs_home):
+    """Check FREESURFER_HOME path
+
+    Return str describing problem or None if the path is okay.
+    """
+    if fs_home is None:
+        return "FREESURFER_HOME is not set"
+    elif not os.path.exists(fs_home):
+        return "FREESURFER_HOME does not exist"
+    else:
+        test_path = os.path.join(fs_home, 'bin', 'mri_surf2surf')
+        if not os.path.exists(test_path):
+            return "FREESURFER_HOME is invalid (does not contain bin/mri_surf2surf)"
 
 
 def process_raw(raw, save='{raw}_filt', args=['projoff'], rm_eve=True, **kwargs):

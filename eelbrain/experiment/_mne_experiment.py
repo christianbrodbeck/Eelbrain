@@ -1847,33 +1847,15 @@ class MneExperiment(FileTree):
                     self.make_copy('annot-file', 'mrisubject', common_brain,
                                    mrisubject)
             else:
-                # check FreeSurfer availability
-                have_fs_home = 'FREESURFER_HOME' in os.environ
-                have_fs_command = subp.command_exists('mri_surf2surf')
-                if not have_fs_home or not have_fs_command:
-                    msgs = []
-                    if not have_fs_home:
-                        msg = ("FREESURFER_HOME environment variable not set. "
-                               "Please set FREESURFER_HOME.")
-                        msgs.append(msg)
-                    if not have_fs_command:
-                        msg = ("Can not find the FreeSurfer mri_surf2surf "
-                               "command. Please add freesurfer/bin to your "
-                               "path.")
-                        msgs.append(msg)
-                    raise RuntimeError('  '.join(msgs))
-
-                # morph the annot files
                 self.get('label-dir', make=True)
+                subjects_dir = self.get('mri-sdir')
                 for hemi in ('lh', 'rh'):
                     cmd = ["mri_surf2surf", "--srcsubject", common_brain,
                            "--trgsubject", mrisubject, "--sval-annot", parc,
                            "--tval", parc, "--hemi", hemi]
-                    self._run_subp(cmd)
-
-                mri_sdir = self.get('mri-sdir')
+                    subp.run_freesurfer_command(cmd, subjects_dir)
                 fix_annot_names(mrisubject, parc, common_brain,
-                                subjects_dir=mri_sdir)
+                                subjects_dir=subjects_dir)
 
     def _make_annot(self, parc, subject):
         "Only called to make custom annotation files for the common_brain"
@@ -3421,22 +3403,6 @@ class MneExperiment(FileTree):
     def run_mne_browse_raw(self, subject=None, modal=False):
         fif_dir = self.get('raw-dir', subject=subject)
         subp.run_mne_browse_raw(fif_dir, modal)
-
-    def _run_subp(self, cmd):
-        """Run a command as subprocess.
-
-        Parameters
-        ----------
-        cmd : list of str
-            The command. Should have a form that can be submitted to
-            :func:`subprocess.call`.
-        """
-        if cmd is None:
-            return
-
-        env = os.environ.copy()
-        env['SUBJECTS_DIR'] = self.get('mri-sdir')
-        mne.utils.run_subprocess(cmd, env=env)
 
     def set(self, subject=None, **state):
         """
