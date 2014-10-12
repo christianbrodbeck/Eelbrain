@@ -15,7 +15,7 @@ def get_ui():
     if USE_WX:
         try:
             from . import wx_ui
-            from ..._wxgui import  get_app
+            from ..._wxgui import get_app
             get_app()
             return wx_ui
         except ImportError:

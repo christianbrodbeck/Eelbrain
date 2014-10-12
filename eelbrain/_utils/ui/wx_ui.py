@@ -2,6 +2,7 @@ import os
 import re
 
 import wx
+from ..._wxgui import get_app
 
 
 _ext_re = re.compile(r"\*\.(\w+)")
@@ -42,20 +43,9 @@ def ask_saveas(title, message, filetypes, defaultDir, defaultFile):
         return False
 
 
-def ask_dir(title="Select Folder",
-            message="Please Pick a Folder",
-            must_exist=True):
-    style = wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
-    if must_exist:
-        style = style | wx.DD_DIR_MUST_EXIST
-
-    dialog = wx.DirDialog(None, message, name=title,
-                          style=style)
-    dialog.SetTitle(title)
-    if dialog.ShowModal() == wx.ID_OK:
-        return dialog.GetPath()
-    else:
-        return False
+def ask_dir(title="Select Folder", message="Please Pick a Folder", must_exist=True):
+    app = get_app()
+    return app.ask_for_dir(title, message, must_exist)
 
 
 def ask_file(title, message, filetypes, directory, mult):

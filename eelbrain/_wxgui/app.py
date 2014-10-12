@@ -119,6 +119,35 @@ class App(wx.App):
                 return w
         return wx.GetActiveWindow()
 
+    def _bash_ui(self, func, *args):
+        "Launch a modal dialog based on terminal input"
+        if self.IsMainLoopRunning():
+            raise RuntimeError("MainLoop running")
+        if not self.GetTopWindow():
+            self.SetTopWindow(wx.Frame(None))
+        wx.CallLater(10, func, *args)
+        print "Please switch to the Python Application to provide input."
+        self.MainLoop()
+        return self._result
+
+    def ask_for_dir(self, title="Select Folder", message="Please Pick a Folder",
+                    must_exist=True):
+        return self._bash_ui(self._ask_for_dir, title, message, must_exist)
+
+    def _ask_for_dir(self, title, message, must_exist):
+        style = wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT
+        if must_exist:
+            style = style | wx.DD_DIR_MUST_EXIST
+
+        dialog = wx.DirDialog(None, message, name=title,
+                              style=style)
+        dialog.SetTitle(title)
+        if dialog.ShowModal() == wx.ID_OK:
+            self._result = dialog.GetPath()
+        else:
+            self._result = False
+        self.ExitMainLoop()
+
     def OnAbout(self, event):
         if hasattr(self, '_about_frame') and hasattr(self._about_frame, 'Raise'):
             self._about_frame.Raise()
