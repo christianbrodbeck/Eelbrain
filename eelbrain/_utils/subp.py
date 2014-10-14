@@ -227,8 +227,14 @@ def run_freesurfer_command(command, subjects_dir):
         problem = fs_home_problem(fs_home)
         if problem:
             save_fs_home = True
-            message = "Please select the directory where FreeSurfer is installed"
             print problem
+            if fs_home == os.environ.get('FREESURFER_HOME', 0):
+                print("WARNING: This directory is set as FREESURFER_HOME "
+                      "environment variable. As long as you don't remove this "
+                      "environment variable, you will be asked for the proper "
+                      "FreeSurfer location every time a FreeSurfer command is "
+                      "run.")
+            message = "Please select the directory where FreeSurfer is installed"
             print message
             fs_home = ui.ask_dir("Select FreeSurfer Directory", message)
             if fs_home is False:
@@ -254,13 +260,14 @@ def fs_home_problem(fs_home):
     Return str describing problem or None if the path is okay.
     """
     if fs_home is None:
-        return "FREESURFER_HOME is not set"
+        return "The FreeSurfer path is not set"
     elif not os.path.exists(fs_home):
-        return "FREESURFER_HOME does not exist"
+        return "The FreeSurfer path does not exist: %s" % fs_home
     else:
         test_path = os.path.join(fs_home, 'bin', 'mri_surf2surf')
         if not os.path.exists(test_path):
-            return "FREESURFER_HOME is invalid (does not contain bin/mri_surf2surf)"
+            return ("The FreeSurfer path is invalid (%s does not contain bin/"
+                    "mri_surf2surf)" % fs_home)
 
 
 def process_raw(raw, save='{raw}_filt', args=['projoff'], rm_eve=True, **kwargs):
