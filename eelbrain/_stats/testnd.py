@@ -41,7 +41,7 @@ from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
 from . import stats
 from .glm import _nd_anova
 from .opt import merge_labels
-from .permutation import resample, _resample_params
+from .permutation import resample, _resample_params, permute_sign_flip
 from .test import star_factor
 
 
@@ -837,8 +837,10 @@ class ttest_1samp(_Result):
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 tmap_ = np.empty(reduce(operator.mul, cdist.Y_perm.shape[1:]))
-                for Y_ in resample(cdist.Y_perm, samples, sign_flip=True):
-                    stats.t_1samp(Y_.x, tmap_)
+                x = None
+                for sign in permute_sign_flip(n, samples, cdist.Y_perm.ndim):
+                    x = np.multiply(cdist.Y_perm.x, sign, x)
+                    stats.t_1samp(x, tmap_)
                     cdist.add_perm(tmap_)
 
         # NDVar map of t-values
@@ -1188,8 +1190,10 @@ class ttest_rel(_Result):
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 tmap_ = np.empty(cdist.Y_perm.shape[1:])
-                for Y_ in resample(cdist.Y_perm, samples, sign_flip=True):
-                    stats.t_1samp(Y_.x, tmap_)
+                x = None
+                for sign in permute_sign_flip(n, samples, cdist.Y_perm.ndim):
+                    x = np.multiply(cdist.Y_perm.x, sign, x)
+                    stats.t_1samp(x, tmap_)
                     cdist.add_perm(tmap_)
 
         dims = ct.Y.dims[1:]

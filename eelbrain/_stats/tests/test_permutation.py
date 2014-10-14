@@ -1,15 +1,11 @@
-'''
-Created on Sep 13, 2013
-
-@author: Christian M Brodbeck
-'''
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import logging
 
 from nose.tools import eq_, ok_
 import numpy as np
 
 from eelbrain import Factor, Var
-from eelbrain._stats.permutation import resample
+from eelbrain._stats.permutation import resample, permute_sign_flip
 
 
 def test_permutation():
@@ -36,10 +32,14 @@ def test_permutation():
     # check we have some variability
     eq_(max(map(len, cols)), 2)
 
-    # with sign flip
-    v = Var(np.arange(1, 7))
-    res = np.empty((2 ** 6 - 1, 6))
-    for i, y in enumerate(resample(v, samples=-1, sign_flip=True)):
-        res[i] = y.x
+
+def test_permutation_sign_flip():
+    "Test permute_sign_flip()"
+    res = np.empty((2 ** 6 - 1, 6), dtype=np.int8)
+    for i, sign in enumerate(permute_sign_flip(6, samples=-1)):
+        res[i] = sign
+    eq_(i, 2 ** 6 - 2)
     logging.info('Permutation with sign_flip:\n%s' % res)
     ok_(np.all(res.min(1) < 0), "Not all permutations have a sign flip")
+    for i, row in enumerate(res):
+        eq_(np.any(np.all(row == res[:i], 1)), False)
