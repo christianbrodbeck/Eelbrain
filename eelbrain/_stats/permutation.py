@@ -1,8 +1,4 @@
-'''
-Created on Sep 13, 2013
-
-@author: Christian M Brodbeck
-'''
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import random
 
 import numpy as np
@@ -41,8 +37,51 @@ def _resample_params(N, samples):
     return n_samples, samples
 
 
-def resample(Y, samples=10000, replacement=False, unit=None, sign_flip=False,
-             seed=0):
+def permute_sign_flip(n, samples=10000, ndim=1, seed=0):
+    """Iterate over indices for ``samples`` permutations of the data
+
+    Parameters
+    ----------
+    n : int
+        Number of cases.
+    samples : int
+        Number of samples to yield. If < 0, all possible permutations are
+        performed.
+    seed : None | int
+        Seed the random state of the randomization module (:mod:`random`) to
+        make replication possible. None to skip seeding (default 0).
+
+    Yields
+    ------
+    sign : array
+        Iterate over sign flip permutations (``sign`` is the same object but
+        its content modified in every iteration).
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    # determine possible number of permutations
+    n_perm = 2 ** n
+    if samples < 0:
+        # do all permutations
+        sample_sequences = xrange(1, n_perm)
+    else:
+        # random resampling
+        sample_sequences = random.sample(xrange(1, n_perm), samples)
+
+    sign = np.empty(n, np.int8)
+    out = sign.reshape((n,) + (1,) * (ndim - 1))
+    mult = 2 ** np.arange(n, dtype=np.uint32)
+    buffer_ = np.empty(n, dtype=np.uint32)
+    choice = np.array([1, -1])
+    for i in sample_sequences:
+        np.floor_divide(i, mult, buffer_, dtype=np.uint32)
+        buffer_ %= 2
+        sign = np.choose(buffer_, choice, sign)
+        yield out
+
+
+def resample(Y, samples=10000, replacement=False, unit=None, seed=0):
     """
     Generator function to resample a dependent variable (Y) multiple times
 
@@ -86,45 +125,14 @@ def resample(Y, samples=10000, replacement=False, unit=None, sign_flip=False,
 
     Yout = Y.copy('{name}_resampled')
 
-    if samples < 0 and not sign_flip:
+    if samples < 0:
         err = "Complete permutation for resampling through reordering"
         raise NotImplementedError(err)
 
     if seed is not None:
-        if sign_flip:
-            random.seed(seed)
-        else:
-            np.random.seed(seed)
+        np.random.seed(seed)
 
-    if sign_flip:
-        if replacement is not False:
-            err = ("`replacement` parameter does not apply when sign_flip is "
-                   "True")
-            raise ValueError(err)
-        elif unit is not None:
-            err = "`unit` parameter does not apply when sign_flip is True"
-            raise ValueError(err)
-
-        # determine possible number of permutations
-        N = len(Y)
-        n_perm = 2 ** N
-        if samples < 0:
-            # do all permutations
-            sample_sequences = xrange(1, n_perm)
-        else:
-            # random resampling
-            sample_sequences = random.sample(xrange(1, n_perm), samples)
-
-        sign_shape = (N,) + (1,) * (Y.ndim - 1)
-        mult = 2 ** np.arange(N, dtype=np.uint32).reshape(sign_shape)
-        buffer_ = np.empty(sign_shape, dtype=np.uint32)
-        for i in sample_sequences:
-            np.floor_divide(i, mult, buffer_, dtype=np.uint32)
-            buffer_ %= 2
-            sign = np.where(buffer_, -1, 1)
-            np.multiply(Y.x, sign, Yout.x)
-            yield Yout
-    elif unit is None:
+    if unit is None:
         if replacement:
             N = len(Y)
             for _ in xrange(samples):
