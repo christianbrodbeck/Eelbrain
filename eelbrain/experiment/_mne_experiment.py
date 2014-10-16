@@ -502,7 +502,7 @@ class MneExperiment(FileTree):
         self._bind_make('raw-file', self.make_raw)
         self._bind_cache('evoked-file', self.make_evoked)
         self._bind_cache('cov-file', self.make_cov)
-        self._bind_make('src-file', self.make_src)
+        self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
         self._bind_make('label-file', self.make_labels)
 
@@ -3161,34 +3161,41 @@ class MneExperiment(FileTree):
             exists.
         """
         dst = self.get('src-file', **kwargs)
-        if not redo and os.path.exists(dst):
-            return
-
-        src = self.get('src')
-        kind, param = src.split('-')
-
         subject = self.get('mrisubject')
         common_brain = self.get('common_brain')
-        subjects_dir = self.get('mri-sdir')
 
-        if (subject != common_brain) and is_fake_mri(self.get('mri-dir')):
+        is_scaled = (subject != common_brain) and is_fake_mri(self.get('mri-dir'))
+
+        if is_scaled:
             # make sure the source space exists for the original
             with self._temporary_state:
                 self.make_src(mrisubject=common_brain)
-            # scale the source space
+                orig = self.get('src-file')
+
+            if not redo and os.path.exists(dst):
+                if os.path.getmtime(dst) >= os.path.getmtime(orig):
+                    return
+
+            src = self.get('src')
+            subjects_dir = self.get('mri-sdir')
             mne.scale_source_space(subject, src, subjects_dir=subjects_dir)
+        elif not redo and os.path.exists(dst):
+            return
         else:
+            src = self.get('src')
+            kind, param = src.split('-')
             if kind == 'vol':
                 mri = self.get('mri-file')
                 bem = self.get('bem-file', fmatch=True)
                 mne.setup_volume_source_space(subject, dst, pos=float(param),
                                               mri=mri, bem=bem, mindist=0.,
                                               exclude=0.,
-                                              subjects_dir=subjects_dir)
+                                              subjects_dir=self.get('mri-sdir'))
             else:
                 spacing = kind + param
                 mne.setup_source_space(subject, dst, spacing, overwrite=redo,
-                                       subjects_dir=subjects_dir, add_dist=True)
+                                       subjects_dir=self.get('mri-sdir'),
+                                       add_dist=True)
 
     def _make_test(self, y, ds, test_kind, model, contrast, samples, pmin,
                    tstart, tstop, dist_dim, parc_dim):

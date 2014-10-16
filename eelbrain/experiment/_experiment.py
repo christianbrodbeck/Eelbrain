@@ -770,7 +770,7 @@ class FileTree(TreeModel):
 
     def _bind_make(self, key, handler):
         """
-        The make funciton is called only when the file name is retrieved and
+        The make function is called only when the file name is retrieved and
         the file does not exist.
         """
         if key in self._cache_handlers:
