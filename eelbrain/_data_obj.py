@@ -4390,7 +4390,7 @@ class Dataset(collections.OrderedDict):
                    ".tex." % ext)
             raise ValueError(err)
 
-    def save_tex(self, path=None, fmt='%.3g'):
+    def save_tex(self, path=None, fmt='%.3g', header=True, midrule=True):
         """Save the Dataset as TeX table.
 
         Parameters
@@ -4400,6 +4400,10 @@ class Dataset(collections.OrderedDict):
             displayed). If no extension is specified, '.tex' is appended.
         fmt : format string
             Formatting for scalar values.
+        header : bool
+            Include the varibale names as a header row.
+        midrule : bool
+            print a midrule after table header.
         """
         if not isinstance(path, basestring):
             title = "Save Dataset"
@@ -4414,7 +4418,7 @@ class Dataset(collections.OrderedDict):
         if not ext:
             path += '.tex'
 
-        table = self.as_table(fmt=fmt, header=True)
+        table = self.as_table(fmt=fmt, header=header, midrule=midrule)
         table.save_tex(path)
 
     def save_txt(self, path=None, fmt='%s', delim='\t', header=True):
