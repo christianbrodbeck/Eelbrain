@@ -40,9 +40,10 @@ Manual:
    recipes
 
 
-.. seealso:: `Eelbrain on GitHub <http://github.com/christianbrodbeck/Eelbrain>`_,
-    in particular, 
-    `examples <https://github.com/christianbrodbeck/Eelbrain/tree/master/examples>`_
+.. seealso:: Eelbrain on `GitHub <http://github.com/christianbrodbeck/Eelbrain>`_,
+    the `Python Package Index <https://pypi.python.org/pypi/eelbrain>`_,
+    and `example scripts
+    <https://github.com/christianbrodbeck/Eelbrain/tree/master/examples>`_
 
 Indices and tables
 ==================
