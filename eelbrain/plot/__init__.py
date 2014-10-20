@@ -50,9 +50,9 @@ Backend Configuration
 By default, Matplotlib-based Eelbrain figures (all except :mod:`.plot.brain`)
 are opened in a wxPython based GUI application (see :ref:`gui`). By default,
 this GUI is activated whenever a figure is created in interactive mode. These
-defaults can be changed with :func:`configure_backend`:
+defaults can be changed with :func:`configure`:
 
-.. autofunction:: configure_backend
+.. autofunction:: configure
 
 """
 from ._colors import (colors_for_categorial, colors_for_oneway,
@@ -65,4 +65,4 @@ from ._uv import (Barplot, Boxplot, Correlation, Histogram, PairwiseLegend,
                   Regression, Timeplot)
 from . import brain
 
-from ._base import configure_backend
+from ._base import configure

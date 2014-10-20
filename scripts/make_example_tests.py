@@ -32,9 +32,9 @@ def test_{i}():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile({filename!r}, {{}})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -46,8 +46,6 @@ import os
 import re
 import shutil
 from tempfile import mkdtemp
-
-from matplotlib import pyplot as plt
 
 from eelbrain import plot
 

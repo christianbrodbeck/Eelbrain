@@ -3,6 +3,12 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.11
+-----------
+
+* API: Previously :func:`plot.configure_backend` is now :func:`plot.configure`
+
+
 New in 0.10
 -----------
 
@@ -11,6 +17,7 @@ New in 0.10
   `Customizing Matplotlib <http://matplotlib.org/users/customizing.html>`_).
 * Fixed a memory leak in the :mod:`testnd` module that could slightly affect
   permutation based p-values.
+
 
 New in 0.9
 ----------

@@ -5,8 +5,6 @@ import re
 import shutil
 from tempfile import mkdtemp
 
-from matplotlib import pyplot as plt
-
 from eelbrain import plot
 
 dir_ = os.path.dirname(__file__)
@@ -36,9 +34,9 @@ def test_0():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('align.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -65,9 +63,9 @@ def test_1():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('report.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -94,9 +92,9 @@ def test_2():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('table.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -123,9 +121,9 @@ def test_3():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('mne_sample_loader.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -152,9 +150,9 @@ def test_4():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('simple meg.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -181,9 +179,9 @@ def test_5():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('source permutation cluster.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -210,9 +208,9 @@ def test_6():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('source permutation.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -239,9 +237,9 @@ def test_7():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('topo.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -268,9 +266,9 @@ def test_8():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('uts cluster permutation test.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -297,9 +295,9 @@ def test_9():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('uts.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -326,9 +324,9 @@ def test_10():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('ANCOVA_Crawley.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -355,9 +353,9 @@ def test_11():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('ANCOVA_rutherford.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -384,9 +382,9 @@ def test_12():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('ANOVA.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -413,9 +411,9 @@ def test_13():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('ANOVA_rutherford_1.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -442,9 +440,9 @@ def test_14():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('ANOVA_rutherford_2.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -471,9 +469,9 @@ def test_15():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('Fox_Prestige.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -500,9 +498,9 @@ def test_16():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('pdf.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)
@@ -529,9 +527,9 @@ def test_17():
 
     # execute example
     logging.info("executing from %s" % tempdir)
+    plot.configure(show=False)
     os.chdir(tempdir)
     execfile('simple.py', {})
-    plt.close('all')
 
     # delete temporary files
     shutil.rmtree(tempdir)

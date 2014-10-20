@@ -79,10 +79,10 @@ from .._data_obj import ascategorial, asndvar, DimensionMismatchError
 
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
-backend = {'eelbrain': True, 'autorun': None}
+backend = {'eelbrain': True, 'autorun': None, 'show': True}
 
-# store callback figures (they need to be preserved)
-figs = []
+# store figures (they need to be preserved)
+figures = []
 
 # constants
 default_cmap = None
@@ -97,7 +97,7 @@ def do_autorun():
         backend['autorun']
 
 
-def configure_backend(frame=True, autorun=None):
+def configure(frame=True, autorun=None, show=True):
     """Set basic configuration parameters for the current session
 
     Parameters
@@ -111,11 +111,15 @@ def configure_backend(frame=True, autorun=None):
         default, this is True when the figure is created in interactive mode
         but False when the figure is created in a script (in order to run the
         GUI at a specific point in a script, call :func:`eelbrain.gui.run`).
+    show : bool
+        Show plots on the screen when they're created (disable this to create
+        plots and save them without showing them on the screen).
     """
     if autorun is not None:
         autorun = bool(autorun)
     backend['eelbrain'] = bool(frame)
     backend['autorun'] = autorun
+    backend['show'] = bool(show)
 
 
 _unit = {'time': 'ms'}
@@ -630,7 +634,6 @@ class mpl_figure:
         "creates self.figure and self.canvas attributes and returns the figure"
         self.figure = plt.figure(**fig_kwargs)
         self.canvas = self.figure.canvas
-        figs.append(self)
 
     def Close(self):
         plt.close(self.figure)
@@ -832,7 +835,7 @@ class _EelFigure(object):
             self._tight()
 
         self.draw()
-        if self._layout.show:
+        if backend['show'] and self._layout.show:
             self._frame.Show()
             if backend['eelbrain'] and do_autorun():
                 from .._wxgui import run
