@@ -131,8 +131,8 @@ def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef int n_cases = y.shape[0]
     cdef int n_betas = x.shape[1]
     cdef int n_effects = effects.shape[0]
-    cdef double [:] betas = cvarray((n_betas,), sizeof(double), 'd')
-    cdef double [:] mss = cvarray((n_effects,), sizeof(double), 'd')
+    cdef double *betas = <double *>malloc(sizeof(double) * n_betas)
+    cdef double *mss = <double *>malloc(sizeof(double) * n_effects)
 
     for i in range(n_tests):
         _lm_betas(y, i, xsinv, betas)
@@ -162,6 +162,9 @@ def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                 f_map[i_fmap, i] = mss[i_effect] / ms_denom
                 i_fmap += 1
 
+    free(betas)
+    free(mss)
+
 
 def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
@@ -190,9 +193,9 @@ def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef int n_cases = y.shape[0]
     cdef int n_betas = x.shape[1]
     cdef int n_effects = effects.shape[0]
-    cdef double [:] betas = cvarray((n_betas,), sizeof(double), 'd')
+    cdef double *betas = <double *>malloc(sizeof(double) * n_betas)
     cdef double [:,:] values = cvarray((n_cases, n_betas), sizeof(double), "d")
-    cdef double [:] predicted_y = cvarray((n_cases,), sizeof(double), 'd')
+    cdef double *predicted_y = <double *>malloc(sizeof(double) * n_cases)
 
     for i in range(n_tests):
         _lm_betas(y, i, xsinv, betas)
@@ -223,6 +226,8 @@ def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                 SS += v ** 2
             MS = SS / df
             f_map[i_effect, i] = MS / MS_res
+
+    free(betas)
 
 
 def sum_square(scalar[:,:] y, double[:] out):
@@ -280,7 +285,7 @@ def ss(scalar[:,:] y, double[:] out):
         out[i] = ss_
 
 
-cdef void _lm_betas(scalar[:,:] y, int i, double[:,:] xsinv, double[:] betas) nogil:
+cdef void _lm_betas(scalar[:,:] y, int i, double[:,:] xsinv, double *betas) nogil:
     """Fit a linear model
 
     Parameters
@@ -312,7 +317,8 @@ cdef void _lm_betas(scalar[:,:] y, int i, double[:,:] xsinv, double[:] betas) no
         betas[i_beta] = beta
 
 
-cdef double _lm_res_ss(scalar[:,:] y, int i, double[:,:] x, double[:] betas):
+cdef double _lm_res_ss(scalar[:,:] y, int i, double[:,:] x, int df_x,
+                       double *betas) nogil:
     """Residual sum squares
 
     Parameters
@@ -331,7 +337,6 @@ cdef double _lm_res_ss(scalar[:,:] y, int i, double[:,:] x, double[:] betas):
 
     cdef double ss = 0
     cdef int n_cases = y.shape[0]
-    cdef int df_x = betas.shape[0]
 
     for case in range(n_cases):
         predicted_y = 0
@@ -356,16 +361,18 @@ def lm_betas(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:,:] out):
     out : array (n_coefficients, n_tests)
         Container for output.
     """
-    cdef int i
+    cdef int i, i_beta
 
-    cdef int n_cases = y.shape[0]
     cdef int n_tests = y.shape[1]
-
-    cdef double [:] betas
+    cdef int df_x = xsinv.shape[0]
+    cdef double *betas = <double *>malloc(sizeof(double) * df_x)
 
     for i in range(n_tests):
-        betas = out[:,i]
         _lm_betas(y, i, xsinv, betas)
+        for i_beta in range(df_x):
+            out[i_beta, i] = betas[i_beta]
+
+    free(betas)
 
 
 def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
@@ -388,7 +395,7 @@ def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
     cdef int df_x = xsinv.shape[0]
-    cdef double [:] betas = cvarray((df_x,), sizeof(double), 'd')
+    cdef double *betas = <double *>malloc(sizeof(double) * df_x)
 
     for i in range(n_tests):
         _lm_betas(y, i, xsinv, betas)
@@ -399,6 +406,8 @@ def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
             for i_beta in range(df_x):
                 predicted_y += x[case, i_beta] * betas[i_beta]
             res[case,i] = y[case, i] - predicted_y
+
+    free(betas)
 
 
 def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] ss):
@@ -420,11 +429,13 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] ss):
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
     cdef int df_x = xsinv.shape[0]
-    cdef double [:] betas = cvarray((df_x,), sizeof(double), 'd')
+    cdef double *betas = <double *>malloc(sizeof(double) * df_x)
 
     for i in range(n_tests):
         _lm_betas(y, i, xsinv, betas)
-        ss[i] = _lm_res_ss(y, i, x, betas)
+        ss[i] = _lm_res_ss(y, i, x, df_x, betas)
+
+    free(betas)
 
 
 def lm_t(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] a, double[:,:] out):
@@ -448,15 +459,17 @@ def lm_t(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] a, double[:,
     cdef int n_cases = y.shape[0]
     cdef int df_x = xsinv.shape[0]
     cdef double df_res = n_cases - df_x
-    cdef double [:] betas = cvarray((df_x,), sizeof(double), 'd')
+    cdef double *betas = <double *>malloc(sizeof(double) * df_x)
 
     for i in range(n_tests):
         _lm_betas(y, i, xsinv, betas)
-        ss_res = _lm_res_ss(y, i, x, betas)
+        ss_res = _lm_res_ss(y, i, x, df_x, betas)
         ms_res = ss_res / df_res
         se_res = ms_res ** 0.5
         for i_beta in range(df_x):
             out[i_beta, i] = betas[i_beta] * a[i_beta] / se_res
+
+    free(betas)
 
 
 def t_1samp(scalar[:,:] y, double[:] out):
