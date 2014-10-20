@@ -5,7 +5,7 @@ import numpy as np
 from numpy.testing import assert_array_almost_equal
 import scipy.stats
 
-from eelbrain import datasets, Model
+from eelbrain import datasets
 from eelbrain._stats import stats
 
 

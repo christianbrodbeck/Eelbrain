@@ -21,7 +21,6 @@ from eelbrain.tests.test_data import assert_dataobj_equal, assert_dataset_equal
 
 def test_anova():
     "Test testnd.anova()"
-    plot.configure_backend(False, False)
     ds = datasets.get_uts(True)
 
     testnd.anova('utsnd', 'A*B', ds=ds)
@@ -33,12 +32,12 @@ def test_anova():
 
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=0, pmin=0.05)
     repr(res)
-    p = plot.Array(res)
+    p = plot.Array(res, show=False)
     p.close()
 
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
     repr(res)
-    p = plot.Array(res)
+    p = plot.Array(res, show=False)
     p.close()
 
     # persistence
@@ -228,7 +227,6 @@ def test_clusterdist():
 
 def test_corr():
     "Test testnd.corr()"
-    plot.configure_backend(False, False)
     ds = datasets.get_uts(True)
 
     # add correlation
@@ -239,11 +237,11 @@ def test_corr():
 
     res = testnd.corr('utsnd', 'Y', 'rm', ds=ds)
     repr(res)
-    p = plot.Array(res)
+    p = plot.Array(res, show=False)
     p.close()
 
     res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=10, pmin=0.05)
-    p = plot.Array(res)
+    p = plot.Array(res, show=False)
     p.close()
 
     # persistence
