@@ -521,7 +521,7 @@ class _FullNDANOVA(_NDANOVA):
     def _map(self, y, flat_f_map):
         x = self.x
         anova_full_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
-                          self._e_ms_array)
+                         self._e_ms_array)
 
 
 class _IncrementalNDANOVA(_NDANOVA):

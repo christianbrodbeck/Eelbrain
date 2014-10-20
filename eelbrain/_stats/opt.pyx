@@ -125,14 +125,14 @@ def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     """
     cdef int i, i_beta, i_effect, i_effect_ms, i_start, i_stop, i_fmap, case
     cdef int df
-    cdef double v, SS, MS_den
+    cdef double v, ss, ms_denom
 
     cdef int n_tests = y.shape[1]
     cdef int n_cases = y.shape[0]
     cdef int n_betas = x.shape[1]
     cdef int n_effects = effects.shape[0]
     cdef double [:] betas = cvarray((n_betas,), sizeof(double), 'd')
-    cdef double [:] MSs = cvarray((n_effects,), sizeof(double), 'd')
+    cdef double [:] mss = cvarray((n_effects,), sizeof(double), 'd')
 
     for i in range(n_tests):
         _lm_betas(y, i, xsinv, betas)
@@ -142,24 +142,24 @@ def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
             i_start = effects[i_effect, 0]
             df = effects[i_effect, 1]
             i_stop = i_start + df
-            SS = 0
+            ss = 0
             for case in range(n_cases):
                 v = 0
                 for i_beta in range(i_start, i_stop):
                     v += x[case, i_beta] * betas[i_beta]
-                SS += v ** 2
-            MSs[i_effect] = SS / df
+                ss += v ** 2
+            mss[i_effect] = ss / df
 
         # compute F maps
         i_fmap = 0
         for i_effect in range(n_effects):
-            MS_den = 0
+            ms_denom = 0
             for i_effect_ms in range(n_effects):
                 if e_ms[i_effect, i_effect_ms] > 0:
-                    MS_den += MSs[i_effect_ms]
+                    ms_denom += mss[i_effect_ms]
 
-            if MS_den > 0:
-                f_map[i_fmap, i] = MSs[i_effect] / MS_den
+            if ms_denom > 0:
+                f_map[i_fmap, i] = mss[i_effect] / ms_denom
                 i_fmap += 1
 
 
