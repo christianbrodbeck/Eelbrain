@@ -1253,6 +1253,10 @@ class MneExperiment(FileTree):
 
         ds.info['raw'] = raw
         ds = self.label_events(ds, experiment, subject)
+        if ds is None:
+            msg = ("The MneExperiment.label_events() function must return the "
+                   "events-Dataset")
+            raise RuntimeError(msg)
         return ds
 
     def load_evoked(self, subject=None, baseline=None, ndvar=True, cat=None,
