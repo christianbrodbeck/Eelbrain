@@ -10,7 +10,7 @@ from .._data_obj import asfactor, asmodel, Model
 from . import opt
 
 
-def betas(y, x, use_scipy=True):
+def betas(y, x):
     """Regression coefficients
 
     Parameters
@@ -19,8 +19,6 @@ def betas(y, x, use_scipy=True):
         Dependent measure.
     x : Model
         Predictors
-    use_scipy : bool
-        Use scipy.linalg.lstsq (faster, default True).
 
     Returns
     -------
@@ -32,14 +30,9 @@ def betas(y, x, use_scipy=True):
     x = asmodel(x)
     shape = (x.df,) + y.shape[1:]
     y_ = y.reshape((n, -1))
-    if use_scipy:
-        out = scipy.linalg.lstsq(x.full, y_)[0]
-        if y.ndim > 2:
-            out = out.reshape(shape)
-    else:
-        out = np.empty(shape)
-        out_ = out.reshape((x.df, -1))
-        opt.lm_betas(y_, x.full, x.xsinv, out_)
+    out = np.empty(shape)
+    out_ = out.reshape((x.df, -1))
+    opt.lm_betas(y_, x.full, x.xsinv, out_)
     return out
 
 
