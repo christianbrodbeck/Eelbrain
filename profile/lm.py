@@ -1,5 +1,5 @@
 import numpy as np
-from eelbrain._stats import opt
+from eelbrain._stats import opt, stats
 
 np.random.seed(0)
 
@@ -14,6 +14,13 @@ x = np.random.normal(0, 1, (n_cases, n_betas))
 xsinv = np.random.normal(0, 1, (n_betas, n_cases))
 betas = np.empty((n_tests, n_betas))
 ss = np.empty(n_tests)
+
+# bigger arrays
+n_testsl = 10**6
+yl = np.random.normal(0, 1, (n_cases, n_testsl))
+betasl = np.empty((n_testsl, n_betas))
+ssl = np.empty(n_testsl)
+
 
 # anova
 f_map = np.empty((n_fs, n_tests))
