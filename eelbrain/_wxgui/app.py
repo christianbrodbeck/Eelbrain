@@ -1,3 +1,4 @@
+from threading import Lock, Thread
 import webbrowser
 
 import wx
@@ -7,6 +8,7 @@ from .about import AboutFrame
 
 
 class App(wx.App):
+
     def OnInit(self):
         self.SetExitOnFrameDelete(False)
         self.SetAppName("Eelbrain")
@@ -355,15 +357,37 @@ class App(wx.App):
         self.ExitMainLoop()
 
 
+class AppThread(Thread):
+    def __init__(self):
+        Thread.__init__(self)
+        self.lock = Lock()
+        self.lock.acquire()
+
+    def run(self):
+        self.app = App(redirect=False)
+        self.frame = wx.Frame(None)
+        self.lock.release()
+        self.app.MainLoop()
+
+    def stop(self):
+        self.app.ExitMainLoop()
+
+
+app_thread = None
+
+
 def get_app():
-    app = wx.GetApp()
-    if app is None or not isinstance(app, App):
+    if app_thread is None:
         logger.debug("Initializing Eelbrain App")
-        app = App()
-    return app
+        global app_thread
+        app_thread = AppThread()
+        app_thread.start()
+        app_thread.lock.acquire()
+    return app_thread.app
 
 
 def run():
+    return
     app = get_app()
     if not app.IsMainLoopRunning():
         print "Starting GUI. Quit the Python application to return to the shell..."
