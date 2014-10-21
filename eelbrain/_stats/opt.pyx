@@ -123,14 +123,14 @@ def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     e_ms : array (n_effects, n_effects)
         Each row represents the expected MS of one effect.
     """
-    cdef int i, i_beta, i_effect, i_effect_ms, i_start, i_stop, i_fmap, case
-    cdef int df
+    cdef unsigned long i
+    cdef unsigned int df, i_beta, i_effect, i_effect_ms, i_start, i_stop, i_fmap, case
     cdef double v, ss, ms_denom
 
-    cdef int n_tests = y.shape[1]
-    cdef int n_cases = y.shape[0]
-    cdef int n_betas = x.shape[1]
-    cdef int n_effects = effects.shape[0]
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned int n_cases = y.shape[0]
+    cdef unsigned int n_betas = x.shape[1]
+    cdef unsigned int n_effects = effects.shape[0]
     cdef double *betas = <double *>malloc(sizeof(double) * n_betas)
     cdef double *mss = <double *>malloc(sizeof(double) * n_effects)
 
@@ -185,14 +185,14 @@ def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     df_res : int
         Df of the residuals.
     """
-    cdef int i, i_beta, i_effect, i_effect_ms, i_effect_beta, i_fmap, case
-    cdef int df
+    cdef unsigned long i
+    cdef unsigned int df, i_beta, i_effect, i_effect_ms, i_effect_beta, i_fmap, case
     cdef double v, SS, MS, MS_res, MS_den
 
-    cdef int n_tests = y.shape[1]
-    cdef int n_cases = y.shape[0]
-    cdef int n_betas = x.shape[1]
-    cdef int n_effects = effects.shape[0]
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned int n_cases = y.shape[0]
+    cdef unsigned int n_betas = x.shape[1]
+    cdef unsigned int n_effects = effects.shape[0]
     cdef double *betas = <double *>malloc(sizeof(double) * n_betas)
     cdef double [:,:] values = cvarray((n_cases, n_betas), sizeof(double), "d")
     cdef double *predicted_y = <double *>malloc(sizeof(double) * n_cases)
@@ -240,11 +240,12 @@ def sum_square(scalar[:,:] y, double[:] out):
     out : array (n_tests,)
         container for output.
     """
-    cdef int i, case
+    cdef unsigned long i
+    cdef unsigned int case
     cdef double ss
 
-    cdef int n_tests = y.shape[1]
-    cdef int n_cases = y.shape[0]
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned int n_cases = y.shape[0]
 
     for i in range(n_tests):
         ss = 0
@@ -264,11 +265,12 @@ def ss(scalar[:,:] y, double[:] out):
     out : array (n_tests,)
         container for output.
     """
-    cdef int i, case
+    cdef unsigned long i
+    cdef unsigned int case
     cdef double mean, ss_
 
-    cdef int n_tests = y.shape[1]
-    cdef int n_cases = y.shape[0]
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned int n_cases = y.shape[0]
 
     for i in range(n_tests):
         # find mean
@@ -285,7 +287,7 @@ def ss(scalar[:,:] y, double[:] out):
         out[i] = ss_
 
 
-cdef void _lm_betas(scalar[:,:] y, int i, double[:,:] xsinv, double *betas) nogil:
+cdef void _lm_betas(scalar[:,:] y, unsigned long i, double[:,:] xsinv, double *betas) nogil:
     """Fit a linear model
 
     Parameters
@@ -303,11 +305,11 @@ cdef void _lm_betas(scalar[:,:] y, int i, double[:,:] xsinv, double *betas) nogi
     n_cases : int
         Number of cases in y.
     """
-    cdef int i_beta, case
+    cdef unsigned int i_beta, case
     cdef double beta
 
-    cdef int n_cases = y.shape[0]
-    cdef int df_x = xsinv.shape[0]
+    cdef unsigned int n_cases = y.shape[0]
+    cdef unsigned int df_x = xsinv.shape[0]
 
     # betas = xsinv * y
     for i_beta in range(df_x):
@@ -332,11 +334,11 @@ cdef double _lm_res_ss(scalar[:,:] y, int i, double[:,:] x, int df_x,
     betas : array (n_betas,)
         Fitted regression coefficients.
     """
-    cdef int case, i_beta
+    cdef unsigned int case, i_beta
     cdef double predicted_y
 
     cdef double ss = 0
-    cdef int n_cases = y.shape[0]
+    cdef unsigned int n_cases = y.shape[0]
 
     for case in range(n_cases):
         predicted_y = 0
@@ -361,10 +363,11 @@ def lm_betas(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:,:] out):
     out : array (n_coefficients, n_tests)
         Container for output.
     """
-    cdef int i, i_beta
+    cdef unsigned long i
+    cdef unsigned int i_beta
 
-    cdef int n_tests = y.shape[1]
-    cdef int df_x = xsinv.shape[0]
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned int df_x = xsinv.shape[0]
     cdef double *betas = <double *>malloc(sizeof(double) * df_x)
 
     for i in range(n_tests):
@@ -389,12 +392,13 @@ def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
     res : array (n_cases, n_tests)
         Container for output.
     """
-    cdef int i, i_beta, case
+    cdef unsigned long i
+    cdef unsigned int i_beta, case
     cdef double predicted_y, SS_res
 
-    cdef int n_tests = y.shape[1]
-    cdef int n_cases = y.shape[0]
-    cdef int df_x = xsinv.shape[0]
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned int n_cases = y.shape[0]
+    cdef unsigned int df_x = xsinv.shape[0]
     cdef double *betas = <double *>malloc(sizeof(double) * df_x)
 
     for i in range(n_tests):
@@ -424,11 +428,11 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] ss):
     ss : array (n_tests,)
         Container for output.
     """
-    cdef int i
+    cdef unsigned long i
 
-    cdef int n_tests = y.shape[1]
-    cdef int n_cases = y.shape[0]
-    cdef int df_x = xsinv.shape[0]
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned int n_cases = y.shape[0]
+    cdef unsigned int df_x = xsinv.shape[0]
     cdef double *betas = <double *>malloc(sizeof(double) * df_x)
 
     for i in range(n_tests):
@@ -452,12 +456,12 @@ def lm_t(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] a, double[:,
     out : array (df_model, n_tests)
         Container for output.
     """
-    cdef int i, i_beta
+    cdef unsigned long i, i_beta
     cdef double ss_res, ms_res, se_res
 
-    cdef int n_tests = y.shape[1]
-    cdef int n_cases = y.shape[0]
-    cdef int df_x = xsinv.shape[0]
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned int n_cases = y.shape[0]
+    cdef unsigned int df_x = xsinv.shape[0]
     cdef double df_res = n_cases - df_x
     cdef double *betas = <double *>malloc(sizeof(double) * df_x)
 
@@ -482,11 +486,11 @@ def t_1samp(scalar[:,:] y, double[:] out):
     out : array (n_tests,)
         Container for output.
     """
-    cdef long i, case
+    cdef unsigned long i, case
     cdef double mean, denom
 
-    cdef int n_cases = y.shape[0]
-    cdef int n_tests = y.shape[1]
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned int n_cases = y.shape[0]
     cdef double div = (n_cases - 1) * n_cases
 
     for i in range(n_tests):
