@@ -389,6 +389,12 @@ def test_ttest_1samp():
     repr3 = repr(res3)
     assert_in('samples', repr3)
 
+    # nd
+    dss = ds.sub("A == 'a0'")
+    res = testnd.ttest_1samp('utsnd', ds=dss, samples=1)
+    res = testnd.ttest_1samp('utsnd', ds=dss, pmin=0.05, samples=1)
+    res = testnd.ttest_1samp('utsnd', ds=dss, tfce=True, samples=1)
+
     # TFCE properties
     res = testnd.ttest_1samp('utsnd', sub="A == 'a0'", ds=ds, samples=1)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
