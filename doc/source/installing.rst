@@ -4,52 +4,60 @@ Installing
 ==========
 
 .. note::
-   If you are setting up a new Python environment, the easiest option might be 
-   through Enthought `Canopy <https://www.enthought.com/products/canopy>`_; 
-   see the :ref:`dependencies` section below).
+   If you are setting up a new Python environment, the easiest option might be
+   Enthought `Canopy <https://www.enthought.com/products/canopy>`_.
 
-The easiest way to install Eelbrain is from the
-`Python Package Index <https://pypi.python.org/pypi/eelbrain>`_ with
-``easy_install``::
-
-    $ easy_install eelbrain[plot.brain]
-
-And it can be updated similarly::
-
-    $ easy_install -U eelbrain[plot.brain]
-
-The optional ``[plot.brain]`` flag installs optional dependencies for plotting
-brain data with pysurfer. Since PySurfer itself does not yet support automatic
-dependency management, it has to be installed separately::
-
-    $ easy_install -U pysurfer
+.. note::
+    Eelbrain comes with a C extension. Precompiled binaries are currently
+    provided for OS X. On other platforms, installing Eelbrain requires
+    compilation.
 
 
-.. note:: 
-    Since version 0.3 Eelbrain comes with a C extension. For Intel Macs, 
-    ``easy_install`` has access to a precompiled "egg" and should install 
-    automatically as before. ``Pip`` on the other hand always compiles from 
-    source and requires a recent version of XCode.
+.. contents:: Contents
+   :local:
 
 
-.. _dependencies:
+Installing from PYPI
+--------------------
 
-Dependencies
-------------
+Eelbrain can be installed from the
+`Python Package Index (PYPI) <https://pypi.python.org/pypi/eelbrain>`_::
 
-``$ easy_install`` tries to install all required dependencies from the Python
-Package Index. However it might be more convenient to install them through
-Enthought `Canopy <https://www.enthought.com/products/canopy>`_.
+    $ pip install eelbrain
+
+This will not install those dependencies that require compilation, since it
+might be easier to install them from a different source. Eelbrain can be
+installed with all its dependencies from the PYPI with::
+
+    $ pip install eelbrain[full]
+
+And, if you want to use pysurfer::
+
+    $ pip install eelbrain[plot.brain]
+
+Later, update Eelbrain with::
+
+    $ pip install -U eelbrain
 
 
-With Canopy
-^^^^^^^^^^^
+`WxPython <http://www.wxpython.org>`_ is not strictily necessary but enhances
+plots with several GUI elements (and enables the epoch rejection GUI).
+wxPython `can not be installed from the PYPI
+<http://stackoverflow.com/q/477573/166700>`_, but installers are provided
+`here <http://www.wxpython.org/download.php>`_.
 
-Make sure that you are using the Canopy Python distribution (see
+
+.. _install-canopy:
+
+Installing With Canopy
+----------------------
+
+Make sure that you are using the
+`Canopy <https://www.enthought.com/products/canopy>`_ Python distribution from
+the command line (see
 `here <https://support.enthought.com/entries/23646538-Make-Canopy-User-Python-be-your-default-Python-i-e-on-the-PATH->`_).
 
-Prepare the Canopy distribution before installing Eelbrain to make sure
-``$ easy_install`` does not try to install the dependencies. The only
+Install dependencies that do not come with Canopy by default. The only
 additional package needed is Mayavi::
 
    $ enpkg mayavi
@@ -59,9 +67,17 @@ update the Canopy distribution before installing or updating Eelbrain::
 
    $ enpkg --update-all
 
+Install Eelbrain::
+
+   $ pip install eelbrain
+
+Later, update Eelbrain with::
+
+   $ pip install -U eelbrain
+
 
 Optional Dependencies
-^^^^^^^^^^^^^^^^^^^^^
+---------------------
 
 The following items provide additional functionality if they are installed:
 
@@ -70,16 +86,12 @@ The following items provide additional functionality if they are installed:
   ``$ pip install rpy2``.
 * A working `LaTeX <http://www.latex-project.org/>`_ installation (enables
   exporting tables as pdf).
-* `wxPython <http://www.wxpython.org>`_ (included in Canopy) for using the GUI
-  (the epoch rejection GUI and enhanced plot toolbars). Installers are provided
-  `here <http://www.wxpython.org/download.php>`_ (currently it
-  `can not be installed through distutils <http://stackoverflow.com/q/477573/166700>`_).
 
 
 .. _obtain-source:
 
-Installing from GitHub
-----------------------
+Installing the development version from GitHub
+----------------------------------------------
 
 The Eelbrain source code is hosted on
 `GitHub <https://github.com/christianbrodbeck/Eelbrain>`_. The source for the
