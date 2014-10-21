@@ -209,7 +209,7 @@ class _ax_im_array(object):
 
 class Array(_EelFigure):
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True, ds=None,
-                 *args, **kwargs):
+                 x='time', vmax=None, vmin=None, *args, **kwargs):
         """
         Plot uts data to a rectangular grid.
 
@@ -224,6 +224,12 @@ class Array(_EelFigure):
         ds : None | Dataset
             If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
             as strings.
+        x : str
+            Dimension to plot on the x axis (default 'time').
+        vmax : scalar
+            Upper limits for the colormap.
+        vmin : scalar
+            Lower limit for the colormap.
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
             (default True)
@@ -236,11 +242,11 @@ class Array(_EelFigure):
         _EelFigure.__init__(self, "Array Plot", nax, 4, 2, *args, **kwargs)
 
         self.plots = []
-        vlims = _base.find_fig_vlims(epochs)
+        vlims = _base.find_fig_vlims(epochs, False, vmax, vmin)
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
             ylabel_ = ylabel if i == 1 else None
             xlabel_ = xlabel if i == nax - 1 else None
-            p = _ax_im_array(ax, layers, xlabel=xlabel_, ylabel=ylabel_,
+            p = _ax_im_array(ax, layers, x, xlabel_, ylabel_,
                              vlims=vlims)
             self.plots.append(p)
 
