@@ -229,7 +229,13 @@ def t_1samp(y, out=None):
     n_cases = len(y)
     if out is None:
         out = np.empty(y.shape[1:])
-    opt.t_1samp(y.reshape(n_cases, -1), out.ravel())
+
+    if out.ndim == 1:
+        out_ = out
+    else:
+        out_ = out.ravel()
+
+    opt.t_1samp(y.reshape(n_cases, -1), out_)
     return out
 
 
