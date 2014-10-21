@@ -5,10 +5,12 @@ Introduction
 .. currentmodule:: eelbrain
 
 
-There are two primary data-objects: 
+There are three primary data-objects:
 
-* :class:`Var` for scalar variables
 * :class:`Factor` for categorial variables
+* :class:`Var` for scalar variables
+* :class:`NDVar` for multidimensional data (e.g. a variable measured at
+  different time points)
 
 Multiple variables belonging to the same dataset can be grouped in a 
 :class:`Dataset` object.
