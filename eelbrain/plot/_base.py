@@ -438,23 +438,25 @@ def find_fig_vlims(plots, range_by_measure=False, vmax=None, vmin=None):
         if vmax is None:
             user_vlim = None
         elif vmin is None:
-            user_vlim = (vmax, -vmax)
+            user_vlim = (vmax, 0)
         else:
             user_vlim = (vmax, vmin)
 
     out = {}  # (meas, cmap): (vmin, vmax)
     first_meas = None  # what to use user-specified vmax for
     for ndvar in chain(*plots):
-        vmin, vmax = find_vlim_args(ndvar)
         meas = ndvar.info.get('meas', '?')
-        if first_meas is None:
+        if user_vlim is not None and first_meas is None:
             first_meas = meas
+            vmin, vmax = user_vlim
+        else:
+            vmin, vmax = find_vlim_args(ndvar)
         cmap = ndvar.info.get('cmap', None)
         key = (meas, cmap)
         if key in vlims:
             continue
         elif user_vlim is not None and meas == first_meas:
-            out[key] = user_vlim
+            vmax, vmin = user_vlim
         elif key in out:
             vmin_, vmax_ = out[key]
             vmin = min(vmin, vmin_)
