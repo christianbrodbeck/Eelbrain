@@ -56,14 +56,14 @@ kwargs = dict(
               long_description=open('README.txt').read(),
               install_requires=['tex >= 1.8',
                                 'docutils >= 0.11',
-                                'numpy >= 1.8',
-                                'scipy >= 0.11.0',
-                                'matplotlib >= 1.1',
-                                'mne >= 0.8'],
-              extras_require={'plot.brain': ['mayavi >= 4.3.1',
-                                             'nibabel >= 1.3',
+                                'mne >= 0.8',
+                                'nibabel >= 1.3'],
+              extras_require={'full': ['numpy >= 1.8',
+                                       'scipy >= 0.11.0',
+                                       'matplotlib >= 1.1'],
+                              'plot.brain': ['mayavi >= 4.3.1',
 #                                              'pysurfer >= 0.5'
-# PySurfer break the setup because it raises an error when nibabel is not installed
+# PySurfer breaks the setup because it raises an error when nibabel is not installed
                                              ]},
               include_dirs=[np.get_include()],
               ext_modules=ext,
