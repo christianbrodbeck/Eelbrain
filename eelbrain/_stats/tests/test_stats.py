@@ -45,13 +45,13 @@ def test_lm():
     n = ds.n_cases
 
     # 1d betas
-    betas = stats.betas(uts.x, x, False)
+    betas = stats.betas(uts.x, x)
     sp_betas = scipy.linalg.lstsq(x.full, uts.x.reshape((n, -1)))[0]
     # sp_betas = sp_betas.reshape((x.df,) + uts.shape[1:])
     assert_array_almost_equal(betas, sp_betas)
 
     # 2d betas
-    betas = stats.betas(utsnd.x, x, False)
+    betas = stats.betas(utsnd.x, x)
     sp_betas = scipy.linalg.lstsq(x.full, utsnd.x.reshape((n, -1)))[0]
     sp_betas = sp_betas.reshape((x.df,) + utsnd.shape[1:])
     assert_array_almost_equal(betas, sp_betas)
