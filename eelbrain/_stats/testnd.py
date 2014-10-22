@@ -41,7 +41,7 @@ from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
 from . import stats
 from .glm import _nd_anova
 from .opt import merge_labels
-from .permutation import resample, _resample_params, permute_sign_flip
+from .permutation import _resample_params, permute_order, permute_sign_flip
 from .test import star_factor
 
 
@@ -290,11 +290,13 @@ class t_contrast_rel(_Result):
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
                 # buffer memory allocation
+                y_shuffled = np.empty_like(cdist.Y_perm.x)
                 shape = cdist.Y_perm.shape[1:]
                 buff = np.empty((n_buffers,) + shape)
                 tmap_ = np.empty(shape)
-                for Y_ in resample(cdist.Y_perm, samples, unit=ct.match):
-                    data = _t_contrast_rel_data(Y_.x, indexes, pcells, mcells)
+                for index in permute_order(len(y_shuffled), samples, unit=ct.match):
+                    y_shuffled[index] = cdist.Y_perm.x
+                    data = _t_contrast_rel_data(y_shuffled, indexes, pcells, mcells)
                     _t_contrast_rel(contrast_, data, buff, tmap_)
                     cdist.add_perm(tmap_)
 
@@ -631,8 +633,10 @@ class corr(_Result):
                                  dist_tstep)
             cdist.add_original(rmap)
             if cdist.n_clusters and samples:
-                for Y_ in resample(cdist.Y_perm, samples, unit=match):
-                    rmap_ = _corr(Y_.x, X.x)
+                y_shuffled = np.empty_like(cdist.Y_perm.x)
+                for index in permute_order(n, samples, unit=match):
+                    y_shuffled[index] = cdist.Y_perm.x
+                    rmap_ = _corr(y_shuffled, X.x)
                     cdist.add_perm(rmap_)
             info = _cs.stat_info('r', threshold)
 
@@ -970,9 +974,9 @@ class ttest_ind(_Result):
 
         test_name = 'Independent Samples t-Test'
         n1 = len(ct.data[c1])
-        N = len(ct.Y)
-        n0 = N - n1
-        df = N - 2
+        n = len(ct.Y)
+        n0 = n - n1
+        df = n - 2
         tmap = _t_ind(ct.Y.x, n1, n0)
 
         if samples is None:
@@ -996,8 +1000,10 @@ class ttest_ind(_Result):
                                  parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.n_clusters and samples:
-                for Y_ in resample(cdist.Y_perm, samples):
-                    tmap_ = _t_ind(Y_.x, n1, n0)
+                y_shuffled = np.empty_like(cdist.Y_perm.x)
+                for index in permute_order(n, samples, unit=ct.match):
+                    y_shuffled[index] = cdist.Y_perm
+                    tmap_ = _t_ind(y_shuffled, n1, n0)
                     cdist.add_perm(tmap_)
 
         dims = ct.Y.dims[1:]
@@ -1568,8 +1574,10 @@ class anova(_MultiEffectResult):
 
             if n_clusters and samples:
                 fmaps_ = lm.preallocate(cdist.Y_perm.shape)
-                for Y_ in resample(cdist.Y_perm, samples, unit=match):
-                    lm.map(Y_.x)
+                y_shuffled = np.empty_like(cdist.Y_perm.x)
+                for index in permute_order(len(y_shuffled), samples, unit=match):
+                    y_shuffled[index] = cdist.Y_perm
+                    lm.map(y_shuffled)
                     for cdist, fmap in izip(cdists, fmaps_):
                         if cdist.n_clusters:
                             cdist.add_perm(fmap)

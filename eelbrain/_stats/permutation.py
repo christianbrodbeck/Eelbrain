@@ -37,6 +37,65 @@ def _resample_params(N, samples):
     return n_samples, samples
 
 
+def permute_order(n, samples=10000, replacement=False, unit=None, seed=0):
+    """Generator function to create indices to shuffle n items
+
+    Parameters
+    ----------
+    n : int
+        Number of cases.
+    samples : int
+        Number of samples to yield. If < 0, all possible permutations are
+        performed.
+    replacement : bool
+        whether random samples should be drawn with replacement or without.
+    unit : categorial
+        Factor specifying unit of measurement (e.g. subject). If unit is
+        specified, resampling proceeds by first resampling the categories of
+        unit (with or without replacement) and then shuffling the values
+        within units (no replacement).
+    seed : None | int
+        Seed the random state of the relevant randomization module
+        (:mod:`random` or :mod:`numpy.random`) to make replication possible.
+        None to skip seeding (default 0).
+
+    Returns
+    -------
+    Iterator over index.
+    """
+    n = int(n)
+    samples = int(samples)
+    if samples < 0:
+        err = "Complete permutation for resampling through reordering"
+        raise NotImplementedError(err)
+
+    if seed is not None:
+        np.random.seed(seed)
+
+    if unit is None:
+        if replacement:
+            for _ in xrange(samples):
+                yield np.random.randint(n, n)
+        else:
+            index = np.arange(n)
+            for _ in xrange(samples):
+                np.random.shuffle(index)
+                yield index
+    else:
+        if replacement:
+            raise NotImplementedError("Replacement and units")
+        else:
+            idx_orig = np.arange(n)
+            idx_perm = np.arange(n)
+            unit_idxs = [np.nonzero(unit == cell)[0] for cell in unit.cells]
+            for _ in xrange(samples):
+                for idx_ in unit_idxs:
+                    v = idx_orig[idx_]
+                    np.random.shuffle(v)
+                    idx_perm[idx_] = v
+                yield idx_perm
+
+
 def permute_sign_flip(n, samples=10000, ndim=1, seed=0):
     """Iterate over indices for ``samples`` permutations of the data
 
@@ -105,11 +164,6 @@ def resample(Y, samples=10000, replacement=False, unit=None, seed=0):
         specified, resampling proceeds by first resampling the categories of
         unit (with or without replacement) and then shuffling the values
         within units (no replacement).
-    sign_flip : bool
-        Instead of shuffling the observations in the data (default), randomly
-        do or do not flip the sign of each observation. If the number of
-        possible permutations is smaller than ``samples``, ``resample(...,
-        sign_flip=True)`` iterates over all possible permutations.
     seed : None | int
         Seed the random state of the relevant randomization module
         (:mod:`random` or :mod:`numpy.random`) to make replication possible.
@@ -117,10 +171,9 @@ def resample(Y, samples=10000, replacement=False, unit=None, seed=0):
 
     Returns
     -------
-    Iterator over Y_resampled. The same copy of ``Y`` is yielded in each
-    iteration with different data.
+    Iterator over Y_resampled. One copy of ``Y`` is made, and this copy is
+    yielded in each iteration with shuffled data.
     """
-    samples = int(samples)
     if isvar(Y):
         pass
     elif isndvar(Y):
@@ -129,37 +182,8 @@ def resample(Y, samples=10000, replacement=False, unit=None, seed=0):
     else:
         raise TypeError("Need Var or NDVar")
 
-    Yout = Y.copy('{name}_resampled')
+    out = Y.copy('{name}_resampled')
 
-    if samples < 0:
-        err = "Complete permutation for resampling through reordering"
-        raise NotImplementedError(err)
-
-    if seed is not None:
-        np.random.seed(seed)
-
-    if unit is None:
-        if replacement:
-            N = len(Y)
-            for _ in xrange(samples):
-                index = np.random.randint(N, N)
-                Yout.x = Y.x[index]
-                yield Yout
-        else:  # OK
-            for _ in xrange(samples):
-                np.random.shuffle(Yout.x)
-                yield Yout
-    else:
-        if replacement:
-            raise NotImplementedError("Replacement and units")
-        else:
-            idx_orig = np.arange(len(Y))
-            idx_perm = np.arange(len(Y))
-            unit_idxs = [np.nonzero(unit == cell)[0] for cell in unit.cells]
-            for _ in xrange(samples):
-                for idx_ in unit_idxs:
-                    v = idx_orig[idx_]
-                    np.random.shuffle(v)
-                    idx_perm[idx_] = v
-                Yout.x[idx_perm] = Y.x
-                yield Yout
+    for index in permute_order(len(out), samples, replacement, unit, seed):
+        out.x[index] = Y.x
+        yield out
