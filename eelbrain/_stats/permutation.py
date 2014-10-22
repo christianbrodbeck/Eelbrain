@@ -56,7 +56,13 @@ def permute_sign_flip(n, samples=10000, ndim=1, seed=0):
     sign : array
         Iterate over sign flip permutations (``sign`` is the same object but
         its content modified in every iteration).
+
+    Notes
+    -----
+    Sign flip of each element is encoded in successive bits. These bits are
+    recoded as integer.
     """
+    n = int(n)
     if seed is not None:
         random.seed(seed)
 
@@ -71,11 +77,11 @@ def permute_sign_flip(n, samples=10000, ndim=1, seed=0):
 
     sign = np.empty(n, np.int8)
     out = sign.reshape((n,) + (1,) * (ndim - 1))
-    mult = 2 ** np.arange(n, dtype=np.uint32)
-    buffer_ = np.empty(n, dtype=np.uint32)
-    choice = np.array([1, -1])
+    mult = 2 ** np.arange(n, dtype=np.int64)
+    buffer_ = np.empty(n, dtype=np.int64)
+    choice = np.array([1, -1], np.int8)
     for i in sample_sequences:
-        np.floor_divide(i, mult, buffer_, dtype=np.uint32)
+        np.floor_divide(i, mult, buffer_, dtype=np.int64)
         buffer_ %= 2
         sign = np.choose(buffer_, choice, sign)
         yield out
