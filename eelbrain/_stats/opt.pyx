@@ -507,3 +507,40 @@ def t_1samp(scalar[:,:] y, double[:] out):
         denom /= div
         denom **= 0.5
         out[i] = mean / denom
+
+
+def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):
+    """T-values for 1-sample t-test
+
+    Parameters
+    ----------
+    y : array (n_cases, n_tests)
+        Dependent Measurement.
+    out : array (n_tests,)
+        Container for output.
+    """
+    cdef unsigned long i, case
+    cdef double mean, denom
+
+    cdef unsigned long n_tests = y.shape[1]
+    cdef unsigned int n_cases = y.shape[0]
+    cdef double div = (n_cases - 1) * n_cases
+    cdef double *case_buffer = <double *>malloc(sizeof(double) * n_cases)
+
+    for i in range(n_tests):
+        for case in range(n_cases):
+            case_buffer[case] = y[case, i] * sign[case]
+
+        # mean
+        mean = 0
+        for case in range(n_cases):
+            mean += case_buffer[case]
+        mean /= n_cases
+
+        # variance
+        denom = 0
+        for case in range(n_cases):
+            denom += (case_buffer[case] - mean) ** 2
+        denom /= div
+        denom **= 0.5
+        out[i] = mean / denom

@@ -14,7 +14,7 @@ import eelbrain
 from eelbrain import datasets, testnd, plot, NDVar
 from eelbrain._data_obj import UTS, Ordered, Sensor
 from eelbrain._stats import testnd as _testnd
-from eelbrain._stats.testnd import _ClusterDist, _label_clusters
+from eelbrain._stats.testnd import _ClusterDist, label_clusters
 from eelbrain._utils import logger
 from eelbrain.tests.test_data import assert_dataobj_equal, assert_dataset_equal
 
@@ -152,8 +152,7 @@ def test_clusterdist():
     Y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
     cdist = _ClusterDist(Y, 3, None)
     cdist.add_original(Y.x[0])
-    for i in xrange(1, 4):
-        cdist.add_perm(Y.x[i])
+    cdist.finalize()
     assert_equal(cdist.dist.shape, (3,))
     # I/O
     string = pickle.dumps(cdist, pickle.HIGHEST_PROTOCOL)
@@ -196,32 +195,23 @@ def test_clusterdist():
         print repr(cdist)
         cdist.add_original(Y.x[0])
         print repr(cdist)
-        for i in xrange(1, 6):
-            cdist.add_perm(Y.x[i])
-        print repr(cdist)
         assert_equal(cdist.dist.shape, (5, 4))
 
         # test keeping time bins
         cdist = _ClusterDist(Y, 5, threshold, dist_tstep=0.2)
         cdist.add_original(Y.x[0])
-        for i in xrange(1, 6):
-            cdist.add_perm(Y.x[i])
         assert_equal(cdist.dist.shape, (5, 2))
         assert_raises(ValueError, _ClusterDist, Y, 5, threshold, dist_tstep=0.3)
 
         # test keeping dimension and time bins
         cdist = _ClusterDist(Y, 5, threshold, dist_dim='sensor', dist_tstep=0.2)
         cdist.add_original(Y.x[0])
-        for i in xrange(1, 6):
-            cdist.add_perm(Y.x[i])
         assert_equal(cdist.dist.shape, (5, 4, 2))
 
         # test keeping 2 dimensions and time bins
         cdist = _ClusterDist(Y, 5, threshold, dist_dim=('sensor', 'dim2'),
                              dist_tstep=0.2)
         cdist.add_original(Y.x[0])
-        for i in xrange(1, 6):
-            cdist.add_perm(Y.x[i])
         assert_equal(cdist.dist.shape, (5, 4, 2, 10))
 
 
@@ -313,9 +303,6 @@ def test_labeling():
     "Test cluster labeling"
     shape = flat_shape = (4, 20)
     pmap = np.empty(shape, np.float_)
-    out = np.empty(shape, np.uint32)
-    bin_buff = np.empty(shape, np.bool_)
-    int_buff = np.empty(shape, np.uint32)
     struct = ndimage.generate_binary_structure(2, 1)
     struct[::2] = False
     conn = np.array([(0, 1), (0, 3), (1, 2), (2, 3)], np.uint32)
@@ -326,18 +313,18 @@ def test_labeling():
                [ 0, 1, 0, 0, 0, 0, 8, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 4, 0],
                [ 0, 3, 3, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 4],
                [ 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 4, 4, 4, 0, 0, 0, 0, 0]]
-    cids = _label_clusters(pmap, out, bin_buff, int_buff, 2, 0, struct, False,
-                           flat_shape, conn, criteria)
+    cmap, cids = label_clusters(pmap, 2, 0, conn, criteria)
     assert_equal(len(cids), 6)
+    assert_array_equal(cmap > 0, np.abs(pmap) > 2)
 
     # some other clusters
     pmap[:] = [[ 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0],
                [ 0, 4, 0, 0, 0, 0, 0, 4, 0, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0],
                [ 0, 0, 4, 4, 0, 4, 4, 0, 4, 0, 0, 0, 4, 4, 1, 0, 4, 4, 0, 0],
                [ 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0]]
-    cids = _label_clusters(pmap, out, bin_buff, int_buff, 2, 0, struct, False,
-                           flat_shape, conn, criteria)
+    cmap, cids = label_clusters(pmap, 2, 0, conn, criteria)
     assert_equal(len(cids), 6)
+    assert_array_equal(cmap > 0, np.abs(pmap) > 2)
 
 
 def test_ttest_1samp():
