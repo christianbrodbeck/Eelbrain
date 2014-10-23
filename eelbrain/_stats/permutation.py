@@ -96,7 +96,7 @@ def permute_order(n, samples=10000, replacement=False, unit=None, seed=0):
                 yield idx_perm
 
 
-def permute_sign_flip(n, samples=10000, ndim=1, seed=0):
+def permute_sign_flip(n, samples=10000, seed=0):
     """Iterate over indices for ``samples`` permutations of the data
 
     Parameters
@@ -135,7 +135,6 @@ def permute_sign_flip(n, samples=10000, ndim=1, seed=0):
         sample_sequences = random.sample(xrange(1, n_perm), samples)
 
     sign = np.empty(n, np.int8)
-    out = sign.reshape((n,) + (1,) * (ndim - 1))
     mult = 2 ** np.arange(n, dtype=np.int64)
     buffer_ = np.empty(n, dtype=np.int64)
     choice = np.array([1, -1], np.int8)
@@ -143,7 +142,7 @@ def permute_sign_flip(n, samples=10000, ndim=1, seed=0):
         np.floor_divide(i, mult, buffer_, dtype=np.int64)
         buffer_ %= 2
         sign = np.choose(buffer_, choice, sign)
-        yield out
+        yield sign
 
 
 def resample(Y, samples=10000, replacement=False, unit=None, seed=0):
