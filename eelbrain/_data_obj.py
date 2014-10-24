@@ -1708,7 +1708,19 @@ class _Effect(object):
         return Var(enum, name)
 
     def index(self, cell):
-        "``e.index(cell)`` returns an array of indices where e equals cell"
+        """``e.index(cell)`` returns an array of indices where e equals cell
+
+        Examples
+        --------
+        >>> f = Factor('abcabcabc')
+        >>> f
+        Factor(['a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c'])
+        >>> f.index('b')
+        array([1, 4, 7])
+        >>> f[f.index('b')] = 'new_b'
+        >>> f
+        Factor(['a', 'new_b', 'c', 'a', 'new_b', 'c', 'a', 'new_b', 'c'])
+        """
         return np.flatnonzero(self == cell)
 
     def index_opt(self, cell):
