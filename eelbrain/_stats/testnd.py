@@ -839,7 +839,9 @@ class ttest_1samp(_Result):
                                  test_name, tstart, tstop, criteria, dist_dim,
                                  parc, dist_tstep)
             cdist.add_original(tmap)
-            run_permutation(opt.t_1samp_perm, cdist)
+            if cdist.do_permutation:
+                iterator = permute_sign_flip(n, samples)
+                run_permutation(opt.t_1samp_perm, cdist, iterator)
 
         # NDVar map of t-values
         dims = ct.Y.dims[1:]
@@ -992,12 +994,11 @@ class ttest_ind(_Result):
                                  test_name, tstart, tstop, criteria, dist_dim,
                                  parc, dist_tstep)
             cdist.add_original(tmap)
-            if cdist.n_clusters and samples:
-                y_shuffled = np.empty_like(cdist.Y_perm.x)
-                for index in permute_order(n, samples, unit=ct.match):
-                    y_shuffled[index] = cdist.Y_perm
-                    tmap_ = _t_ind(y_shuffled, n1, n0)
-                    cdist.add_perm(tmap_)
+            if cdist.do_permutation:
+                def test_func(y, out, perm):
+                    return _t_ind(y, n1, n0, True, out, perm)
+                iterator = permute_order(n, samples)
+                run_permutation(test_func, cdist, iterator)
 
         dims = ct.Y.dims[1:]
 
@@ -1188,7 +1189,9 @@ class ttest_rel(_Result):
                                  test_name, tstart, tstop, criteria, dist_dim,
                                  parc, dist_tstep)
             cdist.add_original(tmap)
-            run_permutation(opt.t_1samp_perm, cdist)
+            if cdist.do_permutation:
+                iterator = permute_sign_flip(n, samples)
+                run_permutation(opt.t_1samp_perm, cdist, iterator)
 
         dims = ct.Y.dims[1:]
         t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
@@ -1266,10 +1269,20 @@ class ttest_rel(_Result):
         return args
 
 
-def _t_ind(x, n1, n2, equal_var=True):
+def _t_ind(x, n1, n2, equal_var=True, out=None, perm=None):
     "Based on scipy.stats.ttest_ind"
-    a = x[:n1]
-    b = x[n1:]
+    if out is None:
+        out = np.empty(x.shape[1:])
+
+    if perm is None:
+        a = x[:n1]
+        b = x[n1:]
+    else:
+        cat = np.zeros(n1 + n2)
+        cat[n1:] = 1
+        cat_perm = cat[perm]
+        a = x[cat_perm == 0]
+        b = x[cat_perm == 1]
     v1 = np.var(a, 0, ddof=1)
     v2 = np.var(b, 0, ddof=1)
 
@@ -1283,7 +1296,7 @@ def _t_ind(x, n1, n2, equal_var=True):
         denom = np.sqrt(vn1 + vn2)
 
     d = np.mean(a, 0) - np.mean(b, 0)
-    t = np.divide(d, denom)
+    t = np.divide(d, denom, out)
     return t
 
 
@@ -2292,6 +2305,7 @@ class _ClusterDist:
         self.criteria = criteria
         self.map_args = map_args
         self.has_original = False
+        self.do_permutation = False
         self.dt_perm = None
         self._finalized = False
 
@@ -2357,6 +2371,7 @@ class _ClusterDist:
         self._original_param_map = stat_map
         if self.samples and n_clusters:
             self._create_dist()
+            self.do_permutation = True
         else:
             self.finalize()
 
@@ -2701,9 +2716,9 @@ class _ClusterDist:
             Dataset with information about the clusters.
         """
         if pmin is None:
-            if self.kind != 'cluster':
+            if self.samples > 0 and self.kind != 'cluster':
                 pmin = 0.05
-        if pmin is not None and self.samples == 0:
+        elif self.samples == 0:
             msg = ("Can not determine p values in distribution without "
                    "permutations.")
             if self.kind == 'cluster':
@@ -2979,24 +2994,20 @@ def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args):
     stat_map_flat = stat_map.ravel()
     map_processor = get_map_processor(*map_args)
     while True:
-        sign = in_queue.get()
-        if sign is None:
+        perm = in_queue.get()
+        if perm is None:
             break
-        test_func(y, stat_map_flat, sign)
+        test_func(y, stat_map_flat, perm)
         max_v = map_processor.max_stat(stat_map)
         out_queue.put(max_v)
 
 
-def run_permutation(test_func, dist):
-    if not dist.n_clusters or not dist.samples:
-        return
-
-    n_cases = len(dist.y_perm)
+def run_permutation(test_func, dist, iterator):
     if MULTIPROCESSING:
         workers, out_queue = setup_workers(test_func, dist)
 
-        for sign in permute_sign_flip(n_cases, dist.samples):
-            out_queue.put(sign)
+        for perm in iterator:
+            out_queue.put(perm)
 
         for _ in xrange(len(workers) - 1):
             out_queue.put(None)
@@ -3009,8 +3020,8 @@ def run_permutation(test_func, dist):
         map_processor = get_map_processor(*dist.map_args)
         stat_map = np.empty(dist.shape)
         stat_map_flat = stat_map.ravel()
-        for i, sign in enumerate(permute_sign_flip(n_cases, dist.samples)):
-            test_func(y, stat_map_flat, sign)
+        for i, perm in enumerate(iterator):
+            test_func(y, stat_map_flat, perm)
             dist.dist[i] = map_processor.max_stat(stat_map)
     dist.finalize()
 
