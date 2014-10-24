@@ -4,7 +4,7 @@ from itertools import product
 import cPickle as pickle
 import logging
 
-from nose.tools import (assert_equal, assert_in, assert_less, assert_not_in,
+from nose.tools import (eq_, assert_equal, assert_in, assert_less, assert_not_in,
                         assert_raises)
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -393,7 +393,7 @@ def test_ttest_1samp():
 
 def test_ttest_ind():
     "Test testnd.ttest_ind()"
-    ds = datasets.get_uts()
+    ds = datasets.get_uts(True)
 
     # basic
     res = testnd.ttest_ind('uts', 'A', 'a1', 'a0', ds=ds)
@@ -412,6 +412,10 @@ def test_ttest_ind():
     res_ = pickle.loads(string)
     assert_equal(repr(res_), repr(res))
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
+
+    # nd
+    res = testnd.ttest_ind('utsnd', 'A', 'a1', 'a0', ds=ds, pmin=0.05, samples=2)
+    eq_(res._cdist.n_clusters, 10)
 
 
 def test_ttest_rel():
