@@ -1188,14 +1188,7 @@ class ttest_rel(_Result):
                                  test_name, tstart, tstop, criteria, dist_dim,
                                  parc, dist_tstep)
             cdist.add_original(tmap)
-            if cdist.n_clusters and samples:
-                tmap_ = np.empty(cdist.Y_perm.shape[1:])
-                tmap_flat= tmap_.ravel()
-                x = None
-                for sign in permute_sign_flip(n, samples, cdist.Y_perm.ndim):
-                    x = np.multiply(cdist.Y_perm.x, sign, x)
-                    stats.t_1samp(x, tmap_flat)
-                    cdist.add_perm(tmap_)
+            run_permutation(opt.t_1samp_perm, cdist)
 
         dims = ct.Y.dims[1:]
         t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
