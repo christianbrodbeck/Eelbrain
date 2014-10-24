@@ -604,11 +604,12 @@ class corr(_Result):
         # permutation
         Y -= Y.summary('case')
         X = X - X.mean()
+        x = X.x
 
         n = len(Y)
         df = n - 2
 
-        rmap = _corr(Y.x, X.x)
+        rmap = _corr(Y.x, x)
 
         if samples is None:
             cdist = None
@@ -627,18 +628,17 @@ class corr(_Result):
                 threshold = 'tfce'
             else:
                 threshold = None
+            info = _cs.stat_info('r', threshold)
 
             cdist = _ClusterDist(Y, samples, threshold, 0, 'r', name,
                                  tstart, tstop, criteria, dist_dim, parc,
                                  dist_tstep)
             cdist.add_original(rmap)
-            if cdist.n_clusters and samples:
-                y_shuffled = np.empty_like(cdist.Y_perm.x)
-                for index in permute_order(n, samples, unit=match):
-                    y_shuffled[index] = cdist.Y_perm.x
-                    rmap_ = _corr(y_shuffled, X.x)
-                    cdist.add_perm(rmap_)
-            info = _cs.stat_info('r', threshold)
+            if cdist.do_permutation:
+                def test_func(y, out, perm):
+                    return _corr(y, x, out, perm)
+                iterator = permute_order(n, samples, unit=match)
+                run_permutation(test_func, cdist, iterator)
 
         # compile results
         dims = Y.dims[1:]
@@ -693,7 +693,7 @@ class corr(_Result):
         return args
 
 
-def _corr(y, x):
+def _corr(y, x, out=None, perm=None):
     """Correlation parameter map
 
     Parameters
@@ -709,23 +709,22 @@ def _corr(y, x):
         The correlation. Occurrence of NaN due to 0 variance in either y or x
         are replaced with 0.
     """
-    x = x.reshape((len(x),) + (1,) * (y.ndim - 1))
-    r = np.sum(y * x, axis=0) / (np.sqrt(np.sum(y ** 2, axis=0)) *
-                                 np.sqrt(np.sum(x ** 2, axis=0)))
-    # replace NaN values
-    isnan = np.isnan(r)
-    if np.any(isnan):
-        if np.isscalar(r):
-            r = 0
-        else:
-            r[isnan] = 0
-    return r
+    if out is None and y.ndim > 1:
+        out = np.empty(y.shape[1:])
+    if perm is not None:
+        x = x[perm]
 
-def _corr_alt(y, x):
-    n = len(y)
-    cov = np.sum(x * y, axis=0) / (n - 1)
-    r = cov / (np.std(x, axis=0) * np.std(y, axis=0))
-    return r
+    x = x.reshape((len(x),) + (1,) * (y.ndim - 1))
+    out = np.sum(y * x, axis=0, out=out)
+    out /= np.sqrt(np.sum(y ** 2, axis=0)) * np.sqrt(np.sum(x ** 2, axis=0))
+    # replace NaN values
+    isnan = np.isnan(out)
+    if np.any(isnan):
+        if np.isscalar(out):
+            out = 0
+        else:
+            out[isnan] = 0
+    return out
 
 
 def _rtest_p(r, df):
