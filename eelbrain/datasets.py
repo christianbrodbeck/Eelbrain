@@ -216,11 +216,15 @@ def get_uts(utsnd=False, seed=0):
 
         y = np.random.normal(0, 1, (60, 5, len(time)))
         y += rm_var[:, None, None]
-        for i in xrange(15):
-            phi = np.random.uniform(0, 2 * np.pi, 1)
-            x = np.sin(10 * 2 * np.pi * (time.times + phi))
-            x *= np.hanning(len(time))
-            y[i, 0] += x
+        # add interaction
+        win = np.hanning(50)
+        y[:15, 0, 50:] += win * 3
+        y[:15, 1, 50:] += win * 2
+        y[:15, 4, 50:] += win
+        # add main effect
+        y[30:, 2, 25:75] += win * 2.5
+        y[30:, 3, 25:75] += win * 1.5
+        y[30:, 4, 25:75] += win
 
         dims = ('case', sensor, time)
         ds['utsnd'] = NDVar(y, dims=dims)
