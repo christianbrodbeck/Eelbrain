@@ -60,7 +60,8 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     src : None | 'ico' | 'vol'
         Add source space data as NDVar as ``ds['src']``.
     sub : str | None
-        Expresion for subset of events to load.
+        Expresion for subset of events to load. For a very small dataset use e.g.
+        ``[0,1]``.
     fixed : bool
         MNE inverse parameter.
     snr : scalar
