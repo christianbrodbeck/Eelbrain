@@ -105,7 +105,7 @@ def merge_labels(unsigned int [:,:] cmap, int n_labels_in,
 
 def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
                      double[:, :] f_map, np.int16_t[:, :] effects, 
-                     np.int8_t[:, :] e_ms):
+                     np.int8_t[:, :] e_ms, long[:] perm=None):
     """Compute f-maps for a balanced, fully specified ANOVA model
     
     Parameters
@@ -135,7 +135,7 @@ def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef double *mss = <double *>malloc(sizeof(double) * n_effects)
 
     for i in range(n_tests):
-        _lm_betas(y, i, xsinv, betas)
+        _lm_betas(y, i, xsinv, betas, perm)
 
         # find MS of effects
         for i_effect in range(n_effects):
@@ -167,7 +167,8 @@ def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
 
 
 def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
-                double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+                double[:, :] f_map, np.int16_t[:, :] effects, int df_res,
+                long[:] perm=None):
     """Compute f-maps for a balanced ANOVA model with residuals
 
     Parameters
@@ -198,7 +199,7 @@ def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
     cdef double *predicted_y = <double *>malloc(sizeof(double) * n_cases)
 
     for i in range(n_tests):
-        _lm_betas(y, i, xsinv, betas)
+        _lm_betas(y, i, xsinv, betas, perm)
 
         # expand accounted variance
         for case in range(n_cases):
@@ -210,8 +211,12 @@ def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
 
         # residuals
         SS = 0
-        for case in range(n_cases):
-            SS += (y[case, i] - predicted_y[case]) ** 2
+        if perm is None:
+            for case in range(n_cases):
+                SS += (y[case, i] - predicted_y[case]) ** 2
+        else:
+            for case in range(n_cases):
+                SS += (y[perm[case], i] - predicted_y[case]) ** 2
         MS_res = SS / df_res
 
         # find MS of effects
@@ -287,7 +292,8 @@ def ss(scalar[:,:] y, double[:] out):
         out[i] = ss_
 
 
-cdef void _lm_betas(scalar[:,:] y, unsigned long i, double[:,:] xsinv, double *betas) nogil:
+cdef void _lm_betas(scalar[:,:] y, unsigned long i, double[:,:] xsinv,
+                    double *betas, long[:] perm=None) nogil:
     """Fit a linear model
 
     Parameters
@@ -312,15 +318,22 @@ cdef void _lm_betas(scalar[:,:] y, unsigned long i, double[:,:] xsinv, double *b
     cdef unsigned int df_x = xsinv.shape[0]
 
     # betas = xsinv * y
-    for i_beta in range(df_x):
-        beta = 0
-        for case in range(n_cases):
-            beta += xsinv[i_beta, case] * y[case, i]
-        betas[i_beta] = beta
+    if perm is None:
+        for i_beta in range(df_x):
+            beta = 0
+            for case in range(n_cases):
+                beta += xsinv[i_beta, case] * y[case, i]
+            betas[i_beta] = beta
+    else:
+        for i_beta in range(df_x):
+            beta = 0
+            for case in range(n_cases):
+                beta += xsinv[i_beta, case] * y[perm[case], i]
+            betas[i_beta] = beta
 
 
 cdef double _lm_res_ss(scalar[:,:] y, int i, double[:,:] x, int df_x,
-                       double *betas) nogil:
+                       double *betas, long[:] perm=None) nogil:
     """Residual sum squares
 
     Parameters
@@ -340,11 +353,18 @@ cdef double _lm_res_ss(scalar[:,:] y, int i, double[:,:] x, int df_x,
     cdef double ss = 0
     cdef unsigned int n_cases = y.shape[0]
 
-    for case in range(n_cases):
-        predicted_y = 0
-        for i_beta in range(df_x):
-            predicted_y += x[case, i_beta] * betas[i_beta]
-        ss += (y[case, i] - predicted_y) ** 2
+    if perm is None:
+        for case in range(n_cases):
+            predicted_y = 0
+            for i_beta in range(df_x):
+                predicted_y += x[case, i_beta] * betas[i_beta]
+            ss += (y[case, i] - predicted_y) ** 2
+    else:
+        for case in range(n_cases):
+            predicted_y = 0
+            for i_beta in range(df_x):
+                predicted_y += x[case, i_beta] * betas[i_beta]
+            ss += (y[perm[case], i] - predicted_y) ** 2
 
     return ss
 
@@ -414,7 +434,8 @@ def lm_res(scalar[:,:] y, double[:,:] x, double[:, :] xsinv, double[:,:] res):
     free(betas)
 
 
-def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] ss):
+def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] ss,
+              long[:] perm=None):
     """Fit a linear model and compute the residual sum squares
 
     Parameters
@@ -436,8 +457,8 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] ss):
     cdef double *betas = <double *>malloc(sizeof(double) * df_x)
 
     for i in range(n_tests):
-        _lm_betas(y, i, xsinv, betas)
-        ss[i] = _lm_res_ss(y, i, x, df_x, betas)
+        _lm_betas(y, i, xsinv, betas, perm)
+        ss[i] = _lm_res_ss(y, i, x, df_x, betas, perm)
 
     free(betas)
 
