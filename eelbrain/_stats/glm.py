@@ -398,20 +398,19 @@ class _NDANOVA(object):
     def __repr__(self):
         return '%s(%s)' % (self.__class__.__name__, self.x.name)
 
-    def map(self, y):
+    def map(self, y, perm=None):
         """
         Fits the model to multiple dependent variables and returns arrays of
         F-values and optionally p-values.
 
         Parameters
         ----------
-        y : np.array
+        y : np.array (n_cases, ...)
             Assumes that the first dimension of Y provides cases.
             Other than that, shape is free to vary and output shape will match
             input shape.
-        out : list of array
-            List of arrays in which to place the resulting (ravelled) f-maps.
-            Can only be used in conjunction with ``p=False``.
+        perm : None | array (n_cases, )
+            Permutation.
 
         Returns
         -------
@@ -435,10 +434,10 @@ class _NDANOVA(object):
         if y.ndim > 2:
             y = y.reshape((self._n_obs, -1))
 
-        self._map(y, flat_f_map)
+        self._map(y, flat_f_map, perm)
         return f_map
 
-    def _map(self, y, flat_f_map):
+    def _map(self, y, flat_f_map, perm):
         raise NotImplementedError
 
     def p_maps(self, f_maps):
@@ -487,10 +486,10 @@ class _BalancedNDANOVA(_NDANOVA):
         dfs_denom = (x.df_error,) * len(effects)
         _NDANOVA.__init__(self, x, effects, dfs_denom)
 
-    def _map(self, y, flat_f_map):
+    def _map(self, y, flat_f_map, perm):
         x = self.x
         anova_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
-                     x.df_error)
+                    x.df_error, perm)
 
 
 class _FullNDANOVA(_NDANOVA):
@@ -518,10 +517,10 @@ class _FullNDANOVA(_NDANOVA):
         self.e_ms = e_ms
         self._e_ms_array = _hopkins_ems_array(x)
 
-    def _map(self, y, flat_f_map):
+    def _map(self, y, flat_f_map, perm):
         x = self.x
         anova_full_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
-                         self._e_ms_array)
+                         self._e_ms_array, perm)
 
 
 class _IncrementalNDANOVA(_NDANOVA):
@@ -551,7 +550,7 @@ class _IncrementalNDANOVA(_NDANOVA):
             self._SS_res[i] = np.empty(shape)
         return f_map
 
-    def _map(self, y, flat_f_map):
+    def _map(self, y, flat_f_map, perm):
         if self._SS_diff is None:
             shape = y.shape[1]
             SS_diff = MS_diff = np.empty(shape)
@@ -570,7 +569,7 @@ class _IncrementalNDANOVA(_NDANOVA):
             if x is None:
                 ss(y, ss_)
             else:
-                lm_res_ss(y, x.full, x.xsinv, ss_)
+                lm_res_ss(y, x.full, x.xsinv, ss_, perm)
 
         # incremental comparisons
         np.divide(SS_res[0], self.x.df_error, MS_e)

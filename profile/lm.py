@@ -14,6 +14,8 @@ x = np.random.normal(0, 1, (n_cases, n_betas))
 xsinv = np.random.normal(0, 1, (n_betas, n_cases))
 betas = np.empty((n_tests, n_betas))
 ss = np.empty(n_tests)
+perm = np.arange(n_cases)
+np.random.shuffle(perm)
 
 # bigger arrays
 n_testsl = 10**6
