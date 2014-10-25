@@ -249,28 +249,6 @@ def test_corr():
 def test_t_contrast():
     ds = datasets.get_uts()
 
-    # test aux functions
-    y = np.arange(9.).reshape((3, 3))
-    indexes = {'a': 0, 'b': 1, 'c': 2}
-
-    contrast = "+sum(a>c, b>c)"
-    contrast_ = _testnd._parse_t_contrast(contrast)
-    assert_equal(contrast_, ('func', '+', np.sum, [('comp', None, 'a', 'c'),
-                                                   ('comp', None, 'b', 'c')]))
-
-    contrast = "+sum(a>*, b>*)"
-    contrast_ = _testnd._parse_t_contrast(contrast)
-    assert_equal(contrast_, ('func', '+', np.sum, [('comp', None, 'a', '*'),
-                                                   ('comp', None, 'b', '*')]))
-    _, cells = _testnd._t_contrast_rel_properties(contrast_)
-    pc, mc = _testnd._t_contrast_rel_expand_cells(cells, ('a', 'b', 'c'))
-    data = _testnd._t_contrast_rel_data(y, indexes, pc, mc)
-    assert_array_equal(data['a'], np.arange(3.))
-    assert_array_equal(data['*'], y.mean(0))
-
-    assert_raises(ValueError, _testnd._t_contrast_rel_expand_cells, cells,
-                  ('a|c', 'b|c', 'c|c'))
-
     # simple contrast
     res = testnd.t_contrast_rel('uts', 'A', 'a1>a0', 'rm', ds=ds, samples=10,
                                 pmin=0.05)
