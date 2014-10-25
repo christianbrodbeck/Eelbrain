@@ -1558,31 +1558,23 @@ class anova(_MultiEffectResult):
             else:
                 thresholds = (None for _ in xrange(len(effects)))
 
-            n_workers = max(1, int(ceil(cpu_count() / len(effects))))
             cdists = [_ClusterDist(Y, samples, thresh, 1, 'F', e.name, tstart,
                                    tstop, criteria, dist_dim, parc,
-                                   dist_tstep, n_workers)
+                                   dist_tstep)
                       for e, thresh in izip(effects, thresholds)]
 
             # Find clusters in the actual data
-            n_clusters = 0
+            do_permutation = 0
             for cdist, fmap in izip(cdists, fmaps):
                 cdist.add_original(fmap)
-                n_clusters += cdist.n_clusters
+                do_permutation += cdist.do_permutation
 
-            if n_clusters and samples:
-                fmaps_ = lm.preallocate(cdist.Y_perm.shape)
-                y_shuffled = np.empty_like(cdist.Y_perm.x)
-                for index in permute_order(len(y_shuffled), samples, unit=match):
-                    y_shuffled[index] = cdist.Y_perm
-                    lm.map(y_shuffled)
-                    for cdist, fmap in izip(cdists, fmaps_):
-                        if cdist.n_clusters:
-                            cdist.add_perm(fmap)
+            if do_permutation:
+                iterator = permute_order(len(Y), samples, unit=match)
+                run_permutation_me(lm, cdists, iterator)
 
         # create ndvars
         dims = Y.dims[1:]
-
         f = []
         for e, fmap, df_den in izip(effects, fmaps, dfs_denom):
             f0, f1, f2 = stats.ftest_f((0.05, 0.01, 0.001), e.df, df_den)
@@ -2076,6 +2068,7 @@ class _ClusterDist:
         elif isinstance(threshold, str):
             if threshold.lower() == 'tfce':
                 kind = 'tfce'
+                threshold = None
             else:
                 raise ValueError("Invalid value for pmin: %s" % repr(threshold))
         else:
@@ -2372,6 +2365,7 @@ class _ClusterDist:
             self._create_dist()
             self.do_permutation = True
         else:
+            self.dist_array = None
             self.finalize()
 
     def _create_dist(self):
@@ -3054,3 +3048,116 @@ def setup_workers(test_func, dist, n_workers=None):
     workers.append(w)
 
     return workers, permutation_queue
+
+
+def run_permutation_me(test, dists, iterator):
+    dist = dists[0]
+    if dist.kind == 'cluster':
+        thresholds = tuple(d.threshold for d in dists)
+    else:
+        thresholds = None
+
+    if MULTIPROCESSING:
+        workers, out_queue = setup_workers_me(test, dists, thresholds)
+
+        for perm in iterator:
+            out_queue.put(perm)
+
+        for _ in xrange(len(workers) - 1):
+            out_queue.put(None)
+
+        for w in workers:
+            w.join()
+            logger.debug("worker joined")
+    else:
+        y = dist.data_for_permutation(False)
+        map_processor = get_map_processor(*dist.map_args)
+
+        stat_maps = test.preallocate((0,) + dist.shape)
+        stat_maps_iter = [stat_maps[i] for i in xrange(len(stat_maps))]
+        if thresholds:
+            stat_maps_iter = zip(stat_maps_iter, thresholds, dists)
+        else:
+            stat_maps_iter = zip(stat_maps_iter, dists)
+
+        for i, perm in enumerate(iterator):
+            test.map(y, perm)
+            if thresholds:
+                for m, t, d in stat_maps_iter:
+                    if d.do_permutation:
+                        d.dist[i] = map_processor.max_stat(m, t)
+            else:
+                for m, d in stat_maps_iter:
+                    if d.do_permutation:
+                        d.dist[i] = map_processor.max_stat(m)
+
+    for d in dists:
+        if d.do_permutation:
+            d.finalize()
+
+
+def setup_workers_me(test_func, dists, thresholds, n_workers=None):
+    "Initialize workers for permutation tests"
+    if n_workers is None:
+        n_workers = cpu_count()
+    elif n_workers < 0:
+        n_workers = max(1, cpu_count() + n_workers)
+    elif not isinstance(n_workers, int):
+        raise TypeError("n_workers must be int, got %s" % repr(n_workers))
+
+    logger.debug("Setting up %i worker processes..." % n_workers)
+    permutation_queue = SimpleQueue()
+    dist_queue = SimpleQueue()
+
+    # permutation workers
+    dist = dists[0]
+    y, shape = dist.data_for_permutation()
+    args = (permutation_queue, dist_queue, y, shape, test_func, dist.map_args,
+            thresholds)
+    workers = []
+    for _ in xrange(n_workers):
+        w = Process(target=permutation_worker_me, args=args)
+        w.start()
+        workers.append(w)
+
+    # distribution worker
+    args = ([d.dist_array for d in dists], dist.dist_shape, dist_queue)
+    w = Process(target=distribution_worker_me, args=args)
+    w.start()
+    workers.append(w)
+
+    return workers, permutation_queue
+
+
+def permutation_worker_me(in_queue, out_queue, y, shape, test, map_args,
+                          thresholds):
+    n = reduce(operator.mul, shape)
+    y = np.frombuffer(y, np.float64, n).reshape((shape[0], -1))
+    stat_maps = test.preallocate(shape)
+    iterator = [stat_maps[i] for i in xrange(len(stat_maps))]
+    if thresholds:
+        iterator = zip(iterator, thresholds)
+    map_processor = get_map_processor(*map_args)
+    while True:
+        perm = in_queue.get()
+        if perm is None:
+            break
+        test.map(y, perm)
+
+        if thresholds:
+            max_v = [map_processor.max_stat(m, t) for m, t in iterator]
+        else:
+            max_v = [map_processor.max_stat(m) for m in iterator]
+        out_queue.put(max_v)
+
+
+def distribution_worker_me(dist_arrays, dist_shape, in_queue):
+    "Worker that accumulates values and places them into the distribution"
+    n = reduce(operator.mul, dist_shape)
+    dists = [d if d is None else np.frombuffer(d, np.float64, n).reshape(dist_shape)
+             for d in dist_arrays]
+    for i in xrange(dist_shape[0]):
+        for dist, v in izip(dists, in_queue.get()):
+            if dist is not None:
+                dist[i] = v
+        logger.debug("max stat %i received" % i)
