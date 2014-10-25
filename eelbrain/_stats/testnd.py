@@ -2750,9 +2750,23 @@ def distribution_worker(dist_array, dist_shape, in_queue):
     n = reduce(operator.mul, dist_shape)
     dist = np.frombuffer(dist_array, np.float64, n)
     dist.shape = dist_shape
-    for i in xrange(dist_shape[0]):
+    samples = dist_shape[0]
+    # logger
+    t0 = tn = current_time()
+    logger.info('starting permutation')
+    for i in xrange(samples):
         dist[i] = in_queue.get()
-        logger.debug("max stat %i received" % i)
+        # logger
+        t = current_time()
+        dt = t - tn
+        if i and dt > 10:
+            time_left = (samples - i) * (t - t0) / i
+            td = timedelta(seconds=round(time_left))
+            logger.info("max stat %i received, estimated time left: %s" % (i, td))
+            tn = t
+    time_taken = t - t0
+    td = timedelta(seconds=round(time_taken))
+    logger.info("%i permutations done in %s" % (samples, td))
 
 
 def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args):
@@ -2932,8 +2946,22 @@ def distribution_worker_me(dist_arrays, dist_shape, in_queue):
     n = reduce(operator.mul, dist_shape)
     dists = [d if d is None else np.frombuffer(d, np.float64, n).reshape(dist_shape)
              for d in dist_arrays]
-    for i in xrange(dist_shape[0]):
+    samples = dist_shape[0]
+    # logger
+    t0 = tn = current_time()
+    logger.info('starting permutation')
+    for i in xrange(samples):
         for dist, v in izip(dists, in_queue.get()):
             if dist is not None:
                 dist[i] = v
-        logger.debug("max stat %i received" % i)
+        # logger
+        t = current_time()
+        dt = t - tn
+        if i and dt > 10:
+            time_left = (samples - i) * (t - t0) / i
+            td = timedelta(seconds=round(time_left))
+            logger.info("max stat %i received, estimated time left: %s" % (i, td))
+            tn = t
+    time_taken = t - t0
+    td = timedelta(seconds=round(time_taken))
+    logger.info("%i permutations done in %s" % (samples, td))
