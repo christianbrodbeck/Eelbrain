@@ -240,32 +240,14 @@ class t_contrast_rel(_Result):
         """
         test_name = "t-contrast"
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
-        indexes = ct.data_indexes
 
         # setup contrast
-        contrast_ = _parse_t_contrast(contrast)
-        n_buffers, cells_in_contrast = _t_contrast_rel_properties(contrast_)
-        pcells, mcells = _t_contrast_rel_expand_cells(cells_in_contrast, ct.cells)
-        tail_ = contrast_[1]
-        if tail_ is None:
-            tail = 0
-        elif tail_ == '+':
-            tail = 1
-        elif tail_ == '-':
-            tail = -1
-        else:
-            raise RuntimeError("Invalid tail in parse: %s" % repr(tail_))
-
-        # buffer memory allocation
-        shape = ct.Y.shape[1:]
-        buff = np.empty((n_buffers,) + shape)
+        t_contrast = _TContrast(contrast, ct.cells, ct.data_indexes)
+        tail = t_contrast.tail
 
         # original data
-        data = _t_contrast_rel_data(ct.Y.x, indexes, pcells, mcells)
-        tmap = _t_contrast_rel(contrast_, data, buff)
-        del buff
-        dims = ct.Y.dims[1:]
-        t = NDVar(tmap, dims, {}, 't')
+        tmap = t_contrast.map(ct.Y.x)
+        t = NDVar(tmap, ct.Y.dims[1:], {}, 't')
 
         if samples is None:
             cdist = None
@@ -285,20 +267,11 @@ class t_contrast_rel(_Result):
                 threshold = None
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't', test_name,
-                                 tstart, tstop, criteria, dist_dim, parc,
-                                 dist_tstep)
+                                 tstart, tstop, criteria, dist_dim, parc, dist_tstep)
             cdist.add_original(tmap)
-            if cdist.n_clusters and samples:
-                # buffer memory allocation
-                y_shuffled = np.empty_like(cdist.Y_perm.x)
-                shape = cdist.Y_perm.shape[1:]
-                buff = np.empty((n_buffers,) + shape)
-                tmap_ = np.empty(shape)
-                for index in permute_order(len(y_shuffled), samples, unit=ct.match):
-                    y_shuffled[index] = cdist.Y_perm.x
-                    data = _t_contrast_rel_data(y_shuffled, indexes, pcells, mcells)
-                    _t_contrast_rel(contrast_, data, buff, tmap_)
-                    cdist.add_perm(tmap_)
+            if cdist.do_permutation:
+                iterator = permute_order(len(ct.Y), samples, unit=ct.match)
+                run_permutation(t_contrast, cdist, iterator)
 
         # store attributes
         self.Y = ct.Y.name
@@ -327,6 +300,50 @@ class t_contrast_rel(_Result):
         if self.match:
             args.append('match=%r' % self.match)
         return args
+
+
+class _TContrast(object):
+
+    def __init__(self, contrast, cells, indexes):
+        parse = _parse_t_contrast(contrast)
+        n_buffers, cells_in_contrast = _t_contrast_rel_properties(parse)
+        pcells, mcells = _t_contrast_rel_expand_cells(cells_in_contrast, cells)
+        tail_ = parse[1]
+        if tail_ is None:
+            tail = 0
+        elif tail_ == '+':
+            tail = 1
+        elif tail_ == '-':
+            tail = -1
+        else:
+            raise RuntimeError("Invalid tail in parse: %s" % repr(tail_))
+
+        self.contrast = contrast
+        self.tail = tail
+        self.indexes = indexes
+        self._parsed_contrast = parse
+        self._pcells = pcells
+        self._mcells = mcells
+        self._n_buffers = n_buffers
+
+        self._buffer_shape = None
+
+    def map(self, y):
+        shape = y.shape[1:]
+        buff = np.empty((self._n_buffers,) + shape)
+        data = _t_contrast_rel_data(y, self.indexes, self._pcells, self._mcells)
+        tmap = _t_contrast_rel(self._parsed_contrast, data, buff)
+        return tmap
+
+    def __call__(self, y, out, perm):
+        shape = y.shape[1:]
+        if self._buffer_shape != shape:
+            self._buffer = np.empty((self._n_buffers,) + shape)
+            self._y_perm = np.empty_like(y)
+        self._y_perm[perm] = y
+        data = _t_contrast_rel_data(self._y_perm, self.indexes, self._pcells, self._mcells)
+        tmap = _t_contrast_rel(self._parsed_contrast, data, self._buffer, out)
+        return tmap
 
 
 def _parse_cell(cell_name):
