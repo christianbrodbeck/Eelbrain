@@ -377,7 +377,7 @@ def _nd_anova(x):
                "specified.")
         raise NotImplementedError(err)
     elif isbalanced(x):
-        return _BalancedNDANOVA(x)
+        return _BalancedFixedNDANOVA(x)
     else:
         return _IncrementalNDANOVA(x)
 
@@ -481,18 +481,49 @@ class _NDANOVA(object):
 
 class _BalancedNDANOVA(_NDANOVA):
     "For balanced but not fully specified models"
-    def __init__(self, x):
-        effects = x.effects
-        dfs_denom = (x.df_error,) * len(effects)
+    def __init__(self, x,  effects, dfs_denom):
         _NDANOVA.__init__(self, x, effects, dfs_denom)
+
+        self._effect_to_beta = x._effect_to_beta
+        self._x_full_perm = None
+        self._xsinv_perm = None
 
     def _map(self, y, flat_f_map, perm):
         x = self.x
-        anova_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
-                    x.df_error, perm)
+        if perm is None:
+            x_full = x.full
+            xsinv = x.xsinv
+        else:
+            if self._x_full_perm is None:
+                self._x_full_perm = x_full = np.empty_like(x.full)
+                self._xsinv_perm = xsinv = np.empty_like(x.xsinv)
+            else:
+                x_full = self._x_full_perm
+                xsinv = self._xsinv_perm
+            x.full.take(perm, 0, x_full)
+            x.xsinv.take(perm, 1, xsinv)
+
+        self._map_balanced(y, flat_f_map, x_full, xsinv)
+
+    def _map_balanced(self, y, flat_f_map, x_full, xsinv):
+        raise NotImplementedError
 
 
-class _FullNDANOVA(_NDANOVA):
+class _BalancedFixedNDANOVA(_BalancedNDANOVA):
+    "For balanced but not fully specified models"
+    def __init__(self, x):
+        effects = x.effects
+        dfs_denom = (x.df_error,) * len(effects)
+        _BalancedNDANOVA.__init__(self, x, effects, dfs_denom)
+
+        self.df_error = x.df_error
+
+    def _map_balanced(self, y, flat_f_map, x_full, xsinv):
+        anova_fmaps(y, x_full, xsinv, flat_f_map, self._effect_to_beta,
+                    self.df_error)
+
+
+class _FullNDANOVA(_BalancedNDANOVA):
     """for balanced models.
     E(MS) for F statistic after Hopkins (1976)
     """
@@ -512,15 +543,14 @@ class _FullNDANOVA(_NDANOVA):
         df_den = {e: sum(e_.df for e_ in e_ms[e]) for e in x.effects}
         effects = tuple(e for e in x.effects if df_den[e])
         dfs_denom = [df_den[e] for e in effects]
-        _NDANOVA.__init__(self, x, effects, dfs_denom)
+        _BalancedNDANOVA.__init__(self, x, effects, dfs_denom)
 
         self.e_ms = e_ms
         self._e_ms_array = _hopkins_ems_array(x)
 
-    def _map(self, y, flat_f_map, perm):
-        x = self.x
-        anova_full_fmaps(y, x.full, x.xsinv, flat_f_map, x._effect_to_beta,
-                         self._e_ms_array, perm)
+    def _map_balanced(self, y, flat_f_map, x_full, xsinv):
+        anova_full_fmaps(y, x_full, xsinv, flat_f_map, self._effect_to_beta,
+                         self._e_ms_array)
 
 
 class _IncrementalNDANOVA(_NDANOVA):
@@ -538,6 +568,14 @@ class _IncrementalNDANOVA(_NDANOVA):
         self._SS_diff = None
         self._MS_e = None
         self._SS_res = None
+
+        self._x_orig = x_orig = {}
+        for i, x in models.iteritems():
+            if x is None:
+                x_orig[i] = None
+            else:
+                x_orig[i] = (x.full, x.xsinv)
+        self._x_perm = None
 
     def preallocate(self, y_shape):
         f_map = _NDANOVA.preallocate(self, y_shape)
@@ -563,13 +601,32 @@ class _IncrementalNDANOVA(_NDANOVA):
             MS_e = self._MS_e
             SS_res = self._SS_res
 
+        if perm is None:
+            x_dict = self._x_orig
+        else:
+            x_orig = self._x_orig
+            x_dict = self._x_perm
+            if x_dict is None:
+                self._x_perm = x_dict = {}
+                for i, x in self._models.iteritems():
+                    if x is None:
+                        x_dict[i] = None
+                    else:
+                        x_dict[i] = (np.empty_like(x.full), np.empty_like(x.xsinv))
+
+            for i in x_dict:
+                if x_dict[i]:
+                    x_orig[i][0].take(perm, 0, x_dict[i][0])
+                    x_orig[i][1].take(perm, 1, x_dict[i][1])
+
         # calculate SS_res and MS_res for all models
-        for i, x in self._models.iteritems():
+        for i, x in x_dict.iteritems():
             ss_ = SS_res[i]
             if x is None:
                 ss(y, ss_)
             else:
-                lm_res_ss(y, x.full, x.xsinv, ss_, perm)
+                x_full, xsinv = x
+                lm_res_ss(y, x_full, xsinv, ss_)
 
         # incremental comparisons
         np.divide(SS_res[0], self.x.df_error, MS_e)
