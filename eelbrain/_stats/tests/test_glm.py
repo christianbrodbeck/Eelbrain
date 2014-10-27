@@ -1,3 +1,4 @@
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import izip
 
 import numpy as np
@@ -7,7 +8,8 @@ from nose.tools import assert_equal, assert_almost_equal, assert_raises, nottest
 from numpy.testing import assert_allclose
 
 from eelbrain import datasets, test, Dataset
-from eelbrain._stats.glm import _nd_anova
+from eelbrain._stats import glm
+from eelbrain._stats.permutation import permute_order
 
 
 def r_require(package):
@@ -67,7 +69,7 @@ def run_on_lm_fitter(y, x, ds):
     y = y.x[:, newaxis]
     y = np.hstack((y, y))
     x = ds.eval(x)
-    fitter = _nd_anova(x)
+    fitter = glm._nd_anova(x)
     fmaps = fitter.map(y)
     fs = fmaps[:, 0]
     return fs
@@ -107,6 +109,48 @@ def test_anova():
     dss = ds.sub("A%B != ('a1', 'b1')")
     assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*B', ds=dss)
     assert_raises(NotImplementedError, run_on_lm_fitter, 'fltvar', 'A*B', ds=dss)
+
+
+def test_anova_perm():
+    "Test permutation argument for ANOVA"
+    ds = datasets.get_uts()
+    y = ds['uts'].x
+    y_perm = np.empty_like(y)
+    n_cases, n_tests = y.shape
+
+    # balanced anova
+    aov = glm._BalancedFixedNDANOVA(ds.eval('A*B'))
+    r1 = aov.preallocate(y.shape)
+    for perm in permute_order(n_cases, 2):
+        aov.map(y, perm)
+        r2 = r1.copy()
+        y_perm[perm] = y
+        aov.map(y_perm)
+        assert_allclose(r2, r1, 1e-6, 1e-6)
+
+    # full repeated measures anova
+    aov = glm._FullNDANOVA(ds.eval('A*B*rm'))
+    r1 = aov.preallocate(y.shape)
+    for perm in permute_order(n_cases, 2):
+        aov.map(y, perm)
+        r2 = r1.copy()
+        y_perm[perm] = y
+        aov.map(y_perm)
+        assert_allclose(r2, r1, 1e-6, 1e-6)
+
+    # incremental anova
+    ds = ds[1:]
+    y = ds['uts'].x
+    y_perm = np.empty_like(y)
+    n_cases, n_tests = y.shape
+    aov = glm._IncrementalNDANOVA(ds.eval('A*B'))
+    r1 = aov.preallocate(y.shape)
+    for perm in permute_order(n_cases, 2):
+        aov.map(y, perm)
+        r2 = r1.copy()
+        y_perm[perm] = y
+        aov.map(y_perm)
+        assert_allclose(r2, r1, 1e-6, 1e-6)
 
 
 def test_anova_r_adler():
@@ -187,12 +231,12 @@ def test_lmfitter():
     y = ds['uts'].x
 
     x = ds.eval("A * B")
-    lm = _nd_anova(x)
+    lm = glm._nd_anova(x)
     f_maps = lm.map(y)
     p_maps = lm.p_maps(f_maps)
 
     x_full = ds.eval("A * B + ind(A%B)")
-    lm_full = _nd_anova(x_full)
+    lm_full = glm._nd_anova(x_full)
     f_maps_full = lm_full.map(y)
     p_maps_full = lm_full.p_maps(f_maps)
 
@@ -203,7 +247,7 @@ def test_lmfitter():
 
     # repeated measures
     x = ds.eval("A * B * rm")
-    lm = _nd_anova(x)
+    lm = glm._nd_anova(x)
     f_maps = lm.map(y)
     p_maps = lm.p_maps(f_maps)
 

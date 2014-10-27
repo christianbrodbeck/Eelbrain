@@ -1,35 +1,27 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import numpy as np
-from numpy.testing import assert_array_almost_equal
+import scipy.stats
+from numpy.testing import assert_allclose
 from eelbrain import datasets
-from eelbrain._stats import opt, glm
-from eelbrain._stats.permutation import permute_order
+from eelbrain._stats import opt
+from eelbrain._stats.permutation import permute_sign_flip
 
 
-
-def test_perm():
-    "Test permutation argument"
+def test_t_1samp():
+    "Test t_1samp functions"
     ds = datasets.get_uts()
-    y = ds['uts'].x
-    y_perm = np.empty_like(y)
-    n_cases, n_tests = y.shape
+    y = ds.eval("uts.x")
+    n_cases = len(y)
+    t = np.empty(y.shape[1])
 
-    # balanced anova
-    aov = glm._BalancedFixedNDANOVA(ds.eval('A*B'))
-    r1 = aov.preallocate(y.shape)
-    for perm in permute_order(n_cases, 2):
-        aov.map(y, perm)
-        r2 = r1.copy()
-        y_perm[perm] = y
-        aov.map(y_perm)
-        assert_array_almost_equal(r2, r1, 12)
+    # t
+    opt.t_1samp(y, t)
+    t_sp, _ = scipy.stats.ttest_1samp(y, 0)
+    assert_allclose(t, t_sp)
 
-    # full repeated measures anova
-    aov = glm._FullNDANOVA(ds.eval('A*B*rm'))
-    r1 = aov.preallocate(y.shape)
-    for perm in permute_order(n_cases, 2):
-        aov.map(y, perm)
-        r2 = r1.copy()
-        y_perm[perm] = y
-        aov.map(y_perm)
-        assert_array_almost_equal(r2, r1, 12)
+    # perm
+    t_perm = np.empty_like(t)
+    for sign in permute_sign_flip(n_cases, 2):
+        opt.t_1samp_perm(y, t_perm, sign)
+        opt.t_1samp(y * sign[:,None], t)
+        assert_allclose(t_perm, t)
