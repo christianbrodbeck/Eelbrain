@@ -2077,6 +2077,9 @@ class _ClusterDist:
         self.dt_perm = None
         self._finalized = False
 
+        from .. import __version__
+        self._version = __version__
+
     def _crop(self, im):
         "Crop an original stat_map"
         if self._crop_for_permutation:
@@ -2204,11 +2207,11 @@ class _ClusterDist:
             err = ("Cannot pickle cluster distribution before all permu"
                    "tations have been added.")
             raise RuntimeError(err)
-        attrs = ('name', 'meas',
+        attrs = ('name', 'meas', '_version',
                  # settings ...
                  'kind', 'threshold', 'tail', 'criteria', 'samples', 'tstart',
                  'tstop', 'dist_dim', 'dist_tstep',
-                  # data properties ...
+                 # data properties ...
                  'dims', 'shape', '_all_adjacent', '_nad_ax', '_flat_shape',
                  '_connectivity', '_criteria',
                  # results ...
@@ -2224,6 +2227,8 @@ class _ClusterDist:
                                                 state.pop('_connectivity_dst')))
         if 'N' in state:
             state['samples'] = state.pop('N')
+        if '_version' not in state:
+            state['_version'] = None
 
         for k, v in state.iteritems():
             setattr(self, k, v)
