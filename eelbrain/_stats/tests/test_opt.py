@@ -14,20 +14,6 @@ def test_perm():
     y_perm = np.empty_like(y)
     n_cases, n_tests = y.shape
 
-    # lm_res_ss
-    r1 = np.empty(n_tests)
-    r2 = np.empty(n_tests)
-    m = ds.eval('A*B')
-    for perm in permute_order(n_cases, 2):
-        opt.lm_res_ss(y, m.full, m.xsinv, r1, perm)
-        opt.lm_res_ss(y[perm], m.full, m.xsinv, r2)
-        assert_array_equal(r1, r2)
-    # repeated measures
-    for perm in permute_order(n_cases, 2, unit=ds['rm']):
-        opt.lm_res_ss(y, m.full, m.xsinv, r1, perm)
-        opt.lm_res_ss(y[perm], m.full, m.xsinv, r2)
-        assert_array_equal(r1, r2)
-
     # balanced anova
     aov = glm._BalancedFixedNDANOVA(ds.eval('A*B'))
     r1 = aov.preallocate(y.shape)
