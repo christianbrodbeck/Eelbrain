@@ -241,10 +241,6 @@ def test_corr():
     assert_dataobj_equal(res.p_uncorrected, res_.p_uncorrected)
     assert_dataobj_equal(res.p, res_.p)
 
-    # NaN
-    r = _testnd._corr(np.arange(10), np.zeros(10))
-    assert_equal(r, 0)
-
 
 def test_t_contrast():
     ds = datasets.get_uts()
