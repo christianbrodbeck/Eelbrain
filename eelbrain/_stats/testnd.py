@@ -26,6 +26,7 @@ from multiprocessing.queues import SimpleQueue
 from multiprocessing.sharedctypes import RawArray
 import operator
 import re
+import socket
 from time import time as current_time
 
 import numpy as np
@@ -1946,6 +1947,8 @@ class _ClusterDist:
         self.do_permutation = False
         self.dt_perm = None
         self._finalized = False
+        self._init_time = current_time()
+        self._host = socket.gethostname()
 
         from .. import __version__
         self._version = __version__
@@ -1978,7 +1981,6 @@ class _ClusterDist:
         if self.has_original:
             raise RuntimeError("Original pmap already added")
         logger.debug("Adding original parameter map...")
-        t0 = current_time()
 
         # crop/reshape stat_map
         stat_map = self._crop(stat_map)
@@ -2002,13 +2004,12 @@ class _ClusterDist:
             cids = None
             n_clusters = True
 
-        t1 = current_time()
+        self._t0 = current_time()
         self._original_cluster_map = cmap
         self._cids = cids
         self.n_clusters = n_clusters
         self.has_original = True
-        self.dt_original = t1 - t0
-        self._t0 = t1
+        self.dt_original = self._t0 - self._init_time
         self._original_param_map = stat_map
         if self.samples and n_clusters:
             self._create_dist()
@@ -2077,7 +2078,7 @@ class _ClusterDist:
             err = ("Cannot pickle cluster distribution before all permu"
                    "tations have been added.")
             raise RuntimeError(err)
-        attrs = ('name', 'meas', '_version',
+        attrs = ('name', 'meas', '_version', '_host', '_init_time',
                  # settings ...
                  'kind', 'threshold', 'tail', 'criteria', 'samples', 'tstart',
                  'tstop', 'dist_dim', 'dist_tstep',
@@ -2099,6 +2100,10 @@ class _ClusterDist:
             state['samples'] = state.pop('N')
         if '_version' not in state:
             state['_version'] = None
+        if '_host' not in state:
+            state['_host'] = 'unknown'
+        if '_init_time' not in state:
+            state['_init_time'] = None
 
         for k, v in state.iteritems():
             setattr(self, k, v)
