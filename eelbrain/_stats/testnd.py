@@ -18,7 +18,7 @@ clusters : Dataset | None
 '''
 from __future__ import division
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from itertools import chain, izip
 from math import ceil
 from multiprocessing import Process, cpu_count
@@ -33,6 +33,7 @@ import numpy as np
 import scipy.stats
 from scipy import ndimage
 
+from .. import fmtxt
 from .. import _colorspaces as _cs
 from .._utils import logger, LazyProperty
 from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
@@ -175,6 +176,9 @@ class _Result(object):
             err = "Method only applies to results with samples > 0"
             raise RuntimeError(err)
         return self._cdist.compute_probability_map(**sub)
+
+    def info_list(self):
+        return self._cdist.info_list()
 
 
 class t_contrast_rel(_Result):
@@ -1118,6 +1122,9 @@ class _MultiEffectResult(_Result):
             ds[:, 'effect'] = cdist.name
             dss.append(ds)
         return combine(dss)
+
+    def info_list(self):
+        return self._cdist[0].info_list()
 
 
 class anova(_MultiEffectResult):
@@ -2099,7 +2106,7 @@ class _ClusterDist:
         if 'N' in state:
             state['samples'] = state.pop('N')
         if '_version' not in state:
-            state['_version'] = None
+            state['_version'] = '< 0.11'
         if '_host' not in state:
             state['_host'] = 'unknown'
         if '_init_time' not in state:
@@ -2623,6 +2630,18 @@ class _ClusterDist:
             return [[self.parameter_map, self.probability_map]]
         else:
             return [[self.parameter_map]]
+
+    def info_list(self, title="Computation Info"):
+        "fmtxt List with information on computation"
+        l = fmtxt.List(title)
+        l.add_item("Eelbrain version:  %s" % self._version)
+        l.add_item("Host Computer:  %s" % self._host)
+        if self._init_time is not None:
+            l.add_item("Created:  %s" % datetime.fromtimestamp(self._init_time)
+                       .strftime('%Y-%m-%d %H:%M'))
+        l.add_item("Original time:  %s" % timedelta(seconds=round(self.dt_original)))
+        l.add_item("Permutation time:  %s" % timedelta(seconds=round(self.dt_perm)))
+        return l
 
 
 def distribution_worker(dist_array, dist_shape, in_queue):

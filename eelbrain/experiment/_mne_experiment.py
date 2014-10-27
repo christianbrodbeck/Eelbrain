@@ -2739,6 +2739,7 @@ class MneExperiment(FileTree):
         cinfo.add_item("%i permutations" % res.samples)
         cinfo.add_item("Time interval: %i - %i ms." % (round(tstart * 1000),
                                                        round(tstop * 1000)))
+        cinfo.add_item(res.info_list())
 
         report.append(info)
         report.append(self._report_subject_info(ds, model))
