@@ -36,6 +36,13 @@ def test_confidence_interval():
     assert_almost_equal(ci, 0.52, 2)
 
 
+def test_corr():
+    "Test stats.corr"
+    # NaN
+    r = stats.corr(np.arange(10), np.zeros(10))
+    assert_equal(r, 0)
+
+
 def test_lm():
     "Test linear model function against scipy lstsq"
     ds = datasets.get_uts(True)

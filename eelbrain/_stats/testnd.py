@@ -258,7 +258,7 @@ class t_contrast_rel(_Result):
                 raise ValueError(msg)
             elif pmin is not None:
                 df = len(ct.match.cells) - 1
-                threshold = _ttest_t(pmin, df, tail)
+                threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
                 threshold = abs(tmin)
             elif tfce:
@@ -385,11 +385,11 @@ class corr(_Result):
         n = len(Y)
         df = n - 2
 
-        rmap = _corr(Y.x, x)
+        rmap = stats.corr(Y.x, x)
 
         if samples is None:
             cdist = None
-            r0, r1, r2 = _rtest_r((.05, .01, .001), df)
+            r0, r1, r2 = stats.rtest_r((.05, .01, .001), df)
             info = _cs.stat_info('r', r0, r1, r2)
         else:
             # threshold
@@ -397,7 +397,7 @@ class corr(_Result):
                 msg = "Only one of pmin, rmin and tfce can be specified"
                 raise ValueError(msg)
             elif pmin is not None:
-                threshold = _rtest_r(pmin, df)
+                threshold = stats.rtest_r(pmin, df)
             elif rmin is not None:
                 threshold = abs(rmin)
             elif tfce:
@@ -412,7 +412,7 @@ class corr(_Result):
             cdist.add_original(rmap)
             if cdist.do_permutation:
                 def test_func(y, out, perm):
-                    return _corr(y, x, out, perm)
+                    return stats.corr(y, x, out, perm)
                 iterator = permute_order(n, samples, unit=match)
                 run_permutation(test_func, cdist, iterator)
 
@@ -451,7 +451,7 @@ class corr(_Result):
         r = self.r
 
         # uncorrected probability
-        pmap = _rtest_p(r.x, self.df)
+        pmap = stats.rtest_p(r.x, self.df)
         info = _cs.sig_info()
         p_uncorrected = NDVar(pmap, r.dims, info, 'p_uncorrected')
         self.p_uncorrected = p_uncorrected
@@ -467,56 +467,6 @@ class corr(_Result):
         if self.norm:
             args.append('norm=%r' % self.norm)
         return args
-
-
-def _corr(y, x, out=None, perm=None):
-    """Correlation parameter map
-
-    Parameters
-    ----------
-    y : array_like, shape = (n_cases, ...)
-        Dependent variable with case in the first axis and case mean zero.
-    x : array_like, shape = (n_cases, )
-        Covariate.
-
-    Returns
-    -------
-    r : array, shape = (...)
-        The correlation. Occurrence of NaN due to 0 variance in either y or x
-        are replaced with 0.
-    """
-    if out is None and y.ndim > 1:
-        out = np.empty(y.shape[1:])
-    if perm is not None:
-        x = x[perm]
-
-    x = x.reshape((len(x),) + (1,) * (y.ndim - 1))
-    out = np.sum(y * x, axis=0, out=out)
-    out /= np.sqrt(np.sum(y ** 2, axis=0)) * np.sqrt(np.sum(x ** 2, axis=0))
-    # replace NaN values
-    isnan = np.isnan(out)
-    if np.any(isnan):
-        if np.isscalar(out):
-            out = 0
-        else:
-            out[isnan] = 0
-    return out
-
-
-def _rtest_p(r, df):
-    # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
-    r = np.asanyarray(r)
-    t = r * np.sqrt(df / (1 - r ** 2))
-    p = _ttest_p(t, df)
-    return p
-
-
-def _rtest_r(p, df):
-    # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
-    p = np.asanyarray(p)
-    t = _ttest_t(p, df)
-    r = t / np.sqrt(df + t ** 2)
-    return r
 
 
 class ttest_1samp(_Result):
@@ -597,7 +547,7 @@ class ttest_1samp(_Result):
                 msg = "Only one of pmin, tmin and tfce can be specified"
                 raise ValueError(msg)
             elif pmin is not None:
-                threshold = _ttest_t(pmin, df, tail)
+                threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
                 threshold = abs(tmin)
             elif tfce:
@@ -620,7 +570,7 @@ class ttest_1samp(_Result):
 
         # NDVar map of t-values
         dims = ct.Y.dims[1:]
-        t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
+        t0, t1, t2 = stats.ttest_t((.05, .01, .001), df, tail)
         info = _cs.stat_info('t', t0, t1, t2, tail)
         info = _cs.set_info_cs(ct.Y.info, info)
         t = NDVar(tmap, dims, info=info, name='T')
@@ -657,7 +607,7 @@ class ttest_1samp(_Result):
         _Result._expand_state(self)
 
         t = self.t
-        pmap = _ttest_p(t.x, self.df, self.tail)
+        pmap = stats.ttest_p(t.x, self.df, self.tail)
         info = _cs.set_info_cs(t.info, _cs.sig_info())
         p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
         self.p_uncorrected = p_uncorr
@@ -747,7 +697,7 @@ class ttest_ind(_Result):
         n = len(ct.Y)
         n0 = n - n1
         df = n - 2
-        tmap = _t_ind(ct.Y.x, n1, n0)
+        tmap = stats.t_ind(ct.Y.x, n1, n0)
 
         if samples is None:
             cdist = None
@@ -757,7 +707,7 @@ class ttest_ind(_Result):
                 msg = "Only one of pmin, tmin and tfce can be specified"
                 raise ValueError(msg)
             elif pmin is not None:
-                threshold = _ttest_t(pmin, df, tail)
+                threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
                 threshold = abs(tmin)
             elif tfce:
@@ -771,13 +721,13 @@ class ttest_ind(_Result):
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 def test_func(y, out, perm):
-                    return _t_ind(y, n1, n0, True, out, perm)
+                    return stats.t_ind(y, n1, n0, True, out, perm)
                 iterator = permute_order(n, samples)
                 run_permutation(test_func, cdist, iterator)
 
         dims = ct.Y.dims[1:]
 
-        t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
+        t0, t1, t2 = stats.ttest_t((.05, .01, .001), df, tail)
         info = _cs.stat_info('t', t0, t1, t2, tail)
         info = _cs.set_info_cs(ct.Y.info, info)
         t = NDVar(tmap, dims, info=info, name='T')
@@ -830,7 +780,7 @@ class ttest_ind(_Result):
         self.difference = diff
 
         # uncorrected p
-        pmap = _ttest_p(t.x, self.df, self.tail)
+        pmap = stats.ttest_p(t.x, self.df, self.tail)
         info = _cs.set_info_cs(t.info, _cs.sig_info())
         p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
         self.p_uncorrected = p_uncorr
@@ -952,7 +902,7 @@ class ttest_rel(_Result):
                 msg = "Only one of pmin, tmin and tfce can be specified"
                 raise ValueError(msg)
             elif pmin is not None:
-                threshold = _ttest_t(pmin, df, tail)
+                threshold = stats.ttest_t(pmin, df, tail)
             elif tmin is not None:
                 threshold = abs(tmin)
             elif tfce:
@@ -969,7 +919,7 @@ class ttest_rel(_Result):
                 run_permutation(opt.t_1samp_perm, cdist, iterator)
 
         dims = ct.Y.dims[1:]
-        t0, t1, t2 = _ttest_t((.05, .01, .001), df, tail)
+        t0, t1, t2 = stats.ttest_t((.05, .01, .001), df, tail)
         info = _cs.stat_info('t', t0, t1, t2, tail)
         t = NDVar(tmap, dims, info=info, name='T')
 
@@ -1019,7 +969,7 @@ class ttest_rel(_Result):
         self.difference = diff
 
         # uncorrected p
-        pmap = _ttest_p(t.x, self.df, self.tail)
+        pmap = stats.ttest_p(t.x, self.df, self.tail)
         info = _cs.sig_info()
         info['test'] = self.name
         p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
@@ -1042,86 +992,6 @@ class ttest_rel(_Result):
         if self.tail:
             args.append("tail=%i" % self.tail)
         return args
-
-
-def _t_ind(x, n1, n2, equal_var=True, out=None, perm=None):
-    "Based on scipy.stats.ttest_ind"
-    if out is None:
-        out = np.empty(x.shape[1:])
-
-    if perm is None:
-        a = x[:n1]
-        b = x[n1:]
-    else:
-        cat = np.zeros(n1 + n2)
-        cat[n1:] = 1
-        cat_perm = cat[perm]
-        a = x[cat_perm == 0]
-        b = x[cat_perm == 1]
-    v1 = np.var(a, 0, ddof=1)
-    v2 = np.var(b, 0, ddof=1)
-
-    if equal_var:
-        df = n1 + n2 - 2
-        svar = ((n1 - 1) * v1 + (n2 - 1) * v2) / float(df)
-        denom = np.sqrt(svar * (1.0 / n1 + 1.0 / n2))
-    else:
-        vn1 = v1 / n1
-        vn2 = v2 / n2
-        denom = np.sqrt(vn1 + vn2)
-
-    d = np.mean(a, 0) - np.mean(b, 0)
-    t = np.divide(d, denom, out)
-    return t
-
-
-def _ttest_p(t, df, tail=0):
-    """Two tailed probability
-
-    Parameters
-    ----------
-    t : array_like
-        T values.
-    df : int
-        Degrees of freedom.
-    tail : 0 | 1 | -1
-        Which tail of the t-distribution to consider:
-        0: both (two-tailed);
-        1: upper tail (one-tailed);
-        -1: lower tail (one-tailed).
-    """
-    t = np.asanyarray(t)
-    if tail == 0:
-        t = np.abs(t)
-    elif tail == -1:
-        t = -t
-    elif tail != 1:
-        raise ValueError("tail=%r" % tail)
-    p = scipy.stats.t.sf(t, df)
-    if tail == 0:
-        p *= 2
-    return p
-
-
-def _ttest_t(p, df, tail=0):
-    """Positive t value for a given probability
-
-    Parameters
-    ----------
-    p : array_like
-        Probability.
-    df : int
-        Degrees of freedom.
-    tail : 0 | 1 | -1
-        One- or two-tailed t-distribution (the return value is always positive):
-        0: two-tailed;
-        1 or -1: one-tailed).
-    """
-    p = np.asanyarray(p)
-    if tail == 0:
-        p = p / 2
-    t = scipy.stats.t.isf(p, df)
-    return t
 
 
 class _MultiEffectResult(_Result):

@@ -82,6 +82,40 @@ def confidence_interval(y, x=None, match=None, confidence=.95):
     return out
 
 
+def corr(y, x, out=None, perm=None):
+    """Correlation parameter map
+
+    Parameters
+    ----------
+    y : array_like, shape = (n_cases, ...)
+        Dependent variable with case in the first axis and case mean zero.
+    x : array_like, shape = (n_cases, )
+        Covariate.
+
+    Returns
+    -------
+    r : array, shape = (...)
+        The correlation. Occurrence of NaN due to 0 variance in either y or x
+        are replaced with 0.
+    """
+    if out is None and y.ndim > 1:
+        out = np.empty(y.shape[1:])
+    if perm is not None:
+        x = x[perm]
+
+    x = x.reshape((len(x),) + (1,) * (y.ndim - 1))
+    out = np.sum(y * x, axis=0, out=out)
+    out /= np.sqrt(np.sum(y ** 2, axis=0)) * np.sqrt(np.sum(x ** 2, axis=0))
+    # replace NaN values
+    isnan = np.isnan(out)
+    if np.any(isnan):
+        if np.isscalar(out):
+            out = 0
+        else:
+            out[isnan] = 0
+    return out
+
+
 def lm_t(y, x):
     """Calculate t-values for regression coefficients
 
@@ -239,6 +273,37 @@ def t_1samp(y, out=None):
     return out
 
 
+def t_ind(x, n1, n2, equal_var=True, out=None, perm=None):
+    "Based on scipy.stats.ttest_ind"
+    if out is None:
+        out = np.empty(x.shape[1:])
+
+    if perm is None:
+        a = x[:n1]
+        b = x[n1:]
+    else:
+        cat = np.zeros(n1 + n2)
+        cat[n1:] = 1
+        cat_perm = cat[perm]
+        a = x[cat_perm == 0]
+        b = x[cat_perm == 1]
+    v1 = np.var(a, 0, ddof=1)
+    v2 = np.var(b, 0, ddof=1)
+
+    if equal_var:
+        df = n1 + n2 - 2
+        svar = ((n1 - 1) * v1 + (n2 - 1) * v2) / float(df)
+        denom = np.sqrt(svar * (1.0 / n1 + 1.0 / n2))
+    else:
+        vn1 = v1 / n1
+        vn2 = v2 / n2
+        denom = np.sqrt(vn1 + vn2)
+
+    d = np.mean(a, 0) - np.mean(b, 0)
+    t = np.divide(d, denom, out)
+    return t
+
+
 def ftest_f(p, df_num, df_den):
     "F values for given probabilities."
     p = np.asanyarray(p)
@@ -251,6 +316,71 @@ def ftest_p(f, df_num, df_den):
     f = np.asanyarray(f)
     p = scipy.stats.f.sf(f, df_num, df_den)
     return p
+
+
+def rtest_p(r, df):
+    # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
+    r = np.asanyarray(r)
+    t = r * np.sqrt(df / (1 - r ** 2))
+    p = ttest_p(t, df)
+    return p
+
+
+def rtest_r(p, df):
+    # http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient#Inference
+    p = np.asanyarray(p)
+    t = ttest_t(p, df)
+    r = t / np.sqrt(df + t ** 2)
+    return r
+
+
+def ttest_p(t, df, tail=0):
+    """Two tailed probability
+
+    Parameters
+    ----------
+    t : array_like
+        T values.
+    df : int
+        Degrees of freedom.
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+    """
+    t = np.asanyarray(t)
+    if tail == 0:
+        t = np.abs(t)
+    elif tail == -1:
+        t = -t
+    elif tail != 1:
+        raise ValueError("tail=%r" % tail)
+    p = scipy.stats.t.sf(t, df)
+    if tail == 0:
+        p *= 2
+    return p
+
+
+def ttest_t(p, df, tail=0):
+    """Positive t value for a given probability
+
+    Parameters
+    ----------
+    p : array_like
+        Probability.
+    df : int
+        Degrees of freedom.
+    tail : 0 | 1 | -1
+        One- or two-tailed t-distribution (the return value is always positive):
+        0: two-tailed;
+        1 or -1: one-tailed).
+    """
+    p = np.asanyarray(p)
+    if tail == 0:
+        p = p / 2
+    t = scipy.stats.t.isf(p, df)
+    return t
 
 
 def variability(y, x, match, spec, pool):
