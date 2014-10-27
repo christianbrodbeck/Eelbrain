@@ -103,16 +103,20 @@ def corr(y, x, out=None, perm=None):
     if perm is not None:
         x = x[perm]
 
-    x = x.reshape((len(x),) + (1,) * (y.ndim - 1))
-    out = np.sum(y * x, axis=0, out=out)
-    out /= np.sqrt(np.sum(y ** 2, axis=0)) * np.sqrt(np.sum(x ** 2, axis=0))
+    z_x = scipy.stats.zscore(x, ddof=1)
+    z_x.shape = (len(x),) + (1,) * (y.ndim - 1)
+    z_y = scipy.stats.zscore(y, ddof=1)
+    z_y *= z_x
+    out = z_y.sum(0, out=out)
+    out /= len(x) - 1
+
     # replace NaN values
     isnan = np.isnan(out)
     if np.any(isnan):
         if np.isscalar(out):
             out = 0
         else:
-            out[isnan] = 0
+            out.place(isnan, 0)
     return out
 
 
