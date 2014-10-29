@@ -1016,7 +1016,7 @@ def combine(items, name=None, check_dims=True):
         for key in info_keys:
             v0 = item0.info[key]
             other_values = [ds.info[key] for ds in other_items]
-            if all(v is v0 for v in other_values) or all(np.array_equal(v, v0)
+            if all(v is v0 for v in other_values) or all(np.all(v == v0)
                                                          for v in other_values):
                 info[key] = v0
 
