@@ -556,7 +556,7 @@ class MneExperiment(FileTree):
         return subject_, group
 
     def add_epochs_stc(self, ds, src='epochs', dst=None, ndvar=True,
-                       baseline=None):
+                       baseline=None, keep_epochs=False):
         """
         Transform epochs contained in ds into source space (adds a list of mne
         SourceEstimates to ds)
@@ -573,10 +573,13 @@ class MneExperiment(FileTree):
         ndvar : bool
             Add the source estimates as NDVar instead of a list of
             SourceEstimate objects.
+        keep_epochs : bool
+            Keep the sensor space data in the Dataset that is returned (default
+            False).
         """
         subject = ds['subject']
         if len(subject.cells) != 1:
-            err = ("ds must have a subject variable with exaclty one subject")
+            err = "ds must have a subject variable with exactly one subject"
             raise ValueError(err)
         subject = subject.cells[0]
         self.set(subject=subject)
@@ -607,8 +610,11 @@ class MneExperiment(FileTree):
                 raise NotImplementedError("Baseline for SourceEstimate")
             ds[dst] = stc
 
+        if not keep_epochs:
+            del ds[src]
+
     def add_evoked_stc(self, ds, ind_stc=False, ind_ndvar=False, morph_stc=False,
-                       morph_ndvar=False, baseline=None):
+                       morph_ndvar=False, baseline=None, keep_evoked=False):
         """
         Add source estimates to a dataset with evoked data.
 
@@ -629,6 +635,9 @@ class MneExperiment(FileTree):
             Add source estimates morphed to the common brain as :class:`NDVar`.
         baseline : None | str | tuple
             Baseline correction in source space.
+        keep_evoked : bool
+            Keep the sensor space data in the Dataset that is returned (default
+            False).
 
         Notes
         -----
@@ -761,6 +770,10 @@ class MneExperiment(FileTree):
                 ndvar = load.fiff.stc_ndvar(stcm, common_brain, src, mri_sdir,
                                             parc=parc)
                 ds[key % 'srcm'] = ndvar
+
+        if not keep_evoked:
+            for name in do:
+                del ds[name]
 
     def _add_stc_label(self, ds, label, src='stc'):
         """
@@ -1100,7 +1113,7 @@ class MneExperiment(FileTree):
 
     def load_epochs(self, subject=None, baseline=None, ndvar=False,
                     add_bads=True, reject=True, add_proj=True, cat=None,
-                    decim=None, pad=0, **kwargs):
+                    decim=None, pad=0, keep_raw=False, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
 
@@ -1130,6 +1143,8 @@ class MneExperiment(FileTree):
         pad : scalar
             Pad the epochs with this much time (in seconds; e.g. for spectral
             analysis).
+        keep_raw : bool
+            Keep the mne.io.Raw instance in ds.info['raw'] (default False).
         """
         subject, group = self._process_subject_arg(subject, kwargs)
         if group is not None:
@@ -1166,6 +1181,9 @@ class MneExperiment(FileTree):
             ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim,
                                           target=target, reject=reject_arg)
 
+            if not keep_raw:
+                del ds.info['raw']
+
         if ndvar:
             if ndvar is True:
                 ndvar = 'meg'
@@ -1176,7 +1194,8 @@ class MneExperiment(FileTree):
         return ds
 
     def load_epochs_stc(self, subject=None, sns_baseline=(None, 0),
-                        src_baseline=None, ndvar=True, cat=None, **kwargs):
+                        src_baseline=None, ndvar=True, cat=None,
+                        keep_epochs=False, **kwargs):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -1193,10 +1212,14 @@ class MneExperiment(FileTree):
             SourceEstimate objects named "stc" (default True).
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
+        keep_epochs : bool
+            Keep the sensor space data in the Dataset that is returned (default
+            False).
         """
         ds = self.load_epochs(subject, baseline=sns_baseline, ndvar=False,
                               cat=cat, **kwargs)
-        self.add_epochs_stc(ds, ndvar=ndvar, baseline=src_baseline)
+        self.add_epochs_stc(ds, ndvar=ndvar, baseline=src_baseline,
+                            keep_epochs=keep_epochs)
         return ds
 
     def load_events(self, subject=None, add_proj=True, add_bads=True,
@@ -1379,7 +1402,7 @@ class MneExperiment(FileTree):
     def load_evoked_stc(self, subject=None, sns_baseline=(None, 0),
                         src_baseline=None, sns_ndvar=False, ind_stc=False,
                         ind_ndvar=False, morph_stc=False, morph_ndvar=False,
-                        cat=None, **kwargs):
+                        cat=None, keep_evoked=False, **kwargs):
         """Load evoked source estimates.
 
         Parameters
@@ -1403,6 +1426,9 @@ class MneExperiment(FileTree):
             Add source estimates morphed to the common brain as :class:`NDVar`.
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
+        keep_evoked : bool
+            Keep the sensor space data in the Dataset that is returned (default
+            False).
         *others* : str
             State parameters.
         """
@@ -1414,7 +1440,8 @@ class MneExperiment(FileTree):
         ds = self.load_evoked(subject=subject, baseline=sns_baseline,
                               ndvar=sns_ndvar, cat=cat, **kwargs)
         self.add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
-                            src_baseline)
+                            src_baseline, keep_evoked)
+
         return ds
 
     def load_inv(self, fiff=None, **kwargs):
