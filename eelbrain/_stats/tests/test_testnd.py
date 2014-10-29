@@ -76,13 +76,23 @@ def test_anova():
     res = testnd.anova('uts', 'A*B*rm', ds=ds, samples=5)
     repr(res)
     string = pickle.dumps(res, pickle.HIGHEST_PROTOCOL)
-    res = pickle.loads(string)
-    tfce_clusters = res.find_clusters(pmin=0.05)
-    peaks = res.find_peaks()
-    assert_equal(tfce_clusters.eval("p.min()"), peaks.eval("p.min()"))
-    unmasked = res.f[0]
-    masked = res.masked_parameter_map(effect=0, pmin=0.05)
+    resr = pickle.loads(string)
+    tf_clusters = resr.find_clusters(pmin=0.05)
+    peaks = resr.find_peaks()
+    assert_dataobj_equal(tf_clusters, res.find_clusters(pmin=0.05))
+    assert_dataobj_equal(peaks, res.find_peaks())
+    assert_equal(tf_clusters.eval("p.min()"), peaks.eval("p.min()"))
+    unmasked = resr.f[0]
+    masked = resr.masked_parameter_map(effect=0, pmin=0.05)
     assert_array_equal(masked.x <= unmasked.x, True)
+
+    # reproducibility
+    res0 = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
+    assert_dataset_equal(res.clusters, res0.clusters)
+    eelbrain._stats.testnd.MULTIPROCESSING = 0
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
+    assert_dataset_equal(res.clusters, res0.clusters)
 
 
 def test_anova_incremental():
