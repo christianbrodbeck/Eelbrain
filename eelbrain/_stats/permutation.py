@@ -6,6 +6,10 @@ import numpy as np
 from .._data_obj import isvar, isndvar
 
 
+_YIELD_ORIGINAL = 0
+# for testing purposes, yield original order instead of permutations
+
+
 def _resample_params(N, samples):
     """Decide whether to do permutations or random resampling
 
@@ -68,6 +72,11 @@ def permute_order(n, samples=10000, replacement=False, unit=None, seed=0):
     if samples < 0:
         err = "Complete permutation for resampling through reordering"
         raise NotImplementedError(err)
+
+    if _YIELD_ORIGINAL:
+        original = np.arange(n)
+        for _ in xrange(samples):
+            yield original
 
     if seed is not None:
         np.random.seed(seed)

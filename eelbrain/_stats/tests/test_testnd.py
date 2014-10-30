@@ -1,6 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
-from itertools import product
+from itertools import izip, product
 import cPickle as pickle
 import logging
 
@@ -93,6 +93,26 @@ def test_anova():
     eelbrain._stats.testnd.MULTIPROCESSING = 0
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=5)
     assert_dataset_equal(res.clusters, res0.clusters)
+    eelbrain._stats.testnd.MULTIPROCESSING = 1
+
+    # permutation
+    eelbrain._stats.permutation._YIELD_ORIGINAL = 1
+    # raw
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2)
+    for dist in res._cdist:
+        assert_array_equal(dist.dist, dist.parameter_map.abs().max())
+    # TFCE
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, tfce=True, samples=2)
+    for dist in res._cdist:
+        assert_array_equal(dist.dist, dist.tfce_map.abs().max())
+    # thresholded
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=2)
+    clusters = res.find_clusters()
+    for dist, effect in izip(res._cdist, res.effects):
+        effect_idx = clusters.eval("effect == %r" % effect)
+        vmax = clusters[effect_idx, 'v'].abs().max()
+        assert_array_equal(dist.dist, vmax)
+    eelbrain._stats.permutation._YIELD_ORIGINAL = 0
 
 
 def test_anova_incremental():
