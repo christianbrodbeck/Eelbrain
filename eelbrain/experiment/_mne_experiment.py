@@ -1098,11 +1098,15 @@ class MneExperiment(FileTree):
             Bad chnnels.
         """
         path = self.get('bads-file', **kwargs)
-        if not os.path.exists(path):
-            raise IOError("Bad channel definitions not found: %r" % path)
-        with open(path) as fid:
-            names = [l for l in fid.read().splitlines() if l]
-        return names
+        if os.path.exists(path):
+            with open(path) as fid:
+                names = [l for l in fid.read().splitlines() if l]
+            return names
+        else:
+            print("No bad channel definition for: %s/%s, creating empty file" %
+                  (self.get('subject'), self.get('experiment')))
+            self.make_bad_channels(())
+            return []
 
     def load_edf(self, **kwargs):
         """Load the edf file ("edf-file" template)"""
