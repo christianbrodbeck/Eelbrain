@@ -3280,23 +3280,6 @@ class MneExperiment(FileTree):
 
         return res
 
-    def makeplt_coreg(self, redo=False, **kwargs):
-        """
-        Save a coregistration plot
-
-        """
-        self.set(**kwargs)
-
-        fname = self.get('plot-file', name='{subject}_{experiment}',
-                         analysis='coreg', ext='png', mkdir=True)
-        if not redo and os.path.exists(fname):
-            return
-
-        from mayavi import mlab
-        p = self.plot_coreg()
-        p.save_views(fname, overwrite=True)
-        mlab.close()
-
     def next(self, field='subject'):
         """Change field to the next value
 
@@ -3420,11 +3403,23 @@ class MneExperiment(FileTree):
         self.brain = brain
         return brain
 
-    def plot_coreg(self, **kwargs):
-        from ..data.plot.coreg import dev_mri
+    def plot_coreg(self, ch_type=None, **kwargs):
+        """Plot the coregistration (Head shape and MEG helmet)
+
+        Parameters
+        ----------
+        ch_type : 'meg' | 'eeg'
+            Plot only MEG or only EEG sensors (default is both).
+        """
         self.set(**kwargs)
-        raw = _mne_Raw(self.get('raw-file'))
-        return dev_mri(raw)
+        raw = self.load_raw()
+        if is_fake_mri(self.get('mri-dir')):
+            source = 'head'
+        else:
+            source = 'bem'
+        return mne.viz.plot_trans(raw.info, self.get('trans-file'),
+                                  self.get('subject'), self.get('mri-sdir'),
+                                  ch_type, source)
 
     def plot_label(self, label, surf='inflated', w=600, clear=False):
         """Plot a label"""
