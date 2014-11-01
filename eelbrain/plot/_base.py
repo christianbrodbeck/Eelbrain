@@ -89,9 +89,11 @@ default_cmap = None
 default_meas = '?'
 
 
-def do_autorun():
+def do_autorun(run=None):
     # http://stackoverflow.com/a/2356420/166700
-    if backend['autorun'] is None:
+    if run is not None:
+        return run
+    elif backend['autorun'] is None:
         return not hasattr(__main__, '__file__')
     else:
         backend['autorun']
@@ -781,6 +783,9 @@ class _EelFigure(object):
         show : bool
             Show the figure in the GUI (default True). Use False for creating
             figures and saving them without displaying them on the screen.
+        run : bool
+            Run the Eelbrain GUI app (default is True for interactive plotting and
+            False in scripts).
         """
         if title:
             frame_title = '%s: %s' % (frame_title, title)
@@ -839,7 +844,7 @@ class _EelFigure(object):
         self.draw()
         if backend['show'] and self._layout.show:
             self._frame.Show()
-            if backend['eelbrain'] and do_autorun():
+            if backend['eelbrain'] and do_autorun(self._layout.run):
                 from .._wxgui import run
                 run()
 
@@ -925,7 +930,8 @@ class Layout():
     """Create layouts for figures with several axes of the same size
     """
     def __init__(self, nax, ax_aspect, axh_default, tight, h=None, w=None,
-                 axh=None, axw=None, nrow=None, ncol=None, dpi=None, show=True):
+                 axh=None, axw=None, nrow=None, ncol=None, dpi=None, show=True,
+                 run=None):
         """Create a grid of axes based on variable parameters.
 
         Parameters
@@ -958,6 +964,9 @@ class Layout():
         show : bool
             Show the figure in the GUI (default True). Use False for creating
             figures and saving them without displaying them on the screen.
+        run : bool
+            Run the Eelbrain GUI app (default is True for interactive plotting and
+            False in scripts).
         """
         if h and axh:
             if h < axh:
@@ -1109,6 +1118,7 @@ class Layout():
         self.ncol = ncol
         self.fig_kwa = fig_kwa
         self.show = show
+        self.run = run
 
 
 class Legend(_EelFigure):
