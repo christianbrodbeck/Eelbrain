@@ -3416,6 +3416,42 @@ class MneExperiment(FileTree):
                                   self.get('subject'), self.get('mri-sdir'),
                                   ch_type, source)
 
+    def plot_evoked(self, subject=None, separate=False, baseline=(None, 0),
+                    run=None, **kwargs):
+        """Plot evoked sensor data
+
+        Parameters
+        ----------
+        subject : str
+            Subject or group name (default is current subject).
+        separate : bool
+            When plotting a group, plot all subjects separately instead or the group
+            average (default False).
+        baseline : None | tuple
+            Baseline to apply: None or (tstart, tstop) tuple (default is
+            ``(None, 0)``).
+        run : bool
+            Run the GUI after plotting (default in accordance with plotting
+            default).
+        """
+        subject, group = self._process_subject_arg(subject, kwargs)
+        model = self.get('model') or None
+        if subject:
+            ds = self.load_evoked(baseline=baseline)
+            return plot.TopoButterfly('meg', model, ds=ds, title=subject,
+                                      run=run)
+        elif separate:
+            for subject in self.iter('subject', group):
+                ds = self.load_evoked(baseline=baseline)
+                plot.TopoButterfly('meg', model, ds=ds, title=subject, run=False)
+
+            if run or plot._base.do_autorun():
+                gui.run()
+        else:
+            ds = self.load_evoked(group, baseline=baseline)
+            return plot.TopoButterfly('meg', model, ds=ds, title=subject,
+                                      run=run)
+
     def plot_label(self, label, surf='inflated', w=600, clear=False):
         """Plot a label"""
         if isinstance(label, basestring):
