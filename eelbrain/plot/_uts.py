@@ -5,6 +5,7 @@ from __future__ import division
 import operator
 from warnings import warn
 
+import matplotlib as mpl
 import numpy as np
 
 from .._data_obj import ascategorial, asndvar, assub, cellname, Celltable
@@ -400,12 +401,10 @@ class _ax_uts_stat:
 
         x = ct.Y.get_dim(xdim)
         for cell in ct.cells:
-            cell_label = cellname(cell)
-            c = colors[cell]
             ndvar = ct.data[cell]
             y = ndvar.get_data(('case', xdim))
-            plt = _plt_uts_stat(ax, x, y, main, error, dev_data, label=cell_label,
-                                color=c)
+            plt = _plt_uts_stat(ax, x, y, main, error, dev_data, colors[cell],
+                                cellname(cell))
             self.stat_plots.append(plt)
             if plt.main is not None:
                 self.legend_handles[cell] = plt.main[0]
@@ -709,26 +708,15 @@ class _plt_uts_clusters:
 
 class _plt_uts_stat(object):
 
-    def __init__(self, ax, x, y, main, error, dev_data, label=None, **kwargs):
-        main_kwargs = kwargs.copy()
-        dev_kwargs = kwargs.copy()
-        if label:
-            main_kwargs['label'] = label
-
-        dev_kwargs['alpha'] = 0.3
-
-        if error == 'all':
-            if 'linewidth' in kwargs:
-                main_kwargs['linewidth'] = kwargs['linewidth'] * 2
-            elif 'lw' in kwargs:
-                main_kwargs['lw'] = kwargs['lw'] * 2
-            else:
-                main_kwargs['lw'] = 2
-
+    def __init__(self, ax, x, y, main, error, dev_data, color, label):
         # plot main
         if hasattr(main, '__call__'):
             y_main = main(y, axis=0)
-            self.main = ax.plot(x, y_main, zorder=5, **main_kwargs)
+            lw = mpl.rcParams['lines.linewidth']
+            if error == 'all':
+                lw *= 2
+            self.main = ax.plot(x, y_main, color=color, label=label, lw=lw,
+                                zorder=5)
         elif error == 'all':
             self.main = None
         else:
@@ -736,7 +724,7 @@ class _plt_uts_stat(object):
 
         # plot error
         if error == 'all':
-            self.error = ax.plot(x, dev_data, **dev_kwargs)
+            self.error = ax.plot(x, y.T, color=color, alpha=0.3)
         elif error:
             if error == 'data':
                 pass
@@ -746,6 +734,7 @@ class _plt_uts_stat(object):
                 dev_data = stats.variability(y, None, None, error, False)
             lower = y_main - dev_data
             upper = y_main + dev_data
-            self.error = ax.fill_between(x, lower, upper, zorder=0, **dev_kwargs)
+            self.error = ax.fill_between(x, lower, upper, color=color, alpha=0.3,
+                                         linewidth=0, zorder=0)
         else:
             self.error = None
