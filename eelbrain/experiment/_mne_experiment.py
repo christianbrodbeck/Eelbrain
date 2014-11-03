@@ -2598,7 +2598,9 @@ class MneExperiment(FileTree):
         raw_dst = self.get('raw')
         raw_src = 'clm'
         if raw_dst == raw_src:
-            err = ("Raw %r can not be made (target same as source)" % raw_dst)
+            err = ("The %s raw file for %s/%s is missing. This file needs to be "
+                   "added to the appropriate location."
+                   % (raw_dst, self.get('subject'), self.get('experiment')))
             raise ValueError(err)
 
         apply_proj = False
