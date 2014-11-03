@@ -1110,7 +1110,7 @@ class MneExperiment(FileTree):
         edf = load.eyelink.Edf(src)
         return edf
 
-    def load_epochs(self, subject=None, baseline=None, ndvar=False,
+    def load_epochs(self, subject=None, baseline=None, ndvar=True,
                     add_bads=True, reject=True, add_proj=True, cat=None,
                     decim=None, pad=0, keep_raw=False, **kwargs):
         """
@@ -1124,8 +1124,7 @@ class MneExperiment(FileTree):
         baseline : None | (tmin, tmax)
             Baseline to apply to epochs.
         ndvar : bool | str
-            Convert epochs to an NDVar with the given name (if True, 'meg' is
-            uesed).
+            Convert epochs to an NDVar with the given name (default is 'meg').
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
@@ -1145,13 +1144,19 @@ class MneExperiment(FileTree):
         keep_raw : bool
             Keep the mne.io.Raw instance in ds.info['raw'] (default False).
         """
+        if ndvar:
+            if ndvar is True:
+                ndvar = 'meg'
+            elif not isinstance(ndvar, basestring):
+                msg = "ndvar needs to be bool or str, got %s" % repr(ndvar)
+                raise TypeError(msg)
+
         subject, group = self._process_subject_arg(subject, kwargs)
         if group is not None:
             dss = []
             for _ in self.iter(group=group):
-                ds = self.load_epochs(baseline=baseline, ndvar=False,
-                                      add_bads=add_bads, reject=reject,
-                                      cat=cat)
+                ds = self.load_epochs(None, baseline, False, add_bads, reject,
+                                      add_proj, cat, decim, pad)
                 dss.append(ds)
 
             ds = combine(dss)
@@ -1184,11 +1189,7 @@ class MneExperiment(FileTree):
                 del ds.info['raw']
 
         if ndvar:
-            if ndvar is True:
-                ndvar = 'meg'
-            else:
-                ndvar = str(ndvar)
-            ds[ndvar] = load.fiff.epochs_ndvar(ds[target], ndvar)
+            ds[ndvar] = load.fiff.epochs_ndvar(ds.pop(target), ndvar)
 
         return ds
 
@@ -1215,8 +1216,7 @@ class MneExperiment(FileTree):
             Keep the sensor space data in the Dataset that is returned (default
             False).
         """
-        ds = self.load_epochs(subject, baseline=sns_baseline, ndvar=False,
-                              cat=cat, **kwargs)
+        ds = self.load_epochs(subject, sns_baseline, False, cat=cat, **kwargs)
         self.add_epochs_stc(ds, ndvar=ndvar, baseline=src_baseline,
                             keep_epochs=keep_epochs)
         return ds
@@ -1388,7 +1388,7 @@ class MneExperiment(FileTree):
                 src = 'mean'
                 if isinstance(label, basestring):
                     label = self.load_label(label)
-            ds_epochs = self.load_epochs(None, sns_baseline, decim=10, pad=0.2)
+            ds_epochs = self.load_epochs(None, sns_baseline, False, decim=10, pad=0.2)
             inv = self.load_inv(ds_epochs['epochs'])
             subjects_dir = self.get('mri-sdir')
             ds = source_induced_power('epochs', model, ds_epochs, src, label,
@@ -2063,8 +2063,8 @@ class MneExperiment(FileTree):
         cov = self.get('cov')
         rej = self.get('cov-rej')
         with self._temporary_state:
-            ds = self.load_epochs(baseline=(None, 0), ndvar=False, decim=1,
-                                  epoch=cov, rej=rej)
+            ds = self.load_epochs(None, (None, 0), False, decim=1, epoch=cov,
+                                  rej=rej)
         epochs = ds['epochs']
         cov = mne.cov.compute_covariance(epochs)
         cov.save(dest)
@@ -2103,7 +2103,7 @@ class MneExperiment(FileTree):
 
         # load the epochs
         epoch = self.get('epoch')
-        dss = [self.load_epochs(epoch=name) for name in epoch_names]
+        dss = [self.load_epochs(ndvar=False, epoch=name) for name in epoch_names]
         self.set(epoch=epoch)
 
         # find the events common to all epochs
@@ -2536,7 +2536,7 @@ class MneExperiment(FileTree):
             rej = opt.get('rej', None)
             rej_ = '' if rej is None else rej
             self.set(epoch=epoch, rej=rej_)
-            ds = self.load_epochs(add_proj=False)
+            ds = self.load_epochs(ndvar=False, add_proj=False)
             epochs = ds['epochs']
             if rej is None:
                 epochs.reject = reject.copy()
@@ -2644,8 +2644,7 @@ class MneExperiment(FileTree):
                    "again.".format(cur=epoch['name'], sel=epoch['sel_epoch']))
             raise ValueError(msg)
 
-        ds = self.load_epochs(ndvar=True, reject=False,
-                              decim=rej_args.get('decim', None))
+        ds = self.load_epochs(reject=False, decim=rej_args.get('decim', None))
         path = self.get('rej-file', mkdir=True)
 
         subject = self.get('subject')
