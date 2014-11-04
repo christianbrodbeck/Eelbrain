@@ -3571,58 +3571,45 @@ class MneExperiment(FileTree):
          5) method
          6) pick_normal:  'pick_normal' (optional)
         """
+        m = re.match("(free|fixed|loose\.\d+)-"  # orientation constraint
+                     "(?:(\.\d+)-)?"  # depth weighting
+                     "(?:(reg)-)?"  # regularization of the noise covariance
+                     "(\d*\.?\d+)-"  # SNR
+                     "(MNE|dSPM|sLORETA)"  # method
+                     "(?:-(pick_normal))?",  # pick normal
+                     inv)
+        if m is None:
+            raise ValueError("Invalid inverse option specification: %r" % inv)
+
+        ori, depth, reg, snr, method, pick_normal = m.groups()
         make_kw = {}
         apply_kw = {}
-        args = inv.split('-')
-        ori = args.pop(0)
+
         if ori == 'fixed':
             make_kw['fixed'] = True
             make_kw['loose'] = None
         elif ori == 'free':
             make_kw['loose'] = 1
-        else:
-            ori = float(ori)
-            if not 0 <= ori <= 1:
+        elif ori.startswith('loose'):
+            loose = float(ori[5:])
+            if not 0 <= loose <= 1:
                 err = ('First value of inv (loose parameter) needs to be '
                        'in [0, 1]')
                 raise ValueError(err)
-            make_kw['loose'] = ori
+            make_kw['loose'] = loose
 
-        method = args.pop(-1)
-        if method == 'pick_normal':
+        if depth is not None:
+            make_kw['depth'] = float(depth)
+
+        apply_kw['method'] = method
+        apply_kw['lambda2'] = 1. / float(snr) ** 2
+        if pick_normal:
             apply_kw['pick_normal'] = True
-            method = args.pop(-1)
-        if method in ("MNE", "dSPM", "sLORETA"):
-            apply_kw['method'] = method
-        else:
-            err = ('Setting inv with invalid method: %r' % method)
-            raise ValueError(err)
-
-        snr = float(args.pop(-1))
-        apply_kw['lambda2'] = 1. / snr ** 2
-
-        regularize_inv = False
-        if args:
-            arg = args.pop(-1)
-            if arg == 'reg':
-                regularize_inv = True
-                if args:
-                    depth = args.pop(-1)
-                else:
-                    depth = None
-            else:
-                depth = arg
-
-            if depth is not None:
-                make_kw['depth'] = float(depth)
-
-        if args:
-            raise ValueError("Too many parameters in inv %r" % inv)
 
         self._fields['inv'] = inv
         self._params['make_inv_kw'] = make_kw
         self._params['apply_inv_kw'] = apply_kw
-        self._params['reg_inv'] = regularize_inv
+        self._params['reg_inv'] = reg
 
     def set_mri_subject(self, subject, mri_subject=None):
         """
