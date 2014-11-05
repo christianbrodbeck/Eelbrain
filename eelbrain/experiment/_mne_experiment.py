@@ -325,6 +325,11 @@ class MneExperiment(FileTree):
     _meg_systems = {'R': 'KIT-NY',
                     'A': 'KIT-AD', 'Y': 'KIT-AD', 'AD': 'KIT-AD', 'QP': 'KIT-AD'}
 
+    # kwargs for regularization of the covariance matrix
+    _cov_reg = {'reg': {},
+                'reg5': {'mag': 0.05, 'grad': 0.05, 'eeg': 0.1},
+                }
+
     # state variables that are always shown in self.__repr__():
     _repr_kwargs = ('subject', 'rej')
 
@@ -1478,8 +1483,12 @@ class MneExperiment(FileTree):
         fwd_file = self.get('fwd-file', make=True)
         fwd = mne.read_forward_solution(fwd_file, surf_ori=True)
         cov = mne.read_cov(self.get('cov-file', make=True))
-        if self._params['reg_inv']:
-            cov = mne.cov.regularize(cov, fiff.info)
+        reg = self._params['reg_inv']
+        if reg:
+            if reg not in self._cov_reg:
+                raise ValueError("reg=%r" % reg)
+            kwargs = self._cov_reg[reg]
+            cov = mne.cov.regularize(cov, fiff.info, **kwargs)
         inv = make_inverse_operator(fiff.info, fwd, cov,
                                     **self._params['make_inv_kw'])
         return inv
@@ -3565,13 +3574,39 @@ class MneExperiment(FileTree):
         cov_rej = rej_args.get('cov-rej', rej)
         self._fields['cov-rej'] = cov_rej
 
-    def set_inv(self, ori='free', depth=None, reg=False, snr=3, method='dSPM',
+    def set_inv(self, ori='free', depth=None, reg=None, snr=3, method='dSPM',
                 pick_normal=False):
         """Alternative method to set the ``inv`` state.
+
+        Parameters
+        ----------
+        ori : 'free' | 'fixed' | float ]0, 1]
+            Orientation constraint (float for loose), default 'free'.
+        depth : None | float
+            Depth weighting (default None).
+        reg : None | 'reg' | 'reg5'
+            Regularization of the noise covariance matrix (default is None).
+        method : 'MNE' | 'dSPM' | 'sLORETA'
+            Inverse method.
+        pick_normal : bool
+            Pick the normal component of the estimated current vector.
         """
-        items = [ori, depth if depth else None, 'reg' if reg else None, snr,
-                 method, 'pick_normal' if pick_normal else None]
-        inv = '-'.join(map(str, filter(None, items)))
+        items = [ori]
+        if depth:
+            items.append(str(depth))
+
+        if reg is True:
+            items.append('reg')
+        elif reg:
+            items.append(reg)
+
+        items.append(str(snr))
+        items.append(method)
+
+        if pick_normal:
+            items.append('pick_normal')
+
+        inv = '-'.join(items)
         self.set(inv=inv)
 
     def _set_inv_as_str(self, inv):
@@ -3589,7 +3624,7 @@ class MneExperiment(FileTree):
         """
         m = re.match("(free|fixed|loose\.\d+)-"  # orientation constraint
                      "(?:(\.\d+)-)?"  # depth weighting
-                     "(?:(reg)-)?"  # regularization of the noise covariance
+                     "(?:(reg5?)-)?"  # regularization of the noise covariance
                      "(\d*\.?\d+)-"  # SNR
                      "(MNE|dSPM|sLORETA)"  # method
                      "(?:-(pick_normal))?",  # pick normal
