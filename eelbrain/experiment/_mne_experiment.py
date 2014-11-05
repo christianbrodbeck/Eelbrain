@@ -306,6 +306,8 @@ class MneExperiment(FileTree):
 
     exclude = {}  # field_values to exclude (e.g. subjects)
 
+    # groups can be defined as subject lists: {'group': ('member1', 'member2', ...)}
+    # or by exclusion: {'group': {'exclude': ('member1', 'member2')}}
     groups = {}
 
     # whether to look for and load eye tracker data when loading raw files
@@ -949,6 +951,26 @@ class MneExperiment(FileTree):
         else:
             return FileTree.get_field_values(self, field, exclude)
 
+    def _get_group_members(self, group):
+        "For groups except all and all!"
+        if group == 'all':
+            return self.get_field_values('subject')
+        elif group == 'all!':
+            return self.get_field_values('subject', False)
+
+        all_subjects = self.get_field_values('subject')
+        group_def = self.groups[group]
+        if isinstance(group_def, dict):
+            if group_def.keys() != ['exclude']:
+                msg = "group has invalid keys %s=%r" % (group, group_def)
+                raise ValueError(msg)
+            exclude = set(group_def['exclude'])
+            return [s for s in all_subjects if s not in exclude]
+        elif isinstance(group_def, (list, tuple)):
+            return [s for s in all_subjects if s in group_def]
+        else:
+            raise TypeError("group %s=%r" % (group, group_def))
+
     def iter(self, fields='subject', group=None, **kwargs):
         """
         Cycle the experiment's state through all values on the given fields
@@ -979,14 +1001,8 @@ class MneExperiment(FileTree):
         if 'subject' in fields:
             if group is None:
                 group = self.get('group')
-
-            if group == 'all!':
-                kwargs['exclude'] = False
-            elif group != 'all':
-                subjects = self.get_field_values('subject')
-                group = self.groups[group]
-                group_subjects = [s for s in subjects if s in group]
-                kwargs.setdefault('values', {})['subject'] = group_subjects
+            subjects = self._get_group_members(group)
+            kwargs.setdefault('values', {})['subject'] = subjects
 
         return FileTree.iter(self, fields, **kwargs)
 
