@@ -2743,7 +2743,7 @@ class MneExperiment(FileTree):
         dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
                        folder=folder, resname=resname, ext='html', test=test,
                        **state)
-        if not redo and os.path.exists(dst):
+        if not redo and not redo_test and os.path.exists(dst):
             return
 
         # load data
