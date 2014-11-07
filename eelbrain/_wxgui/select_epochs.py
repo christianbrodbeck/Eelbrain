@@ -653,7 +653,7 @@ class Frame(EelbrainFrame):  # control
             style = wx.YES | wx.NO | wx.CANCEL | wx.YES_DEFAULT
             cmd = wx.MessageBox(msg, cap, style)
             if cmd == wx.YES:
-                if self.Save() != wx.ID_OK:
+                if self.OnSave(event) != wx.ID_OK:
                     event.Veto()
             elif cmd == wx.CANCEL:
                 event.Veto()
@@ -751,7 +751,7 @@ class Frame(EelbrainFrame):  # control
             self.model.save()
             return wx.ID_OK
         else:
-            return self.SaveAs()
+            return self.OnSaveAs(event)
 
     def OnSaveAs(self, event):
         msg = ("Save the epoch selection to a file.")
