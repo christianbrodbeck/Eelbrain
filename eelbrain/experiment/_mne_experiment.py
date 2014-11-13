@@ -976,7 +976,8 @@ class MneExperiment(FileTree):
         else:
             raise TypeError("group %s=%r" % (group, group_def))
 
-    def iter(self, fields='subject', group=None, **kwargs):
+    def iter(self, fields='subject', exclude=True, values={}, group=None, *args,
+             **kwargs):
         """
         Cycle the experiment's state through all values on the given fields
 
@@ -995,21 +996,24 @@ class MneExperiment(FileTree):
             If iterating over subjects, use this group ('all' for all except
             excluded subjects, 'all!' for all including excluded subjects, or
             a name defined in experiment.groups).
-        prog : bool | str
-            Show a progress dialog; str for dialog title.
         mail : bool | str
             Send an email when iteration is finished. Can be True or an email
             address. If True, the notification is sent to :attr:`.owner`.
-        others :
+        prog : bool | str
+            Show a progress dialog; str for dialog title.
+        *others* :
             Fields with constant values throughout the iteration.
         """
-        if 'subject' in fields:
+        if group is not None:
+            self.set(group=group)
+
+        if 'subject' in fields and 'subject' not in values:
             if group is None:
                 group = self.get('group')
-            subjects = self._get_group_members(group)
-            kwargs.setdefault('values', {})['subject'] = subjects
+            values = values.copy()
+            values['subject'] = self._get_group_members(group)
 
-        return FileTree.iter(self, fields, **kwargs)
+        return FileTree.iter(self, fields, exclude, values, *args, **kwargs)
 
     def iter_range(self, start=None, stop=None, field='subject'):
         """Iterate through a range on a field with ordered values.
@@ -1041,13 +1045,6 @@ class MneExperiment(FileTree):
                 self.restore_state(discard_tip=False)
                 self.set(**{field: value})
                 yield value
-
-    def iter_vars(self, *args, **kwargs):
-        """Deprecated. Use :attr:`.iter()`"""
-        warn("MneExperiment.iter_vars() is deprecated. Use .iter()",
-             DeprecationWarning)
-        kwargs['mail'] = kwargs.get('notify', False)
-        self.iter(*args, **kwargs)
 
     def label_events(self, ds, experiment, subject):
         """
@@ -3467,7 +3464,7 @@ class MneExperiment(FileTree):
             return plot.TopoButterfly('meg', model, ds=ds, title=subject,
                                       run=run)
         elif separate:
-            for subject in self.iter('subject', group):
+            for subject in self.iter(group=group):
                 ds = self.load_evoked(baseline=baseline)
                 plot.TopoButterfly('meg', model, ds=ds, title=subject, run=False)
 
