@@ -323,22 +323,28 @@ class TreeModel(object):
         kwargs = {key: default, 'add':True}
         self.set(**kwargs)
 
-    def expand_template(self, temp, values=()):
-        """
-        Expand a template until all its subtemplates are neither in
-        field names or in ``values``
+    def expand_template(self, temp, keep=()):
+        """Expand all constant variables in a template
 
         Parameters
         ----------
-        values : container (implements __contains__)
-            values which should not be expanded.
+        temp : str
+            Template or name of the template which should be expanded.
+        keep : container (implements __contains__)
+            Names of the variables which should not be expanded.
+
+        Returns
+        -------
+        formatted_temp : str
+            Template with all variables replaced by their values, except
+            variables which have entries in field_values or in ``keep``.
         """
         temp = self._fields.get(temp, temp)
 
         while True:
             stop = True
             for name in self._fmt_pattern.findall(temp):
-                if (name in values) or (self._field_values.get(name, False)):
+                if (name in keep) or (self._field_values.get(name, False)):
                     pass
                 else:
                     temp = temp.replace('{%s}' % name, self._fields[name])
@@ -530,11 +536,11 @@ class TreeModel(object):
             a path template with variables indicated as in ``'{var_name}'``
         """
         # if the name is an existing template, retrieve it
-        keep = constants.keys() + values.keys()
-        temp = self.expand_template(temp, values=keep)
+        temp = self.expand_template(temp, values.keys())
 
         # find variables for iteration
         variables = set(self._fmt_pattern.findall(temp))
+        variables.difference_update(constants)
 
         for _ in self.iter(variables, exclude=exclude, values=values,
                            mail=mail, prog=prog, **constants):
@@ -1210,7 +1216,7 @@ class FileTree(TreeModel):
         Parameters
         ----------
         temp : str
-            The template.
+            Name of the path template for which to find and delete files.
         exclude : bool | dict
             Exclude specific field values.
         values : dict
@@ -1239,7 +1245,8 @@ class FileTree(TreeModel):
                     print name[root_len:]
                 else:
                     print name
-            msg = "Delete %i files (confirm with 'yes')? " % len(files)
+            msg = ("Delete %i files or directories (confirm with 'yes')? "
+                   % len(files))
             if raw_input(msg) == 'yes':
                 for path in files:
                     if os.path.isdir(path):
