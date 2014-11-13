@@ -105,10 +105,7 @@ import numpy as np
 import mne
 from mne.source_estimate import _BaseSourceEstimate
 from mne.io.constants import FIFF
-from mne import Evoked as _mne_Evoked
 from mne.io import Raw as _mne_Raw
-from mne import pick_types as _mne_pick_types
-from mne import pick_channels as _mne_pick_channels
 from mne.io import read_raw_kit as _mne_read_raw_kit
 
 from .. import _colorspaces as _cs
@@ -304,7 +301,7 @@ def _ndvar_epochs_picks(info, data, exclude):
     else:
         err = "data=%r (needs to be 'eeg', 'grad' or 'mag')" % data
         raise ValueError(err)
-    picks = _mne_pick_types(info, meg=meg, eeg=eeg, stim=False, exclude=exclude)
+    picks = mne.pick_types(info, meg=meg, eeg=eeg, stim=False, exclude=exclude)
     return picks
 
 
@@ -557,8 +554,7 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
         raw = ds.info['raw']
 
     if drop_bad_chs and ('picks' not in kwargs) and raw.info['bads']:
-        kwargs['picks'] = _mne_pick_channels(raw.info['ch_names'], [],
-                                             raw.info['bads'])
+        kwargs['picks'] = mne.pick_types(raw.info, eeg=True, ref_meg=False)
 
     events = _mne_events(ds=ds, i_start=i_start)
     # epochs with (event_id == None) does not use columns 1 and 2 of events
@@ -710,9 +706,9 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
     only the channels present in all objects are retained).
     """
     if isinstance(evoked, basestring):
-        evoked = _mne_Evoked(evoked)
+        evoked = mne.Evoked(evoked)
 
-    if isinstance(evoked, _mne_Evoked):
+    if isinstance(evoked, mne.Evoked):
         picks = _ndvar_epochs_picks(evoked.info, data, exclude)
 
         x = evoked.data[picks]
