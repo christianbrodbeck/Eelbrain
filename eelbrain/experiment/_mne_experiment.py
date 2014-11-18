@@ -1121,6 +1121,28 @@ class MneExperiment(FileTree):
             self.make_bad_channels(())
             return []
 
+    def load_cov(self, fiff=None, **kwargs):
+        """Load the covariance matrix
+
+        Parameters
+        ----------
+        fiff : Raw | Epochs | Evoked | ...
+            Object which provides the mne info dictionary (default: load the
+            raw file).
+        others :
+            State parameters.
+        """
+        cov = mne.read_cov(self.get('cov-file', make=True, **kwargs))
+        reg = self._params['reg_inv']
+        if reg:
+            if reg not in self._cov_reg:
+                raise ValueError("reg=%r" % reg)
+            elif fiff is None:
+                fiff = self.load_raw()
+            kwargs = self._cov_reg[reg]
+            cov = mne.cov.regularize(cov, fiff.info, **kwargs)
+        return cov
+
     def load_edf(self, **kwargs):
         """Load the edf file ("edf-file" template)"""
         kwargs['fmatch'] = False
@@ -1467,8 +1489,8 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         fiff : Raw | Epochs | Evoked | ...
-            Object for which to make the inverse operator (provides the mne
-            info dictionary). By default, the current raw is used.
+            Object which provides the mne info dictionary (default: load the
+            raw file).
         others :
             State parameters.
         """
@@ -1479,13 +1501,7 @@ class MneExperiment(FileTree):
 
         fwd_file = self.get('fwd-file', make=True)
         fwd = mne.read_forward_solution(fwd_file, surf_ori=True)
-        cov = mne.read_cov(self.get('cov-file', make=True))
-        reg = self._params['reg_inv']
-        if reg:
-            if reg not in self._cov_reg:
-                raise ValueError("reg=%r" % reg)
-            kwargs = self._cov_reg[reg]
-            cov = mne.cov.regularize(cov, fiff.info, **kwargs)
+        cov = self.load_cov(fiff)
         inv = make_inverse_operator(fiff.info, fwd, cov,
                                     **self._params['make_inv_kw'])
         return inv
@@ -2088,7 +2104,7 @@ class MneExperiment(FileTree):
             ds = self.load_epochs(None, (None, 0), False, decim=1, epoch=cov,
                                   rej=rej)
         epochs = ds['epochs']
-        cov = mne.cov.compute_covariance(epochs)
+        cov = mne.compute_covariance(epochs)
         cov.save(dest)
 
     def make_evoked(self, redo=False, **kwargs):
