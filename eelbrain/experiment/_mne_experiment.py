@@ -164,10 +164,10 @@ temp = {
 
 
         # mne secondary/forward modeling
-        'cov': 'bl',
         'proj-file': '{raw-base}_{proj}-proj.fif',
         'proj-plot': '{raw-base}_{proj}-proj.pdf',
         'cov-file': '{raw-base}_{cov}-{cov-rej}-{proj}-cov.fif',
+        'cov-info-file': '{raw-base}_{cov}-{cov-rej}-{proj}-cov-info.txt',
         'fwd-file': '{raw-base}_{mrisubject}-{src}-fwd.fif',
 
         # epochs
@@ -262,7 +262,7 @@ class MneExperiment(FileTree):
 
     # named epochs
     epochs = {'epoch': dict(sel="stim=='target'"),
-              'bl': dict(sel_epoch='epoch', tmin=-0.1, tmax=0)}
+              'cov': dict(sel_epoch='epoch', tmin=-0.1, tmax=0)}
     # Rejection
     # =========
     # eog_sns: The sensors to plot separately in the rejection GUI. The default
@@ -325,10 +325,10 @@ class MneExperiment(FileTree):
     _meg_systems = {'R': 'KIT-NY',
                     'A': 'KIT-AD', 'Y': 'KIT-AD', 'AD': 'KIT-AD', 'QP': 'KIT-AD'}
 
-    # kwargs for regularization of the covariance matrix
-    _cov_reg = {'reg': {},
-                'reg5': {'mag': 0.05, 'grad': 0.05, 'eeg': 0.1},
-                }
+    # kwargs for regularization of the covariance matrix (see .make_cov())
+    _covs = {'bestreg': {},
+             'reg': {'reg': True},
+             'noreg': {'reg': None}}
 
     # state variables that are always shown in self.__repr__():
     _repr_kwargs = ('subject', 'rej')
@@ -349,11 +349,8 @@ class MneExperiment(FileTree):
     _values = {}
     # specify defaults for specific fields (e.g. specify the initial subject
     # name)
-    _defaults = {
-                 'experiment': 'experiment_name',
-                 # this should be a key in the epochs class attribute (see
-                 # above)
-                 'epoch': 'epoch'}
+    _defaults = {'experiment': 'experiment_name',
+                 'epoch': 'epoch'}  # key in self.epochs
 
     # model order: list of factors in the order in which models should be built
     # (default for factors not in this list is alphabetic)
@@ -485,6 +482,7 @@ class MneExperiment(FileTree):
                              eval_handler=self._eval_group)
         self._register_field('epoch', self.epochs.keys(),
                              eval_handler=self._eval_epoch)
+        self._register_field('cov', sorted(self._covs.keys()))
         self._register_value('inv', 'free-3-dSPM',
                              set_handler=self._set_inv_as_str)
         self._register_value('model', '', eval_handler=self._eval_model)
@@ -1132,27 +1130,15 @@ class MneExperiment(FileTree):
             self.make_bad_channels(())
             return []
 
-    def load_cov(self, fiff=None, **kwargs):
+    def load_cov(self, **kwargs):
         """Load the covariance matrix
 
         Parameters
         ----------
-        fiff : Raw | Epochs | Evoked | ...
-            Object which provides the mne info dictionary (default: load the
-            raw file).
         others :
             State parameters.
         """
-        cov = mne.read_cov(self.get('cov-file', make=True, **kwargs))
-        reg = self._params['reg_inv']
-        if reg:
-            if reg not in self._cov_reg:
-                raise ValueError("reg=%r" % reg)
-            elif fiff is None:
-                fiff = self.load_raw()
-            kwargs = self._cov_reg[reg]
-            cov = mne.cov.regularize(cov, fiff.info, **kwargs)
-        return cov
+        return mne.read_cov(self.get('cov-file', make=True, **kwargs))
 
     def load_edf(self, **kwargs):
         """Load the edf file ("edf-file" template)"""
@@ -1512,7 +1498,7 @@ class MneExperiment(FileTree):
 
         fwd_file = self.get('fwd-file', make=True)
         fwd = mne.read_forward_solution(fwd_file, surf_ori=True)
-        cov = self.load_cov(fiff)
+        cov = self.load_cov()
         inv = make_inverse_operator(fiff.info, fwd, cov,
                                     **self._params['make_inv_kw'])
         return inv
@@ -2097,9 +2083,6 @@ class MneExperiment(FileTree):
         ----------
         redo : bool
             If the cov file already exists, overwrite it.
-        cov : None | str
-            The epoch used for estimating the covariance matrix (needs to be
-            a name in .epochs). If None, the experiment state cov is used.
         """
         dest = self.get('cov-file')
         if (not redo) and os.path.exists(dest):
@@ -2109,13 +2092,52 @@ class MneExperiment(FileTree):
             if cov_mtime > max(raw_mtime, bads_mtime):
                 return
 
-        cov = self.get('cov')
         rej = self.get('cov-rej')
+        params = self._covs[self.get('cov')]
+        epoch = params.get('epoch', 'cov')
+        keep_sample_mean = params.get('keep_sample_mean', True)
+        reg = params.get('reg', 'best')
+
         with self._temporary_state:
-            ds = self.load_epochs(None, (None, 0), False, decim=1, epoch=cov,
+            ds = self.load_epochs(None, (None, 0), False, decim=1, epoch=epoch,
                                   rej=rej)
         epochs = ds['epochs']
-        cov = mne.compute_covariance(epochs)
+        cov = mne.compute_covariance(epochs, keep_sample_mean)
+
+        if reg is True:
+            cov = mne.cov.regularize(cov, epochs.info)
+        elif isinstance(reg, dict):
+            cov = mne.cov.regularize(cov, epochs.info, **reg)
+        elif reg == 'best':
+            if mne.pick_types(epochs.info, meg='grad', eeg=True, ref_meg=False):
+                raise NotImplementedError("EEG or gradiometer sensors")
+            reg_vs = np.arange(0, 0.21, 0.01)
+            covs = [mne.cov.regularize(cov, epochs.info, mag=v) for v in reg_vs]
+
+            # compute whitened global field power
+            evoked = epochs.average()
+            picks = range(len(evoked.ch_names))
+            gfps = [mne.whiten_evoked(evoked, cov, picks).data.std(0)
+                    for cov in covs]
+
+            # apply padding
+            t_pad = params.get('reg_eval_win_pad', 0)
+            if t_pad:
+                n_pad = int(t_pad * epochs.info['sfreq'])
+                if len(gfps[0]) <= 2 * n_pad:
+                    msg = "Covariance padding (%s) is bigger than epoch" % t_pad
+                    raise ValueError(msg)
+                padding = slice(n_pad, -n_pad)
+                gfps = [gfp[padding] for gfp in gfps]
+
+            vs = [gfp.mean() for gfp in gfps]
+            i = np.argmin(np.abs(1 - np.array(vs)))
+            cov = covs[i]
+
+            # save cov value
+            with open(self.get('cov-info-file'), 'w') as fid:
+                fid.write('%s\n' % reg_vs[i])
+
         cov.save(dest)
 
     def make_evoked(self, redo=False, **kwargs):
@@ -3594,10 +3616,9 @@ class MneExperiment(FileTree):
     def _post_set_rej(self, _, rej):
         rej_args = self.epoch_rejection[rej]
         self._params['rej'] = rej_args
-        cov_rej = rej_args.get('cov-rej', rej)
-        self._fields['cov-rej'] = cov_rej
+        self._fields['cov-rej'] = rej_args.get('cov-rej', rej)
 
-    def set_inv(self, ori='free', depth=None, reg=None, snr=3, method='dSPM',
+    def set_inv(self, ori='free', snr=3, method='dSPM', depth=None,
                 pick_normal=False):
         """Alternative method to set the ``inv`` state.
 
@@ -3605,26 +3626,19 @@ class MneExperiment(FileTree):
         ----------
         ori : 'free' | 'fixed' | float ]0, 1]
             Orientation constraint (float for loose), default 'free'.
-        depth : None | float
-            Depth weighting (default None).
-        reg : None | 'reg' | 'reg5'
-            Regularization of the noise covariance matrix (default is None).
+        snr : scalar
+            SNR estimate for regularization ...
         method : 'MNE' | 'dSPM' | 'sLORETA'
             Inverse method.
+        depth : None | float
+            Depth weighting (default None).
         pick_normal : bool
             Pick the normal component of the estimated current vector.
         """
-        items = [ori]
+        items = [str(ori), str(snr), method]
+
         if depth:
             items.append(str(depth))
-
-        if reg is True:
-            items.append('reg')
-        elif reg:
-            items.append(reg)
-
-        items.append(str(snr))
-        items.append(method)
 
         if pick_normal:
             items.append('pick_normal')
@@ -3646,16 +3660,15 @@ class MneExperiment(FileTree):
          6) pick_normal:  'pick_normal' (optional)
         """
         m = re.match("(free|fixed|loose\.\d+)-"  # orientation constraint
-                     "(?:(\.\d+)-)?"  # depth weighting
-                     "(?:(reg5?)-)?"  # regularization of the noise covariance
                      "(\d*\.?\d+)-"  # SNR
                      "(MNE|dSPM|sLORETA)"  # method
+                     "(?:(\.\d+)-)?"  # depth weighting
                      "(?:-(pick_normal))?",  # pick normal
                      inv)
         if m is None:
             raise ValueError("Invalid inverse option specification: %r" % inv)
 
-        ori, depth, reg, snr, method, pick_normal = m.groups()
+        ori, snr, method, depth, pick_normal = m.groups()
         make_kw = {}
         apply_kw = {}
 
@@ -3683,7 +3696,6 @@ class MneExperiment(FileTree):
         self._fields['inv'] = inv
         self._params['make_inv_kw'] = make_kw
         self._params['apply_inv_kw'] = apply_kw
-        self._params['reg_inv'] = reg
 
     def set_mri_subject(self, subject, mri_subject=None):
         """

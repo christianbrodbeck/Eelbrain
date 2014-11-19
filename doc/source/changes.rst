@@ -6,6 +6,16 @@ Changes
 New in 0.11
 -----------
 
+* :class:`~experiment.MneExperiment`:
+
+  - Change in the way the covariance matrix
+    is defined:  The epoch for the covariance matrix should be specified in
+    ``MneExperiment.epochs['cov']``. The regularization is no longer part of
+    :meth:`~experiment.MneExperiment.set_inv`, but is instead set with
+    ``MneExperiment.set(cov='reg')`` or ``MneExperiment.set(cov='noreg')``.
+  - New option ``cov='bestreg'`` automatically selects the regularization
+    parameter for each subejct.
+
 * API: Previously :func:`plot.configure_backend` is now :func:`plot.configure`
 
 
