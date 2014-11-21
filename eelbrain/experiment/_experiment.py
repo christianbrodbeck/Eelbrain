@@ -1248,11 +1248,14 @@ class FileTree(TreeModel):
             msg = ("Delete %i files or directories (confirm with 'yes')? "
                    % len(files))
             if raw_input(msg) == 'yes':
+                print 'deleting...'
                 for path in files:
                     if os.path.isdir(path):
                         shutil.rmtree(path)
                     else:
                         os.remove(path)
+            else:
+                print 'aborting...'
         else:
             print "No files found for %r" % temp
 
