@@ -2805,8 +2805,10 @@ class MneExperiment(FileTree):
         # method intro
         include = 0.2  # uncorrected p to plot clusters
         info = List("Test Parameters:")
-        info.add_item(self.format('{epoch} ~ {model}'))
+        info.add_item(self.format('Data: {epoch} ~ {model}'))
         info.add_item("Test: %s, %s" % (test_kind, contrast))
+        info.add_item(self.format("Covariance: {cov}"))
+        info.add_item(self.format("Inverse solution: {inv}"))
         # cluster info
         cinfo = info.add_sublist("Cluster Permutation Test")
         if pmin is None:
@@ -3145,9 +3147,9 @@ class MneExperiment(FileTree):
                 title_ = title_.replace('  ', ' ')
             section = section.add_section(title_)
 
-        # descriton
+        # description
+        txt = section.add_paragraph("Id %i, v=%s." % (cluster['id'], cluster['v']))
         if 'p_parc' in cluster:
-            txt = section.add_paragraph()
             txt.append("Corrected across all ROIs: ")
             eq = FMText('p=', mat=True)
             eq.append(cluster['p_parc'], drop0=True, fmt='%s')
