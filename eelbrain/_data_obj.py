@@ -107,7 +107,7 @@ def cellname(cell, delim=' '):
     elif isinstance(cell, (list, tuple)):
         return delim.join(cell)
     else:
-        return str(cell)
+        return unicode(cell)
 
 
 def rank(x, tol=1e-8):
