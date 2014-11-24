@@ -972,7 +972,15 @@ class MneExperiment(FileTree):
             if group_def.keys() != ['exclude']:
                 msg = "group has invalid keys %s=%r" % (group, group_def)
                 raise ValueError(msg)
-            exclude = set(group_def['exclude'])
+            # find exclusion
+            exclude = group_def['exclude']
+            if isinstance(exclude, basestring):
+                exclude = (exclude,)
+            elif not isinstance(exclude, (tuple, list, set)):
+                msg = ("exclusion must be defined as str | tuple | list | set; got "
+                       "%s" % repr(exclude))
+                raise TypeError(msg)
+
             return [s for s in all_subjects if s not in exclude]
         elif isinstance(group_def, (list, tuple)):
             return [s for s in all_subjects if s in group_def]
