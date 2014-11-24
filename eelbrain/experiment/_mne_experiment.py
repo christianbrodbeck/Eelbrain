@@ -546,6 +546,9 @@ class MneExperiment(FileTree):
         if subject is None:
             group = None
             subject_ = self.get('subject', **kwargs)
+        elif subject is True:
+            group = self.get('group', **kwargs)
+            subject_ = None
         elif subject in self.get_field_values('group'):
             group = subject
             subject_ = None
@@ -1749,7 +1752,7 @@ class MneExperiment(FileTree):
         return src
 
     def load_test(self, test, tstart, tstop, pmin, parc=None, mask=None,
-                  samples=1000, group='all', data='src', sns_baseline=(None, 0),
+                  samples=1000, data='src', sns_baseline=(None, 0),
                   src_baseline=None, return_data=False, make=False, redo=False,
                   **kwargs):
         """Create and load spatio-temporal cluster test results
@@ -1770,8 +1773,6 @@ class MneExperiment(FileTree):
         samples : int
             Number of samples used to determine cluster p values for spatio-
             temporal clusters.
-        group : str
-            Group for which to perform the test.
         data : 'sns' | 'src'
             Whether the analysis is in sensor or source space.
         sns_baseline : None | tuple
@@ -1786,6 +1787,8 @@ class MneExperiment(FileTree):
         redo : bool
             If the target file already exists, delete and recreate it (only
             applies for tests that are cached).
+        group : str
+            Group for which to perform the test.
 
         Returns
         -------
@@ -1856,9 +1859,9 @@ class MneExperiment(FileTree):
         # load data
         if load_data:
             if data == 'sns':
-                ds = self.load_evoked(group, sns_baseline, ndvar=True)
+                ds = self.load_evoked(True, sns_baseline, ndvar=True)
             elif data == 'src':
-                ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
+                ds = self.load_evoked_stc(True, sns_baseline, src_baseline,
                                           morph_ndvar=True)
                 if mask:
                     # reduce data to parc
@@ -2760,10 +2763,9 @@ class MneExperiment(FileTree):
             return
 
         # load data
-        group = self.get('group')
         ds, res = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
-                                 group, data, sns_baseline, src_baseline, True,
-                                 True, redo_test)
+                                 data, sns_baseline, src_baseline, True, True,
+                                 redo_test)
         test_kind, model, contrast = self.tests[test]
 
         # start report
