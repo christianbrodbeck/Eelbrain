@@ -594,12 +594,16 @@ class TreeModel(object):
         # eval all values
         for k in state.keys():
             eval_handlers = self._eval_handlers[k]
-            if '*' in state[k] and allow_asterisk:
+            v = state[k]
+            if not isinstance(v, basestring):
+                msg = "Values have to be strings, got %s=%r" % (k, v)
+                raise TypeError(msg)
+            elif '*' in v and allow_asterisk:
                 pass
             elif eval_handlers:
                 for handler in eval_handlers:
-                    v = handler(state[k])
-                    if not isinstance(v, str):
+                    v = handler(v)
+                    if not isinstance(v, basestring):
                         err = "Invalid conversion: %s=%r" % (k, v)
                         raise RuntimeError(err)
                     state[k] = v
@@ -607,13 +611,11 @@ class TreeModel(object):
                 pass
             elif k not in self._field_values:
                 pass
-            elif '*' in state[k]:
-                pass
-            elif state[k] not in self.get_field_values(k, False):
+            elif v not in self.get_field_values(k, False):
                 err = ("Variable {k!r} has no value {v!r}. In order to "
                        "see valid values use e.list_values(); In order to "
                        "set a non-existent value, use e.set({k!s}={v!r}, "
-                       "match=False).".format(k=k, v=state[k]))
+                       "match=False).".format(k=k, v=v))
                 raise ValueError(err)
 
         self._fields.update(state)
