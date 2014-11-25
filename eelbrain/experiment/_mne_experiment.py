@@ -2785,10 +2785,9 @@ class MneExperiment(FileTree):
             folder = "{parc}"
         self._set_test_options(data, sns_baseline, src_baseline, pmin, tstart,
                                tstop)
-        resname = "{epoch} {test} {test_options}"
-        dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
-                       folder=folder, resname=resname, ext='html', test=test,
-                       **state)
+        dst = self.get('res-g-deep-file', mkdir=True, fmatch=False, folder=folder,
+                       resname="{epoch} {test} {test_options}", ext='html',
+                       test=test, **state)
         if not redo and not redo_test and os.path.exists(dst):
             return
 
@@ -3169,7 +3168,7 @@ class MneExperiment(FileTree):
         # cluster time course
         idx = c_extent.any('time')
         tc = y[idx].mean('source')
-        caption = ("Cluster average time course")
+        caption = "Cluster average time course"
         p = plot.UTSStat(tc, model, match='subject', ds=ds, legend=None, w=7,
                          colors=colors, show=False)
         # mark original cluster
