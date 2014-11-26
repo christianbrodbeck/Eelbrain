@@ -432,7 +432,6 @@ class Frame(EelbrainFrame):  # control
         history = model.history
 
         # bind events
-        self.Bind(wx.EVT_CLOSE, self.OnClose, self)
         doc.subscribe_to_case_change(self.CaseChanged)
         doc.subscribe_to_path_change(self.UpdateTitle)
         history.subscribe_to_saved_change(self.UpdateTitle)
