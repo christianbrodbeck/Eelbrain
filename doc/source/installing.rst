@@ -4,10 +4,6 @@ Installing
 ==========
 
 .. note::
-   If you are setting up a new Python environment, the easiest option might be
-   Enthought `Canopy <https://www.enthought.com/products/canopy>`_.
-
-.. note::
     Eelbrain comes with a C extension. Precompiled binaries are currently
     provided for OS X. On other platforms, installing Eelbrain requires
     compilation.
@@ -19,6 +15,11 @@ Installing
 
 Installing from PYPI
 --------------------
+
+.. note::
+   If you are setting up a new Python environment, the easier options might be
+   `Anaconda <https://store.continuum.io/cshop/anaconda/>`_ or
+   `Canopy <https://www.enthought.com/products/canopy>`_.
 
 Eelbrain can be installed from the
 `Python Package Index (PYPI) <https://pypi.python.org/pypi/eelbrain>`_::
@@ -49,7 +50,32 @@ wxPython `can not be installed from the PYPI
 
 .. _install-canopy:
 
-Installing With Canopy
+Installing with Anaconda
+------------------------
+
+For using Eelbrain with Continuum Analytics' `Anaconda
+<https://store.continuum.io/cshop/anaconda/>`_, first install the dependencies
+with ``conda``::
+
+    $ conda install wxpython
+    $ conda install mayavi
+
+Then install Eelbrain::
+
+    $ easy_install eelbrain
+
+For plotting MNE source estimates, also install PySurfer::
+
+    $ pip install pysurfer
+
+Later, update Eelbrain with::
+
+    $ pip uninstall eelbrain
+    $ easy_install -U eelbrain
+
+
+
+Installing with Canopy
 ----------------------
 
 Make sure that you are using the
@@ -70,6 +96,10 @@ update the Canopy distribution before installing or updating Eelbrain::
 Install Eelbrain::
 
    $ pip install eelbrain
+
+For plotting MNE source estimates, also install PySurfer::
+
+    $ pip install pysurfer
 
 Later, update Eelbrain with::
 
