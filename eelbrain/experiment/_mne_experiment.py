@@ -3474,6 +3474,43 @@ class MneExperiment(FileTree):
                                   self.get('subject'), self.get('mri-sdir'),
                                   ch_type, source)
 
+    def plot_whitened_gfp(self, s_start=None, s_stop=None, run=None):
+        """Plot the GFP of the whitened evoked to evaluate the the covariance matrix
+
+        Parameters
+        ----------
+        s_start : str
+            Subject at which to start (default is the first subject).
+        s_stop: str
+            Subject at which to stop (default is the last subject).
+        run : bool
+            Run the GUI after plotting (default depends on environment).
+        """
+        gfps = []
+        subjects = []
+        with self._temporary_state:
+            self.set(model='')
+            for subject in self.iter_range(s_start, s_stop):
+                cov = self.load_cov()
+                picks = range(len(cov.ch_names))
+                ds = self.load_evoked(baseline=(None, 0))
+                whitened_evoked = mne.whiten_evoked(ds[0, 'evoked'], cov, picks)
+                gfp = whitened_evoked.data.std(0)
+
+                gfps.append(gfp)
+                subjects.append(subject)
+
+        colors = plot.colors_for_oneway(subjects)
+        title = "Whitened Global Field Power (%s)" % self.get('cov')
+        fig = plot._base.Figure(1, title, h=7, run=run)
+        ax = fig._axes[0]
+        for subject, gfp in izip(subjects, gfps):
+            ax.plot(whitened_evoked.times, gfp, label=subject,
+                    color=colors[subject])
+        ax.legend(loc='right')
+        fig.show()
+        return fig
+
     def plot_evoked(self, subject=None, separate=False, baseline=(None, 0),
                     run=None, **kwargs):
         """Plot evoked sensor data
@@ -3812,6 +3849,35 @@ class MneExperiment(FileTree):
             items.append(_time_window_str((tstart, tstop)))
 
         self.set(test_options=' '.join(items), analysis=analysis, add=True)
+
+    def show_reg_params(self, asds=False, **kwargs):
+        """Show the covariance matrix regularization parameters
+
+        Parameters
+        ----------
+        asds : bool
+            Return a dataset with the parameters (default False).
+        """
+        if kwargs:
+            self.set(**kwargs)
+        subjects = []
+        reg = []
+        for subject in self:
+            path = self.get('cov-info-file')
+            if os.path.exists(path):
+                with open(path, 'r') as fid:
+                    text = fid.read()
+                reg.append(float(text.strip()))
+            else:
+                reg.append(float('nan'))
+            subjects.append(subject)
+        ds = Dataset()
+        ds['subject'] = Factor(subjects)
+        ds['reg'] = Var(reg)
+        if asds:
+            return ds
+        else:
+            print ds
 
     def show_subjects(self, mri=True, mrisubject=False, caption=True,
                       asds=False):

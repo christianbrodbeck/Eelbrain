@@ -1130,6 +1130,14 @@ class Legend(_EelFigure):
         self._show()
 
 
+class Figure(_EelFigure):
+    def __init__(self, nax=None, title='Figure', *args, **kwargs):
+        _EelFigure.__init__(self, title, nax, 2, 1, *args, **kwargs)
+
+    def show(self):
+        self._show()
+
+
 class ImageTiler(object):
     """
     Create tiled images and animations from individual image files.
