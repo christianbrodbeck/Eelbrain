@@ -11,8 +11,9 @@
 Eelbrain
 ========
 
-Eelbrain is an open-source Python package for statistical analysis
-of MEG and EEG data using permutation tests. Eelbrain is developed by
+Eelbrain is an open-source `Python <https://www.python.org>`_ package
+for statistical analysis of MEG and EEG data using permutation tests.
+Eelbrain is developed by
 `Christian Brodbeck <http://www.psych.nyu.edu/pylkkanen/lab/christianbrodbeck.html>`_
 at the
 `Neuroscience of Language Lab <http://www.psych.nyu.edu/nellab/meglab.html>`_
