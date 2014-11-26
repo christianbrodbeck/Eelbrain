@@ -2801,47 +2801,11 @@ class MneExperiment(FileTree):
         title = self.format('{experiment} {epoch} {test} {test_options}')
         report = Report(title, site_title=title)
 
-        # method intro
+        # info
         include = 0.2  # uncorrected p to plot clusters
-        info = List("Test Parameters:")
-        info.add_item(self.format('Data: {epoch} ~ {model}'))
-        info.add_item("Test: %s, %s" % (test_kind, contrast))
-        info.add_item(self.format("Covariance: {cov}"))
-        info.add_item(self.format("Inverse solution: {inv}"))
-        # cluster info
-        cinfo = info.add_sublist("Cluster Permutation Test")
-        if pmin is None:
-            cinfo.add_item("P-values based on maximum value in randomizations")
-        elif pmin == 'tfce':
-            cinfo.add_item("Threshold-free cluster enhancement (Smith & "
-                           "Nichols, 2009)")
-        else:
-            cinfo.add_item("Cluster threshold equivalent to p = %s" % pmin)
-            mintime = self.cluster_criteria.get('mintime', None)
-            # cluster criteria
-            if mintime is None:
-                cinfo.add_item("No cluster minimum duration")
-            else:
-                cinfo.add_item("Cluster minimum duration: %i ms" %
-                               round(mintime * 1000))
-            if data == 'src':
-                minsource = self.cluster_criteria.get('minsource', None)
-                if minsource is not None:
-                    cinfo.add_item("At least %i contiguous sources." % minsource)
-            elif data == 'sns':
-                minsensor = self.cluster_criteria.get('minsensor', None)
-                if minsensor is not None:
-                    cinfo.add_item("At least %i contiguous sensors." % minsensor)
-            info.add_item("Separate plots of all clusters with a p-value "
-                          "< %s" % include)
-        cinfo.add_item("%i permutations" % res.samples)
-        cinfo.add_item("Time interval: %i - %i ms." % (round(tstart * 1000),
-                                                       round(tstop * 1000)))
-        cinfo.add_item(res.info_list())
-
-        report.append(info)
-        report.append(self._report_subject_info(ds, model))
-        report.append(self._report_state())
+        self._report_test_info(report.add_section("Test Info"), ds, model, test_kind,
+                               contrast, tstart, tstop, pmin, res.samples, res, data,
+                               include)
 
         y = ds['srcm']
         colors = plot.colors_for_categorial(ds.eval(model))
@@ -2974,32 +2938,8 @@ class MneExperiment(FileTree):
         report = Report(title, site_title=title)
 
         # method intro
-        info = List("Test Parameters:")
-        info.add_item(self.format('{epoch} ~ {model}'))
-        info.add_item("Test: %s, %s" % (test_kind, contrast))
-        # cluster info
-        cinfo = info.add_sublist("Cluster Permutation Test")
-        if pmin is None:
-            cinfo.add_item("P-values based on maximum value in randomizations")
-        elif pmin == 'tfce':
-            cinfo.add_item("Threshold-free cluster enhancement (Smith & "
-                           "Nichols, 2009)")
-        else:
-            cinfo.add_item("Cluster threshold equivalent to p = %s" % pmin)
-            mintime = self.cluster_criteria.get('mintime', None)
-            # cluster criteria
-            if mintime is None:
-                cinfo.add_item("No cluster minimum duration")
-            else:
-                cinfo.add_item("Cluster minimum duration: %i ms" %
-                               round(mintime * 1000))
-        cinfo.add_item("%i permutations" % samples)
-        cinfo.add_item("Time interval: %i - %i ms." % (round(tstart * 1000),
-                                                       round(tstop * 1000)))
-
-        report.append(info)
-        report.append(self._report_subject_info(ds, model))
-        report.append(self._report_state())
+        self._report_test_info(report.add_section("Test Info"), ds, model, test_kind,
+                               contrast, tstart, tstop, pmin, samples)
 
         # add parc image
         section = report.add_section(parc)
@@ -3054,6 +2994,47 @@ class MneExperiment(FileTree):
                                 "subjects included in the analysis with "
                                 "trials per condition")
         return s_table
+
+    def _report_test_info(self, section, ds, model, test_kind, contrast, tstart,
+                          tstop, pmin, samples, res=None, data=None, include=None):
+        info = List("Data:")
+        info.add_item(self.format('epoch = {epoch} {evoked-kind} ~ {model}'))
+        info.add_item("test = %s  (%s)" % (test_kind, contrast))
+        info.add_item(self.format("cov = {cov}"))
+        info.add_item(self.format("inv = {inv}"))
+        section.append(info)
+
+        # cluster test info
+        info = List("Cluster Permutation Test:")
+        info.add_item("Time interval:  %i - %i ms." % (round(tstart * 1000),
+                                                       round(tstop * 1000)))
+        if pmin is None:
+            info.add_item("P-values based on maximum value in randomizations")
+        elif pmin == 'tfce':
+            info.add_item("Threshold-free cluster enhancement (Smith & Nichols, 2009)")
+        else:
+            info.add_item("Cluster threshold equivalent to p = %s" % pmin)
+            # cluster criteria
+            criteria = info.add_sublist("Criteria:")
+            mintime = self.cluster_criteria.get('mintime', 0)
+            criteria.add_item("Minimum duration:  %i ms" % round(mintime * 1000))
+            if data == 'src':
+                minsource = self.cluster_criteria.get('minsource', 0)
+                criteria.add_item("At least %i contiguous sources." % minsource)
+            elif data == 'sns':
+                minsensor = self.cluster_criteria.get('minsensor', 0)
+                criteria.add_item("At least %i contiguous sensors." % minsensor)
+
+            if include is not None:
+                info.add_item("Separate plots of all clusters with a p-value < %s"
+                              % include)
+        info.add_item("%i permutations" % samples)
+        if res is not None:
+            info.add_item(res.info_list())
+        section.append(info)
+
+        section.append(self._report_subject_info(ds, model))
+        section.append(self._report_state())
 
     def _report_parc_image(self, section, caption):
         "Add picture of the current parcellation"
