@@ -2734,8 +2734,8 @@ class MneExperiment(FileTree):
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
                     tstop=None, samples=1000, data='src',
-                    sns_baseline=(None, 0), src_baseline=None, redo=False,
-                    redo_test=False, **state):
+                    sns_baseline=(None, 0), src_baseline=None, include=0.2,
+                    redo=False, redo_test=False, **state):
         """Create an HTML report on spatio-temporal clusters
 
         Parameters
@@ -2761,6 +2761,8 @@ class MneExperiment(FileTree):
             Sensor space baseline interval.
         src_baseline : None | tuple
             Source space baseline interval.
+        include : 0 < scalar <= 1
+            Create plots for all clusters with p-values smaller or equal this value.
         redo : bool
             If the target file already exists, delete and recreate it. This
             only applies to the HTML result file, not to the test.
@@ -2771,6 +2773,10 @@ class MneExperiment(FileTree):
             raise NotImplementedError("Data has to be 'src'")
         elif samples < 1:
             raise ValueError("samples needs to be > 0")
+
+        if include <= 0 or include > 1:
+            raise ValueError("include needs to be 0 < include <= 1, got %s"
+                             % repr(include))
 
         # determine report file name
         if parc is None:
@@ -2802,7 +2808,6 @@ class MneExperiment(FileTree):
         report = Report(title, site_title=title)
 
         # info
-        include = 0.2  # uncorrected p to plot clusters
         self._report_test_info(report.add_section("Test Info"), ds, model, test_kind,
                                contrast, tstart, tstop, pmin, res.samples, res, data,
                                include)
