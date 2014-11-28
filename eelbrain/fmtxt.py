@@ -206,7 +206,7 @@ def copy_tex(tex_obj):
     ui.copy_text(txt)
 
 
-def html(text, options={}):
+def html(text, env={}):
     """Create html code for any object with a string representation
 
     Parameters
@@ -214,15 +214,11 @@ def html(text, options={}):
     text : any
         Object to be converted to HTML. If the object has a ``.get_html()``
         method the result of this method is returned, otherwise ``str(text)``.
-    options : dict
-        Options for HTML creation.
-
-    Options
-    -------
-    ...
+    env : dict
+        Environment for HTML.
     """
     if hasattr(text, 'get_html'):
-        return text.get_html(options)
+        return text.get_html(env)
     else:
         return unicode(text)
 
@@ -253,13 +249,13 @@ def make_html_doc(body, root, resource_dir=None, title=None):
         else:
             title = "Untitled"
 
-    options = {'root': root, 'resource_dir': resource_dir}
-    txt_body = html(body, options)
+    env = {'root': root, 'resource_dir': resource_dir}
+    txt_body = html(body, env)
     txt = _html_doc_template.format(title=title, body=txt_body)
     return txt
 
 
-def tex(text, options={}):
+def tex(text, env={}):
     """Create html code for any object with a string representation
 
     Parameters
@@ -267,9 +263,11 @@ def tex(text, options={}):
     text : any
         Object to be converted to HTML. If the object has a ``.get_html()``
         method the result of this method is returned, otherwise ``str(text)``.
+    env : dict
+        Environment for FMTXT compilation.
     """
     if hasattr(text, 'get_tex'):
-        return text.get_tex(options)
+        return text.get_tex(env)
     else:
         return str(text)
 
@@ -292,7 +290,7 @@ def texify(txt):
 
 _html_temp = u'<{tag}>{body}</{tag}>'
 _html_temp_opt = u'<{tag} {options}>{body}</{tag}>'
-def _html_element(tag, body, options, html_options=None):
+def _html_element(tag, body, env, html_options=None):
     """Format an HTML element
 
     Parameters
@@ -301,16 +299,16 @@ def _html_element(tag, body, options, html_options=None):
         The HTML tag.
     body : FMText
         The main content between the tags.
-    options : dict
-        FMTXT options.
+    env : dict
+        Environment for FMTXT compilation.
     html_options : dict
         HTML options to be inserted in the start tag.
     """
     if html_options:
         opt = ' '.join('%s="%s"' % item for item in html_options.iteritems())
-        txt = _html_temp_opt.format(tag=tag, options=opt, body=html(body, options))
+        txt = _html_temp_opt.format(tag=tag, options=opt, body=html(body, env))
     else:
-        txt = _html_temp.format(tag=tag, body=html(body, options))
+        txt = _html_temp.format(tag=tag, body=html(body, env))
     return txt
 
 
@@ -381,7 +379,7 @@ class FMTextElement(object):
 
         return FMText([self, other])
 
-    def _get_core(self, options):
+    def _get_core(self, env):
         "return unicode"
         if isstr(self._content):
             return self._content
@@ -390,7 +388,7 @@ class FMTextElement(object):
         elif isinstance(self._content, (bool, np.bool_, np.bool8)):
             return str(self._content)
         elif np.isscalar(self._content) or getattr(self._content, 'ndim', None) == 0:
-            fmt = options.get('fmt', self.fmt)
+            fmt = env.get('fmt', self.fmt)
             txt = fmt % self._content
             if self.drop0 and len(txt) > 2 and txt.startswith('0.'):
                 txt = txt[1:]
@@ -398,8 +396,8 @@ class FMTextElement(object):
         else:
             return unicode(self._content)
 
-    def get_html(self, options):
-        txt = self._get_html_core(options)
+    def get_html(self, env):
+        txt = self._get_html_core(env)
 
         if self.property is not None and self.property in _html_tags:
             tag = _html_tags[self.property]
@@ -407,19 +405,19 @@ class FMTextElement(object):
 
         return txt
 
-    def _get_html_core(self, options):
-        return self._get_core(options)
+    def _get_html_core(self, env):
+        return self._get_core(env)
 
-    def get_str(self, options={}):
+    def get_str(self, env={}):
         "return unicode"
-        text = self._get_core(options)
+        text = self._get_core(env)
         if self.property:
             if self.property in _str_substitutes:
                 text = _str_substitutes[self.property] % text
         return text
 
-    def get_tex(self, options):
-        txt = self._get_tex_core(options)
+    def get_tex(self, env):
+        txt = self._get_tex_core(env)
 
         if self.property:
             if self.property in _tex_substitutes:
@@ -427,13 +425,13 @@ class FMTextElement(object):
             else:
                 txt = r"%s{%s}" % (self.property, txt)
 
-        if self.mat and not options.get('mat', False):
+        if self.mat and not env.get('mat', False):
             txt = "$%s$" % txt
 
         return txt
 
-    def _get_tex_core(self, options):
-        return self._get_core(options)
+    def _get_tex_core(self, env):
+        return self._get_core(env)
 
 
 class FMText(FMTextElement):
@@ -518,10 +516,10 @@ class FMText(FMTextElement):
         else:
             self._content.append(asfmtext(content))
 
-    def _get_html_core(self, options):
-        return ''.join(i.get_html(options) for i in self._content)
+    def _get_html_core(self, env):
+        return ''.join(i.get_html(env) for i in self._content)
 
-    def get_str(self, options={}):
+    def get_str(self, env={}):
         """
         Returns the string representation.
 
@@ -531,15 +529,15 @@ class FMText(FMTextElement):
             can be used to override the format string associated with the
             texstr object
         """
-        return ''.join(i.get_str(options) for i in self._content)
+        return ''.join(i.get_str(env) for i in self._content)
 
-    def _get_tex_core(self, options):
-        options_mat = options.get('mat', False)
+    def _get_tex_core(self, env):
+        options_mat = env.get('mat', False)
         mat = self.mat or options_mat
         if mat != options_mat:
-            options = options.copy()
-            options['mat'] = mat
-        return ''.join(i.get_tex(options) for i in self._content)
+            env = env.copy()
+            env['mat'] = mat
+        return ''.join(i.get_tex(env) for i in self._content)
 
 
 def symbol(symbol, df=None):
@@ -622,8 +620,8 @@ class Stars(FMTextElement):
             text = n.ljust(of)
         FMTextElement.__init__(self, text, property, mat=True)
 
-    def _get_tex_core(self, options):
-        txt = self._get_core(options)
+    def _get_tex_core(self, env):
+        txt = self._get_core(env)
         spaces = r'\ ' * (self.of - self.n)
         return txt + spaces
 
@@ -687,7 +685,7 @@ class List(FMTextElement):
         self.add_item(sublist)
         return sublist
 
-    def get_html(self, options={}):
+    def get_html(self, env={}):
         items = []
         if self.head is not None:
             items.append(self.head)
@@ -696,19 +694,19 @@ class List(FMTextElement):
 
         # body
         for item in self.items:
-            items.append(_html_element('li', item, options))
+            items.append(_html_element('li', item, env))
 
         items.append('</%s>' % tag)
         return os.linesep.join(items)
 
-    def get_str(self, options={}):
+    def get_str(self, env={}):
         out = []
         if self.head is not None:
             out.append(self.head)
 
         for item in self.items:
             if isinstance(item, List):
-                lines = item.get_str(options).splitlines()
+                lines = item.get_str(env).splitlines()
                 out.append('- %s' % lines[0])
                 out.extend('  %s' % line for line in lines[1:])
             else:
@@ -751,8 +749,8 @@ class Cell(FMText):
     def __len__(self):
         return self.width
 
-    def get_html(self, options={}):
-        html_repr = FMText.get_html(self, options)
+    def get_html(self, env={}):
+        html_repr = FMText.get_html(self, env)
         options = []
         if self.width > 1:
             options.append('colspan="%i"' % self.width)
@@ -768,8 +766,8 @@ class Cell(FMText):
         html_repr = ' %s%s</td>' % (start_tag, html_repr)
         return html_repr
 
-    def get_tex(self, options={}):
-        tex_repr = FMText.get_tex(self, options)
+    def get_tex(self, env={}):
+        tex_repr = FMText.get_tex(self, env)
         if self.width > 1 or self.just:
             tex_repr = r"\multicolumn{%s}{%s}{%s}" % (self.width, self.just,
                                                       tex_repr)
@@ -789,22 +787,21 @@ class Row(list):
     def __unicode__(self):
         return ' '.join([str(cell) for cell in self])
 
-    def _strlen(self, options):
+    def _strlen(self, env):
         "returns list of cell-str-lengths; multicolumns handled poorly"
         lens = []
         for cell in self:
-            cell_len = len(cell.get_str(options))
+            cell_len = len(cell.get_str(env))
             for _ in xrange(len(cell)):
                 lens.append(cell_len / len(cell))  # TODO: better handling of multicolumn
         return lens
 
-    def get_html(self, options={}):
-        html = '\n'.join(cell.get_html(options) for cell in self)
+    def get_html(self, env={}):
+        html = '\n'.join(cell.get_html(env) for cell in self)
         html = '<tr>\n%s\n</tr>' % html
         return html
 
-    def get_str(self, c_width, c_just, delimiter='   ',
-                options={}):
+    def get_str(self, c_width, c_just, delimiter='   ', env={}):
         "returns the row using col spacing provided in c_width"
         col = 0
         out = []
@@ -820,7 +817,7 @@ class Row(list):
                 strlen += len(delimiter) * (cell.width - 1)
                 just = cell.just
             col += cell.width
-            txt = cell.get_str(options)
+            txt = cell.get_str(env)
             if just == 'l':
                 txt = txt.ljust(strlen)
             elif just == 'r':
@@ -831,14 +828,14 @@ class Row(list):
             out.append(txt)
         return delimiter.join(out)
 
-    def get_tex(self, options={}):
-        out = ' & '.join(cell.get_tex(options) for cell in self)
+    def get_tex(self, env={}):
+        out = ' & '.join(cell.get_tex(env) for cell in self)
         out += r" \\"
         return out
 
     def get_tsv(self, delimiter, fmt=None):
-        options = {'fmt': fmt}
-        txt = delimiter.join(cell.get_str(options) for cell in self)
+        env = {'fmt': fmt}
+        txt = delimiter.join(cell.get_str(env) for cell in self)
         return txt
 
 
@@ -1025,7 +1022,7 @@ class Table(FMTextElement):
         """
         return self.__str__()
 
-    def get_html(self, options={}):
+    def get_html(self, env={}):
         if self._caption is None:
             caption = None
         else:
@@ -1033,7 +1030,7 @@ class Table(FMTextElement):
                 tag = 'figcaption'
             else:
                 tag = 'caption'
-            caption = _html_element(tag, self._caption, options)
+            caption = _html_element(tag, self._caption, env)
 
         # table body
         table = []
@@ -1045,7 +1042,7 @@ class Table(FMTextElement):
                     pass
 #                     table.append('<tr style="border-bottom:1px solid black">')
             else:
-                table.append(row.get_html(options))
+                table.append(row.get_html(env))
         body = '\n'.join(table)
 
         # table frame
@@ -1054,17 +1051,17 @@ class Table(FMTextElement):
         else:
             table_options = {'border': 0}
         table_options['cellpadding'] = 2
-        txt = _html_element('table', body, options, table_options)
+        txt = _html_element('table', body, env, table_options)
 
         # embedd in a figure
         if preferences['html_tables_in_fig']:
             if caption:
                 txt = '\n'.join((txt, caption))
-            txt = _html_element('figure', txt, options)
+            txt = _html_element('figure', txt, env)
 
         return txt
 
-    def get_str(self, options={}, delim='   ', linesep=os.linesep):
+    def get_str(self, env={}, delim='   ', linesep=os.linesep):
         """Convert Table to str
 
         Parameters
@@ -1083,7 +1080,7 @@ class Table(FMTextElement):
         widths = []
         for row in self._table:
             if not isstr(row):  # some commands are str
-                row_strlen = row._strlen(options)
+                row_strlen = row._strlen(env)
                 while len(row_strlen) < len(self.columns):
                     row_strlen.append(0)
                 widths.append(row_strlen)
@@ -1123,12 +1120,11 @@ class Table(FMTextElement):
                 else:
                     pass
             else:
-                txtlines.append(row.get_str(c_width, self.columns, delim,
-                                            options))
+                txtlines.append(row.get_str(c_width, self.columns, delim, env))
         out = txtlines
 
         if self._title != None:
-            out = ['', self._title.get_str(options), ''] + out
+            out = ['', self._title.get_str(env), ''] + out
 
         if isstr(self._caption):
             out.append(self._caption)
@@ -1137,7 +1133,7 @@ class Table(FMTextElement):
 
         return linesep.join(out)
 
-    def get_tex(self, options={}):
+    def get_tex(self, env={}):
         tex_pre = [r"\begin{center}",
                    r"\begin{tabular}{%s}" % self.columns]
         if self.rules:
@@ -1148,7 +1144,7 @@ class Table(FMTextElement):
             if isstr(row):
                 tex_body.append(row)
             else:
-                tex_body.append(row.get_tex(options))
+                tex_body.append(row.get_tex(env))
         # post
         tex_post = [r"\end{tabular}",
                     r"\end{center}"]
@@ -1248,8 +1244,7 @@ class Table(FMTextElement):
                 path += '.txt'
 
             with open(path, 'w') as f:
-                options = {'fmt': fmt}
-                out = self.get_str(options, delim, linesep)
+                out = self.get_str({'fmt': fmt}, delim, linesep)
                 if isinstance(out, unicode):
                     out = out.encode('utf-8')
                 f.write(out)
@@ -1334,8 +1329,8 @@ class Image(FMTextElement, StringIO):
             out.append('buf=%s...' % repr(v[:50]))
         return out
 
-    def get_html(self, options={}):
-        resource_dir = options.get('resource_dir', None)
+    def get_html(self, env={}):
+        resource_dir = env.get('resource_dir', None)
         if resource_dir is None:
             buf = self.getvalue()
             if self._ext == 'svg':  # special case for embedded svg
@@ -1347,7 +1342,7 @@ class Image(FMTextElement, StringIO):
             data = buf.encode('base64').replace('\n', '')
             src = 'data:image/{};base64,{}'.format(self._ext, data)
         else:
-            dirpath = os.path.join(options['root'], resource_dir)
+            dirpath = os.path.join(env['root'], resource_dir)
             abspath = os.path.join(dirpath, self._filename)
             if os.path.exists(abspath):
                 i = 0
@@ -1358,12 +1353,12 @@ class Image(FMTextElement, StringIO):
                     abspath = os.path.join(dirpath, filename)
 
             self.save_image(abspath)
-            src = os.path.relpath(abspath, options['root'])
+            src = os.path.relpath(abspath, env['root'])
 
         txt = ' <img src="%s" alt="%s">' % (src, html(self._alt))
         return ' ' + txt
 
-    def get_str(self, options={}):
+    def get_str(self, env={}):
         txt = "Image (%s)" % str(self._alt)
         return txt
 
@@ -1389,16 +1384,16 @@ class Figure(FMText):
         self._caption = caption
         FMText.__init__(self, content)
 
-    def get_html(self, options={}):
-        body = FMText.get_html(self, options)
+    def get_html(self, env={}):
+        body = FMText.get_html(self, env)
         if self._caption:
-            caption = _html_element('figcaption', self._caption, options)
+            caption = _html_element('figcaption', self._caption, env)
             body = '\n'.join((body, caption))
-        txt = _html_element('figure', body, options)
+        txt = _html_element('figure', body, env)
         return txt
 
-    def get_str(self, options={}):
-        body = FMText.get_str(self, options)
+    def get_str(self, env={}):
+        body = FMText.get_str(self, env)
         caption = str(self._caption)
         txt = "\nFigure:\n%s\nCaption: %s" % (body, caption)
         return txt
@@ -1524,34 +1519,34 @@ class Section(FMText):
         self.append(section)
         return section
 
-    def get_html(self, options={}):
-        options = options.copy()
-        options['level'] = options.get('level', 1)
-        heading = self._get_html_section_heading(options)
+    def get_html(self, env={}):
+        env = env.copy()
+        env['level'] = env.get('level', 1)
+        heading = self._get_html_section_heading(env)
 
-        options['level'] += 1
-        body = FMText.get_html(self, options)
+        env['level'] += 1
+        body = FMText.get_html(self, env)
 
         txt = '\n\n'.join(('', heading, body))
         return txt
 
-    def _get_html_section_heading(self, options):
+    def _get_html_section_heading(self, env):
         heading = html(self._heading)
 
-        level = options['level']
+        level = env['level']
         tag = 'h%i' % level
-        txt = _html_element(tag, heading, options)
-        if 'toc' in options:
-            toc_id = max(options['toc_ids']) + 1
-            options['toc_ids'].append(toc_id)
-            txt = _html_element('a', txt, options, {'name': toc_id})
+        txt = _html_element(tag, heading, env)
+        if 'toc' in env:
+            toc_id = max(env['toc_ids']) + 1
+            env['toc_ids'].append(toc_id)
+            txt = _html_element('a', txt, env, {'name': toc_id})
 
-            toc_txt = _html_element('a', heading, options, {'href': '#%i' % toc_id})
-            options['toc'].append((level, toc_txt))
+            toc_txt = _html_element('a', heading, env, {'href': '#%i' % toc_id})
+            env['toc'].append((level, toc_txt))
         return txt
 
-    def get_str(self, options={}):
-        level = options.get('level', (1,))
+    def get_str(self, env={}):
+        level = env.get('level', (1,))
         number = '.'.join(map(str, level))
         title = ' '.join((number, unicode(self._heading)))
         if len(level) == 1:
@@ -1561,12 +1556,12 @@ class Section(FMText):
         underline = underline_char * len(title)
 
         content = [title, underline, '']
-        options = options.copy()
+        env = env.copy()
         level = list(level) + [1]
         for item in self._content:
             if isinstance(item, Section):
-                options['level'] = tuple(level)
-                txt = item.get_str(options)
+                env['level'] = tuple(level)
+                txt = item.get_str(env)
                 level[-1] += 1
                 content += ['', '', txt]
             else:
@@ -1609,25 +1604,25 @@ class Report(Section):
         self._site_title = site_title
         Section.__init__(self, title, content)
 
-    def get_html(self, options={}):
-        # setup TOC in options
-        options = options.copy()
-        options['toc'] = []
-        options['toc_ids'] = [-1]
-        options['level'] = 2
+    def get_html(self, env={}):
+        # setup TOC in env
+        env = env.copy()
+        env['toc'] = []
+        env['toc_ids'] = [-1]
+        env['level'] = 2
 
         # format document body (& collect document info)
-        body = FMText.get_html(self, options)
+        body = FMText.get_html(self, env)
 
         # format TOC
         toc = ['<ul>']
         level = 2
-        for item_level, item in options['toc']:
+        for item_level, item in env['toc']:
             if item_level > level:
                 toc.append('<ul>' * (item_level - level))
             elif item_level < level:
                 toc.append('</ul>' * (level - item_level))
-            toc.append(_html_element('li', item, options))
+            toc.append(_html_element('li', item, env))
             level = item_level
         toc.append('</ul></li>' * (level - 1) + '</ul>')
         toc = '\n'.join(toc)
@@ -1635,13 +1630,13 @@ class Report(Section):
         # compile document content
         content = []
         if self._heading is not None:
-            title = _html_element('h1', self._heading, options)
+            title = _html_element('h1', self._heading, env)
             content.append(title)
         if self._author is not None:
-            author = html(self._author, options)
+            author = html(self._author, env)
             content.append(author)
         if self._date is not None:
-            date = html(self._date, options)
+            date = html(self._date, env)
             content.append(date)
         content.append(toc)
         content.append(body)
@@ -1651,31 +1646,31 @@ class Report(Section):
     def get_site_title(self):
         return self._site_title or self._heading
 
-    def get_str(self, options={}):
+    def get_str(self, env={}):
         content = []
         if self._heading is not None:
             title = str(self._heading)
             underline = '^' * len(title)
             content += [title, underline, '']
         if self._author is not None:
-            author = self._author.get_str(options)
+            author = self._author.get_str(env)
             content += [author, '']
         if self._date is not None:
-            date = self._date.get_str(options)
+            date = self._date.get_str(env)
             content += [date, '']
 
         if content:
             content += ['', '']
 
         level = [1]
-        options = options.copy()
+        env = env.copy()
         for item in self._content:
             if isinstance(item, Section):
-                options['level'] = tuple(level)
-                txt = item.get_str(options)
+                env['level'] = tuple(level)
+                txt = item.get_str(env)
                 level[-1] += 1
             else:
-                txt = item.get_str(options)
+                txt = item.get_str(env)
             content += [txt, '']
 
         txt = '\n'.join(content)
