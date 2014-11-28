@@ -214,6 +214,8 @@ def html(text, options={}):
     text : any
         Object to be converted to HTML. If the object has a ``.get_html()``
         method the result of this method is returned, otherwise ``str(text)``.
+    options : dict
+        Options for HTML creation.
 
     Options
     -------
@@ -290,7 +292,7 @@ def texify(txt):
 
 _html_temp = u'<{tag}>{body}</{tag}>'
 _html_temp_opt = u'<{tag} {options}>{body}</{tag}>'
-def _html_element(tag, body, options=None):
+def _html_element(tag, body, options, html_options=None):
     """Format an HTML element
 
     Parameters
@@ -300,13 +302,15 @@ def _html_element(tag, body, options=None):
     body : FMText
         The main content between the tags.
     options : dict
-        Options to be inserted in the start tag.
+        FMTXT options.
+    html_options : dict
+        HTML options to be inserted in the start tag.
     """
-    if options:
-        options_ = ' '.join('%s="%s"' % item for item in options.iteritems())
-        txt = _html_temp_opt.format(tag=tag, options=options_, body=html(body))
+    if html_options:
+        opt = ' '.join('%s="%s"' % item for item in html_options.iteritems())
+        txt = _html_temp_opt.format(tag=tag, options=opt, body=html(body, options))
     else:
-        txt = _html_temp.format(tag=tag, body=html(body))
+        txt = _html_temp.format(tag=tag, body=html(body, options))
     return txt
 
 
@@ -399,7 +403,7 @@ class FMTextElement(object):
 
         if self.property is not None and self.property in _html_tags:
             tag = _html_tags[self.property]
-            txt = _html_element(tag, txt)
+            txt = _html_temp.format(tag=tag, body=txt)
 
         return txt
 
@@ -1029,7 +1033,7 @@ class Table(FMTextElement):
                 tag = 'figcaption'
             else:
                 tag = 'caption'
-            caption = _html_element(tag, self._caption)
+            caption = _html_element(tag, self._caption, options)
 
         # table body
         table = []
@@ -1050,13 +1054,13 @@ class Table(FMTextElement):
         else:
             table_options = {'border': 0}
         table_options['cellpadding'] = 2
-        txt = _html_element('table', body, table_options)
+        txt = _html_element('table', body, options, table_options)
 
         # embedd in a figure
         if preferences['html_tables_in_fig']:
             if caption:
                 txt = '\n'.join((txt, caption))
-            txt = _html_element('figure', txt)
+            txt = _html_element('figure', txt, options)
 
         return txt
 
@@ -1388,9 +1392,9 @@ class Figure(FMText):
     def get_html(self, options={}):
         body = FMText.get_html(self, options)
         if self._caption:
-            caption = _html_element('figcaption', self._caption)
+            caption = _html_element('figcaption', self._caption, options)
             body = '\n'.join((body, caption))
-        txt = _html_element('figure', body)
+        txt = _html_element('figure', body, options)
         return txt
 
     def get_str(self, options={}):
@@ -1536,13 +1540,13 @@ class Section(FMText):
 
         level = options['level']
         tag = 'h%i' % level
-        txt = _html_element(tag, heading)
+        txt = _html_element(tag, heading, options)
         if 'toc' in options:
             toc_id = max(options['toc_ids']) + 1
             options['toc_ids'].append(toc_id)
-            txt = _html_element('a', txt, {'name': toc_id})
+            txt = _html_element('a', txt, options, {'name': toc_id})
 
-            toc_txt = _html_element('a', heading, {'href': '#%i' % toc_id})
+            toc_txt = _html_element('a', heading, options, {'href': '#%i' % toc_id})
             options['toc'].append((level, toc_txt))
         return txt
 
@@ -1623,7 +1627,7 @@ class Report(Section):
                 toc.append('<ul>' * (item_level - level))
             elif item_level < level:
                 toc.append('</ul>' * (level - item_level))
-            toc.append(_html_element('li', item))
+            toc.append(_html_element('li', item, options))
             level = item_level
         toc.append('</ul></li>' * (level - 1) + '</ul>')
         toc = '\n'.join(toc)
@@ -1631,7 +1635,7 @@ class Report(Section):
         # compile document content
         content = []
         if self._heading is not None:
-            title = _html_element('h1', self._heading)
+            title = _html_element('h1', self._heading, options)
             content.append(title)
         if self._author is not None:
             author = html(self._author, options)
