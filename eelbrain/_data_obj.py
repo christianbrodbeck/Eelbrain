@@ -1149,6 +1149,9 @@ class Var(object):
         tile : int
             Repeat ``x`` as a whole ``tile`` many times.
         """
+        if isinstance(x, basestring):
+            raise TypeError("Var can't be initialized with a string")
+
         x = np.asarray(x)
         if x.ndim > 1:
             if np.count_nonzero(i > 1 for i in x.shape) <= 1:
