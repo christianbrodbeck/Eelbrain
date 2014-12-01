@@ -1380,18 +1380,18 @@ class Var(object):
         "for effect initialization"
         return self.centered()[:, None]
 
-    def as_factor(self, name=True, labels='%r', random=False):
+    def as_factor(self, labels='%r', name=True, random=False):
         """
         Convert the Var into a Factor
 
         Parameters
         ----------
-        name : None | True | str
-            Name of the output Factor, ``True`` to keep the current name
-            (default ``True``).
         labels : dict | str
             Dictionary mapping values to labels, or format string for
             converting values into labels (default: ``'%r'``).
+        name : None | True | str
+            Name of the output Factor, ``True`` to keep the current name
+            (default ``True``).
         random : bool
             Whether the Factor is a random Factor (default False).
         """
