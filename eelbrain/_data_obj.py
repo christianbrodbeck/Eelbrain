@@ -1388,14 +1388,34 @@ class Var(object):
         ----------
         labels : dict | str
             Dictionary mapping values to labels, or format string for
-            converting values into labels (default: ``'%r'``).
+            converting values into labels (default: ``'%r'``). Multiple values
+            can be assigned the same label by providing multiple keys in a
+            tuple (see examples).
         name : None | True | str
             Name of the output Factor, ``True`` to keep the current name
             (default ``True``).
         random : bool
-            Whether the Factor is a random Factor (default False).
+            Whether the Factor is a random Factor (default ``False``).
+
+        Examples
+        --------
+        >>> v = Var([0, 1, 2, 3])
+        >>> v.as_factor()
+        Factor(['0', '1', '2', '3'])
+        >>> v.as_factor({0: 'a', 1: 'b'})
+        Factor(['a', 'b', '2', '3'])
+        >>> v.as_factor({(0, 1): 'a', (2, 3): 'b'})
+        Factor(['a', 'a', 'b', 'b'])
         """
-        if not isinstance(labels, dict):
+        if isinstance(labels, dict):
+            for k in labels.keys():
+                if isinstance(k, (tuple, list)):
+                    v = labels[k]
+                    for item in k:
+                        if item in labels:
+                            raise ValueError("Duplicate key: %s" % repr(item))
+                        labels[item] = v
+        else:
             fmt = labels
             labels = {}
             for value in np.unique(self.x):

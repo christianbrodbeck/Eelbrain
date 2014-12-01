@@ -111,7 +111,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
         ds = ds.sub('trigger < 5')
         ds = ds.equalize_counts('side % modality')
         subject_f = ds.eval('side % modality').enumerate_cells()
-        ds['subject'] = subject_f.as_factor(labels='s%r', random=True)
+        ds['subject'] = subject_f.as_factor('s%r', random=True)
 
     if sub:
         ds = ds.sub(sub)

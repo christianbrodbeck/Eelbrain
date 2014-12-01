@@ -765,3 +765,9 @@ def test_var():
     for i in xrange(1, 9):
         split = y.split(i)
         assert_equal(len(split.cells), i)
+
+    # .as_factor()
+    v = Var(np.arange(4))
+    assert_array_equal(v.as_factor(), Factor('0123'))
+    assert_array_equal(v.as_factor({0: 'a'}), Factor('a123'))
+    assert_array_equal(v.as_factor({(0, 1): 'a', (2, 3): 'b'}), Factor('aabb'))

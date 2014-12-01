@@ -16,6 +16,8 @@ New in 0.11
   - New option ``cov='bestreg'`` automatically selects the regularization
     parameter for each subejct.
 
+* :meth:`Var.as_factor` allows more efficient labeling when multiple values
+  share the same label.
 * API: Previously :func:`plot.configure_backend` is now :func:`plot.configure`
 
 
