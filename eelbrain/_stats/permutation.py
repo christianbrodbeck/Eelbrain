@@ -77,6 +77,7 @@ def permute_order(n, samples=10000, replacement=False, unit=None, seed=0):
         original = np.arange(n)
         for _ in xrange(samples):
             yield original
+        return
 
     if seed is not None:
         np.random.seed(seed)

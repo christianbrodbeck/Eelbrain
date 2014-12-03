@@ -97,20 +97,24 @@ def test_anova():
 
     # permutation
     eelbrain._stats.permutation._YIELD_ORIGINAL = 1
+    samples = 4
     # raw
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2)
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=samples)
     for dist in res._cdist:
+        eq_(len(dist.dist), samples)
         assert_array_equal(dist.dist, dist.parameter_map.abs().max())
     # TFCE
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, tfce=True, samples=2)
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, tfce=True, samples=samples)
     for dist in res._cdist:
+        eq_(len(dist.dist), samples)
         assert_array_equal(dist.dist, dist.tfce_map.abs().max())
     # thresholded
-    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=2)
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, pmin=0.05, samples=samples)
     clusters = res.find_clusters()
     for dist, effect in izip(res._cdist, res.effects):
         effect_idx = clusters.eval("effect == %r" % effect)
         vmax = clusters[effect_idx, 'v'].abs().max()
+        eq_(len(dist.dist), samples)
         assert_array_equal(dist.dist, vmax)
     eelbrain._stats.permutation._YIELD_ORIGINAL = 0
 
