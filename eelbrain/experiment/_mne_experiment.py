@@ -2116,7 +2116,7 @@ class MneExperiment(FileTree):
 
             # compute whitened global field power
             evoked = epochs.average()
-            picks = range(len(evoked.ch_names))
+            picks = mne.pick_types(evoked.info, meg='mag', ref_meg=False)
             gfps = [mne.whiten_evoked(evoked, cov, picks).data.std(0)
                     for cov in covs]
 
