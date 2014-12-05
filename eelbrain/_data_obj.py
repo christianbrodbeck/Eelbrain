@@ -2302,6 +2302,26 @@ class Factor(_Effect):
         """
         return np.in1d(self.x, self._encode_seq(values), invert=True)
 
+    def label_length(self, name=None):
+        """Create Var with the length of each label string
+
+        Parameters
+        ----------
+        name : str
+            Name of the output Var (default ``None``).
+
+        Examples
+        --------
+        >>> f = Factor(['a', 'ab', 'long_label'])
+        >>> f.label_length()
+        Var([1, 2, 10])
+        """
+        label_lengths = {code: len(label) for code, label in self._labels.iteritems()}
+        x = np.empty(len(self), np.uint16)
+        for i, code in enumerate(self.x):
+            x[i] = label_lengths[code]
+        return Var(x, name)
+
     def relabel(self, labels):
         """Change one or more labels in place
 

@@ -438,6 +438,11 @@ def test_factor():
     f[f == 'c'] = 'a'
     assert_equal(f.cells, ('a', 'b'))
 
+    # label length
+    lens = [2, 5, 32, 2, 32, 524]
+    f = Factor(['a' * l for l in lens])
+    assert_array_equal(f.label_length(), lens)
+
 
 def test_factor_relabel():
     "Test Factor.relabel() method"
