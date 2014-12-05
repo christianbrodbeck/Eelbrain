@@ -3004,13 +3004,13 @@ class MneExperiment(FileTree):
                           tstop, pmin, samples, res=None, data=None, include=None):
         info = List("Data:")
         info.add_item(self.format('epoch = {epoch} {evoked-kind} ~ {model}'))
-        info.add_item("test = %s  (%s)" % (test_kind, contrast))
         info.add_item(self.format("cov = {cov}"))
         info.add_item(self.format("inv = {inv}"))
         section.append(info)
 
         # cluster test info
         info = List("Cluster Permutation Test:")
+        info.add_item("test = %s  (%s)" % (test_kind, contrast))
         info.add_item("Time interval:  %i - %i ms." % (round(tstart * 1000),
                                                        round(tstop * 1000)))
         if pmin is None:
