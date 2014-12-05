@@ -559,7 +559,7 @@ class MneExperiment(FileTree):
         return subject_, group
 
     def add_epochs_stc(self, ds, src='epochs', dst=None, ndvar=True,
-                       baseline=None, keep_epochs=False):
+                       baseline=None):
         """
         Transform epochs contained in ds into source space (adds a list of mne
         SourceEstimates to ds)
@@ -576,9 +576,6 @@ class MneExperiment(FileTree):
         ndvar : bool
             Add the source estimates as NDVar instead of a list of
             SourceEstimate objects.
-        keep_epochs : bool
-            Keep the sensor space data in the Dataset that is returned (default
-            False).
         """
         subject = ds['subject']
         if len(subject.cells) != 1:
@@ -612,9 +609,6 @@ class MneExperiment(FileTree):
             if baseline is not None:
                 raise NotImplementedError("Baseline for SourceEstimate")
             ds[dst] = stc
-
-        if not keep_epochs:
-            del ds[src]
 
     def add_evoked_stc(self, ds, ind_stc=False, ind_ndvar=False, morph_stc=False,
                        morph_ndvar=False, baseline=None, keep_evoked=False):
@@ -1254,8 +1248,9 @@ class MneExperiment(FileTree):
             False).
         """
         ds = self.load_epochs(subject, sns_baseline, False, cat=cat, **kwargs)
-        self.add_epochs_stc(ds, ndvar=ndvar, baseline=src_baseline,
-                            keep_epochs=keep_epochs)
+        self.add_epochs_stc(ds, ndvar=ndvar, baseline=src_baseline)
+        if not keep_epochs:
+            del ds['epochs']
         return ds
 
     def load_events(self, subject=None, add_proj=True, add_bads=True,
