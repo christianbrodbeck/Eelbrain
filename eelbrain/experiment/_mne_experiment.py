@@ -92,6 +92,7 @@ from .._mne import source_induced_power, dissolve_label, rename_label
 from ..mne_fixes import write_labels_to_annot
 from .._data_obj import isdatalist, UTS, DimensionMismatchError
 from ..fmtxt import List, Report
+from .._stats.testnd import _MultiEffectResult
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from ._experiment import FileTree
@@ -391,7 +392,6 @@ class MneExperiment(FileTree):
         self._subject_re = re.compile(self._subject_re)
         self.groups = self.groups.copy()
         self.projs = self.projs.copy()
-        self.tests = self.tests.copy()
         self.cluster_criteria = self.cluster_criteria.copy()
         self._mri_subjects = keydefaultdict(lambda k: k)
         self._label_cache = PickleCache()
@@ -472,6 +472,65 @@ class MneExperiment(FileTree):
         epoch_rejection.update(self.epoch_rejection)
         self.epoch_rejection = epoch_rejection
 
+
+        # tests
+        tests = {}
+        for test, params in self.tests.iteritems():
+            # backwards compatibility for old test specification
+            if isinstance(params, (tuple, list)):
+                kind, model, test_parameter = params
+                if kind == 'anova':
+                    params = {'kind': kind, 'model': model, 'x': test_parameter}
+                elif kind == 'ttest_rel':
+                    c1, tail, c0 = re.match(r"\s*([\w|]+)\s*([<=>])\s*([\w|]+)",
+                                            test_parameter).groups()
+                    if '|' in c1:
+                        c1 = tuple(c1.split('|'))
+                        c0 = tuple(c0.split('|'))
+
+                    if tail == '=':
+                        tail = 0
+                    elif tail == '>':
+                        tail = 1
+                    elif tail == '<':
+                        tail = -1
+                    else:
+                        raise ValueError("%r in t-test contrast=%r"
+                                         % (tail, test_parameter))
+                    params = {'kind': kind, 'model': model, 'c1': c1, 'c0': c0,
+                              'tail': tail}
+                elif kind == 't_contrast_rel':
+                    params = {'kind': kind, 'model': model,
+                              'contrast': test_parameter}
+                else:
+                    raise ValueError("Unknown test: %s" % repr(kind))
+            elif not isinstance(params, dict):
+                raise TypeError("Tests need to be specified as dictionary, "
+                                "got %s" % repr(params))
+
+            # test descriptopn
+            kind = params['kind']
+            if kind == 'anova':
+                desc = params['x']
+            elif kind == 'ttest_rel':
+                tail = params.get('tail', 0)
+                if tail == 0:
+                    link = ' = '
+                elif tail > 0:
+                    link = ' > '
+                else:
+                    link = ' < '
+                desc = link.join((params['c1'], params['c0']))
+            elif kind == 't_contrast_rel':
+                desc = params['contrast']
+            else:
+                raise NotImplementedError("Invalid test kind: %r" % kind)
+            params['desc'] = desc
+
+            tests[test] = params
+        self._tests = tests
+
+
         FileTree.__init__(self, **state)
         self.set_root(root, state.pop('find_subjects', True))
 
@@ -486,8 +545,8 @@ class MneExperiment(FileTree):
         self._register_value('inv', 'free-3-dSPM',
                              set_handler=self._set_inv_as_str)
         self._register_value('model', '', eval_handler=self._eval_model)
-        if self.tests:
-            self._register_field('test', self.tests.keys(),
+        if self._tests:
+            self._register_field('test', self._tests.keys(),
                                  post_set_handler=self._post_set_test)
         self._register_field('parc', default='aparc',
                              eval_handler=self._eval_parc)
@@ -1790,10 +1849,10 @@ class MneExperiment(FileTree):
                                tstop)
 
         # figure out what test to do
-        if test is not None:
-            kwargs['test'] = test
-        test, model, contrast = self.tests[self.get('test', **kwargs)]
-        self.set(model=model)
+        if test is None:
+            test = self.get('test', **kwargs)
+        else:
+            self.set(test=test, **kwargs)
 
         # find cached file path
         if parc:
@@ -1869,8 +1928,8 @@ class MneExperiment(FileTree):
             elif data == 'src':
                 y = ds['srcm']
 
-            res = self._make_test(y, ds, test, model, contrast, samples, pmin,
-                                  tstart, tstop, None, parc_dim)
+            res = self._make_test(y, ds, test, samples, pmin, tstart, tstop,
+                                  None, parc_dim)
             # cache
             save.pickle(res, dst)
 
@@ -2796,23 +2855,23 @@ class MneExperiment(FileTree):
         ds, res = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
                                  data, sns_baseline, src_baseline, True, True,
                                  redo_test)
-        test_kind, model, contrast = self.tests[test]
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
         report = Report(title, site_title=title)
 
         # info
-        self._report_test_info(report.add_section("Test Info"), ds, model, test_kind,
-                               contrast, tstart, tstop, pmin, res.samples, res, data,
+        self._report_test_info(report.add_section("Test Info"), ds, test,
+                               tstart, tstop, pmin, res.samples, res, data,
                                include)
 
         y = ds['srcm']
+        model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
         legend = None
         if parc is None and pmin in (None, 'tfce'):
             section = report.add_section("P<=.05")
-            self._source_bin_table(section, test_kind, res, 0.05)
+            self._source_bin_table(section, res, 0.05)
             clusters = res.find_clusters(0.05, maps=True)
             clusters.sort('tstart')
             title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
@@ -2822,11 +2881,11 @@ class MneExperiment(FileTree):
 
             # trend section
             section = report.add_section("Trend: p<=.1")
-            self._source_bin_table(section, test_kind, res, 0.1)
+            self._source_bin_table(section, res, 0.1)
 
             # not quite there section
             section = report.add_section("Anything: P<=.2")
-            self._source_bin_table(section, test_kind, res, 0.2)
+            self._source_bin_table(section, res, 0.2)
         elif parc and pmin in (None, 'tfce'):
             # add picture of parc
             section = report.add_section(parc)
@@ -2858,7 +2917,7 @@ class MneExperiment(FileTree):
             else:
                 section = report.add_section("Whole Brain")
 
-            self._source_bin_table(section, test_kind, res)
+            self._source_bin_table(section, res)
 
             clusters = res.find_clusters(include, maps=True)
             clusters.sort('tstart')
@@ -2871,7 +2930,7 @@ class MneExperiment(FileTree):
             section = report.add_section(parc)
             caption = "Labels in the %s parcellation." % parc
             self._report_parc_image(section, caption)
-            self._source_bin_table(section, test_kind, res)
+            self._source_bin_table(section, res)
 
             # add subsections for individual labels
             title = "{tstart}-{tstop} p={p}{mark} {effect}"
@@ -2931,15 +2990,14 @@ class MneExperiment(FileTree):
         # load data
         group = self.get('group')
         ds = self.load_evoked_stc(group, sns_baseline, src_baseline, ind_stc=True)
-        test_kind, model, contrast = self.tests[test]
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
         report = Report(title, site_title=title)
 
         # method intro
-        self._report_test_info(report.add_section("Test Info"), ds, model, test_kind,
-                               contrast, tstart, tstop, pmin, samples)
+        self._report_test_info(report.add_section("Test Info"), ds, test,
+                               tstart, tstop, pmin, samples)
 
         # add parc image
         section = report.add_section(parc)
@@ -2965,14 +3023,15 @@ class MneExperiment(FileTree):
         labels_rh.sort()
 
         # add content body
+        model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
         for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
             section = report.add_section("%s Hemisphere" % hemi)
             for label in label_names:
                 key = self._add_stc_label(ds, label)
                 y = ds[key]
-                res = self._make_test(y, ds, test_kind, model, contrast,
-                                      samples, pmin, tstart, tstop, None, None)
+                res = self._make_test(y, ds, test, samples, pmin, tstart, tstop,
+                                      None, None)
                 self._report_roi_tc(section, ds, label, model, res, tstart,
                                     tstop, samples, colors)
 
@@ -2995,8 +3054,8 @@ class MneExperiment(FileTree):
                                 "trials per condition")
         return s_table
 
-    def _report_test_info(self, section, ds, model, test_kind, contrast, tstart,
-                          tstop, pmin, samples, res=None, data=None, include=None):
+    def _report_test_info(self, section, ds, test, tstart, tstop, pmin, samples,
+                          res=None, data=None, include=None):
         info = List("Data:")
         info.add_item(self.format('epoch = {epoch} {evoked-kind} ~ {model}'))
         info.add_item(self.format("cov = {cov}"))
@@ -3005,7 +3064,8 @@ class MneExperiment(FileTree):
 
         # cluster test info
         info = List("Cluster Permutation Test:")
-        info.add_item("test = %s  (%s)" % (test_kind, contrast))
+        test_params = self._tests[test]
+        info.add_item("test = %s  (%s)" % (test_params['kind'], test_params['desc']))
         info.add_item("Time interval:  %i - %i ms." % (round(tstart * 1000),
                                                        round(tstop * 1000)))
         if pmin is None:
@@ -3033,7 +3093,7 @@ class MneExperiment(FileTree):
             info.add_item(res.info_list())
         section.append(info)
 
-        section.append(self._report_subject_info(ds, model))
+        section.append(self._report_subject_info(ds, test_params['model']))
         section.append(self._report_state())
 
     def _report_parc_image(self, section, caption):
@@ -3045,13 +3105,13 @@ class MneExperiment(FileTree):
         image = plot.brain.image(brain, 'parc.png')
         section.add_image_figure(image, caption)
 
-    def _source_bin_table(self, section, test_kind, res, pmin=None):
+    def _source_bin_table(self, section, res, pmin=None):
         caption = ("All clusters in time bins. Each plot shows all sources "
                    "that are part of a cluster at any time during the "
                    "relevant time bin. Only the general minimum duration and "
                    "source number criterion are applied.")
 
-        if test_kind == 'anova':
+        if isinstance(res, _MultiEffectResult):
             cdists = [(cdist, cdist.name.capitalize()) for cdist in res._cdist]
         else:
             cdists = [(res._cdist, None)]
@@ -3281,9 +3341,20 @@ class MneExperiment(FileTree):
                                        subjects_dir=self.get('mri-sdir'),
                                        add_dist=True)
 
-    def _make_test(self, y, ds, test_kind, model, contrast, samples, pmin,
-                   tstart, tstop, dist_dim, parc_dim):
-        """just compute the test result"""
+    def _make_test(self, y, ds, test, samples, pmin, tstart, tstop, dist_dim,
+                   parc_dim):
+        """just compute the test result
+
+        Parameters
+        ----------
+        y : NDVar
+            Dependent variable.
+        ds : Dataset
+            Other variables.
+        p : dict
+            Test parameters.
+        ...
+        """
         # find cluster criteria
         kwargs = {'samples': samples, 'tstart': tstart, 'tstop': tstop,
                   'dist_dim': dist_dim, 'parc': parc_dim}
@@ -3300,31 +3371,18 @@ class MneExperiment(FileTree):
                 kwargs['minsensor'] = self.cluster_criteria['minsensor']
 
         # perform test
-        if test_kind == 'ttest_rel':
-            c1, tail, c0 = re.match(r"\s*([\w|]+)\s*([<=>])\s*([\w|]+)",
-                                    contrast).groups()
-            if '|' in c1:
-                c1 = tuple(c1.split('|'))
-                c0 = tuple(c0.split('|'))
-
-            if tail == '=':
-                tail = 0
-            elif tail == '>':
-                tail = 1
-            elif tail == '<':
-                tail = -1
-            else:
-                raise ValueError("%r in t-test contrast=%r" % (tail, contrast))
-
-            res = testnd.ttest_rel(y, model, c1, c0, 'subject', ds=ds,
-                                   tail=tail, **kwargs)
-        elif test_kind == 't_contrast_rel':
-            res = testnd.t_contrast_rel(y, model, contrast, 'subject', ds=ds,
-                                        **kwargs)
-        elif test_kind == 'anova':
-            res = testnd.anova(y, contrast, match='subject', ds=ds, **kwargs)
+        p = self._tests[test]
+        kind = p['kind']
+        if kind == 'ttest_rel':
+            res = testnd.ttest_rel(y, p['model'], p['c1'], p['c0'], 'subject',
+                                   ds=ds, tail=p.get('tail', 0), **kwargs)
+        elif kind == 't_contrast_rel':
+            res = testnd.t_contrast_rel(y, p['model'], p['contrast'], 'subject',
+                                        ds=ds, **kwargs)
+        elif kind == 'anova':
+            res = testnd.anova(y, p['x'], match='subject', ds=ds, **kwargs)
         else:
-            raise ValueError("test_kind=%s" % repr(test_kind))
+            raise RuntimeError("Test kind=%s" % repr(kind))
 
         return res
 
@@ -3791,8 +3849,7 @@ class MneExperiment(FileTree):
         self.set(subject=subject, add=True)
 
     def _post_set_test(self, _, test):
-        _, model, _ = self.tests[test]
-        self.set(model=model)
+        self.set(model=self._tests[test]['model'])
 
     def _set_test_options(self, data, sns_baseline, src_baseline, pmin, tstart,
                           tstop):
