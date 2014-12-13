@@ -996,11 +996,18 @@ class MneExperiment(FileTree):
             For 'mrisubject', exclusions are done on 'subject'. For 'group',
             no exclusions are done.
         """
+        if exclude is True:
+            exclude = self.exclude.get(field, None)
+        elif isinstance(exclude, basestring):
+            exclude = (exclude,)
+
         if field == 'mrisubject':
-            subjects = self.get_field_values('subject', exclude=exclude)
+            subjects = FileTree.get_field_values(self, 'subject')
             mrisubjects = sorted(self._mri_subjects[s] for s in subjects)
+            if exclude:
+                mrisubjects = [s for s in mrisubjects if s not in exclude]
             common_brain = self.get('common_brain')
-            if common_brain:
+            if common_brain and (not exclude or common_brain not in exclude):
                 mrisubjects.insert(0, common_brain)
             return mrisubjects
         elif field == 'group':

@@ -415,7 +415,7 @@ class TreeModel(object):
         ----------
         field : str
             Field for which to find values.
-        exclude : bool | list of values
+        exclude : bool | list of str | str
             Exclude values. If True, exclude values based on ``self.exclude``.
         """
         values = self._field_values[field]
@@ -425,7 +425,7 @@ class TreeModel(object):
             exclude = (exclude,)
 
         if exclude:
-            values = [v for v in values if not v in exclude]
+            values = [v for v in values if v not in exclude]
         else:
             values = list(values)
 
