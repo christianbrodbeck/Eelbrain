@@ -31,7 +31,7 @@ def draw_text(text, face='Scheherazade', size=42, spo2=False, w=None, h=None,
         Specify the desired width and/or height for the output array.
         If None, the shape is determined based on the text size.
     fg : 0-255 RGB tuple
-        Text foreground color (overrides ``color``)
+        Text foreground color.
     bg : 0-255 RGB tuple
         Text background color.
 

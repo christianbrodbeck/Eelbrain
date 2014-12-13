@@ -37,7 +37,7 @@ number of permutations to perform. The threshold for forming clusters is
 specified as the `pmin` parameter. The default (`pmin=None`) is threshold-free
 cluster enhancement [2]_.
 
-.. warning:: Spatiotemporal permutation cluster test can take a long time to
+.. warning:: Spatiotemporal permutation cluster tests can take a long time to
     evaluate. It might be a good idea to estimate the time they will take using
     a very small value for ``samples`` first.
 
