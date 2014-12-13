@@ -161,6 +161,7 @@ temp = {
         'mri-file': os.path.join('{mri-dir}', 'mri', 'orig.mgz'),
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
         'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
+        'head-bem-file': os.path.join('{bem-dir}', '{mrisubject}-head.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
 
 
