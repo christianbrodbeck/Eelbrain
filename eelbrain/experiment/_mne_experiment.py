@@ -192,9 +192,6 @@ temp = {
         # pickled list of labels
         'label-file': os.path.join('{label-dir}', '{parc}.pickled'),
 
-        # compound properties
-        'src-kind': '{sns-kind} {cov} {inv}',
-
         # (method) plots
         'plot-dir': os.path.join('{root}', 'plots'),
         'plot-file': os.path.join('{plot-dir}', '{analysis}', '{name}.{ext}'),
@@ -332,6 +329,11 @@ class MneExperiment(FileTree):
              'reg': {'reg': True},
              'noreg': {'reg': None}}
 
+    # MRI subject names: {subject: mrisubject} mappings
+    # selected with e.set(mri=dict_name)
+    # default is identity (mrisubject = subject)
+    _mri_subjects = {'': keydefaultdict(lambda s: s)}
+
     # state variables that are always shown in self.__repr__():
     _repr_kwargs = ('subject', 'rej')
 
@@ -381,7 +383,7 @@ class MneExperiment(FileTree):
     tests = {}
     cluster_criteria = {'mintime': 0.025, 'minsensor': 4, 'minsource': 10}
 
-    def __init__(self, root=None, **state):
+    def __init__(self, root=None, find_subjects=True, **state):
         """
         Parameters
         ----------
@@ -394,7 +396,7 @@ class MneExperiment(FileTree):
         self.groups = self.groups.copy()
         self.projs = self.projs.copy()
         self.cluster_criteria = self.cluster_criteria.copy()
-        self._mri_subjects = keydefaultdict(lambda k: k)
+        self._mri_subjects = self._mri_subjects.copy()
         self._label_cache = PickleCache()
         self._templates = self._templates.copy()
         for cls in reversed(inspect.getmro(self.__class__)):
@@ -531,9 +533,7 @@ class MneExperiment(FileTree):
             tests[test] = params
         self._tests = tests
 
-
         FileTree.__init__(self, **state)
-        self.set_root(root, state.pop('find_subjects', True))
 
         # register variables with complex behavior
         self._register_field('rej', self.epoch_rejection.keys(),
@@ -543,6 +543,7 @@ class MneExperiment(FileTree):
         self._register_field('epoch', self.epochs.keys(),
                              eval_handler=self._eval_epoch)
         self._register_field('cov', sorted(self._covs.keys()))
+        self._register_field('mri', sorted(self._mri_subjects.keys()))
         self._register_value('inv', 'free-3-dSPM',
                              set_handler=self._set_inv_as_str)
         self._register_value('model', '', eval_handler=self._eval_model)
@@ -557,6 +558,7 @@ class MneExperiment(FileTree):
         # compounds
         self._register_compound('sns-kind', ('raw', 'proj'))
         self._register_compound('evoked-kind', ('rej', 'equalize_evoked_count'))
+        self._register_compound('src-kind', ('sns-kind', 'cov', 'mri', 'inv'))
 
         # Define make handlers
         self._bind_make('raw-file', self.make_raw)
@@ -567,6 +569,7 @@ class MneExperiment(FileTree):
         self._bind_make('label-file', self.make_labels)
 
         # set initial values
+        self.set_root(root, find_subjects)
         self.store_state()
         self.brain = None
 
@@ -1004,7 +1007,8 @@ class MneExperiment(FileTree):
 
         if field == 'mrisubject':
             subjects = FileTree.get_field_values(self, 'subject')
-            mrisubjects = sorted(self._mri_subjects[s] for s in subjects)
+            mri_subjects = self._mri_subjects[self.get('mri')]
+            mrisubjects = sorted(mri_subjects[s] for s in subjects)
             if exclude:
                 mrisubjects = [s for s in mrisubjects if s not in exclude]
             common_brain = self.get('common_brain')
@@ -3649,7 +3653,11 @@ class MneExperiment(FileTree):
         if subject is not None:
             state['subject'] = subject
             if 'mrisubject' not in state:
-                state['mrisubject'] = self._mri_subjects[subject]
+                if 'mri' in state:
+                    mri = state['mri']
+                else:
+                    mri = self.get('mri')
+                state['mrisubject'] = self._mri_subjects[mri][subject]
 
         FileTree.set(self, **state)
 
@@ -3784,25 +3792,6 @@ class MneExperiment(FileTree):
         self._params['make_inv_kw'] = make_kw
         self._params['apply_inv_kw'] = apply_kw
 
-    def set_mri_subject(self, subject, mri_subject=None):
-        """
-        Reassign a subject's MRI
-
-        Parameters
-        ----------
-        subject : str
-            The (MEG) subject name.
-        mri_subject : None | str
-            The corresponding MRI subject. None resets to the default
-            (mri_subject = subject)
-        """
-        if mri_subject is None:
-            del self._mri_subjects[subject]
-        else:
-            self._mri_subjects[subject] = mri_subject
-        if subject == self.get('subject'):
-            self._state['mrisubject'] = mri_subject
-
     def _eval_parc(self, parc):
         # Freesurfer parcellations
         if parc in ('', 'aparc.a2005s', 'aparc.a2009s', 'aparc',
@@ -3841,12 +3830,6 @@ class MneExperiment(FileTree):
 
         subjects = sorted(subjects)
         self._field_values['subject'] = subjects
-
-        mrisubjects = [self._mri_subjects[s] for s in subjects]
-        common_brain = self.get('common_brain')
-        if common_brain:
-            mrisubjects.insert(0, common_brain)
-        self._field_values['mrisubject'] = mrisubjects
 
         if len(subjects) == 0:
             print("Warning: no subjects found in %r" % sub_dir)
