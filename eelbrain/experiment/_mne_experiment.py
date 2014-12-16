@@ -1014,6 +1014,8 @@ class MneExperiment(FileTree):
         elif field == 'group':
             values = ['all', 'all!']
             values.extend(self.groups.keys())
+            if exclude:
+                values = [v for v in values if v not in exclude]
             return values
         else:
             return FileTree.get_field_values(self, field, exclude)
