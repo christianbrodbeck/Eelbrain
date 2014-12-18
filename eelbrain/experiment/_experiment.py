@@ -178,6 +178,8 @@ class TreeModel(object):
         for k in sorted(self._fields):
             if k in self._repr_args or k in self._repr_kwargs:
                 continue
+            elif k in self._compound_members:
+                continue
             elif '{' in self._fields[k]:
                 continue
 
