@@ -136,10 +136,7 @@ temp = {
 
         # raw
         'experiment': '???',
-        # use iir with "l-h" labels, "hp..." labels are legacy
         'raw': ('clm', '0-40', '1-40'),
-        # key necessary for identifying raw file info (used for bad channels):
-        'raw-key': '{subject}',
         'bads-file': os.path.join('{raw-dir}', '{subject}_{experiment}-bad_channels.txt'),
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
         'raw-file': '{raw-base}-raw.fif',
@@ -3973,80 +3970,3 @@ class MneExperiment(FileTree):
             return ds
         else:
             return ds.as_table(midrule=True, count=True)
-
-    def show_summary(self, templates=['raw-file'], missing='-', link=' > ',
-                     count=True):
-        """
-        Compile a table about the existence of files by subject
-
-        Parameters
-        ----------
-        templates : list of str
-            The names of the path templates whose existence to list
-        missing : str
-            The value to display for missing files.
-        link : str
-            String between file names.
-        count : bool
-            Add a column with a number for each subject.
-        """
-        if not isinstance(templates, (list, tuple)):
-            templates = [templates]
-
-        results = {}
-        experiments = set()
-        mris = {}
-        for _ in self.iter_temp('raw-key'):
-            items = []
-            sub = self.get('subject')
-            exp = self.get('experiment')
-            mri_subject = self.get('mrisubject')
-            if sub not in mris:
-                if mri_subject == sub:
-                    mri_dir = self.get('mri-dir')
-                    if not os.path.exists(mri_dir):
-                        mris[sub] = 'missing'
-                    elif is_fake_mri(mri_dir):
-                        mris[sub] = 'fake'
-                    else:
-                        mris[sub] = 'own'
-                else:
-                    mris[sub] = mri_subject
-
-            for temp in templates:
-                path = self.get(temp, match=False)
-                if '*' in path:
-                    try:
-                        _ = os.path.exists(self.get(temp, match=True))
-                        items.append(temp)
-                    except IOError:
-                        items.append(missing)
-
-                else:
-                    if os.path.exists(path):
-                        items.append(temp)
-                    else:
-                        items.append(missing)
-
-            desc = link.join(items)
-            results.setdefault(sub, {})[exp] = desc
-            experiments.add(exp)
-
-        table = fmtxt.Table('l' * (2 + len(experiments) + count))
-        if count:
-            table.cell()
-        table.cells('Subject', 'MRI')
-        experiments = list(experiments)
-        table.cells(*experiments)
-        table.midrule()
-
-        for i, subject in enumerate(sorted(results)):
-            if count:
-                table.cell(i)
-            table.cell(subject)
-            table.cell(mris[subject])
-
-            for exp in experiments:
-                table.cell(results[subject].get(exp, '?'))
-
-        return table
