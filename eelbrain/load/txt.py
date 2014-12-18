@@ -199,4 +199,4 @@ def var(path=None, name=None):
     else:
         x = np.loadtxt(path)
 
-    return _data.Var(x, name=None)
+    return _data.Var(x, name=name)
