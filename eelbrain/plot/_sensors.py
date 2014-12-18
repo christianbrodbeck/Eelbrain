@@ -67,7 +67,7 @@ class _ax_map2d:
         self.ax = ax
 
         ax.set_aspect('equal')
-        ax.set_frame_on(False)
+        # ax.set_frame_on(False)
         ax.set_axis_off()
 
         h = _plt_map2d(ax, sensors, proj=proj, extent=extent, kwargs=kwargs)
@@ -576,6 +576,7 @@ class SensorMap2d(_tb_sensors_mixin, _EelFigure):
             ftitle = '%s: %s' % (ftitle, sens_name)
         _tb_sensors_mixin.__init__(self)
         _EelFigure.__init__(self, ftitle, 1, 7, 1, False, *args, **kwargs)
+        self.axes = self._axes[0]
 
         # store args
         self._sensors = sensors
@@ -583,9 +584,7 @@ class SensorMap2d(_tb_sensors_mixin, _EelFigure):
         self._marker_handles = []
         self._connectivity = None
 
-        ax = self.figure.add_axes([frame, frame, 1 - 2 * frame, 1 - 2 * frame])
-        self.axes = ax
-        self._markers = _ax_map2d(ax, sensors, proj=proj)
+        self._markers = _ax_map2d(self.axes, sensors, proj=proj)
         self._sensor_plots = [self._markers.sensors]
         if labels:
             self.set_label_text(labels)
