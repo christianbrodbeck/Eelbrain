@@ -6182,6 +6182,18 @@ class Sensor(Dimension):
         return nb
 
 
+def as_sensor(obj):
+    "Coerce to Sensor instance"
+    if isinstance(obj, Sensor):
+        return obj
+    elif isinstance(obj, NDVar) and obj.has_dim('sensor'):
+        return obj.sensor
+    elif hasattr(obj, 'pos') and hasattr(obj, 'ch_names') and hasattr(obj, 'kind'):
+        return Sensor(obj.pos, obj.ch_names, sysname=obj.kind)
+    else:
+        raise TypeError("Can't get sensors form %r" % (obj,))
+
+
 def _point_graph(coords, dist_threshold):
     "Connectivity graph for points based on distance"
     n = len(coords)

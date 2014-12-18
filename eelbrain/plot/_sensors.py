@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from .._data_obj import Datalist
+from .._data_obj import Datalist, as_sensor
 from ._base import _EelFigure
 
 
@@ -350,11 +350,7 @@ class SensorMaps(_EelFigure):
         title : None | string
             Figure title.
         """
-        # in case Sensors parent is submitted
-        if hasattr(sensors, 'sensors'):
-            sensors = sensors.sensors
-        elif hasattr(sensors, 'sensor'):
-            sensors = sensors.sensor
+        sensors = as_sensor(sensors)
 
         # layout figure
         ftitle = 'SensorMaps'
@@ -546,9 +542,6 @@ class SensorMaps(_EelFigure):
         self.canvas.draw()
 
 
-
-
-
 class SensorMap2d(_tb_sensors_mixin, _EelFigure):
     """
     Plot a 2d Sensor Map.
@@ -575,11 +568,7 @@ class SensorMap2d(_tb_sensors_mixin, _EelFigure):
         title : None | string
             Figure title.
         """
-        # in case Sensors parent is submitted
-        if hasattr(sensors, 'sensors'):
-            sensors = sensors.sensors
-        elif hasattr(sensors, 'sensor'):
-            sensors = sensors.sensor
+        sensors = as_sensor(sensors)
 
         ftitle = 'SensorMap2d'
         sens_name = getattr(sensors, 'sysname', None)
@@ -661,10 +650,7 @@ class SensorMap2d(_tb_sensors_mixin, _EelFigure):
 
 def map3d(sensors, marker='c*', labels=False, head=0):
     """3d plot of a Sensors instance"""
-    if hasattr(sensors, 'sensors'):
-        sensors = sensors.sensors
-    elif hasattr(sensors, 'sensor'):
-        sensors = sensors.sensor
+    sensors = as_sensor(sensors)
 
     locs = sensors.locs
     fig = plt.figure()
