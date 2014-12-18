@@ -68,7 +68,6 @@ import logging
 import os
 import re
 import shutil
-from warnings import warn
 
 import numpy as np
 
@@ -78,8 +77,6 @@ from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
 from mne import Evoked as _mne_Evoked
 
-from .. import fmtxt
-from ..fmtxt import FMText
 from .. import gui
 from .. import load
 from .. import plot
@@ -91,7 +88,7 @@ from .. import Dataset, Factor, Var, NDVar, combine
 from .._mne import source_induced_power, dissolve_label, rename_label
 from ..mne_fixes import write_labels_to_annot
 from .._data_obj import isdatalist, UTS, DimensionMismatchError
-from ..fmtxt import List, Report
+from ..fmtxt import List, Report, FMText
 from .._stats.testnd import _MultiEffectResult
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri

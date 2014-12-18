@@ -134,6 +134,7 @@ class TreeModel(object):
 
     _repr_args = ()
     _repr_kwargs = ()
+
     def __init__(self, **state):
         self.exclude = self.exclude.copy()
 
@@ -320,7 +321,7 @@ class TreeModel(object):
             self._bind_post_set(key, post_set_handler)
 
         default = self._defaults.get(key, default)
-        kwargs = {key: default, 'add':True}
+        kwargs = {key: default, 'add': True}
         self.set(**kwargs)
 
     def expand_template(self, temp, keep=()):
@@ -685,7 +686,7 @@ class TreeModel(object):
 
         if temp is None:
             keys = (k for k, v in self._fields.iteritems()
-                    if (not '{' in v) and len(v) < 60)
+                    if ('{' not in v) and len(v) < 60)
         else:
             keys = self.find_keys(temp)
 
@@ -759,6 +760,7 @@ class FileTree(TreeModel):
     :class:`TreeModel` subclass for representing a file system hierarchy
     """
     _repr_args = ('root',)
+
     def __init__(self, **state):
         TreeModel.__init__(self, **state)
         self._make_handlers = {}
