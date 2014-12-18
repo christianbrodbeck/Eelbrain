@@ -1725,7 +1725,7 @@ class MneExperiment(FileTree):
         if rej_kind not in ('manual', 'make', 'auto'):
             raise ValueError("Unknown rej_kind value: %r" % rej_kind)
 
-        # super-epoch
+        # rejection comes from somewhere else
         if sub_epochs is not None:
             with self._temporary_state:
                 dss = [self.load_selected_events(subject, reject, add_proj,
@@ -1734,18 +1734,7 @@ class MneExperiment(FileTree):
                 ds = combine(dss)
                 ds.info['raw'] = dss[0].info['raw']
             return ds
-
-        # case 1: no rejection
-        if not reject or rej_kind == '':
-            ds = self.load_events(add_proj=add_proj, add_bads=add_bads)
-            if sel is not None:
-                ds = ds.sub(sel)
-            if index:
-                ds.index(index)
-            return ds
-
-        # case 2: rejection comes from a different epoch
-        if sel_epoch is not None:
+        elif sel_epoch is not None:
             with self._temporary_state:
                 ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
                                                index, epoch=sel_epoch)
@@ -1760,14 +1749,17 @@ class MneExperiment(FileTree):
 
             return ds
 
-        # case 3: proper rejection
+        # load events
         ds = self.load_events(add_proj=add_proj, add_bads=add_bads)
         if sel is not None:
             ds = ds.sub(sel)
         if index:
             ds.index(index)
 
-        if rej_kind in ('manual', 'make'):
+        # rejection
+        if not reject or rej_kind == '':
+            pass
+        elif rej_kind in ('manual', 'make'):
             path = self.get('rej-file')
             if not os.path.exists(path):
                 err = ("The rejection file at %r does not exist. Run "
