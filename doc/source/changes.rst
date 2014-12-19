@@ -3,6 +3,15 @@ Changes
 
 .. currentmodule:: eelbrain
 
+New in 0.12
+-----------
+
+* :class:`~experiment.MneExperiment`:
+
+  - New epoch parameter ``'n_cases'``:  raise an error if an epoch definition
+    does not yield expected number of trials.
+
+
 New in 0.11
 -----------
 

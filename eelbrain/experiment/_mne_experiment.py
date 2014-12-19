@@ -1756,6 +1756,11 @@ class MneExperiment(FileTree):
         if index:
             ds.index(index)
 
+        n_cases = epoch.get('n_cases', None)
+        if n_cases is not None and ds.n_cases != n_cases:
+            err = "Number of epochs %i, expected %i" % (ds.n_cases, n_cases)
+            raise RuntimeError(err)
+
         # rejection
         if not reject or rej_kind == '':
             pass
