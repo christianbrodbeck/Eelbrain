@@ -3391,15 +3391,25 @@ class MneExperiment(FileTree):
 
         return res
 
-    def next(self, field='subject'):
+    def next(self, field='subject', group=None):
         """Change field to the next value
 
         Parameters
         ----------
-        field :
+        field : str
+            The field for which the value should be changed (default 'subject').
+        group : str
+            If cycling through subjects, only use subjects form that group.
+            Does not set change the experiment's group value.
         """
         current = self.get(field)
-        values = self.get_field_values(field)
+        if field == 'subject':
+            if group is None:
+                values = self._get_group_members(self.get('group'))
+            else:
+                values = self._get_group_members(group)
+        else:
+            values = self.get_field_values(field)
 
         # find the index of the next value
         if current in values:
