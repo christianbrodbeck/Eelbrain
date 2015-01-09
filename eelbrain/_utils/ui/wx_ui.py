@@ -49,26 +49,8 @@ def ask_dir(title="Select Folder", message="Please Pick a Folder", must_exist=Tr
 
 
 def ask_file(title, message, filetypes, directory, mult):
-    """
-    returns path(s) or False
-
-    :arg directory: path to initial directory
-
-    """
-    style = wx.FD_OPEN
-    if mult:
-        style = style | wx.FD_MULTIPLE
-    wildcard = _wildcard(filetypes)
-    dialog = wx.FileDialog(None, message, directory,
-                           wildcard=wildcard, style=style)
-    dialog.SetTitle(title)
-    if dialog.ShowModal() == wx.ID_OK:
-        if mult:
-            return dialog.GetPaths()
-        else:
-            return dialog.GetPath()
-    else:
-        return False
+    app = get_app()
+    return app.ask_for_file(title, message, _wildcard(filetypes), directory, mult)
 
 
 def ask(title="Overwrite File?",

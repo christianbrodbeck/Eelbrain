@@ -187,7 +187,9 @@ def var(path=None, name=None):
         Name for the Var.
     """
     if path is None:
-        path = ui.ask_file("Select Var File", "()")
+        path = ui.ask_file("Load Var File", "Select Var File")
+        if not path:
+            return
 
     FILE = open(path)
     lines = FILE.read().split()

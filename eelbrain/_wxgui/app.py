@@ -148,6 +148,39 @@ class App(wx.App):
             self._result = False
         self.ExitMainLoop()
 
+    def ask_for_file(self, title, message, filetypes, directory, mult):
+        return self._bash_ui(self._ask_for_file, title, message, filetypes,
+                             directory, mult)
+
+    def _ask_for_file(self, title, message, wildcard, directory, mult):
+        """Returns path(s) or False.
+
+        Parameters
+        ----------
+        ...
+        directory : str
+            Path to initial directory.
+
+        Returns
+        -------
+        Result : list | str | None
+            Paths(s) or False.
+        """
+        style = wx.FD_OPEN
+        if mult:
+            style = style | wx.FD_MULTIPLE
+        dialog = wx.FileDialog(None, message, directory,
+                               wildcard=wildcard, style=style)
+        dialog.SetTitle(title)
+        if dialog.ShowModal() == wx.ID_OK:
+            if mult:
+                self._result = dialog.GetPaths()
+            else:
+                self._result = dialog.GetPath()
+        else:
+            self._result = False
+        self.ExitMainLoop()
+
     def OnAbout(self, event):
         if hasattr(self, '_about_frame') and hasattr(self._about_frame, 'Raise'):
             self._about_frame.Raise()
