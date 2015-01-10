@@ -1773,9 +1773,14 @@ class MneExperiment(FileTree):
 
             ds_sel = load.unpickle(path)
             if not np.all(ds['trigger'] == ds_sel['trigger']):
-                err = ("The epoch selection file contains different "
-                       "events than the data. Something went wrong...")
-                raise RuntimeError(err)
+                if np.all(ds[:-1, 'trigger'] == ds_sel['trigger']):
+                    ds = ds[:-1]
+                    msg = self.format("Last epoch for {subject} is missing")
+                    logger.warn(msg)
+                else:
+                    err = ("The epoch selection file contains different "
+                           "events than the data. Something went wrong...")
+                    raise RuntimeError(err)
 
             if reject == 'keep':
                 ds['accept'] = ds_sel['accept']
