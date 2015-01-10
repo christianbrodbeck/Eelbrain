@@ -542,7 +542,7 @@ class SensorMaps(_EelFigure):
         self.canvas.draw()
 
 
-class SensorMap2d(_tb_sensors_mixin, _EelFigure):
+class SensorMap(_tb_sensors_mixin, _EelFigure):
     """
     Plot a 2d Sensor Map.
 
@@ -570,10 +570,10 @@ class SensorMap2d(_tb_sensors_mixin, _EelFigure):
         """
         sensors = as_sensor(sensors)
 
-        ftitle = 'SensorMap2d'
-        sens_name = getattr(sensors, 'sysname', None)
-        if sens_name:
-            ftitle = '%s: %s' % (ftitle, sens_name)
+        if sensors.sysname:
+            ftitle = 'SensorMap: %s' % sensors.sysname
+        else:
+            ftitle = 'SensorMap'
         _tb_sensors_mixin.__init__(self)
         _EelFigure.__init__(self, ftitle, 1, 7, 1, False, *args, **kwargs)
         self.axes = self._axes[0]

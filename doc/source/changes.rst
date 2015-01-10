@@ -6,6 +6,7 @@ Changes
 New in 0.12
 -----------
 
+* API:  :class:`plot.SensorMap2d` was renamed to :class:`plot.SensorMap`.
 * :class:`~experiment.MneExperiment`:
 
   - New epoch parameter ``'n_cases'``:  raise an error if an epoch definition

@@ -13,7 +13,7 @@ def test_map2d():
     "Test plot.SensorMap2d"
     ds = datasets.get_uts(utsnd=True)
     utsnd = ds['utsnd']
-    p = plot.SensorMap2d(utsnd, show=False)
+    p = plot.SensorMap(utsnd, show=False)
 
     # plot attributes
     p.set_label_color('g')
