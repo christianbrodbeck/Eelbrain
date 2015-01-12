@@ -136,7 +136,6 @@ temp = {
 
         # raw
         'experiment': '???',
-        'raw': ('clm', '0-40', '1-40'),
         'bads-file': os.path.join('{raw-dir}', '{subject}_{experiment}-bad_channels.txt'),
         'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
         'raw-file': '{raw-base}-raw.fif',
@@ -305,6 +304,11 @@ class MneExperiment(FileTree):
 
     # whether to look for and load eye tracker data when loading raw files
     has_edf = defaultdict(lambda: False)
+
+    # raw processing settings {name: (args, kwargs)}
+    _raw = {'clm': None,
+            '0-40': ((None, 40), {'method': 'iir'}),
+            '1-40': ((1, 40), {'method': 'iir'})}
 
     # projection definition:
     # "base": 'raw' for raw file, or epoch name
@@ -530,6 +534,7 @@ class MneExperiment(FileTree):
         FileTree.__init__(self, **state)
 
         # register variables with complex behavior
+        self._register_field('raw', self._raw.keys())
         self._register_field('rej', self.epoch_rejection.keys(),
                              post_set_handler=self._post_set_rej)
         self._register_field('group', self.groups.keys() + ['all'], 'all',
@@ -2744,12 +2749,8 @@ class MneExperiment(FileTree):
         if apply_proj:
             raw.apply_projector()
 
-        if raw_dst == '0-40':
-            raw.filter(None, 40, n_jobs=n_jobs, method='iir')
-        elif raw_dst == '1-40':
-            raw.filter(1, 40, n_jobs=n_jobs, method='iir')
-        else:
-            raise ValueError('raw = %r' % raw_dst)
+        args, kwargs = self._raw[raw_dst]
+        raw.filter(*args, n_jobs=n_jobs, **kwargs)
 
         self.set(raw=raw_dst)
         raw.save(dst, overwrite=True)
