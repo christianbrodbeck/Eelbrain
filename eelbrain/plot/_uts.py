@@ -11,11 +11,11 @@ import numpy as np
 from .._data_obj import ascategorial, asndvar, assub, cellname, Celltable
 from .._stats import stats
 from . import _base
-from ._base import _EelFigure
+from ._base import _EelFigure, LegendMixin
 from ._colors import colors_for_oneway
 
 
-class UTSStat(_EelFigure):
+class UTSStat(_EelFigure, LegendMixin):
     "Plots statistics for a one-dimensional NDVar"
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
@@ -174,14 +174,14 @@ class UTSStat(_EelFigure):
 
         # create plots
         self._plots = []
-        self._legend_handles = {}
+        legend_handles = {}
         if Xax is None:
             ax = self._axes[0]
             p = _ax_uts_stat(ax, ct, colors, main, error, dev_data, None,
                              ylabel, xdim, xlim, xlabel, invy, bottom, top,
                              hline, clusters, pmax, ptrend)
             self._plots.append(p)
-            self._legend_handles.update(p.legend_handles)
+            legend_handles.update(p.legend_handles)
             if len(ct) < 2:
                 legend = False
         else:
@@ -203,9 +203,9 @@ class UTSStat(_EelFigure):
                                  ylabel, xdim, xlim, xlabel_, invy, bottom, top,
                                  hline, clusters, pmax, ptrend)
                 self._plots.append(p)
-                self._legend_handles.update(p.legend_handles)
+                legend_handles.update(p.legend_handles)
 
-        self.plot_legend(legend)
+        LegendMixin.__init__(self, legend, legend_handles)
         self._update_ui_cluster_button()
         self._show()
 
@@ -216,6 +216,8 @@ class UTSStat(_EelFigure):
         btn.Enable(False)
         tb.AddControl(btn)
         btn.Bind(wx.EVT_BUTTON, self._OnShowClusterInfo)
+
+        LegendMixin._fill_toolbar(self, tb)
 
     def _OnShowClusterInfo(self, event):
         from .._wxutils import show_text_dialog
@@ -251,65 +253,6 @@ class UTSStat(_EelFigure):
         if hasattr(self, '_cluster_btn'):
             enable = not all(p.cluster_plt.clusters is None for p in self._plots)
             self._cluster_btn.Enable(enable)
-
-    def plot_legend(self, loc='fig', *args, **kwargs):
-        """Plots (or removes) the legend from the figure.
-
-        Parameters
-        ----------
-        loc : False | 'fig' | str | int
-            Where to plot the legend (see Notes; default 'fig').
-
-        Returns
-        -------
-        legend_figure : None | legend
-            If loc=='fig' the Figure, otherwise None.
-
-        Notes
-        -----
-        legend content can be modified through the figure's
-        ``legend_handles`` and ``legend_labels`` attributes.
-
-        Possible values for the ``loc`` argument:
-
-        ``False``:
-            Make the current legend invisible
-        'fig':
-            Plot the legend in a new figure
-        str | int:
-            Matplotlib position argument: plot the legend on the figure
-
-
-        Matplotlib Position Arguments:
-
-         - 'upper right'  : 1,
-         - 'upper left'   : 2,
-         - 'lower left'   : 3,
-         - 'lower right'  : 4,
-         - 'right'        : 5,
-         - 'center left'  : 6,
-         - 'center right' : 7,
-         - 'lower center' : 8,
-         - 'upper center' : 9,
-         - 'center'       : 10,
-        """
-        if loc and len(self._legend_handles) > 1:
-            cells = sorted(self._legend_handles)
-            labels = [cellname(cell) for cell in cells]
-            handles = [self._legend_handles[cell] for cell in cells]
-            if loc == 'fig':
-                return _base.Legend(handles, labels, *args, **kwargs)
-            else:
-                # take care of old legend; remove() not implemented as of mpl 1.3
-                if hasattr(self, 'legend'):
-                    self.legend.set_visible(False)
-                self.legend = self.figure.legend(handles, labels, loc=loc)
-                self.draw()
-        else:
-            if hasattr(self, 'legend'):
-                self.legend.set_visible(False)
-                del self.legend
-                self.draw()
 
     def set_clusters(self, clusters, pmax=0.05, ptrend=0.1, color='.7', ax=None):
         """Add clusters from a cluster test to the plot (as shaded area).

@@ -74,7 +74,7 @@ from .._utils import LazyProperty
 from .._utils.subp import command_exists
 from ..fmtxt import Image, texify
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps
-from .._data_obj import ascategorial, asndvar, DimensionMismatchError
+from .._data_obj import ascategorial, asndvar, DimensionMismatchError, cellname
 
 
 # defaults
@@ -1119,6 +1119,98 @@ class Layout():
         self.fig_kwa = fig_kwa
         self.show = show
         self.run = run
+
+
+class LegendMixin(object):
+    __choices = ('invisible', 'separate window', 'best', 'upper right',
+                 'upper left', 'lower left', 'lower right', 'right',
+                 'center left', 'center right', 'lower center', 'upper center',
+                 'center')
+    __args = (False, 'fig', 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+    def __init__(self, plot_legend, legend_handles):
+        self.__handles = legend_handles
+        self.legend = None
+        self.plot_legend(plot_legend)
+
+    def _fill_toolbar(self, tb):
+        import wx
+
+        choices = [name.title() for name in self.__choices]
+        self.__ctrl = wx.Choice(tb, choices=choices, name='Legend')
+        tb.AddControl(self.__ctrl, "Legend")
+        self.__ctrl.Bind(wx.EVT_CHOICE, self.__OnChoice, source=self.__ctrl)
+
+    def __OnChoice(self, event):
+        self.__plot(self.__args[event.GetSelection()])
+
+    def plot_legend(self, loc='fig', *args, **kwargs):
+        """Plots (or removes) the legend from the figure.
+
+        Parameters
+        ----------
+        loc : False | 'fig' | str | int
+            Where to plot the legend (see Notes; default 'fig').
+
+        Returns
+        -------
+        legend_figure : None | legend
+            If loc=='fig' the Figure, otherwise None.
+
+        Notes
+        -----
+        legend content can be modified through the figure's
+        ``legend_handles`` and ``legend_labels`` attributes.
+
+        Possible values for the ``loc`` argument:
+
+        ``False``:
+            Make the current legend invisible
+        'fig':
+            Plot the legend in a new figure
+        str | int:
+            Matplotlib position argument: plot the legend on the figure
+
+
+        Matplotlib Position Arguments:
+
+         - 'upper right'  : 1,
+         - 'upper left'   : 2,
+         - 'lower left'   : 3,
+         - 'lower right'  : 4,
+         - 'right'        : 5,
+         - 'center left'  : 6,
+         - 'center right' : 7,
+         - 'lower center' : 8,
+         - 'upper center' : 9,
+         - 'center'       : 10,
+        """
+        out = self.__plot(loc, *args, **kwargs)
+        if loc:
+            if isinstance(loc, basestring):
+                if loc == 'fig':
+                    loc = 'separate window'
+                loc = self.__choices.index(loc)
+            self.__ctrl.SetSelection(loc)
+        return out
+
+    def __plot(self, loc, *args, **kwargs):
+        if loc and len(self.__handles) > 1:
+            cells = sorted(self.__handles)
+            labels = [cellname(cell) for cell in cells]
+            handles = [self.__handles[cell] for cell in cells]
+            if loc == 'fig':
+                return Legend(handles, labels, *args, **kwargs)
+            else:
+                # take care of old legend; remove() not implemented as of mpl 1.3
+                if self.legend is not None:
+                    self.legend.set_visible(False)
+                self.legend = self.figure.legend(handles, labels, loc=loc)
+                self.draw()
+        elif self.legend is not None:
+            self.legend.set_visible(False)
+            self.legend = None
+            self.draw()
 
 
 class Legend(_EelFigure):
