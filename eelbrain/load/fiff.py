@@ -157,7 +157,7 @@ def mne_raw(path=None, proj=False, **kwargs):
         raw = _mne_Raw(path, **kwargs)
 
     if proj:
-        if proj == True:
+        if proj is True:
             proj = '{raw}*proj.fif'
 
         if '{raw}' in proj:
@@ -291,17 +291,23 @@ def _guess_ndvar_data_type(info):
     raise ValueError("No MEG or EEG channel found in info.")
 
 
-def _ndvar_epochs_picks(info, data, exclude):
+def _picks(info, data, exclude):
     if data == 'eeg':
         meg = False
         eeg = True
+        eog = False
+    elif data == 'eeg&eog':
+        meg = False
+        eeg = True
+        eog = True
     elif data in ['grad', 'mag']:
         meg = data
         eeg = False
+        eog = False
     else:
         err = "data=%r (needs to be 'eeg', 'grad' or 'mag')" % data
         raise ValueError(err)
-    picks = mne.pick_types(info, meg=meg, eeg=eeg, stim=False, exclude=exclude)
+    picks = mne.pick_types(info, meg, eeg, False, eog, exclude=exclude)
     return picks
 
 
@@ -373,7 +379,7 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
     if raw is None:
         raw = ds.info['raw']
 
-    picks = _ndvar_epochs_picks(raw.info, data, exclude)
+    picks = _picks(raw.info, data, exclude)
     reject = _ndvar_epochs_reject(data, reject)
 
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
@@ -456,7 +462,7 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
     if raw is None:
         raw = ds.info['raw']
 
-    picks = _ndvar_epochs_picks(raw.info, data, exclude)
+    picks = _picks(raw.info, data, exclude)
     reject = _ndvar_epochs_reject(data, reject)
 
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, i_start, raw, decim=decim,
@@ -554,7 +560,7 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
         raw = ds.info['raw']
 
     if drop_bad_chs and ('picks' not in kwargs) and raw.info['bads']:
-        kwargs['picks'] = mne.pick_types(raw.info, eeg=True, ref_meg=False)
+        kwargs['picks'] = mne.pick_types(raw.info, eeg=True, eog=True, ref_meg=False)
 
     events = _mne_events(ds=ds, i_start=i_start)
     # epochs with (event_id == None) does not use columns 1 and 2 of events
@@ -621,7 +627,7 @@ def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
     return Sensor(ch_locs, ch_names, sysname=sysname)
 
 
-def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
+def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
                  info=None, sensors=None, vmax=None):
     """
     Convert an :class:`mne.Epochs` object to an :class:`NDVar`.
@@ -633,7 +639,7 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
     name : None | str
         Name for the NDVar.
     data : 'eeg' | 'mag' | 'grad' | None
-        The kind of data to include. If None, guess based on ``epochs.info``.
+        The kind of data to include. If None (default) based on ``epochs.info``.
     exclude : list of string | str
         Channels to exclude (:func:`mne.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
@@ -652,7 +658,7 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
     if data is None:
         data = _guess_ndvar_data_type(epochs.info)
 
-    if data == 'eeg':
+    if data == 'eeg' or data == 'eeg&eog':
         info_ = _cs.eeg_info(vmax, mult)
         summary_vmax = 0.1 * vmax if vmax else None
         summary_info = _cs.eeg_info(summary_vmax, mult)
@@ -672,7 +678,7 @@ def epochs_ndvar(epochs, name='meg', data='mag', exclude='bads', mult=1,
         info_.update(info)
 
     x = epochs.get_data()
-    picks = _ndvar_epochs_picks(epochs.info, data, exclude)
+    picks = _picks(epochs.info, data, exclude)
     if len(picks) < x.shape[1]:
         x = x[:, picks]
 
@@ -713,7 +719,7 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
         evoked = mne.Evoked(evoked)
 
     if isinstance(evoked, mne.Evoked):
-        picks = _ndvar_epochs_picks(evoked.info, data, exclude)
+        picks = _picks(evoked.info, data, exclude)
 
         x = evoked.data[picks]
         sensor = sensor_dim(evoked, picks=picks)
@@ -740,7 +746,7 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
         sensor = None
         exclude = list(exclude)
         for e in evoked:
-            picks = _ndvar_epochs_picks(e.info, data, exclude)
+            picks = _picks(e.info, data, exclude)
             x.append(e.data[picks])
             if sensor is None:
                 sensor = sensor_dim(e, picks=picks)

@@ -202,3 +202,59 @@ def var(path=None, name=None):
         x = np.loadtxt(path)
 
     return _data.Var(x, name=name)
+
+
+def eeg_montage(path=None, kind='Polhemus digitized montage'):
+    """Read Montage saved with the Montage App.
+
+    Reads the montage and transforms it to MNE space, ready for use with
+    :func:`mne.io.read_raw_brainvision`.
+
+    Parameters
+    ----------
+    path : str | None
+        Source file. If None, a system file dialog is opened.
+    kind : str
+        Name for the Montage.
+
+    Notes
+    -----
+    Requires MNE-Python 0.9 or later.
+    """
+    import mne
+    try:
+        from mne.channels.layout import Montage
+    except:
+        raise ImportError("Requires MNE-Python 0.9 or later.")
+
+    if path is None:
+        path = ui.ask_file("Load Montage File", "Select Montage File",
+                           [("Montage Text Files", "*.txt")])
+        if path is None:
+            return
+
+    ds = tsv(path, ['name', 'x', 'y', 'z'])
+    ds = ds.sub("name != ''")
+
+    names_lower = [name.lower() for name in ds['name']]
+    locs = np.hstack((ds['x'].x[:, None], ds['y'].x[:, None], ds['z'].x[:, None]))
+    locs /= 1000
+
+    # check that all needed points are present
+    missing = [name for name in ('nasion', 'lpa', 'rpa')
+               if name not in names_lower]
+    if missing:
+        raise ValueError("The points %s are missing, but are needed "
+                         "to transform the points to the MNE coordinate "
+                         "system. Either add the points, or read the "
+                         "montage with transform=False." % missing)
+
+    # transform to MNE (Neuromag) space
+    nasion = locs[names_lower.index('nasion')]
+    lpa = locs[names_lower.index('lpa')]
+    rpa = locs[names_lower.index('rpa')]
+    trans = mne.transforms.get_ras_to_neuromag_trans(nasion, lpa, rpa)
+    locs = mne.transforms.apply_trans(trans, locs)
+
+    return Montage(locs, ds['name'].as_labels(), kind, np.arange(len(locs)))
+

@@ -88,7 +88,7 @@ from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
 from .._mne import source_induced_power, dissolve_label, rename_label
 from ..mne_fixes import write_labels_to_annot
-from .._data_obj import isdatalist, UTS, DimensionMismatchError
+from .._data_obj import isdatalist, align, UTS, DimensionMismatchError
 from ..fmtxt import List, Report, FMText
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
@@ -137,8 +137,9 @@ temp = {
 
         # raw
         'experiment': '???',
-        'bads-file': os.path.join('{raw-dir}', '{subject}_{experiment}-bad_channels.txt'),
-        'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw}'),
+        'modality': ('', 'eeg', 'meeg'),
+        'bads-file': os.path.join('{raw-dir}', '{subject}_{bads-compound}-bad_channels.txt'),
+        'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw-kind}'),
         'raw-file': '{raw-base}-raw.fif',
         'event-file': '{raw-base}-evts.pickled',
         'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),
@@ -168,7 +169,7 @@ temp = {
 
         # epochs
         'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
-        'rej-file': os.path.join('{rej-dir}', '{experiment}_{raw}_'
+        'rej-file': os.path.join('{rej-dir}', '{experiment}_{sns-kind}_'
                                  '{epoch}-{rej}.pickled'),
 
         'common_brain': 'fsaverage',
@@ -244,7 +245,7 @@ temp = {
 
 
 class MneExperiment(FileTree):
-    """Manage and analyze data from an experiment with MNE
+    """:class:`FileTree` subclass for analyzing an MEG experiment with MNE
 
     """
     # Experiment Constants
@@ -261,7 +262,8 @@ class MneExperiment(FileTree):
     # eog_sns: The sensors to plot separately in the rejection GUI. The default
     # is the two MEG sensors closest to the eyes.
     _eog_sns = {'KIT-NY': ['MEG 143', 'MEG 151'],
-                'KIT-AD': ['MEG 087', 'MEG 130']}
+                'KIT-AD': ['MEG 087', 'MEG 130'],
+                'KIT-BRAINVISION': ['HEOGL', 'HEOGR', 'VEOGb']}
     #
     # epoch_rejection dict:
     #
@@ -309,6 +311,8 @@ class MneExperiment(FileTree):
     # raw processing settings {name: (args, kwargs)}
     _raw = {'clm': None,
             '0-40': ((None, 40), {'method': 'iir'}),
+            '0.16-40': ((0.16, 40), {'l_trans_bandwidth': 0.08,
+                                     'filter_length': '60s'}),
             '1-40': ((1, 40), {'method': 'iir'})}
 
     # projection definition:
@@ -364,7 +368,7 @@ class MneExperiment(FileTree):
     # ------
     # basic state for a backup
     _backup_state = {'subject': '*', 'mrisubject': '*', 'experiment': '*',
-                     'raw': 'clm'}
+                     'raw': 'clm', 'modality': '*'}
     # files to back up, together with state modifications on the basic state
     _backup_files = (('raw-file', {}),
                      ('bads-file', {}),
@@ -561,9 +565,11 @@ class MneExperiment(FileTree):
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
 
         # compounds
-        self._register_compound('sns-kind', ('raw', 'proj'))
-        self._register_compound('evoked-kind', ('rej', 'equalize_evoked_count'))
+        self._register_compound('bads-compound', ('experiment', 'modality'))
+        self._register_compound('raw-kind', ('modality', 'raw'))
+        self._register_compound('sns-kind', ('raw-kind', 'proj'))
         self._register_compound('src-kind', ('sns-kind', 'cov', 'mri', 'inv'))
+        self._register_compound('evoked-kind', ('rej', 'equalize_evoked_count'))
 
         # Define make handlers
         self._bind_make('raw-file', self.make_raw)
@@ -1214,9 +1220,36 @@ class MneExperiment(FileTree):
         edf = load.eyelink.Edf(src)
         return edf
 
+    def _ndvar_name_and_modality(self, ndvar, modality, eog=False):
+        """returns (name for the ndvar, data str)"""
+        if ndvar:
+            if modality == 'meeg':
+                raise NotImplementedError("NDVar for sensor space MEEG data")
+            elif modality == '':
+                data = 'mag'
+                if ndvar is True:
+                    ndvar = 'meg'
+            elif modality == 'eeg':
+                if eog:
+                    data = 'eeg&eog'
+                else:
+                    data = 'eeg'
+
+                if ndvar is True:
+                    ndvar = 'eeg'
+            else:
+                raise ValueError("modality=%r" % modality)
+
+            if not isinstance(ndvar, basestring):
+                msg = "ndvar needs to be bool or str, got %s" % repr(ndvar)
+                raise TypeError(msg)
+        else:
+            data = None
+        return ndvar, data
+
     def load_epochs(self, subject=None, baseline=None, ndvar=True,
                     add_bads=True, reject=True, add_proj=True, cat=None,
-                    decim=None, pad=0, keep_raw=False, **kwargs):
+                    decim=None, pad=0, keep_raw=False, eog=False, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
 
@@ -1228,7 +1261,8 @@ class MneExperiment(FileTree):
         baseline : None | (tmin, tmax)
             Baseline to apply to epochs.
         ndvar : bool | str
-            Convert epochs to an NDVar with the given name (default is 'meg').
+            Convert epochs to an NDVar with the given name (default is 'meg'
+            for MEG data and 'eeg' for EEG data).
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
@@ -1247,13 +1281,11 @@ class MneExperiment(FileTree):
             analysis).
         keep_raw : bool
             Keep the mne.io.Raw instance in ds.info['raw'] (default False).
+        eog : bool
+            When loading EEG data as NDVar, also add the EOG channels.
         """
-        if ndvar:
-            if ndvar is True:
-                ndvar = 'meg'
-            elif not isinstance(ndvar, basestring):
-                msg = "ndvar needs to be bool or str, got %s" % repr(ndvar)
-                raise TypeError(msg)
+        modality = self.get('modality')
+        ndvar, data = self._ndvar_name_and_modality(ndvar, modality, eog)
 
         subject, group = self._process_subject_arg(subject, kwargs)
         if group is not None:
@@ -1264,7 +1296,18 @@ class MneExperiment(FileTree):
                 dss.append(ds)
 
             ds = combine(dss)
-        else:  # single subject
+        elif modality == 'meeg':  # single subject, combine MEG and EEG
+            with self._temporary_state:
+                ds_meg = self.load_epochs(subject, baseline, ndvar, add_bads,
+                                          reject, add_proj, cat, decim, pad,
+                                          False, modality='')
+                ds_eeg = self.load_epochs(subject, baseline, ndvar, add_bads,
+                                          reject, add_proj, cat, decim, pad,
+                                          False, modality='eeg')
+            ds, eeg_epochs = align(ds_meg, ds_eeg['epochs'], 'index',
+                                   ds_eeg['index'])
+            ds['epochs'] = mne.epochs.add_channels_epochs((ds['epochs'], eeg_epochs))
+        else:  # single subject, single modality
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            add_proj=add_proj)
             if reject and self._params['rej']['kind'] == 'auto':
@@ -1293,7 +1336,7 @@ class MneExperiment(FileTree):
                 del ds.info['raw']
 
         if ndvar:
-            ds[ndvar] = load.fiff.epochs_ndvar(ds.pop(target), ndvar)
+            ds[ndvar] = load.fiff.epochs_ndvar(ds.pop(target), ndvar, data)
 
         return ds
 
@@ -1367,14 +1410,18 @@ class MneExperiment(FileTree):
 
         # refresh cache
         if ds is None:
-            ds = load.fiff.events(raw)
+            if self.get('modality') == '':
+                merge = -1
+            else:
+                merge = 0
+            ds = load.fiff.events(raw, merge)
+            del ds.info['raw']
 
             if edf and self.has_edf[subject]:  # add edf
                 edf = self.load_edf()
                 edf.add_t_to(ds)
                 ds.info['edf'] = edf
 
-            del ds.info['raw']
             if edf or not self.has_edf[subject]:
                 save.pickle(ds, evt_file)
 
@@ -1398,9 +1445,9 @@ class MneExperiment(FileTree):
             such as 'all' or a single subject.
         baseline : None | (tmin, tmax)
             Baseline to apply to evoked response.
-        ndvar : bool | str
-            Convert the mne Evoked objects to an NDVar. If True (default), the
-            target name is 'meg'.
+        ndvar : bool
+            Convert the mne Evoked objects to an NDVar (the name in the
+            Dataset is 'meg' or 'eeg').
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         model : str (state)
@@ -1417,10 +1464,10 @@ class MneExperiment(FileTree):
 
             ds = combine(dss)
 
-            # check consistency
+            # check consistency in MNE objects' number of time points
             for name in ds:
                 if isinstance(ds[name][0], (_mne_Evoked, mne.SourceEstimate)):
-                    lens = np.array([len(e.times) for e in ds[name]])
+                    lens = set([len(e.times) for e in ds[name]])
                     ulens = np.unique(lens)
                     if len(ulens) > 1:
                         err = ["Unequel time axis sampling (len):"]
@@ -1443,23 +1490,41 @@ class MneExperiment(FileTree):
             if isinstance(baseline, str):
                 raise NotImplementedError
             elif baseline:
-                if ds.info.get('evoked', ('evoked',)) != ('evoked',):
-                    raise NotImplementedError
-                for e in ds['evoked']:
-                    rescale(e.data, e.times, baseline, 'mean', copy=False)
+                for evoked_name in ds.info['evoked']:
+                    for e in ds[evoked_name]:
+                        rescale(e.data, e.times, baseline, 'mean', copy=False)
 
         # convert to NDVar
         if ndvar:
-            if ndvar is True:
-                ndvar = 'meg'
+            modality = self.get('modality')
+            if modality == 'meeg':
+                modalities = ('meg', 'eeg')
+            elif modality == '':
+                modalities = ('meg',)
+            elif modality == 'eeg':
+                modalities = ('eeg',)
+            else:
+                raise NotImplementedError("modality=%r" % modality)
 
-            keys = [k for k in ds if isdatalist(ds[k], _mne_Evoked, False)]
-            for k in keys:
-                if len(keys) > 1:
-                    ndvar_key = '_'.join((k, ndvar))
+            for modality in modalities:
+                if modality == 'meg':
+                    data_arg = 'mag'
                 else:
-                    ndvar_key = ndvar
-                ds[ndvar_key] = load.fiff.evoked_ndvar(ds[k])
+                    data_arg = modality
+                for evoked_name in ds.info['evoked']:
+                    if evoked_name == 'evoked':
+                        ndvar_name = modality
+                    else:
+                        ndvar_name = '_'.join((evoked_name, modality))
+                    ds[ndvar_name] = load.fiff.evoked_ndvar(ds[evoked_name], None, data_arg)
+                    # set canonical sensor positions
+                    if modality == 'eeg' and group is not None:
+                        m = mne.channels.read_montage('easycap-M1')
+                        m.ch_names = [n.upper() for n in m.ch_names]
+                        m.ch_names[m.ch_names.index('TP9')] = 'A1'
+                        m.ch_names[m.ch_names.index('TP10')] = 'A2'
+                        m.ch_names[m.ch_names.index('FP2')] = 'VEOGt'
+                        ds[ndvar_name].sensor.set_sensor_positions(m)
 
         return ds
 
@@ -1559,7 +1624,8 @@ class MneExperiment(FileTree):
         others :
             State parameters.
         """
-        self.set(**kwargs)
+        if self.get('modality', **kwargs) != '':
+            raise NotImplementedError("Source reconstruction for EEG data")
 
         if fiff is None:
             fiff = self.load_raw()
@@ -1654,7 +1720,8 @@ class MneExperiment(FileTree):
         preload : bool
             Mne Raw parameter.
         """
-        self.set(**kwargs)
+        if self.get('modality', **kwargs) == 'meeg':
+            raise RuntimeError("No raw files for combined MEG & EEG")
 
         if add_proj:
             proj = self.get('proj')
@@ -1870,6 +1937,20 @@ class MneExperiment(FileTree):
         else:
             self.set(test=test, **kwargs)
 
+        # find data to use
+        if data == 'sns':
+            modality = self.get('modality')
+            if modality == '':
+                y_name = 'meg'
+            elif modality == 'eeg':
+                y_name = modality
+            else:
+                raise NotImplementedError("Sensor analysis for modality=%r" % modality)
+        elif data == 'src':
+            y_name = 'srcm'
+        else:
+            raise ValueError("data=%s" % repr(data))
+
         # find cached file path
         if parc:
             if pmin == 'tfce':
@@ -1934,18 +2015,11 @@ class MneExperiment(FileTree):
                     if np.any(idx_masked):
                         idx = np.invert(idx_masked)
                         ds['srcm'] = y.sub(source=idx)
-            else:
-                raise ValueError(data)
 
         # perform the test if it was not cached
         if res is None:
-            if data == 'sns':
-                y = ds['meg']
-            elif data == 'src':
-                y = ds['srcm']
-
-            res = self._make_test(y, ds, test, samples, pmin, tstart, tstop,
-                                  None, parc_dim)
+            res = self._make_test(ds[y_name], ds, test, samples, pmin, tstart,
+                                  tstop, None, parc_dim)
             # cache
             save.pickle(res, dst)
 
@@ -2044,7 +2118,7 @@ class MneExperiment(FileTree):
         if os.path.exists(dst):
             old_bads = self.load_bad_channels()
             if not redo:
-                msg = ("Bads file already exists with %s. In oder to replace "
+                msg = ("Bads file already exists with %s. In order to replace "
                        "it, use `redo=True`." % old_bads)
                 raise IOError(msg)
         else:
@@ -2302,6 +2376,8 @@ class MneExperiment(FileTree):
             if fwd_mtime > max(raw_mtime, trans_mtime, src_mtime, bem_mtime):
                 return
 
+        if self.get('modality') != '':
+            raise NotImplementedError("Source reconstruction with EEG")
         mne.make_forward_solution(raw, trans, src, bem, dst, ignore_ref=True,
                                   overwrite=True)
 
@@ -2790,19 +2866,31 @@ class MneExperiment(FileTree):
                    "again.".format(cur=epoch['name'], sel=epoch['sel_epoch']))
             raise ValueError(msg)
 
-        ds = self.load_epochs(reject=False, decim=rej_args.get('decim', None))
+        ds = self.load_epochs(reject=False, decim=rej_args.get('decim', None),
+                              eog=True)
         path = self.get('rej-file', mkdir=True)
+        modality = self.get('modality')
 
-        subject = self.get('subject')
-        subject_prefix = self._subject_re.match(subject).group(1)
-        meg_system = self._meg_systems[subject_prefix]
-        eog_sns = self._eog_sns[meg_system]
+        if modality == '':
+            subject = self.get('subject')
+            subject_prefix = self._subject_re.match(subject).group(1)
+            meg_system = self._meg_systems[subject_prefix]
+            eog_sns = self._eog_sns[meg_system]
+            data = 'meg'
+            vlim = 2e-12
+        elif modality == 'eeg':
+            eog_sns = self._eog_sns['KIT-BRAINVISION']
+            ds['eeg'] -= ds['eeg'].sub(time=(None, 0)).mean('time')
+            data = 'eeg'
+            vlim = 1.5e-4
+        else:
+            raise ValueError("modality=%r" % modality)
 
         # don't mark eog sns if it is bad
         bad_channels = self.load_bad_channels()
         eog_sns = [c for c in eog_sns if c not in bad_channels]
 
-        gui.select_epochs(ds, data='meg', path=path, vlim=2e-12, mark=eog_sns,
+        gui.select_epochs(ds, data, path=path, vlim=vlim, mark=eog_sns,
                           **kwargs)
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,

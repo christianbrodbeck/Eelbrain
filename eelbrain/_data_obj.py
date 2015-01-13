@@ -6314,6 +6314,39 @@ class Sensor(Dimension):
 
         return nb
 
+    def set_sensor_positions(self, pos, names=None):
+        """Set the sensor positions
+
+        Parameters
+        ----------
+        pos : array (n_locations, 3) | MNE Montage
+            Array with 3 columns describing sensor locations (x, y, and z), or
+            an MNE Montage object describing the sensor layout.
+        names : None | list of str
+            If locations is an array, names should specify a name
+            corresponding to each entry.
+        """
+        # MNE Montage
+        if hasattr(pos, 'pos') and hasattr(pos, 'ch_names'):
+            if names is not None:
+                raise TypeError("Can't specify names parameter with Montage")
+            names = pos.ch_names
+            pos = pos.pos
+        elif names is not None and len(names) != len(pos):
+            raise ValueError("Mismatch between number of locations (%i) and "
+                             "number of names (%i)" % (len(pos), len(names)))
+
+        if names is not None:
+            missing = [name for name in self.names if name not in names]
+            if missing:
+                raise ValueError("The following sensors are missing: %r" % missing)
+            index = np.array([names.index(name) for name in self.names])
+            pos = pos[index]
+        elif len(pos) != len(self.locs):
+            raise ValueError("If names are not specified pos must specify "
+                             "exactly one position per channel")
+        self.locs[:] = pos
+
 
 def as_sensor(obj):
     "Coerce to Sensor instance"
