@@ -62,6 +62,7 @@ the interval form 0 to 500 ms used for rejection.
 '''
 
 from collections import defaultdict
+from distutils.version import LooseVersion
 import inspect
 from itertools import izip
 import logging
@@ -96,6 +97,7 @@ from ._experiment import FileTree
 
 __all__ = ['MneExperiment']
 logger = logging.getLogger('eelbrain.experiment')
+has_mne_09 = LooseVersion(mne.__version__) >= LooseVersion('0.9')
 
 
 def _time_str(t):
@@ -322,7 +324,8 @@ class MneExperiment(FileTree):
                     'A': 'KIT-AD', 'Y': 'KIT-AD', 'AD': 'KIT-AD', 'QP': 'KIT-AD'}
 
     # kwargs for regularization of the covariance matrix (see .make_cov())
-    _covs = {'bestreg': {},
+    _covs = {'auto': {'method': 'auto'},
+             'bestreg': {'reg': 'best'},
              'reg': {'reg': True},
              'noreg': {'reg': None}}
 
@@ -540,7 +543,11 @@ class MneExperiment(FileTree):
                              eval_handler=self._eval_group)
         self._register_field('epoch', self.epochs.keys(),
                              eval_handler=self._eval_epoch)
-        self._register_field('cov', sorted(self._covs.keys()))
+        if 'bestreg' in self._covs:
+            default_cov = 'bestreg'
+        else:
+            default_cov = None
+        self._register_field('cov', sorted(self._covs), default_cov)
         self._register_field('mri', sorted(self._mri_subjects.keys()))
         self._register_value('inv', 'free-3-dSPM',
                              set_handler=self._set_inv_as_str)
@@ -2158,14 +2165,20 @@ class MneExperiment(FileTree):
         rej = self.get('cov-rej')
         params = self._covs[self.get('cov')]
         epoch = params.get('epoch', 'cov')
+        method = params.get('method', 'empirical')
         keep_sample_mean = params.get('keep_sample_mean', True)
-        reg = params.get('reg', 'best')
+        reg = params.get('reg', None)
 
         with self._temporary_state:
             ds = self.load_epochs(None, (None, 0), False, decim=1, epoch=epoch,
                                   rej=rej)
         epochs = ds['epochs']
-        cov = mne.compute_covariance(epochs, keep_sample_mean)
+        if has_mne_09:
+            cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
+        elif method == 'empirical':
+            cov = mne.compute_covariance(epochs, keep_sample_mean)
+        else:
+            raise RuntimeError("Cov with method=%r requires mne >= 0.9" % method)
 
         if reg is True:
             cov = mne.cov.regularize(cov, epochs.info)
