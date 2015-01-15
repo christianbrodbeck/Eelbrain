@@ -2609,10 +2609,10 @@ class MneExperiment(FileTree):
         brain.save_image(dst)
 
     def make_plots_labels(self, surf='inflated', redo=False, **state):
-        mrisubject = self.get('mrisubject', **state)
+        self.set(**state)
+        self.store_state()
         if is_fake_mri(self.get('mri-dir')):
-            mrisubject = self.get('common_brain')
-            self.set(mrisubject=mrisubject, match=False)
+            self.set(mrisubject=self.get('common_brain'), match=False)
 
         labels = self._load_labels().values()
         dsts = [self._make_plot_label_dst(surf, label.name)
@@ -2625,6 +2625,7 @@ class MneExperiment(FileTree):
             brain.add_label(label)
             brain.save_image(dst)
             brain.remove_labels(hemi='lh')
+        self.restore_state()
 
     def _make_plot_label_dst(self, surf, label):
         analysis = 'Source Labels'
