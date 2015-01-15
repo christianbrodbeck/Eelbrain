@@ -576,11 +576,14 @@ class TreeModel(object):
             For fields with stored values, only allow valid values.
         allow_asterisk : bool
             If a value contains '*', set the value without the normal value
-            evakuation and checking mechanism.
+            evaluation and checking mechanism.
         kwargs :
             Fields and values to set. Invalid fields raise a KeyError. Unless
             match == False, Invalid values raise a ValueError.
         """
+        if not state:
+            return
+
         # fields with special set handlers
         for k in state.keys():
             if k in self._set_handlers:
