@@ -1212,7 +1212,7 @@ class FileTree(TreeModel):
             os.rename(src, dst)
         print "Done"
 
-    def rm(self, temp, exclude=False, values={}, v=False, **constants):
+    def rm(self, temp, confirm=False, **constants):
         """
         Remove all files corresponding to a template
 
@@ -1223,25 +1223,14 @@ class FileTree(TreeModel):
         ----------
         temp : str
             Name of the path template for which to find and delete files.
-        exclude : bool | dict
-            Exclude specific field values.
-        values : dict
-            Provide specific values by field.
-        v : bool
-            Verbose mode (print all filename patterns that are searched).
-        others :
-            Set fields.
+        confirm : bool
+            Confirm removal of the selected files. If False (default) the user
+            is prompted for confirmation with a list of files; if True, the
+            files are removed immediately.
+        **others** :
+            Set field values (values can be '*' to match all).
         """
-        files = []
-        for fname in self.iter_temp(temp, exclude, values=values, **constants):
-            fnames = glob(fname)
-            if v:
-                print "%s -> %i" % (fname, len(fnames))
-            if fnames:
-                files.extend(fnames)
-            elif os.path.exists(fname):
-                files.append(fname)
-
+        files = self.glob(temp, **constants)
         if files:
             root = self.get('root')
             print "root: %s\n" % root
@@ -1253,7 +1242,7 @@ class FileTree(TreeModel):
                     print name
             msg = ("Delete %i files or directories (confirm with 'yes')? "
                    % len(files))
-            if raw_input(msg) == 'yes':
+            if confirm or raw_input(msg) == 'yes':
                 print 'deleting...'
                 for path in files:
                     if os.path.isdir(path):
@@ -1264,4 +1253,3 @@ class FileTree(TreeModel):
                 print 'aborting...'
         else:
             print "No files found for %r" % temp
-
