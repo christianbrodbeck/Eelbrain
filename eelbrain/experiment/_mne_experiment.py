@@ -3540,13 +3540,9 @@ class MneExperiment(FileTree):
         """
         self.set(**kwargs)
         raw = self.load_raw()
-        if is_fake_mri(self.get('mri-dir')):
-            source = 'head'
-        else:
-            source = 'bem'
         return mne.viz.plot_trans(raw.info, self.get('trans-file'),
                                   self.get('subject'), self.get('mri-sdir'),
-                                  ch_type, source)
+                                  ch_type, 'head')
 
     def plot_whitened_gfp(self, s_start=None, s_stop=None, run=None):
         """Plot the GFP of the whitened evoked to evaluate the the covariance matrix
