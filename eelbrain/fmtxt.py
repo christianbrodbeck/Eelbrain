@@ -1253,27 +1253,30 @@ class Table(FMTextElement):
 class Image(FMTextElement, StringIO):
     "Represent an image file"
 
-    def __init__(self, filename='image.png', alt=None, buf=''):
+    def __init__(self, target='png', alt=None, buf=''):
         """Represent an image file
 
         Parameters
         ----------
-        filename : str
-            Filename for the image file (should have the appropriate
-            extension). If a document has multiple images with the same name,
-            a unique integer is appended.
+        target : str
+            File format (e.g. 'png', 'svg'), or filename including extension
+            (e.g. 'image.png'). If a name is provided it is used when saving
+            the image for a document with external files.
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
         """
         StringIO.__init__(self, buf)
 
-        name, ext = os.path.splitext(filename)
+        name, ext = os.path.splitext(target)
         if ext:
             ext = ext.strip('.')
+            if not name:
+                name = 'image'
+            filename = os.extsep.join((name, ext))
         else:
-            err = "filename needs to be name with extension (got %r)"
-            raise ValueError(err % filename)
+            ext = name
+            filename = 'image.%s' % ext
 
         self._filename = filename
         self._ext = ext

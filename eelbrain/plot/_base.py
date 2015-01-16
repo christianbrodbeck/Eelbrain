@@ -896,22 +896,22 @@ class _EelFigure(object):
         "(Re-)draw the figure (after making manual changes)."
         self._frame.canvas.draw()
 
-    def image(self, filename="image.svg"):
+    def image(self, target="svg"):
         """Create FMTXT Image from the figure
 
         Parameters
         ----------
-        filename : str
-            Filename (for saving inside an HTML file) including extension.
-            Extension determines the format (e.g. *.svg for vector and *.png
-            for pixel graphics).
+        target : str
+            File format (e.g. 'png', 'svg'), or filename including extension
+            (e.g. 'image.png'). If a name is provided it is used when saving
+            the image for a document with external files.
 
         Returns
         -------
         image : fmtxt.Image
             Image FMTXT object.
         """
-        image = Image(filename)
+        image = Image(target)
         self.figure.savefig(image, format=image._ext)
         return image
 
