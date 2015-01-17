@@ -1,10 +1,18 @@
 """
-Text objects which can be output as str but also as formatted text (currently
-TeX and HTML). Different classes can be used to achieve special formatting:
+Objects for the abstract representation of a document which can be into
+different formats. Currently (incomplete) support for str, TeX and HTML.
 
+Base classes:
+
+:class:`FMTextElement`
+    A string (or object with a str representation) along with formatting
+    information.
 :class:`FMText`
-    Any string of text, along with a formatting property specified as TeX
-    property. FMText objects can be sequenced and nested.
+    An FMTextElement whose contents is a list of FMText objects.
+
+
+Subclasses for specific purposes:
+
 :class:`Table`
     Tables with multicolumn cells.
 :class:`Image`
@@ -17,8 +25,8 @@ TeX and HTML). Different classes can be used to achieve special formatting:
 :class:`Report`
     Document consisting of several sections plus a title.
 
-Whenever an parameter asks for an FMText object, a plain str can also be
-provided and will be converted to an FMText object.
+Whenever an parameter asks for an FMText object, :func:`asfmtxt` handles the
+coercion into an appropriate FMTextElement subclass.
 
 FMText objects provide an interface to formatting through different methods:
 
@@ -312,14 +320,18 @@ def _html_element(tag, body, env, html_options=None):
     return txt
 
 
-def asfmtext(text):
+def asfmtext(content, *args, **kwargs):
     "Convert non-FMText objects to FMText"
-    if isinstance(text, FMTextElement):
-        return text
-    elif np.iterable(text) and not isstr(text):
-        return FMText(text)
+    if args or kwargs:
+        return FMTextElement(asfmtext(content), *args, **kwargs)
+    elif isinstance(content, FMTextElement):
+        return content
+    elif isstr(content):
+        return FMTextElement(content)
+    elif np.iterable(content):
+        return FMText([asfmtext(item) for item in content])
     else:
-        return FMTextElement(text)
+        return FMTextElement(content)
 
 
 class FMTextElement(object):
@@ -454,7 +466,7 @@ class FMText(FMTextElement):
 
         Parameters
         ----------
-        content : str | object | iterable
+        content : list of FMTextElement
             Any item with a string representation (str, FMText, scalar, ...)
             or an object that iterates over such items (e.g. a list of FMText).
         property : str
@@ -479,18 +491,10 @@ class FMText(FMTextElement):
         'paragraph'
             A <p> tag in HTML, and simple line breaks in TeX.
         """
-        # np integers are not instance of int
-        if isinstance(content, np.integer):
-            content = int(content)
-
-        # convert to list of FMText
-        if isinstance(content, FMTextElement):
-            content = [content]
-        elif (np.iterable(content) and not isstr(content)):  # lists
-            content = map(asfmtext, content)
+        if isinstance(content, (list, tuple)):
+            content = [asfmtext(item) for item in content]
         else:
-            content = [FMTextElement(content, None, mat, drop0, fmt)]
-
+            content = [asfmtext(content)]
         FMTextElement.__init__(self, content, property, mat, drop0, fmt)
 
     def append(self, content, *args, **kwargs):
@@ -511,10 +515,7 @@ class FMText(FMTextElement):
         fmt : str
             Format-str for numerical values.
         """
-        if args or kwargs:
-            self._content.append(FMText(content, *args, **kwargs))
-        else:
-            self._content.append(asfmtext(content))
+        self._content.append(asfmtext(content, *args, **kwargs))
 
     def _get_html_core(self, env):
         return ''.join(i.get_html(env) for i in self._content)
@@ -575,10 +576,9 @@ def p(p, digits=3, stars=None, of=3):
     else:
         mat = False
     fmt = '%' + '.%if' % digits
-    text = FMText(p, fmt=fmt, drop0=True, mat=mat)
+    text = FMTextElement(p, fmt=fmt, drop0=True, mat=mat)
     if stars is not None:
-        stars_text = Stars(stars, of=of)
-        text.append(stars_text)
+        text += Stars(stars, of=of)
     return text
 
 
@@ -1597,11 +1597,11 @@ class Report(Section):
             different .add_... methods.
         """
         if author is not None:
-            author = FMText(author, r'\author')
+            author = asfmtext(author, r'\author')
         if date is not None:
             if date is True:
                 date = str(datetime.date.today())
-            date = FMText(date, r'\date')
+            date = asfmtext(date, r'\date')
         self._author = author
         self._date = date
         self._site_title = site_title
