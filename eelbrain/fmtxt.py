@@ -322,16 +322,19 @@ def _html_element(tag, body, env, html_options=None):
 
 def asfmtext(content, *args, **kwargs):
     "Convert non-FMText objects to FMText"
-    if args or kwargs:
-        return FMTextElement(asfmtext(content), *args, **kwargs)
-    elif isinstance(content, FMTextElement):
-        return content
+    if isinstance(content, FMTextElement):
+        if args or kwargs:
+            return FMText([content], *args, **kwargs)
+        else:
+            return content
+    elif hasattr(content, '_asfmtext'):
+        return asfmtext(content._asfmtext(), *args, **kwargs)
     elif isstr(content):
-        return FMTextElement(content)
+        return FMTextElement(content, *args, **kwargs)
     elif np.iterable(content):
-        return FMText([asfmtext(item) for item in content])
+        return FMText([asfmtext(item) for item in content], *args, **kwargs)
     else:
-        return FMTextElement(content)
+        return FMTextElement(content, *args, **kwargs)
 
 
 class FMTextElement(object):
@@ -1491,8 +1494,8 @@ class Section(FMText):
                            (ext_dst, ext_src))
                     raise ValueError(err)
                 image = Image.from_file(from_file, filename, alt)
-        elif not isinstance(image, Image):
-            raise TypeError("Unrecognized image: %s" % repr(image))
+        else:
+            image = asfmtext(image)
 
         figure = Figure(image, caption)
         self.append(figure)

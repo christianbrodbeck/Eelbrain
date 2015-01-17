@@ -4003,6 +4003,9 @@ class Dataset(collections.OrderedDict):
 
         return table
 
+    def _asfmtext(self):
+        return self.as_table()
+
     def export(self, fn=None, fmt='%.10g', header=True, sort=False):
         """This method is deprecated. Use .save(), .save_pickled(),
         .save_txt() or .save_tex() instead.

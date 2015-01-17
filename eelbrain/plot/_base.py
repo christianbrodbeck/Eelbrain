@@ -739,6 +739,7 @@ class _EelFigure(object):
      - add the :py:meth:`_fill_toolbar` method
     """
     _make_axes = True
+    _default_format = 'svg'  # default format when saving for fmtext
 
     def __init__(self, frame_title, nax, axh_default, ax_aspect, tight=True,
                  title=None, frame=True, yaxis=True, *args, **kwargs):
@@ -896,7 +897,10 @@ class _EelFigure(object):
         "(Re-)draw the figure (after making manual changes)."
         self._frame.canvas.draw()
 
-    def image(self, target="svg"):
+    def _asfmtext(self):
+        return self.image()
+
+    def image(self, target=None):
         """Create FMTXT Image from the figure
 
         Parameters
@@ -904,13 +908,15 @@ class _EelFigure(object):
         target : str
             File format (e.g. 'png', 'svg'), or filename including extension
             (e.g. 'image.png'). If a name is provided it is used when saving
-            the image for a document with external files.
+            the image for a document with external files. The default is 'svg'.
 
         Returns
         -------
         image : fmtxt.Image
             Image FMTXT object.
         """
+        if target is None:
+            target = self._default_format
         image = Image(target)
         self.figure.savefig(image, format=image._ext)
         return image
