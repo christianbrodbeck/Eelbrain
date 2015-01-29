@@ -243,8 +243,8 @@ def make_html_doc(body, root, resource_dir=None, title=None):
         Path to the directory containing resources like images, relative to
         root. If None, images are embedded.
     title : None | FMText
-        Document title. Default is title specified by body.get_site_title() or
-        "Untitled".
+        Document title. The default is to try to infer the title from the body
+        or use "Untitled".
 
     Returns
     -------
@@ -252,8 +252,10 @@ def make_html_doc(body, root, resource_dir=None, title=None):
         HTML document.
     """
     if title is None:
-        if hasattr(body, 'get_site_title'):
-            title = html(body.get_site_title())
+        if hasattr(body, '_site_title') and body._site_title is not None:
+            title = html(body._site_title)
+        elif hasattr(body, '_heading'):
+            title = html(body._heading)
         else:
             title = "Untitled"
 
@@ -1576,9 +1578,6 @@ class Section(FMText):
         txt = '\n'.join(content)
         return txt
 
-    def get_site_title(self):
-        return self._heading
-
 
 class Report(Section):
 
@@ -1598,6 +1597,8 @@ class Report(Section):
         content : list of FMText
             Report content. Can also be constructed dynamically through the
             different .add_... methods.
+        site_title : str
+            Set the HTML site title (the default is the same as title).
         """
         if author is not None:
             author = asfmtext(author, r'\author')
@@ -1648,9 +1649,6 @@ class Report(Section):
         content.append(body)
         txt = '\n<br>\n'.join(content)
         return txt
-
-    def get_site_title(self):
-        return self._site_title or self._heading
 
     def get_str(self, env={}):
         content = []
