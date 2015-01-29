@@ -114,18 +114,14 @@ class UTSStat(_EelFigure, LegendMixin):
         if match is not None:
             match = ascategorial(match, sub, ds)
 
-        if pool_error is None:
-            pool_error = match is not None
-
-        if pool_error:
+        if pool_error or (pool_error is None and match is not None):
             all_x = [i for i in (Xax, X) if i is not None]
             if len(all_x) > 0:
                 full_x = reduce(operator.mod, all_x)
                 ct = Celltable(Y, full_x, match)
-                dev_data = stats.variability(ct.Y.x, ct.X, ct.match, error, pool_error)
+                dev_data = stats.variability(ct.Y.x, ct.X, ct.match, error, True)
                 error = 'data'
             else:
-                pool_error = False
                 dev_data = None
         else:
             dev_data = None
