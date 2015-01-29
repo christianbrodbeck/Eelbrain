@@ -2939,6 +2939,60 @@ class NDVar(object):
             info = self.info.copy()
             return NDVar(x, dims, info, name)
 
+    def bin(self, tstep, tstart=None, tstop=None, func=np.mean):
+        """Bin the data along the time axis
+
+        Parameters
+        ----------
+        tstep : scalar
+            Time step between bins.
+        tstart : None | scalar
+            Earliest time point (default is from the beginning).
+        tstop : None | scalar
+            End of the data to use (default is to the end).
+        func : callable
+            Function to summarize data, needs axis argument (default is the
+            mean)
+
+        Returns
+        -------
+        binned_ndvar : NDVar
+            NDVar with data binned along the time axis (i.e., each time point
+            reflects one time bin).
+        """
+        time = self.get_dim('time')
+        time_axis = self.get_axis('time')
+
+        # times
+        if tstart is None:
+            tstart = time.tmin
+        if tstop is None:
+            tstop = time.tmax + time.tstep
+        times = np.arange(tstart, tstop, tstep)
+        if times[-1] < tstop:
+            times = np.append(times, tstop)
+
+        n_bins = len(times) - 1
+        out_shape = list(self.shape)
+        out_shape[time_axis] = n_bins
+        x = np.empty(out_shape)
+        bins = []
+        idx_prefix = (slice(None),) * time_axis
+        for i in xrange(n_bins):
+            t0 = times[i]
+            t1 = times[i + 1]
+            bins.append((t0, t1))
+            src_idx = idx_prefix + (time.dimindex((t0, t1)),)
+            dst_idx = idx_prefix + (i,)
+            x[dst_idx] = func(self.x[src_idx], axis=time_axis)
+
+        out_time = UTS(tstart + tstep / 2, tstep, n_bins)
+        dims = list(self.dims)
+        dims[time_axis] = out_time
+        info = self.info.copy()
+        info['bins'] = bins
+        return NDVar(x, dims, info)
+
     def copy(self, name=True):
         """returns an NDVar with a deep copy of its data
 

@@ -674,7 +674,7 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         FMTXT Image object that can be saved as SVG or integrated into an
         FMTXT document.
     """
-    data = _bin_data(ndvar, tstart, tstop, tstep, summary)
+    data = ndvar.bin(tstep, tstart, tstop, summary)
     ims = []
     vmax = max(abs(data.min()), data.max())
 
@@ -705,36 +705,6 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     im = im_table(ims, header)
 
     return im
-
-
-def _bin_data(ndvar, tstart, tstop, tstep, summary):
-    data = ndvar.get_data(('source', 'time'))
-
-    # times
-    if tstart is None:
-        tstart = ndvar.time.tmin
-    if tstop is None:
-        tstop = ndvar.time.tmax + ndvar.time.tstep
-    times = np.arange(tstart, tstop, tstep)
-    if times[-1] < tstop:
-        times = np.append(times, tstop)
-
-    n_bins = len(times) - 1
-    x = np.empty((len(data), n_bins))
-    bins = []
-    for i in xrange(n_bins):
-        t0 = times[i]
-        t1 = times[i + 1]
-        bins.append((t0, t1))
-        idx = ndvar.time.dimindex((t0, t1))
-        x[:, i] = summary(data[:, idx], axis=1)
-
-    time = UTS(tstart + tstep / 2, tstep, n_bins)
-    dims = (ndvar.source, time)
-    info = ndvar.info.copy()
-    info['bins'] = bins
-    out = NDVar(x, dims, info, ndvar.name)
-    return out
 
 
 def connectivity(source):

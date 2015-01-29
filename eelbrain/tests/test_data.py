@@ -12,7 +12,7 @@ from nose.tools import (assert_equal, assert_almost_equal, assert_is_instance,
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
-from eelbrain import (datasets, load, Var, Factor, Dataset, Celltable,
+from eelbrain import (datasets, load, Var, Factor, NDVar, Dataset, Celltable,
                       align, align1, combine)
 from eelbrain._data_obj import (asvar, isdatalist, isndvar, isvar, isuv,
                                 Categorial, SourceSpace, UTS)
@@ -519,6 +519,26 @@ def test_ndvar():
     idx = sens_mean > 0
     pos = sens_mean[idx]
     assert_array_equal(pos.x > 0, True)
+
+
+def test_ndvar_binning():
+    "Test NDVar.bin()"
+    x = np.arange(10)
+    time = UTS(-0.1, 0.1, 10)
+    x_dst = x.reshape((5, 2)).mean(1)
+    time_dst = np.arange(0., 0.9, 0.2)
+
+    # 1-d
+    ndvar = NDVar(x, (time,))
+    b = ndvar.bin(0.2)
+    assert_array_equal(b.x, x_dst, "Binned data")
+    assert_array_equal(b.time.x, time_dst, "Bin times")
+
+    # 2-d
+    ndvar = NDVar(np.vstack((x, x, x)), ('case', time))
+    b = ndvar.bin(0.2)
+    assert_array_equal(b.x, np.vstack((x_dst, x_dst, x_dst)), "Binned data")
+    assert_array_equal(b.time.x, time_dst, "Bin times")
 
 
 def test_ndvar_summary_methods():
