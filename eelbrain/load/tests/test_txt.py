@@ -36,7 +36,7 @@ def test_tsv_io():
         # guess data types with missing
         intvar2 = ds['intvar'].as_factor()
         intvar2[10:] = ''
-        ds_intvar = Dataset(intvar2)
+        ds_intvar = Dataset((intvar2,))
         ds_intvar.save_txt(dst)
         ds_intvar1 = load.tsv(dst, empty='nan')
         assert_dataobj_equal(ds_intvar1['intvar', :10], ds['intvar', :10])

@@ -159,12 +159,12 @@ As a dictionary, its keys are strings and its values are data-objects.
 The :class:`Dataset` class interacts with data-objects' :attr:`.name`
 attribute:
 
-* A :class:`Dataset` initialized with data-objects automatically uses their
-  names as keys::
+* A :class:`Dataset` initialized with a list of data-objects automatically uses
+  their names as keys::
 
         >>> A = Factor('aabb', name='A')
         >>> B = Factor('cdcd', name='B')
-        >>> ds = Dataset(A, B)
+        >>> ds = Dataset((A, B))
         >>> print ds
         A   B
         -----
@@ -287,7 +287,7 @@ Below is a simple example using data objects (for more, see the
     >>> A
     Factor(['a', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'b', 'b',
     'b', 'c', 'c', 'c', 'c', 'c', 'c', 'c'], name='A')
-    >>> print Dataset(Y, A)
+    >>> print Dataset((Y, A))
     Y           A
     -------------
     -0.41676    a

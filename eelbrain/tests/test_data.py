@@ -263,8 +263,8 @@ def test_combine():
     y = ds['utsnd']
     y1 = y.sub(sensor=['0', '1', '2', '3'])
     y2 = y.sub(sensor=['1', '2', '3', '4'])
-    ds1 = Dataset(y1)
-    ds2 = Dataset(y2)
+    ds1 = Dataset((y1,))
+    ds2 = Dataset((y2,))
     dsc = combine((ds1, ds2))
     y = dsc['utsnd']
     assert_equal(y.sensor.names, ['1', '2', '3'], "Sensor dimension "

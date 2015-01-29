@@ -3629,7 +3629,7 @@ class Dataset(collections.OrderedDict):
     to be named when added to a Dataset. This can be done by a) adding a
     name when initializing the Dataset::
 
-        >>> ds = Dataset(('v1', var1), ('v2', var2))
+        >>> ds = Dataset((('v1', var1), ('v2', var2)))
 
     or b) by adding the Var or Factor with a key::
 
@@ -3640,27 +3640,70 @@ class Dataset(collections.OrderedDict):
 
     """
     _stype_ = "dataset"
-    def __init__(self, *items, **kwargs):
-        """Store multiple variables covering to the same observations
 
-        Datasets can be initialize with data-objects, or with
-        ('name', data-object) tuples.::
+    @staticmethod
+    def _args(items=(), name=None, caption=None, info={}, n_cases=None):
+        return items, name, caption, info, n_cases
 
-            >>> ds = Dataset(var1, var2)
-            >>> ds = Dataset(('v1', var1), ('v2', var2))
-
-        The Dataset stores the input items themselves, without making a copy().
-
+    def __init__(self, *args, **kwargs):
+        """
+        A Dataset stores multiple variables covering to the same observations
 
         Parameters
         ----------
+        items : iterator
+            Items contained in the Dataset. Items can be either named
+            data-objects or ``(name, data_object)`` tuples. The Dataset stores
+            the input items themselves, without making a copy().
         name : str
-            name describing the Dataset
+            Name for the Dataset.
+        caption : str
+            Caption for the table.
         info : dict
-            info dictionary, can contain arbitrary entries and can be accessad
-            as ``.info`` attribute after initialization.
+            Info dictionary, can contain arbitrary entries and can be accessed
+            as ``.info`` attribute after initialization. The Dataset makes a
+            shallow copy.
+        n_cases : int
+            Specify the number of cases in the Dataset if no items are added
+            upon initialization (by default the number is inferred when the
+            fist item is added).
 
+        Examples
+        --------
+        Datasets can be initialize with data-objects, or with
+        ('name', data-object) tuples.::
+
+        >>> ds = Dataset((var1, var2))
+        >>> ds = Dataset((('v1', var1), ('v2', var2)))
+
+        Alternatively, variables can be added after initialization::
+
+        >>> ds = Dataset(n_cases=3)
+        >>> ds['var', :] = 0
+        >>> ds['factor', :] = 'a'
+        >>> print ds
+        var    factor
+        -------------
+        0      a
+        0      a
+        0      a
         """
+        # backwards compatibility
+        if args:
+            fmt_1 = isdataobject(args[0])
+            fmt_2 = isinstance(args[0], tuple) and isinstance(args[0][0], str)
+            if fmt_1:
+                warn("Initializing Datasets with multiple data-objects is "
+                     "deprecated. Provide a list of data-objects instead.",
+                     DeprecationWarning)
+            if fmt_1 or fmt_2:
+                items, name, caption, info, n_cases = self._args(args, **kwargs)
+            else:
+                items, name, caption, info, n_cases = self._args(*args, **kwargs)
+        else:
+            items, name, caption, info, n_cases = self._args(**kwargs)
+
+        # collect initial items
         args = []
         for item in items:
             if isdataobject(item):
@@ -3677,20 +3720,26 @@ class Dataset(collections.OrderedDict):
                     v.name = name
                 args.append(item)
 
-        self.n_cases = None
-        super(Dataset, self).__init__(args)
-        self.__setstate__(kwargs)
+        if n_cases is not None:
+            assert isinstance(n_cases, int)
 
-    def __setstate__(self, kwargs):
-        self.name = kwargs.get('name', None)
-        self.info = kwargs.get('info', {})
-        self._caption = kwargs.get('caption', None)
+        self.n_cases = n_cases
+        super(Dataset, self).__init__(args)
+
+        # set state
+        self.name = name
+        self.info = info.copy()
+        self._caption = caption
+
+    def __setstate__(self, state):
+        # for backwards compatibility
+        self.name = state['name']
+        self.info = state['info']
+        self._caption = state.get('caption', None)
 
     def __reduce__(self):
-        args = tuple(self.items())
-        kwargs = {'name': self.name, 'info': self.info,
-                  'caption': self._caption}
-        return self.__class__, args, kwargs
+        return self.__class__, (self.items(), self.name, self._caption,
+                                self.info, self.n_cases)
 
     def __getitem__(self, index):
         """
@@ -3715,7 +3764,7 @@ class Dataset(collections.OrderedDict):
             raise KeyError("Invalid index for Dataset: %r" % index)
 
         if all(isinstance(item, basestring) for item in index):
-            return Dataset(*(self[item] for item in index))
+            return Dataset(((item, self[item]) for item in index))
 
         if isinstance(index, tuple):
             if len(index) != 2:
@@ -3736,7 +3785,7 @@ class Dataset(collections.OrderedDict):
                 if isinstance(keys, basestring):
                     return self[i1][i0]
 
-            subds = Dataset(*((k, self[k][i0]) for k in keys))
+            subds = Dataset(((k, self[k][i0]) for k in keys))
             return subds
 
         return self.sub(index)
@@ -4131,7 +4180,7 @@ class Dataset(collections.OrderedDict):
         df = ro.r[name]
         if not isinstance(df, ro.DataFrame):
             raise ValueError("R object %r is not a DataFrame")
-        ds = Dataset(name=name)
+        ds = cls(name=name)
         for item_name, item in df.items():
             if isinstance(item, ro.FactorVector):
                 x = np.array(item)
@@ -4256,9 +4305,8 @@ class Dataset(collections.OrderedDict):
         "ds.copy() returns an shallow copy of ds"
         if name is True:
             name = self.name
-        ds = Dataset(name=name, info=self.info.copy())
-        ds.update(self)
-        return ds
+        return Dataset(self.items(), name, self._caption, self.info,
+                       self.n_cases)
 
     def equalize_counts(self, X):
         """Create a copy of the Dataset with equal counts in each cell of X
@@ -4360,10 +4408,11 @@ class Dataset(collections.OrderedDict):
         name : str
             Name for the new Dataset.
         """
-        ds = Dataset(name=name.format(name=self.name))
-        for k, v in self.iteritems():
-            ds[k] = v.repeat(n)
-        return ds
+        if self.n_cases is None:
+            raise RuntimeError("Can't repeat Dataset with unspecified n_cases")
+        return Dataset(((k, v.repeat(n)) for k, v in self.iteritems()),
+                       name.format(name=self.name), self._caption, self.info,
+                       self.n_cases * n)
 
     @property
     def shape(self):
@@ -4581,17 +4630,11 @@ class Dataset(collections.OrderedDict):
         elif isinstance(index, str):
             index = self.eval(index)
 
-        name = name.format(name=self.name)
-        info = self.info.copy()
-
         if isvar(index):
             index = index.x
 
-        ds = Dataset(name=name, info=info)
-        for k, v in self.iteritems():
-            ds[k] = v[index]
-
-        return ds
+        return Dataset(((k, v[index]) for k, v in self.iteritems()),
+                       name.format(name=self.name), self._caption, self.info)
 
     def subset(self, index, name='{name}'):
         "Deprecated: use .sub() method with identical functionality."

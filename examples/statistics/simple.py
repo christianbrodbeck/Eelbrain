@@ -10,7 +10,7 @@ y[14:] = np.random.normal(1.5, 1, 7)
 Y = Var(y, 'Y')
 A = Factor('abc', 'A', repeat=7)
 
-print Dataset(Y, A)
+print Dataset((Y, A))
 print table.frequencies(A)
 print test.anova(Y, A)
 print test.pairwise(Y, A, corr='Hochberg')

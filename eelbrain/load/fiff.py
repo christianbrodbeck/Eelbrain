@@ -260,7 +260,7 @@ def events(raw=None, merge=-1, proj=False, name=None, bads=None,
     i_start = Var(evts[:, 0], name='i_start')
     trigger = Var(evts[:, 2], name='trigger')
     info = {'raw': raw}
-    return Dataset(trigger, i_start, name=name, info=info)
+    return Dataset((trigger, i_start), name, info=info)
 
 
 def _guess_ndvar_data_type(info):

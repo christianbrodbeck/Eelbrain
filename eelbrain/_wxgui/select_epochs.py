@@ -262,7 +262,7 @@ class Document(object):
 
         # create Dataset to save
         info = {'bad_chs': self.get_bad_chs()}
-        ds = Dataset(self.trigger, self.accept, self.tag, info=info)
+        ds = Dataset((self.trigger, self.accept, self.tag), info=info)
 
         if ext == '.pickled':
             save.pickle(ds, self.path)

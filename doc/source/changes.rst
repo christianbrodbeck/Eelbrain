@@ -6,6 +6,8 @@ Changes
 New in 0.12
 -----------
 
+* API: :class:`Dataset` construction changed, allows setting the number of
+  cases in the Dataset.
 * API:  :class:`plot.SensorMap2d` was renamed to :class:`plot.SensorMap`.
 * :class:`~experiment.MneExperiment`:
 
