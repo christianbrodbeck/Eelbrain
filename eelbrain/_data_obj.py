@@ -2173,9 +2173,12 @@ class Factor(_Effect):
             if np.sum(idx):
                 x_i = np.unique(self.x[idx])
                 if len(x_i) > 1:
-                    err = ("ambiguous cell: Factor %r has multiple values for "
-                           "cell %r. Set drop_bad=True in order to ignore "
-                           "this inconsistency." % (self.name, cell))
+                    labels = tuple(self._labels[code] for code in x_i)
+                    err = ("Can not determine aggregated value for Factor %r "
+                           "in cell %r because the cell contains multiple "
+                           "values %r. Set drop_bad=True in order to ignore "
+                           "this inconsistency and drop the Factor."
+                           % (self.name, cell, labels))
                     raise ValueError(err)
                 else:
                     x.append(x_i[0])
