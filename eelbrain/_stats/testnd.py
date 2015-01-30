@@ -99,6 +99,9 @@ class _Result(object):
             self.tfce_map = cdist.tfce_map
             self.p = cdist.probability_map
 
+    def _iter_cdists(self):
+        yield (None, self._cdist)
+
     def masked_parameter_map(self, pmin=0.05, **sub):
         """Create a copy of the parameter map masked by significance
 
@@ -1025,6 +1028,10 @@ class _MultiEffectResult(_Result):
         if cdists is not None:
             self.tfce_maps = [cdist.tfce_map for cdist in cdists]
             self.probability_maps = [cdist.probability_map for cdist in cdists]
+
+    def _iter_cdists(self):
+        for cdist in self._cdist:
+            yield cdist.name.capitalize(), cdist
 
     def compute_probability_map(self, effect=0, **sub):
         """Compute a probability map

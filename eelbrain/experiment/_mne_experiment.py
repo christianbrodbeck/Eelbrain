@@ -89,7 +89,6 @@ from .._mne import source_induced_power, dissolve_label, rename_label
 from ..mne_fixes import write_labels_to_annot
 from .._data_obj import isdatalist, UTS, DimensionMismatchError
 from ..fmtxt import List, Report, FMText
-from .._stats.testnd import _MultiEffectResult
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from ._experiment import FileTree
@@ -3118,12 +3117,7 @@ class MneExperiment(FileTree):
                    "relevant time bin. Only the general minimum duration and "
                    "source number criterion are applied.")
 
-        if isinstance(res, _MultiEffectResult):
-            cdists = [(cdist, cdist.name.capitalize()) for cdist in res._cdist]
-        else:
-            cdists = [(res._cdist, None)]
-
-        for cdist, effect in cdists:
+        for effect, cdist in res._iter_cdists():
             ndvar = cdist.masked_parameter_map(pmin)
             if not ndvar.any():
                 if effect:
