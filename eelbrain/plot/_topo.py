@@ -112,6 +112,36 @@ class Topomap(_tb_sensors_mixin, _EelFigure):
         self.draw()
 
 
+class TopomapBins(_EelFigure):
+
+    def __init__(self, epochs, Xax=None, bin_length=0.05, tstart=None,
+                 tstop=None, ds=None, vmax=None, vmin=None, *args, **kwargs):
+        epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
+        epochs = [[l.bin(bin_length, tstart, tstop) for l in layers]
+                  for layers in epochs]
+
+        # create figure
+        time = epochs[0][0].get_dim('time')
+        n_bins = len(time)
+        n_rows = len(epochs)
+        _EelFigure.__init__(self, "TopomapBins Plot", n_bins * n_rows, 1.5, 1,
+                            False, *args, nrow=n_rows, ncol=n_bins, **kwargs)
+
+        vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
+
+        for row, layers in enumerate(epochs):
+            for column, t in enumerate(time.x):
+                if row == 0:
+                    title = str(t)
+                else:
+                    title = None
+                ax = self._axes[row * n_bins + column]
+                topo_layers = [l.sub(time=t) for l in layers]
+                _ax_topomap(ax, topo_layers, title, vlims=vlims)
+
+        self._show()
+
+
 class TopoButterfly(_EelFigure):
     """
     Butterfly plot with corresponding topomaps.
