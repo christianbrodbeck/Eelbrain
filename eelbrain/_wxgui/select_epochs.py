@@ -112,7 +112,7 @@ class Document(object):
         if isinstance(blink, basestring):
             if ds is not None:
                 blink = ds.get(blink, None)
-        elif blink == True:
+        elif blink is True:
             if 'edf' in ds.info:
                 tmin = data.time.tmin
                 tmax = data.time.tmax
