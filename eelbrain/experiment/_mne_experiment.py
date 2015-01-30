@@ -88,7 +88,7 @@ from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
 from .._mne import source_induced_power, dissolve_label, rename_label
 from ..mne_fixes import write_labels_to_annot
-from .._data_obj import isdatalist, align, UTS, DimensionMismatchError
+from .._data_obj import cellname, align, UTS, DimensionMismatchError
 from ..fmtxt import List, Report, FMText
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
@@ -3154,6 +3154,96 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne', 'surfer'))
         report.save_html(dst)
 
+    def make_report_eeg(self, test, pmin=None, tstart=0.15, tstop=None,
+                        samples=10000, baseline=(None, 0), include=1,
+                        redo=False, redo_test=False, **state):
+        """Create an HTML report on EEG sensor space spatio-temporal clusters
+
+        Parameters
+        ----------
+        test : str
+            Test for which to create a report (entry in MneExperiment.tests).
+        pmin : None | scalar, 1 > pmin > 0 | 'tfce'
+            Equivalent p-value for cluster threshold, or 'tfce' for
+            threshold-free cluster enhancement.
+        tstart : None | scalar
+            Beginning of the time window for finding clusters.
+        tstop : None | scalar
+            End of the time window for finding clusters.
+        samples : int > 0
+            Number of samples used to determine cluster p values for spatio-
+            temporal clusters (default 1000).
+        baseline : None | tuple
+            Interval for baseline correction (default ``(None, 0)``).
+        include : 0 < scalar <= 1
+            Create plots for all clusters with p-values smaller or equal this
+            value (the default is 1, i.e. to show all clusters).
+        redo : bool
+            If the target file already exists, delete and recreate it. This
+            only applies to the HTML result file, not to the test.
+        redo_test : bool
+            Redo the test even if a cached file exists.
+        """
+        self._set_test_options('sns', baseline, None, pmin, tstart, tstop)
+        dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
+                       folder="EEG Spatio-Temporal",
+                       resname="{epoch} {test} {test_options}",
+                       ext='html', test=test, modality='eeg', **state)
+        if not redo and not redo_test and os.path.exists(dst):
+            return
+
+        # load data
+        ds, res = self.load_test(None, tstart, tstop, pmin, None, None, samples,
+                                 'sns', baseline, None, True, True, redo_test)
+
+        # start report
+        title = self.format('{experiment} {epoch} {test} {test_options}')
+        report = Report(title)
+
+        # info
+        info_section = report.add_section("Test Info")
+        self._report_test_info(info_section, ds, test,
+                               tstart, tstop, pmin, samples, res, 'sns',
+                               include)
+
+        # add connectivity image
+        p = plot.SensorMap(ds['eeg'], show=False)
+        p.show_connectivity()
+        info_section.add_figure("Sensor map with connectivity", p)
+        p.close()
+
+        y = ds['eeg']
+        model = self._tests[test]['model']
+        colors = plot.colors_for_categorial(ds.eval(model))
+        legend = None
+        if pmin in (None, 'tfce'):
+            section = report.add_section("P<=.05")
+            self._sensor_bin_table(section, res, 0.05)
+            clusters = res.find_clusters(0.05, maps=True)
+            clusters.sort('tstart')
+            for cluster in clusters.itercases():
+                legend = self._sensor_time_cluster(section, cluster, y, model,
+                                                   ds, colors, legend)
+
+            # trend section
+            section = report.add_section("Trend: p<=.1")
+            self._sensor_bin_table(section, res, 0.1)
+
+            # not quite there section
+            section = report.add_section("Anything: P<=.2")
+            self._sensor_bin_table(section, res, 0.2)
+        else:
+            section = report.add_section("Clusters")
+            self._sensor_bin_table(section, res)
+            clusters = res.find_clusters(include, maps=True)
+            clusters.sort('tstart')
+            for cluster in clusters.itercases():
+                legend = self._sensor_time_cluster(section, cluster, y, model,
+                                                   ds, colors, legend)
+
+        report.sign(('eelbrain', 'mne'))
+        report.save_html(dst)
+
     def _report_state(self):
         t = self.show_state(hide=['annot', 'epoch-bare',
                                   'epoch-stim', 'ext', 'hemi', 'label',
@@ -3220,6 +3310,70 @@ class MneExperiment(FileTree):
         self.restore_state()
         image = plot.brain.image(brain, 'parc.png')
         section.add_image_figure(image, caption)
+
+    def _sensor_bin_table(self, section, res, pmin=None):
+        if pmin is None:
+            caption = "All clusters"
+        else:
+            caption = "p <= %.s" % pmin
+
+        for effect, cdist in res._iter_cdists():
+            ndvar = cdist.masked_parameter_map(pmin)
+            if not ndvar.any():
+                if effect:
+                    text = '%s: nothing\n' % effect
+                else:
+                    text = 'Nothing\n'
+                section.add_paragraph(text)
+                continue
+            elif effect:
+                caption_ = "%s: %s" % (effect, caption)
+            else:
+                caption_ = caption
+            p = plot.TopomapBins(ndvar, show=False)
+            section.add_image_figure(p, caption_)
+
+    @staticmethod
+    def _sensor_time_cluster(section, cluster, y, model, ds, colors, legend):
+        # cluster properties
+        tstart_ms = ms(cluster['tstart'])
+        tstop_ms = ms(cluster['tstop'])
+
+        # section/title
+        title = ("{tstart}-{tstop} p={p}{mark} {effect}"
+                 .format(tstart=tstart_ms, tstop=tstop_ms,
+                         p='%.3f' % cluster['p'],
+                         effect=cluster.get('effect', ''),
+                         location=cluster.get('location', ''),
+                         mark=cluster['sig']).strip())
+        while '  ' in title:
+            title = title.replace('  ', ' ')
+        section = section.add_section(title)
+
+        # description
+        paragraph = section.add_paragraph("Id %i" % cluster['id'])
+        if 'v' in cluster:
+            paragraph.append(", v=%s" % cluster['v'])
+
+        # add cluster image to report
+        topo = y.summary(time=(cluster['tstart'], cluster['tstop']))
+        cluster_topo = cluster['cluster'].any('time')
+        cluster_topo.info['contours'] = {0.5: (1, 1, 0)}
+        x = ds.eval(model)
+        topos = [[topo[x == cell].summary('case', name=cellname(cell)),
+                  cluster_topo] for cell in x.cells]
+        p = plot.Topomap(topos, axh=3, nrow=1, show=False)
+
+        caption_ = ["Cluster"]
+        if 'effect' in cluster:
+            caption_.extend(('effect of', cluster['effect']))
+        caption_.append("%i - %i ms." % (tstart_ms, tstop_ms))
+        caption = ' '.join(caption_)
+        section.add_image_figure(p, caption)
+        p.close()
+
+        return MneExperiment._cluster_timecourse(section, cluster, y, 'sensor',
+                                                 model, ds, colors, legend)
 
     def _source_bin_table(self, section, res, pmin=None):
         caption = ("All clusters in time bins. Each plot shows all sources "
@@ -3964,6 +4118,8 @@ class MneExperiment(FileTree):
         data : 'sns' | 'src'
             Whether the analysis is in sensor or source space.
         ...
+        src_baseline :
+            Should be None if data=='sns'.
         """
         # data kind (sensor or source space)
         if data == 'sns':
