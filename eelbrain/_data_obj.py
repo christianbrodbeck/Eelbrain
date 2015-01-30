@@ -2939,7 +2939,7 @@ class NDVar(object):
             info = self.info.copy()
             return NDVar(x, dims, info, name)
 
-    def bin(self, tstep, tstart=None, tstop=None, func=np.mean):
+    def bin(self, tstep, tstart=None, tstop=None, func=None):
         """Bin the data along the time axis
 
         Parameters
@@ -2962,6 +2962,18 @@ class NDVar(object):
         """
         time = self.get_dim('time')
         time_axis = self.get_axis('time')
+
+        # summary-func
+        if func is None:
+            meas = self.info.get('meas', '').lower()
+            if meas == 'p':
+                func = np.min
+            elif meas == 'f':
+                func = np.max
+            elif meas in ('t', 'r'):
+                func = extrema
+            else:
+                func = np.mean
 
         # times
         if tstart is None:
@@ -3533,6 +3545,13 @@ class NDVar(object):
             all data.
         """
         return self._aggregate_over_dims(dims, np.sum)
+
+
+def extrema(x, axis=0):
+    "Extract the extreme values in x"
+    max = np.max(x, axis)
+    min = np.min(x, axis)
+    return np.where(np.abs(max) > np.abs(min), max, min)
 
 
 class Datalist(list):
