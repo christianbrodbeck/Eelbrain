@@ -107,9 +107,15 @@ def _time_str(t):
     else:
         return '%i' % round(t * 1000)
 
+
 def _time_window_str(window, delim='-'):
     "String for representing a time window"
     return delim.join(map(_time_str, window))
+
+
+def ms(t_s):
+    "Convert time in seconds to rounded milliseconds"
+    return int(round(t_s * 1000))
 
 
 class PickleCache(dict):
@@ -2911,8 +2917,10 @@ class MneExperiment(FileTree):
         pmin : None | scalar, 1 > pmin > 0 | 'tfce'
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
-        tstart, tstop : None | scalar
-            Time window for finding clusters.
+        tstart : None | scalar
+            Beginning of the time window for finding clusters.
+        tstop : None | scalar
+            End of the time window for finding clusters.
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
@@ -2965,7 +2973,7 @@ class MneExperiment(FileTree):
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
-        report = Report(title, site_title=title)
+        report = Report(title)
 
         # info
         self._report_test_info(report.add_section("Test Info"), ds, test,
@@ -3069,8 +3077,10 @@ class MneExperiment(FileTree):
         pmin : None | scalar, 1 > pmin > 0 | 'tfce'
             Equivalent p-value for cluster threshold, or 'tfce' for
             threshold-free cluster enhancement.
-        tstart, tstop : None | scalar
-            Time window for finding clusters.
+        tstart : None | scalar
+            Beginning of the time window for finding clusters.
+        tstop : None | scalar
+            End of the time window for finding clusters.
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
@@ -3084,13 +3094,12 @@ class MneExperiment(FileTree):
         parc = self.get('parc', parc=parc)
         if not parc:
             raise ValueError("No parcellation specified")
-        folder = "%s ROIs" % parc.capitalize()
         self._set_test_options('src', sns_baseline, src_baseline, pmin, tstart,
                                tstop)
-        resname = "{epoch} {test} {test_options}"
         dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
-                       folder=folder, resname=resname, ext='html', test=test,
-                       **state)
+                       folder="%s ROIs" % parc.capitalize(),
+                       resname="{epoch} {test} {test_options}",
+                       ext='html', test=test, **state)
         if not redo and os.path.exists(dst):
             return
 
@@ -3100,7 +3109,7 @@ class MneExperiment(FileTree):
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
-        report = Report(title, site_title=title)
+        report = Report(title)
 
         # method intro
         self._report_test_info(report.add_section("Test Info"), ds, test,
@@ -3268,19 +3277,16 @@ class MneExperiment(FileTree):
 
         return legend
 
-    def _source_time_cluster(self, section, cluster, y, model, ds, title,
-                             colors, legend):
-        # extract cluster
-        c_tstart = cluster['tstart']
-        c_tstop = cluster['tstop']
-        c_extent = cluster['cluster']
-        c_spatial = c_extent.sum('time')
+    @staticmethod
+    def _source_time_cluster(section, cluster, y, model, ds, title, colors,
+                             legend):
+        # cluster properties
+        tstart_ms = ms(cluster['tstart'])
+        tstop_ms = ms(cluster['tstop'])
 
         # section/title
-        tstart = int(round(c_tstart * 1000))
-        tstop = int(round(c_tstop * 1000))
         if title is not None:
-            title_ = title.format(tstart=tstart, tstop=tstop,
+            title_ = title.format(tstart=tstart_ms, tstop=tstop_ms,
                                   p='%.3f' % cluster['p'],
                                   effect=cluster.get('effect', ''),
                                   location=cluster.get('location', ''),
@@ -3299,24 +3305,34 @@ class MneExperiment(FileTree):
             txt.append('.')
 
         # add cluster image to report
-        brain = plot.brain.cluster(c_spatial, surf='inflated')
+        brain = plot.brain.cluster(cluster['cluster'].sum('time'),
+                                   surf='inflated')
         image = plot.brain.image(brain, 'cluster_spatial.png', close=True)
         caption_ = ["Cluster"]
         if 'effect' in cluster:
             caption_.extend(('effect of', cluster['effect']))
-        caption_.append("%i - %i ms." % (tstart, tstop))
+        caption_.append("%i - %i ms." % (tstart_ms, tstop_ms))
         caption = ' '.join(caption_)
         section.add_image_figure(image, caption)
 
+        return MneExperiment._cluster_timecourse(section, cluster, y, 'source',
+                                                 model, ds, colors, legend)
+
+    @staticmethod
+    def _cluster_timecourse(section, cluster, y, dim, model, ds, colors,
+                            legend=None):
+        c_extent = cluster['cluster']
+
         # cluster time course
         idx = c_extent.any('time')
-        tc = y[idx].mean('source')
+        tc = y[idx].mean(dim)
         caption = "Cluster average time course"
         p = plot.UTSStat(tc, model, match='subject', ds=ds, legend=None, w=7,
                          colors=colors, show=False)
         # mark original cluster
         for ax in p._axes:
-            ax.axvspan(c_tstart, c_tstop, color='r', alpha=0.2, zorder=-2)
+            ax.axvspan(cluster['tstart'], cluster['tstop'], color='r',
+                       alpha=0.2, zorder=-2)
         # legend
         if legend is None:
             legend_p = p.plot_legend(show=False)
