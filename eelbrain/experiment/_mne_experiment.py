@@ -299,7 +299,7 @@ class MneExperiment(FileTree):
     exclude = {}  # field_values to exclude (e.g. subjects)
 
     # groups can be defined as subject lists: {'group': ('member1', 'member2', ...)}
-    # or by exclusion: {'group': {'exclude': ('member1', 'member2')}}
+    # or by exclusion: {'group': {'base': 'all', 'exclude': ('member1', 'member2')}}
     groups = {}
 
     # whether to look for and load eye tracker data when loading raw files
@@ -1030,13 +1030,9 @@ class MneExperiment(FileTree):
         elif group == 'all!':
             return self.get_field_values('subject', False)
 
-        all_subjects = self.get_field_values('subject')
         group_def = self.groups[group]
         if isinstance(group_def, dict):
-            if group_def.keys() != ['exclude']:
-                msg = "group has invalid keys %s=%r" % (group, group_def)
-                raise ValueError(msg)
-            # find exclusion
+            base = self._get_group_members(group_def.get('base', 'all'))
             exclude = group_def['exclude']
             if isinstance(exclude, basestring):
                 exclude = (exclude,)
@@ -1044,10 +1040,9 @@ class MneExperiment(FileTree):
                 msg = ("exclusion must be defined as str | tuple | list | set; got "
                        "%s" % repr(exclude))
                 raise TypeError(msg)
-
-            return [s for s in all_subjects if s not in exclude]
+            return [s for s in base if s not in exclude]
         elif isinstance(group_def, (list, tuple)):
-            return [s for s in all_subjects if s in group_def]
+            return [s for s in self._get_group_members('all') if s in group_def]
         else:
             raise TypeError("group %s=%r" % (group, group_def))
 
