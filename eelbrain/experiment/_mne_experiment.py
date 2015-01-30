@@ -3322,50 +3322,49 @@ class MneExperiment(FileTree):
     def _cluster_timecourse(section, cluster, y, dim, model, ds, colors,
                             legend=None):
         c_extent = cluster['cluster']
+        cid = cluster['id']
 
         # cluster time course
         idx = c_extent.any('time')
         tc = y[idx].mean(dim)
-        caption = "Cluster average time course"
-        p = plot.UTSStat(tc, model, match='subject', ds=ds, legend=None, w=7,
+        p = plot.UTSStat(tc, model, match='subject', ds=ds, legend=None, h=4,
                          colors=colors, show=False)
         # mark original cluster
         for ax in p._axes:
             ax.axvspan(cluster['tstart'], cluster['tstop'], color='r',
                        alpha=0.2, zorder=-2)
+        image_tc = p.image('cluster_%i_timecourse.svg' % cid)
+
         # legend
         if legend is None:
             legend_p = p.plot_legend(show=False)
             legend = legend_p.image("Legend.svg")
-        image = p.image('cluster_time_course.svg')
+            legend_p.close()
         p.close()
-        # add to report
-        figure = section.add_figure(caption)
-        figure.append(image)
-        figure.append(legend)
 
-        # cluster value
+        # Barplot
         idx = (c_extent != 0)
         v = y.mean(idx)
-        # Barplot
         p = plot.Barplot(v, model, 'subject', ds=ds, corr=None, colors=colors,
-                         show=False)
-        image_bar = p.image('cluster_barplot.svg')
+                         h=4, show=False)
+        image_bar = p.image('cluster_%i_barplot.png' % cid)
         p.close()
+
         # Boxplot
         p = plot.Boxplot(v, model, 'subject', ds=ds, corr=None, colors=colors,
-                         show=False)
-        image_box = p.image('cluster_boxplot.png')
+                         h=4, show=False)
+        image_box = p.image('cluster_%i_boxplot.png' % cid)
         p.close()
-        # add figure to report
-        caption = "Average value in cluster by condition, with pairwise t-tests."
-        figure = section.add_figure(caption)
-        figure.append(image_bar)
-        figure.append(image_box)
+
+        # compose figure
+        section.add_figure("Time course in cluster area, and average value in "
+                           "cluster by condition, with pairwise t-tests.",
+                           [image_tc, image_bar, image_box, legend])
+
         # pairwise test table
         res = _test.pairwise(v, model, 'subject', ds=ds)
-        figure = section.add_figure(caption)
-        figure.append(res)
+        section.add_figure("Pairwise t-tests of average value in cluster by "
+                           "condition", res)
 
         return legend
 
