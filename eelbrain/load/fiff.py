@@ -109,7 +109,7 @@ from mne.io import Raw as _mne_Raw
 from mne.io import read_raw_kit as _mne_read_raw_kit
 
 from .. import _colorspaces as _cs
-from .._utils import ui
+from .._utils import ui, logger
 from .._data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS
 
 
@@ -560,6 +560,10 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
     # epochs with (event_id == None) does not use columns 1 and 2 of events
     events[:, 1] = np.arange(len(events))
     epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, **kwargs)
+    if kwargs.get('reject', None) is None and len(epochs) != len(events):
+        logger.warn("%s: MNE generated fewer Epochs than there are events. "
+                    "The raw file might end before the end of the last epoch."
+                    % raw.info['filename'])
     return epochs
 
 
