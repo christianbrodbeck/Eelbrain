@@ -118,6 +118,14 @@ def ms(t_s):
     return int(round(t_s * 1000))
 
 
+def re_reference(ndvar, reference):
+    "Re-reference EEG NDVar in-place"
+    if reference == 'mastoids':
+        ndvar -= ndvar.summary(sensor=['A1', 'A2'])
+    else:
+        raise ValueError("Unknown reference: reference=%r" % reference)
+
+
 class PickleCache(dict):
     def __getitem__(self, path):
         if path in self:
@@ -149,6 +157,7 @@ temp = {
         'raw-file': '{raw-base}-raw.fif',
         'event-file': '{raw-base}-evts.pickled',
         'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),
+        'reference': ('', 'mastoids'),  # EEG reference
 
         # log-files (eye-tracker etc.)
         'log-dir': os.path.join('{meg-dir}', 'logs'),
@@ -576,6 +585,7 @@ class MneExperiment(FileTree):
         self._register_compound('sns-kind', ('raw-kind', 'proj'))
         self._register_compound('src-kind', ('sns-kind', 'cov', 'mri', 'inv'))
         self._register_compound('evoked-kind', ('rej', 'equalize_evoked_count'))
+        self._register_compound('eeg-kind', ('sns-kind', 'reference'))
 
         # Define make handlers
         self._bind_make('raw-file', self.make_raw)
@@ -1512,6 +1522,10 @@ class MneExperiment(FileTree):
             else:
                 raise NotImplementedError("modality=%r" % modality)
 
+            reference = self.get('reference')
+            if reference and modality != 'eeg':
+                raise ValueError("reference=%r: re-referencing only applies to EEG data" % reference)
+
             for modality in modalities:
                 if modality == 'meg':
                     data_arg = 'mag'
@@ -1531,6 +1545,9 @@ class MneExperiment(FileTree):
                         m.ch_names[m.ch_names.index('TP10')] = 'A2'
                         m.ch_names[m.ch_names.index('FP2')] = 'VEOGt'
                         ds[ndvar_name].sensor.set_sensor_positions(m)
+                    # re-reference
+                    if modality == 'eeg' and reference:
+                        re_reference(ds[ndvar_name], reference)
 
         return ds
 
@@ -1944,14 +1961,14 @@ class MneExperiment(FileTree):
             self.set(test=test, **kwargs)
 
         # find data to use
+        modality = self.get('modality')
         if data == 'sns':
-            modality = self.get('modality')
             if modality == '':
                 y_name = 'meg'
             elif modality == 'eeg':
-                y_name = modality
+                y_name = 'eeg'
             else:
-                raise NotImplementedError("Sensor analysis for modality=%r" % modality)
+                raise ValueError("data=%r, modality=%r" % (data, modality))
         elif data == 'src':
             y_name = 'srcm'
         else:
@@ -2900,9 +2917,9 @@ class MneExperiment(FileTree):
                           **kwargs)
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
-                    tstop=None, samples=1000, data='src',
-                    sns_baseline=(None, 0), src_baseline=None, include=0.2,
-                    redo=False, redo_test=False, **state):
+                    tstop=None, samples=1000, sns_baseline=(None, 0),
+                    src_baseline=None, include=0.2, redo=False,
+                    redo_test=False, **state):
         """Create an HTML report on spatio-temporal clusters
 
         Parameters
@@ -2924,8 +2941,6 @@ class MneExperiment(FileTree):
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
-        data : 'src'
-            Kind of data to analyse (currently only 'src' is possible).
         sns_baseline : None | tuple
             Sensor space baseline interval.
         src_baseline : None | tuple
@@ -2938,9 +2953,7 @@ class MneExperiment(FileTree):
         redo_test : bool
             Redo the test even if a cached file exists.
         """
-        if data != 'src':
-            raise NotImplementedError("Data has to be 'src'")
-        elif samples < 1:
+        if samples < 1:
             raise ValueError("samples needs to be > 0")
 
         if include <= 0 or include > 1:
@@ -2958,7 +2971,7 @@ class MneExperiment(FileTree):
         else:
             state['parc'] = parc
             folder = "{parc}"
-        self._set_test_options(data, sns_baseline, src_baseline, pmin, tstart,
+        self._set_test_options('src', sns_baseline, src_baseline, pmin, tstart,
                                tstop)
         dst = self.get('res-g-deep-file', mkdir=True, fmatch=False, folder=folder,
                        resname="{epoch} {test} {test_options}", ext='html',
@@ -2968,7 +2981,7 @@ class MneExperiment(FileTree):
 
         # load data
         ds, res = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
-                                 data, sns_baseline, src_baseline, True, True,
+                                 'src', sns_baseline, src_baseline, True, True,
                                  redo_test)
 
         # start report
@@ -2977,7 +2990,7 @@ class MneExperiment(FileTree):
 
         # info
         self._report_test_info(report.add_section("Test Info"), ds, test,
-                               tstart, tstop, pmin, res.samples, res, data,
+                               tstart, tstop, pmin, res.samples, res, 'src',
                                include)
 
         y = ds['srcm']
@@ -3184,7 +3197,7 @@ class MneExperiment(FileTree):
         redo_test : bool
             Redo the test even if a cached file exists.
         """
-        self._set_test_options('sns', baseline, None, pmin, tstart, tstop)
+        self._set_test_options('eeg', baseline, None, pmin, tstart, tstop)
         dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
                        folder="EEG Spatio-Temporal",
                        resname="{epoch} {test} {test_options}",
@@ -4126,8 +4139,10 @@ class MneExperiment(FileTree):
             analysis = '{sns-kind} {evoked-kind}'
         elif data == 'src':
             analysis = '{src-kind} {evoked-kind}'
+        elif data == 'eeg':
+            analysis = '{eeg-kind} {evoked-kind}'
         else:
-            raise ValueError("data needs to be 'sns' or 'src'")
+            raise ValueError("data=%r. Needs to be 'sns', 'src' or 'eeg'" % data)
 
         # test properties
         items = []
