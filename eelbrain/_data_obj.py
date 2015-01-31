@@ -5489,6 +5489,21 @@ def find_time_point(times, time, rnd='closest'):
     return i, time
 
 
+def _subgraph_edges(connectivity, int_index):
+    "Extract connectivity for a subset of a graph"
+    if connectivity is None:
+        return None
+    else:
+        idx = np.logical_and(np.in1d(connectivity[:, 0], int_index),
+                             np.in1d(connectivity[:, 1], int_index))
+        if np.any(idx):
+            new_c = connectivity[idx]
+            # remap to new vertex indices
+            return (np.digitize(new_c.ravel(), int_index, True)
+                    .reshape(new_c.shape).astype(np.uint32))
+        else:
+            return np.empty((0, 2), dtype=np.uint32)
+
 
 class Dimension(object):
     """
@@ -5800,7 +5815,7 @@ class Sensor(Dimension):
     adjacent = False
 
     def __init__(self, locs, names=None, groups=None, sysname=None,
-                 proj2d='z root', connect_dist=1.75):
+                 proj2d='z root', connectivity=None):
         """
         Parameters
         ----------
@@ -5817,9 +5832,9 @@ class Sensor(Dimension):
             Name of the sensor system (only used for information purposes).
         proj2d:
             default 2d projection. For options, see the class documentation.
-        connect_dist : None | scalar
-            For each sensor, neighbors are defined as those sensors within
-            ``connect_dist`` times the distance of the closest neighbor.
+        connectivity : array (n_edges, 2)
+            Sensor connectivity (optional).
+
 
         Examples
         --------
@@ -5830,7 +5845,7 @@ class Sensor(Dimension):
         """
         self.sysname = sysname
         self.default_proj2d = proj2d
-        self._connect_dist = connect_dist
+        self._connectivity = connectivity
 
         # 'z root' transformation fails with 32-bit floats
         self.locs = locs = np.asarray(locs, dtype=np.float64)
@@ -5862,7 +5877,8 @@ class Sensor(Dimension):
                  'groups': self.groups,
                  'locs': self.locs,
                  'names': self.names,
-                 'sysname': self.sysname}
+                 'sysname': self.sysname,
+                 'connectivity': self._connectivity}
         return state
 
     def __setstate__(self, state):
@@ -5871,8 +5887,9 @@ class Sensor(Dimension):
         groups = state['groups']
         sysname = state['sysname']
         proj2d = state['proj2d']
+        connectivity = state.get('connectivity', None)
 
-        self.__init__(locs, names, groups, sysname, proj2d)
+        self.__init__(locs, names, groups, sysname, proj2d, connectivity)
 
     def __repr__(self):
         return "<Sensor n=%i, name=%r>" % (self.n, self.sysname)
@@ -5896,9 +5913,10 @@ class Sensor(Dimension):
         else:
             locs = self.locs[index]
             names = self.names[index]
+            int_index = np.arange(len(self))[index]
             # TODO: groups
-            return Sensor(locs, names, sysname=self.sysname,
-                          proj2d=self.default_proj2d)
+            return Sensor(locs, names, None, self.sysname, self.default_proj2d,
+                          _subgraph_edges(self._connectivity, int_index))
 
     def dimindex(self, arg):
         "Convert dimension indexes into numpy indexes"
@@ -5923,15 +5941,8 @@ class Sensor(Dimension):
         else:
             return int(name)
 
-    def connectivity(self, connect_dist=None):
-        """Construct a connectivity matrix in COOrdinate format
-
-        Parameters
-        ----------
-        connect_dist : None | scalar
-            For each sensor, neighbors are defined as those sensors within
-            ``connect_dist`` times the distance of the closest neighbor. If
-            None, the default specified on initialization is used.
+    def connectivity(self):
+        """Retrieve the sensor connectivity
 
         Returns
         -------
@@ -5940,21 +5951,14 @@ class Sensor(Dimension):
 
         See Also
         --------
+        .set_connectivity() : define the connectivity
         .neighbors() : Neighboring sensors for each sensor in a dictionary.
         """
-        mult = connect_dist or self._connect_dist
-        nb = self.neighbors(mult)
-
-        pairs = set()
-        for k, vals in nb.iteritems():
-            for v in vals:
-                if k < v:
-                    pairs.add((k, v))
-                else:
-                    pairs.add((v, k))
-
-        connectivity = np.array(sorted(pairs), np.uint32)
-        return connectivity
+        if self._connectivity is None:
+            raise RuntimeError("Sensor connectivity is not defined. Use "
+                               "Sensor.set_connectivity().")
+        else:
+            return self._connectivity
 
     @classmethod
     def from_xyz(cls, path=None, **kwargs):
@@ -6056,7 +6060,6 @@ class Sensor(Dimension):
             # center the sensor locations based on the sphere and scale to
             # radius 1
             sphere_center = np.array((cx, cy, cz))
-#            logging.debug("Sensor sphere projection: %r, %r" % (sphere_center, r))
             locs3d = self.locs - sphere_center
             locs3d /= r
 
@@ -6281,27 +6284,21 @@ class Sensor(Dimension):
                      proj2d=self.default_proj2d)
         return new
 
-    def neighbors(self, connect_dist=None):
+    def neighbors(self, connect_dist):
         """Find neighboring sensors.
 
         Parameters
         ----------
-        connect_dist : None | scalar
+        connect_dist : scalar
             For each sensor, neighbors are defined as those sensors within
-            ``connect_dist`` times the distance of the closest neighbor. If
-            None, the default specified on initialization is used.
+            ``connect_dist`` times the distance of the closest neighbor.
 
         Returns
         -------
         neighbors : dict
             Dictionaries whose keys are sensor indices, and whose values are
             lists of neighbors represented as sensor indices.
-
-        See Also
-        --------
-        .connectivity() : neighbor connectivity as sparse matrix
         """
-        connect_dist = connect_dist or self._connect_dist
         nb = {}
         pd = pdist(self.locs)
         pd = squareform(pd)
@@ -6313,6 +6310,40 @@ class Sensor(Dimension):
             nb[i] = idx
 
         return nb
+
+    def set_connectivity(self, neighbors=None, connect_dist=None):
+        """Define the sensor connectivity through neighbors or distance
+
+        Parameters
+        ----------
+        neighbors : sequence of (str, str)
+            A list of connections, all assumed to be bidirectional.
+        connect_dist : None | scalar
+            For each sensor, neighbors are defined as those sensors within
+            ``connect_dist`` times the distance of the closest neighbor.
+            e.g., 1.75 or 1.6
+        """
+        pairs = set()
+        if neighbors is not None and connect_dist is not None:
+            raise TypeError("Can only specify either neighbors or connect_dist")
+        elif connect_dist is None:
+            for src, dst in neighbors:
+                a = self.names.index(src)
+                b = self.names.index(dst)
+                if a < b:
+                    pairs.add((a, b))
+                else:
+                    pairs.add((b, a))
+        else:
+            nb = self.neighbors(connect_dist)
+            for k, vals in nb.iteritems():
+                for v in vals:
+                    if k < v:
+                        pairs.add((k, v))
+                    else:
+                        pairs.add((v, k))
+
+        self._connectivity = np.array(sorted(pairs), np.uint32)
 
     def set_sensor_positions(self, pos, names=None):
         """Set the sensor positions
@@ -6527,22 +6558,6 @@ class SourceSpace(Dimension):
         int_index = arange[index]
         bool_index = np.in1d(arange, int_index, True)
 
-        # connectivity
-        if self._connectivity is None:
-            connectivity = None
-        else:
-            c = self._connectivity
-            idx = np.logical_and(np.in1d(c[:, 0], int_index),
-                                 np.in1d(c[:, 1], int_index))
-            if np.any(idx):
-                new_c = c[idx]
-
-                # remap to new vertex ids
-                connectivity = (np.digitize(new_c.ravel(), int_index, True)
-                                .reshape(new_c.shape).astype(np.uint32))
-            else:
-                connectivity = None
-
         # vertno
         boundaries = np.cumsum(tuple(chain((0,), (len(v) for v in self.vertno))))
         vertno = [v[bool_index[boundaries[i]:boundaries[i + 1]]]
@@ -6555,7 +6570,7 @@ class SourceSpace(Dimension):
             parc = self.parc[index]
 
         dim = SourceSpace(vertno, self.subject, self.src, self.subjects_dir,
-                          parc, connectivity)
+                          parc, _subgraph_edges(self._connectivity, int_index))
         return dim
 
     def _cluster_properties(self, x):

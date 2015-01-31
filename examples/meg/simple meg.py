@@ -56,6 +56,8 @@ ds_sub = ds.sub("modality != 'None'")
 ds_sub = load.fiff.add_epochs(ds_sub, -0.1, 0.6, baseline=(None, 0), reject=3e-12)
 # check how many events are left
 print table.frequencies('modality', ds=ds_sub)
+# specify distance-based MEG sensor connectivity
+ds_sub['meg'].sensor.set_connectivity(connect_dist=1.75)
 
 # Plot a butterfly plot with flexible topography of the grand average
 plot.TopoButterfly('meg', ds=ds_sub)

@@ -214,6 +214,7 @@ def get_uts(utsnd=False, seed=0):
                          [ 0.0, -1.0, 0.0],
                          [ 0.0, 0.0, 1.0]])
         sensor = Sensor(locs, sysname='test_sens')
+        sensor.set_connectivity(connect_dist=1.75)
 
         y = np.random.normal(0, 1, (60, 5, len(time)))
         y += rm_var[:, None, None]

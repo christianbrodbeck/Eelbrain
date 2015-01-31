@@ -90,6 +90,7 @@ from .._mne import source_induced_power, dissolve_label, rename_label
 from ..mne_fixes import write_labels_to_annot
 from .._data_obj import cellname, align, UTS, DimensionMismatchError
 from ..fmtxt import List, Report, FMText
+from .._resources import predefined_connectivity
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from ._experiment import FileTree
@@ -116,14 +117,6 @@ def _time_window_str(window, delim='-'):
 def ms(t_s):
     "Convert time in seconds to rounded milliseconds"
     return int(round(t_s * 1000))
-
-
-def re_reference(ndvar, reference):
-    "Re-reference EEG NDVar in-place"
-    if reference == 'mastoids':
-        ndvar -= ndvar.summary(sensor=['A1', 'A2'])
-    else:
-        raise ValueError("Unknown reference: reference=%r" % reference)
 
 
 class PickleCache(dict):
@@ -1015,6 +1008,25 @@ class MneExperiment(FileTree):
         for src, dst in pairs:
             shutil.copy2(src, dst)
 
+    def _fix_eeg_ndvar(self, ndvar, apply_standard_montag):
+        # connectivity
+        ndvar.sensor.set_connectivity(predefined_connectivity('BrainCap32Ch'))
+        # montage
+        if apply_standard_montag:
+            m = mne.channels.read_montage('easycap-M1')
+            m.ch_names = [n.upper() for n in m.ch_names]
+            m.ch_names[m.ch_names.index('TP9')] = 'A1'
+            m.ch_names[m.ch_names.index('TP10')] = 'A2'
+            m.ch_names[m.ch_names.index('FP2')] = 'VEOGt'
+            ndvar.sensor.set_sensor_positions(m)
+        # reference
+        reference = self.get('reference')
+        if reference:
+            if reference == 'mastoids':
+                ndvar -= ndvar.summary(sensor=['A1', 'A2'])
+            else:
+                raise ValueError("Unknown reference: reference=%r" % reference)
+
     def get_field_values(self, field, exclude=True):
         """Find values for a field taking into account exclusion
 
@@ -1353,6 +1365,8 @@ class MneExperiment(FileTree):
 
         if ndvar:
             ds[ndvar] = load.fiff.epochs_ndvar(ds.pop(target), ndvar, data)
+            if modality == 'eeg':
+                self._fix_eeg_ndvar(ds[ndvar], group)
 
         return ds
 
@@ -1522,10 +1536,6 @@ class MneExperiment(FileTree):
             else:
                 raise NotImplementedError("modality=%r" % modality)
 
-            reference = self.get('reference')
-            if reference and modality != 'eeg':
-                raise ValueError("reference=%r: re-referencing only applies to EEG data" % reference)
-
             for modality in modalities:
                 if modality == 'meg':
                     data_arg = 'mag'
@@ -1537,17 +1547,8 @@ class MneExperiment(FileTree):
                     else:
                         ndvar_name = '_'.join((evoked_name, modality))
                     ds[ndvar_name] = load.fiff.evoked_ndvar(ds[evoked_name], None, data_arg)
-                    # set canonical sensor positions
-                    if modality == 'eeg' and group is not None:
-                        m = mne.channels.read_montage('easycap-M1')
-                        m.ch_names = [n.upper() for n in m.ch_names]
-                        m.ch_names[m.ch_names.index('TP9')] = 'A1'
-                        m.ch_names[m.ch_names.index('TP10')] = 'A2'
-                        m.ch_names[m.ch_names.index('FP2')] = 'VEOGt'
-                        ds[ndvar_name].sensor.set_sensor_positions(m)
-                    # re-reference
-                    if modality == 'eeg' and reference:
-                        re_reference(ds[ndvar_name], reference)
+                    if modality == 'eeg':
+                        self._fix_eeg_ndvar(ds[ndvar_name], group)
 
         return ds
 
@@ -3222,7 +3223,8 @@ class MneExperiment(FileTree):
         # add connectivity image
         p = plot.SensorMap(ds['eeg'], show=False)
         p.show_connectivity()
-        info_section.add_figure("Sensor map with connectivity", p)
+        image_conn = p.image("connectivity.png")
+        info_section.add_figure("Sensor map with connectivity", image_conn)
         p.close()
 
         y = ds['eeg']

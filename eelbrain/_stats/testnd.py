@@ -1796,7 +1796,10 @@ class _ClusterDist:
             # prepare connectivity
             nad_dim = stat_map_dims[0]
             disconnect_parc = (nad_dim.name in parc)
-            connectivity = nad_dim.connectivity(disconnect_parc)
+            if disconnect_parc:
+                connectivity = nad_dim.connectivity(disconnect_parc=disconnect_parc)
+            else:
+                connectivity = nad_dim.connectivity()
 
         # prepare cluster minimum size criteria
         if criteria:

@@ -133,8 +133,10 @@ def test_clusterdist():
             [1, 1, 0],
             [0, 1, 0]]
     x = np.random.normal(0, 1, shape)
+    sensor = Sensor(locs, ['0', '1', '2', '3'])
+    sensor.set_connectivity(connect_dist=1.1)
     dims = ('case', UTS(-0.1, 0.1, 6), Ordered('dim2', range(6), 'unit'),
-            Sensor(locs, ['0', '1', '2', '3'], connect_dist=1.1))
+            sensor)
     Y = NDVar(x, dims)
 
     # test connecting sensors
@@ -180,8 +182,9 @@ def test_clusterdist():
 
     # TFCE
     logger.info("TEST:  TFCE")
-    dims = ('case', UTS(-0.1, 0.1, 4),
-            Sensor(locs, ['0', '1', '2', '3'], connect_dist=1.1),
+    sensor = Sensor(locs, ['0', '1', '2', '3'])
+    sensor.set_connectivity(connect_dist=1.1)
+    dims = ('case', UTS(-0.1, 0.1, 4), sensor,
             Ordered('dim2', range(10), 'unit'))
     Y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
     cdist = _ClusterDist(Y, 3, None)
