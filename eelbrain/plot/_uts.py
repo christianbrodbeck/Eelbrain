@@ -54,8 +54,9 @@ class UTSStat(_EelFigure, LegendMixin):
         Pool the errors for the estimate of variability (default is True
         for related measures designs, False otherwise). See Loftus & Masson
         (1994).
-    legend : str | None
-        matplotlib figure legend location argument
+    legend : str | int | 'fig' | None
+        Matplotlib figure legend location argument or 'fig' to plot the
+        legend in a separate figure.
     axtitle : str | None
         Axes title, '{name}' is formatted to the category name. When plotting
         only one axes, use the `title` argument.

@@ -14,7 +14,7 @@ import matplotlib as mpl
 from .._stats import test, stats
 from .._data_obj import (asfactor, isvar, asvar, ascategorial, assub, cellname,
                          Celltable)
-from ._base import _EelFigure, str2tex, frame_title
+from ._base import _EelFigure, LegendMixin, str2tex, frame_title
 
 
 defaults = dict(title_kwargs={'size': 14,
@@ -629,7 +629,7 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
     return lim
 
 
-class Timeplot(_SimpleFigure):
+class Timeplot(_EelFigure, LegendMixin):
     "Plot a variable over time"
     def __init__(self, Y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
@@ -655,15 +655,14 @@ class Timeplot(_SimpleFigure):
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables
         main : numpy function
-            draw lines to connect values across time (default: np.mean)
-            can be 'bar' for barplots or False
+            draw lines to connect values across time (default: np.mean).
+            Can be 'bar' for barplots or False.
         spread : str
-            How to indicator data spread.
-            None - without
-            'box' - boxplots
-            for lineplots:
-            'Xsem' X standard error of the means
-            'Xstd' X standard deviations
+            How to indicate data spread.
+            None: no indication;
+            'box': boxplots;
+            '{x}sem': x standard error of the means (e.g. '2sem');
+            '{x}std': x standard deviations;
         x_jitter : bool
             When plotting error bars, jitter their location on the x-axis to
             increase readability.
@@ -671,8 +670,9 @@ class Timeplot(_SimpleFigure):
             Y axis label (default is ``Y.name``).
         xlabel : None | str
             X axis label (default is ``time.name``).
-        legend : bool | 'fig' | matplotlib legend location
-            Plot a legend in the given location; with `fig`, plot as figlegend.
+        legend : str | int | 'fig' | None
+            Matplotlib figure legend location argument or 'fig' to plot the
+            legend in a separate figure.
         frame : bool
             Draw a frame containing the figure from the top and the right
             (default ``True``).
@@ -732,17 +732,21 @@ class Timeplot(_SimpleFigure):
 
         color_list = [colors[i] for i in sorted(colors.keys())]
 
+        # get axes
+        _EelFigure.__init__(self, "Timeplot", 1, 5, 1, *args, **kwargs)
+        ax = self._axes[0]
+
         # ylabel
         if ylabel is True:
-            ylabel = Y.name
+            ax.set_ylabel(Y.name)
+        elif ylabel:
+            ax.set_ylabel(ylabel)
 
         # xlabel
         if xlabel is True:
-            xlabel = time.name
-
-        # get axes
-        _SimpleFigure.__init__(self, "Timeplot", xlabel, ylabel, *args, **kwargs)
-        ax = self._ax
+            ax.set_xlabel(time.name)
+        elif xlabel:
+            ax.set_xlabel(xlabel)
 
         # categories
         n_cat = len(categories.cells)
@@ -811,6 +815,7 @@ class Timeplot(_SimpleFigure):
             elif spread:
                 yerr[:, i_t] = ct.get_statistic(spread)
 
+        legend_handles = {}
         if line_plot:
             # plot means
             x = time_points
@@ -831,14 +836,14 @@ class Timeplot(_SimpleFigure):
                 else:
                     mfc = '1.'
 
-                try:
-                    marker = markers[i]
-                except:
+                if not markers or len(markers) <= i:
                     marker = None
+                else:
+                    marker = markers[i]
 
                 handles = ax.plot(x, y, color=color, linestyle=ls, label=name,
                                   zorder=6, marker=marker, mfc=mfc)
-                self.add_legend_handles(*handles)
+                legend_handles[cell] = handles[0]
 
                 if spread:
                     if x_jitter:
@@ -854,18 +859,11 @@ class Timeplot(_SimpleFigure):
         ax.set_xlim(t_min, t_max)
         ax.set_xticks(time_points)
 
-        if any (legend is i for i in (False, None)):
-            pass
-        elif legend == 'fig':
-            self.figure.legend(fig=True, loc='lower center')
-        else:
-            if legend is True:
-                loc = 0
-            else:
-                loc = legend
-            self.legend(loc=loc)
-
+        LegendMixin.__init__(self, legend, legend_handles)
         self._show()
+
+    def _fill_toolbar(self, tb):
+        LegendMixin._fill_toolbar(self, tb)
 
 
 class MultiTimeplot(_SimpleFigure):

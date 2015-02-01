@@ -1134,10 +1134,20 @@ class LegendMixin(object):
                  'center')
     __args = (False, 'fig', 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
-    def __init__(self, plot_legend, legend_handles):
+    def __init__(self, legend, legend_handles):
+        """Legend toolbar menu mixin
+
+        Parameters
+        ----------
+        legend : str | int | 'fig' | None
+            Matplotlib figure legend location argument or 'fig' to plot the
+            legend in a separate figure.
+        legend_hamdles : dict
+            {cell: handle} dictionary.
+        """
         self.__handles = legend_handles
         self.legend = None
-        self.plot_legend(plot_legend)
+        self.plot_legend(legend)
 
     def _fill_toolbar(self, tb):
         import wx
