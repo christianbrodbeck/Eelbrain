@@ -4,6 +4,9 @@ Create tables for data objects.
 '''
 from __future__ import division
 
+from itertools import izip
+import re
+
 import numpy as np
 
 from . import fmtxt
@@ -160,21 +163,39 @@ def melt(name, cells, cell_var_name, ds):
     ----------
     name : str
         Name of the variable in the new Dataset.
-    cells : sequence of str
+    cells : sequence of str | str
         Names of the columns representing the variable in the input Dataset.
+        Names can either pe specified explicitly as a sequence of str, or
+        implicitly as a str containing '%i' for an integer.
     cell_var_name : str
         Name of the variable to contain the cell identifier.
     ds : Dataset
         Input Dataset.
     """
+    # find source cells
+    if isinstance(cells, basestring):
+        cell_expression = cells
+        cells = []
+        cell_values = []
+        if '%i' in cell_expression:
+            pattern = cell_expression.replace('%i', '(\d+)')
+            for key in ds:
+                m = re.match(pattern, key)
+                if m:
+                    cells.append(key)
+                    cell_values.append(int(m.group(1)))
+    else:
+        cell_values = cells
+
+    # melt the Dataset
     dss = []
-    for cell in cells:
+    for cell, cell_value in izip(cells, cell_values):
         cell_ds = ds.copy()
         cell_ds.rename(cell, name)
         for src in cells:
             if src != cell:
                 del cell_ds[src]
-        cell_ds[cell_var_name, :] = cell
+        cell_ds[cell_var_name, :] = cell_value
         dss.append(cell_ds)
     out = combine(dss)
     return out
