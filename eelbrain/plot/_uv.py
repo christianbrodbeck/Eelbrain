@@ -15,6 +15,7 @@ from .._stats import test, stats
 from .._data_obj import (asfactor, isvar, asvar, ascategorial, assub, cellname,
                          Celltable)
 from ._base import _EelFigure, LegendMixin, str2tex, frame_title
+from ._colors import colors_arg
 
 
 defaults = dict(title_kwargs={'size': 14,
@@ -636,7 +637,7 @@ class Timeplot(_EelFigure, LegendMixin):
                  main=np.mean, spread='box', x_jitter=False,
                  # labelling
                  ylabel=True, xlabel=True, legend=True,
-                 colors=True, hatch=False, markers=True, *args, **kwargs):
+                 colors='jet', hatch=False, markers=True, *args, **kwargs):
         """Plot a variable over time
 
         Parameters
@@ -673,6 +674,14 @@ class Timeplot(_EelFigure, LegendMixin):
         legend : str | int | 'fig' | None
             Matplotlib figure legend location argument or 'fig' to plot the
             legend in a separate figure.
+        colors : str | list | dict
+            Colors for the categories.
+            **str**: A colormap name; cells are mapped onto the colormap in
+            regular intervals.
+            **list**: A list of colors in the same sequence as the cells.
+            **dict**: A dictionary mapping each cell to a color.
+            Colors are specified as `matplotlib compatible color arguments
+            <http://matplotlib.org/api/colors_api.html>`_.
         frame : bool
             Draw a frame containing the figure from the top and the right
             (default ``True``).
@@ -716,21 +725,8 @@ class Timeplot(_EelFigure, LegendMixin):
                 markers = defaults['c']['markers']
 
         # colors: {category index -> color, ...}
-        colors_arg = colors
-        if defaults['mono']:
-            colors = dict(zip(categories.cells, defaults['cm']['colors']))
-        else:
-            colors = dict(zip(categories.cells, defaults['c']['colors']))
-        if isinstance(colors_arg, dict):
-            colors.update(colors_arg)
-        elif isinstance(colors_arg, (tuple, list)):
-            colors.update(dict(zip(categories.cells, colors_arg)))
-
-        for c in categories.cells:
-            if c not in colors:
-                colors[c] = '.5'
-
-        color_list = [colors[i] for i in sorted(colors.keys())]
+        colors = colors_arg(categories.cells, colors)
+        color_list = [colors[i] for i in categories.cells]
 
         # get axes
         _EelFigure.__init__(self, "Timeplot", 1, 5, 1, *args, **kwargs)
