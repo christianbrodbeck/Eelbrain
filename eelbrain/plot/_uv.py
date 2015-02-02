@@ -635,6 +635,7 @@ class Timeplot(_EelFigure, LegendMixin):
     def __init__(self, Y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
                  main=np.mean, spread='box', x_jitter=False,
+                 bottom=0, top=None,
                  # labelling
                  ylabel=True, xlabel=True, legend=True,
                  colors='jet', hatch=False, markers=True, *args, **kwargs):
@@ -667,6 +668,10 @@ class Timeplot(_EelFigure, LegendMixin):
         x_jitter : bool
             When plotting error bars, jitter their location on the x-axis to
             increase readability.
+        bottom : scalar
+            Lower end of the y axis (default is 0).
+        top : scalar
+            Upper end of the y axis (default is determined from the data).
         ylabel : None | str
             Y axis label (default is ``Y.name``).
         xlabel : None | str
@@ -854,6 +859,8 @@ class Timeplot(_EelFigure, LegendMixin):
         # finalize
         ax.set_xlim(t_min, t_max)
         ax.set_xticks(time_points)
+        ax.set_ylim(bottom, top)
+
 
         LegendMixin.__init__(self, legend, legend_handles)
         self._show()
