@@ -1235,6 +1235,14 @@ class Legend(_EelFigure):
 
         self.legend = self.figure.legend(handles, labels, loc=2)
 
+        # resize figure to match legend
+        self.draw()
+        bb = self.legend.get_window_extent()
+        w0, h0 = self._frame.GetSize()
+        h = int(h0 + bb.x0 - bb.y0)
+        w = int(bb.x0 + bb.x1)
+        self._frame.SetSize((w, h))
+
         self._show()
 
 
