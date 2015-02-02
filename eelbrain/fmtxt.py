@@ -67,6 +67,7 @@ except:
 
 import numpy as np
 from matplotlib.image import imsave
+from matplotlib.mathtext import math_to_image
 
 from ._utils import ui
 
@@ -605,6 +606,74 @@ def eq(name, result, eq='=', df=None, fmt='%.2f', drop0=False, stars=None,
     symbol_ = symbol(name, df=df)
     stat_ = stat(result, fmt=fmt, drop0=drop0, stars=stars, of=of)
     return FMText([symbol_, eq, stat_], mat=True)
+
+
+class Math(FMTextElement):
+    """FMTextElement for math expressions"""
+    def __init__(self, expression, equation=False):
+        """
+
+        Parameters
+        ----------
+        expression : str
+            LaTeX math expression (excluding '$'). E.g. r'\\sqrt{a}' (note that
+            '\\' must be escaped)
+        equation : bool
+            Whether to display the expression as a separate equation (as
+            oppposed to inline).
+        """
+        self._content = expression
+        self._equation = equation
+
+    def __repr__(self):
+        items = [repr(self._content)]
+        if self._equation:
+            items.append("equation=True")
+        return "Math(%s)" % ', '.join(items)
+
+    def get_html(self, env):
+        im = Image('svg')
+        math_to_image("$%s$" % self._content, im, format='svg')
+        if self._equation:
+            return '\n<br>\n%s\n<br>\n' % im.get_html(env)
+        else:
+            return im.get_html(env)
+
+    def get_str(self, env={}):
+        return repr(self._content)
+
+    def get_tex(self, env):
+        if self._equation:
+            return "\\begin{equation}$%s$\\end{equation}" % self._content
+        else:
+            return "$%s$" % self._content
+
+
+class EquationArray(FMTextElement):
+    "FMTextElement for equation arrays"
+    def __init__(self, eqnarray):
+        """FMTextElement for equation arrays
+
+        Parameters
+        ----------
+        eqnarray : tuple of str
+            Tuple of lines for the equation array.
+        """
+        self._content = eqnarray
+
+    def __repr__(self):
+        return "EquationArray(%s)" % repr(self._content)
+
+    def get_html(self, env):
+        ims = []
+        for line in self._content:
+            im = Image('svg')
+            math_to_image("$%s$" % line.replace('&', ''), im, format='svg')
+            ims.append(im.get_html(env))
+        return '\n<br>\n%s\n<br>\n' % '\n<br>\n'.join(ims)
+
+    def get_tex(self, env):
+        return "\\begin{eqnarray}%s\\end{eqnarray}" % r'\\'.join(self._content)
 
 
 class Stars(FMTextElement):
