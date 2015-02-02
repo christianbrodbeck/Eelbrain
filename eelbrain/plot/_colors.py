@@ -13,6 +13,40 @@ from .._data_obj import cellname, isfactor, isinteraction
 from ._base import _EelFigure
 
 
+def colors_arg(cells, colors):
+    """Process the colors arg from plotting functions
+
+    Parameters
+    ----------
+    cells : sequence
+        List of cells for which colors are needed.
+    colors : str | list | dict
+        Colors for the plots if multiple categories of data are plotted.
+        **str**: A colormap name; cells are mapped onto the colormap in
+        regular intervals.
+        **list**: A list of colors in the same sequence as cells.
+        **dict**: A dictionary mapping each cell to a color.
+        Colors are specified as `matplotlib compatible color arguments
+        <http://matplotlib.org/api/colors_api.html>`_.
+    """
+    if isinstance(colors, (list, tuple)):
+        if len(colors) < len(cells):
+            err = ("The `colors` argument %s does not supply enough "
+                   "colors (%i) for %i "
+                   "cells." % (str(colors), len(colors), len(cells)))
+            raise ValueError(err)
+        return dict(zip(cells, colors))
+    elif isinstance(colors, dict):
+        for cell in cells:
+            if cell not in colors:
+                raise KeyError("%s not in colors" % repr(cell))
+        return colors
+    elif isinstance(colors, basestring):
+        return colors_for_oneway(cells, colors)
+    else:
+        raise TypeError("Invalid type: colors=%s" % repr(colors))
+
+
 def colors_for_categorial(x):
     """Automatically select colors for a categorial model
 

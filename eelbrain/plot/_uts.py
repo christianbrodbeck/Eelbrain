@@ -12,7 +12,7 @@ from .._data_obj import ascategorial, asndvar, assub, cellname, Celltable
 from .._stats import stats
 from . import _base
 from ._base import _EelFigure, LegendMixin
-from ._colors import colors_for_oneway
+from ._colors import colors_for_oneway, colors_arg
 
 
 class UTSStat(_EelFigure, LegendMixin):
@@ -150,21 +150,7 @@ class UTSStat(_EelFigure, LegendMixin):
         if cells is None:
             colors = {None: color}
         else:
-            if isinstance(colors, (list, tuple)):
-                if len(colors) < len(cells):
-                    err = ("The `colors` argument %s does not supply enough "
-                           "colors (%i) for %i "
-                           "cells." % (str(colors), len(colors), len(cells)))
-                    raise ValueError(err)
-                colors = dict(zip(cells, colors))
-            elif isinstance(colors, dict):
-                for cell in cells:
-                    if cell not in colors:
-                        raise KeyError("%s not in colors" % repr(cell))
-            elif isinstance(colors, basestring):
-                colors = colors_for_oneway(cells, colors)
-            else:
-                raise TypeError("Invalid type: colors=%s" % repr(colors))
+            colors = colors_arg(cells, colors)
 
         frame_title = _base.frame_title("UTSStat", Y, X, Xax)
         _EelFigure.__init__(self, frame_title, nax, 4, 2, *args, **kwargs)
