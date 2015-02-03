@@ -12,7 +12,7 @@ from .._data_obj import ascategorial, asndvar, assub, cellname, Celltable
 from .._stats import stats
 from . import _base
 from ._base import _EelFigure, LegendMixin
-from ._colors import colors_for_oneway, colors_arg
+from ._colors import colors_for_oneway, find_cell_colors
 
 
 class UTSStat(_EelFigure, LegendMixin):
@@ -21,7 +21,7 @@ class UTSStat(_EelFigure, LegendMixin):
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
                  axtitle='{name}', xlabel=True, ylabel=True, invy=False,
                  bottom=None, top=None, hline=None, xdim='time', xlim=None,
-                 color='b', colors='jet', clusters=None, pmax=0.05,
+                 color='b', colors=None, clusters=None, pmax=0.05,
                  ptrend=0.1, *args, **kwargs):
         """
     Plot statistics for a one-dimensional NDVar
@@ -131,26 +131,26 @@ class UTSStat(_EelFigure, LegendMixin):
             nax = 1
             ct = Celltable(Y, X, match)
             if X is None:
-                cells = None
+                color_x = None
             else:
-                cells = ct.X.cells
+                color_x = ct.X
         else:
             ct = Celltable(Y, Xax)
             if X is None:
-                cells = None
+                color_x = None
                 X_ = None
             else:
                 Xct = Celltable(X, Xax)
-                cells = Xct.Y.cells
+                color_x = Xct.Y
             if match is not None:
                 matchct = Celltable(match, Xax)
             nax = len(ct.cells)
 
         # assemble colors
-        if cells is None:
+        if color_x is None:
             colors = {None: color}
         else:
-            colors = colors_arg(cells, colors)
+            colors = find_cell_colors(color_x, colors)
 
         frame_title = _base.frame_title("UTSStat", Y, X, Xax)
         _EelFigure.__init__(self, frame_title, nax, 4, 2, *args, **kwargs)

@@ -15,7 +15,7 @@ from .._stats import test, stats
 from .._data_obj import (asfactor, isvar, asvar, ascategorial, assub, cellname,
                          Celltable)
 from ._base import _EelFigure, LegendMixin, str2tex, frame_title
-from ._colors import colors_arg
+from ._colors import find_cell_colors
 
 
 defaults = dict(title_kwargs={'size': 14,
@@ -730,7 +730,7 @@ class Timeplot(_EelFigure, LegendMixin):
                 markers = defaults['c']['markers']
 
         # colors: {category index -> color, ...}
-        colors = colors_arg(categories.cells, colors)
+        colors = find_cell_colors(categories, colors)
         color_list = [colors[i] for i in categories.cells]
 
         # get axes

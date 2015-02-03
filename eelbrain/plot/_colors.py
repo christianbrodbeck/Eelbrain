@@ -13,13 +13,13 @@ from .._data_obj import cellname, isfactor, isinteraction
 from ._base import _EelFigure
 
 
-def colors_arg(cells, colors):
+def find_cell_colors(x, colors):
     """Process the colors arg from plotting functions
 
     Parameters
     ----------
-    cells : sequence
-        List of cells for which colors are needed.
+    x : categorial
+        Model for which colors are needed.
     colors : str | list | dict
         Colors for the plots if multiple categories of data are plotted.
         **str**: A colormap name; cells are mapped onto the colormap in
@@ -30,6 +30,7 @@ def colors_arg(cells, colors):
         <http://matplotlib.org/api/colors_api.html>`_.
     """
     if isinstance(colors, (list, tuple)):
+        cells = x.cells
         if len(colors) < len(cells):
             err = ("The `colors` argument %s does not supply enough "
                    "colors (%i) for %i "
@@ -37,17 +38,17 @@ def colors_arg(cells, colors):
             raise ValueError(err)
         return dict(zip(cells, colors))
     elif isinstance(colors, dict):
-        for cell in cells:
+        for cell in x.cells:
             if cell not in colors:
                 raise KeyError("%s not in colors" % repr(cell))
         return colors
-    elif isinstance(colors, basestring):
-        return colors_for_oneway(cells, colors)
+    elif colors is None or isinstance(colors, basestring):
+        return colors_for_categorial(x, colors)
     else:
         raise TypeError("Invalid type: colors=%s" % repr(colors))
 
 
-def colors_for_categorial(x):
+def colors_for_categorial(x, cmap=None):
     """Automatically select colors for a categorial model
 
     Parameters
@@ -61,9 +62,9 @@ def colors_for_categorial(x):
         Dictionary providing colors for the cells in x.
     """
     if isfactor(x):
-        return colors_for_oneway(x.cells)
+        return colors_for_oneway(x.cells, cmap)
     elif isinteraction(x):
-        return colors_for_nway([f.cells for f in x.base])
+        return colors_for_nway([f.cells for f in x.base], cmap)
     else:
         msg = ("x needs to be Factor or Interaction, got %s" % repr(x))
         raise TypeError(msg)
@@ -84,6 +85,8 @@ def colors_for_oneway(cells, cmap='jet'):
     dict : {str: tuple}
         Mapping from cells to colors.
     """
+    if cmap is None:
+        cmap = 'jet'
     cm = mpl.cm.get_cmap(cmap)
     n = len(cells)
     return {cell: cm(i / n) for i, cell in enumerate(cells)}
@@ -133,7 +136,8 @@ def colors_for_nway(cell_lists, cmap=None):
     Parameters
     ----------
     cell_lists : sequence of of tuple of str
-        List of cells of the factors.
+        List of the cells for each factor. E.g. for ``A % B``:
+        ``[('a1', 'a2'), ('b1', 'b2', 'b3')]``.
     cmap : str
         Name of a matplotlib colormap to use (Default picks depending on number
         of cells in primary factor).
