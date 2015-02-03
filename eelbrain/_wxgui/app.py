@@ -181,6 +181,13 @@ class App(wx.App):
             self._result = False
         self.ExitMainLoop()
 
+    def message_box(self, message, caption, style):
+        return self._bash_ui(self._message_box, message, caption, style)
+
+    def _message_box(self, message, caption, style):
+        self._result = wx.MessageBox(message, caption, style)
+        self.ExitMainLoop()
+
     def OnAbout(self, event):
         if hasattr(self, '_about_frame') and hasattr(self._about_frame, 'Raise'):
             self._about_frame.Raise()
