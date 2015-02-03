@@ -243,10 +243,33 @@ class Document(object):
             raise ValueError("Unknown file extension for rejections: %r" % ext)
 
         # check file
-        if ds.n_cases != self.n_epochs:
+        if ds.n_cases > self.n_epochs:
+            app = get_app()
+            cmd = app.message_box("The File contains more events than the data "
+                                  "(%i vs %i). Truncate the file?"
+                                  % (ds.n_cases, self.n_epochs),
+                                  "Truncate the file?",
+                                  wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
+            if cmd == wx.OK:
+                ds = ds[:self.n_epochs]
+            else:
+                raise RuntimeError("Unequal number of cases")
+        elif ds.n_cases < self.n_epochs:
+            app = get_app()
+            app.message_box("The file contains fewer epochs than the data (%i "
+                            "vs %i" % (ds.n_cases, self.n_epochs),
+                            "Unequal number of cases", wx.OK | wx.ICON_ERROR)
             raise RuntimeError("Unequal number of cases")
         elif not np.all(ds[self.trigger.name] == self.trigger):
-            raise RuntimeError("Trigger mismatch")
+            app = get_app()
+            cmd = app.message_box("The file contains different triggers from "
+                                  "the data. Ignore?",
+                                  "Ignore trigger mismatch?",
+                                  wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
+            if cmd == wx.OK:
+                ds[self.trigger.name] = self.trigger
+            else:
+                raise RuntimeError("Trigger mismatch")
 
         accept = ds['accept']
         if 'rej_tag' in ds:
