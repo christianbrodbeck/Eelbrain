@@ -20,24 +20,28 @@ _hdlr = logging.StreamHandler()
 logger.addHandler(_hdlr)
 
 
-def _set_log_level(level):
-    """Set the minimum level of messages to be logged from Eelbrain
+def set_log_level(level, logger_name='eelbrain'):
+    """Set the minimum level of messages to be logged
 
     Parameters
     ----------
     level : str | int
         Level as string (debug, info, warning, error, critical) or
         corresponding constant from the logging module.
+    logger_name : str
+        Name of the logger for which to set the logging level. The default is
+        the Eelbrain logger.
     """
+    logger_ = logging.getLogger(logger_name)
     if isinstance(level, basestring):
         level = level.upper()
         levels = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
                   'WARNING': logging.WARNING, 'ERROR': logging.ERROR,
                   'CRITICAL': logging.CRITICAL}
         if level not in levels:
-            raise ValueError('level must be of a valid type')
+            raise ValueError('level must be one of %s' % str(levels.keys()))
         level = levels[level]
-    logger.setLevel(level)
+    logger_.setLevel(level)
 
 
 class intervals:

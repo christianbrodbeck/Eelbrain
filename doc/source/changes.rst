@@ -14,6 +14,9 @@ New in 0.12
   - New epoch parameter ``'n_cases'``:  raise an error if an epoch definition
     does not yield expected number of trials.
 
+* Use ``eelbrain.set_log_level('info')`` to get information about the progress
+  of permutation tests.
+
 
 New in 0.11
 -----------

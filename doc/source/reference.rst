@@ -128,6 +128,11 @@ Modules with statistical tests:
    test
    testnd
 
+To get information about the progress of permutation tests use
+:func:`set_log_level` to change the logging level to 'info'::
+
+    >>> set_log_level('info')
+
 
 .. _ref-plotting:
 
