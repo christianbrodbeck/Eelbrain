@@ -2918,7 +2918,7 @@ class MneExperiment(FileTree):
                           **kwargs)
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
-                    tstop=None, samples=1000, sns_baseline=(None, 0),
+                    tstop=None, samples=10000, sns_baseline=(None, 0),
                     src_baseline=None, include=0.2, redo=False,
                     redo_test=False, **state):
         """Create an HTML report on spatio-temporal clusters

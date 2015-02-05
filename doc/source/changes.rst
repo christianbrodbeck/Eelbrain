@@ -11,6 +11,7 @@ New in 0.12
 * API:  :class:`plot.SensorMap2d` was renamed to :class:`plot.SensorMap`.
 * :class:`~experiment.MneExperiment`:
 
+  - API: The default number of samples for reports is now 10'000.
   - New epoch parameter ``'n_cases'``:  raise an error if an epoch definition
     does not yield expected number of trials.
 
