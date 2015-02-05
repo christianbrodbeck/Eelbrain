@@ -6857,6 +6857,7 @@ class UTS(Dimension):
         self.nsamples = nsamples = int(nsamples)
         self.x = self.times = tmin + np.arange(nsamples) * tstep
         self.tmax = self.times[-1]
+        self.tstop = self.tmax + tstep
 
     @classmethod
     def from_int(cls, first, last, sfreq):
@@ -7104,6 +7105,8 @@ class UTS(Dimension):
 
         if tstart is None:
             start = None
+        elif tstart <= self.tmin - self.tstep:
+            raise ValueError("Value out of range: tstart=%s" % tstart)
         else:
             start_float = (tstart - self.tmin) / self.tstep
             start = int(start_float)
@@ -7112,6 +7115,8 @@ class UTS(Dimension):
 
         if tstop is None:
             stop = None
+        elif tstop > self.tstop:
+            raise ValueError("Value out of range: tstop=%s" % tstop)
         else:
             stop_float = (tstop - self.tmin) / self.tstep
             stop = int(stop_float)
