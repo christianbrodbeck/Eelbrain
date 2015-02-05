@@ -46,7 +46,8 @@ def select_epochs(*args, **kwargs):
     plot_range : bool
         In the epoch plots, plot the range of the data (instead of plotting
         all sensor traces). This makes drawing of pages quicker, especially
-        for data with many sensors (default ``True``).
+        for data with many sensors (the default is to use the last setting
+        used).
     color : None | matplotlib color
         Color for primary data (default is black).
     lw : scalar

@@ -539,6 +539,8 @@ class Frame(EelbrainFrame):  # control
         if vlim is not None:
             for k in self._vlims:
                 self._vlims[k] = (-vlim, vlim)
+        if plot_range is None:
+            plot_range = config.ReadBool('plot_range', True)
         self._bfly_kwargs = {'plot_range': plot_range, 'color': color, 'lw': lw,
                              'mcolor': mcolor, 'mlw': mlw,
                              'antialiased': antialiased, 'vlims': self._vlims}
@@ -690,6 +692,7 @@ class Frame(EelbrainFrame):  # control
         self.config.WriteInt("pos_vertical", pos_v)
         self.config.WriteInt("size_width", w)
         self.config.WriteInt("size_height", h)
+        self.config.WriteBool("plot_range", self._bfly_kwargs['plot_range'])
         self.config.Flush()
 
         event.Skip()
@@ -1246,7 +1249,7 @@ class TerminalInterface(object):
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger',
                  path=None, nplots=None, topo=None, mean=None,
-                 vlim=None, plot_range=True, color=None, lw=0.2, mark=None,
+                 vlim=None, plot_range=None, color=None, lw=0.2, mark=None,
                  mcolor='r', mlw=0.8, antialiased=True, pos=None, size=None):
         # Documented in eelbrain.gui
         bad_chs = None
