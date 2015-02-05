@@ -3252,6 +3252,80 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne'))
         report.save_html(dst)
 
+    def make_report_eeg_sensors(self, test, sensors=('FZ', 'CZ', 'PZ', 'O1', 'O2'),
+                                pmin=None, tstart=0.15, tstop=None,
+                                samples=10000, baseline=(None, 0), redo=False,
+                                **state):
+        """Create an HTML report on individual EEG sensors
+
+        Parameters
+        ----------
+        test : str
+            Test for which to create a report (entry in MneExperiment.tests).
+        sensors : sequence of str
+            Names of the sensors which to include.
+        pmin : None | scalar, 1 > pmin > 0 | 'tfce'
+            Equivalent p-value for cluster threshold, or 'tfce' for
+            threshold-free cluster enhancement.
+        tstart : None | scalar
+            Beginning of the time window for finding clusters.
+        tstop : None | scalar
+            End of the time window for finding clusters.
+        samples : int > 0
+            Number of samples used to determine cluster p values for spatio-
+            temporal clusters (default 1000).
+        baseline : None | tuple
+            Interval for baseline correction (default ``(None, 0)``).
+        redo : bool
+            If the target file already exists, delete and recreate it. This
+            only applies to the HTML result file, not to the test.
+        """
+        self._set_test_options('eeg', baseline, None, pmin, tstart, tstop)
+        dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
+                       folder="EEG Sensors",
+                       resname="{epoch} {test} {test_options}",
+                       ext='html', test=test, modality='eeg', **state)
+        if not redo and os.path.exists(dst):
+            return
+
+        # load data
+        ds = self.load_evoked(self.get('group'), baseline, True)
+
+        # test that sensors are in the data
+        eeg = ds['eeg']
+        missing = [s for s in sensors if s not in eeg.sensor.names]
+        if missing:
+            raise ValueError("The following sensors are not in the data: %s" % missing)
+
+        # start report
+        title = self.format('{experiment} {epoch} {test} {test_options}')
+        report = Report(title)
+
+        # info
+        info_section = report.add_section("Test Info")
+        self._report_test_info(info_section, ds, test, tstart, tstop, pmin,
+                               samples)
+
+        # add sensor map
+        p = plot.SensorMap(ds['eeg'], show=False)
+        p.mark_sensors(sensors)
+        info_section.add_figure("Sensor map", p)
+        p.close()
+
+        # main body
+        model = self._tests[test]['model']
+        caption = "Signal at %s."
+        colors = plot.colors_for_categorial(ds.eval(model))
+        for sensor in sensors:
+            y = eeg.sub(sensor=sensor)
+            res = self._make_test(y, ds, test, samples, pmin, tstart, tstop,
+                                  None, None)
+            _report.timecourse(report, ds, y, model, res, sensor,
+                               caption % sensor, colors)
+
+        report.sign(('eelbrain', 'mne'))
+        report.save_html(dst)
+
     def _report_state(self):
         t = self.show_state(hide=['annot', 'epoch-bare',
                                   'epoch-stim', 'ext', 'hemi', 'label',
