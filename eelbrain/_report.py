@@ -10,6 +10,18 @@ def ms(t_s):
     return int(round(t_s * 1000))
 
 
+def format_timewindow(res):
+    "Format a description of the time window for a test result"
+    if res.tstart is None and res.tstop is None:
+        return 'in the whole time range'
+    elif res.tstart is None:
+        return 'before %i ms' % ms(res.tstop)
+    elif res.tstop is None:
+        return 'after %i ms' % ms(res.tstart)
+    else:
+        return 'between %i and %i ms' % (ms(res.tstart), ms(res.tstop))
+
+
 def sensor_bin_table(section, res, pmin=None):
     if pmin is None:
         caption = "All clusters"
@@ -244,20 +256,21 @@ def timecourse(doc, ds, y, model, res, title, caption, colors):
 
     # compose captions
     if clusters.n_cases:
-        c_caption = ("Clusters between %i and %i ms with %i permutations."
-                     % (ms(res.tstart), ms(res.tstop), res.samples))
+        c_caption = ("Clusters %s with %i permutations."
+                     % (format_timewindow(res), res.samples))
         tc_caption = caption
     else:
-        c_caption = ("No clusters found between %i and %i ms."
-                     % (ms(res.tstart), ms(res.tstop)))
+        c_caption = "No clusters found %s." % format_timewindow(res)
         tc_caption = ' '.join((caption, c_caption))
 
     # add UTSStat plot
     p = plot.UTSStat(y, model, match='subject', ds=ds, colors=colors,
                      legend=None, clusters=clusters, show=False)
     ax = p._axes[0]
-    ax.axvline(res.tstart, color='k')
-    ax.axvline(res.tstop, color='k')
+    if res.tstart is not None:
+        ax.axvline(res.tstart, color='k')
+    if res.tstop is not None:
+        ax.axvline(res.tstop, color='k')
     image = p.image('%s_cluster.svg')
     legend_p = p.plot_legend(show=False)
     legend = legend_p.image("Legend.svg")
