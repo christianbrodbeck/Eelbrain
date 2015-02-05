@@ -223,17 +223,17 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors,
     return legend
 
 
-def roi_timecourse(doc, ds, label, model, res, tstart, tstop, colors):
+def roi_timecourse(doc, ds, label, model, res, colors):
     "Plot ROI time course with cluster permutation test"
     y = ds.info['label_ids'][label]
     label_name = label[:-3].capitalize()
     hemi = label[-2].capitalize()
     title = ' '.join((label_name, hemi))
     caption = "Source estimates in %s (%s)." % (label_name, hemi)
-    timecourse(doc, ds, y, model, res, tstart, tstop, title, caption, colors)
+    timecourse(doc, ds, y, model, res, title, caption, colors)
 
 
-def timecourse(doc, ds, y, model, res, tstart, tstop, title, caption, colors):
+def timecourse(doc, ds, y, model, res, title, caption, colors):
     clusters = res.find_clusters()
     if clusters.n_cases:
         idx = clusters.eval("p.argmin()")
@@ -245,19 +245,19 @@ def timecourse(doc, ds, y, model, res, tstart, tstop, title, caption, colors):
     # compose captions
     if clusters.n_cases:
         c_caption = ("Clusters between %i and %i ms with %i permutations."
-                     % (ms(tstart), ms(tstop), res.samples))
+                     % (ms(res.tstart), ms(res.tstop), res.samples))
         tc_caption = caption
     else:
         c_caption = ("No clusters found between %i and %i ms."
-                     % (tstart * 1000, tstop * 1000))
+                     % (ms(res.tstart), ms(res.tstop)))
         tc_caption = ' '.join((caption, c_caption))
 
     # add UTSStat plot
     p = plot.UTSStat(y, model, match='subject', ds=ds, colors=colors,
                      legend=None, clusters=clusters, show=False)
     ax = p._axes[0]
-    ax.axvline(tstart, color='k')
-    ax.axvline(tstop, color='k')
+    ax.axvline(res.tstart, color='k')
+    ax.axvline(res.tstop, color='k')
     image = p.image('%s_cluster.svg')
     legend_p = p.plot_legend(show=False)
     legend = legend_p.image("Legend.svg")

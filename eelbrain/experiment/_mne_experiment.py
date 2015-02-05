@@ -3156,8 +3156,7 @@ class MneExperiment(FileTree):
                 y = ds[key]
                 res = self._make_test(y, ds, test, samples, pmin, tstart, tstop,
                                       None, None)
-                _report.roi_timecourse(section, ds, label, model, res, tstart,
-                                       tstop, colors)
+                _report.roi_timecourse(section, ds, label, model, res, colors)
 
         report.sign(('eelbrain', 'mne', 'surfer'))
         report.save_html(dst)

@@ -54,12 +54,31 @@ MULTIPROCESSING = 1
 
 
 class _Result(object):
-    _state_common = ('Y', 'match', 'sub', 'samples', 'name', 'pmin', '_cdist')
+    _state_common = ('Y', 'match', 'sub', 'samples', 'tfce', 'pmin', '_cdist',
+                     'tstart', 'tstop')
     _state_specific = ()
 
     @property
     def _attributes(self):
         return self._state_common + self._state_specific
+
+    def __init__(self, Y, match, sub, samples, tfce, pmin, cdist, tstart,
+                 tstop):
+        self.Y = Y.name
+        if match:
+            self.match = match.name
+        else:
+            self.match = None
+        if sub is None or isinstance(sub, basestring):
+            self.sub = sub
+        else:
+            self.sub = "<unsaved array>"
+        self.samples = samples
+        self.tfce = tfce
+        self.pmin = pmin
+        self._cdist = cdist
+        self.tstart = tstart
+        self.tstop = tstop
 
     def __getstate__(self):
         state = {name: getattr(self, name, None) for name in self._attributes}
@@ -68,6 +87,11 @@ class _Result(object):
     def __setstate__(self, state):
         for k, v in state.iteritems():
             setattr(self, k, v)
+        # backwards compatibility:  recover tstart & tstop
+        if 'tstart' not in state:
+            cdist = self._first_cdist
+            self.tstart = cdist.tstart
+            self.tstop = cdist.tstop
         self._expand_state()
 
     def __repr__(self):
@@ -101,6 +125,10 @@ class _Result(object):
 
     def _iter_cdists(self):
         yield (None, self._cdist)
+
+    @property
+    def _first_cdist(self):
+        return self._cdist
 
     def masked_parameter_map(self, pmin=0.05, **sub):
         """Create a copy of the parameter map masked by significance
@@ -246,7 +274,6 @@ class t_contrast_rel(_Result):
         If X is an interaction, interaction cells are specified with "|", e.g.
         ``"a1 | b > a0 | b"``.
         """
-        test_name = "t-contrast"
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
 
         # setup contrast
@@ -274,32 +301,21 @@ class t_contrast_rel(_Result):
             else:
                 threshold = None
 
-            cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't', test_name,
-                                 tstart, tstop, criteria, dist_dim, parc, dist_tstep)
+            cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
+                                 "t-contrast", tstart, tstop, criteria,
+                                 dist_dim, parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_order(len(ct.Y), samples, unit=ct.match)
                 run_permutation(t_contrast, cdist, iterator)
 
         # store attributes
-        self.Y = ct.Y.name
+        _Result.__init__(self, ct.Y, ct.match, sub, samples, tfce, pmin, cdist,
+                         tstart, tstop)
         self.X = ct.X.name
         self.contrast = contrast
-        if ct.match:
-            self.match = ct.match.name
-        else:
-            self.match = None
-        if sub is None or isinstance(sub, basestring):
-            self.sub = sub
-        else:
-            self.sub = "<array>"
-        self.samples = samples
-        self.pmin = pmin
         self.tmin = tmin
-        self.tfce = tfce
-        self.name = test_name
         self.t = t
-        self._cdist = cdist
 
         self._expand_state()
 
@@ -414,9 +430,8 @@ class corr(_Result):
                 threshold = None
             info = _cs.stat_info('r', threshold)
 
-            cdist = _ClusterDist(Y, samples, threshold, 0, 'r', name,
-                                 tstart, tstop, criteria, dist_dim, parc,
-                                 dist_tstep)
+            cdist = _ClusterDist(Y, samples, threshold, 0, 'r', name, tstart,
+                                 tstop, criteria, dist_dim, parc, dist_tstep)
             cdist.add_original(rmap)
             if cdist.do_permutation:
                 def test_func(y, out, perm):
@@ -429,24 +444,11 @@ class corr(_Result):
         r = NDVar(rmap, dims, info, name)
 
         # store attributes
-        self.Y = Y.name
+        _Result.__init__(self, Y, match, sub, samples, tfce, pmin, cdist,
+                         tstart, tstop)
         self.X = X.name
         self.norm = None if norm is None else norm.name
-        if sub is None or isinstance(sub, basestring):
-            self.sub = sub
-        else:
-            self.sub = "<array>"
-        if match:
-            self.match = match.name
-        else:
-            self.match = None
-        self.samples = samples
-        self.pmin = pmin
         self.rmin = rmin
-        self.tfce = tfce
-        self.name = name
-        self._cdist = cdist
-
         self.n = n
         self.df = df
         self.r = r
@@ -534,7 +536,6 @@ class ttest_1samp(_Result):
         """
         ct = Celltable(Y, match=match, sub=sub, ds=ds, coercion=asndvar)
 
-        test_name = '1-Sample t-Test'
         n = len(ct.Y)
         df = n - 1
         y = ct.Y.summary()
@@ -569,8 +570,8 @@ class ttest_1samp(_Result):
                 y_perm = ct.Y
             n_samples, samples = _resample_params(len(y_perm), samples)
             cdist = _ClusterDist(y_perm, n_samples, threshold, tail, 't',
-                                 test_name, tstart, tstop, criteria, dist_dim,
-                                 parc, dist_tstep)
+                                 '1-Sample t-Test', tstart, tstop, criteria,
+                                 dist_dim, parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_sign_flip(n, samples)
@@ -584,30 +585,18 @@ class ttest_1samp(_Result):
         t = NDVar(tmap, dims, info=info, name='T')
 
         # store attributes
-        self.Y = ct.Y.name
+        _Result.__init__(self, ct.Y, ct.match, sub, samples, tfce, pmin, cdist,
+                         tstart, tstop)
         self.popmean = popmean
-        if ct.match:
-            self.match = ct.match.name
-        else:
-            self.match = None
-        if sub is None or isinstance(sub, basestring):
-            self.sub = sub
-        else:
-            self.sub = "<unsaved array>"
         self.tail = tail
-        self.samples = samples
-        self.pmin = pmin
         self.tmin = tmin
-        self.tfce = tfce
 
-        self.name = test_name
         self.n = n
         self.df = df
 
         self.y = y
         self.diff = diff
         self.t = t
-        self._cdist = cdist
 
         self._expand_state()
 
@@ -700,7 +689,6 @@ class ttest_ind(_Result):
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
         c1, c0 = ct.cat
 
-        test_name = 'Independent Samples t-Test'
         n1 = len(ct.data[c1])
         n = len(ct.Y)
         n0 = n - n1
@@ -724,8 +712,8 @@ class ttest_ind(_Result):
                 threshold = None
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
-                                 test_name, tstart, tstop, criteria, dist_dim,
-                                 parc, dist_tstep)
+                                 'Independent Samples t-Test', tstart, tstop,
+                                 criteria, dist_dim, parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 def test_func(y, out, perm):
@@ -744,25 +732,14 @@ class ttest_ind(_Result):
         c0_mean = ct.data[c0].summary(name=cellname(c0))
 
         # store attributes
-        self.Y = ct.Y.name
+        _Result.__init__(self, ct.Y, ct.match, sub, samples, tfce, pmin, cdist,
+                         tstart, tstop)
         self.X = ct.X.name
         self.c0 = c0
         self.c1 = c1
-        if ct.match:
-            self.match = ct.match.name
-        else:
-            self.match = None
-        if sub is None or isinstance(sub, basestring):
-            self.sub = sub
-        else:
-            self.sub = "<unsaved array>"
         self.tail = tail
-        self.samples = samples
-        self.pmin = pmin
         self.tmin = tmin
-        self.tfce = tfce
 
-        self.name = test_name
         self.n1 = n1
         self.n0 = n0
         self.df = df
@@ -770,7 +747,6 @@ class ttest_ind(_Result):
         self.c1_mean = c1_mean
         self.c0_mean = c0_mean
         self.t = t
-        self._cdist = cdist
 
         self._expand_state()
 
@@ -894,7 +870,6 @@ class ttest_rel(_Result):
                    "%r" % (c1, c0, ct.match.name))
             raise ValueError(err)
 
-        test_name = 'Related Samples t-Test'
         n = len(ct.Y) // 2
         if n <= 2:
             raise ValueError("Not enough observations for t-test (n=%i)" % n)
@@ -919,8 +894,8 @@ class ttest_rel(_Result):
                 threshold = None
 
             cdist = _ClusterDist(diff, samples, threshold, tail, 't',
-                                 test_name, tstart, tstop, criteria, dist_dim,
-                                 parc, dist_tstep)
+                                 'Related Samples t-Test', tstart, tstop,
+                                 criteria, dist_dim, parc, dist_tstep)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_sign_flip(n, samples)
@@ -935,32 +910,20 @@ class ttest_rel(_Result):
         c0_mean = ct.data[c0].summary(name=cellname(c0))
 
         # store attributes
-        self.Y = ct.Y.name
+        _Result.__init__(self, ct.Y, ct.match, sub, samples, tfce, pmin, cdist,
+                         tstart, tstop)
         self.X = ct.X.name
         self.c0 = c0
         self.c1 = c1
-        if ct.match:
-            self.match = ct.match.name
-        else:
-            self.match = None
-        if sub is None or isinstance(sub, basestring):
-            self.sub = sub
-        else:
-            self.sub = "<unsaved array>"
         self.tail = tail
-        self.samples = samples
-        self.pmin = pmin
         self.tmin = tmin
-        self.tfce = tfce
 
-        self.name = test_name
         self.n = n
         self.df = df
 
         self.c1_mean = c1_mean
         self.c0_mean = c0_mean
         self.t = t
-        self._cdist = cdist
 
         self._expand_state()
 
@@ -979,7 +942,6 @@ class ttest_rel(_Result):
         # uncorrected p
         pmap = stats.ttest_p(t.x, self.df, self.tail)
         info = _cs.sig_info()
-        info['test'] = self.name
         p_uncorr = NDVar(pmap, t.dims, info=info, name='p')
         self.p_uncorrected = p_uncorr
 
@@ -1032,6 +994,10 @@ class _MultiEffectResult(_Result):
     def _iter_cdists(self):
         for cdist in self._cdist:
             yield cdist.name.capitalize(), cdist
+
+    @property
+    def _first_cdist(self):
+        return self._cdist[0]
 
     def compute_probability_map(self, effect=0, **sub):
         """Compute a probability map
@@ -1244,25 +1210,12 @@ class anova(_MultiEffectResult):
             f.append(f_)
 
         # store attributes
-        self.Y = Y.name
+        _MultiEffectResult.__init__(self, Y, match, sub, samples, tfce, pmin,
+                                    cdists, tstart, tstop)
         self.X = X.name
-        if match:
-            self.match = match.name
-        else:
-            self.match = None
-        if sub is None or isinstance(sub, basestring):
-            self.sub = sub
-        else:
-            self.sub = "<unsaved array>"
-        self.samples = samples
-        self.pmin = pmin
-
-        self.name = "ANOVA"
         self._effects = effects
         self._dfs_denom = dfs_denom
         self.f = f
-
-        self._cdist = cdists
 
         self._expand_state()
 
