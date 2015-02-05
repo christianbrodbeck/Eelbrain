@@ -603,8 +603,8 @@ class SensorMap(_tb_sensors_mixin, _EelFigure):
 
         Parameters
         ----------
-        mark : list of int
-            List of sensor indices.
+        mark : list of {str | int}
+            List of sensor names or indices.
         kwargs : dict
             Dict with kwargs for customizing the sensor plot (matplotlib plot
             kwargs).
