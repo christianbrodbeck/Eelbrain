@@ -533,6 +533,8 @@ class MneExperiment(FileTree):
                 desc = link.join((params['c1'], params['c0']))
             elif kind == 't_contrast_rel':
                 desc = params['contrast']
+            elif kind == 'custom':
+                desc = 'Custom test'
             else:
                 raise NotImplementedError("Invalid test kind: %r" % kind)
             params['desc'] = desc
@@ -1955,6 +1957,9 @@ class MneExperiment(FileTree):
             test = self.get('test', **kwargs)
         else:
             self.set(test=test, **kwargs)
+
+        if self._tests[test]['kind'] == 'custom':
+            raise RuntimeError("Don't know how to perform 'custom' test")
 
         # find data to use
         modality = self.get('modality')
