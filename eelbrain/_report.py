@@ -280,7 +280,7 @@ def timecourse(doc, ds, y, model, res, title, caption, colors):
         ax.axvline(res.tstart, color='k')
     if res.tstop is not None:
         ax.axvline(res.tstop, color='k')
-    image = p.image('%s_cluster.svg')
+    image = p.image('%s_cluster.png')
     legend_p = p.plot_legend(show=False)
     legend = legend_p.image("Legend.svg")
     section.add_figure(tc_caption, [image, legend])
