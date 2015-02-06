@@ -4895,12 +4895,23 @@ class Interaction(_Effect):
 
     # numeric ---
     def __eq__(self, other):
-        X = tuple((f == cell) for f, cell in zip (self.base, other))
-        return np.all(X, axis=0)
+        if isinteraction(other) and len(other.base) == len(self.base):
+            x = np.vstack((b == bo for b, bo in izip(self.base, other.base)))
+            return np.all(x, 0)
+        elif isinstance(other, tuple) and len(other) == len(self.base):
+            x = np.vstack(factor == level for factor, level in izip(self.base, other))
+            return np.all(x, 0)
+        else:
+            return np.zeros(len(self), bool)
 
     def __ne__(self, other):
-        X = tuple((f != cell) for f, cell in zip (self.base, other))
-        return np.any(X, axis=0)
+        if isinteraction(other) and len(other.base) == len(self.base):
+            x = np.vstack((b != bo for b, bo in izip(self.base, other.base)))
+            return np.any(x, 0)
+        elif isinstance(other, tuple) and len(other) == len(self.base):
+            x = np.vstack(factor != level for factor, level in izip(self.base, other))
+            return np.any(x, 0)
+        return np.ones(len(self), bool)
 
     def as_factor(self):
         name = self.name.replace(' ', '')

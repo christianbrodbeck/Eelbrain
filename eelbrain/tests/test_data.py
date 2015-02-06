@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from itertools import izip
+from itertools import izip, product
 import os
 import cPickle as pickle
 import shutil
@@ -454,6 +454,23 @@ def test_factor_relabel():
     f.relabel({'d': 'c'})
     assert_array_equal(f, Factor('cccbbbccc'))
     assert_raises(KeyError, f.relabel, {'a':'c'})
+
+
+def test_interaction():
+    "Test Interaction"
+    ds = datasets.get_uv()
+    A = ds['A']
+    B = ds['B']
+    i = A % B
+    # eq for sequence
+    assert_array_equal(i == A % B, True)
+    assert_array_equal(i == B % A, False)
+    assert_array_equal(i == A, False)
+    assert_array_equal(i == ds['fltvar'], False)
+    assert_array_equal(ds.eval("A%B") == Factor(ds['A']) % B, True)
+    # eq for element
+    for a, b in product(A.cells, B.cells):
+        assert_array_equal(i == (a, b), np.logical_and(A == a, B == b))
 
 
 def test_isin():
