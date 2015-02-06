@@ -42,6 +42,21 @@ Plots that do take those parameters can be identified by the ``**layout`` in
 their function signature.
 
 
+GUI Interaction
+^^^^^^^^^^^^^^^
+
+By default, new plots are automatically shown and, if the Python interpreter is
+in interactive mode the GUI main loop is started. This behavior can be
+controlled with 2 arguments when constructing a plot:
+
+show : bool
+    Show the figure in the GUI (default True). Use False for creating
+    figures and saving them without displaying them on the screen.
+run : bool
+    Run the Eelbrain GUI app (default is True for interactive plotting and
+    False in scripts).
+
+
 Backend Configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
