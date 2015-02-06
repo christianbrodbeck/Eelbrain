@@ -10,6 +10,15 @@ def ms(t_s):
     return int(round(t_s * 1000))
 
 
+def format_samples(res):
+    if res.samples == -1:
+        return "a complete set of %i permutations" % res.n_samples
+    elif res.samples is None:
+        return "no permutations"
+    else:
+        return "%i random permutations" % res.n_samples
+
+
 def format_timewindow(res):
     "Format a description of the time window for a test result"
     if res.tstart is None and res.tstop is None:
@@ -256,8 +265,8 @@ def timecourse(doc, ds, y, model, res, title, caption, colors):
 
     # compose captions
     if clusters.n_cases:
-        c_caption = ("Clusters %s with %i permutations."
-                     % (format_timewindow(res), res.samples))
+        c_caption = ("Clusters %s based on %s."
+                     % (format_timewindow(res), format_samples(res)))
         tc_caption = caption
     else:
         c_caption = "No clusters found %s." % format_timewindow(res)

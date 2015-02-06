@@ -15,6 +15,10 @@ p : NDVar | None
 clusters : Dataset | None
     Table of all the clusters found (None if no clusters were found, or if no
     clustering was performed).
+n_samples : None | int
+    The actual number of permutations. If ``samples = -1``, i.e. a complete set
+    or permutations is performed, then ``n_samples`` indicates the actual
+    number of permutations that constitute the complete set.
 '''
 from __future__ import division
 
@@ -210,6 +214,13 @@ class _Result(object):
 
     def info_list(self):
         return self._cdist.info_list()
+
+    @property
+    def n_samples(self):
+        if self.samples == -1:
+            return self._first_cdist.samples
+        else:
+            return self.samples
 
 
 class t_contrast_rel(_Result):
