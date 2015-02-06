@@ -323,9 +323,10 @@ def repmeas(Y, X, match, sub=None, ds=None):
     Y :
         Dependent variable (can be model with several dependents).
     X : categorial
-        Categories defining cells.
-    match : factor
-        Factor identifying the source of the measurement across repetitions.
+        Model defining the cells that should be restructured into variables.
+    match : categorial
+        Model identifying the source of the measurement across repetitions,
+        i.e. the model that should be retained.
     sub :
         boolean array specifying which values to include (generate e.g.
         with 'sub=T==[1,2]')
@@ -339,8 +340,17 @@ def repmeas(Y, X, match, sub=None, ds=None):
         Repeated measures table.
     """
     ct = Celltable(Y, X, match, sub, ds=ds)
+    if not ct.all_within:
+        raise ValueError("Incomplete data")
+
     out = Dataset()
-    out[ct.match.name] = ct.groups.values()[0]
+    x = ct.groups.values()[0]
+    if isinteraction(x):
+        for f in x.base:
+            out.add(f)
+    else:
+        out[ct.match.name] = x
+
     for cell in ct.X.cells:
         out[cellname(cell, '_')] = ct.data[cell]
 

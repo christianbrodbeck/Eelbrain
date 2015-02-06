@@ -7,7 +7,7 @@ from eelbrain import datasets, table, combine
 
 
 def test_difference():
-    "Test tabe.difference"
+    "Test table.difference"
     ds = datasets.get_uv()
     print table.difference('fltvar', 'A', 'a1', 'a2', 'rm', ds=ds)
     print table.difference('fltvar', 'A', 'a1', 'a2', 'rm', by='B', ds=ds)
@@ -40,3 +40,4 @@ def test_repmeas():
     ds = datasets.get_uv()
     print table.repmeas('fltvar', 'A', 'rm', ds=ds)
     print table.repmeas('fltvar', 'A%B', 'rm', ds=ds)
+    print table.repmeas('fltvar', 'A', 'B%rm', ds=ds)
