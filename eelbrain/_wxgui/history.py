@@ -2,6 +2,16 @@
 
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
+
+class Action(object):
+
+    def do(self, doc):
+        raise NotImplementedError
+
+    def undo(self, doc):
+        raise NotImplementedError
+
+
 class History():
     """The history as a list of action objects
 

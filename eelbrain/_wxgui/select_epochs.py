@@ -22,10 +22,10 @@ from .._wxutils import Icon, ID, logger, REValidator
 from .app import get_app
 from .frame import EelbrainFrame, EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
-from .history import History
+from .history import History, Action
 
 
-class ChangeAction():
+class ChangeAction(Action):
     """Action objects are kept in the history and can do and undo themselves"""
 
     def __init__(self, desc, index, old_accept, new_accept, old_tag, new_tag,
