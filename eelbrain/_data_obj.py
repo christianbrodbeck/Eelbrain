@@ -674,7 +674,7 @@ class Celltable(object):
             dependent measurement
         X : categorial
             Model (Factor or Interaction) for dividing Y.
-        match :
+        match : categorial
             Factor on which cases are matched (i.e. subject for a repeated
             measures comparisons). If several data points with the same
             case fall into one cell of X, they are combined using
@@ -741,7 +741,7 @@ class Celltable(object):
         Y = coercion(Y, sub, ds)
 
         if match is not None:
-            match = asfactor(match, sub, ds)
+            match = ascategorial(match, sub, ds)
             cell_model = match if X is None else X % match
             sort_idx = None
             if len(cell_model) > len(cell_model.cells):

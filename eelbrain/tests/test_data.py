@@ -230,6 +230,11 @@ def test_celltable():
     ct = Celltable('Y', 'B', match='rm', sub="A == 'a0'", ds=ds)
     assert_dataobj_equal(ct_sub.Y, ct.Y)
 
+    # Interaction match
+    ct = Celltable('Y', 'A', match='B % rm', ds=ds)
+    ok_(ct.all_within)
+    assert_dataobj_equal(combine((ct.data['a0'], ct.data['a1'])), ds['Y'])
+
     # test rm sorting
     ds = Dataset()
     ds['rm'] = Factor('abc', repeat=4)
