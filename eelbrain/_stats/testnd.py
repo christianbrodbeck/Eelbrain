@@ -893,7 +893,8 @@ class ttest_rel(_Result):
             else:
                 threshold = None
 
-            cdist = _ClusterDist(diff, samples, threshold, tail, 't',
+            n_samples, samples = _resample_params(len(diff), samples)
+            cdist = _ClusterDist(diff, n_samples, threshold, tail, 't',
                                  'Related Samples t-Test', tstart, tstop,
                                  criteria, dist_dim, parc, dist_tstep)
             cdist.add_original(tmap)
