@@ -23,9 +23,9 @@ def _resample_params(N, samples):
 
     Returns
     -------
-    n_samples : int
+    actual_n_samples : int
         Adapted number of resamplings that will be done.
-    samples : int
+    samples_param : int
         Samples parameter for the resample function (-1 to do all permutations,
         otherwise same as n_samples).
     """
@@ -151,8 +151,7 @@ def permute_sign_flip(n, samples=10000, seed=0):
     for i in sample_sequences:
         np.floor_divide(i, mult, buffer_, dtype=np.int64)
         buffer_ %= 2
-        sign = np.choose(buffer_, choice, sign)
-        yield sign
+        yield np.choose(buffer_, choice, sign)
 
 
 def resample(Y, samples=10000, replacement=False, unit=None, seed=0):
