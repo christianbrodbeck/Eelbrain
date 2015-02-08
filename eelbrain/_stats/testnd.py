@@ -222,6 +222,14 @@ class _Result(object):
         else:
             return self.samples
 
+    @property
+    def _time_dim(self):
+        for dim in self._first_cdist.dims:
+            if isinstance(dim, UTS):
+                return dim
+        return None
+
+
 
 class t_contrast_rel(_Result):
 

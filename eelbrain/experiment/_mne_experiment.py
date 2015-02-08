@@ -2984,17 +2984,17 @@ class MneExperiment(FileTree):
         ds, res = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
                                  'src', sns_baseline, src_baseline, True, True,
                                  redo_test)
+        y = ds['srcm']
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
         report = Report(title)
 
         # info
-        self._report_test_info(report.add_section("Test Info"), ds, test,
+        self._report_test_info(report.add_section("Test Info"), ds, y, test,
                                tstart, tstop, pmin, res.samples, res, 'src',
                                include)
 
-        y = ds['srcm']
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
         legend = None
@@ -3124,9 +3124,8 @@ class MneExperiment(FileTree):
         title = self.format('{experiment} {epoch} {test} {test_options}')
         report = Report(title)
 
-        # method intro
-        self._report_test_info(report.add_section("Test Info"), ds, test,
-                               tstart, tstop, pmin, samples)
+        # method intro (compose it later when data is available)
+        info_section = report.add_section("Test Info")
 
         # add parc image
         section = report.add_section(parc)
@@ -3162,6 +3161,10 @@ class MneExperiment(FileTree):
                 res = self._make_test(y, ds, test, samples, pmin, tstart, tstop,
                                       None, None)
                 _report.roi_timecourse(section, ds, label, model, res, colors)
+
+        # compose info
+        self._report_test_info(info_section, ds, y, test, tstart, tstop, pmin,
+                               samples)
 
         report.sign(('eelbrain', 'mne', 'surfer'))
         report.save_html(dst)
@@ -3207,6 +3210,7 @@ class MneExperiment(FileTree):
         # load data
         ds, res = self.load_test(None, tstart, tstop, pmin, None, None, samples,
                                  'sns', baseline, None, True, True, redo_test)
+        y = ds['eeg']
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
@@ -3214,7 +3218,7 @@ class MneExperiment(FileTree):
 
         # info
         info_section = report.add_section("Test Info")
-        self._report_test_info(info_section, ds, test,
+        self._report_test_info(info_section, ds, y, test,
                                tstart, tstop, pmin, samples, res, 'sns',
                                include)
 
@@ -3225,7 +3229,6 @@ class MneExperiment(FileTree):
         info_section.add_figure("Sensor map with connectivity", image_conn)
         p.close()
 
-        y = ds['eeg']
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
         legend = None
@@ -3308,7 +3311,7 @@ class MneExperiment(FileTree):
 
         # info
         info_section = report.add_section("Test Info")
-        self._report_test_info(info_section, ds, test, tstart, tstop, pmin,
+        self._report_test_info(info_section, ds, eeg, test, tstart, tstop, pmin,
                                samples)
 
         # add sensor map
@@ -3347,8 +3350,8 @@ class MneExperiment(FileTree):
                                 "trials per condition")
         return s_table
 
-    def _report_test_info(self, section, ds, test, tstart, tstop, pmin, samples,
-                          res=None, data=None, include=None):
+    def _report_test_info(self, section, ds, y, test, tstart, tstop, pmin,
+                          samples, res=None, data=None, include=None):
         info = List("Data:")
         info.add_item(self.format('epoch = {epoch} {evoked-kind} ~ {model}'))
         info.add_item(self.format("cov = {cov}"))
@@ -3359,8 +3362,8 @@ class MneExperiment(FileTree):
         info = List("Cluster Permutation Test:")
         test_params = self._tests[test]
         info.add_item("test = %s  (%s)" % (test_params['kind'], test_params['desc']))
-        info.add_item("Time interval:  %i - %i ms." % (round(tstart * 1000),
-                                                       round(tstop * 1000)))
+        info.add_item("Time interval:  %i - %i ms." % (_report.tstart(tstart, y.time),
+                                                       _report.tstop(tstop, y.time)))
         if pmin is None:
             info.add_item("P-values based on maximum value in randomizations")
         elif pmin == 'tfce':

@@ -21,14 +21,23 @@ def format_samples(res):
 
 def format_timewindow(res):
     "Format a description of the time window for a test result"
-    if res.tstart is None and res.tstop is None:
-        return 'in the whole time range'
-    elif res.tstart is None:
-        return 'before %i ms' % ms(res.tstop)
-    elif res.tstop is None:
-        return 'after %i ms' % ms(res.tstart)
+    uts = res._time_dim
+    return 'between %i and %i ms' % (tstart(res.tstart, uts),
+                                     tstop(res.tstop, uts))
+
+
+def tstart(tstart, uts):
+    if tstart is None:
+        return ms(uts.tmin)
     else:
-        return 'between %i and %i ms' % (ms(res.tstart), ms(res.tstop))
+        return ms(tstart)
+
+
+def tstop(tstop, uts):
+    if tstop is None:
+        return ms(uts.tmax + uts.tstep)
+    else:
+        return ms(tstop)
 
 
 def sensor_bin_table(section, res, pmin=None):
