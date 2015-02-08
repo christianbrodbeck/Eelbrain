@@ -2975,14 +2975,19 @@ class NDVar(object):
             else:
                 func = np.mean
 
-        # times
+        # find time bin boundaries
         if tstart is None:
             tstart = time.tmin
+
         if tstop is None:
-            tstop = time.tmax + time.tstep
-        times = np.arange(tstart, tstop, tstep)
-        if times[-1] < tstop:
-            times = np.append(times, tstop)
+            tstop = time.tmax  # -> avoid adding 1 sample bins
+
+        times = [tstart]
+        t = tstart + tstep
+        while t < tstop:
+            times.append(t)
+            t += tstep
+        times.append(min(t, time.tstop))
 
         n_bins = len(times) - 1
         out_shape = list(self.shape)
@@ -2993,10 +2998,12 @@ class NDVar(object):
         for i in xrange(n_bins):
             t0 = times[i]
             t1 = times[i + 1]
-            bins.append((t0, t1))
             src_idx = idx_prefix + (time.dimindex((t0, t1)),)
             dst_idx = idx_prefix + (i,)
             x[dst_idx] = func(self.x[src_idx], axis=time_axis)
+            if t1 is None:
+                t1 = time.tmax + time.tstep
+            bins.append((t0, t1))
 
         out_time = UTS(tstart + tstep / 2, tstep, n_bins)
         dims = list(self.dims)
@@ -6919,7 +6926,7 @@ class UTS(Dimension):
         self.nsamples = nsamples = int(nsamples)
         self.x = self.times = tmin + np.arange(nsamples) * tstep
         self.tmax = self.times[-1]
-        self.tstop = self.tmax + tstep
+        self.tstop = self.tmin + tstep * (nsamples + 1)
 
     @classmethod
     def from_int(cls, first, last, sfreq):

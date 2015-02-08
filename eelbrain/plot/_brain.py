@@ -7,8 +7,8 @@ from tempfile import mkdtemp
 import numpy as np
 import mne
 
-from .._data_obj import asndvar, NDVar, UTS
-from ..fmtxt import Image, im_table
+from .._data_obj import asndvar, NDVar
+from ..fmtxt import Image, im_table, ms
 
 
 def _idx(i):
@@ -688,7 +688,7 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         hemi_data = data.sub(source=hemi)
         brain = cluster(hemi_data, vmax, surf, views[0], colorbar=False, w=300,
                         h=250, time_label=None)
-        im = brain.screenshot_single('rgba', True)
+        brain.screenshot_single('rgba', True)
 
         hemi_lines = [[] for _ in views]
         for i in xrange(len(data.time)):
@@ -700,11 +700,8 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         ims += hemi_lines
 #         brain.close() # causes segfault in wx
 
-    bins = data.info['bins']
-    header = ['%i - %i ms' % (t0 * 1000, t1 * 1000) for t0, t1 in bins]
-    im = im_table(ims, header)
-
-    return im
+    header = ['%i - %i ms' % (ms(t0), ms(t1)) for t0, t1 in data.info['bins']]
+    return im_table(ims, header)
 
 
 def connectivity(source):

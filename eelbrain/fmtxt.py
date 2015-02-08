@@ -556,6 +556,11 @@ def symbol(symbol, df=None):
     return out
 
 
+def ms(t_s):
+    "Convert time in seconds to rounded milliseconds"
+    return int(round(t_s * 1000))
+
+
 def p(p, digits=3, stars=None, of=3):
     """Create an FMText representation of a p-value
 

@@ -562,6 +562,13 @@ def test_ndvar_binning():
     assert_array_equal(b.x, np.vstack((x_dst, x_dst, x_dst)), "Binned data")
     assert_array_equal(b.time.x, time_dst, "Bin times")
 
+    # time:
+    x = np.ones((5, 70))
+    ndvar = NDVar(x, ('case', UTS(0.45000000000000007, 0.005, 70)))
+    binned_ndvar = ndvar.bin(0.05)
+    assert_array_equal(binned_ndvar.x, 1.)
+    eq_(binned_ndvar.shape, (5, 7))
+
 
 def test_ndvar_summary_methods():
     "Test NDVar methods for summarizing data over axes"

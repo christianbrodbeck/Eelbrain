@@ -2,12 +2,7 @@
 from . import plot
 from . import test
 from ._data_obj import cellname
-from .fmtxt import FMText
-
-
-def ms(t_s):
-    "Convert time in seconds to rounded milliseconds"
-    return int(round(t_s * 1000))
+from .fmtxt import FMText, ms
 
 
 def format_samples(res):
