@@ -4846,6 +4846,9 @@ class Interaction(_Effect):
             else:
                 raise TypeError("Invalid type for Interaction: %r" % type(b))
 
+        if len(self.base) < 2:
+            raise ValueError("Interaction needs a base of at least two Factors "
+                             "(got %s)" % repr(base))
         self._n_cases = N = len(self.base[0])
         if not all([len(f) == N for f in self.base[1:]]):
             err = ("Interactions only between effects with the same number of "
