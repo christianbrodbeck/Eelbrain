@@ -12,7 +12,7 @@ from scipy import ndimage
 
 import eelbrain
 from eelbrain import datasets, testnd, plot, NDVar
-from eelbrain._data_obj import UTS, Ordered, Sensor
+from eelbrain._data_obj import UTS, Ordered, Sensor, cwt_morlet
 from eelbrain._stats import testnd as _testnd
 from eelbrain._stats.testnd import _ClusterDist, label_clusters
 from eelbrain._utils import logger
@@ -487,3 +487,13 @@ def test_ttest_rel():
     res1 = testnd.ttest_rel('uts', 'A', 'a1', 'a0', 'rm', ds=sds, tfce=True,
                             samples=10)
     assert_dataobj_equal(res1.compute_probability_map(), tgt)
+
+
+def test_cwt():
+    "Test tests with wavelet transform"
+    ds = datasets.get_uts(True)
+    ds['cwt'] = cwt_morlet(ds['utsnd'], np.arange(10, 20))
+    res = testnd.ttest_rel('cwt', 'A', match='rm', ds=ds, pmin=0.05, samples=10)
+    cluster = res.clusters.sub("p == 0")
+    assert_array_equal(cluster['frequency_min'], 10)
+    assert_array_equal(cluster['frequency_max'], 19)

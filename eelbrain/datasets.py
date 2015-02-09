@@ -227,6 +227,14 @@ def get_uts(utsnd=False, seed=0):
         y[30:, 2, 25:75] += win * 2.5
         y[30:, 3, 25:75] += win * 1.5
         y[30:, 4, 25:75] += win
+        # add spectral effect
+        freq = 15.0  # >= 2
+        x = np.sin(time.times * freq * 2 * np.pi)
+        for i in xrange(30):
+            shift = np.random.randint(0, 100 / freq)
+            y[i, 2, 25:75] += 1.1 * win * x[shift: 50+shift]
+            y[i, 3, 25:75] += 1.5 * win * x[shift: 50+shift]
+            y[i, 4, 25:75] += 0.5 * win * x[shift: 50+shift]
 
         dims = ('case', sensor, time)
         ds['utsnd'] = NDVar(y, dims=dims)

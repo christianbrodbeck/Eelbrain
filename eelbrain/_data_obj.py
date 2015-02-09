@@ -5791,6 +5791,26 @@ class Ordered(Scalar):
         vmax = self.x.max()
         return "%s [%s, %s]" % (name, vmin, vmax)
 
+    def _cluster_properties(self, x):
+        """Find cluster properties for this dimension
+
+        Parameters
+        ----------
+        x : array of bool, (n_clusters, len(self))
+            The cluster extents, with different clusters stacked along the
+            first axis.
+
+        Returns
+        -------
+        cluster_properties : None | Dataset
+            A dataset with variables describing cluster properties.
+        """
+        ds = Dataset()
+        where = [np.flatnonzero(cluster) for cluster in x]
+        ds['%s_min' % self.name] = Var([self.values[w[0]] for w in where])
+        ds['%s_max' % self.name] = Var([self.values[w[-1]] for w in where])
+        return ds
+
 
 class Sensor(Dimension):
     """Dimension class for representing sensor information
