@@ -7196,7 +7196,7 @@ def cwt_morlet(Y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
         Frequency/ies of interest. For a scalar, the output will not contain a
         frequency dimension.
     use_fft : bool
-        Compute convolution with FFT or temoral convolution.
+        Compute convolution with FFT or temporal convolution.
     n_cycles: float | array of float
         Number of cycles. Fixed number or one per frequency.
     zero_mean : bool
