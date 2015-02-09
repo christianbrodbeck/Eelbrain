@@ -9,12 +9,12 @@ import numpy as np
 from . import _base
 from ._base import _EelFigure
 from . import _utsnd as _utsnd
-from ._sensors import _tb_sensors_mixin
+from ._sensors import SensorMapMixin
 from ._sensors import _plt_map2d
 
 
 
-class Topomap(_tb_sensors_mixin, _EelFigure):
+class Topomap(SensorMapMixin, _EelFigure):
     "Plot individual topogeraphies"
     def __init__(self, epochs, Xax=None, sensors='name', proj='default', res=200,
                  interpolation='nearest', ds=None, vmax=None, vmin=None, *args,
@@ -51,7 +51,6 @@ class Topomap(_tb_sensors_mixin, _EelFigure):
         """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
-        _tb_sensors_mixin.__init__(self, sensors)
 
         _EelFigure.__init__(self, "Topomap", nax, 7, 1, *args, **kwargs)
 
@@ -64,13 +63,14 @@ class Topomap(_tb_sensors_mixin, _EelFigure):
                        'vlims': vlims}
 
         self._plots = []
-        self._sensor_plots = []
+        sensor_plots = []
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
             ax.ID = i
             h = _ax_topomap(ax, layers, title=True, **topo_kwargs)
             self._plots.append(h)
-            self._sensor_plots.append(h.sensors)
+            sensor_plots.append(h.sensors)
 
+        SensorMapMixin.__init__(self, sensor_plots, sensors)
         self._show()
 
     def add_contour(self, meas, level, color='k'):

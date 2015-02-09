@@ -218,15 +218,25 @@ class _plt_map2d:
             h.set_color(color)
 
 
-class _tb_sensors_mixin:
+class SensorMapMixin:
     # expects self._sensor_plots to be list of _plt_map2d
-    _label_options = ['None', 'Index', 'Name', 'Full Name']
-    _label_option_args = [None, 'index', 'name', 'fullname']
+    __label_options = ['None', 'Index', 'Name', 'Full Name']
+    __label_option_args = [None, 'index', 'name', 'fullname']
 
-    def __init__(self, label=None):
-        self._label_color = 'k'
-        self._check_label_arg(label)
-        self._initial_label_arg = label
+    def __init__(self, sensor_plots, label=None):
+        """Call after EelFigure init (toolbar fill)
+
+        Parameters
+        ----------
+        sensor_plots : list of _plt_map2d
+            Sensor-map objects.
+        label : None | str
+            Initial label argument (default None).
+        """
+        self.__label_color = 'k'
+        self.__check_label_arg(label)
+        self.__sensor_plots = sensor_plots
+        self.__LabelChoice.SetSelection(self.__label_option_args.index(label))
 
     def _fill_toolbar(self, tb):
         import wx
@@ -235,30 +245,28 @@ class _tb_sensors_mixin:
         # sensor labels
         lbl = wx.StaticText(tb, -1, "Labels:")
         tb.AddControl(lbl)
-        choice = wx.Choice(tb, -1, choices=self._label_options)
-        sel = self._label_option_args.index(self._initial_label_arg)
-        choice.SetSelection(sel)
+        choice = wx.Choice(tb, -1, choices=self.__label_options)
         tb.AddControl(choice)
-        self._SensorLabelChoice = choice
-        choice.Bind(wx.EVT_CHOICE, self._OnSensorLabelChoice)
+        self.__LabelChoice = choice
+        choice.Bind(wx.EVT_CHOICE, self.__OnSensorLabelChoice)
 
         # sensor label color
         choices = ['black', 'white', 'blue', 'green', 'red', 'cyan', 'magenta',
                    'yellow']
         choice = wx.Choice(tb, -1, choices=choices)
         tb.AddControl(choice)
-        self._SensorLabelColorChoice = choice
-        choice.Bind(wx.EVT_CHOICE, self._OnSensorLabelColorChoice)
+        self.__LabelColorChoice = choice
+        choice.Bind(wx.EVT_CHOICE, self.__OnSensorLabelColorChoice)
 
         btn = wx.Button(tb, label="Mark")  # , style=wx.BU_EXACTFIT)
-        btn.Bind(wx.EVT_BUTTON, self._OnMarkSensor)
+        btn.Bind(wx.EVT_BUTTON, self.__OnMarkSensor)
         tb.AddControl(btn)
 
-    def _check_label_arg(self, arg):
-        if arg not in self._label_option_args:
+    def __check_label_arg(self, arg):
+        if arg not in self.__label_option_args:
             raise ValueError("Invalid sensor label argument: %s" % repr(arg))
 
-    def _OnMarkSensor(self, event):
+    def __OnMarkSensor(self, event):
         import wx
         msg = "Channels to mark, separated by comma"
         dlg = wx.TextEntryDialog(self._frame, msg, "Mark Sensor")
@@ -273,12 +281,12 @@ class _tb_sensors_mixin:
             sty = wx.OK | wx.ICON_ERROR
             wx.MessageBox(msg, "Mark Sensors Failed for %r" % chs, style=sty)
 
-    def _OnSensorLabelChoice(self, event):
+    def __OnSensorLabelChoice(self, event):
         sel = event.GetSelection()
-        sel_arg = self._label_option_args[sel]
+        sel_arg = self.__label_option_args[sel]
         self.set_label_text(sel_arg)
 
-    def _OnSensorLabelColorChoice(self, event):
+    def __OnSensorLabelColorChoice(self, event):
         sel = event.GetSelection()
         color = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y'][sel]
         self.set_label_color(color)
@@ -294,7 +302,7 @@ class _tb_sensors_mixin:
             Matplotlib marker specification for the marked sensors (default
             'bo').
         """
-        for p in self._sensor_plots:
+        for p in self.__sensor_plots:
             p.mark_sensors(sensors, marker)
         self.draw()
 
@@ -303,10 +311,10 @@ class _tb_sensors_mixin:
             sels = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y']
             if color in sels:
                 sel = sels.index(color)
-                self._SensorLabelColorChoice.SetSelection(sel)
+                self.__LabelColorChoice.SetSelection(sel)
 
-        self._label_color = color
-        for p in self._sensor_plots:
+        self.__label_color = color
+        for p in self.__sensor_plots:
             p.set_label_color(color)
         self.draw()
 
@@ -319,13 +327,13 @@ class _tb_sensors_mixin:
             Content of the labels. For 'name', any prefix common to all names
             is removed; with 'fullname', the full name is shown.
         """
-        self._check_label_arg(text)
+        self.__check_label_arg(text)
         if hasattr(self, '_SensorLabelChoice'):
-            sel = self._label_option_args.index(text)
-            self._SensorLabelChoice.SetSelection(sel)
+            sel = self.__label_option_args.index(text)
+            self.__LabelChoice.SetSelection(sel)
 
-        for p in self._sensor_plots:
-            p.show_labels(text, color=self._label_color)
+        for p in self.__sensor_plots:
+            p.show_labels(text, color=self.__label_color)
         self.draw()
 
 
@@ -552,7 +560,7 @@ class SensorMaps(_EelFigure):
         self.canvas.draw()
 
 
-class SensorMap(_tb_sensors_mixin, _EelFigure):
+class SensorMap(SensorMapMixin, _EelFigure):
     """
     Plot a 2d Sensor Map.
 
@@ -584,7 +592,6 @@ class SensorMap(_tb_sensors_mixin, _EelFigure):
             ftitle = 'SensorMap: %s' % sensors.sysname
         else:
             ftitle = 'SensorMap'
-        _tb_sensors_mixin.__init__(self)
         _EelFigure.__init__(self, ftitle, 1, 7, 1, False, *args, **kwargs)
         self.axes = self._axes[0]
 
@@ -595,7 +602,8 @@ class SensorMap(_tb_sensors_mixin, _EelFigure):
         self._connectivity = None
 
         self._markers = _ax_map2d(self.axes, sensors, proj=proj)
-        self._sensor_plots = [self._markers.sensors]
+        SensorMapMixin.__init__(self, [self._markers.sensors])
+
         if labels:
             self.set_label_text(labels)
         if mark is not None:
