@@ -135,7 +135,7 @@ class _plt_map2d:
         Parameters
         ----------
         sensors : None | Sensor dimension index
-            Sensors which should be marked
+            Sensors which should be marked.
         marker : str
             Matplotlib marker specification for the marked sensors.
         """
@@ -284,6 +284,16 @@ class _tb_sensors_mixin:
         self.set_label_color(color)
 
     def mark_sensors(self, sensors, marker='bo'):
+        """Mark given sensors on the plots
+
+        Parameters
+        ----------
+        sensors : sequence of {str | int}
+            List of sensor names or indices.
+        marker : str
+            Matplotlib marker specification for the marked sensors (default
+            'bo').
+        """
         for p in self._sensor_plots:
             p.mark_sensors(sensors, marker)
         self.draw()
@@ -603,7 +613,7 @@ class SensorMap(_tb_sensors_mixin, _EelFigure):
 
         Parameters
         ----------
-        mark : list of {str | int}
+        mark : sequence of {str | int}
             List of sensor names or indices.
         kwargs : dict
             Dict with kwargs for customizing the sensor plot (matplotlib plot
