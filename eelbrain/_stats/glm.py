@@ -1020,7 +1020,7 @@ class anova(object):
             table.cell("Residuals")
             SS, df, MS = self.residuals
             table.cell(SS)
-            table.cell(df, fmt='%i')
+            table.cell(df)
             table.cell(MS)
             table.endline()
 

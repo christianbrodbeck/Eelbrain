@@ -551,8 +551,7 @@ def symbol(symbol, df=None):
     assert (df is None) or np.isscalar(df) or isstr(df) or np.iterable(df)
     out = FMTextElement(symbol, mat=True)
     if df is not None:
-        df_ = FMTextElement(df, '_', mat=True)
-        out = FMText([out, df_], mat=True)
+        out += FMTextElement(df, '_', mat=True)
     return out
 
 
@@ -598,18 +597,16 @@ def stat(x, fmt="%.2f", stars=None, of=3, drop0=False):
     returns a FMText with properties set for a statistic (e.g. a t-value)
 
     """
-    ts_stat = FMText(x, fmt=fmt, drop0=drop0)
-    if stars is None:
-        return ts_stat
-    else:
-        ts_s = Stars(stars, of=of)
-        return FMText((ts_stat, ts_s), mat=True)
+    ts_stat = FMTextElement(x, fmt=fmt, drop0=drop0)
+    if stars is not None:
+        ts_stat += Stars(stars, of=of)
+    return ts_stat
 
 
 def eq(name, result, eq='=', df=None, fmt='%.2f', drop0=False, stars=None,
        of=3):
     symbol_ = symbol(name, df=df)
-    stat_ = stat(result, fmt=fmt, drop0=drop0, stars=stars, of=of)
+    stat_ = stat(result, fmt, stars, of, drop0)
     return FMText([symbol_, eq, stat_], mat=True)
 
 
@@ -1084,14 +1081,14 @@ class Table(FMTextElement):
         if (len(args) == 1) and (args[0] is None):
             self._title = None
         else:
-            self._title = FMText(*args, **kwargs)
+            self._title = asfmtext(*args, **kwargs)
 
     def caption(self, *args, **kwargs):
         """Set the table caption (with FMText args/kwargs)"""
         if (len(args) == 1) and (args[0] is None):
             self._caption = None
         else:
-            self._caption = FMText(*args, **kwargs)
+            self._caption = asfmtext(*args, **kwargs)
 
     def __repr__(self):
         """

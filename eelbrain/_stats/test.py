@@ -391,9 +391,8 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     # header
     table.cell("Effect")
     if df_in_header:
-        table.cell([statistic_name,
-                    fmtxt.FMText(dfs[0], property='_'),
-                    ], mat=True)
+        table.cell([statistic_name, fmtxt.FMTextElement(dfs[0], property='_')],
+                   mat=True)
     else:
         table.cell(statistic_name, mat=True)
         table.cell('df', mat=True)
@@ -405,9 +404,7 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     # body
     for name, t, mark, df, p, p_adj in zip(names, ts, stars, dfs, ps, ps_adjusted):
         table.cell(name)
-        tex_stars = fmtxt.Stars(mark, of=3)
-        tex_t = fmtxt.FMText(t, fmt='%.2f')
-        table.cell([tex_t, tex_stars])
+        table.cell(fmtxt.stat(t, stars=mark, of=3))
         if not df_in_header:
             table.cell(df)
 
@@ -707,7 +704,8 @@ def _corr_to_table(table, Y, X, categories, levels, printXname=True, label=False
                 table.cell()
             if label:
                 table.cell(label)
-            table.cells(fmtxt.FMText(r) + fmtxt.Stars(nstars, of=len(levels)), p, n)
+            table.cells(fmtxt.stat(r, '%.3f', nstars, len(levels)), fmtxt.p(p),
+                        n)
         else:
             table._my_nan_count += 1
 
