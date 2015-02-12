@@ -14,6 +14,9 @@ New in 0.12
   - API: The default number of samples for reports is now 10'000.
   - New epoch parameter ``'n_cases'``:  raise an error if an epoch definition
     does not yield expected number of trials.
+  - A custom baseline period for epochs can now be specified as a parameter in
+    the epoch definition (e.g., ``'baseline': (-0.2, -0.1)``). When loading
+    data, specifying ``baseline=True`` uses the epoch's custom baseline.
 
 * Use ``eelbrain.set_log_level('info')`` to get information about the progress
   of permutation tests.
