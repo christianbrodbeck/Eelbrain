@@ -391,14 +391,13 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     # header
     table.cell("Effect")
     if df_in_header:
-        table.cell([statistic_name, fmtxt.FMTextElement(dfs[0], property='_')],
-                   mat=True)
+        table.cell(fmtxt.symbol(statistic_name, dfs[0]))
     else:
-        table.cell(statistic_name, mat=True)
-        table.cell('df', mat=True)
-    table.cell('p', mat=True)
+        table.cell(statistic_name, 'math')
+        table.cell('df', 'math')
+    table.cell('p', 'math')
     if corr:
-        table.cell(fmtxt.symbol('p', df=corr))
+        table.cell(fmtxt.symbol('p', corr))
     table.midrule()
 
     # body
@@ -486,24 +485,18 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
                 elif col > row:
                     index = indexes[(row, col)]
                     if subrow is 0:
-                        tex_cell = fmtxt.eq(statistic, _K[index], df=_df[index],
-                                             stars=symbols[index],
-                                             of=3 + trend)
+                        table.cell(fmtxt.eq(statistic, _K[index], _df[index],
+                                            stars=symbols[index], of=3 + trend))
                     elif subrow is 1:
-                        tex_cell = fmtxt.eq('p', _P[index], fmt='%.3f', drop0=True)
+                        table.cell(fmtxt.peq(_P[index]))
                     elif subrow is 2:
-                        tex_cell = fmtxt.eq('p', _Pc[index], df='c',
-                                             fmt='%.3f', drop0=True)
-                    table.cell(tex_cell)
+                        table.cell(fmtxt.peq(_Pc[index], 'c'))
+                elif mirror and corr and subrow == 0:
+                    index = indexes[(col, row)]
+                    table.cell(fmtxt.P(_Pc[index]))
                 else:
-                    if mirror and corr and subrow == 0:
-                        index = indexes[(col, row)]
-                        p = _Pc[index]
-                        table.cell(p, fmt='%.3f', drop0=True)
-                    else:
-                        table.cell()
+                    table.cell()
     return table
-
 
 
 def _pairwise(data, within=True, parametric=True, corr='Hochberg',
@@ -704,8 +697,9 @@ def _corr_to_table(table, Y, X, categories, levels, printXname=True, label=False
                 table.cell()
             if label:
                 table.cell(label)
-            table.cells(fmtxt.stat(r, '%.3f', nstars, len(levels)), fmtxt.p(p),
-                        n)
+            table.cell(fmtxt.stat(r, '%.3f', nstars, len(levels), drop0=True))
+            table.cell(fmtxt.P(p))
+            table.cell(n)
         else:
             table._my_nan_count += 1
 
@@ -805,10 +799,10 @@ class bootstrap_pairwise(object):
         table.title(self.title)
         table.caption("Results based on %i samples" % self._n_samples)
         table.cell('Comparison')
-        table.cell(fmtxt.symbol('t', df=self._df))
-        table.cell(fmtxt.symbol('p', df='param'))
-        table.cell(fmtxt.symbol('p', df='corr'))
-        table.cell(fmtxt.symbol('p', df='boot'))
+        table.cell(fmtxt.symbol('t', self._df))
+        table.cell(fmtxt.symbol('p', 'param'))
+        table.cell(fmtxt.symbol('p', 'corr'))
+        table.cell(fmtxt.symbol('p', 'boot'))
         table.midrule()
 
         p_corr = mcp_adjust(self._p_parametric)

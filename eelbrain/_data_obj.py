@@ -4129,9 +4129,11 @@ class Dataset(collections.OrderedDict):
 
             for v, fmt_ in zip(values, fmts):
                 if fmt_ is None:
-                    table.cell(v.x[i], fmt='%i')
+                    table.cell(v.x[i])
+                elif fmt_.endswith(('r', 's')):
+                    table.cell(fmt_ % v[i])
                 else:
-                    table.cell(v[i], fmt=fmt_)
+                    table.cell(fmtxt.Number(v[i], fmt=fmt_))
 
         return table
 

@@ -1,10 +1,11 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 import numpy as np
 
+from . import fmtxt
 from . import plot
 from . import test
 from ._data_obj import cellname
-from .fmtxt import FMText, ms, eq
+from .fmtxt import ms
 
 
 def format_samples(res):
@@ -181,7 +182,7 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors, legend):
     txt = section.add_paragraph("Id %i, v=%s." % (cluster['id'], cluster['v']))
     if 'p_parc' in cluster:
         txt.append("Corrected across all ROIs: ")
-        txt.append(eq('p', cluster['p_parc'], drop0=True, fmt='%s'))
+        txt.append(fmtxt.eq('p', cluster['p_parc'], '=', drop0=True, fmt='%s'))
         txt.append('.')
 
     # add cluster image to report

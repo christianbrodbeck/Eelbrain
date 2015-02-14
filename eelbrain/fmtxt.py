@@ -77,11 +77,20 @@ preferences = dict(
                    html_tables_in_fig=True,
                    )
 
-_tex_substitutes = {'paragraph': "\n\n%s\n\n"}
+# Tags
+# ----
+# str:
+#     ``sub % content`` if the tag is in _str_substitutes, otherwise it is
+#     ignored
+# TeX:
+#     ``sub % content`` if the tag is in _tex_substitutes, otherwise
+#     ``"%s{%s}" % (tag, content)
+# HTML:
+#     Formatted HTML if the tag is in _html_tags, otherwise it is ignored
+#
 
-_html_alignments = {'l': 'left',
-                    'r': 'right',
-                    'c': 'center'}
+_tex_substitutes = {'paragraph': "\n\n%s\n\n",
+                    'math': "$%s$"}  # LaTeX math but normal HTML
 
 _html_tags = {r'_': 'sub',
               r'^': 'sup',
@@ -92,6 +101,10 @@ _html_tags = {r'_': 'sub',
               'paragraph': 'p'}
 
 _str_substitutes = {r'_': u'(%s)'}
+
+_html_alignments = {'l': 'left',
+                    'r': 'right',
+                    'c': 'center'}
 
 _html_doc_template = u"""<!DOCTYPE html>
 <html>
@@ -323,137 +336,30 @@ def _html_element(tag, body, env, html_options=None):
     return txt
 
 
-def asfmtext(content, *args, **kwargs):
+def asfmtext(content, tag=None):
     "Convert non-FMText objects to FMText"
     if isinstance(content, FMTextElement):
-        if args or kwargs:
-            return FMText([content], *args, **kwargs)
+        if tag:
+            return FMTextElement(content, tag)
         else:
             return content
     elif hasattr(content, '_asfmtext'):
-        return asfmtext(content._asfmtext(), *args, **kwargs)
-    elif isstr(content):
-        return FMTextElement(content, *args, **kwargs)
-    elif np.iterable(content):
-        return FMText([asfmtext(item) for item in content], *args, **kwargs)
+        return asfmtext(content._asfmtext(), tag)
+    elif isinstance(content, (list, tuple)):
+        return FMText(content, tag)
     else:
-        return FMTextElement(content, *args, **kwargs)
+        return Text(content, tag)
+
+
+def asfmtext_or_none(content, tag=None):
+    if content is None:
+        return None
+    else:
+        return asfmtext(content, tag)
 
 
 class FMTextElement(object):
-    "Represent a value along with formatting properties."
-    def __init__(self, content, property=None, mat=False, drop0=False,
-                 fmt='%s'):
-        """Represent a value along with formatting properties.
-
-        Parameters
-        ----------
-        content : object
-            Any item with a string representation (str, scalar, ...).
-        property : str
-            TeX property that is followed by ``{}`` (e.g.,
-            ``property=r'\textbf'`` for bold)
-        mat : bool
-            For TeX output, content is enclosed in ``'$...$'``
-        drop0 : bool
-            For  numbers smaller than 0, drop the '0' before the decimal
-            point (e.g., for p values).
-        fmt : str
-            Format-str for numerical values.
-        """
-        self._content = content
-        self.mat = mat
-        self.drop0 = drop0
-        self.fmt = fmt
-        self.property = property
-
-    def __repr__(self):
-        name = self.__class__.__name__
-        args = ', '.join(self.__repr_items__())
-        return "%s(%s)" % (name, args)
-
-    def __repr_items__(self):
-        items = [repr(self._content)]
-        if self.property:
-            items.append(repr(self.property))
-        if self.mat:
-            items.append('mat=True')
-        if self.drop0:
-            items.append('drop0=True')
-        if self.fmt != '%s':
-            items.append('fmt=%r' % self.fmt)
-        return items
-
-    def __str__(self):
-        return unicode(self).encode('utf-8')  # , 'xmlcharrefreplace')
-
-    def __unicode__(self):
-        return self.get_str()
-
-    def __add__(self, other):
-        if isinstance(other, basestring) and other == '':
-            # added to prevent matplotlib from thinking Image is a file path
-            raise ValueError("Can't add empty string")
-
-        return FMText([self, other])
-
-    def _get_core(self, env):
-        "return unicode"
-        if isstr(self._content):
-            return self._content
-        elif self._content is not None and np.isnan(self._content):
-            return 'NaN'
-        elif isinstance(self._content, (bool, np.bool_, np.bool8)):
-            return str(self._content)
-        elif np.isscalar(self._content) or getattr(self._content, 'ndim', None) == 0:
-            fmt = env.get('fmt', self.fmt)
-            txt = fmt % self._content
-            if self.drop0 and len(txt) > 2 and txt.startswith('0.'):
-                txt = txt[1:]
-            return txt
-        else:
-            return unicode(self._content)
-
-    def get_html(self, env):
-        txt = self._get_html_core(env)
-
-        if self.property is not None and self.property in _html_tags:
-            tag = _html_tags[self.property]
-            txt = _html_temp.format(tag=tag, body=txt)
-
-        return txt
-
-    def _get_html_core(self, env):
-        return self._get_core(env)
-
-    def get_str(self, env={}):
-        "return unicode"
-        text = self._get_core(env)
-        if self.property:
-            if self.property in _str_substitutes:
-                text = _str_substitutes[self.property] % text
-        return text
-
-    def get_tex(self, env):
-        txt = self._get_tex_core(env)
-
-        if self.property:
-            if self.property in _tex_substitutes:
-                txt = _tex_substitutes[self.property] % txt
-            else:
-                txt = r"%s{%s}" % (self.property, txt)
-
-        if self.mat and not env.get('mat', False):
-            txt = "$%s$" % txt
-
-        return txt
-
-    def _get_tex_core(self, env):
-        return self._get_core(env)
-
-
-class FMText(FMTextElement):
-    """Represent a value along with formatting properties.
+    """Represent a text element along with formatting properties.
 
     The elementary unit of the :py:mod:`fmtxt` module. It can function as a
     string, but can hold formatting properties such as font properties.
@@ -466,8 +372,89 @@ class FMText(FMTextElement):
      - str(FMText) -> str
 
     """
-    def __init__(self, content, property=None, mat=False,
-                 drop0=False, fmt='%.6g'):
+    def __init__(self, content, tag=None):
+        """Represent a value along with formatting properties.
+
+        Parameters
+        ----------
+        content : object
+            Any item with a string representation (str, scalar, ...).
+        tag : str
+            TeX property that is followed by ``{}`` (e.g.,
+            ``property=r'\textbf'`` for bold)
+        """
+        self.content = content
+        self.tag = tag
+
+    def __repr__(self):
+        name = self.__class__.__name__
+        args = ', '.join(self._repr_items())
+        return "%s(%s)" % (name, args)
+
+    def _repr_items(self):
+        items = [repr(self.content)]
+        if self.tag:
+            items.append(repr(self.tag))
+        return items
+
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
+        return self.get_str()
+
+    def __add__(self, other):
+        if isinstance(other, basestring) and other == '':
+            # added to prevent matplotlib from thinking Image is a file path
+            raise ValueError("Can't add empty string")
+
+        return FMText([self, other])
+
+    def _get_core(self, env):
+        "return unicode core"
+        return self.content
+
+    def get_html(self, env):
+        txt = self._get_html_core(env)
+
+        if self.tag:
+            if self.tag in _html_tags:
+                tag = _html_tags[self.tag]
+                txt = _html_temp.format(tag=tag, body=txt)
+
+        return txt
+
+    def _get_html_core(self, env):
+        return self._get_core(env)
+
+    def get_str(self, env={}):
+        "return unicode"
+        if self.tag in _str_substitutes:
+            return _str_substitutes[self.tag] % self._get_str_core(env)
+        else:
+            return self._get_str_core(env)
+
+    def _get_str_core(self, env):
+        return self._get_core(env)
+
+    def get_tex(self, env):
+        txt = self._get_tex_core(env)
+
+        if self.tag:
+            if self.tag in _tex_substitutes:
+                txt = _tex_substitutes[self.tag] % txt
+            else:
+                txt = r"%s{%s}" % (self.tag, txt)
+
+        return txt
+
+    def _get_tex_core(self, env):
+        return self._get_core(env)
+
+
+class FMText(FMTextElement):
+    "List of FMTextElements"
+    def __init__(self, content, tag=None):
         """Represent a value along with formatting properties.
 
         Parameters
@@ -475,15 +462,6 @@ class FMText(FMTextElement):
         content : list of FMTextElement
             Any item with a string representation (str, FMText, scalar, ...)
             or an object that iterates over such items (e.g. a list of FMText).
-        property : str
-            Formatting command for the content (e.g. r'\textbf', see below).
-        mat : bool
-            For TeX output, content is enclosed in ``'$...$'``
-        drop0 : bool
-            For  numbers smaller than 0, drop the '0' before the decimal
-            point (e.g., for p values).
-        fmt : str
-            Format-str for numerical values.
 
         Notes
         -----
@@ -501,9 +479,9 @@ class FMText(FMTextElement):
             content = [asfmtext(item) for item in content]
         else:
             content = [asfmtext(content)]
-        FMTextElement.__init__(self, content, property, mat, drop0, fmt)
+        FMTextElement.__init__(self, content, tag)
 
-    def append(self, content, *args, **kwargs):
+    def append(self, content):
         """Append content to the FMText item
 
         Parameters
@@ -511,144 +489,109 @@ class FMText(FMTextElement):
         content : str | object | iterable
             Any item with a string representation (str, FMText, scalar, ...)
             or an object that iterates over such items (e.g. a list of FMText).
-        property : str
-            Formatting command for the content (e.g. r'\textbf', see below).
-        mat : bool
-            For TeX output, content is enclosed in ``'$...$'``
-        drop0 : bool
-            For  numbers smaller than 0, drop the '0' before the decimal
-            point (e.g., for p values).
-        fmt : str
-            Format-str for numerical values.
         """
-        self._content.append(asfmtext(content, *args, **kwargs))
+        self.content.append(asfmtext(content))
 
     def _get_html_core(self, env):
-        return ''.join(i.get_html(env) for i in self._content)
+        return ''.join(i.get_html(env) for i in self.content)
 
-    def get_str(self, env={}):
-        """
-        Returns the string representation.
-
-        Parameters
-        ----------
-        fmt : str
-            can be used to override the format string associated with the
-            texstr object
-        """
-        return ''.join(i.get_str(env) for i in self._content)
+    def _get_str_core(self, env):
+        return ''.join(i.get_str(env) for i in self.content)
 
     def _get_tex_core(self, env):
-        options_mat = env.get('mat', False)
-        mat = self.mat or options_mat
-        if mat != options_mat:
-            env = env.copy()
-            env['mat'] = mat
-        return ''.join(i.get_tex(env) for i in self._content)
+        return ''.join(i.get_tex(env) for i in self.content)
 
 
-def symbol(symbol, df=None):
-    assert (df is None) or np.isscalar(df) or isstr(df) or np.iterable(df)
-    out = FMTextElement(symbol, mat=True)
-    if df is not None:
-        out += FMTextElement(df, '_', mat=True)
-    return out
+class Text(FMTextElement):
+
+    def __init__(self, content, tag=None):
+        if not isinstance(content, basestring):
+            content = unicode(content)
+        FMTextElement.__init__(self, content, tag)
 
 
-def ms(t_s):
-    "Convert time in seconds to rounded milliseconds"
-    return int(round(t_s * 1000))
+class Number(FMTextElement):
+
+    def __init__(self, content, tag=None, fmt='%s', drop0=False):
+        if not np.isscalar(content):
+            if getattr(content, 'ndim', None) == 0:
+                content = content.item()
+            else:
+                raise TypeError("content=%s" % repr(content))
+        FMTextElement.__init__(self, content, tag)
+        self.fmt = fmt
+        self.drop0 = drop0
+
+    def _repr_items(self):
+        items = FMTextElement._repr_items(self)
+        if self.fmt != '%s':
+            items.append('fmt=%r' % self.fmt)
+        if self.drop0:
+            items.append('drop0=True')
+        return items
+
+    def _get_core(self, env):
+        if np.isnan(self.content):
+            return 'NaN'
+        elif isinstance(self.content, (bool, np.bool_, np.bool8)):
+            return str(self.content)
+        else:
+            fmt = env.get('fmt', self.fmt)
+            txt = fmt % self.content
+            if self.drop0 and txt.startswith('0.'):
+                return txt[1:]
+            else:
+                return txt
 
 
-def p(p, digits=3, stars=None, of=3):
-    """Create an FMText representation of a p-value
+class P(Number):
 
-    Parameters
-    ----------
-    p : scalar
-        P-value.
-    digits : int
-        Significant digits.
-    stars : None | str
-        Stars decorating the p-value (e.g., "**")
-    of : int
-        Max numbers of star characters possible (to add empty space for
-        alignment).
+    def __init__(self, content):
+        Number.__init__(self, content, fmt='%.3f', drop0=True)
 
-    Returns
-    -------
-    text : FMText
-        FMText with formatted p-value.
-    """
-    if p < 10 ** -digits:  # APA 6th, p. 114
-        p = '< .' + '0' * (digits - 1) + '1'
-        mat = True
-    else:
-        mat = False
-    fmt = '%' + '.%if' % digits
-    text = FMTextElement(p, fmt=fmt, drop0=True, mat=mat)
-    if stars is not None:
-        text += Stars(stars, of=of)
-    return text
-
-
-def stat(x, fmt="%.2f", stars=None, of=3, drop0=False):
-    """
-    returns a FMText with properties set for a statistic (e.g. a t-value)
-
-    """
-    ts_stat = FMTextElement(x, fmt=fmt, drop0=drop0)
-    if stars is not None:
-        ts_stat += Stars(stars, of=of)
-    return ts_stat
-
-
-def eq(name, result, eq='=', df=None, fmt='%.2f', drop0=False, stars=None,
-       of=3):
-    symbol_ = symbol(name, df=df)
-    stat_ = stat(result, fmt, stars, of, drop0)
-    return FMText([symbol_, eq, stat_], mat=True)
+    def _get_core(self, env):
+        if self.content < .001:
+            return '< .001'
+        else:
+            return Number._get_core(self, env)
 
 
 class Math(FMTextElement):
     """FMTextElement for math expressions"""
-    def __init__(self, expression, equation=False):
+    def __init__(self, content, equation=False):
         """
 
         Parameters
         ----------
-        expression : str
+        content : str
             LaTeX math expression (excluding '$'). E.g. r'\\sqrt{a}' (note that
             '\\' must be escaped)
         equation : bool
             Whether to display the expression as a separate equation (as
             oppposed to inline).
         """
-        self._content = expression
+        FMTextElement.__init__(content)
         self._equation = equation
 
     def __repr__(self):
-        items = [repr(self._content)]
+        items = [repr(self.content)]
         if self._equation:
             items.append("equation=True")
         return "Math(%s)" % ', '.join(items)
 
-    def get_html(self, env):
+    def get_html(self, env={}):
         im = Image('svg')
-        math_to_image("$%s$" % self._content, im, format='svg')
+        math_to_image("$%s$" % self.content, im, format='svg')
         if self._equation:
             return '\n<br>\n%s\n<br>\n' % im.get_html(env)
         else:
             return im.get_html(env)
 
-    def get_str(self, env={}):
-        return repr(self._content)
-
     def get_tex(self, env):
         if self._equation:
-            return "\\begin{equation}$%s$\\end{equation}" % self._content
+            return "\\begin{equation}$%s$\\end{equation}" % self.content
         else:
-            return "$%s$" % self._content
+            return "$%s$" % self.content
 
 
 class EquationArray(FMTextElement):
@@ -661,21 +604,21 @@ class EquationArray(FMTextElement):
         eqnarray : tuple of str
             Tuple of lines for the equation array.
         """
-        self._content = eqnarray
+        FMTextElement.__init__(self, eqnarray)
 
     def __repr__(self):
-        return "EquationArray(%s)" % repr(self._content)
+        return "EquationArray(%s)" % repr(self.content)
 
     def get_html(self, env):
         ims = []
-        for line in self._content:
+        for line in self.content:
             im = Image('svg')
             math_to_image("$%s$" % line.replace('&', ''), im, format='svg')
             ims.append(im.get_html(env))
         return '\n<br>\n%s\n<br>\n' % '\n<br>\n'.join(ims)
 
     def get_tex(self, env):
-        return "\\begin{eqnarray}%s\\end{eqnarray}" % r'\\'.join(self._content)
+        return "\\begin{eqnarray}%s\\end{eqnarray}" % r'\\'.join(self.content)
 
 
 class Stars(FMTextElement):
@@ -684,7 +627,7 @@ class Stars(FMTextElement):
     Shortcut for adding stars to a table and spaces in place of absent stars,
     so that alignment to the right can be used.
     """
-    def __init__(self, n, of=3, property="^"):
+    def __init__(self, n, of=3, tag="^"):
         if isstr(n):
             self.n = len(n.strip())
         else:
@@ -694,7 +637,7 @@ class Stars(FMTextElement):
             text = '*' * n + ' ' * (of - n)
         else:
             text = n.ljust(of)
-        FMTextElement.__init__(self, text, property, mat=True)
+        FMTextElement.__init__(self, text, tag)
 
     def _get_tex_core(self, env):
         txt = self._get_core(env)
@@ -793,8 +736,8 @@ class List(FMTextElement):
 # Table ---
 
 class Cell(FMText):
-    def __init__(self, text=None, property=None, width=1, just=None,
-                 **texstr_kwargs):
+
+    def __init__(self, content='', tag=None, width=1, just=None):
         """A cell for a table
 
         Parameters
@@ -808,7 +751,7 @@ class Cell(FMText):
         others :
             FMText parameters.
         """
-        FMText.__init__(self, text, property, **texstr_kwargs)
+        FMText.__init__(self, content, tag)
         self.width = width
         if width > 1 and not just:
             self.just = 'l'
@@ -992,46 +935,21 @@ class Table(FMTextElement):
                          caption=self._caption, rows=rows)
 
     # adding texstrs ---
-    def cell(self, *args, **kwargs):
+    def cell(self, content='', tag=None, width=1, just=None):
+        """Add a cell to the table
+
+        Parameters
+        ----------
+        content : FMText
+            Cell content.
+        tag : str
+            TeX tag.
+        width : int
+            Width in columns for multicolumn cells.
+        just : None | 'l' | 'r' | 'c'
+            Justification. None: use column standard.
         """
-        args:   text, *properties
-        OR:     FMText object
-
-        properties are tex text properties (e.g. "textbf")
-
-
-        kwargs
-        ------
-
-        Cell kwargs, e.g.:
-        width=1     use value >1 for multicolumn cells
-        just='l'    justification (only for multicolumn)
-        mat=False   enclose tex output in $...$ if True
-        FMText kwargs ...
-
-
-        number properties
-        -----------------
-
-        drop0=False     drop 0 before
-        digits=4        number of digits after dot
-
-
-        Properties Example
-        ------------------
-        >>> table.cell("Entry", "textsf", "textbf") for bold sans serif
-        """
-        if len(args) == 0:
-            txt = ''
-        else:
-            txt = args[0]
-
-        if len(args) > 1:
-            property = args[1]
-        else:
-            property = None
-
-        cell = Cell(text=txt, property=property, **kwargs)
+        cell = Cell(content, tag, width, just)
 
         if self._active_row is None or len(self._active_row) == len(self.columns):
             new_row = Row()
@@ -1076,19 +994,13 @@ class Table(FMTextElement):
             assert all([i.isdigit() for i in span.split('-')])
             self._table.append(r"\cmidrule{%s}" % span)
 
-    def title(self, *args, **kwargs):
+    def title(self, content):
         """Set the table title (with FMText args/kwargs)"""
-        if (len(args) == 1) and (args[0] is None):
-            self._title = None
-        else:
-            self._title = asfmtext(*args, **kwargs)
+        self._title = asfmtext_or_none(content)
 
-    def caption(self, *args, **kwargs):
+    def caption(self, content):
         """Set the table caption (with FMText args/kwargs)"""
-        if (len(args) == 1) and (args[0] is None):
-            self._caption = None
-        else:
-            self._caption = asfmtext(*args, **kwargs)
+        self._caption = asfmtext_or_none(content)
 
     def __repr__(self):
         """
@@ -1637,7 +1549,7 @@ class Section(FMText):
         content = [title, underline, '']
         env = env.copy()
         level = list(level) + [1]
-        for item in self._content:
+        for item in self.content:
             if isinstance(item, Section):
                 env['level'] = tuple(level)
                 txt = item.get_str(env)
@@ -1739,7 +1651,7 @@ class Report(Section):
 
         level = [1]
         env = env.copy()
-        for item in self._content:
+        for item in self.content:
             if isinstance(item, Section):
                 env['level'] = tuple(level)
                 txt = item.get_str(env)
@@ -1818,6 +1730,73 @@ class Report(Section):
 
         signature = ' &#8212 \n'.join(info)
         self.add_paragraph(signature)
+
+
+def symbol(symbol, subscript, tag='math'):
+    if subscript is None:
+        return Text(symbol, tag)
+    else:
+        return FMText([Text(symbol), Text(subscript, '_')], tag)
+
+
+def p(p, stars=None, of=3, tag='math'):
+    """Create an FMText representation of a p-value
+
+    Parameters
+    ----------
+    p : scalar
+        P-value.
+    digits : int
+        Significant digits.
+    stars : None | str
+        Stars decorating the p-value (e.g., "**")
+    of : int
+        Max numbers of star characters possible (to add empty space for
+        alignment).
+
+    Returns
+    -------
+    text : FMText
+        FMText with formatted p-value.
+    """
+    if stars is None:
+        return P(p)
+    else:
+        return FMText([P(p), Stars(stars, of=of)], tag)
+
+
+def stat(x, fmt="%.2f", stars=None, of=3, tag='math', drop0=False):
+    "FMText with properties set for a statistic (e.g. a t-value)"
+    if stars is None:
+        return Number(x, tag, fmt, drop0)
+    else:
+        return FMText([Number(x, None, fmt, drop0), Stars(stars, of=of)], tag)
+
+
+def eq(name, result, subscript=None, fmt='%.2f', stars=None, of=3,
+       drop0=False):
+    symbol_ = symbol(name, subscript, None)
+    stat_ = stat(result, fmt, stars, of, None, drop0)
+    return FMText([symbol_, Text(' = '), stat_], 'math')
+
+
+def peq(content, subscript=None, stars=None, of=3):
+    symbol_ = symbol('p', subscript, None)
+
+    if content < .001:
+        eq_ = Text(' ')
+    else:
+        eq_ = Text(' = ')
+
+    if stars is None:
+        return FMText([symbol_, eq_, P(content)], 'math')
+    else:
+        return FMText([symbol_, eq_, P(content), Stars(stars, of)], 'math')
+
+
+def ms(t_s):
+    "Convert time in seconds to rounded milliseconds"
+    return int(round(t_s * 1000))
 
 
 def unindent(text, skip1=False):

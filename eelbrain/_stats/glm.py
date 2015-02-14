@@ -285,9 +285,7 @@ class LM(object):
             if MS_d != False:
                 F = MS / MS_d
                 p = 1 - scipy.stats.distributions.f.cdf(F, e.df, df_d)
-                stars = test.star(p)
-                tex_stars = fmtxt.Stars(stars)
-                F_tex = [F, tex_stars]
+                F_tex = fmtxt.stat(F, stars=test.star(p))
             else:
                 F_tex = None
                 p = None
@@ -299,8 +297,8 @@ class LM(object):
                 table.cell(MS)
                 if ems:
                     table.cell(e_ms_name)
-                table.cell(F_tex, mat=True)
-                table.cell(fmtxt.p(p))
+                table.cell(F_tex)
+                table.cell(fmtxt.P(p))
             # store results
             results[e.name] = {'SS': SS, 'df': e.df, 'MS': MS, 'E(MS)': e_ms_name,
                              'F': F, 'p':p}
@@ -1004,7 +1002,7 @@ class anova(object):
         for name, f_test in izip(self.names, self.f_tests):
             table.cell(name)
             table.cell(fmtxt.stat(f_test.SS))
-            table.cell(fmtxt.stat(f_test.df, fmt='%i'))
+            table.cell(f_test.df)
             table.cell(fmtxt.stat(f_test.MS))
             if f_test.F:
                 stars = test.star(f_test.p)
@@ -1029,7 +1027,7 @@ class anova(object):
         table.cell("Total")
         SS = np.sum((self.Y.x - self.Y.mean()) ** 2)
         table.cell(fmtxt.stat(SS))
-        table.cell(fmtxt.stat(len(self.Y) - 1, fmt='%i'))
+        table.cell(len(self.Y) - 1)
         return table
 
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from nose.tools import assert_equal
+from nose.tools import eq_
 import os
 import shutil
 import tempfile
@@ -7,13 +7,6 @@ import tempfile
 from eelbrain import fmtxt
 from eelbrain.fmtxt import html, tex
 from eelbrain import datasets, plot
-
-
-def test_symbol():
-    "Test fmtxt.symbol()"
-    s = fmtxt.symbol('t', 21)
-    assert_equal(str(s), 't(21)')
-    assert_equal(html(s), 't<sub>21</sub>')
 
 
 def test_fmtext():
@@ -51,3 +44,34 @@ def test_report():
 
     # clean up
     shutil.rmtree(tempdir)
+
+
+def test_eq():
+    "Test equation factory"
+    s = fmtxt.eq('t', 0.1234)
+    eq_(str(s), "t = 0.12")
+    eq_(html(s), "t = 0.12")
+    eq_(tex(s), "$t = 0.12$")
+
+    s = fmtxt.eq('t', 0.1234, 18)
+    eq_(str(s), "t(18) = 0.12")
+    eq_(html(s), "t<sub>18</sub> = 0.12")
+    eq_(tex(s), "$t_{18} = 0.12$")
+
+    s = fmtxt.peq(0.1299)
+    eq_(str(s), "p = .130")
+    eq_(html(s), "p = .130")
+    eq_(tex(s), "$p = .130$")
+
+    s = fmtxt.peq(0.0009)
+    eq_(str(s), "p < .001")
+    eq_(html(s), "p < .001")
+    eq_(tex(s), "$p < .001$")
+
+
+def test_symbol():
+    "Test fmtxt.symbol()"
+    s = fmtxt.symbol('t', 21)
+    eq_(str(s), 't(21)')
+    eq_(html(s), 't<sub>21</sub>')
+    eq_(tex(s), '$t_{21}$')
