@@ -2143,6 +2143,11 @@ class MneExperiment(FileTree):
             dissolve_label(labels, '???', targets, sdir)
             dissolve_label(labels, '????', targets, sdir, 'rh')
             dissolve_label(labels, '???????', targets, sdir, 'rh')
+        elif parc == 'lobes-op':
+            with self._temporary_state:
+                lobes = {l.name: l for l in self.load_annot(parc='lobes')}
+            labels = [lobes['occipital-lh'] + lobes['parietal-lh'],
+                      lobes['occipital-rh'] + lobes['parietal-rh']]
         else:
             msg = ("At least one of the annot files for the custom parcellation "
                    "%r is missing for %r, and a make function is not "
@@ -3929,7 +3934,7 @@ class MneExperiment(FileTree):
     def _eval_parc(self, parc):
         # Freesurfer parcellations
         if parc in ('', 'aparc.a2005s', 'aparc.a2009s', 'aparc',
-                    'PALS_B12_Brodmann', 'PALS_B12_Lobes', 'lobes',
+                    'PALS_B12_Brodmann', 'PALS_B12_Lobes', 'lobes', 'lobes-op',
                     'PALS_B12_OrbitoFrontal', 'PALS_B12_Visuotopic'):
             return parc
         elif self.parcs == None or parc in self.parcs:
