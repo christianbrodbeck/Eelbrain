@@ -5,6 +5,7 @@ Plot topographic maps of sensor space data.
 from __future__ import division
 
 import numpy as np
+import scipy
 
 from . import _base
 from ._base import _EelFigure
@@ -440,13 +441,21 @@ class _plt_topomap(_utsnd._plt_im_array):
         self._contours = _base.find_ct_args(ndvar, overlay, contours)
         self._meas = ndvar.info.get('meas', _base.default_meas)
 
-        self._topo_im_kwa = dict(proj=proj, res=res, frame=im_frame)
-        data = self._data_from_ndvar(ndvar)
-
         emin = -im_frame
         emax = 1 + im_frame
         extent = (emin, emax, emin, emax)
 
+        # store attributes
+        self.ax = ax
+        self.cont = None
+        self._aspect = 'equal'
+        self._extent = extent
+        self._proj = proj
+        self._grid = np.linspace(emin, emax, res)
+        self._mgrid = tuple(np.meshgrid(self._grid, self._grid))
+        self._interpolation = 'cubic'
+
+        data = self._data_from_ndvar(ndvar)
         if im_kwa is not None:
             self.im = ax.imshow(data, extent=extent, origin='lower',
                                 interpolation=interpolation, **im_kwa)
@@ -454,20 +463,20 @@ class _plt_topomap(_utsnd._plt_im_array):
         else:
             self.im = None
 
-        # store attributes
-        self.ax = ax
-        self.cont = None
-        self._data = data
-        self._aspect = 'equal'
-        self._extent = extent
 
         # draw flexible part
+        self._data = data
         self._draw_contours()
 
     def _data_from_ndvar(self, ndvar):
-        Y = ndvar.get_data(('sensor',))
-        data = ndvar.sensor.get_im_for_topo(Y, **self._topo_im_kwa)
-        return data
+        v = ndvar.get_data(('sensor',))
+        locs = ndvar.sensor.get_locs_2d(self._proj)
+        if self._interpolation == 'spline':
+            tck = scipy.interpolate.bisplrep(locs[:, 1], locs[:, 0], v, kx=5, ky=5)
+            return scipy.interpolate.bisplev(self._grid, self._grid, tck)
+        else:
+            return scipy.interpolate.griddata(locs, v, self._mgrid,
+                                              method=self._interpolation)
 
 
 class _ax_topomap(_utsnd._ax_im_array):

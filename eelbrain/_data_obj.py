@@ -5899,7 +5899,6 @@ class Sensor(Dimension):
 
         # cache for transformed locations
         self._transformed = {}
-        self._triangulations = {}
 
         # groups
         self.groups = groups
@@ -6143,53 +6142,6 @@ class Sensor(Dimension):
         # save for future access
         self._transformed[index] = locs2d
         return locs2d
-
-    def get_tri(self, proj, resolution, frame):
-        """
-        Returns delaunay triangulation and meshgrid objects
-        (for projecting sensor maps to ims)
-
-        Based on matplotlib.mlab.griddata function
-        """
-        locs = self.get_locs_2d(proj)
-        from matplotlib.delaunay import Triangulation
-        tri = Triangulation(locs[:, 0], locs[:, 1])
-
-        emin = -frame
-        emax = 1 + frame
-        x = np.linspace(emin, emax, resolution)
-        xi, yi = np.meshgrid(x, x)
-
-        return tri, xi, yi
-
-    def get_im_for_topo(self, Z, proj='default', res=100, frame=.03, interp='linear'):
-        """
-        Returns an im for an arrray in sensor space X
-
-        Based on matplotlib.mlab.griddata function
-        """
-        if proj == 'default':
-            proj = self.default_proj2d
-
-        index = (proj, res, frame)
-
-        tri, xi, yi = self._triangulations.setdefault(index, self.get_tri(*index))
-
-        if interp == 'nn':
-            interp = tri.nn_interpolator(Z)
-            zo = interp(xi, yi)
-        elif interp == 'linear':
-            interp = tri.linear_interpolator(Z)
-            zo = interp[yi.min():yi.max():complex(0, yi.shape[0]),
-                        xi.min():xi.max():complex(0, xi.shape[1])]
-        else:
-            raise ValueError("interp keyword must be one of"
-            " 'linear' (for linear interpolation) or 'nn'"
-            " (for natural neighbor interpolation). Default is 'nn'.")
-        # mask points on grid outside convex hull of input data.
-        if np.any(np.isnan(zo)):
-            zo = np.ma.masked_where(np.isnan(zo), zo)
-        return zo
 
     def get_ROIs(self, base):
         """
