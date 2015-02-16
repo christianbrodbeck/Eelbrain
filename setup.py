@@ -69,6 +69,13 @@ kwargs = dict(
               ext_modules=ext,
               )
 
+# Either PIL or Pillow is fine...
+try:
+    import PIL
+except ImportError:
+    kwargs['install_requires'].append('pillow')
+
+
 # py2app -----------------------------------------------------------------------
 py2app_alias_script = """
 # Startup script for py2app.
