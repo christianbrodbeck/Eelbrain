@@ -232,28 +232,6 @@ class _SimpleFigure(_EelFigure):
         if xlabel:
             ax.set_xlabel(xlabel)
 
-    def add_legend_handles(self, *handles):
-        for handle in handles:
-            label = handle.get_label()
-            if not self.legend_has_label(label):
-                self._handles.append(handle)
-
-    def legend_has_label(self, label):
-            return any(label == h.get_label() for h in self._handles)
-
-    def legend(self, loc=0, fig=False, zorder=-1, ncol=1):
-        "add a legend to the plot"
-        if fig:
-            labels = (h.get_label() for h in self._handles)
-            l = self.figure.legend(self._handles, labels, loc, ncol=ncol)
-            self._legend = l
-        else:
-            l = self._ax.legend(loc=loc, ncol=ncol)
-            if l:
-                l.set_zorder(-1)
-            else:
-                raise ValueError("No labeled plot elements for legend")
-
 
 class Boxplot(_SimpleFigure):
     "Boxplot for a continuous variable"
@@ -1219,6 +1197,28 @@ class MultiTimeplot(_SimpleFigure):
             l.set_zorder(zorder)
 
         self._show()
+
+    def add_legend_handles(self, *handles):
+        for handle in handles:
+            label = handle.get_label()
+            if not self.legend_has_label(label):
+                self._handles.append(handle)
+
+    def legend_has_label(self, label):
+            return any(label == h.get_label() for h in self._handles)
+
+    def legend(self, loc=0, fig=False, zorder=-1, ncol=1):
+        "add a legend to the plot"
+        if fig:
+            labels = (h.get_label() for h in self._handles)
+            l = self.figure.legend(self._handles, labels, loc, ncol=ncol)
+            self._legend = l
+        else:
+            l = self._ax.legend(loc=loc, ncol=ncol)
+            if l:
+                l.set_zorder(-1)
+            else:
+                raise ValueError("No labeled plot elements for legend")
 
 
 def _reg_line(Y, reg):
