@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import eq_
+from nose.tools import eq_, ok_
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -34,6 +34,14 @@ def test_boxplot():
     ds['fltvar'][ds.eval("A%B==('a2','b2')")] -= 1
     ds['C'] = Factor('qw', repeat=10, tile=4)
     plot.Boxplot('fltvar', 'A%B%C', ds=ds, show=False)
+
+    # long labels
+    ds['A'].relabel({'a1': 'a very long label', 'a2': 'another very long label'})
+    p = plot.Barplot('fltvar', 'A%B', ds=ds, show=False)
+    labels = p._ax.get_xticklabels()
+    bbs = [l.get_window_extent() for l in labels]
+    for i in xrange(len(bbs) - 1):
+        ok_(bbs[i].x1 < bbs[i + 1].x0)
 
 
 def test_histogram():

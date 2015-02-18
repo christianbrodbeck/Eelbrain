@@ -981,6 +981,8 @@ class Layout():
             if w < axw:
                 raise ValueError("w < axw")
 
+        self.w_fixed = w or axw
+
         if nax is None:
             if w is None:
                 if h is None:

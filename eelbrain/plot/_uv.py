@@ -232,6 +232,19 @@ class _SimpleFigure(_EelFigure):
         if xlabel:
             ax.set_xlabel(xlabel)
 
+    def _show(self):
+        if not self._layout.w_fixed:
+            # make sure x axis labels don't overlap
+            self.draw()
+            labels = self._ax.get_xticklabels()
+            bbs = [l.get_window_extent() for l in labels]
+            overlap = max(bbs[i].x1 - bbs[i + 1].x0 for i in xrange(len(bbs)-1))
+            extend = len(bbs) * (overlap + 10)
+            w, h = self._frame.GetSize()
+            w += int(extend)
+            self._frame.SetSize((w, h))
+        _EelFigure._show(self)
+
 
 class Boxplot(_SimpleFigure):
     "Boxplot for a continuous variable"
