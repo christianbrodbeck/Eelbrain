@@ -3848,9 +3848,12 @@ class MneExperiment(FileTree):
         return '%'.join(model)
 
     def _post_set_rej(self, _, rej):
-        rej_args = self.epoch_rejection[rej]
-        self._params['rej'] = rej_args
-        self._fields['cov-rej'] = rej_args.get('cov-rej', rej)
+        if rej == '*':
+            self._params['rej'] = None
+        else:
+            rej_args = self.epoch_rejection[rej]
+            self._params['rej'] = rej_args
+            self._fields['cov-rej'] = rej_args.get('cov-rej', rej)
 
     def set_inv(self, ori='free', snr=3, method='dSPM', depth=None,
                 pick_normal=False):
@@ -3981,7 +3984,8 @@ class MneExperiment(FileTree):
         self.set(subject=subject, add=True)
 
     def _post_set_test(self, _, test):
-        self.set(model=self._tests[test]['model'])
+        if test != '*':
+            self.set(model=self._tests[test]['model'])
 
     def _set_test_options(self, data, sns_baseline, src_baseline, pmin, tstart,
                           tstop):

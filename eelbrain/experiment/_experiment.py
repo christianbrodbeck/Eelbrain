@@ -630,9 +630,8 @@ class TreeModel(object):
 
         # call post_set handlers
         for k, v in chain(state.iteritems(), handled_state.iteritems()):
-            if not (allow_asterisk and '*' in v):
-                for handler in self._post_set_handlers[k]:
-                    handler(k, v)
+            for handler in self._post_set_handlers[k]:
+                handler(k, v)
 
     def show_fields(self, str_out=False):
         """
