@@ -2,7 +2,7 @@
 
 from collections import defaultdict
 from glob import glob
-import itertools
+from itertools import chain, product
 import os
 import re
 import shutil
@@ -505,7 +505,7 @@ class TreeModel(object):
                 progm = ui.progress_monitor(i_max, prog, "")
                 prog = True
 
-            for v_list in itertools.product(*v_lists):
+            for v_list in product(*v_lists):
                 if prog:
                     progm.message(' | '.join(map(str, v_list)))
                 self.restore_state(discard_tip=False)
@@ -585,10 +585,12 @@ class TreeModel(object):
             return
 
         # fields with special set handlers
+        handled_state = {}
         for k in state.keys():
             if k in self._set_handlers:
                 v = state.pop(k)
                 self._set_handlers[k](v)
+                handled_state[k] = ''
 
         # make sure only valid fields are set
         add = state.pop('add', False)
@@ -627,7 +629,7 @@ class TreeModel(object):
         self._fields.update(state)
 
         # call post_set handlers
-        for k, v in state.iteritems():
+        for k, v in chain(state.iteritems(), handled_state.iteritems()):
             if not (allow_asterisk and '*' in v):
                 for handler in self._post_set_handlers[k]:
                     handler(k, v)
