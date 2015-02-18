@@ -5130,10 +5130,9 @@ class NonbasicEffect(object):
 
 
 class Model(object):
-    """
-    stores a list of effects which constitute a model for an ANOVA.
+    """A list of effects.
 
-    a Model's data is exhausted by its. .effects list; all the rest are
+    a Model's data is exhausted by its :attr:`.effects` list; all the rest are
     @properties.
 
     Accessing effects:

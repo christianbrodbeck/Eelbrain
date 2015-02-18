@@ -256,7 +256,7 @@ class Boxplot(_SimpleFigure):
                  xtick_delim='\n', test=True, par=True, trend="'", test_markers=True,
                  corr='Hochberg', hatch=False, colors=False, ds=None, *args,
                  **kwargs):
-        """Boxplot for a continuous variable
+        r"""Boxplot for a continuous variable
 
         Parameters
         ----------

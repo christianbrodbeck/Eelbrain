@@ -214,7 +214,7 @@ the :mod:`.plot.brain` module:
 .. autosummary::
    :toctree: generated
 
-   SensorMap2d
+   SensorMap
    SensorMaps
 
 
