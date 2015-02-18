@@ -534,6 +534,8 @@ class Barplot(_SimpleFigure):
 
         self._ax.set_xlim(x0, x1)
         self._ax.set_ylim(y0, y1)
+        if y1 > 0 > y0:
+            self._ax.axhline(0, color='k')
 
         # figure decoration
         if xticks:
