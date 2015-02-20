@@ -32,6 +32,7 @@ import cPickle as pickle
 import operator
 import os
 import re
+import string
 from warnings import warn
 
 import mne
@@ -3647,6 +3648,27 @@ def assert_is_legal_dataset_key(key):
         msg = ("%r is not a valid keyword and can not be used as variable name "
                "in a Dataset" % key)
         raise ValueError(msg)
+
+
+def as_legal_dataset_key(key):
+    "Convert str to a legal dataset key"
+    if iskeyword(key):
+        return "%s_" % key
+    elif legal_dataset_key_re.match(key):
+        return key
+    else:
+        if ' ' in key:
+            key = key.replace(' ', '_')
+        for c in string.punctuation:
+            if c in key:
+                key = key.replace(c, '_')
+        if key[0].isdigit():
+            key = "_%s" % key
+
+        if legal_dataset_key_re.match(key):
+            return key
+        else:
+            raise RuntimeError("Could not convert %r to legal dataset key")
 
 
 class Dataset(collections.OrderedDict):

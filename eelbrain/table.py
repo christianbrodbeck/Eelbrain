@@ -11,7 +11,8 @@ import numpy as np
 
 from . import fmtxt
 from ._data_obj import (ascategorial, asvar, assub, isfactor, isinteraction,
-                        Dataset, Factor, Var, Celltable, cellname, combine)
+                        Dataset, Factor, Var, Celltable, combine, cellname,
+                        as_legal_dataset_key)
 
 
 def difference(Y, X, c1, c0, match, by=None, sub=None, ds=None):
@@ -337,7 +338,9 @@ def repmeas(Y, X, match, sub=None, ds=None):
     Returns
     -------
     rm_table : Dataset
-        Repeated measures table.
+        Repeated measures table. Entries for cells of X correspond to the data
+        in Y on these levels of X (if cell names are not valid Dataset keys
+        they are modified).
     """
     ct = Celltable(Y, X, match, sub, ds=ds)
     if not ct.all_within:
@@ -352,6 +355,7 @@ def repmeas(Y, X, match, sub=None, ds=None):
         out[ct.match.name] = x
 
     for cell in ct.X.cells:
-        out[cellname(cell, '_')] = ct.data[cell]
+        key = as_legal_dataset_key(cellname(cell, '_'))
+        out[key] = ct.data[cell]
 
     return out

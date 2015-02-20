@@ -3,7 +3,7 @@ Created on Dec 2, 2012
 
 @author: christian
 '''
-from eelbrain import datasets, table, combine
+from eelbrain import Factor, datasets, table, combine
 
 
 def test_difference():
@@ -41,3 +41,7 @@ def test_repmeas():
     print table.repmeas('fltvar', 'A', 'rm', ds=ds)
     print table.repmeas('fltvar', 'A%B', 'rm', ds=ds)
     print table.repmeas('fltvar', 'A', 'B%rm', ds=ds)
+
+    # test naturalization of cellnames
+    ds['ANum'] = Factor(ds['A'], labels={'a1': '1', 'a2': '2'})
+    print table.repmeas('fltvar', 'ANum', 'rm', ds=ds)
