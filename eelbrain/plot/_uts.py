@@ -60,8 +60,10 @@ class UTSStat(_EelFigure, LegendMixin):
     axtitle : str | None
         Axes title, '{name}' is formatted to the category name. When plotting
         only one axes, use the `title` argument.
-    xlabel, ylabel : True |str | None
-        X- and y axis label. If True the labels will be inferred from the data.
+    xlabel : str | None
+        X-axis labels. By default the label is inferred from the data.
+    ylabel : str | None
+        Y-axis labels. By default the label is inferred from the data.
     invy : bool
         invert the y axis
     bottom, top | None | scalar
@@ -160,20 +162,15 @@ class UTSStat(_EelFigure, LegendMixin):
         legend_handles = {}
         if Xax is None:
             ax = self._axes[0]
-            p = _ax_uts_stat(ax, ct, colors, main, error, dev_data, None,
-                             ylabel, xdim, xlim, xlabel, invy, bottom, top,
-                             hline, clusters, pmax, ptrend)
+            p = _ax_uts_stat(ax, ct, colors, main, error, dev_data, None, xdim,
+                             xlim, invy, bottom, top, hline, clusters, pmax,
+                             ptrend)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
             if len(ct) < 2:
                 legend = False
         else:
             for i, ax, cell in zip(xrange(nax), self._axes, ct.cells):
-                if i == len(ct) - 1:
-                    xlabel_ = xlabel
-                else:
-                    xlabel_ = False
-
                 if X is not None:
                     X_ = Xct.data[cell]
 
@@ -183,11 +180,13 @@ class UTSStat(_EelFigure, LegendMixin):
                 ct_ = Celltable(ct.data[cell], X_, match=match, coercion=asndvar)
                 title_ = axtitle.format(name=cellname(cell))
                 p = _ax_uts_stat(ax, ct_, colors, main, error, dev_data, title_,
-                                 ylabel, xdim, xlim, xlabel_, invy, bottom, top,
-                                 hline, clusters, pmax, ptrend)
+                                 xdim, xlim, invy, bottom, top, hline, clusters,
+                                 pmax, ptrend)
                 self._plots.append(p)
                 legend_handles.update(p.legend_handles)
 
+        self._set_ylabel(ct.Y, ylabel)
+        self._set_xlabel_dim(xdim, xlabel)
         LegendMixin.__init__(self, legend, legend_handles)
         self._update_ui_cluster_button()
         self._show()
@@ -286,7 +285,8 @@ class UTSStat(_EelFigure, LegendMixin):
 
 class UTS(_EelFigure):
     "Value by time plot for UTS data."
-    def __init__(self, epochs, Xax=None, axtitle='{name}', ds=None, *args, **kwargs):
+    def __init__(self, epochs, Xax=None, axtitle='{name}', ds=None,
+                 xlabel=True, ylabel=True, *args, **kwargs):
         """Value by time plot for UTS data
 
         Parameters
@@ -300,6 +300,9 @@ class UTS(_EelFigure):
         ds : None | Dataset
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables.
+        xlabel, ylabel : str | None
+            X- and y axis labels. By default the labels will be inferred from
+            the data.
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
             (default True)
@@ -308,17 +311,18 @@ class UTS(_EelFigure):
         """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, *args, **kwargs)
+        self._set_ylabel(epochs[0][0], ylabel)
 
         for ax, epoch in zip(self._axes, epochs):
-            _ax_uts(ax, epoch, title=axtitle)
+            _ax_uts(ax, epoch, axtitle, xlabel)
 
         self._show()
 
 
 class _ax_uts_stat:
 
-    def __init__(self, ax, ct, colors, main, error, dev_data, title, ylabel, xdim,
-                 xlim, xlabel, invy, bottom, top, hline, clusters, pmax, ptrend):
+    def __init__(self, ax, ct, colors, main, error, dev_data, title, xdim, xlim,
+                 invy, bottom, top, hline, clusters, pmax, ptrend):
         ax.x_fmt = "t = %.3f s"
 
         # stat plots
@@ -367,13 +371,6 @@ class _ax_uts_stat:
         ticks = ax.xaxis.get_ticklocs()
         ticklabels = _base._ticklabels(ticks, 'time')
         ax.xaxis.set_ticklabels(ticklabels)
-
-        _base.set_xlabel(ax, xdim, xlabel)
-
-        if ylabel is True:
-            ylabel = ct.Y.info.get('unit', None)
-        if ylabel:
-            ax.set_ylabel(ylabel)
 
         if invy:
             y0, y1 = ax.get_ylim()
@@ -425,7 +422,6 @@ class UTSClusters(_EelFigure):
         _EelFigure.__init__(self, "UTSClusters", nax, 4, 2, *args, **kwargs)
 
         colors = colors_for_oneway(range(n), cm)
-        ylabel = True
         self._caxes = []
         if overlay:
             ax = self._axes[0]
@@ -445,11 +441,12 @@ class UTSClusters(_EelFigure):
             else:
                 cs = None
 
-            cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, 'time',
-                                   axtitle, ylabel)
+            cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend,
+                                   'time', axtitle)
             self._caxes.append(cax)
-            ylabel = None
 
+        self._set_ylabel(epochs[0][0], True)
+        self._set_xlabel_dim('time', True)
         self.clusters = clusters_
         self._show()
 
@@ -472,9 +469,8 @@ class UTSClusters(_EelFigure):
         self.draw()
 
 
-def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
-            xlabel=True, ylabel=True, color=None, xdim='time'):
-    contours = {}
+def _ax_uts(ax, layers, title, bottom=None, top=None, invy=False, color=None,
+            xdim='time'):
     overlay = False
     for l in layers:
         args = _base.find_uts_args(l, overlay, color)
@@ -504,13 +500,6 @@ def _ax_uts(ax, layers, title=False, bottom=None, top=None, invy=False,
             title = title.format(name=l0.name)
         ax.set_title(title)
 
-    _base.set_xlabel(ax, xdim, xlabel)
-
-    if ylabel is True:
-        ylabel = l.info.get('unit', None)
-    if ylabel:
-        ax.set_ylabel(ylabel)
-
     if invy:
         y0, y1 = ax.get_ylim()
         bottom = bottom if (bottom is not None) else y1
@@ -534,7 +523,7 @@ def _plt_uts(ax, ndvar, color=None, xdim='time', kwargs={}):
 
 class _ax_uts_clusters:
     def __init__(self, ax, Y, clusters, color=None, pmax=0.05, ptrend=0.1,
-                 xdim='time', title=None, xlabel=True, ylabel=True):
+                 xdim='time', title=None):
         uts_args = _base.find_uts_args(Y, False, color)
         self._bottom, self._top = _base.find_vlim_args(Y)
 
@@ -545,17 +534,8 @@ class _ax_uts_clusters:
 
         _plt_uts(ax, Y, xdim=xdim, **uts_args)
 
-        if ylabel is True:
-            ylabel = Y.info.get('meas', _base.default_meas)
-        if ylabel:
-            ax.set_ylabel(ylabel)
-
-        xlabel = _base._axlabel(xdim, xlabel)
-        if xlabel:
-            ax.set_xlabel(xlabel)
         if np.any(Y.x < 0) and np.any(Y.x > 0):
             ax.axhline(0, color='k')
-
 
         # pmap
         self.cluster_plt = _plt_uts_clusters(ax, clusters, pmax, ptrend, color)

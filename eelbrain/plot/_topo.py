@@ -265,15 +265,12 @@ class TopoButterfly(_EelFigure):
             self.topo_axes.append(ax2)
             self._topoax_data.append((ax2, layers))
 
-            show_x_axis = (i == n_plots - 1)
-
             # plot data
-            p = _utsnd._ax_butterfly(ax1, layers, sensors=mark, title=False,
-                                    xlabel=show_x_axis, ylabel=ylabel,
-                                    color=color, vlims=vlims)
+            p = _utsnd._ax_butterfly(ax1, layers, mark, False, False, color,
+                                     vlims)
             self.bfly_plots.append(p)
 
-            if not show_x_axis:
+            if i != n_plots - 1:
                 ax1.xaxis.set_ticklabels([])
 
             self._xvalues = np.union1d(self._xvalues, p._xvalues)
@@ -287,6 +284,9 @@ class TopoButterfly(_EelFigure):
                          transform=self.figure.transFigure,
                          ha='center', va='center', rotation='vertical')
                 break
+
+        self._set_xlabel_dim('time', xlabel, -2)
+        self._set_ylabel(epochs[0][0], ylabel)
 
         # setup callback
         self.canvas.mpl_connect('button_press_event', self._on_click)

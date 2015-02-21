@@ -214,7 +214,7 @@ class PairwiseLegend(_EelFigure):
 
 
 class _SimpleFigure(_EelFigure):
-    def __init__(self, wintitle, xlabel, ylabel, *args, **kwargs):
+    def __init__(self, wintitle, xlabel, *args, **kwargs):
         _EelFigure.__init__(self, wintitle, 1, 5, 1, *args, **kwargs)
         self._ax = ax = self._axes[0]
 
@@ -227,8 +227,6 @@ class _SimpleFigure(_EelFigure):
         self._legend = None
 
         # title and labels
-        if ylabel:
-            ax.set_ylabel(ylabel)
         if xlabel:
             ax.set_xlabel(xlabel)
 
@@ -252,7 +250,7 @@ class Boxplot(_SimpleFigure):
     _default_format = 'png'  # default format when saving for fmtext
 
     def __init__(self, Y, X=None, match=None, sub=None, datalabels=None,
-                 bottom=None, top=None, ylabel='{unit}', xlabel=True,
+                 bottom=None, top=None, ylabel=True, xlabel=True,
                  xtick_delim='\n', test=True, par=True, trend="'", test_markers=True,
                  corr='Hochberg', hatch=False, colors=False, ds=None, *args,
                  **kwargs):
@@ -275,10 +273,9 @@ class Boxplot(_SimpleFigure):
             below the lowest value).
         top : scalar
             Set the upper x axis limit (default is to fit all the data).
-        ylabel : None | str
-            Y axis label (default is ``Y.info['unit']`` if present, otherwise
-            no label).
-        xlabel : None | str
+        ylabel : str | None
+            Y axis label (default is inferred from the data).
+        xlabel : str | None
             X axis label (default is ``X.name``).
         xtick_delim : str
             Delimiter for x axis category descriptors (default is ``'\n'``,
@@ -341,20 +338,10 @@ class Boxplot(_SimpleFigure):
                    "(%i) got %s" % (ct.n_cells, repr(colors)))
             raise ValueError(msg)
 
-        # ylabel
-        if hasattr(ct.Y, 'info'):
-            unit = ct.Y.info.get('unit', '')
-        else:
-            unit = ''
-        ylabel = ylabel.format(unit=unit)
-
-        # xlabel
-        if xlabel is True:
-            xlabel = str2tex(ct.X.name or False)
-
         # get axes
         frame_title_ = frame_title("Boxplot", ct.Y, ct.X)
-        _SimpleFigure.__init__(self, frame_title_, xlabel, ylabel, *args, **kwargs)
+        _SimpleFigure.__init__(self, frame_title_, xlabel, *args, **kwargs)
+        self._set_ylabel(ct.Y, ylabel)
         ax = self._axes[0]
 
         # determine ax lim
@@ -370,7 +357,7 @@ class Boxplot(_SimpleFigure):
         # boxplot
         k = len(ct.cells)
         all_data = ct.get_data()
-        bp = ax.boxplot(all_data)
+        bp = ax.boxplot(all_data, labels=ct.cellnames(xtick_delim))
 
         # Now fill the boxes with desired colors
         if hatch or colors:
@@ -397,8 +384,6 @@ class Boxplot(_SimpleFigure):
                 plt.setp(bp[itemname], color='black')
 
         # labelling
-        ax.set_xticks(np.arange(len(ct.cells)) + 1)
-        ax.set_xticklabels(ct.cellnames(xtick_delim))
         y_min = np.max(np.hstack(all_data))
         y_unit = (y_min - bottom) / 15
 
@@ -435,7 +420,7 @@ class Barplot(_SimpleFigure):
     _default_format = 'png'  # default format when saving for fmtext
 
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
-                 corr='Hochberg', trend="'", test_markers=True, ylabel=None,
+                 corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0, top=None,
                  c='#0099FF', edgec=None, ds=None, *args, **kwargs):
@@ -464,8 +449,8 @@ class Barplot(_SimpleFigure):
         test_markers : bool
             For pairwise tests, plot markers indicating significance level
             (stars).
-        ylabel : None | str
-            Y axis label (default is None).
+        ylabel : str | None
+            Y axis label (default is inferred from the data).
         error : str
             Measure of variability to display in the error bars (default: 1
             SEM). Examples:
@@ -478,7 +463,7 @@ class Barplot(_SimpleFigure):
             (1994).
         ec : matplotlib color
             Error bar color.
-        xlabel : None | str
+        xlabel : str | None
             X axis label (default is ``X.name``).
         xticks : None | sequence of str
             X-axis tick labels describing the categories. None to plot no labels
@@ -525,7 +510,8 @@ class Barplot(_SimpleFigure):
                 xlabel = False
 
         frame_title_ = frame_title("Barplot", ct.Y, ct.X)
-        _SimpleFigure.__init__(self, frame_title_, xlabel, ylabel, *args, **kwargs)
+        _SimpleFigure.__init__(self, frame_title_, xlabel, *args, **kwargs)
+        self._set_ylabel(ct.Y, ylabel)
 
         x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
                                       colors, bottom, top, c=c, edgec=edgec,
@@ -665,10 +651,10 @@ class Timeplot(_EelFigure, LegendMixin):
             Lower end of the y axis (default is 0).
         top : scalar
             Upper end of the y axis (default is determined from the data).
-        ylabel : None | str
-            Y axis label (default is ``Y.name``).
-        xlabel : None | str
-            X axis label (default is ``time.name``).
+        ylabel : str | None
+            Y axis label (default is inferred from the data).
+        xlabel : str | None
+            X axis label (default is inferred from the data).
         legend : str | int | 'fig' | None
             Matplotlib figure legend location argument or 'fig' to plot the
             legend in a separate figure.
@@ -728,19 +714,9 @@ class Timeplot(_EelFigure, LegendMixin):
 
         # get axes
         _EelFigure.__init__(self, "Timeplot", 1, 5, 1, *args, **kwargs)
+        self._set_ylabel(Y, ylabel)
+        self._set_xlabel(time, xlabel)
         ax = self._axes[0]
-
-        # ylabel
-        if ylabel is True:
-            ax.set_ylabel(Y.name)
-        elif ylabel:
-            ax.set_ylabel(ylabel)
-
-        # xlabel
-        if xlabel is True:
-            ax.set_xlabel(time.name)
-        elif xlabel:
-            ax.set_xlabel(xlabel)
 
         # categories
         n_cat = len(categories.cells)
@@ -1247,9 +1223,9 @@ def _reg_line(Y, reg):
 class Correlation(_EelFigure):
     "Correlation between two variables"
     def __init__(self, Y, X, cat=None, sub=None, ds=None,
-                 c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], delim=' ',
-                 lloc='lower center', lncol=2, figlegend=True, xlabel=True,
-                 ylabel=True, rinxlabel=True, *args, **kwargs):
+                 c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], lloc='lower center',
+                 lncol=2, figlegend=True, xlabel=True, ylabel=True, *args,
+                 **kwargs):
         """Correlation between two variables
 
         Parameters
@@ -1265,8 +1241,6 @@ class Correlation(_EelFigure):
         ds : None | Dataset
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables
-        rinxlabel :
-            print the correlation in the xlabel
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
             (default True)
@@ -1282,28 +1256,10 @@ class Correlation(_EelFigure):
         # figure
         frame_title_ = frame_title("Correlation", Y, X, cat)
         _EelFigure.__init__(self, frame_title_, 1, 5, 1, *args, **kwargs)
+        self._set_ylabel(Y, ylabel)
+        self._set_xlabel(X, xlabel)
 
-        # determine labels
-        if xlabel is True:
-            xlabel = str2tex(X.name)
-        if ylabel is True:
-            ylabel = str2tex(Y.name)
-        if rinxlabel:
-            temp = "\n(r={r:.3f}{s}, p={p:.4f}, n={n})"
-            if cat is None:
-                r, p, n = test._corr(Y, X)
-                s = test.star(p)
-                xlabel += temp.format(r=r, s=s, p=p, n=n)
-            else:
-                pass
-
-        # decorate axes
         ax = self._axes[0]
-        if xlabel:
-            ax.set_xlabel(xlabel)
-        if ylabel:
-            ax.set_ylabel(ylabel)
-
         if cat is None:
             ax.scatter(X.x, Y.x, alpha=.5)
         else:
@@ -1329,7 +1285,7 @@ class Correlation(_EelFigure):
 class Regression(_EelFigure):
     "Regression of Y on X"
     def __init__(self, Y, X, cat=None, match=None, sub=None, ds=None,
-                 ylabel=True, alpha=.2, legend=True,
+                 xlabel=True, ylabel=True, alpha=.2, legend=True,
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
                  *args, **kwargs):
         """Regression of Y on X
@@ -1378,17 +1334,10 @@ class Regression(_EelFigure):
         # figure
         frame_title_ = frame_title("Regression", Y, X, cat)
         _EelFigure.__init__(self, frame_title_, 1, 5, 1, *args, **kwargs)
-        ax = self._axes[0]
+        self._set_xlabel(X, xlabel)
+        self._set_ylabel(Y, ylabel)
 
-        # labels
-        if ylabel:
-            ax.set_ylabel(ylabel)
-        ax.set_xlabel(X.name)
-        # regplot
-        scatter_kwargs = {'s': 100,
-                          'alpha': alpha,
-                           'marker': 'o',
-                           'label': '_nolegend_'}
+        ax = self._axes[0]
         if cat is None:
             if type(c) in [list, tuple]:
                 color = c[0]
@@ -1396,7 +1345,8 @@ class Regression(_EelFigure):
                 color = c
             y = Y.x
             reg = X.x
-            ax.scatter(reg, y, edgecolor=color, facecolor=color, **scatter_kwargs)
+            ax.scatter(reg, y, edgecolor=color, facecolor=color, s=100,
+                       alpha=alpha, marker='o', label='_nolegend_')
             x, y = _reg_line(y, reg)
             ax.plot(x, y, c=color)
         else:
@@ -1406,7 +1356,8 @@ class Regression(_EelFigure):
                 y = Y.x[idx]
                 reg = X.x[idx]
                 color = c[i % len(c)]
-                ax.scatter(reg, y, edgecolor=color, facecolor=color, **scatter_kwargs)
+                ax.scatter(reg, y, edgecolor=color, facecolor=color, s=100,
+                           alpha=alpha, marker='o', label='_nolegend_')
                 # regression line
                 x, y = _reg_line(y, reg)
                 ax.plot(x, y, c=color, label=cellname(cell))

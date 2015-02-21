@@ -424,7 +424,7 @@ class _plt_extrema:
 class _ax_butterfly(object):
 
     def __init__(self, ax, layers, sensors=None, extrema=False, title='{name}',
-                 xlabel=True, ylabel=True, color=None, vlims={}):
+                 color=None, vlims={}):
         """
         Parameters
         ----------
@@ -467,16 +467,6 @@ class _ax_butterfly(object):
         ticklabels = _base._ticklabels(ticks, 'time')
         ax.xaxis.set_ticklabels(ticklabels)
 
-        xlabel = _base._axlabel('time', xlabel)
-        if xlabel:
-            ax.set_xlabel(xlabel)
-
-        l = layers[0]
-        if ylabel is True:
-            ylabel = l.info.get('unit', None)
-        if ylabel:
-            ax.set_ylabel(ylabel)
-
     #    ax.yaxis.set_offset_position('right')
         ax.yaxis.offsetText.set_va('top')
 
@@ -511,8 +501,10 @@ class Butterfly(_EelFigure):
             sensors to plot (``None`` = all)
         axtitle : str | None
             Title to plot for axes. Default is the NDVar names.
-        xlabel, ylabel : bool | string
-            Labels for x and y axes. If True, labels are automatically chosen.
+        xlabel : str | None
+            X-axis labels. By default the label is inferred from the data.
+        ylabel : str | None
+            Y-axis labels. By default the label is inferred from the data.
         color : matplotlib color
             default (``None``): use segment color if available, otherwise
             black; ``True``: alternate colors (mpl default)
@@ -528,15 +520,14 @@ class Butterfly(_EelFigure):
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, *args,
                             **kwargs)
+        self._set_xlabel_dim('time', xlabel)
+        self._set_ylabel(epochs[0][0], ylabel)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, True)
         for ax, layers in zip(self._axes, epochs):
-            h = _ax_butterfly(ax, layers, sensors=sensors, vlims=vlims,
-                              title=axtitle, xlabel=xlabel, ylabel=ylabel,
-                              color=color)
+            h = _ax_butterfly(ax, layers, sensors, False, axtitle, color, vlims)
             self.plots.append(h)
-            xlabel = None
 
         self._show()
 

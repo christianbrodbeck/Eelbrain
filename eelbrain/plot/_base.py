@@ -166,6 +166,23 @@ def _ticklabels(ticks, dimname):
     return ticklabels
 
 
+def _data_ax_label(v, label):
+    if label is True:
+        meas = v.info.get('meas', None)
+        unit = v.info.get('unit', None)
+        if meas and unit and meas != unit:
+            return '%s [%s]' % (meas, unit)
+        elif meas:
+            return meas
+        elif unit:
+            return meas
+        elif v.name:
+            return v.name
+        else:
+            return None
+    return label
+
+
 def _axlabel(dimname, label=True):
     """Find an axis label
 
@@ -187,12 +204,6 @@ def _axlabel(dimname, label=True):
         name = dimname.capitalize()
         label = "%s [%s]" % (name, unit)
     return label
-
-
-def set_xlabel(ax, dimname, label=True):
-    label = _axlabel(dimname, label)
-    if label:
-        ax.set_xlabel(label)
 
 
 def find_ct_args(ndvar, overlay, contours={}):
@@ -930,6 +941,46 @@ class _EelFigure(object):
             for t in ax.get_xticklabels():
                 t.set_rotation(rotation)
         self.draw()
+
+    def set_xlabel(self, label, ax=-1):
+        """Set the label for the x-axis
+
+        Parameters
+        ----------
+        label : str
+            X-axis label.
+        ax : int
+            Axis on which to set the label (default -1).
+        """
+        self._axes[ax].set_xlabel(label)
+
+    def _set_xlabel(self, v, xlabel):
+        label = _data_ax_label(v, xlabel)
+        if label:
+            self.set_xlabel(label)
+
+    def _set_xlabel_dim(self, dimname, label, ax=-1):
+        label = _axlabel(dimname, label)
+        if label:
+            self.set_xlabel(label, ax)
+
+    def set_ylabel(self, label, ax=0):
+        """Set the label for the y-axis
+
+        Parameters
+        ----------
+        label : str
+            Y-axis label.
+        ax : int
+            Axis on which to set the label (default 0).
+        """
+        self._axes[ax].set_ylabel(label)
+
+    def _set_ylabel(self, v, ylabel):
+        "Set the y-axis label based on data"
+        label = _data_ax_label(v, ylabel)
+        if label:
+            self.set_ylabel(label)
 
 
 class Layout():
