@@ -39,6 +39,7 @@ Manual:
    intro
    reference
    recipes
+   experiment
 
 
 .. seealso:: Eelbrain on `GitHub <http://github.com/christianbrodbeck/Eelbrain>`_,

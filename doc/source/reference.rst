@@ -257,13 +257,23 @@ shell, run :func:`gui.run`.
 Experiment Classes
 ^^^^^^^^^^^^^^^^^^
 
+The :class:`MneExperiment` class serves as a base class for analyzing MEG
+data (gradiometer only) with MNE:
+
+.. autosummary::
+   :toctree: generated
+
+   MneExperiment
+
+.. seealso::
+    For the guide on working with the MneExperiment class see
+    :ref:`experiment-class-guide`.
+
 The :mod:`eelbrain.experiment` module contains tools for managing hierarchical
-collections of templates.
+collections of templates on which the :class:`MneExperiment` is based.
 
 .. autosummary::
    :toctree: generated
 
    experiment.TreeModel
    experiment.FileTree
-   experiment.MneExperiment
-

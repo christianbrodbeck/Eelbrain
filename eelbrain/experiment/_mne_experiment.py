@@ -1,65 +1,4 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-'''
-MneExperiment is a base class for managing an mne experiment.
-
-
-Epochs
-------
-
-Epochs are defined as dictionaries containing the following entries
-(**mandatory**/optional):
-
-sel_epoch : str
-    Name of the epoch providing primary events (e.g. whose trial rejection
-    file should be used).
-sel : str
-    Expression which evaluates in the events Dataset to the index of the
-    events included in this Epoch specification.
-**tmin** : scalar
-    Start of the epoch.
-**tmax** : scalar
-    End of the epoch.
-reject_tmin : scalar
-    Alternate start time for rejection (amplitude and eye-tracker).
-reject_tmax : scalar
-    Alternate end time for rejection (amplitude and eye-tracker).
-decim : int
-    Decimate the data by this factor (i.e., only keep every ``decim``'th
-    sample)
-pad : scalar
-    Pad epochs with this this amount of data (in seconds) not included in
-    rejection.
-tag : str
-    Optional tag to identify epochs that differ in ways not captured by the
-    above.
-
-Superset epochs can be defined as a dictionary with only one entry:
-
-sub_epochs : tuple of str
-    Tuple of epoch names. These epochs are combined to form the current epoch.
-    The current epoch can not have any additional specification, and parameters
-    from the sub_epochs must match.
-
-
-Epochs can be
-specified in the :attr:`MneExperiment.epochs` dictionary. All keys in this
-dictionary have to be of type :class:`str`, values have to be :class:`dict`s
-containing the epoch specification. If an epoch is specified in
-:attr:`MneExperiment.epochs`, its name (key) can be used in the epochs
-argument to various methods. Example::
-
-    # in MneExperiment subclass definition
-    class experiment(MneExperiment):
-        epochs = {'adjbl': dict(sel="stim=='adj'", tstart=-0.1, tstop=0)}
-        ...
-
-The :meth:`MneExperiment.get_epoch_str` method produces A label for each
-epoch specification, which is used for filenames. Data which is excluded from
-artifact rejection is parenthesized. For example, ``"noun[(-100)0,500]"``
-designates data form -100 to 500 ms relative to the stimulus 'noun', with only
-the interval form 0 to 500 ms used for rejection.
-
-'''
 
 from collections import defaultdict
 from distutils.version import LooseVersion
@@ -256,8 +195,10 @@ temp = {# MEG
 
 
 class MneExperiment(FileTree):
-    """:class:`FileTree` subclass for analyzing an MEG experiment with MNE
+    """Analyze an MEG experiment (gradiometer only) with MNE
 
+    .. seealso::
+        Guide on using :ref:`experiment-class-guide`.
     """
     path_version = None
 
@@ -406,12 +347,17 @@ class MneExperiment(FileTree):
     cluster_criteria = {'mintime': 0.025, 'minsensor': 4, 'minsource': 10}
 
     def __init__(self, root=None, find_subjects=True, **state):
-        """
+        """Analyze an MEG experiment (gradiometer only) with MNE
+
         Parameters
         ----------
         root : str | None
             the root directory for the experiment (usually the directory
             containing the 'meg' and 'mri' directories)
+        find_subjects : bool
+            Automatically look for subjects in the MEG-directory (default
+            True). Set ``find_subjects=False`` to initialize the experiment
+            without any files.
         """
         # create attributes (overwrite class attributes)
         self._subject_re = re.compile(self._subject_re)
@@ -470,16 +416,6 @@ class MneExperiment(FileTree):
             epoch = self.epoch_default.copy()
             epoch.update(self.epochs[name])
             epoch['name'] = name
-
-            # process secondary attributes
-            pad = epoch.get('pad', None)
-            if pad:
-                if not 'reject_tmin' in epoch:
-                    epoch['reject_tmin'] = epoch['tmin']
-                epoch['tmin'] -= pad
-                if not 'reject_tmax' in epoch:
-                    epoch['reject_tmax'] = epoch['tmax']
-                epoch['tmax'] += pad
 
             epochs[name] = epoch
         # re-integrate super-epochs
@@ -3799,7 +3735,7 @@ class MneExperiment(FileTree):
 
     def set_inv(self, ori='free', snr=3, method='dSPM', depth=None,
                 pick_normal=False):
-        """Alternative method to set the ``inv`` state.
+        """Set the type of inverse solution used for source estimation
 
         Parameters
         ----------
