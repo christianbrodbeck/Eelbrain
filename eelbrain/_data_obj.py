@@ -23,6 +23,7 @@ managed by
 from __future__ import division
 
 import collections
+from copy import deepcopy
 from fnmatch import fnmatchcase
 import itertools
 from itertools import chain, izip
@@ -1135,7 +1136,7 @@ class Var(object):
     """
     _stype_ = "var"
     ndim = 1
-    def __init__(self, x, name=None, repeat=1, tile=1):
+    def __init__(self, x, name=None, repeat=1, tile=1, info=None):
         """Represents a univariate variable.
 
         Parameters
@@ -1168,20 +1169,28 @@ class Var(object):
         if tile > 1:
             x = np.tile(x, tile)
 
-        self.__setstate__((x, name))
+        if info is None:
+            info = {}
+
+        self.__setstate__((x, name, info))
 
     def __setstate__(self, state):
-        x, name = state
+        if len(state) == 3:
+            x, name, info = state
+        else:
+            x, name = state
+            info = {}
         # raw
         self.name = name
         self.x = x
+        self.info = info
         # constants
         self._n_cases = len(x)
         self.df = 1
         self.random = False
 
     def __getstate__(self):
-        return (self.x, self.name)
+        return (self.x, self.name, self.info)
 
     def __repr__(self, full=False):
         n_cases = preferences['var_repr_n_cases']
@@ -1203,6 +1212,9 @@ class Var(object):
         if self.name is not None:
             args.append('name=%r' % self.name)
 
+        if self.info:
+            args.append('info=%r' % self.info)
+
         return "Var(%s)" % ', '.join(args)
 
     def __str__(self):
@@ -1223,13 +1235,13 @@ class Var(object):
             x = []
             for v in np.unique(f.x):
                 x.append(np.mean(self.x[f == v]))
-            return Var(x, self.name)
+            return Var(x, self.name, info=self.info.copy())
         elif isvar(index):
             index = index.x
 
         x = self.x[index]
         if np.iterable(x):
-            return Var(x, self.name)
+            return Var(x, self.name, info=self.info.copy())
         else:
             return x
 
@@ -1242,7 +1254,7 @@ class Var(object):
     # numeric ---
     def __neg__(self):
         x = -self.x
-        return Var(x)
+        return Var(x, info=self.info.copy())
 
     def __pos__(self):
         return self
@@ -1256,7 +1268,7 @@ class Var(object):
             return Model((self, other))
 
         x = self.x + other
-        return Var(x)
+        return Var(x, info=self.info.copy())
 
     def __sub__(self, other):
         "subtract: values are assumed to be ordered. Otherwise use .sub method."
@@ -1269,7 +1281,7 @@ class Var(object):
         else:
             x = self.x - other.x
 
-        return Var(x)
+        return Var(x, info=self.info.copy())
 
     def __mul__(self, other):
         if iscategorial(other):
@@ -1279,7 +1291,7 @@ class Var(object):
         else:
             x = self.x * other
 
-        return Var(x)
+        return Var(x, info=self.info.copy())
 
     def __floordiv__(self, other):
         if isvar(other):
@@ -1288,17 +1300,17 @@ class Var(object):
             x = self.x // other
         else:
             x = self.x // other
-        return Var(x)
+        return Var(x, info=self.info.copy())
 
     def __mod__(self, other):
-        if  ismodel(other):
+        if ismodel(other):
             return Model(self) % other
         elif isdataobject(other):
             return Interaction((self, other))
         elif isvar(other):
             other = other.x
 
-        return Var(self.x % other)
+        return Var(self.x % other, info=self.info.copy())
 
     def __lt__(self, y):
         return self.x < y
@@ -1332,9 +1344,9 @@ class Var(object):
 
         """
         if np.isscalar(other):
-            return Var(self.x / other)
+            return Var(self.x / other, info=self.info.copy())
         elif isvar(other):
-            return Var(self.x / other.x)
+            return Var(self.x / other.x, info=self.info.copy())
         else:
             categories = other
             if not hasattr(categories, 'as_dummy_complete'):
@@ -1353,7 +1365,7 @@ class Var(object):
 
     def abs(self, name=None):
         "Return a Var with the absolute value."
-        return Var(np.abs(self.x), name)
+        return Var(np.abs(self.x), name, info=self.info.copy())
 
     def argmax(self):
         """:func:`numpy.argmax`"""
@@ -1438,7 +1450,7 @@ class Var(object):
         x = self.x.copy()
         if name is True:
             name = self.name
-        return Var(x, name)
+        return Var(x, name, info=deepcopy(self.info))
 
     def compress(self, X, func=np.mean, name=True):
         "Deprecated. Use .aggregate()."
@@ -1479,7 +1491,7 @@ class Var(object):
             name = self.name
 
         x = np.array(x)
-        return Var(x, name)
+        return Var(x, name, info=self.info.copy())
 
     @property
     def beta_labels(self):
@@ -1509,10 +1521,10 @@ class Var(object):
         name = "{n}({x1}-{x2})".format(n=self.name,
                                        x1=X.cells[v1],
                                        x2=X.cells[v2])
-        return Var(y, name)
+        return Var(y, name, info=self.info.copy())
 
     @classmethod
-    def from_dict(cls, base, values, name=None, default=0):
+    def from_dict(cls, base, values, name=None, default=0, info=None):
         """
         Construct a Var object by mapping ``base`` to ``values``.
 
@@ -1533,13 +1545,11 @@ class Var(object):
         >>> base = Factor('aabbcde')
         >>> Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
         Var([5, 5, 0, 0, 0, 0, 8])
-
         """
-        Y = cls([values.get(b, default) for b in base], name)
-        return Y
+        return cls([values.get(b, default) for b in base], name, info=info)
 
     @classmethod
-    def from_apply(cls, base, func, name=None):
+    def from_apply(cls, base, func, name=None, info=None):
         """
         Construct a Var instance by applying a function to each value in a base
 
@@ -1562,7 +1572,7 @@ class Var(object):
         else:
             x = np.array([func(val) for val in base])
 
-        return cls(x, name)
+        return cls(x, name, info=info)
 
     def index(self, value):
         "``v.index(value)`` returns an array of indices where v equals value"
@@ -1610,7 +1620,7 @@ class Var(object):
         """
         if name is True:
             name = self.name
-        return Var(self.x.repeat(repeats), name)
+        return Var(self.x.repeat(repeats), name, info=self.info.copy())
 
     def split(self, n=2, name=None):
         """
@@ -2914,7 +2924,7 @@ class NDVar(object):
                     else:
                         index = index[0]
                         x = np.array([func(x_[index]) for x_ in self_x])
-                    return Var(x, self.name)
+                    return Var(x, self.name, info=self.info.copy())
                 elif axis.has_case:
                     msg = ("Index with case dimension can not be applied to "
                            "data without case dimension")
@@ -2935,10 +2945,9 @@ class NDVar(object):
         if len(dims) == 0:
             return x
         elif dims == ('case',):
-            return Var(x, name)
+            return Var(x, name, info=self.info.copy())
         else:
-            info = self.info.copy()
-            return NDVar(x, dims, info, name)
+            return NDVar(x, dims, self.info.copy(), name)
 
     def bin(self, tstep, tstart=None, tstop=None, func=None):
         """Bin the data along the time axis
@@ -3463,7 +3472,7 @@ class NDVar(object):
             if len(dims) == 0:
                 return x
             elif dims == ['case']:
-                return Var(x, name)
+                return Var(x, name, info=info)
             else:
                 return NDVar(x, dims, info, name)
 

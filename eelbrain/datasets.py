@@ -9,6 +9,7 @@ import mne
 from mne import minimum_norm as mn
 
 from . import load
+from ._colorspaces import eeg_info
 from ._data_obj import Dataset, Factor, Var, NDVar, Sensor, UTS
 from .design import permute
 
@@ -237,7 +238,7 @@ def get_uts(utsnd=False, seed=0):
             y[i, 4, 25:75] += 0.5 * win * x[shift: 50+shift]
 
         dims = ('case', sensor, time)
-        ds['utsnd'] = NDVar(y, dims=dims)
+        ds['utsnd'] = NDVar(y, dims, eeg_info())
 
     return ds
 

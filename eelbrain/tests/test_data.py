@@ -586,6 +586,9 @@ def test_ndvar_summary_methods():
     idxsub = xsub > 0
     idx1d = x.mean(('case', 'time')) > 0
 
+    # info inheritance
+    eq_(x.any(('sensor', 'time')).info, x.info)
+
     # numpy functions
     assert_equal(x.any(), x.x.any())
     assert_array_equal(x.any(dim), x.x.any(axis))
@@ -811,8 +814,25 @@ def test_source_space():
 def test_var():
     "Test Var objects"
     base = Factor('aabbcde')
-    Y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
-    assert_array_equal(Y.x, [5, 5, 0, 0, 0, 0, 8])
+    y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
+    assert_array_equal(y.x, [5, 5, 0, 0, 0, 0, 8])
+
+    # basic operations
+    info = {'a': 1}
+    v = Var(np.arange(4.), info=info)
+    eq_(v.info, info)
+    w = v - 1
+    eq_(w.info, info)
+    assert_array_equal(w.x, v.x - 1)
+    w = v + 1
+    eq_(w.info, info)
+    assert_array_equal(w.x, v.x + 1)
+    w = v * 2
+    eq_(w.info, info)
+    assert_array_equal(w.x, v.x * 2)
+    w = v  / 2
+    eq_(w.info, info)
+    assert_array_equal(w.x, v.x / 2)
 
     # .split()
     y = Var(np.arange(16))
