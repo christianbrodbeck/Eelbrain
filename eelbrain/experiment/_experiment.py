@@ -42,8 +42,9 @@ def _etree_node_repr(node, name, indent=0):
 class LayeredDict(dict):
     """Dictionary which can store and restore states
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         self._states = []
+        dict.__init__(self)
 
     def __repr__(self):
         rep = ("<LayeredDict with %i stored states:\n"
