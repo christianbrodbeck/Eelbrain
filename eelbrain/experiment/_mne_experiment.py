@@ -558,8 +558,7 @@ class MneExperiment(FileTree):
             default_cov = None
         self._register_field('cov', sorted(self._covs), default_cov)
         self._register_field('mri', sorted(self._mri_subjects.keys()))
-        self._register_value('inv', 'free-3-dSPM',
-                             set_handler=self._set_inv_as_str)
+        self._register_value('inv', 'free-3-dSPM', eval_handler=self._eval_inv)
         self._register_value('model', '', eval_handler=self._eval_model)
         if self._tests:
             self._register_field('test', self._tests.keys(),
@@ -3884,7 +3883,7 @@ class MneExperiment(FileTree):
         inv = '-'.join(items)
         self.set(inv=inv)
 
-    def _set_inv_as_str(self, inv):
+    def _eval_inv(self, inv):
         """
         Notes
         -----
@@ -3931,9 +3930,9 @@ class MneExperiment(FileTree):
         if pick_normal:
             apply_kw['pick_normal'] = True
 
-        self._fields['inv'] = inv
         self._params['make_inv_kw'] = make_kw
         self._params['apply_inv_kw'] = apply_kw
+        return inv
 
     def _eval_parc(self, parc):
         # Freesurfer parcellations
