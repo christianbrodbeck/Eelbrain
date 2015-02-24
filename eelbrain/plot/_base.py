@@ -124,6 +124,22 @@ def configure(frame=True, autorun=None, show=True):
     backend['show'] = bool(show)
 
 
+def close_all():
+    "Close all plots"
+    if backend['eelbrain']:
+        import wx
+        from .. import _wxgui
+        from .._wxgui.mpl_canvas import CanvasFrame
+
+        for win in wx.GetTopLevelWindows():
+            if isinstance(win, CanvasFrame):
+                win.Destroy()
+        # Destroy() adds Frames to a list of windows to be deleted on idle time
+        wx.WakeUpMainThread()
+    else:
+        plt.close('all')
+
+
 _unit = {'time': 'ms'}
 _conversion = {'time': {'ms': 1e3}}
 _fmt = {'time': '%i'}

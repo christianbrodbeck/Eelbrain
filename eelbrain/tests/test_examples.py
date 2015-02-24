@@ -38,7 +38,8 @@ def test_0():
     os.chdir(tempdir)
     execfile('align.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_1():
@@ -67,7 +68,8 @@ def test_1():
     os.chdir(tempdir)
     execfile('report.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_2():
@@ -96,7 +98,8 @@ def test_2():
     os.chdir(tempdir)
     execfile('table.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_3():
@@ -125,7 +128,8 @@ def test_3():
     os.chdir(tempdir)
     execfile('mne_sample_loader.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_4():
@@ -154,7 +158,8 @@ def test_4():
     os.chdir(tempdir)
     execfile('simple meg.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_5():
@@ -183,7 +188,8 @@ def test_5():
     os.chdir(tempdir)
     execfile('source permutation cluster.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_6():
@@ -212,7 +218,8 @@ def test_6():
     os.chdir(tempdir)
     execfile('source permutation.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_7():
@@ -241,7 +248,8 @@ def test_7():
     os.chdir(tempdir)
     execfile('topo.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_8():
@@ -270,7 +278,8 @@ def test_8():
     os.chdir(tempdir)
     execfile('uts cluster permutation test.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_9():
@@ -299,7 +308,8 @@ def test_9():
     os.chdir(tempdir)
     execfile('uts.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_10():
@@ -328,7 +338,8 @@ def test_10():
     os.chdir(tempdir)
     execfile('ANCOVA_Crawley.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_11():
@@ -357,7 +368,8 @@ def test_11():
     os.chdir(tempdir)
     execfile('ANCOVA_rutherford.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_12():
@@ -386,7 +398,8 @@ def test_12():
     os.chdir(tempdir)
     execfile('ANOVA.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_13():
@@ -415,7 +428,8 @@ def test_13():
     os.chdir(tempdir)
     execfile('ANOVA_rutherford_1.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_14():
@@ -444,7 +458,8 @@ def test_14():
     os.chdir(tempdir)
     execfile('ANOVA_rutherford_2.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_15():
@@ -473,7 +488,8 @@ def test_15():
     os.chdir(tempdir)
     execfile('Fox_Prestige.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_16():
@@ -502,7 +518,8 @@ def test_16():
     os.chdir(tempdir)
     execfile('pdf.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 
 def test_17():
@@ -531,5 +548,6 @@ def test_17():
     os.chdir(tempdir)
     execfile('simple.py', {})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)

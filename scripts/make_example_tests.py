@@ -36,7 +36,8 @@ def test_{i}():
     os.chdir(tempdir)
     execfile({filename!r}, {{}})
 
-    # delete temporary files
+    # clean up
+    plot.close_all()
     shutil.rmtree(tempdir)
 """
 
