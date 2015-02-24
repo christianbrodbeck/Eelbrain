@@ -568,6 +568,7 @@ class MneExperiment(FileTree):
                              eval_handler=self._eval_parc)
         self._register_field('proj', [''] + self.projs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
+        self._register_field('subject', ('subject',))
 
         # compounds
         self._register_compound('bads-compound', ('experiment', 'modality'))
@@ -3946,17 +3947,23 @@ class MneExperiment(FileTree):
             raise ValueError("Unknown parcellation:  parc=%r" % parc)
 
     def set_root(self, root, find_subjects=False):
+        """Set the root of the file hierarchy
+
+        Parameters
+        ----------
+        root : str
+            Path of the new root.
+        find_subjects : bool
+            Update the list of available subjects based on the file hierarchy.
+        """
         if root is None:
             root = ''
             find_subjects = False
-        else:
-            root = os.path.expanduser(root)
-            root = os.path.normpath(root)
-        self._fields['root'] = root
-        if not find_subjects:
-            self._field_values['subject'] = []
-            return
+        self.set(root=root)
+        if find_subjects:
+            self._update_subject_values()
 
+    def _update_subject_values(self):
         subjects = set()
         sub_dir = self.get(self._subject_loc)
         if os.path.exists(sub_dir):
@@ -3977,11 +3984,8 @@ class MneExperiment(FileTree):
             print("Warning: no subjects found in %r" % sub_dir)
             return
 
-        # on init, subject is not in fields
-        subject = self._fields.get('subject', None)
-        if subject not in subjects:
-            subject = subjects[0]
-        self.set(subject=subject, add=True)
+        if self.get('subject') not in subjects:
+            self.set(subject=subjects[0])
 
     def _post_set_test(self, _, test):
         if test != '*':

@@ -771,7 +771,7 @@ class FileTree(TreeModel):
         TreeModel.__init__(self, **state)
         self._make_handlers = {}
         self._cache_handlers = {}
-        self._register_field('root', set_handler=self.set_root)
+        self._register_field('root', eval_handler=self._eval_root)
 
     def _bind_cache(self, key, handler):
         """
@@ -795,11 +795,13 @@ class FileTree(TreeModel):
             raise RuntimeError("Make handler for %r already defined." % key)
         self._make_handlers[key] = handler
 
-    def set_root(self, root):
+    @staticmethod
+    def _eval_root(root):
         root = os.path.expanduser(root)
+        root = os.path.normpath(root)
         if not os.path.exists(root):
             raise IOError("Root does not exist: %r" % root)
-        self._fields['root'] = root
+        return root
 
     def get(self, temp, fmatch=False, vmatch=True, match=True, mkdir=False,
             make=False, **kwargs):
