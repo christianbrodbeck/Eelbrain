@@ -1039,16 +1039,16 @@ def combine(items, name=None, check_dims=True):
             x = sum((i.as_labels() for i in items), [])
             return Factor(x, name, item0.random)
     elif isndvar(item0):
-        has_case = np.array([v.has_case for v in items])
-        if np.all(has_case):
+        v_have_case = [v.has_case for v in items]
+        if all(v_have_case):
             has_case = True
             all_dims = (item.dims[1:] for item in items)
-        elif np.all(has_case == False):
+        elif any(v_have_case):
+            raise DimensionMismatchError("Some items have a 'case' dimension, "
+                                         "others do not")
+        else:
             has_case = False
             all_dims = (item.dims for item in items)
-        else:
-            err = ("Some items have a 'case' dimension, others do not")
-            raise DimensionMismatchError(err)
 
         dims = reduce(lambda x, y: intersect_dims(x, y, check_dims), all_dims)
         idx = {d.name: d for d in dims}
