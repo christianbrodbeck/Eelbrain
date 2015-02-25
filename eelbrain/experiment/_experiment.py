@@ -800,8 +800,6 @@ class FileTree(TreeModel):
     def _eval_root(root):
         root = os.path.expanduser(root)
         root = os.path.normpath(root)
-        if not os.path.exists(root):
-            raise IOError("Root does not exist: %r" % root)
         return root
 
     def get(self, temp, fmatch=False, vmatch=True, match=True, mkdir=False,
