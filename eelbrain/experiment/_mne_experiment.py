@@ -634,8 +634,7 @@ class MneExperiment(FileTree):
 
         return subject_, group
 
-    def add_epochs_stc(self, ds, src='epochs', dst=None, ndvar=True,
-                       baseline=None):
+    def add_epochs_stc(self, ds, ndvar=True, baseline=None):
         """
         Transform epochs contained in ds into source space (adds a list of mne
         SourceEstimates to ds)
@@ -644,17 +643,12 @@ class MneExperiment(FileTree):
         ----------
         ds : Dataset
             The Dataset containing the mne Epochs for the desired trials.
-        src : str
-            Name of the source epochs in ds.
-        dst : str
-            Name of the source estimates to be created in ds. The default is
-            'stc' for SourceEstimate, and 'src' for NDVar.
         ndvar : bool
-            Add the source estimates as NDVar instead of a list of
-            SourceEstimate objects.
+            Add the source estimates as NDVar named 'src' (default). Set to
+            False to add a list of MNE SourceEstimate objects named 'stc'.
         baseline : None | True | tuple
             Apply baseline correction using this period. True to use the
-            epoch's baseline specification. The default is to not apply baseline
+            epoch's baseline specification. The default is to apply no baseline
             correction (None).
         """
         subject = ds['subject']
@@ -666,31 +660,24 @@ class MneExperiment(FileTree):
         if baseline is True:
             baseline = self.epochs[self.get('epoch')]['baseline']
 
-        epochs = ds[src]
+        epochs = ds['epochs']
         inv = self.load_inv(epochs)
         stc = apply_inverse_epochs(epochs, inv, **self._params['apply_inv_kw'])
 
         if ndvar:
-            if dst is None:
-                dst = 'src'
-
             self.make_annot()
             subject = self.get('mrisubject')
             src = self.get('src')
             mri_sdir = self.get('mri-sdir')
             parc = self.get('parc') or None
-            src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir, dst,
-                                      parc=parc)
+            src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir, parc=parc)
             if baseline is not None:
                 src -= src.summary(time=baseline)
-            ds[dst] = src
+            ds['src'] = src
         else:
-            if dst is None:
-                dst = 'stc'
-
             if baseline is not None:
                 raise NotImplementedError("Baseline for SourceEstimate")
-            ds[dst] = stc
+            ds['stc'] = stc
 
     def add_evoked_stc(self, ds, ind_stc=False, ind_ndvar=False, morph_stc=False,
                        morph_ndvar=False, baseline=None, keep_evoked=False):
@@ -1378,7 +1365,7 @@ class MneExperiment(FileTree):
             False).
         """
         ds = self.load_epochs(subject, sns_baseline, False, cat=cat, **kwargs)
-        self.add_epochs_stc(ds, ndvar=ndvar, baseline=src_baseline)
+        self.add_epochs_stc(ds, ndvar, src_baseline)
         if not keep_epochs:
             del ds['epochs']
         return ds
