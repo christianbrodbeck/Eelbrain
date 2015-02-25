@@ -100,6 +100,13 @@ logger = logging.getLogger('eelbrain.experiment')
 has_mne_09 = LooseVersion(mne.__version__) >= LooseVersion('0.9')
 
 
+inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
+                    "(\d*\.?\d+)-"  # SNR
+                    "(MNE|dSPM|sLORETA)"  # method
+                    "(?:(\.\d+)-)?"  # depth weighting
+                    "(?:-(pick_normal))?")  # pick normal
+
+
 def _time_str(t):
     "String for representing a time value"
     if t is None:
@@ -559,7 +566,8 @@ class MneExperiment(FileTree):
         self._register_field('cov', sorted(self._covs), default_cov)
         self._register_field('mri', sorted(self._mri_subjects.keys()))
         self._register_field('inv', default='free-3-dSPM',
-                             eval_handler=self._eval_inv)
+                             eval_handler=self._eval_inv,
+                             post_set_handler=self._post_set_inv)
         self._register_field('model', eval_handler=self._eval_model)
         self._register_field('test', self._tests.keys() or None,
                              post_set_handler=self._post_set_test)
@@ -3748,29 +3756,26 @@ class MneExperiment(FileTree):
         inv = '-'.join(items)
         self.set(inv=inv)
 
-    def _eval_inv(self, inv):
-        """
-        Notes
-        -----
-        inv composed of the following elements, delimited with '-':
-
-         1) 'free' | 'fixed' | float
-         2) depth weighting (optional)
-         3) regularization 'reg' (optional)
-         4) snr
-         5) method
-         6) pick_normal:  'pick_normal' (optional)
-        """
-        m = re.match("(free|fixed|loose\.\d+)-"  # orientation constraint
-                     "(\d*\.?\d+)-"  # SNR
-                     "(MNE|dSPM|sLORETA)"  # method
-                     "(?:(\.\d+)-)?"  # depth weighting
-                     "(?:-(pick_normal))?",  # pick normal
-                     inv)
+    @staticmethod
+    def _eval_inv(inv):
+        m = inv_re.match(inv)
         if m is None:
-            raise ValueError("Invalid inverse option specification: %r" % inv)
+            raise ValueError("Invalid inverse specification: inv=%r" % inv)
 
         ori, snr, method, depth, pick_normal = m.groups()
+        if ori.startswith('loose'):
+            loose = float(ori[5:])
+            if not 0 <= loose <= 1:
+                err = ('First value of inv (loose parameter) needs to be '
+                       'in [0, 1]')
+                raise ValueError(err)
+
+        return inv
+
+    def _post_set_inv(self, _, inv):
+        m = inv_re.match(inv)
+        ori, snr, method, depth, pick_normal = m.groups()
+
         make_kw = {}
         apply_kw = {}
 
@@ -3780,12 +3785,7 @@ class MneExperiment(FileTree):
         elif ori == 'free':
             make_kw['loose'] = 1
         elif ori.startswith('loose'):
-            loose = float(ori[5:])
-            if not 0 <= loose <= 1:
-                err = ('First value of inv (loose parameter) needs to be '
-                       'in [0, 1]')
-                raise ValueError(err)
-            make_kw['loose'] = loose
+            make_kw['loose'] = float(ori[5:])
 
         if depth is not None:
             make_kw['depth'] = float(depth)
@@ -3797,7 +3797,6 @@ class MneExperiment(FileTree):
 
         self._params['make_inv_kw'] = make_kw
         self._params['apply_inv_kw'] = apply_kw
-        return inv
 
     def _eval_model(self, model):
         if len(model) > 1 and '*' in model:

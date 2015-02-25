@@ -258,7 +258,9 @@ class TreeModel(object):
         set_handler : None | callable
             Function to call instead of updating the state value,
         eval_handler : None | callable
-            Function to use for evaluating a value before setting.
+            Function to use for evaluating a value before setting. Can be
+            called without actually setting the value; any parameter changes
+            need to be evaluated in post_set_handlers.
         post_set_handler : None | callable
             Function to call after the value is changed.
         """
