@@ -3829,36 +3829,6 @@ class MneExperiment(FileTree):
                 raise ValueError("No group or subject named %r" % group)
         return group
 
-    def _eval_model(self, model):
-        if len(model) > 1 and '*' in model:
-            raise ValueError("Specify model with '%' instead of '*'")
-
-        factors = [v.strip() for v in model.split('%')]
-
-        # find order value for each factor
-        ordered_factors = {}
-        unordered_factors = []
-        for factor in sorted(factors):
-            if factor in self._model_order:
-                v = self._model_order.index(factor)
-                ordered_factors[v] = factor
-            else:
-                unordered_factors.append(factor)
-
-        # recompose
-        model = [ordered_factors[v] for v in sorted(ordered_factors)]
-        if unordered_factors:
-            model.extend(unordered_factors)
-        return '%'.join(model)
-
-    def _post_set_rej(self, _, rej):
-        if rej == '*':
-            self._params['rej'] = None
-        else:
-            rej_args = self.epoch_rejection[rej]
-            self._params['rej'] = rej_args
-            self._fields['cov-rej'] = rej_args.get('cov-rej', rej)
-
     def set_inv(self, ori='free', snr=3, method='dSPM', depth=None,
                 pick_normal=False):
         """Alternative method to set the ``inv`` state.
@@ -3938,6 +3908,28 @@ class MneExperiment(FileTree):
         self._params['apply_inv_kw'] = apply_kw
         return inv
 
+    def _eval_model(self, model):
+        if len(model) > 1 and '*' in model:
+            raise ValueError("Specify model with '%' instead of '*'")
+
+        factors = [v.strip() for v in model.split('%')]
+
+        # find order value for each factor
+        ordered_factors = {}
+        unordered_factors = []
+        for factor in sorted(factors):
+            if factor in self._model_order:
+                v = self._model_order.index(factor)
+                ordered_factors[v] = factor
+            else:
+                unordered_factors.append(factor)
+
+        # recompose
+        model = [ordered_factors[v] for v in sorted(ordered_factors)]
+        if unordered_factors:
+            model.extend(unordered_factors)
+        return '%'.join(model)
+
     def _eval_parc(self, parc):
         # Freesurfer parcellations
         if parc in ('', 'aparc.a2005s', 'aparc.a2009s', 'aparc',
@@ -3948,6 +3940,14 @@ class MneExperiment(FileTree):
             return parc
         else:
             raise ValueError("Unknown parcellation:  parc=%r" % parc)
+
+    def _post_set_rej(self, _, rej):
+        if rej == '*':
+            self._params['rej'] = None
+        else:
+            rej_args = self.epoch_rejection[rej]
+            self._params['rej'] = rej_args
+            self._fields['cov-rej'] = rej_args.get('cov-rej', rej)
 
     def set_root(self, root, find_subjects=False):
         """Set the root of the file hierarchy
