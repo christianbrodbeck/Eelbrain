@@ -76,7 +76,6 @@ import mne
 from mne.baseline import rescale
 from mne.minimum_norm import (make_inverse_operator, apply_inverse,
                               apply_inverse_epochs)
-from mne import Evoked as _mne_Evoked
 
 from .. import _report
 from .. import gui
@@ -552,8 +551,7 @@ class MneExperiment(FileTree):
                              post_set_handler=self._post_set_rej)
         self._register_field('group', self.groups.keys() + ['all'], 'all',
                              eval_handler=self._eval_group)
-        self._register_field('epoch', self.epochs.keys(),
-                             eval_handler=self._eval_epoch)
+        self._register_field('epoch', self.epochs.keys())
         if 'bestreg' in self._covs:
             default_cov = 'bestreg'
         else:
@@ -608,15 +606,6 @@ class MneExperiment(FileTree):
             if not os.path.exists(fpath):
                 return False
         return True
-
-    @property
-    def _epoch_state(self):
-        epochs = self._params['epochs']
-        if len(epochs) != 1:
-            err = ("This function is only implemented for single epochs (got "
-                   "%s)" % self.get('epoch'))
-            raise NotImplementedError(err)
-        return epochs[0]
 
     def _process_subject_arg(self, subject, kwargs):
         """Process subject arg for methods that work on groups and subjects
@@ -675,7 +664,7 @@ class MneExperiment(FileTree):
         subject = subject.cells[0]
         self.set(subject=subject)
         if baseline is True:
-            baseline = self._epoch_state['baseline']
+            baseline = self.epochs[self.get('epoch')]['baseline']
 
         epochs = ds[src]
         inv = self.load_inv(epochs)
@@ -744,7 +733,7 @@ class MneExperiment(FileTree):
         if isinstance(baseline, str):
             raise NotImplementedError("Baseline form different epoch")
         elif baseline is True:
-            baseline = self._epoch_state['baseline']
+            baseline = self.epochs[self.get('epoch')]['baseline']
 
         # find from subjects
         common_brain = self.get('common_brain')
@@ -777,97 +766,70 @@ class MneExperiment(FileTree):
         if ind_ndvar and not all_are_common_brain:
             self.make_annot(mrisubject=from_subjects[meg_subjects[0]])
 
-        # find vars to work on
-        do = []
-        for name in ds:
-            if isinstance(ds[name][0], _mne_Evoked):
-                do.append(name)
-        if len(do) == 0:
-            raise RuntimeError("No Evoked found")
-
-        # prepare data containers
-        if collect_ind_stcs:
-            stcs = defaultdict(list)
-        if collect_morphed_stcs:
-            mstcs = defaultdict(list)
-
         # convert evoked objects
-        mri_sdir = self.get('mri-sdir')
+        stcs = []
+        mstcs = []
         invs = {}
         mms = {}
-        for i in xrange(ds.n_cases):
-            subject = ds[i, 'subject']
+        for subject, evoked in izip(ds['subject'], ds['evoked']):
             subject_from = from_subjects[subject]
 
-            # create stcs from sns data
-            for name in do:
-                evoked = ds[i, name]
+            # get inv
+            if subject in invs:
+                inv = invs[subject]
+            else:
+                inv = self.load_inv(evoked, subject=subject)
+                invs[subject] = inv
 
-                # get inv
-                if subject in invs:
-                    inv = invs[subject]
+            # apply inv
+            stc = apply_inverse(evoked, inv, **self._params['apply_inv_kw'])
+
+            # baseline correction
+            if baseline:
+                rescale(stc._data, stc.times, baseline, 'mean', copy=False)
+
+            if collect_ind_stcs:
+                stcs.append(stc)
+
+            if collect_morphed_stcs:
+                if subject_from == common_brain:
+                    if ind_stc:
+                        stc = stc.copy()
+                    stc.subject = common_brain
                 else:
-                    inv = self.load_inv(evoked, subject=subject)
-                    invs[subject] = inv
-
-                # apply inv
-                stc = apply_inverse(evoked, inv, **self._params['apply_inv_kw'])
-
-                # baseline correction
-                if baseline:
-                    rescale(stc._data, stc.times, baseline, 'mean', copy=False)
-
-                if collect_ind_stcs:
-                    stcs[name].append(stc)
-
-                if collect_morphed_stcs:
-                    if subject_from == common_brain:
-                        if ind_stc:
-                            stc = stc.copy()
-                        stc.subject = common_brain
+                    if subject_from in mms:
+                        v_to, mm = mms[subject_from]
                     else:
-                        if subject_from in mms:
-                            v_to, mm = mms[subject_from]
-                        else:
-                            mm, v_to = self.load_morph_matrix()
-                            mms[subject_from] = (v_to, mm)
-                        stc = mne.morph_data_precomputed(subject_from, subject,
-                                                         stc, v_to, mm)
-                    mstcs[name].append(stc)
+                        mm, v_to = self.load_morph_matrix()
+                        mms[subject_from] = (v_to, mm)
+                    stc = mne.morph_data_precomputed(subject_from, subject,
+                                                     stc, v_to, mm)
+                mstcs.append(stc)
 
         # add to Dataset
-        if len(do) > 1:
-            keys = ('%%s_%s' % d for d in do)
-        else:
-            keys = ('%s',)
         src = self.get('src')
         parc = self.get('parc') or None
-        for name, key in izip(do, keys):
-            if ind_stc:
-                ds[key % 'stc'] = stcs[name]
-            if ind_ndvar:
-                subject = from_subjects[meg_subjects[0]]
-                ndvar = load.fiff.stc_ndvar(stcs[name], subject, src, mri_sdir,
-                                            parc=parc)
-                ds[key % 'src'] = ndvar
+        mri_sdir = self.get('mri-sdir')
+        # for name, key in izip(do, keys):
+        if ind_stc:
+            ds['stc'] = stcs
+        if ind_ndvar:
+            subject = from_subjects[meg_subjects[0]]
+            ds['src'] = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir, parc=parc)
+        if morph_stc or morph_ndvar:
+            if all_are_common_brain:
+                stcm = stcs
+            else:
+                stcm = mstcs
+
             if morph_stc:
-                if all_are_common_brain:
-                    stcm = stcs[name]
-                else:
-                    stcm = mstcs[name]
-                ds[key % 'stcm'] = stcm
+                ds['stcm'] = stcm
             if morph_ndvar:
-                if all_are_common_brain:
-                    stcm = stcs[name]
-                else:
-                    stcm = mstcs[name]
-                ndvar = load.fiff.stc_ndvar(stcm, common_brain, src, mri_sdir,
-                                            parc=parc)
-                ds[key % 'srcm'] = ndvar
+                ds['srcm'] = load.fiff.stc_ndvar(stcm, common_brain, src,
+                                                 mri_sdir, parc=parc)
 
         if not keep_evoked:
-            for name in do:
-                del ds[name]
+            del ds['evoked']
 
     def _add_stc_label(self, ds, label, src='stc'):
         """
@@ -1331,8 +1293,6 @@ class MneExperiment(FileTree):
         modality = self.get('modality')
         ndvar, data = self._ndvar_name_and_modality(ndvar, modality, eog)
         subject, group = self._process_subject_arg(subject, kwargs)
-        if baseline is True:
-            baseline = self._epoch_state['baseline']
 
         if group is not None:
             dss = []
@@ -1354,6 +1314,10 @@ class MneExperiment(FileTree):
                                    ds_eeg['index'])
             ds['epochs'] = mne.epochs.add_channels_epochs((ds['epochs'], eeg_epochs))
         else:  # single subject, single modality
+            epoch = self.epochs[self.get('epoch')]
+            if baseline is True:
+                baseline = epoch['baseline']
+
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            add_proj=add_proj)
             if reject and self._params['rej']['kind'] == 'auto':
@@ -1367,21 +1331,21 @@ class MneExperiment(FileTree):
                 ds = ds.sub(idx)
 
             # load sensor space data
-            target = 'epochs'
-            tmin = self._epoch_state['tmin']
-            tmax = self._epoch_state['tmax']
+            tmin = epoch['tmin']
+            tmax = epoch['tmax']
             if pad:
                 tmin -= pad
                 tmax += pad
-            decim = decim or self._epoch_state['decim']
+            if decim is None:
+                decim = epoch['decim']
             ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim,
-                                          target=target, reject=reject_arg)
+                                          reject=reject_arg)
 
             if not keep_raw:
                 del ds.info['raw']
 
         if ndvar:
-            ds[ndvar] = load.fiff.epochs_ndvar(ds.pop(target), ndvar, data)
+            ds[ndvar] = load.fiff.epochs_ndvar(ds.pop('epochs'), ndvar, data)
             if modality == 'eeg':
                 self._fix_eeg_ndvar(ds[ndvar], group)
 
@@ -1509,7 +1473,7 @@ class MneExperiment(FileTree):
         """
         subject, group = self._process_subject_arg(subject, kwargs)
         if baseline is True:
-            baseline = self._epoch_state['baseline']
+            baseline = self.epochs[self.get('epoch')]['baseline']
 
         if group is not None:
             dss = []
@@ -1520,17 +1484,14 @@ class MneExperiment(FileTree):
             ds = combine(dss)
 
             # check consistency in MNE objects' number of time points
-            for name in ds:
-                if isinstance(ds[name][0], (_mne_Evoked, mne.SourceEstimate)):
-                    lens = set([len(e.times) for e in ds[name]])
-                    ulens = np.unique(lens)
-                    if len(ulens) > 1:
-                        err = ["Unequel time axis sampling (len):"]
-                        subject = ds['subject']
-                        for l in ulens:
-                            idx = (lens == l)
-                            err.append('%i: %r' % (l, subject[idx].cells))
-                        raise DimensionMismatchError(os.linesep.join(err))
+            lens = [len(e.times) for e in ds['evoked']]
+            ulens = set(lens)
+            if len(ulens) > 1:
+                err = ["Unequal time axis sampling (len):"]
+                alens = np.array(lens)
+                for l in ulens:
+                    err.append('%i: %r' % (l, ds['subject', alens == l].cells))
+                raise DimensionMismatchError(os.linesep.join(err))
 
         else:  # single subject
             path = self.get('evoked-file', make=True)
@@ -1545,9 +1506,8 @@ class MneExperiment(FileTree):
             if isinstance(baseline, str):
                 raise NotImplementedError
             elif baseline:
-                for evoked_name in ds.info['evoked']:
-                    for e in ds[evoked_name]:
-                        rescale(e.data, e.times, baseline, 'mean', copy=False)
+                for e in ds['evoked']:
+                    rescale(e.data, e.times, baseline, 'mean', copy=False)
 
         # convert to NDVar
         if ndvar:
@@ -1566,14 +1526,9 @@ class MneExperiment(FileTree):
                     data_arg = 'mag'
                 else:
                     data_arg = modality
-                for evoked_name in ds.info['evoked']:
-                    if evoked_name == 'evoked':
-                        ndvar_name = modality
-                    else:
-                        ndvar_name = '_'.join((evoked_name, modality))
-                    ds[ndvar_name] = load.fiff.evoked_ndvar(ds[evoked_name], None, data_arg)
-                    if modality == 'eeg':
-                        self._fix_eeg_ndvar(ds[ndvar_name], group)
+                ds[modality] = load.fiff.evoked_ndvar(ds['evoked'], None, data_arg)
+                if modality == 'eeg':
+                    self._fix_eeg_ndvar(ds['eeg'], group)
 
         return ds
 
@@ -1659,8 +1614,7 @@ class MneExperiment(FileTree):
                    "morph_stc, morph_ndvar) to True")
             raise ValueError(err)
 
-        ds = self.load_evoked(subject=subject, baseline=sns_baseline,
-                              ndvar=sns_ndvar, cat=cat, **kwargs)
+        ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, **kwargs)
         self.add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
                             src_baseline, keep_evoked)
 
@@ -1843,7 +1797,7 @@ class MneExperiment(FileTree):
             return ds
 
         # retrieve & check epoch parameters
-        epoch = self._epoch_state
+        epoch = self.epochs[self.get('epoch')]
         sel = epoch.get('sel', None)
         sel_epoch = epoch.get('sel_epoch', None)
         sub_epochs = epoch.get('sub_epochs', None)
@@ -2230,13 +2184,9 @@ class MneExperiment(FileTree):
         Target files are saved relative to the *besa-root* location.
         """
         self.set(**state)
-        epoch = self._epoch_state
-
         rej = self.get('rej')
-
         trig_dest = self.get('besa-trig', rej='', mkdir=True)
         evt_dest = self.get('besa-evt', rej=rej, mkdir=True)
-
         if not redo and os.path.exists(evt_dest) and os.path.exists(trig_dest):
             return
 
@@ -2255,9 +2205,8 @@ class MneExperiment(FileTree):
         ds = ds.sub('accept')
 
         # save evt
-        tmin = epoch['tmin']
-        tmax = epoch['tmax']
-        save.besa_evt(ds, tstart=tmin, tstop=tmax, dest=evt_dest)
+        epoch = self.epochs[self.get('epoch')]
+        save.besa_evt(ds, tstart=epoch['tmin'], tstop=epoch['tmax'], dest=evt_dest)
 
     def make_copy(self, temp, field, src, dst, redo=False):
         """Make a copy of a file
@@ -2370,7 +2319,7 @@ class MneExperiment(FileTree):
             raw_mtime = os.path.getmtime(self.get('raw-file', make=True))
             bads_mtime = os.path.getmtime(self.get('bads-file'))
 
-            rej_file_epochs = self._epoch_state.get('_rej_file_epochs', None)
+            rej_file_epochs = self.epochs[self.get('epoch')].get('_rej_file_epochs', None)
             if rej_file_epochs is None:
                 sel_file = self.get('rej-file')
                 rej_mtime = os.path.getmtime(sel_file)
@@ -2382,45 +2331,20 @@ class MneExperiment(FileTree):
             if evoked_mtime > max(raw_mtime, bads_mtime, rej_mtime):
                 return
 
-        epoch_names = [ep['name'] for ep in self._params['epochs']]
-        equal_count = self.get('equalize_evoked_count') == 'eq'
-
         # load the epochs
-        epoch = self.get('epoch')
-        dss = [self.load_epochs(ndvar=False, epoch=name) for name in epoch_names]
-        self.set(epoch=epoch)
+        ds = self.load_epochs(ndvar=False)
 
-        # find the events common to all epochs
-        idx = reduce(np.intersect1d, (ds['index'] for ds in dss))
+        # aggregate
+        equal_count = self.get('equalize_evoked_count') == 'eq'
+        ds_agg = ds.aggregate(self.get('model'), drop_bad=True,
+                              drop=('i_start', 't_edf', 'T', 'index'),
+                              equal_count=equal_count, never_drop=('epochs',))
 
-        # reduce datasets to common events and aggregate
-        model = self.get('model')
-        drop = ('i_start', 't_edf', 'T', 'index')
-        for i in xrange(len(dss)):
-            ds = dss[i]
-            index = ds['index']
-            ds_idx = index.isin(idx)
-            if ds_idx.sum() < len(ds_idx):
-                ds = ds[ds_idx]
-
-            dss[i] = ds.aggregate(model, drop_bad=True, drop=drop,
-                                  equal_count=equal_count,
-                                  never_drop=('epochs',))
-
-        if len(dss) == 1:
-            ds = dss[0]
-            ds.rename('epochs', 'evoked')
-            ds.info['evoked'] = ('evoked',)
-        else:
-            for name, ds in zip(epoch_names, dss):
-                ds.rename('epochs', name)
-            ds = combine(dss)
-            ds.info['evoked'] = tuple(epoch_names)
-
-        if 'raw' in ds.info:
-            del ds.info['raw']
-
-        save.pickle(ds, dest)
+        # save
+        ds_agg.rename('epochs', 'evoked')
+        if 'raw' in ds_agg.info:
+            del ds_agg.info['raw']
+        save.pickle(ds_agg, dest)
 
     def make_fwd(self, redo=False):
         """Make the forward model"""
@@ -2575,10 +2499,9 @@ class MneExperiment(FileTree):
         inv = self.get('inv')
         if inv.startswith(('free', 'loose')):
             sns_baseline = None
-            src_baseline = self._epoch_state['baseline']
-
+            src_baseline = self.epochs[self.get('epoch')]['baseline']
         elif inv.startswith('fixed'):
-            sns_baseline = self._epoch_state['baseline']
+            sns_baseline = self.epochs[self.get('epoch')]['baseline']
             src_baseline = None
         else:
             raise ValueError("Unknown inv kind: %r" % inv)
@@ -2636,7 +2559,7 @@ class MneExperiment(FileTree):
         if not redo and os.path.exists(dst):
             return
 
-        sns_baseline = self._epoch_state['baseline']
+        sns_baseline = self.epochs[self.get('epoch')]['baseline']
         src_baseline = None
 
         if group is not None:
@@ -2921,7 +2844,7 @@ class MneExperiment(FileTree):
                    ".epoch_rejection class attribute." % self.get('rej'))
             raise RuntimeError(err)
 
-        epoch = self._epoch_state
+        epoch = self.epochs[self.get('epoch')]
         if 'sel_epoch' in epoch:
             msg = ("The current epoch {cur!r} inherits rejections from "
                    "{sel!r}. To access a rejection file for this epoch, call "
@@ -3804,25 +3727,6 @@ class MneExperiment(FileTree):
 
         FileTree.set(self, **state)
 
-    def _eval_epoch(self, epoch):
-        """Set the current epoch
-
-        Parameters
-        ----------
-        epoch : str
-            An epoch name for an epoch defined in self.epochs. Several epochs
-            can be combined with '|' (but not all functions support linked
-            epochs).
-        """
-        # fix epoch name
-        epochs = epoch.split('|')
-        epochs.sort()
-        epoch = '|'.join(epochs)
-
-        # find epoch dicts
-        self._params['epochs'] = [self.epochs[name] for name in epochs]
-        return epoch
-
     def _eval_group(self, group):
         if group not in self.get_field_values('group'):
             if group not in self.get_field_values('subject'):
@@ -4023,18 +3927,19 @@ class MneExperiment(FileTree):
 
         # baseline
         # default is baseline correcting in sensor space
+        epoch_baseline = self.epochs[self.get('epoch')]['baseline']
         if src_baseline is None:
             if sns_baseline is None:
                 items.append('nobl')
-            elif sns_baseline not in (True, self._epoch_state['baseline']):
+            elif sns_baseline not in (True, epoch_baseline):
                 items.append('bl=%s' % _time_window_str(sns_baseline))
         else:
-            if sns_baseline in (True, self._epoch_state['baseline']):
+            if sns_baseline in (True, epoch_baseline):
                 items.append('snsbl')
             elif sns_baseline:
                 items.append('snsbl=%s' % _time_window_str(sns_baseline))
 
-            if src_baseline in (True, self._epoch_state['baseline']):
+            if src_baseline in (True, epoch_baseline):
                 items.append('srcbl')
             else:
                 items.append('srcbl=%s' % _time_window_str(src_baseline))
