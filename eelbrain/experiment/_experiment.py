@@ -205,26 +205,23 @@ class TreeModel(object):
             raise KeyError("set-handler for %r already set" % key)
         self._set_handlers[key] = handler
 
-    def _find_missing_fields(self, add=False):
-        """Find all field names occurring in field values but not as fields
+    def _find_missing_fields(self):
+        """Check that all field names occurring in templates are valid entries
 
-        Parameters
-        ----------
-        add : bool
-            Add non-existent field names with default value ''.
+        Raises
+        ------
+        KeyError
+            If any field names occurring in templates are not registered fields.
         """
-        fields = set()
-        for k in self._fields.keys():
-            temp = self._fields[k]
+        # find field names occurring in field values but not as fields
+        missing = set()
+        for temp in self._fields.values():
             for field in self._fmt_pattern.findall(temp):
                 if field not in self._fields:
-                    fields.add(field)
-
-        if add:
-            for field in fields:
-                self._register_value(field, '')
-
-        return fields
+                    missing.add(field)
+        if missing:
+            raise KeyError("The following fields occur in templates but "
+                               "are undefined: %s" % ', '.join(sorted(missing)))
 
     def _register_compound(self, key, elements):
         """Register a field that is composed out of other fields
@@ -243,6 +240,7 @@ class TreeModel(object):
         for e in elements:
             self._compounds[e].append(key)
             self._bind_post_set(e, self._update_compounds)
+        self._fields[key] = None
         self._update_compound(key)
 
     def _register_field(self, key, values=None, default=None, set_handler=None,
@@ -290,11 +288,9 @@ class TreeModel(object):
 
             self._field_values[key] = tuple(values)
 
-        if default is None:
-            self._fields[key] = default
-        else:
-            kwargs = {key: default, 'add': True}
-            self.set(**kwargs)
+        self._fields[key] = ''
+        if default is not None:
+            self.set(**{key: default})
 
     def _register_value(self, key, default, set_handler=None,
                         eval_handler=None, post_set_handler=None):
@@ -323,9 +319,9 @@ class TreeModel(object):
         if post_set_handler is not None:
             self._bind_post_set(key, post_set_handler)
 
+        self._fields[key] = None
         default = self._defaults.get(key, default)
-        kwargs = {key: default, 'add': True}
-        self.set(**kwargs)
+        self.set(**{key: default})
 
     def expand_template(self, temp, keep=()):
         """Expand all constant variables in a template
@@ -594,11 +590,9 @@ class TreeModel(object):
                 handled_state[k] = ''
 
         # make sure only valid fields are set
-        add = state.pop('add', False)
-        if not add:
-            for k in state:
-                if k not in self._fields:
-                    raise KeyError("No template named %r" % k)
+        for k in state:
+            if k not in self._fields:
+                raise KeyError("No template named %r" % k)
 
         # eval all values
         for k in state.keys():
@@ -755,7 +749,7 @@ class TreeModel(object):
             value = self.get(item_key)
             if value:
                 items.append(value)
-        self.set(add=True, **{key: ' '.join(items)})
+        self.set(**{key: ' '.join(items)})
 
     def _update_compounds(self, key, _):
         for compound in self._compounds[key]:

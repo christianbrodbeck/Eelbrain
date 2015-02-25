@@ -196,6 +196,8 @@ temp = {
 
         # general analysis parameters
         'analysis': '',  # analysis parameters (sns-kind, src-kind, ...)
+        'test_options': '',
+        'name': '',
 
         # test files (2nd level, cache only TFCE distributions)
         # test-options should be test + bl_repr + pmin_repr + tw_repr
@@ -542,7 +544,7 @@ class MneExperiment(FileTree):
             tests[test] = params
         self._tests = tests
 
-        FileTree.__init__(self, **state)
+        FileTree.__init__(self)
 
         # register variables with complex behavior
         self._register_field('raw', self._raw.keys())
@@ -560,14 +562,14 @@ class MneExperiment(FileTree):
         self._register_field('mri', sorted(self._mri_subjects.keys()))
         self._register_value('inv', 'free-3-dSPM', eval_handler=self._eval_inv)
         self._register_value('model', '', eval_handler=self._eval_model)
-        if self._tests:
-            self._register_field('test', self._tests.keys(),
-                                 post_set_handler=self._post_set_test)
+        self._register_field('test', self._tests.keys() or None,
+                             post_set_handler=self._post_set_test)
         self._register_field('parc', default='aparc',
                              eval_handler=self._eval_parc)
         self._register_field('proj', [''] + self.projs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
-        self._register_field('subject', ('subject',))
+        self._register_field('mrisubject')
+        self._register_field('subject')
 
         # compounds
         self._register_compound('bads-compound', ('experiment', 'modality'))
@@ -585,7 +587,11 @@ class MneExperiment(FileTree):
         self._bind_cache('fwd-file', self.make_fwd)
         self._bind_make('label-file', self.make_labels)
 
+        # Check that the template model is complete
+        self._find_missing_fields()
+
         # set initial values
+        self.set(**state)
         self.set_root(root, find_subjects)
         self.store_state()
         self.brain = None
@@ -3783,10 +3789,7 @@ class MneExperiment(FileTree):
         subject : str
             Set the `subject` value. The corresponding `mrisubject` is
             automatically set to the corresponding mri subject.
-        add : bool
-            If the template name does not exist, add a new key. If False
-            (default), a non-existent key will raise a KeyError.
-        other : str
+        *other* : str
             All other keywords can be used to set templates.
         """
         if subject is not None:
@@ -4043,7 +4046,7 @@ class MneExperiment(FileTree):
         if tstart is not None or tstop is not None:
             items.append(_time_window_str((tstart, tstop)))
 
-        self.set(test_options=' '.join(items), analysis=analysis, add=True)
+        self.set(test_options=' '.join(items), analysis=analysis)
 
     def show_reg_params(self, asds=False, **kwargs):
         """Show the covariance matrix regularization parameters
