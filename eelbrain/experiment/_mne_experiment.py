@@ -560,8 +560,9 @@ class MneExperiment(FileTree):
             default_cov = None
         self._register_field('cov', sorted(self._covs), default_cov)
         self._register_field('mri', sorted(self._mri_subjects.keys()))
-        self._register_value('inv', 'free-3-dSPM', eval_handler=self._eval_inv)
-        self._register_value('model', '', eval_handler=self._eval_model)
+        self._register_field('inv', default='free-3-dSPM',
+                             eval_handler=self._eval_inv)
+        self._register_field('model', eval_handler=self._eval_model)
         self._register_field('test', self._tests.keys() or None,
                              post_set_handler=self._post_set_test)
         self._register_field('parc', default='aparc',

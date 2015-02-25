@@ -159,7 +159,7 @@ class TreeModel(object):
             if v is None:  # secondary field
                 pass
             elif isinstance(v, basestring):
-                self._register_value(k, v)
+                self._register_field(k, None, v)
             elif isinstance(v, tuple):
                 self._register_field(k, v, v[0])
             else:
@@ -291,37 +291,6 @@ class TreeModel(object):
         self._fields[key] = ''
         if default is not None:
             self.set(**{key: default})
-
-    def _register_value(self, key, default, set_handler=None,
-                        eval_handler=None, post_set_handler=None):
-        """Register a value with handlers
-
-        Parameters
-        ----------
-        key : str
-            Name of the field.
-        default : None | str
-            Set the default value.
-        set_handler : None | callable
-            Function to call instead of updating the state value,
-        eval_handler : None | callable
-            Function to use for evaluating a value before setting.
-        post_set_handler : None | callable
-            Function to call after the value is changed.
-        """
-        if key in self._fields:
-            raise KeyError("Field already exists: %r" % key)
-
-        if set_handler is not None:
-            self._bind_set(key, set_handler)
-        if eval_handler is not None:
-            self._bind_eval(key, eval_handler)
-        if post_set_handler is not None:
-            self._bind_post_set(key, post_set_handler)
-
-        self._fields[key] = None
-        default = self._defaults.get(key, default)
-        self.set(**{key: default})
 
     def expand_template(self, temp, keep=()):
         """Expand all constant variables in a template
