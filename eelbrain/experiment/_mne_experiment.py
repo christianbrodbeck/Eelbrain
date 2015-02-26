@@ -134,25 +134,19 @@ class PickleCache(dict):
         dict.__setitem__(self, path, item)
 
 
-temp = {
-        # basic dir
-        'meg-sdir': os.path.join('{root}', 'meg'),  # contains subject-name folders for MEG data
+temp = {# MEG
+        'experiment': '',
+        'modality': ('', 'eeg', 'meeg'),
+        'reference': ('', 'mastoids'),  # EEG reference
+        'equalize_evoked_count': ('', 'eq'),
+        # locations
+        'meg-sdir': os.path.join('{root}', 'meg'),
         'meg-dir': os.path.join('{meg-sdir}', '{subject}'),
-        'mri-sdir': os.path.join('{root}', 'mri'),  # contains subject-name folders for MRI data
-        'mri-dir': os.path.join('{mri-sdir}', '{mrisubject}'),
-        'bem-dir': os.path.join('{mri-dir}', 'bem'),
         'raw-dir': os.path.join('{meg-dir}', 'raw'),
 
-        # raw
-        'experiment': '???',
-        'modality': ('', 'eeg', 'meeg'),
-        'bads-file': os.path.join('{raw-dir}', '{subject}_{bads-compound}-bad_channels.txt'),
-        'raw-base': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw-kind}'),
-        'raw-file': '{raw-base}-raw.fif',
-        'event-file': '{raw-base}-evts.pickled',
+        # raw input files
+        'raw-file': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw-kind}-raw.fif'),
         'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),
-        'reference': ('', 'mastoids'),  # EEG reference
-
         # log-files (eye-tracker etc.)
         'log-dir': os.path.join('{meg-dir}', 'logs'),
         'log-rnd': '{log-dir}/rand_seq.mat',
@@ -160,34 +154,45 @@ temp = {
         'log-file': '{log-dir}/log.txt',
         'edf-file': os.path.join('{log-dir}', '*.edf'),
 
+        # created input files
+        'bads-file': os.path.join('{raw-dir}', '{subject}_{bads-compound}-bad_channels.txt'),
+        'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
+        'rej-file': os.path.join('{rej-dir}', '{experiment}_{sns-kind}_{epoch}-{rej}.pickled'),
+
+        # cache
+        'cache-dir': os.path.join('{root}', 'eelbrain-cache'),
+        # raw
+        'raw-cache-dir': os.path.join('{cache-dir}', 'raw'),
+        'raw-cache-base': os.path.join('{raw-cache-dir}', '{subject}', '{experiment} {raw-kind}'),
+        'cached-raw-file': '{raw-cache-base}-raw.fif',
+        'event-file': '{raw-cache-base}-evts.pickled',
+        # mne secondary/forward modeling
+        'proj-file': '{raw-cache-base}_{proj}-proj.fif',
+        'cov-file': '{raw-cache-base}_{cov}-{cov-rej}-{proj}-cov.fif',
+        'cov-info-file': '{raw-cache-base}_{cov}-{cov-rej}-{proj}-cov-info.txt',
+        'fwd-file': '{raw-cache-base}_{mrisubject}-{src}-fwd.fif',
+        # evoked
+        'evoked-dir': os.path.join('{cache-dir}', 'evoked'),
+        'evoked-file': os.path.join('{evoked-dir}', '{subject}', '{experiment} '
+                                    '{sns-kind} {epoch} {model} {evoked-kind}.pickled'),
+        # test files
+        'test-dir': os.path.join('{cache-dir}', 'test'),
+        'data_parc': 'unmasked',
+        'test-file': os.path.join('{test-dir}', '{analysis} {group}',
+                                  '{epoch} {test} {test_options} {data_parc}.pickled'),
+
+        # MRIs
+        'common_brain': 'fsaverage',
         # MRI base files
+        'mri-sdir': os.path.join('{root}', 'mri'),
+        'mri-dir': os.path.join('{mri-sdir}', '{mrisubject}'),
+        'bem-dir': os.path.join('{mri-dir}', 'bem'),
         'mri-cfg-file': os.path.join('{mri-dir}', 'MRI scaling parameters.cfg'),
         'mri-file': os.path.join('{mri-dir}', 'mri', 'orig.mgz'),
         'bem-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem.fif'),
         'bem-sol-file': os.path.join('{bem-dir}', '{mrisubject}-*-bem-sol.fif'),
         'head-bem-file': os.path.join('{bem-dir}', '{mrisubject}-head.fif'),
         'src-file': os.path.join('{bem-dir}', '{mrisubject}-{src}-src.fif'),
-
-
-        # mne secondary/forward modeling
-        'proj-file': '{raw-base}_{proj}-proj.fif',
-        'cov-file': '{raw-base}_{cov}-{cov-rej}-{proj}-cov.fif',
-        'cov-info-file': '{raw-base}_{cov}-{cov-rej}-{proj}-cov-info.txt',
-        'fwd-file': '{raw-base}_{mrisubject}-{src}-fwd.fif',
-
-        # epochs
-        'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
-        'rej-file': os.path.join('{rej-dir}', '{experiment}_{sns-kind}_'
-                                 '{epoch}-{rej}.pickled'),
-
-        'common_brain': 'fsaverage',
-
-        # evoked
-        'equalize_evoked_count': ('', 'eq'),
-        'evoked-dir': os.path.join('{meg-dir}', 'evoked'),
-        'evoked-file': os.path.join('{evoked-dir}', '{experiment} {sns-kind} '
-                                    '{epoch} {model} {evoked-kind}.pickled'),
-
         # Labels
         'hemi': ('lh', 'rh'),
         'label-dir': os.path.join('{mri-dir}', 'label'),
@@ -203,13 +208,6 @@ temp = {
         'analysis': '',  # analysis parameters (sns-kind, src-kind, ...)
         'test_options': '',
         'name': '',
-
-        # test files (2nd level, cache only TFCE distributions)
-        # test-options should be test + bl_repr + pmin_repr + tw_repr
-        'test-dir': os.path.join('{root}', 'test', '{analysis} {group}'),
-        'data_parc': 'unmasked',
-        'test-file': os.path.join('{test-dir}', '{epoch} {test} '
-                                  '{test_options} {data_parc}.pickled'),
 
         # result output files
         # data processing parameters
@@ -417,7 +415,6 @@ class MneExperiment(FileTree):
             if hasattr(cls, '_values'):
                 self._templates.update(cls._values)
 
-
         # epochs
         epochs = {}
         super_epochs = {}
@@ -586,7 +583,7 @@ class MneExperiment(FileTree):
         self._register_compound('eeg-kind', ('sns-kind', 'reference'))
 
         # Define make handlers
-        self._bind_make('raw-file', self.make_raw)
+        self._bind_make('cached-raw-file', self.make_raw)
         self._bind_cache('evoked-file', self.make_evoked)
         self._bind_cache('cov-file', self.make_cov)
         self._bind_cache('src-file', self.make_src)
@@ -1048,6 +1045,12 @@ class MneExperiment(FileTree):
         else:
             raise TypeError("group %s=%r" % (group, group_def))
 
+    def _get_raw_path(self, make=False):
+        if self._raw[self.get('raw')] is None:
+            return self.get('raw-file')
+        else:
+            return self.get('cached-raw-file', make=make)
+
     def iter(self, fields='subject', exclude=True, values={}, group=None, *args,
              **kwargs):
         """
@@ -1397,18 +1400,17 @@ class MneExperiment(FileTree):
                             subject=subject, **kwargs)
 
         evt_file = self.get('event-file')
-        subject = self.get('subject')
-        experiment = self.get('experiment')
 
         # search for and check cached version
         ds = None
         if os.path.exists(evt_file):
             event_mtime = os.path.getmtime(evt_file)
-            raw_mtime = os.path.getmtime(self.get('raw-file'))
+            raw_mtime = os.path.getmtime(raw.info['filename'])
             if event_mtime > raw_mtime:
                 ds = load.unpickle(evt_file)
 
         # refresh cache
+        subject = self.get('subject')
         if ds is None:
             if self.get('modality') == '':
                 merge = -1
@@ -1426,7 +1428,7 @@ class MneExperiment(FileTree):
                 save.pickle(ds, evt_file)
 
         ds.info['raw'] = raw
-        ds = self.label_events(ds, experiment, subject)
+        ds = self.label_events(ds, self.get('experiment'), subject)
         if ds is None:
             msg = ("The MneExperiment.label_events() function must return the "
                    "events-Dataset")
@@ -1725,8 +1727,7 @@ class MneExperiment(FileTree):
         else:
             proj = None
 
-        raw_file = self.get('raw-file', make=True)
-        raw = load.fiff.mne_raw(raw_file, proj, preload=preload)
+        raw = load.fiff.mne_raw(self._get_raw_path(True), proj, preload=preload)
         if add_bads:
             if add_bads is True:
                 bad_chs = self.load_bad_channels()
@@ -2230,7 +2231,7 @@ class MneExperiment(FileTree):
         dest = self.get('cov-file')
         if (not redo) and os.path.exists(dest):
             cov_mtime = os.path.getmtime(dest)
-            raw_mtime = os.path.getmtime(self.get('raw-file'))
+            raw_mtime = os.path.getmtime(self._get_raw_path())
             bads_mtime = os.path.getmtime(self.get('bads-file'))
             if cov_mtime > max(raw_mtime, bads_mtime):
                 return
@@ -2302,7 +2303,7 @@ class MneExperiment(FileTree):
         dest = self.get('evoked-file', mkdir=True, **kwargs)
         if not redo and os.path.exists(dest):
             evoked_mtime = os.path.getmtime(dest)
-            raw_mtime = os.path.getmtime(self.get('raw-file', make=True))
+            raw_mtime = os.path.getmtime(self._get_raw_path(make=True))
             bads_mtime = os.path.getmtime(self.get('bads-file'))
 
             rej_file_epochs = self.epochs[self.get('epoch')].get('_rej_file_epochs', None)
@@ -2335,7 +2336,7 @@ class MneExperiment(FileTree):
     def make_fwd(self, redo=False):
         """Make the forward model"""
         dst = self.get('fwd-file')
-        raw = self.get('raw-file', make=True)
+        raw = self._get_raw_path(make=True)
         trans = self.get('trans-file')
         src = self.get('src-file', make=True)
         bem = self.get('bem-sol-file', fmatch=True)
@@ -2788,20 +2789,17 @@ class MneExperiment(FileTree):
         Due to the electronics of the KIT system sensors, signal lower than
         0.16 Hz is not recorded even when recording at DC.
         """
-        dst = self.get('raw-file', **kwargs)
+        dst = self.get('cached-raw-file', mkdir=True, **kwargs)
         if not redo and os.path.exists(dst):
             return
 
         raw_dst = self.get('raw')
-        raw_src = 'clm'
-        if raw_dst == raw_src:
-            err = ("The %s raw file for %s/%s is missing. This file needs to be "
-                   "added to the appropriate location."
-                   % (raw_dst, self.get('subject'), self.get('experiment')))
-            raise ValueError(err)
+        if self._raw[raw_dst] is None:
+            raise RuntimeError("Can't make %r raw file because it is an input "
+                               "file" % raw_dst)
 
         apply_proj = False
-        raw = self.load_raw(raw=raw_src, add_proj=apply_proj, add_bads=False,
+        raw = self.load_raw(raw='clm', add_proj=apply_proj, add_bads=False,
                             preload=True)
         if apply_proj:
             raw.apply_projector()
