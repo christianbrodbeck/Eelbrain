@@ -748,14 +748,11 @@ class MneExperiment(FileTree):
                 subject_from = self.get('mrisubject', subject=subject)
             from_subjects[subject] = subject_from
 
-        morph_requested = (morph_stc or morph_ndvar)
-        all_are_common_brain = all(v == common_brain for v in
-                                   from_subjects.values())
-        collect_morphed_stcs = morph_requested and not all_are_common_brain
-        collect_ind_stcs = (ind_stc or ind_ndvar) or (morph_requested and
-                                                      all_are_common_brain)
+        collect_morphed_stcs = (morph_stc or morph_ndvar)
+        collect_ind_stcs = ind_stc or ind_ndvar
 
         # make sure annot files are available (needed only for NDVar)
+        all_are_common_brain = all(v == common_brain for v in from_subjects.values())
         if (ind_ndvar and all_are_common_brain) or morph_ndvar:
             self.make_annot(mrisubject=common_brain)
         if ind_ndvar and not all_are_common_brain:
@@ -812,15 +809,10 @@ class MneExperiment(FileTree):
             subject = from_subjects[meg_subjects[0]]
             ds['src'] = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir, parc=parc)
         if morph_stc or morph_ndvar:
-            if all_are_common_brain:
-                stcm = stcs
-            else:
-                stcm = mstcs
-
             if morph_stc:
-                ds['stcm'] = stcm
+                ds['stcm'] = mstcs
             if morph_ndvar:
-                ds['srcm'] = load.fiff.stc_ndvar(stcm, common_brain, src,
+                ds['srcm'] = load.fiff.stc_ndvar(mstcs, common_brain, src,
                                                  mri_sdir, parc=parc)
 
         if not keep_evoked:
