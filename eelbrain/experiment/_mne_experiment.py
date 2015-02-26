@@ -356,7 +356,7 @@ class MneExperiment(FileTree):
     # for subfolders matching _subject_re.
     _subject_loc = 'meg-sdir'
 
-    # Custom parcellations. Set to disable checking on set().
+    # Custom parcellations. Set to None to disable checking on set().
     parcs = ()
 
     # basic templates to use. Can be a string referring to a templates
@@ -525,7 +525,7 @@ class MneExperiment(FileTree):
                 raise TypeError("Tests need to be specified as dictionary, "
                                 "got %s" % repr(params))
 
-            # test descriptopn
+            # test descriptions
             kind = params['kind']
             if kind == 'anova':
                 desc = params['x']
@@ -3827,7 +3827,7 @@ class MneExperiment(FileTree):
                     'PALS_B12_Brodmann', 'PALS_B12_Lobes', 'lobes', 'lobes-op',
                     'PALS_B12_OrbitoFrontal', 'PALS_B12_Visuotopic'):
             return parc
-        elif self.parcs == None or parc in self.parcs:
+        elif self.parcs is None or parc in self.parcs:
             return parc
         else:
             raise ValueError("Unknown parcellation:  parc=%r" % parc)
