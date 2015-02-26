@@ -764,7 +764,8 @@ class FileTree(TreeModel):
     @staticmethod
     def _eval_root(root):
         root = os.path.expanduser(root)
-        root = os.path.normpath(root)
+        if root != '':
+            root = os.path.normpath(root)
         return root
 
     def get(self, temp, fmatch=False, vmatch=True, match=True, mkdir=False,
@@ -819,7 +820,16 @@ class FileTree(TreeModel):
         if mkdir:
             dirname = os.path.dirname(path)
             if not os.path.exists(dirname):
-                os.makedirs(dirname)
+                root = self.get('root')
+                if root == '':
+                    raise IOError("Prevented from creating directories because "
+                                  "root is not set. Use root='.' for a "
+                                  "relative root.")
+                elif os.path.exists(root):
+                    os.makedirs(dirname)
+                else:
+                    raise IOError("Prevented from creating directories because "
+                                  "Root does not exist: %r" % root)
 
         # make the file
         if make:

@@ -1,11 +1,14 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from nose.tools import eq_
+from nose.tools import eq_, assert_raises
 from eelbrain.experiment import MneExperiment
 
 
 def test_mne_experiment_templates():
     "Test MneExperiment template formatting"
-    e = MneExperiment('root', False)
+    e = MneExperiment('', False)
+
+    # Don't create dirs without root
+    assert_raises(IOError, e.get, 'raw-file', mkdir=True)
 
     # compounds
     eq_(e.get('src-kind'), 'clm bestreg free-3-dSPM')
