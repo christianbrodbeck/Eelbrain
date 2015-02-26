@@ -41,6 +41,7 @@ autoclass_content = 'class'  # 'both'
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary',  # default
               'sphinx.ext.todo', 'sphinx.ext.pngmath',  # default
               'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
+              'sphinx.ext.doctest',
               'numpydoc',  # https://github.com/numpy/numpy/tree/master/doc/sphinxext
               ]
 autosummary_generate = True
