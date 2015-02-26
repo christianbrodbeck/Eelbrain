@@ -171,7 +171,6 @@ temp = {
 
         # mne secondary/forward modeling
         'proj-file': '{raw-base}_{proj}-proj.fif',
-        'proj-plot': '{raw-base}_{proj}-proj.pdf',
         'cov-file': '{raw-base}_{cov}-{cov-rej}-{proj}-cov.fif',
         'cov-info-file': '{raw-base}_{cov}-{cov-rej}-{proj}-cov-info.txt',
         'fwd-file': '{raw-base}_{mrisubject}-{src}-fwd.fif',
@@ -2755,7 +2754,8 @@ class MneExperiment(FileTree):
         proj_file = self.get('proj-file')
         p = plot.Topomap(projs_ndvars, title=proj_file, ncol=3, w=9)
         if save_plot:
-            dest = self.get('proj-plot')
+            dest = self.get('plot-file', analysis='proj', ext='pdf',
+                            name='{subject}_{experiment}_{raw-kind}')
             p.figure.savefig(dest)
         if save:
             rm = save
