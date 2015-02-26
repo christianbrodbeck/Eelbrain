@@ -3735,17 +3735,21 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         ori : 'free' | 'fixed' | float ]0, 1]
-            Orientation constraint (float for loose), default 'free'.
+            Orientation constraint (default 'free'; use a float to specify a
+            loose constraint).
         snr : scalar
-            SNR estimate for regularization ...
+            SNR estimate for regularization (default 3).
         method : 'MNE' | 'dSPM' | 'sLORETA'
             Inverse method.
         depth : None | float
             Depth weighting (default None).
         pick_normal : bool
-            Pick the normal component of the estimated current vector.
+            Pick the normal component of the estimated current vector (default
+            False).
         """
-        items = [str(ori), str(snr), method]
+        if not isinstance(ori, basestring):
+            ori = 'loose%s' % str(ori)[1:]
+        items = [ori, str(snr), method]
 
         if depth:
             items.append(str(depth))
