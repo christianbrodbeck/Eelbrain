@@ -3769,6 +3769,11 @@ class MneExperiment(FileTree):
         return inv
 
     def _post_set_inv(self, _, inv):
+        if '*' in inv:
+            self._params['make_inv_kw'] = None
+            self._params['apply_inv_kw'] = None
+            return
+
         m = inv_re.match(inv)
         ori, snr, method, depth, pick_normal = m.groups()
 
