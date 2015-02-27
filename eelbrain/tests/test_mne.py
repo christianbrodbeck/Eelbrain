@@ -119,7 +119,8 @@ def test_morphing():
                                              vertices_to, morph_mat)
     assert_array_equal(morphed_ndvar.x[0], morphed_stc.data)
     morphed_stc_ndvar = load.fiff.stc_ndvar([morphed_stc], 'fsaverage', 'ico-4',
-                                            subjects_dir, 'src', parc=None)
+                                            subjects_dir, 'dSPM', False, 'src',
+                                            parc=None)
     assert_dataobj_equal(morphed_ndvar, morphed_stc_ndvar)
 
 

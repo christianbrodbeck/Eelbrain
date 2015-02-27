@@ -674,7 +674,10 @@ class MneExperiment(FileTree):
             src = self.get('src')
             mri_sdir = self.get('mri-sdir')
             parc = self.get('parc') or None
-            src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir, parc=parc)
+            src = load.fiff.stc_ndvar(stc, subject, src, mri_sdir,
+                                      self._params['apply_inv_kw']['method'],
+                                      self._params['make_inv_kw'].get('fixed', False),
+                                      parc=parc)
             if baseline is not None:
                 src -= src.summary(time=baseline)
             ds['src'] = src
@@ -803,13 +806,18 @@ class MneExperiment(FileTree):
             ds['stc'] = stcs
         if ind_ndvar:
             subject = from_subjects[meg_subjects[0]]
-            ds['src'] = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir, parc=parc)
+            ds['src'] = load.fiff.stc_ndvar(stcs, subject, src, mri_sdir,
+                                            self._params['apply_inv_kw']['method'],
+                                            self._params['make_inv_kw'].get('fixed', False),
+                                            parc=parc)
         if morph_stc or morph_ndvar:
             if morph_stc:
                 ds['stcm'] = mstcs
             if morph_ndvar:
-                ds['srcm'] = load.fiff.stc_ndvar(mstcs, common_brain, src,
-                                                 mri_sdir, parc=parc)
+                ds['srcm'] = load.fiff.stc_ndvar(mstcs, common_brain, src, mri_sdir,
+                                                 self._params['apply_inv_kw']['method'],
+                                                 self._params['make_inv_kw'].get('fixed', False),
+                                                 parc=parc)
 
         if not keep_evoked:
             del ds['evoked']

@@ -156,7 +156,8 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     ds.info['inv'] = inv
 
     stcs = mn.apply_inverse_epochs(epochs, inv, 1. / (snr ** 2), method)
-    ds['src'] = load.fiff.stc_ndvar(stcs, subject, src_tag, subjects_dir)
+    ds['src'] = load.fiff.stc_ndvar(stcs, subject, src_tag, subjects_dir,
+                                    method, fixed)
     if stc:
         ds['stc'] = stcs
 

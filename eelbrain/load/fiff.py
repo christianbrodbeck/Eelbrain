@@ -766,8 +766,8 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
     return NDVar(x, dims, info=info, name=name)
 
 
-def stc_ndvar(stc, subject, src, subjects_dir=None, name=None, check=True,
-              parc='aparc'):
+def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
+              name=None, check=True, parc='aparc'):
     """
     Convert one or more :class:`mne.SourceEstimate` objects to an :class:`NDVar`.
 
@@ -782,6 +782,11 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, name=None, check=True,
     subjects_dir : None | str
         The path to the subjects_dir (needed to locate the source space
         file).
+    method : 'MNE' | 'dSPM' | 'sLORETA'
+        Source estimation method (optional, used for generating info).
+    fixed : bool
+        Source estimation orientation constraint (optional, used for generating
+        info).
     name : str | None
         Ndvar name.
     check : bool
@@ -823,7 +828,26 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, name=None, check=True,
     else:
         dims = (ss, time)
 
-    return NDVar(x, dims, name=name)
+    # find the right measurement info
+    info = {}
+    if fixed is False:
+        info['meas'] = 'Activation'
+        if method == 'MNE' or method == 'dSPM' or method == 'sLORETA':
+            info['unit'] = method
+        elif method is not None:
+            raise ValueError("method=%s" % repr(method))
+    elif fixed is True:
+        info['meas'] = 'Current Estimate'
+        if method == 'MNE':
+            info['unit'] = 'Am'
+        elif method == 'dSPM' or method == 'sLORETA':
+            info['unit'] = '%s(Am)' % method
+        elif method is not None:
+            raise ValueError("method=%s" % repr(method))
+    elif fixed is not None:
+        raise ValueError("fixed=%s" % repr(fixed))
+
+    return NDVar(x, dims, info, name)
 
 
 def _trim_ds(ds, epochs):
