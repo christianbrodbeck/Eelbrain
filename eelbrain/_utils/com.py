@@ -1,36 +1,48 @@
 '''Communication utilities'''
-import bz2
 from email.mime.text import MIMEText
-import os
+import keyring
 import pdb
 import smtplib
 import socket
 import traceback
 
 from .basic import logger
+from . import ui
 
 
-_pwd_fname = os.path.expanduser('~/.eelbrain_n00b')
+NOOB_DOMAIN = "Eelbrain"
+NOOB_ADDRESS = 'n00b.eelbrain@gmail.com'
 
 
-def send_email(to, subject, body):
-    """Send an email notification"""
-    gmail_user = 'n00b.eelbrain@gmail.com'
-    with open(_pwd_fname) as f:
-        pwd = bz2.decompress(f.read())
-
-    msg = MIMEText(body)
-    msg['Subject'] = subject
-    host = socket.gethostname()
-    msg['From'] = 'Eelbrain on %s <%s>' % (host, gmail_user)
-    msg['To'] = to
-
+def get_smtpserver(password, new_password=False):
     smtpserver = smtplib.SMTP('smtp.gmail.com', 587)
     smtpserver.ehlo()
     smtpserver.starttls()
-    smtpserver.login(gmail_user, pwd)
+    while True:
+        try:
+            smtpserver.login(NOOB_ADDRESS, password)
+            if new_password:
+                keyring.set_password(NOOB_DOMAIN, NOOB_ADDRESS, password)
+            return smtpserver
+        except smtplib.SMTPAuthenticationError:
+            password = ui.ask_str("Eelbrain notifier password invalid. Please "
+                                  "enter valid password.", "Notifier Password")
+            if password:
+                new_password = True
+            else:
+                raise
 
-    smtpserver.sendmail(gmail_user, to, msg.as_string())
+
+def send_email(to, subject, body, password):
+    """Send an email notification"""
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    host = socket.gethostname()
+    msg['From'] = 'Eelbrain on %s <%s>' % (host, NOOB_ADDRESS)
+    msg['To'] = to
+
+    smtpserver = get_smtpserver(password)
+    smtpserver.sendmail(NOOB_ADDRESS, to, msg.as_string())
     smtpserver.close()
 
 
@@ -62,14 +74,21 @@ class Notifier(object):
         debug : bool
             If the task crashes, start pdb instead of exiting.
         """
-        if not os.path.exists(_pwd_fname):
-            err = "File required for notification not found: %r" % _pwd_fname
-            raise IOError(err)
+        # get the password
+        password = keyring.get_password(NOOB_DOMAIN, NOOB_ADDRESS)
+        if password is None:
+            password = ui.ask_str("Please enter the Eelbrain notifier "
+                                  "password.", "Notifier Password")
+            # test it
+            print "Validating password..."
+            smtpserver = get_smtpserver(password, True)
+            smtpserver.close()
 
         self.to = to
         self.name = name
         self.state_func = state_func
         self.debug = debug
+        self._password = password
 
     def __enter__(self):
         logger.info("Notification enabled...")
@@ -123,4 +142,4 @@ class Notifier(object):
             Email body; successive entries are joined with two line breaks.
         """
         body = '\n\n'.join(map(unicode, info))
-        send_email(self.to, subject, body)
+        send_email(self.to, subject, body, self._password)
