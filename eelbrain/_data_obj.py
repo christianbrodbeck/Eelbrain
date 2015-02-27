@@ -1000,7 +1000,6 @@ def combine(items, name=None, check_dims=True):
 
     item0 = items[0]
     if isdataset(item0):
-        other_items = items[1:]
         # find all keys and data types
         keys = item0.keys()
         sample = dict(item0)
@@ -1010,20 +1009,8 @@ def combine(items, name=None, check_dims=True):
                     keys.append(key)
                     sample[key] = item[key]
 
-        # info dict
-        info_keys = set(item0.info.keys())
-        for ds in other_items:
-            info_keys.intersection_update(ds.info.keys())
-        info = {}
-        for key in info_keys:
-            v0 = item0.info[key]
-            other_values = [ds.info[key] for ds in other_items]
-            if all(v is v0 for v in other_values) or all(np.all(v == v0)
-                                                         for v in other_values):
-                info[key] = v0
-
         # create new Dataset
-        out = Dataset(name=name, info=info)
+        out = Dataset(name=name, info=_merge_info(items))
         for key in keys:
             pieces = [ds[key] if key in ds else
                       _empty_like(sample[key], ds.n_cases) for ds in items]
@@ -1031,7 +1018,7 @@ def combine(items, name=None, check_dims=True):
         return out
     elif isvar(item0):
         x = np.hstack(i.x for i in items)
-        return Var(x, name=name)
+        return Var(x, name, info=_merge_info(items))
     elif isfactor(item0):
         labels = item0._labels
         if all(f._labels == labels for f in items[1:]):
@@ -1060,7 +1047,7 @@ def combine(items, name=None, check_dims=True):
         else:
             x = np.array([v.x for v in items])
         dims = ('case',) + dims
-        return NDVar(x, dims, item0.info, name)
+        return NDVar(x, dims, _merge_info(items), name)
     elif isdatalist(item0):
         out = sum(items[1:], item0)
         out.name = name
@@ -1068,6 +1055,25 @@ def combine(items, name=None, check_dims=True):
     else:
         err = ("Objects of type %s can not be combined." % type(item0))
         raise TypeError(err)
+
+
+def _merge_info(items):
+    "Merge info dicts from several objects"
+    info0 = items[0].info
+    other_infos = [i.info for i in items[1:]]
+    # find shared keys
+    info_keys = set(info0.keys())
+    for info in other_infos:
+        info_keys.intersection_update(info.keys())
+    # find shared values
+    out = {}
+    for key in info_keys:
+        v0 = info0[key]
+        other_values = [info[key] for info in other_infos]
+        if all(v is v0 for v in other_values) or all(np.all(v == v0)
+                                                     for v in other_values):
+            out[key] = v0
+    return out
 
 
 def find_factors(obj):
