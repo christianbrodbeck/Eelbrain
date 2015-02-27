@@ -2428,6 +2428,9 @@ class _ClusterDist:
             # find clusters (reshape to internal shape for labelling)
             if self._nad_ax:
                 bin_map = bin_map.swapaxes(0, self._nad_ax)
+            if sub:
+                raise NotImplementedError("sub")
+                # need to subset connectivity!
             c_map, cids = label_clusters_binary(bin_map, self._connectivity,
                                                 None)
             if self._nad_ax:
