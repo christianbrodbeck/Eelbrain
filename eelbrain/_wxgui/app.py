@@ -181,6 +181,17 @@ class App(wx.App):
             self._result = False
         self.ExitMainLoop()
 
+    def ask_for_string(self, title, message, default=''):
+        return self._bash_ui(self._ask_for_string, title, message, default)
+
+    def _ask_for_string(self, title, message, default):
+        dlg = wx.TextEntryDialog(None, message, title, default)
+        if dlg.ShowModal() == wx.ID_OK:
+            self._result = dlg.GetValue()
+        else:
+            self._result = False
+        self.ExitMainLoop()
+
     def message_box(self, message, caption, style):
         return self._bash_ui(self._message_box, message, caption, style)
 
@@ -228,6 +239,8 @@ class App(wx.App):
             # add new entries
             for window in wx.GetTopLevelWindows():
                 id_ = window.GetId()
+                if id_ < 0:
+                    continue
                 item = menu.Append(id_, window.GetTitle())
                 self.Bind(wx.EVT_MENU, self.OnWindowRaise, id=id_)
                 self.window_menu_window_items.append(item)
