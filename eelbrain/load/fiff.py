@@ -718,6 +718,15 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
     if isinstance(evoked, basestring):
         evoked = mne.Evoked(evoked)
 
+    if data == 'mag':
+        info = _cs.meg_info(vmax)
+    elif data == 'eeg':
+        info = _cs.eeg_info(vmax)
+    elif data == 'grad':
+        info = _cs.meg_info(vmax, unit='T/cm')
+    else:
+        raise ValueError("data=%s" % repr(data))
+
     if isinstance(evoked, mne.Evoked):
         picks = _picks(evoked.info, data, exclude)
 
@@ -754,7 +763,6 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
         time = UTS.from_int(e0.first, e0.last, e0.info['sfreq'])
         dims = ('case', sensor, time)
 
-    info = _cs.meg_info(vmax)
     return NDVar(x, dims, info=info, name=name)
 
 
