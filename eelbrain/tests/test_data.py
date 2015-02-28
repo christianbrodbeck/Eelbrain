@@ -436,12 +436,23 @@ def test_effect():
 
 def test_factor():
     "Test basic Factor functionality"
-    f = Factor('aabbcc')
-
     # removing a cell
+    f = Factor('aabbcc')
     assert_equal(f.cells, ('a', 'b', 'c'))
     f[f == 'c'] = 'a'
     assert_equal(f.cells, ('a', 'b'))
+
+    # cell order
+    a = np.tile(np.arange(3), 3)
+    # alphabetical
+    f = Factor(a, labels={0: 'c', 1: 'b', 2: 'a'})
+    assert_equal(f.cells, ('a', 'b', 'c'))
+    # ordered
+    f = Factor(a, labels=((0, 'c'), (1, 'b'), (2, 'a')))
+    assert_equal(f.cells, ('c', 'b', 'a'))
+    assert_equal(f[:2].cells, ('c', 'b'))
+    f[f == 'b'] = 'c'
+    assert_equal(f.cells, ('c', 'a'))
 
     # label length
     lens = [2, 5, 32, 2, 32, 524]

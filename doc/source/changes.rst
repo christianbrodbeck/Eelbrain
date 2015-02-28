@@ -3,6 +3,14 @@ Changes
 
 .. currentmodule:: eelbrain
 
+
+New in 0.13
+-----------
+
+* :class:`Factor` objects can now remember a custom cell order which determines
+  the order in tables and plots.
+
+
 New in 0.12
 -----------
 

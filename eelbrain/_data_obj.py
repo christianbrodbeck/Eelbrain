@@ -22,7 +22,7 @@ managed by
 
 from __future__ import division
 
-import collections
+from collections import OrderedDict
 from copy import deepcopy
 from fnmatch import fnmatchcase
 import itertools
@@ -1854,10 +1854,12 @@ class Factor(_Effect):
             Repeat each element in ``x`` ``repeat`` many times.
         tile : int
             Repeat ``x`` as a whole ``tile`` many times.
-        labels : dict or None
-            If provided, these labels are used to replace values in x when
-            constructing the labels dictionary. All labels for values of
-            x not in ``labels`` are constructed using ``str(value)``.
+        labels : dict | OrderedDict | tuple
+            An optional dictionary mapping values as they occur in ``x`` to the
+            Factor's cell labels. Since :class`dict`s are unordered, labels are
+            sorted alphabetically by default. In order to define cells in a
+            different order, use a :class:`collections.OrderedDict` object or
+            define labels as ``((key, value), ...)`` tuple.
 
 
         Examples
@@ -1870,6 +1872,11 @@ class Factor(_Effect):
         The same can be achieved with a list of integers plus a labels dict::
 
             >>> Factor([1, 1, 1, 0, 0, 0], labels={1: 'in', 0: 'out'})
+            Factor(['in', 'in', 'in', 'out', 'out', 'out'])
+
+        Or more parsimoniously:
+
+            >>> Factor([1, 0], labels={1: 'in', 0: 'out'}, repeat=3)
             Factor(['in', 'in', 'in', 'out', 'out', 'out'])
 
         Since the Factor initialization simply iterates over the ``x``
@@ -1886,12 +1893,9 @@ class Factor(_Effect):
             repeat = rep
             warn("The rep argument has been renamed to repeat", DeprecationWarning)
 
-        state = {'name': name, 'random': random}
-        labels_ = state['labels'] = {}  # {code -> label}
-
         if repeat == 0 or tile == 0:
-            state['x'] = []
-            self.__setstate__(state)
+            self.__setstate__({'x': np.empty((0,), np.uint16), 'labels': {},
+                               'name': name, 'random': random})
             return
 
         try:
@@ -1900,21 +1904,41 @@ class Factor(_Effect):
             x = tuple(x)
             n_cases = len(x)
 
+        # find mapping and ordered values
+        if isinstance(labels, dict):
+            labels_dict = labels
+            values = labels.values()
+            if not isinstance(labels, OrderedDict):
+                values = natsorted(values)
+        else:
+            labels_dict = dict(labels)
+            values = [pair[1] for pair in labels]
+
         # convert x to codes
+        highest_code = -1
         codes = {}  # {label -> code}
         x_ = np.empty(n_cases, dtype=np.uint16)
         for i, value in enumerate(x):
-            label = labels.get(value, value)
-            if not isinstance(label, unicode):
-                label = str(label)
-            if label in codes:
-                code = codes.get(label)
-            else:  # new code
-                code = max(labels_) + 1 if labels_ else 0
-                labels_[code] = label
-                codes[label] = code
+            if value in labels_dict:
+                label = labels_dict[value]
+            elif isinstance(value, unicode):
+                label = value
+            else:
+                label = str(value)
 
-            x_[i] = code
+            if label in codes:
+                x_[i] = codes[label]
+            else:  # new code
+                x_[i] = codes[label] = highest_code = highest_code + 1
+
+        # collect ordered_labels
+        ordered_labels = OrderedDict()
+        for label in values:
+            if label in codes:
+                ordered_labels[codes[label]] = label
+        for label in natsorted(codes):
+            if label not in values:
+                ordered_labels[codes[label]] = label
 
         if repeat > 1:
             x_ = x_.repeat(repeat)
@@ -1922,22 +1946,30 @@ class Factor(_Effect):
         if tile > 1:
             x_ = np.tile(x_, tile)
 
-        state['x'] = x_
-        self.__setstate__(state)
+        self.__setstate__({'x': x_, 'ordered_labels': ordered_labels,
+                           'name': name, 'random': random})
 
     def __setstate__(self, state):
         self.x = x = state['x']
         self.name = state['name']
         self.random = state['random']
-        self._labels = labels = state['labels']
-        self._codes = {lbl: code for code, lbl in labels.iteritems()}
+        if 'ordered_labels' in state:
+            # 0.13:  ordered_labels replaced labels
+            self._labels = state['ordered_labels']
+            self._codes = {lbl: code for code, lbl in self._labels.iteritems()}
+        else:
+            labels = state['labels']
+            cells = natsorted(labels.values())
+            self._codes = codes = {lbl: code for code, lbl in labels.iteritems()}
+            self._labels = OrderedDict([(codes[label], label) for label in cells])
+
         self._n_cases = len(x)
 
     def __getstate__(self):
         state = {'x': self.x,
                  'name': self.name,
                  'random': self.random,
-                 'labels': self._labels}
+                 'ordered_labels': self._labels}
         return state
 
     def __repr__(self, full=False):
@@ -2142,7 +2174,7 @@ class Factor(_Effect):
 
     @property
     def cells(self):
-        return tuple(natsorted(self._labels.values()))
+        return tuple(self._labels.values())
 
     def _cellsize(self):
         "-1 if cell size is not equal"
@@ -3686,7 +3718,7 @@ def as_legal_dataset_key(key):
             raise RuntimeError("Could not convert %r to legal dataset key")
 
 
-class Dataset(collections.OrderedDict):
+class Dataset(OrderedDict):
     """
     A Dataset is a dictionary that represents a data table.
 
@@ -4779,7 +4811,7 @@ class Dataset(collections.OrderedDict):
             if name is None:
                 raise TypeError('Need a valid name for the R data frame')
 
-        items = collections.OrderedDict()
+        items = OrderedDict()
         for k, v in self.iteritems():
             if isvar(v):
                 if v.x.dtype.kind == 'b':
