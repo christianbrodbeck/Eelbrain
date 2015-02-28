@@ -922,8 +922,7 @@ class Frame(EelbrainFrame):  # control
 
     def OnUpdateUIPlotRange(self, event):
         event.Enable(True)
-        check = self._bfly_kwargs['plot_range']
-        event.Check(check)
+        event.Check(self._bfly_kwargs['plot_range'])
 
     def OnUpdateUIRedo(self, event):
         event.Enable(self.CanRedo())
@@ -1161,7 +1160,6 @@ class Frame(EelbrainFrame):  # control
             self._case_axes.append(ax)
             self._case_segs.append(case)
             self._axes_by_idx[epoch_idx] = ax
-
 
         # mean plot
         if self._plot_mean:
