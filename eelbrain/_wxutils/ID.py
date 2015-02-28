@@ -70,6 +70,7 @@ REDO = wx.NewId()
 RESIZE = wx.NewId()
 
 SAVE_REJECTION = wx.NewId()
+SET_BAD_CHANNELS = wx.NewId()
 SET_FONT = wx.NewId()
 SET_LAYOUT = wx.NewId()
 SET_TEND = wx.NewId()

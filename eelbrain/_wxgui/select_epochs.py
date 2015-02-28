@@ -2,6 +2,14 @@
 
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
+# Document:  represents data
+# ChangeAction:  modifies Document
+# Model:  creates ChangeActions and applies them to the History
+# Frame:
+#  - visualizaes Document
+#  - listens to Document changes
+#  - issues commands to Model
+
 from __future__ import division
 
 import math
@@ -28,8 +36,9 @@ from .history import History, Action
 class ChangeAction(Action):
     """Action objects are kept in the history and can do and undo themselves"""
 
-    def __init__(self, desc, index, old_accept, new_accept, old_tag, new_tag,
-                 old_path=None, new_path=None):
+    def __init__(self, desc, index=None, old_accept=None, new_accept=None,
+                 old_tag=None, new_tag=None, old_path=None, new_path=None,
+                 old_bad_chs=None, new_bad_chs=None):
         """
         Parameters
         ----------
@@ -45,20 +54,47 @@ class ChangeAction(Action):
         self.new_path = new_path
         self.new_accept = new_accept
         self.new_tag = new_tag
+        self.old_bad_chs = old_bad_chs
+        self.new_bad_chs = new_bad_chs
 
     def do(self, doc):
-        doc.set_case(self.index, self.new_accept, self.new_tag)
+        if self.index is not None:
+            doc.set_case(self.index, self.new_accept, self.new_tag)
         if self.new_path is not None:
             doc.set_path(self.new_path)
+        if self.new_bad_chs is not None:
+            doc.set_bad_channels(self.new_bad_chs)
 
     def undo(self, doc):
-        doc.set_case(self.index, self.old_accept, self.old_tag)
+        if self.index is not None:
+            doc.set_case(self.index, self.old_accept, self.old_tag)
         if self.new_path is not None and self.old_path is not None:
             doc.set_path(self.old_path)
+        if self.new_bad_chs is not None:
+            doc.set_bad_channels(self.old_bad_chs)
 
 
 class Document(object):
-    "Represents data for the current state of the Document"
+    """Represents data for the current state of the Document
+
+    Data can be accesses through attributes, but should only be changed through
+    the set_...() methods.
+
+    Attributes
+    ----------
+    n_epochs : int
+        The number of epochs.
+    epochs : NDVar
+        The raw epochs.
+    accept : Var of bool
+        Case status.
+    tag : Factor
+        Case tag.
+    trigger : Var of int
+        Case trigger value.
+    blink : Datalist | None
+        Case eye tracker artifact data.
+    """
 
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger', path=None, bad_chs=None):
@@ -128,84 +164,75 @@ class Document(object):
             raise TypeError("blink needs to be a string or None")
 
         # data
-        self.data = data
-        self.data_good = data  # with bad channels removed
+        self.epochs = data
         self.accept = accept
         self.tag = tag
         self.trigger = trigger
         self.blink = blink
-
-        self._good_chs = slice(None)
-        self._bad_chs = []
+        self.bad_channels = []
+        self.good_channels = None
 
         # publisher
+        self._bad_chs_change_subscriptions = []
         self._case_change_subscriptions = []
         self._path_change_subscriptions = []
 
         # finalize
         if bad_chs is not None:
-            self._set_bad_chs(bad_chs, reset=True)
+            self.set_bad_channels_by_name(bad_chs)
 
         self.saved = True  # managed by the history
         self.path = path
         if path and os.path.exists(path):
-            accept, tag = self.read_rej_file(path)
+            accept, tag, bad_chs = self.read_rej_file(path)
             self.accept[:] = accept
             self.tag[:] = tag
+            self.set_bad_channels_by_name(bad_chs)
 
-    def get_bad_chs(self, name=True):
-        """Get the channels currently set as bad
+    @property
+    def bad_channel_names(self):
+        return [self.epochs.sensor.names[i] for i in self.bad_channels]
 
-        Parameters
-        ----------
-        name : bool
-            Return channel names (otherwise the channel index is returned).
-
-        Returns
-        -------
-        bad_chs : None | list of int, str
-            Channels currenty excluded.
-        """
-        if name:
-            return [self.doc.data.sensor.names[i] for i in self._bad_chs]
+    def good_data(self):
+        "All cases, only good channels"
+        if self.bad_channels:
+            return self.epochs.sub(sensor=self.good_channels)
         else:
-            return self._bad_chs[:]
+            return self.epochs
 
-    def get_epoch(self, i):
-        name = 'Epoch %i' % i
-        epoch = self.data.sub(case=i, name=name)
-        return epoch
+    def get_epoch(self, case, name):
+        if self.bad_channels:
+            return self.epochs.sub(case=case, sensor=self.good_channels, name=name)
+        else:
+            return self.epochs.sub(case=case, name=name)
 
     def get_grand_average(self):
         "Grand average of all accepted epochs"
-        out = self.data[self.accept].mean('case')
-        out.name = "Grand Average"
-        return out
+        return self.epochs.sub(case=self.accept.x, sensor=self.good_channels,
+                               name="Grand Average").mean('case')
 
-    def set_bad_chs(self, bad_chs, reset=False):
+    def set_bad_channels(self, indexes):
         """Set the channels to treat as bad (i.e., exclude)
 
         Parameters
         ----------
-        bad_chs : None | list of str, int
-            List of channels to treat as bad (as name or index).
-        reset : bool
-            Reset previously set bad channels to good.
+        bad_chs : collection of int
+            Indices of channels to treat as bad.
         """
-        if reset:
-            del self._bad_chs[:]
-            self.data_good = self.data
-
-        if bad_chs is None:
+        indexes = sorted(indexes)
+        if indexes == self.bad_channels:
             return
+        self.bad_channels = indexes
+        if indexes:
+            self.good_channels = np.setdiff1d(np.arange(len(self.epochs.sensor)),
+                                              indexes, True)
+        else:
+            self.good_channels = None
+        for callback in self._bad_chs_change_subscriptions:
+            callback()
 
-        bad_chs = self.doc.data.sensor.dimindex(bad_chs)
-        for ch in bad_chs:
-            if ch in self._bad_chs:
-                continue
-            self._bad_chs.append(ch)
-        good_chs = self.data.sensor.isnotin(self._bad_chs)
-        self.data_good = self.data.sub(sensor=good_chs)
+    def set_bad_channels_by_name(self, names):
+        self.set_bad_channels(self.epochs.sensor.dimindex(names))
 
     def set_case(self, index, state, tag=None):
         self.accept[index] = state
@@ -277,14 +304,19 @@ class Document(object):
         else:
             tag = Factor([''], repeat=self.n_epochs, name='rej_tag')
 
-        return accept, tag
+        if 'bad_channels' in ds.info:
+            bad_channels = self.epochs.sensor.dimindex(ds.info['bad_channels'])
+        else:
+            bad_channels = []
+
+        return accept, tag, bad_channels
 
     def save(self):
         # find dest path
         _, ext = os.path.splitext(self.path)
 
         # create Dataset to save
-        info = {'bad_chs': self.get_bad_chs()}
+        info = {'bad_channels': self.bad_channel_names}
         ds = Dataset((self.trigger, self.accept, self.tag), info=info)
 
         if ext == '.pickled':
@@ -293,6 +325,10 @@ class Document(object):
             ds.save_txt(self.path)
         else:
             raise ValueError("Unsupported extension: %r" % ext)
+
+    def subscribe_to_bad_channels_change(self, callback):
+        "callback()"
+        self._bad_chs_change_subscriptions.append(callback)
 
     def subscribe_to_case_change(self, callback):
         "callback(index)"
@@ -332,7 +368,7 @@ class Model(object):
         args = ', '.join(map(str, (threshold, method, above, below)))
         logger.info("Auto-reject trials: %s" % args)
 
-        x = self.doc.data_good
+        x = self.doc.good_data()
         if method == 'abs':
             x_max = x.abs().max(('time', 'sensor'))
             sub_threshold = x_max <= threshold
@@ -382,17 +418,12 @@ class Model(object):
         self.history.do(action)
 
     def load(self, path):
-        new_accept, new_tag = self.doc.read_rej_file(path)
+        new_accept, new_tag, new_bad_chs = self.doc.read_rej_file(path)
 
         # create load action
-        desc = "Load File"
-        new_path = path
-        index = slice(None)
-        old_accept = self.doc.accept
-        old_tag = self.doc.tag
-        old_path = self.doc.path
-        action = ChangeAction(desc, index, old_accept, new_accept, old_tag,
-                              new_tag, old_path, new_path)
+        action = ChangeAction("Load File", slice(None), self.doc.accept, new_accept,
+                              self.doc.tag, new_tag, self.doc.path, path,
+                              self.doc.bad_channels, new_bad_chs)
         self.history.do(action)
         self.history.register_save()
 
@@ -403,6 +434,12 @@ class Model(object):
     def save_as(self, path):
         self.doc.set_path(path)
         self.save()
+
+    def set_bad_channels(self, bad_channels, desc="Set bad channels"):
+        "Set bad channels with a list of int"
+        action = ChangeAction(desc, old_bad_chs=self.doc.bad_channels,
+                              new_bad_chs=bad_channels)
+        self.history.do(action)
 
     def set_case(self, i, state, tag=None, desc="Manual Change"):
         old_accept = self.doc.accept[i]
@@ -457,6 +494,7 @@ class Frame(EelbrainFrame):  # control
         # bind events
         doc.subscribe_to_case_change(self.CaseChanged)
         doc.subscribe_to_path_change(self.UpdateTitle)
+        doc.subscribe_to_bad_channels_change(self.ShowPage)
         history.subscribe_to_saved_change(self.UpdateTitle)
 
         self.config = config
@@ -501,6 +539,11 @@ class Frame(EelbrainFrame):  # control
                                            Icon("tango/actions/go-next"))
         tb.AddSeparator()
 
+        # --> Bad Channels
+        button = wx.Button(tb, ID.SET_BAD_CHANNELS, "Bad Channels")
+        button.Bind(wx.EVT_BUTTON, self.OnSetBadChannels)
+        tb.AddControl(button)
+
         # --> Thresholding
         button = wx.Button(tb, ID.THRESHOLD, "Threshold")
         button.Bind(wx.EVT_BUTTON, self.OnThreshold)
@@ -535,7 +578,7 @@ class Frame(EelbrainFrame):  # control
         self.CreateStatusBar()
 
         # setup plot parameters
-        self._vlims = find_fig_vlims([[self.doc.data]])
+        self._vlims = find_fig_vlims([[self.doc.epochs]])
         if vlim is not None:
             for k in self._vlims:
                 self._vlims[k] = (-vlim, vlim)
@@ -797,6 +840,29 @@ class Frame(EelbrainFrame):  # control
         dlg.Destroy()
         return rcode
 
+    def OnSetBadChannels(self, event):
+        dlg = wx.TextEntryDialog(self, "Please enter bad channel names separated by "
+                                 "comma (e.g., \"MEG 003, MEG 010\"):", "Set Bad "
+                                 "Channels", ', '.join(self.doc.bad_channel_names))
+        while True:
+            if dlg.ShowModal() == wx.ID_OK:
+                try:
+                    names_in = filter(None, (s.strip() for s in
+                                             dlg.GetValue().split(',')))
+                    names = self.doc.epochs.sensor._normalize_sensor_names(names_in)
+                    break
+                except ValueError as exception:
+                    msg = wx.MessageDialog(self, str(exception), "Invalid Entry",
+                                           wx.ICON_ERROR)
+                    msg.ShowModal()
+                    msg.Destroy()
+            else:
+                dlg.Destroy()
+                return
+        dlg.Destroy()
+        bad_channels = self.doc.epochs.sensor.dimindex(names)
+        self.model.set_bad_channels(bad_channels)
+
     def OnSetLayout(self, event):
         caption = "Set Plot Layout"
         msg = ("Number of epoch plots for square layout (e.g., '10') or \n"
@@ -856,16 +922,16 @@ class Frame(EelbrainFrame):  # control
 
     def OnSetVLim(self, event):
         default = str(self._vlims.values()[0][1])
-        dlg = wx.TextEntryDialog(self, "New Y-axis limit:",
-                                 "Set Y-Axis Limit", default)
+        dlg = wx.TextEntryDialog(self, "New Y-axis limit:", "Set Y-Axis Limit",
+                                 default)
 
         if dlg.ShowModal() == wx.ID_OK:
             value = dlg.GetValue()
             try:
                 vlim = abs(float(value))
             except Exception as exception:
-                msg = wx.MessageDialog(self, str(exception), "Invalid "
-                                        "Entry", wx.ICON_ERROR)
+                msg = wx.MessageDialog(self, str(exception), "Invalid Entry",
+                                       wx.ICON_ERROR)
                 msg.ShowModal()
                 msg.Destroy()
                 raise
@@ -1092,7 +1158,7 @@ class Frame(EelbrainFrame):  # control
                 if value is None:
                     bf_kwargs['mark'] = None
                 else:
-                    bf_kwargs['mark'] = self.doc.data.sensor.dimindex(value)
+                    bf_kwargs['mark'] = self.doc.epochs.sensor.dimindex(value)
             elif key in bf_kwargs:
                 bf_kwargs[key] = value
 
@@ -1102,7 +1168,7 @@ class Frame(EelbrainFrame):  # control
         if plot_range or mark is None:
             traces = not bool(plot_range)
         else:
-            traces = np.setdiff1d(np.arange(len(self.doc.data.sensor)), mark)
+            traces = np.setdiff1d(np.arange(len(self.doc.epochs.sensor)), mark)
         bf_kwargs['traces'] = traces
 
     def SetVLim(self, vlim):
@@ -1144,7 +1210,7 @@ class Frame(EelbrainFrame):  # control
         self._axes_by_idx = {}
         for i, epoch_idx in enumerate(self._epoch_idxs):
             name = 'Epoch %i' % epoch_idx
-            case = self.doc.data.sub(case=epoch_idx, name=name)
+            case = self.doc.get_epoch(epoch_idx, name)
             state = self.doc.accept[epoch_idx]
             ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0],
                                          yticks=[])
@@ -1202,7 +1268,7 @@ class Frame(EelbrainFrame):  # control
         page_index = np.zeros(self.doc.n_epochs, dtype=bool)
         page_index[page_segments] = True
         index = np.logical_and(page_index, self.doc.accept.x)
-        mseg = self.doc.data.summary(case=index)
+        mseg = self.doc.epochs.summary(case=index)
         if sensor is not None:
             mseg = mseg.sub(sensor=sensor)
         return mseg
