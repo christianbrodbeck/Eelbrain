@@ -616,7 +616,7 @@ class Timeplot(_EelFigure, LegendMixin):
                  main=np.mean, spread='box', x_jitter=False,
                  bottom=0, top=None,
                  # labelling
-                 ylabel=True, xlabel=True, legend=True,
+                 ylabel=True, xlabel=True, legend='best',
                  colors='jet', hatch=False, markers=True, *args, **kwargs):
         """Plot a variable over time
 
@@ -1220,12 +1220,11 @@ def _reg_line(Y, reg):
     return regline_x, regline_y
 
 
-class Correlation(_EelFigure):
+class Correlation(_EelFigure, LegendMixin):
     "Correlation between two variables"
     def __init__(self, Y, X, cat=None, sub=None, ds=None,
-                 c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], lloc='lower center',
-                 lncol=2, figlegend=True, xlabel=True, ylabel=True, *args,
-                 **kwargs):
+                 c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='best',
+                 lncol=2, xlabel=True, ylabel=True, *args, **kwargs):
         """Correlation between two variables
 
         Parameters
@@ -1241,6 +1240,11 @@ class Correlation(_EelFigure):
         ds : None | Dataset
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables
+        c : list
+            List of colors for cells.
+        legend : str | int | 'fig' | None
+            Matplotlib figure legend location argument or 'fig' to plot the
+            legend in a separate figure.
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
             (default True)
@@ -1260,32 +1264,30 @@ class Correlation(_EelFigure):
         self._set_xlabel(X, xlabel)
 
         ax = self._axes[0]
+        legend_handles = {}
         if cat is None:
+            legend = False
             ax.scatter(X.x, Y.x, alpha=.5)
         else:
-            labels = []; handles = []
             for color, cell in zip(c, cat.cells):
                 idx = (cat == cell)
                 Xi = X[idx]
                 Yi = Y[idx]
                 cell = str2tex(cellname(cell))
-
                 h = ax.scatter(Xi.x, Yi.x, c=color, label=cell, alpha=.5)
-                handles.append(h)
-                labels.append(cell)
+                legend_handles[cell] = h
 
-            if figlegend:
-                self.figure.legend(handles, labels, lloc, ncol=lncol)
-            else:
-                ax.legend(lloc, ncol=lncol)
-
+        LegendMixin.__init__(self, legend, legend_handles)
         self._show()
 
+    def _fill_toolbar(self, tb):
+        LegendMixin._fill_toolbar(self, tb)
 
-class Regression(_EelFigure):
+
+class Regression(_EelFigure, LegendMixin):
     "Regression of Y on X"
     def __init__(self, Y, X, cat=None, match=None, sub=None, ds=None,
-                 xlabel=True, ylabel=True, alpha=.2, legend=True,
+                 xlabel=True, ylabel=True, alpha=.2, legend='best',
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
                  *args, **kwargs):
         """Regression of Y on X
@@ -1310,9 +1312,9 @@ class Regression(_EelFigure):
         alpha : scalar
             alpha for individual data points (to control visualization of
             overlap)
-        legend : bool | str
-            applies if cat != None: can be mpl ax.legend() loc kwarg
-            http://matplotlib.sourceforge.net/api/axes_api.html#matplotlib.axes.Axes.legend
+        legend : str | int | 'fig' | None
+            Matplotlib figure legend location argument or 'fig' to plot the
+            legend in a separate figure.
         ...
         tight : bool
             Use matplotlib's tight_layout to expand all axes to fill the figure
@@ -1338,7 +1340,9 @@ class Regression(_EelFigure):
         self._set_ylabel(Y, ylabel)
 
         ax = self._axes[0]
+        legend_handles = {}
         if cat is None:
+            legend = False
             if type(c) in [list, tuple]:
                 color = c[0]
             else:
@@ -1356,17 +1360,18 @@ class Regression(_EelFigure):
                 y = Y.x[idx]
                 reg = X.x[idx]
                 color = c[i % len(c)]
-                ax.scatter(reg, y, edgecolor=color, facecolor=color, s=100,
-                           alpha=alpha, marker='o', label='_nolegend_')
+                h = ax.scatter(reg, y, edgecolor=color, facecolor=color, s=100,
+                               alpha=alpha, marker='o', label='_nolegend_')
+                legend_handles[cell] = h
                 # regression line
                 x, y = _reg_line(y, reg)
                 ax.plot(x, y, c=color, label=cellname(cell))
-            if legend is True:
-                ax.legend()
-            elif legend is not False:
-                ax.legend(loc=legend)
 
+        LegendMixin.__init__(self, legend, legend_handles)
         self._show()
+
+    def _fill_toolbar(self, tb):
+        LegendMixin._fill_toolbar(self, tb)
 
 
 # MARK: Requirements for Statistical Tests

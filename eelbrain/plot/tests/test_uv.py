@@ -1,7 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from nose.tools import eq_, ok_
 import numpy as np
-from matplotlib import pyplot as plt
 
 from eelbrain import Factor, Var, datasets, plot
 
@@ -20,14 +19,11 @@ def test_barplot():
     ax = p._axes[0]
     eq_(ax.get_ylim()[1], 2)
 
-    plt.close('all')
-
 
 def test_boxplot():
     "Test plot.Boxplot"
     ds = datasets.get_uv()
     plot.Boxplot('fltvar', 'A%B', match='rm', ds=ds, show=False)
-    plt.close('all')
 
     # many pairwise significances
     ds['fltvar'][ds.eval("A%B==('a1','b1')")] += 1
@@ -44,26 +40,29 @@ def test_boxplot():
         ok_(bbs[i].x1 < bbs[i + 1].x0)
 
 
+def test_correlation():
+    "Test plot.Correlation()"
+    ds = datasets.get_uv()
+
+    plot.Correlation('fltvar', 'fltvar2', ds=ds, show=False)
+    plot.Correlation('fltvar', 'fltvar2', 'A', ds=ds, show=False)
+    plot.Correlation('fltvar', 'fltvar2', 'A%B', ds=ds, show=False)
+
+
 def test_histogram():
     "Test plot.Histogram"
     ds = datasets.get_uts()
     plot.Histogram('Y', 'A%B', ds=ds, show=False)
     plot.Histogram('Y', 'A%B', match='rm', ds=ds, show=False)
-    plt.close('all')
 
 
-def test_scatterplot():
-    "Test plot.Correlation and lot.uv.regplot"
-    ds = datasets.get_uts()
-    ds['cov'] = ds['Y'] + np.random.normal(0, 1, (60,))
+def test_regression():
+    "Test plot.Regression"
+    ds = datasets.get_uv()
 
-    plot.Correlation('Y', 'cov', ds=ds, show=False)
-    plot.Correlation('Y', 'cov', 'A%B', ds=ds, show=False)
-
-    plot.Regression('Y', 'cov', ds=ds, show=False)
-    plot.Regression('Y', 'cov', 'A%B', ds=ds, show=False)
-
-    plt.close('all')
+    plot.Regression('fltvar', 'fltvar2', ds=ds, show=False)
+    plot.Regression('fltvar', 'fltvar2', 'A', ds=ds, show=False)
+    plot.Regression('fltvar', 'fltvar2', 'A%B', ds=ds, show=False)
 
 
 def test_timeplot():
@@ -71,5 +70,3 @@ def test_timeplot():
     ds = datasets.get_uts()
     ds['seq'] = Var(np.arange(2).repeat(30))
     plot.Timeplot('Y', 'B', 'seq', match='rm', ds=ds, show=False)
-    plt.close('all')
-
