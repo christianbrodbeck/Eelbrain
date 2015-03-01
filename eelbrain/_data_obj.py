@@ -6292,6 +6292,33 @@ class Sensor(Dimension):
 
         return index
 
+    def _normalize_sensor_names(self, names):
+        "Process a user-input list of sensor names"
+        valid_chs = set()
+        missing_chs = set()
+        for name in names:
+            if isinstance(name, int):
+                name = '%03i' % name
+
+            if name.isdigit():
+                if name in self.names:
+                    valid_chs.add(name)
+                    continue
+                else:
+                    name = 'MEG %s' % name
+
+            if name in self.names:
+                valid_chs.add(name)
+            else:
+                missing_chs.add(name)
+
+        if missing_chs:
+            msg = ("The following channels are not in the raw data: "
+                   "%s" % ', '.join(sorted(missing_chs)))
+            raise ValueError(msg)
+
+        return sorted(valid_chs)
+
     def intersect(self, dim, check_dims=True):
         """Create a Sensor dimension that is the intersection with dim
 

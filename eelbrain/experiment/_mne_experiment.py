@@ -2138,24 +2138,8 @@ class MneExperiment(FileTree):
             old_bads = None
 
         raw = self.load_raw(add_bads=False)
-        raw_ch_names = frozenset(raw.info['ch_names'])
-        valid_chs = []
-        missing_chs = []
-        for name in bad_chs:
-            if str(name).isdigit():
-                name = 'MEG %03i' % int(name)
-
-            if name in raw_ch_names:
-                valid_chs.append(name)
-            else:
-                missing_chs.append(name)
-
-        if missing_chs:
-            msg = ("The following channels are not in the raw data: "
-                   "%s" % missing_chs)
-            raise ValueError(msg)
-
-        chs = sorted(valid_chs)
+        sensor = load.fiff.sensor_dim(raw)
+        chs = sensor._normalize_sensor_names(bad_chs)
         if old_bads is None:
             print "-> %s" % chs
         else:
