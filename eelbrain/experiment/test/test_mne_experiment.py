@@ -1,7 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from nose.tools import eq_, assert_raises
-from eelbrain.experiment import MneExperiment
 
+from eelbrain import MneExperiment
 
 def test_mne_experiment_templates():
     "Test MneExperiment template formatting"
