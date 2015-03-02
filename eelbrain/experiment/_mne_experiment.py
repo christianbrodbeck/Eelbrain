@@ -366,8 +366,7 @@ class MneExperiment(FileTree):
     _values = {}
     # specify defaults for specific fields (e.g. specify the initial subject
     # name)
-    _defaults = {'experiment': 'experiment_name',
-                 'epoch': 'epoch'}  # key in self.epochs
+    defaults = {}
 
     # model order: list of factors in the order in which models should be built
     # (default for factors not in this list is alphabetic)

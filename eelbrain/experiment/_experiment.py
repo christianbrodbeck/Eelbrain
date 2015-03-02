@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+from warnings import warn
 
 import numpy as np
 
@@ -130,6 +131,7 @@ class TreeModel(object):
     # a dictionary of static templates (i.e., templates that do not have any hooks)
     _templates = {}
     _defaults = {}
+    defaults = {}
 
     exclude = {}  # field_values to exclude (e.g. subjects)
 
@@ -153,8 +155,13 @@ class TreeModel(object):
 
         # construct initial state: make all defaults available, then set as
         # many values as we can
-        self._defaults = dict(self._defaults)
-        self._defaults.update(state)
+        defaults = dict(self._defaults)
+        if defaults:
+            warn("The MneExperiment._defaults attributed is deprecated. Use "
+                 "MneExperiment.defaults instead.", DeprecationWarning)
+        defaults.update(self.defaults)
+        defaults.update(state)
+        self.defaults = defaults
         for k, v in self._templates.iteritems():
             if v is None:  # secondary field
                 pass
@@ -274,7 +281,7 @@ class TreeModel(object):
         if post_set_handler is not None:
             self._bind_post_set(key, post_set_handler)
 
-        default = self._defaults.get(key, default)
+        default = self.defaults.get(key, default)
 
         if values is not None:
             if default is None:
