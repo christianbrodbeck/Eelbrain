@@ -69,6 +69,7 @@ import logging
 import os
 import re
 import shutil
+from warnings import warn
 
 import numpy as np
 
@@ -1156,7 +1157,7 @@ class MneExperiment(FileTree):
                 self.set(**{field: value})
                 yield value
 
-    def label_events(self, ds, experiment, subject):
+    def label_events(self, ds, experiment=None, subject=None):
         """
         Adds T (time) and SOA (stimulus onset asynchrony) to the Dataset.
 
@@ -1165,15 +1166,15 @@ class MneExperiment(FileTree):
         ds : Dataset
             A Dataset containing events (as returned by
             :func:`load.fiff.events`).
-        experiment : str
-            Name of the experiment.
-        subject : str
-            Name of the subject.
 
         Notes
         -----
         Subclass this method to specify events.
         """
+        if experiment is not None or subject is not None:
+            warn("MneExperiment.label_events() should take only a single "
+                 "argument, the Dataset.", DeprecationWarning)
+
         if 'raw' in ds.info:
             raw = ds.info['raw']
             sfreq = raw.info['sfreq']
@@ -1181,7 +1182,7 @@ class MneExperiment(FileTree):
             ds['SOA'] = Var(np.ediff1d(ds['T'].x, 0))
 
         # add subject label
-        ds['subject'] = Factor([subject] * ds.n_cases, random=True)
+        ds['subject'] = Factor([ds.info['subject']], repeat=ds.n_cases, random=True)
         return ds
 
     def label_subjects(self, ds):
@@ -1463,7 +1464,8 @@ class MneExperiment(FileTree):
                 save.pickle(ds, evt_file)
 
         ds.info['raw'] = raw
-        ds = self.label_events(ds, self.get('experiment'), subject)
+        ds.info['subject'] = subject
+        ds = self.label_events(ds)
         if ds is None:
             msg = ("The MneExperiment.label_events() function must return the "
                    "events-Dataset")
