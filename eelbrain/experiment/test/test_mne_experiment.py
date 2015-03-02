@@ -1,7 +1,17 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from nose.tools import eq_, assert_raises
+from numpy.testing import assert_equal
 
-from eelbrain import MneExperiment
+from eelbrain import Dataset, Factor, Var, MneExperiment
+from ..._utils.testing import assert_dataobj_equal
+
+
+class EventExperiment(MneExperiment):
+
+    variables = {'name': {0: 'Leicester', 1: 'Tilsit', 2: 'Caerphilly',
+                          3: 'Bel Paese'},
+                 'backorder': {(0, 3): 'no', (1, 2): 'yes'}}
+
 
 def test_mne_experiment_templates():
     "Test MneExperiment template formatting"
@@ -33,3 +43,19 @@ def test_mne_experiment_templates():
     eq_(e.get('inv'), 'loose.5-3-sLORETA')
     eq_(e._params['make_inv_kw'], {'loose': 0.5})
     eq_(e._params['apply_inv_kw'], {'method': 'sLORETA', 'lambda2': 1. / 3**2})
+
+
+def test_test_experiment():
+    "Test event labeling with the EventExperiment subclass of MneExperiment"
+    e = EventExperiment('', False)
+    SUBJECT = 'CheeseMonger'
+
+    # test event labeling
+    trigger = Var([0, 1, 2, 3], tile=2, name='trigger')
+    ds_in = Dataset((trigger,), info={'subject': SUBJECT})
+    ds = e.label_events(ds_in)
+    name = Factor([e.variables['name'][t] for t in trigger], name='name')
+    assert_dataobj_equal(ds['name'], name)
+    assert_dataobj_equal(ds['backorder'], trigger.as_factor(e.variables['backorder'],
+                                                            'backorder'))
+    assert_equal(ds['subject'] == SUBJECT, True)

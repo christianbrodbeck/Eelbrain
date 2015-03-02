@@ -89,7 +89,8 @@ from .. import Dataset, Factor, Var, NDVar, combine
 from .._info import BAD_CHANNELS
 from .._mne import source_induced_power, dissolve_label, rename_label
 from ..mne_fixes import write_labels_to_annot
-from .._data_obj import align, UTS, DimensionMismatchError
+from .._data_obj import (align, UTS, DimensionMismatchError,
+                         assert_is_legal_dataset_key)
 from ..fmtxt import List, Report
 from .._resources import predefined_connectivity
 from .._utils import subp, ui, keydefaultdict
@@ -261,6 +262,9 @@ class MneExperiment(FileTree):
     # Experiment Constants
     # ====================
 
+    # variables for automatic labeling {name: {trigger: label, triggers: label}}
+    variables = {}
+
     # Default values for epoch definitions
     epoch_default = {'tmin':-0.1, 'tmax': 0.6, 'decim': 5, 'baseline': (None, 0)}
 
@@ -415,6 +419,24 @@ class MneExperiment(FileTree):
         for cls in reversed(inspect.getmro(self.__class__)):
             if hasattr(cls, '_values'):
                 self._templates.update(cls._values)
+
+        # variables
+        self.variables = self.variables.copy()
+        for k, v in self.variables.iteritems():
+            assert_is_legal_dataset_key(k)
+            for trigger, name in v.iteritems():
+                if not isinstance(name, basestring):
+                    raise TypeError("Invalid cell name in variable "
+                                    "definition: %s" % repr(name))
+
+                if isinstance(trigger, tuple):
+                    isint = all(isinstance(t, int) for t in trigger)
+                else:
+                    isint = isinstance(trigger, int)
+
+                if not isint:
+                    raise TypeError("Invalid trigger code in variable "
+                                    "definition : %s" % repr(trigger))
 
         # epochs
         epochs = {}
@@ -1180,6 +1202,9 @@ class MneExperiment(FileTree):
             sfreq = raw.info['sfreq']
             ds['T'] = ds['i_start'] / sfreq
             ds['SOA'] = Var(np.ediff1d(ds['T'].x, 0))
+
+        for name, coding in self.variables.iteritems():
+            ds[name] = ds['trigger'].as_factor(coding, name)
 
         # add subject label
         ds['subject'] = Factor([ds.info['subject']], repeat=ds.n_cases, random=True)
