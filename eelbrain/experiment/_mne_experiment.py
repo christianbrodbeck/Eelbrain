@@ -975,6 +975,33 @@ class MneExperiment(FileTree):
         for src, dst in pairs:
             shutil.copy2(src, dst)
 
+    def clear_cache(self, level=1):
+        """Remove cached files.
+
+        Parameters
+        ----------
+        level : int
+            Level up to which to clear the cache (see notes below). The default
+            is 1, which deletes all cached files.
+
+        Notes
+        -----
+        Each lower level subsumes the higher levels:
+
+        1. data files - these need to be cleared when anything about the
+           epoch definition changes (tmin, tmax, event inclusion, ...). Note
+           that you might also have to manually update epoch rejection files
+           with the :meth:`MneExperiment.make_rej` method.
+        5. tests - these need to be cleared when the members of the relevant
+           subject groups change.
+        """
+        if level <= 1:
+            self.rm('cache-dir', confirm=True)
+            print "Cached data cleared."
+        else:
+            self.rm('test-dir', confirm=True)
+            print "Cached tests cleared."
+
     def _fix_eeg_ndvar(self, ndvar, apply_standard_montag):
         # connectivity
         ndvar.sensor.set_connectivity(predefined_connectivity('BrainCap32Ch'))
