@@ -22,6 +22,7 @@ import wx
 
 from .. import load, save, plot
 from .._data_obj import Dataset, Factor, Var, corr, asndvar
+from .._info import BAD_CHANNELS
 from ..plot._base import find_fig_vlims
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
@@ -304,8 +305,8 @@ class Document(object):
         else:
             tag = Factor([''], repeat=self.n_epochs, name='rej_tag')
 
-        if 'bad_channels' in ds.info:
-            bad_channels = self.epochs.sensor.dimindex(ds.info['bad_channels'])
+        if BAD_CHANNELS in ds.info:
+            bad_channels = self.epochs.sensor.dimindex(ds.info[BAD_CHANNELS])
         else:
             bad_channels = []
 
@@ -316,7 +317,7 @@ class Document(object):
         _, ext = os.path.splitext(self.path)
 
         # create Dataset to save
-        info = {'bad_channels': self.bad_channel_names}
+        info = {BAD_CHANNELS: self.bad_channel_names}
         ds = Dataset((self.trigger, self.accept, self.tag), info=info)
 
         if ext == '.pickled':

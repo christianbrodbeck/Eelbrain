@@ -109,6 +109,7 @@ from mne.io import Raw as _mne_Raw
 from mne.io import read_raw_kit as _mne_read_raw_kit
 
 from .. import _colorspaces as _cs
+from .._info import BAD_CHANNELS
 from .._utils import ui, logger
 from .._data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS
 
@@ -482,6 +483,9 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, target='epochs',
     of the Dataset is made containing only those events also contained in the
     Epochs. Note that the Epochs are always loaded with ``preload==True``.
 
+    If the Dataset's info dictionary contains a 'bad_channels' entry, those bad
+    channels are added to the epochs.
+
 
     Parameters
     ----------
@@ -497,10 +501,9 @@ def add_mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, target='epochs',
         correction (default).
     target : str
         Name for the Epochs object in the Dataset.
-    kwargs :
+    *others* :
         Any additional keyword arguments are forwarded to the mne Epochs
         object initialization.
-
     """
     kwargs['preload'] = True
     epochs_ = mne_epochs(ds, tmin, tmax, baseline, **kwargs)
@@ -570,6 +573,20 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
         logger.warn("%s: MNE generated fewer Epochs than there are events. "
                     "The raw file might end before the end of the last epoch."
                     % raw.info['filename'])
+
+    #  add bad channels from ds
+    if BAD_CHANNELS in ds.info:
+        invalid = []
+        for ch_name in ds.info[BAD_CHANNELS]:
+            if ch_name not in epochs.ch_names:
+                invalid.append(ch_name)
+            elif ch_name not in epochs.info['bads']:
+                epochs.info['bads'].append(ch_name)
+        if invalid:
+            suffix = 's' * bool(invalid)
+            raise ValueError("Invalid channel%s in ds.info[%r]: %s"
+                             % (suffix, BAD_CHANNELS, ', '.join(invalid)))
+
     return epochs
 
 

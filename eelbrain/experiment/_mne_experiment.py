@@ -85,6 +85,7 @@ from .. import save
 from .. import table
 from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
+from .._info import BAD_CHANNELS
 from .._mne import source_induced_power, dissolve_label, rename_label
 from ..mne_fixes import write_labels_to_annot
 from .._data_obj import align, UTS, DimensionMismatchError
@@ -1806,8 +1807,18 @@ class MneExperiment(FileTree):
                 dss = [self.load_selected_events(subject, reject, add_proj,
                                                  add_bads, index, epoch=sub_epoch)
                        for sub_epoch in sub_epochs]
+
+                # combine bad channels
+                bad_channels = set()
+                for ds in dss:
+                    if BAD_CHANNELS in ds.info:
+                        bad_channels.update(ds.info[BAD_CHANNELS])
+
                 ds = combine(dss)
                 ds.info['raw'] = dss[0].info['raw']
+                if bad_channels:
+                    ds.info[BAD_CHANNELS] = sorted(bad_channels)
+
             return ds
         elif sel_epoch is not None:
             with self._temporary_state:
@@ -1846,6 +1857,7 @@ class MneExperiment(FileTree):
                        ".make_rej() first." % path)
                 raise RuntimeError(err)
 
+            # load and check file
             ds_sel = load.unpickle(path)
             if not np.all(ds['trigger'] == ds_sel['trigger']):
                 if np.all(ds[:-1, 'trigger'] == ds_sel['trigger']):
@@ -1857,6 +1869,7 @@ class MneExperiment(FileTree):
                            "events than the data. Something went wrong...")
                     raise RuntimeError(err)
 
+            # subset events
             if reject == 'keep':
                 ds['accept'] = ds_sel['accept']
             elif reject == True:
@@ -1865,6 +1878,10 @@ class MneExperiment(FileTree):
                 err = ("reject parameter must be bool or 'keep', not "
                        "%r" % reject)
                 raise ValueError(err)
+
+            # bad channels
+            if add_bads and BAD_CHANNELS in ds_sel.info:
+                ds.info[BAD_CHANNELS] = ds_sel.info[BAD_CHANNELS]
         else:
             use = self._params['rej'].get('edf', False)
             if use:
