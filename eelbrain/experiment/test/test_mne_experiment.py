@@ -12,6 +12,9 @@ class EventExperiment(MneExperiment):
                           3: 'Bel Paese'},
                  'backorder': {(0, 3): 'no', (1, 2): 'yes'}}
 
+    defaults = {'experiment': 'cheese',
+                'model': 'name'}
+
 
 def test_mne_experiment_templates():
     "Test MneExperiment template formatting"
@@ -49,6 +52,10 @@ def test_test_experiment():
     "Test event labeling with the EventExperiment subclass of MneExperiment"
     e = EventExperiment('', False)
     SUBJECT = 'CheeseMonger'
+
+    # test defaults
+    eq_(e.get('experiment'), 'cheese')
+    eq_(e.get('model'), 'name')
 
     # test event labeling
     trigger = Var([0, 1, 2, 3], tile=2, name='trigger')
