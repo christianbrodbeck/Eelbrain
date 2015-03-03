@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from glob import glob
+import inspect
 from itertools import chain, product
 import os
 import re
@@ -176,7 +177,7 @@ class TreeModel(object):
 
         if self.owner:
             task = self.__class__.__name__
-            self.notification = Notifier(self.owner, task, self.show_state)
+            self.notification = Notifier(self.owner, task, self._crash_report)
 
     def __repr__(self):
         args = [repr(self._fields[arg]) for arg in self._repr_args]
@@ -211,6 +212,11 @@ class TreeModel(object):
         if key in self._set_handlers:
             raise KeyError("set-handler for %r already set" % key)
         self._set_handlers[key] = handler
+
+    def _crash_report(self):
+        source = inspect.getsource(self.__class__)
+        tree = str(self.show_state())
+        return '\n\n\n'.join((source, tree))
 
     def _find_missing_fields(self):
         """Check that all field names occurring in templates are valid entries

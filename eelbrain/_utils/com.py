@@ -60,7 +60,7 @@ class Notifier(object):
     ...
 
     """
-    def __init__(self, to, name='job', state_func=None, debug=True):
+    def __init__(self, to, name='job', crash_info_func=None, debug=True):
         """
         Parameters
         ----------
@@ -68,7 +68,7 @@ class Notifier(object):
             Email address of the recipient.
         name : str
             Name of the job (will be included in subject line).
-        state_func : None | callable
+        crash_info_func : None | callable
             Will be called upon crash to produce a string that will be included
             in the crash report.
         debug : bool
@@ -86,7 +86,7 @@ class Notifier(object):
 
         self.to = to
         self.name = name
-        self.state_func = state_func
+        self.crash_info_func = crash_info_func
         self.debug = debug
         self._password = password
 
@@ -103,11 +103,6 @@ class Notifier(object):
                                 task=self.name)
             info = []
 
-            # state description
-            if self.state_func:
-                state_desc = self.state_func()
-                info.append(state_desc)
-
             # traceback
             tb_items = traceback.format_tb(traceback_)
             tb_str = '\n'.join(tb_items)
@@ -120,6 +115,11 @@ class Notifier(object):
                 info.append("Starting PDB...")
             else:
                 info.append("Terminating...")
+
+            # object info
+            if self.crash_info_func:
+                state_desc = self.crash_info_func()
+                info.append(state_desc)
 
             self.send(event, info)
 
