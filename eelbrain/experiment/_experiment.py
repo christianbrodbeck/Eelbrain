@@ -163,8 +163,8 @@ class TreeModel(object):
         defaults.update(state)
         self.defaults = defaults
         for k, v in self._templates.iteritems():
-            if v is None:  # secondary field
-                pass
+            if v is None:  # field that needs a default value
+                self._register_field(k)
             elif isinstance(v, basestring):
                 self._register_field(k, None, v)
             elif isinstance(v, tuple):
