@@ -10,7 +10,8 @@ class EventExperiment(MneExperiment):
 
     variables = {'name': {0: 'Leicester', 1: 'Tilsit', 2: 'Caerphilly',
                           3: 'Bel Paese'},
-                 'backorder': {(0, 3): 'no', (1, 2): 'yes'}}
+                 'backorder': {(0, 3): 'no', (1, 2): 'yes'},
+                 'taste': {(0, 1): 'good', 'default': 'bad'}}
 
     defaults = {'experiment': 'cheese',
                 'model': 'name'}
@@ -65,4 +66,6 @@ def test_test_experiment():
     assert_dataobj_equal(ds['name'], name)
     assert_dataobj_equal(ds['backorder'], trigger.as_factor(e.variables['backorder'],
                                                             'backorder'))
+    assert_dataobj_equal(ds['taste'], trigger.as_factor(e.variables['taste'],
+                                                        'taste'))
     assert_equal(ds['subject'] == SUBJECT, True)

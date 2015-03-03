@@ -434,19 +434,20 @@ class MneExperiment(FileTree):
         self.variables = self.variables.copy()
         for k, v in self.variables.iteritems():
             assert_is_legal_dataset_key(k)
+            triggers = []
             for trigger, name in v.iteritems():
                 if not isinstance(name, basestring):
                     raise TypeError("Invalid cell name in variable "
                                     "definition: %s" % repr(name))
 
                 if isinstance(trigger, tuple):
-                    isint = all(isinstance(t, int) for t in trigger)
+                    triggers.extend(trigger)
                 else:
-                    isint = isinstance(trigger, int)
+                    triggers.append(trigger)
 
-                if not isint:
-                    raise TypeError("Invalid trigger code in variable "
-                                    "definition : %s" % repr(trigger))
+            if not all(isinstance(t, int) or t == 'default' for t in triggers):
+                raise TypeError("Invalid trigger code in variable "
+                                "definition : %s" % repr(trigger))
 
         # epochs
         epochs = {}

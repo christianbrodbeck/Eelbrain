@@ -1412,7 +1412,8 @@ class Var(object):
             Dictionary mapping values to labels, or format string for
             converting values into labels (default: ``'%r'``). Multiple values
             can be assigned the same label by providing multiple keys in a
-            tuple (see examples).
+            tuple. A special key 'default' can be used to assign values that
+            are not otherwise specified (see examples).
         name : None | True | str
             Name of the output Factor, ``True`` to keep the current name
             (default ``True``).
@@ -1428,25 +1429,32 @@ class Var(object):
         Factor(['a', 'b', '2', '3'])
         >>> v.as_factor({(0, 1): 'a', (2, 3): 'b'})
         Factor(['a', 'a', 'b', 'b'])
+        >>> v.as_factor({0: 'a', 1: 'b', 'default': 'c'})
+        Factor(['a', 'b', 'c', 'c'])
         """
+        labels_ = {}
         if isinstance(labels, dict):
-            for k in labels.keys():
-                if isinstance(k, (tuple, list)):
-                    v = labels[k]
-                    for item in k:
-                        if item in labels:
-                            raise ValueError("Duplicate key: %s" % repr(item))
-                        labels[item] = v
+            # flatten
+            for key, v in labels.iteritems():
+                if isinstance(key, (tuple, list)):
+                    for k in key:
+                        labels_[k] = v
+                else:
+                    labels_[key] = v
+
+            default = labels_.pop('default', None)
+            if default:
+                for key in np.unique(self.x):
+                    if key not in labels_:
+                        labels_[key] = default
         else:
-            fmt = labels
-            labels = {}
             for value in np.unique(self.x):
-                labels[value] = fmt % value
+                labels_[value] = labels % value
 
         if name is True:
             name = self.name
 
-        return Factor(self.x, name, random, labels=labels)
+        return Factor(self.x, name, random, labels=labels_)
 
     def centered(self):
         return self.x - self.x.mean()
