@@ -145,10 +145,10 @@ temp = {# MEG
         # locations
         'meg-sdir': os.path.join('{root}', 'meg'),
         'meg-dir': os.path.join('{meg-sdir}', '{subject}'),
-        'raw-dir': os.path.join('{meg-dir}', 'raw'),
+        'raw-dir': '{meg-dir}',
 
         # raw input files
-        'raw-file': os.path.join('{raw-dir}', '{subject}_{experiment}_{raw-kind}-raw.fif'),
+        'raw-file': os.path.join('{raw-dir}', '{subject}_{experiment}-raw.fif'),
         'trans-file': os.path.join('{raw-dir}', '{mrisubject}-trans.fif'),
         # log-files (eye-tracker etc.)
         'log-dir': os.path.join('{meg-dir}', 'logs'),
@@ -259,6 +259,8 @@ class MneExperiment(FileTree):
     """:class:`FileTree` subclass for analyzing an MEG experiment with MNE
 
     """
+    path_version = None
+
     # Experiment Constants
     # ====================
 
@@ -416,6 +418,14 @@ class MneExperiment(FileTree):
         self._mri_subjects = self._mri_subjects.copy()
         self._label_cache = PickleCache()
         self._templates = self._templates.copy()
+        # templates version
+        if self.path_version is None or self.path_version == 0:
+            self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
+            self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
+                                              '{experiment}_{raw-kind}-raw.fif')
+        elif self.path_version != 1:
+            raise ValueError("path_version needs to be 0 or 1")
+        # update templates with _values
         for cls in reversed(inspect.getmro(self.__class__)):
             if hasattr(cls, '_values'):
                 self._templates.update(cls._values)
