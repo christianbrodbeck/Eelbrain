@@ -126,6 +126,7 @@ class TreeModel(object):
     end of initialization.
     """
     owner = None  # email address as string (for notification)
+    _auto_debug = False  # in notification block
 
     _fmt_pattern = re.compile('\{([\w-]+)\}')
 
@@ -177,7 +178,8 @@ class TreeModel(object):
 
         if self.owner:
             task = self.__class__.__name__
-            self.notification = Notifier(self.owner, task, self._crash_report)
+            self.notification = Notifier(self.owner, task, self._crash_report,
+                                         self._auto_debug)
 
     def __repr__(self):
         args = [repr(self._fields[arg]) for arg in self._repr_args]
