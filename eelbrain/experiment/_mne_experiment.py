@@ -4082,3 +4082,12 @@ class MneExperiment(FileTree):
             return ds
         else:
             return ds.as_table(midrule=True, count=True)
+
+    def show_input_tree(self):
+        """Print a tree of the files needed as input
+
+        See Also
+        --------
+        show_tree: show complete tree (including secondary, optional and cache)
+        """
+        return self.show_tree(fields=['raw-file', 'trans-file', 'mri-dir'])

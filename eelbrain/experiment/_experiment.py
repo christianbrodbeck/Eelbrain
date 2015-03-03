@@ -684,7 +684,7 @@ class TreeModel(object):
 
         return table
 
-    def show_tree(self, root='root'):
+    def show_tree(self, root='root', fields=None):
         """
         Print a tree of the filehierarchy implicit in the templates
 
@@ -692,13 +692,27 @@ class TreeModel(object):
         ----------
         root : str
             Name of the root template (e.g., 'besa-root').
+        fields : list of str
+            Which fields to include in the tree (default is all).
         """
-        tree = {'.': root}
+        if fields is None:
+            fields = self._fields
+        else:
+            # find all implied fields
+            new_fields = set(fields)
+            fields = {}
+            while new_fields:
+                k = new_fields.pop()
+                fields[k] = v = self._fields[k]
+                new_fields.update([f for f in self._fmt_pattern.findall(v) if
+                                   f not in fields])
+
+        tree = {'.': self.get(root)}
         root_temp = '{%s}' % root
-        for k, v in self._fields.iteritems():
+        for k, v in fields.iteritems():
             if str(v).startswith(root_temp):
                 tree[k] = {'.': v.replace(root_temp, '')}
-        _etree_expand(tree, self._fields)
+        _etree_expand(tree, fields)
         nodes = _etree_node_repr(tree, root)
         name_len = max(len(n) for n, _ in nodes)
         path_len = max(len(p) for _, p in nodes)
