@@ -105,21 +105,13 @@ class Notifier(object):
 
             # traceback
             tb_items = traceback.format_tb(traceback_)
+            tb_items.append("%s: %s\n" % (error, value))
             tb_str = '\n'.join(tb_items)
             info.append(tb_str)
 
-            # error
-            info.append("%s: %s" % (error, value))
-
-            if self.debug:
-                info.append("Starting PDB...")
-            else:
-                info.append("Terminating...")
-
             # object info
             if self.crash_info_func:
-                state_desc = self.crash_info_func()
-                info.append(state_desc)
+                info.extend(self.crash_info_func())
 
             self.send(event, info)
 
@@ -141,5 +133,5 @@ class Notifier(object):
         info : list of str
             Email body; successive entries are joined with two line breaks.
         """
-        body = '\n\n'.join(map(unicode, info))
+        body = '\n\n\n'.join(map(unicode, info))
         send_email(self.to, subject, body, self._password)

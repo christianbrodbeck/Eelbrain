@@ -218,7 +218,14 @@ class TreeModel(object):
     def _crash_report(self):
         source = inspect.getsource(self.__class__)
         tree = str(self.show_state())
-        return '\n\n\n'.join((source, tree))
+
+        # package versions
+        from .. import __version__
+        import mne
+        versions = '\n'.join(("Eelbrain %s" % __version__,
+                              "mne-python %s" % mne.__version__))
+
+        return source, tree, versions
 
     def _find_missing_fields(self):
         """Check that all field names occurring in templates are valid entries
