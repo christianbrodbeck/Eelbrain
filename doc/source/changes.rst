@@ -26,7 +26,7 @@ New in 0.13
     :attr:`MneExperiment.defaults`.
   - A draft for a guide at :ref:`experiment-class-guide`.
   - Cached files are now saved in a separate folder at ``root/eelbrain-cache``.
-    The cache can be cleared using :meth:`MneExperiment.clear-cache`. To
+    The cache can be cleared using :meth:`MneExperiment.clear_cache`. To
     preserve cached test results, move the ``root/test`` folder into the
     ``root/eelbrain-cache`` folder.
 
