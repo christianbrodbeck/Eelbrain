@@ -10,7 +10,8 @@ import mne
 from nose.tools import (eq_, ok_, assert_almost_equal, assert_is_instance,
                         assert_raises)
 import numpy as np
-from numpy.testing import assert_array_equal, assert_array_almost_equal
+from numpy.testing import (assert_equal, assert_array_equal,
+                           assert_array_almost_equal)
 
 from eelbrain import (datasets, load, Var, Factor, NDVar, Dataset, Celltable,
                       align, align1, combine)
@@ -451,11 +452,65 @@ def test_ndvar():
     ds = datasets.get_uts(utsnd=True)
     x = ds['utsnd']
 
-    # slicing
+    # meaningful slicing
     assert_raises(KeyError, x.sub, sensor='5')
-    eq_(x.sub(sensor='4').ndim, 2)
-    eq_(x.sub(sensor=['4']).ndim, 3)
-    eq_(x.sub(case=1, sensor='4').ndim, 1)
+    assert_equal(x.sub(sensor='4'), x.x[:, 4])
+    # assert_equal(x.sub(sensor=['4', '3', '2']), x.x[:, [4, 3, 2]])
+    assert_raises(NotImplementedError, x.sub, sensor=['4', '3', '2'])
+    assert_equal(x.sub(sensor=['4']), x.x[:, [4]])
+    assert_equal(x.sub(case=1, sensor='4'), x.x[1, 4])
+
+    # setup indices
+    s_case = slice(10, 13)
+    s_sensor = slice(2, 4)
+    s_time = x.time._slice(0.1, 0.2)
+    b_case = np.zeros(ds.n_cases, dtype=bool)
+    b_case[s_case] = True
+    b_sensor = np.array([False, False, True, True, False])
+    b_time = np.arange(s_time.start, s_time.stop)
+    a_case = np.arange(10, 13)
+    a_sensor = np.arange(2, 4)
+    a_time = np.arange(x.time.dimindex(0.1), x.time.dimindex(0.2))
+
+    # slicing with different index kinds
+    tgt = x.x[s_case, s_sensor, s_time]
+    eq_(tgt.shape, (3, 2, 10))
+    # single
+    assert_equal(x.sub(case=s_case, sensor=s_sensor, time=s_time), tgt)
+    assert_equal(x.sub(case=a_case, sensor=a_sensor, time=a_time), tgt)
+    assert_equal(x.sub(case=b_case, sensor=b_sensor, time=b_time), tgt)
+    # bool & slice
+    assert_equal(x.sub(case=b_case, sensor=s_sensor, time=s_time), tgt)
+    assert_equal(x.sub(case=s_case, sensor=b_sensor, time=s_time), tgt)
+    assert_equal(x.sub(case=s_case, sensor=s_sensor, time=b_time), tgt)
+    assert_equal(x.sub(case=b_case, sensor=b_sensor, time=s_time), tgt)
+    assert_equal(x.sub(case=s_case, sensor=b_sensor, time=b_time), tgt)
+    assert_equal(x.sub(case=b_case, sensor=s_sensor, time=b_time), tgt)
+    # bool & array
+    assert_equal(x.sub(case=b_case, sensor=a_sensor, time=a_time), tgt)
+    assert_equal(x.sub(case=a_case, sensor=b_sensor, time=a_time), tgt)
+    assert_equal(x.sub(case=a_case, sensor=a_sensor, time=b_time), tgt)
+    assert_equal(x.sub(case=b_case, sensor=b_sensor, time=a_time), tgt)
+    assert_equal(x.sub(case=a_case, sensor=b_sensor, time=b_time), tgt)
+    assert_equal(x.sub(case=b_case, sensor=a_sensor, time=b_time), tgt)
+    # slice & array
+    assert_equal(x.sub(case=s_case, sensor=a_sensor, time=a_time), tgt)
+    assert_equal(x.sub(case=a_case, sensor=s_sensor, time=a_time), tgt)
+    assert_equal(x.sub(case=a_case, sensor=a_sensor, time=s_time), tgt)
+    assert_equal(x.sub(case=s_case, sensor=s_sensor, time=a_time), tgt)
+    assert_equal(x.sub(case=a_case, sensor=s_sensor, time=s_time), tgt)
+    assert_equal(x.sub(case=s_case, sensor=a_sensor, time=s_time), tgt)
+    # all three
+    assert_equal(x.sub(case=a_case, sensor=b_sensor, time=s_time), tgt)
+    assert_equal(x.sub(case=a_case, sensor=s_sensor, time=b_time), tgt)
+    assert_equal(x.sub(case=b_case, sensor=a_sensor, time=s_time), tgt)
+    assert_equal(x.sub(case=b_case, sensor=s_sensor, time=a_time), tgt)
+    assert_equal(x.sub(case=s_case, sensor=a_sensor, time=b_time), tgt)
+    assert_equal(x.sub(case=s_case, sensor=b_sensor, time=a_time), tgt)
+
+    # Var
+    v_case = Var(b_case)
+    assert_equal(x.sub(case=v_case, sensor=b_sensor, time=a_time), tgt)
 
     # baseline correction
     x_bl = x - x.summary(time=(None, 0))
