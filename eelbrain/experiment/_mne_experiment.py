@@ -4054,7 +4054,7 @@ class MneExperiment(FileTree):
         """
         # caption
         if caption is True:
-            caption = self.format("Subject in group {group}")
+            caption = self.format("Subjects in group {group}")
 
         subject_list = []
         mri_list = []
