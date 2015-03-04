@@ -6032,19 +6032,20 @@ class Sensor(Dimension):
 
     def dimindex(self, arg):
         "Convert dimension indexes into numpy indexes"
-        if isinstance(arg, basestring):
-            idx = self.channel_idx[arg]
+        if isinstance(arg, (slice, int)):
+            return arg
+        elif isinstance(arg, basestring):
+            return self.channel_idx[arg]
         elif isinstance(arg, Sensor):
-            idx = np.array([self.names.index(name) for name in arg.names])
-        elif np.iterable(arg):
-            if (isinstance(arg, np.ndarray) and
-                        issubclass(arg.dtype.type, (np.bool_, np.integer))):
-                idx = arg
-            else:
-                idx = map(self._dimindex_map, arg)
+            return np.array([self.names.index(name) for name in arg.names])
+        elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'bi':
+            return arg
+        elif isinstance(arg, (list, tuple)):
+            return map(self._dimindex_map, arg)
+        elif isvar(arg):
+            return self.dimindex(arg.x)
         else:
-            idx = arg
-        return idx
+            raise TypeError("Unknown index type: %s" % repr(arg))
 
     def _dimindex_map(self, name):
         "Convert any index to a proper int"
