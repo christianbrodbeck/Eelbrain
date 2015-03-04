@@ -42,13 +42,13 @@ def test_mne_experiment_templates():
     assert_raises(IOError, e.get, 'raw-file', mkdir=True)
 
     # compounds
-    eq_(e.get('src-kind'), 'clm bestreg free-3-dSPM')
+    eq_(e.get('src-kind'), '0-40 bestreg free-3-dSPM')
     e.set_inv('fixed')
-    eq_(e.get('src-kind'), 'clm bestreg fixed-3-dSPM')
+    eq_(e.get('src-kind'), '0-40 bestreg fixed-3-dSPM')
     e.set(cov='noreg')
-    eq_(e.get('src-kind'), 'clm noreg fixed-3-dSPM')
-    e.set(raw='0-40')
     eq_(e.get('src-kind'), '0-40 noreg fixed-3-dSPM')
+    e.set(raw='1-40')
+    eq_(e.get('src-kind'), '1-40 noreg fixed-3-dSPM')
 
     # inv
     e.set_inv('free', 3, 'dSPM', .8, True)
