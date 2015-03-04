@@ -539,7 +539,7 @@ class Butterfly(_EelFigure):
 
 class _ax_bfly_epoch:
     def __init__(self, ax, epoch, xlabel=True, ylabel=True, plot_range=True,
-                 traces=None, color=None, lw=0.2, mark=None, mcolor='r',
+                 traces=False, color=None, lw=0.2, mark=None, mcolor='r',
                  mlw=0.8, antialiased=True, state=True, vlims={}):
         """Specific plot for showing a single sensor by time epoch
 
@@ -566,18 +566,30 @@ class _ax_bfly_epoch:
         self._range = None
         self._state_h = []
 
-        self._trace_kwargs = dict(color=color, lw=lw, antialiased=antialiased)
+        # determine whether to plot traces
+        self._do_plot_range = plot_range
+        self._do_plot_traces = traces
+        # determine which lines to mark
+        if mark:
+            mark_sensors = epoch.sensor.dimindex(mark)
+            if traces is not False:
+                if traces is True:
+                    traces = np.arange(len(epoch.sensor))
+                traces = np.setdiff1d(traces, mark_sensors, True)
+        else:
+            mark_sensors = None
+        # determines which lines to plot as normal traces
+        if traces is True:
+            trace_sensors = None
+        else:
+            trace_sensors = traces
+
+        # plotting kwargs
+        self._trace_kwargs = dict(color=color, lw=lw, antialiased=antialiased,
+                                  sensors=trace_sensors)
         self._range_kwargs = dict(color=color, antialiased=antialiased)
         self._mark_kwargs = dict(color=mcolor, lw=mlw, antialiased=antialiased,
-                                 sensors=mark)
-        self._do_plot_range = plot_range
-        if traces is True:
-            self._do_plot_traces = True
-        elif traces is None or traces is False:
-            self._do_plot_traces = False
-        else:
-            self._do_plot_traces = True
-            self._trace_kwargs['sensors'] = traces
+                                 sensors=mark_sensors)
 
         self._tmin = epoch.time[0]
         self._tmax = epoch.time[-1]
