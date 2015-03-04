@@ -1413,7 +1413,7 @@ class MneExperiment(FileTree):
         raw = self.load_raw(add_proj=add_proj, add_bads=add_bads,
                             subject=subject, **kwargs)
 
-        evt_file = self.get('event-file')
+        evt_file = self.get('event-file', mkdir=True)
 
         # search for and check cached version
         ds = None
