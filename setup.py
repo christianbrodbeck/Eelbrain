@@ -18,6 +18,8 @@ http://packages.python.org/py2app
 http://docs.python.org/distutils/index.html
 
 """
+# Setuptools bootstrap module
+# http://pythonhosted.org//setuptools/setuptools.html
 from ez_setup import use_setuptools
 use_setuptools()
 
