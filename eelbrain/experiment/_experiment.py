@@ -902,8 +902,7 @@ class FileTree(TreeModel):
 
     def show_file_status(self, temp, row, col=None, count=True, present='X',
                          absent='-', **kwargs):
-        """
-        Compile a table about the existence of files
+        """Compile a table about the existence of files
 
         Parameters
         ----------
@@ -912,24 +911,15 @@ class FileTree(TreeModel):
         row : str
             Field over which to alternate rows.
         col : None | str
-            Field over which to alternate columns.
+            Field over which to alternate columns (default is a single column).
         count : bool
-            Add a column with a number for each subject.
+            Add a column with a number for each line (default True).
         present : str
-            String to display when a given file is present.
+            String to display when a given file is present (default 'X').
         absent : str
-            String to display when a given file is absent.
+            String to display when a given file is absent (default '-').
         others :
             ``self.iter()`` kwargs.
-
-        Examples
-        --------
-        >>> e.show_file_status('raw-file', 'subject', 'raw')
-             Subject   Clm   Lp40   Hp.1-lp40   Hp1-lp40
-        ------------------------------------------------
-         0   AD001     X     X      X           -
-         1   AD002     X     X      X           -
-        ...
         """
         if col is None:
             ncol = 1
