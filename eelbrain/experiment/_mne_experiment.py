@@ -1447,12 +1447,14 @@ class MneExperiment(FileTree):
 
         ds.info['raw'] = raw
         ds.info['subject'] = subject
-        if len(inspect.getargspec(self.label_events).args) == 2:
+        a = inspect.getargspec(self.label_events)
+        if len(a.args) == 2:
             ds = self.label_events(ds)
         else:
-            warn("MneExperiment subclasses should remove the subject and "
-                 "experiment arguments form the .label_events() method",
-                 DeprecationWarning)
+            if a.defaults != (None, None):
+                warn("MneExperiment subclasses should remove the subject and "
+                     "experiment arguments form the .label_events() method",
+                     DeprecationWarning)
             ds = self.label_events(ds, self.get('experiment'), subject)
 
         if ds is None:
