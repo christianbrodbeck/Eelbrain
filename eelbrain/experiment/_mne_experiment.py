@@ -264,6 +264,9 @@ class MneExperiment(FileTree):
     # Experiment Constants
     # ====================
 
+    # add this value to all trigger times
+    trigger_shift = 0
+
     # variables for automatic labeling {name: {trigger: label, triggers: label}}
     variables = {}
 
@@ -1207,6 +1210,9 @@ class MneExperiment(FileTree):
         if experiment is not None or subject is not None:
             warn("MneExperiment.label_events() should take only a single "
                  "argument, the Dataset.", DeprecationWarning)
+
+        if self.trigger_shift:
+            ds['i_start'] += round(self.trigger_shift * ds.info['raw'].info['sfreq'])
 
         if 'raw' in ds.info:
             raw = ds.info['raw']

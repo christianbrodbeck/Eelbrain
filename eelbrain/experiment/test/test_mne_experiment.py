@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from nose.tools import eq_, assert_raises
+import numpy as np
 from numpy.testing import assert_equal
 
 from eelbrain import Dataset, Factor, Var, MneExperiment
@@ -8,13 +9,29 @@ from ..._utils.testing import assert_dataobj_equal
 
 class EventExperiment(MneExperiment):
 
-    variables = {'name': {0: 'Leicester', 1: 'Tilsit', 2: 'Caerphilly',
-                          3: 'Bel Paese'},
-                 'backorder': {(0, 3): 'no', (1, 2): 'yes'},
-                 'taste': {(0, 1): 'good', 'default': 'bad'}}
+    trigger_shift = 0.03
+
+    variables = {'name': {1: 'Leicester', 2: 'Tilsit', 3: 'Caerphilly',
+                          4: 'Bel Paese'},
+                 'backorder': {(4, 4): 'no', (2, 3): 'yes'},
+                 'taste': {(1, 2): 'good', 'default': 'bad'}}
 
     defaults = {'experiment': 'cheese',
                 'model': 'name'}
+
+
+SUBJECT = 'CheeseMonger'
+SFREQ = 1000.
+TRIGGERS = np.tile(np.arange(1, 5), 2)
+I_START = np.arange(1001, 1441, 55)
+
+
+def gen_triggers():
+    raw = Var([], info={'sfreq': SFREQ})
+    ds = Dataset(info={'subject': SUBJECT, 'raw': raw})
+    ds['trigger'] = Var(TRIGGERS)
+    ds['i_start'] = Var(I_START)
+    return ds
 
 
 def test_mne_experiment_templates():
@@ -52,20 +69,22 @@ def test_mne_experiment_templates():
 def test_test_experiment():
     "Test event labeling with the EventExperiment subclass of MneExperiment"
     e = EventExperiment('', False)
-    SUBJECT = 'CheeseMonger'
 
     # test defaults
     eq_(e.get('experiment'), 'cheese')
     eq_(e.get('model'), 'name')
 
     # test event labeling
-    trigger = Var([0, 1, 2, 3], tile=2, name='trigger')
-    ds_in = Dataset((trigger,), info={'subject': SUBJECT})
-    ds = e.label_events(ds_in)
-    name = Factor([e.variables['name'][t] for t in trigger], name='name')
+    ds = e.label_events(gen_triggers())
+    name = Factor([e.variables['name'][t] for t in TRIGGERS], name='name')
     assert_dataobj_equal(ds['name'], name)
-    assert_dataobj_equal(ds['backorder'], trigger.as_factor(e.variables['backorder'],
-                                                            'backorder'))
-    assert_dataobj_equal(ds['taste'], trigger.as_factor(e.variables['taste'],
-                                                        'taste'))
+    tgt = ds['trigger'].as_factor(e.variables['backorder'], 'backorder')
+    assert_dataobj_equal(ds['backorder'], tgt)
+    tgt = ds['trigger'].as_factor(e.variables['taste'],'taste')
+    assert_dataobj_equal(ds['taste'], tgt)
+    assert_equal(ds['i_start'], I_START + round((0.03 * SFREQ)))
     assert_equal(ds['subject'] == SUBJECT, True)
+    # test without trigger shift
+    e.trigger_shift = 0
+    ds = e.label_events(gen_triggers())
+    assert_equal(ds['i_start'], I_START)
