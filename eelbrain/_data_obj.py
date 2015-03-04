@@ -3554,6 +3554,9 @@ class NDVar(object):
             dimax = self.get_axis(name)
             dim = self.dims[dimax]
 
+            if isinstance(arg, Var):
+                arg = arg.x
+
             if hasattr(dim, 'dimindex'):
                 idx = dim.dimindex(arg)
             else:
