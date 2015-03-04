@@ -455,8 +455,7 @@ def test_ndvar():
     # meaningful slicing
     assert_raises(KeyError, x.sub, sensor='5')
     assert_equal(x.sub(sensor='4'), x.x[:, 4])
-    # assert_equal(x.sub(sensor=['4', '3', '2']), x.x[:, [4, 3, 2]])
-    assert_raises(NotImplementedError, x.sub, sensor=['4', '3', '2'])
+    assert_equal(x.sub(sensor=['4', '3', '2']), x.x[:, [4, 3, 2]])
     assert_equal(x.sub(sensor=['4']), x.x[:, [4]])
     assert_equal(x.sub(case=1, sensor='4'), x.x[1, 4])
 
@@ -550,6 +549,19 @@ def test_ndvar_binning():
     binned_ndvar = ndvar.bin(0.05)
     assert_array_equal(binned_ndvar.x, 1.)
     eq_(binned_ndvar.shape, (5, 7))
+
+
+def test_ndvar_graph_dim():
+    "Test NDVar dimensions with conectvity graph"
+    ds = datasets.get_uts(utsnd=True)
+    x = ds['utsnd']
+
+    # non-monotonic index
+    sub_mono = x.sub(sensor=['2', '3', '4'])
+    sub_nonmono = x.sub(sensor=['4', '3', '2'])
+    argsort = np.array([2,1,0])
+    conn = argsort[sub_mono.sensor.connectivity().ravel()].reshape((-1, 2))
+    assert_equal(sub_nonmono.sensor.connectivity(), conn)
 
 
 def test_ndvar_summary_methods():

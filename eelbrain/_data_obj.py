@@ -5584,18 +5584,23 @@ def _subgraph_edges(connectivity, int_index):
     "Extract connectivity for a subset of a graph"
     if connectivity is None:
         return None
-    elif np.any(np.diff(int_index) < 1):
-        raise NotImplementedError("Not monotonically increasing index")
-    else:
-        idx = np.logical_and(np.in1d(connectivity[:, 0], int_index),
-                             np.in1d(connectivity[:, 1], int_index))
-        if np.any(idx):
-            new_c = connectivity[idx]
-            # remap to new vertex indices
-            return (np.digitize(new_c.ravel(), int_index, True)
-                    .reshape(new_c.shape).astype(np.uint32))
+
+    idx = np.logical_and(np.in1d(connectivity[:, 0], int_index),
+                         np.in1d(connectivity[:, 1], int_index))
+    if np.any(idx):
+        new_c = connectivity[idx]
+
+        # remap to new vertex indices
+        if np.any(np.diff(int_index) < 1):  # non-monotonic index
+            argsort = np.argsort(int_index)
+            flat_conn_ = np.digitize(new_c.ravel(), int_index[argsort], True)
+            flat_conn = argsort[flat_conn_]
         else:
-            return np.empty((0, 2), dtype=np.uint32)
+            flat_conn = np.digitize(new_c.ravel(), int_index, True)
+
+        return flat_conn.reshape(new_c.shape).astype(np.uint32)
+    else:
+        return np.empty((0, 2), dtype=np.uint32)
 
 
 class Dimension(object):
