@@ -21,7 +21,7 @@ import numpy as np
 import wx
 
 from .. import load, save, plot
-from .._data_obj import Dataset, Factor, Var, corr, asndvar
+from .._data_obj import Dataset, Factor, Var, corr, asndvar, combine
 from .._info import BAD_CHANNELS
 from ..plot._base import find_fig_vlims
 from ..plot._nuts import _plt_bin_nuts
@@ -277,19 +277,31 @@ class Document(object):
             cmd = app.message_box("The File contains more events than the data "
                                   "(%i vs %i). Truncate the file?"
                                   % (ds.n_cases, self.n_epochs),
-                                  "Truncate the file?",
-                                  wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
+                                  "Truncate the file?", wx.OK | wx.CANCEL |
+                                  wx.CANCEL_DEFAULT | wx.ICON_WARNING)
             if cmd == wx.OK:
                 ds = ds[:self.n_epochs]
             else:
                 raise RuntimeError("Unequal number of cases")
         elif ds.n_cases < self.n_epochs:
             app = get_app()
-            app.message_box("The file contains fewer epochs than the data (%i "
-                            "vs %i" % (ds.n_cases, self.n_epochs),
-                            "Unequal number of cases", wx.OK | wx.ICON_ERROR)
-            raise RuntimeError("Unequal number of cases")
-        elif not np.all(ds[self.trigger.name] == self.trigger):
+            cmd = app.message_box("The rejection file contains fewer epochs "
+                                  "than the data (%i vs %i). Load anyways "
+                                  "(epochs missing from the file will be "
+                                  "accepted)?" % (ds.n_cases, self.n_epochs),
+                                  "Load partial file?", wx.OK | wx.CANCEL |
+                                  wx.CANCEL_DEFAULT | wx.ICON_WARNING)
+            if cmd == wx.OK:
+                n_missing = self.n_epochs - ds.n_cases
+                tail = Dataset(info = ds.info)
+                tail['trigger'] = Var(self.trigger[-n_missing:])
+                tail['accept'] = Var([True], repeat=n_missing)
+                tail['tag'] = Factor(['missing'], repeat=n_missing)
+                ds = combine((ds, tail))
+            else:
+                raise RuntimeError("Unequal number of cases")
+
+        if not np.all(ds[self.trigger.name] == self.trigger):
             app = get_app()
             cmd = app.message_box("The file contains different triggers from "
                                   "the data. Ignore?",
