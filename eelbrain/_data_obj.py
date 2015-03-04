@@ -5581,6 +5581,8 @@ def _subgraph_edges(connectivity, int_index):
     "Extract connectivity for a subset of a graph"
     if connectivity is None:
         return None
+    elif np.any(np.diff(int_index) < 1):
+        raise NotImplementedError("Not monotonically increasing index")
     else:
         idx = np.logical_and(np.in1d(connectivity[:, 0], int_index),
                              np.in1d(connectivity[:, 1], int_index))
