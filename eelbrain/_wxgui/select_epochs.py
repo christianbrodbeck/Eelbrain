@@ -598,11 +598,11 @@ class Frame(EelbrainFrame):  # control
                 self._vlims[k] = (-vlim, vlim)
         if plot_range is None:
             plot_range = config.ReadBool('plot_range', True)
-        self._bfly_kwargs = {'plot_range': plot_range, 'color': color, 'lw': lw,
+        self._bfly_kwargs = {'plot_range': plot_range, 'traces': not plot_range,
+                             'mark': mark,  'color': color, 'lw': lw,
                              'mcolor': mcolor, 'mlw': mlw,
                              'antialiased': antialiased, 'vlims': self._vlims}
         self._topo_kwargs = {'vlims': self._vlims, 'title': None}
-        self._SetPlotStyle(mark=mark)
         self._SetLayout(nplots, topo, mean)
 
         # Bind Events ---
@@ -1146,7 +1146,7 @@ class Frame(EelbrainFrame):  # control
             Color for primary data (default is black).
         lw : scalar
             Linewidth for normal sensor plots.
-        mark : None | index for sensor dim
+        mark : None | str | list of str
             Sensors to plot as individual traces with a separate color.
         mcolor : matplotlib color
             Color for marked traces.
@@ -1161,29 +1161,20 @@ class Frame(EelbrainFrame):  # control
 
     def _SetPlotStyle(self, **kwargs):
         "See .SetPlotStyle()"
-        bf_kwargs = self._bfly_kwargs
-
         for key, value in kwargs.iteritems():
             if key == 'vlims':
                 err = ("%r is an invalid keyword argument for this function"
                        % key)
                 raise TypeError(err)
             elif key == 'mark':
-                if value is None:
-                    bf_kwargs['mark'] = None
-                else:
-                    bf_kwargs['mark'] = self.doc.epochs.sensor.dimindex(value)
-            elif key in bf_kwargs:
-                bf_kwargs[key] = value
-
-        # update which traces to plot
-        plot_range = bf_kwargs['plot_range']
-        mark = bf_kwargs['mark']
-        if plot_range or mark is None:
-            traces = not bool(plot_range)
-        else:
-            traces = np.setdiff1d(np.arange(len(self.doc.epochs.sensor)), mark)
-        bf_kwargs['traces'] = traces
+                self._bfly_kwargs['mark'] = value
+            elif key == 'plot_range':
+                self._bfly_kwargs[key] = value
+                self._bfly_kwargs['traces'] = not value
+            elif key in self._bf_kwargs:
+                self._bfly_kwargs[key] = value
+            else:
+                raise KeyError(repr(key))
 
     def SetVLim(self, vlim):
         """Set the value limits (butterfly plot y axes and topomap colormaps)
