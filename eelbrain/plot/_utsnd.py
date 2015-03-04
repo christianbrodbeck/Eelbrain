@@ -571,7 +571,9 @@ class _ax_bfly_epoch:
         self._do_plot_traces = traces
         # determine which lines to mark
         if mark:
-            mark_sensors = epoch.sensor.dimindex(mark)
+            mark_sensors = np.array([epoch.sensor.names.index(m) for m in
+                                     mark if m in epoch.sensor.names])
+        if len(mark_sensors):
             if traces is not False:
                 if traces is True:
                     traces = np.arange(len(epoch.sensor))
@@ -626,7 +628,7 @@ class _ax_bfly_epoch:
         if self._do_plot_traces:
             h = _plt_utsnd(self.ax, self.epoch, **self._trace_kwargs)
             self._traces = h
-        if self._mark_kwargs['sensors']:
+        if len(self._mark_kwargs['sensors']):
             h = _plt_utsnd(self.ax, self.epoch, **self._mark_kwargs)
             self._marked_traces = h
 
