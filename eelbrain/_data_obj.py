@@ -6017,12 +6017,12 @@ class Sensor(Dimension):
         index = self.dimindex(index)
         if np.isscalar(index):
             return self.names[index]
-        elif len(index) == 0:
-            return None
         else:
+            int_index = np.arange(len(self))[index]
+            if len(int_index) == 0:
+                return None
             locs = self.locs[index]
             names = self.names[index]
-            int_index = np.arange(len(self))[index]
             # TODO: groups
             return Sensor(locs, names, None, self.sysname, self.default_proj2d,
                           _subgraph_edges(self._connectivity, int_index))
