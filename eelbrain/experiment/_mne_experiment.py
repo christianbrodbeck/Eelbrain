@@ -1129,7 +1129,7 @@ class MneExperiment(FileTree):
                 self.set(**{field: value})
                 yield value
 
-    def label_events(self, ds, experiment=None, subject=None):
+    def label_events(self, ds):
         """
         Adds T (time) and SOA (stimulus onset asynchrony) to the Dataset.
 
@@ -1143,10 +1143,6 @@ class MneExperiment(FileTree):
         -----
         Subclass this method to specify events.
         """
-        if experiment is not None or subject is not None:
-            warn("MneExperiment.label_events() should take only a single "
-                 "argument, the Dataset.", DeprecationWarning)
-
         if self.trigger_shift:
             ds['i_start'] += round(self.trigger_shift * ds.info['raw'].info['sfreq'])
 
@@ -1443,7 +1439,14 @@ class MneExperiment(FileTree):
 
         ds.info['raw'] = raw
         ds.info['subject'] = subject
-        ds = self.label_events(ds)
+        if len(inspect.getargspec(self.label_events).args) == 2:
+            ds = self.label_events(ds)
+        else:
+            warn("MneExperiment subclasses should remove the subject and "
+                 "experiment arguments form the .label_events() method",
+                 DeprecationWarning)
+            ds = self.label_events(ds, self.get('experiment'), subject)
+
         if ds is None:
             msg = ("The MneExperiment.label_events() function must return the "
                    "events-Dataset")
