@@ -1129,7 +1129,7 @@ class MneExperiment(FileTree):
                 self.set(**{field: value})
                 yield value
 
-    def label_events(self, ds):
+    def label_events(self, ds, experiment=None, subject=None):
         """
         Adds T (time) and SOA (stimulus onset asynchrony) to the Dataset.
 
