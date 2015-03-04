@@ -7,8 +7,8 @@ from string import ascii_lowercase
 import tempfile
 
 import mne
-from nose.tools import (assert_equal, assert_almost_equal, assert_is_instance,
-                        assert_true, eq_, ok_, assert_raises)
+from nose.tools import (eq_, ok_, assert_almost_equal, assert_is_instance,
+                        assert_raises)
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
@@ -46,19 +46,19 @@ def test_aggregate():
     dsa = ds.aggregate('A%B', drop_bad=True)
     assert_array_equal(dsa['n'], [15, 15, 15, 15])
     idx1 = ds.eval("logical_and(A=='a0', B=='b0')")
-    assert_equal(dsa['Y', 0], ds['Y', idx1].mean())
+    eq_(dsa['Y', 0], ds['Y', idx1].mean())
 
     # unequal cell counts
     ds = ds[:-3]
     dsa = ds.aggregate('A%B', drop_bad=True)
     assert_array_equal(dsa['n'], [15, 15, 15, 12])
     idx1 = ds.eval("logical_and(A=='a0', B=='b0')")
-    assert_equal(dsa['Y', 0], ds['Y', idx1].mean())
+    eq_(dsa['Y', 0], ds['Y', idx1].mean())
 
     dsa = ds.aggregate('A%B', drop_bad=True, equal_count=True)
     assert_array_equal(dsa['n'], [12, 12, 12, 12])
     idx1_12 = np.logical_and(idx1, idx1.cumsum() <= 12)
-    assert_equal(dsa['Y', 0], ds['Y', idx1_12].mean())
+    eq_(dsa['Y', 0], ds['Y', idx1_12].mean())
 
 
 def test_align():
@@ -122,11 +122,11 @@ def test_celltable():
     # coercion of numerical X
     X = ds.eval("A == 'a0'")
     ct = Celltable('Y', X, cat=(None, None), ds=ds)
-    assert_equal(('False', 'True'), ct.cat)
+    eq_(('False', 'True'), ct.cat)
     assert_array_equal(ct.data['True'], ds['Y', X])
 
     ct = Celltable('Y', X, cat=(True, False), ds=ds)
-    assert_equal(('True', 'False'), ct.cat)
+    eq_(('True', 'False'), ct.cat)
     assert_array_equal(ct.data['True'], ds['Y', X])
 
     # test coercion of Y
@@ -176,8 +176,8 @@ def test_combine():
     ds = combine((ds1, ds2))
     assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:], "Combine with "
                        "missing Var")
-    assert_true(np.all(ds1['YCat'] == ds['YCat'][:ds1.n_cases]), "Combine "
-                "with missing Factor")
+    ok_(np.all(ds1['YCat'] == ds['YCat'][:ds1.n_cases]), "Combine with missing "
+        "Factor")
 
     # combine NDVar with unequel dimensions
     ds = datasets.get_uts(utsnd=True)
@@ -188,7 +188,7 @@ def test_combine():
     ds2 = Dataset((y2,))
     dsc = combine((ds1, ds2))
     y = dsc['utsnd']
-    assert_equal(y.sensor.names, ['1', '2', '3'], "Sensor dimension "
+    eq_(y.sensor.names, ['1', '2', '3'], "Sensor dimension "
                  "intersection failed.")
     dims = ('case', 'sensor', 'time')
     ref = np.concatenate((y1.get_data(dims)[:, 1:], y2.get_data(dims)[:, :3]))
@@ -217,8 +217,8 @@ def test_dataset_indexing():
     ds = datasets.get_uv()
 
     # indexing values
-    assert_equal(ds['A', 1], ds['A'][1])
-    assert_equal(ds[1, 'A'], ds['A'][1])
+    eq_(ds['A', 1], ds['A'][1])
+    eq_(ds[1, 'A'], ds['A'][1])
 
     # indexing variables
     assert_dataobj_equal(ds[:, 'A'], ds['A'])
@@ -237,9 +237,9 @@ def test_dataset_indexing():
 
     # assigning value
     ds[2, 'A'] = 'hello'
-    assert_equal(ds[2, 'A'], 'hello')
+    eq_(ds[2, 'A'], 'hello')
     ds['A', 2] = 'not_hello'
-    assert_equal(ds[2, 'A'], 'not_hello')
+    eq_(ds[2, 'A'], 'not_hello')
 
     # assigning new factor
     ds['C', :] = 'c'
@@ -291,31 +291,31 @@ def test_dim_categorial():
 
     # basic properties
     print dim
-    assert_equal(len(dim), len(values))
+    eq_(len(dim), len(values))
 
     # persistence
     s = pickle.dumps(dim, pickle.HIGHEST_PROTOCOL)
     dim_ = pickle.loads(s)
-    assert_equal(dim_, dim)
+    eq_(dim_, dim)
 
     # indexing
     sub_values = values[:2]
     idx = dim.dimindex(sub_values)
     assert_array_equal(dim.dimindex(tuple(sub_values)), idx)
-    assert_equal(dim[idx], Categorial(name, sub_values))
-    assert_equal(dim.dimindex('a'), values.index('a'))
-    assert_equal(dim.dimindex('abc'), values.index('abc'))
+    eq_(dim[idx], Categorial(name, sub_values))
+    eq_(dim.dimindex('a'), values.index('a'))
+    eq_(dim.dimindex('abc'), values.index('abc'))
 
     # intersection
     dim2 = Categorial(name, ['c', 'b', 'e'])
     dim_i = dim.intersect(dim2)
-    assert_equal(dim_i, Categorial(name, ['b', 'c']))
+    eq_(dim_i, Categorial(name, ['b', 'c']))
 
     # unicode
     dimu = Categorial(name, [u'c', 'b', 'e'])
-    assert_equal(dimu.values.dtype.kind, 'U')
-    assert_equal(dim2.values.dtype.kind, 'S')
-    assert_equal(dimu, dim2)
+    eq_(dimu.values.dtype.kind, 'U')
+    eq_(dim2.values.dtype.kind, 'S')
+    eq_(dimu, dim2)
 
 
 def test_dim_uts():
@@ -325,16 +325,16 @@ def test_dim_uts():
     # make sure indexing rounds correctly for floats
     for i, s in enumerate(np.arange(0, 1.4, 0.05)):
         idx = uts.dimindex((-0.1 + s, s))
-        assert_equal(idx.start, 10 * i)
-        assert_equal(idx.stop, 20 + 10 * i)
+        eq_(idx.start, 10 * i)
+        eq_(idx.stop, 20 + 10 * i)
 
     # intersection
     uts1 = UTS(-0.1, 0.01, 50)
     uts2 = UTS(0, 0.01, 20)
     intersection = uts1.intersect(uts2)
-    assert_equal(intersection, uts2)
+    eq_(intersection, uts2)
     idx = uts1.dimindex((0, 0.2))
-    assert_equal(uts1[idx], uts2)
+    eq_(uts1[idx], uts2)
 
 
 def test_effect():
@@ -354,21 +354,21 @@ def test_factor():
     "Test basic Factor functionality"
     # removing a cell
     f = Factor('aabbcc')
-    assert_equal(f.cells, ('a', 'b', 'c'))
+    eq_(f.cells, ('a', 'b', 'c'))
     f[f == 'c'] = 'a'
-    assert_equal(f.cells, ('a', 'b'))
+    eq_(f.cells, ('a', 'b'))
 
     # cell order
     a = np.tile(np.arange(3), 3)
     # alphabetical
     f = Factor(a, labels={0: 'c', 1: 'b', 2: 'a'})
-    assert_equal(f.cells, ('a', 'b', 'c'))
+    eq_(f.cells, ('a', 'b', 'c'))
     # ordered
     f = Factor(a, labels=((0, 'c'), (1, 'b'), (2, 'a')))
-    assert_equal(f.cells, ('c', 'b', 'a'))
-    assert_equal(f[:2].cells, ('c', 'b'))
+    eq_(f.cells, ('c', 'b', 'a'))
+    eq_(f[:2].cells, ('c', 'b'))
     f[f == 'b'] = 'c'
-    assert_equal(f.cells, ('c', 'a'))
+    eq_(f.cells, ('c', 'a'))
 
     # label length
     lens = [2, 5, 32, 2, 32, 524]
@@ -453,9 +453,9 @@ def test_ndvar():
 
     # slicing
     assert_raises(KeyError, x.sub, sensor='5')
-    assert_equal(x.sub(sensor='4').ndim, 2)
-    assert_equal(x.sub(sensor=['4']).ndim, 3)
-    assert_equal(x.sub(case=1, sensor='4').ndim, 1)
+    eq_(x.sub(sensor='4').ndim, 2)
+    eq_(x.sub(sensor=['4']).ndim, 3)
+    eq_(x.sub(case=1, sensor='4').ndim, 1)
 
     # baseline correction
     x_bl = x - x.summary(time=(None, 0))
@@ -517,7 +517,7 @@ def test_ndvar_summary_methods():
     eq_(x.any(('sensor', 'time')).info, x.info)
 
     # numpy functions
-    assert_equal(x.any(), x.x.any())
+    eq_(x.any(), x.x.any())
     assert_array_equal(x.any(dim), x.x.any(axis))
     assert_array_equal(x.any(dims), x.x.any(axes))
     assert_array_equal(x.any(idx0), [x_[idx0.x].any() for x_ in x.x])
@@ -526,7 +526,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.any(idxsub), xsub.any(idxsub))
     assert_array_equal(x.any(idx1d), x.x[:, idx1d.x].any(1))
 
-    assert_equal(x.max(), x.x.max())
+    eq_(x.max(), x.x.max())
     assert_array_equal(x.max(dim), x.x.max(axis))
     assert_array_equal(x.max(dims), x.x.max(axes))
     assert_array_equal(x.max(idx0), [x_[idx0.x].max() for x_ in x.x])
@@ -535,7 +535,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.max(idxsub), xsub.max(idxsub))
     assert_array_equal(x.max(idx1d), x.x[:, idx1d.x].max(1))
 
-    assert_equal(x.mean(), x.x.mean())
+    eq_(x.mean(), x.x.mean())
     assert_array_equal(x.mean(dim), x.x.mean(axis))
     assert_array_equal(x.mean(dims), x.x.mean(axes))
     assert_array_equal(x.mean(idx0), [x_[idx0.x].mean() for x_ in x.x])
@@ -544,7 +544,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.mean(idxsub), xsub.mean(idxsub))
     assert_array_equal(x.mean(idx1d), x.x[:, idx1d.x].mean(1))
 
-    assert_equal(x.min(), x.x.min())
+    eq_(x.min(), x.x.min())
     assert_array_equal(x.min(dim), x.x.min(axis))
     assert_array_equal(x.min(dims), x.x.min(axes))
     assert_array_equal(x.min(idx0), [x_[idx0.x].min() for x_ in x.x])
@@ -553,7 +553,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.min(idxsub), xsub.min(idxsub))
     assert_array_equal(x.min(idx1d), x.x[:, idx1d.x].min(1))
 
-    assert_equal(x.std(), x.x.std())
+    eq_(x.std(), x.x.std())
     assert_array_equal(x.std(dim), x.x.std(axis))
     assert_array_equal(x.std(dims), x.x.std(axes))
     assert_array_equal(x.std(idx0), [x_[idx0.x].std() for x_ in x.x])
@@ -563,7 +563,7 @@ def test_ndvar_summary_methods():
     assert_array_equal(x.std(idx1d), x.x[:, idx1d.x].std(1))
 
     # non-numpy
-    assert_equal(x.rms(), rms(x.x))
+    eq_(x.rms(), rms(x.x))
     assert_array_equal(x.rms(dim), rms(x.x, axis))
     assert_array_equal(x.rms(dims), rms(x.x, axes))
     assert_array_equal(x.rms(idx0), [rms(x_[idx0.x]) for x_ in x.x])
@@ -681,7 +681,7 @@ def test_r():
 
     r("data(sleep)")
     ds = Dataset.from_r("sleep")
-    assert_equal(ds.name, 'sleep')
+    eq_(ds.name, 'sleep')
     extra = (0.7, -1.6, -0.2, -1.2, -0.1, 3.4, 3.7, 0.8, 0.0, 2.0, 1.9, 0.8,
              1.1, 0.1, -0.1, 4.4, 5.5, 1.6, 4.6, 3.4)
     assert_array_equal(ds.eval('extra'), extra)
@@ -735,7 +735,7 @@ def test_source_space():
     x = np.vstack([index.x for index in indexes])
     ds = source._cluster_properties(x)
     for i in xrange(ds.n_cases):
-        assert_equal(ds[i, 'location'], parc[i].name)
+        eq_(ds[i, 'location'], parc[i].name)
 
 
 def test_var():
@@ -765,7 +765,7 @@ def test_var():
     y = Var(np.arange(16))
     for i in xrange(1, 9):
         split = y.split(i)
-        assert_equal(len(split.cells), i)
+        eq_(len(split.cells), i)
 
     # .as_factor()
     v = Var(np.arange(4))
