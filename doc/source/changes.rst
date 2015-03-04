@@ -7,12 +7,28 @@ Changes
 New in 0.13
 -----------
 
+* The :func:`gui.select_epochs` GUI can now also be used to set bad channels.
+  :class:`MneExperiment` subclasses will combine bad channel information from
+  rejection files with bad channel information from bad channel files. Note
+  that while bad channel files set bad channels for a given raw file
+  globally, rejection files set bad channels only for the given epoch.
 * :class:`Factor` objects can now remember a custom cell order which determines
   the order in tables and plots.
+* The :meth:`Var.as_factor` method can now assign all unmentioned codes to a
+  default value.
 * :class:`MneExperiment`:
 
+  - API: Subclasses should remove the ``subject`` and ``experiment`` parameters
+    from :meth:`MneExperiment.label_events`.
   - API: :class:`MneExperiment` can now be imported directly from
     :module:`eelbrain`.
+  - API: The :attr:`MneExperiment._defaults` attribute should be renamed to
+    :attr:`MneExperiment.defaults`.
+  - A draft for a guide at :ref:`experiment-class-guide`.
+  - Cached files are now saved in a separate folder at ``root/eelbrain-cache``.
+    The cache can be cleared using :meth:`MneExperiment.clear-cache`. To
+    preserve cached test results, move the ``root/test`` folder into the
+    ``root/eelbrain-cache`` folder.
 
 
 New in 0.12
