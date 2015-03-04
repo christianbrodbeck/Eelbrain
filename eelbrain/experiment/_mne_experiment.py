@@ -522,23 +522,31 @@ class MneExperiment(FileTree):
         FileTree.__init__(self)
 
         # register variables with complex behavior
-        self._register_field('raw', self._raw.keys())
-        self._register_field('rej', self.epoch_rejection.keys(),
+        self._register_field('raw', sorted(self._raw))
+        self._register_field('rej', self.epoch_rejection.keys(), 'man',
                              post_set_handler=self._post_set_rej)
         self._register_field('group', self.groups.keys() + ['all'], 'all',
                              eval_handler=self._eval_group)
-        self._register_field('epoch', self.epochs.keys())
+        # epoch
+        epoch_keys = sorted(self.epochs)
+        for default_epoch in epoch_keys:
+            if 'sel_epoch' not in self.epochs[default_epoch]:
+                break
+        else:
+            default_epoch = None
+        self._register_field('epoch', epoch_keys, default_epoch)
+        # cov
         if 'bestreg' in self._covs:
             default_cov = 'bestreg'
         else:
             default_cov = None
         self._register_field('cov', sorted(self._covs), default_cov)
-        self._register_field('mri', sorted(self._mri_subjects.keys()))
+        self._register_field('mri', sorted(self._mri_subjects))
         self._register_field('inv', default='free-3-dSPM',
                              eval_handler=self._eval_inv,
                              post_set_handler=self._post_set_inv)
         self._register_field('model', eval_handler=self._eval_model)
-        self._register_field('test', self._tests.keys() or None,
+        self._register_field('test', sorted(self._tests) or None,
                              post_set_handler=self._post_set_test)
         self._register_field('parc', default='aparc',
                              eval_handler=self._eval_parc)
