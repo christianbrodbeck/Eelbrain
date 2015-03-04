@@ -182,7 +182,7 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors, legend):
     txt = section.add_paragraph("Id %i, v=%s." % (cluster['id'], cluster['v']))
     if 'p_parc' in cluster:
         txt.append("Corrected across all ROIs: ")
-        txt.append(fmtxt.eq('p', cluster['p_parc'], '=', drop0=True, fmt='%s'))
+        txt.append(fmtxt.eq('p', cluster['p_parc'], 'mcc', '%s', drop0=True))
         txt.append('.')
 
     # add cluster image to report
