@@ -32,11 +32,11 @@ Manual:
 
    installing
    changes
+   intro
 
 .. toctree::
    :maxdepth: 2
 
-   intro
    reference
    recipes
    experiment
