@@ -585,7 +585,7 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
 
 def correlations(Y, Xs, cat=None, sub=None, ds=None, levels=[.05, .01, .001],
                  diff=None, pmax=None, nan=True):  # , match=None):
-    """Correlation with multiple predictors.
+    """Correlation with one or more predictors.
 
     Parameters
     ----------
@@ -608,11 +608,16 @@ def correlations(Y, Xs, cat=None, sub=None, ds=None, levels=[.05, .01, .001],
         Don't show correlations with p > pmax
     nan : bool
         Display correlation which yield NAN;
+
+    Returns
+    -------
+    table : FMText Table
+        Table with correlations.
     """
     sub = assub(sub, ds)
     Y = asvar(Y, sub, ds)
-    if isvar(Xs):  # FIXME: better way to specify Xs
-        Xs = [Xs]
+    if isvar(Xs) or isinstance(Xs, basestring):  # FIXME: better way to specify Xs
+        Xs = (Xs,)
     Xs = [asvar(X, sub, ds) for X in Xs]
     if cat is not None:
         cat = ascategorial(cat, sub, ds)
