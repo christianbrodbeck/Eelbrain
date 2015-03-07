@@ -2868,7 +2868,7 @@ class NDVar(object):
 
         Parameters
         ----------
-        dims : None | str | tuple of str | NDVar
+        dims : None | str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute whether there are any nonzero values at all.
@@ -3187,13 +3187,13 @@ class NDVar(object):
 
         Parameters
         ----------
-        dims : None | str | tuple of str
+        dims : None | str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the maximum over all dimensions.
             An boolean NDVar with the same dimensions as the data can be used
-            to compute the maximum in specific elements (if the NDVar has cases
-            on a per case basis).
+            to compute the maximum in specific elements (if the data has a case
+            dimension, the maximum is computed for each case).
 
         Returns
         -------
@@ -3209,13 +3209,13 @@ class NDVar(object):
 
         Parameters
         ----------
-        dims : None | str | tuple of str
+        dims : None | str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the mean over all dimensions.
-            An boolean NDVar with the same dimensions as the data can be used
-            to compute the mean in specific elements (if the NDVar has cases
-            on a per case basis).
+            A boolean NDVar with the same dimensions as the data can be used
+            to compute the mean in specific elements (if the data has a case
+            dimension, the mean is computed for each case).
 
         Returns
         -------
@@ -3231,13 +3231,13 @@ class NDVar(object):
 
         Parameters
         ----------
-        dims : None | str | tuple of str
+        dims : None | str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the minimum over all dimensions.
             An boolean NDVar with the same dimensions as the data can be used
-            to compute the minimum in specific elements (if the NDVar has cases
-            on a per case basis).
+            to compute the minimum in specific elements (if the data has a case
+            dimension, the minimum is computed for each case).
 
         Returns
         -------
@@ -3396,13 +3396,13 @@ class NDVar(object):
 
         Parameters
         ----------
-        axis : None | str | tuple of str
+        axis : None | str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the standard deviation over all values.
             An boolean NDVar with the same dimensions as the data can be used
-            to compute the RMS in specific elements (if the NDVar has cases
-            on a per case basis).
+            to compute the RMS in specific elements (if the data has a case
+            dimension, the RMS is computed for each case).
 
         Returns
         -------
@@ -3419,13 +3419,14 @@ class NDVar(object):
 
         Parameters
         ----------
-        dims : None | str | tuple of str
+        dims : None | str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the standard deviation over all values.
             An boolean NDVar with the same dimensions as the data can be used
-            to compute the standard deviation in specific elements (if the
-            NDVar has cases on a per case basis).
+            to compute the standard deviation in specific elements (if the data
+            has a case dimension, the standard deviation is computed for each
+            case).
 
         Returns
         -------
@@ -3595,13 +3596,13 @@ class NDVar(object):
 
         Parameters
         ----------
-        dims : None | str | tuple of str
+        dims : None | str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the sum over all dimensions.
             An boolean NDVar with the same dimensions as the data can be used
-            to compute the sum in specific elements (if the NDVar has cases on
-            a per case basis).
+            to compute the sum in specific elements (if the data has a case
+            dimension, the sum is computed for each case).
 
         Returns
         -------
