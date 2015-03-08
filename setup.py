@@ -60,7 +60,7 @@ kwargs = dict(
                                 'tex >= 1.8',
                                 'docutils >= 0.11',
                                 'mne >= 0.8',
-                                'nibabel >= 1.3'],
+                                'nibabel >= 2.0'],
               extras_require={'full': ['numpy >= 1.8',
                                        'scipy >= 0.11.0',
                                        'matplotlib >= 1.1'],

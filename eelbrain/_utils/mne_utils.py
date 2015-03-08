@@ -8,8 +8,7 @@ import os
 
 from mne.label import _get_annot_fname
 from mne.utils import get_subjects_dir
-
-from .nibabel_fs_io import read_annot, write_annot
+from nibabel.freesurfer import read_annot, write_annot
 
 
 def fix_annot_names(subject, parc, clean_subject=None, clean_parc=None,
