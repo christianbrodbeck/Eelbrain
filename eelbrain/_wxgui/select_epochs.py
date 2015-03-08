@@ -1043,7 +1043,7 @@ class Frame(EelbrainFrame):  # control
 
     def PlotTopomap(self, ax_index, time):
         tseg = self._get_ax_data(ax_index, time)
-        plot.Topomap(tseg, sensors='name', vmax=self._vlims)
+        plot.Topomap(tseg, vmax=self._vlims)
 
     def SetLayout(self, nplots=(6, 6), topo=True, mean=True):
         """Determine the layout of the Epochs canvas

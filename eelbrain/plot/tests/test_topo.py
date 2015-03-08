@@ -17,6 +17,8 @@ def test_plot_topomap():
     p.close()
     p = plot.Topomap(topo, 'A%B', ds=ds, axw=2, show=False)
     p.close()
+    p = plot.Topomap(topo, ds=ds, sensorlabels=None, show=False)
+    p.close()
 
 def test_plot_butterfly():
     "Test plot.TopoButterfly"

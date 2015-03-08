@@ -17,9 +17,9 @@ from ._sensors import _plt_map2d
 
 class Topomap(SensorMapMixin, _EelFigure):
     "Plot individual topogeraphies"
-    def __init__(self, epochs, Xax=None, sensors='name', proj='default', res=200,
-                 interpolation='nearest', ds=None, vmax=None, vmin=None, *args,
-                 **kwargs):
+    def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
+                 res=200, interpolation='nearest', ds=None, vmax=None,
+                 vmin=None, *args, **kwargs):
         """
         Plot individual topogeraphies
 
@@ -29,7 +29,7 @@ class Topomap(SensorMapMixin, _EelFigure):
             Data to plot.
         Xax : None | categorial
             Create a separate plot for each cell in this model.
-        sensors : None | 'index' | 'name' | 'fullname'
+        sensorlabels : None | 'index' | 'name' | 'fullname'
             Show sensor labels. For 'name', any prefix common to all names
             is removed; with 'fullname', the full name is shown.
         proj : str
@@ -57,21 +57,16 @@ class Topomap(SensorMapMixin, _EelFigure):
 
         vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
 
-        topo_kwargs = {'res': res,
-                       'interpolation': interpolation,
-                       'proj': proj,
-                       'sensors': sensors,
-                       'vlims': vlims}
-
         self._plots = []
         sensor_plots = []
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
             ax.ID = i
-            h = _ax_topomap(ax, layers, title=True, **topo_kwargs)
+            h = _ax_topomap(ax, layers, True, sensorlabels, res=res, proj=proj,
+                            interpolation=interpolation, vlims=vlims)
             self._plots.append(h)
             sensor_plots.append(h.sensors)
 
-        SensorMapMixin.__init__(self, sensor_plots, sensors)
+        SensorMapMixin.__init__(self, sensor_plots, sensorlabels)
         self._show()
 
     def add_contour(self, meas, level, color='k'):
@@ -158,7 +153,7 @@ class TopoButterfly(_EelFigure):
 
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  proj='default', res=100, interpolation='nearest', color=None,
-                 sensors=True, mark=None, mcolor=None, ds=None, vmax=None,
+                 sensorlabels=None, mark=None, mcolor=None, ds=None, vmax=None,
                  vmin=None, *args, **kwargs):
         """
         Parameters
@@ -177,8 +172,9 @@ class TopoButterfly(_EelFigure):
             Matplotlib imshow() parameter for topomaps.
         color : matplotlib color
             Color of the butterfly plots.
-        sensors : bool
-            determines whether all sensors are marked in the topo-maps
+        sensorlabels : None | 'index' | 'name' | 'fullname'
+            Show sensor labels. For 'name', any prefix common to all names
+            is removed; with 'fullname', the full name is shown.
         mark : None | list of sensor names or indices
             Highlight a subset of the sensors.
         mcolor : matplotlib color
@@ -229,7 +225,7 @@ class TopoButterfly(_EelFigure):
         self._topo_kwargs = {'proj': proj,
                              'res': res,
                              'interpolation': interpolation,
-                             'sensors': sensors,
+                             'sensorlabels': sensorlabels,
                              'mark': mark,
                              'mcolor': mcolor,
                              'title': False}
@@ -480,14 +476,16 @@ class _plt_topomap(_utsnd._plt_im_array):
 
 
 class _ax_topomap(_utsnd._ax_im_array):
-    def __init__(self, ax, layers, title=True, sensors=None, mark=None,
+
+    def __init__(self, ax, layers, title=True, sensorlabels=None, mark=None,
                  mcolor=None, proj='default', res=100, interpolation=None,
                  xlabel=None, im_frame=0.02, vlims={}, cmaps={}, contours={}):
         """
         Parameters
         ----------
-        sensors : bool | str
-            plot sensor markers (str to add label:
+        sensorlabels : None | 'index' | 'name' | 'fullname'
+            Show sensor labels. For 'name', any prefix common to all names
+            is removed; with 'fullname', the full name is shown.
         mark : list of IDs
             highlight a subset of the sensors
 
@@ -507,26 +505,16 @@ class _ax_topomap(_utsnd._ax_im_array):
             overlay = True
 
         # plot sensors
-        if sensors:
-            sensor_dim = layers[0].sensor
-            self.sensors = _plt_map2d(ax, sensor_dim, proj=proj)
-            if isinstance(sensors, str):
-                text = sensors
-            else:
-                text = None
-            self.sensors.show_labels(text=text)
+        sensor_dim = layers[0].sensor
+        self.sensors = _plt_map2d(ax, sensor_dim, proj, labels=sensorlabels)
 
         if mark is not None:
             sensor_dim = layers[0].sensor
-            kw = dict(marker='.',  # symbol
-                    ms=3,  # marker size
-                    markeredgewidth=1,
-                    ls='')
-
+            kw = {'marker': '.', 'ms': 3, 'markeredgewidth': 1,'ls': ''}
             if mcolor is not None:
                 kw['color'] = mcolor
 
-            _plt_map2d(ax, sensor_dim, proj=proj, mark=mark, kwargs=kw)
+            _plt_map2d(ax, sensor_dim, proj, mark=mark, kwargs=kw)
 
 
         ax.set_xlim(-im_frame, 1 + im_frame)

@@ -55,22 +55,21 @@ def _ax_map2d_fast(ax, sensors, proj='default',
 
 class _ax_map2d:
     def __init__(self, ax, sensors, proj='default', extent=1,
-                 frame=.02,
-                 kwargs=dict(
-                             marker='x',  # symbol
-                             color='b',  # mpl plot kwargs ...
-                             ms=3,  # marker size
-                             markeredgewidth=.5,
-                             ls='',
-                             ),
-                 ):
+                 frame=.02, kwargs=None):
         self.ax = ax
+
+        if kwargs is None:
+            kwargs = {'marker': 'x',  # symbol
+                      'color': 'b',  # mpl plot kwargs ...
+                      'ms': 3,  # marker size
+                      'markeredgewidth': .5,
+                      'ls': ''}
 
         ax.set_aspect('equal')
         # ax.set_frame_on(False)
         ax.set_axis_off()
 
-        h = _plt_map2d(ax, sensors, proj=proj, extent=extent, kwargs=kwargs)
+        h = _plt_map2d(ax, sensors, proj, extent=extent, kwargs=kwargs)
         self.sensors = h
 
         locs = sensors.get_locs_2d(proj=proj, extent=extent)
@@ -84,15 +83,9 @@ class _ax_map2d:
 
 
 class _plt_map2d:
+
     def __init__(self, ax, sensors, proj='default', extent=1, mark=None,
-                 kwargs=dict(
-                             marker='.',  # symbol
-                             color='k',  # mpl plot kwargs ...
-                             ms=1,  # marker size
-                             markeredgewidth=.5,
-                             ls='',
-                             ),
-                 ):
+                 labels=None, kwargs=None):
         """
         Parameters
         ----------
@@ -100,11 +93,22 @@ class _plt_map2d:
             Axes.
         sensors : Sensor
             Sensor dimension.
+
+        labels : None | 'index' | 'name' | 'fullname'
+            Content of the labels. For 'name', any prefix common to all names
+            is removed; with 'fullname', the full name is shown.
         """
         self.ax = ax
         self.sensors = sensors
         self.locs = sensors.get_locs_2d(proj=proj, extent=extent)
         self._mark_handles = None
+
+        if kwargs is None:
+            kwargs = {'marker': '.',  # symbol
+                      'color': 'k',  # mpl plot kwargs ...
+                      'ms': 1,  # marker size
+                      'markeredgewidth': .5,
+                      'ls': ''}
 
         if mark is not None:
             mark_idx = sensors.dimindex(mark)
@@ -117,6 +121,8 @@ class _plt_map2d:
         self._mark_idx = mark_idx
         self.markers = []
         self.labels = []
+        if labels is not None:
+            self.show_labels(labels)
 
         if 'color' in kwargs:
             h = ax.plot(locs[:, 0], locs[:, 1], **kwargs)
@@ -631,7 +637,7 @@ class SensorMap(SensorMapMixin, _EelFigure):
         --------
         .remove_markers() : Remove the markers
         """
-        h = _plt_map2d(self.axes, self._sensors, proj=self._proj, mark=mark,
+        h = _plt_map2d(self.axes, self._sensors, self._proj, mark=mark,
                        kwargs=kwargs)
         self._marker_handles.append(h)
         self.canvas.draw()
