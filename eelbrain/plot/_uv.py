@@ -214,7 +214,7 @@ class PairwiseLegend(_EelFigure):
 
 
 class _SimpleFigure(_EelFigure):
-    def __init__(self, wintitle, xlabel, *args, **kwargs):
+    def __init__(self, wintitle, *args, **kwargs):
         _EelFigure.__init__(self, wintitle, 1, 5, 1, *args, **kwargs)
         self._ax = ax = self._axes[0]
 
@@ -226,9 +226,15 @@ class _SimpleFigure(_EelFigure):
         self._handles = []
         self._legend = None
 
-        # title and labels
+    def _set_xlabel_categorial(self, xlabel, model):
+        if xlabel is True:
+            if model and model.name:
+                xlabel = model.name.replace('_', ' ')
+            else:
+                xlabel = False
+
         if xlabel:
-            ax.set_xlabel(xlabel)
+            self._ax.set_xlabel(xlabel)
 
     def _show(self):
         if not self._layout.w_fixed:
@@ -340,7 +346,8 @@ class Boxplot(_SimpleFigure):
 
         # get axes
         frame_title_ = frame_title("Boxplot", ct.Y, ct.X)
-        _SimpleFigure.__init__(self, frame_title_, xlabel, *args, **kwargs)
+        _SimpleFigure.__init__(self, frame_title_, *args, **kwargs)
+        self._set_xlabel_categorial(xlabel, ct.X)
         self._set_ylabel(ct.Y, ylabel)
         ax = self._axes[0]
 
@@ -502,15 +509,9 @@ class Barplot(_SimpleFigure):
         if pool_error is None:
             pool_error = ct.all_within
 
-        # xlabel
-        if xlabel is True:
-            if ct.X:
-                xlabel = ct.X.name.replace('_', ' ')
-            else:
-                xlabel = False
-
         frame_title_ = frame_title("Barplot", ct.Y, ct.X)
-        _SimpleFigure.__init__(self, frame_title_, xlabel, *args, **kwargs)
+        _SimpleFigure.__init__(self, frame_title_, *args, **kwargs)
+        self._set_xlabel_categorial(xlabel, ct.X)
         self._set_ylabel(ct.Y, ylabel)
 
         x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
