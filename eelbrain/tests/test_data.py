@@ -828,6 +828,20 @@ def test_var():
     eq_(w.info, info)
     assert_array_equal(w.x, v.x / 2)
 
+    # assignment
+    tgt1 = np.arange(10)
+    tgt2 = np.tile(np.arange(5), 2)
+    v = Var(np.arange(10))
+    v[v > 4] = np.arange(5)
+    assert_array_equal(v, tgt2)
+    v[5:] = np.arange(5, 10)
+    assert_array_equal(v, tgt1)
+    v = Var(np.arange(10))
+    v[v > 4] = Var(np.arange(5))
+    assert_array_equal(v, tgt2)
+    v[5:] = Var(np.arange(5, 10))
+    assert_array_equal(v, tgt1)
+
     # .split()
     y = Var(np.arange(16))
     for i in xrange(1, 9):
