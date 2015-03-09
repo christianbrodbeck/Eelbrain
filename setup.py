@@ -64,6 +64,9 @@ kwargs = dict(
               extras_require={'full': ['numpy >= 1.8',
                                        'scipy >= 0.11.0',
                                        'matplotlib >= 1.1'],
+                              'dev': ['cython >= 0.21',
+                                      'sphinx >= 1.1',
+                                      'numpydoc >= 0.5'],
                               'plot.brain': ['mayavi >= 4.3.1',
 #                                              'pysurfer >= 0.5'
 # PySurfer breaks the setup because it raises an error when nibabel is not installed
