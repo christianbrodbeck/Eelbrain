@@ -321,3 +321,26 @@ inv
 ---
 
 To set the inverse solution use :meth:`MneExperiment.set_inv`.
+
+
+Parcellations
+-------------
+
+Parcellation are used in different places:
+
+ - ``parc`` or ``mask`` arguments for :meth:`MneExperiment.make_report`
+ - ``parc`` argument to :meth:`MneExperiment.make_report_roi`
+
+Predefined parcellations:
+
+Freesurfer Parcellations
+    ``aparc``, ``PALS_B12_Lobes``, ``PALS_B12_Visuotopic`, ...
+``lobes``
+    Modified version of ``PALS_B12_Lobes`` in which the limbic lobe is merged
+    into the other 4 lobes.
+``lobes-op``
+    One large region encompassing occipital and parietal lobe in each
+    hemisphere.
+``lobes-ot``
+    One large region encompassing occipital and temporal lobe in each
+    hemisphere.
