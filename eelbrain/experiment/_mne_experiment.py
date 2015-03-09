@@ -2024,7 +2024,7 @@ class MneExperiment(FileTree):
         # try to load cached test
         if not redo and os.path.exists(dst):
             res = load.unpickle(dst)
-            if res.samples >= samples:
+            if res.samples >= samples or res.samples == -1:
                 load_data = return_data
             elif make:
                 res = None
