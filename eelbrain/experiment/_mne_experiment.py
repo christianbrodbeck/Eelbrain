@@ -3842,6 +3842,7 @@ class MneExperiment(FileTree):
         ordered_factors = {}
         unordered_factors = []
         for factor in sorted(factors):
+            assert_is_legal_dataset_key(factor)
             if factor in self._model_order:
                 v = self._model_order.index(factor)
                 ordered_factors[v] = factor

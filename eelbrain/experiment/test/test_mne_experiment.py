@@ -41,6 +41,12 @@ def test_mne_experiment_templates():
     # Don't create dirs without root
     assert_raises(IOError, e.get, 'raw-file', mkdir=True)
 
+    # model
+    eq_(e.get('model', model='a % b'), 'a%b')
+    eq_(e.get('model', model='b % a'), 'a%b')
+    assert_raises(ValueError, e.set, model='a*b')
+    assert_raises(ValueError, e.set, model='log(a)')
+
     # compounds
     eq_(e.get('src-kind'), '0-40 bestreg free-3-dSPM')
     e.set_inv('fixed')
