@@ -565,7 +565,6 @@ class MneExperiment(FileTree):
 
         # Define make handlers
         self._bind_make('cached-raw-file', self.make_raw)
-        self._bind_cache('evoked-file', self.make_evoked)
         self._bind_cache('cov-file', self.make_cov)
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
@@ -1510,8 +1509,7 @@ class MneExperiment(FileTree):
                 raise DimensionMismatchError(os.linesep.join(err))
 
         else:  # single subject
-            path = self.get('evoked-file', make=True)
-            ds = load.unpickle(path)
+            ds = self.make_evoked()
 
             if cat:
                 model = ds.eval(self.get('model'))
@@ -2344,7 +2342,9 @@ class MneExperiment(FileTree):
                 rej_mtime = max(map(os.path.getmtime, paths))
 
             if evoked_mtime > max(raw_mtime, bads_mtime, rej_mtime):
-                return
+                ds = load.unpickle(dest)
+                if ds.info.get('mne_version', None) == mne.__version__:
+                    return ds
 
         # load the epochs
         ds = self.load_epochs(ndvar=False)
@@ -2357,9 +2357,11 @@ class MneExperiment(FileTree):
 
         # save
         ds_agg.rename('epochs', 'evoked')
+        ds_agg.info['mne_version'] = mne.__version__
         if 'raw' in ds_agg.info:
             del ds_agg.info['raw']
         save.pickle(ds_agg, dest)
+        return ds_agg
 
     def make_fwd(self, redo=False):
         """Make the forward model"""
