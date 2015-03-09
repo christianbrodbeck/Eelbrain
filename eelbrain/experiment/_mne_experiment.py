@@ -2978,8 +2978,7 @@ class MneExperiment(FileTree):
 
         # info
         self._report_test_info(report.add_section("Test Info"), ds, y, test,
-                               tstart, tstop, pmin, res.samples, res, 'src',
-                               include)
+                               tstart, tstop, pmin, res, 'src', include)
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
@@ -3153,7 +3152,7 @@ class MneExperiment(FileTree):
 
         # compose info
         self._report_test_info(info_section, ds, y, test, tstart, tstop, pmin,
-                               samples)
+                               res)
 
         report.sign(('eelbrain', 'mne', 'surfer'))
         report.save_html(dst)
@@ -3208,9 +3207,8 @@ class MneExperiment(FileTree):
 
         # info
         info_section = report.add_section("Test Info")
-        self._report_test_info(info_section, ds, y, test,
-                               tstart, tstop, pmin, samples, res, 'sns',
-                               include)
+        self._report_test_info(info_section, ds, y, test, tstart, tstop, pmin,
+                               res, 'sns', include)
 
         # add connectivity image
         p = plot.SensorMap(ds['eeg'], show=False)
@@ -3302,8 +3300,6 @@ class MneExperiment(FileTree):
 
         # info
         info_section = report.add_section("Test Info")
-        self._report_test_info(info_section, ds, eeg, test, tstart, tstop, pmin,
-                               samples)
 
         # add sensor map
         p = plot.SensorMap(ds['eeg'], show=False)
@@ -3322,6 +3318,8 @@ class MneExperiment(FileTree):
             _report.timecourse(report, ds, y, model, res, sensor,
                                caption % sensor, colors)
 
+        self._report_test_info(info_section, ds, eeg, test, tstart, tstop, pmin,
+                               res)
         report.sign(('eelbrain', 'mne'))
         report.save_html(dst)
 
@@ -3342,7 +3340,7 @@ class MneExperiment(FileTree):
         return s_table
 
     def _report_test_info(self, section, ds, y, test, tstart, tstop, pmin,
-                          samples, res=None, data=None, include=None):
+                          res, data=None, include=None):
         info = List("Data:")
         info.add_item(self.format('epoch = {epoch} {evoked-kind} ~ {model}'))
         info.add_item(self.format("cov = {cov}"))
@@ -3375,8 +3373,16 @@ class MneExperiment(FileTree):
             if include is not None:
                 info.add_item("Separate plots of all clusters with a p-value < %s"
                               % include)
-        info.add_item("%i permutations" % samples)
-        if res is not None:
+
+        # n samples
+        if res.samples == -1:
+            info.add_item("All possible permutations (%i)" % res.n_samples)
+        else:
+            info.add_item("%i permutations" % res.samples)
+
+        if data is not None:
+            # spatial cluster test (for temporal tests, res is only
+            # representative)
             info.add_item(res.info_list())
         section.append(info)
 
