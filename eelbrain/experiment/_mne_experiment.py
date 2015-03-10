@@ -140,7 +140,8 @@ temp = {# MEG
         'label-dir': os.path.join('{mri-dir}', 'label'),
         'annot-file': os.path.join('{label-dir}', '{hemi}.{parc}.annot'),
         # pickled list of labels
-        'label-file': os.path.join('{label-dir}', '{parc}.pickled'),
+        'mri-cache-dir': os.path.join('{cache-dir}', 'mri', '{mrisubject}'),
+        'label-file': os.path.join('{mri-cache-dir}', '{parc}.pickled'),
 
         # (method) plots
         'plot-dir': os.path.join('{root}', 'plots'),
@@ -365,7 +366,6 @@ class MneExperiment(FileTree):
         self.projs = self.projs.copy()
         self.cluster_criteria = self.cluster_criteria.copy()
         self._mri_subjects = self._mri_subjects.copy()
-        self._label_cache = PickleCache()
         self._templates = self._templates.copy()
         # templates version
         if self.path_version is None or self.path_version == 0:
@@ -1683,13 +1683,8 @@ class MneExperiment(FileTree):
         labels = self._load_labels(**kwargs)
         if label in labels:
             return labels[label]
-        elif label.endswith('_bh'):
-            region = label[:-3]
-            label_lh = self.load_label(region + '_lh')
-            label_rh = self.load_label(region + '_rh')
-            label_bh = label_lh + label_rh
-            labels[label] = label_bh
-            return label_bh
+        elif not label.endswith(('-lh', '-rh')):
+            return labels[label + '-lh'] + labels['-rh']
         else:
             parc = self.get('parc')
             msg = ("Label %r could not be found in parc %r." % (label, parc))
@@ -1697,8 +1692,8 @@ class MneExperiment(FileTree):
 
     def _load_labels(self, **kwargs):
         """Load labels from an annotation file."""
-        fpath = self.get('label-file', make=True, **kwargs)
-        labels = self._label_cache[fpath]
+        path = self.get('label-file', make=True, **kwargs)
+        labels = load.unpickle(path)
         return labels
 
     def load_morph_matrix(self, **state):
@@ -2391,28 +2386,15 @@ class MneExperiment(FileTree):
                                   overwrite=True)
 
     def make_labels(self, redo=False):
-        dst = self.get('label-file')
+        dst = self.get('label-file', mkdir=True)
         if not redo and os.path.exists(dst):
             return
-
-        parc = self.get('parc')
-        subject = self.get('mrisubject')
-        mri_sdir = self.get('mri-sdir')
-        labels = self._make_labels(parc, subject, redo, mri_sdir)
-        label_dict = {label.name: label for label in labels}
-        self._label_cache[dst] = label_dict
-
-    def _make_labels(self, parc, subject, redo, mri_sdir):
-        "Returns an iterator over labels for a given parc/subject combination"
-        if redo:
+        elif redo:
             self.make_annot(redo)
+
         labels = self.load_annot()
-        for label in labels:
-            if label.name.endswith('-lh'):
-                label.name = label.name[:-3] + '_lh'
-            elif label.name.endswith('-rh'):
-                label.name = label.name[:-3] + '_rh'
-        return labels
+        label_dict = {label.name: label for label in labels}
+        save.pickle(label_dict, dst)
 
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link at the file with the dst value on field, linking to
@@ -3129,9 +3111,9 @@ class MneExperiment(FileTree):
         for label in labels:
             if label.startswith('unknown'):
                 continue
-            elif label.endswith('_lh'):
+            elif label.endswith('-lh'):
                 labels_lh.append(label)
-            elif label.endswith('_rh'):
+            elif label.endswith('-rh'):
                 labels_rh.append(label)
             else:
                 raise NotImplementedError("Label named %s" % repr(label.name))
