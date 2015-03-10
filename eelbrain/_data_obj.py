@@ -48,6 +48,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 from . import fmtxt
 from . import _colorspaces as cs
 from ._utils import ui, LazyProperty, natsorted
+from ._utils.numpy_utils import slice_to_arange
 
 
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
@@ -3546,7 +3547,8 @@ class NDVar(object):
         var_name = kwargs.pop('name', self.name)
         info = self.info.copy()
         dims = list(self.dims)
-        index = [slice(None)] * len(dims)
+        n_axes = len(dims)
+        index = [slice(None)] * n_axes
 
         for name, arg in kwargs.iteritems():
             if arg is None:
@@ -3563,7 +3565,12 @@ class NDVar(object):
             else:
                 idx = arg
 
+            if isinstance(idx, (list, tuple)):
+                idx = np.array(idx)
+
             index[dimax] = idx
+
+            # find corresponding dim
             if np.isscalar(idx):
                 dims[dimax] = None
                 info[name] = arg
@@ -3572,18 +3579,24 @@ class NDVar(object):
             else:
                 dims[dimax] = dim[idx]
 
-        # slice the data
-        x = self.x
-        i_max = len(index) - 1
-        for i, idx in enumerate(reversed(index)):
-            if isinstance(idx, slice) and idx == slice(None):
-                continue
-            i_cur = i_max - i
-            x = x[(slice(None),) * i_cur + (idx,)]
+        # adjust index dimension
+        if sum(isinstance(idx, np.ndarray) for idx in index) > 1:
+            ndim_increment = 0
+            for i in xrange(n_axes - 1, -1, -1):
+                idx = index[i]
+                if ndim_increment and isinstance(idx, (slice, np.ndarray)):
+                    if isinstance(idx, slice):
+                        idx = slice_to_arange(idx, len(dims[i]))
+                    elif idx.dtype.kind == 'b':
+                        idx = np.flatnonzero(idx)
+                    index[i] = idx[(slice(None),) + (None,) * ndim_increment]
+
+                if isinstance(idx, np.ndarray):
+                    ndim_increment += 1
 
         # create NDVar
         dims = tuple(dim for dim in dims if dim is not None)
-        return NDVar(x, dims, info, var_name)
+        return NDVar(self.x[tuple(index)], dims, info, var_name)
 
     def subdata(self, **kwargs):
         "Deprecated. Use .sub() method (with identical functionality)."

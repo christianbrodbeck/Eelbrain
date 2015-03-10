@@ -203,8 +203,7 @@ class Document(object):
 
     def get_epoch(self, case, name):
         if self.bad_channels:
-            return self.epochs.sub(case=case).sub(sensor=self.good_channels,
-                                                  name=name)
+            return self.epochs.sub(case=case, sensor=self.good_channels, name=name)
         else:
             return self.epochs.sub(case=case, name=name)
 
