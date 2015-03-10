@@ -573,13 +573,13 @@ class _ax_bfly_epoch:
         if mark:
             mark_sensors = np.array([epoch.sensor.names.index(m) for m in
                                      mark if m in epoch.sensor.names])
-        if len(mark_sensors):
-            if traces is not False:
-                if traces is True:
-                    traces = np.arange(len(epoch.sensor))
-                traces = np.setdiff1d(traces, mark_sensors, True)
+            if len(mark_sensors):
+                if traces is not False:
+                    if traces is True:
+                        traces = np.arange(len(epoch.sensor))
+                    traces = np.setdiff1d(traces, mark_sensors, True)
         else:
-            mark_sensors = None
+            mark_sensors = []
         # determines which lines to plot as normal traces
         if traces is True:
             trace_sensors = None
