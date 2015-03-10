@@ -62,18 +62,24 @@ def _time_window_str(window, delim='-'):
     return delim.join(map(_time_str, window))
 
 
-class PickleCache(dict):
-    def __getitem__(self, path):
-        if path in self:
-            return dict.__getitem__(self, path)
-        else:
-            item = load.unpickle(path)
-            dict.__setitem__(self, path, item)
-            return item
+class CacheDict(dict):
 
-    def __setitem__(self, path, item):
-        save.pickle(item, path)
-        dict.__setitem__(self, path, item)
+    def __init__(self, func, key_vars, *args):
+        self._func = func
+        self._key_vars = key_vars
+        self._args = args
+
+    def __getitem__(self, key):
+        if key in self:
+            return dict.__getitem__(self, key)
+
+        if isinstance(key, basestring):
+            out = self._func(*self._args, **{self._key_vars: key})
+        else:
+            out = self._func(*self._args, **dict(zip(self._key_vars, key)))
+
+        self[key] = out
+        return out
 
 
 temp = {# MEG
@@ -802,7 +808,8 @@ class MneExperiment(FileTree):
         if not keep_evoked:
             del ds['evoked']
 
-    def _add_stc_label(self, ds, label, src='stc'):
+    @staticmethod
+    def _add_stc_label(ds, label, label_cache):
         """
         Extract the label time course from a list of SourceEstimates.
 
@@ -815,8 +822,8 @@ class MneExperiment(FileTree):
             variabls.
         label :
             the label's name (e.g., 'fusiform_lh').
-        src : str
-            Name of the variable in ds containing the SourceEstimates.
+        labels : CacheDict
+            Labels cache.
 
         Returns
         -------
@@ -837,15 +844,9 @@ class MneExperiment(FileTree):
 
         x = []
         for case in ds.itercases():
-            # find appropriate label
-            subject = case['subject']
-            label_ = self.load_label(label, subject=subject)
-
-            # extract label
-            stc = case[src]
-            label_data = stc.in_label(label_).data
-            label_avg = label_data.mean(0)
-            x.append(label_avg)
+            stc = case['stc']
+            label_data = stc.in_label(label_cache[case['subject']][label]).data
+            x.append(label_data.mean(0))
 
         time = UTS(stc.tmin, stc.tstep, stc.shape[1])
         ds[key] = NDVar(np.array(x), dims=('case', time))
@@ -3123,10 +3124,11 @@ class MneExperiment(FileTree):
         # add content body
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
+        label_cache = CacheDict(self._load_labels, 'subject')
         for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
             section = report.add_section("%s Hemisphere" % hemi)
             for label in label_names:
-                key = self._add_stc_label(ds, label)
+                key = self._add_stc_label(ds, label, label_cache)
                 y = ds[key]
                 res = self._make_test(y, ds, test, samples, pmin, tstart, tstop,
                                       None, None)
