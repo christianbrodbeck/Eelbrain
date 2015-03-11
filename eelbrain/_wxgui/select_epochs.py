@@ -598,10 +598,10 @@ class Frame(EelbrainFrame):  # control
                 self._vlims[k] = (-vlim, vlim)
         if plot_range is None:
             plot_range = config.ReadBool('plot_range', True)
-        self._bfly_kwargs = {'plot_range': plot_range, 'traces': not plot_range,
-                             'mark': mark,  'color': color, 'lw': lw,
-                             'mcolor': mcolor, 'mlw': mlw,
-                             'antialiased': antialiased, 'vlims': self._vlims}
+        self._mark = mark
+        self._bfly_kwargs = {'color': color, 'lw': lw, 'mlw': mlw,
+                             'antialiased': antialiased, 'vlims': self._vlims,
+                             'plot_range': plot_range, 'mcolor': mcolor}
         self._topo_kwargs = {'vlims': self._vlims, 'title': None}
         self._SetLayout(nplots, topo, mean)
 
@@ -617,6 +617,15 @@ class Frame(EelbrainFrame):  # control
         self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
         self.canvas.mpl_connect('motion_notify_event', self.OnPointerMotion)
+
+        # plot objects
+        self._current_page_i = None
+        self._epoch_idxs = None
+        self._case_plots = None
+        self._case_axes = None
+        self._case_segs = None
+        self._axes_by_idx = None
+        self._topo_ax = None
 
         # Finalize
         self.ShowPage(0)
@@ -814,7 +823,7 @@ class Frame(EelbrainFrame):  # control
         pos_txt = ',  '.join((x_txt, y_txt))
         if ax.ax_idx >= 0:  # single trial plot
             txt = 'Epoch %i,   %%s' % ax.epoch_idx
-        elif  ax.ax_idx == -1:  # mean plot
+        elif ax.ax_idx == -1:  # mean plot
             txt = "Page average,   %s"
         else:
             txt = '%s'
@@ -1169,10 +1178,9 @@ class Frame(EelbrainFrame):  # control
                        % key)
                 raise TypeError(err)
             elif key == 'mark':
-                self._bfly_kwargs['mark'] = value
+                self._mark = value
             elif key == 'plot_range':
                 self._bfly_kwargs[key] = value
-                self._bfly_kwargs['traces'] = not value
             elif key in self._bf_kwargs:
                 self._bfly_kwargs[key] = value
             else:
@@ -1208,21 +1216,22 @@ class Frame(EelbrainFrame):  # control
 
         self.figure.clf()
         nrow, ncol = self._nplots
-        self._epoch_idxs = self._segs_by_page[page]
 
         # segment plots
+        self._epoch_idxs = self._segs_by_page[page]
         self._case_plots = []
         self._case_axes = []
         self._case_segs = []
         self._axes_by_idx = {}
+        mark = None
         for i, epoch_idx in enumerate(self._epoch_idxs):
-            name = 'Epoch %i' % epoch_idx
-            case = self.doc.get_epoch(epoch_idx, name)
+            case = self.doc.get_epoch(epoch_idx, 'Epoch %i' % epoch_idx)
+            if mark is None:
+                ch_idxs = case.sensor.channel_idx
+                mark = {ch_idxs[ch]: 'r' for ch in self._mark if ch in ch_idxs}
             state = self.doc.accept[epoch_idx]
-            ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0],
-                                         yticks=[])
-            h = _ax_bfly_epoch(ax, case, xlabel=None, ylabel=None, state=state,
-                               **self._bfly_kwargs)
+            ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0], yticks=[])
+            h = _ax_bfly_epoch(ax, case, mark, state=state, **self._bfly_kwargs)
             if self.doc.blink is not None:
                 _plt_bin_nuts(ax, self.doc.blink[epoch_idx],
                               color=(0.99, 0.76, 0.21))
@@ -1237,18 +1246,18 @@ class Frame(EelbrainFrame):  # control
         # mean plot
         if self._plot_mean:
             plot_i = nrow * ncol
-            ax = self._mean_ax = self.figure.add_subplot(nrow, ncol, plot_i)
-            ax.ax_idx = -1
-
-            mseg = self._mean_seg = self._get_page_mean_seg()
-            self._mean_plot = _ax_bfly_epoch(ax, mseg, **self._bfly_kwargs)
+            self._mean_ax = self.figure.add_subplot(nrow, ncol, plot_i)
+            self._mean_ax.ax_idx = -1
+            self._mean_seg = self._get_page_mean_seg()
+            self._mean_plot = _ax_bfly_epoch(self._mean_ax, self._mean_seg,
+                                             mark, **self._bfly_kwargs)
 
         # topomap
         if self._plot_topo:
             plot_i = nrow * ncol - self._plot_mean
-            ax = self._topo_ax = self.figure.add_subplot(nrow, ncol, plot_i)
-            ax.ax_idx = -2
-            ax.set_axis_off()
+            self._topo_ax = self.figure.add_subplot(nrow, ncol, plot_i)
+            self._topo_ax.ax_idx = -2
+            self._topo_ax.set_axis_off()
 
         self.canvas.draw()
         self.canvas.store_canvas()
@@ -1270,14 +1279,12 @@ class Frame(EelbrainFrame):  # control
             title = 'Unsaved'
         self.SetTitle(title)
 
-    def _get_page_mean_seg(self, sensor=None):
+    def _get_page_mean_seg(self):
         page_segments = self._segs_by_page[self._current_page_i]
         page_index = np.zeros(self.doc.n_epochs, dtype=bool)
         page_index[page_segments] = True
         index = np.logical_and(page_index, self.doc.accept.x)
-        mseg = self.doc.epochs.summary(case=index)
-        if sensor is not None:
-            mseg = mseg.sub(sensor=sensor)
+        mseg = self.doc.get_epoch(index, "Page Average").mean('case')
         return mseg
 
     def _get_ax_data(self, ax_index, time=None):
@@ -1320,7 +1327,7 @@ class TerminalInterface(object):
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger',
                  path=None, nplots=None, topo=None, mean=None,
-                 vlim=None, plot_range=None, color=None, lw=0.2, mark=None,
+                 vlim=None, plot_range=None, color='k', lw=0.2, mark=[],
                  mcolor='r', mlw=0.8, antialiased=True, pos=None, size=None):
         # Documented in eelbrain.gui
         bad_chs = None

@@ -4,6 +4,7 @@ Plot multidimensional uniform time series.
 
 from __future__ import division
 
+from itertools import izip
 import logging
 import math
 
@@ -387,38 +388,41 @@ class _plt_utsnd:
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
-        Y = epoch.get_data(('time', 'sensor'))
-        x = epoch.time.x
         kwargs['label'] = epoch.name
-        handles = ax.plot(x, Y, *args, **kwargs)
+        self.lines = ax.plot(epoch.time.x, epoch.get_data(('time', 'sensor')),
+                             *args, **kwargs)
 
         for y, kwa in _base.find_uts_hlines(epoch):
             ax.axhline(y, **kwa)
 
-        self.x = x
-        self.lines = handles
+        self.epoch = epoch
+        self._sensors = sensors
 
     def remove(self):
         while self.lines:
             self.lines.pop().remove()
 
+    def set_ydata(self, epoch):
+        if self._sensors:
+            epoch = epoch.sub(sensor=self._sensors)
+        for line, y in izip(self.lines, epoch.get_data(('sensor', 'time'))):
+            line.set_ydata(y)
+
 
 class _plt_extrema:
 
     def __init__(self, ax, epoch, **plot_kwargs):
-        data = epoch.get_data(('time', 'sensor'))
-        Ymin = data.min(1)
-        Ymax = data.max(1)
-        x = epoch.time.x
-
-        handle = ax.fill_between(x, Ymin, Ymax, **plot_kwargs)
-        ax.set_xlim(x[0], x[-1])
-
-        self.x = x
-        self.fill = handle
+        self.upper = ax.plot(epoch.time.x, epoch.max('sensor').x, **plot_kwargs)[0]
+        self.lower = ax.plot(epoch.time.x, epoch.min('sensor').x, **plot_kwargs)[0]
+        self.epoch = epoch
 
     def remove(self):
-        self.fill.remove()
+        self.upper.remove()
+        self.lower.remove()
+
+    def set_ydata(self, epoch):
+        self.upper.set_ydata(epoch.max('sensor').x)
+        self.lower.set_ydata(epoch.min('sensor').x)
 
 
 class _ax_butterfly(object):
@@ -460,8 +464,8 @@ class _ax_butterfly(object):
             self._xvalues = np.union1d(self._xvalues, l.time.x)
 
         # axes decoration
-        ax.set_xlim(min(l.x[0] for l in self.layers),
-                    max(l.x[-1] for l in self.layers))
+        ax.set_xlim(min(l.epoch.time[0] for l in self.layers),
+                    max(l.epoch.time[-1] for l in self.layers))
 
         ticks = ax.xaxis.get_ticklocs()
         ticklabels = _base._ticklabels(ticks, 'time')
@@ -538,123 +542,60 @@ class Butterfly(_EelFigure):
 
 
 class _ax_bfly_epoch:
-    def __init__(self, ax, epoch, xlabel=True, ylabel=True, plot_range=True,
-                 traces=False, color=None, lw=0.2, mark=None, mcolor='r',
-                 mlw=0.8, antialiased=True, state=True, vlims={}):
+    def __init__(self, ax, epoch, mark={}, color='k', lw=0.2, mcolor='r',
+                 mlw=0.8, antialiased=True, state=True, vlims={},
+                 plot_range=False):
         """Specific plot for showing a single sensor by time epoch
 
         Parameters
         ----------
-        ...
+        ax : mpl Axes
+            Plot target axes.
         epoch : NDVar
             Sensor by time epoch.
-        ...
+        mark : dict {int: mpl color}
+            Channel: color dict of channels with custom color.
+        color : mpl color
+            Color for unmarked traces.
         lw : scalar
             Sensor trace plot Line width (default 0.5).
         mlw : scalar
             Marked sensor plot line width (default 1).
         """
-        if color is None:
-            if traces is None:
-                color = '0.5'
+        if plot_range:
+            self.extrema = _plt_extrema(ax, epoch, color=color,
+                                        antialiased=antialiased)
+            if mark:
+                self.lines = _plt_utsnd(ax, epoch, sorted(mark), color=mcolor,
+                                        lw=mlw, antialiased=antialiased)
             else:
-                color = 'k'
+                self.lines = None
+        else:
+            self.extrema = None
+            self.lines = _plt_utsnd(ax, epoch, color=color, lw=lw,
+                                    antialiased=antialiased)
+
+            for i, color in mark.iteritems():
+                self.lines.lines[i].set(color=color, lw=mlw, zorder=10)
+        ax.x_fmt = "t = %.3f s"
 
         self.ax = ax
-        self._traces = None
-        self._marked_traces = None
-        self._range = None
+        self.epoch = epoch
         self._state_h = []
-
-        # determine whether to plot traces
-        self._do_plot_range = plot_range
-        self._do_plot_traces = traces
-        # determine which lines to mark
-        if mark:
-            mark_sensors = np.array([epoch.sensor.names.index(m) for m in
-                                     mark if m in epoch.sensor.names])
-            if len(mark_sensors):
-                if traces is not False:
-                    if traces is True:
-                        traces = np.arange(len(epoch.sensor))
-                    traces = np.setdiff1d(traces, mark_sensors, True)
-        else:
-            mark_sensors = []
-        # determines which lines to plot as normal traces
-        if traces is True:
-            trace_sensors = None
-        else:
-            trace_sensors = traces
-
-        # plotting kwargs
-        self._trace_kwargs = dict(color=color, lw=lw, antialiased=antialiased,
-                                  sensors=trace_sensors)
-        self._range_kwargs = dict(color=color, antialiased=antialiased)
-        self._mark_kwargs = dict(color=mcolor, lw=mlw, antialiased=antialiased,
-                                 sensors=mark_sensors)
-
-        self._tmin = epoch.time[0]
-        self._tmax = epoch.time[-1]
         self._ylim = _base.find_uts_ax_vlim([epoch], vlims)
-
-        self.ax.x_fmt = "t = %.3f s"
-
-        # ax decoration
-        xlabel = _base._axlabel('time', xlabel)
-        if xlabel:
-            ax.set_xlabel(xlabel)
-
-        if ylabel is True:
-            ylabel = epoch.info.get('unit', None)
-        if ylabel:
-            self.ax.set_ylabel(ylabel)
-            self.ax.yaxis.offsetText.set_va('top')
+        self._set_ax_lim()
 
         # create initial plots
-        self.set_data(epoch)
         self.set_state(state)
 
-    def _plot_range(self):
-        "plot the range between sensors"
-        self._rm_range()
-        if not self._do_plot_range:
-            return
-
-        self._range = _plt_extrema(self.ax, self.epoch, **self._range_kwargs)
-
-    def _plot_traces(self):
-        "Plot traces for individual sensors"
-        self._rm_traces()
-        if self._do_plot_traces:
-            h = _plt_utsnd(self.ax, self.epoch, **self._trace_kwargs)
-            self._traces = h
-        if len(self._mark_kwargs['sensors']):
-            h = _plt_utsnd(self.ax, self.epoch, **self._mark_kwargs)
-            self._marked_traces = h
-
-    def _rm_range(self):
-        "Remove the range from the plot"
-        if self._range:
-            self._range.remove()
-            self._range = None
-
-    def _rm_traces(self):
-        "Remove the traces from the plot"
-        if self._traces:
-            self._traces.remove()
-            self._traces = None
-        if self._marked_traces:
-            self._marked_traces.remove()
-            self._marked_traces = None
-
     def set_data(self, epoch):
-        self.epoch = epoch
-        self._plot_range()
-        self._plot_traces()
-        self.set_ax_lim()
+        if self.extrema is not None:
+            self.extrema.set_ydata(epoch)
+        if self.lines is not None:
+            self.lines.set_ydata(epoch)
 
-    def set_ax_lim(self):
-        self.ax.set_xlim(self._tmin, self._tmax)
+    def _set_ax_lim(self):
+        self.ax.set_xlim(self.epoch.time[0], self.epoch.time[-1])
         ylim = self._ylim
         if ylim:
             if np.isscalar(ylim):
@@ -679,4 +620,4 @@ class _ax_bfly_epoch:
 
     def set_ylim(self, ylim):
         self._ylim = ylim
-        self.set_ax_lim()
+        self._set_ax_lim()
