@@ -8,8 +8,21 @@ from . import stats
 
 
 class TContrastRel(object):
+    "Parse a contrast expression and expose methods to apply it"
 
     def __init__(self, contrast, cells, indexes):
+        """Parse a contrast expression and expose methods to apply it
+
+        Parameters
+        ----------
+        contrast : str
+            Contrast specification.
+        cells : tuple of cells
+            Cells that occur in the contrast (each cell is represented by a str
+            or a tuple of str).
+        indexes : dict {cell: index}
+            Indexes for the data of every cell.
+        """
         parse = _parse_t_contrast(contrast)
         n_buffers, cells_in_contrast = _t_contrast_rel_properties(parse)
         pcells, mcells = _t_contrast_rel_expand_cells(cells_in_contrast, cells)
@@ -31,20 +44,25 @@ class TContrastRel(object):
         self._mcells = mcells
         self._n_buffers = n_buffers
 
+        # data buffers
         self._buffer_shape = None
+        self._buffer = None
+        self._y_perm = None
 
     def map(self, y):
-        shape = y.shape[1:]
-        buff = np.empty((self._n_buffers,) + shape)
+        "Apply contrast without retainig data buffers"
+        buff = np.empty((self._n_buffers,) + y.shape[1:])
         data = _t_contrast_rel_data(y, self.indexes, self._pcells, self._mcells)
         tmap = _t_contrast_rel(self._parsed_contrast, data, buff)
         return tmap
 
     def __call__(self, y, out, perm):
-        shape = y.shape[1:]
-        if self._buffer_shape != shape:
-            self._buffer = np.empty((self._n_buffers,) + shape)
+        "Apply contrast to permutation of the data, storing and recycling data buffers"
+        buffer_shape = (self._n_buffers,) + y.shape[1:]
+        if self._buffer_shape != buffer_shape:
+            self._buffer = np.empty(buffer_shape)
             self._y_perm = np.empty_like(y)
+            self._buffer_shape = buffer_shape
         self._y_perm[perm] = y
         data = _t_contrast_rel_data(self._y_perm, self.indexes, self._pcells, self._mcells)
         tmap = _t_contrast_rel(self._parsed_contrast, data, self._buffer, out)
