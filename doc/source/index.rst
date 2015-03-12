@@ -11,8 +11,14 @@
 Eelbrain
 ========
 
-Eelbrain is an open-source `Python <https://www.python.org>`_ package
-for statistical analysis of MEG and EEG data using permutation tests.
+   "The human brain is like an enormous fish. It's flat and slimy, and has
+   gills through which it can see."
+
+   -- Doctor Quatt
+
+
+Eelbrain is an open-source `Python <https://www.python.org>`_ package for
+statistical analysis of electrical brain activity (MEG and EEG).
 Eelbrain is developed by
 `Christian Brodbeck <http://www.psych.nyu.edu/pylkkanen/lab/christianbrodbeck.html>`_
 at the
@@ -20,7 +26,6 @@ at the
 at New York University. This work is currently funded by grant G1001 from the
 `NYU Abu Dhabi Institute
 <http://nyuad.nyu.edu/en/research/nyuad-institute.html>`_.
-
 If you use Eelbrain to a substantial degree in work that is published, please
 acknowledge it with a link to
 `pythonhosted.org/eelbrain <https://pythonhosted.org/eelbrain/>`_.
