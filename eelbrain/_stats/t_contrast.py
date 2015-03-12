@@ -126,6 +126,16 @@ def _parse_t_contrast(contrast):
                 item = _parse_t_contrast(contrast[i_open:i])
                 items.append(item)
 
+                if contrast[i+1:].strip():
+                    raise ValueError("Expression continues after last "
+                                     "parentheses closed: %s" % contrast)
+                elif prefix == '':
+                    if len(items) == 1:
+                        return items[0]
+                    else:
+                        raise ValueError("Multiple comparisons without "
+                                         "combination expression: %s" % contrast)
+
                 m = re.match("\s*([+-]*)\s*(\w+)", prefix)
                 if m is None:
                     raise ValueError("uninterpretable prefix: %r" % prefix)
