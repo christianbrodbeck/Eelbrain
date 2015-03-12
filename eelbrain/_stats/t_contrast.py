@@ -7,6 +7,18 @@ import numpy as np
 from . import stats
 
 
+# array functions:  work on array, take axis argument
+np_afuncs = {'min': np.min,
+             'max': np.max,
+             'sum': np.sum}
+# binary functions:  work on two arrays
+np_bfuncs = {'subtract': np.subtract,
+             'add': np.add}
+# unary functions:  work on a single array
+np_ufuncs = {'abs': np.abs,
+             'negative': np.negative}
+
+
 class TContrastRel(object):
     "Parse a contrast expression and expose methods to apply it"
 
@@ -91,7 +103,9 @@ def _parse_t_contrast(contrast):
     compiled_contrast : tuple
         Nested tuple composed of:
         Comparisons:  ``('comp', tail, c1, c0)`` and
-        Functions:  ``('func', tail, [arg1, arg2, ...])``
+        Unary functions:  ``('ufunc', tail, func, arg)``
+        Binary functions:  ``('bfunc', tail, func, [arg1, arg2])``
+        Array functions:  ``('afunc', tail, func, [arg1, arg2, ...])``
         where ``arg1`` etc. are in turn comparisons and functions.
     """
     depth = 0
@@ -139,10 +153,28 @@ def _parse_t_contrast(contrast):
                 m = re.match("\s*([+-]*)\s*(\w+)", prefix)
                 if m is None:
                     raise ValueError("uninterpretable prefix: %r" % prefix)
-                clip, func_name = m.groups()
-                func = getattr(np, func_name)
+                clip, func = m.groups()
+                if not clip:
+                    clip = None
 
-                return ('func', clip or None, func, items)
+                if func in np_ufuncs:
+                    if len(items) != 1:
+                        raise ValueError("Wrong number of input values for "
+                                         "unary function: %s" % contrast)
+                    return 'ufunc', clip, np_ufuncs[func], items[0]
+                elif func in np_bfuncs:
+                    if len(items) != 2:
+                        raise ValueError("Wrong number of input values for "
+                                         "binary function: %s" % contrast)
+                    return 'bfunc', clip, np_bfuncs[func], items
+                elif func in np_afuncs:
+                    if len(items) < 2:
+                        raise ValueError("Wrong number of input values for "
+                                         "array comparison function: %s"
+                                         % contrast)
+                    return 'afunc', clip, np_afuncs[func], items
+                else:
+                    raise ValueError("Unknown function: %s" % contrast)
             elif depth == -1:
                 err = "Invalid ')' at position %i of %r" % (i, contrast)
                 raise ValueError(err)
@@ -163,7 +195,10 @@ def _t_contrast_rel_properties(item):
     cells : set
         names of all cells that occur in the contrast.
     """
-    if item[0] == 'func':
+    if item[0] == 'ufunc':
+        needed_buffers, cells = _t_contrast_rel_properties(item[3])
+        return needed_buffers + 1, cells
+    elif item[0] in ('bfunc', 'afunc'):
         _, _, _, items_ = item
         local_buffers = len(items_)
         cells = set()
@@ -248,17 +283,22 @@ def _t_contrast_rel_data(y, indexes, cells, mean_cells):
     return data
 
 
-def _t_contrast_rel(item, data, buff=None, out=None):
+def _t_contrast_rel(item, data, buff, out=None):
     "Execute a t_contrast (recursive)"
-    if item[0] == 'func':
+    if item[0] == 'ufunc':
+        _, clip, func, item_ = item
+        tmap = _t_contrast_rel(item_, data, buff[1:], buff[0])
+        tmap = func(tmap, tmap)
+    elif item[0] == 'bfunc':
+        _, clip, func, items = item
+        tmap1 = _t_contrast_rel(items[0], data, buff[2:], buff[1])
+        tmap2 = _t_contrast_rel(items[1], data, buff[2:], buff[0])
+        tmap = func(tmap1, tmap2, tmap2)
+    elif item[0] == 'afunc':
         _, clip, func, items_ = item
         tmaps = buff[:len(items_)]
         for i, item_ in enumerate(items_):
-            if buff is None:
-                buff_ = None
-            else:
-                buff_ = buff[i + 1:]
-            _t_contrast_rel(item_, data, buff_, tmaps[i])
+            _t_contrast_rel(item_, data, buff[i + 1:], tmaps[i])
         tmap = func(tmaps, axis=0, out=out)
     else:
         _, clip, c1, c0 = item
