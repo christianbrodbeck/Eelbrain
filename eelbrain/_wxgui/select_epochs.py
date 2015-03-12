@@ -27,6 +27,7 @@ from ..plot._base import find_fig_vlims
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
+from .._utils.numpy_utils import full_slice
 from .._wxutils import Icon, ID, logger, REValidator
 from .app import get_app
 from .frame import EelbrainFrame, EelbrainDialog
@@ -434,7 +435,7 @@ class Model(object):
         new_accept, new_tag, new_bad_chs = self.doc.read_rej_file(path)
 
         # create load action
-        action = ChangeAction("Load File", slice(None), self.doc.accept, new_accept,
+        action = ChangeAction("Load File", full_slice, self.doc.accept, new_accept,
                               self.doc.tag, new_tag, self.doc.path, path,
                               self.doc.bad_channels, new_bad_chs)
         self.history.do(action)

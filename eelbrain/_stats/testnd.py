@@ -39,10 +39,11 @@ from scipy import ndimage
 
 from .. import fmtxt
 from .. import _colorspaces as _cs
-from .._utils import logger, LazyProperty
 from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                          NDVar, Var, Celltable, cellname, combine, Categorial,
                          UTS)
+from .._utils import logger, LazyProperty
+from .._utils.numpy_utils import full_slice
 from . import opt, stats
 from .glm import _nd_anova
 from .opt import merge_labels
@@ -1736,7 +1737,7 @@ class _ClusterDist:
             self._crop_for_permutation = True
             y_perm = y.sub(time=(tstart, tstop))
             t_slice = y.time._slice(tstart, tstop)
-            self._crop_idx = (slice(None),) * t_ax + (t_slice,)
+            self._crop_idx = (full_slice,) * t_ax + (t_slice,)
             self._uncropped_shape = y.shape[1:]
 
         # cluster map properties

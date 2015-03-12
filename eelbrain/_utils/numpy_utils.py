@@ -3,6 +3,9 @@
 import numpy as np
 
 
+full_slice = slice(None)
+
+
 def slice_to_arange(s, length):
     """Convert a slice into a numerical index
 

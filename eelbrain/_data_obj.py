@@ -48,7 +48,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 from . import fmtxt
 from . import _colorspaces as cs
 from ._utils import ui, LazyProperty, natsorted
-from ._utils.numpy_utils import slice_to_arange
+from ._utils.numpy_utils import slice_to_arange, full_slice
 
 
 preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __repr__ methods
@@ -781,7 +781,7 @@ class Celltable(object):
         self.data_indexes = {}
         if X is None:
             self.data[None] = Y
-            self.data_indexes[None] = slice(None)
+            self.data_indexes[None] = full_slice
             self.cells = [None]
             self.n_cells = 1
             return
@@ -2679,16 +2679,16 @@ class NDVar(object):
             for name, other_name in izip(self_axes, other_axes):
                 if name is None:
                     dim = other.get_dim(other_name)
-                    cs = co = slice(None)
+                    cs = co = full_slice
                 elif other_name is None:
                     dim = self.get_dim(name)
-                    cs = co = slice(None)
+                    cs = co = full_slice
                 else:
                     self_dim = self.get_dim(name)
                     other_dim = other.get_dim(other_name)
                     if self_dim == other_dim:
                         dim = self_dim
-                        cs = co = slice(None)
+                        cs = co = full_slice
                     else:
                         dim = self_dim.intersect(other_dim)
                         crop = True
@@ -2954,7 +2954,7 @@ class NDVar(object):
                 if self.get_dim(dim.name) != dim:
                     msg = "Index dimension does not match data dimension"
                     raise DimensionMismatchError(msg)
-                index = (slice(None),) * dim_axis + (axis.x,)
+                index = (full_slice,) * dim_axis + (axis.x,)
                 x = func(self.x[index], dim_axis)
                 dims = (dim_ for dim_ in self.dims if not dim_ == dim)
             else:
@@ -3051,7 +3051,7 @@ class NDVar(object):
         out_shape[time_axis] = n_bins
         x = np.empty(out_shape)
         bins = []
-        idx_prefix = (slice(None),) * time_axis
+        idx_prefix = (full_slice,) * time_axis
         for i in xrange(n_bins):
             t0 = times[i]
             t1 = times[i + 1]
@@ -3548,7 +3548,7 @@ class NDVar(object):
         info = self.info.copy()
         dims = list(self.dims)
         n_axes = len(dims)
-        index = [slice(None)] * n_axes
+        index = [full_slice] * n_axes
 
         for name, arg in kwargs.iteritems():
             if arg is None:
@@ -3589,7 +3589,7 @@ class NDVar(object):
                         idx = slice_to_arange(idx, len(dims[i]))
                     elif idx.dtype.kind == 'b':
                         idx = np.flatnonzero(idx)
-                    index[i] = idx[(slice(None),) + (None,) * ndim_increment]
+                    index[i] = idx[(full_slice,) + (None,) * ndim_increment]
 
                 if isinstance(idx, np.ndarray):
                     ndim_increment += 1
@@ -6309,7 +6309,7 @@ class Sensor(Dimension):
             Numpy index indexing good channels.
         """
         if exclude is None:
-            return slice(None)
+            return full_slice
 
         index = np.ones(len(self), dtype=bool)
         for idx in exclude:
@@ -6845,7 +6845,7 @@ class SourceSpace(Dimension):
             sv = self.vertno
             ov = obj.vertno
             if all(np.array_equal(s, o) for s, o in izip(sv, ov)):
-                return slice(None)
+                return full_slice
             else:
                 idxs = tuple(np.in1d(s, o, True) for s, o in izip(sv, ov))
                 index = np.hstack(idxs)
