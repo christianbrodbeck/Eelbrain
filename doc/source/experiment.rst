@@ -174,7 +174,7 @@ dictionary's ``"kind"`` entry defines the test (e.g., ANOVA, related samples
 T-test, ...). The other entries specify the details of the test and depend on
 the test kind (see subsections on specific tests below).
 
-kind : 'anova' | 'ttest_rel'
+kind : 'anova' | 'ttest_rel' | 't_contrast_rel'
     The test kind.
 model : str
     The model which defines the cells that are used in the test. It is
@@ -220,6 +220,21 @@ Example::
 
     tests = {'my_ttest': {'kind': 'ttest_rel', 'model': 'noise',
                           'c1': 'a_lot_of_noise', 'c0': 'no_noise'}}
+
+
+t_contrast_rel
+^^^^^^^^^^^^^^
+
+Contrasts involving different T-maps (see :class:`testnd.t_contrast_rel`)
+
+contrast : str
+    Contrast specification using cells form the specified model (see test
+    documentation).
+
+Example::
+
+    tests = {'a_b_intersection': {'kind': 't_contrast_rel', 'model': 'abc',
+                                  'contrast': 'min(a > c, b > c)'}}
 
 
 Subject Groups
