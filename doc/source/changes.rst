@@ -8,6 +8,7 @@ New in 0.14
 -----------
 
 * API: the :class:`plot.Topomap` argument `sensors` changed to `sensorlabels`.
+* :class:`testnd.t_contrast_rel`:  support for unary operation `abs`.
 
 
 New in 0.13

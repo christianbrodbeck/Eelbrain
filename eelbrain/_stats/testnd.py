@@ -281,18 +281,29 @@ class t_contrast_rel(_Result):
         -----
         Contrast definitions can contain:
 
-         - comparisons using ">" and "<", e.g. ``"cell1 > cell0"``.
-         - numpy functions, e.g. ``min(...)``.
-         - prefixing a function or comparison with ``+`` or ``-`` makes the
-           relevant comparison one-tailed by setting all values of the opposite
-           sign to zero (e.g., ```"+a>b"``` sets all data points where a<b to
-           0.
+        - Comparisons using ">" or "<" and data cells,
+          e.g. ``"cell1 > cell0"``. If the data is defined based on an
+          interaction, cells are specified with "|",
+          e.g. ``"a1 | b0 > a0 | b0"``.
+        - Unary numpy functions ``abs`` and ``negative``, e.g.
+          ``"abs(cell1 > cell0)"``.
+        - Binary numpy functions ``subtract`` and ``add``, e.g.
+          ``"add(a>b, a>c)"``
+        - Numpy functions for multiple arrays ``min``, ``max`` and ``sum``,
+          e.g. ``min(a>d, b>d, c>d)``.
+        - Prefixing a function or comparison with ``+`` or ``-`` makes the
+          relevant comparison one-tailed by setting all values of the opposite
+          sign to zero (e.g., ``"+a>b"`` sets all data points where a<b to 0.
 
-        So for example, to find cluster where both of two pairwise comparisons
-        are reliable, one could use ``"min(a1 > a0, b1 > b0)"``
+        Examples
+        --------
+        To find cluster where both of two pairwise comparisons are reliable,
+        i.e. an intersection of two effects, one could use
+        ``"min(a > c, b > c)"``.
 
-        If X is an interaction, interaction cells are specified with "|", e.g.
-        ``"a1 | b > a0 | b"``.
+        To find a specific kind of interaction, where a is greater than b, and
+        this difference is greater than the difference between c and d, one
+        could use ``subtract(a > b, abs(c > d))``.
         """
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
 
