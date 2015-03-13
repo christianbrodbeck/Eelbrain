@@ -38,18 +38,8 @@ class TContrastRel(object):
         parse = _parse_t_contrast(contrast)
         n_buffers, cells_in_contrast = _t_contrast_rel_properties(parse)
         pcells, mcells = _t_contrast_rel_expand_cells(cells_in_contrast, cells)
-        tail_ = parse[1]
-        if tail_ is None:
-            tail = 0
-        elif tail_ == '+':
-            tail = 1
-        elif tail_ == '-':
-            tail = -1
-        else:
-            raise RuntimeError("Invalid tail in parse: %s" % repr(tail_))
 
         self.contrast = contrast
-        self.tail = tail
         self.indexes = indexes
         self._parsed_contrast = parse
         self._pcells = pcells
@@ -102,23 +92,23 @@ def _parse_t_contrast(contrast):
     -------
     compiled_contrast : tuple
         Nested tuple composed of:
-        Comparisons:  ``('comp', tail, c1, c0)`` and
-        Unary functions:  ``('ufunc', tail, func, arg)``
-        Binary functions:  ``('bfunc', tail, func, [arg1, arg2])``
-        Array functions:  ``('afunc', tail, func, [arg1, arg2, ...])``
+        Comparisons:  ``('comp', c1, c0)`` and
+        Unary functions:  ``('ufunc', func, arg)``
+        Binary functions:  ``('bfunc', func, [arg1, arg2])``
+        Array functions:  ``('afunc', func, [arg1, arg2, ...])``
         where ``arg1`` etc. are in turn comparisons and functions.
     """
     depth = 0
     start = 0
     if not '(' in contrast:
-        m = re.match("\s*([+-]*)\s*([\w\|*]+)\s*([<>])\s*([\w\|*]+)", contrast)
+        m = re.match("\s*([\w\|*]+)\s*([<>])\s*([\w\|*]+)", contrast)
         if m:
-            clip, c1, direction, c0 = m.groups()
+            c1, direction, c0 = m.groups()
             if direction == '<':
                 c1, c0 = c0, c1
             c1 = _parse_cell(c1)
             c0 = _parse_cell(c0)
-            return ('comp', clip or None, c1, c0)
+            return ('comp', c1, c0)
 
     for i, c in enumerate(contrast):
         if c == '(':
@@ -150,29 +140,26 @@ def _parse_t_contrast(contrast):
                         raise ValueError("Multiple comparisons without "
                                          "combination expression: %s" % contrast)
 
-                m = re.match("\s*([+-]*)\s*(\w+)", prefix)
+                m = re.match("\s*(\w+)\s*", prefix)
                 if m is None:
                     raise ValueError("uninterpretable prefix: %r" % prefix)
-                clip, func = m.groups()
-                if not clip:
-                    clip = None
-
+                func = m.group(1)
                 if func in np_ufuncs:
                     if len(items) != 1:
                         raise ValueError("Wrong number of input values for "
                                          "unary function: %s" % contrast)
-                    return 'ufunc', clip, np_ufuncs[func], items[0]
+                    return 'ufunc', np_ufuncs[func], items[0]
                 elif func in np_bfuncs:
                     if len(items) != 2:
                         raise ValueError("Wrong number of input values for "
                                          "binary function: %s" % contrast)
-                    return 'bfunc', clip, np_bfuncs[func], items
+                    return 'bfunc', np_bfuncs[func], items
                 elif func in np_afuncs:
                     if len(items) < 2:
                         raise ValueError("Wrong number of input values for "
                                          "array comparison function: %s"
                                          % contrast)
-                    return 'afunc', clip, np_afuncs[func], items
+                    return 'afunc', np_afuncs[func], items
                 else:
                     raise ValueError("Unknown function: %s" % contrast)
             elif depth == -1:
@@ -196,10 +183,10 @@ def _t_contrast_rel_properties(item):
         names of all cells that occur in the contrast.
     """
     if item[0] == 'ufunc':
-        needed_buffers, cells = _t_contrast_rel_properties(item[3])
+        needed_buffers, cells = _t_contrast_rel_properties(item[2])
         return needed_buffers + 1, cells
     elif item[0] in ('bfunc', 'afunc'):
-        _, _, _, items_ = item
+        _, _, items_ = item
         local_buffers = len(items_)
         cells = set()
         for i, item_ in enumerate(items_):
@@ -211,7 +198,7 @@ def _t_contrast_rel_properties(item):
             cells.update(cells_)
         return local_buffers, cells
     else:
-        return 0, set(item[2:])
+        return 0, set(item[1:])
 
 
 def _t_contrast_rel_expand_cells(cells, all_cells):
@@ -286,31 +273,22 @@ def _t_contrast_rel_data(y, indexes, cells, mean_cells):
 def _t_contrast_rel(item, data, buff, out=None):
     "Execute a t_contrast (recursive)"
     if item[0] == 'ufunc':
-        _, clip, func, item_ = item
+        _, func, item_ = item
         tmap = _t_contrast_rel(item_, data, buff[1:], buff[0])
         tmap = func(tmap, tmap)
     elif item[0] == 'bfunc':
-        _, clip, func, items = item
+        _, func, items = item
         tmap1 = _t_contrast_rel(items[0], data, buff[2:], buff[1])
         tmap2 = _t_contrast_rel(items[1], data, buff[2:], buff[0])
         tmap = func(tmap1, tmap2, tmap2)
     elif item[0] == 'afunc':
-        _, clip, func, items_ = item
+        _, func, items_ = item
         tmaps = buff[:len(items_)]
         for i, item_ in enumerate(items_):
             _t_contrast_rel(item_, data, buff[i + 1:], tmaps[i])
         tmap = func(tmaps, axis=0, out=out)
     else:
-        _, clip, c1, c0 = item
+        _, c1, c0 = item
         tmap = stats.t_1samp(data[c1] - data[c0], out)
-
-    if clip is not None:
-        if clip == '+':
-            a_min = 0
-            a_max = tmap.max() + 1
-        elif clip == '-':
-            a_min = tmap.min() - 1
-            a_max = 0
-        tmap.clip(a_min, a_max, tmap)
 
     return tmap

@@ -230,11 +230,14 @@ Contrasts involving different T-maps (see :class:`testnd.t_contrast_rel`)
 contrast : str
     Contrast specification using cells form the specified model (see test
     documentation).
+tail : int (optional)
+    Tailedness of the test. ``0`` for two-tailed (default), ``1`` for upper tail
+    and ``-1`` for lower tail.
 
 Example::
 
     tests = {'a_b_intersection': {'kind': 't_contrast_rel', 'model': 'abc',
-                                  'contrast': 'min(a > c, b > c)'}}
+                                  'contrast': 'min(a > c, b > c)', 'tail': 1}}
 
 
 Subject Groups

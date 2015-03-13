@@ -14,15 +14,15 @@ def test_t_contrast_parsing():
     y = np.arange(9.).reshape((3, 3))
     indexes = {'a': 0, 'b': 1, 'c': 2}
 
-    contrast = "+sum(a>c, b>c)"
+    contrast = "sum(a>c, b>c)"
     contrast_ = t_contrast._parse_t_contrast(contrast)
-    eq_(contrast_, ('afunc', '+', np.sum, [('comp', None, 'a', 'c'),
-                                           ('comp', None, 'b', 'c')]))
+    eq_(contrast_, ('afunc', np.sum, [('comp', 'a', 'c'),
+                                      ('comp', 'b', 'c')]))
 
-    contrast = "+sum(a>*, b>*)"
+    contrast = "sum(a>*, b>*)"
     contrast_ = t_contrast._parse_t_contrast(contrast)
-    eq_(contrast_, ('afunc', '+', np.sum, [('comp', None, 'a', '*'),
-                                           ('comp', None, 'b', '*')]))
+    eq_(contrast_, ('afunc', np.sum, [('comp', 'a', '*'),
+                                      ('comp', 'b', '*')]))
     _, cells = t_contrast._t_contrast_rel_properties(contrast_)
     pc, mc = t_contrast._t_contrast_rel_expand_cells(cells, ('a', 'b', 'c'))
     data = t_contrast._t_contrast_rel_data(y, indexes, pc, mc)

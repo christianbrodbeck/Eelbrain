@@ -234,9 +234,9 @@ class _Result(object):
 
 class t_contrast_rel(_Result):
 
-    _state_specific = ('X', 'contrast', 't')
+    _state_specific = ('X', 'contrast', 't', 'tail')
 
-    def __init__(self, Y, X, contrast, match=None, sub=None, ds=None,
+    def __init__(self, Y, X, contrast, match=None, sub=None, ds=None, tail=0,
                  samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, dist_dim=(), parc=(), dist_tstep=None,
                  **criteria):
@@ -257,6 +257,11 @@ class t_contrast_rel(_Result):
         ds : None | Dataset
             If a Dataset is specified, all data-objects can be specified as
             names of Dataset variables.
+        tail : 0 | 1 | -1
+            Which tail of the t-distribution to consider:
+            0: both (two-tailed);
+            1: upper tail (one-tailed);
+            -1: lower tail (one-tailed).
         samples : None | int
             Number of samples for permutation cluster test. For None, no
             clusters are formed. Use 0 to compute clusters without performing
@@ -291,9 +296,6 @@ class t_contrast_rel(_Result):
           ``"add(a>b, a>c)"``
         - Numpy functions for multiple arrays ``min``, ``max`` and ``sum``,
           e.g. ``min(a>d, b>d, c>d)``.
-        - Prefixing a function or comparison with ``+`` or ``-`` makes the
-          relevant comparison one-tailed by setting all values of the opposite
-          sign to zero (e.g., ``"+a>b"`` sets all data points where a<b to 0.
 
         Examples
         --------
@@ -303,13 +305,12 @@ class t_contrast_rel(_Result):
 
         To find a specific kind of interaction, where a is greater than b, and
         this difference is greater than the difference between c and d, one
-        could use ``subtract(a > b, abs(c > d))``.
+        could use ``"subtract(a > b, abs(c > d))"``.
         """
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
 
         # setup contrast
         t_contrast = TContrastRel(contrast, ct.cells, ct.data_indexes)
-        tail = t_contrast.tail
 
         # original data
         tmap = t_contrast.map(ct.Y.x)
@@ -345,6 +346,7 @@ class t_contrast_rel(_Result):
                          tstart, tstop)
         self.X = ct.X.name
         self.contrast = contrast
+        self.tail = tail
         self.tmin = tmin
         self.t = t
 
@@ -352,6 +354,8 @@ class t_contrast_rel(_Result):
 
     def _repr_test_args(self):
         args = [repr(self.Y), repr(self.X), repr(self.contrast)]
+        if self.tail:
+            args.append("tail=%r" % self.tail)
         if self.match:
             args.append('match=%r' % self.match)
         return args

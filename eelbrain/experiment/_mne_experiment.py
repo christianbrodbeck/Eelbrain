@@ -3465,7 +3465,7 @@ class MneExperiment(FileTree):
                                    ds=ds, tail=p.get('tail', 0), **kwargs)
         elif kind == 't_contrast_rel':
             res = testnd.t_contrast_rel(y, p['model'], p['contrast'], 'subject',
-                                        ds=ds, **kwargs)
+                                        ds=ds, tail=p.get('tail', 0), **kwargs)
         elif kind == 'anova':
             res = testnd.anova(y, p['x'], match='subject', ds=ds, **kwargs)
         else:

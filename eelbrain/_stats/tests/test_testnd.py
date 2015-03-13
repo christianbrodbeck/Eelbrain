@@ -306,8 +306,8 @@ def test_t_contrast():
     assert_dataobj_equal(res.p, res_.p)
 
     # contrast with "*"
-    contrast_star = '+min(a1|b0>a0|*, a1|b1>a0|*)'
-    res = testnd.t_contrast_rel('uts', 'A%B', contrast_star, 'rm', ds=ds)
+    res = testnd.t_contrast_rel('uts', 'A%B', 'min(a1|b0>a0|*, a1|b1>a0|*)',
+                                'rm', ds=ds, tail=1)
 
 
 def test_labeling():
