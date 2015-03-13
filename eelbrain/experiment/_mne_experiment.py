@@ -1189,11 +1189,9 @@ class MneExperiment(FileTree):
             :func:`mne.read_labels_from_annot`).
         """
         self.make_annot(**state)
-        parc = self.get('parc')
-        subject = self.get('mrisubject')
-        mri_sdir = self.get('mri-sdir')
-        labels = mne.read_labels_from_annot(subject, parc, 'both', subjects_dir=mri_sdir)
-        return labels
+        return mne.read_labels_from_annot(self.get('mrisubject'),
+                                          self.get('parc'), 'both',
+                                          subjects_dir=self.get('mri-sdir'))
 
     def load_bad_channels(self, **kwargs):
         """Load bad channels
@@ -1226,10 +1224,8 @@ class MneExperiment(FileTree):
 
     def load_edf(self, **kwargs):
         """Load the edf file ("edf-file" template)"""
-        kwargs['fmatch'] = False
-        src = self.get('edf-file', **kwargs)
-        edf = load.eyelink.Edf(src)
-        return edf
+        path = self.get('edf-file', fmatch=False, **kwargs)
+        return load.eyelink.Edf(path)
 
     def _ndvar_name_and_modality(self, ndvar, modality, eog=False):
         """returns (name for the ndvar, data str)"""
@@ -1447,6 +1443,8 @@ class MneExperiment(FileTree):
 
         ds.info['raw'] = raw
         ds.info['subject'] = subject
+
+        # label events
         a = inspect.getargspec(self.label_events)
         if len(a.args) == 2:
             ds = self.label_events(ds)
