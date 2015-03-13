@@ -2807,25 +2807,28 @@ class MneExperiment(FileTree):
         Due to the electronics of the KIT system sensors, signal lower than
         0.16 Hz is not recorded even when recording at DC.
         """
-        dst = self.get('cached-raw-file', mkdir=True, **kwargs)
-        if not redo and os.path.exists(dst):
-            return
-
-        raw_dst = self.get('raw')
+        raw_dst = self.get('raw', **kwargs)
         if self._raw[raw_dst] is None:
             raise RuntimeError("Can't make %r raw file because it is an input "
                                "file" % raw_dst)
+        dst = self.get('cached-raw-file', mkdir=True)
+        with self._temporary_state:
+            if not redo and os.path.exists(dst):
+                src = self.get('raw-file', raw='clm')
+                src_mtime = os.path.getmtime(src)
+                dst_mtime = os.path.getmtime(dst)
+                if dst_mtime > src_mtime:
+                    return
 
-        apply_proj = False
-        raw = self.load_raw(raw='clm', add_proj=apply_proj, add_bads=False,
-                            preload=True)
+            apply_proj = False
+            raw = self.load_raw(raw='clm', add_proj=apply_proj, add_bads=False,
+                                preload=True)
+
         if apply_proj:
             raw.apply_projector()
 
         args, kwargs = self._raw[raw_dst]
         raw.filter(*args, n_jobs=n_jobs, **kwargs)
-
-        self.set(raw=raw_dst)
         raw.save(dst, overwrite=True)
 
     def make_rej(self, **kwargs):
