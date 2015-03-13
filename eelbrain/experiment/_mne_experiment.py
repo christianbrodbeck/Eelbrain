@@ -852,21 +852,6 @@ class MneExperiment(FileTree):
         ds[key] = NDVar(np.array(x), dims=('case', time))
         return key
 
-    def cache_events(self, redo=False):
-        """Create the 'event-file'.
-
-        This is done automatically the first time the events are loaded, but
-        caching them will allow faster loading times form the beginning.
-        """
-        evt_file = self.get('event-file')
-        exists = os.path.exists(evt_file)
-        if exists and redo:
-            os.remove(evt_file)
-        elif exists:
-            return
-
-        self.load_events(add_proj=False)
-
     def backup(self, dst_root):
         """Backup all essential files to ``dst_root``.
 
