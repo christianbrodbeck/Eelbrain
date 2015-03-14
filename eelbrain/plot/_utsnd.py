@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from .. import _data_obj as _dta
+from .._names import INTERPOLATE_CHANNELS
 from . import _base
 from ._base import _EelFigure
 
@@ -542,8 +543,8 @@ class Butterfly(_EelFigure):
 
 
 class _ax_bfly_epoch:
-    def __init__(self, ax, epoch, mark={}, color='k', lw=0.2, mcolor='r',
-                 mlw=0.8, antialiased=True, state=True, vlims={},
+    def __init__(self, ax, epoch, mark=None, state=True, color='k', lw=0.2,
+                 mcolor='r', mlw=0.8, antialiased=True, vlims={},
                  plot_range=False):
         """Specific plot for showing a single sensor by time epoch
 
@@ -566,8 +567,9 @@ class _ax_bfly_epoch:
             self.extrema = _plt_extrema(ax, epoch, color=color,
                                         antialiased=antialiased)
             if mark:
-                self.lines = _plt_utsnd(ax, epoch, sorted(mark), color=mcolor,
+                self.lines = _plt_utsnd(ax, epoch, sorted(mark), color='r',
                                         lw=mlw, antialiased=antialiased)
+                mark = None
             else:
                 self.lines = None
         else:
@@ -575,8 +577,6 @@ class _ax_bfly_epoch:
             self.lines = _plt_utsnd(ax, epoch, color=color, lw=lw,
                                     antialiased=antialiased)
 
-            for i, color in mark.iteritems():
-                self.lines.lines[i].set(color=color, lw=mlw, zorder=10)
         ax.x_fmt = "t = %.3f s"
 
         self.ax = ax
@@ -584,6 +584,15 @@ class _ax_bfly_epoch:
         self._state_h = []
         self._ylim = _base.find_uts_ax_vlim([epoch], vlims)
         self._set_ax_lim()
+        self._styles = {None: {'color': color, 'lw': lw, 'ls': '-',
+                               'zorder': 2},
+                        'mark': {'color': mcolor, 'lw': mlw, 'ls': '-',
+                                 'zorder': 10},
+                        INTERPOLATE_CHANNELS: {'color': 'b', 'lw': 1.2,
+                                               'ls': ':', 'zorder': 6}}
+        self._marked = {'mark': set(), INTERPOLATE_CHANNELS: set()}
+        if mark:
+            self.set_marked('mark', mark)
 
         # create initial plots
         self.set_state(state)
@@ -603,6 +612,31 @@ class _ax_bfly_epoch:
             else:
                 y_min, y_max = ylim
                 self.ax.set_ylim(y_min, y_max)
+
+    def set_marked(self, kind, sensors):
+        if self.extrema is not None:
+            raise NotImplementedError("Set styles with extrema plot")
+        old = self._marked[kind]
+        new = self._marked[kind] = set(sensors)
+        # mark new channels
+        for i in new.difference(old):
+            self.lines.lines[i].update(self._styles[kind])
+        # find channels to unmark
+        old.difference_update(new)
+        if not old:
+            return
+        # possible alternate style
+        if kind == 'mark':
+            other_kind = INTERPOLATE_CHANNELS
+        else:
+            other_kind = 'mark'
+        # reset old channels
+        for i in old:
+            if i in self._marked[other_kind]:
+                self.lines.lines[i].update(self._styles[other_kind])
+            else:
+                self.lines.lines[i].update(self._styles[None])
+
 
     def set_state(self, state):
         "Set the state (True=accept / False=reject)"

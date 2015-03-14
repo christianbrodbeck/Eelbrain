@@ -80,6 +80,9 @@ def select_epochs(*args, **kwargs):
             Butterfly plot of the currently displayed epoch.
         c:
             Pairwise sensor correlation plot or the current epoch.
+        i:
+            Schedule the channel nearest to the pointer on the vertical for
+            interpolation.
         t:
             Topomap plot of the currently displayed time point.
         u:

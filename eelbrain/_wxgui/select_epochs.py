@@ -21,7 +21,8 @@ import numpy as np
 import wx
 
 from .. import load, save, plot
-from .._data_obj import Dataset, Factor, Var, corr, asndvar, combine
+from .._data_obj import Dataset, Factor, Var, Datalist, corr, asndvar, combine
+from .._names import INTERPOLATE_CHANNELS
 from .._info import BAD_CHANNELS
 from ..plot._base import find_fig_vlims
 from ..plot._nuts import _plt_bin_nuts
@@ -40,7 +41,8 @@ class ChangeAction(Action):
 
     def __init__(self, desc, index=None, old_accept=None, new_accept=None,
                  old_tag=None, new_tag=None, old_path=None, new_path=None,
-                 old_bad_chs=None, new_bad_chs=None):
+                 old_bad_chs=None, new_bad_chs=None, old_interpolate=None,
+                 new_interpolate=None):
         """
         Parameters
         ----------
@@ -58,10 +60,13 @@ class ChangeAction(Action):
         self.new_tag = new_tag
         self.old_bad_chs = old_bad_chs
         self.new_bad_chs = new_bad_chs
+        self.old_interpolate = old_interpolate
+        self.new_interpolate = new_interpolate
 
     def do(self, doc):
         if self.index is not None:
-            doc.set_case(self.index, self.new_accept, self.new_tag)
+            doc.set_case(self.index, self.new_accept, self.new_tag,
+                         self.new_interpolate)
         if self.new_path is not None:
             doc.set_path(self.new_path)
         if self.new_bad_chs is not None:
@@ -69,7 +74,8 @@ class ChangeAction(Action):
 
     def undo(self, doc):
         if self.index is not None:
-            doc.set_case(self.index, self.old_accept, self.old_tag)
+            doc.set_case(self.index, self.old_accept, self.old_tag,
+                         self.old_interpolate)
         if self.new_path is not None and self.old_path is not None:
             doc.set_path(self.old_path)
         if self.new_bad_chs is not None:
@@ -147,6 +153,11 @@ class Document(object):
                    "trigger values." % trigger)
             raise KeyError(err)
 
+        if INTERPOLATE_CHANNELS in ds:
+            interpolate = ds[INTERPOLATE_CHANNELS]
+        else:
+            interpolate = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS)
+
         if isinstance(blink, basestring):
             if ds is not None:
                 blink = ds.get(blink, None)
@@ -169,6 +180,7 @@ class Document(object):
         self.epochs = data
         self.accept = accept
         self.tag = tag
+        self.interpolate = interpolate
         self.trigger = trigger
         self.blink = blink
         self.bad_channels = []
@@ -186,9 +198,10 @@ class Document(object):
         self.saved = True  # managed by the history
         self.path = path
         if path and os.path.exists(path):
-            accept, tag, bad_chs = self.read_rej_file(path)
+            accept, tag, interpolate, bad_chs = self.read_rej_file(path)
             self.accept[:] = accept
             self.tag[:] = tag
+            self.interpolate[:] = interpolate
             self.set_bad_channels_by_name(bad_chs)
 
     @property
@@ -236,10 +249,13 @@ class Document(object):
     def set_bad_channels_by_name(self, names):
         self.set_bad_channels(self.epochs.sensor.dimindex(names))
 
-    def set_case(self, index, state, tag=None):
-        self.accept[index] = state
+    def set_case(self, index, state, tag, interpolate):
+        if state is not None:
+            self.accept[index] = state
         if tag is not None:
             self.tag[index] = tag
+        if interpolate is not None:
+            self.interpolate[index] = interpolate
 
         for func in self._case_change_subscriptions:
             func(index)
@@ -318,12 +334,17 @@ class Document(object):
         else:
             tag = Factor([''], repeat=self.n_epochs, name='rej_tag')
 
+        if INTERPOLATE_CHANNELS in ds:
+            interpolate = ds[INTERPOLATE_CHANNELS]
+        else:
+            interpolate = Datalist([[]] * self.n_epochs, INTERPOLATE_CHANNELS)
+
         if BAD_CHANNELS in ds.info:
             bad_channels = self.epochs.sensor.dimindex(ds.info[BAD_CHANNELS])
         else:
             bad_channels = []
 
-        return accept, tag, bad_channels
+        return accept, tag, interpolate, bad_channels
 
     def save(self):
         # find dest path
@@ -331,7 +352,8 @@ class Document(object):
 
         # create Dataset to save
         info = {BAD_CHANNELS: self.bad_channel_names}
-        ds = Dataset((self.trigger, self.accept, self.tag), info=info)
+        ds = Dataset((self.trigger, self.accept, self.tag, self.interpolate),
+                     info=info)
 
         if ext == '.pickled':
             save.pickle(ds, self.path)
@@ -432,12 +454,13 @@ class Model(object):
         self.history.do(action)
 
     def load(self, path):
-        new_accept, new_tag, new_bad_chs = self.doc.read_rej_file(path)
+        new_accept, new_tag, new_interpolate, new_bad_chs = self.doc.read_rej_file(path)
 
         # create load action
         action = ChangeAction("Load File", full_slice, self.doc.accept, new_accept,
                               self.doc.tag, new_tag, self.doc.path, path,
-                              self.doc.bad_channels, new_bad_chs)
+                              self.doc.bad_channels, new_bad_chs,
+                              self.doc.interpolate, new_interpolate)
         self.history.do(action)
         self.history.register_save()
 
@@ -462,6 +485,19 @@ class Model(object):
         else:
             old_tag = self.doc.tag[i]
         action = ChangeAction(desc, i, old_accept, state, old_tag, tag)
+        self.history.do(action)
+
+    def toggle_interpolation(self, case, ch_name):
+        old_interpolate = self.doc.interpolate[case]
+        new_interpolate = old_interpolate[:]
+        if ch_name in new_interpolate:
+            new_interpolate.remove(ch_name)
+            desc = "Don't interpolate %s for %i" % (ch_name, case)
+        else:
+            new_interpolate.append(ch_name)
+            desc = "Interpolate %s for %i" % (ch_name, case)
+        action = ChangeAction(desc, case, old_interpolate=old_interpolate,
+                              new_interpolate=new_interpolate)
         self.history.do(action)
 
 
@@ -662,10 +698,15 @@ class Frame(EelbrainFrame):  # control
         for idx in index:
             if idx in self._axes_by_idx:
                 ax = self._axes_by_idx[idx]
-                state = self.doc.accept[idx]
                 ax_idx = ax.ax_idx
                 h = self._case_plots[ax_idx]
-                h.set_state(state)
+                h.set_state(self.doc.accept[idx])
+                # interpolated channels
+                ch_index = h.epoch.sensor.channel_idx
+                h.set_marked(INTERPOLATE_CHANNELS, [ch_index[ch] for ch in
+                                                    self.doc.interpolate[idx]
+                                                    if ch in ch_index])
+
                 axes.append(ax)
 
         # update mean plot
@@ -682,10 +723,9 @@ class Frame(EelbrainFrame):  # control
 
     def OnCanvasClick(self, event):
         "called by mouse clicks"
-        log_msg = "Canvas Click:"
         ax = event.inaxes
         if ax:
-            log_msg += " ax.ax_idx=%i" % ax.ax_idx
+            logger.debug("Canvas click at ax.ax_idx=%i", ax.ax_idx)
             if ax.ax_idx >= 0:
                 idx = ax.epoch_idx
                 state = not self.doc.accept[idx]
@@ -694,8 +734,8 @@ class Frame(EelbrainFrame):  # control
                 self.model.set_case(idx, state, tag, desc)
             elif ax.ax_idx == -2:
                 self.open_topomap()
-
-        logger.debug(log_msg)
+        else:
+            logger.debug("Canvas click outside axes")
 
     def OnCanvasKey(self, event):
         # GUI Control events
@@ -718,18 +758,18 @@ class Frame(EelbrainFrame):  # control
 
         # plotting
         ax = event.inaxes
-        if ax is None:
+        if ax is None or ax.ax_idx == -2:
             return
-        time = event.xdata
-        ax_index = getattr(ax, 'ax_idx', None)
-        if ax_index == -2:
+        elif event.key == 't':
+            self.PlotTopomap(ax.ax_idx, event.xdata)
+        elif event.key == 'b':
+            self.PlotButterfly(ax.ax_idx)
+        elif event.key == 'c':
+            self.PlotCorrelation(ax.ax_idx)
+        elif ax.ax_idx == -1:
             return
-        if event.key == 't':
-            self.PlotTopomap(ax_index, time)
-        elif (event.key == 'b'):
-            self.PlotButterfly(ax_index)
-        elif (event.key == 'c'):
-            self.PlotCorrelation(ax_index)
+        elif event.key == 'i':
+            self.ToggleChannelInterpolation(ax, event)
 
     def OnClear(self, event):
         self.model.clear()
@@ -1227,11 +1267,16 @@ class Frame(EelbrainFrame):  # control
         for i, epoch_idx in enumerate(self._epoch_idxs):
             case = self.doc.get_epoch(epoch_idx, 'Epoch %i' % epoch_idx)
             if mark is None:
-                ch_idxs = case.sensor.channel_idx
-                mark = {ch_idxs[ch]: 'r' for ch in self._mark if ch in ch_idxs}
+                mark = [case.sensor.channel_idx[ch] for ch in self._mark
+                        if ch in case.sensor.channel_idx]
             state = self.doc.accept[epoch_idx]
             ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0], yticks=[])
-            h = _ax_bfly_epoch(ax, case, mark, state=state, **self._bfly_kwargs)
+            h = _ax_bfly_epoch(ax, case, mark, state, **self._bfly_kwargs)
+            # mark interpolated channels
+            if self.doc.interpolate[epoch_idx] and not self._bfly_kwargs['plot_range']:
+                chs = case.sensor.dimindex(self.doc.interpolate[epoch_idx])
+                h.set_marked(INTERPOLATE_CHANNELS, chs)
+            # mark eye tracker artifacts
             if self.doc.blink is not None:
                 _plt_bin_nuts(ax, self.doc.blink[epoch_idx],
                               color=(0.99, 0.76, 0.21))
@@ -1265,6 +1310,18 @@ class Frame(EelbrainFrame):  # control
         dt = time.time() - t0
         logger.debug('Page draw took %.1f seconds.', dt)
         wx.EndBusyCursor()
+
+    def ToggleChannelInterpolation(self, ax, event):
+        if self._bfly_kwargs['plot_range']:
+            wx.MessageBox("To assign channels for interpolation turn off "
+                          "plotting as range (in the View menu)",
+                          "Turn off Range Plotting", wx.OK)
+            return
+        plt = self._case_plots[ax.ax_idx]
+        locs = plt.epoch.sub(time=event.xdata).x
+        sensor = np.argmin(np.abs(locs - event.ydata))
+        sensor_name = plt.epoch.sensor.names[sensor]
+        self.model.toggle_interpolation(ax.epoch_idx, sensor_name)
 
     def UpdateTitle(self):
         is_modified = not self.doc.saved
@@ -1327,7 +1384,7 @@ class TerminalInterface(object):
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger',
                  path=None, nplots=None, topo=None, mean=None,
-                 vlim=None, plot_range=None, color='k', lw=0.2, mark=[],
+                 vlim=None, plot_range=None, color='k', lw=0.5, mark=[],
                  mcolor='r', mlw=0.8, antialiased=True, pos=None, size=None):
         # Documented in eelbrain.gui
         bad_chs = None
