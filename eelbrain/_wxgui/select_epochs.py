@@ -736,8 +736,10 @@ class Frame(EelbrainFrame):  # control
             if cmd == wx.YES:
                 if self.OnSave(event) != wx.ID_OK:
                     event.Veto()
+                    return
             elif cmd == wx.CANCEL:
                 event.Veto()
+                return
             elif cmd != wx.NO:
                 raise RuntimeError("Unknown answer: %r" % cmd)
 

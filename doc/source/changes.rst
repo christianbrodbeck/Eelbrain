@@ -8,6 +8,10 @@ New in 0.14
 -----------
 
 * API: the :class:`plot.Topomap` argument `sensors` changed to `sensorlabels`.
+* GUI: The *python/Quit Eelbrain* menu command now closes all windows to ensure
+  that unsaved documents are handled properly. In order to yield to the terminal
+  without closing windows, use the *Go/Yield to Terminal* command
+  (Command-Alt-Q).
 * :class:`testnd.t_contrast_rel`:  support for unary operation `abs`.
 
 

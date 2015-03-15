@@ -10,6 +10,7 @@ class App(wx.App):
     def OnInit(self):
         self.SetExitOnFrameDelete(False)
         self.SetAppName("Eelbrain")
+        self.SetAppDisplayName("Eelbrain")
 
         # File Menu
         m = file_menu = wx.Menu()
@@ -43,6 +44,8 @@ class App(wx.App):
         m = go_menu = wx.Menu()
         m.Append(wx.ID_FORWARD, '&Forward \tCtrl+]', 'Go One Page Forward')
         m.Append(wx.ID_BACKWARD, '&Back \tCtrl+[', 'Go One Page Back')
+        m.AppendSeparator()
+        m.Append(ID.YIELD_TO_TERMINAL, '&Yield to Terminal \tAlt+Ctrl+Q')
 
         # Window Menu
         m = window_menu = wx.Menu()
@@ -89,8 +92,8 @@ class App(wx.App):
         self.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
         self.Bind(wx.EVT_MENU, self.OnWindowMinimize, id=ID.WINDOW_MINIMIZE)
         self.Bind(wx.EVT_MENU, self.OnWindowZoom, id=ID.WINDOW_ZOOM)
-        if wx.__version__ < '3':
-            self.Bind(wx.EVT_MENU, self.LegacyOnQuit, id=wx.ID_EXIT)
+        self.Bind(wx.EVT_MENU, self.OnQuit, id=wx.ID_EXIT)
+        self.Bind(wx.EVT_MENU, self.OnYieldToTerminal, id=ID.YIELD_TO_TERMINAL)
 
         # bind update UI
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIBackward, id=wx.ID_BACKWARD)
@@ -264,6 +267,13 @@ class App(wx.App):
         logger.debug("Paste %r" % win)
         win.Paste()
 
+    def OnQuit(self, event):
+        logger.debug("OnQuit %s", event)
+        for win in wx.GetTopLevelWindows():
+            if not win.Close():
+                return
+        self.ExitMainLoop()
+
     def OnRedo(self, event):
         frame = self._get_active_frame()
         frame.OnRedo(event)
@@ -404,7 +414,7 @@ class App(wx.App):
         if frame:
             frame.Maximize()
 
-    def LegacyOnQuit(self, event):
+    def OnYieldToTerminal(self, event):
         self.ExitMainLoop()
 
 
