@@ -3,7 +3,7 @@ from nose.tools import ok_, eq_, assert_raises
 import numpy as np
 
 from eelbrain import Dataset, Factor
-from eelbrain.design import permute, random_factor, complement
+from eelbrain._design import permute, random_factor, complement
 
 
 def test_random_factor():

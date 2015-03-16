@@ -11,7 +11,7 @@ from mne import minimum_norm as mn
 from . import load
 from ._colorspaces import eeg_info
 from ._data_obj import Dataset, Factor, Var, NDVar, Sensor, UTS
-from .design import permute
+from ._design import permute
 
 
 def get_loftus_masson_1994():
