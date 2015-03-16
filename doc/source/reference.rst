@@ -72,12 +72,9 @@ Save
    save.txt
 
 
-^^^^^^^^^^^^^^^
-Data Processing
-^^^^^^^^^^^^^^^
-
+^^^^^^^^^^^^^^^^^^^^^^
 Sorting and reordering
-======================
+^^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: generated
@@ -88,8 +85,9 @@ Sorting and reordering
    Celltable
    
 
+^^^^^^^^^^^^^^^^^^^^^
 NDVar Transformations
-=====================
+^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: generated
