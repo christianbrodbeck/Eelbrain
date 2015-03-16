@@ -707,7 +707,7 @@ def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
     return NDVar(x, ('case', sensor, time), info=info_, name=name)
 
 
-def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
+def evoked_ndvar(evoked, name='meg', data=None, exclude='bads', vmax=None):
     """
     Convert one or more mne :class:`Evoked` objects to an :class:`NDVar`.
 
@@ -718,8 +718,8 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
         path to a evoked fiff file containing only one evoked.
     name : str
         Name of the NDVar.
-    data : 'eeg' | 'mag' | 'grad'
-        The kind of data to include.
+    data : 'eeg' | 'mag' | 'grad' | None
+        The kind of data to include. If None (default) based on ``epochs.info``.
     exclude : list of string | string
         Channels to exclude (:func:`mne.pick_types` kwarg).
         If 'bads' (default), exclude channels in info['bads'].
@@ -734,6 +734,16 @@ def evoked_ndvar(evoked, name='meg', data='mag', exclude='bads', vmax=None):
     """
     if isinstance(evoked, basestring):
         evoked = mne.Evoked(evoked)
+
+    if data is None:
+        if isinstance(evoked, (tuple, list)):
+            data_set = {_guess_ndvar_data_type(e.info) for e in evoked}
+            if len(data_set) > 1:
+                raise ValueError("Different Evoked objects contain different "
+                                 "data types: %s" % ', '.join(data_set))
+            data = data_set.pop()
+        else:
+            data = _guess_ndvar_data_type(evoked.info)
 
     if data == 'mag':
         info = _cs.meg_info(vmax)
