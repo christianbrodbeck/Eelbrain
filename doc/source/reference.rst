@@ -73,7 +73,7 @@ Save
 
 
 ^^^^^^^^^^^^^^^^^^^^^^
-Sorting and reordering
+Sorting and Reordering
 ^^^^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
