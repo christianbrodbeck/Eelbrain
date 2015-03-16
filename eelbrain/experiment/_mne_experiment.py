@@ -747,7 +747,7 @@ class MneExperiment(FileTree):
         stcs = []
         mstcs = []
         invs = {}
-        mms = {}
+        mm_cache = CacheDict(self.load_morph_matrix, 'mrisubject')
         for subject, evoked in izip(ds['subject'], ds['evoked']):
             subject_from = from_subjects[subject]
 
@@ -755,8 +755,7 @@ class MneExperiment(FileTree):
             if subject in invs:
                 inv = invs[subject]
             else:
-                inv = self.load_inv(evoked, subject=subject)
-                invs[subject] = inv
+                inv = invs[subject] = self.load_inv(evoked, subject=subject)
 
             # apply inv
             stc = apply_inverse(evoked, inv, **self._params['apply_inv_kw'])
@@ -774,11 +773,7 @@ class MneExperiment(FileTree):
                         stc = stc.copy()
                     stc.subject = common_brain
                 else:
-                    if subject_from in mms:
-                        v_to, mm = mms[subject_from]
-                    else:
-                        mm, v_to = self.load_morph_matrix()
-                        mms[subject_from] = (v_to, mm)
+                    mm, v_to = mm_cache[subject_from]
                     stc = mne.morph_data_precomputed(subject_from, subject,
                                                      stc, v_to, mm)
                 mstcs.append(stc)
