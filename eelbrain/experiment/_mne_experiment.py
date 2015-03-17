@@ -3804,7 +3804,9 @@ class MneExperiment(FileTree):
         self._params['apply_inv_kw'] = apply_kw
 
     def _eval_model(self, model):
-        if len(model) > 1 and '*' in model:
+        if model == '':
+            return model
+        elif len(model) > 1 and '*' in model:
             raise ValueError("Specify model with '%' instead of '*'")
 
         factors = [v.strip() for v in model.split('%')]
