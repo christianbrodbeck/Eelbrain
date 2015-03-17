@@ -471,6 +471,16 @@ class _plt_topomap(_utsnd._plt_im_array):
             tck = scipy.interpolate.bisplrep(locs[:, 1], locs[:, 0], v, kx=5, ky=5)
             return scipy.interpolate.bisplev(self._grid, self._grid, tck)
         else:
+            isnan = np.isnan(v)
+            if np.any(isnan):
+                nanmap = scipy.interpolate.griddata(locs, isnan, self._mgrid,
+                                                    method=self._interpolation)
+                mask = nanmap > 0.5
+                v = np.where(isnan, 0, v)
+                vmap = scipy.interpolate.griddata(locs, v, self._mgrid,
+                                                  method=self._interpolation)
+                np.place(vmap, mask, np.NaN)
+                return vmap
             return scipy.interpolate.griddata(locs, v, self._mgrid,
                                               method=self._interpolation)
 
