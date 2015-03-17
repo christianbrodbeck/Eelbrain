@@ -26,8 +26,10 @@ from .. import table
 from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
 from .._info import BAD_CHANNELS
+from .._names import INTERPOLATE_CHANNELS
 from .._mne import source_induced_power, dissolve_label, rename_label
 from ..mne_fixes import write_labels_to_annot
+from ..mne_fixes import _interpolate_bads_eeg_epochs
 from .._data_obj import (align, UTS, DimensionMismatchError,
                          assert_is_legal_dataset_key)
 from ..fmtxt import List, Report
@@ -256,7 +258,8 @@ class MneExperiment(FileTree):
     #     causes edf files to be loaded but not used
     #     automatically.
     _epoch_rejection = {'': {'kind': None},
-                        'man': {'kind': 'manual'},
+                        'man': {'kind': 'manual',
+                                'interpolation': True},
                         'et': {'kind': 'auto',
                                'threshold': dict(mag=3e-12),
                                'edf': ['EBLINK'],
@@ -1325,6 +1328,10 @@ class MneExperiment(FileTree):
             ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim,
                                           reject=reject_arg)
 
+            # interpolate channels
+            if reject and ds.info[INTERPOLATE_CHANNELS]:
+                _interpolate_bads_eeg_epochs(ds['epochs'], ds[INTERPOLATE_CHANNELS])
+
             if not keep_raw:
                 del ds.info['raw']
 
@@ -1861,10 +1868,17 @@ class MneExperiment(FileTree):
                            "events than the data. Something went wrong...")
                     raise RuntimeError(err)
 
+            interpolate_channels = self._params['rej']['interpolation']
+            if interpolate_channels and self.get('modality') == 'eeg' and INTERPOLATE_CHANNELS in ds_sel:
+                ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
+                ds.info[INTERPOLATE_CHANNELS] = True
+            else:
+                ds.info[INTERPOLATE_CHANNELS] = False
+
             # subset events
             if reject == 'keep':
                 ds['accept'] = ds_sel['accept']
-            elif reject == True:
+            elif reject is True:
                 ds = ds.sub(ds_sel['accept'])
             else:
                 err = ("reject parameter must be bool or 'keep', not "
@@ -2849,12 +2863,14 @@ class MneExperiment(FileTree):
             eog_sns = self._eog_sns[meg_system]
             data = 'meg'
             vlim = 2e-12
+            allow_interpolation = False
         elif modality == 'eeg':
             ds = self.load_epochs(reject=False, eog=True, baseline=True,
                                   decim=rej_args.get('decim', None))
             eog_sns = self._eog_sns['KIT-BRAINVISION']
             data = 'eeg'
             vlim = 1.5e-4
+            allow_interpolation = rej_args['interpolation']
         else:
             raise ValueError("modality=%r" % modality)
 
@@ -2863,7 +2879,7 @@ class MneExperiment(FileTree):
         eog_sns = [c for c in eog_sns if c not in bad_channels]
 
         gui.select_epochs(ds, data, path=path, vlim=vlim, mark=eog_sns,
-                          **kwargs)
+                          allow_interpolation=allow_interpolation, **kwargs)
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
                     tstop=None, samples=10000, sns_baseline=True,
