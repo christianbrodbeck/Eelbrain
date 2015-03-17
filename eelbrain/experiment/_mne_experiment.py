@@ -532,7 +532,8 @@ class MneExperiment(FileTree):
         self._register_field('rej', self.epoch_rejection.keys(), 'man',
                              post_set_handler=self._post_set_rej)
         self._register_field('group', self.groups.keys() + ['all'], 'all',
-                             eval_handler=self._eval_group)
+                             eval_handler=self._eval_group,
+                             post_set_handler=self._post_set_group)
         # epoch
         epoch_keys = sorted(self.epochs)
         for default_epoch in epoch_keys:
@@ -3723,6 +3724,12 @@ class MneExperiment(FileTree):
             if group not in self.get_field_values('subject'):
                 raise ValueError("No group or subject named %r" % group)
         return group
+
+    def _post_set_group(self, _, group):
+        if group != 'all':
+            group_members= self._get_group_members(group)
+            if self.get('subject') not in group_members:
+                self.set(group_members[0])
 
     def set_inv(self, ori='free', snr=3, method='dSPM', depth=None,
                 pick_normal=False):
