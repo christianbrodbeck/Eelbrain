@@ -22,7 +22,7 @@ managed by
 
 from __future__ import division
 
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from copy import deepcopy
 from fnmatch import fnmatchcase
 import itertools
@@ -7320,7 +7320,7 @@ def intersect_dims(dims1, dims2, check_dims=True):
 
 # ---NDVar functions---
 
-def corr(x, dim='sensor', obs='time', neighbors=None, name=None):
+def corr(x, dim='sensor', obs='time', name=None):
     """Calculate Neighbor correlation
 
     Parameter
@@ -7331,17 +7331,22 @@ def corr(x, dim='sensor', obs='time', neighbors=None, name=None):
         Dimension over which to correlate neighbors.
     """
     dim_obj = x.get_dim(dim)
-    neighbors = neighbors or dim_obj.neighbors()
 
+    # find neighbors
+    neighbors = defaultdict(list)
+    for a, b in dim_obj.connectivity():
+        neighbors[a].append(b)
+        neighbors[b].append(a)
+
+    # for each point, find the average correlation with its neighbors
     data = x.get_data((dim, obs))
     cc = np.corrcoef(data)
-    y = np.zeros(len(dim_obj))
+    y = np.empty(len(dim_obj))
     for i in xrange(len(dim_obj)):
         y[i] = np.mean(cc[i, neighbors[i]])
 
     info = cs.set_info_cs(x.info, cs.stat_info('r'))
-    out = NDVar(y, (dim_obj,), info, name)
-    return out
+    return NDVar(y, (dim_obj,), info, name)
 
 
 def cwt_morlet(Y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
