@@ -67,6 +67,9 @@ def select_epochs(*args, **kwargs):
     size : None | tuple of 2 int
         Window size on screen. Default (None): use settings form last
         session.
+    allow_interpolation : bool
+        Whether to allow interpolating individual channels by epoch (default
+        True).
 
     Notes
     -----

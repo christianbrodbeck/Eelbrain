@@ -105,7 +105,8 @@ class Document(object):
     """
 
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
-                 tag='rej_tag', trigger='trigger', path=None, bad_chs=None):
+                 tag='rej_tag', trigger='trigger', path=None, bad_chs=None,
+                 allow_interpolation=True):
         """
         Parameters
         ----------
@@ -155,6 +156,9 @@ class Document(object):
 
         if INTERPOLATE_CHANNELS in ds:
             interpolate = ds[INTERPOLATE_CHANNELS]
+            if not allow_interpolation and any(interpolate):
+                raise ValueError("Dataset contains channel interpolation "
+                                 "information but interpolation is turned off")
         else:
             interpolate = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS)
 
@@ -175,6 +179,9 @@ class Document(object):
                 blink = None
         elif blink is not None:
             raise TypeError("blink needs to be a string or None")
+
+        # options
+        self.allow_interpolation = allow_interpolation
 
         # data
         self.epochs = data
@@ -336,6 +343,21 @@ class Document(object):
 
         if INTERPOLATE_CHANNELS in ds:
             interpolate = ds[INTERPOLATE_CHANNELS]
+            if not self.allow_interpolation and any(interpolate):
+                app = get_app()
+                cmd = app.message_box("The file contains channel interpolation "
+                                      "instructions, but interpolation is "
+                                      "disabled is the current session. Drop "
+                                      "interpolation instructions?",
+                                      "Clear Channel Interpolation "
+                                      "Instructions?",
+                                      wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
+                if cmd == wx.OK:
+                    for l in interpolate:
+                        del l[:]
+                else:
+                    raise RuntimeError("File with interpolation when "
+                                       "Interpolation is disabled")
         else:
             interpolate = Datalist([[]] * self.n_epochs, INTERPOLATE_CHANNELS)
 
@@ -506,7 +528,7 @@ class Frame(EelbrainFrame):  # control
 
     def __init__(self, parent, model, nplots, topo, mean, vlim,
                  plot_range, color, lw, mark, mcolor, mlw, antialiased, pos,
-                 size):
+                 size, allow_interpolation):
         """View object of the epoch selection GUI
 
         Parameters
@@ -551,6 +573,7 @@ class Frame(EelbrainFrame):  # control
         self.model = model
         self.doc = doc
         self.history = history
+        self.allow_interpolation = allow_interpolation
 
         # setup figure canvas
         self.canvas = FigureCanvasPanel(self)
@@ -1317,6 +1340,10 @@ class Frame(EelbrainFrame):  # control
                           "plotting as range (in the View menu)",
                           "Turn off Range Plotting", wx.OK)
             return
+        elif not self.allow_interpolation:
+            wx.MessageBox("Interpolation is disabled for this session",
+                          "Interpolation disabled", wx.OK)
+            return
         plt = self._case_plots[ax.ax_idx]
         locs = plt.epoch.sub(time=event.xdata).x
         sensor = np.argmin(np.abs(locs - event.ydata))
@@ -1385,11 +1412,12 @@ class TerminalInterface(object):
                  tag='rej_tag', trigger='trigger',
                  path=None, nplots=None, topo=None, mean=None,
                  vlim=None, plot_range=None, color='k', lw=0.5, mark=[],
-                 mcolor='r', mlw=0.8, antialiased=True, pos=None, size=None):
+                 mcolor='r', mlw=0.8, antialiased=True, pos=None, size=None,
+                 allow_interpolation=True):
         # Documented in eelbrain.gui
         bad_chs = None
         self.doc = Document(ds, data, accept, blink, tag, trigger, path,
-                            bad_chs)
+                            bad_chs, allow_interpolation)
         self.model = Model(self.doc)
         self.history = self.model.history
 
@@ -1397,7 +1425,7 @@ class TerminalInterface(object):
 
         self.frame = Frame(None, self.model, nplots, topo, mean, vlim,
                            plot_range, color, lw, mark, mcolor, mlw,
-                           antialiased, pos, size)
+                           antialiased, pos, size, allow_interpolation)
         self.frame.Show()
         app.SetTopWindow(self.frame)
         if not app.IsMainLoopRunning():
