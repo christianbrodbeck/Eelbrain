@@ -1104,8 +1104,7 @@ class Frame(EelbrainFrame):  # control
             epoch_idx = self._epoch_idxs[ax_index]
             seg = self._case_segs[ax_index]
             name = 'Epoch %i Neighbor Correlation' % epoch_idx
-        cseg = corr(seg, name=name)
-        plot.Topomap(cseg, sensors='name')
+        plot.Topomap(corr(seg, name=name), sensorlabels='name')
 
     def PlotButterfly(self, ax_index):
         epoch = self._get_ax_data(ax_index)

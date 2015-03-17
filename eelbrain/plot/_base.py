@@ -304,7 +304,7 @@ def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
         else:
             vmin, vmax = find_vlim_args(ndvar)
             vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
-        im_args = dict(cmap=cmap, vmin=vmin, vmax=vmax)
+        im_args = {'cmap': cmap, 'vmin': vmin, 'vmax': vmax}
     else:
         im_args = None
 
