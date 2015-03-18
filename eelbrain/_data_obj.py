@@ -1903,7 +1903,7 @@ class Factor(_Effect):
             warn("The rep argument has been renamed to repeat", DeprecationWarning)
 
         if repeat == 0 or tile == 0:
-            self.__setstate__({'x': np.empty((0,), np.uint16), 'labels': {},
+            self.__setstate__({'x': np.empty((0,), np.uint32), 'labels': {},
                                'name': name, 'random': random})
             return
 
@@ -1926,7 +1926,7 @@ class Factor(_Effect):
         # convert x to codes
         highest_code = -1
         codes = {}  # {label -> code}
-        x_ = np.empty(n_cases, dtype=np.uint16)
+        x_ = np.empty(n_cases, dtype=np.uint32)
         for i, value in enumerate(x):
             if value in labels_dict:
                 label = labels_dict[value]
@@ -1939,6 +1939,9 @@ class Factor(_Effect):
                 x_[i] = codes[label]
             else:  # new code
                 x_[i] = codes[label] = highest_code = highest_code + 1
+
+        if highest_code >= 2**32:
+            raise RuntimeError("Too many categories in this Factor")
 
         # collect ordered_labels
         ordered_labels = OrderedDict()
@@ -2060,7 +2063,7 @@ class Factor(_Effect):
             while code in self._labels:
                 code += 1
 
-            if code >= 65535:
+            if code >= 2**32:
                 raise ValueError("Too many categories in this Factor.")
 
             self._labels[code] = label

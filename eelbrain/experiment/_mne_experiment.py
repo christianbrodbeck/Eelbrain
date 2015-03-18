@@ -26,8 +26,10 @@ from .. import table
 from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
 from .._info import BAD_CHANNELS
+from .._names import INTERPOLATE_CHANNELS
 from .._mne import source_induced_power, dissolve_label, rename_label
 from ..mne_fixes import write_labels_to_annot
+from ..mne_fixes import _interpolate_bads_eeg_epochs
 from .._data_obj import (align, UTS, DimensionMismatchError,
                          assert_is_legal_dataset_key)
 from ..fmtxt import List, Report
@@ -256,7 +258,8 @@ class MneExperiment(FileTree):
     #     causes edf files to be loaded but not used
     #     automatically.
     _epoch_rejection = {'': {'kind': None},
-                        'man': {'kind': 'manual'},
+                        'man': {'kind': 'manual',
+                                'interpolation': True},
                         'et': {'kind': 'auto',
                                'threshold': dict(mag=3e-12),
                                'edf': ['EBLINK'],
@@ -532,7 +535,8 @@ class MneExperiment(FileTree):
         self._register_field('rej', self.epoch_rejection.keys(), 'man',
                              post_set_handler=self._post_set_rej)
         self._register_field('group', self.groups.keys() + ['all'], 'all',
-                             eval_handler=self._eval_group)
+                             eval_handler=self._eval_group,
+                             post_set_handler=self._post_set_group)
         # epoch
         epoch_keys = sorted(self.epochs)
         for default_epoch in epoch_keys:
@@ -1324,6 +1328,10 @@ class MneExperiment(FileTree):
             ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim,
                                           reject=reject_arg)
 
+            # interpolate channels
+            if reject and ds.info[INTERPOLATE_CHANNELS]:
+                _interpolate_bads_eeg_epochs(ds['epochs'], ds[INTERPOLATE_CHANNELS])
+
             if not keep_raw:
                 del ds.info['raw']
 
@@ -1860,10 +1868,17 @@ class MneExperiment(FileTree):
                            "events than the data. Something went wrong...")
                     raise RuntimeError(err)
 
+            interpolate_channels = self._params['rej']['interpolation']
+            if interpolate_channels and self.get('modality') == 'eeg' and INTERPOLATE_CHANNELS in ds_sel:
+                ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
+                ds.info[INTERPOLATE_CHANNELS] = True
+            else:
+                ds.info[INTERPOLATE_CHANNELS] = False
+
             # subset events
             if reject == 'keep':
                 ds['accept'] = ds_sel['accept']
-            elif reject == True:
+            elif reject is True:
                 ds = ds.sub(ds_sel['accept'])
             else:
                 err = ("reject parameter must be bool or 'keep', not "
@@ -2848,12 +2863,14 @@ class MneExperiment(FileTree):
             eog_sns = self._eog_sns[meg_system]
             data = 'meg'
             vlim = 2e-12
+            allow_interpolation = False
         elif modality == 'eeg':
             ds = self.load_epochs(reject=False, eog=True, baseline=True,
                                   decim=rej_args.get('decim', None))
             eog_sns = self._eog_sns['KIT-BRAINVISION']
             data = 'eeg'
             vlim = 1.5e-4
+            allow_interpolation = rej_args['interpolation']
         else:
             raise ValueError("modality=%r" % modality)
 
@@ -2862,7 +2879,7 @@ class MneExperiment(FileTree):
         eog_sns = [c for c in eog_sns if c not in bad_channels]
 
         gui.select_epochs(ds, data, path=path, vlim=vlim, mark=eog_sns,
-                          **kwargs)
+                          allow_interpolation=allow_interpolation, **kwargs)
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
                     tstop=None, samples=10000, sns_baseline=True,
@@ -2942,7 +2959,7 @@ class MneExperiment(FileTree):
 
         # info
         self._report_test_info(report.add_section("Test Info"), ds, y, test,
-                               tstart, tstop, pmin, res, 'src', include)
+                               tstart, tstop, pmin, res, 'src', include, True)
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
@@ -3117,7 +3134,7 @@ class MneExperiment(FileTree):
 
         # compose info
         self._report_test_info(info_section, ds, y, test, tstart, tstop, pmin,
-                               res)
+                               res, 'src')
 
         report.sign(('eelbrain', 'mne', 'surfer'))
         report.save_html(dst)
@@ -3173,7 +3190,7 @@ class MneExperiment(FileTree):
         # info
         info_section = report.add_section("Test Info")
         self._report_test_info(info_section, ds, y, test, tstart, tstop, pmin,
-                               res, 'sns', include)
+                               res, 'sns', include, True)
 
         # add connectivity image
         p = plot.SensorMap(ds['eeg'], show=False)
@@ -3284,7 +3301,7 @@ class MneExperiment(FileTree):
                                caption % sensor, colors)
 
         self._report_test_info(info_section, ds, eeg, test, tstart, tstop, pmin,
-                               res)
+                               res, 'sns')
         report.sign(('eelbrain', 'mne'))
         report.save_html(dst)
 
@@ -3305,15 +3322,20 @@ class MneExperiment(FileTree):
         return s_table
 
     def _report_test_info(self, section, ds, y, test, tstart, tstop, pmin,
-                          res, data=None, include=None):
+                          res, data, include=None, spatiotemporal=False):
         info = List("Data:")
         info.add_item(self.format('epoch = {epoch} {evoked-kind} ~ {model}'))
-        info.add_item(self.format("cov = {cov}"))
-        info.add_item(self.format("inv = {inv}"))
+        if data == 'src':
+            info.add_item(self.format("cov = {cov}"))
+            info.add_item(self.format("inv = {inv}"))
         section.append(info)
 
         # cluster test info
-        info = List("Cluster Permutation Test:")
+        if spatiotemporal:
+            title = "Spatio-Temporal Cluster Permutation Test:"
+        else:
+            title = "Temporal Cluster Permutation Test:"
+        info = List(title)
         test_params = self._tests[test]
         info.add_item("test = %s  (%s)" % (test_params['kind'], test_params['desc']))
         info.add_item("Time interval:  %i - %i ms." % (_report.tstart(tstart, y.time),
@@ -3328,12 +3350,13 @@ class MneExperiment(FileTree):
             criteria = info.add_sublist("Criteria:")
             mintime = self.cluster_criteria.get('mintime', 0)
             criteria.add_item("Minimum duration:  %i ms" % round(mintime * 1000))
-            if data == 'src':
-                minsource = self.cluster_criteria.get('minsource', 0)
-                criteria.add_item("At least %i contiguous sources." % minsource)
-            elif data == 'sns':
-                minsensor = self.cluster_criteria.get('minsensor', 0)
-                criteria.add_item("At least %i contiguous sensors." % minsensor)
+            if spatiotemporal:
+                if data == 'src':
+                    minsource = self.cluster_criteria.get('minsource', 0)
+                    criteria.add_item("At least %i contiguous sources." % minsource)
+                elif data == 'sns':
+                    minsensor = self.cluster_criteria.get('minsensor', 0)
+                    criteria.add_item("At least %i contiguous sensors." % minsensor)
 
             if include is not None:
                 info.add_item("Separate plots of all clusters with a p-value < %s"
@@ -3723,6 +3746,12 @@ class MneExperiment(FileTree):
             if group not in self.get_field_values('subject'):
                 raise ValueError("No group or subject named %r" % group)
         return group
+
+    def _post_set_group(self, _, group):
+        if group != 'all':
+            group_members= self._get_group_members(group)
+            if self.get('subject') not in group_members:
+                self.set(group_members[0])
 
     def set_inv(self, ori='free', snr=3, method='dSPM', depth=None,
                 pick_normal=False):

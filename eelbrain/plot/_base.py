@@ -304,7 +304,7 @@ def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
         else:
             vmin, vmax = find_vlim_args(ndvar)
             vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
-        im_args = dict(cmap=cmap, vmin=vmin, vmax=vmax)
+        im_args = {'cmap': cmap, 'vmin': vmin, 'vmax': vmax}
     else:
         im_args = None
 
@@ -507,8 +507,8 @@ def find_vlim_args(ndvar, vmin=None, vmax=None):
             vmin = ndvar.info.get('vmin', None)
 
     if vmax is None:
-        xmax = ndvar.x.max()
-        xmin = ndvar.x.min()
+        xmax = np.nanmax(ndvar.x)
+        xmin = np.nanmin(ndvar.x)
         abs_max = max(abs(xmax), abs(xmin)) or 1e-14
         scale = math.floor(np.log10(abs_max))
         vmax = math.ceil(xmax * 10 ** -scale) * 10 ** scale

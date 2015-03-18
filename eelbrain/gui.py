@@ -67,6 +67,9 @@ def select_epochs(*args, **kwargs):
     size : None | tuple of 2 int
         Window size on screen. Default (None): use settings form last
         session.
+    allow_interpolation : bool
+        Whether to allow interpolating individual channels by epoch (default
+        True).
 
     Notes
     -----
@@ -80,6 +83,9 @@ def select_epochs(*args, **kwargs):
             Butterfly plot of the currently displayed epoch.
         c:
             Pairwise sensor correlation plot or the current epoch.
+        i:
+            Schedule the channel nearest to the pointer on the vertical for
+            interpolation.
         t:
             Topomap plot of the currently displayed time point.
         u:

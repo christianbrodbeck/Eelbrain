@@ -21,7 +21,8 @@ import numpy as np
 import wx
 
 from .. import load, save, plot
-from .._data_obj import Dataset, Factor, Var, corr, asndvar, combine
+from .._data_obj import Dataset, Factor, Var, Datalist, corr, asndvar, combine
+from .._names import INTERPOLATE_CHANNELS
 from .._info import BAD_CHANNELS
 from ..plot._base import find_fig_vlims
 from ..plot._nuts import _plt_bin_nuts
@@ -40,7 +41,8 @@ class ChangeAction(Action):
 
     def __init__(self, desc, index=None, old_accept=None, new_accept=None,
                  old_tag=None, new_tag=None, old_path=None, new_path=None,
-                 old_bad_chs=None, new_bad_chs=None):
+                 old_bad_chs=None, new_bad_chs=None, old_interpolate=None,
+                 new_interpolate=None):
         """
         Parameters
         ----------
@@ -58,10 +60,13 @@ class ChangeAction(Action):
         self.new_tag = new_tag
         self.old_bad_chs = old_bad_chs
         self.new_bad_chs = new_bad_chs
+        self.old_interpolate = old_interpolate
+        self.new_interpolate = new_interpolate
 
     def do(self, doc):
         if self.index is not None:
-            doc.set_case(self.index, self.new_accept, self.new_tag)
+            doc.set_case(self.index, self.new_accept, self.new_tag,
+                         self.new_interpolate)
         if self.new_path is not None:
             doc.set_path(self.new_path)
         if self.new_bad_chs is not None:
@@ -69,7 +74,8 @@ class ChangeAction(Action):
 
     def undo(self, doc):
         if self.index is not None:
-            doc.set_case(self.index, self.old_accept, self.old_tag)
+            doc.set_case(self.index, self.old_accept, self.old_tag,
+                         self.old_interpolate)
         if self.new_path is not None and self.old_path is not None:
             doc.set_path(self.old_path)
         if self.new_bad_chs is not None:
@@ -99,7 +105,8 @@ class Document(object):
     """
 
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
-                 tag='rej_tag', trigger='trigger', path=None, bad_chs=None):
+                 tag='rej_tag', trigger='trigger', path=None, bad_chs=None,
+                 allow_interpolation=True):
         """
         Parameters
         ----------
@@ -147,6 +154,14 @@ class Document(object):
                    "trigger values." % trigger)
             raise KeyError(err)
 
+        if INTERPOLATE_CHANNELS in ds:
+            interpolate = ds[INTERPOLATE_CHANNELS]
+            if not allow_interpolation and any(interpolate):
+                raise ValueError("Dataset contains channel interpolation "
+                                 "information but interpolation is turned off")
+        else:
+            interpolate = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS)
+
         if isinstance(blink, basestring):
             if ds is not None:
                 blink = ds.get(blink, None)
@@ -165,10 +180,14 @@ class Document(object):
         elif blink is not None:
             raise TypeError("blink needs to be a string or None")
 
+        # options
+        self.allow_interpolation = allow_interpolation
+
         # data
         self.epochs = data
         self.accept = accept
         self.tag = tag
+        self.interpolate = interpolate
         self.trigger = trigger
         self.blink = blink
         self.bad_channels = []
@@ -186,9 +205,10 @@ class Document(object):
         self.saved = True  # managed by the history
         self.path = path
         if path and os.path.exists(path):
-            accept, tag, bad_chs = self.read_rej_file(path)
+            accept, tag, interpolate, bad_chs = self.read_rej_file(path)
             self.accept[:] = accept
             self.tag[:] = tag
+            self.interpolate[:] = interpolate
             self.set_bad_channels_by_name(bad_chs)
 
     @property
@@ -236,10 +256,13 @@ class Document(object):
     def set_bad_channels_by_name(self, names):
         self.set_bad_channels(self.epochs.sensor.dimindex(names))
 
-    def set_case(self, index, state, tag=None):
-        self.accept[index] = state
+    def set_case(self, index, state, tag, interpolate):
+        if state is not None:
+            self.accept[index] = state
         if tag is not None:
             self.tag[index] = tag
+        if interpolate is not None:
+            self.interpolate[index] = interpolate
 
         for func in self._case_change_subscriptions:
             func(index)
@@ -318,12 +341,32 @@ class Document(object):
         else:
             tag = Factor([''], repeat=self.n_epochs, name='rej_tag')
 
+        if INTERPOLATE_CHANNELS in ds:
+            interpolate = ds[INTERPOLATE_CHANNELS]
+            if not self.allow_interpolation and any(interpolate):
+                app = get_app()
+                cmd = app.message_box("The file contains channel interpolation "
+                                      "instructions, but interpolation is "
+                                      "disabled is the current session. Drop "
+                                      "interpolation instructions?",
+                                      "Clear Channel Interpolation "
+                                      "Instructions?",
+                                      wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT)
+                if cmd == wx.OK:
+                    for l in interpolate:
+                        del l[:]
+                else:
+                    raise RuntimeError("File with interpolation when "
+                                       "Interpolation is disabled")
+        else:
+            interpolate = Datalist([[]] * self.n_epochs, INTERPOLATE_CHANNELS)
+
         if BAD_CHANNELS in ds.info:
             bad_channels = self.epochs.sensor.dimindex(ds.info[BAD_CHANNELS])
         else:
             bad_channels = []
 
-        return accept, tag, bad_channels
+        return accept, tag, interpolate, bad_channels
 
     def save(self):
         # find dest path
@@ -331,7 +374,8 @@ class Document(object):
 
         # create Dataset to save
         info = {BAD_CHANNELS: self.bad_channel_names}
-        ds = Dataset((self.trigger, self.accept, self.tag), info=info)
+        ds = Dataset((self.trigger, self.accept, self.tag, self.interpolate),
+                     info=info)
 
         if ext == '.pickled':
             save.pickle(ds, self.path)
@@ -432,12 +476,13 @@ class Model(object):
         self.history.do(action)
 
     def load(self, path):
-        new_accept, new_tag, new_bad_chs = self.doc.read_rej_file(path)
+        new_accept, new_tag, new_interpolate, new_bad_chs = self.doc.read_rej_file(path)
 
         # create load action
         action = ChangeAction("Load File", full_slice, self.doc.accept, new_accept,
                               self.doc.tag, new_tag, self.doc.path, path,
-                              self.doc.bad_channels, new_bad_chs)
+                              self.doc.bad_channels, new_bad_chs,
+                              self.doc.interpolate, new_interpolate)
         self.history.do(action)
         self.history.register_save()
 
@@ -464,13 +509,26 @@ class Model(object):
         action = ChangeAction(desc, i, old_accept, state, old_tag, tag)
         self.history.do(action)
 
+    def toggle_interpolation(self, case, ch_name):
+        old_interpolate = self.doc.interpolate[case]
+        new_interpolate = old_interpolate[:]
+        if ch_name in new_interpolate:
+            new_interpolate.remove(ch_name)
+            desc = "Don't interpolate %s for %i" % (ch_name, case)
+        else:
+            new_interpolate.append(ch_name)
+            desc = "Interpolate %s for %i" % (ch_name, case)
+        action = ChangeAction(desc, case, old_interpolate=old_interpolate,
+                              new_interpolate=new_interpolate)
+        self.history.do(action)
+
 
 class Frame(EelbrainFrame):  # control
     "View object of the epoch selection GUI"
 
     def __init__(self, parent, model, nplots, topo, mean, vlim,
                  plot_range, color, lw, mark, mcolor, mlw, antialiased, pos,
-                 size):
+                 size, allow_interpolation):
         """View object of the epoch selection GUI
 
         Parameters
@@ -515,6 +573,7 @@ class Frame(EelbrainFrame):  # control
         self.model = model
         self.doc = doc
         self.history = history
+        self.allow_interpolation = allow_interpolation
 
         # setup figure canvas
         self.canvas = FigureCanvasPanel(self)
@@ -598,10 +657,10 @@ class Frame(EelbrainFrame):  # control
                 self._vlims[k] = (-vlim, vlim)
         if plot_range is None:
             plot_range = config.ReadBool('plot_range', True)
-        self._bfly_kwargs = {'plot_range': plot_range, 'traces': not plot_range,
-                             'mark': mark,  'color': color, 'lw': lw,
-                             'mcolor': mcolor, 'mlw': mlw,
-                             'antialiased': antialiased, 'vlims': self._vlims}
+        self._mark = mark
+        self._bfly_kwargs = {'color': color, 'lw': lw, 'mlw': mlw,
+                             'antialiased': antialiased, 'vlims': self._vlims,
+                             'plot_range': plot_range, 'mcolor': mcolor}
         self._topo_kwargs = {'vlims': self._vlims, 'title': None}
         self._SetLayout(nplots, topo, mean)
 
@@ -617,6 +676,15 @@ class Frame(EelbrainFrame):  # control
         self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
         self.canvas.mpl_connect('motion_notify_event', self.OnPointerMotion)
+
+        # plot objects
+        self._current_page_i = None
+        self._epoch_idxs = None
+        self._case_plots = None
+        self._case_axes = None
+        self._case_segs = None
+        self._axes_by_idx = None
+        self._topo_ax = None
 
         # Finalize
         self.ShowPage(0)
@@ -653,10 +721,15 @@ class Frame(EelbrainFrame):  # control
         for idx in index:
             if idx in self._axes_by_idx:
                 ax = self._axes_by_idx[idx]
-                state = self.doc.accept[idx]
                 ax_idx = ax.ax_idx
                 h = self._case_plots[ax_idx]
-                h.set_state(state)
+                h.set_state(self.doc.accept[idx])
+                # interpolated channels
+                ch_index = h.epoch.sensor.channel_idx
+                h.set_marked(INTERPOLATE_CHANNELS, [ch_index[ch] for ch in
+                                                    self.doc.interpolate[idx]
+                                                    if ch in ch_index])
+
                 axes.append(ax)
 
         # update mean plot
@@ -673,10 +746,9 @@ class Frame(EelbrainFrame):  # control
 
     def OnCanvasClick(self, event):
         "called by mouse clicks"
-        log_msg = "Canvas Click:"
         ax = event.inaxes
         if ax:
-            log_msg += " ax.ax_idx=%i" % ax.ax_idx
+            logger.debug("Canvas click at ax.ax_idx=%i", ax.ax_idx)
             if ax.ax_idx >= 0:
                 idx = ax.epoch_idx
                 state = not self.doc.accept[idx]
@@ -685,8 +757,8 @@ class Frame(EelbrainFrame):  # control
                 self.model.set_case(idx, state, tag, desc)
             elif ax.ax_idx == -2:
                 self.open_topomap()
-
-        logger.debug(log_msg)
+        else:
+            logger.debug("Canvas click outside axes")
 
     def OnCanvasKey(self, event):
         # GUI Control events
@@ -709,18 +781,18 @@ class Frame(EelbrainFrame):  # control
 
         # plotting
         ax = event.inaxes
-        if ax is None:
+        if ax is None or ax.ax_idx == -2:
             return
-        time = event.xdata
-        ax_index = getattr(ax, 'ax_idx', None)
-        if ax_index == -2:
+        elif event.key == 't':
+            self.PlotTopomap(ax.ax_idx, event.xdata)
+        elif event.key == 'b':
+            self.PlotButterfly(ax.ax_idx)
+        elif event.key == 'c':
+            self.PlotCorrelation(ax.ax_idx)
+        elif ax.ax_idx == -1:
             return
-        if event.key == 't':
-            self.PlotTopomap(ax_index, time)
-        elif (event.key == 'b'):
-            self.PlotButterfly(ax_index)
-        elif (event.key == 'c'):
-            self.PlotCorrelation(ax_index)
+        elif event.key == 'i':
+            self.ToggleChannelInterpolation(ax, event)
 
     def OnClear(self, event):
         self.model.clear()
@@ -814,7 +886,7 @@ class Frame(EelbrainFrame):  # control
         pos_txt = ',  '.join((x_txt, y_txt))
         if ax.ax_idx >= 0:  # single trial plot
             txt = 'Epoch %i,   %%s' % ax.epoch_idx
-        elif  ax.ax_idx == -1:  # mean plot
+        elif ax.ax_idx == -1:  # mean plot
             txt = "Page average,   %s"
         else:
             txt = '%s'
@@ -1032,8 +1104,7 @@ class Frame(EelbrainFrame):  # control
             epoch_idx = self._epoch_idxs[ax_index]
             seg = self._case_segs[ax_index]
             name = 'Epoch %i Neighbor Correlation' % epoch_idx
-        cseg = corr(seg, name=name)
-        plot.Topomap(cseg, sensors='name')
+        plot.Topomap(corr(seg, name=name), sensorlabels='name')
 
     def PlotButterfly(self, ax_index):
         epoch = self._get_ax_data(ax_index)
@@ -1169,10 +1240,9 @@ class Frame(EelbrainFrame):  # control
                        % key)
                 raise TypeError(err)
             elif key == 'mark':
-                self._bfly_kwargs['mark'] = value
+                self._mark = value
             elif key == 'plot_range':
                 self._bfly_kwargs[key] = value
-                self._bfly_kwargs['traces'] = not value
             elif key in self._bf_kwargs:
                 self._bfly_kwargs[key] = value
             else:
@@ -1208,21 +1278,27 @@ class Frame(EelbrainFrame):  # control
 
         self.figure.clf()
         nrow, ncol = self._nplots
-        self._epoch_idxs = self._segs_by_page[page]
 
         # segment plots
+        self._epoch_idxs = self._segs_by_page[page]
         self._case_plots = []
         self._case_axes = []
         self._case_segs = []
         self._axes_by_idx = {}
+        mark = None
         for i, epoch_idx in enumerate(self._epoch_idxs):
-            name = 'Epoch %i' % epoch_idx
-            case = self.doc.get_epoch(epoch_idx, name)
+            case = self.doc.get_epoch(epoch_idx, 'Epoch %i' % epoch_idx)
+            if mark is None:
+                mark = [case.sensor.channel_idx[ch] for ch in self._mark
+                        if ch in case.sensor.channel_idx]
             state = self.doc.accept[epoch_idx]
-            ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0],
-                                         yticks=[])
-            h = _ax_bfly_epoch(ax, case, xlabel=None, ylabel=None, state=state,
-                               **self._bfly_kwargs)
+            ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0], yticks=[])
+            h = _ax_bfly_epoch(ax, case, mark, state, **self._bfly_kwargs)
+            # mark interpolated channels
+            if self.doc.interpolate[epoch_idx] and not self._bfly_kwargs['plot_range']:
+                chs = case.sensor.dimindex(self.doc.interpolate[epoch_idx])
+                h.set_marked(INTERPOLATE_CHANNELS, chs)
+            # mark eye tracker artifacts
             if self.doc.blink is not None:
                 _plt_bin_nuts(ax, self.doc.blink[epoch_idx],
                               color=(0.99, 0.76, 0.21))
@@ -1237,18 +1313,18 @@ class Frame(EelbrainFrame):  # control
         # mean plot
         if self._plot_mean:
             plot_i = nrow * ncol
-            ax = self._mean_ax = self.figure.add_subplot(nrow, ncol, plot_i)
-            ax.ax_idx = -1
-
-            mseg = self._mean_seg = self._get_page_mean_seg()
-            self._mean_plot = _ax_bfly_epoch(ax, mseg, **self._bfly_kwargs)
+            self._mean_ax = self.figure.add_subplot(nrow, ncol, plot_i)
+            self._mean_ax.ax_idx = -1
+            self._mean_seg = self._get_page_mean_seg()
+            self._mean_plot = _ax_bfly_epoch(self._mean_ax, self._mean_seg,
+                                             mark, **self._bfly_kwargs)
 
         # topomap
         if self._plot_topo:
             plot_i = nrow * ncol - self._plot_mean
-            ax = self._topo_ax = self.figure.add_subplot(nrow, ncol, plot_i)
-            ax.ax_idx = -2
-            ax.set_axis_off()
+            self._topo_ax = self.figure.add_subplot(nrow, ncol, plot_i)
+            self._topo_ax.ax_idx = -2
+            self._topo_ax.set_axis_off()
 
         self.canvas.draw()
         self.canvas.store_canvas()
@@ -1256,6 +1332,22 @@ class Frame(EelbrainFrame):  # control
         dt = time.time() - t0
         logger.debug('Page draw took %.1f seconds.', dt)
         wx.EndBusyCursor()
+
+    def ToggleChannelInterpolation(self, ax, event):
+        if self._bfly_kwargs['plot_range']:
+            wx.MessageBox("To assign channels for interpolation turn off "
+                          "plotting as range (in the View menu)",
+                          "Turn off Range Plotting", wx.OK)
+            return
+        elif not self.allow_interpolation:
+            wx.MessageBox("Interpolation is disabled for this session",
+                          "Interpolation disabled", wx.OK)
+            return
+        plt = self._case_plots[ax.ax_idx]
+        locs = plt.epoch.sub(time=event.xdata).x
+        sensor = np.argmin(np.abs(locs - event.ydata))
+        sensor_name = plt.epoch.sensor.names[sensor]
+        self.model.toggle_interpolation(ax.epoch_idx, sensor_name)
 
     def UpdateTitle(self):
         is_modified = not self.doc.saved
@@ -1270,14 +1362,12 @@ class Frame(EelbrainFrame):  # control
             title = 'Unsaved'
         self.SetTitle(title)
 
-    def _get_page_mean_seg(self, sensor=None):
+    def _get_page_mean_seg(self):
         page_segments = self._segs_by_page[self._current_page_i]
         page_index = np.zeros(self.doc.n_epochs, dtype=bool)
         page_index[page_segments] = True
         index = np.logical_and(page_index, self.doc.accept.x)
-        mseg = self.doc.epochs.summary(case=index)
-        if sensor is not None:
-            mseg = mseg.sub(sensor=sensor)
+        mseg = self.doc.get_epoch(index, "Page Average").mean('case')
         return mseg
 
     def _get_ax_data(self, ax_index, time=None):
@@ -1320,12 +1410,13 @@ class TerminalInterface(object):
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger',
                  path=None, nplots=None, topo=None, mean=None,
-                 vlim=None, plot_range=None, color=None, lw=0.2, mark=None,
-                 mcolor='r', mlw=0.8, antialiased=True, pos=None, size=None):
+                 vlim=None, plot_range=None, color='k', lw=0.5, mark=[],
+                 mcolor='r', mlw=0.8, antialiased=True, pos=None, size=None,
+                 allow_interpolation=True):
         # Documented in eelbrain.gui
         bad_chs = None
         self.doc = Document(ds, data, accept, blink, tag, trigger, path,
-                            bad_chs)
+                            bad_chs, allow_interpolation)
         self.model = Model(self.doc)
         self.history = self.model.history
 
@@ -1333,7 +1424,7 @@ class TerminalInterface(object):
 
         self.frame = Frame(None, self.model, nplots, topo, mean, vlim,
                            plot_range, color, lw, mark, mcolor, mlw,
-                           antialiased, pos, size)
+                           antialiased, pos, size, allow_interpolation)
         self.frame.Show()
         app.SetTopWindow(self.frame)
         if not app.IsMainLoopRunning():
