@@ -2959,7 +2959,7 @@ class MneExperiment(FileTree):
 
         # info
         self._report_test_info(report.add_section("Test Info"), ds, y, test,
-                               tstart, tstop, pmin, res, 'src', include)
+                               tstart, tstop, pmin, res, 'src', include, True)
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
@@ -3134,7 +3134,7 @@ class MneExperiment(FileTree):
 
         # compose info
         self._report_test_info(info_section, ds, y, test, tstart, tstop, pmin,
-                               res)
+                               res, 'src')
 
         report.sign(('eelbrain', 'mne', 'surfer'))
         report.save_html(dst)
@@ -3190,7 +3190,7 @@ class MneExperiment(FileTree):
         # info
         info_section = report.add_section("Test Info")
         self._report_test_info(info_section, ds, y, test, tstart, tstop, pmin,
-                               res, 'sns', include)
+                               res, 'sns', include, True)
 
         # add connectivity image
         p = plot.SensorMap(ds['eeg'], show=False)
@@ -3301,7 +3301,7 @@ class MneExperiment(FileTree):
                                caption % sensor, colors)
 
         self._report_test_info(info_section, ds, eeg, test, tstart, tstop, pmin,
-                               res)
+                               res, 'sns')
         report.sign(('eelbrain', 'mne'))
         report.save_html(dst)
 
@@ -3322,15 +3322,20 @@ class MneExperiment(FileTree):
         return s_table
 
     def _report_test_info(self, section, ds, y, test, tstart, tstop, pmin,
-                          res, data=None, include=None):
+                          res, data, include=None, spatiotemporal=False):
         info = List("Data:")
         info.add_item(self.format('epoch = {epoch} {evoked-kind} ~ {model}'))
-        info.add_item(self.format("cov = {cov}"))
-        info.add_item(self.format("inv = {inv}"))
+        if data == 'src':
+            info.add_item(self.format("cov = {cov}"))
+            info.add_item(self.format("inv = {inv}"))
         section.append(info)
 
         # cluster test info
-        info = List("Cluster Permutation Test:")
+        if spatiotemporal:
+            title = "Spatio-Temporal Cluster Permutation Test:"
+        else:
+            title = "Temporal Cluster Permutation Test:"
+        info = List(title)
         test_params = self._tests[test]
         info.add_item("test = %s  (%s)" % (test_params['kind'], test_params['desc']))
         info.add_item("Time interval:  %i - %i ms." % (_report.tstart(tstart, y.time),
@@ -3345,12 +3350,13 @@ class MneExperiment(FileTree):
             criteria = info.add_sublist("Criteria:")
             mintime = self.cluster_criteria.get('mintime', 0)
             criteria.add_item("Minimum duration:  %i ms" % round(mintime * 1000))
-            if data == 'src':
-                minsource = self.cluster_criteria.get('minsource', 0)
-                criteria.add_item("At least %i contiguous sources." % minsource)
-            elif data == 'sns':
-                minsensor = self.cluster_criteria.get('minsensor', 0)
-                criteria.add_item("At least %i contiguous sensors." % minsensor)
+            if spatiotemporal:
+                if data == 'src':
+                    minsource = self.cluster_criteria.get('minsource', 0)
+                    criteria.add_item("At least %i contiguous sources." % minsource)
+                elif data == 'sns':
+                    minsensor = self.cluster_criteria.get('minsensor', 0)
+                    criteria.add_item("At least %i contiguous sensors." % minsensor)
 
             if include is not None:
                 info.add_item("Separate plots of all clusters with a p-value < %s"
