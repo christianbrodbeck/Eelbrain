@@ -132,7 +132,7 @@ def test_clusterdist():
     sensor.set_connectivity(connect_dist=1.1)
     dims = ('case', UTS(-0.1, 0.1, 6), Ordered('dim2', range(6), 'unit'),
             sensor)
-    Y = NDVar(x, dims)
+    y = NDVar(x, dims)
 
     # test connecting sensors
     logger.info("TEST:  connecting sensors")
@@ -141,14 +141,14 @@ def test_clusterdist():
     pmap = np.random.normal(0, 1, shape[1:])
     np.clip(pmap, -1, 1, pmap)
     pmap[bin_map] = 2
-    cdist = _ClusterDist(Y, 0, 1.5)
+    cdist = _ClusterDist(y, 0, 1.5)
     print repr(cdist)
     cdist.add_original(pmap)
     print repr(cdist)
     assert_equal(cdist.n_clusters, 1)
     assert_array_equal(cdist._original_cluster_map == cdist._cids[0],
                        cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))
-    assert_equal(cdist.parameter_map.dims, Y.dims[1:])
+    assert_equal(cdist.parameter_map.dims, y.dims[1:])
 
     # test connecting many sensors
     logger.info("TEST:  connecting sensors")
@@ -157,7 +157,7 @@ def test_clusterdist():
     pmap = np.random.normal(0, 1, shape[1:])
     np.clip(pmap, -1, 1, pmap)
     pmap[bin_map] = 2
-    cdist = _ClusterDist(Y, 0, 1.5)
+    cdist = _ClusterDist(y, 0, 1.5)
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 1)
     assert_array_equal(cdist._original_cluster_map == cdist._cids[0],
@@ -171,7 +171,7 @@ def test_clusterdist():
     pmap = np.random.normal(0, 1, shape[1:])
     np.clip(pmap, -1, 1, pmap)
     pmap[bin_map] = 2
-    cdist = _ClusterDist(Y, 1, 1.5)
+    cdist = _ClusterDist(y, 1, 1.5)
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 2)
 
@@ -181,9 +181,9 @@ def test_clusterdist():
     sensor.set_connectivity(connect_dist=1.1)
     dims = ('case', UTS(-0.1, 0.1, 4), sensor,
             Ordered('dim2', range(10), 'unit'))
-    Y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
-    cdist = _ClusterDist(Y, 3, None)
-    cdist.add_original(Y.x[0])
+    y = NDVar(np.random.normal(0, 1, (10, 4, 4, 10)), dims)
+    cdist = _ClusterDist(y, 3, None)
+    cdist.add_original(y.x[0])
     cdist.finalize()
     assert_equal(cdist.dist.shape, (3,))
     # I/O
@@ -223,27 +223,27 @@ def test_clusterdist():
         _testnd.multiprocessing = mp
 
         # test keeping dimension
-        cdist = _ClusterDist(Y, 5, threshold, dist_dim='sensor')
+        cdist = _ClusterDist(y, 5, threshold, dist_dim='sensor')
         print repr(cdist)
-        cdist.add_original(Y.x[0])
+        cdist.add_original(y.x[0])
         print repr(cdist)
         assert_equal(cdist.dist.shape, (5, 4))
 
         # test keeping time bins
-        cdist = _ClusterDist(Y, 5, threshold, dist_tstep=0.2)
-        cdist.add_original(Y.x[0])
+        cdist = _ClusterDist(y, 5, threshold, dist_tstep=0.2)
+        cdist.add_original(y.x[0])
         assert_equal(cdist.dist.shape, (5, 2))
-        assert_raises(ValueError, _ClusterDist, Y, 5, threshold, dist_tstep=0.3)
+        assert_raises(ValueError, _ClusterDist, y, 5, threshold, dist_tstep=0.3)
 
         # test keeping dimension and time bins
-        cdist = _ClusterDist(Y, 5, threshold, dist_dim='sensor', dist_tstep=0.2)
-        cdist.add_original(Y.x[0])
+        cdist = _ClusterDist(y, 5, threshold, dist_dim='sensor', dist_tstep=0.2)
+        cdist.add_original(y.x[0])
         assert_equal(cdist.dist.shape, (5, 4, 2))
 
         # test keeping 2 dimensions and time bins
-        cdist = _ClusterDist(Y, 5, threshold, dist_dim=('sensor', 'dim2'),
+        cdist = _ClusterDist(y, 5, threshold, dist_dim=('sensor', 'dim2'),
                              dist_tstep=0.2)
-        cdist.add_original(Y.x[0])
+        cdist.add_original(y.x[0])
         assert_equal(cdist.dist.shape, (5, 4, 2, 10))
 
 
