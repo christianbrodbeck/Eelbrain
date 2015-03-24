@@ -1,5 +1,6 @@
 from cPickle import Unpickler
 from importlib import import_module
+import os
 
 from .._utils import ui  # , logger
 
@@ -47,6 +48,11 @@ def unpickle(file_path=None):
                                 "file to unpickle", filetypes)
     if file_path is False:
         raise RuntimeError("User canceled")
+
+    if not os.path.exists(file_path):
+        new_path = os.extsep.join((file_path, 'pickled'))
+        if os.path.exists(new_path):
+            file_path = new_path
 
     with open(file_path, 'r') as fid:
         unpickler = Unpickler(fid)
