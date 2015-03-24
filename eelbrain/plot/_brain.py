@@ -3,6 +3,7 @@ from __future__ import division
 from itertools import izip
 import os
 from tempfile import mkdtemp
+import warnings
 
 import numpy as np
 import mne
@@ -133,10 +134,15 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     return _plot(src, lut, -fmax, fmax, *args, **kwargs)
 
 
-def stat(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
-         **kwargs):
-    """
-    Plot a statistic in source space.
+def stat(*args, **kwargs):
+    warnings.warn("plot.brain.stat() has been deprecated, use "
+                  "plot.brain.p_map() instead")
+    return p_map(*args, **kwargs)
+
+
+def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
+          **kwargs):
+    """Plot a map of p-values in source space.
 
     Parameters
     ----------
