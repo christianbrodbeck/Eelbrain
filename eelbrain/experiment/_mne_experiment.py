@@ -44,6 +44,15 @@ logger = logging.getLogger('eelbrain.experiment')
 has_mne_09 = LooseVersion(mne.__version__) >= LooseVersion('0.9')
 
 
+# Parcellations that FreeSurfer generates
+FS_PARCS = ('aparc.a2005s', 'aparc.a2009s', 'aparc', 'aparc.DKTatlas')
+# Parcellations that come with fsaverage
+FSA_PARCS = ('PALS_B12_Brodmann', 'PALS_B12_Lobes', 'PALS_B12_OrbitoFrontal',
+             'PALS_B12_Visuotopic')
+# Parcellations that Eelbrain makes
+EELBRAIN_PARCS = ('lobes', 'lobes-op', 'lobes-ot')
+
+
 inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
                     "(\d*\.?\d+)-"  # SNR
                     "(MNE|dSPM|sLORETA)"  # method
@@ -595,12 +604,16 @@ class MneExperiment(FileTree):
         for subject in self.iter():
             yield subject
 
-    def _annot_exists(self):
+    def _annot_mtime(self):
+        "Return max mtime of annot files or None if they do not exist."
+        mtime = 0
         for _ in self.iter('hemi'):
             fpath = self.get('annot-file')
-            if not os.path.exists(fpath):
-                return False
-        return True
+            if os.path.exists(fpath):
+                mtime = max(mtime, os.path.getmtime(fpath))
+            else:
+                return
+        return mtime
 
     def _process_subject_arg(self, subject, kwargs):
         """Process subject arg for methods that work on groups and subjects
@@ -2066,9 +2079,20 @@ class MneExperiment(FileTree):
             return res
 
     def make_annot(self, redo=False, **state):
+        """Make sure the annot files for both hemispheres exist
+
+        Parameters
+        ----------
+        redo : bool
+            Even if the file exists, recreate it (default False).
+
+        Returns
+        -------
+        mtime : float | None
+            Modification time of the existing files, or None if they were newly
+            created.
+        """
         self.set(**state)
-        if not redo and self._annot_exists():
-            return
 
         # variables
         parc = self.get('parc')
@@ -2077,15 +2101,38 @@ class MneExperiment(FileTree):
         mrisubject = self.get('mrisubject')
         common_brain = self.get('common_brain')
 
-        if mrisubject == common_brain:
+        if parc in FS_PARCS:
+            if redo or self._annot_mtime() is None:
+                raise NotImplemented("The Aparc FreeSurfer parcellations can "
+                                     "not be created autmaticaly yet. Use "
+                                     "FreeSurfer to create the %s "
+                                     "parcellation for mrisubject %s."
+                                     % (parc, mrisubject))
+        elif mrisubject == common_brain:
+            # check existing files
+            if not redo:
+                mtime = self._annot_mtime()
+                if mtime is not None:
+                    return mtime
+            # make sure it's not one that should exist
+            if parc in FSA_PARCS:
+                raise RuntimeError("The %s parcellation is missing from your "
+                                   "common_brain" % parc)
+            # create it
             labels = self._make_annot(parc, mrisubject)
             mri_sdir = self.get('mri-sdir')
             write_labels_to_annot(labels, mrisubject, parc, True, mri_sdir)
         else:
             # make sure annot exists for common brain
             self.set(mrisubject=common_brain, match=False)
-            self.make_annot()
+            common_brain_mtime = self.make_annot()
             self.set(mrisubject=mrisubject, match=False)
+
+            # check whether subject's file is current
+            if not redo and common_brain_mtime is not None:
+                mtime = self._annot_mtime()
+                if mtime is not None and mtime > common_brain_mtime:
+                    return mtime
 
             # copy or morph
             if is_fake_mri(self.get('mri-dir')):
@@ -2104,7 +2151,12 @@ class MneExperiment(FileTree):
                                 subjects_dir=subjects_dir)
 
     def _make_annot(self, parc, subject):
-        "Only called to make custom annotation files for the common_brain"
+        """Returns labels
+
+        Notes
+        -----
+        Only called to make custom annotation files for the common_brain
+        """
         if parc == 'lobes':
             sdir = self.get('mri-sdir')
 
@@ -3865,10 +3917,7 @@ class MneExperiment(FileTree):
 
     def _eval_parc(self, parc):
         # Freesurfer parcellations
-        if parc in ('', 'aparc.a2005s', 'aparc.a2009s', 'aparc',
-                    'PALS_B12_Brodmann', 'PALS_B12_Lobes',
-                    'PALS_B12_OrbitoFrontal', 'PALS_B12_Visuotopic',
-                    'lobes', 'lobes-op', 'lobes-ot'):
+        if parc == '' or parc in FS_PARCS or parc in FSA_PARCS or parc in EELBRAIN_PARCS:
             return parc
         elif self.parcs is None or parc in self.parcs:
             return parc
