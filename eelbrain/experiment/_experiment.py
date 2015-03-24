@@ -222,8 +222,11 @@ class TreeModel(object):
         # package versions
         from .. import __version__
         import mne
+        import scipy
         versions = '\n'.join(("Eelbrain %s" % __version__,
-                              "mne-python %s" % mne.__version__))
+                              "mne-python %s" % mne.__version__,
+                              "SciPy %s" % scipy.__version__,
+                              "NumPy %s" % np.__version__))
 
         return source, tree, versions
 
