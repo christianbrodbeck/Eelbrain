@@ -586,6 +586,7 @@ class MneExperiment(FileTree):
         # set initial values
         self.set(**state)
         self.set_root(root, find_subjects)
+        self._post_set_group(None, self.get('group'))
         self.store_state()
         self.brain = None
 
@@ -3748,8 +3749,8 @@ class MneExperiment(FileTree):
         return group
 
     def _post_set_group(self, _, group):
-        if group != 'all':
-            group_members= self._get_group_members(group)
+        if group != 'all' and self.get('root'):
+            group_members = self._get_group_members(group)
             if self.get('subject') not in group_members:
                 self.set(group_members[0])
 

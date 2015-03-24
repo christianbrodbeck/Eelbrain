@@ -1,10 +1,12 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+import os
+
 from nose.tools import eq_, assert_raises
 import numpy as np
 from numpy.testing import assert_equal
 
 from eelbrain import Dataset, Factor, Var, MneExperiment
-from ..._utils.testing import assert_dataobj_equal
+from ..._utils.testing import assert_dataobj_equal, TempDir
 
 
 class EventExperiment(MneExperiment):
@@ -21,13 +23,14 @@ class EventExperiment(MneExperiment):
 
 
 SUBJECT = 'CheeseMonger'
-SFREQ = 1000.
+SUBJECTS = ['R%04i' % i for i in (1, 11, 111, 1111)]
+SAMPLINGRATE = 1000.
 TRIGGERS = np.tile(np.arange(1, 5), 2)
 I_START = np.arange(1001, 1441, 55)
 
 
 def gen_triggers():
-    raw = Var([], info={'sfreq': SFREQ})
+    raw = Var([], info={'sfreq': SAMPLINGRATE})
     ds = Dataset(info={'subject': SUBJECT, 'raw': raw})
     ds['trigger'] = Var(TRIGGERS)
     ds['i_start'] = Var(I_START)
@@ -88,9 +91,42 @@ def test_test_experiment():
     assert_dataobj_equal(ds['backorder'], tgt)
     tgt = ds['trigger'].as_factor(e.variables['taste'],'taste')
     assert_dataobj_equal(ds['taste'], tgt)
-    assert_equal(ds['i_start'], I_START + round((0.03 * SFREQ)))
+    assert_equal(ds['i_start'], I_START + round((0.03 * SAMPLINGRATE)))
     assert_equal(ds['subject'] == SUBJECT, True)
     # test without trigger shift
     e.trigger_shift = 0
     ds = e.label_events(gen_triggers())
     assert_equal(ds['i_start'], I_START)
+
+
+class FileExperiment(MneExperiment):
+
+    path_version = 1
+
+    groups = {'gsub': SUBJECTS[1:],
+              'gexc': {'exclude': SUBJECTS[0]},
+              'gexc2': {'base': 'gexc', 'exclude': SUBJECTS[-1]}}
+
+
+class FileExperimentDefaults(FileExperiment):
+
+    defaults = {'group': 'gsub'}
+
+
+def test_file_handling():
+    "Test MneExperiment with actual files"
+    tempdir = TempDir()
+    for subject in SUBJECTS:
+        os.makedirs(os.path.join(tempdir, 'meg', subject))
+
+    e = FileExperiment(tempdir)
+    eq_(e._get_group_members('all'), SUBJECTS)
+    eq_(e._get_group_members('gsub'), SUBJECTS[1:])
+    eq_(e._get_group_members('gexc'), SUBJECTS[1:])
+    eq_(e._get_group_members('gexc2'), SUBJECTS[1:-1])
+    eq_(e.get('subject'), SUBJECTS[0])
+    eq_(e.get('subject', group='gsub'), SUBJECTS[1])
+
+    e = FileExperimentDefaults(tempdir)
+    eq_(e.get('group'), 'gsub')
+    eq_(e.get('subject'), SUBJECTS[1])
