@@ -3096,7 +3096,7 @@ class MneExperiment(FileTree):
                                                       title, colors, legend)
 
         # report signature
-        report.sign(('eelbrain', 'mne', 'surfer'))
+        report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
 
         report.save_html(dst)
 
@@ -3194,7 +3194,7 @@ class MneExperiment(FileTree):
         self._report_test_info(info_section, ds, y, test, tstart, tstop, pmin,
                                res, 'src')
 
-        report.sign(('eelbrain', 'mne', 'surfer'))
+        report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst)
 
     def make_report_eeg(self, test, pmin=None, tstart=0.15, tstop=None,
@@ -3285,7 +3285,7 @@ class MneExperiment(FileTree):
                 legend = _report.sensor_time_cluster(section, cluster, y, model,
                                                      ds, colors, legend)
 
-        report.sign(('eelbrain', 'mne'))
+        report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
 
     def make_report_eeg_sensors(self, test, sensors=('FZ', 'CZ', 'PZ', 'O1', 'O2'),
@@ -3360,7 +3360,7 @@ class MneExperiment(FileTree):
 
         self._report_test_info(info_section, ds, eeg, test, tstart, tstop, pmin,
                                res, 'sns')
-        report.sign(('eelbrain', 'mne'))
+        report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
 
     def _report_state(self):
