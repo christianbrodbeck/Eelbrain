@@ -4,8 +4,8 @@ from itertools import izip, product
 import cPickle as pickle
 import logging
 
-from nose.tools import (eq_, assert_equal, assert_in, assert_less, assert_not_in,
-                        assert_raises)
+from nose.tools import (eq_, assert_equal, assert_greater_equal, assert_less,
+                        assert_in, assert_not_in, assert_raises)
 import numpy as np
 from numpy.testing import assert_array_equal
 from scipy import ndimage
@@ -174,6 +174,16 @@ def test_clusterdist():
     cdist = _ClusterDist(y, 1, 1.5)
     cdist.add_original(pmap)
     assert_equal(cdist.n_clusters, 2)
+
+    # criteria
+    ds = datasets.get_uts(True)
+    res = testnd.ttest_rel('utsnd', 'A', match='rm', ds=ds, samples=0, pmin=0.05)
+    assert_less(res.clusters['duration'].min(), 0.01)
+    eq_(res.clusters['n_sensors'].min(), 1)
+    res = testnd.ttest_rel('utsnd', 'A', match='rm', ds=ds, samples=0, pmin=0.05,
+                           mintime=0.02, minsensor=2)
+    assert_greater_equal(res.clusters['duration'].min(), 0.02)
+    eq_(res.clusters['n_sensors'].min(), 2)
 
     # TFCE
     logger.info("TEST:  TFCE")

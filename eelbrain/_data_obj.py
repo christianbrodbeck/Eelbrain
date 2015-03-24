@@ -6052,6 +6052,22 @@ class Sensor(Dimension):
             return Sensor(locs, names, None, self.sysname, self.default_proj2d,
                           _subgraph_edges(self._connectivity, int_index))
 
+    def _cluster_properties(self, x):
+        """Find cluster properties for this dimension
+
+        Parameters
+        ----------
+        x : array of bool, (n_clusters, len(self))
+            The cluster extents, with different clusters stacked along the
+            first axis.
+
+        Returns
+        -------
+        cluster_properties : None | Dataset
+            A dataset with variables describing cluster properties.
+        """
+        return Dataset(('n_sensors', Var(x.sum(1))))
+
     def dimindex(self, arg):
         "Convert dimension indexes into numpy indexes"
         if isinstance(arg, (slice, int)):
@@ -6717,8 +6733,7 @@ class SourceSpace(Dimension):
             return ds
 
         # n sources
-        n_sources = np.sum(x, 1)
-        ds['n_sources'] = Var(n_sources)
+        ds['n_sources'] = Var(x.sum(1))
 
         if self.kind == 'vol':
             return ds
