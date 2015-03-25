@@ -100,6 +100,8 @@ _html_tags = {r'_': 'sub',
               r'\textit': 'i',
               'paragraph': 'p'}
 
+_RTF_TAGS = {r'\emph': "\i %s\i0"}
+
 _str_substitutes = {r'_': u'(%s)'}
 
 _html_alignments = {'l': 'left',
@@ -148,6 +150,10 @@ def get_pdf(tex_obj):
     return pdf
 
 
+def rtf_document(fmtext):
+    return "{\\rtf1\\ansi\\deff0\n\n%s\n}" % fmtext.get_rtf()
+
+
 def save_html(fmtxt, path=None, embed_images=True):
     "Save an FMText object as html file"
     if path is None:
@@ -189,6 +195,15 @@ def save_pdf(tex_obj, path=None):
     if path:
         with open(path, 'w') as f:
             f.write(pdf)
+
+
+def save_rtf(fmtext, path=None):
+    text = rtf_document(fmtext)
+    if path is None:
+        path = ui.ask_saveas("Save RTF", filetypes=[('Rich Text File (*.rtf)', '*.rtf')])
+    if path:
+        with open(path, 'w') as fid:
+            fid.write(text)
 
 
 def save_tex(tex_obj, path=None):
@@ -415,6 +430,7 @@ class FMTextElement(object):
         return self.content
 
     def get_html(self, env):
+        "return complete html representation"
         txt = self._get_html_core(env)
 
         if self.tag:
@@ -425,6 +441,16 @@ class FMTextElement(object):
         return txt
 
     def _get_html_core(self, env):
+        "return html representation of everything inside the tag"
+        return self._get_core(env)
+
+    def get_rtf(self, env={}):
+        if self.tag in _RTF_TAGS:
+            return _RTF_TAGS[self.tag] % self._get_rtf_core(env)
+        else:
+            return self._get_rtf_core(env)
+
+    def _get_rtf_core(self, env):
         return self._get_core(env)
 
     def get_str(self, env={}):
@@ -494,6 +520,9 @@ class FMText(FMTextElement):
 
     def _get_html_core(self, env):
         return ''.join(i.get_html(env) for i in self.content)
+
+    def _get_rtf_core(self, env):
+        return ''.join(i.get_rtf(env) for i in self.content)
 
     def _get_str_core(self, env):
         return ''.join(i.get_str(env) for i in self.content)
@@ -785,6 +814,9 @@ class Cell(FMText):
         html_repr = ' %s%s</td>' % (start_tag, html_repr)
         return html_repr
 
+    def get_rtf(self, env={}):
+        return "%s\\intbl\\cell" % FMText.get_rtf(self, env)
+
     def get_tex(self, env={}):
         tex_repr = FMText.get_tex(self, env)
         if self.width > 1 or self.just:
@@ -819,6 +851,9 @@ class Row(list):
         html = '\n'.join(cell.get_html(env) for cell in self)
         html = '<tr>\n%s\n</tr>' % html
         return html
+
+    def get_rtf(self, env={}):
+        return '\n'.join([cell.get_rtf(env) for cell in self] + ['\\row'])
 
     def get_str(self, c_width, c_just, delimiter='   ', env={}):
         "returns the row using col spacing provided in c_width"
@@ -1048,6 +1083,20 @@ class Table(FMTextElement):
             txt = _html_element('figure', txt, env)
 
         return txt
+
+    def get_rtf(self, env={}):
+        # header
+        rows = ['\cellx%i000' % i for i in xrange(len(self.columns))]
+        rows.insert(0, '\\trowd')
+        rows.append('\\row')
+        # body
+        for row in self._table:
+            if isstr(row):
+                if row == "\\midrule":
+                    pass
+            else:
+                rows.append(row.get_rtf(env))
+        return '\n'.join(rows)
 
     def get_str(self, env={}, delim='   ', linesep=os.linesep):
         """Convert Table to str

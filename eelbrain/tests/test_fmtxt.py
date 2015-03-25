@@ -31,7 +31,7 @@ def test_report():
 
     section = report.add_section(u'unicode: \xe2 abc')
     ds = datasets.get_uv()
-    p = plot.Barplot('fltvar', 'A', sub="B=='b1'", ds=ds)
+    p = plot.Barplot('fltvar', 'A', sub="B=='b1'", ds=ds, show=False)
     image = p.image()
     section.add_figure("test", image)
 
@@ -67,6 +67,27 @@ def test_eq():
     eq_(str(s), "p < .001")
     eq_(html(s), "p < .001")
     eq_(tex(s), "$p < .001$")
+
+
+def test_table():
+    table = fmtxt.Table('ll')
+    table.cells('A', 'B')
+    table.midrule()
+    table.cells('a1', 'b1', 'a2', 'b2')
+    eq_(str(table), 'A    B \n-------\na1   b1\na2   b2')
+    eq_(table.get_html(), u'<figure><table rules="none" cellpadding="2" '
+                          u'frame="hsides" border="1"><tr>\n'
+                          u' <td>A</td>\n <td>B</td>\n</tr>\n<tr>\n'
+                          u' <td>a1</td>\n <td>b1</td>\n</tr>\n<tr>\n'
+                          u' <td>a2</td>\n <td>b2</td>\n</tr></table></figure>')
+    eq_(table.get_rtf(), '\\trowd\n\\cellx0000\n\\cellx1000\n\\row\n'
+                         'A\\intbl\\cell\nB\\intbl\\cell\n\\row\n'
+                         'a1\\intbl\\cell\nb1\\intbl\\cell\n\\row\n'
+                         'a2\\intbl\\cell\nb2\\intbl\\cell\n\\row')
+    eq_(table.get_tex(), '\\begin{center}\n\\begin{tabular}{ll}\n\\toprule\n'
+                         'A & B \\\\\n\\midrule\n'
+                         'a1 & b1 \\\\\na2 & b2 \\\\\n'
+                         '\\bottomrule\n\\end{tabular}\n\\end{center}')
 
 
 def test_symbol():
