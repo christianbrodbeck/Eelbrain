@@ -5,6 +5,7 @@ import shutil
 import tempfile
 
 from eelbrain import fmtxt
+from eelbrain._utils.testing import TempDir
 from eelbrain.fmtxt import html, tex
 from eelbrain import datasets, plot
 
@@ -88,6 +89,40 @@ def test_table():
                          'A & B \\\\\n\\midrule\n'
                          'a1 & b1 \\\\\na2 & b2 \\\\\n'
                          '\\bottomrule\n\\end{tabular}\n\\end{center}')
+
+    # saving
+    tempdir = TempDir()
+    # HTML
+    path = os.path.join(tempdir, 'test.html')
+    table.save_html(path)
+    eq_(open(path).read(),  '<!DOCTYPE html>\n<html>\n<head>\n'
+                            '    <title>Untitled</title>\n</head>\n\n'
+                            '<body>\n\n<figure>'
+                            '<table rules="none" cellpadding="2" frame="hsides" '
+                            'border="1"><tr>\n'
+                            ' <td>A</td>\n <td>B</td>\n</tr>\n<tr>\n'
+                            ' <td>a1</td>\n <td>b1</td>\n</tr>\n<tr>\n'
+                            ' <td>a2</td>\n <td>b2</td>\n</tr>'
+                            '</table></figure>\n\n</body>\n</html>\n')
+    # rtf
+    path = os.path.join(tempdir, 'test.rtf')
+    table.save_rtf(path)
+    eq_(open(path).read(), '{\\rtf1\\ansi\\deff0\n\n'
+                           '\\trowd\n\\cellx0000\n\\cellx1000\n\\row\n'
+                           'A\\intbl\\cell\nB\\intbl\\cell\n\\row\n'
+                           'a1\\intbl\\cell\nb1\\intbl\\cell\n\\row\n'
+                           'a2\\intbl\\cell\nb2\\intbl\\cell\n\\row\n}')
+    # TeX
+    path = os.path.join(tempdir, 'test.tex')
+    table.save_tex(path)
+    eq_(open(path).read(), '\\begin{center}\n\\begin{tabular}{ll}\n\\toprule\n'
+                           'A & B \\\\\n\\midrule\n'
+                           'a1 & b1 \\\\\na2 & b2 \\\\\n'
+                           '\\bottomrule\n\\end{tabular}\n\\end{center}')
+    # txt
+    path = os.path.join(tempdir, 'test.txt')
+    table.save_txt(path)
+    eq_(open(path).read(), 'A    B \n-------\na1   b1\na2   b2')
 
 
 def test_symbol():

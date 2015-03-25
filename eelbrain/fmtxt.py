@@ -155,7 +155,19 @@ def rtf_document(fmtext):
 
 
 def save_html(fmtxt, path=None, embed_images=True):
-    "Save an FMText object as html file"
+    """Save an FMText object in HTML format
+
+    Parameters
+    ----------
+    fmtext : FMText
+        Object to save.
+    path : str (optional)
+        Destination filename. If unspecified, a file dialog will open to ask
+        for a destination.
+    embed_images : bool
+        Embed images in the HTML file (default True). If False, a separate
+        folder containing image files is created.
+    """
     if path is None:
         msg = "Save as HTML"
         path = ui.ask_saveas(msg, msg, [('HTML (*.html)', '*.html')])
@@ -198,6 +210,16 @@ def save_pdf(tex_obj, path=None):
 
 
 def save_rtf(fmtext, path=None):
+    """Save an FMText object in Rich Text format
+
+    Parameters
+    ----------
+    fmtext : FMText
+        Object to save.
+    path : str (optional)
+        Destination filename. If unspecified, a file dialog will open to ask
+        for a destination.
+    """
     text = rtf_document(fmtext)
     if path is None:
         path = ui.ask_saveas("Save RTF", filetypes=[('Rich Text File (*.rtf)', '*.rtf')])
@@ -214,6 +236,17 @@ def save_tex(tex_obj, path=None):
     if path:
         with open(path, 'w') as f:
             f.write(txt)
+
+
+def _save_txt(text, path=None):
+    if path is None:
+        path = ui.ask_saveas("Save Text File",
+                             filetypes=[("Plain Text File (*.txt)", "*.txt")])
+    if path:
+        with open(path, 'w') as fid:
+            if isinstance(text, unicode):
+                text = text.encode('utf-8')
+            fid.write(text)
 
 
 def copy_pdf(tex_obj=-1):
@@ -425,6 +458,14 @@ class FMTextElement(object):
 
         return FMText([self, other])
 
+    def copy_pdf(self):
+        "copy PDF to clipboard"
+        copy_pdf(self)
+
+    def copy_tex(self):
+        "copy TeX t clipboard"
+        copy_tex(self)
+
     def _get_core(self, env):
         "return unicode core"
         return self.content
@@ -476,6 +517,64 @@ class FMTextElement(object):
 
     def _get_tex_core(self, env):
         return self._get_core(env)
+
+    def save_html(self, path=None, embed_images=True):
+        """Save in HTML format
+
+        Parameters
+        ----------
+        path : str (optional)
+            Destination filename. If unspecified, a file dialog will open to ask
+            for a destination.
+        embed_images : bool
+            Embed images in the HTML file (default True). If False, a separate
+            folder containing image files is created.
+        """
+        save_html(self, path, embed_images)
+
+    def save_pdf(self, path=None):
+        """Save in PDF format
+
+        Parameters
+        ----------
+        path : str (optional)
+            Destination filename. If unspecified, a file dialog will open to ask
+            for a destination.
+        """
+        save_pdf(self, path)
+
+    def save_rtf(self, path=None):
+        """Save in Rich Text format
+
+        Parameters
+        ----------
+        path : str (optional)
+            Destination filename. If unspecified, a file dialog will open to ask
+            for a destination.
+        """
+        save_rtf(self, path)
+
+    def save_tex(self, path=None):
+        """Save in TeX format
+
+        Parameters
+        ----------
+        path : str (optional)
+            Destination filename. If unspecified, a file dialog will open to ask
+            for a destination.
+        """
+        save_tex(self, path)
+
+    def save_txt(self, path=None):
+        """Save as plain text file
+
+        Parameters
+        ----------
+        path : str (optional)
+            Destination filename. If unspecified, a file dialog will open to ask
+            for a destination.
+        """
+        _save_txt(self.get_str(), path)
 
 
 class FMText(FMTextElement):
@@ -1209,22 +1308,6 @@ class Table(FMTextElement):
                 table.append(row.get_tsv(delimiter, fmt=fmt))
         return linesep.join(table)
 
-    def copy_pdf(self):
-        "copy pdf to clipboard"
-        copy_pdf(self)
-
-    def copy_tex(self):
-        "copy tex t clipboard"
-        copy_tex(self)
-
-    def save_pdf(self, path=None):
-        "saves table on pdf; if path == non ask with system dialog"
-        save_pdf(self, path=path)
-
-    def save_tex(self, path=None):
-        "saves table as tex; if path == non ask with system dialog"
-        save_tex(self, path=path)
-
     def save_tsv(self, path=None, delimiter='\t', linesep='\r\n', fmt='%.15g'):
         """
         Save the table as tab-separated values file.
@@ -1242,21 +1325,7 @@ class Table(FMTextElement):
             (see 'Python String Formatting Documentation
             <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_ )
         """
-        if not path:
-            path = ui.ask_saveas("Save Tab Separated Table",
-                                 "Please Pick a File Name",
-                                 [("txt", "txt (tsv) file")])
-        if ui.test_targetpath(path):
-            ext = os.path.splitext(path)[1]
-            if ext == '':
-                path += '.txt'
-
-            with open(path, 'w') as f:
-                out = self.get_tsv(delimiter=delimiter, linesep=linesep,
-                                   fmt=fmt)
-                if isinstance(out, unicode):
-                    out = out.encode('utf-8')
-                f.write(out)
+        _save_txt(self.get_tsv(delimiter, linesep, fmt), path)
 
     def save_txt(self, path=None, fmt='%.15g', delim='   ', linesep=os.linesep):
         """
@@ -1267,24 +1336,14 @@ class Table(FMTextElement):
         path : str | None
             Destination file name.
         fmt : str
-            Format string for representing numerical cells.
+            Format string for representing numerical cells (default '%.15g').
+        delim : str
+            Cell delimiter.
         linesep : str
-            String that is placed in between lines.
+            String that is placed in between lines (default is platform-specific
+            ``os.linesep``).
         """
-        if not path:
-            path = ui.ask_saveas("Save Table as Text File",
-                                 "Please Pick a File Name",
-                                 [("txt", "txt file")])
-        if ui.test_targetpath(path):
-            ext = os.path.splitext(path)[1]
-            if ext == '':
-                path += '.txt'
-
-            with open(path, 'w') as f:
-                out = self.get_str({'fmt': fmt}, delim, linesep)
-                if isinstance(out, unicode):
-                    out = out.encode('utf-8')
-                f.write(out)
+        _save_txt(self.get_str({'fmt': fmt}, delim, linesep), path)
 
 
 class Image(FMTextElement, StringIO):
