@@ -4684,6 +4684,20 @@ class Dataset(OrderedDict):
                    ".tex." % ext)
             raise ValueError(err)
 
+    def save_rtf(self, path=None, fmt='%.3g'):
+        """Save the Dataset as TeX table.
+
+        Parameters
+        ----------
+        path : None | str
+            Target file name (if ``None`` is supplied, a save file dialog is
+            displayed). If no extension is specified, '.tex' is appended.
+        fmt : format string
+            Formatting for scalar values.
+        """
+        table = self.as_table(fmt=fmt)
+        table.save_rtf(path)
+
     def save_tex(self, path=None, fmt='%.3g', header=True, midrule=True):
         """Save the Dataset as TeX table.
 

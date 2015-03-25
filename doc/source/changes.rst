@@ -4,6 +4,12 @@ Changes
 .. currentmodule:: eelbrain
 
 
+New in 0.15
+-----------
+
+* Datasets can be saved as tables in RTF format (:meth:`Dataset.save_rtf`).
+
+
 New in 0.14
 -----------
 
