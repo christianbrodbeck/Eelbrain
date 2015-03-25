@@ -5,42 +5,10 @@ import wx
 from ..._wxgui import get_app
 
 
-_ext_re = re.compile(r"\*\.(\w+)")
-
-
-def _wildcard(filetypes):
-    return '|'.join(map('|'.join, filetypes))
-
-
 def ask_saveas(title, message, filetypes, defaultDir, defaultFile):
     """See eelbrain.ui documentation"""
-    if filetypes:
-        wildcard = _wildcard(filetypes)
-    else:
-        wildcard = ""
-
-    dialog = wx.FileDialog(None, message, wildcard=wildcard,
-                           style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
-    dialog.SetTitle(title)
-    if defaultDir:
-        dialog.SetDirectory(defaultDir)
-    if defaultFile:
-        dialog.SetFilename(defaultFile)
-    if dialog.ShowModal() == wx.ID_OK:
-        path = dialog.GetPath()
-        # add extension
-        if filetypes:
-            head, ext = os.path.splitext(path)
-            if not ext:
-                wc = dialog.GetFilterIndex()
-                extension = filetypes[wc][1]
-                m = _ext_re.match(extension)
-                if m:
-                    ext = m.group(1)
-                    path = os.path.extsep.join((head, ext))
-        return path
-    else:
-        return False
+    app = get_app()
+    return app.ask_saveas(title, message, filetypes, defaultDir, defaultFile)
 
 
 def ask_dir(title="Select Folder", message="Please Pick a Folder", must_exist=True):
@@ -50,7 +18,7 @@ def ask_dir(title="Select Folder", message="Please Pick a Folder", must_exist=Tr
 
 def ask_file(title, message, filetypes, directory, mult):
     app = get_app()
-    return app.ask_for_file(title, message, _wildcard(filetypes), directory, mult)
+    return app.ask_for_file(title, message, filetypes, directory, mult)
 
 
 def ask(title="Overwrite File?",

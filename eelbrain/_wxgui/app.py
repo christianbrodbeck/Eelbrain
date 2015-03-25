@@ -1,9 +1,18 @@
+import os
+import re
 import webbrowser
 
 import wx
 
 from .._wxutils import ID, logger
 from .about import AboutFrame
+
+
+def wildcard(filetypes):
+    if filetypes:
+        return '|'.join(map('|'.join, filetypes))
+    else:
+        return ""
 
 
 class App(wx.App):
@@ -155,7 +164,7 @@ class App(wx.App):
         return self._bash_ui(self._ask_for_file, title, message, filetypes,
                              directory, mult)
 
-    def _ask_for_file(self, title, message, wildcard, directory, mult):
+    def _ask_for_file(self, title, message, filetypes, directory, mult):
         """Returns path(s) or False.
 
         Parameters
@@ -173,7 +182,7 @@ class App(wx.App):
         if mult:
             style = style | wx.FD_MULTIPLE
         dialog = wx.FileDialog(None, message, directory,
-                               wildcard=wildcard, style=style)
+                               wildcard=wildcard(filetypes), style=style)
         dialog.SetTitle(title)
         if dialog.ShowModal() == wx.ID_OK:
             if mult:
@@ -191,6 +200,26 @@ class App(wx.App):
         dlg = wx.TextEntryDialog(None, message, title, default)
         if dlg.ShowModal() == wx.ID_OK:
             self._result = dlg.GetValue()
+        else:
+            self._result = False
+        self.ExitMainLoop()
+
+    def ask_saveas(self, title, message, filetypes, defaultDir, defaultFile):
+        return self._bash_ui(self._ask_saveas, title, message, filetypes,
+                             defaultDir, defaultFile)
+
+    def _ask_saveas(self, title, message, filetypes, defaultDir, defaultFile):
+        # setup file-dialog
+        dialog = wx.FileDialog(None, message, wildcard=wildcard(filetypes),
+                               style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        dialog.SetTitle(title)
+        if defaultDir:
+            dialog.SetDirectory(defaultDir)
+        if defaultFile:
+            dialog.SetFilename(defaultFile)
+        # get result
+        if dialog.ShowModal() == wx.ID_OK:
+            self._result = dialog.GetPath()
         else:
             self._result = False
         self.ExitMainLoop()

@@ -195,7 +195,7 @@ def save_tex(tex_obj, path=None):
     "saves an fmtxt object as a pdf"
     txt = tex(tex_obj)
     if path is None:
-        path = ui.ask_saveas(title="Save tex", ext=[('tex', 'tex source code')])
+        path = ui.ask_saveas("Save tex", filetypes=[('tex', 'tex source code')])
     if path:
         with open(path, 'w') as f:
             f.write(txt)
@@ -1194,9 +1194,9 @@ class Table(FMTextElement):
             <http://docs.python.org/library/stdtypes.html#string-formatting-operations>'_ )
         """
         if not path:
-            path = ui.ask_saveas(title="Save Tab Separated Table",
-                                 message="Please Pick a File Name",
-                                 ext=[("txt", "txt (tsv) file")])
+            path = ui.ask_saveas("Save Tab Separated Table",
+                                 "Please Pick a File Name",
+                                 [("txt", "txt (tsv) file")])
         if ui.test_targetpath(path):
             ext = os.path.splitext(path)[1]
             if ext == '':
@@ -1223,9 +1223,9 @@ class Table(FMTextElement):
             String that is placed in between lines.
         """
         if not path:
-            path = ui.ask_saveas(title="Save Table as Text File",
-                                 message="Please Pick a File Name",
-                                 ext=[("txt", "txt file")])
+            path = ui.ask_saveas("Save Table as Text File",
+                                 "Please Pick a File Name",
+                                 [("txt", "txt file")])
         if ui.test_targetpath(path):
             ext = os.path.splitext(path)[1]
             if ext == '':
