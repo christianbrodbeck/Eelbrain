@@ -1308,6 +1308,14 @@ def label_clusters(stat_map, threshold, tail, connectivity, criteria):
     stat_map : array
         Statistical parameter map (non-adjacent dimension on the first
         axis).
+
+    Returns
+    -------
+    cmap : np.ndarray of uint32
+        Array with clusters labelled as integers.
+    cluster_ids : np.ndarray of uint32
+        Identifiers of the clusters that survive the minimum duration
+        criterion.
     """
     all_adjacent = connectivity is None
     cmap = np.empty(stat_map.shape, np.uint32)
@@ -1319,6 +1327,7 @@ def label_clusters(stat_map, threshold, tail, connectivity, criteria):
     else:
         flat_shape = (stat_map.shape[0], reduce(operator.mul, stat_map.shape[1:]))
         cmap_flat = cmap.reshape(flat_shape)
+        assert cmap_flat.base is cmap
 
     if tail == 0:
         int_buff = np.empty(stat_map.shape, np.uint32)
@@ -1326,6 +1335,7 @@ def label_clusters(stat_map, threshold, tail, connectivity, criteria):
             int_buff_flat = int_buff
         else:
             int_buff_flat = int_buff.reshape(flat_shape)
+            assert int_buff_flat.base is int_buff
     else:
         int_buff = int_buff_flat = None
 
@@ -1352,7 +1362,7 @@ def _label_clusters(stat_map, threshold, tail, struct, all_adjacent, conn,
 
     Returns
     -------
-    cluster_ids : tuple
+    cluster_ids : np.ndarray of uint32
         Identifiers of the clusters that survive the minimum duration
         criterion.
     """
@@ -1373,13 +1383,23 @@ def _label_clusters(stat_map, threshold, tail, struct, all_adjacent, conn,
                                             all_adjacent, conn, criteria)
             x = int(cmap.max())  # apparently np.uint64 + int makes a float
             int_buff[bin_map_below] += x
+            cids_l += x
             cmap += int_buff
-            cids = np.concatenate((cids, cids_l + x))
+            cids = np.concatenate((cids, cids_l))
 
     return cids
 
 
 def label_clusters_binary(bin_map, connectivity, criteria):
+    """Label clusters in a boolean map
+
+    Returns
+    -------
+    cmap : np.ndarray of uint32
+        Array with clusters labelled as integers.
+    cluster_ids : np.ndarray of uint32
+        Sorted identifiers of the clusters that survive the selection criteria.
+    """
     all_adjacent = connectivity is None
     cmap = np.empty(bin_map.shape, np.uint32)
 
@@ -1423,7 +1443,7 @@ def _label_clusters_binary(bin_map, cmap, cmap_flat, struct, all_adjacent,
 
     Returns
     -------
-    cluster_ids : np.ndarray
+    cluster_ids : np.ndarray of uint32
         Sorted identifiers of the clusters that survive the selection criteria.
     """
     # find clusters
@@ -1431,21 +1451,20 @@ def _label_clusters_binary(bin_map, cmap, cmap_flat, struct, all_adjacent,
     # n is 1 even when no cluster is found
     if n == 1:
         if cmap.max() == 0:
-            return np.empty(0, np.int_)
+            return np.array((), np.uint32)
         else:
-            cids = np.arange(1, 2)
+            cids = np.array((1,), np.uint32)
     elif all_adjacent:
-        cids = np.arange(1, n + 1)
+        cids = np.arange(1, n + 1, 1, np.uint32)
     else:
         cids = merge_labels(cmap_flat, n, conn)
 
     # apply minimum cluster size criteria
     if criteria:
-        rm_cids = set()
         for axes, v in criteria:
-            rm_cids.update(i for i in cids if
-                           np.count_nonzero(np.equal(cmap, i).any(axes)) < v)
-        cids = np.setdiff1d(cids, rm_cids)
+            cids = np.setdiff1d(cids,
+                                [i for i in cids if np.count_nonzero(np.equal(cmap, i).any(axes)) < v],
+                                True)
 
     return cids
 
