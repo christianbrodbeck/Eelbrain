@@ -11,7 +11,7 @@ from numpy.testing import assert_array_equal
 from scipy import ndimage
 
 import eelbrain
-from eelbrain import datasets, testnd, plot, NDVar
+from eelbrain import datasets, testnd, NDVar
 from eelbrain._data_obj import UTS, Ordered, Sensor, cwt_morlet
 from eelbrain._stats import testnd as _testnd
 from eelbrain._stats.testnd import _ClusterDist, label_clusters
@@ -32,13 +32,8 @@ def test_anova():
 
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=0, pmin=0.05)
     repr(res)
-    p = plot.Array(res, show=False)
-    p.close()
-
     res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
     repr(res)
-    p = plot.Array(res, show=False)
-    p.close()
 
     # persistence
     string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)
@@ -259,17 +254,12 @@ def test_corr():
     # add correlation
     Y = ds['Y']
     utsnd = ds['utsnd']
-    utsnd.x.shape
     utsnd.x[:, 3:5, 50:65] += Y.x[:, None, None]
 
     res = testnd.corr('utsnd', 'Y', 'rm', ds=ds)
     repr(res)
-    p = plot.Array(res, show=False)
-    p.close()
-
     res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=10, pmin=0.05)
-    p = plot.Array(res, show=False)
-    p.close()
+    repr(res)
 
     # persistence
     string = pickle.dumps(res, protocol=pickle.HIGHEST_PROTOCOL)

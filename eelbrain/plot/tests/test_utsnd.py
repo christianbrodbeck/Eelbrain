@@ -10,7 +10,7 @@ import numpy as np
 from mne import Evoked
 from mne.io import Raw
 
-from eelbrain import datasets, plot
+from eelbrain import datasets, plot, testnd
 
 
 def test_plot_butterfly():
@@ -60,4 +60,25 @@ def test_plot_mne_epochs():
 
     # with model
     p = plot.Array(epochs, events[:, 2], show=False)
+    p.close()
+
+
+def test_plot_results():
+    "Test plotting test results"
+    ds = datasets.get_uts(True)
+
+    # ANOVA
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=0, pmin=0.05)
+    p = plot.Array(res, show=False)
+    p.close()
+    res = testnd.anova('utsnd', 'A*B*rm', ds=ds, samples=2, pmin=0.05)
+    p = plot.Array(res, show=False)
+    p.close()
+
+    # Correlation
+    res = testnd.corr('utsnd', 'Y', 'rm', ds=ds)
+    p = plot.Array(res, show=False)
+    p.close()
+    res = testnd.corr('utsnd', 'Y', 'rm', ds=ds, samples=10, pmin=0.05)
+    p = plot.Array(res, show=False)
     p.close()
