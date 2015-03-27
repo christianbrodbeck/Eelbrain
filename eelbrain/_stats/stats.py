@@ -428,6 +428,11 @@ def variability(y, x, match, spec, pool):
     except:
         raise ValueError("Invalid variability specification: %r" % spec)
 
+    if x is None and match is not None:
+        if match.df == len(match) - 1:
+            raise ValueError("Can't calculate within-subject error because the "
+                             "match predictor explains all variability")
+
     if kind == 'ci':
         if pool or x is None:
             out = confidence_interval(y, x, match, scale)

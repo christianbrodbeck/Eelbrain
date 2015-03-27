@@ -104,6 +104,13 @@ def test_sem_and_variability():
     assert_almost_equal(e, target)
     e = stats.variability(y, None, None, '2sem', False)
     assert_almost_equal(e, 2 * target)
+    # within subject standard-error
+    target = scipy.stats.sem(stats.residuals(y[:, None], match), 0, len(match.cells))
+    assert_almost_equal(stats.variability(y, None, match, 'sem', True), target)
+    assert_almost_equal(stats.variability(y, None, match, 'sem', False), target)
+    # one data point per match cell
+    n = match.df + 1
+    assert_raises(ValueError, stats.variability, y[:n], None, match[:n], 'sem', True)
 
     target = np.array([scipy.stats.sem(y[x == cell], 0, 1) for cell in x.cells])
     es = stats.variability(y, x, None, 'sem', False)
