@@ -109,6 +109,8 @@ def cellname(cell, delim=' '):
         return cell
     elif isinstance(cell, (list, tuple)):
         return delim.join(cell)
+    elif cell is None:
+        return ''
     else:
         return unicode(cell)
 
@@ -784,6 +786,7 @@ class Celltable(object):
             self.data_indexes[None] = full_slice
             self.cells = [None]
             self.n_cells = 1
+            self.all_within = match is not None
             return
         self.cells = X.cells
         self.n_cells = len(self.cells)

@@ -8,6 +8,13 @@ from eelbrain import Factor, Var, datasets, plot
 def test_barplot():
     "Test plot.Barplot"
     ds = datasets.get_uv()
+
+    # one category
+    plot.Barplot('fltvar', ds=ds, test=False, show=False)
+    plot.Barplot('fltvar', ds=ds, show=False)
+    plot.Barplot('fltvar', match='rm', ds=ds, show=False)
+
+    # multiple categories
     plot.Barplot('fltvar', 'A%B', match='rm', ds=ds, show=False)
     plot.Barplot('fltvar', 'A%B', match='rm', ds=ds, pool_error=False,
                  show=False)
@@ -24,6 +31,11 @@ def test_boxplot():
     "Test plot.Boxplot"
     ds = datasets.get_uv()
     plot.Boxplot('fltvar', 'A%B', match='rm', ds=ds, show=False)
+
+    # one category
+    plot.Boxplot('fltvar', ds=ds, test=False, show=False)
+    plot.Boxplot('fltvar', ds=ds, show=False)
+    plot.Boxplot('fltvar', match='rm', ds=ds, show=False)
 
     # many pairwise significances
     ds['fltvar'][ds.eval("A%B==('a1','b1')")] += 1

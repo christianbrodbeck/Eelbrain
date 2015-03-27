@@ -241,12 +241,13 @@ class _SimpleFigure(_EelFigure):
             # make sure x axis labels don't overlap
             self.draw()
             labels = self._ax.get_xticklabels()
-            bbs = [l.get_window_extent() for l in labels]
-            overlap = max(bbs[i].x1 - bbs[i + 1].x0 for i in xrange(len(bbs)-1))
-            extend = len(bbs) * (overlap + 10)
-            w, h = self._frame.GetSize()
-            w += int(extend)
-            self._frame.SetSize((w, h))
+            if len(labels) > 1:
+                bbs = [l.get_window_extent() for l in labels]
+                overlap = max(bbs[i].x1 - bbs[i + 1].x0 for i in xrange(len(bbs)-1))
+                extend = len(bbs) * (overlap + 10)
+                w, h = self._frame.GetSize()
+                w += int(extend)
+                self._frame.SetSize((w, h))
         _EelFigure._show(self)
 
 
@@ -321,6 +322,8 @@ class Boxplot(_SimpleFigure):
         """
         # get data
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
+        if ct.X is None and test is True:
+            test = 0.
 
         # kwargs
         if hatch is True:
@@ -402,6 +405,9 @@ class Boxplot(_SimpleFigure):
             ax.axhline(test, color='black')
             y_top = _mark_plot_1sample(ax, ct, par, y_min, y_unit, test, corr, trend,
                                        x0=1)
+        else:
+            y_top = None
+
         if top is None:
             top = y_top
 
@@ -566,12 +572,18 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
     elif isinstance(colors, dict):
         colors = [colors[cell] for cell in ct.cells]
 
-    # data
+    # data means
     k = len(ct.cells)
     if left is None:
         left = np.arange(k) - width / 2
     height = np.array(ct.get_statistic(np.mean))
-    y_error = stats.variability(ct.Y.x, ct.X, ct.match, error, pool_error)
+
+    # error bars
+    if ct.X is None:
+        error_match = None
+    else:
+        error_match = ct.match
+    y_error = stats.variability(ct.Y.x, ct.X, error_match, error, pool_error)
 
     # fig spacing
     plot_max = np.max(height + y_error)
@@ -592,6 +604,8 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
             bar.set_facecolor(c)
 
     # pairwise tests
+    if ct.X is None and test is True:
+        test = 0.
     y_unit = (plot_max - y_bottom) / 15
     if test is True:
         y_top = _mark_plot_pairwise(ax, ct, par, plot_max, y_unit, corr, trend,
