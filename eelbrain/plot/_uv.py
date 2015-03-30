@@ -30,7 +30,7 @@ defaults = dict(title_kwargs={'size': 14,
                               (0.99609375, 0.5859375, 0.0),
                               (0.98046875, 0.99609375, 0.0),
                               (0.19921875, 0.99609375, 0.0)],
-                   'markers': ['o', 'o', '^', 'o'],
+                   'markers': False,
                    },
               # defaults for monochrome
               cm={'pw': ['.6', '.4', '.2', '.0'],
@@ -628,10 +628,10 @@ class Timeplot(_EelFigure, LegendMixin):
     "Plot a variable over time"
     def __init__(self, Y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
-                 main=np.mean, spread='box', x_jitter=False,
+                 main=np.mean, spread='sem', x_jitter=False,
                  bottom=0, top=None,
                  # labelling
-                 ylabel=True, xlabel=True, legend='best',
+                 ylabel=True, xlabel=True, timelabels=None, legend='best',
                  colors='jet', hatch=False, markers=True, *args, **kwargs):
         """Plot a variable over time
 
@@ -670,6 +670,9 @@ class Timeplot(_EelFigure, LegendMixin):
             Y axis label (default is inferred from the data).
         xlabel : str | None
             X axis label (default is inferred from the data).
+        timelabels : sequence | dict
+            Labels for the x (time) axis. Can be provided in the form of a list
+            of labels from left to right, or a {time_value: label} dictionary.
         legend : str | int | 'fig' | None
             Matplotlib figure legend location argument or 'fig' to plot the
             legend in a separate figure.
@@ -737,26 +740,23 @@ class Timeplot(_EelFigure, LegendMixin):
         n_cat = len(categories.cells)
 
         # find time points
-        if isvar(time):
-            time_points = np.unique(time.x)
-            n_time_points = len(time_points)
-            time_step = min(np.diff(time_points))
-            if local_plot in ['box', 'bar']:
-                within_spacing = time_step / (2 * n_cat)
-                padding = (2 + n_cat / 2) * within_spacing
-            else:
-                within_spacing = time_step / (8 * n_cat)
-                padding = time_step / 4  # (2 + n_cat/2) * within_spacing
-
-            rel_pos = np.arange(0, n_cat * within_spacing, within_spacing)
-            rel_pos -= np.mean(rel_pos)
-
-            t_min = min(time_points) - padding
-            t_max = max(time_points) + padding
+        time_points = np.unique(time.x)
+        n_time_points = len(time_points)
+        time_step = min(np.diff(time_points))
+        if local_plot in ['box', 'bar']:
+            within_spacing = time_step / (2 * n_cat)
+            padding = (2 + n_cat / 2) * within_spacing
         else:
-            raise NotImplementedError("time needs to be Var object")
+            within_spacing = time_step / (8 * n_cat)
+            padding = time_step / 4  # (2 + n_cat/2) * within_spacing
 
-        # prepare array for timelines
+        rel_pos = np.arange(0, n_cat * within_spacing, within_spacing)
+        rel_pos -= np.mean(rel_pos)
+
+        t_min = min(time_points) - padding
+        t_max = max(time_points) + padding
+
+        # prepare container for time series
         if line_plot:
             line_values = np.empty((n_cat, n_time_points))
         if spread and local_plot != 'bar':
@@ -844,7 +844,12 @@ class Timeplot(_EelFigure, LegendMixin):
         ax.set_xlim(t_min, t_max)
         ax.set_xticks(time_points)
         ax.set_ylim(bottom, top)
-
+        if timelabels is not None:
+            if isinstance(timelabels, dict):
+                xticklabels = [timelabels[t] for t in time_points]
+            else:
+                xticklabels = [unicode(l) for l in timelabels]
+            ax.set_xticklabels(xticklabels)
 
         LegendMixin.__init__(self, legend, legend_handles)
         self._show()
