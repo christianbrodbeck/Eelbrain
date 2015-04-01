@@ -358,7 +358,7 @@ Below is a simple example using data objects (for more, see the
     \end{center}
     >>> plot.uv.boxplot(Y, A, title="My Boxplot", ylabel="value", corr='Hochberg')
 
-.. image:: _static/statistics-example.png
+.. image:: images/statistics-example.png
 
 
 Exporting Data

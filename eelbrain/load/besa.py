@@ -1,5 +1,4 @@
-'''
-Tools for loading data from the BESA-MN pipeline.
+"""Tools for loading data from the BESA-MN pipeline.
 
 .. autosummary::
    :toctree: generated
@@ -8,7 +7,8 @@ Tools for loading data from the BESA-MN pipeline.
    dat_file
    dat_set
    roi
-'''
+
+"""
 # Authors: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
 from glob import glob
@@ -31,7 +31,7 @@ def dat_file(path):
     path : str
         Path to the dat file.
 
-    Results
+    Returns
     -------
     src : NDVar
         Source estimate read from the dat file, with additional info in the
@@ -80,7 +80,7 @@ def dat_set(path, subjects=[], conditions=[]):
     ----------
     path : str
         The path to the dat files, contain the placeholders '{subject}' and
-        '{condition}'. Can contain "*".
+        '{condition}'. Can contain ``*``.
     subjects : list
         Subject identifiers. If the list is empty, they are inferred based on
         the path and existing files.
@@ -111,7 +111,7 @@ def dat_set_paths(path, subjects=[], conditions=[]):
     ----------
     path : str
         The path to the dat files, contain the placeholders '{subject}' and
-        '{condition}'. Can contain "*".
+        '{condition}'. Can contain ``*``.
     subjects : list
         Subject identifiers. If the list is empty, they are inferred based on
         the path and existing files.
@@ -215,12 +215,12 @@ def add_dat_set_epochs(ds, name='src'):
 
 
 def roi(path, adjust_index=True):
-    """Load a BESA-MN ROI saved in a *.mat file.
+    """Load a BESA-MN ROI saved in a ``*.mat`` file.
 
     Parameters
     ----------
     path : str
-        Path to the *.mat file containing the ROI.
+        Path to the ``*.mat`` file containing the ROI.
     adjust_index : bool
         Adjust the index for Python (Matlab indexes start with 1, Python
         indexes start with 0).
@@ -244,10 +244,10 @@ def roi_results(path=None, varname=None):
     Parameters
     ----------
     path : str | None
-        Path to the *.m file containing the saved results. If None, a file
+        Path to the ``*.m`` file containing the saved results. If None, a file
         can be selected using a system file dialog.
     varname : str | None
-        If the .m file contains more than one variable, the name of the
+        If the ``*.m`` file contains more than one variable, the name of the
         variable containing the results can be specified as string.
 
     Returns
@@ -299,7 +299,7 @@ def mrat_data(path=None, tstart=-0.1, roi=None, varname=None):
     Parameters
     ----------
     path : str | None
-        Path to the *.m file containing the saved results. If None, a file
+        Path to the ``*.m`` file containing the saved results. If None, a file
         can be selected using a system file dialog.
     tstart : scalar
         Time value of the first sample in the data.
@@ -307,7 +307,7 @@ def mrat_data(path=None, tstart=-0.1, roi=None, varname=None):
         Index of the sources to load (Python style indexing, i.e., the first
         source has index 0).
     varname : str | None
-        If the .m file contains more than one variable, the name of the
+        If the ``*.m`` file contains more than one variable, the name of the
         variable containing the results can be specified as string.
 
     Returns

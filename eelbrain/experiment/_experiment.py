@@ -122,7 +122,7 @@ class TreeModel(object):
 
     Notes
     -----
-    Any subclass should make sure to call the ``.store_state()` method at the
+    Any subclass should make sure to call the ``.store_state()`` method at the
     end of initialization.
     """
     owner = None  # email address as string (for notification)

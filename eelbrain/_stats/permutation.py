@@ -120,9 +120,9 @@ def permute_sign_flip(n, samples=10000, seed=0):
         Seed the random state of the randomization module (:mod:`random`) to
         make replication possible. None to skip seeding (default 0).
 
-    Yields
-    ------
-    sign : array
+    Returns
+    -------
+    iterator over sign : array
         Iterate over sign flip permutations (``sign`` is the same object but
         its content modified in every iteration).
 
