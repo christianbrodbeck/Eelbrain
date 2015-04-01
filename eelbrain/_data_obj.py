@@ -1655,13 +1655,14 @@ class Var(object):
         --------
         Use n = 2 for a median split::
 
-        >>> y = Var([1,2,3,4])
-        >>> y.split(2)
-        Factor(['0', '0', '1', '1'])
+            >>> y = Var([1,2,3,4])
+            >>> y.split(2)
+            Factor(['0', '0', '1', '1'])
 
-        >>> z = Var([7, 6, 5, 4, 3, 2])
-        >>> z.split(3)
-        Factor(['2', '2', '1', '1', '0', '0'])
+            >>> z = Var([7, 6, 5, 4, 3, 2])
+            >>> z.split(3)
+            Factor(['2', '2', '1', '1', '0', '0'])
+
         """
         y = self.x
 
@@ -2412,8 +2413,8 @@ class Factor(_Effect):
         In order to create a copy of the Factor with different labels just
         use the labels argument when initializing a new Factor::
 
-        >>> Factor(f, labels={'c': 'v3'})
-        Factor(['v1', 'v1', 'v1', 'v2', 'v2', 'v2', 'v3', 'v3', 'v3'])
+            >>> Factor(f, labels={'c': 'v3'})
+            Factor(['v1', 'v1', 'v1', 'v2', 'v2', 'v2', 'v3', 'v3', 'v3'])
 
         If ``labels`` contains a key that is not a label of the Factor, a
         ``KeyError`` is raised.
@@ -3854,22 +3855,23 @@ class Dataset(OrderedDict):
         Examples
         --------
         Datasets can be initialize with data-objects, or with
-        ('name', data-object) tuples.::
+        ('name', data-object) tuples::
 
-        >>> ds = Dataset((var1, var2))
-        >>> ds = Dataset((('v1', var1), ('v2', var2)))
+            >>> ds = Dataset((var1, var2))
+            >>> ds = Dataset((('v1', var1), ('v2', var2)))
 
         Alternatively, variables can be added after initialization::
 
-        >>> ds = Dataset(n_cases=3)
-        >>> ds['var', :] = 0
-        >>> ds['factor', :] = 'a'
-        >>> print ds
-        var    factor
-        -------------
-        0      a
-        0      a
-        0      a
+            >>> ds = Dataset(n_cases=3)
+            >>> ds['var', :] = 0
+            >>> ds['factor', :] = 'a'
+            >>> print ds
+            var    factor
+            -------------
+            0      a
+            0      a
+            0      a
+
         """
         # backwards compatibility
         if args:

@@ -1,7 +1,6 @@
-.. highlight:: rst
-
+**********
 Installing
-==========
+**********
 
 .. note::
     Eelbrain comes with a C extension. Precompiled binaries are currently
@@ -45,10 +44,8 @@ Later, update Eelbrain with::
 plots with several GUI elements (and enables the epoch rejection GUI).
 wxPython `can not be installed from the PYPI
 <http://stackoverflow.com/q/477573/166700>`_, but installers are provided
-`here <http://www.wxpython.org/download.php>`_.
+`here <http://www.wxpython.org/download.php>`__.
 
-
-.. _install-canopy:
 
 Installing with Anaconda
 ------------------------
@@ -81,7 +78,7 @@ Installing with Canopy
 Make sure that you are using the
 `Canopy <https://www.enthought.com/products/canopy>`_ Python distribution from
 the command line (see
-`here <https://support.enthought.com/entries/23646538-Make-Canopy-User-Python-be-your-default-Python-i-e-on-the-PATH->`_).
+`here <https://support.enthought.com/entries/23646538-Make-Canopy-User-Python-be-your-default-Python-i-e-on-the-PATH->`__).
 
 Install dependencies that do not come with Canopy by default. The only
 additional package needed is Mayavi::

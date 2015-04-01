@@ -120,9 +120,9 @@ Epochs
 
 .. py:attribute:: MneExperiment.epochs
 
-Epochs are specified in the :attr:`MneExperiment.epochs` dictionary. All keys
-in this dictionary have to be of type :class:`str`, values have to be
-:class:`dict`s containing the epoch specification:
+Epochs are specified as a {:class:`str`: :class:`dict`} dictionary. Keys are
+names for epochs, and values are corresponding definitions. Epoch definitions
+can use the following keys:
 
 sel : str
     Expression which evaluates in the events Dataset to the index of the
@@ -352,7 +352,7 @@ Parcellation are used in different places:
 Predefined parcellations:
 
 Freesurfer Parcellations
-    ``aparc``, ``PALS_B12_Lobes``, ``PALS_B12_Visuotopic`, ...
+    ``aparc``, ``PALS_B12_Lobes``, ``PALS_B12_Visuotopic``, ...
 ``lobes``
     Modified version of ``PALS_B12_Lobes`` in which the limbic lobe is merged
     into the other 4 lobes.

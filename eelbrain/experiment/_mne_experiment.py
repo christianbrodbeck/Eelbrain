@@ -954,12 +954,29 @@ class MneExperiment(FileTree):
         -----
         Each lower level subsumes the higher levels:
 
-        1. data files - these need to be cleared when anything about the
-           epoch definition changes (tmin, tmax, event inclusion, ...). Note
-           that you might also have to manually update epoch rejection files
-           with the :meth:`MneExperiment.make_rej` method.
-        5. tests - these need to be cleared when the members of the relevant
-           subject groups change.
+        ``1``
+            data files - these need to be cleared when anything about the
+            epoch definition changes (tmin, tmax, event inclusion, ...). Note
+            that you might also have to manually update epoch rejection files
+            with the :meth:`MneExperiment.make_rej` method.
+        ``5``
+            tests - these need to be cleared when the members of the relevant
+            subject groups change.
+
+        Examples
+        --------
+        To delete only test files, after adding raw data for a new subject to
+        the experiment::
+
+            >>> e.clear_cache(1)
+
+        To delete cached data files, after changing the selection criteria for
+        a secondary epoch::
+
+            >>> e.clear_cache(5)
+
+        If criteria on a primary epoch are changed, the trial rejection has to
+        be re-done in addition to clearing the cache.
         """
         if level <= 1:
             self.rm('cache-dir', confirm=True)
@@ -1103,9 +1120,9 @@ class MneExperiment(FileTree):
         field : str
             Name of the field.
 
-        Yields
-        ------
-        value : str
+        Returns
+        -------
+        iterator over value : str
             Current field value.
         """
         values = self.get_field_values(field)
@@ -1652,21 +1669,9 @@ class MneExperiment(FileTree):
         Parameters
         ----------
         label : str
-            Name of the label. If the label ends in '_bh', the combination of
-            '*_lh' and '*_rh' will be returned.
-
-        Notes
-        -----
-        Labels are processed in the following sequence:
-
-        annot-file
-            Some are provided by default, others are created. Each vertex is
-            occupied by at most one label (limitation of *.annot files). Can be
-            morphed from one subject to others. Labels are marked "*-?h".
-        label-file
-            File with pickled labels, based on an annot file but can add
-            additional labels. Labels can be overlapping. Labels are marked
-            "*_?h".
+            Name of the label. If the label name does not end in '-bh' or '-rh'
+            the combination of the labels ``label + '-lh'`` and
+            ``label + '-rh'`` is returned.
         """
         labels = self._load_labels(**kwargs)
         if label in labels:
@@ -1772,10 +1777,10 @@ class MneExperiment(FileTree):
         others :
             Update the experiment state.
 
-        Warning
-        -------
-        For automatic rejection: Since no epochs are loaded, no rejection
-        based on thresholding is performed.
+        Notes
+        -----
+        When trial rejection is set to automatic, not rejection is performed
+        because no epochs are loaded.
         """
         # process arguments
         if reject not in (True, False, 'keep'):

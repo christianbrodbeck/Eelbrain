@@ -32,7 +32,7 @@ New in 0.13
   - API: Subclasses should remove the ``subject`` and ``experiment`` parameters
     from :meth:`MneExperiment.label_events`.
   - API: :class:`MneExperiment` can now be imported directly from
-    :module:`eelbrain`.
+    :mod:`eelbrain`.
   - API: The :attr:`MneExperiment._defaults` attribute should be renamed to
     :attr:`MneExperiment.defaults`.
   - A draft for a guide at :ref:`experiment-class-guide`.

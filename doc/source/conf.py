@@ -24,11 +24,6 @@ import sys, os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 # sys.path.insert(0, os.path.abspath('.'))
 
-ebpath = os.path.abspath('..')
-sys.path.insert(0, ebpath)
-sys.path.insert(0, os.path.join(ebpath, 'eelbrain'))
-del ebpath
-
 autoclass_content = 'class'  # 'both'
 
 # -- General configuration -----------------------------------------------------
@@ -60,7 +55,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Eelbrain'
-copyright = u'2014, Christian Brodbeck'
+copyright = u'2015, Christian Brodbeck'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -69,7 +64,7 @@ copyright = u'2014, Christian Brodbeck'
 import eelbrain
 # The short X.Y version.
 # version, trash = VERSION.rsplit('.', 1)
-version = eelbrain.__version__.rsplit('.', 1)
+version = eelbrain.__version__.rsplit('.', 1)[0]
 # The full version, including alpha/beta/rc tags.
 # release = VERSION
 release = eelbrain.__version__  # '0.0.3'
@@ -86,7 +81,7 @@ release = eelbrain.__version__  # '0.0.3'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['images', 'static']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 # default_role = None
@@ -111,7 +106,8 @@ pygments_style = 'sphinx'
 
 # -- Custom Options -----------------------------------------------------------
 
-intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None)}
+intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None),
+                       'mne': ('http://martinos.org/mne/stable', None)}
 # http://sphinx.pocoo.org/ext/intersphinx.html
 
 
@@ -119,7 +115,8 @@ intersphinx_mapping = {'python': ('http://docs.python.org/2.7', None)}
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+# new default: alabaster
+html_theme = 'classic'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -138,7 +135,7 @@ html_theme_options = {'stickysidebar': True}
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = 'static/eelbrain160.png'
+html_logo = 'images/eelbrain160.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
