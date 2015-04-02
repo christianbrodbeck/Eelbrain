@@ -151,72 +151,70 @@ the :mod:`.plot.brain` module:
     plot.brain
 
 
-.. automodule:: eelbrain.plot._uv
+Plot univariate data (:class:`Var` objects):
 
 .. autosummary::
    :toctree: generated
 
-   Barplot
-   Boxplot
-   PairwiseLegend
-   Correlation
-   Histogram
-   Regression
-   Timeplot
+   plot.Barplot
+   plot.Boxplot
+   plot.PairwiseLegend
+   plot.Correlation
+   plot.Histogram
+   plot.Regression
+   plot.Timeplot
 
 
-.. automodule:: eelbrain.plot._colors
-
-.. autosummary::
-   :toctree: generated
-
-   colors_for_categorial
-   colors_for_oneway
-   colors_for_twoway
-   ColorBar
-   ColorGrid
-   ColorList
-
-
-.. automodule:: eelbrain.plot._uts
+Color tools for plotting:
 
 .. autosummary::
    :toctree: generated
 
-   UTSClusters
-   UTSStat
-   UTS
+   plot.colors_for_categorial
+   plot.colors_for_oneway
+   plot.colors_for_twoway
+   plot.ColorBar
+   plot.ColorGrid
+   plot.ColorList
 
 
-.. automodule:: eelbrain.plot._utsnd
-
-.. autosummary::
-   :toctree: generated
-
-   Array
-   Butterfly
-
-
-.. automodule:: eelbrain.plot._topo
+Plot uniform time-series:
 
 .. autosummary::
    :toctree: generated
 
-   TopoArray
-   TopoButterfly
-   Topomap
+   plot.UTSClusters
+   plot.UTSStat
+   plot.UTS
 
 
-.. automodule:: eelbrain.plot._sensors
+Plot multidimensional uniform time series:
 
 .. autosummary::
    :toctree: generated
 
-   SensorMap
-   SensorMaps
+   plot.Array
+   plot.Butterfly
 
 
-.. currentmodule:: eelbrain
+Plot topographic maps of sensor space data:
+
+.. autosummary::
+   :toctree: generated
+
+   plot.TopoArray
+   plot.TopoButterfly
+   plot.Topomap
+
+
+Plot sensor layout maps:
+
+.. autosummary::
+   :toctree: generated
+
+   plot.SensorMap
+   plot.SensorMaps
+
 
 .. _ref-guis:
 
