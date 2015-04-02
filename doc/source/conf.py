@@ -38,6 +38,8 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.autosummary',  # default
               'sphinx.ext.intersphinx',  # http://sphinx.pocoo.org/ext/intersphinx.html
               'numpydoc',  # https://github.com/numpy/numpy/tree/master/doc/sphinxext
               ]
+# enable to  have all methods documented on the same page as a class:
+# autodoc_default_flags=['inherited-members']
 autosummary_generate = True
 numpydoc_show_class_members = False
 
@@ -101,7 +103,7 @@ exclude_patterns = ['images', 'static']
 pygments_style = 'sphinx'
 
 # A list of ignored prefixes for module index sorting.
-# modindex_common_prefix = []
+modindex_common_prefix = ['eelbrain.']
 
 
 # -- Custom Options -----------------------------------------------------------
