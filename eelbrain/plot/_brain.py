@@ -238,7 +238,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     ----------
     cluster : NDVar
         The cluster.
-    vmax : scalar
+    vmax : scalar != 0
         Maximum value in the colormap. Default is the maximum value in the
         cluster.
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
@@ -266,6 +266,12 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     """
     if vmax is None:
         vmax = max(cluster.x.max(), -cluster.x.min())
+        if vmax == 0:
+            raise ValueError("The cluster's data is all zeros")
+    elif vmax == 0:
+        raise ValueError("vmax can't be 0")
+    elif vmax < 0:
+        vmax = -vmax
 
     lut = _dspm_lut(0, vmax / 10, vmax)
     return _plot(cluster, lut, -vmax, vmax, *args, **kwargs)
@@ -667,7 +673,7 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         How to summarize data in each time bin. The value should be a function
         that takes an axis parameter (e.g., numpy summary functions like
         numpy.sum, numpy.mean, numpy.max, ..., default is numpy.sum).
-    vmax : scalar
+    vmax : scalar != 0
         Maximum value in the colormap. Default is the maximum value in the
         cluster.
 
@@ -680,8 +686,14 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     data = ndvar.bin(tstep, tstart, tstop, summary)
     ims = []
     if vmax is None:
-        vmax = max(abs(data.min()), data.max())
-
+        vmax = max(-data.min(), data.max())
+        if vmax == 0:
+            raise NotImplementedError("The data of ndvar is all zeros")
+    elif vmax == 0:
+        raise ValueError("vmax can't be 0")
+    elif vmax < 0:
+        vmax = -vmax
+    
     hemis = []
     if data.source.lh_n:
         hemis.append('lh')
