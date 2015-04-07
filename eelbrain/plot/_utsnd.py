@@ -614,10 +614,21 @@ class _ax_bfly_epoch:
                 self.ax.set_ylim(y_min, y_max)
 
     def set_marked(self, kind, sensors):
-        if self.extrema is not None:
-            raise NotImplementedError("Set styles with extrema plot")
+        """Set the channels which should be marked for a specific style
+
+        Parameters
+        ----------
+        kind : str
+            The style.
+        sensors : collection of int
+            Channel index for the channels to mark as ``kind``.
+        """
         old = self._marked[kind]
         new = self._marked[kind] = set(sensors)
+        if not old and not new:
+            return
+        elif self.extrema is not None:
+            raise NotImplementedError("Set styles with extrema plot")
         # mark new channels
         for i in new.difference(old):
             self.lines.lines[i].update(self._styles[kind])
