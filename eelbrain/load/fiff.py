@@ -308,7 +308,8 @@ def _picks(info, data, exclude):
     else:
         err = "data=%r (needs to be 'eeg', 'grad' or 'mag')" % data
         raise ValueError(err)
-    picks = mne.pick_types(info, meg, eeg, False, eog, exclude=exclude)
+    picks = mne.pick_types(info, meg, eeg, False, eog, ref_meg=False,
+                           exclude=exclude)
     return picks
 
 
@@ -651,8 +652,8 @@ def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
 
     Parameters
     ----------
-    epochs : mne.Epochs
-        The epochs object
+    epochs : mne.Epochs | str
+        The epochs object or path to an epochs FIFF file.
     name : None | str
         Name for the NDVar.
     data : 'eeg' | 'mag' | 'grad' | None
@@ -672,6 +673,9 @@ def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
     vmax : None | scalar
         Set a default range for plotting.
     """
+    if isinstance(epochs, basestring):
+        epochs = mne.read_epochs(epochs)
+
     if data is None:
         data = _guess_ndvar_data_type(epochs.info)
 

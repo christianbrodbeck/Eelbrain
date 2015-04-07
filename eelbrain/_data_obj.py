@@ -6524,7 +6524,7 @@ def as_sensor(obj):
     elif hasattr(obj, 'pos') and hasattr(obj, 'ch_names') and hasattr(obj, 'kind'):
         return Sensor(obj.pos, obj.ch_names, sysname=obj.kind)
     else:
-        raise TypeError("Can't get sensors form %r" % (obj,))
+        raise TypeError("Can't get sensors from %r" % (obj,))
 
 
 def _point_graph(coords, dist_threshold):
