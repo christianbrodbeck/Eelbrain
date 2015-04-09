@@ -941,7 +941,7 @@ class Frame(EelbrainFrame):  # control
                     break
                 except ValueError as exception:
                     msg = wx.MessageDialog(self, str(exception), "Invalid Entry",
-                                           wx.ICON_ERROR)
+                                           wx.OK | wx.ICON_ERROR)
                     msg.ShowModal()
                     msg.Destroy()
             else:
@@ -1019,7 +1019,7 @@ class Frame(EelbrainFrame):  # control
                 vlim = abs(float(value))
             except Exception as exception:
                 msg = wx.MessageDialog(self, str(exception), "Invalid Entry",
-                                       wx.ICON_ERROR)
+                                       wx.OK | wx.ICON_ERROR)
                 msg.ShowModal()
                 msg.Destroy()
                 raise
