@@ -2108,6 +2108,7 @@ class MneExperiment(FileTree):
                                      "FreeSurfer to create the %s "
                                      "parcellation for mrisubject %s."
                                      % (parc, mrisubject))
+                # https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation
         elif mrisubject == common_brain:
             # check existing files
             if not redo:
