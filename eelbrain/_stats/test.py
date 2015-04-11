@@ -327,6 +327,11 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
         Method for multiple comparison correction (default 'hochberg').
     title : str
         Title for the table.
+
+    Returns
+    -------
+    table : FMText Table
+        Table with results.
     """
     ct = Celltable(Y, X, match, sub, ds=ds, coercion=asvar)
 
@@ -418,8 +423,7 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
              par=True, corr='Hochberg', trend=True,  # stats
              title='{desc}', mirror=False,  # layout
              ):
-    """
-    Pairwise comparison table.
+    """Pairwise comparison table.
 
     Parameters
     ----------
@@ -435,6 +439,10 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
         If a Dataset is specified, all data-objects can be specified as
         names of Dataset variables
 
+    Returns
+    -------
+    table : FMText Table
+        Table with results.
     """
     ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
     test = _pairwise(ct.get_data(), within=ct.all_within, parametric=par,
@@ -502,26 +510,25 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
 def _pairwise(data, within=True, parametric=True, corr='Hochberg',
               levels=True, trend=True):
     """
-    data:   list of groups/treatments
-
-    corr:   'Hochberg'
-            'Holm'
-            'Bonferroni'
-
+    Parameters
+    ----------
+    data
+        list of groups/treatments
+    corr : 'Hochberg' | 'Holm' | 'Bonferroni'
+        MCP.
 
     Returns
     -------
-    dictionary with results, containing:
-
-    'test': test name
-    'caption': information about correction
-    'statistic': abbreviation used for the staistic (e.g. 'Q')
-    statistic: list of values
-    'df': df
-    'p': list of corresponding pa values
-    'stars': list of n stars (ints)
-    'pw_indexes': dict linking table index (i,j) to the list index for p etc.
-
+    results : dict
+        dictionary with results:
+        'test': test name
+        'caption': information about correction
+        'statistic': abbreviation used for the staistic (e.g. 'Q')
+        statistic: list of values
+        'df': df
+        'p': list of corresponding pa values
+        'stars': list of n stars (ints)
+        'pw_indexes': dict linking table index (i,j) to the list index for p etc.
     """
     # find test
     k = len(data)

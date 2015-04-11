@@ -210,34 +210,33 @@ class _ax_im_array(object):
 
 
 class Array(_EelFigure):
+    """Plot UTS data to a rectangular grid.
+
+    Parameters
+    ----------
+    epochs : NDVar
+        If data has only 1 dimension, the x-axis defines epochs.
+    Xax : None | categorial
+        Create a separate plot for each cell in this model.
+    xlabel, ylabel : bool | str
+        I True, determine from the data.
+    ds : None | Dataset
+        If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+        as strings.
+    x : str
+        Dimension to plot on the x axis (default 'time').
+    vmax : scalar
+        Upper limits for the colormap.
+    vmin : scalar
+        Lower limit for the colormap.
+    tight : bool
+        Use matplotlib's tight_layout to expand all axes to fill the figure
+        (default True)
+    title : None | string
+        Figure title.
+    """
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True, ds=None,
                  x='time', vmax=None, vmin=None, *args, **kwargs):
-        """
-        Plot uts data to a rectangular grid.
-
-        Parameters
-        ----------
-        epochs : NDVar
-            If data has only 1 dimension, the x-axis defines epochs.
-        Xax : None | categorial
-            Create a separate plot for each cell in this model.
-        xlabel, ylabel : bool | str
-            I True, determine from the data.
-        ds : None | Dataset
-            If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
-            as strings.
-        x : str
-            Dimension to plot on the x axis (default 'time').
-        vmax : scalar
-            Upper limits for the colormap.
-        vmin : scalar
-            Lower limit for the colormap.
-        tight : bool
-            Use matplotlib's tight_layout to expand all axes to fill the figure
-            (default True)
-        title : None | string
-            Figure title.
-        """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
 
         nax = len(epochs)
@@ -491,37 +490,36 @@ class _ax_butterfly(object):
 
 
 class Butterfly(_EelFigure):
-    "Plot data in a butterfly plot."
+    """Butterfly plot for NDVars
+
+    Parameters
+    ----------
+    epochs : (list of) NDVar
+        Data to plot.
+    Xax : None | categorial
+        Create a separate plot for each cell in this model.
+    sensors: None or list of sensor IDs
+        sensors to plot (``None`` = all)
+    axtitle : str | None
+        Title to plot for axes. Default is the NDVar names.
+    xlabel : str | None
+        X-axis labels. By default the label is inferred from the data.
+    ylabel : str | None
+        Y-axis labels. By default the label is inferred from the data.
+    color : matplotlib color
+        default (``None``): use segment color if available, otherwise
+        black; ``True``: alternate colors (mpl default)
+    ds : None | Dataset
+        If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+        as strings.
+    tight : bool
+        Use matplotlib's tight_layout to expand all axes to fill the figure
+        (default True)
+    title : None | string
+        Figure title.
+    """
     def __init__(self, epochs, Xax=None, sensors=None, axtitle='{name}',
                  xlabel=True, ylabel=True, color=None, ds=None, *args, **kwargs):
-        """Butterfly plot for NDVars
-
-        Parameters
-        ----------
-        epochs : (list of) NDVar
-            Data to plot.
-        Xax : None | categorial
-            Create a separate plot for each cell in this model.
-        sensors: None or list of sensor IDs
-            sensors to plot (``None`` = all)
-        axtitle : str | None
-            Title to plot for axes. Default is the NDVar names.
-        xlabel : str | None
-            X-axis labels. By default the label is inferred from the data.
-        ylabel : str | None
-            Y-axis labels. By default the label is inferred from the data.
-        color : matplotlib color
-            default (``None``): use segment color if available, otherwise
-            black; ``True``: alternate colors (mpl default)
-        ds : None | Dataset
-            If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
-            as strings.
-        tight : bool
-            Use matplotlib's tight_layout to expand all axes to fill the figure
-            (default True)
-        title : None | string
-            Figure title.
-        """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, *args,
                             **kwargs)

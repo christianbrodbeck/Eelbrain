@@ -16,40 +16,38 @@ from ._sensors import _plt_map2d
 
 
 class Topomap(SensorMapMixin, _EelFigure):
-    "Plot individual topogeraphies"
+    """Plot individual topogeraphies
+
+    Parameters
+    ----------
+    epochs : NDVar | list of NDVar, dims = ([case,] sensor,)
+        Data to plot.
+    Xax : None | categorial
+        Create a separate plot for each cell in this model.
+    sensorlabels : None | 'index' | 'name' | 'fullname'
+        Show sensor labels. For 'name', any prefix common to all names
+        is removed; with 'fullname', the full name is shown.
+    proj : str
+        The sensor projection to use for topomaps.
+    res : int
+        Resolution of the topomaps (width = height = ``res``).
+    interpolation : str
+        Matplotlib imshow() parameter for topomaps.
+    ds : None | Dataset
+        If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+        as strings.
+    vmax, vmin : None | scalar
+        Override the default plot limits. If only vmax is specified, vmin
+        is set to -vmax.
+    tight : bool
+        Use matplotlib's tight_layout to expand all axes to fill the figure
+        (default True)
+    title : None | string
+        Figure title.
+    """
     def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
                  res=200, interpolation='nearest', ds=None, vmax=None,
                  vmin=None, *args, **kwargs):
-        """
-        Plot individual topogeraphies
-
-        Parameters
-        ----------
-        epochs : NDVar | list of NDVar, dims = ([case,] sensor,)
-            Data to plot.
-        Xax : None | categorial
-            Create a separate plot for each cell in this model.
-        sensorlabels : None | 'index' | 'name' | 'fullname'
-            Show sensor labels. For 'name', any prefix common to all names
-            is removed; with 'fullname', the full name is shown.
-        proj : str
-            The sensor projection to use for topomaps.
-        res : int
-            Resolution of the topomaps (width = height = ``res``).
-        interpolation : str
-            Matplotlib imshow() parameter for topomaps.
-        ds : None | Dataset
-            If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
-            as strings.
-        vmax, vmin : None | scalar
-            Override the default plot limits. If only vmax is specified, vmin
-            is set to -vmax.
-        tight : bool
-            Use matplotlib's tight_layout to expand all axes to fill the figure
-            (default True)
-        title : None | string
-            Figure title.
-        """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         nax = len(epochs)
 
@@ -139,9 +137,47 @@ class TopomapBins(_EelFigure):
 
 
 class TopoButterfly(_EelFigure):
-    """
-    Butterfly plot with corresponding topomaps.
+    """Butterfly plot with corresponding topomaps
 
+    Parameters
+    ----------
+    epochs :
+        Epoch(s) to plot.
+    Xax : None | categorial
+        Create a separate plot for each cell in this model.
+    xlabel, ylabel : bool | string
+        Labels for x and y axes. If True, labels are automatically chosen.
+    proj : str
+        The sensor projection to use for topomaps.
+    res : int
+        Resolution of the topomaps (width = height = ``res``).
+    interpolation : str
+        Matplotlib imshow() parameter for topomaps.
+    color : matplotlib color
+        Color of the butterfly plots.
+    sensorlabels : None | 'index' | 'name' | 'fullname'
+        Show sensor labels. For 'name', any prefix common to all names
+        is removed; with 'fullname', the full name is shown.
+    mark : None | list of sensor names or indices
+        Highlight a subset of the sensors.
+    mcolor : matplotlib color
+        Color for marked sensors.
+    ds : None | Dataset
+        If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+        as strings.
+    axh : scalar
+        Height of the butterfly axes as well as side length of the topomap
+        axes (in inches).
+    ax_aspect : scalar
+        multiplier for the width of butterfly plots based on their height
+    vmax, vmin : None | scalar
+        Override the default plot limits. If only vmax is specified, vmin
+        is set to -vmax.
+    title : None | string
+        Figure title.
+
+    Notes
+    -----
      - LMB click in butterfly plots fixates the topomap time.
      - RMB click in butterfly plots removes the time point, the topomaps follow
        the mouse pointer.
@@ -155,44 +191,6 @@ class TopoButterfly(_EelFigure):
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, vmax=None,
                  vmin=None, *args, **kwargs):
-        """
-        Parameters
-        ----------
-        epochs :
-            Epoch(s) to plot.
-        Xax : None | categorial
-            Create a separate plot for each cell in this model.
-        xlabel, ylabel : bool | string
-            Labels for x and y axes. If True, labels are automatically chosen.
-        proj : str
-            The sensor projection to use for topomaps.
-        res : int
-            Resolution of the topomaps (width = height = ``res``).
-        interpolation : str
-            Matplotlib imshow() parameter for topomaps.
-        color : matplotlib color
-            Color of the butterfly plots.
-        sensorlabels : None | 'index' | 'name' | 'fullname'
-            Show sensor labels. For 'name', any prefix common to all names
-            is removed; with 'fullname', the full name is shown.
-        mark : None | list of sensor names or indices
-            Highlight a subset of the sensors.
-        mcolor : matplotlib color
-            Color for marked sensors.
-        ds : None | Dataset
-            If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
-            as strings.
-        axh : scalar
-            Height of the butterfly axes as well as side length of the topomap
-            axes (in inches).
-        ax_aspect : scalar
-            multiplier for the width of butterfly plots based on their height
-        vmax, vmin : None | scalar
-            Override the default plot limits. If only vmax is specified, vmin
-            is set to -vmax.
-        title : None | string
-            Figure title.
-        """
         epochs = self._epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         n_plots = len(epochs)
 
@@ -608,9 +606,29 @@ class _TopoWindow:
 
 
 class TopoArray(_EelFigure):
-    """
-    Channel by sample plots with corresponding topomaps
+    """Channel by sample plots with topomaps for individual time points
 
+    Parameters
+    ----------
+    epochs :
+        Epoch(s) to plot.
+    Xax : None | categorial
+        Create a separate plot for each cell in this model.
+    title : None | string
+        Figure title.
+    ntopo | int
+        number of topomaps per array-plot.
+    t : list of scalar (len <= ntopo)
+        Time points for topomaps.
+    ds : None | Dataset
+        If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+        as strings.
+    vmax, vmin : None | scalar
+        Override the default plot limits. If only vmax is specified, vmin
+        is set to -vmax.
+
+    Notes
+    -----
      - LMB click on a topomap selects it for tracking the mouse pointer
          - LMB on the array plot fixates the topomap time point
      - RMB on a topomap removes the topomap
@@ -620,29 +638,6 @@ class TopoArray(_EelFigure):
 
     def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
                  vmax=None, vmin=None, *args, **kwargs):
-        """
-        Channel by sample array-plots with topomaps corresponding to
-        individual time points.
-
-        Parameters
-        ----------
-        epochs :
-            Epoch(s) to plot.
-        Xax : None | categorial
-            Create a separate plot for each cell in this model.
-        title : None | string
-            Figure title.
-        ntopo | int
-            number of topomaps per array-plot.
-        t : list of scalar (len <= ntopo)
-            Time points for topomaps.
-        ds : None | Dataset
-            If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
-            as strings.
-        vmax, vmin : None | scalar
-            Override the default plot limits. If only vmax is specified, vmin
-            is set to -vmax.
-        """
         epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
         n_epochs = len(epochs)
         n_topo_total = ntopo * n_epochs

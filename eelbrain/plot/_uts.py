@@ -16,14 +16,7 @@ from ._colors import colors_for_oneway, find_cell_colors
 
 
 class UTSStat(_EelFigure, LegendMixin):
-    "Plots statistics for a one-dimensional NDVar"
-    def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
-                 main=np.mean, error='sem', pool_error=None, legend='upper right',
-                 axtitle='{name}', xlabel=True, ylabel=True, invy=False,
-                 bottom=None, top=None, hline=None, xdim='time', xlim=None,
-                 color='b', colors=None, clusters=None, pmax=0.05,
-                 ptrend=0.1, *args, **kwargs):
-        """
+    """
     Plot statistics for a one-dimensional NDVar
 
     Parameters
@@ -101,7 +94,13 @@ class UTSStat(_EelFigure, LegendMixin):
     frame : bool
         Draw a frame containing the figure from the top and the right (default
         ``True``).
-        """
+    """
+    def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
+                 main=np.mean, error='sem', pool_error=None, legend='upper right',
+                 axtitle='{name}', xlabel=True, ylabel=True, invy=False,
+                 bottom=None, top=None, hline=None, xdim='time', xlim=None,
+                 color='b', colors=None, clusters=None, pmax=0.05,
+                 ptrend=0.1, *args, **kwargs):
         if 'dev' in kwargs:
             error = kwargs.pop('dev')
             warn("The 'dev' keyword is deprecated, use 'error'",
@@ -284,31 +283,30 @@ class UTSStat(_EelFigure, LegendMixin):
 
 
 class UTS(_EelFigure):
-    "Value by time plot for UTS data."
+    """Value by time plot for UTS data
+
+    Parameters
+    ----------
+    epochs : epochs
+        Uts data epochs to plot.
+    Xax : None | categorial
+        Make separate axes for each category in this categorial model.
+    axtitle : None | str
+        Axes title. '{name}' is formatted to the category name.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    xlabel, ylabel : str | None
+        X- and y axis labels. By default the labels will be inferred from
+        the data.
+    tight : bool
+        Use matplotlib's tight_layout to expand all axes to fill the figure
+        (default True)
+    title : None | str
+        Figure title.
+    """
     def __init__(self, epochs, Xax=None, axtitle='{name}', ds=None,
                  xlabel=True, ylabel=True, *args, **kwargs):
-        """Value by time plot for UTS data
-
-        Parameters
-        ----------
-        epochs : epochs
-            Uts data epochs to plot.
-        Xax : None | categorial
-            Make separate axes for each category in this categorial model.
-        axtitle : None | str
-            Axes title. '{name}' is formatted to the category name.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables.
-        xlabel, ylabel : str | None
-            X- and y axis labels. By default the labels will be inferred from
-            the data.
-        tight : bool
-            Use matplotlib's tight_layout to expand all axes to fill the figure
-            (default True)
-        title : None | str
-            Figure title.
-        """
         epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, *args, **kwargs)
         self._set_ylabel(epochs[0][0], ylabel)
@@ -385,33 +383,31 @@ class _ax_uts_stat:
 
 
 class UTSClusters(_EelFigure):
-    "Plotting of ANOVA permutation cluster test results"
+    """Plot permutation cluster test results
+
+    Parameters
+    ----------
+    res : testnd.anova
+        ANOVA with permutation cluster test result object.
+    pmax : scalar
+        Maximum p-value of clusters to plot as solid.
+    ptrend : scalar
+        Maximum p-value of clusters to plot as trend.
+    axtitle : None | str
+        Axes title pattern. '{name}' is formatted to the effect name.
+    cm : str
+        Colormap to use for coloring different effects.
+    overlay : bool
+        Plot epochs (time course for different effects) on top of each
+        other (as opposed to on separate axes).
+    tight : bool
+        Use matplotlib's tight_layout to expand all axes to fill the figure
+        (default True)
+    title : str
+        Figure title.
+    """
     def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle='{name}', cm='jet',
                  overlay=False, *args, **kwargs):
-        """
-        Plotting of permutation cluster test results
-
-        Parameters
-        ----------
-        res : testnd.anova
-            ANOVA with permutation cluster test result object.
-        pmax : scalar
-            Maximum p-value of clusters to plot as solid.
-        ptrend : scalar
-            Maximum p-value of clusters to plot as trend.
-        axtitle : None | str
-            Axes title pattern. '{name}' is formatted to the effect name.
-        cm : str
-            Colormap to use for coloring different effects.
-        overlay : bool
-            Plot epochs (time course for different effects) on top of each
-            other (as opposed to on separate axes).
-        tight : bool
-            Use matplotlib's tight_layout to expand all axes to fill the figure
-            (default True)
-        title : str
-            Figure title.
-        """
         clusters_ = res.clusters
 
         epochs = self.epochs = _base.unpack_epochs_arg(res, 1)

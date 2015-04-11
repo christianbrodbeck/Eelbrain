@@ -22,11 +22,20 @@ __all__ = ['Edf', 'read_edf', 'read_edf_events', 'read_edf_samples']
 
 
 class Edf(object):
-    """
-    Class for reading an eyelink .edf file.
+    """Class for reading an eyelink .edf file.
 
     Reads an eyelink .edf file and extracts epoch acceptability
     based on contamination with ocular artifacts (saccades and blinks).
+
+    Parameters
+    ----------
+    path : str(path) | None
+        Path to the .edf file. The If path contains '*', the files matching
+        the pattern are concatenated. If None, a file-open dialogue will be
+        displayed.
+
+    Notes
+    -----
     An edf file reader is initialized with the path to the corresponding
     file::
 
@@ -70,16 +79,8 @@ class Edf(object):
            >>> edf.mark(...)
 
     """
-    def __init__(self, path=None, samples=False):
-        """
-        Parameters
-        ----------
-        path : str(path) | None
-            Path to the .edf file. The If path contains '*', the files matching
-            the pattern are concatenated. If None, a file-open dialogue will be
-            displayed.
 
-        """
+    def __init__(self, path=None, samples=False):
         if path is None:
             path = ui.ask_file("Load an eyelink .edf file", "Pick the edf file",
                                [('eyelink data format (*.edf)', '*.edf')])

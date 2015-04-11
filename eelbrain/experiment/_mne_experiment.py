@@ -215,6 +215,18 @@ temp = {# MEG
 class MneExperiment(FileTree):
     """Analyze an MEG experiment (gradiometer only) with MNE
 
+    Parameters
+    ----------
+    root : str | None
+        the root directory for the experiment (usually the directory
+        containing the 'meg' and 'mri' directories)
+    find_subjects : bool
+        Automatically look for subjects in the MEG-directory (default
+        True). Set ``find_subjects=False`` to initialize the experiment
+        without any files.
+
+    Notes
+    -----
     .. seealso::
         Guide on using :ref:`experiment-class-guide`.
     """
@@ -366,18 +378,6 @@ class MneExperiment(FileTree):
     cluster_criteria = {'mintime': 0.025, 'minsensor': 4, 'minsource': 10}
 
     def __init__(self, root=None, find_subjects=True, **state):
-        """Analyze an MEG experiment (gradiometer only) with MNE
-
-        Parameters
-        ----------
-        root : str | None
-            the root directory for the experiment (usually the directory
-            containing the 'meg' and 'mri' directories)
-        find_subjects : bool
-            Automatically look for subjects in the MEG-directory (default
-            True). Set ``find_subjects=False`` to initialize the experiment
-            without any files.
-        """
         # create attributes (overwrite class attributes)
         self._subject_re = re.compile(self._subject_re)
         self.groups = self.groups.copy()

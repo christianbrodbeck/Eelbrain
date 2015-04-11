@@ -1311,23 +1311,21 @@ class ImageTiler(object):
     """
     Create tiled images and animations from individual image files.
 
+    Parameters
+    ----------
+    ext : str
+        Extension to append to generated file names.
+    nrow : int
+        Number of rows of tiles in a frame.
+    ncol : int
+        Number of columns of tiles in a frame.
+    nt : int
+        Number of time points in the animation.
+    dest : str(directory)
+        Directory in which to place files. If None, a temporary directory
+        is created and removed upon deletion of the ImageTiler instance.
     """
     def __init__(self, ext='.png', nrow=1, ncol=1, nt=1, dest=None):
-        """
-        Parameters
-        ----------
-        ext : str
-            Extension to append to generated file names.
-        nrow : int
-            Number of rows of tiles in a frame.
-        ncol : int
-            Number of columns of tiles in a frame.
-        nt : int
-            Number of time points in the animation.
-        dest : str(directory)
-            Directory in which to place files. If None, a temporary directory
-            is created and removed upon deletion of the ImageTiler instance.
-        """
         if dest is None:
             self.dir = tempfile.mkdtemp()
         else:

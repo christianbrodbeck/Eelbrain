@@ -253,8 +253,74 @@ class _Result(object):
         return None
 
 
-
 class t_contrast_rel(_Result):
+    """Contrast with t-values from multiple comparisons
+
+    Parameters
+    ----------
+    Y : NDVar
+        Dependent variable.
+    X : categorial
+        Model containing the cells which are compared with the contrast.
+    contrast : str
+        Contrast specification: see Notes.
+    match : Factor
+        Match cases for a repeated measures test.
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+    samples : None | int
+        Number of samples for permutation cluster test. For None, no
+        clusters are formed. Use 0 to compute clusters without performing
+        any permutations.
+    pmin : None | scalar (0 < pmin < 1)
+        Threshold for forming clusters:  use a t-value equivalent to an
+        uncorrected p-value for a related samples t-test (with df =
+        len(match.cells) - 1).
+    tmin : None | scalar
+        Threshold for forming clusters.
+    tfce : bool
+        Use threshold-free cluster enhancement (Smith & Nichols, 2009).
+        Default is False.
+    tstart, tstop : None | scalar
+        Restrict time window for permutation cluster test.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
+    Notes
+    -----
+    Contrast definitions can contain:
+
+    - Comparisons using ">" or "<" and data cells,
+      e.g. ``"cell1 > cell0"``. If the data is defined based on an
+      interaction, cells are specified with "|",
+      e.g. ``"a1 | b0 > a0 | b0"``.
+    - Unary numpy functions ``abs`` and ``negative``, e.g.
+      ``"abs(cell1 > cell0)"``.
+    - Binary numpy functions ``subtract`` and ``add``, e.g.
+      ``"add(a>b, a>c)"``
+    - Numpy functions for multiple arrays ``min``, ``max`` and ``sum``,
+      e.g. ``min(a>d, b>d, c>d)``.
+
+    Examples
+    --------
+    To find cluster where both of two pairwise comparisons are reliable,
+    i.e. an intersection of two effects, one could use
+    ``"min(a > c, b > c)"``.
+
+    To find a specific kind of interaction, where a is greater than b, and
+    this difference is greater than the difference between c and d, one
+    could use ``"subtract(a > b, abs(c > d))"``.
+    """
 
     _state_specific = ('X', 'contrast', 't', 'tail')
 
@@ -262,73 +328,6 @@ class t_contrast_rel(_Result):
                  samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, dist_dim=(), parc=(), dist_tstep=None,
                  **criteria):
-        """Contrast with t-values from multiple comparisons
-
-        Parameters
-        ----------
-        Y : NDVar
-            Dependent variable.
-        X : categorial
-            Model containing the cells which are compared with the contrast.
-        contrast : str
-            Contrast specification: see Notes.
-        match : Factor
-            Match cases for a repeated measures test.
-        sub : None | index-array
-            Perform the test with a subset of the data.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables.
-        tail : 0 | 1 | -1
-            Which tail of the t-distribution to consider:
-            0: both (two-tailed);
-            1: upper tail (one-tailed);
-            -1: lower tail (one-tailed).
-        samples : None | int
-            Number of samples for permutation cluster test. For None, no
-            clusters are formed. Use 0 to compute clusters without performing
-            any permutations.
-        pmin : None | scalar (0 < pmin < 1)
-            Threshold for forming clusters:  use a t-value equivalent to an
-            uncorrected p-value for a related samples t-test (with df =
-            len(match.cells) - 1).
-        tmin : None | scalar
-            Threshold for forming clusters.
-        tfce : bool
-            Use threshold-free cluster enhancement (Smith & Nichols, 2009).
-            Default is False.
-        tstart, tstop : None | scalar
-            Restrict time window for permutation cluster test.
-        mintime : scalar
-            Minimum duration for clusters (in seconds).
-        minsource : int
-            Minimum number of sources per cluster.
-
-        Notes
-        -----
-        Contrast definitions can contain:
-
-        - Comparisons using ">" or "<" and data cells,
-          e.g. ``"cell1 > cell0"``. If the data is defined based on an
-          interaction, cells are specified with "|",
-          e.g. ``"a1 | b0 > a0 | b0"``.
-        - Unary numpy functions ``abs`` and ``negative``, e.g.
-          ``"abs(cell1 > cell0)"``.
-        - Binary numpy functions ``subtract`` and ``add``, e.g.
-          ``"add(a>b, a>c)"``
-        - Numpy functions for multiple arrays ``min``, ``max`` and ``sum``,
-          e.g. ``min(a>d, b>d, c>d)``.
-
-        Examples
-        --------
-        To find cluster where both of two pairwise comparisons are reliable,
-        i.e. an intersection of two effects, one could use
-        ``"min(a > c, b > c)"``.
-
-        To find a specific kind of interaction, where a is greater than b, and
-        this difference is greater than the difference between c and d, one
-        could use ``"subtract(a > b, abs(c > d))"``.
-        """
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
 
         # setup contrast
@@ -386,6 +385,41 @@ class t_contrast_rel(_Result):
 class corr(_Result):
     """Correlation
 
+    Parameters
+    ----------
+    Y : NDVar
+        Dependent variable.
+    X : continuous
+        The continuous predictor variable.
+    norm : None | categorial
+        Categories in which to normalize (z-score) X.
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    samples : None | int
+        Number of samples for permutation cluster test. For None, no
+        clusters are formed. Use 0 to compute clusters without performing
+        any permutations.
+    pmin : None | scalar (0 < pmin < 1)
+        Threshold for forming clusters:  use an r-value equivalent to an
+        uncorrected p-value.
+    rmin : None | scalar
+        Threshold for forming clusters.
+    tfce : bool
+        Use threshold-free cluster enhancement (Smith & Nichols, 2009).
+        Default is False.
+    tstart, tstop : None | scalar
+        Restrict time window for permutation cluster test.
+    match : None | categorial
+        When permuting data, only shuffle the cases within the categories
+        of match.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
     Attributes
     ----------
     r : NDVar
@@ -397,43 +431,6 @@ class corr(_Result):
                  pmin=None, rmin=None, tfce=False, tstart=None, tstop=None,
                  match=None, dist_dim=(), parc=(), dist_tstep=None,
                  **criteria):
-        """Correlation.
-
-        Parameters
-        ----------
-        Y : NDVar
-            Dependent variable.
-        X : continuous
-            The continuous predictor variable.
-        norm : None | categorial
-            Categories in which to normalize (z-score) X.
-        sub : None | index-array
-            Perform the test with a subset of the data.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables.
-        samples : None | int
-            Number of samples for permutation cluster test. For None, no
-            clusters are formed. Use 0 to compute clusters without performing
-            any permutations.
-        pmin : None | scalar (0 < pmin < 1)
-            Threshold for forming clusters:  use an r-value equivalent to an
-            uncorrected p-value.
-        rmin : None | scalar
-            Threshold for forming clusters.
-        tfce : bool
-            Use threshold-free cluster enhancement (Smith & Nichols, 2009).
-            Default is False.
-        tstart, tstop : None | scalar
-            Restrict time window for permutation cluster test.
-        match : None | categorial
-            When permuting data, only shuffle the cases within the categories
-            of match.
-        mintime : scalar
-            Minimum duration for clusters (in seconds).
-        minsource : int
-            Minimum number of sources per cluster.
-        """
         sub = assub(sub, ds)
         Y = asndvar(Y, sub=sub, ds=ds)
         if not Y.has_case:
@@ -539,6 +536,43 @@ class corr(_Result):
 class ttest_1samp(_Result):
     """Element-wise one sample t-test
 
+    Parameters
+    ----------
+    Y : NDVar
+        Dependent variable.
+    popmean : scalar
+        Value to compare Y against (default is 0).
+    match : None | categorial
+        Combine data for these categories before testing.
+    sub : None | index-array
+        Perform test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+    samples : None | int
+        Number of samples for permutation cluster test. For None, no
+        clusters are formed. Use 0 to compute clusters without performing
+        any permutations.
+    pmin : None | scalar (0 < pmin < 1)
+        Threshold for forming clusters:  use a t-value equivalent to an
+        uncorrected p-value.
+    tmin : None | scalar
+        Threshold for forming clusters.
+    tfce : bool
+        Use threshold-free cluster enhancement (Smith & Nichols, 2009).
+        Default is False.
+    tstart, tstop : None | scalar
+        Restrict time window for permutation cluster test.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
     Attributes
     ----------
     all :
@@ -552,45 +586,6 @@ class ttest_1samp(_Result):
                  samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
                  tstop=None, dist_dim=(), parc=(), dist_tstep=None,
                  **criteria):
-        """Element-wise one sample t-test
-
-        Parameters
-        ----------
-        Y : NDVar
-            Dependent variable.
-        popmean : scalar
-            Value to compare Y against (default is 0).
-        match : None | categorial
-            Combine data for these categories before testing.
-        sub : None | index-array
-            Perform test with a subset of the data.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables
-        tail : 0 | 1 | -1
-            Which tail of the t-distribution to consider:
-            0: both (two-tailed);
-            1: upper tail (one-tailed);
-            -1: lower tail (one-tailed).
-        samples : None | int
-            Number of samples for permutation cluster test. For None, no
-            clusters are formed. Use 0 to compute clusters without performing
-            any permutations.
-        pmin : None | scalar (0 < pmin < 1)
-            Threshold for forming clusters:  use a t-value equivalent to an
-            uncorrected p-value.
-        tmin : None | scalar
-            Threshold for forming clusters.
-        tfce : bool
-            Use threshold-free cluster enhancement (Smith & Nichols, 2009).
-            Default is False.
-        tstart, tstop : None | scalar
-            Restrict time window for permutation cluster test.
-        mintime : scalar
-            Minimum duration for clusters (in seconds).
-        minsource : int
-            Minimum number of sources per cluster.
-        """
         ct = Celltable(Y, match=match, sub=sub, ds=ds, coercion=asndvar)
 
         n = len(ct.Y)
@@ -689,6 +684,44 @@ class ttest_1samp(_Result):
 class ttest_ind(_Result):
     """Element-wise independent samples t-test
 
+    Parameters
+    ----------
+    Y : NDVar
+        Dependent variable.
+    X : categorial
+        Model containing the cells which should be compared.
+    c1 : str | tuple | None
+        Test condition (cell of X). Can be None is X only contains two
+        cells.
+    c0 : str | tuple | None
+        Control condition (cell of X). Can be None if X only contains two
+        cells.
+    match : None | categorial
+        Combine cases with the same cell on X % match for testing.
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+    samples : None | int
+        Number of samples for permutation cluster test. For None, no
+        clusters are formed. Use 0 to compute clusters without performing
+        any permutations.
+    pmin : None | scalar (0 < pmin < 1)
+        Threshold p value for forming clusters. None for threshold-free
+        cluster enhancement.
+    tstart, tstop : None | scalar
+        Restrict time window for permutation cluster test.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
     Attributes
     ----------
     all :
@@ -703,46 +736,6 @@ class ttest_ind(_Result):
                  tail=0, samples=None, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, dist_dim=(), parc=(),
                  dist_tstep=None, **criteria):
-        """Element-wise t-test
-
-        Parameters
-        ----------
-        Y : NDVar
-            Dependent variable.
-        X : categorial
-            Model containing the cells which should be compared.
-        c1 : str | tuple | None
-            Test condition (cell of X). Can be None is X only contains two
-            cells.
-        c0 : str | tuple | None
-            Control condition (cell of X). Can be None if X only contains two
-            cells.
-        match : None | categorial
-            Combine cases with the same cell on X % match for testing.
-        sub : None | index-array
-            Perform the test with a subset of the data.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables.
-        tail : 0 | 1 | -1
-            Which tail of the t-distribution to consider:
-            0: both (two-tailed);
-            1: upper tail (one-tailed);
-            -1: lower tail (one-tailed).
-        samples : None | int
-            Number of samples for permutation cluster test. For None, no
-            clusters are formed. Use 0 to compute clusters without performing
-            any permutations.
-        pmin : None | scalar (0 < pmin < 1)
-            Threshold p value for forming clusters. None for threshold-free
-            cluster enhancement.
-        tstart, tstop : None | scalar
-            Restrict time window for permutation cluster test.
-        mintime : scalar
-            Minimum duration for clusters (in seconds).
-        minsource : int
-            Minimum number of sources per cluster.
-        """
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
         c1, c0 = ct.cat
 
@@ -851,12 +844,61 @@ class ttest_ind(_Result):
 class ttest_rel(_Result):
     """Element-wise related samples t-test
 
+    Parameters
+    ----------
+    Y : NDVar
+        Dependent variable.
+    X : categorial
+        Model containing the cells which should be compared.
+    c1 : str | tuple | None
+        Test condition (cell of X). Can be omitted (or ``None``) if X only
+        contains two cells.
+    c0 : str | tuple | None
+        Control condition (cell of X). Can be omitted (or ``None``) if X
+        only contains two cells.
+    match : categorial
+        Units within which measurements are related (e.g. 'subject' in a
+        within-subject comparison).
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    tail : 0 | 1 | -1
+        Which tail of the t-distribution to consider:
+        0: both (two-tailed);
+        1: upper tail (one-tailed);
+        -1: lower tail (one-tailed).
+    samples : None | int
+        Number of samples for permutation cluster test. For None, no
+        clusters are formed. Use 0 to compute clusters without performing
+        any permutations.
+    pmin : None | scalar (0 < pmin < 1)
+        Threshold for forming clusters:  use a t-value equivalent to an
+        uncorrected p-value.
+    tmin : None | scalar
+        Threshold for forming clusters.
+    tfce : bool
+        Use threshold-free cluster enhancement (Smith & Nichols, 2009).
+        Default is False.
+    tstart, tstop : None | scalar
+        Restrict time window for permutation cluster test.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
     Attributes
     ----------
     all :
         c1, c0, [c0 - c1, P]
     p_val :
         [c0 - c1, P]
+
+    Notes
+    -----
+    In the permutation cluster test, permutations are done within the
+    categories of ``match``.
     """
     _state_specific = ('X', 'c1', 'c0', 'tail', 't', 'n', 'df', 'c1_mean',
                        'c0_mean')
@@ -865,57 +907,6 @@ class ttest_rel(_Result):
                  tail=0, samples=None, pmin=None, tmin=None, tfce=False,
                  tstart=None, tstop=None, dist_dim=(), parc=(),
                  dist_tstep=None, **criteria):
-        """Element-wise t-test
-
-        Parameters
-        ----------
-        Y : NDVar
-            Dependent variable.
-        X : categorial
-            Model containing the cells which should be compared.
-        c1 : str | tuple | None
-            Test condition (cell of X). Can be omitted (or ``None``) if X only
-            contains two cells.
-        c0 : str | tuple | None
-            Control condition (cell of X). Can be omitted (or ``None``) if X
-            only contains two cells.
-        match : categorial
-            Units within which measurements are related (e.g. 'subject' in a
-            within-subject comparison).
-        sub : None | index-array
-            Perform the test with a subset of the data.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables.
-        tail : 0 | 1 | -1
-            Which tail of the t-distribution to consider:
-            0: both (two-tailed);
-            1: upper tail (one-tailed);
-            -1: lower tail (one-tailed).
-        samples : None | int
-            Number of samples for permutation cluster test. For None, no
-            clusters are formed. Use 0 to compute clusters without performing
-            any permutations.
-        pmin : None | scalar (0 < pmin < 1)
-            Threshold for forming clusters:  use a t-value equivalent to an
-            uncorrected p-value.
-        tmin : None | scalar
-            Threshold for forming clusters.
-        tfce : bool
-            Use threshold-free cluster enhancement (Smith & Nichols, 2009).
-            Default is False.
-        tstart, tstop : None | scalar
-            Restrict time window for permutation cluster test.
-        mintime : scalar
-            Minimum duration for clusters (in seconds).
-        minsource : int
-            Minimum number of sources per cluster.
-
-        Notes
-        -----
-        In the permutation cluster test, permutations are done within the
-        categories of ``match``.
-        """
         if match is None:
             msg = ("The `match` argument needs to be specified for a related "
                    "samples t-test.")
@@ -1189,6 +1180,42 @@ class _MultiEffectResult(_Result):
 class anova(_MultiEffectResult):
     """Element-wise ANOVA
 
+    Parameters
+    ----------
+    Y : NDVar
+        Measurements (dependent variable)
+    X : categorial
+        Model
+    sub : None | index-array
+        Perform the test with a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables.
+    samples : None | int
+        Number of samples for permutation cluster test. For None, no
+        clusters are formed. Use 0 to compute clusters without performing
+        any permutations.
+    pmin : None | scalar (0 < pmin < 1)
+        Threshold for forming clusters:  use an f-value equivalent to an
+        uncorrected p-value.
+    fmin : None | scalar
+        Threshold for forming clusters.
+    tfce : bool
+        Use threshold-free cluster enhancement (Smith & Nichols, 2009).
+        Default is False.
+    replacement : bool
+        whether random samples should be drawn with replacement or
+        without
+    tstart, tstop : None | scalar
+        Restrict time window for permutation cluster test.
+    match : None | categorial
+        When permuting data, only shuffle the cases within the categories
+        of match.
+    mintime : scalar
+        Minimum duration for clusters (in seconds).
+    minsource : int
+        Minimum number of sources per cluster.
+
     Attributes
     ----------
     effects : tuple of str
@@ -1205,44 +1232,6 @@ class anova(_MultiEffectResult):
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
                  dist_dim=(), parc=(), dist_tstep=None, **criteria):
-        """ANOVA with cluster permutation test
-
-        Parameters
-        ----------
-        Y : NDVar
-            Measurements (dependent variable)
-        X : categorial
-            Model
-        sub : None | index-array
-            Perform the test with a subset of the data.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables.
-        samples : None | int
-            Number of samples for permutation cluster test. For None, no
-            clusters are formed. Use 0 to compute clusters without performing
-            any permutations.
-        pmin : None | scalar (0 < pmin < 1)
-            Threshold for forming clusters:  use an f-value equivalent to an
-            uncorrected p-value.
-        fmin : None | scalar
-            Threshold for forming clusters.
-        tfce : bool
-            Use threshold-free cluster enhancement (Smith & Nichols, 2009).
-            Default is False.
-        replacement : bool
-            whether random samples should be drawn with replacement or
-            without
-        tstart, tstop : None | scalar
-            Restrict time window for permutation cluster test.
-        match : None | categorial
-            When permuting data, only shuffle the cases within the categories
-            of match.
-        mintime : scalar
-            Minimum duration for clusters (in seconds).
-        minsource : int
-            Minimum number of sources per cluster.
-        """
         sub = assub(sub, ds)
         Y = asndvar(Y, sub, ds)
         X = asmodel(X, sub, ds)

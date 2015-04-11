@@ -641,6 +641,43 @@ def align1(d, idx, d_idx='index', out='data'):
 class Celltable(object):
     """Divide Y into cells defined by X.
 
+    Parameters
+    ----------
+    Y : data-object
+        dependent measurement
+    X : categorial
+        Model (Factor or Interaction) for dividing Y.
+    match : categorial
+        Factor on which cases are matched (i.e. subject for a repeated
+        measures comparisons). If several data points with the same
+        case fall into one cell of X, they are combined using
+        match_func. If match is not None, Celltable.groups contains the
+        {Xcell -> [match values of data points], ...} mapping corres-
+        ponding to self.data
+    sub : bool array
+        Bool array of length N specifying which cases to include
+    match_func : callable
+        see match
+    cat : None | sequence of cells of X
+        Only retain data for these cells. Data will be sorted in the order
+        of cells occuring in cat.
+    ds : Dataset
+        If a Dataset is specified, input items (Y / X / match / sub) can
+        be str instead of data-objects, in which case they will be
+        retrieved from the Dataset.
+    coercion : callable
+        Function to convert the Y parameter to to the dependent varaible
+        (default: asdataobject).
+
+
+    Examples
+    --------
+    Split a repeated-measure variable Y into cells defined by the
+    interaction of A and B::
+
+        >>> c = Celltable(Y, A % B, match=subject)
+
+
     Attributes
     ----------
     .Y, .X,
@@ -671,45 +708,6 @@ class Celltable(object):
     """
     def __init__(self, Y, X=None, match=None, sub=None, match_func=np.mean,
                  cat=None, ds=None, coercion=asdataobject):
-        """Divide Y into cells defined by X.
-
-        Parameters
-        ----------
-        Y : data-object
-            dependent measurement
-        X : categorial
-            Model (Factor or Interaction) for dividing Y.
-        match : categorial
-            Factor on which cases are matched (i.e. subject for a repeated
-            measures comparisons). If several data points with the same
-            case fall into one cell of X, they are combined using
-            match_func. If match is not None, Celltable.groups contains the
-            {Xcell -> [match values of data points], ...} mapping corres-
-            ponding to self.data
-        sub : bool array
-            Bool array of length N specifying which cases to include
-        match_func : callable
-            see match
-        cat : None | sequence of cells of X
-            Only retain data for these cells. Data will be sorted in the order
-            of cells occuring in cat.
-        ds : Dataset
-            If a Dataset is specified, input items (Y / X / match / sub) can
-            be str instead of data-objects, in which case they will be
-            retrieved from the Dataset.
-        coercion : callable
-            Function to convert the Y parameter to to the dependent varaible
-            (default: asdataobject).
-
-
-        Examples
-        --------
-        Split a repeated-measure variable Y into cells defined by the
-        interaction of A and B::
-
-            >>> c = Celltable(Y, A % B, match=subject)
-
-        """
         self.sub = sub
         sub = assub(sub, ds)
         if X is not None:
@@ -1128,14 +1126,19 @@ class EffectList(list):
 
 
 class Var(object):
-    """
-    Container for scalar data.
+    """Container for scalar data.
 
-    While :py:class:`Var` objects support a few basic operations in a
-    :py:mod:`numpy`-like fashion (``+``, ``-``, ``*``, ``/``, ``//``), their
-    :py:attr:`Var.x` attribute provides access to the corresponding
-    :py:class:`numpy.array` which can be used for anything more complicated.
-    :py:attr:`Var.x` can be read and modified, but should not be replaced.
+    Parameters
+    ----------
+    x : array_like
+        Data; is converted with ``np.asarray(x)``. Multidimensional arrays
+        are flattened as long as only 1 dimension is longer than 1.
+    name : str | None
+        Name of the variable
+    repeat : int
+        Repeat each element in ``x`` ``repeat`` many times.
+    tile : int
+        Repeat ``x`` as a whole ``tile`` many times.
 
     Attributes
     ----------
@@ -1143,24 +1146,19 @@ class Var(object):
         The data stored in the Var.
     name : None | str
         The Var's name.
+
+    Notes
+    -----
+    While :py:class:`Var` objects support a few basic operations in a
+    :py:mod:`numpy`-like fashion (``+``, ``-``, ``*``, ``/``, ``//``), their
+    :py:attr:`Var.x` attribute provides access to the corresponding
+    :py:class:`numpy.array` which can be used for anything more complicated.
+    :py:attr:`Var.x` can be read and modified, but should not be replaced.
     """
     _stype_ = "var"
     ndim = 1
-    def __init__(self, x, name=None, repeat=1, tile=1, info=None):
-        """Represents a univariate variable.
 
-        Parameters
-        ----------
-        x : array_like
-            Data; is converted with ``np.asarray(x)``. Multidimensional arrays
-            are flattened as long as only 1 dimension is longer than 1.
-        name : str | None
-            Name of the variable
-        repeat : int
-            Repeat each element in ``x`` ``repeat`` many times.
-        tile : int
-            Repeat ``x`` as a whole ``tile`` many times.
-        """
+    def __init__(self, x, name=None, repeat=1, tile=1, info=None):
         if isinstance(x, basestring):
             raise TypeError("Var can't be initialized with a string")
 
@@ -1840,6 +1838,25 @@ class _Effect(object):
 class Factor(_Effect):
     """Container for categorial data.
 
+    Parameters
+    ----------
+    x : iterator
+        Sequence of Factor values (see also the ``labels`` kwarg).
+    name : str
+        Name of the Factor.
+    random : bool
+        Treat Factor as random factor (for ANOVA; default is False).
+    repeat : int
+        Repeat each element in ``x`` ``repeat`` many times.
+    tile : int
+        Repeat ``x`` as a whole ``tile`` many times.
+    labels : dict | OrderedDict | tuple
+        An optional dictionary mapping values as they occur in ``x`` to the
+        Factor's cell labels. Since :class`dict`s are unordered, labels are
+        sorted alphabetically by default. In order to define cells in a
+        different order, use a :class:`collections.OrderedDict` object or
+        define labels as ``((key, value), ...)`` tuple.
+
     Attributes
     ----------
     .name : None | str
@@ -1849,57 +1866,34 @@ class Factor(_Effect):
     .random : bool
         Whether the Factor is defined as random factor (for ANOVA).
 
+    Examples
+    --------
+    The most obvious way to initialize a Factor is a list of strings::
+
+        >>> Factor(['in', 'in', 'in', 'out', 'out', 'out'])
+        Factor(['in', 'in', 'in', 'out', 'out', 'out'])
+
+    The same can be achieved with a list of integers plus a labels dict::
+
+        >>> Factor([1, 1, 1, 0, 0, 0], labels={1: 'in', 0: 'out'})
+        Factor(['in', 'in', 'in', 'out', 'out', 'out'])
+
+    Or more parsimoniously:
+
+        >>> Factor([1, 0], labels={1: 'in', 0: 'out'}, repeat=3)
+        Factor(['in', 'in', 'in', 'out', 'out', 'out'])
+
+    Since the Factor initialization simply iterates over the ``x``
+    argument, a Factor with one-character codes can also be initialized
+    with a single string::
+
+        >>> Factor('iiiooo')
+        Factor(['i', 'i', 'i', 'o', 'o', 'o'])
     """
     _stype_ = "factor"
+
     def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={},
                  rep=None):
-        """Container for categorial data.
-
-        Parameters
-        ----------
-        x : iterator
-            Sequence of Factor values (see also the ``labels`` kwarg).
-        name : str
-            Name of the Factor.
-        random : bool
-            Treat Factor as random factor (for ANOVA; default is False).
-        repeat : int
-            Repeat each element in ``x`` ``repeat`` many times.
-        tile : int
-            Repeat ``x`` as a whole ``tile`` many times.
-        labels : dict | OrderedDict | tuple
-            An optional dictionary mapping values as they occur in ``x`` to the
-            Factor's cell labels. Since :class`dict`s are unordered, labels are
-            sorted alphabetically by default. In order to define cells in a
-            different order, use a :class:`collections.OrderedDict` object or
-            define labels as ``((key, value), ...)`` tuple.
-
-
-        Examples
-        --------
-        The most obvious way to initialize a Factor is a list of strings::
-
-            >>> Factor(['in', 'in', 'in', 'out', 'out', 'out'])
-            Factor(['in', 'in', 'in', 'out', 'out', 'out'])
-
-        The same can be achieved with a list of integers plus a labels dict::
-
-            >>> Factor([1, 1, 1, 0, 0, 0], labels={1: 'in', 0: 'out'})
-            Factor(['in', 'in', 'in', 'out', 'out', 'out'])
-
-        Or more parsimoniously:
-
-            >>> Factor([1, 0], labels={1: 'in', 0: 'out'}, repeat=3)
-            Factor(['in', 'in', 'in', 'out', 'out', 'out'])
-
-        Since the Factor initialization simply iterates over the ``x``
-        argument, a Factor with one-character codes can also be initialized
-        with a single string::
-
-            >>> Factor('iiiooo')
-            Factor(['i', 'i', 'i', 'o', 'o', 'o'])
-
-        """
         if rep is not None:
             if repeat != 1:
                 raise TypeError("Specified rep and repeat")
@@ -2497,43 +2491,44 @@ class Factor(_Effect):
 
 
 class NDVar(object):
-    "Container for n-dimensional data."
+    """Container for n-dimensional data.
+    
+    Parameters
+    ----------
+    x : array_like
+        The data.
+    dims : tuple
+        The dimensions characterizing the axes of the data. If present,
+        ``'case'`` should be provided as a :py:class:`str`, and should
+        always occupy the first position.
+    info : dict
+        A dictionary with data properties (can contain arbitrary
+        information that will be accessible in the info attribute).
+    name : None | str
+        Name for the NDVar.
+
+
+    Notes
+    -----
+    ``x`` and ``dims`` are stored without copying. A shallow
+    copy of ``info`` is stored. Make sure the relevant objects
+    are not modified externally later.
+
+
+    Examples
+    --------
+    Importing 600 epochs of data for 80 time points:
+
+    >>> data.shape
+    (600, 80)
+    >>> time = UTS(-.2, .01, 80)
+    >>> dims = ('case', time)
+    >>> Y = NDVar(data, dims=dims)
+
+    """
     _stype_ = "ndvar"
+    
     def __init__(self, x, dims=('case',), info={}, name=None):
-        """
-        Parameters
-        ----------
-        x : array_like
-            The data.
-        dims : tuple
-            The dimensions characterizing the axes of the data. If present,
-            ``'case'`` should be provided as a :py:class:`str`, and should
-            always occupy the first position.
-        info : dict
-            A dictionary with data properties (can contain arbitrary
-            information that will be accessible in the info attribute).
-        name : None | str
-            Name for the NDVar.
-
-
-        Notes
-        -----
-        ``x`` and ``dims`` are stored without copying. A shallow
-        copy of ``info`` is stored. Make sure the relevant objects
-        are not modified externally later.
-
-
-        Examples
-        --------
-        Importing 600 epochs of data for 80 time points:
-
-        >>> data.shape
-        (600, 80)
-        >>> time = UTS(-.2, .01, 80)
-        >>> dims = ('case', time)
-        >>> Y = NDVar(data, dims=dims)
-
-        """
         # check data shape
         dims = tuple(dims)
         ndim = len(dims)
@@ -3752,13 +3747,31 @@ def as_legal_dataset_key(key):
 
 class Dataset(OrderedDict):
     """
-    A Dataset is a dictionary that represents a data table.
+    A Dataset stores multiple variables covering to the same observations
 
     Superclass: :class:`collections.OrderedDict`
 
+    Parameters
+    ----------
+    items : iterator
+        Items contained in the Dataset. Items can be either named
+        data-objects or ``(name, data_object)`` tuples. The Dataset stores
+        the input items themselves, without making a copy().
+    name : str
+        Name for the Dataset.
+    caption : str
+        Caption for the table.
+    info : dict
+        Info dictionary, can contain arbitrary entries and can be accessed
+        as ``.info`` attribute after initialization. The Dataset makes a
+        shallow copy.
+    n_cases : int
+        Specify the number of cases in the Dataset if no items are added
+        upon initialization (by default the number is inferred when the
+        fist item is added).
 
-    **Attributes**
-
+    Attributes
+    ----------
     n_cases : None | int
         The number of cases in the Dataset (corresponding to the number of
         rows in the table representation). None if no variables have been
@@ -3822,6 +3835,27 @@ class Dataset(OrderedDict):
     If a Var/Factor that is added to a Dataset does not have a name, the new
     key is automatically assigned to the Var/Factor's ``.name`` attribute.
 
+
+    Examples
+    --------
+    Datasets can be initialize with data-objects, or with
+    ('name', data-object) tuples::
+
+        >>> ds = Dataset((var1, var2))
+        >>> ds = Dataset((('v1', var1), ('v2', var2)))
+
+    Alternatively, variables can be added after initialization::
+
+        >>> ds = Dataset(n_cases=3)
+        >>> ds['var', :] = 0
+        >>> ds['factor', :] = 'a'
+        >>> print ds
+        var    factor
+        -------------
+        0      a
+        0      a
+        0      a
+
     """
     _stype_ = "dataset"
 
@@ -3830,49 +3864,6 @@ class Dataset(OrderedDict):
         return items, name, caption, info, n_cases
 
     def __init__(self, *args, **kwargs):
-        """
-        A Dataset stores multiple variables covering to the same observations
-
-        Parameters
-        ----------
-        items : iterator
-            Items contained in the Dataset. Items can be either named
-            data-objects or ``(name, data_object)`` tuples. The Dataset stores
-            the input items themselves, without making a copy().
-        name : str
-            Name for the Dataset.
-        caption : str
-            Caption for the table.
-        info : dict
-            Info dictionary, can contain arbitrary entries and can be accessed
-            as ``.info`` attribute after initialization. The Dataset makes a
-            shallow copy.
-        n_cases : int
-            Specify the number of cases in the Dataset if no items are added
-            upon initialization (by default the number is inferred when the
-            fist item is added).
-
-        Examples
-        --------
-        Datasets can be initialize with data-objects, or with
-        ('name', data-object) tuples::
-
-            >>> ds = Dataset((var1, var2))
-            >>> ds = Dataset((('v1', var1), ('v2', var2)))
-
-        Alternatively, variables can be added after initialization::
-
-            >>> ds = Dataset(n_cases=3)
-            >>> ds['var', :] = 0
-            >>> ds['factor', :] = 'a'
-            >>> print ds
-            var    factor
-            -------------
-            0      a
-            0      a
-            0      a
-
-        """
         # backwards compatibility
         if args:
             fmt_1 = isdataobject(args[0])
@@ -4919,32 +4910,26 @@ class Dataset(OrderedDict):
 
 
 class Interaction(_Effect):
-    """
-    Represents an Interaction effect.
+    """Represents an Interaction effect.
 
+    Usually not initialized directly but through operations on Factors/Vars.
+
+    Parameters
+    ----------
+    base : list
+        List of data-objects that form the basis of the interaction.
 
     Attributes
     ----------
-
     factors :
         List of all factors (i.e. nonbasic effects are broken up into
         factors).
     base :
         All effects.
-
     """
     _stype_ = "interaction"
+
     def __init__(self, base):
-        """
-        Usually not initialized directly but through operations on
-        factors/vars.
-
-        Parameters
-        ----------
-        base : list
-            List of data-objects that form the basis of the interaction.
-
-        """
         # FIXME: Interaction does not update when component factors update
         self.base = EffectList()
         self.is_categorial = True
@@ -5248,25 +5233,25 @@ class NonbasicEffect(object):
 class Model(object):
     """A list of effects.
 
+    Parameters
+    ----------
+    x : effect | iterator of effects
+        Effects to be included in the model (Var, Factor, Interaction ,
+        ...). Can also contain models, in which case all the model's
+        effects will be added.
+
+    Notes
+    -----
     a Model's data is exhausted by its :attr:`.effects` list; all the rest are
     @properties.
 
     Accessing effects:
      - as list in Model.effects
      - with name as Model[name]
-
     """
-    _stype_ = "model"
-    def __init__(self, x):
-        """Model
+    _stype = "model"
 
-        Parameters
-        ----------
-        x : effect | iterator of effects
-            Effects to be included in the model (Var, Factor, Interaction ,
-            ...). Can also contain models, in which case all the model's
-            effects will be added.
-        """
+    def __init__(self, x):
         effects = EffectList()
 
         # find effects in input
@@ -5720,16 +5705,16 @@ class Dimension(object):
 
 
 class Categorial(Dimension):
-    def __init__(self, name, values):
-        """Simple categorial dimension
+    """Simple categorial dimension
 
-        Parameters
-        ----------
-        name : str
-            Dimension name.
-        values : list of str
-            Names of the entries.
-        """
+    Parameters
+    ----------
+    name : str
+        Dimension name.
+    values : list of str
+        Names of the entries.
+    """
+    def __init__(self, name, values):
         if len(set(values)) < len(values):
             raise ValueError("Dimension can not have duplicate values")
         values = np.asarray(values)
@@ -5811,8 +5796,8 @@ class Categorial(Dimension):
 
 
 class Scalar(Dimension):
+    "Simple scalar dimension"
     def __init__(self, name, values, unit=None):
-        "Simple scalar dimension"
         if len(np.unique(values)) < len(values):
             raise ValueError("Dimension can not have duplicate values")
         self.name = name
@@ -5939,6 +5924,24 @@ class Ordered(Scalar):
 class Sensor(Dimension):
     """Dimension class for representing sensor information
 
+    Parameters
+    ----------
+    locs : array-like
+        list of (x, y, z) coordinates;
+        ``x``: anterior - posterior,
+        ``y``: left - right,
+        ``z``: top - bottom
+    names : list of str | None
+        sensor names, same order as locs (optional)
+    groups : None | dict
+        Named sensor groups.
+    sysname : None | str
+        Name of the sensor system (only used for information purposes).
+    proj2d:
+        default 2d projection. For options, see the class documentation.
+    connectivity : array (n_edges, 2)
+        Sensor connectivity (optional).
+
     Attributes
     ----------
     channel_idx : dict
@@ -5964,39 +5967,17 @@ class Sensor(Dimension):
     ``'lower cone'``:
         only use cone for sensors with z < 0
 
+    Examples
+    --------
+    >>> sensors = [(0,  0,   0),
+                   (0, -.25, -.45)]
+    >>> sensor_dim = Sensor(sensors, names=["Cz", "Pz"])
     """
     name = 'sensor'
     adjacent = False
 
     def __init__(self, locs, names=None, groups=None, sysname=None,
                  proj2d='z root', connectivity=None):
-        """
-        Parameters
-        ----------
-        locs : array-like
-            list of (x, y, z) coordinates;
-            ``x``: anterior - posterior,
-            ``y``: left - right,
-            ``z``: top - bottom
-        names : list of str | None
-            sensor names, same order as locs (optional)
-        groups : None | dict
-            Named sensor groups.
-        sysname : None | str
-            Name of the sensor system (only used for information purposes).
-        proj2d:
-            default 2d projection. For options, see the class documentation.
-        connectivity : array (n_edges, 2)
-            Sensor connectivity (optional).
-
-
-        Examples
-        --------
-        >>> sensors = [(0,  0,   0),
-                       (0, -.25, -.45)]
-        >>> sensor_dim = Sensor(sensors, names=["Cz", "Pz"])
-
-        """
         self.sysname = sysname
         self.default_proj2d = proj2d
         self._connectivity = connectivity
@@ -6616,10 +6597,28 @@ def _mne_tri_soure_space_graph(source_space, vertices_list):
 
 
 class SourceSpace(Dimension):
-    """
-    Indexing
-    --------
+    """MNE source space dimension.
 
+    Parameters
+    ----------
+    vertno : list of array
+        The vertex identities of the dipoles in the source space (left and
+        right hemisphere separately).
+    subject : str
+        The mri-subject name.
+    src : str
+        The kind of source space used (e.g., 'ico-4').
+    subjects_dir : str
+        The path to the subjects_dir (needed to locate the source space
+        file).
+    parc : None | str
+        Add a parcellation to the source space to identify vertex location.
+        Only applies to ico source spaces, default is 'aparc'.
+    connectivity : None | sparse matrix
+        Cached source space connectivity.
+
+    Notes
+    -----
     besides numpy indexing, the following indexes are possible:
 
      - mne Label objects
@@ -6630,28 +6629,9 @@ class SourceSpace(Dimension):
     adjacent = False
     _src_pattern = os.path.join('{subjects_dir}', '{subject}', 'bem',
                                 '{subject}-{src}-src.fif')
+
     def __init__(self, vertno, subject=None, src=None, subjects_dir=None,
                  parc='aparc', connectivity=None):
-        """Create mne source space dimension.
-
-        Parameters
-        ----------
-        vertno : list of array
-            The vertex identities of the dipoles in the source space (left and
-            right hemisphere separately).
-        subject : str
-            The mri-subject name.
-        src : str
-            The kind of source space used (e.g., 'ico-4').
-        subjects_dir : str
-            The path to the subjects_dir (needed to locate the source space
-            file).
-        parc : None | str
-            Add a parcellation to the source space to identify vertex location.
-            Only applies to ico source spaces, default is 'aparc'.
-        connectivity : None | sparse matrix
-            Cached source space connectivity.
-        """
         match = re.match("(ico|vol)-(\d)", src)
         if match:
             kind, grade = match.groups()
@@ -7037,8 +7017,18 @@ _uts_tol = 0.000001  # tolerance for deciding if time values are equal
 class UTS(Dimension):
     """Dimension object for representing uniform time series
 
-    Special Indexing
-    ----------------
+    Parameters
+    ----------
+    tmin : scalar
+        First time point (inclusive).
+    tstep : scalar
+        Time step between samples.
+    nsamples : int
+        Number of samples.
+
+    Notes
+    -----
+    Special indexing:
 
     (tstart, tstop) : tuple
         Restrict the time to the indicated window (either end-point can be
@@ -7049,17 +7039,6 @@ class UTS(Dimension):
     unit = 's'
 
     def __init__(self, tmin, tstep, nsamples):
-        """UTS dimension
-
-        Parameters
-        ----------
-        tmin : scalar
-            First time point (inclusive).
-        tstep : scalar
-            Time step between samples.
-        nsamples : int
-            Number of samples.
-        """
         self.tmin = tmin
         self.tstep = tstep
         self.nsamples = nsamples = int(nsamples)

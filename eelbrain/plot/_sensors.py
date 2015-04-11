@@ -344,12 +344,25 @@ class SensorMapMixin:
 
 
 class SensorMaps(_EelFigure):
-    """
-    GUI with multiple views on a sensor layout.
+    """Multiple views on a sensor layout.
 
     Allows selecting sensor groups and retrieving corresponding indices.
 
+    Parameters
+    ----------
+    sensors : Sensor | NDVar
+        The sensors to use, or an NDVar with a sensor dimension.
+    select : list of int
+        Initial selection.
+    proj : str
+        Sensor projection for the fourth plot.
+    frame : scalar
+        Size of the empty space around sensors in axes.
+    title : None | string
+        Figure title.
 
+    Notes
+    -----
     **Selecting Sensor Groups:**
 
      - Dragging with the left mouse button adds sensors to the selection.
@@ -360,20 +373,6 @@ class SensorMaps(_EelFigure):
     """
     def __init__(self, sensors, select=[], proj='default', frame=0.05,
                  *args, **kwargs):
-        """
-        Parameters
-        ----------
-        sensors : Sensor | NDVar
-            The sensors to use, or an NDVar with a sensor dimension.
-        select : list of int
-            Initial selection.
-        proj : str
-            Sensor projection for the fourth plot.
-        frame : scalar
-            Size of the empty space around sensors in axes.
-        title : None | string
-            Figure title.
-        """
         sensors = as_sensor(sensors)
 
         # layout figure
@@ -567,31 +566,27 @@ class SensorMaps(_EelFigure):
 
 
 class SensorMap(SensorMapMixin, _EelFigure):
-    """
-    Plot a 2d Sensor Map.
+    """Plot sensor positions in 2 dimensions
 
+    Parameters
+    ----------
+    sensors : NDVar | Sensor
+        sensor-net object or object containing sensor-net
+    labels : None | 'index' | 'name' | 'fullname'
+        Content of the labels. For 'name', any prefix common to all names
+        is removed; with 'fullname', the full name is shown.
+    proj:
+        Transform to apply to 3 dimensional sensor coordinates for plotting
+        locations in a plane
+    mark : None | list of int
+        List of sensor indices to mark.
+    frame : scalar
+        Size of the empty space around sensors in axes.
+    title : None | string
+        Figure title.
     """
     def __init__(self, sensors, labels='name', proj='default', mark=None,
                  frame=.05, *args, **kwargs):
-        """Plot sensor positions in 2 dimensions
-
-        Parameters
-        ----------
-        sensors : NDVar | Sensor
-            sensor-net object or object containing sensor-net
-        labels : None | 'index' | 'name' | 'fullname'
-            Content of the labels. For 'name', any prefix common to all names
-            is removed; with 'fullname', the full name is shown.
-        proj:
-            Transform to apply to 3 dimensional sensor coordinates for plotting
-            locations in a plane
-        mark : None | list of int
-            List of sensor indices to mark.
-        frame : scalar
-            Size of the empty space around sensors in axes.
-        title : None | string
-            Figure title.
-        """
         sensors = as_sensor(sensors)
 
         if sensors.sysname:

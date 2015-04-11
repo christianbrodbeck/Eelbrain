@@ -170,17 +170,16 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
 
 
 class PairwiseLegend(_EelFigure):
-    "Legend for colors used in pairwise comparison markers"
-    def __init__(self, size=.3, trend=True, *args, **kwargs):
-        """Legend for colors used in pairwise comparisons
+    """Legend for colors used in pairwise comparisons
 
-        Parameters
-        ----------
-        size : scalar
-            Side length in inches of a virtual square containing each bar.
-        trend : bool
-            Also include a bar for trends (p<0.1). Default is True.
-        """
+    Parameters
+    ----------
+    size : scalar
+        Side length in inches of a virtual square containing each bar.
+    trend : bool
+        Also include a bar for trends (p<0.1). Default is True.
+    """
+    def __init__(self, size=.3, trend=True, *args, **kwargs):
         if trend:
             levels = [.1, .05, .01, .001]
             colors = defaults['c']['pw']
@@ -252,8 +251,65 @@ class _SimpleFigure(_EelFigure):
 
 
 class Boxplot(_SimpleFigure):
-    "Boxplot for a continuous variable"
+    r"""Boxplot for a continuous variable
 
+    Parameters
+    ----------
+    Y : Var
+        Dependent variable.
+    X : categorial
+        Category definition (draw one box for every cell in X).
+    match : None | categorial
+        Match cases for a repeated measures design.
+    sub : None | index-array
+        Use a subset of the data.
+    datalabels : scalar
+        Threshold for labeling outliers (in standard-deviation).
+    bottom : scalar
+        Lowest possible value on the y axis (default is 0 or slightly
+        below the lowest value).
+    top : scalar
+        Set the upper x axis limit (default is to fit all the data).
+    ylabel : str | None
+        Y axis label (default is inferred from the data).
+    xlabel : str | None
+        X axis label (default is ``X.name``).
+    xtick_delim : str
+        Delimiter for x axis category descriptors (default is ``'\n'``,
+        i.e. the level on each Factor of ``X`` on a separate line).
+    titlekwargs : dict
+        Keyword arguments for the figure title.
+    test : bool | scalar
+        True (default): perform pairwise tests;  False/None: no tests;
+        scalar: 1-sample tests against this value.
+    par : bool
+        Use parametric test for pairwise comparisons (use non-parametric
+        tests if False).
+    trend : None | str
+        Marker for a trend in pairwise comparisons.
+    test_markers : bool
+        For pairwise tests, plot markers indicating significance level
+        (stars).
+    corr : None | 'hochberg' | 'bonferroni' | 'holm'
+        Method for multiple comparison correction (default 'hochberg').
+    hatch : bool | str
+        Matplotlib Hatch pattern to fill boxes (True to use the module
+        default; default is False).
+    colors : bool | sequence | dict of matplitlib colors
+        Matplotlib colors to use for boxes (True to use the module default;
+        default is False, i.e. no colors).
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables
+    frame : bool
+        Draw a frame containing the figure from the top and the right
+        (default ``True``).
+    tight : bool
+        Use matplotlib's tight_layout to resize all axes to fill the figure
+        (default True).
+    title : str
+        Figure title.
+    """
     _default_format = 'png'  # default format when saving for fmtext
 
     def __init__(self, Y, X=None, match=None, sub=None, datalabels=None,
@@ -261,65 +317,6 @@ class Boxplot(_SimpleFigure):
                  xtick_delim='\n', test=True, par=True, trend="'", test_markers=True,
                  corr='Hochberg', hatch=False, colors=False, ds=None, *args,
                  **kwargs):
-        r"""Boxplot for a continuous variable
-
-        Parameters
-        ----------
-        Y : Var
-            Dependent variable.
-        X : categorial
-            Category definition (draw one box for every cell in X).
-        match : None | categorial
-            Match cases for a repeated measures design.
-        sub : None | index-array
-            Use a subset of the data.
-        datalabels : scalar
-            Threshold for labeling outliers (in standard-deviation).
-        bottom : scalar
-            Lowest possible value on the y axis (default is 0 or slightly
-            below the lowest value).
-        top : scalar
-            Set the upper x axis limit (default is to fit all the data).
-        ylabel : str | None
-            Y axis label (default is inferred from the data).
-        xlabel : str | None
-            X axis label (default is ``X.name``).
-        xtick_delim : str
-            Delimiter for x axis category descriptors (default is ``'\n'``,
-            i.e. the level on each Factor of ``X`` on a separate line).
-        titlekwargs : dict
-            Keyword arguments for the figure title.
-        test : bool | scalar
-            True (default): perform pairwise tests;  False/None: no tests;
-            scalar: 1-sample tests against this value.
-        par : bool
-            Use parametric test for pairwise comparisons (use non-parametric
-            tests if False).
-        trend : None | str
-            Marker for a trend in pairwise comparisons.
-        test_markers : bool
-            For pairwise tests, plot markers indicating significance level
-            (stars).
-        corr : None | 'hochberg' | 'bonferroni' | 'holm'
-            Method for multiple comparison correction (default 'hochberg').
-        hatch : bool | str
-            Matplotlib Hatch pattern to fill boxes (True to use the module
-            default; default is False).
-        colors : bool | sequence | dict of matplitlib colors
-            Matplotlib colors to use for boxes (True to use the module default;
-            default is False, i.e. no colors).
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables
-        frame : bool
-            Draw a frame containing the figure from the top and the right
-            (default ``True``).
-        tight : bool
-            Use matplotlib's tight_layout to resize all axes to fill the figure
-            (default True).
-        title : str
-            Figure title.
-        """
         # get data
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
         if ct.X is None and test is True:
@@ -428,8 +425,79 @@ class Boxplot(_SimpleFigure):
 
 
 class Barplot(_SimpleFigure):
-    "Barplot for a continuous variable"
+    """Barplot for a continuous variable
 
+    Parameters
+    ----------
+    Y : Var
+        Dependent variable.
+    X : categorial
+        Model (Factor or Interaction)
+    match : None | categorial
+        Match cases for a repeated measures design.
+    sub : None | index-array
+        Use a subset of the data.
+    test : bool | scalar
+        True (default): perform pairwise tests;  False: no tests;
+        scalar: 1-sample tests against this value
+    par : bool
+        Use parametric test for pairwise comparisons (use non-parametric
+        tests if False).
+    corr : None | 'hochberg' | 'bonferroni' | 'holm'
+        Method for multiple comparison correction (default 'hochberg').
+    trend : None | str
+        Marker for a trend in pairwise comparisons.
+    test_markers : bool
+        For pairwise tests, plot markers indicating significance level
+        (stars).
+    ylabel : str | None
+        Y axis label (default is inferred from the data).
+    error : str
+        Measure of variability to display in the error bars (default: 1
+        SEM). Examples:
+        'ci': 95% confidence interval;
+        '99%ci': 99% confidence interval (default);
+        '2sem': 2 standard error of the mean.
+    pool_error : bool
+        Pool the errors for the estimate of variability (default is True
+        for related measures designs, False for others). See Loftus & Masson
+        (1994).
+    ec : matplotlib color
+        Error bar color.
+    xlabel : str | None
+        X axis label (default is ``X.name``).
+    xticks : None | sequence of str
+        X-axis tick labels describing the categories. None to plot no labels
+        (Default uses cell names from ``X``).
+    xtick_delim : str
+        Delimiter for x axis category descriptors (default is ``'\n'``,
+        i.e. the level on each Factor of ``X`` on a separate line).
+    hatch : bool | str
+        Matplotlib Hatch pattern to fill boxes (True to use the module
+        default; default is False).
+    colors : bool | dict | sequence of matplitlib colors
+        Matplotlib colors to use for boxes (True to use the module default;
+        default is False, i.e. no colors).
+    bottom : scalar
+        Lower end of the y axis (default is 0).
+    top : scalar
+        Upper end of the y axis (default is determined from the data).
+    c : matplotlib color
+        Bar color (ignored if colors is specified).
+    edgec : matplotlib color
+        Barplot edge color.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables
+    frame : bool
+        Draw a frame containing the figure from the top and the right
+        (default ``True``).
+    tight : bool
+        Use matplotlib's tight_layout to resize all axes to fill the figure
+        (default True).
+    title : str
+        Figure title.
+    """
     _default_format = 'png'  # default format when saving for fmtext
 
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
@@ -437,79 +505,6 @@ class Barplot(_SimpleFigure):
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0, top=None,
                  c='#0099FF', edgec=None, ds=None, *args, **kwargs):
-        """Barplot for a continuous variable
-
-        Parameters
-        ----------
-        Y : Var
-            Dependent variable.
-        X : categorial
-            Model (Factor or Interaction)
-        match : None | categorial
-            Match cases for a repeated measures design.
-        sub : None | index-array
-            Use a subset of the data.
-        test : bool | scalar
-            True (default): perform pairwise tests;  False: no tests;
-            scalar: 1-sample tests against this value
-        par : bool
-            Use parametric test for pairwise comparisons (use non-parametric
-            tests if False).
-        corr : None | 'hochberg' | 'bonferroni' | 'holm'
-            Method for multiple comparison correction (default 'hochberg').
-        trend : None | str
-            Marker for a trend in pairwise comparisons.
-        test_markers : bool
-            For pairwise tests, plot markers indicating significance level
-            (stars).
-        ylabel : str | None
-            Y axis label (default is inferred from the data).
-        error : str
-            Measure of variability to display in the error bars (default: 1
-            SEM). Examples:
-            'ci': 95% confidence interval;
-            '99%ci': 99% confidence interval (default);
-            '2sem': 2 standard error of the mean.
-        pool_error : bool
-            Pool the errors for the estimate of variability (default is True
-            for related measures designs, False for others). See Loftus & Masson
-            (1994).
-        ec : matplotlib color
-            Error bar color.
-        xlabel : str | None
-            X axis label (default is ``X.name``).
-        xticks : None | sequence of str
-            X-axis tick labels describing the categories. None to plot no labels
-            (Default uses cell names from ``X``).
-        xtick_delim : str
-            Delimiter for x axis category descriptors (default is ``'\n'``,
-            i.e. the level on each Factor of ``X`` on a separate line).
-        hatch : bool | str
-            Matplotlib Hatch pattern to fill boxes (True to use the module
-            default; default is False).
-        colors : bool | dict | sequence of matplitlib colors
-            Matplotlib colors to use for boxes (True to use the module default;
-            default is False, i.e. no colors).
-        bottom : scalar
-            Lower end of the y axis (default is 0).
-        top : scalar
-            Upper end of the y axis (default is determined from the data).
-        c : matplotlib color
-            Bar color (ignored if colors is specified).
-        edgec : matplotlib color
-            Barplot edge color.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables
-        frame : bool
-            Draw a frame containing the figure from the top and the right
-            (default ``True``).
-        tight : bool
-            Use matplotlib's tight_layout to resize all axes to fill the figure
-            (default True).
-        title : str
-            Figure title.
-        """
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asvar)
 
         if pool_error is None:
@@ -625,7 +620,66 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
 
 
 class Timeplot(_EelFigure, LegendMixin):
-    "Plot a variable over time"
+    """Plot a variable over time
+
+    Parameters
+    ----------
+    Y : Var
+        Dependent variable.
+    categories : categorial
+        Model (Factor or Interaction)
+    time : Var
+        Variable describing the time.
+    match : None | categorial
+        Match cases for a repeated measures design.
+    sub : None | index-array
+        Use a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables
+    main : numpy function
+        draw lines to connect values across time (default: np.mean).
+        Can be 'bar' for barplots or False.
+    spread : str
+        How to indicate data spread.
+        None: no indication;
+        'box': boxplots;
+        '{x}sem': x standard error of the means (e.g. '2sem');
+        '{x}std': x standard deviations;
+    x_jitter : bool
+        When plotting error bars, jitter their location on the x-axis to
+        increase readability.
+    bottom : scalar
+        Lower end of the y axis (default is 0).
+    top : scalar
+        Upper end of the y axis (default is determined from the data).
+    ylabel : str | None
+        Y axis label (default is inferred from the data).
+    xlabel : str | None
+        X axis label (default is inferred from the data).
+    timelabels : sequence | dict
+        Labels for the x (time) axis. Can be provided in the form of a list
+        of labels from left to right, or a {time_value: label} dictionary.
+    legend : str | int | 'fig' | None
+        Matplotlib figure legend location argument or 'fig' to plot the
+        legend in a separate figure.
+    colors : str | list | dict
+        Colors for the categories.
+        **str**: A colormap name; cells are mapped onto the colormap in
+        regular intervals.
+        **list**: A list of colors in the same sequence as the cells.
+        **dict**: A dictionary mapping each cell to a color.
+        Colors are specified as `matplotlib compatible color arguments
+        <http://matplotlib.org/api/colors_api.html>`_.
+    frame : bool
+        Draw a frame containing the figure from the top and the right
+        (default ``True``).
+    tight : bool
+        Use matplotlib's tight_layout to resize all axes to fill the figure
+        (default True).
+    title : str
+        Figure title.
+    """
     def __init__(self, Y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
                  main=np.mean, spread='sem', x_jitter=False,
@@ -633,66 +687,6 @@ class Timeplot(_EelFigure, LegendMixin):
                  # labelling
                  ylabel=True, xlabel=True, timelabels=None, legend='best',
                  colors='jet', hatch=False, markers=True, *args, **kwargs):
-        """Plot a variable over time
-
-        Parameters
-        ----------
-        Y : Var
-            Dependent variable.
-        categories : categorial
-            Model (Factor or Interaction)
-        time : Var
-            Variable describing the time.
-        match : None | categorial
-            Match cases for a repeated measures design.
-        sub : None | index-array
-            Use a subset of the data.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables
-        main : numpy function
-            draw lines to connect values across time (default: np.mean).
-            Can be 'bar' for barplots or False.
-        spread : str
-            How to indicate data spread.
-            None: no indication;
-            'box': boxplots;
-            '{x}sem': x standard error of the means (e.g. '2sem');
-            '{x}std': x standard deviations;
-        x_jitter : bool
-            When plotting error bars, jitter their location on the x-axis to
-            increase readability.
-        bottom : scalar
-            Lower end of the y axis (default is 0).
-        top : scalar
-            Upper end of the y axis (default is determined from the data).
-        ylabel : str | None
-            Y axis label (default is inferred from the data).
-        xlabel : str | None
-            X axis label (default is inferred from the data).
-        timelabels : sequence | dict
-            Labels for the x (time) axis. Can be provided in the form of a list
-            of labels from left to right, or a {time_value: label} dictionary.
-        legend : str | int | 'fig' | None
-            Matplotlib figure legend location argument or 'fig' to plot the
-            legend in a separate figure.
-        colors : str | list | dict
-            Colors for the categories.
-            **str**: A colormap name; cells are mapped onto the colormap in
-            regular intervals.
-            **list**: A list of colors in the same sequence as the cells.
-            **dict**: A dictionary mapping each cell to a color.
-            Colors are specified as `matplotlib compatible color arguments
-            <http://matplotlib.org/api/colors_api.html>`_.
-        frame : bool
-            Draw a frame containing the figure from the top and the right
-            (default ``True``).
-        tight : bool
-            Use matplotlib's tight_layout to resize all axes to fill the figure
-            (default True).
-        title : str
-            Figure title.
-        """
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
         categories = ascategorial(categories, sub, ds)
@@ -867,36 +861,35 @@ def _reg_line(Y, reg):
 
 
 class Correlation(_EelFigure, LegendMixin):
-    "Correlation between two variables"
+    """Plot the correlation between two variables
+
+    Parameters
+    ----------
+    Y : Var
+        Variable for the y-axis.
+    X : Var
+        Variable for the x-axis.
+    cat : categorial
+        Plot the correlation separately for different categories.
+    sub : None | index-array
+        Use a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables
+    c : list
+        List of colors for cells.
+    legend : str | int | 'fig' | None
+        Matplotlib figure legend location argument or 'fig' to plot the
+        legend in a separate figure.
+    tight : bool
+        Use matplotlib's tight_layout to expand all axes to fill the figure
+        (default True)
+    title : str
+        Figure title.
+    """
     def __init__(self, Y, X, cat=None, sub=None, ds=None,
                  c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='best',
                  lncol=2, xlabel=True, ylabel=True, *args, **kwargs):
-        """Correlation between two variables
-
-        Parameters
-        ----------
-        Y : Var
-            Variable for the y-axis.
-        X : Var
-            Variable for the x-axis.
-        cat : categorial
-            Plot the correlation separately for different categories.
-        sub : None | index-array
-            Use a subset of the data.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables
-        c : list
-            List of colors for cells.
-        legend : str | int | 'fig' | None
-            Matplotlib figure legend location argument or 'fig' to plot the
-            legend in a separate figure.
-        tight : bool
-            Use matplotlib's tight_layout to expand all axes to fill the figure
-            (default True)
-        title : str
-            Figure title.
-        """
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
         X = asvar(X, sub, ds)
@@ -931,43 +924,42 @@ class Correlation(_EelFigure, LegendMixin):
 
 
 class Regression(_EelFigure, LegendMixin):
-    "Regression of Y on X"
+    """Plot the regression of Y on X
+
+    parameters
+    ----------
+    Y : Var
+        Variable for the y-axis.
+    X : Var
+        Variable for the x-axis.
+    cat : categorial
+        Plot the regression separately for different categories.
+    match : None | categorial
+        Match cases for a repeated measures design.
+    sub : None | index-array
+        Use a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables
+    ylabel : str
+        Y-axis label (default is ``Y.name``).
+    alpha : scalar
+        alpha for individual data points (to control visualization of
+        overlap)
+    legend : str | int | 'fig' | None
+        Matplotlib figure legend location argument or 'fig' to plot the
+        legend in a separate figure.
+    ...
+    tight : bool
+        Use matplotlib's tight_layout to expand all axes to fill the figure
+        (default True)
+    title : str
+        Figure title.
+    """
     def __init__(self, Y, X, cat=None, match=None, sub=None, ds=None,
                  xlabel=True, ylabel=True, alpha=.2, legend='best',
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
                  *args, **kwargs):
-        """Regression of Y on X
-
-        parameters
-        ----------
-        Y : Var
-            Variable for the y-axis.
-        X : Var
-            Variable for the x-axis.
-        cat : categorial
-            Plot the regression separately for different categories.
-        match : None | categorial
-            Match cases for a repeated measures design.
-        sub : None | index-array
-            Use a subset of the data.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables
-        ylabel : str
-            Y-axis label (default is ``Y.name``).
-        alpha : scalar
-            alpha for individual data points (to control visualization of
-            overlap)
-        legend : str | int | 'fig' | None
-            Matplotlib figure legend location argument or 'fig' to plot the
-            legend in a separate figure.
-        ...
-        tight : bool
-            Use matplotlib's tight_layout to expand all axes to fill the figure
-            (default True)
-        title : str
-            Figure title.
-        """
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
         X = asvar(X, sub, ds)
@@ -1066,32 +1058,31 @@ def _normality_plot(ax, data, **kwargs):
 
 
 class Histogram(_EelFigure):
-    "Histogram plots with tests of normality"
+    """Histogram plots with tests of normality
+
+    Parameters
+    ----------
+    Y : Var
+        Dependent variable.
+    X : categorial
+        Categories for separate histograms.
+    match : None | categorial
+        Match cases for a repeated measures design.
+    sub : None | index-array
+        Use a subset of the data.
+    ds : None | Dataset
+        If a Dataset is specified, all data-objects can be specified as
+        names of Dataset variables
+    pooled : bool
+        Add one plot with all values/differences pooled.
+    tight : bool
+        Use matplotlib's tight_layout to expand all axes to fill the figure
+        (default True)
+    title : None | str
+        Figure title.
+    """
     def __init__(self, Y, X=None, match=None, sub=None, ds=None, pooled=True,
                  tight=True, title=True, *args, **kwargs):
-        """Histogram plots with tests of normality
-
-        Parameters
-        ----------
-        Y : Var
-            Dependent variable.
-        X : categorial
-            Categories for separate histograms.
-        match : None | categorial
-            Match cases for a repeated measures design.
-        sub : None | index-array
-            Use a subset of the data.
-        ds : None | Dataset
-            If a Dataset is specified, all data-objects can be specified as
-            names of Dataset variables
-        pooled : bool
-            Add one plot with all values/differences pooled.
-        tight : bool
-            Use matplotlib's tight_layout to expand all axes to fill the figure
-            (default True)
-        title : None | str
-            Figure title.
-        """
         ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
 
         # layout

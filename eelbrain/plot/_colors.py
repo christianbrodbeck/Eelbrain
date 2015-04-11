@@ -165,28 +165,27 @@ def colors_for_nway(cell_lists, cmap=None):
 
 
 class ColorGrid(_EelFigure):
-    "Plot colors for a two-way design in a grid"
+    """Plot colors for a two-way design in a grid
+
+    Parameters
+    ----------
+    row_cells : tuple of str
+        Cells contained in the rows.
+    column_cells : tuple of str
+        Cells contained in the columns.
+    colors : dict
+        Colors for cells.
+    size : scalar
+        Size (width and height) of the color squares (the default is to
+        scale them to fit the figure).
+    column_label_position : 'top' | 'bottom'
+        Where to place the column labels (default is 'top').
+    row_first : bool
+        Whether the row cell precedes the column cell in color keys. By
+        default this is inferred from the existing keys.
+    """
     def __init__(self, row_cells, column_cells, colors, size=None,
                  column_label_position='top', row_first=None, *args, **kwargs):
-        """Plot colors in a grid
-
-        Parameters
-        ----------
-        row_cells : tuple of str
-            Cells contained in the rows.
-        column_cells : tuple of str
-            Cells contained in the columns.
-        colors : dict
-            Colors for cells.
-        size : scalar
-            Size (width and height) of the color squares (the default is to
-            scale them to fit the figure).
-        column_label_position : 'top' | 'bottom'
-            Where to place the column labels (default is 'top').
-        row_first : bool
-            Whether the row cell precedes the column cell in color keys. By
-            default this is inferred from the existing keys.
-        """
         if row_first is None:
             row_cell_0 = row_cells[0]
             col_cell_0 = column_cells[0]
@@ -306,17 +305,16 @@ class ColorGrid(_EelFigure):
 
 
 class ColorList(_EelFigure):
-    "Plot colors with labels"
-    def __init__(self, colors, cells=None, *args, **kwargs):
-        """Plot colors with labels
+    """Plot colors with labels
 
-        Parameters
-        ----------
-        colors : dict
-            Colors for cells.
-        cells : tuple
-            Cells for which to plot colors (default is ``colors.keys()``).
-        """
+    Parameters
+    ----------
+    colors : dict
+        Colors for cells.
+    cells : tuple
+        Cells for which to plot colors (default is ``colors.keys()``).
+    """
+    def __init__(self, colors, cells=None, *args, **kwargs):
         _EelFigure.__init__(self, "Colors", None, 2, 1.5, False, None, *args,
                             **kwargs)
 
@@ -342,31 +340,30 @@ class ColorList(_EelFigure):
 
 
 class ColorBar(_EelFigure):
-    "A color-bar for a matplotlib color-map"
+    """A color-bar for a matplotlib color-map
+
+    Parameters
+    ----------
+    cmap : str | Colormap
+        Name of the color-map, or a matplotlib Colormap.
+    vmin : scalar
+        Lower end of the scale mapped onto cmap.
+    vmax : scalar
+        Upper end of the scale mapped onto cmap.
+    label : None | str
+        Label for the x-axis (default is the name of the colormap).
+    label_position : 'left' | 'right' | 'top' | 'bottom'
+        Position of the axis label. Valid values depend on orientation.
+    clipmin : scalar
+        Clip the color-bar below this value.
+    clipmax : scalar
+        Clip the color-bar above this value.
+    orientation : 'horizontal' | 'vertical'
+        Orientation of the bar (default is horizontal).
+    """
     def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
                  *args, **kwargs):
-        """Plot a color-bar for a color-map
-
-        Parameters
-        ----------
-        cmap : str | Colormap
-            Name of the color-map, or a matplotlib Colormap.
-        vmin : scalar
-            Lower end of the scale mapped onto cmap.
-        vmax : scalar
-            Upper end of the scale mapped onto cmap.
-        label : None | str
-            Label for the x-axis (default is the name of the colormap).
-        label_position : 'left' | 'right' | 'top' | 'bottom'
-            Position of the axis label. Valid values depend on orientation.
-        clipmin : scalar
-            Clip the color-bar below this value.
-        clipmax : scalar
-            Clip the color-bar above this value.
-        orientation : 'horizontal' | 'vertical'
-            Orientation of the bar (default is horizontal).
-        """
         cm = mpl.cm.get_cmap(cmap)
         lut = cm(np.arange(cm.N))
         if orientation == 'horizontal':

@@ -5,8 +5,6 @@
 
 .. autoclass:: {{ objname }}
    
-   .. automethod:: __init__
-
 {% block methods %}
 {% if methods %}
    
