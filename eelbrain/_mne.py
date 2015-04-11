@@ -9,7 +9,7 @@ from scipy.spatial.distance import cdist
 
 import mne
 from mne import minimum_norm as mn
-from mne.label import Label
+from mne.label import Label, BiHemiLabel
 from mne.source_space import label_src_vertno_sel
 from mne.utils import get_subjects_dir
 
@@ -28,9 +28,10 @@ def labels_from_clusters(clusters, names=None):
     Parameters
     ----------
     clusters : NDVar
-        NDVar which is non-zero on the cluster. Can have a case dimension.
+        NDVar which is non-zero on the cluster. Can have a case dimension, but
+        does not have to.
     names : None | list of str | str
-        Label names corresponding to clusters (default is "clusterX").
+        Label names corresponding to clusters (default is "cluster%i").
 
     Returns
     -------
@@ -39,20 +40,21 @@ def labels_from_clusters(clusters, names=None):
     """
     from mne.label import _n_colors
 
+    if isinstance(names, basestring):
+        names = [names]
+
     source = clusters.source
     source_space = clusters.source.get_source_space()
     subject = source.subject
-
-    if clusters.has_case:
+    collapse = tuple(dim for dim in clusters.dimnames if dim not in ('case', 'source'))
+    clusters_index = clusters.any(collapse)
+    if clusters_index.has_case:
         n_clusters = len(clusters)
-        x = clusters.x
     else:
         n_clusters = 1
-        x = clusters.x[None, :]
+        clusters_index = (clusters_index,)
 
-    if isinstance(names, basestring) and n_clusters == 1:
-        names = [names]
-    elif names is None:
+    if names is None:
         names = ("cluster%i" % i for i in xrange(n_clusters))
     elif len(names) != n_clusters:
         err = "Number of names difference from number of clusters."
@@ -60,23 +62,23 @@ def labels_from_clusters(clusters, names=None):
 
     colors = _n_colors(n_clusters)
     labels = []
-    for i, color, name in izip(xrange(n_clusters), colors, names):
-        idx = (x[i] != 0)
-        where = np.nonzero(idx)[0]
-        src_in_lh = (where < source.lh_n)
-        if np.all(src_in_lh):
-            hemi = 'lh'
-            hemi_vertices = source.lh_vertno
-        elif np.any(src_in_lh):
-            raise ValueError("Can't have clusters spanning both hemispheres")
+    for cluster, color, name in izip(clusters_index, colors, names):
+        lh_vertices = source.lh_vertno[cluster.x[:source.lh_n]]
+        rh_vertices = source.rh_vertno[cluster.x[source.lh_n:]]
+        if len(lh_vertices) and len(rh_vertices):
+            lh = Label(lh_vertices, hemi='lh', name=name + '-lh',
+                       subject=subject, color=color).fill(source_space)
+            rh = Label(rh_vertices, hemi='rh', name=name + '-rh',
+                       subject=subject, color=color).fill(source_space)
+            label = BiHemiLabel(lh, rh, name, color)
+        elif len(lh_vertices):
+            label = Label(lh_vertices, hemi='lh', name=name + '-lh',
+                          subject=subject, color=color).fill(source_space)
+        elif len(rh_vertices):
+            label = Label(rh_vertices, hemi='rh', name=name + '-lh',
+                          subject=subject, color=color).fill(source_space)
         else:
-            hemi = 'rh'
-            hemi_vertices = source.rh_vertno
-            where -= source.lh_n
-        vertices = hemi_vertices[where]
-
-        label = Label(vertices, hemi=hemi, name=name, subject=subject,
-                      color=color).fill(source_space)
+            raise ValueError("Empty Cluster")
         labels.append(label)
 
     return labels
