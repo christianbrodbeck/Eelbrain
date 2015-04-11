@@ -165,16 +165,16 @@ def iscategorial(x):
 def isdataobject(x):
     dataob = ["model", "var", "ndvar", "factor", "interaction", "nonbasic",
               "nested", "list"]
-    return hasattr(x, '_stype_') and  x._stype_ in dataob
+    return hasattr(x, '_stype') and  x._stype in dataob
 
 
 def isdataset(x):
-    return hasattr(x, '_stype_') and x._stype_ == 'dataset'
+    return hasattr(x, '_stype') and x._stype == 'dataset'
 
 
 def iseffect(x):
     effectnames = ["factor", "var", "interaction", "nonbasic", "nested"]
-    return hasattr(x, '_stype_') and  x._stype_ in effectnames
+    return hasattr(x, '_stype') and  x._stype in effectnames
 
 
 def isdatalist(x, contains=None, test_all=True):
@@ -200,20 +200,20 @@ def isdatalist(x, contains=None, test_all=True):
 
 
 def isfactor(x):
-    return hasattr(x, '_stype_') and x._stype_ == "factor"
+    return hasattr(x, '_stype') and x._stype == "factor"
 
 
 def isinteraction(x):
-    return hasattr(x, '_stype_') and x._stype_ == "interaction"
+    return hasattr(x, '_stype') and x._stype == "interaction"
 
 
 def ismodel(x):
-    return hasattr(x, '_stype_') and x._stype_ == "model"
+    return hasattr(x, '_stype') and x._stype == "model"
 
 
 def isnested(x):
     "Determine whether x is nested"
-    return hasattr(x, '_stype_') and x._stype_ == "nested"
+    return hasattr(x, '_stype') and x._stype == "nested"
 
 
 def isnestedin(item, item2):
@@ -226,22 +226,22 @@ def isnestedin(item, item2):
 
 def isndvar(x):
     "Determine whether x is an NDVar"
-    return hasattr(x, '_stype_') and x._stype_ == "ndvar"
+    return hasattr(x, '_stype') and x._stype == "ndvar"
 
 
 def isnumeric(x):
     "Determine wether x is numeric (a Var or an NDVar)"
-    return hasattr(x, '_stype_') and x._stype_ in ["ndvar", "var"]
+    return hasattr(x, '_stype') and x._stype in ["ndvar", "var"]
 
 
 def isuv(x):
     "Determine whether x is univariate (a Var or a Factor)"
-    return hasattr(x, '_stype_') and x._stype_ in ["factor", "var"]
+    return hasattr(x, '_stype') and x._stype in ["factor", "var"]
 
 
 def isvar(x):
     "Determine whether x is a Var"
-    return hasattr(x, '_stype_') and x._stype_ == "var"
+    return hasattr(x, '_stype') and x._stype == "var"
 
 
 def isboolvar(x):
@@ -1109,7 +1109,7 @@ class EffectList(list):
 
     def __contains__(self, item):
         for f in self:
-            if ((f.name == item.name) and (f._stype_ == item._stype_)
+            if ((f.name == item.name) and (f._stype == item._stype)
                 and (len(f) == len(item)) and np.all(item == f)):
                 return True
         return False
@@ -1155,7 +1155,7 @@ class Var(object):
     :py:class:`numpy.array` which can be used for anything more complicated.
     :py:attr:`Var.x` can be read and modified, but should not be replaced.
     """
-    _stype_ = "var"
+    _stype = "var"
     ndim = 1
 
     def __init__(self, x, name=None, repeat=1, tile=1, info=None):
@@ -1890,7 +1890,7 @@ class Factor(_Effect):
         >>> Factor('iiiooo')
         Factor(['i', 'i', 'i', 'o', 'o', 'o'])
     """
-    _stype_ = "factor"
+    _stype = "factor"
 
     def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={},
                  rep=None):
@@ -2526,7 +2526,7 @@ class NDVar(object):
     >>> Y = NDVar(data, dims=dims)
 
     """
-    _stype_ = "ndvar"
+    _stype = "ndvar"
     
     def __init__(self, x, dims=('case',), info={}, name=None):
         # check data shape
@@ -3643,7 +3643,7 @@ class Datalist(list):
     The subclass adds certain methods that makes indexing behavior more
     similar to numpy and other data objects.
     """
-    _stype_ = 'list'
+    _stype = 'list'
     def __init__(self, items=None, name=None):
         self.name = name
         if items:
@@ -3857,7 +3857,7 @@ class Dataset(OrderedDict):
         0      a
 
     """
-    _stype_ = "dataset"
+    _stype = "dataset"
 
     @staticmethod
     def _args(items=(), name=None, caption=None, info={}, n_cases=None):
@@ -4927,7 +4927,7 @@ class Interaction(_Effect):
     base :
         All effects.
     """
-    _stype_ = "interaction"
+    _stype = "interaction"
 
     def __init__(self, base):
         # FIXME: Interaction does not update when component factors update
@@ -4949,7 +4949,7 @@ class Interaction(_Effect):
                 else:
                     self.base.extend(b.base)
                     self.is_categorial = (self.is_categorial and b.is_categorial)
-            elif b._stype_ == "nested":  # TODO: nested effects
+            elif b._stype == "nested":  # TODO: nested effects
                 self.base.append(b)
                 if b.nestedin not in self.nestedin:
                     self.nestedin.append(b.nestedin)
@@ -5156,7 +5156,9 @@ def box_cox_transform(X, p, name=None):
 
 
 class NestedEffect(object):
-    _stype_ = "nested"
+
+    _stype = "nested"
+
     def __init__(self, effect, nestedin):
         if not iscategorial(nestedin):
             raise TypeError("Effects can only be nested in categorial base")
@@ -5209,7 +5211,9 @@ class NestedEffect(object):
 
 
 class NonbasicEffect(object):
-    _stype_ = "nonbasic"
+
+    _stype = "nonbasic"
+
     def __init__(self, effect_codes, factors, name, nestedin=[],
                  beta_labels=None):
         self.nestedin = nestedin

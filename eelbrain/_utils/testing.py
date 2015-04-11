@@ -52,12 +52,12 @@ def assert_dataobj_equal(d1, d2, msg="Data-objects unequal", decimal=None):
     decimal : None | int
         Desired precision (default is exact match).
     """
-    if not hasattr(d1, '_stype_'):
+    if not hasattr(d1, '_stype'):
         raise TypeError("d1 is not a data-object but %s" % repr(d1))
-    elif not hasattr(d2, '_stype_'):
+    elif not hasattr(d2, '_stype'):
         raise TypeError("d2 is not a data-object but %s" % repr(d2))
     else:
-        eq_(d1._stype_, d2._stype_)
+        eq_(d1._stype, d2._stype)
     msg = "%s:" % msg
     assert_equal(d1.name, d2.name, "%s unequal names (%r vs %r"
                  ")" % (msg, d1.name, d2.name))
