@@ -156,6 +156,28 @@ class _Result(object):
             raise RuntimeError(err)
         return self._cdist.masked_parameter_map(pmin, **sub)
 
+    def cluster(self, cluster_id):
+        """Retrieve a specific cluster as NDVar
+
+        Paramaters
+        ----------
+        cluster_id : int
+            Cluster id.
+
+        Returns
+        -------
+        cluster : NDVar
+            NDVar of the cluster, 0 outside the cluster.
+
+        Notes
+        -----
+        Clusters only have stable ids for thresholded cluster distributions.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        return self._cdist.cluster(cluster_id)
+
     @LazyProperty
     def clusters(self):
         if self._cdist is None:
@@ -1035,13 +1057,41 @@ class _MultiEffectResult(_Result):
     def _first_cdist(self):
         return self._cdist[0]
 
+    def cluster(self, cluster_id, effect=0):
+        """Retrieve a specific cluster as NDVar
+
+        Paramaters
+        ----------
+        cluster_id : int
+            Cluster id.
+        effect : int | str
+            Index or name of the effect from which to retrieve a cluster
+            (default is the first effect).
+
+        Returns
+        -------
+        cluster : NDVar
+            NDVar of the cluster, 0 outside the cluster.
+
+        Notes
+        -----
+        Clusters only have stable ids for thresholded cluster distributions.
+        """
+        if self._cdist is None:
+            err = "Method only applies to results with samples > 0"
+            raise RuntimeError(err)
+        elif isinstance(effect, basestring):
+            effect = self.effects.index(effect)
+        return self._cdist[effect].cluster(cluster_id)
+
     def compute_probability_map(self, effect=0, **sub):
         """Compute a probability map
 
         Parameters
         ----------
         effect : int | str
-            Index or name of the effect from which to use the parameter map.
+            Index or name of the effect from which to use the parameter map
+            (default is the first effect).
 
         Returns
         -------
@@ -2368,6 +2418,28 @@ class _ClusterDist:
                 ds.update(properties)
 
         return ds
+
+    def cluster(self, cluster_id):
+        """Retrieve a specific cluster as NDVar
+
+        Paramaters
+        ----------
+        cluster_id : int
+            Cluster id.
+
+        Returns
+        -------
+        cluster : NDVar
+            NDVar of the cluster, 0 outside the cluster.
+
+        Notes
+        -----
+        Clusters only have stable ids for thresholded cluster distributions.
+        """
+        if cluster_id not in self._cids:
+            raise ValueError("No cluster with id " + repr(cluster_id))
+
+        return self.parameter_map * (self.cluster_map == cluster_id)
 
     def clusters(self, pmin=None, maps=True, **sub):
         """Find significant clusters
