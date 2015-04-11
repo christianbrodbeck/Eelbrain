@@ -254,61 +254,6 @@ def star_factor(p, levels={.1: '`', .05 : '*', .01 : '**', .001: '***'}):
     return stars
 
 
-def oneway(Y, X, match=None, sub=None, par=True, title=None, ds=None):
-    "data: for should iter over groups/treatments"
-    ct = Celltable(Y, X, match=match, sub=sub, ds=ds, coercion=asvar)
-    test = _oneway(ct, parametric=par)
-    template = "{test}: {statistic}={value}{stars}, p={p}"
-    out = template.format(**test)
-    return out
-
-
-
-def _oneway(ct, parametric=True):
-    """
-    Parameters
-    ----------
-    data:       list of groups/treatments
-    parametric: bool
-    within:     bool
-
-
-    Returns
-    -------
-    dictionary with results:
-    'test':      test name
-    'statistic': statistic letter
-    statistic:   statistic value
-    'value':     "
-    'p':         p value
-    'stars':     stars as str
-
-    """
-    args = ct.get_data()
-    if parametric:
-        if ct.all_within:
-            test = {'test': "NOTIMPLMENTED",
-                    'statistic': 'NONE',
-                    'NONE':0, 'p':0}
-        else:
-            test = {'test': "One-Way ANOVA",
-                    'statistic': 'F'}
-            test['F'], test['p'] = scipy.stats.f_oneway(*args)
-    elif ct.all_within:
-        test = {'test': "Friedman Chi-Square",
-                'statistic': 'Q'}
-        test['Q'], test['p'] = scipy.stats.friedmanchisquare(*args)
-    else:
-        test = {'test': "Kruskal Wallis",
-                'statistic': 'H'}
-        test['H'], test['p'] = scipy.stats.kruskal(*args)
-
-    test['value'] = test[test['statistic']]
-    test['stars'] = star(test['p'])
-    return test
-
-
-
 def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
            title='{desc}', ds=None):
     """T tests for one or more samples.

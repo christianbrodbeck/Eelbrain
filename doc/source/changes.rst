@@ -11,6 +11,7 @@ New in 0.15
 * API :class:`plot.Timeplot`: the default spread indicator changed to SEM, and
   there is a new argument for `timelabels`.
 * API: :func:`test.anova` is now a function with a slightly changed signature.
+* API: :func:`test.oneway` was removed. Use :func:`test.anova`.
 
 
 New in 0.14

@@ -4,7 +4,6 @@
    :toctree: generated
 
    anova
-   oneway
    pairwise
    ttest
    correlations
@@ -14,5 +13,5 @@
 __test__ = False
 
 from ._stats.glm import anova
-from ._stats.test import (pairwise, ttest, oneway, correlations,
-                          bootstrap_pairwise, lilliefors)
+from ._stats.test import (pairwise, ttest, correlations, bootstrap_pairwise,
+                          lilliefors)
