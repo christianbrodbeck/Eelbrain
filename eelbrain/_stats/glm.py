@@ -815,45 +815,44 @@ def comparelm(lm1, lm2):
     return difftxt.format(SS=SS_diff, df=df_diff, F=F, s=stars, p=p)
 
 
-class anova(object):
-    """
-    Fits a univariate ANOVA model. The objects' string representation is the
+class ANOVA(object):
+    """Univariate ANOVA.
+
+    Mixed effects models require balanced models and full model specification
+    so that E(MS) can be estimated according to Hopkins (1976).
+
+    Parameters
+    ----------
+    y : Var
+        dependent variable
+    x : Model
+        Model to fit to Y
+    sub : index
+        Only use part of the data.
+    title : str
+        Title for the results table (optional).
+    ems : bool | None
+        display source of E(MS) for F-Tests (True/False; None = use default)
+    ds : Dataset
+        Dataset to use data from.
+
+    Examples
+    --------
+    The objects' string representation is the
     anova table, so the model can be created and examined inone command::
 
-        >>> print anova(Y, X)
+        >>> ds = datasets.get_loftus_masson_1994()
+        >>> print test.ANOVA('n_recalled', 'exposure.as_factor()*subject', ds=ds)
+                    SS       df   MS         F         p
+        ---------------------------------------------------
+        exposure     52.27    2   26.13   42.51***   < .001
+        ---------------------------------------------------
+        Total      1005.87   29
 
     For other uses, properties of the fit can be accessed with methods and
     attributes.
-
-
     """
-    def __init__(self, Y, X, sub=None,
-                 title=None, empty=True, ems=None,
-                 showall=False, ds=None):
-        """
-        Fits a univariate ANOVA model.
-
-        Mixed effects models require full model specification so that E(MS)
-        can be estimated according to Hopkins (1976)
-
-
-        Parameters
-        ----------
-        Y : Var
-            dependent variable
-        X : Model
-            Model to fit to Y
-        empty : bool
-            include rows without F-Tests (True/False)
-        ems : bool | None
-            display source of E(MS) for F-Tests (True/False; None = use default)
-        lsq : int
-            least square fitter to use;
-            0 -> scipy.linalg.lstsq
-            1 -> after Fox
-        showall : bool
-            show SS, df and MS for effects without F test
-        """
+    def __init__(self, y, x, sub=None, title=None, ems=None, ds=None):
 #  TODO:
 #         - sort model
 #         - provide threshold for including interaction effects when testing lower
@@ -867,27 +866,27 @@ class anova(object):
 #            SPSS
 
         # prepare kwargs
-        Y = asvar(Y, sub=sub, ds=ds)
-        X = asmodel(X, sub=sub, ds=ds)
+        y = asvar(y, sub=sub, ds=ds)
+        x = asmodel(x, sub=sub, ds=ds)
 
-        if len(Y) != len(X):
-            raise ValueError("Y and X must describe same number of cases")
-        elif hasemptycells(X):
+        if len(y) != len(x):
+            raise ValueError("y and x must describe same number of cases")
+        elif hasemptycells(x):
             raise NotImplementedError("Model has empty cells")
 
         # save args
-        self.Y = Y
-        self.X = X
+        self.y = y
+        self.x = x
         self.title = title
         self.show_ems = ems
         self._log = []
 
         # decide which E(MS) model to use
-        if X.df_error == 0:
+        if x.df_error == 0:
             rfx = 1
             fx_desc = 'Mixed'
-        elif X.df_error > 0:
-            if hasrandom(X):
+        elif x.df_error > 0:
+            if hasrandom(x):
                 err = ("Models containing random effects need to be fully "
                        "specified.")
                 raise NotImplementedError(err)
@@ -902,22 +901,22 @@ class anova(object):
         self.names = []
 
 
-        if len(X.effects) == 1:
+        if len(x.effects) == 1:
             self._log.append("single factor model")
-            lm1 = LM(Y, X)
+            lm1 = LM(y, x)
             self.f_tests.append(lm1)
-            self.names.append(X.name)
+            self.names.append(x.name)
             self.residuals = lm1.SS_res, lm1.df_res, lm1.MS_res
         else:
             if rfx:
                 pass  # <- Hopkins
             else:
-                full_lm = LM(Y, X)
+                full_lm = LM(y, x)
                 SS_e = full_lm.SS_res
                 MS_e = full_lm.MS_res
                 df_e = full_lm.df_res
 
-            comparisons, models, skipped = _incremental_comparisons(X)
+            comparisons, models, skipped = _incremental_comparisons(x)
 
             # store info on skipped effects
             for e_test, reason in skipped:
@@ -927,7 +926,7 @@ class anova(object):
             lms = {}
             for idx, model in models.iteritems():
                 if model.df_error > 0:
-                    lm = LM(Y, model)
+                    lm = LM(y, model)
                 else:
                     lm = None
                 lms[idx] = lm
@@ -943,10 +942,10 @@ class anova(object):
 
                 if rfx:
                     # find E(MS)
-                    EMS_effects = _find_hopkins_ems(e_test, X)
+                    EMS_effects = _find_hopkins_ems(e_test, x)
 
                     if len(EMS_effects) > 0:
-                        lm_EMS = LM(Y, Model(EMS_effects))
+                        lm_EMS = LM(y, Model(EMS_effects))
                         MS_e = lm_EMS.MS_model
                         df_e = lm_EMS.df_model
                     else:
@@ -970,7 +969,7 @@ class anova(object):
                 self.residuals = SS_e, df_e, MS_e
 
     def __repr__(self):
-        return "anova(%s, %s)" % (self.Y.name, self.X.name)
+        return "anova(%s, %s)" % (self.y.name, self.x.name)
 
     def __str__(self):
         return str(self.table())
@@ -1013,7 +1012,7 @@ class anova(object):
                 table.cell()
 
         # residuals
-        if self.X.df_error > 0:
+        if self.x.df_error > 0:
             table.empty_row()
             table.cell("Residuals")
             SS, df, MS = self.residuals
@@ -1025,10 +1024,50 @@ class anova(object):
         # total
         table.midrule()
         table.cell("Total")
-        SS = np.sum((self.Y.x - self.Y.mean()) ** 2)
+        SS = np.sum((self.y.x - self.y.mean()) ** 2)
         table.cell(fmtxt.stat(SS))
-        table.cell(len(self.Y) - 1)
+        table.cell(len(self.y) - 1)
         return table
+
+
+def anova(y, x, sub=None, title=None, ems=None, ds=None):
+    """Univariate ANOVA.
+
+    Mixed effects models require balanced models and full model specification
+    so that E(MS) can be estimated according to Hopkins (1976).
+
+    Parameters
+    ----------
+    y : Var
+        dependent variable
+    x : Model
+        Model to fit to Y
+    sub : index
+        Only use part of the data.
+    title : str
+        Title for the results table (optional).
+    ems : bool | None
+        display source of E(MS) for F-Tests (True/False; None = use default)
+    ds : Dataset
+        Dataset to use data from.
+
+    Returns
+    -------
+    table : FMText Table
+        Table with results.
+
+    Examples
+    --------
+    >>> ds = datasets.get_loftus_masson_1994()
+    >>> test.ANOVA('n_recalled', 'exposure.as_factor()*subject', ds=ds)
+                SS       df   MS         F         p
+    ---------------------------------------------------
+    exposure     52.27    2   26.13   42.51***   < .001
+    ---------------------------------------------------
+    Total      1005.87   29
+    """
+    anova_ = ANOVA(y, x, sub, title, ems, ds)
+    return anova_.table()
 
 
 def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
