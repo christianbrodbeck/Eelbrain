@@ -686,7 +686,7 @@ class Timeplot(_EelFigure, LegendMixin):
                  bottom=0, top=None,
                  # labelling
                  ylabel=True, xlabel=True, timelabels=None, legend='best',
-                 colors='jet', hatch=False, markers=True, *args, **kwargs):
+                 colors=None, hatch=False, markers=True, *args, **kwargs):
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
         categories = ascategorial(categories, sub, ds)
