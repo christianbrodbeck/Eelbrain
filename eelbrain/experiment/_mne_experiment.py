@@ -27,7 +27,8 @@ from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
-from .._mne import source_induced_power, dissolve_label, rename_label
+from .._mne import source_induced_power, dissolve_label, rename_label, \
+    morph_source_space
 from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg_epochs
 from .._data_obj import (align, UTS, DimensionMismatchError,
@@ -642,7 +643,7 @@ class MneExperiment(FileTree):
 
         return subject_, group
 
-    def add_epochs_stc(self, ds, ndvar=True, baseline=None):
+    def add_epochs_stc(self, ds, ndvar=True, baseline=None, morph=False):
         """
         Transform epochs contained in ds into source space (adds a list of mne
         SourceEstimates to ds)
@@ -658,6 +659,8 @@ class MneExperiment(FileTree):
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to apply no baseline
             correction (None).
+        morph : bool
+            Morph the source estimates to the common_brain (default False).
         """
         subject = ds['subject']
         if len(subject.cells) != 1:
@@ -684,10 +687,16 @@ class MneExperiment(FileTree):
                                       parc=parc)
             if baseline is not None:
                 src -= src.summary(time=baseline)
-            ds['src'] = src
+
+            if morph:
+                ds['srcm'] = morph_source_space(src, self.get('common_brain'))
+            else:
+                ds['src'] = src
         else:
             if baseline is not None:
                 raise NotImplementedError("Baseline for SourceEstimate")
+            if morph:
+                raise NotImplementedError("Morphing for SourceEstimate")
             ds['stc'] = stc
 
     def add_evoked_stc(self, ds, ind_stc=False, ind_ndvar=False, morph_stc=False,
@@ -1375,7 +1384,7 @@ class MneExperiment(FileTree):
 
     def load_epochs_stc(self, subject=None, sns_baseline=True,
                         src_baseline=None, ndvar=True, cat=None,
-                        keep_epochs=False, **kwargs):
+                        keep_epochs=False, morph=False, **kwargs):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -1398,9 +1407,11 @@ class MneExperiment(FileTree):
         keep_epochs : bool
             Keep the sensor space data in the Dataset that is returned (default
             False).
+        morph : bool
+            Morph the source estimates to the common_brain (default False).
         """
         ds = self.load_epochs(subject, sns_baseline, False, cat=cat, **kwargs)
-        self.add_epochs_stc(ds, ndvar, src_baseline)
+        self.add_epochs_stc(ds, ndvar, src_baseline, morph)
         if not keep_epochs:
             del ds['epochs']
         return ds
