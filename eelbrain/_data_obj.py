@@ -3666,7 +3666,10 @@ class Datalist(list):
             super(Datalist, self).__init__()
 
     def __repr__(self):
-        return "Datalist(%s)" % super(Datalist, self).__repr__()
+        args = super(Datalist, self).__repr__()
+        if self.name is not None:
+            args += ', %s' % repr(self.name)
+        return "Datalist(%s)" % args
 
     def __getitem__(self, index):
         if isinstance(index, (int, slice)):
