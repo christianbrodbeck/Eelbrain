@@ -996,13 +996,25 @@ def combine(items, name=None, check_dims=True):
     - The info dict inherits only entries that are equal (``x is y or
       np.array_equal(x, y)``) for all items.
     """
+    # find type
+    stypes = set(getattr(item, '_stype', None) for item in items)
+    if None in stypes:
+        raise TypeError("Can only combine data-objects, got at least one other "
+                        "item.")
+    elif len(stypes) > 1:
+        raise TypeError("All items to be combined need to have the same type, "
+                        "got %s." % ', '.join(tuple(stypes)))
+    stype = stypes.pop()
+
+    # find name
     if name is None:
         names = filter(None, (item.name for item in items))
         name = os.path.commonprefix(names) or None
 
-    item0 = items[0]
-    if isdataset(item0):
+    # combine objects
+    if stype == 'dataset':
         # find all keys and data types
+        item0 = items[0]
         keys = item0.keys()
         sample = dict(item0)
         for item in items:
@@ -1018,18 +1030,23 @@ def combine(items, name=None, check_dims=True):
                       _empty_like(sample[key], ds.n_cases) for ds in items]
             out[key] = combine(pieces, check_dims=check_dims)
         return out
-    elif isvar(item0):
+    elif stype == 'var':
         x = np.hstack(i.x for i in items)
         return Var(x, name, info=_merge_info(items))
-    elif isfactor(item0):
+    elif stype == 'factor':
+        random = set(f.random for f in items)
+        if len(random) > 1:
+            raise ValueError("Factors have different values for random parameter")
+        random = random.pop()
+        item0 = items[0]
         labels = item0._labels
         if all(f._labels == labels for f in items[1:]):
             x = np.hstack(f.x for f in items)
-            return Factor(x, name, item0.random, labels=labels)
+            return Factor(x, name, random, labels=labels)
         else:
             x = sum((i.as_labels() for i in items), [])
-            return Factor(x, name, item0.random)
-    elif isndvar(item0):
+            return Factor(x, name, random)
+    elif stype == 'ndvar':
         v_have_case = [v.has_case for v in items]
         if all(v_have_case):
             has_case = True
@@ -1050,13 +1067,10 @@ def combine(items, name=None, check_dims=True):
             x = np.array([v.x for v in items])
         dims = ('case',) + dims
         return NDVar(x, dims, _merge_info(items), name)
-    elif isdatalist(item0):
-        out = sum(items[1:], item0)
-        out.name = name
-        return out
+    elif stype == 'list':
+        return Datalist(sum(items, []), name=name)
     else:
-        err = ("Objects of type %s can not be combined." % type(item0))
-        raise TypeError(err)
+        raise RuntimeError("combine with stype = %r" % stype)
 
 
 def _merge_info(items):
