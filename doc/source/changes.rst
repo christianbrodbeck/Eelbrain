@@ -7,6 +7,8 @@ Changes
 New in 0.15
 -----------
 
+* GUI :func:`gui.select_epochs`: Set marked channels through menu (View > Mark
+  Channels)
 * Datasets can be saved as tables in RTF format (:meth:`Dataset.save_rtf`).
 * API :class:`plot.Timeplot`: the default spread indicator changed to SEM, and
   there is a new argument for `timelabels`.

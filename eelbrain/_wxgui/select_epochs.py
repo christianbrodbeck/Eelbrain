@@ -1008,6 +1008,29 @@ class Frame(EelbrainFrame):  # control
         dlg.Destroy()
         self.SetLayout(nplots, topo, mean)
 
+    def OnSetMarkedChannels(self, event):
+        "mark is represented in sensor names"
+        dlg = wx.TextEntryDialog(self, "Please enter channel names separated by "
+                                 "comma (e.g., \"MEG 003, MEG 010\"):", "Set Marked"
+                                 "Channels", ', '.join(self._mark))
+        while True:
+            if dlg.ShowModal() == wx.ID_OK:
+                try:
+                    names_in = filter(None, (s.strip() for s in
+                                             dlg.GetValue().split(',')))
+                    names = self.doc.epochs.sensor._normalize_sensor_names(names_in)
+                    break
+                except ValueError as exception:
+                    msg = wx.MessageDialog(self, str(exception), "Invalid Entry",
+                                           wx.OK | wx.ICON_ERROR)
+                    msg.ShowModal()
+                    msg.Destroy()
+            else:
+                dlg.Destroy()
+                return
+        dlg.Destroy()
+        self.SetPlotStyle(mark=names)
+
     def OnSetVLim(self, event):
         default = str(self._vlims.values()[0][1])
         dlg = wx.TextEntryDialog(self, "New Y-axis limit:", "Set Y-Axis Limit",
@@ -1088,6 +1111,9 @@ class Frame(EelbrainFrame):  # control
         event.Enable(self.CanSave())
 
     def OnUpdateUISetLayout(self, event):
+        event.Enable(True)
+
+    def OnUpdateUISetMarkedChannels(self, event):
         event.Enable(True)
 
     def OnUpdateUISetVLim(self, event):

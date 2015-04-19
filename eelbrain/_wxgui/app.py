@@ -44,6 +44,9 @@ class App(wx.App):
         m = view_menu = wx.Menu()
         m.Append(ID.SET_VLIM, "Set Y-Axis Limit... \tCtrl+l", "Change the Y-"
                  "axis limit in epoch plots")
+        m.Append(ID.SET_MARKED_CHANNELS, "Mark Channels...", "Mark specific "
+                 "channels in plots.")
+        m.AppendSeparator()
         m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+Shift+l", "Change the "
                  "page layout")
         m.AppendCheckItem(ID.PLOT_RANGE, "&Plot Data Range \tCtrl+r", "Plot "
@@ -96,6 +99,7 @@ class App(wx.App):
         self.Bind(wx.EVT_MENU, self.OnSave, id=wx.ID_SAVE)
         self.Bind(wx.EVT_MENU, self.OnSaveAs, id=wx.ID_SAVEAS)
         self.Bind(wx.EVT_MENU, self.OnSetLayout, id=ID.SET_LAYOUT)
+        self.Bind(wx.EVT_MENU, self.OnSetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
         self.Bind(wx.EVT_MENU, self.OnSetVLim, id=ID.SET_VLIM)
         self.Bind(wx.EVT_MENU, self.OnTogglePlotRange, id=ID.PLOT_RANGE)
         self.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
@@ -118,6 +122,7 @@ class App(wx.App):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISaveAs, id=wx.ID_SAVEAS)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetLayout, id=ID.SET_LAYOUT)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetVLim, id=ID.SET_VLIM)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUndo, id=ID.UNDO)
 
@@ -323,6 +328,10 @@ class App(wx.App):
         frame = self._get_active_frame()
         frame.OnSetLayout(event)
 
+    def OnSetMarkedChannels(self, event):
+        frame = self._get_active_frame()
+        frame.OnSetMarkedChannels(event)
+
     def OnTogglePlotRange(self, event):
         frame = self._get_active_frame()
         frame.OnTogglePlotRange(event)
@@ -411,6 +420,13 @@ class App(wx.App):
         frame = self._get_active_frame()
         if frame and hasattr(frame, 'OnUpdateUISetLayout'):
             frame.OnUpdateUISetLayout(event)
+        else:
+            event.Enable(False)
+
+    def OnUpdateUISetMarkedChannels(self, event):
+        frame = self._get_active_frame()
+        if frame and hasattr(frame, 'OnUpdateUISetMarkedChannels'):
+            frame.OnUpdateUISetMarkedChannels(event)
         else:
             event.Enable(False)
 
