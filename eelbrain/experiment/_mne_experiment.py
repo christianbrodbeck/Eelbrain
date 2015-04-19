@@ -243,7 +243,8 @@ class MneExperiment(FileTree):
     variables = {}
 
     # Default values for epoch definitions
-    epoch_default = {'tmin':-0.1, 'tmax': 0.6, 'decim': 5, 'baseline': (None, 0)}
+    _epoch_default = {'tmin':-0.1, 'tmax': 0.6, 'decim': 5, 'baseline': (None, 0)}
+    epoch_default = {}
 
     # named epochs
     epochs = {'epoch': dict(sel="stim=='target'"),
@@ -432,7 +433,8 @@ class MneExperiment(FileTree):
                 super_epochs[name] = epoch
 
             # expand epoch dict
-            epoch = self.epoch_default.copy()
+            epoch = self._epoch_default.copy()
+            epoch.update(self.epoch_default)
             epoch.update(self.epochs[name])
             epoch['name'] = name
 
