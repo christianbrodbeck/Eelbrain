@@ -120,6 +120,10 @@ def test_celltable():
     eq_(ct.X[0], 'c')
     eq_(ct.X[-1], 'b')
 
+    # catch unequal length
+    assert_raises(ValueError, Celltable, ds['Y', :-1], 'cat', ds=ds)
+    assert_raises(ValueError, Celltable, ds['Y', :-1], 'cat', match='rm', ds=ds)
+
     # coercion of numerical X
     X = ds.eval("A == 'a0'")
     ct = Celltable('Y', X, cat=(None, None), ds=ds)

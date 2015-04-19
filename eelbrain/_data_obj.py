@@ -294,7 +294,7 @@ def hasrandom(x):
     return False
 
 
-def ascategorial(x, sub=None, ds=None):
+def ascategorial(x, sub=None, ds=None, n=None):
     if isinstance(x, basestring):
         if ds is None:
             err = ("Parameter was specified as string, but no Dataset was "
@@ -308,12 +308,15 @@ def ascategorial(x, sub=None, ds=None):
         x = asfactor(x)
 
     if sub is not None:
-        return x[sub]
-    else:
-        return x
+        x = x[sub]
+
+    if n is not None and len(x) != n:
+        raise ValueError("Arguments have different length")
+
+    return x
 
 
-def asdataobject(x, sub=None, ds=None):
+def asdataobject(x, sub=None, ds=None, n=None):
     "Convert to any data object or numpy array."
     if isinstance(x, basestring):
         if ds is None:
@@ -331,10 +334,14 @@ def asdataobject(x, sub=None, ds=None):
 
     if sub is not None:
         x = x[sub]
+
+    if n is not None and len(x) != n:
+        raise ValueError("Arguments have different length")
+
     return x
 
 
-def asepochs(x, sub=None, ds=None):
+def asepochs(x, sub=None, ds=None, n=None):
     "Convert to mne Epochs object"
     if isinstance(x, basestring):
         if ds is None:
@@ -350,10 +357,14 @@ def asepochs(x, sub=None, ds=None):
 
     if sub is not None:
         x = x[sub]
+
+    if n is not None and len(x) != n:
+        raise ValueError("Arguments have different length")
+
     return x
 
 
-def asfactor(x, sub=None, ds=None):
+def asfactor(x, sub=None, ds=None, n=None):
     if isinstance(x, basestring):
         if ds is None:
             err = ("Factor was specified as string, but no Dataset was "
@@ -369,12 +380,15 @@ def asfactor(x, sub=None, ds=None):
         x = Factor(x)
 
     if sub is not None:
-        return x[sub]
-    else:
-        return x
+        x = x[sub]
+
+    if n is not None and len(x) != n:
+        raise ValueError("Arguments have different length")
+
+    return x
 
 
-def asmodel(x, sub=None, ds=None):
+def asmodel(x, sub=None, ds=None, n=None):
     if isinstance(x, basestring):
         if ds is None:
             err = ("Model was specified as string, but no Dataset was "
@@ -388,12 +402,15 @@ def asmodel(x, sub=None, ds=None):
         x = Model(x)
 
     if sub is not None:
-        return x[sub]
-    else:
-        return x
+        x = x[sub]
+
+    if n is not None and len(x) != n:
+        raise ValueError("Arguments have different length")
+
+    return x
 
 
-def asndvar(x, sub=None, ds=None):
+def asndvar(x, sub=None, ds=None, n=None):
     if isinstance(x, basestring):
         if ds is None:
             err = ("Ndvar was specified as string, but no Dataset was "
@@ -418,12 +435,15 @@ def asndvar(x, sub=None, ds=None):
         raise TypeError("NDVar required")
 
     if sub is not None:
-        return x[sub]
-    else:
-        return x
+        x = x[sub]
+
+    if n is not None and len(x) != n:
+        raise ValueError("Arguments have different length")
+
+    return x
 
 
-def asnumeric(x, sub=None, ds=None):
+def asnumeric(x, sub=None, ds=None, n=None):
     "Var, NDVar"
     if isinstance(x, basestring):
         if ds is None:
@@ -436,9 +456,12 @@ def asnumeric(x, sub=None, ds=None):
         raise TypeError("Numeric argument required (Var or NDVar)")
 
     if sub is not None:
-        return x[sub]
-    else:
-        return x
+        x = x[sub]
+
+    if n is not None and len(x) != n:
+        raise ValueError("Arguments have different length")
+
+    return x
 
 
 def assub(sub, ds=None):
@@ -452,7 +475,7 @@ def assub(sub, ds=None):
     return sub
 
 
-def asuv(x, sub=None, ds=None):
+def asuv(x, sub=None, ds=None, n=None):
     "As Var or Factor"
     if isinstance(x, basestring):
         if ds is None:
@@ -468,13 +491,16 @@ def asuv(x, sub=None, ds=None):
     else:
         x = Var(x)
 
-    if sub is None:
-        return x
-    else:
-        return x[sub]
+    if sub is not None:
+        x = x[sub]
+
+    if n is not None and len(x) != n:
+        raise ValueError("Arguments have different length")
+
+    return x
 
 
-def asvar(x, sub=None, ds=None):
+def asvar(x, sub=None, ds=None, n=None):
     if isinstance(x, basestring):
         if ds is None:
             err = "Var was specified as string, but no Dataset was specified"
@@ -486,10 +512,13 @@ def asvar(x, sub=None, ds=None):
     else:
         x = Var(x)
 
-    if sub is None:
-        return x
-    else:
-        return x[sub]
+    if sub is not None:
+        x = x[sub]
+
+    if n is not None and len(x) != n:
+        raise ValueError("Arguments have different length")
+
+    return x
 
 
 def index_ndim(index):
@@ -710,7 +739,9 @@ class Celltable(object):
                  cat=None, ds=None, coercion=asdataobject):
         self.sub = sub
         sub = assub(sub, ds)
-        if X is not None:
+        if X is None:
+            Y = coercion(Y, sub, ds)
+        else:
             X = ascategorial(X, sub, ds)
             if cat is not None:
                 # determine cat
@@ -740,11 +771,10 @@ class Celltable(object):
                 else:
                     imax = max(len(sub), np.max(sub))
                     sub = np.arange(imax)[sub][sort_idx]
-
-        Y = coercion(Y, sub, ds)
+            Y = coercion(Y, sub, ds, len(X))
 
         if match is not None:
-            match = ascategorial(match, sub, ds)
+            match = ascategorial(match, sub, ds, len(Y))
             cell_model = match if X is None else X % match
             sort_idx = None
             if len(cell_model) > len(cell_model.cells):
