@@ -97,6 +97,7 @@ If events are stored separately form the raw files, they can be loaded in
 from __future__ import division
 
 import fnmatch
+from itertools import izip_longest
 import os
 from warnings import warn
 
@@ -844,7 +845,8 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
             vertno = stc.vertno
             for stc_ in stcs[1:]:
                 assert np.array_equal(stc_.times, times)
-                assert np.array_equal(stc_.vertno, vertno)
+                for v1, v0 in izip_longest(stc_.vertno, vertno):
+                    assert np.array_equal(v1, v0)
         x = np.array([s.data for s in stcs])
 
     # Construct NDVar Dimensions
