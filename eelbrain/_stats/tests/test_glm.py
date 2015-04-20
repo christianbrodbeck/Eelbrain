@@ -84,14 +84,14 @@ def test_anova():
     ds.to_r('ds')
 
     # fixed effects
-    aov = test.anova('fltvar', 'A*B', ds=ds)
+    aov = test.ANOVA('fltvar', 'A*B', ds=ds)
     print aov
     fs = run_on_lm_fitter('fltvar', 'A*B', ds)
     r_res = r("Anova(lm(fltvar ~ A * B, ds, type=2))")
     assert_f_tests_equal(aov.f_tests, r_res, fs, 'Anova')
 
     # random effects
-    aov = test.anova('fltvar', 'A*B*rm', ds=ds)
+    aov = test.ANOVA('fltvar', 'A*B*rm', ds=ds)
     print aov
     fs = run_on_lm_fitter('fltvar', 'A*B*rm', ds)
     r('test.aov <- aov(fltvar ~ A * B + Error(rm / (A * B)), ds)')
@@ -167,7 +167,7 @@ def test_anova_r_adler():
     # with balanced data
     dsb = ds.equalize_counts('expectation % instruction')
     dsb.to_r('AdlerB')
-    aov = test.anova('rating', 'instruction * expectation', ds=dsb)
+    aov = test.ANOVA('rating', 'instruction * expectation', ds=dsb)
     fs = run_on_lm_fitter('rating', 'instruction * expectation', dsb)
     print r('a.aov <- aov(rating ~ instruction * expectation, AdlerB)')
     print r('a.summary <- summary(a.aov)')
@@ -175,13 +175,13 @@ def test_anova_r_adler():
     assert_f_tests_equal(aov.f_tests, r_res, fs)
 
     # with unbalanced data; for Type II SS use car package
-    aov = test.anova('rating', 'instruction * expectation', ds=ds)
+    aov = test.ANOVA('rating', 'instruction * expectation', ds=ds)
     fs = run_on_lm_fitter('rating', 'instruction * expectation', ds)
     r_res = r("Anova(lm(rating ~ instruction * expectation, Adler, type=2))")
     assert_f_tests_equal(aov.f_tests, r_res, fs, 'Anova')
 
     # single predictor
-    aov = test.anova('rating', 'instruction', ds=ds)
+    aov = test.ANOVA('rating', 'instruction', ds=ds)
     fs = run_on_lm_fitter('rating', 'instruction', ds)
     r_res = r("Anova(lm(rating ~ instruction, Adler, type=2))")
     assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], 'Anova')
@@ -197,7 +197,7 @@ def test_anova_r_sleep():
     ds['ID'].random = True
 
     # independent measures
-    aov = test.anova('extra', 'group', ds=ds)
+    aov = test.ANOVA('extra', 'group', ds=ds)
     fs = run_on_lm_fitter('extra', 'group', ds)
     print r('sleep.aov <- aov(extra ~ group, sleep)')
     print r('sleep.summary <- summary(sleep.aov)')
@@ -205,7 +205,7 @@ def test_anova_r_sleep():
     assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0])
 
     # repeated measures
-    aov = test.anova('extra', 'group * ID', ds=ds)
+    aov = test.ANOVA('extra', 'group * ID', ds=ds)
     fs = run_on_lm_fitter('extra', 'group * ID', ds)
     print r('sleep.aov <- aov(extra ~ group + Error(ID / group), sleep)')
     print r('sleep.summary <- summary(sleep.aov)')
@@ -215,7 +215,7 @@ def test_anova_r_sleep():
     # unbalanced (independent measures)
     ds2 = ds[1:]
     print r('sleep2 <- subset(sleep, (group == 2) | (ID != 1))')
-    aov = test.anova('extra', 'group', ds=ds2)
+    aov = test.ANOVA('extra', 'group', ds=ds2)
     fs = run_on_lm_fitter('extra', 'group', ds2)
     print r('sleep2.aov <- aov(extra ~ group, sleep2)')
     print r('sleep2.summary <- summary(sleep2.aov)')
@@ -251,7 +251,7 @@ def test_lmfitter():
     f_maps = lm.map(y)
     p_maps = lm.p_maps(f_maps)
 
-    aov = test.anova(y[:, 0], x)
+    aov = test.ANOVA(y[:, 0], x)
     for f_test, f_map, p_map in izip(aov.f_tests, f_maps, p_maps):
         assert_almost_equal(f_map[0], f_test.F)
         assert_almost_equal(p_map[0], f_test.p)

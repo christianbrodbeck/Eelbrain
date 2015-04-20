@@ -12,6 +12,6 @@
 """
 __test__ = False
 
-from ._stats.glm import anova
+from ._stats.glm import anova, ANOVA
 from ._stats.test import (pairwise, ttest, correlations, bootstrap_pairwise,
                           lilliefors)

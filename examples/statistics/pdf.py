@@ -19,10 +19,9 @@ B = Factor(range(3), tile=2, repeat=8, name='B')
 
 # Independent Measures:
 subject = Factor(range(8 * 6), name='subject', random=True)
-anova = test.anova(Y, A * B + subject(A % B), title="Independent Measures:")
-anova_table = anova.table()
+anova_table = test.anova(Y, A * B + subject(A % B), title="Independent Measures:")
 
 # Copy pdf to clipboard:
 fmtxt.copy_pdf(anova_table)
 
-# The table could also be saved as pdf using eelbrain.fmtxt.save_pdf()
+# The table could also be saved as pdf using fmtxt.save_pdf()
