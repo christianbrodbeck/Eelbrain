@@ -486,6 +486,10 @@ class MneExperiment(FileTree):
         for test, params in self.tests.iteritems():
             # backwards compatibility for old test specification
             if isinstance(params, (tuple, list)):
+                warn("MneExperiment.tests should be defined as dictionaries, "
+                     "test definitions with tuples/lists is deprecated. Please "
+                     "change your MneExperiment subclass definition.",
+                     DeprecationWarning)
                 kind, model, test_parameter = params
                 if kind == 'anova':
                     params = {'kind': kind, 'model': model, 'x': test_parameter}
