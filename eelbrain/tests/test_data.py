@@ -106,10 +106,12 @@ def test_celltable():
     eq_(ct.n_cases, 30)
     eq_(ct.n_cells, 2)
 
+    # cat argument
     ct = Celltable('Y', 'cat', cat=('c', 'b'), ds=ds)
     eq_(ct.n_cases, 30)
     eq_(ct.X[0], 'c')
     eq_(ct.X[-1], 'b')
+    assert_raises(ValueError, Celltable, 'Y', 'cat', cat=('c', 'e'), ds=ds)
 
     ct = Celltable('Y', 'A', match='rm', ds=ds)
     eq_(ct.n_cases, 30)

@@ -763,6 +763,11 @@ class Celltable(object):
                 if not isinteraction(X):
                     cat = tuple(str(c) for c in cat)
 
+                # make sure all categories are in data
+                missing = [c for c in cat if c not in X.cells]
+                if missing:
+                    raise ValueError("Categories not in data: %s" % ', '.join(missing))
+
                 # apply cat
                 sort_idx = X.sort_idx(order=cat)
                 X = X[sort_idx]
