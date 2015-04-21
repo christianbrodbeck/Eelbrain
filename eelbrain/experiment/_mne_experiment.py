@@ -598,7 +598,7 @@ class MneExperiment(FileTree):
         self._register_compound('eeg-kind', ('sns-kind', 'reference'))
 
         # Define make handlers
-        self._bind_make('cached-raw-file', self.make_raw)
+        self._bind_cache('cached-raw-file', self.make_raw)
         self._bind_cache('cov-file', self.make_cov)
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
