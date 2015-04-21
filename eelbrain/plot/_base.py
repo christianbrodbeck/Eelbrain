@@ -66,11 +66,9 @@ import subprocess
 import tempfile
 
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 import PIL
 
-from .._utils import LazyProperty
 from .._utils.subp import command_exists
 from ..fmtxt import Image, texify
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps
@@ -637,7 +635,7 @@ def str2tex(txt):
     """If matplotlib usetex is enabled, replace tex sensitive characters in the
     string.
     """
-    if txt and plt.rcParams['text.usetex']:
+    if txt and mpl.rcParams['text.usetex']:
         return texify(txt)
     else:
         return txt
@@ -647,18 +645,21 @@ class mpl_figure:
     "cf. _wxgui.mpl_canvas"
     def __init__(self, **fig_kwargs):
         "creates self.figure and self.canvas attributes and returns the figure"
-        self.figure = plt.figure(**fig_kwargs)
+        from matplotlib import pyplot
+
+        self._plt = pyplot
+        self.figure = pyplot.figure(**fig_kwargs)
         self.canvas = self.figure.canvas
 
     def Close(self):
-        plt.close(self.figure)
+        self._plt.close(self.figure)
 
     def SetStatusText(self, text):
         pass
 
     def Show(self):
         if mpl.get_backend() == 'WXAgg' and do_autorun():
-            plt.show()
+            self._plt.show()
 
     def redraw(self, axes=[], artists=[]):
         "Adapted duplicate of mpl_canvas.FigureCanvasPanel"

@@ -8,12 +8,10 @@ import logging
 
 import numpy as np
 import scipy.stats  # without this sp.stats is not available
-import matplotlib.pyplot as plt
 import matplotlib as mpl
 
 from .._stats import test, stats
-from .._data_obj import (asfactor, isvar, asvar, ascategorial, assub, cellname,
-                         Celltable)
+from .._data_obj import asvar, ascategorial, assub, cellname, Celltable
 from ._base import _EelFigure, LegendMixin, str2tex, frame_title
 from ._colors import find_cell_colors
 
@@ -388,7 +386,7 @@ class Boxplot(_SimpleFigure):
                 ax.add_patch(poly)
         if defaults['mono']:
             for itemname in bp:
-                plt.setp(bp[itemname], color='black')
+                bp[itemname].set_color('black')
 
         # labelling
         y_min = np.max(np.hstack(all_data))
@@ -1193,6 +1191,7 @@ def boxcox_explore(Y, params=[-1, -.5, 0, .5, 1], crange=False, ax=None, box=Tru
         y.append(xi)
 
     if not ax:
+        import matplotlib.pyplot as plt
         plt.figure()
         ax = plt.subplot(111)
 

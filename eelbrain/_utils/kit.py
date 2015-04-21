@@ -9,7 +9,6 @@ import re
 import tempfile
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 __all__ = ['MarkerFile']
 
@@ -84,6 +83,8 @@ class MarkerFile:
 
     def plot_mpl(self, marker='+k', ax=None, title=True):
         "returns: axes object with 3d plot"
+        import matplotlib.pyplot as plt
+
         if ax is None:
             fig = plt.figure()
             ax = fig.gca(projection='3d')

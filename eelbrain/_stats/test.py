@@ -8,7 +8,6 @@ import itertools
 
 import numpy as np
 import scipy.stats
-from matplotlib import pyplot as P
 
 from .. import fmtxt
 from .._data_obj import (ascategorial, asfactor, assub, asvar, cellname,
@@ -777,38 +776,33 @@ class bootstrap_pairwise(object):
             table.cell(fmtxt.p(p2, stars=s2))
         return table
 
-    def plot_t_dist(self, ax=None):
+    def plot_t_dist(self):
         """
         After:
         http://stackoverflow.com/questions/4150171/how-to-create-a-density-plot-in-matplotlib
         """
-        if ax is None:
-            fig = P.figure()
-            ax = P.axes()
+        from matplotlib import pyplot
+
         t = self.t_resampled
         density = scipy.stats.gaussian_kde(t)
 #        density.covariance_factor = lambda : .25
 #        density._compute_covariance()
         xs = np.linspace(0, max(t), 200)
-        P.plot(xs, density(xs))
+        pyplot.plot(xs, density(xs))
 
-    def plot_dv_dist(self, ax=None):
-        if ax is None:
-            fig = P.figure()
-            ax = P.axes()
+    def plot_dv_dist(self):
+        from matplotlib import pyplot
 
         xs = np.linspace(np.min(self._group_data), np.max(self._group_data), 200)
         for i, name in enumerate(self._group_names):
             density = scipy.stats.gaussian_kde(self._group_data[i])
-            P.plot(xs, density(xs), label=name)
-        P.legend()
+            pyplot.plot(xs, density(xs), label=name)
+        pyplot.legend()
 
     def test_param(self, t):
-        p = scipy.stats.t.sf(np.abs(t), self._group_size - 1) * 2
-        return p
+        return scipy.stats.t.sf(np.abs(t), self._group_size - 1) * 2
 
     def test_boot(self, t):
         "t: scalar or array; returns p for each t"
         test = self.t_resampled[:, None] > np.abs(t)
-        p = np.sum(test, axis=0) / self.t_resampled.shape[0]
-        return p
+        return np.sum(test, axis=0) / self.t_resampled.shape[0]

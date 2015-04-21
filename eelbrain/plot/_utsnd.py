@@ -5,11 +5,9 @@ Plot multidimensional uniform time series.
 from __future__ import division
 
 from itertools import izip
-import logging
 import math
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from .. import _data_obj as _dta
 from .._names import INTERPOLATE_CHANNELS
@@ -288,84 +286,6 @@ class Array(_EelFigure):
         for p in self.plots:
             p.set_vlim(vmax, meas, vmin)
         self.draw()
-
-
-def _t_axes(rect, xmin=-.5, xmax=1., vmax=1.5, vbar=1., markevery=.5, ticks=False):
-    """
-    creates and returns a new t-axes using rect
-
-    vbar: extent of the vertical bar at the origin (+vbar to -vbar)
-
-    """
-    ax = plt.axes(rect, frameon=False)
-    ax.set_axis_off()
-
-    # vertical bar
-    plt.plot([0, 0], [-vbar, vbar], 'k',
-           marker='_', mec='k', mew=1, mfc='k')
-
-    # horizontal bar
-    xdata = np.arange(-markevery, xmax + 1e-5, markevery)
-    xdata[0] = xmin
-    plt.plot(xdata, xdata * 0, 'k', marker='|', mec='k', mew=1, mfc='k')
-    logging.debug("xdata: %s" % str(xdata))
-
-    # labels
-    if ticks:
-        ax.text(xmax, vbar * .1, r"$%s s$" % xmax, verticalalignment='bottom', horizontalalignment='center')
-        ax.text(-vbar * .05, vbar, r"$%s \mu V$" % vbar, verticalalignment='center', horizontalalignment='right')
-        ax.text(-vbar * .05, -vbar, r"$-%s \mu V$" % vbar, verticalalignment='center', horizontalalignment='right')
-    ax.set_ylim(-vmax, vmax)
-    ax.set_xlim(xmin, xmax)
-    return ax
-
-
-
-def _axgrid_sensors(sensorLocs2d, figsize=(8, 8),
-                    spacing=.2, frame=.01, figvstretch=1,
-                    header=0, footer=0,  # in inches
-                    axes_legend_loc='lower left', **axkwargs):
-    """
-    creates topographocally distributed t-axes
-
-     returns
-        - list of t-axes
-        - axes-legend (indicating t and V) (or None if axes_legend_loc == False)
-    """
-    # determine figure size and create figure
-    sensorLocs2d[:, 1] *= figvstretch
-    x, y = sensorLocs2d.max(axis=0) - sensorLocs2d.min(axis=0)
-    ratio = (x + spacing) / (y + spacing)
-    x_size, y_size = figsize
-    if x_size == -1:
-        x_size = y_size * ratio
-    elif y_size == -1:
-        y_size = x_size / ratio
-    # take into account footer & header
-    y_size += footer + header
-    relative_footer = footer / float(y_size)
-    relative_header = header / float(y_size)
-    logging.debug(" _axgrid_sensors determined figsize %s x %s" % (x_size, y_size))
-    fig = plt.figure(figsize=(x_size, y_size))
-    # determine axes locations
-    locs = sensorLocs2d
-    # normalize range to 0--1
-    locs -= locs.min(0)
-    locs /= locs.max(0)
-    # locs--> lower left points of axes
-    locs[:, 0] *= (1 - spacing - 2 * frame)
-    locs[:, 0] += frame
-    locs[:, 1] *= (1 - spacing - 2 * frame - relative_header - relative_footer)
-    locs[:, 1] += frame + relative_footer
-    # print locs
-    # add axes
-    axes = [ _t_axes([x, y, spacing, spacing], **axkwargs) for x, y in locs ]
-    if axes_legend_loc:
-        x, y = _base._loc(axes_legend_loc, size=(1.1 * spacing, spacing), frame=frame)
-        axes_legend = _t_axes([x, y, spacing, spacing], ticks=True, **axkwargs)
-    else:
-        axes_legend = None
-    return axes, axes_legend
 
 
 class _plt_utsnd:

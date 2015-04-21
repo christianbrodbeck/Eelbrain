@@ -8,7 +8,7 @@ import os
 
 import numpy as np
 import matplotlib as mpl
-import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 from .._data_obj import Datalist, as_sensor
 from ._base import _EelFigure
@@ -40,17 +40,9 @@ class _plt_connectivity:
         for c, r in connectivity:
             x = self.locs[[c, r], 0]
             y = self.locs[[c, r], 1]
-            line = plt.Line2D(x, y, **linestyle)
+            line = Line2D(x, y, **linestyle)
             self.ax.add_line(line)
             self._h.append(line)
-
-
-def _ax_map2d_fast(ax, sensors, proj='default',
-                   m='x', mew=.5, mc='b', ms=3,):
-    locs = sensors.get_locs_2d(proj=proj)
-    h = plt.plot(locs[:, 0], locs[:, 1], m, color=mc, ms=ms, markeredgewidth=mew)
-
-    return h
 
 
 class _ax_map2d:
@@ -668,6 +660,8 @@ class SensorMap(SensorMapMixin, _EelFigure):
 
 def map3d(sensors, marker='c*', labels=False, head=0):
     """3d plot of a Sensors instance"""
+    import matplotlib.pyplot as plt
+
     sensors = as_sensor(sensors)
 
     locs = sensors.locs
