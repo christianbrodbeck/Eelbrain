@@ -1,4 +1,0 @@
-#!/usr/bin/env python
-
-import eelbrain._wxterm
-eelbrain._wxterm.launch()
