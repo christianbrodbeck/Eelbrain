@@ -399,6 +399,7 @@ class MneExperiment(FileTree):
             if hasattr(cls, '_values'):
                 self._templates.update(cls._values)
 
+        ########################################################################
         # variables
         self.variables = self.variables.copy()
         for k, v in self.variables.iteritems():
@@ -418,6 +419,7 @@ class MneExperiment(FileTree):
                 raise TypeError("Invalid trigger code in variable "
                                 "definition : %s" % repr(trigger))
 
+        ########################################################################
         # epochs
         epochs = {}
         super_epochs = {}
@@ -474,13 +476,13 @@ class MneExperiment(FileTree):
                 epoch['_rej_file_epochs'] = _rej_epochs(epoch)
         self.epochs = epochs
 
-
+        ########################################################################
         # store epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
         epoch_rejection.update(self.epoch_rejection)
         self.epoch_rejection = epoch_rejection
 
-
+        ########################################################################
         # tests
         tests = {}
         for test, params in self.tests.iteritems():
@@ -494,8 +496,12 @@ class MneExperiment(FileTree):
                 if kind == 'anova':
                     params = {'kind': kind, 'model': model, 'x': test_parameter}
                 elif kind == 'ttest_rel':
-                    c1, tail, c0 = re.match(r"\s*([\w|]+)\s*([<=>])\s*([\w|]+)",
-                                            test_parameter).groups()
+                    m = re.match(r"\s*([\w|]+)\s*([<=>])\s*([\w|]+)$", test_parameter)
+                    if m is None:
+                        raise ValueError("The contrast definition %s for test "
+                                         "%s could not be parsed." %
+                                         (repr(test_parameter), test))
+                    c1, tail, c0 = m.groups()
                     if '|' in c1:
                         c1 = tuple(c1.split('|'))
                         c0 = tuple(c0.split('|'))
@@ -544,6 +550,8 @@ class MneExperiment(FileTree):
             tests[test] = params
         self._tests = tests
 
+        ########################################################################
+        # Experiment class setup
         FileTree.__init__(self)
 
         # register variables with complex behavior
