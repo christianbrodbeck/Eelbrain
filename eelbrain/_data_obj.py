@@ -3319,8 +3319,8 @@ class NDVar(object):
 
         Notes
         -----
-        The model is fit with :func:`scipy.linalg.leastsq`. The intercept is
-        generated internally, and betas for the intercept are not returned.
+        The intercept is generated internally, and betas for the intercept are
+        not returned.
 
         See Also
         --------
