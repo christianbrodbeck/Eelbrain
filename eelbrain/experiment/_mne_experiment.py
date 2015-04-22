@@ -2460,8 +2460,15 @@ class MneExperiment(FileTree):
 
         if self.get('modality') != '':
             raise NotImplementedError("Source reconstruction with EEG")
-        mne.make_forward_solution(raw, trans, src, bem, dst, ignore_ref=True,
-                                  overwrite=True)
+        src = mne.read_source_spaces(src)
+        fwd = mne.make_forward_solution(raw, trans, src, bem, ignore_ref=True)
+        for s, s0 in izip(fwd['src'], src):
+            if s['nuse'] != s0['nuse']:
+                msg = ("The forward solution contains fewer sources than the "
+                       "source space. This could be due to a corrupted bem "
+                       "file with source outside the inner skull surface.")
+                raise RuntimeError(msg)
+        mne.write_forward_solution(dst, fwd, True)
 
     def make_labels(self, redo=False):
         dst = self.get('label-file', mkdir=True)
