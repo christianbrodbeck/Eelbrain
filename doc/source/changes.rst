@@ -15,6 +15,8 @@ New in 0.15
 * API: :func:`test.anova` is now a function with a slightly changed signature.
   The old class has been renamed to :class:`test.ANOVA`.
 * API: :func:`test.oneway` was removed. Use :func:`test.anova`.
+* API: the default value of the :class:`plot.Timeplot` parameter `bottom`
+  changed from `0` to `None` (determined by the data).
 
 
 New in 0.14

@@ -677,7 +677,7 @@ class Timeplot(_EelFigure, LegendMixin):
     def __init__(self, Y, categories, time, match=None, sub=None, ds=None,
                  # data plotting
                  main=np.mean, spread='sem', x_jitter=False,
-                 bottom=0, top=None,
+                 bottom=None, top=None,
                  # labelling
                  ylabel=True, xlabel=True, timelabels=None, legend='upper right',
                  colors=None, hatch=False, markers=True, *args, **kwargs):
