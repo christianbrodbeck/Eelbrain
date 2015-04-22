@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''
 Tools for loading data from mne's fiff files.
 
@@ -689,9 +690,9 @@ def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
         summary_vmax = 0.1 * vmax if vmax else None
         summary_info = _cs.meg_info(summary_vmax, mult)
     elif data == 'grad':
-        info_ = _cs.meg_info(vmax, mult, 'T/cm')
+        info_ = _cs.meg_info(vmax, mult, 'T/cm', u'∆U')
         summary_vmax = 0.1 * vmax if vmax else None
-        summary_info = _cs.meg_info(summary_vmax, mult, 'T/cm')
+        summary_info = _cs.meg_info(summary_vmax, mult, 'T/cm', u'∆U')
     else:
         raise ValueError("data=%r" % data)
     info_.update(proj='z root', samplingrate=epochs.info['sfreq'],

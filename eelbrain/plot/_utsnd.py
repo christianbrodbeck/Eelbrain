@@ -103,9 +103,8 @@ class _plt_im_array(object):
 
 
 class _ax_im_array(object):
-    def __init__(self, ax, layers, x='time', xlabel=True, ylabel=True,
-                 title=None, tick_spacing=0.1, interpolation=None, vlims={},
-                 cmaps={}, contours={}):
+    def __init__(self, ax, layers, x='time', title=None, interpolation=None,
+                 vlims={}, cmaps={}, contours={}):
         """
         plots segment data as im
 
@@ -139,40 +138,6 @@ class _ax_im_array(object):
                               vlims, cmaps, contours)
             self.layers.append(p)
             overlay = True
-
-        xlabel = _base._axlabel(x, xlabel)
-        if xlabel:
-            ax.set_xlabel(xlabel)
-
-        if ylabel:
-            if ylabel is True:
-                ylabel = ydim.name
-            ax.set_ylabel(ylabel)
-
-        # x-ticks
-        tickstart = math.ceil(xdim[0] / tick_spacing) * tick_spacing
-        tickstop = xdim[-1] + tick_spacing / 1e4
-        if tickstop - tickstart > tick_spacing:
-            ticks = np.arange(tickstart, tickstop, tick_spacing)
-            if len(ticks) > 2 and ticks[0] < 0 and ticks[0] == xdim[0]:
-                ticks = ticks[1:]
-        else:
-            ticks = np.array([xdim[0], xdim[-1]])
-        ax.xaxis.set_ticks(ticks)
-        ticklabels = _base._ticklabels(ticks, xdim.name)
-        ax.xaxis.set_ticklabels(ticklabels)
-        if xdim.name == 'time':
-            ax.x_fmt = "t = %.3f s"
-
-        # y-ticks
-        if y == 'sensor':  # make sure y-ticklabels are all integers
-            locs = ax.yaxis.get_ticklocs()
-            if any(locs != locs.round()):
-                idx = np.where(locs == locs.round())[0]
-                locs = locs[idx]
-                labels = map(lambda x: str(int(x)), locs)
-                ax.yaxis.set_ticks(locs)
-                ax.yaxis.set_ticklabels(labels)
 
         # title
         if title is None:
@@ -235,7 +200,7 @@ class Array(_EelFigure):
     """
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True, ds=None,
                  x='time', vmax=None, vmin=None, *args, **kwargs):
-        epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
+        epochs, (xdim, ydim) = _base.unpack_epochs_arg(epochs, (x, None), Xax, ds)
 
         nax = len(epochs)
         _EelFigure.__init__(self, "Array Plot", nax, 4, 2, *args, **kwargs)
@@ -243,12 +208,11 @@ class Array(_EelFigure):
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, False, vmax, vmin)
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
-            ylabel_ = ylabel if i == 1 else None
-            xlabel_ = xlabel if i == nax - 1 else None
-            p = _ax_im_array(ax, layers, x, xlabel_, ylabel_,
-                             vlims=vlims)
+            p = _ax_im_array(ax, layers, x, vlims=vlims)
             self.plots.append(p)
 
+        self._configure_xaxis_dim(xdim, xlabel)
+        self._configure_yaxis_dim(ydim, ylabel)
         self._show()
 
     def add_contour(self, meas, level, color='k'):
@@ -387,14 +351,9 @@ class _ax_butterfly(object):
         ax.set_xlim(min(l.epoch.time[0] for l in self.layers),
                     max(l.epoch.time[-1] for l in self.layers))
 
-        ticks = ax.xaxis.get_ticklocs()
-        ticklabels = _base._ticklabels(ticks, 'time')
-        ax.xaxis.set_ticklabels(ticklabels)
-
     #    ax.yaxis.set_offset_position('right')
         ax.yaxis.offsetText.set_va('top')
 
-        ax.x_fmt = "t = %.3f s"
         if isinstance(title, str):
             ax.set_title(title.format(name=name))
 
@@ -440,11 +399,11 @@ class Butterfly(_EelFigure):
     """
     def __init__(self, epochs, Xax=None, sensors=None, axtitle='{name}',
                  xlabel=True, ylabel=True, color=None, ds=None, *args, **kwargs):
-        epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
+        epochs, (xdim, _) = _base.unpack_epochs_arg(epochs, ('time', None), Xax, ds)
         _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, *args,
                             **kwargs)
-        self._set_xlabel_dim('time', xlabel)
-        self._set_ylabel(epochs[0][0], ylabel)
+        self._configure_xaxis_dim(xdim, xlabel)
+        self._configure_yaxis(epochs[0][0], ylabel)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, True)
@@ -494,8 +453,6 @@ class _ax_bfly_epoch:
             self.extrema = None
             self.lines = _plt_utsnd(ax, epoch, color=color, lw=lw,
                                     antialiased=antialiased)
-
-        ax.x_fmt = "t = %.3f s"
 
         self.ax = ax
         self.epoch = epoch

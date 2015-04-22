@@ -48,7 +48,7 @@ class Topomap(SensorMapMixin, _EelFigure):
     def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
                  res=200, interpolation='nearest', ds=None, vmax=None,
                  vmin=None, *args, **kwargs):
-        epochs = self._epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
+        epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         nax = len(epochs)
 
         _EelFigure.__init__(self, "Topomap", nax, 7, 1, *args, **kwargs)
@@ -110,7 +110,7 @@ class TopomapBins(_EelFigure):
 
     def __init__(self, epochs, Xax=None, bin_length=0.05, tstart=None,
                  tstop=None, ds=None, vmax=None, vmin=None, *args, **kwargs):
-        epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
+        epochs, _ = _base.unpack_epochs_arg(epochs, ('sensor', 'time'), Xax, ds)
         epochs = [[l.bin(bin_length, tstart, tstop) for l in layers]
                   for layers in epochs]
 
@@ -185,14 +185,16 @@ class TopoButterfly(_EelFigure):
      - ``Left arrow``: Decrement the current topomap time.
      - ``t``: open a TopoMap plot for the region under the mouse pointer.
     """
+    _default_xlabel_ax = -2
     _make_axes = False
 
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, vmax=None,
                  vmin=None, *args, **kwargs):
-        epochs = self._epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
+        epochs, _ = _base.unpack_epochs_arg(epochs, ('sensor', 'time'), Xax, ds)
         n_plots = len(epochs)
+        self._epochs = epochs
 
         # create figure
         nax = 3 * n_plots  # for layout pretend butterfly & topo are 3 axes
@@ -264,9 +266,6 @@ class TopoButterfly(_EelFigure):
                                      vlims)
             self.bfly_plots.append(p)
 
-            if i != n_plots - 1:
-                ax1.xaxis.set_ticklabels([])
-
             self._xvalues = np.union1d(self._xvalues, p._xvalues)
 
             # find and print epoch title
@@ -279,8 +278,10 @@ class TopoButterfly(_EelFigure):
                          ha='center', va='center', rotation='vertical')
                 break
 
-        self._set_xlabel_dim('time', xlabel, -2)
-        self._set_ylabel(epochs[0][0], ylabel)
+        self._configure_xaxis_dim('time', xlabel, self.bfly_axes)
+        self._configure_yaxis(epochs[0][0], ylabel, self.bfly_axes)
+        for ax in self.bfly_axes[:-1]:
+            ax.xaxis.set_ticklabels(())
 
         # setup callback
         self.canvas.mpl_connect('button_press_event', self._on_click)
@@ -293,7 +294,6 @@ class TopoButterfly(_EelFigure):
 
     def _draw_topo(self, t, draw=True):
         self._current_t = t
-#         t_str = "t = %.3f" % t  # redraw does not properly erase the old text
         epochs = [[l.sub(time=t) for l in layers]
                   for layers in self._epochs]
 
@@ -335,8 +335,8 @@ class TopoButterfly(_EelFigure):
 
         # add time label
         ax = self.topo_axes[-1]
-        t_str = "t = %s" % _base._ticklabel(t, 'time', True)
-        self._t_label = ax.text(.5, -0.1, t_str, ha='center', va='top')
+        self._t_label = ax.text(.5, -0.1, "t = %s ms" % round(t * 1e3),
+                                ha='center', va='top')
 
         self.canvas.draw()  # otherwise time label does not get redrawn
 
@@ -552,13 +552,12 @@ class _TopoWindow:
         self.plot = None
 
     def update(self, t=None):
-        if t != None:
+        if t is not None:
             if self.t_line:
                 self.t_line.remove()
             self.t_line = self.parent.ax.axvline(t, c='r')
 
-            t_ms = _base._convert(t, 'time')
-            t_str = "%i ms" % round(t_ms)
+            t_str = "%i ms" % round(t * 1e3)
             if self.pointer:
                 self.pointer.set_axes(self.parent.ax)
                 self.pointer.xy = (t, 1)
@@ -638,7 +637,7 @@ class TopoArray(_EelFigure):
 
     def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
                  vmax=None, vmin=None, *args, **kwargs):
-        epochs = _base.unpack_epochs_arg(epochs, 2, Xax, ds)
+        epochs, _ = _base.unpack_epochs_arg(epochs, ('time', 'sensor'), Xax, ds)
         n_epochs = len(epochs)
         n_topo_total = ntopo * n_epochs
 
@@ -673,8 +672,10 @@ class TopoArray(_EelFigure):
         self._vlims = vlims  # keep track of these for replotting topomaps
         self._cmaps = {}
         self._contours = {}
+        self._default_xlabel_ax = -1 - ntopo
 
         # im_array plots
+        self._array_axes = []
         self._array_plots = []
         self._topo_windows = []
         ax_height = .4 + .07 * (not title)
@@ -688,6 +689,8 @@ class TopoArray(_EelFigure):
             ax.ID = i
             ax.type = 'main'
             im_plot = _utsnd._ax_im_array(ax, layers, vlims=vlims)
+            self._axes.append(ax)
+            self._array_axes.append(ax)
             self._array_plots.append(im_plot)
             if i > 0:
                 ax.yaxis.set_visible(False)
@@ -701,6 +704,7 @@ class TopoArray(_EelFigure):
                 ax.type = 'window'
                 win = _TopoWindow(ax, im_plot, vlims=self._vlims,
                                   cmaps=self._cmaps, contours=self._contours)
+                self._axes.append(ax)
                 self._topo_windows.append(win)
 
         # if t argument is provided, set topo-map time points
@@ -708,6 +712,9 @@ class TopoArray(_EelFigure):
             if np.isscalar(t):
                 t = [t]
             self.set_topo_ts(*t)
+
+        self._configure_xaxis_dim('time', True, self._array_axes)
+        self._configure_yaxis_dim('sensor', True, self._array_axes)
 
         # setup callback
         self._selected_window = None

@@ -392,24 +392,18 @@ class SensorMaps(_EelFigure):
 
         # back
         ax = self.ax0 = self.figure.add_subplot(2, 2, 1)
-        ax.y_fmt = 'z = %.3g'
-        ax.x_fmt = 'x = %.3g'
         ax.proj = 'y-'
         ax.extent = False
         self._h0 = _ax_map2d(ax, sensors, proj=ax.proj, extent=ax.extent)
 
         # left
         ax = self.ax1 = self.figure.add_subplot(2, 2, 2, sharey=self.ax0)
-        ax.x_fmt = 'y = %.3g'
-        ax.y_fmt = 'z = %.3g'
         ax.proj = 'x-'
         ax.extent = False
         self._h1 = _ax_map2d(ax, sensors, proj=ax.proj, extent=ax.extent)
 
         # top
         ax = self.ax2 = self.figure.add_subplot(2, 2, 3, sharex=self.ax0)
-        ax.x_fmt = 'x = %.3g'
-        ax.y_fmt = 'y = %.3g'
         ax.proj = 'z+'
         ax.extent = False
         self._h2 = _ax_map2d(ax, sensors, proj=ax.proj, extent=ax.extent)
@@ -421,8 +415,6 @@ class SensorMaps(_EelFigure):
 
         # proj
         ax = self.ax3 = self.figure.add_subplot(2, 2, 4)
-        ax.x_fmt = ' '
-        ax.y_fmt = ' '
         ax.proj = proj
         ax.extent = 1
         self._h3 = _ax_map2d(ax, sensors, proj=ax.proj, extent=ax.extent)

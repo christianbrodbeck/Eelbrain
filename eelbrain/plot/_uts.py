@@ -2,6 +2,7 @@
 # author: Christian Brodbeck
 from __future__ import division
 
+from itertools import izip
 import operator
 from warnings import warn
 
@@ -184,8 +185,8 @@ class UTSStat(_EelFigure, LegendMixin):
                 self._plots.append(p)
                 legend_handles.update(p.legend_handles)
 
-        self._set_ylabel(ct.Y, ylabel)
-        self._set_xlabel_dim(xdim, xlabel)
+        self._configure_yaxis(ct.Y, ylabel)
+        self._configure_xaxis_dim(xdim, xlabel)
         LegendMixin.__init__(self, legend, legend_handles)
         self._update_ui_cluster_button()
         self._show()
@@ -307,13 +308,14 @@ class UTS(_EelFigure):
     """
     def __init__(self, epochs, Xax=None, axtitle='{name}', ds=None,
                  xlabel=True, ylabel=True, *args, **kwargs):
-        epochs = self.epochs = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
+        epochs, _ = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, *args, **kwargs)
-        self._set_ylabel(epochs[0][0], ylabel)
+        self._configure_yaxis(epochs[0][0], ylabel)
 
-        for ax, epoch in zip(self._axes, epochs):
+        for ax, epoch in izip(self._axes, epochs):
             _ax_uts(ax, epoch, axtitle, xlabel)
 
+        self.epochs = epochs
         self._show()
 
 
@@ -321,8 +323,6 @@ class _ax_uts_stat:
 
     def __init__(self, ax, ct, colors, main, error, dev_data, title, xdim, xlim,
                  invy, bottom, top, hline, clusters, pmax, ptrend):
-        ax.x_fmt = "t = %.3f s"
-
         # stat plots
         self.stat_plots = []
         self.legend_handles = {}
@@ -365,10 +365,6 @@ class _ax_uts_stat:
         else:
             xmin, xmax = xlim
             ax.set_xlim(xmin, xmax)
-        ax.x_fmt = "t = %.3f s"
-        ticks = ax.xaxis.get_ticklocs()
-        ticklabels = _base._ticklabels(ticks, 'time')
-        ax.xaxis.set_ticklabels(ticklabels)
 
         if invy:
             y0, y1 = ax.get_ylim()
@@ -410,7 +406,7 @@ class UTSClusters(_EelFigure):
                  overlay=False, *args, **kwargs):
         clusters_ = res.clusters
 
-        epochs = self.epochs = _base.unpack_epochs_arg(res, 1)
+        epochs, (xdim,) = _base.unpack_epochs_arg(res, 1)
 
         # create figure
         n = len(epochs)
@@ -437,12 +433,12 @@ class UTSClusters(_EelFigure):
             else:
                 cs = None
 
-            cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend,
-                                   'time', axtitle)
+            cax = _ax_uts_clusters(ax, stat, cs, colors[i], pmax, ptrend, xdim,
+                                   axtitle)
             self._caxes.append(cax)
 
-        self._set_ylabel(epochs[0][0], True)
-        self._set_xlabel_dim('time', True)
+        self._configure_yaxis(epochs[0][0], True)
+        self._configure_xaxis_dim(xdim, True)
         self.clusters = clusters_
         self._show()
 
@@ -485,11 +481,6 @@ def _ax_uts(ax, layers, title, bottom=None, top=None, invy=False, color=None,
     l0 = layers[0]
     x = l0.get_dim(xdim)
     ax.set_xlim(x[0], x[-1])
-    ax.x_fmt = "t = %.3f s"
-
-    ticks = ax.xaxis.get_ticklocs()
-    ticklabels = _base._ticklabels(ticks, 'time')
-    ax.xaxis.set_ticklabels(ticklabels)
 
     if title:
         if 'name' in title:

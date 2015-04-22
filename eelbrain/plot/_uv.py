@@ -346,7 +346,7 @@ class Boxplot(_SimpleFigure):
         frame_title_ = frame_title("Boxplot", ct.Y, ct.X)
         _SimpleFigure.__init__(self, frame_title_, *args, **kwargs)
         self._set_xlabel_categorial(xlabel, ct.X)
-        self._set_ylabel(ct.Y, ylabel)
+        self._configure_yaxis(ct.Y, ylabel)
         ax = self._axes[0]
 
         # determine ax lim
@@ -511,7 +511,7 @@ class Barplot(_SimpleFigure):
         frame_title_ = frame_title("Barplot", ct.Y, ct.X)
         _SimpleFigure.__init__(self, frame_title_, *args, **kwargs)
         self._set_xlabel_categorial(xlabel, ct.X)
-        self._set_ylabel(ct.Y, ylabel)
+        self._configure_yaxis(ct.Y, ylabel)
 
         x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
                                       colors, bottom, top, c=c, edgec=edgec,
@@ -724,8 +724,8 @@ class Timeplot(_EelFigure, LegendMixin):
 
         # get axes
         _EelFigure.__init__(self, "Timeplot", 1, 5, 1, *args, **kwargs)
-        self._set_ylabel(Y, ylabel)
-        self._set_xlabel(time, xlabel)
+        self._configure_yaxis(Y, ylabel)
+        self._configure_xaxis(time, xlabel)
         ax = self._axes[0]
 
         # categories
@@ -897,8 +897,8 @@ class Correlation(_EelFigure, LegendMixin):
         # figure
         frame_title_ = frame_title("Correlation", Y, X, cat)
         _EelFigure.__init__(self, frame_title_, 1, 5, 1, *args, **kwargs)
-        self._set_ylabel(Y, ylabel)
-        self._set_xlabel(X, xlabel)
+        self._configure_yaxis(Y, ylabel)
+        self._configure_xaxis(X, xlabel)
 
         ax = self._axes[0]
         legend_handles = {}
@@ -972,8 +972,8 @@ class Regression(_EelFigure, LegendMixin):
         # figure
         frame_title_ = frame_title("Regression", Y, X, cat)
         _EelFigure.__init__(self, frame_title_, 1, 5, 1, *args, **kwargs)
-        self._set_xlabel(X, xlabel)
-        self._set_ylabel(Y, ylabel)
+        self._configure_xaxis(X, xlabel)
+        self._configure_yaxis(Y, ylabel)
 
         ax = self._axes[0]
         legend_handles = {}

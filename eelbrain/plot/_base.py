@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Implementation
 ==============
@@ -66,6 +67,8 @@ import subprocess
 import tempfile
 
 import matplotlib as mpl
+from matplotlib.figure import SubplotParams
+from matplotlib.ticker import FormatStrFormatter, FuncFormatter, ScalarFormatter
 import numpy as np
 import PIL
 
@@ -122,66 +125,61 @@ def configure(frame=True, autorun=None, show=True):
     backend['show'] = bool(show)
 
 
-_unit = {'time': 'ms'}
-_conversion = {'time': {'ms': 1e3}}
-_fmt = {'time': '%i'}
+meas_display_unit = {'time': u'ms',
+                     'V': u'µV',
+                     'B': u'pT',
+                     'sensor': int}
+unit_format = {u'ms': 1e3,
+               u'mV': 1e3,
+               u'µV': 1e6,
+               u'pT': 1e12,
+               int: int}
+scale_formatters = {1: ScalarFormatter(),
+                    1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
+                    1e6: FuncFormatter(lambda x, pos: '%g' % (1e6 * x)),
+                    1e9: FuncFormatter(lambda x, pos: '%g' % (1e9 * x)),
+                    1e12: FuncFormatter(lambda x, pos: '%g' % (1e12 * x)),
+                    1e15: FuncFormatter(lambda x, pos: '%g' % (1e15 * x)),
+                    int: FormatStrFormatter('%i')}
 
 
-def _convert(x, dimname):
-    """Convert known units from SI for plotting
-
-    Parameters
-    ----------
-    x : scalar | array_like
-        Value in SI.
-    dimname : str
-        Name of the dimension (e.g., "time")
+def find_axis_params_data(v, label):
     """
-    unit = _unit[dimname]
-    u = _conversion[dimname][unit]
-    return x * u
+    Returns
+    -------
+    tick_formatter : Formatter
+        Matplotlib axis tick formatter.
+    label : str | None
+        Axis label.
+    """
+    meas = v.info.get('meas', None)
+    data_unit = v.info.get('unit', None)
 
+    if meas in meas_display_unit:
+        unit = meas_display_unit[meas]
+        scale = unit_format[unit]
+        if data_unit in unit_format:
+            scale /= unit_format[data_unit]
+    else:
+        scale = 1
+        unit = data_unit
 
-def _ticklabel(tick, dimname, unit=False):
-    "Convert value to string if default units exist"
-    fmt = _fmt.get(dimname, None)
-    label = _convert(tick, dimname)
-    if fmt:
-        label = fmt % label
-    if unit is True:
-        unit = _unit[dimname]
-    if unit:
-        label = ' '.join((label, unit))
-    return label
-
-
-def _ticklabels(ticks, dimname):
-    "Convert values to strings if default units exist"
-    fmt = _fmt.get(dimname, None)
-    ticklabels = _convert(ticks, dimname)
-    if fmt:
-        ticklabels = [fmt % lbl for lbl in ticklabels]
-    return ticklabels
-
-
-def _data_ax_label(v, label):
     if label is True:
-        meas = v.info.get('meas', None)
-        unit = v.info.get('unit', None)
         if meas and unit and meas != unit:
-            return '%s [%s]' % (meas, unit)
+            label = '%s [%s]' % (meas, unit)
         elif meas:
-            return meas
+            label = meas
         elif unit:
-            return meas
+            label = unit
         elif v.name:
-            return v.name
+            label = v.name
         else:
-            return None
-    return label
+            label = None
+
+    return scale_formatters[scale], label
 
 
-def _axlabel(dimname, label=True):
+def find_axis_params_dim(meas, label):
     """Find an axis label
 
     Parameters
@@ -197,11 +195,20 @@ def _axlabel(dimname, label=True):
         Returns the default axis label if label==True, otherwise the label
         argument.
     """
-    if label is True:
-        unit = _unit[dimname]
-        name = dimname.capitalize()
-        label = "%s [%s]" % (name, unit)
-    return label
+    if meas in meas_display_unit:
+        unit = meas_display_unit[meas]
+        scale = unit_format[unit]
+        if label is True:
+            if isinstance(unit, basestring):
+                label = "%s [%s]" % (meas.capitalize(), unit)
+            else:
+                label = meas.capitalize()
+    else:
+        scale = 1
+        if label is True:
+            label = meas.capitalize()
+
+    return scale_formatters[scale], label
 
 
 def find_ct_args(ndvar, overlay, contours={}):
@@ -534,15 +541,49 @@ def fix_vlim_for_cmap(vmin, vmax, cmap):
     return vmin, vmax
 
 
-def unpack_epochs_arg(Y, ndim, Xax=None, ds=None):
+def find_data_dims(ndvar, dims):
+    """Find dimensions in data
+    """
+    if isinstance(dims, int):
+        if ndvar.ndim == dims:
+            return ndvar.dimnames
+        elif ndvar.ndim - 1 == dims:
+            return ndvar.dimnames[1:]
+        else:
+            raise ValueError("NDVar does not have the right number of dimensions")
+    else:
+        if len(dims) == ndvar.ndim:
+            all_dims = list(ndvar.dimnames)
+        elif len(dims) == ndvar.ndim - 1 and ndvar.has_case:
+            all_dims = list(ndvar.dimnames[1:])
+        else:
+            raise ValueError("NDVar does not have the right number of dimensions")
+
+        out_dims = []
+        for dim in dims:
+            if dim is None:
+                for dim in all_dims:
+                    if dim not in dims:
+                        break
+                else:
+                    raise ValueError("NDVar does not have requested dimensions %s" % repr(dims))
+            elif dim not in all_dims:
+                raise ValueError("NDVar does not have requested dimension %s" % dim)
+            out_dims.append(dim)
+            all_dims.remove(dim)
+    return out_dims
+
+
+def unpack_epochs_arg(Y, dims, Xax=None, ds=None):
     """Unpack the first argument to top-level NDVar plotting functions
 
     Parameters
     ----------
     Y : NDVar | list
         the first argument.
-    ndim : int
-        The number of dimensions needed for the plotting function.
+    dims : int | tuple
+        The number of dimensions needed for the plotting function, or tuple
+        with dimension entries (str | None).
     Xax : None | categorial
         A model to divide Y into different axes. Xax is currently applied on
         the first level, i.e., it assumes that Y's first dimension is cases.
@@ -553,6 +594,8 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None):
     -------
     axes_data : list of list of NDVar
         The processed data to plot.
+    dims : tuple of str
+        Names of the dimensions.
 
     Notes
     -----
@@ -567,8 +610,17 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None):
     # get proper Y
     if hasattr(Y, '_default_plot_obj'):
         Y = Y._default_plot_obj
-    if not isinstance(Y, (tuple, list)):
+
+    if isinstance(Y, (tuple, list)):
+        data_dims = None
+        if isinstance(dims, int):
+            ndims = dims
+        else:
+            ndims = len(dims)
+    else:
         Y = asndvar(Y, ds=ds)
+        data_dims = find_data_dims(Y, dims)
+        ndims = len(data_dims)
 
     if Xax is not None and isinstance(Y, (tuple, list)):
         err = ("Xax can only be used to divide Y into different axes if Y is "
@@ -606,7 +658,17 @@ def unpack_epochs_arg(Y, ndim, Xax=None, ds=None):
     else:
         axes = [Y]
 
-    return [unpack_ax(ax, ndim, ds) for ax in axes]
+    axes = [unpack_ax(ax, ndims, ds) for ax in axes]
+    if data_dims is None:
+        for layers in axes:
+            for l in layers:
+                if data_dims is None:
+                    data_dims = find_data_dims(l, dims)
+                else:
+                    find_data_dims(l, data_dims)
+
+    return axes, data_dims
+
 
 def unpack_ax(ax, ndim, ds):
     # returns list of NDVar
@@ -750,8 +812,10 @@ class _EelFigure(object):
      - end the initialization by calling `_EelFigure._show()`
      - add the :py:meth:`_fill_toolbar` method
     """
-    _make_axes = True
     _default_format = 'svg'  # default format when saving for fmtext
+    _default_xlabel_ax = -1
+    _default_ylabel_ax = 0
+    _make_axes = True
 
     def __init__(self, frame_title, nax, axh_default, ax_aspect, tight=True,
                  title=None, frame=True, yaxis=True, *args, **kwargs):
@@ -871,10 +935,6 @@ class _EelFigure(object):
             t_bottom = bbox[0, 1]
             self.figure.subplots_adjust(top=1 - 2 * (1 - t_bottom))
 
-    def _get_statusbar_text(self, event):
-        "subclass to add figure-specific content"
-        return '%s'
-
     def _on_leave_axes(self, event):
         "update the status bar when the cursor leaves axes"
         self._frame.SetStatusText(':-)')
@@ -883,15 +943,9 @@ class _EelFigure(object):
         "update the status bar for mouse movement"
         ax = event.inaxes
         if ax:
-            y_fmt = getattr(ax, 'y_fmt', 'y = %.3g')
-            x_fmt = getattr(ax, 'x_fmt', 'x = %.3g')
-            # update status bar
-            y_txt = y_fmt % event.ydata
-            x_txt = x_fmt % event.xdata
-            pos_txt = ',  '.join((x_txt, y_txt))
-
-            txt = self._get_statusbar_text(event)
-            self._frame.SetStatusText(txt % pos_txt)
+            x = ax.xaxis.get_major_formatter().format_data(event.xdata)
+            y = ax.yaxis.get_major_formatter().format_data(event.ydata)
+            self._frame.SetStatusText('x = %s, y = %s' % (x, y))
 
     def _fill_toolbar(self, tb):
         """
@@ -904,6 +958,40 @@ class _EelFigure(object):
     def close(self):
         "Close the figure."
         self._frame.Close()
+
+    def _configure_xaxis_dim(self, meas, label, axes=None):
+        "Configure the x-axis based on a dimension"
+        if axes is None:
+            axes = self._axes
+        formatter, label = find_axis_params_dim(meas, label)
+        for ax in axes:
+            ax.xaxis.set_major_formatter(formatter)
+        self.set_xlabel(label)
+
+    def _configure_xaxis(self, v, label, axes=None):
+        if axes is None:
+            axes = self._axes
+        formatter, label = find_axis_params_data(v, label)
+        for ax in axes:
+            ax.xaxis.set_major_formatter(formatter)
+        self.set_xlabel(label)
+
+    def _configure_yaxis_dim(self, meas, label, axes=None):
+        "Configure the y-axis based on a dimension"
+        if axes is None:
+            axes = self._axes
+        formatter, label = find_axis_params_dim(meas, label)
+        for ax in axes:
+            ax.yaxis.set_major_formatter(formatter)
+        self.set_ylabel(label)
+
+    def _configure_yaxis(self, v, label, axes=None):
+        if axes is None:
+            axes = self._axes
+        formatter, label = find_axis_params_data(v, label)
+        for ax in axes:
+            ax.yaxis.set_major_formatter(formatter)
+        self.set_ylabel(label)
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
@@ -943,7 +1031,7 @@ class _EelFigure(object):
                 t.set_rotation(rotation)
         self.draw()
 
-    def set_xlabel(self, label, ax=-1):
+    def set_xlabel(self, label, ax=None):
         """Set the label for the x-axis
 
         Parameters
@@ -951,21 +1039,13 @@ class _EelFigure(object):
         label : str
             X-axis label.
         ax : int
-            Axis on which to set the label (default -1).
+            Axis on which to set the label (default is usually the last axis).
         """
+        if ax is None:
+            ax = self._default_xlabel_ax
         self._axes[ax].set_xlabel(label)
 
-    def _set_xlabel(self, v, xlabel):
-        label = _data_ax_label(v, xlabel)
-        if label:
-            self.set_xlabel(label)
-
-    def _set_xlabel_dim(self, dimname, label, ax=-1):
-        label = _axlabel(dimname, label)
-        if label:
-            self.set_xlabel(label, ax)
-
-    def set_ylabel(self, label, ax=0):
+    def set_ylabel(self, label, ax=None):
         """Set the label for the y-axis
 
         Parameters
@@ -973,15 +1053,11 @@ class _EelFigure(object):
         label : str
             Y-axis label.
         ax : int
-            Axis on which to set the label (default 0).
+            Axis on which to set the label (default is usually the first axis).
         """
+        if ax is None:
+            ax = self._default_ylabel_ax
         self._axes[ax].set_ylabel(label)
-
-    def _set_ylabel(self, v, ylabel):
-        "Set the y-axis label based on data"
-        label = _data_ax_label(v, ylabel)
-        if label:
-            self.set_ylabel(label)
 
 
 class Layout():
@@ -1165,9 +1241,8 @@ class Layout():
             top = 1 - (1 - mpl.rcParams['figure.subplot.top']) * size / h
             hspace = mpl.rcParams['figure.subplot.hspace'] * size / h
             wspace = mpl.rcParams['figure.subplot.wspace'] * size / w
-            subplotpars = mpl.figure.SubplotParams(left, bottom, right, top,
+            fig_kwa['subplotpars'] = SubplotParams(left, bottom, right, top,
                                                    wspace, hspace)
-            fig_kwa['subplotpars'] = subplotpars
 
         self.nax = nax
         self.h = h

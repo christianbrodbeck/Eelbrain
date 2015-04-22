@@ -879,18 +879,14 @@ class Frame(EelbrainFrame):  # control
             return
 
         # compose status text
-        y_fmt = getattr(ax, 'y_fmt', 'y = %.3g')
-        x_fmt = getattr(ax, 'x_fmt', 'x = %.3g')
-        y_txt = y_fmt % event.ydata
-        x_txt = x_fmt % event.xdata
-        pos_txt = ',  '.join((x_txt, y_txt))
+        x = ax.xaxis.get_major_formatter().format_data(event.xdata)
+        y = ax.yaxis.get_major_formatter().format_data(event.ydata)
         if ax.ax_idx >= 0:  # single trial plot
-            txt = 'Epoch %i,   %%s' % ax.epoch_idx
+            self.SetStatusText('Epoch %i,   x = %s, y = %s' % (ax.epoch_idx, x, y))
         elif ax.ax_idx == -1:  # mean plot
-            txt = "Page average,   %s"
+            self.SetStatusText("Page average,   x = %s, y = %s" % (x, y))
         else:
-            txt = '%s'
-        self.SetStatusText(txt % pos_txt)
+            self.SetStatusText('x = %s, y = %s' % (x, y))
 
         # update topomap
         if self._plot_topo and ax.ax_idx > -2:  # topomap ax_idx is -2
