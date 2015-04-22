@@ -308,8 +308,6 @@ class Boxplot(_SimpleFigure):
     title : str
         Figure title.
     """
-    _default_format = 'png'  # default format when saving for fmtext
-
     def __init__(self, Y, X=None, match=None, sub=None, datalabels=None,
                  bottom=None, top=None, ylabel=True, xlabel=True,
                  xtick_delim='\n', test=True, par=True, trend="'", test_markers=True,
@@ -496,8 +494,6 @@ class Barplot(_SimpleFigure):
     title : str
         Figure title.
     """
-    _default_format = 'png'  # default format when saving for fmtext
-
     def __init__(self, Y, X=None, match=None, sub=None, test=True, par=True,
                  corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
