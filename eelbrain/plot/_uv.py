@@ -679,7 +679,7 @@ class Timeplot(_EelFigure, LegendMixin):
                  main=np.mean, spread='sem', x_jitter=False,
                  bottom=0, top=None,
                  # labelling
-                 ylabel=True, xlabel=True, timelabels=None, legend='best',
+                 ylabel=True, xlabel=True, timelabels=None, legend='upper right',
                  colors=None, hatch=False, markers=True, *args, **kwargs):
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
@@ -882,7 +882,7 @@ class Correlation(_EelFigure, LegendMixin):
         Figure title.
     """
     def __init__(self, Y, X, cat=None, sub=None, ds=None,
-                 c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='best',
+                 c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='upper right',
                  lncol=2, xlabel=True, ylabel=True, *args, **kwargs):
         sub = assub(sub, ds)
         Y = asvar(Y, sub, ds)
@@ -951,7 +951,7 @@ class Regression(_EelFigure, LegendMixin):
         Figure title.
     """
     def __init__(self, Y, X, cat=None, match=None, sub=None, ds=None,
-                 xlabel=True, ylabel=True, alpha=.2, legend='best',
+                 xlabel=True, ylabel=True, alpha=.2, legend='upper right',
                  c=['#009CFF', '#FF7D26', '#54AF3A', '#FE58C6', '#20F2C3'],
                  *args, **kwargs):
         sub = assub(sub, ds)

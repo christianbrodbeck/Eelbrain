@@ -1257,11 +1257,10 @@ class Layout():
 
 
 class LegendMixin(object):
-    __choices = ('invisible', 'separate window', 'best', 'upper right',
-                 'upper left', 'lower left', 'lower right', 'right',
-                 'center left', 'center right', 'lower center', 'upper center',
-                 'center')
-    __args = (False, 'fig', 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    __choices = ('invisible', 'separate window', 'upper right', 'upper left',
+                 'lower left', 'lower right', 'right', 'center left',
+                 'center right', 'lower center', 'upper center', 'center')
+    __args = (False, 'fig', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
     def __init__(self, legend, legend_handles):
         """Legend toolbar menu mixin
