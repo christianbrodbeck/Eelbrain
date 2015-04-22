@@ -82,7 +82,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     data_dir = mne.datasets.sample.data_path()
     meg_dir = os.path.join(data_dir, 'MEG', 'sample')
     raw_file = os.path.join(meg_dir, 'sample_audvis_filt-0-40_raw.fif')
-    event_file = os.path.join(meg_dir, 'sample_audvis_filt-0-40_evt.fif')
+    event_file = os.path.join(meg_dir, 'sample_audvis_filt-0-40-eve.fif')
     subjects_dir = os.path.join(data_dir, 'subjects')
     subject = 'sample'
     label_path = os.path.join(subjects_dir, subject, 'label', '%s.label')
@@ -119,7 +119,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
 
     load.fiff.add_mne_epochs(ds, tmin, tmax, baseline)
     if sns:
-        ds['sns'] = load.fiff.epochs_ndvar(ds['epochs'])
+        ds['sns'] = load.fiff.epochs_ndvar(ds['epochs'], data='mag')
 
     if src is None:
         return ds
