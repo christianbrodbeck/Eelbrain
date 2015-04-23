@@ -2,14 +2,13 @@
 from itertools import izip
 import os
 
-from nose.tools import (assert_equal, assert_less_equal, assert_not_equal,
-                        assert_true, assert_in)
+from nose.tools import eq_, ok_, assert_less_equal, assert_not_equal, assert_in
 import numpy as np
 from numpy.testing import assert_array_equal
 
 import mne
 
-from eelbrain import datasets, load, testnd, morph_source_space
+from eelbrain import datasets, load, testnd, morph_source_space, Factor
 from eelbrain._data_obj import asndvar, SourceSpace
 
 from .test_data import assert_dataobj_equal
@@ -52,7 +51,7 @@ def test_source_estimate():
     # source space clustering
     res = testnd.ttest_ind('src', 'side', ds=ds, samples=0, pmin=0.05,
                            tstart=0.05, mintime=0.02, minsource=10)
-    assert_equal(res.clusters.n_cases, 52)
+    eq_(res.clusters.n_cases, 52)
 
     # test disconnecting parc
     src = ds['src']
@@ -60,11 +59,11 @@ def test_source_estimate():
     parc = source.parc
     orig_conn = set(map(tuple, source.connectivity()))
     disc_conn = set(map(tuple, source.connectivity(True)))
-    assert_true(len(disc_conn) < len(orig_conn))
+    ok_(len(disc_conn) < len(orig_conn))
     for pair in orig_conn:
         s, d = pair
         if pair in disc_conn:
-            assert_equal(parc[s], parc[d])
+            eq_(parc[s], parc[d])
         else:
             assert_not_equal(parc[s], parc[d])
 
@@ -73,7 +72,7 @@ def test_source_estimate():
     res = testnd.ttest_ind(srcl, 'side', ds=ds, samples=10, pmin=0.05,
                            tstart=0.05, mintime=0.02, minsource=10,
                            parc='source')
-    assert_equal(res._cdist.dist.shape[1], len(srcl.source.parc.cells))
+    eq_(res._cdist.dist.shape[1], len(srcl.source.parc.cells))
     label = 'superiortemporal-lh'
     c_all = res.find_clusters(maps=True)
     c_label = res.find_clusters(maps=True, source=label)
@@ -81,9 +80,9 @@ def test_source_estimate():
     for case in c_label.itercases():
         id_ = case['id']
         idx = c_all['id'].index(id_)[0]
-        assert_equal(case['v'], c_all[idx, 'v'])
-        assert_equal(case['tstart'], c_all[idx, 'tstart'])
-        assert_equal(case['tstop'], c_all[idx, 'tstop'])
+        eq_(case['v'], c_all[idx, 'v'])
+        eq_(case['tstart'], c_all[idx, 'tstart'])
+        eq_(case['tstop'], c_all[idx, 'tstop'])
         assert_less_equal(case['p'], c_all[idx, 'p'])
         assert_dataobj_equal(case['cluster'],
                              c_all[idx, 'cluster'].sub(source=label))
@@ -92,7 +91,7 @@ def test_source_estimate():
     res = testnd.ttest_ind(srcl, 'side', ds=ds, samples=10, tstart=0.05,
                            parc='source')
     cl = res.find_clusters(0.05)
-    assert_equal(cl.eval("p.min()"), res.p.min())
+    eq_(cl.eval("p.min()"), res.p.min())
     mp = res.masked_parameter_map()
     assert_in(mp.min(), (0, res.t.min()))
     assert_in(mp.max(), (0, res.t.max()))
@@ -102,6 +101,15 @@ def test_source_estimate():
     idx = source.index_for_label('fusiform-lh')
     s_idx = src[idx]
     assert_dataobj_equal(s_sub, s_idx)
+
+
+def test_dataobjects():
+    "Test handing MNE-objects as data-objects"
+    ds = datasets.get_mne_sample(sns=True)
+    ds['C'] = Factor(ds['index'] > 155, labels={False: 'a', True: 'b'})
+    sds = ds.sub("side % C != ('L', 'b')")
+    ads = sds.aggregate('side % C')
+    eq_(ads.n_cases, 3)
 
 
 def test_morphing():

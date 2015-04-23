@@ -4517,8 +4517,8 @@ class Dataset(OrderedDict):
                         evokeds = []
                         for cell in X.cells:
                             idx = (X == cell)
-                            evoked = v[idx].average()
-                            evokeds.append(evoked)
+                            if idx.sum():
+                                evokeds.append(v[idx].average())
                         ds[k] = evokeds
                     else:
                         err = ("Unsupported value type: %s" % type(v))
