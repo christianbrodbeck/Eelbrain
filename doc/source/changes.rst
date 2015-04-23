@@ -17,6 +17,8 @@ New in 0.15
 * API: :func:`test.oneway` was removed. Use :func:`test.anova`.
 * API: the default value of the :class:`plot.Timeplot` parameter `bottom`
   changed from `0` to `None` (determined by the data).
+* Plotting: New option for the figure legend ``'draggable'`` (drag the legend
+  with the mouse pointer).
 
 
 New in 0.14

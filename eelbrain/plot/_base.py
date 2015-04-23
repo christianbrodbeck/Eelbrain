@@ -1257,10 +1257,11 @@ class Layout():
 
 
 class LegendMixin(object):
-    __choices = ('invisible', 'separate window', 'upper right', 'upper left',
-                 'lower left', 'lower right', 'right', 'center left',
-                 'center right', 'lower center', 'upper center', 'center')
-    __args = (False, 'fig', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+    __choices = ('invisible', 'separate window', 'draggable', 'upper right',
+                 'upper left', 'lower left', 'lower right', 'right',
+                 'center left', 'center right', 'lower center', 'upper center',
+                 'center')
+    __args = (False, 'fig', 'draggable', 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 
     def __init__(self, legend, legend_handles):
         """Legend toolbar menu mixin
@@ -1293,7 +1294,7 @@ class LegendMixin(object):
 
         Parameters
         ----------
-        loc : False | 'fig' | str | int
+        loc : False | 'fig' | 'draggable' | str | int
             Where to plot the legend (see Notes; default 'fig').
 
         Returns
@@ -1312,6 +1313,9 @@ class LegendMixin(object):
             Make the current legend invisible
         'fig':
             Plot the legend in a new figure
+        'draggable':
+            The legend can be dragged to the desired position with the mouse
+            pointer.
         str | int:
             Matplotlib position argument: plot the legend on the figure
 
@@ -1347,9 +1351,17 @@ class LegendMixin(object):
                 return Legend(handles, labels, *args, **kwargs)
             else:
                 # take care of old legend; remove() not implemented as of mpl 1.3
-                if self.legend is not None:
+                if self.legend is not None and loc == 'draggable':
+                    self.legend.draggable(True)
+                elif self.legend is not None:
                     self.legend.set_visible(False)
-                self.legend = self.figure.legend(handles, labels, loc=loc)
+                    self.legend.draggable(False)
+                elif loc == 'draggable':
+                    self.legend = self.figure.legend(handles, labels, loc=1)
+                    self.legend.draggable(True)
+
+                if loc != 'draggable':
+                    self.legend = self.figure.legend(handles, labels, loc=loc)
                 self.draw()
         elif self.legend is not None:
             self.legend.set_visible(False)
