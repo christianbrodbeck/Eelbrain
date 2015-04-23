@@ -2078,11 +2078,19 @@ class MneExperiment(FileTree):
 
         # load data
         if load_data:
+            # determine categories to load
+            test_params = self._tests[test]
+            if test_params['kind'] == 'ttest_rel':
+                cat = (test_params['c1'], test_params['c0'])
+            else:
+                cat = None
+
+            # load data
             if data == 'sns':
-                ds = self.load_evoked(True, sns_baseline, ndvar=True)
+                ds = self.load_evoked(True, sns_baseline, True, cat)
             elif data == 'src':
                 ds = self.load_evoked_stc(True, sns_baseline, src_baseline,
-                                          morph_ndvar=True)
+                                          morph_ndvar=True, cat=cat)
                 if mask:
                     # reduce data to parc
                     y = ds['srcm']
