@@ -5,6 +5,10 @@
 
 .. autoclass:: {{ objname }}
    
+
+Methods
+-------
+
 {% block methods %}
 {% if methods %}
    
