@@ -4893,6 +4893,30 @@ class Dataset(OrderedDict):
         ----------
         name : str
             Name for the R dataframe (default is self.name).
+
+        Examples
+        --------
+        >>> from rpy2.robjects import r
+        >>> ds = datasets.get_uv()
+        >>> print ds[:6]
+        A    B    rm     intvar   fltvar     fltvar2    index
+        -----------------------------------------------------
+        a1   b1   s000   13       0.25614    0.7428     True
+        a1   b1   s001   8        -1.5174    -0.75498   True
+        a1   b1   s002   11       -0.5071    -0.13828   True
+        a1   b1   s003   11       2.1491     -2.1249    True
+        a1   b1   s004   15       -0.19358   -1.03      True
+        a1   b1   s005   17       2.141      -0.51745   True
+        >>> ds.to_r('df')
+        >>> print r("head(df)")
+           A  B   rm intvar     fltvar    fltvar2 index
+        1 a1 b1 s000     13  0.2561439  0.7427957  TRUE
+        2 a1 b1 s001      8 -1.5174371 -0.7549815  TRUE
+        3 a1 b1 s002     11 -0.5070960 -0.1382827  TRUE
+        4 a1 b1 s003     11  2.1490761 -2.1249203  TRUE
+        5 a1 b1 s004     15 -0.1935783 -1.0300188  TRUE
+        6 a1 b1 s005     17  2.1410424 -0.5174519  TRUE
+
         """
         import rpy2.robjects as ro
 
