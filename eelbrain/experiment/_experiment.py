@@ -281,7 +281,8 @@ class TreeModel(object):
         default : None | str
             Set the default value (if None, the first element in values).
         set_handler : None | callable
-            Function to call instead of updating the state value,
+            Function to call instead of updating the state value. The return
+            value of the set_handler is sent to the post_set_handler.
         eval_handler : None | callable
             Function to use for evaluating a value before setting. Can be
             called without actually setting the value; any parameter changes
@@ -581,9 +582,7 @@ class TreeModel(object):
         handled_state = {}
         for k in state.keys():
             if k in self._set_handlers:
-                v = state.pop(k)
-                self._set_handlers[k](v)
-                handled_state[k] = ''
+                handled_state[k] = self._set_handlers[k](state.pop(k))
 
         # make sure only valid fields are set
         for k in state:
