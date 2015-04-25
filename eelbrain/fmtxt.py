@@ -98,7 +98,8 @@ _html_tags = {r'_': 'sub',
               r'\emph': 'em',
               r'\textbf': 'b',
               r'\textit': 'i',
-              'paragraph': 'p'}
+              'paragraph': 'p',
+              'code': 'code'}
 
 _RTF_TAGS = {r'\emph': "\i %s\i0"}
 
@@ -386,7 +387,7 @@ def _html_element(tag, body, env, html_options=None):
 
 def asfmtext(content, tag=None):
     "Convert non-FMText objects to FMText"
-    if isinstance(content, FMTextElement):
+    if isinstance(content, (FMTextElement, FMTextConstant)):
         if tag:
             return FMTextElement(content, tag)
         else:
@@ -404,6 +405,30 @@ def asfmtext_or_none(content, tag=None):
         return None
     else:
         return asfmtext(content, tag)
+
+
+class FMTextConstant(object):
+
+    def __init__(self, html, rtf, tex, text):
+        self.html = html
+        self.rtf = rtf
+        self.tex = tex
+        self.text = text
+
+    def get_html(self, env):
+        return self.html
+
+    def get_rtf(self, env):
+        return self.rtf
+
+    def get_tex(self, env):
+        return self.tex
+
+    def get_text(self, env):
+        return self.text
+
+
+linebreak = FMTextConstant('<br>\n', '\\line\n', '\\\\\n', '\n')
 
 
 class FMTextElement(object):
@@ -628,6 +653,22 @@ class FMText(FMTextElement):
 
     def _get_tex_core(self, env):
         return ''.join(i.get_tex(env) for i in self.content)
+
+
+class Code(FMText):
+    def __init__(self, code):
+        content = []
+        for line in code.split(os.linesep):
+            content.append(line)
+            content.append(linebreak)
+        FMText.__init__(self, content, 'code')
+
+    def get_tex(self, env):
+        raise NotImplementedError
+
+    def _get_html_core(self, env):
+        return ''.join(i.get_html(env).replace(' ', '&nbsp;')
+                       for i in self.content)
 
 
 class Text(FMTextElement):
