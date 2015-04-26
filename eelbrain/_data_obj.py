@@ -64,6 +64,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
                    )
 
 
+UNNAMED = '<?>'
 _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
@@ -1170,7 +1171,8 @@ class EffectList(list):
         raise ValueError("Factor %r not in EffectList" % item.name)
 
     def names(self):
-        return [e.name if isuv(e) else repr(e) for e in self]
+        names = [e.name if isuv(e) else repr(e) for e in self]
+        return [UNNAMED if n is None else n for n in names]
 
 
 
@@ -5054,7 +5056,7 @@ class Interaction(_Effect):
         self.beta_labels = ['?'] * self.df  # TODO:
 
     def __repr__(self):
-        names = [str(f.name) for f in self.base]
+        names = [UNNAMED if f.name is None else f.name for f in self.base]
         if preferences['short_repr']:
             return ' % '.join(names)
         else:

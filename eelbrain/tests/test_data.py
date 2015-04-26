@@ -455,6 +455,21 @@ def test_isin():
     assert_array_equal(f0.isnotin(v2l), empty)
 
 
+def test_model():
+    "Test Model class"
+    # model repr
+    a = Factor('ab', repeat=2, name='a')
+    b = Factor('ab', tile=2, name='b')
+    m = a * b
+    eq_(repr(m), "a + b + a % b")
+
+    # model without explicit names
+    x1 = Factor('ab', repeat=2)
+    x2 = Factor('ab', tile=2)
+    m = x1 * x2
+    eq_(repr(m), "<?> + <?> + <?> % <?>")
+
+
 def test_ndvar():
     "Test the NDVar class"
     ds = datasets.get_uts(utsnd=True)
