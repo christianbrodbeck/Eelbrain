@@ -469,6 +469,10 @@ def test_model():
     m = x1 * x2
     eq_(repr(m), "<?> + <?> + <?> % <?>")
 
+    # catch explicit intercept
+    intercept = Factor('i', repeat=4, name='intercept')
+    assert_raises(ValueError, a.__mul__, intercept)
+
 
 def test_ndvar():
     "Test the NDVar class"

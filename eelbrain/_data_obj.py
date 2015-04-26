@@ -5374,6 +5374,11 @@ class Model(object):
         self.beta_index = beta_index = {}
         i = 1
         for e in effects:
+            if isfactor(e) and len(e.cells) == 1:
+                raise ValueError("The Factor %s has only one level (%s). The "
+                                 "intercept is implicit in each model and "
+                                 "should not be specified explicitly."
+                                 % (e.name, e.cells[0]))
             k = i + e.df
             beta_index[e] = slice(i, k)
             i = k
