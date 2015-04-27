@@ -44,7 +44,7 @@ def test_boxplot():
     plot.Boxplot('fltvar', 'A%B%C', ds=ds, show=False)
 
     # long labels
-    ds['A'].relabel({'a1': 'a very long label', 'a2': 'another very long label'})
+    ds['A'].update_labels({'a1': 'a very long label', 'a2': 'another very long label'})
     p = plot.Barplot('fltvar', 'A%B', ds=ds, show=False)
     labels = p._ax.get_xticklabels()
     bbs = [l.get_window_extent() for l in labels]

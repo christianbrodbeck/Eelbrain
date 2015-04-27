@@ -17,6 +17,7 @@ New in 0.15
 * API: :func:`test.oneway` was removed. Use :func:`test.anova`.
 * API: the default value of the :class:`plot.Timeplot` parameter `bottom`
   changed from `0` to `None` (determined by the data).
+* API: :meth:`Factor.relabel` renamed to :meth:`Factor.update_labels`.
 * Plotting: New option for the figure legend ``'draggable'`` (drag the legend
   with the mouse pointer).
 

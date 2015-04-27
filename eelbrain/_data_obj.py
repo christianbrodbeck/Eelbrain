@@ -2436,6 +2436,12 @@ class Factor(_Effect):
         return Var(x, name)
 
     def relabel(self, labels):
+        """Deprecated, use Factor.update_labels"""
+        warn("Factor.relabel() is deprecated, use Factor.update_labels()",
+             DeprecationWarning)
+        self.update_labels(labels)
+
+    def update_labels(self, labels):
         """Change one or more labels in place
 
         Parameters
@@ -2449,18 +2455,18 @@ class Factor(_Effect):
         >>> f = Factor('aaabbbccc')
         >>> f
         Factor(['a', 'a', 'a', 'b', 'b', 'b', 'c', 'c', 'c'])
-        >>> f.relabel({'a': 'v1', 'b': 'v2'})
+        >>> f.update_labels({'a': 'v1', 'b': 'v2'})
         >>> f
         Factor(['v1', 'v1', 'v1', 'v2', 'v2', 'v2', 'c', 'c', 'c'])
 
-        Notes
-        -----
         In order to create a copy of the Factor with different labels just
         use the labels argument when initializing a new Factor::
 
-            >>> Factor(f, labels={'c': 'v3'})
-            Factor(['v1', 'v1', 'v1', 'v2', 'v2', 'v2', 'v3', 'v3', 'v3'])
+        >>> Factor(f, labels={'c': 'v3'})
+        Factor(['v1', 'v1', 'v1', 'v2', 'v2', 'v2', 'v3', 'v3', 'v3'])
 
+        Notes
+        -----
         If ``labels`` contains a key that is not a label of the Factor, a
         ``KeyError`` is raised.
         """
