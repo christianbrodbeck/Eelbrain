@@ -4,12 +4,13 @@ import os
 
 from nose.tools import eq_, ok_, assert_less_equal, assert_not_equal, assert_in
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_allclose
 
 import mne
 
 from eelbrain import datasets, load, testnd, morph_source_space, Factor
 from eelbrain._data_obj import asndvar, SourceSpace
+from eelbrain._mne import shift_mne_epoch_trigger
 
 from .test_data import assert_dataobj_equal
 
@@ -110,6 +111,33 @@ def test_dataobjects():
     sds = ds.sub("side % C != ('L', 'b')")
     ads = sds.aggregate('side % C')
     eq_(ads.n_cases, 3)
+
+
+def test_epoch_trigger_shift():
+    "Test the shift_mne_epoch_trigger() function"
+    epochs = datasets.get_mne_sample(sns=True, sub="[1,2,3]")['epochs']
+    n_lost_start = np.sum(epochs.times < epochs.tmin + 0.05)
+    n_lost_end = np.sum(epochs.times > epochs.tmax - 0.05)
+    data = epochs.get_data()
+
+    epochs_s = shift_mne_epoch_trigger(epochs, [0, 0, 0])
+    assert_array_equal(epochs_s.get_data(), data)
+
+    epochs_s = shift_mne_epoch_trigger(epochs, [-0.05, 0., 0.05])
+    data_s = epochs_s.get_data()
+    assert_array_equal(data_s[0], data[0, :, : -(n_lost_end + n_lost_start)])
+    assert_array_equal(data_s[1], data[1, :, n_lost_start: -n_lost_end])
+    assert_array_equal(data_s[2], data[2, :, n_lost_end + n_lost_start:])
+    assert_allclose(epochs_s.times, epochs.times[n_lost_start: -n_lost_end],
+                    rtol=1e-1, atol=1e-3)  # ms accuracy
+
+    epochs_s = shift_mne_epoch_trigger(epochs, [0.05, 0., 0.05])
+    data_s = epochs_s.get_data()
+    assert_array_equal(data_s[0], data[0, :, n_lost_end:])
+    assert_array_equal(data_s[1], data[1, :, :-n_lost_end])
+    assert_array_equal(data_s[2], data[2, :, n_lost_end:])
+    assert_allclose(epochs_s.times, epochs.times[:-n_lost_end],
+                    rtol=1e-1, atol=1e-3)  # ms accuracy
 
 
 def test_morphing():

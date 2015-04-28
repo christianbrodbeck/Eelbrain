@@ -28,7 +28,7 @@ from .. import Dataset, Factor, Var, NDVar, combine
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
 from .._mne import source_induced_power, dissolve_label, rename_label, \
-    morph_source_space
+    morph_source_space, shift_mne_epoch_trigger
 from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg_epochs
 from .._data_obj import (align, UTS, DimensionMismatchError,
@@ -461,7 +461,7 @@ class MneExperiment(FileTree):
                     raise ValueError(msg)
                 parameters[param] = values.pop()
         epochs.update(super_epochs)
-        # find relevant rej-files (for cache checking)
+        # find rej-files needed for each epoch (for cache checking)
         def _rej_epochs(epoch):
             "Find which rej-files an epoch depends on"
             if 'sub_epochs' in epoch:
@@ -474,6 +474,14 @@ class MneExperiment(FileTree):
         for name, epoch in epochs.iteritems():
             if 'sub_epochs' in epoch or 'sel_epoch' in epoch:
                 epoch['_rej_file_epochs'] = _rej_epochs(epoch)
+        # check parameters
+        for name, epoch in epochs.iteritems():
+            if 'post_baseline_trigger_shift' in epoch:
+                if not ('post_baseline_trigger_shift_min' in epoch and
+                        'post_baseline_trigger_shift_max' in epoch):
+                    raise ValueError("Epoch %s contains post_baseline_trigger_shift "
+                                     "but is missing post_baseline_trigger_shift_min "
+                                     "and/or post_baseline_trigger_shift_max" % name)
         self.epochs = epochs
 
         ########################################################################
@@ -1332,7 +1340,7 @@ class MneExperiment(FileTree):
             When loading EEG data as NDVar, also add the EOG channels.
         """
         modality = self.get('modality')
-        ndvar, data = self._ndvar_name_and_modality(ndvar, modality, eog)
+        ndvar, data_arg = self._ndvar_name_and_modality(ndvar, modality, eog)
         subject, group = self._process_subject_arg(subject, kwargs)
 
         if group is not None:
@@ -1382,6 +1390,13 @@ class MneExperiment(FileTree):
             ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim,
                                           reject=reject_arg)
 
+            # post baseline-correction trigger shift
+            trigger_shift = epoch.get('post_baseline_trigger_shift', None)
+            if trigger_shift:
+                ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'], ds[trigger_shift],
+                                                       epoch['post_baseline_trigger_shift_min'],
+                                                       epoch['post_baseline_trigger_shift_max'])
+
             # interpolate channels
             if reject and ds.info[INTERPOLATE_CHANNELS]:
                 _interpolate_bads_eeg_epochs(ds['epochs'], ds[INTERPOLATE_CHANNELS])
@@ -1390,7 +1405,7 @@ class MneExperiment(FileTree):
                 del ds.info['raw']
 
         if ndvar:
-            ds[ndvar] = load.fiff.epochs_ndvar(ds.pop('epochs'), ndvar, data)
+            ds[ndvar] = load.fiff.epochs_ndvar(ds.pop('epochs'), ndvar, data_arg)
             if modality == 'eeg':
                 self._fix_eeg_ndvar(ds[ndvar], group)
 
@@ -1424,6 +1439,8 @@ class MneExperiment(FileTree):
         morph : bool
             Morph the source estimates to the common_brain (default False).
         """
+        if not sns_baseline and src_baseline and self.epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
+            raise NotImplementedError("post_baseline_trigger_shift is not implemented for baseline correction in source space")
         ds = self.load_epochs(subject, sns_baseline, False, cat=cat, **kwargs)
         self._add_epochs_stc(ds, ndvar, src_baseline, morph)
         if not keep_epochs:
@@ -1562,7 +1579,7 @@ class MneExperiment(FileTree):
             # baseline correction
             if isinstance(baseline, str):
                 raise NotImplementedError
-            elif baseline:
+            elif baseline and not self.epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
                 for e in ds['evoked']:
                     rescale(e.data, e.times, baseline, 'mean', copy=False)
 
@@ -1670,6 +1687,8 @@ class MneExperiment(FileTree):
             err = ("Nothing to load, set at least one of (ind_stc, ind_ndvar, "
                    "morph_stc, morph_ndvar) to True")
             raise ValueError(err)
+        elif not sns_baseline and src_baseline and self.epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
+            raise NotImplementedError("post_baseline_trigger_shift is not implemented for baseline correction in source space")
 
         ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, **kwargs)
         self._add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
@@ -2432,8 +2451,13 @@ class MneExperiment(FileTree):
                 if ds.info.get('mne_version', None) == mne.__version__:
                     return ds
 
-        # load the epochs
-        ds = self.load_epochs(ndvar=False)
+        # load the epochs (post baseline-correction trigger shift requires
+        # baseline corrected evoked
+        post_baseline_trigger_shift = self.epochs[self.get('epoch')].get('post_baseline_trigger_shift', None)
+        if post_baseline_trigger_shift:
+            ds = self.load_epochs(ndvar=False, baseline=True)
+        else:
+            ds = self.load_epochs(ndvar=False)
 
         # aggregate
         equal_count = self.get('equalize_evoked_count') == 'eq'

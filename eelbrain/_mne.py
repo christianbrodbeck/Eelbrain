@@ -1,5 +1,5 @@
 from itertools import izip
-from math import ceil, log
+from math import ceil, floor, log
 import os
 import re
 
@@ -20,6 +20,56 @@ from ._data_obj import (ascategorial, asepochs, isfactor, isinteraction,
 def _vertices_equal(v1, v0):
     "Test whether v1 and v0 are equal"
     return np.array_equal(v1[0], v0[0]) and np.array_equal(v1[1], v0[1])
+
+
+def shift_mne_epoch_trigger(epochs, trigger_shift, min_shift=None, max_shift=None):
+    """Shift the trigger in an MNE Epochs object
+
+    Parameters
+    ----------
+    epochs : mne.Epochs
+        Epochs object.
+    trigger_shift : scalar sequence
+        For each event in ``epochs`` the amount of time by which to shift the
+        trigger (in seconds).
+    min_shift : scalar (optional)
+        Minimum time shift, used to crop data (default is
+        ``min(trigger_shift)``).
+    max_shift : scalar (optional)
+        Maximum time shift, used to crop data (default is
+        ``max(trigger_shift)``).
+
+    Returns
+    -------
+    shifted_epochs : mne.EpochsArray
+        Epochs object in which data and timing information is shifted to set
+        the time point t=0 to the new trigger position. Data is temporally
+        cropped so that only time points with information on all the epochs
+        are contained in ``shifted_epochs``.
+    """
+    data = epochs.get_data()
+    tstep = 1. / epochs.info['sfreq']
+    shifts = [int(round(x / tstep)) for x in trigger_shift]
+    if min_shift is None:
+        min_shift = min(shifts)
+    else:
+        min_shift = int(floor(min_shift / tstep))
+
+    if max_shift is None:
+        max_shift = max(shifts)
+    else:
+        max_shift = int(ceil(max_shift / tstep))
+
+    x, y, z = data.shape
+    start_offset = -min_shift
+    stop_offset = z - max_shift
+    new_shape = (x, y, z - (max_shift - min_shift))
+    new_data = np.empty(new_shape, data.dtype)
+    for i, shift in enumerate(shifts):
+        new_data[i] = data[i, :, start_offset + shift:stop_offset + shift]
+    tmin = epochs.tmin + (start_offset / float(epochs.info['sfreq']))
+    return mne.EpochsArray(new_data, epochs.info, epochs.events, tmin,
+                           epochs.event_id)
 
 
 def labels_from_clusters(clusters, names=None):

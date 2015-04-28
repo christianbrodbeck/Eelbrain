@@ -139,6 +139,16 @@ baseline : tuple
 n_cases :
     Expected number of epochs. If n_cases is defined, a RuntimeError error
     will be raised whenever the actual number of matching events is different.
+post_baseline_trigger_shift : str
+    Shift the trigger (i.e., where epoch time = 0) after baseline correction.
+    The value of this entry has to be the name of an event variable providing
+    for each epoch the actual amount of time shift (in seconds). If the
+    ``post_baseline_trigger_shift`` parameter is specified, the parameters
+    ``post_baseline_trigger_shift_min`` and ``post_baseline_trigger_shift_max``
+    are also needed, specifying the smallest and largest possible shift. These
+    are used to crop the resulting epochs appropriately, to the region from
+    ``new_tmin = epoch['tmin'] - post_baseline_trigger_shift_min`` to
+    ``new_tmax = epoch['tmax'] - post_baseline_trigger_shift_max``.
 
 A secondary epoch can be defined using a ``sel_epoch`` entry. This means the
 events defining ``sel_epoch``, including rejection, form the basis for this
