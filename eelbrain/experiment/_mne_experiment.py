@@ -657,7 +657,7 @@ class MneExperiment(FileTree):
 
         return subject_, group
 
-    def add_epochs_stc(self, ds, ndvar=True, baseline=None, morph=False):
+    def _add_epochs_stc(self, ds, ndvar=True, baseline=None, morph=False):
         """
         Transform epochs contained in ds into source space (adds a list of mne
         SourceEstimates to ds)
@@ -713,7 +713,7 @@ class MneExperiment(FileTree):
                 raise NotImplementedError("Morphing for SourceEstimate")
             ds['stc'] = stc
 
-    def add_evoked_stc(self, ds, ind_stc=False, ind_ndvar=False, morph_stc=False,
+    def _add_evoked_stc(self, ds, ind_stc=False, ind_ndvar=False, morph_stc=False,
                        morph_ndvar=False, baseline=None, keep_evoked=False):
         """
         Add source estimates to a dataset with evoked data.
@@ -1425,7 +1425,7 @@ class MneExperiment(FileTree):
             Morph the source estimates to the common_brain (default False).
         """
         ds = self.load_epochs(subject, sns_baseline, False, cat=cat, **kwargs)
-        self.add_epochs_stc(ds, ndvar, src_baseline, morph)
+        self._add_epochs_stc(ds, ndvar, src_baseline, morph)
         if not keep_epochs:
             del ds['epochs']
         return ds
@@ -1672,7 +1672,7 @@ class MneExperiment(FileTree):
             raise ValueError(err)
 
         ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, **kwargs)
-        self.add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
+        self._add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
                             src_baseline, keep_evoked)
 
         return ds
