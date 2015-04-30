@@ -214,12 +214,12 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors,
     for ax in p._axes:
         ax.axvspan(cluster['tstart'], cluster['tstop'], color='r',
                    alpha=0.2, zorder=-2)
-    image_tc = p.image('cluster_%i_timecourse.svg' % cid)
+    image_tc = p.image('cluster_%i_timecourse' % cid)
 
     # legend
     if legend is None:
         legend_p = p.plot_legend(show=False)
-        legend = legend_p.image("Legend.svg")
+        legend = legend_p.image("Legend")
         legend_p.close()
     p.close()
 
@@ -288,7 +288,7 @@ def timecourse(doc, ds, y, model, res, title, caption, colors):
         ax.axvline(res.tstop, color='k')
     image = p.image('%s_cluster.png')
     legend_p = p.plot_legend(show=False)
-    legend = legend_p.image("Legend.svg")
+    legend = legend_p.image("Legend")
     section.add_figure(tc_caption, [image, legend])
     p.close()
     legend_p.close()

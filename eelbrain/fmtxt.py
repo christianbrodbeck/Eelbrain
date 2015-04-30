@@ -749,7 +749,7 @@ class Math(FMTextElement):
         return "Math(%s)" % ', '.join(items)
 
     def get_html(self, env={}):
-        im = Image('svg')
+        im = Image("LaTeX Equation", 'svg', self.content)
         math_to_image("$%s$" % self.content, im, format='svg')
         if self._equation:
             return '\n<br>\n%s\n<br>\n' % im.get_html(env)
@@ -781,7 +781,7 @@ class EquationArray(FMTextElement):
     def get_html(self, env):
         ims = []
         for line in self.content:
-            im = Image('svg')
+            im = Image("LaTeX EquationArray", 'svg', line)
             math_to_image("$%s$" % line.replace('&', ''), im, format='svg')
             ims.append(im.get_html(env))
         return '\n<br>\n%s\n<br>\n' % '\n<br>\n'.join(ims)
@@ -1390,37 +1390,28 @@ class Table(FMTextElement):
 class Image(FMTextElement, StringIO):
     "Represent an image file"
 
-    def __init__(self, target='png', alt=None, buf=''):
+    def __init__(self, name=None, format='png', alt=None, buf=''):
         """Represent an image file
 
         Parameters
         ----------
-        target : str
-            File format (e.g. 'png', 'svg'), or filename including extension
-            (e.g. 'image.png'). If a name is provided it is used when saving
-            the image for a document with external files.
+        name : str
+            Name for the file (without extension; default is 'image').
+        format : str
+            File format (default 'png').
         alt : None | str
             Alternate text, placeholder in case the image can not be found
-            (HTML `alt` tag).
+            (HTML `alt` tag, default is ``name``).
         """
         StringIO.__init__(self, buf)
 
-        name, ext = os.path.splitext(target)
-        if ext:
-            ext = ext.strip('.')
-            if not name:
-                name = 'image'
-            filename = os.extsep.join((name, ext))
-        else:
-            ext = name
-            filename = 'image.%s' % ext
-
-        self._filename = filename
-        self._ext = ext
-        self._alt = alt or name
+        self.name = name or 'image'
+        self.format = format
+        self._alt = alt or self.name
+        self._filename = os.extsep.join((self.name, format))
 
     @classmethod
-    def from_array(cls, array, filename='array.png', alt=None):
+    def from_array(cls, array, name='array', format='png', alt=None):
         """Create an Image object from an array.
 
         Parameters
@@ -1433,32 +1424,35 @@ class Image(FMTextElement, StringIO):
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
         """
-        im = Image(filename, alt)
-        imsave(im, np.asarray(array), format='png')
+        im = cls(name, format, alt)
+        imsave(im, np.asarray(array), format=format)
         return im
 
     @classmethod
-    def from_file(cls, path, filename=None, alt=None):
+    def from_file(cls, path, name=None, alt=None):
         """Create an Image object from an existing image file.
 
         Parameters
         ----------
         path : str
             Path to the image file.
-        filename : None | str
-            Filename for the target image. The default is
-            os.path.basename(path).
+        name : str
+            Name for the file (the default is ``os.path.basename(path)`` without
+            extension.
         alt : None | str
             Alternate text, placeholder in case the image can not be found
             (HTML `alt` tag).
         """
-        if filename is None:
+        if name is None:
             filename = os.path.basename(path)
+            name, ext = os.path.splitext(filename)
+        else:
+            _, ext = os.path.splitext(path)
 
         with open(path, 'rb') as fid:
             buf = fid.read()
 
-        return Image(filename, alt, buf)
+        return cls(name, ext[1:], alt, buf)
 
     def __repr_items__(self):
         out = [repr(self._filename)]
@@ -1473,14 +1467,14 @@ class Image(FMTextElement, StringIO):
         resource_dir = env.get('resource_dir', None)
         if resource_dir is None:
             buf = self.getvalue()
-            if self._ext == 'svg':  # special case for embedded svg
+            if self.format == 'svg':  # special case for embedded svg
                 # SVGs can contain non-ASCII characters which cause
                 # UnicodeDecodeError when combined with unicode
                 out = ''.join(map(unichr, map(ord, buf)))
                 return out
             # http://stackoverflow.com/a/7389616/166700
             data = buf.encode('base64').replace('\n', '')
-            src = 'data:image/{};base64,{}'.format(self._ext, data)
+            src = 'data:image/{};base64,{}'.format(self.format, data)
         else:
             dirpath = os.path.join(env['root'], resource_dir)
             abspath = os.path.join(dirpath, self._filename)
@@ -1616,18 +1610,22 @@ class Section(FMText):
 
         """
         if isinstance(image, str):
-            filename = image
             if from_file is None:
-                image = Image(filename, alt)
+                name, ext = os.path.splitext(image)
+                if ext:
+                    format = ext[1:]
+                else:
+                    format = 'png'
+                image = Image(name, format, alt)
             else:
                 _, ext_src = os.path.splitext(from_file)
-                _, ext_dst = os.path.splitext(filename)
-                if ext_dst != ext_src:
+                name, ext_dst = os.path.splitext(image)
+                if ext_dst and ext_dst != ext_src:
                     err = ("The extension of the image filename (%s) does not "
                            "correspond to the input image file (%s)." %
                            (ext_dst, ext_src))
                     raise ValueError(err)
-                image = Image.from_file(from_file, filename, alt)
+                image = Image.from_file(from_file, name, ext_src[1:], alt)
         else:
             image = asfmtext(image)
 
@@ -1994,9 +1992,6 @@ def im_table(ims, header=None, name="im_table"):
         FMTXT Image object that can be saved as SVG or integrated into an
         FMTXT document.
     """
-    if not name.endswith('.svg'):
-        name += '.svg'
-
     lens = set(map(len, ims))
     if len(lens) > 1:
         raise ValueError("Unequal number of columns")
@@ -2036,7 +2031,7 @@ def im_table(ims, header=None, name="im_table"):
 
     svg.append("</svg>")
     buf = '\n'.join(svg)
-    return Image(name, name, buf)
+    return Image(name, 'svg', buf)
 
 
 def _array_as_png(im):

@@ -765,17 +765,23 @@ def image(brain, filename, alt=None, close=False):
     brain : Brain
         Pysurfer Brain instance.
     filename : str
-        Filename for the image (should end with the desired extension).
+        Filename for the image (if no extension is provided, '.png' is used).
     alt : None | str
         Alternate text, placeholder in case the image can not be found
         (HTML `alt` tag).
     close : bool
         Close the brain window after creating the image.
     """
+    name, ext = os.path.splitext(filename)
+    if ext:
+        format = ext[1:]
+    else:
+        format = 'png'
+
     im = brain.screenshot('rgba', True)
     if close:
         brain.close()
-    return Image.from_array(im, filename, alt)
+    return Image.from_array(im, name, format, alt)
 
 
 def copy(brain):

@@ -1001,25 +1001,26 @@ class _EelFigure(object):
     def _asfmtext(self):
         return self.image()
 
-    def image(self, target=None):
+    def image(self, name=None, format=None):
         """Create FMTXT Image from the figure
 
         Parameters
         ----------
-        target : str
-            File format (e.g. 'png', 'svg'), or filename including extension
-            (e.g. 'image.png'). If a name is provided it is used when saving
-            the image for a document with external files. The default is 'svg'.
+        name : str
+            Name for the file (without extension; default is 'image').
+        format : str
+            File format (default 'png').
 
         Returns
         -------
         image : fmtxt.Image
             Image FMTXT object.
         """
-        if target is None:
-            target = self._default_format
-        image = Image(target)
-        self.figure.savefig(image, format=image._ext)
+        if format is None:
+            format = self._default_format
+
+        image = Image(name, format)
+        self.figure.savefig(image, format=format)
         return image
 
     def save(self, *args, **kwargs):
