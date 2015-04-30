@@ -566,7 +566,7 @@ def _empty_like(obj, n=None, name=None):
 
 # --- sorting ---
 
-def align(d1, d2, i1='index', i2='index', out='data'):
+def align(d1, d2, i1='index', i2=None, out='data'):
     """
     Aligns two data-objects d1 and d2 based on two index variables, i1 and i2.
 
@@ -581,10 +581,9 @@ def align(d1, d2, i1='index', i2='index', out='data'):
     d1, d2 : data-object
         Two data objects which are to be aligned
     i1, i2 : str | array-like (dtype=int)
-        Indexes for cases in d1 and d2.
-        If d1 and d2 are datasets, i1 and i2 can be keys for variables in d1 and
-        d2. If d1 an d2 are other data objects, i1 and i2 have to be actual indices
-        (array-like)
+        Indexes for cases in d1 and d2. If d1 and d2 are Datasets, i1 and i2
+        can be keys for variables in d1 and d2 (if i2 is identical to i1 it can
+        be omitted).
     out : 'data' | 'index'
         **'data'**: returns the two aligned data objects. **'index'**: returns two
         indices index1 and index2 which can be used to align the datasets with
@@ -595,6 +594,8 @@ def align(d1, d2, i1='index', i2='index', out='data'):
     --------
     see examples/datasets/align.py
     """
+    if i2 is None and isinstance(i1, basestring):
+        i2 = i1
     i1 = asvar(i1, ds=d1)
     i2 = asvar(i2, ds=d2)
 
