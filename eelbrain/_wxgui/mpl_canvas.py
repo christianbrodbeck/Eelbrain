@@ -226,10 +226,15 @@ class CanvasFrame(EelbrainFrame):
         self.OnSaveAs(event)
 
     def OnSaveAs(self, event):
-        path = ui.ask_saveas("Save Figure", "Save the current figure. The "
-                             "format is determined from the extension.", None)
-        if path:
-            self.figure.savefig(path)
+        default_file = '%s.pdf' % self.GetTitle().replace(': ', ' - ')
+        dlg = wx.FileDialog(self, "If no file type is selected below, it is "
+                                  "inferred from the extension.",
+                            defaultFile=default_file,
+                            wildcard="Any (*.*)|*.*|PDF (*.pdf)|*.pdf|PNG (*.png)|*.png",
+                            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.figure.savefig(dlg.GetPath())
+        dlg.Destroy()
 
     def OnShowFullScreen(self, event):
         self.ShowFullScreen(not self.IsFullScreen())
