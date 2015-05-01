@@ -149,8 +149,7 @@ def isbalanced(x):
     if ismodel(x):
         return all(isbalanced(e) for e in x.effects)
     else:
-        ns = (np.sum(x == c) for c in x.cells)
-        return len(np.unique(ns)) <= 1
+        return len({np.sum(x == c) for c in x.cells}) <= 1
 
 
 def iscategorial(x):

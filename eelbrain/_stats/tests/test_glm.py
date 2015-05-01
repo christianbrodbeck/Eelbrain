@@ -47,7 +47,7 @@ def assert_f_test_equal(f_test, r_res, r_row, f=None, r_kind='aov'):
     assert_almost_equal(f_test.F, r_res[r_F][r_row])
     assert_almost_equal(f_test.p, r_res[r_p][r_row])
     if f is not None:
-        assert_almost_equal(f, r_res[r_F][r_row])
+        assert_almost_equal(f, r_res[r_F][r_row])  # nd-anova comparison"
 
 @nottest
 def assert_f_tests_equal(f_tests, r_res, fs, r_kind='aov'):
