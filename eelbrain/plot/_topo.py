@@ -5,7 +5,7 @@ Plot topographic maps of sensor space data.
 from __future__ import division
 
 import numpy as np
-import scipy
+from scipy import interpolate
 
 from . import _base
 from ._base import _EelFigure
@@ -466,21 +466,21 @@ class _plt_topomap(_utsnd._plt_im_array):
         v = ndvar.get_data(('sensor',))
         locs = ndvar.sensor.get_locs_2d(self._proj)
         if self._interpolation == 'spline':
-            tck = scipy.interpolate.bisplrep(locs[:, 1], locs[:, 0], v, kx=5, ky=5)
-            return scipy.interpolate.bisplev(self._grid, self._grid, tck)
+            tck = interpolate.bisplrep(locs[:, 1], locs[:, 0], v, kx=5, ky=5)
+            return interpolate.bisplev(self._grid, self._grid, tck)
         else:
             isnan = np.isnan(v)
             if np.any(isnan):
-                nanmap = scipy.interpolate.griddata(locs, isnan, self._mgrid,
-                                                    method=self._interpolation)
+                nanmap = interpolate.griddata(locs, isnan, self._mgrid,
+                                              method=self._interpolation)
                 mask = nanmap > 0.5
                 v = np.where(isnan, 0, v)
-                vmap = scipy.interpolate.griddata(locs, v, self._mgrid,
-                                                  method=self._interpolation)
+                vmap = interpolate.griddata(locs, v, self._mgrid,
+                                            method=self._interpolation)
                 np.place(vmap, mask, np.NaN)
                 return vmap
-            return scipy.interpolate.griddata(locs, v, self._mgrid,
-                                              method=self._interpolation)
+            return interpolate.griddata(locs, v, self._mgrid,
+                                        method=self._interpolation)
 
 
 class _ax_topomap(_utsnd._ax_im_array):
