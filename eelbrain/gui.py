@@ -29,11 +29,11 @@ def select_epochs(*args, **kwargs):
     path : None | str
         Path to the desired rejection file. If the file already exists it
         is loaded as starting values. The extension determines the format
-        (*.pickled or *.txt).
+        (``*.pickled`` or ``*.txt``).
     nplots : None | int | tuple of 2 int
         Number of epoch plots per page. Can be an ``int`` to produce a
         square layout with that many epochs, or an ``(n_rows, n_columns)``
-        tuple. Default (None): use settings form last session.
+        tuple. The default is to use the settings from the last session.
     topo : None | bool
         Show a topomap plot of the time point under the mouse cursor.
         Default (None): use settings form last session.
