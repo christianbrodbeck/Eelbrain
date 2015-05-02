@@ -259,7 +259,7 @@ def _try_make_random_factor(name, values, n, rand, balance, urn,
 
         # for now, they have to be of equal length
         region_lens = [np.sum(regions == cell) for cell in regions.cells]
-        if len(np.unique(region_lens)) > 1:
+        if len(set(region_lens)) > 1:
             raise NotImplementedError
 
         region_len = region_lens[0]

@@ -3565,7 +3565,7 @@ class NDVar(object):
             return data.summary(*dims, func=func, name=name)
         else:
             x = self.x
-            axes = [self._dim_2_ax[dim] for dim in np.unique(dims)]
+            axes = [self._dim_2_ax[dim] for dim in dims]
             dims = list(self.dims)
             for axis in sorted(axes, reverse=True):
                 x = func(x, axis=axis)
@@ -5605,23 +5605,6 @@ class Model(object):
                     msg.append(errtxt.format(e1.name, e2.name))
         return msg
 
-    # category access
-    @property
-    def unique(self):
-        full = self.full
-        unique_indexes = np.unique([tuple(i) for i in full])
-        return unique_indexes
-
-    @property
-    def n_cat(self):
-        return len(self.unique)
-
-    def iter_cat(self):
-        full = self.full
-        for i in self.unique:
-            cat = np.all(full == i, axis=1)
-            yield cat
-
     def repeat(self, n):
         "Analogous to numpy repeat method"
         effects = [e.repeat(n) for e in self.effects]
@@ -5891,10 +5874,10 @@ class Categorial(Dimension):
 class Scalar(Dimension):
     "Simple scalar dimension"
     def __init__(self, name, values, unit=None):
+        self.x = self.values = values = np.asarray(values)
         if len(np.unique(values)) < len(values):
             raise ValueError("Dimension can not have duplicate values")
         self.name = name
-        self.x = self.values = np.asarray(values)
         self.unit = unit
 
     def __getstate__(self):
@@ -5933,12 +5916,11 @@ class Scalar(Dimension):
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
             s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
-            idx = s_idx[np.argsort(a_idx)]
+            return s_idx[np.argsort(a_idx)]
         elif np.isscalar(arg):
-            idx = np.argmin(np.abs(self.values - arg))
+            return np.argmin(np.abs(self.values - arg))
         else:
-            idx = np.unique(tuple(self.dimindex(a) for a in arg))
-        return idx
+            return [self.dimindex(a) for a in arg]
 
     def _diminfo(self):
         return "%s" % self.name.capitalize()

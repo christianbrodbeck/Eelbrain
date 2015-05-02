@@ -327,7 +327,7 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     else:
         ps_adjusted = np.zeros(len(ps))
     stars = star(ps, out=str)  # , levels=levels, trend=trend, corr=corr
-    if len(np.unique(dfs)) == 1:
+    if len(set(dfs)) == 1:
         df_in_header = True
     else:
         df_in_header = False
