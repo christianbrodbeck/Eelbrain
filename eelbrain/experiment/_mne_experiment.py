@@ -3658,7 +3658,7 @@ class MneExperiment(FileTree):
                                  w, subjects_dir=mri_sdir)
         return brain
 
-    def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat'],
+    def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat', 'ven'],
                    w=500, clear=True, common_brain=True):
         """Create a PuSyrfer Brain instance
 
