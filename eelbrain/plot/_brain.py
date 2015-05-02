@@ -284,7 +284,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
 
 
 def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
-                  views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
+                  views=('lat', 'med', 'ven'), w=None, h=None, axw=None, axh=None,
                   background=None, subjects_dir=None):
     """Create surfer.Brain instance
 
@@ -352,7 +352,7 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
 
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
-                 views=('lat', 'med'), colorbar=True, time_label='%.3g s',
+                 views=('lat', 'med', 'ven'), colorbar=True, time_label='%.3g s',
                  w=None, h=None, axw=None, axh=None, background=None,
                  parallel=True, smoothing_steps=None, mask=True, subjects_dir=None):
     """Create a PySurfer Brain object with a data layer

@@ -2786,7 +2786,7 @@ class MneExperiment(FileTree):
         if not redo and all(os.path.exists(dst) for dst in dsts):
             return
 
-        brain = self.plot_brain(surf, None, 'split', ['lat', 'med'], w=1200)
+        brain = self.plot_brain(surf, None, 'split', ['lat', 'med', 'ven'], w=1200)
         for label, dst in zip(labels, dsts):
             brain.add_label(label)
             brain.save_image(dst)
@@ -3802,7 +3802,7 @@ class MneExperiment(FileTree):
             label = self.load_label(label)
         title = label.name
 
-        brain = self.plot_brain(surf, title, 'split', ['lat', 'med'], w, clear)
+        brain = self.plot_brain(surf, title, 'split', ['lat', 'med', 'ven'], w, clear)
         brain.add_label(label, alpha=0.75)
         return brain
 
