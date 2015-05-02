@@ -320,7 +320,10 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
             data = ct.data[cell].x
             t, p = scipy.stats.ttest_1samp(data, against)
             df = len(data) - 1
-            names.append(label); ts.append(t); dfs.append(df); ps.append(p)
+            names.append(label)
+            ts.append(t)
+            dfs.append(df)
+            ps.append(p)
 
     if corr:
         ps_adjusted = mcp_adjust(ps, corr)

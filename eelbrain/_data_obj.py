@@ -5178,18 +5178,19 @@ class diff(object):
 #        ...
         i1 = X.code_for_label(c1)
         i2 = X.code_for_label(c2)
-        self.I1 = X == i1;                self.I2 = X == i2
+        self.I1 = X == i1
+        self.I2 = X == i2
 
         if sub is not None:
             self.I1 = self.I1 * sub
             self.I2 = self.I2 * sub
 
-        m1 = match.x[self.I1];          m2 = match.x[self.I2]
-        self.s1 = np.argsort(m1);       self.s2 = np.argsort(m2)
+        m1 = match.x[self.I1]
+        m2 = match.x[self.I2]
+        self.s1 = np.argsort(m1)
+        self.s2 = np.argsort(m2)
         assert np.all(np.unique(m1) == np.unique(m2))
-        self.name = "{n}({x1}-{x2})".format(n='{0}',
-                                            x1=X.cells[i1],
-                                            x2=X.cells[i2])
+        self.name = "{n}({x1}-{x2})".format(n='{0}', x1=X.cells[i1], x2=X.cells[i2])
 
     def subtract(self, Y):
         ""
@@ -5209,8 +5210,7 @@ class diff(object):
         y2 = Y[self.I2].x[self.s2]
         assert np.all(y1 == y2), Y.name
         if type(Y) is Factor:
-            return Factor(y1, Y.name, random=Y.random, labels=Y.cells,
-                          sort=False)
+            return Factor(y1, Y.name, random=Y.random, labels=Y.cells)
         else:
             return Var(y1, Y.name)
 
