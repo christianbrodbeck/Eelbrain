@@ -7,6 +7,9 @@ Changes
 New in 0.15
 -----------
 
+* The Eelbrain package on the PYPI is now compiled with Anaconda. This means
+  that the package can now be installed into an Anaconda distribution with
+  ``pip``, whereas ``easy_install`` has to be used for the Canopy distribution.
 * GUI :func:`gui.select_epochs`: Set marked channels through menu (View > Mark
   Channels)
 * Datasets can be saved as tables in RTF format (:meth:`Dataset.save_rtf`).
