@@ -428,7 +428,7 @@ class Barplot(_SimpleFigure):
     Y : Var
         Dependent variable.
     X : categorial
-        Model (Factor or Interaction)
+        Model (Factor or Interaction).
     match : None | categorial
         Match cases for a repeated measures design.
     sub : None | index-array
@@ -466,7 +466,7 @@ class Barplot(_SimpleFigure):
         X-axis tick labels describing the categories. None to plot no labels
         (Default uses cell names from ``X``).
     xtick_delim : str
-        Delimiter for x axis category descriptors (default is ``'\n'``,
+        Delimiter for x axis category descriptors (default is ``'\\n'``,
         i.e. the level on each Factor of ``X`` on a separate line).
     hatch : bool | str
         Matplotlib Hatch pattern to fill boxes (True to use the module

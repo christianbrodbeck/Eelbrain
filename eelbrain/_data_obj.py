@@ -2460,7 +2460,7 @@ class Factor(_Effect):
         Factor(['v1', 'v1', 'v1', 'v2', 'v2', 'v2', 'c', 'c', 'c'])
 
         In order to create a copy of the Factor with different labels just
-        use the labels argument when initializing a new Factor::
+        use the labels argument when initializing a new Factor:
 
         >>> Factor(f, labels={'c': 'v3'})
         Factor(['v1', 'v1', 'v1', 'v2', 'v2', 'v2', 'v3', 'v3', 'v3'])
