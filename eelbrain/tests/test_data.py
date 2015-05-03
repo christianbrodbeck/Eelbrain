@@ -65,10 +65,17 @@ def test_aggregate():
 def test_align():
     "Testing align() and align1() functions"
     ds = datasets.get_uv()
+    # index the dataset
     ds.index()
+    ds['aindex'] = ds.eval("A.enumerate_cells()")
+    # subset
     idx4 = np.arange(0, ds.n_cases, 4)
     idx4i = idx4[::-1]
     ds2 = ds.sub(np.arange(0, ds.n_cases, 2))
+    # shuffle the whole dataset
+    shuffle_index = np.arange(ds.n_cases)
+    np.random.shuffle(shuffle_index)
+    ds_shuffled = ds[shuffle_index]
 
     # align1: align Dataset to index
     dsa = align1(ds2, idx4)
@@ -91,6 +98,14 @@ def test_align():
     assert_array_equal(dsa1['index'], dsa2['index'], "align() failure")
     dsa1, dsa2 = align(ds, ds2[::-1])
     assert_array_equal(dsa1['index'], dsa2['index'], "align() failure")
+    dsa1, dsa2 = align(ds, ds_shuffled)
+    assert_dataset_equal(dsa1, dsa2)
+
+    # align using categorial
+    dsa1, dsa2 = align(ds, ds_shuffled, 'A % aindex')
+    assert_dataset_equal(dsa1, dsa2)
+    dsa1, dsa2 = align(ds, ds_shuffled, 'aindex % A')
+    assert_dataset_equal(dsa1, dsa2)
 
 
 def test_celltable():

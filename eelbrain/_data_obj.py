@@ -294,6 +294,35 @@ def hasrandom(x):
     return False
 
 
+def as_case_identifier(x, sub=None, ds=None):
+    "Coerce input to a variable that can identify each of its cases"
+    if isinstance(x, basestring):
+        if ds is None:
+            err = ("Parameter was specified as string, but no Dataset was "
+                   "specified")
+            raise TypeError(err)
+        x = ds.eval(x)
+
+    if sub is not None:
+        x = x[sub]
+
+    if isvar(x):
+        n = len(x.values)
+    elif isfactor(x):
+        n = len(x.n_cells)
+    elif isinteraction(x):
+        n = set(map(tuple, x.as_effects))
+    else:
+        raise TypeError("Need a Var, Factor or Interaction to identify cases, "
+                        "got %s" % repr(x))
+
+    if n < len(x):
+        raise ValueError("%s can not serve as a case identifier because it has "
+                         "at least one non-unique value" % x.name.capitalize())
+
+    return x
+
+
 def ascategorial(x, sub=None, ds=None, n=None):
     if isinstance(x, basestring):
         if ds is None:
@@ -579,10 +608,10 @@ def align(d1, d2, i1='index', i2=None, out='data'):
     ----------
     d1, d2 : data-object
         Two data objects which are to be aligned
-    i1, i2 : str | array-like (dtype=int)
+    i1, i2 : str | Var | Factor | Interaction
         Indexes for cases in d1 and d2. If d1 and d2 are Datasets, i1 and i2
         can be keys for variables in d1 and d2 (if i2 is identical to i1 it can
-        be omitted).
+        be omitted). Indexes have to supply a unique value for each case.
     out : 'data' | 'index'
         **'data'**: returns the two aligned data objects. **'index'**: returns two
         indices index1 and index2 which can be used to align the datasets with
@@ -595,24 +624,27 @@ def align(d1, d2, i1='index', i2=None, out='data'):
     """
     if i2 is None and isinstance(i1, basestring):
         i2 = i1
-    i1 = asvar(i1, ds=d1)
-    i2 = asvar(i2, ds=d2)
+    i1 = as_case_identifier(i1, ds=d1)
+    i2 = as_case_identifier(i2, ds=d2)
 
-    if len(i1) > len(i1.values):
-        raise ValueError('Non-unique index in i1 for %r' % d1.name)
-    if len(i2) > len(i2.values):
-        raise ValueError('Non-unique index in i2 for %r' % d2.name)
+    if not ((isvar(i1) and isvar(i2))
+            or (isfactor(i1) and isfactor(i2))
+            or (isinteraction(i1) and isinteraction(i2))):
+        raise TypeError("i1 and i2 need to be of the same type, got: \n"
+                        "i1=%s\ni2=%s." % (repr(i1), repr(i2)))
 
     idx1 = []
     idx2 = []
-    for i, idx in enumerate(i1):
-        if idx in i2:
+    for i, case_id in enumerate(i1):
+        if case_id in i2:
             idx1.append(i)
-            where2 = i2.index(idx)[0]
-            idx2.append(where2)
+            idx2.append(i2.index(case_id)[0])
 
     if out == 'data':
-        return d1[idx1], d2[idx2]
+        if all(i == v for i, v in enumerate(idx1)):
+            return d1, d2[idx2]
+        else:
+            return d1[idx1], d2[idx2]
     elif out == 'index':
         return idx1, idx2
     else:
@@ -5088,6 +5120,8 @@ class Interaction(_Effect):
             return out
 
     def __contains__(self, item):
+        if isinstance(item, tuple):
+            return any(item == v for v in self)
         return self.base.__contains__(item)
 
     def __iter__(self):
