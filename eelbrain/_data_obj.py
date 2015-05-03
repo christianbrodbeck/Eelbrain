@@ -163,18 +163,16 @@ def iscategorial(x):
 
 
 def isdataobject(x):
-    dataob = ["model", "var", "ndvar", "factor", "interaction", "nonbasic",
-              "nested", "list"]
-    return hasattr(x, '_stype') and  x._stype in dataob
+    return getattr(x, '_stype', None) in ("model", "var", "ndvar", "factor",
+                                          "interaction", "nonbasic", "nested", "list")
 
 
 def isdataset(x):
-    return hasattr(x, '_stype') and x._stype == 'dataset'
+    return getattr(x, '_stype', None) == 'dataset'
 
 
 def iseffect(x):
-    effectnames = ["factor", "var", "interaction", "nonbasic", "nested"]
-    return hasattr(x, '_stype') and  x._stype in effectnames
+    return getattr(x, '_stype', None) in ("factor", "var", "interaction", "nonbasic", "nested")
 
 
 def isdatalist(x, contains=None, test_all=True):
@@ -200,20 +198,20 @@ def isdatalist(x, contains=None, test_all=True):
 
 
 def isfactor(x):
-    return hasattr(x, '_stype') and x._stype == "factor"
+    return getattr(x, '_stype', None) == "factor"
 
 
 def isinteraction(x):
-    return hasattr(x, '_stype') and x._stype == "interaction"
+    return getattr(x, '_stype', None) == "interaction"
 
 
 def ismodel(x):
-    return hasattr(x, '_stype') and x._stype == "model"
+    return getattr(x, '_stype', None) == "model"
 
 
 def isnested(x):
     "Determine whether x is nested"
-    return hasattr(x, '_stype') and x._stype == "nested"
+    return getattr(x, '_stype', None) == "nested"
 
 
 def isnestedin(item, item2):
@@ -226,39 +224,32 @@ def isnestedin(item, item2):
 
 def isndvar(x):
     "Determine whether x is an NDVar"
-    return hasattr(x, '_stype') and x._stype == "ndvar"
+    return getattr(x, '_stype', None) == "ndvar"
 
 
 def isnumeric(x):
     "Determine wether x is numeric (a Var or an NDVar)"
-    return hasattr(x, '_stype') and x._stype in ["ndvar", "var"]
+    return getattr(x, '_stype', None) in ("ndvar", "var")
 
 
 def isuv(x):
     "Determine whether x is univariate (a Var or a Factor)"
-    return hasattr(x, '_stype') and x._stype in ["factor", "var"]
+    return getattr(x, '_stype', None) in ("factor", "var")
 
 
 def isvar(x):
     "Determine whether x is a Var"
-    return hasattr(x, '_stype') and x._stype == "var"
+    return getattr(x, '_stype', None) == "var"
 
 
 def isboolvar(x):
     "Determine whether x is a Var whose data type is boolean"
-    if not isvar(x):
-        return False
-    isbool = x.x.dtype.kind == 'b'
-    return isbool
+    return isvar(x) and x.x.dtype.kind == 'b'
 
 
 def isintvar(x):
     "Determine whether x is a Var whose data type is integer"
-    if not isvar(x):
-        return False
-    # http://stackoverflow.com/a/934652/166700
-    isint = x.x.dtype.kind in 'iu'
-    return isint
+    return isvar(x) and x.x.dtype.kind in 'iu'
 
 
 def hasemptycells(x):
