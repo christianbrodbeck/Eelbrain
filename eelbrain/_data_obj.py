@@ -5112,7 +5112,7 @@ class Interaction(_Effect):
 
     def __contains__(self, item):
         if isinstance(item, tuple):
-            return any(item == v for v in self)
+            return item in self._value_set
         return self.base.__contains__(item)
 
     def __iter__(self):
@@ -5185,6 +5185,10 @@ class Interaction(_Effect):
         """
         is_v = [self == cell for cell in cells]
         return np.any(is_v, 0)
+
+    @LazyProperty
+    def _value_set(self):
+        return set(self)
 
 
 class diff(object):
