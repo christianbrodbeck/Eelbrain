@@ -2435,6 +2435,10 @@ class Factor(_Effect):
             x[i] = label_lengths[code]
         return Var(x, name)
 
+    @property
+    def n_cells(self):
+        return len(self._labels)
+
     def relabel(self, labels):
         """Deprecated, use Factor.update_labels"""
         warn("Factor.relabel() is deprecated, use Factor.update_labels()",

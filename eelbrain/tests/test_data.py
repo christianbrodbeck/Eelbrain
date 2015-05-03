@@ -364,8 +364,10 @@ def test_factor():
     # removing a cell
     f = Factor('aabbcc')
     eq_(f.cells, ('a', 'b', 'c'))
+    eq_(f.n_cells, 3)
     f[f == 'c'] = 'a'
     eq_(f.cells, ('a', 'b'))
+    eq_(f.n_cells, 2)
 
     # cell order
     a = np.tile(np.arange(3), 3)
