@@ -656,7 +656,7 @@ def _voxel_brain(data, lut, vmin, vmax):
 
 
 def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
-              views=('lat', 'med'), summary=np.sum, vmax=None):
+              views=('lat', 'med', 'ven'), summary=np.sum, vmax=None):
     """Create a table with images for time bins
 
     Parameters

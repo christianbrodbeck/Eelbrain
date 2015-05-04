@@ -3618,7 +3618,7 @@ class MneExperiment(FileTree):
             print("%s: %r -> %r" % (field, current, next_))
         self.set(**{field: next_})
 
-    def plot_annot(self, surf='inflated', views=['lat', 'med'], hemi=None,
+    def plot_annot(self, surf='inflated', views=['lat', 'med', 'ven'], hemi=None,
                    borders=False, alpha=0.7, w=600, parc=None):
         """Plot the annot file on which the current parcellation is based
 
