@@ -2153,24 +2153,16 @@ class MneExperiment(FileTree):
         mrisubject = self.get('mrisubject')
         common_brain = self.get('common_brain')
 
-        if parc in FS_PARCS:
-            if redo or self._annot_mtime() is None:
-                raise NotImplemented("The Aparc FreeSurfer parcellations can "
-                                     "not be created autmaticaly yet. Use "
-                                     "FreeSurfer to create the %s "
-                                     "parcellation for mrisubject %s."
-                                     % (parc, mrisubject))
-                # https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation
-        elif mrisubject == common_brain:
+        if mrisubject == common_brain:
             # check existing files
             if not redo:
                 mtime = self._annot_mtime()
                 if mtime is not None:
                     return mtime
             # make sure it's not one that should exist
-            if parc in FSA_PARCS:
+            if parc in FSA_PARCS or parc in FS_PARCS:
                 raise RuntimeError("The %s parcellation is missing from your "
-                                   "common_brain" % parc)
+                                   "%s common_brain" % (parc, common_brain))
             # create it
             labels = self._make_annot(parc, mrisubject)
             mri_sdir = self.get('mri-sdir')
@@ -2192,6 +2184,12 @@ class MneExperiment(FileTree):
                 for _ in self.iter('hemi'):
                     self.make_copy('annot-file', 'mrisubject', common_brain,
                                    mrisubject)
+            elif parc in FS_PARCS:
+                # https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation
+                raise NotImplementedError("The Aparc FreeSurfer parcellations can not be "
+                                          "created automatically for subject-specific "
+                                          "MRIs. Use FreeSurfer to create the %s parcellation "
+                                          "for mrisubject %s." % (parc, mrisubject))
             else:
                 self.get('label-dir', make=True)
                 subjects_dir = self.get('mri-sdir')
