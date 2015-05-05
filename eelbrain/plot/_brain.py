@@ -118,6 +118,10 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
         View or views to show in the figure.
     colorbar : bool
         Whether to add a colorbar to the figure.
+    time_label : str
+        Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
+        milliseconds or in seconds, or supply a custom format string to format
+        time values (in seconds; default is ``'ms'``).
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
@@ -169,6 +173,10 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
         View or views to show in the figure.
     colorbar : bool
         Whether to add a colorbar to the figure.
+    time_label : str
+        Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
+        milliseconds or in seconds, or supply a custom format string to format
+        time values (in seconds; default is ``'ms'``).
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
@@ -212,6 +220,10 @@ def activation(src, threshold=None, vmax=None, *args, **kwargs):
         View or views to show in the figure.
     colorbar : bool
         Whether to add a colorbar to the figure.
+    time_label : str
+        Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
+        milliseconds or in seconds, or supply a custom format string to format
+        time values (in seconds; default is ``'ms'``).
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
@@ -260,6 +272,10 @@ def cluster(cluster, vmax=None, *args, **kwargs):
         View or views to show in the figure.
     colorbar : bool
         Whether to add a colorbar to the figure.
+    time_label : str
+        Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
+        milliseconds or in seconds, or supply a custom format string to format
+        time values (in seconds; default is ``'ms'``).
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
@@ -359,7 +375,7 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
 
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
-                 views=('lat', 'med'), colorbar=True, time_label='%.3g s',
+                 views=('lat', 'med'), colorbar=True, time_label='ms',
                  w=None, h=None, axw=None, axh=None, background=None,
                  parallel=True, smoothing_steps=None, mask=True, subjects_dir=None):
     """Create a PySurfer Brain object with a data layer
@@ -379,6 +395,10 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         View or views to show in the figure.
     colorbar : bool
         Whether to add a colorbar to the figure.
+    time_label : str
+        Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
+        milliseconds or in seconds, or supply a custom format string to format
+        time values (in seconds; default is ``'ms'``).
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
     background : mayavi color
@@ -425,6 +445,15 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     if src.has_dim('time'):
         times = src.time.times
         data_dims = ('source', 'time')
+        if time_label == 'ms':
+            import surfer
+            if LooseVersion(surfer.__version__) > LooseVersion('0.5'):
+                time_label = lambda x: '%s ms' % int(round(x * 1000))
+            else:
+                times = times * 1000
+                time_label = '%i ms'
+        elif time_label == 's':
+            time_label = '%.3f s'
     else:
         times = None
         data_dims = ('source',)
