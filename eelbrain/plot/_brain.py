@@ -25,7 +25,7 @@ def assert_can_save_movies():
 
 def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
           hemi=None, views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
-          background=None, parallel=True, subjects_dir=None):
+          foreground=None, background=None, parallel=True, subjects_dir=None):
     """Plot the parcellation in an annotation file
 
     Parameters
@@ -47,6 +47,8 @@ def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
         View or views to show in the figure.
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
+    foreground : mayavi color
+        Figure foreground color (i.e., the text color).
     background : mayavi color
         Figure background color.
     parallel : bool
@@ -78,8 +80,8 @@ def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
         else:
             raise ValueError("Neither hemisphere contains more than one label")
 
-    brain = _surfer_brain(subject, surf, hemi, views, w, h, axw, axh, background,
-                          subjects_dir)
+    brain = _surfer_brain(subject, surf, hemi, views, w, h, axw, axh,
+                          foreground, background, subjects_dir)
     brain.add_annotation(annot, borders, alpha)
 
     if parallel:
@@ -124,6 +126,8 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
         time values (in seconds; default is ``'ms'``).
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
+    foreground : mayavi color
+        Figure foreground color (i.e., the text color).
     background : mayavi color
         Figure background color.
     parallel : bool
@@ -179,6 +183,8 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
         time values (in seconds; default is ``'ms'``).
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
+    foreground : mayavi color
+        Figure foreground color (i.e., the text color).
     background : mayavi color
         Figure background color.
     parallel : bool
@@ -226,6 +232,8 @@ def activation(src, threshold=None, vmax=None, *args, **kwargs):
         time values (in seconds; default is ``'ms'``).
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
+    foreground : mayavi color
+        Figure foreground color (i.e., the text color).
     background : mayavi color
         Figure background color.
     parallel : bool
@@ -278,6 +286,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
         time values (in seconds; default is ``'ms'``).
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
+    foreground : mayavi color
+        Figure foreground color (i.e., the text color).
     background : mayavi color
         Figure background color.
     parallel : bool
@@ -308,7 +318,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
 
 def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
                   views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
-                  background=None, subjects_dir=None):
+                  foreground=None, background=None, subjects_dir=None):
     """Create surfer.Brain instance
 
     Parameters
@@ -325,6 +335,8 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
         Whether to add a colorbar to the figure.
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
+    foreground : mayavi color
+        Figure foreground color (i.e., the text color).
     background : mayavi color
         Figure background color.
     subjects_dir : None | str
@@ -365,6 +377,9 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
     else:
         config_opts['height'] = 400 * len(views)
 
+    if foreground is not None:
+        config_opts['foreground'] = foreground
+
     if background is not None:
         config_opts['background'] = background
 
@@ -376,8 +391,9 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
                  views=('lat', 'med'), colorbar=True, time_label='ms',
-                 w=None, h=None, axw=None, axh=None, background=None,
-                 parallel=True, smoothing_steps=None, mask=True, subjects_dir=None):
+                 w=None, h=None, axw=None, axh=None, foreground=None,
+                 background=None, parallel=True, smoothing_steps=None,
+                 mask=True, subjects_dir=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -401,6 +417,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         time values (in seconds; default is ``'ms'``).
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
+    foreground : mayavi color
+        Figure foreground color (i.e., the text color).
     background : mayavi color
         Figure background color.
     parallel : bool
@@ -435,7 +453,7 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         subjects_dir = src.source.subjects_dir
 
     brain = _surfer_brain(src.source.subject, surf, hemi, views, w, h, axw, axh,
-                          background, subjects_dir)
+                          foreground, background, subjects_dir)
 
     # general PySurfer data args
     alpha = 1
