@@ -13,6 +13,11 @@ from .._data_obj import asndvar, NDVar
 from ..fmtxt import Image, im_table, ms
 
 
+# defaults
+FOREGROUND = (0, 0, 0)
+BACKGROUND = (1, 1, 1)
+
+
 def _idx(i):
     return int(round(i))
 
@@ -377,10 +382,14 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
     else:
         config_opts['height'] = 400 * len(views)
 
-    if foreground is not None:
+    if foreground is None:
+        config_opts['foreground'] = FOREGROUND
+    else:
         config_opts['foreground'] = foreground
 
-    if background is not None:
+    if background is None:
+        config_opts['background'] = BACKGROUND
+    else:
         config_opts['background'] = background
 
     brain = Brain(subject, hemi, surf, True, title, config_opts=config_opts,
