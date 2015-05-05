@@ -2537,7 +2537,7 @@ class MneExperiment(FileTree):
 
     def make_mov_ga_dspm(self, subject=None, surf='inflated', fmin=2,
                          redo=False, **kwargs):
-        """Make a grand average movie from dSPM values
+        """Make a grand average movie from dSPM values (requires PySurfer 0.6)
 
         Parameters
         ----------
@@ -2552,6 +2552,8 @@ class MneExperiment(FileTree):
         others :
             Experiment state parameters.
         """
+        plot._brain.assert_can_save_movies()
+
         kwargs['model'] = ''
         subject, group = self._process_subject_arg(subject, kwargs)
 
@@ -2577,7 +2579,7 @@ class MneExperiment(FileTree):
 
     def make_mov_ga(self, subject=None, surf='smoothwm', p0=0.05, redo=False,
                     **kwargs):
-        """Make a grand average movie for a subject or group
+        """Make a grand average movie for a subject or group (requires PySurfer 0.6)
 
         In order to compare activation with baseline, data are not baseline
         corrected in sensor space but in source space.
@@ -2595,6 +2597,8 @@ class MneExperiment(FileTree):
         others :
             Experiment state parameters.
         """
+        plot._brain.assert_can_save_movies()
+
         subject, group = self._process_subject_arg(subject, kwargs)
 
         if p0 == 0.05:
@@ -2642,7 +2646,7 @@ class MneExperiment(FileTree):
 
     def make_mov_ttest(self, x, c1, c0, subject=None, surf='inflated', p0=0.05,
                        redo=False, **kwargs):
-        """Make a t-test movie
+        """Make a t-test movie (requires PySurfer 0.6)
 
         Parameters
         ----------
@@ -2657,6 +2661,8 @@ class MneExperiment(FileTree):
         subject : str (state)
             Group name, or subject name for single subject ttest.
         """
+        plot._brain.assert_can_save_movies()
+
         subject, group = self._process_subject_arg(subject, kwargs)
 
         if p0 == 0.1:

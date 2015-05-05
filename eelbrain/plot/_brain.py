@@ -1,5 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
+from distutils.version import LooseVersion
 from itertools import izip
 import os
 from tempfile import mkdtemp
@@ -14,6 +15,12 @@ from ..fmtxt import Image, im_table, ms
 
 def _idx(i):
     return int(round(i))
+
+
+def assert_can_save_movies():
+    import surfer
+    if LooseVersion(surfer.__version__) <= LooseVersion('0.5'):
+        raise ImportError("Saving movies requires PySurfer 0.6")
 
 
 def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
