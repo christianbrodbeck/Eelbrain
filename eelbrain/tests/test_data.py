@@ -567,6 +567,10 @@ def test_ndvar():
     pos = sens_mean[idx]
     assert_array_equal(pos.x > 0, True)
 
+    # out of range index
+    assert_raises(ValueError, x.sub, time=(0.1, 0.81))
+    assert_raises(ValueError, x.sub, time=(-0.25, 0.1))
+
 
 def test_ndvar_binning():
     "Test NDVar.bin()"
