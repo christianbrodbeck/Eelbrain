@@ -405,13 +405,13 @@ def test_factor():
 def test_factor_relabel():
     "Test Factor.relabel() method"
     f = Factor('aaabbbccc')
-    f.relabel({'a': 'd'})
+    f.update_labels({'a': 'd'})
     assert_array_equal(f, Factor('dddbbbccc'))
-    f.relabel({'d': 'c', 'c': 'd'})
+    f.update_labels({'d': 'c', 'c': 'd'})
     assert_array_equal(f, Factor('cccbbbddd'))
-    f.relabel({'d': 'c'})
+    f.update_labels({'d': 'c'})
     assert_array_equal(f, Factor('cccbbbccc'))
-    assert_raises(KeyError, f.relabel, {'a':'c'})
+    assert_raises(KeyError, f.update_labels, {'a':'c'})
 
 
 def test_interaction():
