@@ -7119,7 +7119,7 @@ class UTS(Dimension):
         self.nsamples = nsamples = int(nsamples)
         self.x = self.times = tmin + np.arange(nsamples) * tstep
         self.tmax = self.times[-1]
-        self.tstop = self.tmin + tstep * (nsamples + 1)
+        self.tstop = self.tmin + tstep * nsamples
 
     @classmethod
     def from_int(cls, first, last, sfreq):
