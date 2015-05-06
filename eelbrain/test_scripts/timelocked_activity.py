@@ -28,7 +28,6 @@ def average_activity_R(e,time,parc,label=None,average_ms='average',group='all',t
 
     e.set(group = group)
 
-    dses = []
     activities = []
 
     if label == None:
