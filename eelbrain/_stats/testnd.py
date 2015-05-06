@@ -1420,7 +1420,7 @@ def _label_clusters(stat_map, threshold, tail, struct, all_adjacent, conn,
             cids_l = _label_clusters_binary(bin_map_below, int_buff,
                                             int_buff_flat, struct,
                                             all_adjacent, conn, criteria)
-            x = int(cmap.max())  # apparently np.uint64 + int makes a float
+            x = cmap.max()
             int_buff[bin_map_below] += x
             cids_l += x
             cmap += int_buff
@@ -1499,11 +1499,13 @@ def _label_clusters_binary(bin_map, cmap, cmap_flat, struct, all_adjacent,
         cids = merge_labels(cmap_flat, n, conn)
 
     # apply minimum cluster size criteria
-    if criteria:
+    if criteria and cids.size:
         for axes, v in criteria:
             cids = np.setdiff1d(cids,
                                 [i for i in cids if np.count_nonzero(np.equal(cmap, i).any(axes)) < v],
                                 True)
+            if cids.size == 0:
+                break
 
     return cids
 
