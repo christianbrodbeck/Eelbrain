@@ -13,7 +13,7 @@ experiment with MNE. Currently only gradiometer-only data is supported.
     :class:`MneExperiment` class reference for details on all available methods
 
 
-Summary of steps:
+Summary of the steps:
 
  * Write an experiment definition file
  * Add input files (raw fiff, MRIs)

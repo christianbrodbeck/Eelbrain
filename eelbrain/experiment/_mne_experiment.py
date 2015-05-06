@@ -2808,7 +2808,7 @@ class MneExperiment(FileTree):
         if not redo and all(os.path.exists(dst) for dst in dsts):
             return
 
-        brain = self.plot_brain(surf, None, 'split', ['lat', 'med'], w=1200)
+        brain = self.plot_brain(surf, None, 'split', ['lat', 'med', 'ven'], w=1200)
         for label, dst in zip(labels, dsts):
             brain.add_label(label)
             brain.save_image(dst)
@@ -3640,7 +3640,7 @@ class MneExperiment(FileTree):
             print("%s: %r -> %r" % (field, current, next_))
         self.set(**{field: next_})
 
-    def plot_annot(self, surf='inflated', views=['lat', 'med'], hemi=None,
+    def plot_annot(self, surf='inflated', views=['lat', 'med', 'ven'], hemi=None,
                    borders=False, alpha=0.7, w=600, parc=None):
         """Plot the annot file on which the current parcellation is based
 
@@ -3680,7 +3680,7 @@ class MneExperiment(FileTree):
                                  w, subjects_dir=mri_sdir)
         return brain
 
-    def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat'],
+    def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat', 'ven'],
                    w=500, clear=True, common_brain=True):
         """Create a PuSyrfer Brain instance
 
@@ -3824,7 +3824,7 @@ class MneExperiment(FileTree):
             label = self.load_label(label)
         title = label.name
 
-        brain = self.plot_brain(surf, title, 'split', ['lat', 'med'], w, clear)
+        brain = self.plot_brain(surf, title, 'split', ['lat', 'med', 'ven'], w, clear)
         brain.add_label(label, alpha=0.75)
         return brain
 

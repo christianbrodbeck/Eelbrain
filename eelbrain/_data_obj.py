@@ -1054,6 +1054,12 @@ def combine(items, name=None, check_dims=True):
       for variables).
     - The info dict inherits only entries that are equal (``x is y or
       np.array_equal(x, y)``) for all items.
+    - Need to use two sets of parentheses
+
+    Example
+    -------
+    ds_combined = ((ds1,ds2))
+
     """
     # find type
     stypes = set(getattr(item, '_stype', None) for item in items)
