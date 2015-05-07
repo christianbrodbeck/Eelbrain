@@ -2168,6 +2168,19 @@ class MneExperiment(FileTree):
             mri_sdir = self.get('mri-sdir')
             write_labels_to_annot(labels, mrisubject, parc, True, mri_sdir)
         else:
+            is_fake = is_fake_mri(self.get('mri-dir'))
+
+            # FS-parcellations that can not be simply morphed
+            if parc in FS_PARCS and not is_fake:
+                mtime = self._annot_mtime()
+                if not redo and mtime:
+                    return mtime
+                # https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation
+                raise NotImplementedError("The Aparc FreeSurfer parcellations can not be "
+                                          "created automatically for subject-specific "
+                                          "MRIs. Use FreeSurfer to create the %s parcellation "
+                                          "for mrisubject %s." % (parc, mrisubject))
+
             # make sure annot exists for common brain
             self.set(mrisubject=common_brain, match=False)
             common_brain_mtime = self.make_annot()
@@ -2180,16 +2193,10 @@ class MneExperiment(FileTree):
                     return mtime
 
             # copy or morph
-            if is_fake_mri(self.get('mri-dir')):
+            if is_fake:
                 for _ in self.iter('hemi'):
                     self.make_copy('annot-file', 'mrisubject', common_brain,
                                    mrisubject)
-            elif parc in FS_PARCS:
-                # https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation
-                raise NotImplementedError("The Aparc FreeSurfer parcellations can not be "
-                                          "created automatically for subject-specific "
-                                          "MRIs. Use FreeSurfer to create the %s parcellation "
-                                          "for mrisubject %s." % (parc, mrisubject))
             else:
                 self.get('label-dir', make=True)
                 subjects_dir = self.get('mri-sdir')
