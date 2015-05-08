@@ -534,6 +534,9 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     if parallel:
         _set_parallel(brain, surf)
 
+    # without this sometimes the brain position is off
+    brain.screenshot()
+
     return brain
 
 
@@ -786,7 +789,6 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         hemi_data = data.sub(source=hemi)
         brain = cluster(hemi_data, vmax, surf, views[0], colorbar=False, w=300,
                         h=250, time_label=None)
-        brain.screenshot_single('rgba', True)
 
         hemi_lines = [[] for _ in views]
         for i in xrange(len(data.time)):
