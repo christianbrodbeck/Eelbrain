@@ -159,7 +159,7 @@ class _Result(object):
     def cluster(self, cluster_id):
         """Retrieve a specific cluster as NDVar
 
-        Paramaters
+        Parameters
         ----------
         cluster_id : int
             Cluster id.
@@ -1051,7 +1051,7 @@ class _MultiEffectResult(_Result):
     def cluster(self, cluster_id, effect=0):
         """Retrieve a specific cluster as NDVar
 
-        Paramaters
+        Parameters
         ----------
         cluster_id : int
             Cluster id.
@@ -2403,7 +2403,7 @@ class _ClusterDist:
     def cluster(self, cluster_id):
         """Retrieve a specific cluster as NDVar
 
-        Paramaters
+        Parameters
         ----------
         cluster_id : int
             Cluster id.
