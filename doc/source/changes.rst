@@ -7,6 +7,8 @@ Changes
 New in 0.16
 -----------
 
+* :meth:`MneExperiment.make_mov_ttest` and
+  :meth:`MneExperiment.make_mov_ga_dspm` are fixed but require PySurfer 0.6.
 * API: :mod:`plot.brain` function signatures changed slightly to accommodate
   more layout-related arguments.
 

@@ -379,6 +379,10 @@ class MneExperiment(FileTree):
     tests = {}
     cluster_criteria = {'mintime': 0.025, 'minsensor': 4, 'minsource': 10}
 
+    # plotting
+    # --------
+    brain_plot_defaults = {}
+
     def __init__(self, root=None, find_subjects=True, **state):
         # create attributes (overwrite class attributes)
         self._subject_re = re.compile(self._subject_re)
@@ -2542,7 +2546,9 @@ class MneExperiment(FileTree):
         src_path = self.get(temp, **{field: src})
         os.link(src_path, dst_path)
 
-    def make_mov_ga_dspm(self, subject=None, surf='inflated', fmin=2,
+    def make_mov_ga_dspm(self, subject=None, fmin=2, surf=None, views=None,
+                         hemi=None, time_dilation=4., foreground=None,
+                         background=None, smoothing_steps=None, dst=None,
                          redo=False, **kwargs):
         """Make a grand average movie from dSPM values (requires PySurfer 0.6)
 
@@ -2550,127 +2556,120 @@ class MneExperiment(FileTree):
         ----------
         subject : None | str
             Subject or group.
+        fmin : scalar
+            Minimum dSPM value to draw (default 2). fmax is 3 * fmin.
         surf : str
             Surface on which to plot data.
-        fmin : scalar
-            Minimum dSPM value to draw. fmax is 3 * fmin.
+        views : str | tuple of str
+            View(s) of the brain to include in the movie.
+        hemi : 'lh' | 'rh' | 'both' | 'split'
+            Which hemispheres to plot.
+        time_dilation : scalar
+            Factor by which to slow the passage of time. For example, with
+            ``time_dilation=4`` (the default) a segment of data for 500 ms will
+            last 2 s.
+        foreground : mayavi color
+            Figure foreground color (i.e., the text color).
+        background : mayavi color
+            Figure background color.
+        smoothing_steps : None | int
+            Number of smoothing steps if data is spatially undersampled (pysurfer
+            ``Brain.add_data()`` argument).
+        dst : str (optional)
+            Path to save the movie. The default is a file in the results
+            folder with a name determined based on the input data. Plotting
+            parameters (``view`` and all subsequent parameters) are not
+            included in the filename. "~" is expanded to the user's home
+            folder.
         redo : bool
             Make the movie even if the target file exists already.
-        others :
+        *others* :
             Experiment state parameters.
         """
         plot._brain.assert_can_save_movies()
 
         kwargs['model'] = ''
         subject, group = self._process_subject_arg(subject, kwargs)
+        brain_kwargs = self._surfer_plot_kwargs(surf, views, hemi, foreground,
+                                                background, smoothing_steps)
 
         self.set(equalize_evoked_count='',
                  analysis='{src-kind} {evoked-kind}',
-                 resname="GA dSPM %s %s" % (surf, fmin),
+                 resname="GA dSPM %s %s" % (brain_kwargs['surf'], fmin),
                  ext='mov')
-        if group is not None:
-            dst = self.get('res-g-file', mkdir=True)
-            src = 'srcm'
+
+        if dst is None:
+            if group is None:
+                dst = self.get('res-s-file', mkdir=True)
+            else:
+                dst = self.get('res-g-file', mkdir=True)
         else:
-            dst = self.get('res-s-file', mkdir=True)
-            src = 'src'
+            dst = os.path.expanduser(dst)
+
         if not redo and os.path.exists(dst):
             return
 
-        ds = self.load_evoked_stc(group, ind_ndvar=subject is not None,
-                                  morph_ndvar=group is not None)
-
-        brain = plot.brain.dspm(ds[src], fmin, fmin * 3, surf=surf)
-        brain.save_movie(dst)
-        brain.close()
-
-    def make_mov_ga(self, subject=None, surf='smoothwm', p0=0.05, redo=False,
-                    **kwargs):
-        """Make a grand average movie for a subject or group (requires PySurfer 0.6)
-
-        In order to compare activation with baseline, data are not baseline
-        corrected in sensor space but in source space.
-
-        Parameters
-        ----------
-        subject : None | str
-            Subject or group.
-        surf : str
-            Surface on which to plot data.
-        p0 : scalar
-            Minimum p value to draw.
-        redo : bool
-            Make the movie even if the target file exists already.
-        others :
-            Experiment state parameters.
-        """
-        plot._brain.assert_can_save_movies()
-
-        subject, group = self._process_subject_arg(subject, kwargs)
-
-        if p0 == 0.05:
-            p1 = 0.01
-        elif p0 == 0.01:
-            p1 = 0.001
+        if group is None:
+            ds = self.load_evoked_stc(ind_ndvar=True)
+            y = ds['src']
         else:
-            raise ValueError("Unknown p0: %s" % p0)
+            ds = self.load_evoked_stc(group, morph_ndvar=True)
+            y = ds['srcm']
 
-        self.set(equalize_evoked_count='',
-                 analysis='{src-kind} {evoked-kind}',
-                 resname="GA %s %s" % (surf, p0),
-                 ext='mov')
-        if group is not None:
-            dst = self.get('res-g-file', mkdir=True)
-        else:
-            dst = self.get('res-s-file', mkdir=True)
-        if not redo and os.path.exists(dst):
-            return
+        brain = plot.brain.dspm(y, fmin, fmin * 3, colorbar=False, **brain_kwargs)
+        brain.save_movie(dst, time_dilation)
 
-        inv = self.get('inv')
-        if inv.startswith(('free', 'loose')):
-            sns_baseline = None
-            src_baseline = self.epochs[self.get('epoch')]['baseline']
-        elif inv.startswith('fixed'):
-            sns_baseline = self.epochs[self.get('epoch')]['baseline']
-            src_baseline = None
-        else:
-            raise ValueError("Unknown inv kind: %r" % inv)
-
-        self.set(model='')
-        if group is not None:
-            ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
-                                      morph_ndvar=True)
-            src = 'srcm'
-        else:
-            ds = self.load_epochs_stc(group, sns_baseline, src_baseline)
-            src = 'src'
-
-        res = testnd.ttest_1samp(src, match=None, ds=ds)
-        brain = plot.brain.stat(res.p, res.t, p0=p0, p1=p1, surf=surf,
-                                dtmin=0.01)
-        brain.save_movie(dst)
-        brain.close()
-
-    def make_mov_ttest(self, x, c1, c0, subject=None, surf='inflated', p0=0.05,
-                       redo=False, **kwargs):
+    def make_mov_ttest(self, subject, model=None, c1=None, c0=None, p0=0.05,
+                       surf=None, views=None, hemi=None, time_dilation=4.,
+                       foreground=None,  background=None, smoothing_steps=None,
+                       dst=None, redo=False, **kwargs):
         """Make a t-test movie (requires PySurfer 0.6)
 
         Parameters
         ----------
-        x : str
-            Model on which the conditions c1 and c0 are defined.
+        subject : str
+            Group name for a between-subject t-test, or subject name for a
+            within-subject t-test.
+        model : None | str
+            Model on which the conditions c1 and c0 are defined. If ``None``,
+            use the grand average (default).
         c1 : None | str | tuple
             Test condition (cell in model). If None, the grand average is
             used and c0 has to be a scalar.
         c0 : str | scalar
             Control condition (cell on model) or scalar against which to
             compare c1.
-        subject : str (state)
-            Group name, or subject name for single subject ttest.
+        p0 : 0.1 | 0.05 | 0.01 | .001
+            Minimum p value to draw.
+        surf : str
+            Surface on which to plot data.
+        views : str | tuple of str
+            View(s) of the brain to include in the movie.
+        hemi : 'lh' | 'rh' | 'both' | 'split'
+            Which hemispheres to plot.
+        time_dilation : scalar
+            Factor by which to slow the passage of time. For example, with
+            ``time_dilation=4`` (the default) a segment of data for 500 ms will
+            last 2 s.
+        foreground : mayavi color
+            Figure foreground color (i.e., the text color).
+        background : mayavi color
+            Figure background color.
+        smoothing_steps : None | int
+            Number of smoothing steps if data is spatially undersampled (pysurfer
+            ``Brain.add_data()`` argument).
+        dst : str (optional)
+            Path to save the movie. The default is a file in the results
+            folder with a name determined based on the input data. Plotting
+            parameters (``view`` and all subsequent parameters) are not
+            included in the filename. "~" is expanded to the user's home
+            folder.
+        redo : bool
+            Make the movie even if the target file exists already.
+        *others* :
+            Experiment state parameters.
         """
         plot._brain.assert_can_save_movies()
-
-        subject, group = self._process_subject_arg(subject, kwargs)
 
         if p0 == 0.1:
             p1 = 0.05
@@ -2678,35 +2677,71 @@ class MneExperiment(FileTree):
             p1 = 0.01
         elif p0 == 0.01:
             p1 = 0.001
+        elif p0 == 0.001:
+            p1 = 0.0001
         else:
             raise ValueError("Unknown p0: %s" % p0)
 
-        self.set(analysis='{src-kind} {evoked-kind}',
-                 resname="T-Test %s-%s %s %s" % (str(c1), str(c0), surf, p0),
-                 ext='mov')
-        if group is not None:
-            dst = self.get('res-g-file', mkdir=True)
+        brain_kwargs = self._surfer_plot_kwargs(surf, views, hemi, foreground,
+                                                background, smoothing_steps)
+        surf = brain_kwargs['surf']
+        if model:
+            if not c1:
+                raise ValueError("If x is specified, c1 needs to be specified; "
+                                 "got c1=%s" % repr(c1))
+            elif c0:
+                resname = "T-Test %s-%s %s %s" % (c1, c0, surf, p0)
+                cat = (c1, c0)
+            else:
+                resname = "T-Test %s-0 %s %s" % (c1, surf, p0)
+                cat = (c1,)
+        elif c1 or c0:
+            raise ValueError("If x is not specified, c1 and c0 should not be "
+                             "specified either; got c1=%s, c0=%s"
+                             % (repr(c1), repr(c0)))
         else:
-            dst = self.get('res-s-file', mkdir=True)
-        if not redo and os.path.exists(dst):
-            return
+            resname = "T-Test GA %s %s" % (surf, p0)
+            cat = None
 
-        sns_baseline = self.epochs[self.get('epoch')]['baseline']
-        src_baseline = None
+        # if minsource is True:
+        #     minsource = self.cluster_criteria['minsource']
+        #
+        # if mintime is True:
+        #     mintime = self.cluster_criteria['mintime']
 
-        if group is not None:
-            ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
-                                      morph_ndvar=True, cat=(c1, c0), model=x)
-            res = testnd.ttest_rel('srcm', x, c1, c0, match='subject', ds=ds)
+        kwargs.update(analysis='{src-kind} {evoked-kind}', resname=resname, ext='mov', model=model)
+        with self._temporary_state:
+            subject, group = self._process_subject_arg(subject, kwargs)
+
+            if dst is None:
+                if group is None:
+                    dst = self.get('res-s-file', mkdir=True)
+                else:
+                    dst = self.get('res-g-file', mkdir=True)
+            else:
+                dst = os.path.expanduser(dst)
+
+
+            if not redo and os.path.exists(dst):
+                return
+
+            if group is None:
+                ds = self.load_epochs_stc(subject, cat=cat)
+                y = 'src'
+            else:
+                ds = self.load_evoked_stc(group, morph_ndvar=True, cat=cat)
+                y = 'srcm'
+
+        if c0:
+            if group:
+                res = testnd.ttest_rel(y, model, c1, c0, match='subject', ds=ds)
+            else:
+                res = testnd.ttest_ind(y, model, c1, c0, ds=ds)
         else:
-            ds = self.load_epochs_stc(group, sns_baseline, src_baseline,
-                                      cat=(c1, c0), model=x)
-            res = testnd.ttest_ind('src', x, c1, c0, ds=ds)
+            res = testnd.ttest_1samp(y, ds=ds)
 
-        brain = plot.brain.stat(res.p, res.t, p0=p0, p1=p1, surf=surf,
-                                dtmin=0.01)
-        brain.save_movie(dst)
-        brain.close()
+        brain = plot.brain.stat(res.p_uncorrected, res.t, p0=p0, p1=p1, surf=surf)
+        brain.save_movie(dst, time_dilation)
 
     def make_mrat_evoked(self, **kwargs):
         """Produce the sensor data fiff files needed for MRAT sensor analysis
@@ -4238,3 +4273,12 @@ class MneExperiment(FileTree):
         show_tree: show complete tree (including secondary, optional and cache)
         """
         return self.show_tree(fields=['raw-file', 'trans-file', 'mri-dir'])
+
+    def _surfer_plot_kwargs(self, surf, views, hemi, foreground, background,
+                            smoothing_steps):
+        return {'surf': surf or self.brain_plot_defaults.get('surf', 'inflated'),
+                'views': views or self.brain_plot_defaults.get('views', ('lat', 'med')),
+                'hemi': hemi or self.brain_plot_defaults.get('hemi', None),
+                'foreground': foreground or self.brain_plot_defaults.get('foreground', None),
+                'background': background or self.brain_plot_defaults.get('background', None),
+                'smoothing_steps': smoothing_steps or self.brain_plot_defaults.get('smoothing_steps', None)}
