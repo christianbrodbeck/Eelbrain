@@ -46,6 +46,15 @@ has_mne_09 = LooseVersion(mne.__version__) >= LooseVersion('0.9')
 
 
 # Allowable epoch parameters
+EPOCH_PARAMS = {'sel_epoch', 'sel', 'tmin', 'tmax', 'decim', 'baseline', 'n_cases',
+                'post_baseline_trigger_shift',
+                'post_baseline_trigger_shift_max',
+                'post_baseline_trigger_shift_min'}
+SECONDARY_EPOCH_PARAMS = {'base', 'sel', 'tmin', 'tmax', 'decim', 'baseline',
+                          'post_baseline_trigger_shift',
+                          'post_baseline_trigger_shift_max',
+                          'post_baseline_trigger_shift_min'}
+SUPER_EPOCH_PARAMS = {'sub_epochs'}
 SUPER_EPOCH_INHERITED_PARAMS = {'tmin', 'tmax', 'decim', 'baseline'}
 
 # Parcellations that FreeSurfer generates
@@ -434,13 +443,22 @@ class MneExperiment(FileTree):
         for name, parameters in self.epochs.iteritems():
             # filter out secondary epochs
             if 'sub_epochs' in parameters:
-                if len(parameters) > 1:
+                if set(parameters).difference(SUPER_EPOCH_PARAMS):
                     msg = ("Super-epochs can only have one parameters called "
                            "'sub_epochs'; got %r" % parameters)
                     raise ValueError(msg)
                 super_epochs[name] = parameters.copy()
             elif 'base' in parameters:
+                if set(parameters).difference(SECONDARY_EPOCH_PARAMS):
+                    raise ValueError("Invalid key in epoch definition for %s: %s"
+                                     % (name, parameters))
                 secondary_epochs.append((name, parameters))
+            elif set(parameters).difference(EPOCH_PARAMS):
+                raise ValueError("Invalid key in epoch definition for %s: %s"
+                                 % (name, parameters))
+            elif 'sel_epoch' in parameters and 'n_cases' in parameters:
+                raise ValueError("Epoch %s can not have both sel_epochs and "
+                                 "n_cases entries" % name)
             else:
                 epochs[name] = epoch = self._epoch_default.copy()
                 epoch.update(self.epoch_default)
