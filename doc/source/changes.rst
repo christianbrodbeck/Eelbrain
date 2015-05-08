@@ -4,6 +4,13 @@ Changes
 .. currentmodule:: eelbrain
 
 
+New in 0.16
+-----------
+
+* API: :mod:`plot.brain` function signatures changed slightly to accommodate
+  more layout-related arguments.
+
+
 New in 0.15
 -----------
 

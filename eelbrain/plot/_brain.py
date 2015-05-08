@@ -123,6 +123,8 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
         View or views to show in the figure.
+    hemi : 'lh' | 'rh' | 'both' | 'split'
+        Which hemispheres to plot (default based on data).
     colorbar : bool
         Whether to add a colorbar to the figure.
     time_label : str
@@ -180,6 +182,8 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
         View or views to show in the figure.
+    hemi : 'lh' | 'rh' | 'both' | 'split'
+        Which hemispheres to plot (default based on data).
     colorbar : bool
         Whether to add a colorbar to the figure.
     time_label : str
@@ -229,6 +233,8 @@ def activation(src, threshold=None, vmax=None, *args, **kwargs):
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
         View or views to show in the figure.
+    hemi : 'lh' | 'rh' | 'both' | 'split'
+        Which hemispheres to plot (default based on data).
     colorbar : bool
         Whether to add a colorbar to the figure.
     time_label : str
@@ -283,6 +289,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
         View or views to show in the figure.
+    hemi : 'lh' | 'rh' | 'both' | 'split'
+        Which hemispheres to plot (default based on data).
     colorbar : bool
         Whether to add a colorbar to the figure.
     time_label : str
@@ -361,7 +369,7 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
 
     if hemi == 'split':
         n_views_x = 2
-    elif hemi in ('lh', 'rh', 'both', 'split'):
+    elif hemi in ('lh', 'rh', 'both'):
         n_views_x = 1
     else:
         raise ValueError("Unknown value for hemi parameter: %s" % repr(hemi))
@@ -399,10 +407,10 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
 
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
-                 views=('lat', 'med'), colorbar=True, time_label='ms',
-                 w=None, h=None, axw=None, axh=None, foreground=None,
-                 background=None, parallel=True, smoothing_steps=None,
-                 mask=True, subjects_dir=None):
+                 views=('lat', 'med'), hemi=None, colorbar=True,
+                 time_label='ms', w=None, h=None, axw=None, axh=None,
+                 foreground=None, background=None, parallel=True,
+                 smoothing_steps=None, mask=True, subjects_dir=None):
     """Create a PySurfer Brain object with a data layer
 
     Parameters
@@ -418,6 +426,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
         View or views to show in the figure.
+    hemi : 'lh' | 'rh' | 'both' | 'split'
+        Which hemispheres to plot (default based on data).
     colorbar : bool
         Whether to add a colorbar to the figure.
     time_label : str
@@ -449,14 +459,17 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     if src.has_case:
         src = src.summary()
 
-    if src.source.lh_n and src.source.rh_n:
-        hemi = 'split'
-    elif src.source.lh_n:
-        hemi = 'lh'
-    elif not src.source.rh_n:
-        raise ValueError('No data')
-    else:
-        hemi = 'rh'
+    if hemi is None:
+        if src.source.lh_n and src.source.rh_n:
+            hemi = 'split'
+        elif src.source.lh_n:
+            hemi = 'lh'
+        elif not src.source.rh_n:
+            raise ValueError('No data')
+        else:
+            hemi = 'rh'
+    elif (hemi == 'lh' and src.source.rh_n) or (hemi == 'rh' and src.source.lh_n):
+        src = src.sub(source=hemi)
 
     if subjects_dir is None:
         subjects_dir = src.source.subjects_dir
