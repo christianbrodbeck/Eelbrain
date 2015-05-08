@@ -426,25 +426,38 @@ class MneExperiment(FileTree):
         ########################################################################
         # epochs
         epochs = {}
+        secondary_epochs = []
         super_epochs = {}
         for name, parameters in self.epochs.iteritems():
-            # filter out super_epochs
+            # filter out secondary epochs
             if 'sub_epochs' in parameters:
                 if len(parameters) > 1:
                     msg = ("Super-epochs can only have one parameters called "
                            "'sub_epochs'; got %r" % parameters)
                     raise ValueError(msg)
-                epoch = parameters.copy()
-                epoch['name'] = name
-                super_epochs[name] = epoch
-
-            # expand epoch dict
-            epoch = self._epoch_default.copy()
-            epoch.update(self.epoch_default)
-            epoch.update(parameters)
-            epoch['name'] = name
-
-            epochs[name] = epoch
+                super_epochs[name] = parameters.copy()
+            elif 'base' in parameters:
+                secondary_epochs.append((name, parameters))
+            else:
+                epochs[name] = epoch = self._epoch_default.copy()
+                epoch.update(self.epoch_default)
+                epoch.update(parameters)
+        # integrate epochs with base
+        while secondary_epochs:
+            n_secondary_epochs = len(secondary_epochs)
+            for i in xrange(n_secondary_epochs - 1, -1, -1):
+                name, parameters = secondary_epochs[i]
+                if parameters['base'] in epochs:
+                    epoch = epochs[parameters['base']].copy()
+                    epoch['sel_epoch'] = parameters['base']
+                    if 'sel' in epoch:
+                        del epoch['sel']
+                    epoch.update(parameters)
+                    epochs[name] = epoch
+                    del secondary_epochs[i]
+            if len(secondary_epochs) == n_secondary_epochs:
+                txt = ' '.join('Epoch %s has non-existing base %r.' % p for p in secondary_epochs)
+                raise ValueError("Invalid epoch definition: %s" % txt)
         # re-integrate super-epochs
         for name, parameters in super_epochs.iteritems():
             sub_epochs = parameters['sub_epochs']
@@ -465,6 +478,9 @@ class MneExperiment(FileTree):
                     raise ValueError(msg)
                 parameters[param] = values.pop()
         epochs.update(super_epochs)
+        # add name
+        for name, epoch in epochs.iteritems():
+            epoch['name'] = name
         # find rej-files needed for each epoch (for cache checking)
         def _rej_epochs(epoch):
             "Find which rej-files an epoch depends on"

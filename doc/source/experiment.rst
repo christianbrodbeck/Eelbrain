@@ -150,13 +150,20 @@ post_baseline_trigger_shift : str
     ``new_tmin = epoch['tmin'] - post_baseline_trigger_shift_min`` to
     ``new_tmax = epoch['tmax'] - post_baseline_trigger_shift_max``.
 
-A secondary epoch can be defined using a ``sel_epoch`` entry. This means the
-events defining ``sel_epoch``, including rejection, form the basis for this
-epoch, and ``sel`` can then optionally be used to select a subset of this epoch
+A secondary epoch can be defined using a ``sel_epoch`` or ``base`` entry.
+Secondary epochs inherit trial rejection from a primary epoch.
+Additional parameters can be used to modify the definition, for example ``sel``
+can be used to select a subset of the primary epoch. The two differ in the way
+they fill in parameters that are not made explicit in the epoch's
+:class:`dict`: with ``sel_epoch`` other parameters default to
+:attr:`MneExperiment.epoch_defaults`, with ``base`` other parameters default to
+the base epoch.
 
 sel_epoch : str
     Name of the epoch providing primary events (e.g. whose trial rejection
     file should be used).
+base : str
+    Name of the epoch whose parameters provide defaults for all parameters.
 
 Superset epochs can be defined as a dictionary with only one entry:
 
