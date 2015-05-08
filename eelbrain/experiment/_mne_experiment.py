@@ -441,13 +441,13 @@ class MneExperiment(FileTree):
             # expand epoch dict
             epoch = self._epoch_default.copy()
             epoch.update(self.epoch_default)
-            epoch.update(self.epochs[name])
+            epoch.update(parameters)
             epoch['name'] = name
 
             epochs[name] = epoch
         # re-integrate super-epochs
         for name, parameters in super_epochs.iteritems():
-            sub_epochs = self.epochs[name]['sub_epochs']
+            sub_epochs = parameters['sub_epochs']
 
             # make sure definition is not recursive
             if any('sub_epochs' in epochs[n] for n in sub_epochs):
@@ -486,7 +486,7 @@ class MneExperiment(FileTree):
                     raise ValueError("Epoch %s contains post_baseline_trigger_shift "
                                      "but is missing post_baseline_trigger_shift_min "
                                      "and/or post_baseline_trigger_shift_max" % name)
-        self.epochs = epochs
+        self._epochs = epochs
 
         ########################################################################
         # store epoch rejection settings
@@ -574,9 +574,9 @@ class MneExperiment(FileTree):
                              eval_handler=self._eval_group,
                              post_set_handler=self._post_set_group)
         # epoch
-        epoch_keys = sorted(self.epochs)
+        epoch_keys = sorted(self._epochs)
         for default_epoch in epoch_keys:
-            if 'sel_epoch' not in self.epochs[default_epoch]:
+            if 'sel_epoch' not in self._epochs[default_epoch]:
                 break
         else:
             default_epoch = None
@@ -695,7 +695,7 @@ class MneExperiment(FileTree):
         subject = subject.cells[0]
         self.set(subject=subject)
         if baseline is True:
-            baseline = self.epochs[self.get('epoch')]['baseline']
+            baseline = self._epochs[self.get('epoch')]['baseline']
 
         epochs = ds['epochs']
         inv = self.load_inv(epochs)
@@ -766,7 +766,7 @@ class MneExperiment(FileTree):
         if isinstance(baseline, str):
             raise NotImplementedError("Baseline form different epoch")
         elif baseline is True:
-            baseline = self.epochs[self.get('epoch')]['baseline']
+            baseline = self._epochs[self.get('epoch')]['baseline']
 
         # find from subjects
         common_brain = self.get('common_brain')
@@ -1367,7 +1367,7 @@ class MneExperiment(FileTree):
                                    ds_eeg['index'])
             ds['epochs'] = mne.epochs.add_channels_epochs((ds['epochs'], eeg_epochs))
         else:  # single subject, single modality
-            epoch = self.epochs[self.get('epoch')]
+            epoch = self._epochs[self.get('epoch')]
             if baseline is True:
                 baseline = epoch['baseline']
 
@@ -1443,7 +1443,7 @@ class MneExperiment(FileTree):
         morph : bool
             Morph the source estimates to the common_brain (default False).
         """
-        if not sns_baseline and src_baseline and self.epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
+        if not sns_baseline and src_baseline and self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
             raise NotImplementedError("post_baseline_trigger_shift is not implemented for baseline correction in source space")
         ds = self.load_epochs(subject, sns_baseline, False, cat=cat, **kwargs)
         self._add_epochs_stc(ds, ndvar, src_baseline, morph)
@@ -1552,7 +1552,7 @@ class MneExperiment(FileTree):
         """
         subject, group = self._process_subject_arg(subject, kwargs)
         if baseline is True:
-            baseline = self.epochs[self.get('epoch')]['baseline']
+            baseline = self._epochs[self.get('epoch')]['baseline']
 
         if group is not None:
             dss = []
@@ -1583,7 +1583,7 @@ class MneExperiment(FileTree):
             # baseline correction
             if isinstance(baseline, str):
                 raise NotImplementedError
-            elif baseline and not self.epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
+            elif baseline and not self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
                 for e in ds['evoked']:
                     rescale(e.data, e.times, baseline, 'mean', copy=False)
 
@@ -1691,7 +1691,7 @@ class MneExperiment(FileTree):
             err = ("Nothing to load, set at least one of (ind_stc, ind_ndvar, "
                    "morph_stc, morph_ndvar) to True")
             raise ValueError(err)
-        elif not sns_baseline and src_baseline and self.epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
+        elif not sns_baseline and src_baseline and self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
             raise NotImplementedError("post_baseline_trigger_shift is not implemented for baseline correction in source space")
 
         ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, **kwargs)
@@ -1859,7 +1859,7 @@ class MneExperiment(FileTree):
             return ds
 
         # retrieve & check epoch parameters
-        epoch = self.epochs[self.get('epoch')]
+        epoch = self._epochs[self.get('epoch')]
         sel = epoch.get('sel', None)
         sel_epoch = epoch.get('sel_epoch', None)
         sub_epochs = epoch.get('sub_epochs', None)
@@ -2332,7 +2332,7 @@ class MneExperiment(FileTree):
         ds = ds.sub('accept')
 
         # save evt
-        epoch = self.epochs[self.get('epoch')]
+        epoch = self._epochs[self.get('epoch')]
         save.besa_evt(ds, tstart=epoch['tmin'], tstop=epoch['tmax'], dest=evt_dest)
 
     def make_copy(self, temp, field, src, dst, redo=False):
@@ -2446,7 +2446,7 @@ class MneExperiment(FileTree):
             raw_mtime = os.path.getmtime(self._get_raw_path(make=True))
             bads_mtime = os.path.getmtime(self.get('bads-file'))
 
-            rej_file_epochs = self.epochs[self.get('epoch')].get('_rej_file_epochs', None)
+            rej_file_epochs = self._epochs[self.get('epoch')].get('_rej_file_epochs', None)
             if rej_file_epochs is None:
                 sel_file = self.get('rej-file')
                 rej_mtime = os.path.getmtime(sel_file)
@@ -2462,7 +2462,7 @@ class MneExperiment(FileTree):
 
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
-        post_baseline_trigger_shift = self.epochs[self.get('epoch')].get('post_baseline_trigger_shift', None)
+        post_baseline_trigger_shift = self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None)
         if post_baseline_trigger_shift:
             ds = self.load_epochs(ndvar=False, baseline=True)
         else:
@@ -3012,7 +3012,7 @@ class MneExperiment(FileTree):
                    ".epoch_rejection class attribute." % self.get('rej'))
             raise RuntimeError(err)
 
-        epoch = self.epochs[self.get('epoch')]
+        epoch = self._epochs[self.get('epoch')]
         if 'sel_epoch' in epoch:
             msg = ("The current epoch {cur!r} inherits rejections from "
                    "{sel!r}. To access a rejection file for this epoch, call "
@@ -4117,7 +4117,7 @@ class MneExperiment(FileTree):
 
         # baseline
         # default is baseline correcting in sensor space
-        epoch_baseline = self.epochs[self.get('epoch')]['baseline']
+        epoch_baseline = self._epochs[self.get('epoch')]['baseline']
         if src_baseline is None:
             if sns_baseline is None:
                 items.append('nobl')
