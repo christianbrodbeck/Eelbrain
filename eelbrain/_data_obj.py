@@ -3655,6 +3655,8 @@ class NDVar(object):
 
         # create NDVar
         dims = tuple(dim for dim in dims if dim is not None)
+        if dims == ('case',):
+            return Var(self.x[tuple(index)], var_name, info=info)
         return NDVar(self.x[tuple(index)], dims, info, var_name)
 
     def subdata(self, **kwargs):
