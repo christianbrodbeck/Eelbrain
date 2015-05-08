@@ -14,19 +14,19 @@ from ._data_obj import (ascategorial, asvar, assub, isfactor, isinteraction,
                         as_legal_dataset_key)
 
 
-def difference(Y, X, c1, c0, match, by=None, sub=None, ds=None):
+def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
     """Subtract data in one cell from another
 
     Parameters
     ----------
-    Y : Var | NDVar
+    y : Var | NDVar
         Dependent variable.
-    X : categorial
+    x : categorial
         Model for subtraction.
     c1 : str | tuple
-        Name of the cell in X that forms the minuend.
+        Name of the cell in ``x`` that forms the minuend.
     c0 : str | tuple
-        Name of the cell in X that is to be subtracted from c1.
+        Name of the cell in ``x`` that is to be subtracted from ``c1``.
     match : categorial
         Units over which measurements were repeated.
     by : None | categorial
@@ -35,25 +35,25 @@ def difference(Y, X, c1, c0, match, by=None, sub=None, ds=None):
         Only include a subset of the data.
     ds : None | Dataset
         If a Dataset is specified other arguments can be str instead of
-        data-objects and will be retrieved from ds.
+        data-objects and will be retrieved from ``ds``.
 
     Returns
     -------
     diff : Dataset
-        Dataset with the difference between c1 and c0 on Y.
+        Dataset with the difference between ``c1`` and ``c0`` on ``y``.
     """
     sub = assub(sub, ds)
-    X = ascategorial(X, sub, ds)
+    x = ascategorial(x, sub, ds)
     out = Dataset()
     if by is None:
-        ct = Celltable(Y, X, match, sub, ds=ds)
+        ct = Celltable(y, x, match, sub, ds=ds)
         out.add(ct.groups[c1])
         if not ct.all_within:
             raise ValueError("Design is not fully balanced")
         out[ct.Y.name] = ct.data[c1] - ct.data[c0]
     else:
         by = ascategorial(by, sub, ds)
-        ct = Celltable(Y, X % by, match, sub, ds=ds)
+        ct = Celltable(y, x % by, match, sub, ds=ds)
         if not ct.all_within:
             raise ValueError("Design is not fully balanced")
 
@@ -79,24 +79,24 @@ def difference(Y, X, c1, c0, match, by=None, sub=None, ds=None):
     return out
 
 
-def frequencies(Y, X=None, of=None, sub=None, ds=None):
-    """Calculate frequency of occurrence of the categories in Y
+def frequencies(y, x=None, of=None, sub=None, ds=None):
+    """Calculate frequency of occurrence of the categories in ``y``
 
     Parameters
     ----------
-    Y : categorial
+    y : categorial
         Factor with values whose frequencies are of interest.
-    X : None | categorial
+    x : None | categorial
         Optional model defining cells for which frequencies are displayed
         separately.
     of : None | categorial
-        With `X` constant within `of`, only count frequencies for each value
-        in `of` once. (Compress Y and X before calculating frequencies.)
+        With ``x`` constant within ``of``, only count frequencies for each value
+        in ``of`` once. (Compress y and x before calculating frequencies.)
     sub : None | index
         Only use a subset of the data.
     ds : Dataset
         If ds is specified, other parameters can be strings naming for
-        variables in ds.
+        variables in ``ds``.
 
     Returns
     -------
@@ -104,56 +104,56 @@ def frequencies(Y, X=None, of=None, sub=None, ds=None):
         Dataset with frequencies.
     """
     sub = assub(sub, ds)
-    Y = ascategorial(Y, sub, ds)
-    if X is not None:
-        X = ascategorial(X, sub, ds)
+    y = ascategorial(y, sub, ds)
+    if x is not None:
+        x = ascategorial(x, sub, ds)
     if of is not None:
         of = ascategorial(of, sub, ds)
-        Y = Y.aggregate(of)
-        if X is not None:
-            X = X.aggregate(of)
+        y = y.aggregate(of)
+        if x is not None:
+            x = x.aggregate(of)
 
     # find name
-    if getattr(Y, 'name', None):
-        name = "Frequencies of %s" % Y.name
+    if getattr(y, 'name', None):
+        name = "Frequencies of %s" % y.name
     else:
         name = "Frequencies"
 
     # special case
-    if X is None:
+    if x is None:
         out = Dataset(name=name)
-        out['cell'] = Factor(Y.cells, random=Y.random)
-        n = np.fromiter((np.sum(Y == cell) for cell in Y.cells), int,
-                        len(Y.cells))
+        out['cell'] = Factor(y.cells, random=y.random)
+        n = np.fromiter((np.sum(y == cell) for cell in y.cells), int,
+                        len(y.cells))
         out['n'] = Var(n)
         return out
 
     # header
-    if getattr(X, 'name', None):
-        name += ' by %s' % X.name
+    if getattr(x, 'name', None):
+        name += ' by %s' % x.name
     out = Dataset(name=name)
 
-    if isinteraction(X):
-        for i, f in enumerate(X.base):
+    if isinteraction(x):
+        for i, f in enumerate(x.base):
             random = getattr(f, 'random', False)
-            out[f.name] = Factor((c[i] for c in X.cells), random=random)
+            out[f.name] = Factor((c[i] for c in x.cells), random=random)
     else:
-        out[X.name] = Factor(X.cells)
+        out[x.name] = Factor(x.cells)
 
-    y_idx = {cell: Y == cell for cell in Y.cells}
-    x_idx = {cell: X == cell for cell in X.cells}
-    for y_cell in Y.cells:
+    y_idx = {cell: y == cell for cell in y.cells}
+    x_idx = {cell: x == cell for cell in x.cells}
+    for y_cell in y.cells:
         n = (np.sum(np.logical_and(y_idx[y_cell], x_idx[x_cell]))
-             for x_cell in X.cells)
+             for x_cell in x.cells)
         name = as_legal_dataset_key(cellname(y_cell, '_'))
-        out[name] = Var(np.fromiter(n, int, len(X.cells)))
+        out[name] = Var(np.fromiter(n, int, len(x.cells)))
 
     return out
 
 
 def melt(name, cells, cell_var_name, ds):
     """
-    Restructure a Dataset such that a measured variable is in a single row
+    Restructure a Dataset such that a measured variable is in a single column
 
     Restructure a Dataset with a certain variable represented in several
     columns into a longer dataset in which the variable is represented in a
@@ -201,15 +201,13 @@ def melt(name, cells, cell_var_name, ds):
     return out
 
 
-
-def stats(Y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
+def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
           ds=None):
-    """
-    Make a table with statistics.
+    """Make a table with statistics
 
     Parameters
     ----------
-    Y : Var
+    y : Var
         Dependent variable.
     row : categorial
         Model specifying rows
@@ -219,7 +217,7 @@ def stats(Y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
         A list of statistics functions to show (all functions must take an
         array argument and return a scalar).
     ds : Dataset
-        If a Dataset is provided, Y, row, and col can be strings specifying
+        If a Dataset is provided, y, row, and col can be strings specifying
         members.
 
 
@@ -241,11 +239,11 @@ def stats(Y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
     test        0.2253   0.2844
 
     """
-    Y = asvar(Y, ds=ds)
+    y = asvar(y, ds=ds)
     row = ascategorial(row, ds=ds)
 
     if col is None:
-        ct = Celltable(Y, row, sub=sub, match=match)
+        ct = Celltable(y, row, sub=sub, match=match)
 
         # table header
         n_disp = len(funcs)
@@ -263,7 +261,7 @@ def stats(Y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
                 table.cell(fmt % func(data.x))
     else:
         col = ascategorial(col, ds=ds)
-        ct = Celltable(Y, row % col, sub=sub, match=match)
+        ct = Celltable(y, row % col, sub=sub, match=match)
 
         N = len(col.cells)
         table = fmtxt.Table('l' * (N + 1))
@@ -313,16 +311,14 @@ def stats(Y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],
     return table
 
 
-
-def repmeas(Y, X, match, sub=None, ds=None):
-    """
-    Create a repeated-measures table
+def repmeas(y, x, match, sub=None, ds=None):
+    """Create a repeated-measures table
 
     Parameters
     ----------
-    Y :
+    y :
         Dependent variable (can be model with several dependents).
-    X : categorial
+    x : categorial
         Model defining the cells that should be restructured into variables.
     match : categorial
         Model identifying the source of the measurement across repetitions,
@@ -337,21 +333,21 @@ def repmeas(Y, X, match, sub=None, ds=None):
     Returns
     -------
     rm_table : Dataset
-        Repeated measures table. Entries for cells of X correspond to the data
-        in Y on these levels of X (if cell names are not valid Dataset keys
-        they are modified).
+        Repeated measures table. Entries for cells of ``x`` correspond to the
+        data in ``y`` on these levels of ``x`` (if cell names are not valid
+        Dataset keys they are modified).
     """
-    ct = Celltable(Y, X, match, sub, ds=ds)
+    ct = Celltable(y, x, match, sub, ds=ds)
     if not ct.all_within:
         raise ValueError("Incomplete data")
 
     out = Dataset()
-    x = ct.groups.values()[0]
-    if isinteraction(x):
-        for f in x.base:
+    x_ = ct.groups.values()[0]
+    if isinteraction(x_):
+        for f in x_.base:
             out.add(f)
     else:
-        out[ct.match.name] = x
+        out[ct.match.name] = x_
 
     for cell in ct.X.cells:
         key = as_legal_dataset_key(cellname(cell, '_'))
