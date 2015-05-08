@@ -1,15 +1,4 @@
-"""Some basic statistical tests for univariate data.
-
-.. autosummary::
-   :toctree: generated
-
-   anova
-   pairwise
-   ttest
-   correlations
-   lilliefors
-
-"""
+"""Some basic statistical tests for univariate data."""
 __test__ = False
 
 from ._stats.glm import anova, ANOVA

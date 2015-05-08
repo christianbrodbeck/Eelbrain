@@ -118,18 +118,75 @@ frequencies:
 Statistics
 ^^^^^^^^^^
 
-Modules with statistical tests:
+.. py:module:: eelbrain.test
+.. py:currentmodule:: eelbrain
+
+Univariate statistical tests:
 
 .. autosummary::
    :toctree: generated
    
-   test
-   testnd
+   test.anova
+   test.pairwise
+   test.ttest
+   test.correlations
+   test.lilliefors
+
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+Mass-Univariate Statistics
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. py:module:: eelbrain.testnd
+.. py:currentmodule:: eelbrain
+
+.. autosummary::
+   :toctree: generated
+
+   testnd.ttest_1samp
+   testnd.ttest_rel
+   testnd.ttest_ind
+   testnd.t_contrast_rel
+   testnd.anova
+   testnd.corr
+
+
+By default the tests in this module produce maps of statistical parameters
+along with maps of p-values uncorrected for multiple comparison. Using different
+parameters, different methods for multiple comparison correction can be applied
+(for more details and options see the documentation for individual tests):
+
+**1: permutation for maximum statistic** (``samples=n``)
+    Look for the maximum
+    value of the test statistic in ``n`` permutations and calculate a p-value
+    for each data point based on this distribution of maximum statistics.
+**2: Threshold-based clusters** (``samples=n, pmin=p``)
+    Find clusters of data
+    points where the original statistic exceeds a value corresponding to an
+    uncorrected p-value of ``p``. For each cluster, calculate the sum of the
+    statistic values that are part of the cluster. Do the same in ``n``
+    permutations of the original data and retain for each permutation the value
+    of the largest cluster. Evaluate all cluster values in the original data
+    against the distributiom of maximum cluster values (see [1]_).
+**3: Threshold-free cluster enhancement** (``samples=n, tfce=True``)
+    Similar to
+    (1), but each statistical parameter map is first processed with the
+    cluster-enhancement algorithm (see [2]_). This is the most computationally
+    intensive option.
 
 To get information about the progress of permutation tests use
 :func:`set_log_level` to change the logging level to 'info'::
 
     >>> set_log_level('info')
+
+
+.. [1] Maris, E., & Oostenveld, R. (2007). Nonparametric
+    statistical testing of EEG- and MEG-data. Journal of Neuroscience Methods,
+    164(1), 177-190. doi:10.1016/j.jneumeth.2007.03.024
+.. [2] Smith, S. M., and Nichols, T. E. (2009). Threshold-Free Cluster
+    Enhancement: Addressing Problems of Smoothing, Threshold Dependence and
+    Localisation in Cluster Inference. NeuroImage, 44(1), 83-98.
+    doi:10.1016/j.neuroimage.2008.03.061
 
 
 .. _ref-plotting:
