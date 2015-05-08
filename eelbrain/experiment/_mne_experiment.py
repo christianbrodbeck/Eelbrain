@@ -45,6 +45,9 @@ logger = logging.getLogger('eelbrain.experiment')
 has_mne_09 = LooseVersion(mne.__version__) >= LooseVersion('0.9')
 
 
+# Allowable epoch parameters
+SUPER_EPOCH_INHERITED_PARAMS = {'tmin', 'tmax', 'decim', 'baseline'}
+
 # Parcellations that FreeSurfer generates
 FS_PARCS = ('aparc.a2005s', 'aparc.a2009s', 'aparc', 'aparc.DKTatlas')
 # Parcellations that come with fsaverage
@@ -468,12 +471,12 @@ class MneExperiment(FileTree):
                 raise ValueError(msg)
 
             # find params
-            for param in ('tmin', 'tmax', 'decim'):
-                values = set(epochs[n][param] for n in sub_epochs)
+            for param in SUPER_EPOCH_INHERITED_PARAMS:
+                values = {epochs[n][param] for n in sub_epochs}
                 if len(values) > 1:
                     param_repr = ', '.join(repr(v) for v in values)
                     msg = ("All sub_epochs of a super-epoch must have the "
-                           "same setting for %r; %r got {%s}."
+                           "same setting for %r; super-epoch %r got {%s}."
                            % (param, name, param_repr))
                     raise ValueError(msg)
                 parameters[param] = values.pop()
