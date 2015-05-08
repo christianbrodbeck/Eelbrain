@@ -37,6 +37,9 @@ File I/O
 Load
 ====
 
+.. py:module:: eelbrain.load
+.. py:currentmodule:: eelbrain
+
 Eelbrain has its own function for unpickling. In contrast to `normal unpickling
 <https://docs.python.org/2/library/pickle.html>`_, this function can also load 
 files pickled with earlier Eelbrain versions:
@@ -59,6 +62,9 @@ Modules:
 
 Save
 ====
+
+.. py:module:: eelbrain.save
+.. py:currentmodule:: eelbrain
 
 * `Pickling <http://docs.python.org/library/pickle.html>`_: All data-objects
   can be pickled. :func:`save.pickle` provides a shortcut for pickling objects.
@@ -100,6 +106,9 @@ NDVar Transformations
 ^^^^^^
 Tables
 ^^^^^^
+
+.. py:module:: eelbrain.table
+.. py:currentmodule:: eelbrain
 
 Manipulate data tables and compile information about data objects such as cell
 frequencies:
@@ -278,6 +287,9 @@ Plot sensor layout maps:
 ^^^^
 GUIs
 ^^^^
+
+.. py:module:: eelbrain.gui
+.. py:currentmodule:: eelbrain
 
 Tools with a graphical user interface (GUI):
 
