@@ -555,6 +555,10 @@ def test_ndvar():
     v_case = Var(b_case)
     assert_equal(x.sub(case=v_case, sensor=b_sensor, time=a_time), tgt)
 
+    # univariate result
+    assert_dataobj_equal(x.sub(sensor=2, time=0.1),
+                         Var(x.x[:, 2, a_time[0]], x.name))
+
     # baseline correction
     x_bl = x - x.summary(time=(None, 0))
     # assert that the baseline is 0
