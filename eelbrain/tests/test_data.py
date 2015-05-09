@@ -201,6 +201,8 @@ def test_combine():
     ok_(np.all(ds1['YCat'] == ds['YCat'][:ds1.n_cases]), "Combine with missing "
         "Factor")
 
+    # invalid input
+    assert_raises(ValueError, combine, ())
     assert_raises(TypeError, combine, (ds2['A'], ds2['Y']))
 
     # combine NDVar with unequel dimensions

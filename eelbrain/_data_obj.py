@@ -1055,6 +1055,10 @@ def combine(items, name=None, check_dims=True):
     - The info dict inherits only entries that are equal (``x is y or
       np.array_equal(x, y)``) for all items.
     """
+    # check input
+    if len(items) == 0:
+        raise ValueError("combine() called with empty sequence %s" % repr(items))
+
     # find type
     stypes = set(getattr(item, '_stype', None) for item in items)
     if None in stypes:
