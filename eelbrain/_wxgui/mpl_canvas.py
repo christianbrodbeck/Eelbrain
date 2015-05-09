@@ -16,7 +16,6 @@ from matplotlib.backends import backend_wx
 from matplotlib.figure import Figure
 import wx
 
-from .._utils import ui
 from .._wxutils import ID, Icon
 from .frame import EelbrainFrame
 
