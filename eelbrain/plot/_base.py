@@ -838,9 +838,11 @@ class _EelFigure(object):
             (default True).
         title : str
             Figure title (default is no title).
-        frame : bool
-            Draw lines framing axes from above and from the right (default
-            True).
+        frame : bool | 't'
+            How to frame the plots.
+            ``True`` (default): normal matplotlib frame;
+            ``False``: omit top and right lines;
+            ``'t'``: draw spines at x=0 and y=0, common for ERPs.
         yaxis : bool
             Draw the y-axis (default True).
         h : scalar
@@ -894,11 +896,21 @@ class _EelFigure(object):
                 axes.append(ax)
 
                 # axes modifications
-                if not frame:
+                if frame == 't':
+                    ax.tick_params(direction='inout', bottom=False, top=True,
+                                   left=False, right=True, labelbottom=True,
+                                   labeltop=False, labelleft=True,
+                                   labelright=False)
+                    ax.spines['right'].set_position('zero')
+                    ax.spines['left'].set_visible(False)
+                    ax.spines['top'].set_position('zero')
+                    ax.spines['bottom'].set_visible(False)
+                elif not frame:
                     ax.yaxis.set_ticks_position('left')
                     ax.spines['right'].set_visible(False)
                     ax.xaxis.set_ticks_position('bottom')
                     ax.spines['top'].set_visible(False)
+
                 if not yaxis:
                     ax.yaxis.set_ticks(())
                     ax.spines['left'].set_visible(False)

@@ -92,9 +92,11 @@ class UTSStat(_EelFigure, LegendMixin):
         (default True)
     title : str | None
         Figure title.
-    frame : bool
-        Draw a frame containing the figure from the top and the right (default
-        ``True``).
+    frame : bool | 't'
+        How to frame the plots.
+        ``True`` (default): normal matplotlib frame;
+        ``False``: omit top and right lines;
+        ``'t'``: draw spines at x=0 and y=0, common for ERPs.
     """
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
