@@ -452,7 +452,7 @@ def asndvar(x, sub=None, ds=None, n=None):
             x = evoked_ndvar(x)
 
     if not isndvar(x):
-        raise TypeError("NDVar required")
+        raise TypeError("NDVar required, got %s" % repr(x))
 
     if sub is not None:
         x = x[sub]
@@ -473,7 +473,7 @@ def asnumeric(x, sub=None, ds=None, n=None):
         x = ds.eval(x)
 
     if not isnumeric(x):
-        raise TypeError("Numeric argument required (Var or NDVar)")
+        raise TypeError("Numeric argument required (Var or NDVar), got %s" % repr(x))
 
     if sub is not None:
         x = x[sub]
