@@ -1,8 +1,8 @@
-'''
-Created on Dec 2, 2012
+# Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from nose.tools import eq_, ok_, assert_raises
+from eelbrain._data_obj import isvar, isndvar
+from eelbrain._utils.testing import assert_dataobj_equal
 
-@author: christian
-'''
 from eelbrain import Factor, datasets, table, combine
 
 
@@ -25,7 +25,7 @@ def test_difference():
 
 
 def test_frequencies():
-    "test table.frequencies"
+    "Test table.frequencies"
     ds = datasets.get_uts()
     A = ds['A']
     B = ds['B']
@@ -33,6 +33,34 @@ def test_frequencies():
     print table.frequencies(Cat, A)
     print table.frequencies(Cat, A % B)
     print table.frequencies(Cat % A, B)
+
+
+def test_melt_ndvar():
+    "Test table.melt_ndvar()"
+    ds = datasets.get_uts(True)
+    ds = ds.sub("A == 'a1'")
+
+    lds = table.melt_ndvar('uts', ds=ds)
+    ok_('time' in lds)
+    ok_(isvar(lds['time']))
+    eq_(set(lds['time'].x), set(ds['uts'].time.x))
+
+    # no ds
+    lds2 = table.melt_ndvar(ds['uts'])
+    assert_dataobj_equal(lds2['uts'], lds['uts'])
+
+    # sensor
+    lds = table.melt_ndvar("utsnd.summary(time=(0.1, 0.2))", ds=ds, varname='summary')
+    eq_(set(lds['sensor'].cells), set(ds['utsnd'].sensor.names))
+
+    # NDVar out
+    lds = table.melt_ndvar("utsnd", 'sensor', ds=ds)
+    ok_('utsnd' in lds)
+    ok_(isndvar(lds['utsnd']))
+    assert_dataobj_equal(lds[:ds.n_cases, 'utsnd'], ds.eval("utsnd.sub(sensor='0')"))
+
+    # more than one dimensions
+    assert_raises(ValueError, table.melt_ndvar, 'utsnd', ds=ds)
 
 
 def test_repmeas():

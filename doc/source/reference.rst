@@ -119,6 +119,7 @@ frequencies:
     table.difference
     table.frequencies
     table.melt
+    table.melt_ndvar
     table.repmeas
     table.stats
 

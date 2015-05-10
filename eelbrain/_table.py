@@ -9,9 +9,9 @@ import re
 import numpy as np
 
 from . import fmtxt
-from ._data_obj import (ascategorial, asvar, assub, isfactor, isinteraction,
-                        Dataset, Factor, Var, Celltable, combine, cellname,
-                        as_legal_dataset_key)
+from ._data_obj import (ascategorial, asvar, asndvar, assub, isfactor, isuv,
+                        isinteraction, Dataset, Factor, Var, Celltable, combine,
+                        cellname, as_legal_dataset_key)
 
 
 def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
@@ -199,6 +199,67 @@ def melt(name, cells, cell_var_name, ds):
         dss.append(cell_ds)
     out = combine(dss)
     return out
+
+
+def melt_ndvar(ndvar, dim=None, cells=None, ds=None, varname=None):
+    """
+    Transform data to long format by converting an NDVar dimension into a variable
+
+    Parameters
+    ----------
+    ndvar : NDVar | str
+        The NDVar (or name of the NDVar in ``ds``).
+    dim : str
+        The name of the dimension that should be unwrapped (optional if
+        ``ndvar`` has only one non-case dimension).
+    cells : sequence
+        The values on ``dim`` that should be included in the output Dataset
+        (default is to include all values).
+    ds : Dataset
+        Dataset with additional variables that should be included in the long
+        table.
+    varname : str
+        Name for the transformed ``ndvar`` (default is ``ndvar.name``).
+
+    Returns
+    -------
+    long_table : Dataset
+        Dataset in long format.
+    """
+    ndvar = asndvar(ndvar, ds=ds)
+    if dim is None:
+        if ndvar.ndim == ndvar.has_case + 1:
+            dim = ndvar.dims[-1]
+            dimname = dim.name
+        else:
+            raise ValueError("The ndvar has more than one possible dimensions, "
+                             "the dim parameter must be one of %s"
+                             % repr(ndvar.dimnames[ndvar.has_case:]))
+    else:
+        dimname = dim
+        dim = ndvar.get_dim(dimname)
+
+    if cells is None:
+        cells = dim.values
+
+    if varname is None:
+        if ndvar.name is None:
+            raise TypeError("Need to provide a name")
+        varname = ndvar.name
+
+    if ds is None:
+        base_ds = Dataset()
+    else:
+        uv_keys = tuple(k for k, v in ds.iteritems() if isuv(v))
+        base_ds = ds[uv_keys]
+
+    dss = []
+    for cell in cells:
+        ds_ = base_ds.copy()
+        ds_[varname] = ndvar.sub(**{dimname: cell})
+        ds_[dimname, :] = cell
+        dss.append(ds_)
+    return combine(dss)
 
 
 def stats(y, row, col=None, match=None, sub=None, fmt='%.4g', funcs=[np.mean],

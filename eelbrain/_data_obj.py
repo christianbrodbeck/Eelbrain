@@ -5760,8 +5760,14 @@ def _subgraph_edges(connectivity, int_index):
 
 
 class Dimension(object):
-    """
-    Base class for dimensions.
+    """Base class for dimensions.
+
+    Attributes
+    ----------
+    x : array_like
+        Numerical values (e.g. for locating categories on an axis).
+    values : sequence
+        Meaningful point descriptions (e.g. time points, sensor names, ...).
     """
     name = 'Dimension'
     adjacent = True
@@ -6643,6 +6649,10 @@ class Sensor(Dimension):
                              "exactly one position per channel")
         self.locs[:] = pos
 
+    @property
+    def values(self):
+        return self.names
+
 
 def as_sensor(obj):
     "Coerce to Sensor instance"
@@ -7145,6 +7155,10 @@ class SourceSpace(Dimension):
 
         self.parc = parc_
 
+    @property
+    def values(self):
+        raise NotImplementedError
+
 
 _uts_tol = 0.000001  # tolerance for deciding if time values are equal
 
@@ -7446,6 +7460,10 @@ class UTS(Dimension):
 
         s = slice(start, stop)
         return s
+
+    @property
+    def values(self):
+        return self.times
 
 
 def intersect_dims(dims1, dims2, check_dims=True):
