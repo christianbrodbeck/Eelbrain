@@ -1356,6 +1356,15 @@ class LegendMixin(object):
             self.__ctrl.SetSelection(loc)
         return out
 
+    def save_legend(self, *args, **kwargs):
+        """Save the legend as image file
+
+        Parameters for Matplotlib's figure.savefig()
+        """
+        p = self.plot_legend(show=False)
+        p.save(*args, **kwargs)
+        p.close()
+
     def __plot(self, loc, *args, **kwargs):
         if loc and len(self.__handles) > 1:
             cells = sorted(self.__handles)
