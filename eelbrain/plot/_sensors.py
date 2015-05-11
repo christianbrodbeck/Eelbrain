@@ -135,7 +135,8 @@ class _plt_map2d:
         sensors : None | Sensor dimension index
             Sensors which should be marked (None to clear all markings).
         others :
-            Matplotlib plot parameters for the marking sensors.
+            Matplotlib :func:`pyplot.scatter` parameters for the marking
+            sensors.
         """
         if sensors is None:
             while self._mark_handles:
@@ -146,7 +147,7 @@ class _plt_map2d:
 
         idx = self.sensors.dimindex(sensors)
         locs = self.locs[idx]
-        self._mark_handles = self.ax.plot(locs[:, 0], locs[:, 1], *args, **kwargs)
+        self._mark_handles = self.ax.scatter(locs[:, 0], locs[:, 1], *args, **kwargs)
 
     def remove(self):
         "remove from axes"
@@ -297,7 +298,8 @@ class SensorMapMixin:
         sensors : None | Sensor dimension index
             Sensors which should be marked (None to clear all markings).
         others :
-            Matplotlib plot parameters for the marking sensors.
+            Matplotlib :func:`pyplot.scatter` parameters for the marking
+            sensors.
         """
         for p in self.__sensor_plots:
             p.mark_sensors(sensors, *args, **kwargs)
