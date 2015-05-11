@@ -875,39 +875,39 @@ class Correlation(_EelFigure, LegendMixin):
     legend : str | int | 'fig' | None
         Matplotlib figure legend location argument or 'fig' to plot the
         legend in a separate figure.
+    xlabel, ylabel : str
+        Label for the x- and y-axis (default based on data).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
     title : str
         Figure title.
     """
-    def __init__(self, Y, X, cat=None, sub=None, ds=None,
+    def __init__(self, y, x, cat=None, sub=None, ds=None,
                  c=['b', 'r', 'k', 'c', 'm', 'y', 'g'], legend='upper right',
-                 lncol=2, xlabel=True, ylabel=True, *args, **kwargs):
+                 xlabel=True, ylabel=True, *args, **kwargs):
         sub = assub(sub, ds)
-        Y = asvar(Y, sub, ds)
-        X = asvar(X, sub, ds)
+        y = asvar(y, sub, ds)
+        x = asvar(x, sub, ds)
         if cat is not None:
             cat = ascategorial(cat, sub, ds)
 
         # figure
-        frame_title_ = frame_title("Correlation", Y, X, cat)
+        frame_title_ = frame_title("Correlation", y, x, cat)
         _EelFigure.__init__(self, frame_title_, 1, 5, 1, *args, **kwargs)
-        self._configure_yaxis(Y, ylabel)
-        self._configure_xaxis(X, xlabel)
+        self._configure_yaxis(y, ylabel)
+        self._configure_xaxis(x, xlabel)
 
         ax = self._axes[0]
         legend_handles = {}
         if cat is None:
             legend = False
-            ax.scatter(X.x, Y.x, alpha=.5)
+            ax.scatter(x.x, y.x, alpha=.5)
         else:
             for color, cell in zip(c, cat.cells):
                 idx = (cat == cell)
-                Xi = X[idx]
-                Yi = Y[idx]
                 cell = str2tex(cellname(cell))
-                h = ax.scatter(Xi.x, Yi.x, c=color, label=cell, alpha=.5)
+                h = ax.scatter(x[idx].x, y[idx].x, c=color, label=cell, alpha=.5)
                 legend_handles[cell] = h
 
         LegendMixin.__init__(self, legend, legend_handles)
