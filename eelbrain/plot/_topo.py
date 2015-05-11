@@ -4,6 +4,8 @@ Plot topographic maps of sensor space data.
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
 
+from itertools import izip
+
 import numpy as np
 from scipy import interpolate
 
@@ -39,6 +41,10 @@ class Topomap(SensorMapMixin, _EelFigure):
     vmax, vmin : None | scalar
         Override the default plot limits. If only vmax is specified, vmin
         is set to -vmax.
+    axtitle : str | None
+        Axes title, default is each topography's name.
+    xlabel : str
+        Label below the topomaps (default is no label).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -47,7 +53,7 @@ class Topomap(SensorMapMixin, _EelFigure):
     """
     def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
                  res=200, interpolation='nearest', ds=None, vmax=None,
-                 vmin=None, *args, **kwargs):
+                 vmin=None, axtitle=True, xlabel=None, *args, **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         nax = len(epochs)
 
@@ -57,10 +63,11 @@ class Topomap(SensorMapMixin, _EelFigure):
 
         self._plots = []
         sensor_plots = []
-        for i, ax, layers in zip(xrange(nax), self._axes, epochs):
+        for i, ax, layers in izip(xrange(nax), self._axes, epochs):
             ax.ID = i
-            h = _ax_topomap(ax, layers, True, sensorlabels, res=res, proj=proj,
-                            interpolation=interpolation, vlims=vlims)
+            h = _ax_topomap(ax, layers, axtitle, sensorlabels, res=res, proj=proj,
+                            interpolation=interpolation, xlabel=xlabel,
+                            vlims=vlims)
             self._plots.append(h)
             sensor_plots.append(h.sensors)
 
@@ -509,7 +516,11 @@ class _ax_topomap(_utsnd._ax_im_array):
                              im_frame, vlims, cmaps, contours)
             self.layers.append(h)
             if title is True:
-                title = getattr(layer, 'name', True)
+                title = layer.name
+
+            if xlabel is True:
+                xlabel = layer.name
+
             overlay = True
 
         # plot sensors
@@ -528,10 +539,11 @@ class _ax_topomap(_utsnd._ax_im_array):
         ax.set_xlim(-im_frame, 1 + im_frame)
         ax.set_ylim(-im_frame, 1 + im_frame)
 
-        if isinstance(xlabel, str):
-            ax.set_xlabel(xlabel)
+        if isinstance(xlabel, basestring):
+            x, y = ax.transData.inverted().transform(ax.transAxes.transform((0.5, 0)))
+            ax.text(x, y, xlabel, ha='center', va='top')
 
-        if isinstance(title, str):
+        if isinstance(title, basestring):
             self.title = ax.set_title(title)
         else:
             self.title = None
