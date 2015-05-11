@@ -910,6 +910,14 @@ class Correlation(_EelFigure, LegendMixin):
                 h = ax.scatter(x[idx].x, y[idx].x, c=color, label=cell, alpha=.5)
                 legend_handles[cell] = h
 
+        # limits
+        for func, data in ((ax.set_xlim, x), (ax.set_ylim, y)):
+            min_ = data.min()
+            max_ = data.max()
+            range_ = max_ - min_
+            delta = range_ / 20.
+            func(min_ - delta, max_ + delta)
+
         LegendMixin.__init__(self, legend, legend_handles)
         self._show()
 
