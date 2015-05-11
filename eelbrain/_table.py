@@ -50,13 +50,15 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
         out.add(ct.groups[c1])
         if not ct.all_within:
             raise ValueError("Design is not fully balanced")
-        out[ct.Y.name] = ct.data[c1] - ct.data[c0]
+        yname = y if isinstance(y, basestring) else ct.Y.name
+        out[yname] = ct.data[c1] - ct.data[c0]
     else:
         by = ascategorial(by, sub, ds)
         ct = Celltable(y, x % by, match, sub, ds=ds)
         if not ct.all_within:
             raise ValueError("Design is not fully balanced")
 
+        yname = y if isinstance(y, basestring) else ct.Y.name
         dss = []
         if isinstance(c1, str):
             c1 = (c1,)
@@ -67,7 +69,7 @@ def difference(y, x, c1, c0, match, by=None, sub=None, ds=None):
                 cell = (cell,)
             cell_ds = Dataset()
             cell_ds.add(ct.groups[c1 + cell])
-            cell_ds[ct.Y.name] = ct.data[c1 + cell] - ct.data[c0 + cell]
+            cell_ds[yname] = ct.data[c1 + cell] - ct.data[c0 + cell]
             if isfactor(by):
                 cell_ds[by.name, :] = cell[0]
             else:
