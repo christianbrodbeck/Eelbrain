@@ -1064,6 +1064,13 @@ class _EelFigure(object):
         self.figure.savefig(*args, **kwargs)
 
     def set_xtick_rotation(self, rotation):
+        """Rotate every x-axis tick-label by an angle (counterclockwise, in degrees)
+
+        Parameters
+        ----------
+        rotation : scalar
+            Counterclockwise rotation angle, in degrees.
+        """
         for ax in self._axes:
             for t in ax.get_xticklabels():
                 t.set_rotation(rotation)
