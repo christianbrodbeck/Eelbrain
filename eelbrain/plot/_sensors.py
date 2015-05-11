@@ -133,20 +133,20 @@ class _plt_map2d:
         Parameters
         ----------
         sensors : None | Sensor dimension index
-            Sensors which should be marked.
-        marker : str
-            Matplotlib marker specification for the marked sensors.
+            Sensors which should be marked (None to clear all markings).
+        others :
+            Matplotlib plot parameters for the marking sensors.
         """
-        while self._mark_handles:
-            self._mark_handles.pop().remove()
-
-        if not np.count_nonzero(sensors):
+        if sensors is None:
+            while self._mark_handles:
+                self._mark_handles.pop().remove()
+            return
+        elif not np.count_nonzero(sensors):
             return
 
         idx = self.sensors.dimindex(sensors)
         locs = self.locs[idx]
-        self._mark_handles = self.ax.plot(locs[:, 0], locs[:, 1], *args,
-                                          **kwargs)
+        self._mark_handles = self.ax.plot(locs[:, 0], locs[:, 1], *args, **kwargs)
 
     def remove(self):
         "remove from axes"
@@ -289,19 +289,18 @@ class SensorMapMixin:
         color = ['k', 'w', 'b', 'g', 'r', 'c', 'm', 'y'][sel]
         self.set_label_color(color)
 
-    def mark_sensors(self, sensors, marker='bo'):
+    def mark_sensors(self, sensors, *args, **kwargs):
         """Mark given sensors on the plots
 
         Parameters
         ----------
-        sensors : sequence of {str | int}
-            List of sensor names or indices.
-        marker : str
-            Matplotlib marker specification for the marked sensors (default
-            'bo').
+        sensors : None | Sensor dimension index
+            Sensors which should be marked (None to clear all markings).
+        others :
+            Matplotlib plot parameters for the marking sensors.
         """
         for p in self.__sensor_plots:
-            p.mark_sensors(sensors, marker)
+            p.mark_sensors(sensors, *args, **kwargs)
         self.draw()
 
     def set_label_color(self, color='w'):
