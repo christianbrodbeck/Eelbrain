@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Color tools for plotting."""
 from __future__ import division
@@ -340,7 +341,7 @@ class ColorList(_EelFigure):
 
 
 class ColorBar(_EelFigure):
-    """A color-bar for a matplotlib color-map
+    u"""A color-bar for a matplotlib color-map
 
     Parameters
     ----------
@@ -360,10 +361,13 @@ class ColorBar(_EelFigure):
         Clip the color-bar above this value.
     orientation : 'horizontal' | 'vertical'
         Orientation of the bar (default is horizontal).
+    unit : str
+        Unit for the axis to determine tick labels (for example, u'µV' to label
+        0.000001 as '1').
     """
     def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
-                 *args, **kwargs):
+                 unit=None, *args, **kwargs):
         cm = mpl.cm.get_cmap(cmap)
         lut = cm(np.arange(cm.N))
         if orientation == 'horizontal':
@@ -388,17 +392,25 @@ class ColorBar(_EelFigure):
             ax.imshow(im, extent=(vmin, vmax, 0, 1), aspect='auto')
             ax.set_xlim(clipmin, clipmax)
             ax.yaxis.set_ticks(())
-            if label is not None:
+            if unit:
+                self._configure_xaxis(unit, label)
+            elif label:
                 ax.set_xlabel(label)
-                if label_position is not None:
-                    ax.xaxis.set_label_position(label_position)
-        else:
+
+            if label_position is not None:
+                ax.xaxis.set_label_position(label_position)
+        elif orientation == 'vertical':
             ax.imshow(im, extent=(0, 1, vmin, vmax), aspect='auto', origin='lower')
             ax.set_ylim(clipmin, clipmax)
             ax.xaxis.set_ticks(())
-            if label is not None:
+            if unit:
+                self._configure_yaxis(unit, label)
+            elif label:
                 ax.set_ylabel(label)
-                if label_position is not None:
-                    ax.yaxis.set_label_position(label_position)
+
+            if label_position is not None:
+                ax.yaxis.set_label_position(label_position)
+        else:
+            raise ValueError("orientation=%s" % repr(orientation))
 
         self._show()

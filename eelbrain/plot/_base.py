@@ -75,7 +75,8 @@ import PIL
 from .._utils.subp import command_exists
 from ..fmtxt import Image, texify
 from .._colorspaces import symmetric_cmaps, zerobased_cmaps
-from .._data_obj import ascategorial, asndvar, DimensionMismatchError, cellname
+from .._data_obj import ascategorial, asndvar, isnumeric, cellname, \
+    DimensionMismatchError
 
 
 # defaults
@@ -146,6 +147,12 @@ scale_formatters = {1: ScalarFormatter(),
 
 def find_axis_params_data(v, label):
     """
+
+    Parameters
+    ----------
+    v : NDVar | Var | str | scalar
+        Unit or scale of the axis.
+
     Returns
     -------
     tick_formatter : Formatter
@@ -153,17 +160,28 @@ def find_axis_params_data(v, label):
     label : str | None
         Axis label.
     """
-    meas = v.info.get('meas', None)
-    data_unit = v.info.get('unit', None)
-
-    if meas in meas_display_unit:
-        unit = meas_display_unit[meas]
-        scale = unit_format[unit]
-        if data_unit in unit_format:
-            scale /= unit_format[data_unit]
+    if isinstance(v, basestring):
+        if v in unit_format:
+            scale = unit_format[v]
+            unit = v
+        else:
+            raise ValueError("Unknown unit: %s" % repr(v))
+    elif isinstance(v, float):
+        scale = v
+        unit = None
+    elif isnumeric(v):
+        meas = v.info.get('meas', None)
+        data_unit = v.info.get('unit', None)
+        if meas in meas_display_unit:
+            unit = meas_display_unit[meas]
+            scale = unit_format[unit]
+            if data_unit in unit_format:
+                scale /= unit_format[data_unit]
+        else:
+            scale = 1
+            unit = data_unit
     else:
-        scale = 1
-        unit = data_unit
+        raise TypeError("unit=%s" % repr(v))
 
     if label is True:
         if meas and unit and meas != unit:
@@ -172,10 +190,8 @@ def find_axis_params_data(v, label):
             label = meas
         elif unit:
             label = unit
-        elif v.name:
-            label = v.name
         else:
-            label = None
+            label = getattr(v, 'name', None)
 
     return scale_formatters[scale], label
 
