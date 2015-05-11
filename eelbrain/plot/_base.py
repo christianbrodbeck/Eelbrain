@@ -995,7 +995,9 @@ class _EelFigure(object):
         formatter, label = find_axis_params_dim(meas, label)
         for ax in axes:
             ax.xaxis.set_major_formatter(formatter)
-        self.set_xlabel(label)
+
+        if label:
+            self.set_xlabel(label)
 
     def _configure_xaxis(self, v, label, axes=None):
         if axes is None:
@@ -1003,7 +1005,9 @@ class _EelFigure(object):
         formatter, label = find_axis_params_data(v, label)
         for ax in axes:
             ax.xaxis.set_major_formatter(formatter)
-        self.set_xlabel(label)
+
+        if label:
+            self.set_xlabel(label)
 
     def _configure_yaxis_dim(self, meas, label, axes=None):
         "Configure the y-axis based on a dimension"
@@ -1012,7 +1016,9 @@ class _EelFigure(object):
         formatter, label = find_axis_params_dim(meas, label)
         for ax in axes:
             ax.yaxis.set_major_formatter(formatter)
-        self.set_ylabel(label)
+
+        if label:
+            self.set_ylabel(label)
 
     def _configure_yaxis(self, v, label, axes=None):
         if axes is None:
@@ -1020,7 +1026,9 @@ class _EelFigure(object):
         formatter, label = find_axis_params_data(v, label)
         for ax in axes:
             ax.yaxis.set_major_formatter(formatter)
-        self.set_ylabel(label)
+
+        if label:
+            self.set_ylabel(label)
 
     def draw(self):
         "(Re-)draw the figure (after making manual changes)."
