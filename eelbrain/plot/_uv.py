@@ -478,6 +478,8 @@ class Barplot(_SimpleFigure):
         Lower end of the y axis (default is 0).
     top : scalar
         Upper end of the y axis (default is determined from the data).
+    origin : scalar
+        Origin of the bars on the y-axis (the default is ``max(bottom, 0)``)
     c : matplotlib color
         Bar color (ignored if colors is specified).
     edgec : matplotlib color
@@ -498,7 +500,7 @@ class Barplot(_SimpleFigure):
                  corr='Hochberg', trend="'", test_markers=True, ylabel=True,
                  error='sem', pool_error=None, ec='k', xlabel=True, xticks=True,
                  xtick_delim='\n', hatch=False, colors=False, bottom=0, top=None,
-                 c='#0099FF', edgec=None, ds=None, *args, **kwargs):
+                 origin=None, c='#0099FF', edgec=None, ds=None, *args, **kwargs):
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asvar)
 
         if pool_error is None:
@@ -510,9 +512,10 @@ class Barplot(_SimpleFigure):
         self._configure_yaxis(ct.Y, ylabel)
 
         x0, x1, y0, y1 = _plt_barplot(self._ax, ct, error, pool_error, hatch,
-                                      colors, bottom, top, c=c, edgec=edgec,
-                                      ec=ec, test=test, par=par, trend=trend,
-                                      corr=corr, test_markers=test_markers)
+                                      colors, bottom, top, origin, c=c,
+                                      edgec=edgec, ec=ec, test=test, par=par,
+                                      trend=trend, corr=corr,
+                                      test_markers=test_markers)
 
         self._ax.set_xlim(x0, x1)
         self._ax.set_ylim(y0, y1)
@@ -532,8 +535,8 @@ class Barplot(_SimpleFigure):
 
 
 def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
-                 left=None, width=.5, c='#0099FF', edgec=None, ec='k',
-                 test=True, par=True, trend="'", corr='Hochberg',
+                 origin=None, left=None, width=.5, c='#0099FF', edgec=None,
+                 ec='k', test=True, par=True, trend="'", corr='Hochberg',
                  test_markers=True):
     """Draw a barplot to axes ax for Celltable ct.
 
@@ -567,6 +570,10 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
         left = np.arange(k) - width / 2
     height = np.array(ct.get_statistic(np.mean))
 
+    # origin
+    if origin is None:
+        origin = max(0, bottom)
+
     # error bars
     if ct.X is None:
         error_match = None
@@ -581,7 +588,7 @@ def _plt_barplot(ax, ct, error, pool_error, hatch, colors, bottom, top=None,
     y_bottom = min(bottom, plot_min - plot_span * .05)
 
     # main BARPLOT
-    bars = ax.bar(left, height - bottom, width, bottom=bottom,
+    bars = ax.bar(left, height - origin, width, bottom=origin,
                   color=c, edgecolor=edgec, ecolor=ec, yerr=y_error)
 
     # hatch
