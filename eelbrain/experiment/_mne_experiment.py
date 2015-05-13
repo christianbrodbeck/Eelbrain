@@ -2012,7 +2012,7 @@ class MneExperiment(FileTree):
         return src
 
     def load_test(self, test, tstart, tstop, pmin, parc=None, mask=None,
-                  samples=1000, data='src', sns_baseline=True,
+                  samples=10000, data='src', sns_baseline=True,
                   src_baseline=None, return_data=False, make=False, redo=False,
                   **kwargs):
         """Create and load spatio-temporal cluster test results
@@ -2031,8 +2031,8 @@ class MneExperiment(FileTree):
         mask : None | str
             Mask whole brain.
         samples : int
-            Number of samples used to determine cluster p values for spatio-
-            temporal clusters.
+            Number of random permutations of the data used to determine cluster
+            p values (default 10'000).
         data : 'sns' | 'src'
             Whether the analysis is in sensor or source space.
         sns_baseline : None | True | tuple
