@@ -1774,9 +1774,13 @@ class _Effect(object):
         return Model(self) + other
 
     def __mul__(self, other):
+        if isinstance(other, Model):
+            return Model((self, other, self % other))
         return Model((self, other, self % other))
 
     def __mod__(self, other):
+        if isinstance(other, Model):
+            return Model((self % e for e in other.effects))
         return Interaction((self, other))
 
     def count(self, value, start=-1):

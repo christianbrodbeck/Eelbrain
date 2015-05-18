@@ -481,10 +481,10 @@ def test_isin():
 
 def test_model():
     "Test Model class"
-    a = Factor('ab', repeat=2, name='a')
-    b = Factor('ab', tile=2, name='b')
-    v = Var([1., 2., 3., 4.], 'v')
-    v2 = Var([1., 0., 0., 1.], 'v2')
+    a = Factor('ab', repeat=3, name='a')
+    b = Factor('ab', tile=3, name='b')
+    v = Var([1., 2., 3., 4., 5., 6.], 'v')
+    v2 = Var([1., 0., 0., 1., 1., 0.], 'v2')
 
     # model repr
     m = a * b
@@ -503,6 +503,8 @@ def test_model():
     # different var/factor combinations
     eq_(a * b, a + b + a % b)
     eq_(a * v, a + v + a % v)
+    eq_(a * (v + v2), a + v + v2 + a % v + a % v2)
+
 
 def test_ndvar():
     "Test the NDVar class"
