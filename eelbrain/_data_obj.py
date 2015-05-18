@@ -2895,43 +2895,10 @@ class NDVar(object):
          - First element only: numpy-like case index (int, array).
          - All elements: 1d boolean NDVar.
         '''
-        if not isinstance(index, tuple):
-            index = (index,)
-
-        sub = {}
-        for i, idx in enumerate(index):
-            if isvar(idx):
-                dim_name = 'case'
-                idx = idx.x
-            elif isndvar(idx):
-                if idx.x.dtype.kind != 'b':
-                    err = "Only NDVars with boolean data can serve as indexes"
-                    raise ValueError(err)
-                elif idx.ndim != 1:
-                    msg = "Only NDVars with ndim 1 can serve as indexes"
-                    raise NotImplementedError(msg)
-
-                index_dim = idx.dims[0]
-                if index_dim == 'case':
-                    dim_name = 'case'
-                else:
-                    dim_name = index_dim.name
-                idx = idx.x
-
-                if self.get_dim(dim_name) != index_dim:
-                    err = ("Index dimension %s is different from data "
-                           "dimension" % dim_name)
-                    raise ValueError(err)
-            elif i == 0:
-                dim_name = 'case'
-            else:
-                msg = ("NDVar index can only contain dimension-neutral index "
-                       "for case (at first position)")
-                raise ValueError(msg)
-
-            sub[dim_name] = idx
-
-        return self.sub(**sub)
+        if isinstance(index, tuple):
+            return self.sub(*index)
+        else:
+            return self.sub(index)
 
     def __len__(self):
         return self._len
@@ -3615,17 +3582,23 @@ class NDVar(object):
             else:
                 return NDVar(x, dims, info, name)
 
-    def sub(self, **kwargs):
+    def sub(self, *args, **kwargs):
         """Retrieve a slice through the NDVar.
 
         Returns an NDVar object with a slice of the current NDVar's data.
-        The slice is specified using kwargs, with dimensions as keywords and
-        indexes as values, e.g.::
+        The slice is specified using arguments and keyword arguments. Indexes
+        for dimensions can ether be specified in order, or with dimension names
+        as keywords, e.g.::
 
             >>> Y.sub(time = 1)
 
-        returns a slice for time point 1 (second). For dimensions whose values
-        change monotonically, a tuple can be used to specify a window::
+        returns a slice for time point 1 (second). If time is the first
+        dimension, this is equivalent::
+
+            >>> Y.sub(1)
+
+        For dimensions whose values change monotonically, a tuple can be used
+        to specify a window::
 
             >>> Y.sub(time = (.2, .6))
 
@@ -3640,35 +3613,64 @@ class NDVar(object):
         dims = list(self.dims)
         n_axes = len(dims)
         index = [full_slice] * n_axes
+        index_args = [None] * n_axes
 
-        for name, arg in kwargs.iteritems():
-            if arg is None:
+        # sequence args
+        for i, arg in enumerate(args):
+            if isndvar(arg):
+                dimax = self.get_axis(arg.dims[0].name)
+                if index_args[dimax] is None:
+                    index_args[dimax] = arg
+                else:
+                    raise IndexError("Index for %s dimension specified twice."
+                                     % arg.dims[0].name)
+            else:
+                index_args[i] = arg
+
+        # sequence kwargs
+        for dimname, arg in kwargs.iteritems():
+            dimax = self.get_axis(dimname)
+            if index_args[dimax] is None:
+                index_args[dimax] = arg
+            else:
+                raise RuntimeError("Index for %s dimension specified twice." % dimname)
+
+        # process indexes
+        for dimax, idx in enumerate(index_args):
+            if idx is None:
                 continue
 
-            dimax = self.get_axis(name)
             dim = self.dims[dimax]
+            if isndvar(idx):
+                if idx.x.dtype.kind != 'b':
+                    raise IndexError("Only NDVars with boolean data can serve "
+                                     "as indexes. Got %s." % repr(idx))
+                elif idx.ndim != 1:
+                    raise IndexError("Only NDVars with ndim 1 can serve as "
+                                     "indexes. Got %s." % repr(idx))
 
-            if isinstance(arg, Var):
-                arg = arg.x
+                index_dim = idx.dims[0]
+                idx = idx.x
 
-            if hasattr(dim, 'dimindex'):
-                idx = dim.dimindex(arg)
-            else:
-                idx = arg
+                if dim != index_dim:
+                    err = ("Index dimension %s is different from data "
+                           "dimension" % index_dim.name)
+                    raise ValueError(err)
+            elif isvar(idx):
+                idx = idx.x
 
-            if isinstance(idx, (list, tuple)):
-                idx = np.array(idx)
+            if dimax >= self.has_case:
+                idx = dim.dimindex(idx)
 
             index[dimax] = idx
 
             # find corresponding dim
             if np.isscalar(idx):
                 dims[dimax] = None
-                info[name] = arg
-            elif isinstance(dim, str):
-                dims[dimax] = dim
-            else:
+            elif dimax >= self.has_case:
                 dims[dimax] = dim[idx]
+            else:
+                dims[dimax] = dim
 
         # adjust index dimension
         if sum(isinstance(idx, np.ndarray) for idx in index) > 1:

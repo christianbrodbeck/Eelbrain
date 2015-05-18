@@ -589,6 +589,11 @@ def test_ndvar():
     pos = sens_mean[idx]
     assert_array_equal(pos.x > 0, True)
 
+    # NDVar as index along one dimension
+    x_tc = x.sub(sensor='1')
+    x_time = NDVar(x_tc.time.times >= 0.3, dims=(x_tc.time,))
+    assert_dataobj_equal(x_tc[x_time], x_tc.sub(time=(0.3, None)))
+
     # out of range index
     assert_raises(ValueError, x.sub, time=(0.1, 0.81))
     assert_raises(ValueError, x.sub, time=(-0.25, 0.1))
