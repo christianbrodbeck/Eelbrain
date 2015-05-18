@@ -5460,6 +5460,22 @@ class Model(object):
                 out.append(e_self % e_other)
         return Model(out)
 
+    def __eq__(self, other):
+        if not isinstance(other, Model):
+            return False
+        elif not len(self) == len(other):
+            return False
+        elif not len(self.effects) == len(other.effects):
+            return False
+
+        for e, eo in izip(self.effects, other.effects):
+            if not np.all(e == eo):
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     # repr ---
     @property
     def model_eq(self):

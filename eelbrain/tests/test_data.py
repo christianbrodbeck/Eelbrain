@@ -457,9 +457,12 @@ def test_isin():
 
 def test_model():
     "Test Model class"
-    # model repr
     a = Factor('ab', repeat=2, name='a')
     b = Factor('ab', tile=2, name='b')
+    v = Var([1., 2., 3., 4.], 'v')
+    v2 = Var([1., 0., 0., 1.], 'v2')
+
+    # model repr
     m = a * b
     eq_(repr(m), "a + b + a % b")
 
@@ -473,6 +476,9 @@ def test_model():
     intercept = Factor('i', repeat=4, name='intercept')
     assert_raises(ValueError, a.__mul__, intercept)
 
+    # different var/factor combinations
+    eq_(a * b, a + b + a % b)
+    eq_(a * v, a + v + a % v)
 
 def test_ndvar():
     "Test the NDVar class"
