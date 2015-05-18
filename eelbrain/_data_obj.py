@@ -2146,9 +2146,6 @@ class Factor(_Effect):
         return self._codes.get(value, -1)
 
     def _encode_seq(self, values):
-        if not all(isinstance(v, basestring) for v in values):
-            err = "Factor indexes need to be strings, got %r" % str(values)
-            raise TypeError(err)
         return np.array([self._codes.get(value, -1) for value in values])
 
     def __call__(self, other):
