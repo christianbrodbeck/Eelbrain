@@ -401,6 +401,13 @@ def test_factor():
     f = Factor(['a' * l for l in lens])
     assert_array_equal(f.label_length(), lens)
 
+    # equality
+    f = Factor('aabbcc')
+    assert_equal(f == Factor('aabbcc'), True)
+    assert_equal(f == Factor('bbccaa'), False)
+    assert_equal(f == Factor('aabxxx'), (True, True, True, False, False, False))
+    assert_equal(f == Var(np.ones(6)), False)
+
 
 def test_factor_relabel():
     "Test Factor.relabel() method"
