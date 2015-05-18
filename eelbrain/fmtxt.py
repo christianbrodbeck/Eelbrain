@@ -2031,7 +2031,7 @@ def im_table(ims, header=None, name="im_table"):
 
     svg.append("</svg>")
     buf = '\n'.join(svg)
-    return Image(name, 'svg', buf)
+    return Image(name, 'svg', buf=buf)
 
 
 def _array_as_png(im):
