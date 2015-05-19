@@ -260,7 +260,24 @@ def roi_timecourse(doc, ds, label, model, res, colors):
     timecourse(doc, ds, y, model, res, title, caption, colors)
 
 
-def timecourse(doc, ds, y, model, res, title, caption, colors):
+def timecourse(doc, ds, y, model, res, title, caption, colors, pairwise_pmax=0.1):
+    """Add time course with clusters
+
+    Parameters
+    ----------
+    doc : Section
+        Document to which to add the time-course section.
+    ds : Dataset
+        Data.
+    y : str
+        Dependent measure.
+    model : str
+        Model for the analysis.
+    res : Result
+        Result of the temporal cluster test.
+    title : str
+        Timecourse section title.
+    """
     clusters = res.find_clusters()
     if clusters.n_cases:
         idx = clusters.eval("p.argmin()")
@@ -292,6 +309,30 @@ def timecourse(doc, ds, y, model, res, title, caption, colors):
     section.add_figure(tc_caption, [image, legend])
     p.close()
     legend_p.close()
+
+    # pairwise plots
+    if pairwise_pmax is not None:
+        plots = []
+        clusters_ = clusters.sub("p <= %s" % pairwise_pmax)
+        clusters_.sort("tstart")
+        for cluster in clusters_.itercases():
+            cid = cluster['id']
+            c_tstart = cluster['tstart']
+            c_tstop = cluster['tstop']
+            tw_str = "%s - %s ms" % (ms(c_tstart), ms(c_tstop))
+            if 'effect' in cluster:
+                title = "%s %s%s: %s" % (cluster['effect'], cid, cluster['sig'], tw_str)
+            else:
+                title = "Cluster %s%s: %s" % (cid, cluster['sig'], tw_str)
+            y_ = ds[y].summary(time=(c_tstart, c_tstop))
+            p = plot.Barplot(y_, model, 'subject', ds=ds, corr=None, show=False,
+                             colors=colors, title=title)
+            plots.append(p.image())
+            p.close()
+
+        section.add_image_figure(plots, "Value in the time-window of the clusters "
+                                 "with uncorrected pairwise t-tests.")
+
 
     # add cluster table
     if clusters.n_cases:
