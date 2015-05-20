@@ -100,8 +100,7 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, legend):
     section.add_image_figure(p, caption)
     p.close()
 
-    return cluster_timecourse(section, cluster, y, 'sensor', model, ds, colors,
-                              legend)
+    cluster_timecourse(section, cluster, y, 'sensor', model, ds, colors)
 
 
 def source_bin_table(section, res, pmin=None):
@@ -127,8 +126,7 @@ def source_bin_table(section, res, pmin=None):
         section.add_image_figure(im, caption_)
 
 
-def source_time_clusters(section, clusters, y, ds, model, include,
-                          title, colors, legend=None):
+def source_time_clusters(section, clusters, y, ds, model, include, title, colors):
     """
     Parameters
     ----------
@@ -156,13 +154,10 @@ def source_time_clusters(section, clusters, y, ds, model, include,
     # plot individual clusters
     clusters = clusters.sub("p < %s" % include)
     for cluster in clusters.itercases():
-        legend = source_time_cluster(section, cluster, y, model, ds, title,
-                                     colors, legend)
-
-    return legend
+        source_time_cluster(section, cluster, y, model, ds, title, colors)
 
 
-def source_time_cluster(section, cluster, y, model, ds, title, colors, legend):
+def source_time_cluster(section, cluster, y, model, ds, title, colors):
     # cluster properties
     tstart_ms = ms(cluster['tstart'])
     tstop_ms = ms(cluster['tstop'])
@@ -195,13 +190,10 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors, legend):
     caption_.append("%i - %i ms." % (tstart_ms, tstop_ms))
     caption = ' '.join(caption_)
     section.add_image_figure(image, caption)
-
-    return cluster_timecourse(section, cluster, y, 'source', model, ds, colors,
-                              legend)
+    cluster_timecourse(section, cluster, y, 'source', model, ds, colors)
 
 
-def cluster_timecourse(section, cluster, y, dim, model, ds, colors,
-                       legend=None):
+def cluster_timecourse(section, cluster, y, dim, model, ds, colors):
     c_extent = cluster['cluster']
     cid = cluster['id']
 
@@ -217,10 +209,9 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors,
     image_tc = p.image('cluster_%i_timecourse' % cid)
 
     # legend
-    if legend is None:
-        legend_p = p.plot_legend(show=False)
-        legend = legend_p.image("Legend")
-        legend_p.close()
+    legend_p = p.plot_legend(show=False)
+    legend = legend_p.image("Legend")
+    legend_p.close()
     p.close()
 
     # Barplot
@@ -246,8 +237,6 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors,
     res = test.pairwise(v, model, 'subject', ds=ds)
     section.add_figure("Pairwise t-tests of average value in cluster by "
                        "condition", res)
-
-    return legend
 
 
 def roi_timecourse(doc, ds, label, model, res, colors):

@@ -3176,7 +3176,6 @@ class MneExperiment(FileTree):
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
-        legend = None
         if parc is None and pmin in (None, 'tfce'):
             section = report.add_section("P<=.05")
             _report.source_bin_table(section, res, 0.05)
@@ -3184,8 +3183,8 @@ class MneExperiment(FileTree):
             clusters.sort('tstart')
             title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
             for cluster in clusters.itercases():
-                legend = _report.source_time_cluster(section, cluster, y, model,
-                                                     ds, title, colors, legend)
+                _report.source_time_cluster(section, cluster, y, model, ds,
+                                            title, colors)
 
             # trend section
             section = report.add_section("Trend: p<=.1")
@@ -3213,9 +3212,8 @@ class MneExperiment(FileTree):
                 clusters = combine((clusters_sig, clusters_trend, clusters_all))
                 clusters.sort('tstart')
                 src_ = y.sub(source=label)
-                legend = _report.source_time_clusters(section, clusters, src_,
-                                                      ds, model, include,
-                                                      title, colors, legend)
+                _report.source_time_clusters(section, clusters, src_, ds, model,
+                                             include, title, colors)
         elif parc is None:  # thresholded, whole brain
             if mask:
                 title = "Whole Brain Masked by %s" % mask.capitalize()
@@ -3231,7 +3229,7 @@ class MneExperiment(FileTree):
             clusters.sort('tstart')
             title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
             _report.source_time_clusters(section, clusters, y, ds, model,
-                                         include, title, colors, legend)
+                                         include, title, colors)
         else:  # thresholded, parc
             # add picture of parc
             section = report.add_section(parc)
@@ -3246,9 +3244,8 @@ class MneExperiment(FileTree):
 
                 clusters = res.find_clusters(None, True, source=label)
                 src_ = y.sub(source=label)
-                legend = _report.source_time_clusters(section, clusters, src_,
-                                                      ds, model, include,
-                                                      title, colors, legend)
+                _report.source_time_clusters(section, clusters, src_, ds, model,
+                                             include, title, colors)
 
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
@@ -3414,15 +3411,13 @@ class MneExperiment(FileTree):
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
-        legend = None
         if pmin in (None, 'tfce'):
             section = report.add_section("P<=.05")
             _report.sensor_bin_table(section, res, 0.05)
             clusters = res.find_clusters(0.05, maps=True)
             clusters.sort('tstart')
             for cluster in clusters.itercases():
-                legend = _report.sensor_time_cluster(section, cluster, y, model,
-                                                     ds, colors, legend)
+                _report.sensor_time_cluster(section, cluster, y, model, ds, colors)
 
             # trend section
             section = report.add_section("Trend: p<=.1")
@@ -3437,8 +3432,7 @@ class MneExperiment(FileTree):
             clusters = res.find_clusters(include, maps=True)
             clusters.sort('tstart')
             for cluster in clusters.itercases():
-                legend = _report.sensor_time_cluster(section, cluster, y, model,
-                                                     ds, colors, legend)
+                _report.sensor_time_cluster(section, cluster, y, model, ds, colors)
 
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
