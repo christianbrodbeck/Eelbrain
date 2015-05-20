@@ -10,6 +10,8 @@ import re
 import shutil
 from warnings import warn
 
+import datetime
+
 import numpy as np
 
 import mne
@@ -4238,3 +4240,154 @@ class MneExperiment(FileTree):
         show_tree: show complete tree (including secondary, optional and cache)
         """
         return self.show_tree(fields=['raw-file', 'trans-file', 'mri-dir'])
+
+
+
+    def make_average_activity(self,time,parc,label=None,average_ms='average',group='all',temp_dir = 'temp/'):
+        """
+        Compute average activity over a spatial window; either averaged over time (average_ms = "average") or for each ms of a window (average_ms = "ms").
+
+
+        Parameters:
+        ----------
+
+        time            :               tuple, the window for analysis in secs for example: (0.15, 0.2)
+        parc            :               parcellation for the spatial window
+        label           :               label within the parc of interest (if None, takes first label from parc)
+        average_ms      :               ('average','ms'), determine if the output is an average over the time window, or gets activity for each ms within the timewindow
+        group           :               the group to analyse (default = all)
+        temp_dir        :               where the files will be saved (default is to create a "temp" folder in current dir)
+
+        """
+
+        e.set(group = group)
+
+        activities = []
+
+        if label == None:
+
+            parc_labels = mne.read_labels_from_annot('fsaverage',parc,subjects_dir=e.get('mri-sdir'))
+            label = parc_labels[0]
+
+        for subject in e:
+
+            ds = e.load_epochs_stc(subject)
+
+            # get the size of the data for use in the by -ms set
+            decim = e.epochs.get('epoch').get('decim')
+            n_epochs = len(ds[ds.keys()[0]])
+            n_ms = int(((time[1]-time[0])*1000)/decim)
+
+            shape = (n_ms,n_epochs)
+
+            empty_array = np.zeros(shape=shape)
+
+            for i in xrange(len(ds[ds.keys()[0]])):
+
+                item = ds['item'][i]
+
+                ds_sub = ds.sub("item == '%s'" % item)
+                src = ds_sub['src']
+                src.source.set_parc(parc)
+                src_region = src.sub(source=label.name)
+
+                ds_sub['src'] = src_region
+                timecourse = ds_sub['src'].mean('source')
+                timecourse_sub = timecourse.sub(time=time)
+
+                # if average, get average activity over time
+                if average_ms == 'average':
+
+                    average = timecourse_sub.mean('time')
+                    activities.append(average)
+
+                # if ms, get the activity ms by ms within the timewindow
+                elif average_ms == 'ms':
+
+                    activities = empty_array
+
+                    data = timecourse_sub.x[0]
+
+                    # insert activity for each epoch, and for each ms
+                    for n in xrange(len(data)):
+                        activities[n,i] = data[n]
+
+            # for each time-point, add a column to the dataset with the activity for each epoch
+            if average_ms == 'average':
+
+                ds['dSPM_av'] = activities
+
+            elif average_ms == 'ms':
+
+                for i in xrange(len(activities)):
+
+                    n = i * decim
+
+                    ds['dSPM_%i' %n] = Var(activities[i])
+
+            # create a temporary folder, and save each subject's datafile in there, so we can remove it from RAM
+
+            if not os.path.isdir(temp_dir):
+                os.makedirs(temp_dir)
+
+            # get the date to append to the filename
+            today = datetime.date.today()
+
+            ds.save_txt(path=temp_dir + str(today) + '_ds_%s_%s_%s_%s' % (subject,average_ms,label.name,time), delim=',')
+
+            print subject
+
+            # clean out ds
+            ds = 0
+
+
+    def load_temp_files(self,temp_dir='temp/'):
+        """
+
+        Loads all files in a given directory, and combines them into a single object.
+
+
+        Parameters:
+        ----------
+
+        temp_dir        :               location of files to load. by default will be a folder called "temp" in the current directory.
+
+        """
+
+        dses = []
+
+        # loads all files in the dir
+        for file in os.listdir(temp_dir):
+            path = temp_dir + file
+            ds = load.txt.tsv(path, names=True, delimiter=',', ignore_missing=True)
+            dses.append(ds)
+
+        # combines objects
+        average_ds = combine((dses))
+
+        return average_ds
+
+    def average_activity(self,time,parc,label=None,average_ms='average',group='all',temp_dir = 'temp/',cleanup=False):
+
+        """
+
+        time            :               tuple, the window for analysis in secs for example: (0.15, 0.2)
+        parc            :               parcellation for the spatial window
+        label           :               label within the parc of interest (if None, takes first label from parc)
+        average_ms      :               ('average','ms'), determine if the output is an average over the time window, or gets activity for each ms within the timewindow
+        group           :               the group to analyse (default = all)
+        temp_dir        :               where the files will be saved (default is to create a "temp" folder in current dir)
+
+        """
+
+        # creates and saves by-subject activity
+        make_average_activity(time=time,parc=parc,label=label,average_ms=average_ms,group=group,temp_dir=temp_dir)
+
+        # loads the by-subject activity
+        ds = load_temp_files(temp_dir=temp_dir)
+
+        # del temporary dir
+        if cleanup == True:
+            shutil.rmtree(temp_dir)
+
+        return ds
