@@ -823,7 +823,7 @@ class MneExperiment(FileTree):
                     stc.subject = common_brain
                 else:
                     mm, v_to = mm_cache[subject_from]
-                    stc = mne.morph_data_precomputed(subject_from, subject,
+                    stc = mne.morph_data_precomputed(subject_from, common_brain,
                                                      stc, v_to, mm)
                 mstcs.append(stc)
 
