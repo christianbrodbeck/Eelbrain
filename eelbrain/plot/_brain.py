@@ -6,11 +6,13 @@ import os
 from tempfile import mkdtemp
 import warnings
 
+from nibabel.freesurfer import read_annot
 import numpy as np
 import mne
 
 from .._data_obj import asndvar, NDVar
 from ..fmtxt import Image, im_table, ms
+from ._colors import ColorList
 
 
 # defaults
@@ -93,6 +95,50 @@ def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
         _set_parallel(brain, surf)
 
     return brain
+
+
+def annot_legend(lh, rh, *args, **kwargs):
+    """Plot a legend for a freesurfer parcellation
+
+    Parameters
+    ----------
+    lh : str
+        Path to the lh annot-file.
+    rh : str
+        Path to the rh annot-file.
+
+    Returns
+    -------
+    legend : plot.ColorList
+        ColorList figure with legend for the parcellation.
+    """
+    _, lh_colors, lh_names = read_annot(lh)
+    _, rh_colors, rh_names = read_annot(rh)
+    lh_colors = dict(izip(lh_names, lh_colors[:, :4] / 255.))
+    rh_colors = dict(izip(rh_names, rh_colors[:, :4] / 255.))
+    names = set(lh_names)
+    names.update(rh_names)
+    colors = {}
+    seq = []  # sequential order in legend
+    seq_lh = []
+    seq_rh = []
+    for name in names:
+        if name in lh_colors and name in rh_colors:
+            if np.array_equal(lh_colors[name], rh_colors[name]):
+                colors[name] = lh_colors[name]
+                seq.append(name)
+            else:
+                colors[name + '-lh'] = lh_colors[name]
+                colors[name + '-rh'] = rh_colors[name]
+                seq_lh.append(name + '-lh')
+                seq_rh.append(name + '-rh')
+        elif name in lh_colors:
+            colors[name + '-lh'] = lh_colors[name]
+            seq_lh.append(name + '-lh')
+        else:
+            colors[name + '-rh'] = rh_colors[name]
+            seq_rh.append(name + '-rh')
+    return ColorList(colors, seq + seq_lh + seq_rh, *args, **kwargs)
 
 
 def _plot(data, lut, vmin, vmax, *args, **kwargs):

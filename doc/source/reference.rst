@@ -358,6 +358,7 @@ Other plotting functions:
    :toctree: generated
 
     plot.brain.annot
+    plot.brain.annot_legend
 
 Functions that can be applied to the :class:`surfer.Brain` instances that are
 returned by the plotting functions:
