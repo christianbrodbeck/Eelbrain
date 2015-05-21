@@ -13,10 +13,18 @@ class EventExperiment(MneExperiment):
 
     trigger_shift = 0.03
 
-    variables = {'name': {1: 'Leicester', 2: 'Tilsit', 3: 'Caerphilly',
+    variables = {'kind': {(1, 2, 3, 4): 'cheese', (11, 12, 13, 14): 'pet'},
+                 'name': {1: 'Leicester', 2: 'Tilsit', 3: 'Caerphilly',
                           4: 'Bel Paese'},
-                 'backorder': {(4, 4): 'no', (2, 3): 'yes'},
+                 'backorder': {(1, 4): 'no', (2, 3): 'yes'},
                  'taste': {(1, 2): 'good', 'default': 'bad'}}
+
+    epochs = {'cheese': {'sel': "kind == 'cheese'",
+                         'tmin': -0.2},
+              'cheese-leicester': {'sel_epoch': 'cheese',
+                                   'sel': "name == 'Leicester'"},
+              'cheese-tilsit': {'base': 'cheese',
+                                'sel': "name == 'Tilsit"}}
 
     defaults = {'experiment': 'cheese',
                 'model': 'name'}
@@ -97,6 +105,11 @@ def test_test_experiment():
     e.trigger_shift = 0
     ds = e.label_events(gen_triggers())
     assert_equal(ds['i_start'], I_START)
+
+    # epochs
+    eq_(e._epochs['cheese']['tmin'], -0.2)
+    eq_(e._epochs['cheese-leicester']['tmin'], -0.1)
+    eq_(e._epochs['cheese-tilsit']['tmin'], -0.2)
 
 
 class FileExperiment(MneExperiment):
