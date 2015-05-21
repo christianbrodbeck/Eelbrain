@@ -8,7 +8,7 @@ New in 0.16
 -----------
 
 * New function for plotting a legend for annot-files:
-  :func:`plot.brain.annot_legend`.
+  :func:`plot.brain.annot_legend` (automatically used in reports).
 * Epoch definitions in :attr:`MneExperiment.epochs` can now include a ``'base'``
   parameter, which will copy the given "base" epoch and modify it with the
   current definition.

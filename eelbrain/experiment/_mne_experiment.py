@@ -3588,10 +3588,14 @@ class MneExperiment(FileTree):
         "Add picture of the current parcellation"
         self.store_state()
         self.set(mrisubject=self.get('common_brain'))
-        brain = self.plot_annot(w=1000)
+        brain, legend = self.plot_annot(w=1000, show=False)
         self.restore_state()
-        image = plot.brain.image(brain, 'parc.png')
-        section.add_image_figure(image, caption)
+
+        content = [plot.brain.image(brain, 'parc.png'),
+                   legend.image('parc-legend')]
+        section.add_image_figure(content, caption)
+
+        legend.close()
 
     def make_src(self, redo=False, **kwargs):
         """Make the source space
@@ -3727,7 +3731,7 @@ class MneExperiment(FileTree):
         self.set(**{field: next_})
 
     def plot_annot(self, surf='inflated', views=['lat', 'med'], hemi=None,
-                   borders=False, alpha=0.7, w=600, parc=None):
+                   borders=False, alpha=0.7, w=600, parc=None, show=True):
         """Plot the annot file on which the current parcellation is based
 
         kwargs are for self.plot_brain().
@@ -3749,6 +3753,16 @@ class MneExperiment(FileTree):
             Figure width per hemisphere.
         parc : None | str
             Parcellation to plot. If None, use parc from the current state.
+        show : bool
+            Show the plot (set to False to save the plot without displaying it;
+            only works for the legend).
+
+        Returns
+        -------
+        brain : Brain
+            PySurfer Brain with the parcellation plot.
+        legend : ColorList
+            ColorList figure with the legend.
         """
         if parc is None:
             parc = self.get('parc')
@@ -3764,7 +3778,12 @@ class MneExperiment(FileTree):
 
         brain = plot.brain.annot(parc, subject, surf, borders, alpha, hemi, views,
                                  w, subjects_dir=mri_sdir)
-        return brain
+
+        legend = plot.brain.annot_legend(self.get('annot-file', hemi='lh'),
+                                         self.get('annot-file', hemi='rh'),
+                                         show=show)
+
+        return brain, legend
 
     def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat'],
                    w=500, clear=True, common_brain=True):
