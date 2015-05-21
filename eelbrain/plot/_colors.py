@@ -314,8 +314,13 @@ class ColorList(_EelFigure):
         Colors for cells.
     cells : tuple
         Cells for which to plot colors (default is ``colors.keys()``).
+    h : 'auto' | scalar
+        Height of the figure in inches. If 'auto' (default), the height is
+        automatically increased to fit all labels.
     """
-    def __init__(self, colors, cells=None, *args, **kwargs):
+    def __init__(self, colors, cells=None, h='auto', *args, **kwargs):
+        if h != 'auto':
+            kwargs['h'] = h
         _EelFigure.__init__(self, "Colors", None, 2, 1.5, False, None, *args,
                             **kwargs)
 
@@ -326,16 +331,26 @@ class ColorList(_EelFigure):
         ax.set_axis_off()
 
         n = len(cells)
+        text_h = []
         for i, cell in enumerate(cells):
             bottom = n - i - 1
             y = bottom + 0.5
             patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell],
                                           ec='none', zorder=1)
             ax.add_patch(patch)
-            ax.text(1.1, y, cellname(cell), va='center', ha='left', zorder=2)
+            text_h.append(ax.text(1.1, y, cellname(cell), va='center', ha='left', zorder=2))
 
         ax.set_ylim(0, n)
         ax.set_xlim(0, n * self._layout.w / self._layout.h)
+
+        # resize the figure to ft the content
+        if h == 'auto':
+            width, old_height = self._frame.GetSize()
+            self.draw()
+            text_height = max(h.get_window_extent().height for h in text_h) * 1.2
+            new_height = text_height * n
+            if new_height > old_height:
+                self._frame.SetSize((width, new_height))
 
         self._show()
 
