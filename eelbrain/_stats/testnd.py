@@ -1339,6 +1339,30 @@ class anova(_MultiEffectResult):
             self._default_plot_obj = self.f
 
 
+def flatten(spm, all_adjacent):
+    """Reshape SPM buffer array to 2-dimensional map for connectivity processing
+
+    Parameters
+    ----------
+    spm : array
+        N-dimensional array (with non-adjacent dimension at first position).
+    all_adjacent : bool
+        Whether reshape is unneccessary.
+
+    Returns
+    -------
+    flat_spm : array
+        The input spm reshaped if necessary, making sure that input and output
+        arrays share the same underlying data buffer.
+    """
+    if spm.ndim == 2 or all_adjacent:
+        return spm
+    else:
+        out = spm.reshape((spm.shape[0], -1))
+        assert out.base is spm
+        return out
+
+
 def label_clusters(stat_map, threshold, tail, connectivity, criteria):
     """Label clusters
 
@@ -1359,22 +1383,11 @@ def label_clusters(stat_map, threshold, tail, connectivity, criteria):
     all_adjacent = connectivity is None
     cmap = np.empty(stat_map.shape, np.uint32)
     bin_buff = np.empty(stat_map.shape, np.bool8)
-
-    if all_adjacent or stat_map.ndim <= 2:
-        flat_shape = None
-        cmap_flat = cmap
-    else:
-        flat_shape = (stat_map.shape[0], reduce(operator.mul, stat_map.shape[1:]))
-        cmap_flat = cmap.reshape(flat_shape)
-        assert cmap_flat.base is cmap
+    cmap_flat = flatten(cmap, all_adjacent)
 
     if tail == 0:
         int_buff = np.empty(stat_map.shape, np.uint32)
-        if flat_shape is None:
-            int_buff_flat = int_buff
-        else:
-            int_buff_flat = int_buff.reshape(flat_shape)
-            assert int_buff_flat.base is int_buff
+        int_buff_flat = flatten(int_buff, all_adjacent)
     else:
         int_buff = int_buff_flat = None
 
@@ -1441,12 +1454,7 @@ def label_clusters_binary(bin_map, connectivity, criteria):
     """
     all_adjacent = connectivity is None
     cmap = np.empty(bin_map.shape, np.uint32)
-
-    if all_adjacent or bin_map.ndim <= 2:
-        cmap_flat = cmap
-    else:
-        flat_shape = (bin_map.shape[0], reduce(operator.mul, bin_map.shape[1:]))
-        cmap_flat = cmap.reshape(flat_shape)
+    cmap_flat = flatten(cmap, all_adjacent)
 
     struct = _make_struct(bin_map.ndim, all_adjacent)
 
@@ -1466,14 +1474,12 @@ def _label_clusters_binary(bin_map, cmap, cmap_flat, struct, all_adjacent,
         cluster (non-adjacent dimension on the first axis).
     cmap : np.ndarray
         Array in which to label the clusters.
-    cmap_flat :
+    cmap_flat : np.ndarray
         Flat copy of cmap (ndim=2, only used when all_adjacent==False)
     struct : np.ndarray
         Struct to use for scipy.ndimage.label
     all_adjacent : bool
         Whether all dimensions have line-graph connectivity.
-    flat_shape : tuple
-        Shape for making bin_map 2-dimensional.
     conn : dict
         Connectivity (if first dimension is not a line graph).
     criteria : None | list
@@ -1515,12 +1521,7 @@ def tfce(stat_map, tail, connectivity):
     tfce_map = np.empty(stat_map.shape)
     bin_buff = np.empty(stat_map.shape, np.bool8)
     int_buff = np.empty(stat_map.shape, np.uint32)
-
-    if all_adjacent or stat_map.ndim <= 2:
-        int_buff_flat = int_buff
-    else:
-        flat_shape = (stat_map.shape[0], reduce(operator.mul, stat_map.shape[1:]))
-        int_buff_flat = int_buff.reshape(flat_shape)
+    int_buff_flat = flatten(int_buff, all_adjacent)
 
     struct = _make_struct(stat_map.ndim, all_adjacent)
 
@@ -1646,19 +1647,11 @@ class ClusterProcessor(StatMapProcessor):
             self.out = np.empty(len(parc))
 
         self._cmap = np.empty(shape, np.uint32)
-        if all_adjacent or len(shape) <= 2:
-            flat_shape = None
-            self._cmap_flat = self._cmap
-        else:
-            flat_shape = (shape[0], -1)
-            self._cmap_flat = self._cmap.reshape(flat_shape)
+        self._cmap_flat = flatten(self._cmap, all_adjacent)
 
         if tail == 0:
             self._int_buff = np.empty(shape, np.uint32)
-            if flat_shape is None:
-                self._int_buff_flat = self._int_buff
-            else:
-                self._int_buff_flat = self._int_buff.reshape(flat_shape)
+            self._int_buff_flat = flatten(self._int_buff, all_adjacent)
         else:
             self._int_buff = self._int_buff_flat = None
 
@@ -1826,7 +1819,6 @@ class _ClusterDist:
         if all_adjacent:
             nad_ax = 0
             connectivity = None
-            flat_shape = None
         else:
             if sum(adjacent) < len(adjacent) - 1:
                 err = "more than one non-adjacent dimension"
@@ -1840,7 +1832,6 @@ class _ClusterDist:
                 stat_map_dims = list(stat_map_dims)
                 stat_map_dims[0], stat_map_dims[nad_ax] = stat_map_dims[nad_ax], stat_map_dims[0]
                 stat_map_dims = tuple(stat_map_dims)
-            flat_shape = (shape[0], reduce(operator.mul, shape[1:]))
 
             # prepare connectivity
             nad_dim = stat_map_dims[0]
@@ -1987,7 +1978,6 @@ class _ClusterDist:
         self.y_perm = y_perm
         self.dims = y_perm.dims
         self.shape = shape  # internal shape for maps
-        self._flat_shape = flat_shape
         self._connectivity = connectivity
         self.samples = samples
         self.dist_shape = dist_shape
@@ -2149,8 +2139,8 @@ class _ClusterDist:
                  'kind', 'threshold', 'tail', 'criteria', 'samples', 'tstart',
                  'tstop', 'dist_dim', 'dist_tstep',
                  # data properties ...
-                 'dims', 'shape', '_all_adjacent', '_nad_ax', '_flat_shape',
-                 '_connectivity', '_criteria',
+                 'dims', 'shape', '_all_adjacent', '_nad_ax', '_connectivity',
+                 '_criteria',
                  # results ...
                  'dt_original', 'dt_perm', 'n_clusters', '_dist_dims', 'dist',
                  '_original_param_map', '_original_cluster_map', '_cids')

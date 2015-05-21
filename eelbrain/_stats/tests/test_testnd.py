@@ -185,6 +185,11 @@ def test_clusterdist():
     assert_greater_equal(res.clusters['duration'].min(), 0.02)
     eq_(res.clusters['n_sensors'].min(), 2)
 
+    # 1d
+    res1d = testnd.ttest_rel('utsnd.sub(time=0.1)', 'A', match='rm', ds=ds,
+                             samples=0, pmin=0.05)
+    assert_dataobj_equal(res1d.p_uncorrected, res.p_uncorrected.sub(time=0.1))
+
     # TFCE
     logger.info("TEST:  TFCE")
     sensor = Sensor(locs, ['0', '1', '2', '3'])
