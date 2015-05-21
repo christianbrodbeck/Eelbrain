@@ -426,11 +426,7 @@ class SensorMaps(_EelFigure):
         self._show()
 
         # selection
-        self.sel_kwargs = dict(marker='o',  # symbol
-                               color='r',  # mpl plot kwargs ...
-                               ms=5,  # marker size
-                               markeredgewidth=.9,
-                               ls='')
+        self.sel_kwargs = dict(marker='o', s=5, c='r', linewidths=.9)
         self._sel_h = []
         if select is not None:
             self.set_selection(select)
