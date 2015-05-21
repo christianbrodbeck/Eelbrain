@@ -180,7 +180,7 @@ def _make_interpolator(inst, bad_channels):
     pos_bad = pos[bads_idx_pos]
 
     # test spherical fit
-    radius, center = _fit_sphere(pos_good)
+    radius, center = _fit_sphere(pos_good, False)
     distance = np.sqrt(np.sum((pos_good - center) ** 2, 1))
     distance = np.mean(distance / radius)
     if np.abs(1. - distance) > 0.1:
