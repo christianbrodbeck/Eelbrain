@@ -3653,7 +3653,7 @@ class MneExperiment(FileTree):
             print("%s: %r -> %r" % (field, current, next_))
         self.set(**{field: next_})
 
-    def plot_annot(self, surf='inflated', views=['lat', 'med'], hemi=None,
+    def plot_annot(self, surf='inflated', views=['lat', 'med','ven'], hemi=None,
                    borders=False, alpha=0.7, w=600, parc=None):
         """Plot the annot file on which the current parcellation is based
 
@@ -3693,7 +3693,7 @@ class MneExperiment(FileTree):
                                  w, subjects_dir=mri_sdir)
         return brain
 
-    def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat'],
+    def plot_brain(self, surf='inflated', title=None, hemi='lh', views=['lat', 'ven'],
                    w=500, clear=True, common_brain=True):
         """Create a PuSyrfer Brain instance
 

@@ -29,7 +29,7 @@ def assert_can_save_movies():
 
 
 def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
-          hemi=None, views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
+          hemi=None, views=('lat', 'med','ven'), w=None, h=None, axw=None, axh=None,
           foreground=None, background=None, parallel=True, subjects_dir=None):
     """Plot the parcellation in an annotation file
 
@@ -322,7 +322,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
 
 
 def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
-                  views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
+                  views=('lat', 'med', 'ven'), w=None, h=None, axw=None, axh=None,
                   foreground=None, background=None, subjects_dir=None):
     """Create surfer.Brain instance
 
@@ -399,7 +399,7 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
 
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
-                 views=('lat', 'med'), colorbar=True, time_label='ms',
+                 views=('lat', 'med', 'ven'), colorbar=True, time_label='ms',
                  w=None, h=None, axw=None, axh=None, foreground=None,
                  background=None, parallel=True, smoothing_steps=None,
                  mask=True, subjects_dir=None):
@@ -719,7 +719,7 @@ def _voxel_brain(data, lut, vmin, vmax):
 
 
 def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
-              views=('lat', 'med'), summary=np.sum, vmax=None):
+              views=('lat', 'med','ven'), summary=np.sum, vmax=None):
     """Create a table with images for time bins
 
     Parameters
