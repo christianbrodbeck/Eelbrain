@@ -3591,8 +3591,7 @@ class MneExperiment(FileTree):
         brain, legend = self.plot_annot(w=1000, show=False)
         self.restore_state()
 
-        content = [plot.brain.image(brain, 'parc.png'),
-                   legend.image('parc-legend')]
+        content = [brain.image('parc'), legend.image('parc-legend')]
         section.add_image_figure(content, caption)
 
         legend.close()

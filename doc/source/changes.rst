@@ -17,6 +17,7 @@ New in 0.16
 * New function: :func:`table.melt_ndvar`.
 * API: :mod:`plot.brain` function signatures changed slightly to accommodate
   more layout-related arguments.
+* API: use :meth:`Brain.image` instead of :func:`plot.brain.image`.
 
 
 New in 0.15

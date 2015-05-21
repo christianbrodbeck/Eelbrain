@@ -4,7 +4,7 @@ from distutils.version import LooseVersion
 from itertools import izip
 import os
 from tempfile import mkdtemp
-import warnings
+from warnings import warn
 
 from nibabel.freesurfer import read_annot
 import numpy as np
@@ -203,8 +203,8 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
 
 
 def stat(*args, **kwargs):
-    warnings.warn("plot.brain.stat() has been deprecated, use "
-                  "plot.brain.p_map() instead")
+    warn("plot.brain.stat() has been deprecated, use plot.brain.p_map() "
+         "instead", DeprecationWarning)
     return p_map(*args, **kwargs)
 
 
@@ -882,20 +882,10 @@ def connectivity(source):
 
 
 def image(brain, filename, alt=None, close=False):
-    """Create an FMText Image from a brain instance
+    """Deprecated, use Brain.image()"""
+    warn("plot.brain.image() has been deprecated, Brain.image() instead",
+         DeprecationWarning)
 
-    Parameters
-    ----------
-    brain : Brain
-        Pysurfer Brain instance.
-    filename : str
-        Filename for the image (if no extension is provided, '.png' is used).
-    alt : None | str
-        Alternate text, placeholder in case the image can not be found
-        (HTML `alt` tag).
-    close : bool
-        Close the brain window after creating the image.
-    """
     name, ext = os.path.splitext(filename)
     if ext:
         format = ext[1:]

@@ -70,9 +70,9 @@ for i in xrange(clusters.n_cases):
     c_i = clusters[i, 'cluster']
     # plot the extent
     c_extent = c_i.sum('time')
-    plt_extent = e.plot.brain.cluster(c_extent)
-    # add to report (plot.brain plots can be captured using plot.brain.image())
-    image = e.plot.brain.image(plt_extent, "cluster 0 extent.png")
+    brain = e.plot.brain.cluster(c_extent)
+    # add to report (plot.brain plots can be captured using Brain.image())
+    image = brain.image("cluster 0 extent")
     subsection.add_figure("Extent the cluster, p=%s" % p, image)
 
     # extract and analyze the value in the cluster in each trial

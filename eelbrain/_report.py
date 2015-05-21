@@ -183,13 +183,12 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors):
     # add cluster image to report
     brain = plot.brain.cluster(cluster['cluster'].sum('time'),
                                surf='inflated')
-    image = plot.brain.image(brain, 'cluster_spatial.png', close=True)
     caption_ = ["Cluster"]
     if 'effect' in cluster:
         caption_.extend(('effect of', cluster['effect']))
     caption_.append("%i - %i ms." % (tstart_ms, tstop_ms))
     caption = ' '.join(caption_)
-    section.add_image_figure(image, caption)
+    section.add_image_figure(brain.image('cluster_spatial'), caption)
     cluster_timecourse(section, cluster, y, 'source', model, ds, colors)
 
 

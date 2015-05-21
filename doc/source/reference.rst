@@ -368,7 +368,6 @@ returned by the plotting functions:
 
     plot.brain.bin_table
     plot.brain.copy
-    plot.brain.image
 
 
 .. _ref-guis:
