@@ -2634,8 +2634,8 @@ class MneExperiment(FileTree):
 
         kwargs['model'] = ''
         subject, group = self._process_subject_arg(subject, kwargs)
-        brain_kwargs = self._surfer_plot_kwargs(surf, views, hemi, foreground,
-                                                background, smoothing_steps)
+        brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
+                                                smoothing_steps, hemi)
 
         self.set(equalize_evoked_count='',
                  analysis='{src-kind} {evoked-kind}',
@@ -2726,8 +2726,8 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("Unknown p0: %s" % p0)
 
-        brain_kwargs = self._surfer_plot_kwargs(surf, views, hemi, foreground,
-                                                background, smoothing_steps)
+        brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
+                                                smoothing_steps, hemi)
         surf = brain_kwargs['surf']
         if model:
             if not c1:
@@ -3182,9 +3182,10 @@ class MneExperiment(FileTree):
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
+        surfer_kwargs = self._surfer_plot_kwargs()
         if parc is None and pmin in (None, 'tfce'):
             section = report.add_section("P<=.05")
-            _report.source_bin_table(section, res, 0.05)
+            _report.source_bin_table(section, res, surfer_kwargs, 0.05)
             clusters = res.find_clusters(0.05, maps=True)
             clusters.sort('tstart')
             title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
@@ -3194,16 +3195,16 @@ class MneExperiment(FileTree):
 
             # trend section
             section = report.add_section("Trend: p<=.1")
-            _report.source_bin_table(section, res, 0.1)
+            _report.source_bin_table(section, res, surfer_kwargs, 0.1)
 
             # not quite there section
             section = report.add_section("Anything: P<=.2")
-            _report.source_bin_table(section, res, 0.2)
+            _report.source_bin_table(section, res, surfer_kwargs, 0.2)
         elif parc and pmin in (None, 'tfce'):
             # add picture of parc
             section = report.add_section(parc)
             caption = "Labels in the %s parcellation." % parc
-            self._report_parc_image(section, caption)
+            self._report_parc_image(section, caption, surfer_kwargs)
 
             # add subsections for individual labels
             title = "{tstart}-{tstop} p={p}{mark} {effect}"
@@ -3225,11 +3226,11 @@ class MneExperiment(FileTree):
                 title = "Whole Brain Masked by %s" % mask.capitalize()
                 section = report.add_section(title)
                 caption = "Mask: %s" % mask.capitalize()
-                self._report_parc_image(section, caption)
+                self._report_parc_image(section, caption, surfer_kwargs)
             else:
                 section = report.add_section("Whole Brain")
 
-            _report.source_bin_table(section, res)
+            _report.source_bin_table(section, res, surfer_kwargs)
 
             clusters = res.find_clusters(include, maps=True)
             clusters.sort('tstart')
@@ -3240,8 +3241,8 @@ class MneExperiment(FileTree):
             # add picture of parc
             section = report.add_section(parc)
             caption = "Labels in the %s parcellation." % parc
-            self._report_parc_image(section, caption)
-            _report.source_bin_table(section, res)
+            self._report_parc_image(section, caption, surfer_kwargs)
+            _report.source_bin_table(section, res, surfer_kwargs)
 
             # add subsections for individual labels
             title = "{tstart}-{tstop} p={p}{mark} {effect}"
@@ -3315,7 +3316,8 @@ class MneExperiment(FileTree):
         # add parc image
         section = report.add_section(parc)
         caption = "ROIs in the %s parcellation." % parc
-        self._report_parc_image(section, caption)
+        surfer_kwargs = self._surfer_plot_kwargs()
+        self._report_parc_image(section, caption, surfer_kwargs)
 
         # load labels
         with self._temporary_state:
@@ -3590,11 +3592,14 @@ class MneExperiment(FileTree):
         section.append(self._report_subject_info(ds, test_params['model']))
         section.append(self._report_state())
 
-    def _report_parc_image(self, section, caption):
+    def _report_parc_image(self, section, caption, surfer_kwargs):
         "Add picture of the current parcellation"
         self.store_state()
         self.set(mrisubject=self.get('common_brain'))
-        brain, legend = self.plot_annot(w=1000, show=False)
+        if surfer_kwargs and 'smoothing_steps' in surfer_kwargs:
+            surfer_kwargs = {k: v for k, v in surfer_kwargs.iteritems()
+                             if k != 'smoothing_steps'}
+        brain, legend = self.plot_annot(w=1000, show=False, **surfer_kwargs)
         self.restore_state()
 
         content = [brain.image('parc'), legend.image('parc-legend')]
@@ -3736,7 +3741,8 @@ class MneExperiment(FileTree):
         self.set(**{field: next_})
 
     def plot_annot(self, surf='inflated', views=['lat', 'med'], hemi=None,
-                   borders=False, alpha=0.7, w=600, parc=None, show=True):
+                   borders=False, alpha=0.7, w=600, parc=None,
+                   foreground=None, background=None, show=True):
         """Plot the annot file on which the current parcellation is based
 
         kwargs are for self.plot_brain().
@@ -3758,6 +3764,10 @@ class MneExperiment(FileTree):
             Figure width per hemisphere.
         parc : None | str
             Parcellation to plot. If None, use parc from the current state.
+        foreground : mayavi color
+            Figure foreground color (i.e., the text color).
+        background : mayavi color
+            Figure background color.
         show : bool
             Show the plot (set to False to save the plot without displaying it;
             only works for the legend).
@@ -3782,7 +3792,8 @@ class MneExperiment(FileTree):
             subject = self.get('mrisubject')
 
         brain = plot.brain.annot(parc, subject, surf, borders, alpha, hemi, views,
-                                 w, subjects_dir=mri_sdir)
+                                 w, foreground=foreground, background=background,
+                                 subjects_dir=mri_sdir)
 
         legend = plot.brain.annot_legend(self.get('annot-file', hemi='lh'),
                                          self.get('annot-file', hemi='rh'),
@@ -4336,11 +4347,11 @@ class MneExperiment(FileTree):
         """
         return self.show_tree(fields=['raw-file', 'trans-file', 'mri-dir'])
 
-    def _surfer_plot_kwargs(self, surf, views, hemi, foreground, background,
-                            smoothing_steps):
+    def _surfer_plot_kwargs(self, surf=None, views=None, foreground=None,
+                            background=None, smoothing_steps=None, hemi=None):
         return {'surf': surf or self.brain_plot_defaults.get('surf', 'inflated'),
                 'views': views or self.brain_plot_defaults.get('views', ('lat', 'med')),
-                'hemi': hemi or self.brain_plot_defaults.get('hemi', None),
+                'hemi': hemi,
                 'foreground': foreground or self.brain_plot_defaults.get('foreground', None),
                 'background': background or self.brain_plot_defaults.get('background', None),
                 'smoothing_steps': smoothing_steps or self.brain_plot_defaults.get('smoothing_steps', None)}

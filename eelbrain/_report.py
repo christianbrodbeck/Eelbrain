@@ -103,7 +103,7 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, legend):
     cluster_timecourse(section, cluster, y, 'sensor', model, ds, colors)
 
 
-def source_bin_table(section, res, pmin=None):
+def source_bin_table(section, res, surfer_kwargs, pmin=None):
     caption = ("All clusters in time bins. Each plot shows all sources "
                "that are part of a cluster at any time during the "
                "relevant time bin. Only the general minimum duration and "
@@ -122,7 +122,7 @@ def source_bin_table(section, res, pmin=None):
             caption_ = "%s: %s" % (effect, caption)
         else:
             caption_ = caption
-        im = plot.brain.bin_table(ndvar, surf='inflated')
+        im = plot.brain.bin_table(ndvar, **surfer_kwargs)
         section.add_image_figure(im, caption_)
 
 

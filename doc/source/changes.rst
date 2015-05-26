@@ -4,6 +4,13 @@ Changes
 .. currentmodule:: eelbrain
 
 
+New in 0.17
+-----------
+
+* :attr:`MneExperiment.brain_plot_defaults` can be used to customize PySurfer
+  plots in movies and reports.
+
+
 New in 0.16
 -----------
 

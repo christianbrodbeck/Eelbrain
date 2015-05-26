@@ -273,6 +273,27 @@ exclude : tuple of str
     A list of subjects to exclude (e.g., ``("R0026", "R0042", "R0066")``)
 
 
+Visualization Defaults
+----------------------
+
+.. py:attribute:: MneExperiment.brain_plot_defaults
+
+The :attr:`MneExperiment.brain_plot_defaults` dictionary can contain options
+that changes defaults for brain plots (for reports and movies). The following
+options are available:
+
+surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
+    Freesurfer surface to use as brain geometry.
+views : str | iterator of str
+    View or views to show in the figure.
+foreground : mayavi color
+    Figure foreground color (i.e., the text color).
+background : mayavi color
+    Figure background color.
+smoothing_steps : None | int
+    Number of smoothing steps to display data.
+
+
 Analysis Parameters
 ===================
 
