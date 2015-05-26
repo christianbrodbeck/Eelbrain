@@ -107,7 +107,7 @@ class CacheDict(dict):
 
 
 temp = {# MEG
-        'experiment': '',
+        'experiment': None,
         'modality': ('', 'eeg', 'meeg'),
         'reference': ('', 'mastoids'),  # EEG reference
         'equalize_evoked_count': ('', 'eq'),

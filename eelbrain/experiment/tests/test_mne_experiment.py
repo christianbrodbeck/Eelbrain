@@ -9,6 +9,11 @@ from eelbrain import Dataset, Factor, Var, MneExperiment
 from ..._utils.testing import assert_dataobj_equal, TempDir
 
 
+class BaseExperiment(MneExperiment):
+
+    defaults = {'experiment': 'file'}
+
+
 class EventExperiment(MneExperiment):
 
     trigger_shift = 0.03
@@ -47,7 +52,7 @@ def gen_triggers():
 
 def test_mne_experiment_templates():
     "Test MneExperiment template formatting"
-    e = MneExperiment('', False)
+    e = BaseExperiment('', False)
 
     # Don't create dirs without root
     assert_raises(IOError, e.get, 'raw-file', mkdir=True)
@@ -120,10 +125,13 @@ class FileExperiment(MneExperiment):
               'gexc': {'exclude': SUBJECTS[0]},
               'gexc2': {'base': 'gexc', 'exclude': SUBJECTS[-1]}}
 
+    defaults = {'experiment': 'file'}
+
 
 class FileExperimentDefaults(FileExperiment):
 
-    defaults = {'group': 'gsub'}
+    defaults = {'experiment': 'file',
+                'group': 'gsub'}
 
 
 def test_file_handling():
