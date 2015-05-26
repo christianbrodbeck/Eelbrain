@@ -147,6 +147,7 @@ class TreeModel(object):
         self._fields = LayeredDict()
         self._field_values = LayeredDict()
         self._params = LayeredDict()
+        self._user_fields = []
 
         # scaffold for hooks
         self._compound_members = {}
@@ -165,10 +166,8 @@ class TreeModel(object):
         defaults.update(state)
         self.defaults = defaults
         for k, v in self._templates.iteritems():
-            if v is None:  # field that needs a default value
-                self._register_field(k)
-            elif isinstance(v, basestring):
-                self._register_field(k, None, v)
+            if v is None or isinstance(v, basestring):
+                self._register_constant(k, v)
             elif isinstance(v, tuple):
                 self._register_field(k, v, v[0])
             else:
@@ -268,6 +267,12 @@ class TreeModel(object):
         self._fields[key] = None
         self._update_compound(key)
 
+    def _register_constant(self, key, value):
+        value = self.defaults.get(key, value)
+        if value is None:
+            raise ValueError("The %r field needs to be set as default" % key)
+        self._fields[key] = value
+
     def _register_field(self, key, values=None, default=None, set_handler=None,
                         eval_handler=None, post_set_handler=None):
         """Register an iterable field
@@ -316,9 +321,11 @@ class TreeModel(object):
 
             self._field_values[key] = tuple(values)
 
+        self._user_fields.append(key)
         self._fields[key] = ''
         if default is not None:
             self.set(**{key: default})
+
 
     def expand_template(self, temp, keep=()):
         """Expand all constant variables in a template
@@ -656,7 +663,7 @@ class TreeModel(object):
         else:
             print table
 
-    def show_state(self, temp=None, empty=False, hide=[]):
+    def show_state(self, temp=None, empty=False):
         """
         List all top-level fields and their values (i.e., fields whose values
         do not contain templates).
@@ -667,8 +674,6 @@ class TreeModel(object):
             Only show variables relevant to this template.
         empty : bool
             Show empty variables (items whose value is the empty string '').
-        hide : list of str
-            State variables to hide.
 
         Returns
         -------
@@ -681,15 +686,11 @@ class TreeModel(object):
         table.midrule()
 
         if temp is None:
-            keys = (k for k, v in self._fields.iteritems()
-                    if ('{' not in v) and len(v) < 60)
+            keys = self._user_fields
         else:
             keys = self.find_keys(temp)
 
         for k in sorted(keys):
-            if k in hide:
-                continue
-
             v = self._fields[k]
             if v != self._fields.get_stored(k, level=0):
                 mod = '*'

@@ -3520,12 +3520,6 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
 
-    def _report_state(self):
-        t = self.show_state(hide=['annot', 'epoch-bare',
-                                  'epoch-stim', 'ext', 'hemi', 'label',
-                                  'subject', 'model', 'mrisubject'])
-        return t
-
     def _report_subject_info(self, ds, model):
         # add subject information to experiment
         s_ds = table.repmeas('n', model, 'subject', ds=ds)
@@ -3590,7 +3584,7 @@ class MneExperiment(FileTree):
         section.append(info)
 
         section.append(self._report_subject_info(ds, test_params['model']))
-        section.append(self._report_state())
+        section.append(self.show_state())
 
     def _report_parc_image(self, section, caption, surfer_kwargs):
         "Add picture of the current parcellation"
