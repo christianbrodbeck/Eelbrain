@@ -663,7 +663,7 @@ class TreeModel(object):
         else:
             print table
 
-    def show_state(self, temp=None, empty=False):
+    def show_state(self, temp=None, empty=False, hide=()):
         """
         List all top-level fields and their values (i.e., fields whose values
         do not contain templates).
@@ -674,6 +674,8 @@ class TreeModel(object):
             Only show variables relevant to this template.
         empty : bool
             Show empty variables (items whose value is the empty string '').
+        hide : collection of str
+            State variables to hide.
 
         Returns
         -------
@@ -691,6 +693,9 @@ class TreeModel(object):
             keys = self.find_keys(temp)
 
         for k in sorted(keys):
+            if k in hide:
+                continue
+
             v = self._fields[k]
             if v != self._fields.get_stored(k, level=0):
                 mod = '*'

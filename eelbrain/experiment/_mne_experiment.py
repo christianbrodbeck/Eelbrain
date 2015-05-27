@@ -3584,7 +3584,7 @@ class MneExperiment(FileTree):
         section.append(info)
 
         section.append(self._report_subject_info(ds, test_params['model']))
-        section.append(self.show_state())
+        section.append(self.show_state(hide=('hemi', 'subject', 'mrisubject')))
 
     def _report_parc_image(self, section, caption, surfer_kwargs):
         "Add picture of the current parcellation"
