@@ -10,9 +10,8 @@ import mne
 
 from eelbrain import datasets, load, testnd, morph_source_space, Factor
 from eelbrain._data_obj import asndvar, SourceSpace
-from eelbrain._mne import shift_mne_epoch_trigger
-
-from .test_data import assert_dataobj_equal
+from eelbrain._mne import shift_mne_epoch_trigger, combination_label
+from eelbrain.tests.test_data import assert_dataobj_equal
 
 # mne paths
 data_dir = mne.datasets.sample.data_path()
@@ -138,6 +137,28 @@ def test_epoch_trigger_shift():
     assert_array_equal(data_s[2], data[2, :, n_lost_end:])
     assert_allclose(epochs_s.times, epochs.times[:-n_lost_end],
                     rtol=1e-1, atol=1e-3)  # ms accuracy
+
+
+def test_label():
+    "Test combination label creation"
+    labels = {l.name: l for l in
+              mne.read_labels_from_annot('fsaverage', subjects_dir=subjects_dir)}
+
+    # standard
+    l = combination_label('temporal', "superiortemporal + middletemporal + inferiortemporal", labels)
+    lh = labels['superiortemporal-lh'] + labels['middletemporal-lh'] + labels['inferiortemporal-lh']
+    rh = labels['superiortemporal-rh'] + labels['middletemporal-rh'] + labels['inferiortemporal-rh']
+    eq_(len(l), 2)
+    eq_(l[0].name, 'temporal-lh')
+    eq_(l[1].name, 'temporal-rh')
+    assert_array_equal(l[0].vertices, lh.vertices)
+    assert_array_equal(l[1].vertices, rh.vertices)
+
+    # only rh
+    l = combination_label('temporal-rh', "superiortemporal + middletemporal + inferiortemporal", labels)
+    eq_(len(l), 1)
+    eq_(l[0].name, 'temporal-rh')
+    assert_array_equal(l[0].vertices, rh.vertices)
 
 
 def test_morphing():

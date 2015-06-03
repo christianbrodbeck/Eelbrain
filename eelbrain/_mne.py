@@ -1,6 +1,7 @@
 from itertools import izip
 from math import ceil, floor, log
 import os
+from operator import add, sub
 import re
 
 import numpy as np
@@ -497,3 +498,53 @@ def rename_label(labels, old, new):
             if label.name == old_:
                 new_ = delim.join((new, hemi))
                 label.name = new_
+
+
+def combination_label(name, exp, labels):
+    """Create labels based on combination of existing labels
+
+    Parameters
+    ----------
+    name : str
+        Name for the new label (without -hemi tag to create labels for both
+        hemispheres).
+    exp : str
+        Boolean expression containing label names, + and - (all without -hemi
+        tags).
+    labels : dict
+        {name: label} dictionary.
+    """
+    m = re.match("(\w+)-([lr]h)", name)
+    if m:
+        name = m.group(1)
+        hemis = (m.group(2),)
+    else:
+        hemis = ('lh', 'rh')
+
+    out = None
+    operator = None
+    i = 0
+    pattern = re.compile("\s*(\w+)\s*([+-]|$)")
+    while True:
+        m = pattern.match(exp, i)
+        if not m:
+            raise ValueError("Error parsing label expression:\n%s\n%s"
+                             % (exp, ' ' * i + '^'))
+        name_, next_op = m.groups()
+        if out:
+            for i, hemi in enumerate(hemis):
+                out[i] = operator(out[i], labels['%s-%s' % (name_, hemi)])
+        else:
+            out = [labels['%s-%s' % (name_, hemi)] for hemi in hemis]
+
+        if next_op == '+':
+            operator = add
+        elif next_op == '-':
+            operator = sub
+        elif next_op == '':
+            break
+        i = m.end()
+
+    for i, hemi in enumerate(hemis):
+        out[i].name = '%s-%s' % (name, hemi)
+    return out
