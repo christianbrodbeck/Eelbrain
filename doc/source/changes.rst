@@ -9,6 +9,8 @@ New in 0.17
 
 * :attr:`MneExperiment.brain_plot_defaults` can be used to customize PySurfer
   plots in movies and reports.
+* Parellations based on combinations of existing labels can now be defined in
+  :attr:`MneExperiment.parcs`.
 
 
 New in 0.16

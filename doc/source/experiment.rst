@@ -273,6 +273,55 @@ exclude : tuple of str
     A list of subjects to exclude (e.g., ``("R0026", "R0042", "R0066")``)
 
 
+Parcellations (:attr:`parcs`)
+-----------------------------
+
+.. py:attribute:: MneExperiment.parcs
+
+The parcellation determines how the brain surface is divided into regions.
+A number of standard parcellations are automatically defined (see
+:ref:`analysis-params-parc` below). Additional parcellations can be defined in
+the :attr:`MneExperiment.parcs` dictionary with ``{name: parc_definition}``
+entries.
+
+Recombinations of existing parcellations can be defined as dictionaries include
+the following entries:
+
+kind : 'combination'
+    Has to be 'combination'.
+base : str
+    The name of the parcellation that provides the input labels.
+labels : dict {str: str}
+    New labels to create in ``{name: expression}`` format. All label names
+    should be composed of alphanumeric characters (plus underline) and should not
+    contain the -hemi tags.
+
+
+For parcellations that are user-created, the following two definitions can be
+used to determine how they are handled:
+
+"subject_parc"
+    Parcellations that are created outside Eelbrain for each subject. These
+    parcellations are automatically generated only for scaled brains, for
+    subjects' MRIs the user is responsible for creating the respective
+    annot-files.
+"fsaverage_parc"
+    Parcellations that are defined for the fsaverage brain and should be morphed
+    to every other subject's brain. These parcellations are automatically
+    morphed to individual subjects' MRIs.
+
+Example::
+
+    parcs = {'aparc': 'subject_parc',
+             'PALS_B12_Brodmann': 'fsaverage_parc',
+             'lobes-op': {'kind': 'combination',
+                          'base': 'lobes',
+                          'labels': {'occipitoparietal': "occipital + parietal"}},
+             'lobes-ot': {'kind': 'combination',
+                          'base': 'lobes',
+                          'labels': {'occipitotemporal': "occipital + temporal"}}}
+
+
 Visualization Defaults
 ----------------------
 
@@ -379,18 +428,24 @@ inv
 To set the inverse solution use :meth:`MneExperiment.set_inv`.
 
 
+.. _analysis-params-parc:
+
 Parcellations
 -------------
 
-Parcellation are used in different places:
+The parcellation determines how the brain surface is divided into regions.
+Parcellation are mainly used in tests and report generation:
 
  - ``parc`` or ``mask`` arguments for :meth:`MneExperiment.make_report`
  - ``parc`` argument to :meth:`MneExperiment.make_report_roi`
 
-Predefined parcellations:
+When source estimates are loaded, the parcellation can also be used to index
+regions in the source estiomates. Predefined parcellations:
 
 Freesurfer Parcellations
-    ``aparc``, ``PALS_B12_Lobes``, ``PALS_B12_Visuotopic``, ...
+    ``aparc.a2005s``, ``aparc.a2009s``, ``aparc``, ``aparc.DKTatlas``,
+    ``PALS_B12_Brodmann``, ``PALS_B12_Lobes``, ``PALS_B12_OrbitoFrontal``,
+    ``PALS_B12_Visuotopic``.
 ``lobes``
     Modified version of ``PALS_B12_Lobes`` in which the limbic lobe is merged
     into the other 4 lobes.

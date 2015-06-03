@@ -3,7 +3,7 @@
 from collections import defaultdict
 from distutils.version import LooseVersion
 import inspect
-from itertools import izip
+from itertools import chain, izip
 import logging
 import os
 import re
@@ -28,7 +28,7 @@ from .. import Dataset, Factor, Var, NDVar, combine
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
 from .._mne import source_induced_power, dissolve_label, rename_label, \
-    morph_source_space, shift_mne_epoch_trigger
+    combination_label, morph_source_space, shift_mne_epoch_trigger
 from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg_epochs
 from .._data_obj import (align, UTS, DimensionMismatchError,
@@ -57,14 +57,9 @@ SECONDARY_EPOCH_PARAMS = {'base', 'sel', 'tmin', 'tmax', 'decim', 'baseline',
 SUPER_EPOCH_PARAMS = {'sub_epochs'}
 SUPER_EPOCH_INHERITED_PARAMS = {'tmin', 'tmax', 'decim', 'baseline'}
 
-# Parcellations that FreeSurfer generates
-FS_PARCS = ('aparc.a2005s', 'aparc.a2009s', 'aparc', 'aparc.DKTatlas')
-# Parcellations that come with fsaverage
-FSA_PARCS = ('PALS_B12_Brodmann', 'PALS_B12_Lobes', 'PALS_B12_OrbitoFrontal',
-             'PALS_B12_Visuotopic')
-# Parcellations that Eelbrain makes
-EELBRAIN_PARCS = ('lobes', 'lobes-op', 'lobes-ot')
-
+FS_PARC = 'subject_parc'  # Parcellation that come with every MRI-subject
+FSA_PARC = 'fsaverage_parc'  # Parcellation that comes with fsaverage
+EELBRAIN_PARC = 'eelbrain_parc'
 
 inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
                     "(\d*\.?\d+)-"  # SNR
@@ -351,8 +346,24 @@ class MneExperiment(FileTree):
     # for subfolders matching _subject_re.
     _subject_loc = 'meg-sdir'
 
-    # Custom parcellations. Set to None to disable checking on set().
-    parcs = ()
+    # Parcellations
+    _parcs = {'aparc.a2005s': FS_PARC,
+              'aparc.a2009s': FS_PARC,
+              'aparc': FS_PARC,
+              'aparc.DKTatlas': FS_PARC,
+              'PALS_B12_Brodmann': FSA_PARC,
+              'PALS_B12_Lobes': FSA_PARC,
+              'PALS_B12_OrbitoFrontal': FSA_PARC,
+              'PALS_B12_Visuotopic': FSA_PARC,
+              'lobes': {'kind': EELBRAIN_PARC, 'make': True,
+                        'morph_from_fsaverage': True},
+              'lobes-op': {'kind': 'combination',
+                           'base': 'lobes',
+                           'labels': {'occipitoparietal': "occipital + parietal"}},
+              'lobes-ot': {'kind': 'combination',
+                           'base': 'lobes',
+                           'labels': {'occipitotemporal': "occipital + temporal"}}}
+    parcs = {}
 
     # basic templates to use. Can be a string referring to a templates
     # dictionary in the module level _temp dictionary, or a templates
@@ -532,6 +543,62 @@ class MneExperiment(FileTree):
         self.epoch_rejection = epoch_rejection
 
         ########################################################################
+        # parcellations
+        ###############
+        # make : can be made if non-existent
+        # morph_from_fraverage : can be morphed from fsaverage to other subjects
+        if isinstance(self.parcs, dict):
+            user_parcs = self.parcs
+        elif self.parcs is None:
+            user_parcs = {}
+        elif isinstance(self.parcs, tuple):
+            user_parcs = {name: FSA_PARC for name in self.parcs}
+        else:
+            raise TypeError("The MneExperiment.parcs attribute should be a "
+                            "dict, got %s" % repr(self.parcs))
+        parcs = {}
+        for name, p in chain(self._parcs.iteritems(), user_parcs.iteritems()):
+            if name in parcs:
+                raise ValueError("Parcellation %s defined twice" % name)
+            elif p == FS_PARC or p == FSA_PARC:
+                p = {'kind': p}
+            elif isinstance(p, dict):
+                p = p.copy()
+            else:
+                raise ValueError("Parcellations need to be defined as %r, %r or "
+                                 "dict, got %s: %r" % (FS_PARC, FSA_PARC, name, p))
+
+            kind = p.get('kind', None)
+            if kind == EELBRAIN_PARC:
+                pass
+            elif kind == FS_PARC:
+                if len(p) > 1:
+                    raise ValueError("Unknown keys in parcellation %r: %r"
+                                     % (name, p))
+                p['make'] = False
+                p['morph_from_fsaverage'] = False
+            elif kind == FSA_PARC:
+                if len(p) > 1:
+                    raise ValueError("Unknown keys in parcellation %r: %r"
+                                     % (name, p))
+                p['make'] = False
+                p['morph_from_fsaverage'] = True
+            elif kind == 'combination':
+                if set(p) != {'kind', 'base', 'labels'}:
+                    raise ValueError("Incorrect keys in parcellation %r: %r"
+                                     % (name, p))
+                p['make'] = True
+                p['morph_from_fsaverage'] = False
+            else:
+                raise ValueError("Parcellation %s with invalid  'kind': %r"
+                                 % (name, kind))
+
+            parcs[name] = p
+        self._parcs = parcs
+        parc_values = parcs.keys()
+        parc_values += ['']
+
+        ########################################################################
         # tests
         tests = {}
         for test, params in self.tests.iteritems():
@@ -631,8 +698,7 @@ class MneExperiment(FileTree):
         self._register_field('model', eval_handler=self._eval_model)
         self._register_field('test', sorted(self._tests) or None,
                              post_set_handler=self._post_set_test)
-        self._register_field('parc', default='aparc',
-                             eval_handler=self._eval_parc)
+        self._register_field('parc', parc_values, 'aparc')
         self._register_field('proj', [''] + self.projs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
         self._register_field('mrisubject')
@@ -2198,72 +2264,68 @@ class MneExperiment(FileTree):
         parc = self.get('parc')
         if parc == '':
             return
+        p = self._parcs[parc]
+
         mrisubject = self.get('mrisubject')
         common_brain = self.get('common_brain')
-
-        if mrisubject == common_brain:
-            # check existing files
-            if not redo:
-                mtime = self._annot_mtime()
-                if mtime is not None:
-                    return mtime
-            # make sure it's not one that should exist
-            if parc in FSA_PARCS or parc in FS_PARCS:
-                raise RuntimeError("The %s parcellation is missing from your "
-                                   "%s common_brain" % (parc, common_brain))
-            # create it
-            labels = self._make_annot(parc, mrisubject)
-            mri_sdir = self.get('mri-sdir')
-            write_labels_to_annot(labels, mrisubject, parc, True, mri_sdir)
-        else:
+        mtime = self._annot_mtime()
+        if mrisubject != common_brain:
             is_fake = is_fake_mri(self.get('mri-dir'))
-
-            # FS-parcellations that can not be simply morphed
-            if parc in FS_PARCS and not is_fake:
-                mtime = self._annot_mtime()
-                if not redo and mtime:
+            if p['morph_from_fsaverage'] or is_fake:
+                # make sure annot exists for common brain
+                self.set(mrisubject=common_brain, match=False)
+                common_brain_mtime = self.make_annot()
+                self.set(mrisubject=mrisubject, match=False)
+                if not redo and mtime > common_brain_mtime:
                     return mtime
-                # https://surfer.nmr.mgh.harvard.edu/fswiki/CorticalParcellation
-                raise NotImplementedError("The Aparc FreeSurfer parcellations can not be "
-                                          "created automatically for subject-specific "
-                                          "MRIs. Use FreeSurfer to create the %s parcellation "
-                                          "for mrisubject %s." % (parc, mrisubject))
+                elif is_fake:
+                    for _ in self.iter('hemi'):
+                        self.make_copy('annot-file', 'mrisubject', common_brain,
+                                       mrisubject)
+                else:
+                    self.get('label-dir', make=True)
+                    subjects_dir = self.get('mri-sdir')
+                    for hemi in ('lh', 'rh'):
+                        cmd = ["mri_surf2surf", "--srcsubject", common_brain,
+                               "--trgsubject", mrisubject, "--sval-annot", parc,
+                               "--tval", parc, "--hemi", hemi]
+                        subp.run_freesurfer_command(cmd, subjects_dir)
+                    fix_annot_names(mrisubject, parc, common_brain,
+                                    subjects_dir=subjects_dir)
+                return
 
-            # make sure annot exists for common brain
-            self.set(mrisubject=common_brain, match=False)
-            common_brain_mtime = self.make_annot()
-            self.set(mrisubject=mrisubject, match=False)
-
-            # check whether subject's file is current
-            if not redo and common_brain_mtime is not None:
-                mtime = self._annot_mtime()
-                if mtime is not None and mtime > common_brain_mtime:
-                    return mtime
-
-            # copy or morph
-            if is_fake:
-                for _ in self.iter('hemi'):
-                    self.make_copy('annot-file', 'mrisubject', common_brain,
-                                   mrisubject)
+        if not redo and mtime:
+            return mtime
+        elif not p['make']:
+            if redo and mtime:
+                msg = ("The %s parcellation can not be created automatically "
+                       "for %s." % (parc, mrisubject))
             else:
-                self.get('label-dir', make=True)
-                subjects_dir = self.get('mri-sdir')
-                for hemi in ('lh', 'rh'):
-                    cmd = ["mri_surf2surf", "--srcsubject", common_brain,
-                           "--trgsubject", mrisubject, "--sval-annot", parc,
-                           "--tval", parc, "--hemi", hemi]
-                    subp.run_freesurfer_command(cmd, subjects_dir)
-                fix_annot_names(mrisubject, parc, common_brain,
-                                subjects_dir=subjects_dir)
+                msg = ("The %s parcellation can not be created automatically "
+                       "and is missing for %s." % (parc, mrisubject))
+            raise RuntimeError(msg)
 
-    def _make_annot(self, parc, subject):
+        # make parcs:  common_brain | non-morphed
+        labels = self._make_annot(parc, p, mrisubject)
+        write_labels_to_annot(labels, mrisubject, parc, True,
+                              self.get('mri-sdir'))
+
+    def _make_annot(self, parc, p, subject):
         """Returns labels
 
         Notes
         -----
         Only called to make custom annotation files for the common_brain
         """
-        if parc == 'lobes':
+        if p['kind'] == 'combination':
+            with self._temporary_state:
+                base = {l.name: l for l in self.load_annot(parc=p['base'])}
+            labels = sum((combination_label(name, exp, base) for name, exp in
+                          p['labels'].iteritems()), [])
+        elif parc == 'lobes':
+            if subject != 'fsaverage':
+                raise RuntimeError("lobes parcellation can only be created for "
+                                   "fsaverage, not for %s" % subject)
             sdir = self.get('mri-sdir')
 
             # load source annot
@@ -2286,16 +2348,6 @@ class MneExperiment(FileTree):
             dissolve_label(labels, '???', targets, sdir)
             dissolve_label(labels, '????', targets, sdir, 'rh')
             dissolve_label(labels, '???????', targets, sdir, 'rh')
-        elif parc == 'lobes-op':
-            with self._temporary_state:
-                lobes = {l.name: l for l in self.load_annot(parc='lobes')}
-            labels = [lobes['occipital-lh'] + lobes['parietal-lh'],
-                      lobes['occipital-rh'] + lobes['parietal-rh']]
-        elif parc == 'lobes-ot':
-            with self._temporary_state:
-                lobes = {l.name: l for l in self.load_annot(parc='lobes')}
-            labels = [lobes['occipital-lh'] + lobes['temporal-lh'],
-                      lobes['occipital-rh'] + lobes['temporal-rh']]
         else:
             msg = ("At least one of the annot files for the custom parcellation "
                    "%r is missing for %r, and a make function is not "
@@ -4092,15 +4144,6 @@ class MneExperiment(FileTree):
         if unordered_factors:
             model.extend(unordered_factors)
         return '%'.join(model)
-
-    def _eval_parc(self, parc):
-        # Freesurfer parcellations
-        if parc == '' or parc in FS_PARCS or parc in FSA_PARCS or parc in EELBRAIN_PARCS:
-            return parc
-        elif self.parcs is None or parc in self.parcs:
-            return parc
-        else:
-            raise ValueError("Unknown parcellation:  parc=%r" % parc)
 
     def _post_set_rej(self, _, rej):
         if rej == '*':
