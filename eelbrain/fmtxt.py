@@ -1,6 +1,6 @@
 """
 Objects for the abstract representation of a document which can be into
-different formats. Currently (incomplete) support for str, TeX and HTML.
+different formats. Currently (incomplete) support for str, RTF, TeX and HTML.
 
 Base classes:
 

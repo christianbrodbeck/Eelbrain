@@ -73,7 +73,7 @@ version 0.13 in which case you don't need to define
 
 Set this attribute to shift all trigger times by a constant (in seconds). For
 example, with ``trigger_shift = 0.03`` a trigger that originally occurred
-35.1 seconds into the recording will be shifted to 35.13.
+35.10 seconds into the recording will be shifted to 35.13.
 
 
 Defaults

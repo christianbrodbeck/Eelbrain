@@ -2916,7 +2916,7 @@ class NDVar(object):
         return rep % args
 
     def abs(self, name=None):
-        """Compute the absolute value"""
+        """Compute the absolute values"""
         x = np.abs(self.x)
         dims = self.dims
         info = self.info.copy()
@@ -2937,7 +2937,7 @@ class NDVar(object):
 
         Returns
         -------
-        max : NDVar | Var | float
+        any : NDVar | Var | float
             Boolean data indicating presence of nonzero value over specified
             dimensions. Returns a Var if only the case dimension remains, and a
             float if the function collapses over all data.
