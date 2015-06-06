@@ -247,7 +247,7 @@ class _Result(object):
         return self._cdist.compute_probability_map(**sub)
 
     def info_list(self):
-        return self._cdist.info_list()
+        return self._first_cdist.info_list()
 
     @property
     def n_samples(self):
@@ -1065,7 +1065,10 @@ class _MultiEffectResult(_Result):
 
     @property
     def _first_cdist(self):
-        return self._cdist[0]
+        if self._cdist is None:
+            return None
+        else:
+            return self._cdist[0]
 
     def cluster(self, cluster_id, effect=0):
         """Retrieve a specific cluster as NDVar
@@ -1191,9 +1194,6 @@ class _MultiEffectResult(_Result):
             ds[:, 'effect'] = cdist.name
             dss.append(ds)
         return combine(dss)
-
-    def info_list(self):
-        return self._cdist[0].info_list()
 
 
 class anova(_MultiEffectResult):
@@ -2072,7 +2072,7 @@ class _ClusterDist:
                                         self._connectivity, self._criteria)
             n_clusters = len(cids)
             # clean original cluster map
-            idx = (np.in1d(cmap, cids, invert=True).reshape(self.shape))
+            idx = np.in1d(cmap, cids, invert=True).reshape(self.shape)
             cmap[idx] = 0
         else:
             cmap = stat_map
