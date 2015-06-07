@@ -3229,8 +3229,8 @@ class MneExperiment(FileTree):
         report = Report(title)
 
         # info
-        self._report_test_info(report.add_section("Test Info"), ds, y, test,
-                               tstart, tstop, pmin, res, 'src', include, True)
+        self._report_test_info(report.add_section("Test Info"), ds, test, res,
+                               'src', include)
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
@@ -3403,8 +3403,7 @@ class MneExperiment(FileTree):
                 _report.roi_timecourse(section, ds, label, model, res, colors)
 
         # compose info
-        self._report_test_info(info_section, ds, y, test, tstart, tstop, pmin,
-                               res, 'src')
+        self._report_test_info(info_section, ds, test, res, 'src')
 
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst)
@@ -3459,8 +3458,7 @@ class MneExperiment(FileTree):
 
         # info
         info_section = report.add_section("Test Info")
-        self._report_test_info(info_section, ds, y, test, tstart, tstop, pmin,
-                               res, 'sns', include, True)
+        self._report_test_info(info_section, ds, test, res, 'sns', include)
 
         # add connectivity image
         p = plot.SensorMap(ds['eeg'], show=False)
@@ -3567,8 +3565,7 @@ class MneExperiment(FileTree):
             _report.timecourse(report, ds, y, model, res, sensor,
                                caption % sensor, colors)
 
-        self._report_test_info(info_section, ds, eeg, test, tstart, tstop, pmin,
-                               res, 'sns')
+        self._report_test_info(info_section, ds, test, res, 'sns')
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
 
@@ -3582,57 +3579,23 @@ class MneExperiment(FileTree):
                                 "trials per condition")
         return s_table
 
-    def _report_test_info(self, section, ds, y, test, tstart, tstop, pmin,
-                          res, data, include=None, spatiotemporal=False):
-        info = List("Data:")
+    def _report_test_info(self, section, ds, test, res, data, include=None):
+        test_params = self._tests[test]
+
+        # Analysis info
+        info = List("Analysis:")
         info.add_item(self.format('epoch = {epoch} {evoked-kind} ~ {model}'))
         if data == 'src':
             info.add_item(self.format("cov = {cov}"))
             info.add_item(self.format("inv = {inv}"))
+        info.add_item("test = %s  (%s)" % (test_params['kind'], test_params['desc']))
+        if include is not None:
+            info.add_item("Separate plots of all clusters with a p-value < %s"
+                          % include)
         section.append(info)
 
-        # cluster test info
-        if spatiotemporal:
-            title = "Spatio-Temporal Cluster Permutation Test:"
-        else:
-            title = "Temporal Cluster Permutation Test:"
-        info = List(title)
-        test_params = self._tests[test]
-        info.add_item("test = %s  (%s)" % (test_params['kind'], test_params['desc']))
-        info.add_item("Time interval:  %i - %i ms." % (_report.tstart(tstart, y.time),
-                                                       _report.tstop(tstop, y.time)))
-        if pmin is None:
-            info.add_item("P-values based on maximum value in randomizations")
-        elif pmin == 'tfce':
-            info.add_item("Threshold-free cluster enhancement (Smith & Nichols, 2009)")
-        else:
-            info.add_item("Cluster threshold equivalent to p = %s" % pmin)
-            # cluster criteria
-            criteria = info.add_sublist("Criteria:")
-            mintime = self.cluster_criteria.get('mintime', 0)
-            criteria.add_item("Minimum duration:  %i ms" % round(mintime * 1000))
-            if spatiotemporal:
-                if data == 'src':
-                    minsource = self.cluster_criteria.get('minsource', 0)
-                    criteria.add_item("At least %i contiguous sources." % minsource)
-                elif data == 'sns':
-                    minsensor = self.cluster_criteria.get('minsensor', 0)
-                    criteria.add_item("At least %i contiguous sensors." % minsensor)
-
-            if include is not None:
-                info.add_item("Separate plots of all clusters with a p-value < %s"
-                              % include)
-
-        # n samples
-        if res.samples == -1:
-            info.add_item("All possible permutations (%i)" % res.n_samples)
-        else:
-            info.add_item("%i permutations" % res.samples)
-
-        if data is not None:
-            # spatial cluster test (for temporal tests, res is only
-            # representative)
-            info.add_item(res.info_list())
+        # Test info (for temporal tests, res is only representative)
+        info = res.info_list(data is not None)
         section.append(info)
 
         section.append(self._report_subject_info(ds, test_params['model']))

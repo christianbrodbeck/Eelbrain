@@ -42,6 +42,7 @@ from .. import _colorspaces as _cs
 from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                          NDVar, Var, Celltable, cellname, combine, Categorial,
                          UTS)
+from .._report import enumeration, format_timewindow, ms
 from .._utils import logger, LazyProperty
 from .._utils.numpy_utils import full_slice
 from . import opt, stats
@@ -246,8 +247,55 @@ class _Result(object):
             raise RuntimeError(err)
         return self._cdist.compute_probability_map(**sub)
 
-    def info_list(self):
-        return self._first_cdist.info_list()
+    def info_list(self, computation=True):
+        "List with information about the test"
+        out = fmtxt.List("Mass-univariate statistics:")
+
+        cdist = self._first_cdist
+        if cdist is None:
+            out.add_item("No inferential statistics")
+            return out
+
+        dimnames = [dim.name for dim in cdist.dims]
+        out.add_item("Over %s" % enumeration(dimnames))
+        if 'time' in dimnames:
+            out.add_item("Time interval: %s." % format_timewindow(self))
+
+        # inference
+        l = out.add_sublist("Inference:")
+        if cdist.kind == 'raw':
+            l.add_item("Based on maximum statistic")
+        elif cdist.kind == 'tfce':
+            l.add_item("Based on maximum statistic with threshold-"
+                       "free cluster enhancement (Smith & Nichols, 2009)")
+        elif cdist.kind == 'cluster':
+            l.add_item("Based on maximum cluster sum statistic")
+            sl = l.add_sublist("Cluster criteria:")
+            for dim in dimnames:
+                if dim == 'time':
+                    sl.add_item("Minimum cluster duration:  %s ms"
+                                % ms(cdist.criteria.get('mintime', 0)))
+                elif dim == 'source':
+                    sl.add_item("At least %s contiguous sources."
+                                % cdist.criteria.get('minsource', 0))
+                elif dim == 'sensor':
+                    sl.add_item("At least %s contiguous sensors."
+                                % cdist.criteria.get('minsensor', 0))
+                else:
+                    sl.add_item("Minimum number of contiguous elements in %s: "
+                                "%s"
+                                % (dim, cdist.criteria.get("min%s" % dim, 0)))
+        # n samples
+        if self.samples == -1:
+            l.add_item("In all %s possible permutations" % self.n_samples)
+        else:
+            l.add_item("In %s random permutations" % self.samples)
+
+        # computation
+        if computation:
+            out.add_item(cdist.info_list())
+
+        return out
 
     @property
     def n_samples(self):

@@ -8,6 +8,16 @@ from ._data_obj import cellname
 from .fmtxt import ms
 
 
+def enumeration(items, link='and'):
+    "['a', 'b', 'c'] -> 'a, b and c'"
+    if len(items) >= 2:
+        return (' %s ' % link).join((', '.join(items[:-1]), items[-1]))
+    elif len(items) == 1:
+        return items[0]
+    else:
+        raise ValueError("items=%s" % repr(items))
+
+
 def format_samples(res):
     if res.samples == -1:
         return "a complete set of %i permutations" % res.n_samples
