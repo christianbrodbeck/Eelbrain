@@ -1312,11 +1312,11 @@ class anova(_MultiEffectResult):
                  dist_dim=(), parc=(), dist_tstep=None, **criteria):
         sub = assub(sub, ds)
         Y = asndvar(Y, sub, ds)
-        X = asmodel(X, sub, ds)
+        x_ = asmodel(X, sub, ds)
         if match is not None:
             match = ascategorial(match, sub, ds)
 
-        lm = _nd_anova(X)
+        lm = _nd_anova(x_)
         effects = lm.effects
         dfs_denom = lm.dfs_denom
         fmaps = lm.map(Y.x)
@@ -1365,7 +1365,7 @@ class anova(_MultiEffectResult):
         # store attributes
         _MultiEffectResult.__init__(self, Y, match, sub, samples, tfce, pmin,
                                     cdists, tstart, tstop)
-        self.X = X.name
+        self.X = X if isinstance(X, basestring) else x_.name
         self._effects = effects
         self._dfs_denom = dfs_denom
         self.f = f
