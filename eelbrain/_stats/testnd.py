@@ -72,7 +72,7 @@ class _Result(object):
         enhancement algorithm (or None if no TFCE was performed).
     """
     _state_common = ('Y', 'match', 'sub', 'samples', 'tfce', 'pmin', '_cdist',
-                     'tstart', 'tstop')
+                     'tstart', 'tstop', '_dims')
     _state_specific = ()
 
     @property
@@ -96,6 +96,7 @@ class _Result(object):
         self._cdist = cdist
         self.tstart = tstart
         self.tstop = tstop
+        self._dims = Y.dims[1:]
 
     def __getstate__(self):
         state = {name: getattr(self, name, None) for name in self._attributes}
@@ -104,11 +105,22 @@ class _Result(object):
     def __setstate__(self, state):
         for k, v in state.iteritems():
             setattr(self, k, v)
-        # backwards compatibility:  recover tstart & tstop
+
+        # backwards compatibility:
         if 'tstart' not in state:
             cdist = self._first_cdist
             self.tstart = cdist.tstart
             self.tstop = cdist.tstop
+        if '_dims' not in state:  # 0.17
+            if 't' in state:
+                self._dims = state['t'].dims
+            elif 'r' in state:
+                self._dims = state['r'].dims
+            elif 'f' in state:
+                self._dims = state['f'][0].dims
+            else:
+                raise RuntimeError("Error recovering old test results dims")
+
         self._expand_state()
 
     def __repr__(self):
@@ -250,16 +262,15 @@ class _Result(object):
     def info_list(self, computation=True):
         "List with information about the test"
         out = fmtxt.List("Mass-univariate statistics:")
+        dimnames = [dim.name for dim in self._dims]
+        out.add_item("Over %s" % enumeration(dimnames))
+        if 'time' in dimnames:
+            out.add_item("Time interval: %s." % format_timewindow(self))
 
         cdist = self._first_cdist
         if cdist is None:
             out.add_item("No inferential statistics")
             return out
-
-        dimnames = [dim.name for dim in cdist.dims]
-        out.add_item("Over %s" % enumeration(dimnames))
-        if 'time' in dimnames:
-            out.add_item("Time interval: %s." % format_timewindow(self))
 
         # inference
         l = out.add_sublist("Inference:")
