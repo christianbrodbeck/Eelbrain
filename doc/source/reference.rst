@@ -434,3 +434,21 @@ collections of templates on which the :class:`MneExperiment` is based.
 
    experiment.TreeModel
    experiment.FileTree
+
+
+^^^^^^^^
+Datasets
+^^^^^^^^
+
+.. py:module:: eelbrain.datasets
+.. py:currentmodule:: eelbrain
+
+Datasets for experimenting and testing:
+
+.. autosummary::
+    :toctree: generated
+
+    datasets.get_loftus_masson_1994
+    datasets.get_mne_sample
+    datasets.get_uts
+    datasets.get_uv

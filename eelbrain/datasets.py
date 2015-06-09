@@ -57,9 +57,9 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     tmin, tmax baseline :
         Epoch parameters.
     sns : bool
-        Add sensor space data as NDVar as ``ds['sns']``.
-    src : None | 'ico' | 'vol'
-        Add source space data as NDVar as ``ds['src']``.
+        Add sensor space data as NDVar as ``ds['sns']`` (default ``False``).
+    src : False | 'ico' | 'vol'
+        Add source space data as NDVar as ``ds['src']`` (default ``False``).
     sub : str | None
         Expresion for subset of events to load. For a very small dataset use e.g.
         ``[0,1]``.
@@ -121,7 +121,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     if sns:
         ds['sns'] = load.fiff.epochs_ndvar(ds['epochs'], data='mag')
 
-    if src is None:
+    if not src:
         return ds
     elif src == 'ico':
         src_tag = 'ico-4'
