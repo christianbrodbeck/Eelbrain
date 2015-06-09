@@ -163,10 +163,9 @@ class UTSStat(_EelFigure, LegendMixin):
         self._plots = []
         legend_handles = {}
         if Xax is None:
-            ax = self._axes[0]
-            p = _ax_uts_stat(ax, ct, colors, main, error, dev_data, None, xdim,
-                             xlim, invy, bottom, top, hline, clusters, pmax,
-                             ptrend)
+            p = _ax_uts_stat(self._axes[0], ct, colors, main, error, dev_data,
+                             None, xdim, xlim, invy, bottom, top, hline,
+                             clusters, pmax, ptrend)
             self._plots.append(p)
             legend_handles.update(p.legend_handles)
             if len(ct) < 2:
