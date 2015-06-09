@@ -3450,7 +3450,6 @@ class MneExperiment(FileTree):
         # load data
         ds, res = self.load_test(None, tstart, tstop, pmin, None, None, samples,
                                  'sns', baseline, None, True, True, redo_test)
-        y = ds['eeg']
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
@@ -3469,29 +3468,7 @@ class MneExperiment(FileTree):
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
-        if pmin in (None, 'tfce'):
-            section = report.add_section("P<=.05")
-            _report.sensor_bin_table(section, res, 0.05)
-            clusters = res.find_clusters(0.05, maps=True)
-            clusters.sort('tstart')
-            for cluster in clusters.itercases():
-                _report.sensor_time_cluster(section, cluster, y, model, ds, colors)
-
-            # trend section
-            section = report.add_section("Trend: p<=.1")
-            _report.sensor_bin_table(section, res, 0.1)
-
-            # not quite there section
-            section = report.add_section("Anything: P<=.2")
-            _report.sensor_bin_table(section, res, 0.2)
-        else:
-            section = report.add_section("Clusters")
-            _report.sensor_bin_table(section, res)
-            clusters = res.find_clusters(include, maps=True)
-            clusters.sort('tstart')
-            for cluster in clusters.itercases():
-                _report.sensor_time_cluster(section, cluster, y, model, ds, colors)
-
+        report.append(_report.sensor_time_results(res, ds, colors, include))
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
 
