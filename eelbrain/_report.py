@@ -30,8 +30,7 @@ def format_samples(res):
 def format_timewindow(res):
     "Format a description of the time window for a test result"
     uts = res._time_dim
-    return 'between %i and %i ms' % (tstart(res.tstart, uts),
-                                     tstop(res.tstop, uts))
+    return '%s - %s ms' % (tstart(res.tstart, uts), tstop(res.tstop, uts))
 
 
 def tstart(tstart, uts):
@@ -286,7 +285,7 @@ def timecourse(ds, y, model, res, title, caption, colors, pairwise_pmax=0.1):
 
     # compose captions
     if clusters.n_cases:
-        c_caption = ("Clusters %s based on %s."
+        c_caption = ("Clusters in time window %s based on %s."
                      % (format_timewindow(res), format_samples(res)))
         tc_caption = caption
     else:
