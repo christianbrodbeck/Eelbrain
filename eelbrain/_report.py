@@ -5,7 +5,7 @@ from . import fmtxt
 from . import plot
 from . import test
 from ._data_obj import cellname
-from .fmtxt import ms
+from .fmtxt import ms, Section
 
 
 def enumeration(items, link='and'):
@@ -255,10 +255,10 @@ def roi_timecourse(doc, ds, label, model, res, colors):
     hemi = label[-2].capitalize()
     title = ' '.join((label_name, hemi))
     caption = "Source estimates in %s (%s)." % (label_name, hemi)
-    timecourse(doc, ds, y, model, res, title, caption, colors)
+    doc.append(timecourse(ds, y, model, res, title, caption, colors))
 
 
-def timecourse(doc, ds, y, model, res, title, caption, colors, pairwise_pmax=0.1):
+def timecourse(ds, y, model, res, title, caption, colors, pairwise_pmax=0.1):
     """Add time course with clusters
 
     Parameters
@@ -282,7 +282,7 @@ def timecourse(doc, ds, y, model, res, title, caption, colors, pairwise_pmax=0.1
         max_sig = clusters['sig'][idx]
         if max_sig:
             title += max_sig
-    section = doc.add_section(title)
+    section = Section(title)
 
     # compose captions
     if clusters.n_cases:
@@ -331,8 +331,9 @@ def timecourse(doc, ds, y, model, res, title, caption, colors, pairwise_pmax=0.1
         section.add_image_figure(plots, "Value in the time-window of the clusters "
                                  "with uncorrected pairwise t-tests.")
 
-
     # add cluster table
     if clusters.n_cases:
         t = clusters.as_table(midrule=True, caption=c_caption)
         section.append(t)
+
+    return section

@@ -3562,8 +3562,8 @@ class MneExperiment(FileTree):
             y = eeg.sub(sensor=sensor)
             res = self._make_test(y, ds, test, samples, pmin, tstart, tstop,
                                   None, None)
-            _report.timecourse(report, ds, y, model, res, sensor,
-                               caption % sensor, colors)
+            report.append(_report.timecourse(ds, y, model, res, sensor,
+                                             caption % sensor, colors))
 
         self._report_test_info(info_section, ds, test, res, 'sns')
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
