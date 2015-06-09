@@ -297,9 +297,14 @@ class SensorMapMixin:
         ----------
         sensors : None | Sensor dimension index
             Sensors which should be marked (None to clear all markings).
-        others :
-            Matplotlib :func:`pyplot.scatter` parameters for the marking
-            sensors.
+        s : scalar | sequence of scalars
+            Marker size(s) in points^2.
+        c : color | sequence of colors
+            Marker color(s).
+        marker : str
+            Marker style, default: ``'o'``.
+
+        (Matplotlib :func:`pyplot.scatter` parameters)
         """
         for p in self.__sensor_plots:
             p.mark_sensors(sensors, *args, **kwargs)
