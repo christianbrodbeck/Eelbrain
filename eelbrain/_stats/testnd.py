@@ -744,9 +744,9 @@ class ttest_1samp(_Result):
         self.p_uncorrected = p_uncorr
 
         if self.samples:
-            self._default_plot_obj = [self.diff, self.p]
+            self._default_plot_obj = [[self.diff, self.p]]
         else:
-            self._default_plot_obj = [self.diff, t]
+            self._default_plot_obj = [[self.diff, t]]
 
     def _repr_test_args(self):
         args = [repr(self.Y)]
