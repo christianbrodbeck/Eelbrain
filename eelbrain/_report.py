@@ -47,6 +47,51 @@ def tstop(tstop, uts):
         return ms(tstop)
 
 
+def sensor_results(res, ds, color):
+    report = Section("Results")
+    if res._kind == 'cluster':
+        p = plot.Topomap(res, show=False)
+        report.add_figure("Significant clusters.", p)
+        p.close()
+
+        report.add_figure("All clusters.", res.clusters)
+    else:
+        raise NotImplementedError("Result kind %r" % res._kind)
+    return report
+
+
+def sensor_time_results(res, ds, colors, include=1):
+    y = ds.eval(res.Y)
+    if res._kind in ('raw', 'tfce'):
+        report = Section("Results")
+        section = report.add_section("P<=.05")
+        sensor_bin_table(section, res, 0.05)
+        clusters = res.find_clusters(0.05, maps=True)
+        clusters.sort('tstart')
+        for cluster in clusters.itercases():
+            sensor_time_cluster(section, cluster, y, res._plot_model(), ds,
+                                colors, res.match)
+
+        # trend section
+        section = report.add_section("Trend: p<=.1")
+        sensor_bin_table(section, res, 0.1)
+
+        # not quite there section
+        section = report.add_section("Anything: P<=.2")
+        sensor_bin_table(section, res, 0.2)
+    elif res._kind == 'cluster':
+        report = Section("Clusters")
+        sensor_bin_table(report, res)
+        clusters = res.find_clusters(include, maps=True)
+        clusters.sort('tstart')
+        for cluster in clusters.itercases():
+            sensor_time_cluster(report, cluster, y, res._plot_model(), ds,
+                                colors, res.match)
+    else:
+        raise NotImplementedError("Result kind %r" % res._kind)
+    return report
+
+
 def sensor_bin_table(section, res, pmin=None):
     if pmin is None:
         caption = "All clusters"
@@ -70,7 +115,7 @@ def sensor_bin_table(section, res, pmin=None):
         section.add_image_figure(p, caption_)
 
 
-def sensor_time_cluster(section, cluster, y, model, ds, colors, legend):
+def sensor_time_cluster(section, cluster, y, model, ds, colors, match='subject'):
     # cluster properties
     tstart_ms = ms(cluster['tstart'])
     tstop_ms = ms(cluster['tstop'])
@@ -95,9 +140,12 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, legend):
     topo = y.summary(time=(cluster['tstart'], cluster['tstop']))
     cluster_topo = cluster['cluster'].any('time')
     cluster_topo.info['contours'] = {0.5: (1, 1, 0)}
-    x = ds.eval(model)
-    topos = [[topo[x == cell].summary('case', name=cellname(cell)),
-              cluster_topo] for cell in x.cells]
+    if model:
+        x = ds.eval(model)
+        topos = [[topo[x == cell].summary('case', name=cellname(cell)),
+                  cluster_topo] for cell in x.cells]
+    else:
+        topos = [[topo, cluster_topo]]
     p = plot.Topomap(topos, axh=3, nrow=1, show=False)
     p.mark_sensors(np.flatnonzero(cluster_topo.x), c='y', marker='o')
 
@@ -109,7 +157,7 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, legend):
     section.add_image_figure(p, caption)
     p.close()
 
-    cluster_timecourse(section, cluster, y, 'sensor', model, ds, colors)
+    cluster_timecourse(section, cluster, y, 'sensor', model, ds, colors, match)
 
 
 def source_bin_table(section, res, surfer_kwargs, pmin=None):
@@ -201,50 +249,57 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors):
     cluster_timecourse(section, cluster, y, 'source', model, ds, colors)
 
 
-def cluster_timecourse(section, cluster, y, dim, model, ds, colors):
+def cluster_timecourse(section, cluster, y, dim, model, ds, colors,
+                       match='subject'):
     c_extent = cluster['cluster']
     cid = cluster['id']
 
     # cluster time course
     idx = c_extent.any('time')
     tc = y[idx].mean(dim)
-    p = plot.UTSStat(tc, model, match='subject', ds=ds, legend=None, h=4,
+    p = plot.UTSStat(tc, model, match=match, ds=ds, legend=None, h=4,
                      colors=colors, show=False)
     # mark original cluster
     for ax in p._axes:
         ax.axvspan(cluster['tstart'], cluster['tstop'], color='r',
                    alpha=0.2, zorder=-2)
-    image_tc = p.image('cluster_%i_timecourse' % cid)
 
-    # legend
-    legend_p = p.plot_legend(show=False)
-    legend = legend_p.image("Legend")
-    legend_p.close()
+    if model:
+        # legend
+        legend_p = p.plot_legend(show=False)
+        legend = legend_p.image("Legend")
+        legend_p.close()
+    else:
+        p._axes[0].axhline(0, color='k')
+    image_tc = p.image('cluster_%i_timecourse' % cid)
     p.close()
 
     # Barplot
     idx = (c_extent != 0)
     v = y.mean(idx)
-    p = plot.Barplot(v, model, 'subject', ds=ds, corr=None, colors=colors,
-                     h=4, show=False)
+    p = plot.Barplot(v, model, match, ds=ds, corr=None, colors=colors, h=4,
+                     show=False)
     image_bar = p.image('cluster_%i_barplot.png' % cid)
     p.close()
 
     # Boxplot
-    p = plot.Boxplot(v, model, 'subject', ds=ds, corr=None, colors=colors,
-                     h=4, show=False)
+    p = plot.Boxplot(v, model, match, ds=ds, corr=None, colors=colors, h=4,
+                     show=False)
     image_box = p.image('cluster_%i_boxplot.png' % cid)
     p.close()
 
-    # compose figure
-    section.add_figure("Time course in cluster area, and average value in "
-                       "cluster by condition, with pairwise t-tests.",
-                       [image_tc, image_bar, image_box, legend])
-
-    # pairwise test table
-    res = test.pairwise(v, model, 'subject', ds=ds)
-    section.add_figure("Pairwise t-tests of average value in cluster by "
-                       "condition", res)
+    if model:
+        # compose figure
+        section.add_figure("Time course in cluster area, and average value in "
+                           "cluster by condition, with pairwise t-tests.",
+                           [image_tc, image_bar, image_box, legend])
+        # pairwise test table
+        res = test.pairwise(v, model, match, ds=ds)
+        section.add_figure("Pairwise t-tests of average value in cluster by "
+                           "condition", res)
+    else:
+        section.add_figure("Time course in cluster area, and average value in "
+                           "cluster.", [image_tc, image_bar, image_box])
 
 
 def roi_timecourse(doc, ds, label, model, res, colors):
@@ -293,8 +348,8 @@ def timecourse(ds, y, model, res, title, caption, colors, pairwise_pmax=0.1):
         tc_caption = ' '.join((caption, c_caption))
 
     # add UTSStat plot
-    p = plot.UTSStat(y, model, match='subject', ds=ds, colors=colors,
-                     legend=None, clusters=clusters, show=False)
+    p = plot.UTSStat(y, model, None, res.match, res._plot_sub(), ds,
+                     colors=colors, legend=None, clusters=clusters, show=False)
     ax = p._axes[0]
     if res.tstart is not None:
         ax.axvline(res.tstart, color='k')
@@ -322,7 +377,7 @@ def timecourse(ds, y, model, res, title, caption, colors, pairwise_pmax=0.1):
             else:
                 title = "Cluster %s%s: %s" % (cid, cluster['sig'], tw_str)
             y_ = ds[y].summary(time=(c_tstart, c_tstop))
-            p = plot.Barplot(y_, model, 'subject', ds=ds, corr=None, show=False,
+            p = plot.Barplot(y_, model, res.match, ds=ds, corr=None, show=False,
                              colors=colors, title=title)
             plots.append(p.image())
             p.close()
@@ -336,3 +391,30 @@ def timecourse(ds, y, model, res, title, caption, colors, pairwise_pmax=0.1):
         section.append(t)
 
     return section
+
+
+def result_report(res, ds, title=None, colors=None):
+    """Automatically generate section from testnd Result
+
+    Parameters
+    ----------
+    res : Result
+        Test-result.
+    ds : Dataset
+        Dataset containing the data on which the test was performed.
+    """
+    sec = Section(title or res._name())
+
+    dims = {dim.name for dim in res._dims}
+    sec.append(res.info_list())
+
+    if dims == {'time'}:
+        sec.append(timecourse(ds, res.Y, res._plot_model(), res, 'Results',
+                              "Timecourse", colors))
+    elif dims == {'sensor'}:
+        sec.append(sensor_results(res, ds, colors))
+    elif dims == {'time', 'sensor'}:
+        sec.append(sensor_time_results(res, ds, colors))
+    else:
+        raise NotImplementedError("dims=%r" % dims)
+    return sec

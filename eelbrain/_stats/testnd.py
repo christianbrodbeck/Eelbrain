@@ -148,9 +148,11 @@ class _Result(object):
         if cdist is None:
             self.tfce_map = None
             self.p = None
+            self._kind = None
         else:
             self.tfce_map = cdist.tfce_map
             self.p = cdist.probability_map
+            self._kind = cdist.kind
 
     def _iter_cdists(self):
         yield (None, self._cdist)
@@ -158,6 +160,15 @@ class _Result(object):
     @property
     def _first_cdist(self):
         return self._cdist
+
+    def _plot_model(self):
+        "Determine x for plotting categories"
+        return None
+
+    def _plot_sub(self):
+        if self.sub:
+            raise NotImplementedError
+        return self.sub
 
     def masked_parameter_map(self, pmin=0.05, **sub):
         """Create a copy of the parameter map masked by significance
@@ -443,6 +454,15 @@ class t_contrast_rel(_Result):
 
         self._expand_state()
 
+    def _name(self):
+        if self.Y:
+            return "T-Contrast:  %s ~ %s" % (self.Y, self.contrast)
+        else:
+            return "T-Contrast:  %s" % self.contrast
+
+    def _plot_model(self):
+        return self.X
+
     def _repr_test_args(self):
         args = [repr(self.Y), repr(self.X), repr(self.contrast)]
         if self.tail:
@@ -596,6 +616,12 @@ class corr(_Result):
         else:
             self._default_plot_obj = self.r_p_uncorrected
 
+    def _name(self):
+        if self.Y and self.X:
+            return "Correlation:  %s ~ %s" % (self.Y, self.X)
+        else:
+            return "Correlation"
+
     def _repr_test_args(self):
         args = [repr(self.Y), repr(self.X)]
         if self.norm:
@@ -747,6 +773,12 @@ class ttest_1samp(_Result):
             self._default_plot_obj = [[self.diff, self.p]]
         else:
             self._default_plot_obj = [[self.diff, t]]
+
+    def _name(self):
+        if self.Y:
+            return "One-Sample T-Test:  %s" % self.Y
+        else:
+            return "One-Sample T-Test"
 
     def _repr_test_args(self):
         args = [repr(self.Y)]
@@ -908,6 +940,25 @@ class ttest_ind(_Result):
             self._default_plot_obj = self.all
         else:
             self._default_plot_obj = self.all_uncorrected
+
+    def _name(self):
+        if self.tail == 0:
+            comp = "%s == %s" % (self.c1, self.c0)
+        elif self.tail > 0:
+            comp = "%s > %s" % (self.c1, self.c0)
+        else:
+            comp = "%s < %s" % (self.c1, self.c0)
+
+        if self.Y:
+            return "Independent-Samples T-Test:  %s ~ %s" % (self.Y, comp)
+        else:
+            return "Independent-Samples T-Test:  %s" % comp
+
+    def _plot_model(self):
+        return self.X
+
+    def _plot_sub(self):
+        return "(%s).isin(%s)" % (self.X, (self.c1, self.c0))
 
     def _repr_test_args(self):
         args = [repr(self.Y), repr(self.X), "%r (n=%i)" % (self.c1, self.n1),
@@ -1083,6 +1134,25 @@ class ttest_rel(_Result):
         else:
             self._default_plot_obj = self.uncorrected
 
+    def _name(self):
+        if self.tail == 0:
+            comp = "%s == %s" % (self.c1, self.c0)
+        elif self.tail > 0:
+            comp = "%s > %s" % (self.c1, self.c0)
+        else:
+            comp = "%s < %s" % (self.c1, self.c0)
+
+        if self.Y:
+            return "Related-Samples T-Test:  %s ~ %s" % (self.Y, comp)
+        else:
+            return "Related-Samples T-Test:  %s" % comp
+
+    def _plot_model(self):
+        return self.X
+
+    def _plot_sub(self):
+        return "(%s).isin(%s)" % (self.X, (self.c1, self.c0))
+
     def _repr_test_args(self):
         args = [repr(self.Y), repr(self.X), repr(self.c1), repr(self.c0),
                 "%r (n=%i)" % (self.match, self.n)]
@@ -1114,9 +1184,12 @@ class _MultiEffectResult(_Result):
 
         # clusters
         cdists = self._cdist
-        if cdists is not None:
+        if cdists is None:
+            self._kind = None
+        else:
             self.tfce_maps = [cdist.tfce_map for cdist in cdists]
             self.probability_maps = [cdist.probability_map for cdist in cdists]
+            self._kind = cdists[0].kind
 
     def _iter_cdists(self):
         for cdist in self._cdist:
@@ -1415,6 +1488,21 @@ class anova(_MultiEffectResult):
             self._default_plot_obj = f_and_clusters
         else:
             self._default_plot_obj = self.f
+
+    def _name(self):
+        if self.Y:
+            return "ANOVA:  %s ~ %s" % (self.Y, self.X)
+        else:
+            return "ANOVA:  %s" % self.X
+
+    def _plot_model(self):
+        factors = [f.strip() for f in self.X.split('*')]
+        if self.match in factors:
+            factors.remove(self.match)
+        return '%'.join(factors)
+
+    def _plot_sub(self):
+        return super(anova, self)._plot_sub()
 
 
 def flatten(spm, all_adjacent):
