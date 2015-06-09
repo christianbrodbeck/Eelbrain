@@ -1321,7 +1321,8 @@ class LegendMixin(object):
         """
         self.__handles = legend_handles
         self.legend = None
-        self.plot_legend(legend)
+        if self.__handles:
+            self.plot_legend(legend)
 
     def _fill_toolbar(self, tb):
         import wx
@@ -1397,7 +1398,7 @@ class LegendMixin(object):
         p.close()
 
     def __plot(self, loc, *args, **kwargs):
-        if loc and len(self.__handles) > 1:
+        if loc and self.__handles:
             cells = sorted(self.__handles)
             labels = [cellname(cell) for cell in cells]
             handles = [self.__handles[cell] for cell in cells]
@@ -1421,6 +1422,8 @@ class LegendMixin(object):
             self.legend.set_visible(False)
             self.legend = None
             self.draw()
+        elif not self.__handles:
+            raise RuntimeError("No handles to produce legend.")
 
 
 class Legend(_EelFigure):
