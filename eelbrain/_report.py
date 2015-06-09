@@ -99,7 +99,7 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, legend):
     topos = [[topo[x == cell].summary('case', name=cellname(cell)),
               cluster_topo] for cell in x.cells]
     p = plot.Topomap(topos, axh=3, nrow=1, show=False)
-    p.mark_sensors(np.flatnonzero(cluster_topo.x), 'yo')
+    p.mark_sensors(np.flatnonzero(cluster_topo.x), c='y', marker='o')
 
     caption_ = ["Cluster"]
     if 'effect' in cluster:
