@@ -1477,6 +1477,9 @@ class MneExperiment(FileTree):
 
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            add_proj=add_proj)
+            if ds.n_cases == 0:
+                raise RuntimeError("No events left for epoch=%s, subject=%s"
+                                   % (repr(self.get('epoch')), repr(subject)))
             if reject and self._params['rej']['kind'] == 'auto':
                 reject_arg = self._params['rej'].get('threshold', None)
             else:
@@ -1486,6 +1489,9 @@ class MneExperiment(FileTree):
                 model = ds.eval(self.get('model'))
                 idx = model.isin(cat)
                 ds = ds.sub(idx)
+                if ds.n_cases == 0:
+                    raise RuntimeError("Selection with cat=%s resulted in "
+                                       "empty Dataset" % repr(cat))
 
             # load sensor space data
             tmin = epoch['tmin']
@@ -1685,6 +1691,9 @@ class MneExperiment(FileTree):
                 model = ds.eval(self.get('model'))
                 idx = model.isin(cat)
                 ds = ds.sub(idx)
+                if ds.n_cases == 0:
+                    raise RuntimeError("Selection with cat=%s resulted in "
+                                       "empty Dataset" % repr(cat))
 
             # baseline correction
             if isinstance(baseline, str):
