@@ -56,10 +56,16 @@ def test_aggregate():
     idx1 = ds.eval("logical_and(A=='a0', B=='b0')")
     eq_(dsa['Y', 0], ds['Y', idx1].mean())
 
+    # equalize count
     dsa = ds.aggregate('A%B', drop_bad=True, equal_count=True)
     assert_array_equal(dsa['n'], [12, 12, 12, 12])
     idx1_12 = np.logical_and(idx1, idx1.cumsum() <= 12)
     eq_(dsa['Y', 0], ds['Y', idx1_12].mean())
+
+    # equalize count with empty cell
+    sds = ds.sub("logical_or(A == 'a1', B == 'b1')")
+    dsa = sds.aggregate('A%B', drop_bad=True, equal_count=True)
+    assert_array_equal(dsa['n'], [12, 12, 12])
 
 
 def test_align():

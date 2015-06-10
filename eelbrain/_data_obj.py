@@ -4600,13 +4600,15 @@ class Dataset(OrderedDict):
 
         Notes
         -----
-        First, the cell with the smallest number of rows is determined. Then,
-        for each cell, rows beyond that number are dropped.
+        First, the cell with the smallest number of rows is determined (empty
+        cells are ignored). Then, for each cell, rows beyond that number are
+        dropped.
         """
         X = ascategorial(X, ds=self)
         self._check_n_cases(X, empty_ok=False)
         indexes = np.array([X == cell for cell in X.cells])
-        n = indexes.sum(1).min()
+        n_by_cell = indexes.sum(1)
+        n = np.setdiff1d(n_by_cell, [0]).min()
         for index in indexes:
             np.logical_and(index, index.cumsum() <= n, index)
         index = indexes.any(0)
