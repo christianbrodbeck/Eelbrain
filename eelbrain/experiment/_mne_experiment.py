@@ -3063,6 +3063,12 @@ class MneExperiment(FileTree):
                    "`e.set(epoch={sel!r})` and then `e.make_rej()` "
                    "again.".format(cur=epoch['name'], sel=epoch['sel_epoch']))
             raise ValueError(msg)
+        elif 'sub_epochs' in epoch:
+            msg = ("The current epoch {cur!r} inherits rejections from these "
+                   "other epochs: {sel!r}. To access trial rejection for these "
+                   "epochs, call `e.set(epoch=epoch)` and then `e.make_rej()` "
+                   "again.".format(cur=epoch['name'], sel=epoch['sub_epochs']))
+            raise ValueError(msg)
 
         path = self.get('rej-file', mkdir=True)
         modality = self.get('modality')
