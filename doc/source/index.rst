@@ -38,6 +38,7 @@ Manual:
    installing
    changes
    intro
+   development
 
 .. toctree::
    :maxdepth: 2
