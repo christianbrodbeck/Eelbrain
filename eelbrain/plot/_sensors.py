@@ -537,8 +537,9 @@ class SensorMaps(_EelFigure):
 
         Parameters
         ----------
-        select : list of int
-            List of sensor indices in the new selection.
+        select : sensor index
+            Index for sensor dimension, for example array_like of int, or list
+            of sensor names.
         """
         idx = self._sensors.dimindex(select)
         self.select = np.zeros(len(self._sensors), dtype=bool)
