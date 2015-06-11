@@ -3348,6 +3348,9 @@ class NDVar(object):
 
         betas = stats.betas(self.x, x)[1:]  # drop intercept
         info = self.info.copy()
+        info.update(meas='beta', unit=None)
+        if 'summary_info' in info:
+            del info['summary_info']
         return NDVar(betas, self.dims, info, name)
 
     def ols_t(self, x, name=None):
