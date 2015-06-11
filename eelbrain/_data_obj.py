@@ -65,6 +65,7 @@ preferences = dict(fullrepr=False,  # whether to display full arrays/dicts in __
 
 
 UNNAMED = '<?>'
+SEQUENCE_TYPES = (tuple, list)
 _pickled_ds_wildcard = ("Pickled Dataset (*.pickled)", '*.pickled')
 _tex_wildcard = ("TeX (*.tex)", '*.tex')
 _tsv_wildcard = ("Plain Text Tab Separated Values (*.txt)", '*.txt')
@@ -1516,7 +1517,7 @@ class Var(object):
         if isinstance(labels, dict):
             # flatten
             for key, v in labels.iteritems():
-                if isinstance(key, (tuple, list)):
+                if isinstance(key, SEQUENCE_TYPES):
                     for k in key:
                         labels_[k] = v
                 else:
@@ -3618,6 +3619,9 @@ class NDVar(object):
         # sequence args
         for i, arg in enumerate(args):
             if isndvar(arg):
+                if arg.has_case:
+                    raise ValueError("NDVar with case dimension can not serve"
+                                     "as NDVar index")
                 dimax = self.get_axis(arg.dims[0].name)
                 if index_args[dimax] is None:
                     index_args[dimax] = arg
@@ -3639,29 +3643,13 @@ class NDVar(object):
         for dimax, idx in enumerate(index_args):
             if idx is None:
                 continue
-
             dim = self.dims[dimax]
-            if isndvar(idx):
-                if idx.x.dtype.kind != 'b':
-                    raise IndexError("Only NDVars with boolean data can serve "
-                                     "as indexes. Got %s." % repr(idx))
-                elif idx.ndim != 1:
-                    raise IndexError("Only NDVars with ndim 1 can serve as "
-                                     "indexes. Got %s." % repr(idx))
 
-                index_dim = idx.dims[0]
-                idx = idx.x
-
-                if dim != index_dim:
-                    err = ("Index dimension %s is different from data "
-                           "dimension" % index_dim.name)
-                    raise ValueError(err)
-            elif isvar(idx):
-                idx = idx.x
-
+            # find index
             if dimax >= self.has_case:
                 idx = dim.dimindex(idx)
-
+            else:
+                idx = dimindex_case(idx)
             index[dimax] = idx
 
             # find corresponding dim
@@ -5684,6 +5672,20 @@ class Model(object):
 
 # ---NDVar dimensions---
 
+DIMINDEX_RAW_TYPES = (int, slice, list)
+
+def dimindex_case(arg):
+    if isinstance(arg, DIMINDEX_RAW_TYPES):
+        return arg
+    elif isvar(arg):
+        return arg.x
+    elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'bi':
+        return arg
+    else:
+        raise TypeError("Unknown index type for case dimension: %s"
+                        % repr(arg))
+
+
 def find_time_point(times, time, rnd='closest'):
     """
     Returns (index, time) for the closest point to ``time`` in ``times``
@@ -5810,9 +5812,37 @@ class Dimension(object):
 
         Notes
         -----
-        Boolean and int arrays are always considered inexing self.values.
+        Boolean and int arrays are always considered indexing self.values.
         """
-        raise NotImplementedError
+        if isndvar(arg):
+            return self._dimindex_for_ndvar(arg)
+        elif isvar(arg):
+            return arg.x
+        elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'bi':
+            return arg
+        elif isinstance(arg, (slice, int)):
+            return arg
+        elif isinstance(arg, SEQUENCE_TYPES):
+            if len(arg) == 0:
+                return np.empty(0, np.int8)
+            return np.array([self.dimindex(a) for a in arg])
+        else:
+            raise TypeError("Unknown index type for %s dimension: %s" 
+                            % (self.name, repr(arg)))
+
+    def _dimindex_for_ndvar(self, arg):
+        "Dimindex for NDVar index"
+        if arg.x.dtype.kind != 'b':
+            raise IndexError("Only NDVars with boolean data can serve "
+                             "as indexes. Got %s." % repr(arg))
+        elif arg.ndim != 1:
+            raise IndexError("Only NDVars with ndim 1 can serve as "
+                             "indexes. Got %s." % repr(arg))
+        elif arg.dims[0] != self:
+            raise IndexError("Index dimension %s is different from data "
+                             "dimension" % arg.dims[0].name)
+        else:
+            return arg.x
 
     def intersect(self, dim, check_dims=True):
         """Create a Dimension that is the intersection with dim
@@ -5900,12 +5930,11 @@ class Categorial(Dimension):
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
             s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
-            idx = s_idx[np.argsort(a_idx)]
+            return s_idx[np.argsort(a_idx)]
         elif isinstance(arg, basestring):
-            idx = np.flatnonzero(self.values == arg)[0]
+            return np.flatnonzero(self.values == arg)[0]
         else:
-            idx = np.array([self.dimindex(a) for a in arg])
-        return idx
+            return super(Categorial, self).dimindex(arg)
 
     def _diminfo(self):
         return "%s" % self.name.capitalize()
@@ -5989,7 +6018,7 @@ class Scalar(Dimension):
         elif np.isscalar(arg):
             return np.argmin(np.abs(self.values - arg))
         else:
-            return [self.dimindex(a) for a in arg]
+            return super(Scalar, self).dimindex(arg)
 
     def _diminfo(self):
         return "%s" % self.name.capitalize()
@@ -6032,11 +6061,14 @@ class Ordered(Scalar):
 
     def dimindex(self, arg):
         if isinstance(arg, tuple):
+            if len(arg) != 2:
+                raise ValueError("Tuple indexes for the %s dimension signify "
+                                 "intervals and need to be exactly of length "
+                                 "2 (got %s)" % (self.name, repr(arg)))
             start, stop = arg
-            idx = np.logical_and(self.values >= start, self.values < stop)
+            return np.logical_and(self.values >= start, self.values < stop)
         else:
-            idx = super(Ordered, self).dimindex(arg)
-        return idx
+            return super(Ordered, self).dimindex(arg)
 
     def _diminfo(self):
         name = self.name.capitalize(),
@@ -6214,27 +6246,12 @@ class Sensor(Dimension):
 
     def dimindex(self, arg):
         "Convert dimension indexes into numpy indexes"
-        if isinstance(arg, (slice, int)):
-            return arg
-        elif isinstance(arg, basestring):
+        if isinstance(arg, basestring):
             return self.channel_idx[arg]
         elif isinstance(arg, Sensor):
             return np.array([self.names.index(name) for name in arg.names])
-        elif isinstance(arg, np.ndarray) and arg.dtype.kind in 'bi':
-            return arg
-        elif isinstance(arg, (list, tuple)):
-            return map(self._dimindex_map, arg)
-        elif isvar(arg):
-            return self.dimindex(arg.x)
         else:
-            raise TypeError("Unknown index type: %s" % repr(arg))
-
-    def _dimindex_map(self, name):
-        "Convert any index to a proper int"
-        if isinstance(name, basestring):
-            return self.channel_idx[name]
-        else:
-            return int(name)
+            return super(Sensor, self).dimindex(arg)
 
     def connectivity(self):
         """Retrieve the sensor connectivity
@@ -6990,25 +7007,25 @@ class SourceSpace(Dimension):
         coords = np.vstack(coords)
         return coords
 
-    def dimindex(self, obj):
-        if isinstance(obj, (mne.Label, mne.label.BiHemiLabel)):
-            return self._dimindex_label(obj)
-        elif isinstance(obj, basestring):
-            if obj == 'lh':
+    def dimindex(self, arg):
+        if isinstance(arg, (mne.Label, mne.label.BiHemiLabel)):
+            return self._dimindex_label(arg)
+        elif isinstance(arg, basestring):
+            if arg == 'lh':
                 if self.lh_n:
                     return slice(None, self.lh_n)
                 else:
                     raise IndexError("lh is empty")
-            elif obj == 'rh':
+            elif arg == 'rh':
                 if self.rh_n:
                     return slice(self.lh_n, None)
                 else:
                     raise IndexError("rh is empty")
             else:
-                return self._dimindex_label(obj)
-        elif isinstance(obj, SourceSpace):
+                return self._dimindex_label(arg)
+        elif isinstance(arg, SourceSpace):
             sv = self.vertno
-            ov = obj.vertno
+            ov = arg.vertno
             if all(np.array_equal(s, o) for s, o in izip(sv, ov)):
                 return full_slice
             else:
@@ -7016,7 +7033,7 @@ class SourceSpace(Dimension):
                 index = np.hstack(idxs)
                 return index
         else:
-            return obj
+            return super(SourceSpace, self).dimindex(arg)
 
     def _dimindex_label(self, label):
         if isinstance(label, basestring):
@@ -7376,11 +7393,15 @@ class UTS(Dimension):
                 stop = None
 
             return slice(start, stop, step)
-        elif isinstance(arg, tuple) and len(arg) == 2:
+        elif isinstance(arg, tuple):
+            if len(arg) != 2:
+                raise ValueError("Tuple indexes signify intervals for uniform "
+                                 "time-series (UTS) dimension and need to be "
+                                 "exactly of length 2 (got %s)" % repr(arg))
             tstart, tstop = arg
             return self._slice(tstart, tstop)
         else:
-            return arg
+            return super(UTS, self).dimindex(arg)
 
     def index(self, time, rnd='closest'):
         """Find the index for a time point
