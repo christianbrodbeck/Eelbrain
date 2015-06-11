@@ -875,8 +875,6 @@ def test_source_space():
                        np.intersect1d(source.lh_vertno, label_v1.vertices, 1))
 
     # parcellation and cluster localization
-    if mne.__version__ < '0.8':
-        return
     parc = mne.read_labels_from_annot(subject, parc='aparc', subjects_dir=mri_sdir)
     indexes = [source.index_for_label(label) for label in parc
                if len(label) > 10]
@@ -884,6 +882,18 @@ def test_source_space():
     ds = source._cluster_properties(x)
     for i in xrange(ds.n_cases):
         eq_(ds[i, 'location'], parc[i].name)
+
+    # multiple labels
+    lingual_index = source.dimindex('lingual-lh')
+    cuneus_index = source.dimindex('cuneus-lh')
+    assert_array_equal(source.dimindex(('cuneus-lh', 'lingual-lh')),
+                       np.logical_or(cuneus_index, lingual_index))
+    lingual_source = source[lingual_index]
+    cuneus_source = source[cuneus_index]
+    sub_source = source[source.dimindex(('cuneus-lh', 'lingual-lh'))]
+    eq_(sub_source[sub_source.dimindex('lingual-lh')], lingual_source)
+    eq_(sub_source[sub_source.dimindex('cuneus-lh')], cuneus_source)
+    eq_(len(sub_source), len(lingual_source) + len(cuneus_source))
 
 
 def test_var():

@@ -7032,6 +7032,8 @@ class SourceSpace(Dimension):
                 idxs = tuple(np.in1d(s, o, True) for s, o in izip(sv, ov))
                 index = np.hstack(idxs)
                 return index
+        elif isinstance(arg, SEQUENCE_TYPES):
+            return self.parc.isin(arg)
         else:
             return super(SourceSpace, self).dimindex(arg)
 

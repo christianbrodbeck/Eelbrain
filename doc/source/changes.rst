@@ -11,6 +11,8 @@ New in 0.17
   plots in movies and reports.
 * Parellations based on combinations of existing labels can now be defined in
   :attr:`MneExperiment.parcs`.
+* Source space :class:`NDVars` can be index with lists of region names, e.g.,
+  ``ndvar.sub(source=['cuneus-lh', 'lingual-lh'])``.
 
 
 New in 0.16
