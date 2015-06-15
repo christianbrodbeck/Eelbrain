@@ -3731,6 +3731,7 @@ class Datalist(list):
     similar to numpy and other data objects.
     """
     _stype = 'list'
+
     def __init__(self, items=None, name=None):
         self.name = name
         if items:
@@ -3745,19 +3746,25 @@ class Datalist(list):
         return "Datalist(%s)" % args
 
     def __getitem__(self, index):
-        if isinstance(index, (int, slice)):
+        if isinstance(index, int):
             return list.__getitem__(self, index)
+        elif isinstance(index, slice):
+            return Datalist(list.__getitem__(self, index))
 
-        index = np.array(index)
-        if issubclass(index.dtype.type, np.bool_):
-            N = len(self)
-            assert len(index) == N
-            return Datalist(self[i] for i in xrange(N) if index[i])
-        elif issubclass(index.dtype.type, np.integer):
+        index = np.asarray(index)
+        if index.dtype.kind == 'b':
+            if len(index) != len(self):
+                raise ValueError("Boolean index needs to have same length as "
+                                 "Datalist")
+            return Datalist(self[i] for i in np.flatnonzero(index))
+        elif index.dtype.kind == 'i':
             return Datalist(self[i] for i in index)
         else:
             err = ("Unsupported type of index for Datalist: %r" % index)
             raise TypeError(err)
+
+    def __getslice__(self, i, j):
+        return Datalist(list.__getslice__(self, i, j))
 
     def __add__(self, other):
         lst = super(Datalist, self).__add__(other)
