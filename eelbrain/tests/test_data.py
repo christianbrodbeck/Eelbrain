@@ -13,8 +13,8 @@ import numpy as np
 from numpy.testing import (assert_equal, assert_array_equal,
                            assert_array_almost_equal)
 
-from eelbrain import (datasets, load, Var, Factor, NDVar, Dataset, Celltable,
-                      align, align1, combine)
+from eelbrain import (datasets, load, Var, Factor, NDVar, Datalist, Dataset,
+                      Celltable, align, align1, combine)
 from eelbrain._data_obj import asvar, Categorial, SourceSpace, UTS
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
@@ -225,6 +225,32 @@ def test_combine():
     dims = ('case', 'sensor', 'time')
     ref = np.concatenate((y1.get_data(dims)[:, 1:], y2.get_data(dims)[:, :3]))
     assert_array_equal(y.get_data(dims), ref, "combine utsnd")
+
+
+def test_datalist():
+    "Test Datalist class"
+    dl = Datalist(range(10))
+
+    # indexing
+    eq_(dl[3], 3)
+    x = dl[:3]
+    assert_is_instance(x, Datalist)
+    eq_(x, range(3))
+    eq_(dl[8:], range(8, 10))
+    x = dl[np.arange(10) < 3]
+    assert_is_instance(x, Datalist)
+    eq_(x, range(3))
+    eq_(dl[np.arange(3)], range(3))
+
+    # __add__
+    x = dl + range(10, 12)
+    assert_is_instance(x, Datalist)
+    eq_(x, range(12))
+
+    # aggregate
+    x = dl.aggregate(Factor('ab', repeat=5))
+    assert_is_instance(x, Datalist)
+    eq_(x, [2.0, 7.0])
 
 
 def test_dataset_combining():
