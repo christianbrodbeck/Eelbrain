@@ -18,6 +18,14 @@ def enumeration(items, link='and'):
         raise ValueError("items=%s" % repr(items))
 
 
+def named_list(items, name='item'):
+    "named_list([1, 2, 3], 'number') -> 'numbers (1, 2, 3)"
+    if len(items) == 1:
+        return "%s (%r)" % (name, items[0])
+    else:
+        return "%ss (%s)" % (name, ', '.join(map(repr, items)))
+
+
 def format_samples(res):
     if res.samples == -1:
         return "a complete set of %i permutations" % res.n_samples

@@ -34,6 +34,7 @@ from ..mne_fixes import _interpolate_bads_eeg_epochs
 from .._data_obj import (align, UTS, DimensionMismatchError,
                          assert_is_legal_dataset_key)
 from ..fmtxt import List, Report
+from .._report import named_list
 from .._resources import predefined_connectivity
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
@@ -442,9 +443,11 @@ class MneExperiment(FileTree):
                 else:
                     triggers.append(trigger)
 
-            if not all(isinstance(t, int) or t == 'default' for t in triggers):
-                raise TypeError("Invalid trigger code in variable "
-                                "definition : %s" % repr(trigger))
+            invalid = [t for t in triggers
+                       if not (isinstance(t, int) or t == 'default')]
+            if invalid:
+                raise TypeError("Invalid trigger %s in variable definition %r: "
+                                "%r" % (named_list(invalid, 'code'), k, v))
 
         ########################################################################
         # epochs
