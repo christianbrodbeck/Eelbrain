@@ -566,12 +566,15 @@ class MneExperiment(FileTree):
             elif p == FS_PARC or p == FSA_PARC:
                 p = {'kind': p}
             elif isinstance(p, dict):
+                if 'kind' not in p:
+                    raise KeyError("Parcellation %s does not contain the "
+                                   "required 'kind' entry" % name)
                 p = p.copy()
             else:
                 raise ValueError("Parcellations need to be defined as %r, %r or "
                                  "dict, got %s: %r" % (FS_PARC, FSA_PARC, name, p))
 
-            kind = p.get('kind', None)
+            kind = p['kind']
             if kind == EELBRAIN_PARC:
                 pass
             elif kind == FS_PARC:
