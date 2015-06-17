@@ -3222,6 +3222,11 @@ class MneExperiment(FileTree):
                 folder = "Whole Brain"
         elif mask:
             raise ValueError("Can't specify mask together with parc")
+        elif pmin is None or pmin == 'tfce':
+            raise NotImplementedError("Threshold-free test (pmin=%r) is not "
+                                      "implemented for parcellation (parc "
+                                      "parameter). Use a mask instead, or do a "
+                                      "cluster-based test." % (pmin,))
         else:
             state['parc'] = parc
             folder = "{parc}"
