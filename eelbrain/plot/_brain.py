@@ -781,7 +781,8 @@ def _voxel_brain(data, lut, vmin, vmax):
 
 
 def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
-              views=('lat', 'med'), summary=np.sum, vmax=None):
+              views=('lat', 'med'), hemi=None, summary=np.sum, vmax=None,
+              axw=300, axh=250, *args, **kwargs):
     """Create a table with images for time bins
 
     Parameters
@@ -800,6 +801,8 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         Freesurfer surface to use as brain geometry.
     views : list of str
         Views to display (for each hemisphere, lh first).
+    hemi : 'lh' | 'rh' | 'both'
+        Which hemispheres to plot (default based on data).
     summary : callable
         How to summarize data in each time bin. The value should be a function
         that takes an axis parameter (e.g., numpy summary functions like
@@ -807,6 +810,20 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     vmax : scalar != 0
         Maximum value in the colormap. Default is the maximum value in the
         cluster.
+    axw, axh : scalar
+        Subplot width/height (default axw=300, axh=250).
+    foreground : mayavi color
+        Figure foreground color (i.e., the text color).
+    background : mayavi color
+        Figure background color.
+    parallel : bool
+        Set views to parallel projection (default ``True``).
+    smoothing_steps : None | int
+        Number of smoothing steps if data is spatially undersampled (pysurfer
+        ``Brain.add_data()`` argument).
+    subjects_dir : None | str
+        Override the subjects_dir associated with the source space dimension.
+
 
     Returns
     -------
@@ -824,17 +841,23 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
         raise ValueError("vmax can't be 0")
     elif vmax < 0:
         vmax = -vmax
-    
-    hemis = []
-    if data.source.lh_n:
-        hemis.append('lh')
-    if data.source.rh_n:
-        hemis.append('rh')
+
+    if hemi is None:
+        hemis = []
+        if data.source.lh_n:
+            hemis.append('lh')
+        if data.source.rh_n:
+            hemis.append('rh')
+    elif hemi == 'both':
+        hemis = ['lh', 'rh']
+    elif hemi == 'lh' or hemi == 'rh':
+        hemis = [hemi]
+    else:
+        raise ValueError("hemi=%s" % repr(hemi))
 
     for hemi in hemis:
-        hemi_data = data.sub(source=hemi)
-        brain = cluster(hemi_data, vmax, surf, views[0], colorbar=False, w=300,
-                        h=250, time_label=None)
+        brain = cluster(data, vmax, surf, views[0], hemi, False, None, axw, axh,
+                        None, None, *args, **kwargs)
 
         hemi_lines = [[] for _ in views]
         for i in xrange(len(data.time)):
