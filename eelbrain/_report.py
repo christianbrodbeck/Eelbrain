@@ -302,7 +302,7 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors,
                            "cluster by condition, with pairwise t-tests.",
                            [image_tc, image_bar, image_box, legend])
         # pairwise test table
-        res = test.pairwise(v, model, match, ds=ds)
+        res = test.pairwise(v, model, match, ds=ds, corr=None)
         section.add_figure("Pairwise t-tests of average value in cluster by "
                            "condition", res)
     else:
