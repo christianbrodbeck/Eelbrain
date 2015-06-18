@@ -27,8 +27,9 @@ from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
-from .._mne import source_induced_power, dissolve_label, rename_label, \
-    combination_label, morph_source_space, shift_mne_epoch_trigger
+from .._mne import source_induced_power, dissolve_label, \
+    labels_from_mni_coords, rename_label, combination_label, \
+    morph_source_space, shift_mne_epoch_trigger
 from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg_epochs
 from .._data_obj import (align, UTS, DimensionMismatchError,
@@ -61,6 +62,7 @@ SUPER_EPOCH_INHERITED_PARAMS = {'tmin', 'tmax', 'decim', 'baseline'}
 FS_PARC = 'subject_parc'  # Parcellation that come with every MRI-subject
 FSA_PARC = 'fsaverage_parc'  # Parcellation that comes with fsaverage
 EELBRAIN_PARC = 'eelbrain_parc'
+SEEDED_PARC_RE = re.compile('(\w+)-(\d+)$')
 
 inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
                     "(\d*\.?\d+)-"  # SNR
@@ -602,6 +604,16 @@ class MneExperiment(FileTree):
                                      % (name, p))
                 p['make'] = True
                 p['morph_from_fsaverage'] = False
+            elif kind == 'seeded':
+                if 'seeds' not in p:
+                    raise KeyError("Seeded parcellation %s is missing 'seeds' "
+                                   "entry" % name)
+                unused = set(p).difference({'kind', 'seeds', 'surface', 'mask'})
+                if unused:
+                    raise ValueError("Seeded parcellation %s has invalid keys "
+                                     "%s" % (name, tuple(unused)))
+                p['make'] = True
+                p['morph_from_fsaverage'] = False
             else:
                 raise ValueError("Parcellation %s with invalid  'kind': %r"
                                  % (name, kind))
@@ -711,7 +723,8 @@ class MneExperiment(FileTree):
         self._register_field('model', eval_handler=self._eval_model)
         self._register_field('test', sorted(self._tests) or None,
                              post_set_handler=self._post_set_test)
-        self._register_field('parc', parc_values, 'aparc')
+        self._register_field('parc', parc_values, 'aparc',
+                             eval_handler=self._eval_parc)
         self._register_field('proj', [''] + self.projs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
         self._register_field('mrisubject')
@@ -2301,7 +2314,10 @@ class MneExperiment(FileTree):
         parc = self.get('parc')
         if parc == '':
             return
-        p = self._parcs[parc]
+        elif parc in self._parcs:
+            p = self._parcs[parc]
+        else:
+            p = self._parcs[SEEDED_PARC_RE.match(parc).group(1)]
 
         mrisubject = self.get('mrisubject')
         common_brain = self.get('common_brain')
@@ -2359,6 +2375,15 @@ class MneExperiment(FileTree):
                 base = {l.name: l for l in self.load_annot(parc=p['base'])}
             labels = sum((combination_label(name, exp, base) for name, exp in
                           p['labels'].iteritems()), [])
+        elif p['kind'] == 'seeded':
+            mask = p.get('mask', None)
+            if mask:
+                with self._temporary_state:
+                    self.make_annot(parc=mask)
+            name, extent = SEEDED_PARC_RE.match(parc).groups()
+            labels = labels_from_mni_coords(p['seeds'], float(extent), subject,
+                                            p.get('surface', 'white'), mask,
+                                            self.get('mri-sdir'), parc)
         elif parc == 'lobes':
             if subject != 'fsaverage':
                 raise RuntimeError("lobes parcellation can only be created for "
@@ -4126,6 +4151,23 @@ class MneExperiment(FileTree):
         if unordered_factors:
             model.extend(unordered_factors)
         return '%'.join(model)
+
+    def _eval_parc(self, parc):
+        if parc in self._parcs:
+            if self._parcs[parc]['kind'] == 'seeded':
+                raise ValueError("Seeded parc set without size, use e.g. "
+                                 "parc='%s-25'" % parc)
+            else:
+                return parc
+        m = SEEDED_PARC_RE.match(parc)
+        if m:
+            name = m.group(1)
+            if name in self._parcs and self._parcs[name]['kind'] == 'seeded':
+                return parc
+            else:
+                raise ValueError("No seeded parc with name %r" % name)
+        else:
+            raise ValueError("parc=%r" % parc)
 
     def _post_set_rej(self, _, rej):
         if rej == '*':

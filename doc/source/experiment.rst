@@ -284,8 +284,8 @@ A number of standard parcellations are automatically defined (see
 the :attr:`MneExperiment.parcs` dictionary with ``{name: parc_definition}``
 entries.
 
-Recombinations of existing parcellations can be defined as dictionaries include
-the following entries:
+**Recombinations** of existing parcellations can be defined as dictionaries
+include the following entries:
 
 kind : 'combination'
     Has to be 'combination'.
@@ -296,6 +296,22 @@ labels : dict {str: str}
     should be composed of alphanumeric characters (plus underline) and should not
     contain the -hemi tags.
 
+
+Labels can be constructed around known **MNI coordinates** using the foillowing
+entries:
+
+kind : 'seeded'
+    Has to be 'seeded'.
+seeds : dict
+    {name: seed(s)} dictionary, where names are strings, including -hemi tags
+    (e.g., ``"mylabel-lh"``) and seed(s) are array-like, specifying one or more
+    seed coordinate (shape ``(3,)`` or ``(n_seeds, 3)``).
+
+For each seed entry, the source space vertex closest to the given MNI coordinate
+will be used as actual seed, and a label will be created including all points
+with a surface distance smaller than a given extent from the seed
+vertex/vertices. The extent is determined when setting the parc as analysis
+parameter as in ``e.set(parc="myparc-25")``, which specifies a radius of 25 mm.
 
 For parcellations that are user-created, the following two definitions can be
 used to determine how they are handled:

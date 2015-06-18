@@ -135,6 +135,84 @@ def labels_from_clusters(clusters, names=None):
     return labels
 
 
+def labels_from_mni_coords(seeds, extent=30., subject='fsaverage',
+                           surface='white', mask=None, subjects_dir=None,
+                           parc=None):
+    """Create a parcellation from seed coordinates in MNI space
+
+    Parameters
+    ----------
+    seeds : dict
+        Seed coordinates. Keys are label names, including -hemi tags. values
+        are seeds (array_like of shape (3,) or (3, n_seeds)).
+    extent : scalar
+        Extent of the label in millimeters (maximum distance from the seed).
+    subject : str
+        MRI-subject to use (default 'fsaverage').
+    surface : str
+        Surface to use (default 'white').
+    mask : None | str
+        A parcellation used to mask the parcellation under construction.
+    subjects_dir : str
+        SUBJECTS_DIR.
+    parc : None | str
+        Name of the parcellation under construction (only used for error
+        messages).
+    """
+    name_re = re.compile("\w+-(lh|rh)$")
+    if not all(name.endswith(('lh', 'rh')) for name in seeds):
+        err = ("Names need to end in 'lh' or 'rh' so that the proper "
+               "hemisphere can be selected")
+        raise ValueError(err)
+
+    # load surfaces
+    subjects_dir = get_subjects_dir(subjects_dir)
+    fpath = os.path.join(subjects_dir, subject, 'surf', '.'.join(('%s', surface)))
+    surfs = {hemi: mne.read_surface(fpath % hemi) for hemi in ('lh', 'rh')}
+
+    # prepare seed properties for mne.grow_labels
+    vertices = []
+    names = []
+    hemis = []
+    for name, coords_ in seeds.iteritems():
+        m = name_re.match(name)
+        if not m:
+            raise ValueError("Invalid seed name in %r parc: %r. Names must "
+                             "conform to the 'xxx-lh' or 'xxx-rh' scheme."
+                             % (parc, name))
+        coords = np.atleast_2d(coords_)
+        if coords.ndim != 2 or coords.shape[1] != 3:
+            raise ValueError("Invalid coordinate specification for seed %r in "
+                             "parc %r: %r. Seeds need to be specified as "
+                             "arrays with shape (3,) or (n_seeds, 3)."
+                             % (name, parc, coords_))
+        hemi = m.group(1)
+        seed_verts = []
+        for coord in coords:
+            dist = np.sqrt(np.sum((surfs[hemi][0] - coord) ** 2, axis=1))
+            seed_verts.append(np.argmin(dist))
+        vertices.append(seed_verts)
+        names.append(name)
+        hemis.append(hemi == 'rh')
+
+    # grow labels
+    labels = mne.grow_labels(subject, vertices, extent, hemis, subjects_dir,
+                             1, False, names, surface)
+
+    # apply mask
+    if mask is not None:
+        mlabels = mne.read_labels_from_annot(subject, mask,
+                                             subjects_dir=subjects_dir)
+        unknown = {l.hemi: l for l in mlabels if l.name.startswith('unknown-')}
+
+        for label in labels:
+            rm = unknown[label.hemi]
+            if np.any(np.in1d(label.vertices, rm.vertices)):
+                label.vertices = np.setdiff1d(label.vertices, rm.vertices, True)
+
+    return labels
+
+
 def morph_source_space(ndvar, subject_to, vertices_to=None, morph_mat=None,
                        copy=False):
     """Morph source estimate to a different MRI subject

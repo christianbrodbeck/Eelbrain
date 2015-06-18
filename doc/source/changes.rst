@@ -9,8 +9,9 @@ New in 0.17
 
 * :attr:`MneExperiment.brain_plot_defaults` can be used to customize PySurfer
   plots in movies and reports.
-* Parellations based on combinations of existing labels can now be defined in
-  :attr:`MneExperiment.parcs`.
+* Parellations based on combinations of existing labels, as well as
+  parcellations based on regions around points specified in MNI coordinates can
+  now be defined in :attr:`MneExperiment.parcs`.
 * Source space :class:`NDVars` can be index with lists of region names, e.g.,
   ``ndvar.sub(source=['cuneus-lh', 'lingual-lh'])``.
 * API: :func:`plot.brain.bin_table` function signature changed slightly (more
