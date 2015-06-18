@@ -13,6 +13,9 @@ from . import _colorspaces as cs
 from ._data_obj import (
     NDVar, Categorial, Dimension, Scalar, UTS, DimensionMismatchError)
 from ._info import merge_info
+from ._stats.connectivity import Connectivity
+from ._stats.connectivity import find_peaks as _find_peaks
+from ._stats.testnd import label_clusters_binary
 
 
 def concatenate(ndvars, dim='time', name=None, tmin=0):
@@ -327,6 +330,40 @@ def find_intervals(ndvar):
         offsets = np.append(offsets, ndvar.time.tstop)
 
     return tuple(izip(onsets, offsets))
+
+
+def find_peaks(ndvar):
+    """Find local maxima in an NDVar
+    
+    Parameters
+    ----------
+    ndvar : NDVar
+        Data in which to find peaks.
+    
+    Returns
+    -------
+    peaks : NDVar of bool
+        NDVar that is ``True`` at local maxima.
+    """
+    for custom_ax, dim in enumerate(ndvar.dims):
+        if getattr(dim, '_connectivity_type', None) == 'custom':
+            break
+    else:
+        custom_ax = 0
+
+    if custom_ax:
+        x = ndvar.x.swapaxes(custom_ax, 0)
+        dims = list(ndvar.dims)
+        dims[custom_ax], dims[0] = dims[0], dims[custom_ax]
+    else:
+        x = ndvar.x
+        dims = ndvar.dims
+
+    connectivity = Connectivity(dims)
+    peak_map = _find_peaks(x, connectivity)
+    if custom_ax:
+        peak_map = peak_map.swapaxes(custom_ax, 0)
+    return NDVar(peak_map, ndvar.dims, {}, ndvar.name)
 
 
 def label_operator(labels, operation='mean', exclude=None, weights=None,

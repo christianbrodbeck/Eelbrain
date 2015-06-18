@@ -16,7 +16,7 @@ from eelbrain import (NDVar, Categorial, Scalar, UTS, Sensor, configure,
                       datasets, testnd, set_log_level, cwt_morlet)
 from eelbrain._data_obj import Graph
 from eelbrain._stats.testnd import (Connectivity, _ClusterDist, label_clusters,
-                                    _MergedTemporalClusterDist)
+                                    _MergedTemporalClusterDist, find_peaks)
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
                                      requires_mne_sample_data)
 
@@ -286,7 +286,7 @@ def test_clusterdist():
                    [0, 0, 0, 0, 7, 0, 0, 3, 0, 0],
                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]])
     tgt = np.equal(x, 7)
-    peaks = cdist._find_peaks(x)
+    peaks = find_peaks(x, cdist._connectivity)
     logging.debug(' detected: \n%s' % (peaks.astype(int)))
     logging.debug(' target: \n%s' % (tgt.astype(int)))
     assert_array_equal(peaks, tgt)

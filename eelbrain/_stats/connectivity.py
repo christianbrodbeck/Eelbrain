@@ -51,3 +51,96 @@ class Connectivity(object):
     def __setstate__(self, state):
         for k, v in state.iteritems():
             setattr(self, k, v)
+
+
+def find_peaks(x, connectivity, out=None):
+    """Find peaks (local maxima, including plateaus) in x
+
+    Returns
+    -------
+    out : array (x.shape, bool)
+        Boolean array which is True only on local maxima. The borders are
+        treated as lower than the rest of x (i.e., local maxima can touch
+        the border).
+    """
+    if out is None:
+        out = np.empty(x.shape, np.bool8)
+    out.fill(True)
+
+    # move through each axis in both directions and discard descending
+    # slope. Do most computationally intensive axis last.
+    for ax in xrange(x.ndim - 1, -1, -1):
+        if ax in connectivity.custom:
+            shape = (len(x), -1)
+            xsa = x.reshape(shape)
+            outsa = out.reshape(shape)
+            axlen = xsa.shape[1]
+
+            conn_src, conn_dst = connectivity.custom[ax][0].T
+            for i in xrange(axlen):
+                data = xsa[:, i]
+                outslice = outsa[:, i]
+                if not np.any(outslice):
+                    continue
+
+                # find all points under a slope
+                sign = np.sign(data[conn_src] - data[conn_dst])
+                no = set(conn_src[sign < 0])
+                no.update(conn_dst[sign > 0])
+
+                # expand to equal points
+                border = no
+                while border:
+                    # forward
+                    idx = np.in1d(conn_src, border)
+                    conn_dst_sub = conn_dst[idx]
+                    eq = np.equal(data[conn_src[idx]], data[conn_dst_sub])
+                    new = set(conn_dst_sub[eq])
+                    # backward
+                    idx = np.in1d(conn_dst, border)
+                    conn_src_sub = conn_src[idx]
+                    eq = np.equal(data[conn_src_sub], data[conn_dst[idx]])
+                    new.update(conn_src_sub[eq])
+
+                    # update
+                    new.difference_update(no)
+                    no.update(new)
+                    border = new
+
+                # mark vertices or whole isoline
+                if no:
+                    outslice[list(no)] = False
+                elif not np.all(outslice):
+                    outslice.fill(False)
+        else:
+            if x.ndim == 1:
+                xsa = x[:, None]
+                outsa = out[:, None]
+            else:
+                xsa = x.swapaxes(0, ax)
+                outsa = out.swapaxes(0, ax)
+            axlen = len(xsa)
+
+            kernel = np.empty(xsa.shape[1:], dtype=np.bool8)
+
+            diff = np.diff(xsa, 1, 0)
+
+            # forward
+            kernel.fill(True)
+            for i in xrange(axlen - 1):
+                kernel[diff[i] > 0] = True
+                kernel[diff[i] < 0] = False
+                nodiff = diff[i] == 0
+                kernel[nodiff] *= outsa[i + 1][nodiff]
+                outsa[i + 1] *= kernel
+
+            # backward
+            kernel.fill(True)
+            for i in xrange(axlen - 2, -1, -1):
+                kernel[diff[i] < 0] = True
+                kernel[diff[i] > 0] = False
+                nodiff = diff[i] == 0
+                kernel[nodiff] *= outsa[i][nodiff]
+                outsa[i] *= kernel
+
+    return out

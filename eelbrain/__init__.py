@@ -23,7 +23,7 @@ from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
 from ._experiment import MneExperiment
 from ._mne import labels_from_clusters, morph_source_space
 from ._ndvar import (Butterworth, concatenate, convolve, cross_correlation,
-                     cwt_morlet, dss, filter_data, find_intervals,
+                     cwt_morlet, dss, filter_data, find_intervals, find_peaks,
                      label_operator, neighbor_correlation, resample, segment)
 from ._trf import boosting, BoostingResult
 from ._utils import set_log_level
