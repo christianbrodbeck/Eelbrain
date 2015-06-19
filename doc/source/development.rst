@@ -12,6 +12,13 @@ Style guides:
 - Python: `PEP8 <https://www.python.org/dev/peps/pep-0008>`_
 - Documentation: `NumPy documentation style
   <https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt>`_
+- `ReStructured Text Primer <http://sphinx-doc.org/rest.html>`_
+
+
+Useful tools:
+
+ - Graphical frontend for git: `GitX <http://rowanj.github.io/gitx/>`_
+ - Python IDE: `PyCharm <https://www.jetbrains.com/pycharm/>`_
 
 
 Set up the Development Version
