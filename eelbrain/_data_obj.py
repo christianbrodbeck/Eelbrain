@@ -5521,16 +5521,22 @@ class Model(object):
     def model_eq(self):
         return self.name
 
-    def get_table(self, cases='all'):
-        """
-        :returns: the full model as a table.
-        :rtype: :class:`fmtxt.Table`
+    def get_table(self, cases=None):
+        """Return a table with the model codes
 
-        :arg cases: maximum number of cases (lines) to display.
+        Parameters
+        ----------
+        cases : int
+            Number of cases (lines) after which to truncate the table (default
+            is all cases).
 
+        Retrurns
+        --------
+        table : FMText Table
+            The full model as a table.
         """
         full_model = self.full
-        if cases == 'all':
+        if cases is None:
             cases = len(full_model)
         else:
             cases = min(cases, len(full_model))
@@ -5560,7 +5566,7 @@ class Model(object):
     # coding ---
     @LazyProperty
     def _effect_to_beta(self):
-        """An array idicating for each effect which beta weights it occupies
+        """An array indicating for each effect which beta weights it occupies
 
         Returns
         -------
@@ -5603,7 +5609,7 @@ class Model(object):
         out = np.empty((self._n_cases, self.df))
 
         # intercept
-        out[:, 0] = np.ones(self._n_cases)
+        out[:, 0] = 1
         self.full_index = {'I': slice(0, 1)}
 
         # effects
@@ -5625,18 +5631,12 @@ class Model(object):
         msg = []
         ne = len(self.effects)
         codes = [e.as_effects for e in self.effects]
-#        allok = True
         for i in range(ne):
             for j in range(i + 1, ne):
-#                ok = True
                 e1 = self.effects[i]
                 e2 = self.effects[j]
                 X = np.hstack((codes[i], codes[j]))
-#                V0 = np.zeros(self._n_cases)
-                # trash, trash, rank, trash = np.linalg.lstsq(X, V0)
                 if rank(X) < X.shape[1]:
-#                    ok = False
-#                    allok = False
                     if v:
                         errtxt = "Linear Dependence Warning: {0} and {1}"
                         msg.append(errtxt.format(e1.name, e2.name))
@@ -5669,15 +5669,13 @@ class Model(object):
     def repeat(self, n):
         "Analogous to numpy repeat method"
         effects = [e.repeat(n) for e in self.effects]
-        out = Model(effects)
-        return out
+        return Model(effects)
 
     @LazyProperty
     def xsinv(self):
-        X = self.full
-        XT = X.T
-        xsinv = dot(inv(dot(XT, X)), XT)
-        return xsinv
+        x = self.full
+        x_t = x.T
+        return dot(inv(dot(x_t, x)), x_t)
 
 
 # ---NDVar dimensions---
