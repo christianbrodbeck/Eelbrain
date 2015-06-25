@@ -254,6 +254,21 @@ def isintvar(x):
     return isvar(x) and x.x.dtype.kind in 'iu'
 
 
+def is_higher_order_effect(e1, e0):
+    """Determine whether e1 is a higher order term of e0
+
+    Returns True if e1 is a higher order term of e0 (i.e., if all factors in
+    e0 are contained in e1).
+
+    Parameters
+    ----------
+    e1, e0 : effects
+        The effects to compare.
+    """
+    f1s = find_factors(e1)
+    return all(f in f1s for f in find_factors(e0))
+
+
 def hasemptycells(x):
     "True iff a categorial has one or more empty cells"
     if isfactor(x):
@@ -1540,6 +1555,9 @@ class Var(object):
                                   beta_labels=labels)
             return out
 
+    def _effect_coefficient_names(self):
+        return self.name,
+
     def abs(self, name=None):
         "Return a Var with the absolute value."
         return Var(np.abs(self.x), name, info=self.info.copy())
@@ -2357,6 +2375,11 @@ class Factor(_Effect):
         contrast = (self == self.cells[-1])
         codes -= contrast[:, None]
         return codes
+
+    def _effect_coefficient_names(self):
+        contrast_cell = self.cells[-1]
+        return ("%s:%s-%s" % (self.name, cell, contrast_cell)
+                for cell in self.cells[:-1])
 
     def as_labels(self):
         "Convert the Factor to a list of str"
@@ -5367,8 +5390,10 @@ class Interaction(_Effect):
     def as_effects(self):
         "effect coding"
         codelist = [f.as_effects for f in self.base]
-        codes = reduce(_effect_interaction, codelist)
-        return codes
+        return reduce(_effect_interaction, codelist)
+
+    def _effect_coefficient_names(self):
+        return ("%s_%i" % (self.name, i) for i in xrange(self.df))
 
     def as_labels(self, delim=' '):
         """All values as a list of strings.
@@ -5541,6 +5566,9 @@ class NestedEffect(object):
 
         return codes
 
+    def _effect_coefficient_names(self):
+        return ("%s_%i" % (self.name, i) for i in xrange(self.df))
+
 
 class NonbasicEffect(object):
 
@@ -5548,6 +5576,10 @@ class NonbasicEffect(object):
 
     def __init__(self, effect_codes, factors, name, nestedin=[],
                  beta_labels=None):
+        if beta_labels is not None and len(beta_labels) != effect_codes.shape[1]:
+            raise ValueError("beta_labels need one entry per model column "
+                             "(%s); got %s"
+                             % (effect_codes.shape[1], repr(beta_labels)))
         self.nestedin = nestedin
         self.name = name
         self.random = False
@@ -5564,6 +5596,11 @@ class NonbasicEffect(object):
     def __len__(self):
         return self._n_cases
 
+    def _effect_coefficient_names(self):
+        if self.beta_labels is None:
+            return ("%s_%i" % (self.name, i) for i in xrange(self.df))
+        else:
+            return self.beta_labels
 
 
 class Model(object):
@@ -5869,6 +5906,13 @@ class Model(object):
                     msg.append(errtxt.format(e1.name, e2.name))
         return msg
 
+    def _parametrize(self, method='effect'):
+        "Create a design matrix"
+        if method == 'effect':
+            return EffectParametrization(self)
+        else:
+            raise ValueError("method=%s" % repr(method))
+
     def repeat(self, n):
         "Analogous to numpy repeat method"
         effects = [e.repeat(n) for e in self.effects]
@@ -5879,6 +5923,69 @@ class Model(object):
         x = self.full
         x_t = x.T
         return dot(inv(dot(x_t, x)), x_t)
+
+
+class EffectParametrization(object):
+    """Parametrization of a statistical model
+
+    Parameters
+    ----------
+    model : Model
+        Model to be parametrized.
+
+    Attributes
+    ----------
+    x : array (n_cases, n_coeffs)
+        Design matrix.
+
+    Notes
+    -----
+    A :class:`Model` is a list of effects. A :class:`Parametrization` contains
+    a realization of those effects in a model matrix with named columns.
+    """
+    def __init__(self, model):
+        model = asmodel(model)
+        x = np.empty((model._n_cases, model.df))
+        x[:, 0] = 1
+        column_names = ['intercept']
+        higher_level_effects = {}
+        terms = {'intercept': slice(0, 1)}
+        i = 1
+        for e in model.effects:
+            j = i + e.df
+            x[:, i:j] = e.as_effects
+            if e.name in terms:
+                raise KeyError("Duplicate term name: %s" % repr(e.name))
+            terms[e.name] = slice(i, j)
+            col_names = e._effect_coefficient_names()
+            column_names.extend(col_names)
+            for col, name in enumerate(col_names, i):
+                terms[name] = slice(col, col + 1)
+            i = j
+
+            # find comparison models
+            higher_level_effects[e.name] = [e_ for e_ in model.effects
+                                            if e_ is not e
+                                            and is_higher_order_effect(e_, e)]
+
+        # model basics
+        self.model = model
+        self.x = x
+        self.terms = terms
+        self.column_names = column_names
+        self._higher_level_effects = higher_level_effects
+
+        # projector
+        x_t = x.T
+        self.projector = inv(x_t.dot(x)).dot(x_t)
+
+    def reduced_model_index(self, term):
+        "Boolean index into model columns for model comparison"
+        out = np.ones(self.x.shape[1], bool)
+        out[self.terms[term]] = False
+        for e in self._higher_level_effects[term]:
+            out[self.terms[e.name]] = False
+        return out
 
 
 # ---NDVar dimensions---

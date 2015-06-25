@@ -30,7 +30,8 @@ from .. import fmtxt
 from .._utils import LazyProperty
 from .._utils.print_funcs import strdict
 from .._data_obj import (isvar, asvar, assub, isbalanced, hasemptycells,
-                         isnestedin, hasrandom, find_factors, Model, asmodel)
+                         is_higher_order_effect, isnestedin, hasrandom,
+                         find_factors, Model, asmodel)
 from .opt import anova_fmaps, anova_full_fmaps, lm_res_ss, ss
 from .stats import ftest_p
 from . import test
@@ -126,21 +127,6 @@ def _hopkins_test(e, e2):
 def _find_hopkins_ems(e, x):
     "tuple with all effects included in the Hopkins E(MS)"
     return tuple(e2 for e2 in x.effects if _hopkins_test(e, e2))
-
-
-def is_higher_order(e1, e0):
-    """Determine whether e1 is a higher order term of e0
-
-    Returns True if e1 is a higher order term of e0 (i.e., if all factors in
-    e0 are contained in e1).
-
-    Parameters
-    ----------
-    e1, e0 : effects
-        The effects to compare.
-    """
-    f1s = find_factors(e1)
-    return all(f in f1s for f in find_factors(e0))
 
 
 class LM(object):
@@ -669,7 +655,7 @@ def _incremental_comparisons(x):
             # determine whether e_test
             if e is e_test:
                 pass
-            elif is_higher_order(e, e_test):
+            elif is_higher_order_effect(e, e_test):
                 pass
             else:
                 effects.append(e)
