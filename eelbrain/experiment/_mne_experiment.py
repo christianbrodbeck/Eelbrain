@@ -785,7 +785,8 @@ class MneExperiment(FileTree):
 
         return subject_, group
 
-    def _add_epochs_stc(self, ds, ndvar=True, baseline=None, morph=False):
+    def _add_epochs_stc(self, ds, ndvar=True, baseline=None, morph=False,
+                        mask=False):
         """
         Transform epochs contained in ds into source space (adds a list of mne
         SourceEstimates to ds)
@@ -803,6 +804,9 @@ class MneExperiment(FileTree):
             correction (None).
         morph : bool
             Morph the source estimates to the common_brain (default False).
+        mask : bool
+            Discard data that is labelled 'unknown' by the parcellation (only
+            applies to NDVars, default False).
         """
         subject = ds['subject']
         if len(subject.cells) != 1:
@@ -832,8 +836,12 @@ class MneExperiment(FileTree):
 
             if morph:
                 ds['srcm'] = morph_source_space(src, self.get('common_brain'))
+                if mask:
+                    _mask_ndvar(ds, 'srcm')
             else:
                 ds['src'] = src
+                if mask:
+                    _mask_ndvar(ds, 'src')
         else:
             if baseline is not None:
                 raise NotImplementedError("Baseline for SourceEstimate")
@@ -1548,7 +1556,7 @@ class MneExperiment(FileTree):
 
     def load_epochs_stc(self, subject=None, sns_baseline=True,
                         src_baseline=None, ndvar=True, cat=None,
-                        keep_epochs=False, morph=False, **kwargs):
+                        keep_epochs=False, morph=False, mask=False, **kwargs):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -1574,11 +1582,14 @@ class MneExperiment(FileTree):
             False).
         morph : bool
             Morph the source estimates to the common_brain (default False).
+        mask : bool
+            Discard data that is labelled 'unknown' by the parcellation (only
+            applies to NDVars, default False).
         """
         if not sns_baseline and src_baseline and self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
             raise NotImplementedError("post_baseline_trigger_shift is not implemented for baseline correction in source space")
         ds = self.load_epochs(subject, sns_baseline, False, cat=cat, **kwargs)
-        self._add_epochs_stc(ds, ndvar, src_baseline, morph)
+        self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
         if not keep_epochs:
             del ds['epochs']
         return ds
