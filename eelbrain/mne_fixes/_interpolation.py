@@ -4,39 +4,15 @@
 
 import numpy as np
 from numpy.polynomial.legendre import legval
-from scipy import linalg, optimize
+from scipy import linalg
 
-from mne.utils import logger
 from mne.io.pick import pick_types
+from mne.bem import _fit_sphere
 from mne.surface import _normalize_vectors
-# from mne.bem import _fit_sphere
-
-# 0.8.6 not in mne.bem
-def _fit_sphere(points, disp=True):
-    """Aux function to fit points to a sphere"""
-    # initial guess for center and radius
-    xradius = (np.max(points[:, 0]) - np.min(points[:, 0])) / 2.
-    yradius = (np.max(points[:, 1]) - np.min(points[:, 1])) / 2.
-
-    radius_init = (xradius + yradius) / 2.
-    center_init = np.array([0.0, 0.0, np.max(points[:, 2]) - radius_init])
-
-    # optimization
-    x0 = np.r_[center_init, radius_init]
-
-    def cost_fun(x, points):
-        return np.sum((np.sqrt(np.sum((points - x[:3]) ** 2, axis=1)) -
-                      x[3]) ** 2)
-
-    x_opt = optimize.fmin_powell(cost_fun, x0, args=(points,),
-                                 disp=disp)
-
-    origin = x_opt[:3]
-    radius = x_opt[3]
-    return radius, origin
+from mne.utils import logger
 
 
-# not in 0.8.6 (Epochs method)
+# private in 0.9.0 (Epochs method)
 def get_channel_positions(self, picks=None):
     """Gets channel locations from info
 
@@ -170,7 +146,7 @@ def _make_interpolator(inst, bad_channels):
                        'for EEG. The MEG channels marked as bad will remain '
                        'untouched.')
 
-    pos = get_channel_positions(inst, picks)
+    pos = inst.get_channel_positions(picks)
 
     # Make sure only EEG are used
     bads_idx_pos = bads_idx[picks]

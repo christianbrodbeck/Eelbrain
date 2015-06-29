@@ -1,7 +1,6 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 
 from collections import defaultdict
-from distutils.version import LooseVersion
 import inspect
 from itertools import chain, izip
 import logging
@@ -44,7 +43,6 @@ from ._experiment import FileTree
 
 __all__ = ['MneExperiment']
 logger = logging.getLogger('eelbrain.experiment')
-has_mne_09 = LooseVersion(mne.__version__) >= LooseVersion('0.9')
 
 
 # Allowable epoch parameters
@@ -2544,12 +2542,7 @@ class MneExperiment(FileTree):
         with self._temporary_state:
             ds = self.load_epochs(None, True, False, decim=1, epoch=epoch, rej=rej)
         epochs = ds['epochs']
-        if has_mne_09:
-            cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
-        elif method == 'empirical':
-            cov = mne.compute_covariance(epochs, keep_sample_mean)
-        else:
-            raise RuntimeError("Cov with method=%r requires mne >= 0.9" % method)
+        cov = mne.compute_covariance(epochs, keep_sample_mean, method=method)
 
         if reg is True:
             cov = mne.cov.regularize(cov, epochs.info)

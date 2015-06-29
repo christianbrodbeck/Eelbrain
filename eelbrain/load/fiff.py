@@ -843,19 +843,19 @@ def stc_ndvar(stc, subject, src, subjects_dir=None, method=None, fixed=None,
         stc = stcs[0]
         if check:
             times = stc.times
-            vertno = stc.vertno
+            vertices = stc.vertices
             for stc_ in stcs[1:]:
                 assert np.array_equal(stc_.times, times)
-                for v1, v0 in izip_longest(stc_.vertno, vertno):
+                for v1, v0 in izip_longest(stc_.vertices, vertices):
                     assert np.array_equal(v1, v0)
         x = np.array([s.data for s in stcs])
 
     # Construct NDVar Dimensions
     time = UTS(stc.tmin, stc.tstep, stc.shape[1])
     if isinstance(stc, mne.VolSourceEstimate):
-        ss = SourceSpace([stc.vertno], subject, src, subjects_dir, parc)
+        ss = SourceSpace([stc.vertices], subject, src, subjects_dir, parc)
     else:
-        ss = SourceSpace(stc.vertno, subject, src, subjects_dir, parc)
+        ss = SourceSpace(stc.vertices, subject, src, subjects_dir, parc)
 
     if case:
         dims = ('case', ss, time)
