@@ -69,6 +69,13 @@ inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
                     "(?:-(pick_normal))?")  # pick normal
 
 
+def _mask_ndvar(ds, name):
+    y = ds[name]
+    mask = y.source.parc.startswith('unknown')
+    if mask.any():
+        ds[name] = y.sub(source=np.invert(mask))
+
+
 def _time_str(t):
     "String for representing a time value"
     if t is None:
@@ -835,7 +842,8 @@ class MneExperiment(FileTree):
             ds['stc'] = stc
 
     def _add_evoked_stc(self, ds, ind_stc=False, ind_ndvar=False, morph_stc=False,
-                       morph_ndvar=False, baseline=None, keep_evoked=False):
+                        morph_ndvar=False, baseline=None, keep_evoked=False,
+                        mask=False):
         """
         Add source estimates to a dataset with evoked data.
 
@@ -861,6 +869,9 @@ class MneExperiment(FileTree):
         keep_evoked : bool
             Keep the sensor space data in the Dataset that is returned (default
             False).
+        mask : bool
+            Discard data that is labelled 'unknown' by the parcellation (only
+            applies to NDVars, default False).
 
         Notes
         -----
@@ -953,6 +964,8 @@ class MneExperiment(FileTree):
                                             self._params['apply_inv_kw']['method'],
                                             self._params['make_inv_kw'].get('fixed', False),
                                             parc=parc)
+            if mask:
+                _mask_ndvar(ds, 'src')
         if morph_stc or morph_ndvar:
             if morph_stc:
                 ds['stcm'] = mstcs
@@ -961,6 +974,8 @@ class MneExperiment(FileTree):
                                                  self._params['apply_inv_kw']['method'],
                                                  self._params['make_inv_kw'].get('fixed', False),
                                                  parc=parc)
+                if mask:
+                    _mask_ndvar(ds, 'srcm')
 
         if not keep_evoked:
             del ds['evoked']
@@ -1777,7 +1792,7 @@ class MneExperiment(FileTree):
     def load_evoked_stc(self, subject=None, sns_baseline=True,
                         src_baseline=None, sns_ndvar=False, ind_stc=False,
                         ind_ndvar=False, morph_stc=False, morph_ndvar=False,
-                        cat=None, keep_evoked=False, **kwargs):
+                        cat=None, keep_evoked=False, mask=False, **kwargs):
         """Load evoked source estimates.
 
         Parameters
@@ -1808,6 +1823,9 @@ class MneExperiment(FileTree):
         keep_evoked : bool
             Keep the sensor space data in the Dataset that is returned (default
             False).
+        mask : bool
+            Discard data that is labelled 'unknown' by the parcellation (only
+            applies to NDVars, default False).
         *others* : str
             State parameters.
         """
@@ -1820,7 +1838,7 @@ class MneExperiment(FileTree):
 
         ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, **kwargs)
         self._add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
-                            src_baseline, keep_evoked)
+                            src_baseline, keep_evoked, mask)
 
         return ds
 
@@ -2238,14 +2256,7 @@ class MneExperiment(FileTree):
                 ds = self.load_evoked(True, sns_baseline, True, cat)
             elif data == 'src':
                 ds = self.load_evoked_stc(True, sns_baseline, src_baseline,
-                                          morph_ndvar=True, cat=cat)
-                if mask:
-                    # reduce data to parc
-                    y = ds['srcm']
-                    idx_masked = y.source.parc.startswith('unknown')
-                    if np.any(idx_masked):
-                        idx = np.invert(idx_masked)
-                        ds['srcm'] = y.sub(source=idx)
+                                          morph_ndvar=True, cat=cat, mask=mask)
 
         # perform the test if it was not cached
         if res is None:
