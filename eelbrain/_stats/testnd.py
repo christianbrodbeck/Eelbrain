@@ -86,10 +86,7 @@ class _Result(object):
             self.match = match.name
         else:
             self.match = None
-        if sub is None or isinstance(sub, basestring):
-            self.sub = sub
-        else:
-            self.sub = "<unsaved array>"
+        self.sub = sub
         self.samples = samples
         self.tfce = tfce
         self.pmin = pmin
@@ -166,8 +163,10 @@ class _Result(object):
         return None
 
     def _plot_sub(self):
-        if self.sub:
-            raise NotImplementedError
+        if isinstance(self.sub, basestring) and self.sub == "<unsaved array>":
+            raise RuntimeError("The sub parameter was not saved for previous "
+                               "versions of Eelbrain. Please recompute this "
+                               "result with the current version.")
         return self.sub
 
     def masked_parameter_map(self, pmin=0.05, **sub):
@@ -1167,7 +1166,7 @@ class _MultiEffectResult(_Result):
         temp = "<%s %%s>" % self.__class__.__name__
 
         args = [repr(self.Y), repr(self.X)]
-        if self.sub:
+        if self.sub is not None:
             args.append(', sub=%r' % self.sub)
         if self._cdist:
             cdist = self._cdist[0]
