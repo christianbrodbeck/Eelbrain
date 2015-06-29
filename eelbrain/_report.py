@@ -317,26 +317,23 @@ def roi_timecourse(doc, ds, label, model, res, colors):
     hemi = label[-2].capitalize()
     title = ' '.join((label_name, hemi))
     caption = "Source estimates in %s (%s)." % (label_name, hemi)
-    doc.append(timecourse(ds, y, model, res, title, caption, colors))
+    doc.append(time_results(res, ds, colors, title, caption))
 
 
-def timecourse(ds, y, model, res, title, caption, colors, pairwise_pmax=0.1):
+def time_results(res, ds, colors, title='Results', caption="Timecourse",
+                 pairwise_pmax=0.1):
     """Add time course with clusters
 
     Parameters
     ----------
-    doc : Section
-        Document to which to add the time-course section.
-    ds : Dataset
-        Data.
-    y : str
-        Dependent measure.
-    model : str
-        Model for the analysis.
     res : Result
         Result of the temporal cluster test.
+    ds : Dataset
+        Data.
+    colors : dict
+        Cell colors.
     title : str
-        Timecourse section title.
+        Section title.
     """
     clusters = res.find_clusters()
     if clusters.n_cases:
@@ -355,9 +352,13 @@ def timecourse(ds, y, model, res, title, caption, colors, pairwise_pmax=0.1):
         c_caption = "No clusters found %s." % format_timewindow(res)
         tc_caption = ' '.join((caption, c_caption))
 
+    # plotting arguments
+    model = res._plot_model()
+    sub = res._plot_sub()
+
     # add UTSStat plot
-    p = plot.UTSStat(y, model, None, res.match, res._plot_sub(), ds,
-                     colors=colors, legend=None, clusters=clusters, show=False)
+    p = plot.UTSStat(res.Y, model, None, res.match, sub, ds, colors=colors,
+                     legend=None, clusters=clusters, show=False)
     ax = p._axes[0]
     if res.tstart is not None:
         ax.axvline(res.tstart, color='k')
@@ -384,9 +385,9 @@ def timecourse(ds, y, model, res, title, caption, colors, pairwise_pmax=0.1):
                 title = "%s %s%s: %s" % (cluster['effect'], cid, cluster['sig'], tw_str)
             else:
                 title = "Cluster %s%s: %s" % (cid, cluster['sig'], tw_str)
-            y_ = ds[y].summary(time=(c_tstart, c_tstop))
-            p = plot.Barplot(y_, model, res.match, ds=ds, corr=None, show=False,
-                             colors=colors, title=title)
+            y_ = ds[res.Y].summary(time=(c_tstart, c_tstop))
+            p = plot.Barplot(y_, model, res.match, sub, ds=ds, corr=None,
+                             show=False, colors=colors, title=title)
             plots.append(p.image())
             p.close()
 
@@ -417,8 +418,7 @@ def result_report(res, ds, title=None, colors=None):
     sec.append(res.info_list())
 
     if dims == {'time'}:
-        sec.append(timecourse(ds, res.Y, res._plot_model(), res, 'Results',
-                              "Timecourse", colors))
+        sec.append(time_results(res, ds, colors))
     elif dims == {'sensor'}:
         sec.append(sensor_results(res, ds, colors))
     elif dims == {'time', 'sensor'}:
