@@ -2701,7 +2701,7 @@ class NDVar(object):
     def __neg__(self):
         x = -self.x
         info = self.info.copy()
-        return NDVar(x, self.dims, info, self.name)
+        return NDVar(x, self.dims, info)
 
     def __pos__(self):
         return self
@@ -2712,32 +2712,32 @@ class NDVar(object):
     def __lt__(self, other):
         y = self._ialign(other)
         x = self.x < y
-        return NDVar(x, self.dims, self.info.copy(), self.name)
+        return NDVar(x, self.dims, self.info.copy())
 
     def __le__(self, other):
         y = self._ialign(other)
         x = self.x <= y
-        return NDVar(x, self.dims, self.info.copy(), self.name)
+        return NDVar(x, self.dims, self.info.copy())
 
     def __eq__(self, other):
         y = self._ialign(other)
         x = self.x == y
-        return NDVar(x, self.dims, self.info.copy(), self.name)
+        return NDVar(x, self.dims, self.info.copy())
 
     def __ne__(self, other):
         y = self._ialign(other)
         x = self.x != y
-        return NDVar(x, self.dims, self.info.copy(), self.name)
+        return NDVar(x, self.dims, self.info.copy())
 
     def __gt__(self, other):
         y = self._ialign(other)
         x = self.x > y
-        return NDVar(x, self.dims, self.info.copy(), self.name)
+        return NDVar(x, self.dims, self.info.copy())
 
     def __ge__(self, other):
         y = self._ialign(other)
         x = self.x >= y
-        return NDVar(x, self.dims, self.info.copy(), self.name)
+        return NDVar(x, self.dims, self.info.copy())
 
     def _align(self, other):
         """Align data from 2 NDVars.
@@ -2824,15 +2824,13 @@ class NDVar(object):
         if isnumeric(other):
             dims, x_self, x_other = self._align(other)
             x = x_self + x_other
-            name = '%s+%s' % (self.name, other.name)
         elif np.isscalar(other):
             x = self.x + other
             dims = self.dims
-            name = '%s+%s' % (self.name, str(other))
         else:
             raise ValueError("can't add %r" % other)
         info = self.info.copy()
-        return NDVar(x, dims, info, name)
+        return NDVar(x, dims, info)
 
     def __iadd__(self, other):
         self.x += self._ialign(other)
@@ -2842,43 +2840,37 @@ class NDVar(object):
         if isnumeric(other):
             dims, x_self, x_other = self._align(other)
             x = x_self / x_other
-            name = '%s/%s' % (self.name, other.name)
         elif np.isscalar(other):
             x = self.x / other
             dims = self.dims
-            name = '%s/%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
         info = self.info.copy()
-        return NDVar(x, dims, info, name)
+        return NDVar(x, dims, info)
 
     def __mul__(self, other):
         if isnumeric(other):
             dims, x_self, x_other = self._align(other)
             x = x_self * x_other
-            name = '%s*%s' % (self.name, other.name)
         elif np.isscalar(other):
             x = self.x * other
             dims = self.dims
-            name = '%s*%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
         info = self.info.copy()
-        return NDVar(x, dims, info, name)
+        return NDVar(x, dims, info)
 
     def __sub__(self, other):
         if isnumeric(other):
             dims, x_self, x_other = self._align(other)
             x = x_self - x_other
-            name = '%s-%s' % (self.name, other.name)
         elif np.isscalar(other):
             x = self.x - other
             dims = self.dims
-            name = '%s-%s' % (self.name, str(other))
         else:
             raise ValueError("can't subtract %r" % other)
         info = self.info.copy()
-        return NDVar(x, dims, info, name)
+        return NDVar(x, dims, info)
 
     def __isub__(self, other):
         self.x -= self._ialign(other)
