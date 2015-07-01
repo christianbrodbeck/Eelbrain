@@ -2164,6 +2164,7 @@ class MneExperiment(FileTree):
         # find data to use
         modality = self.get('modality')
         if data == 'sns':
+            dims = ('time', 'sensor')
             if modality == '':
                 y_name = 'meg'
             elif modality == 'eeg':
@@ -2171,6 +2172,7 @@ class MneExperiment(FileTree):
             else:
                 raise ValueError("data=%r, modality=%r" % (data, modality))
         elif data == 'src':
+            dims = ('time', 'source')
             y_name = 'srcm'
         else:
             raise ValueError("data=%s" % repr(data))
@@ -2243,8 +2245,9 @@ class MneExperiment(FileTree):
 
         # perform the test if it was not cached
         if res is None:
-            res = self._make_test(ds[y_name], ds, test, samples, pmin, tstart,
-                                  tstop, None, parc_dim)
+            test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, dims,
+                                            parc_dim)
+            res = self._make_test(ds[y_name], ds, test, test_kwargs)
             # cache
             save.pickle(res, dst)
 
@@ -3437,11 +3440,11 @@ class MneExperiment(FileTree):
         # add content body
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
+        test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time',), None)
         for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
             section = report.add_section("%s Hemisphere" % hemi)
             for label in label_names:
-                res = self._make_test(ds[label_keys[label]], ds, test, samples,
-                                      pmin, tstart, tstop, None, None)
+                res = self._make_test(ds[label_keys[label]], ds, test, test_kwargs)
                 _report.roi_timecourse(section, ds, label, res, colors)
 
         # compose info
@@ -3577,10 +3580,10 @@ class MneExperiment(FileTree):
         model = self._tests[test]['model']
         caption = "Signal at %s."
         colors = plot.colors_for_categorial(ds.eval(model))
+        test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, ('time', 'sensor'), None)
         for sensor in sensors:
             y = eeg.sub(sensor=sensor)
-            res = self._make_test(y, ds, test, samples, pmin, tstart, tstop,
-                                  None, None)
+            res = self._make_test(y, ds, test, test_kwargs)
             report.append(_report.time_results(res, ds, colors, sensor,
                                                caption % sensor))
 
@@ -3681,9 +3684,25 @@ class MneExperiment(FileTree):
                                        subjects_dir=self.get('mri-sdir'),
                                        add_dist=True)
 
-    def _make_test(self, y, ds, test, samples, pmin, tstart, tstop, dist_dim,
-                   parc_dim):
-        """just compute the test result
+    def _test_kwargs(self, samples, pmin, tstart, tstop, dims, parc_dim):
+        "testnd keyword arguments"
+        kwargs = {'samples': samples, 'tstart': tstart, 'tstop': tstop,
+                  'parc': parc_dim}
+        if pmin == 'tfce':
+            kwargs['tfce'] = True
+        elif pmin is not None:
+            kwargs['pmin'] = pmin
+            if 'time' in dims and 'mintime' in self.cluster_criteria:
+                kwargs['mintime'] = self.cluster_criteria['mintime']
+
+            if 'source' in dims and 'minsource' in self.cluster_criteria:
+                kwargs['minsource'] = self.cluster_criteria['minsource']
+            elif 'sensor' in dims and 'minsensor' in self.cluster_criteria:
+                kwargs['minsensor'] = self.cluster_criteria['minsensor']
+        return kwargs
+
+    def _make_test(self, y, ds, test, kwargs):
+        """Compute test results
 
         Parameters
         ----------
@@ -3691,26 +3710,11 @@ class MneExperiment(FileTree):
             Dependent variable.
         ds : Dataset
             Other variables.
-        p : dict
-            Test parameters.
-        ...
+        test : str
+            Name of the test to perform
+        kwargs : dict
+            Test parameters (from :meth:`._test_kwargs`).
         """
-        # find cluster criteria
-        kwargs = {'samples': samples, 'tstart': tstart, 'tstop': tstop,
-                  'dist_dim': dist_dim, 'parc': parc_dim}
-        if pmin == 'tfce':
-            kwargs['tfce'] = True
-        elif pmin is not None:
-            kwargs['pmin'] = pmin
-            if 'mintime' in self.cluster_criteria:
-                kwargs['mintime'] = self.cluster_criteria['mintime']
-
-            if y.has_dim('source') and 'minsource' in self.cluster_criteria:
-                kwargs['minsource'] = self.cluster_criteria['minsource']
-            elif y.has_dim('sensor') and 'minsensor' in self.cluster_criteria:
-                kwargs['minsensor'] = self.cluster_criteria['minsensor']
-
-        # perform test
         p = self._tests[test]
         kind = p['kind']
         if kind == 'ttest_rel':
