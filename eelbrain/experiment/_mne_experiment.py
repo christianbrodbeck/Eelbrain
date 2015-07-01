@@ -550,7 +550,7 @@ class MneExperiment(FileTree):
         # store epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
         epoch_rejection.update(self.epoch_rejection)
-        self.epoch_rejection = epoch_rejection
+        self._epoch_rejection = epoch_rejection
 
         ########################################################################
         # parcellations
@@ -695,7 +695,7 @@ class MneExperiment(FileTree):
 
         # register variables with complex behavior
         self._register_field('raw', sorted(self._raw))
-        self._register_field('rej', self.epoch_rejection.keys(), 'man',
+        self._register_field('rej', self._epoch_rejection.keys(), 'man',
                              post_set_handler=self._post_set_rej)
         self._register_field('group', self.groups.keys() + ['all'], 'all',
                              eval_handler=self._eval_group,
@@ -1472,7 +1472,7 @@ class MneExperiment(FileTree):
             a list of bad channels can be sumbitted.
         reject : bool
             Whether to apply epoch rejection or not. The kind of rejection
-            employed depends on the :attr:`.epoch_rejection` class attribute.
+            employed depends on the ``rej`` setting.
         add_proj : bool
             Add the projections to the Raw object.
         cat : sequence of cell-names
@@ -1624,8 +1624,7 @@ class MneExperiment(FileTree):
             information is retrieved from the 'bads-file'. Alternatively,
             a list of bad channels can be sumbitted.
         edf : bool
-            Loads edf and add it as ``ds.info['edf']``. Edf will only be added
-            if ``bool(self.epoch_rejection['edf']) == True``.
+            Load the EDF file (if available) and add it as ``ds.info['edf']``.
         others :
             Update state.
         """
@@ -3159,8 +3158,8 @@ class MneExperiment(FileTree):
         """
         rej_args = self._params['rej']
         if not rej_args['kind'] == 'manual':
-            err = ("Epoch rejection kind for rej=%r is not manual. See the "
-                   ".epoch_rejection class attribute." % self.get('rej'))
+            err = ("Epoch rejection kind for rej=%r is not manual."
+                   % self.get('rej'))
             raise RuntimeError(err)
 
         epoch = self._epochs[self.get('epoch')]
@@ -4166,7 +4165,7 @@ class MneExperiment(FileTree):
         if rej == '*':
             self._params['rej'] = None
         else:
-            rej_args = self.epoch_rejection[rej]
+            rej_args = self._epoch_rejection[rej]
             self._params['rej'] = rej_args
             self._fields['cov-rej'] = rej_args.get('cov-rej', rej)
 
