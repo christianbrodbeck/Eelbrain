@@ -9,7 +9,9 @@ New in 0.17
 
 * :attr:`MneExperiment.brain_plot_defaults` can be used to customize PySurfer
   plots in movies and reports.
-* Parellations based on combinations of existing labels, as well as
+* The rejection GUI now allows selecting individual channels for interpolation
+  using the 'i' key.
+* Parcellations based on combinations of existing labels, as well as
   parcellations based on regions around points specified in MNI coordinates can
   now be defined in :attr:`MneExperiment.parcs`.
 * Source space :class:`NDVars` can be index with lists of region names, e.g.,

@@ -2086,10 +2086,15 @@ class MneExperiment(FileTree):
                            "events than the data. Something went wrong...")
                     raise RuntimeError(err)
 
-            if rej_params['interpolation'] and self.get('modality') == 'eeg' \
-                    and INTERPOLATE_CHANNELS in ds_sel:
-                ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
-                ds.info[INTERPOLATE_CHANNELS] = True
+            if rej_params['interpolation'] and INTERPOLATE_CHANNELS in ds_sel:
+                if self.get('modality') == 'eeg':
+                    ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
+                    ds.info[INTERPOLATE_CHANNELS] = True
+                else:
+                    np.logical_and(ds_sel['accept'],
+                                   np.invert(map(bool, ds_sel[INTERPOLATE_CHANNELS])),
+                                   ds_sel['accept'].x)
+                    ds.info[INTERPOLATE_CHANNELS] = False
             else:
                 ds.info[INTERPOLATE_CHANNELS] = False
 
@@ -3165,14 +3170,12 @@ class MneExperiment(FileTree):
             eog_sns = self._eog_sns[meg_system]
             data = 'meg'
             vlim = 2e-12
-            allow_interpolation = False
         elif modality == 'eeg':
             ds = self.load_epochs(reject=False, eog=True, baseline=True,
                                   decim=rej_args.get('decim', None))
             eog_sns = self._eog_sns['KIT-BRAINVISION']
             data = 'eeg'
             vlim = 1.5e-4
-            allow_interpolation = rej_args['interpolation']
         else:
             raise ValueError("modality=%r" % modality)
 
@@ -3180,8 +3183,7 @@ class MneExperiment(FileTree):
         bad_channels = self.load_bad_channels()
         eog_sns = [c for c in eog_sns if c not in bad_channels]
 
-        gui.select_epochs(ds, data, path=path, vlim=vlim, mark=eog_sns,
-                          allow_interpolation=allow_interpolation, **kwargs)
+        gui.select_epochs(ds, data, path=path, vlim=vlim, mark=eog_sns, **kwargs)
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
                     tstop=None, samples=10000, sns_baseline=True,
