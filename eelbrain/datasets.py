@@ -60,7 +60,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
         Add sensor space data as NDVar as ``ds['sns']`` (default ``False``).
     src : False | 'ico' | 'vol'
         Add source space data as NDVar as ``ds['src']`` (default ``False``).
-    sub : str | None
+    sub : str | list | None
         Expresion for subset of events to load. For a very small dataset use e.g.
         ``[0,1]``.
     fixed : bool
@@ -72,12 +72,13 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     rm : bool
         Pretend to be a repeated measures dataset (adds 'subject' variable).
     stc : bool
-        Add mne SourceEstimate for source space data as ``ds['stc']``.
+        Add mne SourceEstimate for source space data as ``ds['stc']`` (default
+        ``False``).
 
     Returns
     -------
     ds : Dataset
-        Dataset with epochs from the MNE sample dataset.
+        Dataset with epochs from the MNE sample dataset in ``ds['epochs']``.
     """
     data_dir = mne.datasets.sample.data_path()
     meg_dir = os.path.join(data_dir, 'MEG', 'sample')
