@@ -2062,11 +2062,11 @@ class MneExperiment(FileTree):
             raise RuntimeError(err)
 
         # rejection
-        rej_kind = self._params['rej']['kind']
-        if reject and rej_kind:
+        rej_params = self._epoch_rejection[self.get('rej')]
+        if reject and rej_params['kind']:
             path = self.get('rej-file')
             if not os.path.exists(path):
-                if rej_kind == 'manual':
+                if rej_params['kind'] == 'manual':
                     raise RuntimeError("The rejection file at %r does not "
                                        "exist. Run .make_rej() first." % path)
                 else:
@@ -2086,8 +2086,8 @@ class MneExperiment(FileTree):
                            "events than the data. Something went wrong...")
                     raise RuntimeError(err)
 
-            interpolate_channels = self._params['rej']['interpolation']
-            if interpolate_channels and self.get('modality') == 'eeg' and INTERPOLATE_CHANNELS in ds_sel:
+            if rej_params['interpolation'] and self.get('modality') == 'eeg' \
+                    and INTERPOLATE_CHANNELS in ds_sel:
                 ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
                 ds.info[INTERPOLATE_CHANNELS] = True
             else:
@@ -3133,7 +3133,7 @@ class MneExperiment(FileTree):
         kwargs :
             Kwargs for SelectEpochs
         """
-        rej_args = self._params['rej']
+        rej_args = self._epoch_rejection[self.get('rej')]
         if not rej_args['kind'] == 'manual':
             err = ("Epoch rejection kind for rej=%r is not manual."
                    % self.get('rej'))
@@ -4140,12 +4140,9 @@ class MneExperiment(FileTree):
 
     def _post_set_rej(self, _, rej):
         if rej == '*':
-            self._params['rej'] = None
             self._fields['cov-rej'] = '*'
         else:
-            rej_args = self._epoch_rejection[rej]
-            self._params['rej'] = rej_args
-            self._fields['cov-rej'] = rej_args.get('cov-rej', rej)
+            self._fields['cov-rej'] = self._epoch_rejection[rej].get('cov-rej', rej)
 
     def set_root(self, root, find_subjects=False):
         """Set the root of the file hierarchy
