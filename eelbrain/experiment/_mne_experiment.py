@@ -30,7 +30,7 @@ from .._mne import source_induced_power, dissolve_label, \
     labels_from_mni_coords, rename_label, combination_label, \
     morph_source_space, shift_mne_epoch_trigger
 from ..mne_fixes import write_labels_to_annot
-from ..mne_fixes import _interpolate_bads_eeg_epochs
+from ..mne_fixes import _interpolate_bads_eeg, _interpolate_bads_meg
 from .._data_obj import (align, UTS, DimensionMismatchError,
                          assert_is_legal_dataset_key)
 from ..fmtxt import List, Report
@@ -1537,7 +1537,10 @@ class MneExperiment(FileTree):
 
             # interpolate channels
             if reject and ds.info[INTERPOLATE_CHANNELS]:
-                _interpolate_bads_eeg_epochs(ds['epochs'], ds[INTERPOLATE_CHANNELS])
+                if modality == '':
+                    _interpolate_bads_meg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
+                else:
+                    _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
 
             if not keep_raw:
                 del ds.info['raw']
@@ -2087,14 +2090,8 @@ class MneExperiment(FileTree):
                     raise RuntimeError(err)
 
             if rej_params['interpolation'] and INTERPOLATE_CHANNELS in ds_sel:
-                if self.get('modality') == 'eeg':
-                    ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
-                    ds.info[INTERPOLATE_CHANNELS] = True
-                else:
-                    np.logical_and(ds_sel['accept'],
-                                   np.invert(map(bool, ds_sel[INTERPOLATE_CHANNELS])),
-                                   ds_sel['accept'].x)
-                    ds.info[INTERPOLATE_CHANNELS] = False
+                ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
+                ds.info[INTERPOLATE_CHANNELS] = True
             else:
                 ds.info[INTERPOLATE_CHANNELS] = False
 

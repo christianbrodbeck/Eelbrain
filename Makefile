@@ -11,7 +11,7 @@ doc:
 	python setup.py build_sphinx
 
 test:
-	pythonw ${shell which nosetests} eelbrain eelbrain/_stats eelbrain/_wxgui eelbrain/experiment eelbrain/load eelbrain/plot
+	pythonw ${shell which nosetests} eelbrain eelbrain/_stats eelbrain/_wxgui eelbrain/experiment eelbrain/load eelbrain/mne_fixes eelbrain/plot
 
 test-coverage:
 	rm -rf coverage .coverage

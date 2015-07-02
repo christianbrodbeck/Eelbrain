@@ -30,5 +30,5 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
 
-from _interpolation import _interpolate_bads_eeg_epochs
+from _interpolation import _interpolate_bads_eeg, _interpolate_bads_meg
 from _label import write_labels_to_annot

@@ -6,8 +6,9 @@ import numpy as np
 from numpy.polynomial.legendre import legval
 from scipy import linalg
 
-from mne.io.pick import pick_types
 from mne.bem import _fit_sphere
+from mne.forward import _map_meg_channels
+from mne.io.pick import pick_types, pick_channels
 from mne.surface import _normalize_vectors
 from mne.utils import logger
 
@@ -171,7 +172,7 @@ def _make_interpolator(inst, bad_channels):
     return goods_idx, bads_idx, interpolation
 
 
-def _interpolate_bads_eeg_epochs(epochs, bad_channels_by_epoch=None):
+def _interpolate_bads_eeg(epochs, bad_channels_by_epoch):
     """Interpolate bad channels per epoch
 
     Parameters
@@ -204,3 +205,43 @@ def _interpolate_bads_eeg_epochs(epochs, bad_channels_by_epoch=None):
         logger.info('Interpolating %i sensors on epoch %i', bads_idx.sum(), i)
         epochs._data[i, bads_idx, :] = np.dot(interpolation,
                                               epochs._data[i, goods_idx, :])
+
+
+def _interpolate_bads_meg(epochs, bad_channels_by_epoch, mode='fast'):
+    """Interpolate bad MEG channels per epoch
+
+    Parameters
+    ----------
+    inst : mne.io.Raw, mne.Epochs or mne.Evoked
+        The data to interpolate. Must be preloaded.
+    bad_channels_by_epoch : list of list of str
+        Bad channel names specified for each epoch. For example, for an Epochs
+        instance containing 3 epochs: ``[['F1'], [], ['F3', 'FZ']]``
+
+    Notes
+    -----
+    Based on mne 0.9.0 MEG channel interpolation.
+    """
+    if len(bad_channels_by_epoch) != len(epochs):
+        raise ValueError("Unequal length of epochs (%i) and "
+                         "bad_channels_by_epoch (%i)"
+                         % (len(epochs), len(bad_channels_by_epoch)))
+
+    interp_cache = {}
+    for i, bad_channels in enumerate(bad_channels_by_epoch):
+        if not bad_channels:
+            continue
+
+        # find interpolation matrix
+        key = tuple(sorted(bad_channels))
+        if key in interp_cache:
+            picks_good, picks_bad, interpolation = interp_cache[key]
+        else:
+            picks_good = pick_types(epochs.info, ref_meg=False, exclude=key)
+            picks_bad = pick_channels(epochs.ch_names, key)
+            interpolation = _map_meg_channels(epochs, picks_good, picks_bad, mode)
+            interp_cache[key] = picks_good, picks_bad, interpolation
+
+        # apply interpolation
+        logger.info('Interpolating sensors %s on epoch %s', picks_bad, i)
+        epochs._data[i, picks_bad, :] = interpolation.dot(epochs._data[i, picks_good, :])
