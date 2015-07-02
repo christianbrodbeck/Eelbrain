@@ -426,15 +426,6 @@ data (gradiometer only) with MNE:
     For the guide on working with the MneExperiment class see
     :ref:`experiment-class-guide`.
 
-The :mod:`eelbrain.experiment` module contains tools for managing hierarchical
-collections of templates on which the :class:`MneExperiment` is based.
-
-.. autosummary::
-   :toctree: generated
-
-   experiment.TreeModel
-   experiment.FileTree
-
 
 ^^^^^^^^
 Datasets
