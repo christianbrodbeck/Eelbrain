@@ -1994,8 +1994,11 @@ class MneExperiment(FileTree):
         # process arguments
         if reject not in (True, False, 'keep'):
             raise ValueError("Invalid reject value: %r" % reject)
-        if index and not isinstance(index, str):
+
+        if index is True:
             index = 'index'
+        elif index and not isinstance(index, str):
+            raise TypeError("index=%s" % repr(index))
 
         # case of loading events for a group
         subject, group = self._process_subject_arg(subject, kwargs)
