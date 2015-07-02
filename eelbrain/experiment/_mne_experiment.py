@@ -274,37 +274,21 @@ class MneExperiment(FileTree):
     #
     # epoch_rejection dict:
     #
-    # kind : 'auto', 'manual', 'make'
-    #     How the rejection is derived; 'auto': use the parameters to do the
-    #     selection on the fly; 'manual': manually create a rejection file (use
-    #     the selection GUI .make_rej()); 'make' a rejection file
-    #     is created by the user
+    # kind : 'manual' | 'make' | None
+    #     How the rejection is derived:
+    #     'manual': manually create a rejection file (use the selection GUI
+    #     through .make_rej())
+    #     'make' a rejection file is created by the user
     # cov-rej : str
-    #     rej setting to use for cov under this setting.
+    #     rej setting to use for computing the covariance matrix. Default is
+    #     same as rej.
     #
     # For manual rejection
     # ^^^^^^^^^^^^^^^^^^^^
     # decim : int
     #     Decim factor for the rejection GUI (default is to use epoch setting).
-    #
-    # For automatic rejection
-    # ^^^^^^^^^^^^^^^^^^^^^^^
-    # threshod : None | dict
-    #     the reject argument when loading epochs:
-    # edf : list of str
-    #     How to use eye tracker information in rejection. True
-    #     causes edf files to be loaded but not used
-    #     automatically.
     _epoch_rejection = {'': {'kind': None},
-                        'man': {'kind': 'manual',
-                                'interpolation': True},
-                        'et': {'kind': 'auto',
-                               'threshold': dict(mag=3e-12),
-                               'edf': ['EBLINK'],
-                               },
-                        'threshold': {'kind': 'auto',
-                                      'threshold': dict(mag=3e-12)}
-                        }
+                        'man': {'kind': 'manual', 'interpolation': True}}
     epoch_rejection = {}
 
     exclude = {}  # field_values to exclude (e.g. subjects)
@@ -549,7 +533,12 @@ class MneExperiment(FileTree):
         ########################################################################
         # store epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
-        epoch_rejection.update(self.epoch_rejection)
+        for name, params in self.epoch_rejection.iteritems():
+            if params['kind'] not in ('manual', 'make'):
+                raise ValueError("Invalid value in %r rejection setting: "
+                                 "kind=%r" % (name, params['kind']))
+            epoch_rejection[name] = params.copy()
+
         self._epoch_rejection = epoch_rejection
 
         ########################################################################
@@ -1520,10 +1509,6 @@ class MneExperiment(FileTree):
             if ds.n_cases == 0:
                 raise RuntimeError("No events left for epoch=%s, subject=%s"
                                    % (repr(self.get('epoch')), repr(subject)))
-            if reject and self._params['rej']['kind'] == 'auto':
-                reject_arg = self._params['rej'].get('threshold', None)
-            else:
-                reject_arg = None
 
             if cat:
                 model = ds.eval(self.get('model'))
@@ -1541,8 +1526,7 @@ class MneExperiment(FileTree):
                 tmax += pad
             if decim is None:
                 decim = epoch['decim']
-            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim,
-                                          reject=reject_arg)
+            ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim)
 
             # post baseline-correction trigger shift
             trigger_shift = epoch.get('post_baseline_trigger_shift', None)
@@ -2027,9 +2011,6 @@ class MneExperiment(FileTree):
         sel = epoch.get('sel', None)
         sel_epoch = epoch.get('sel_epoch', None)
         sub_epochs = epoch.get('sub_epochs', None)
-        rej_kind = self._params['rej']['kind']
-        if rej_kind not in ('manual', 'make', 'auto'):
-            raise ValueError("Unknown rej_kind value: %r" % rej_kind)
 
         # rejection comes from somewhere else
         if sub_epochs is not None:
@@ -2078,14 +2059,17 @@ class MneExperiment(FileTree):
             raise RuntimeError(err)
 
         # rejection
-        if not reject or rej_kind == '':
-            pass
-        elif rej_kind in ('manual', 'make'):
+        rej_kind = self._params['rej']['kind']
+        if reject and rej_kind:
             path = self.get('rej-file')
             if not os.path.exists(path):
-                err = ("The rejection file at %r does not exist. Run "
-                       ".make_rej() first." % path)
-                raise RuntimeError(err)
+                if rej_kind == 'manual':
+                    raise RuntimeError("The rejection file at %r does not "
+                                       "exist. Run .make_rej() first." % path)
+                else:
+                    raise RuntimeError("The rejection file at %r does not "
+                                       "exist and has to be user-generated."
+                                       % path)
 
             # load and check file
             ds_sel = load.unpickle(path)
@@ -2119,16 +2103,6 @@ class MneExperiment(FileTree):
             # bad channels
             if add_bads and BAD_CHANNELS in ds_sel.info:
                 ds.info[BAD_CHANNELS] = ds_sel.info[BAD_CHANNELS]
-        else:
-            use = self._params['rej'].get('edf', False)
-            if use:
-                edf = ds.info['edf']
-                tmin = epoch.get('reject_tmin', epoch['tmin'])
-                tmax = epoch.get('reject_tmax', epoch['tmax'])
-                if reject == 'keep':
-                    edf.mark(ds, tstart=tmin, tstop=tmax, use=use)
-                else:
-                    ds = edf.filter(ds, tstart=tmin, tstop=tmax, use=use)
 
         return ds
 
@@ -4164,6 +4138,7 @@ class MneExperiment(FileTree):
     def _post_set_rej(self, _, rej):
         if rej == '*':
             self._params['rej'] = None
+            self._fields['cov-rej'] = '*'
         else:
             rej_args = self._epoch_rejection[rej]
             self._params['rej'] = rej_args
