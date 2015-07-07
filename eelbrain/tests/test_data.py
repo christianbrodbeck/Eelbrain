@@ -410,6 +410,11 @@ def test_effect():
 
 def test_factor():
     "Test basic Factor functionality"
+    # initializing
+    assert_array_equal(Factor('ab'), ['a', 'b'])
+    assert_array_equal(Factor('ab', repeat=2), ['a', 'a', 'b', 'b'])
+    assert_array_equal(Factor('ab', repeat=np.array([2, 1])), ['a', 'a', 'b'])
+
     # removing a cell
     f = Factor('aabbcc')
     eq_(f.cells, ('a', 'b', 'c'))
@@ -925,6 +930,15 @@ def test_source_space():
 def test_var():
     "Test Var objects"
     base = Factor('aabbcde')
+
+    # initialization
+    x = np.arange(4)
+    y = Var(x)
+    assert_array_equal(y, x)
+    y = Var(x, repeat=2)
+    assert_array_equal(y, x.repeat(2))
+    y = Var(x, repeat=x)
+    assert_array_equal(y, x.repeat(x))
     y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
     assert_array_equal(y.x, [5, 5, 0, 0, 0, 0, 8])
 

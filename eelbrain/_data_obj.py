@@ -1214,8 +1214,9 @@ class Var(object):
         are flattened as long as only 1 dimension is longer than 1.
     name : str | None
         Name of the variable
-    repeat : int
-        Repeat each element in ``x`` ``repeat`` many times.
+    repeat : int | array of int
+        repeat each element in ``x``, either a constant or a different number
+        for each element.
     tile : int
         Repeat ``x`` as a whole ``tile`` many times.
 
@@ -1250,7 +1251,7 @@ class Var(object):
                        "data with more than one dimension.")
                 raise ValueError(err)
 
-        if repeat > 1:
+        if not (isinstance(repeat, int) and repeat == 1):
             x = np.repeat(x, repeat)
 
         if tile > 1:
@@ -1930,8 +1931,9 @@ class Factor(_Effect):
         Name of the Factor.
     random : bool
         Treat Factor as random factor (for ANOVA; default is False).
-    repeat : int
-        Repeat each element in ``x`` ``repeat`` many times.
+    repeat : int | array of int
+        repeat each element in ``x``, either a constant or a different number
+        for each element.
     tile : int
         Repeat ``x`` as a whole ``tile`` many times.
     labels : dict | OrderedDict | tuple
@@ -1976,15 +1978,8 @@ class Factor(_Effect):
     """
     _stype = "factor"
 
-    def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={},
-                 rep=None):
-        if rep is not None:
-            if repeat != 1:
-                raise TypeError("Specified rep and repeat")
-            repeat = rep
-            warn("The rep argument has been renamed to repeat", DeprecationWarning)
-
-        if repeat == 0 or tile == 0:
+    def __init__(self, x, name=None, random=False, repeat=1, tile=1, labels={}):
+        if not (np.any(repeat) or np.any(tile)):
             self.__setstate__({'x': np.empty((0,), np.uint32), 'labels': {},
                                'name': name, 'random': random})
             return
@@ -2034,7 +2029,7 @@ class Factor(_Effect):
             if label not in values:
                 ordered_labels[codes[label]] = label
 
-        if repeat > 1:
+        if not (isinstance(repeat, int) and repeat == 1):
             x_ = x_.repeat(repeat)
 
         if tile > 1:
