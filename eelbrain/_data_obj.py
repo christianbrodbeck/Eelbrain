@@ -3838,7 +3838,7 @@ def as_legal_dataset_key(key):
 
 class Dataset(OrderedDict):
     """
-    A Dataset stores multiple variables covering to the same observations
+    Stores multiple variables pertaining to a common set of measurement cases
 
     Superclass: :class:`collections.OrderedDict`
 
@@ -3861,6 +3861,7 @@ class Dataset(OrderedDict):
         upon initialization (by default the number is inferred when the
         fist item is added).
 
+
     Attributes
     ----------
     n_cases : None | int
@@ -3874,41 +3875,45 @@ class Dataset(OrderedDict):
 
     Notes
     -----
-    A Dataset represents a data table as a {variable_name: value_list}
+    A Dataset represents a data table as a ``{variable_name: value_list}``
     dictionary. Each variable corresponds to a column, and each index in the
     value list corresponds to a row, or case.
 
     The Dataset class inherits most of its behavior from its superclass
     :py:class:`collections.OrderedDict`.
     Dictionary keys are enforced to be :py:class:`str` objects and should
-    preferably correspond to the variable names.
-    An exception is the Dataset's length, which reflects the number of cases
-    in the Dataset (i.e., the number of rows; the number of items can be
-    retrieved as  :py:attr:`Dataset.n_items`).
+    correspond to the variable names.
+    As for a dictionary, The Dataset's length (``len(ds)``) reflects the number
+    of variables in the Dataset (i.e., the number of rows).
 
 
     **Accessing Data**
 
-    Standard indexing with *strings* is used to access the contained Var and
-    Factor objects. Nesting is possible:
+    Standard indexing with :class:`str` is used to access the contained Var
+    and Factor objects:
 
     - ``ds['var1']`` --> ``var1``.
-    - ``ds['var1',]`` --> ``[var1]``.
-    - ``ds['var1', 'var2']`` --> ``[var1, var2]``
+    - ``ds['var1',]`` --> ``Dataset([var1])``.
+    - ``ds['var1', 'var2']`` --> ``Dataset([var1, var2])``
 
     When indexing numerically, the first index defines cases (rows):
 
     - ``ds[1]`` --> row 1
-    - ``ds[1:5]`` == ``ds[1,2,3,4]`` --> rows 1 through 4
-    - ``ds[1, 5, 6, 9]`` == ``ds[[1, 5, 6, 9]]`` --> rows 1, 5, 6 and 9
+    - ``ds[1:5]`` or ``ds[1,2,3,4]`` --> rows 1 through 4
+    - ``ds[1, 5, 6, 9]`` or ``ds[[1, 5, 6, 9]]`` --> rows 1, 5, 6 and 9
 
     The second index accesses columns, so case indexing can be combined with
     column indexing:
 
-     - ``ds[:4, :2]`` --> first 4 rows,
+     - ``ds[:4, :2]`` --> first 4 rows of first 2 columns
 
-    The ``.get_case()`` method or iteration over the Dataset
-    retrieve individual cases/rows as {name: value} dictionaries.
+    Index a single case retrieves an individual case as ``{name: value}``
+    dictionaries:
+
+    - ``ds[1]`` --> ``{'var': 1, 'factor': 'value', ...}``
+
+    The :meth:`.itercases` method can be used to iterate over cases as
+    :class:`dict`.
 
 
     **Naming**
