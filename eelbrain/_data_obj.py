@@ -1707,8 +1707,9 @@ class Var(object):
 
         Parameters
         ----------
-        repeats : int
-            Number of repeats.
+        repeats : int | array of int
+            Number of repeats, either a constant or a different number for each
+            element.
         name : None | True | str
             Name of the output Var, ``True`` to keep the current name (default
             ``True``).
@@ -2568,8 +2569,9 @@ class Factor(_Effect):
 
         Parameters
         ----------
-        repeats : int
-            Number of repeats.
+        repeats : int | array of int
+            Number of repeats, either a constant or a different number for each
+            element.
         name : None | True | str
             Name of the output Var, ``True`` to keep the current name (default
             ``True``).
@@ -4666,22 +4668,29 @@ class Dataset(OrderedDict):
             obj.name = new
         self[new] = obj
 
-    def repeat(self, n, name='{name}'):
+    def repeat(self, repeats, name='{name}'):
         """
         Returns a new Dataset with each row repeated ``n`` times.
 
         Parameters
         ----------
-        n : int
-            Number of repeats.
+        repeats : int | array of int
+            Number of repeats, either a constant or a different number for each
+            element.
         name : str
             Name for the new Dataset.
         """
         if self.n_cases is None:
             raise RuntimeError("Can't repeat Dataset with unspecified n_cases")
-        return Dataset(((k, v.repeat(n)) for k, v in self.iteritems()),
+
+        if isinstance(repeats, int):
+            n_cases = self.n_cases * repeats
+        else:
+            n_cases = sum(repeats)
+
+        return Dataset(((k, v.repeat(repeats)) for k, v in self.iteritems()),
                        name.format(name=self.name), self._caption, self.info,
-                       self.n_cases * n)
+                       n_cases)
 
     @property
     def shape(self):
