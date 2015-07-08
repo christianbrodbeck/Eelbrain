@@ -973,6 +973,10 @@ def test_var():
     v[5:] = Var(np.arange(5, 10))
     assert_array_equal(v, tgt1)
 
+    # .count()
+    v = Var([1., 2., 1.11, 2., 1.11, 4.])
+    assert_array_equal(v.count(), [0, 0, 0, 1, 1, 0])
+
     # .split()
     y = Var(np.arange(16))
     for i in xrange(1, 9):

@@ -1554,6 +1554,27 @@ class Var(object):
              "(with identical functionality).", DeprecationWarning)
         self.aggregate(X, func, name)
 
+    def count(self):
+        """Count the number of occurrence of each value
+
+        Notes
+        -----
+        Counting starts with zero (see examples). This is to facilitate
+        integration with indexing.
+
+        Examples
+        --------
+        >>> v = Var([1, 2, 3, 1, 1, 1, 3])
+        >>> v.count()
+        Var([0, 0, 0, 1, 2, 3, 1])
+        """
+        x = np.empty(len(self.x), int)
+        index = np.empty(len(self.x), bool)
+        for v in np.unique(self.x):
+            np.equal(self.x, v, index)
+            x[index] = np.arange(index.sum())
+        return Var(x)
+
     def aggregate(self, X, func=np.mean, name=True):
         """Summarize cases within cells of X
 
