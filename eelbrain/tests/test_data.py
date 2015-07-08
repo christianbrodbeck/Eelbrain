@@ -988,7 +988,7 @@ def test_var():
     # .as_factor()
     v = Var(np.arange(4))
     assert_array_equal(v.as_factor(), Factor('0123'))
-    assert_array_equal(v.as_factor({0: 'a'}), Factor('a123'))
+    assert_array_equal(v.as_factor({0: 'a'}), Factor(['a', '', '', '']))
     assert_array_equal(v.as_factor({(0, 1): 'a', (2, 3): 'b'}), Factor('aabb'))
     assert_array_equal(v.as_factor({(0, 1): 'a', 2: 'b', 'default': 'c'}),
                        Factor('aabc'))

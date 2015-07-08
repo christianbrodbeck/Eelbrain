@@ -1493,17 +1493,17 @@ class Var(object):
         return self.centered()[:, None]
 
     def as_factor(self, labels='%r', name=True, random=False):
-        """
-        Convert the Var into a Factor
+        """Convert the Var into a Factor
 
         Parameters
         ----------
-        labels : dict | str
-            Dictionary mapping values to labels, or format string for
-            converting values into labels (default: ``'%r'``). Multiple values
-            can be assigned the same label by providing multiple keys in a
-            tuple. A special key 'default' can be used to assign values that
-            are not otherwise specified (see examples).
+        labels : str | dict
+            Either a format string for converting values into labels (default:
+            ``'%r'``) or a dictionary mapping values to labels (see examples).
+            In a dictionary, multiple values can be assigned the same label by
+            providing multiple keys in a tuple. A special key 'default' can be
+            used to assign values that are not otherwise specified in the
+            dictionary (by default this is the empty string ``''``).
         name : None | True | str
             Name of the output Factor, ``True`` to keep the current name
             (default ``True``).
@@ -1516,7 +1516,7 @@ class Var(object):
         >>> v.as_factor()
         Factor(['0', '1', '2', '3'])
         >>> v.as_factor({0: 'a', 1: 'b'})
-        Factor(['a', 'b', '2', '3'])
+        Factor(['a', 'b', '', ''])
         >>> v.as_factor({(0, 1): 'a', (2, 3): 'b'})
         Factor(['a', 'a', 'b', 'b'])
         >>> v.as_factor({0: 'a', 1: 'b', 'default': 'c'})
@@ -1532,8 +1532,8 @@ class Var(object):
                 else:
                     labels_[key] = v
 
-            default = labels_.pop('default', None)
-            if default:
+            default = labels_.pop('default', '')
+            if default is not None:
                 for key in np.unique(self.x):
                     if key not in labels_:
                         labels_[key] = default

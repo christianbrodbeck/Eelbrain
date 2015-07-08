@@ -22,6 +22,9 @@ New in 0.17
 * API: :func:`combine` now raises ``KeyError`` when trying to combine
   :class:`Dataset` objects with unequal keys; set ``fill_in_missing=True`` to
   reproduce previous behavior.
+* API: Previously, :meth:`Var.as_factor` mapped unspecified values to
+  ``str(value)``. Now they are mapped to ``''``. This also applies to
+  :attr:`MneExperiment.variables` entries with unspecified values.
 
 
 New in 0.16
