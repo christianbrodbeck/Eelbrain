@@ -9,6 +9,13 @@ from eelbrain import Dataset, Factor, Var, MneExperiment
 from ..._utils.testing import assert_dataobj_equal, TempDir
 
 
+SUBJECT = 'CheeseMonger'
+SUBJECTS = ['R%04i' % i for i in (1, 11, 111, 1111)]
+SAMPLINGRATE = 1000.
+TRIGGERS = np.tile(np.arange(1, 5), 2)
+I_START = np.arange(1001, 1441, 55)
+
+
 class BaseExperiment(MneExperiment):
 
     defaults = {'experiment': 'file'}
@@ -35,11 +42,9 @@ class EventExperiment(MneExperiment):
                 'model': 'name'}
 
 
-SUBJECT = 'CheeseMonger'
-SUBJECTS = ['R%04i' % i for i in (1, 11, 111, 1111)]
-SAMPLINGRATE = 1000.
-TRIGGERS = np.tile(np.arange(1, 5), 2)
-I_START = np.arange(1001, 1441, 55)
+class EventExperimentTriggerShiftDict(EventExperiment):
+    "Test trigger shift as dictionary"
+    trigger_shift = {SUBJECT: 0.04}
 
 
 def gen_triggers():
@@ -104,12 +109,16 @@ def test_test_experiment():
     assert_dataobj_equal(ds['backorder'], tgt)
     tgt = ds['trigger'].as_factor(e.variables['taste'],'taste')
     assert_dataobj_equal(ds['taste'], tgt)
-    assert_equal(ds['i_start'], I_START + round((0.03 * SAMPLINGRATE)))
+    assert_equal(ds['i_start'], I_START + round(0.03 * SAMPLINGRATE))
     assert_equal(ds['subject'] == SUBJECT, True)
     # test without trigger shift
     e.trigger_shift = 0
     ds = e.label_events(gen_triggers())
     assert_equal(ds['i_start'], I_START)
+    # trigger shift dict
+    e2 = EventExperimentTriggerShiftDict('', False)
+    ds = e2.label_events(gen_triggers())
+    assert_equal(ds['i_start'], I_START + round(0.04 * SAMPLINGRATE))
 
     # epochs
     eq_(e._epochs['cheese']['tmin'], -0.2)

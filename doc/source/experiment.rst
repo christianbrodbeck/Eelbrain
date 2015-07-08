@@ -73,7 +73,10 @@ version 0.13 in which case you don't need to define
 
 Set this attribute to shift all trigger times by a constant (in seconds). For
 example, with ``trigger_shift = 0.03`` a trigger that originally occurred
-35.10 seconds into the recording will be shifted to 35.13.
+35.10 seconds into the recording will be shifted to 35.13. If the trigger delay
+differs between subjects, this attribute can also be a dictionary mapping
+subject names to shift values, e.g.
+``trigger_shift = {'R0001': 0.02, 'R0002': 0.05, ...}``.
 
 
 Defaults

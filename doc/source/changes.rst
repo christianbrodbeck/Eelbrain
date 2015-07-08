@@ -9,6 +9,8 @@ New in 0.17
 
 * :attr:`MneExperiment.brain_plot_defaults` can be used to customize PySurfer
   plots in movies and reports.
+* :attr:`MneExperiment.trigger_shift` can now also be a dictionary mapping
+  subject name to shift value.
 * The rejection GUI now allows selecting individual channels for interpolation
   using the 'i' key.
 * Parcellations based on combinations of existing labels, as well as

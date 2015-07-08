@@ -1333,8 +1333,15 @@ class MneExperiment(FileTree):
         -----
         Subclass this method to specify events.
         """
+        subject = ds.info['subject']
         if self.trigger_shift:
-            ds['i_start'] += round(self.trigger_shift * ds.info['raw'].info['sfreq'])
+            if isinstance(self.trigger_shift, dict):
+                trigger_shift = self.trigger_shift[subject]
+            else:
+                trigger_shift = self.trigger_shift
+
+            if trigger_shift:
+                ds['i_start'] += round(trigger_shift * ds.info['raw'].info['sfreq'])
 
         if 'raw' in ds.info:
             raw = ds.info['raw']
@@ -1346,7 +1353,7 @@ class MneExperiment(FileTree):
             ds[name] = ds['trigger'].as_factor(coding, name)
 
         # add subject label
-        ds['subject'] = Factor([ds.info['subject']], repeat=ds.n_cases, random=True)
+        ds['subject'] = Factor([subject], repeat=ds.n_cases, random=True)
         return ds
 
     def label_subjects(self, ds):
