@@ -19,6 +19,9 @@ New in 0.17
 * API: :func:`plot.brain.bin_table` function signature changed slightly (more
   parameters, new ``hemi`` parameter inserted to match other functions' argument
   order).
+* API: :func:`combine` now raises ``KeyError`` when trying to combine
+  :class:`Dataset` objects with unequal keys; set ``fill_in_missing=True`` to
+  reproduce previous behavior.
 
 
 New in 0.16

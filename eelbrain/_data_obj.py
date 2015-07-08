@@ -1031,7 +1031,7 @@ class Celltable(object):
         return zip(self.cells, self.get_statistic(func=func, a=a, **kwargs))
 
 
-def combine(items, name=None, check_dims=True):
+def combine(items, name=None, check_dims=True, fill_in_missing=False):
     """Combine a list of items of the same type into one item.
 
     Parameters
@@ -1046,15 +1046,16 @@ def combine(items, name=None, check_dims=True):
         For NDVars, check dimensions for consistency between items (e.g.,
         channel locations in a Sensor dimension). Default is ``True``. Set to
         ``False`` to ignore non-fatal mismatches.
+    fill_in_missing : bool
+        When combining Datasets, variables that are missing from some of the
+        input Datasets are retained and missing values are filled in with empty
+        values ('' for factors, NaN for variables). The default behavior is to
+        raise a KeyError.
 
     Notes
     -----
-    For Datasets:
-
-    - Missing variables are filled in with empty values ('' for factors, NaN
-      for variables).
-    - The info dict inherits only entries that are equal (``x is y or
-      np.array_equal(x, y)``) for all items.
+    The info dict inherits only entries that are equal (``x is y or
+    np.array_equal(x, y)``) for all items.
     """
     # check input
     if len(items) == 0:
@@ -1077,22 +1078,29 @@ def combine(items, name=None, check_dims=True):
 
     # combine objects
     if stype == 'dataset':
-        # find all keys and data types
-        item0 = items[0]
-        keys = item0.keys()
-        sample = dict(item0)
-        for item in items:
-            for key in item.keys():
-                if key not in keys:
-                    keys.append(key)
-                    sample[key] = item[key]
-
-        # create new Dataset
         out = Dataset(name=name, info=_merge_info(items))
-        for key in keys:
-            pieces = [ds[key] if key in ds else
-                      _empty_like(sample[key], ds.n_cases) for ds in items]
-            out[key] = combine(pieces, check_dims=check_dims)
+        item0 = items[0]
+        if fill_in_missing:
+            # find all keys and data types
+            keys = item0.keys()
+            sample = dict(item0)
+            for item in items:
+                for key in item.keys():
+                    if key not in keys:
+                        keys.append(key)
+                        sample[key] = item[key]
+            # create output
+            for key in keys:
+                pieces = [ds[key] if key in ds else
+                          _empty_like(sample[key], ds.n_cases) for ds in items]
+                out[key] = combine(pieces, check_dims=check_dims)
+        else:
+            keys = set(item0)
+            if any(set(item) != keys for item in items[1:]):
+                raise KeyError("Datasets have unequal keys. Combine with "
+                               "fill_in_missing=True to combine anyways.")
+            for key in item0:
+                out[key] = combine([ds[key] for ds in items])
         return out
     elif stype == 'var':
         x = np.hstack(i.x for i in items)

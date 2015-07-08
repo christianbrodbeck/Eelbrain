@@ -198,14 +198,16 @@ def test_combine():
     ds1 = datasets.get_uts()
     ds2 = datasets.get_uts()
     ds = combine((ds1, ds2))
-    assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:], "Basic combine")
+    assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:])
+
+    # combine Datasets with unequal keys
     del ds1['Y']
+    assert_raises(KeyError, combine, (ds1, ds2))
+    assert_raises(KeyError, combine, (ds2, ds1))
     del ds2['YCat']
-    ds = combine((ds1, ds2))
-    assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:], "Combine with "
-                       "missing Var")
-    ok_(np.all(ds1['YCat'] == ds['YCat'][:ds1.n_cases]), "Combine with missing "
-        "Factor")
+    ds = combine((ds1, ds2), fill_in_missing=True)
+    assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:])
+    ok_(np.all(ds1['YCat'] == ds['YCat'][:ds1.n_cases]))
 
     # invalid input
     assert_raises(ValueError, combine, ())
