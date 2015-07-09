@@ -449,6 +449,11 @@ def test_factor():
     assert_equal(f == Factor('aabxxx'), (True, True, True, False, False, False))
     assert_equal(f == Var(np.ones(6)), False)
 
+    # Factor.as_var()
+    assert_array_equal(f.as_var(dict(zip('abc', range(3)))), [0, 0, 1, 1, 2, 2])
+    assert_array_equal(f.as_var({'a': 1}, 2), [1, 1, 2, 2, 2, 2])
+    assert_raises(KeyError, f.as_var, {'a': 1})
+
 
 def test_factor_relabel():
     "Test Factor.relabel() method"
