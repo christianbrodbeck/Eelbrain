@@ -1431,32 +1431,33 @@ class MneExperiment(FileTree):
         path = self.get('edf-file', fmatch=False, **kwargs)
         return load.eyelink.Edf(path)
 
-    def _ndvar_name_and_modality(self, ndvar, modality, eog=False):
-        """returns (name for the ndvar, data str)"""
-        if ndvar:
-            if modality == 'meeg':
-                raise NotImplementedError("NDVar for sensor space MEEG data")
-            elif modality == '':
-                data = 'mag'
-                if ndvar is True:
-                    ndvar = 'meg'
-            elif modality == 'eeg':
-                if eog:
-                    data = 'eeg&eog'
-                else:
-                    data = 'eeg'
-
-                if ndvar is True:
-                    ndvar = 'eeg'
-            else:
-                raise ValueError("modality=%r" % modality)
-
-            if not isinstance(ndvar, basestring):
-                msg = "ndvar needs to be bool or str, got %s" % repr(ndvar)
-                raise TypeError(msg)
+    @staticmethod
+    def _ndvar_name_for_modality(modality):
+        if modality == 'meeg':
+            raise NotImplementedError("NDVar for sensor space data combining "
+                                      "EEG and MEG data")
+        elif modality == '':
+            return 'meg'
+        elif modality == 'eeg':
+            return 'eeg'
         else:
-            data = None
-        return ndvar, data
+            raise ValueError("modality=%r" % modality)
+
+    @staticmethod
+    def _data_arg_for_modality(modality, eog=False):
+        "data argument for FIFF-to-NDVar conversion"
+        if modality == 'meeg':
+            raise NotImplementedError("NDVar for sensor space data combining "
+                                      "EEG and MEG data")
+        elif modality == '':
+            return 'mag'
+        elif modality == 'eeg':
+            if eog:
+                return 'eeg&eog'
+            else:
+                return 'eeg'
+        else:
+            raise ValueError("modality=%r" % modality)
 
     def load_epochs(self, subject=None, baseline=None, ndvar=True,
                     add_bads=True, reject=True, add_proj=True, cat=None,
@@ -1499,7 +1500,12 @@ class MneExperiment(FileTree):
             When loading EEG data as NDVar, also add the EOG channels.
         """
         modality = self.get('modality')
-        ndvar, data_arg = self._ndvar_name_and_modality(ndvar, modality, eog)
+        if ndvar is True:
+            ndvar = self._ndvar_name_for_modality(modality)
+        elif ndvar and not isinstance(ndvar, basestring):
+            raise TypeError("ndvar needs to be bool or str, got %s"
+                            % repr(ndvar))
+        data_arg = self._data_arg_for_modality(modality, eog)
         subject, group = self._process_subject_arg(subject, kwargs)
 
         if group is not None:
