@@ -143,9 +143,13 @@ temp = {# MEG
         'event-file': '{raw-cache-base}-evts.pickled',
         # mne secondary/forward modeling
         'proj-file': '{raw-cache-base}_{proj}-proj.fif',
-        'cov-file': '{raw-cache-base}_{cov}-{cov-rej}-{proj}-cov.fif',
-        'cov-info-file': '{raw-cache-base}_{cov}-{cov-rej}-{proj}-cov-info.txt',
         'fwd-file': '{raw-cache-base}_{mrisubject}-{src}-fwd.fif',
+        # sensor covariance
+        'cov-dir': os.path.join('{cache-dir}', 'cov'),
+        'cov-base': os.path.join('{cov-dir}', '{subject}', '{experiment} '
+                                 '{raw-kind} {cov}-{cov-rej}-{proj}'),
+        'cov-file': '{cov-base}-cov.fif',
+        'cov-info-file': '{cov-base}-info.txt',
         # evoked
         'evoked-dir': os.path.join('{cache-dir}', 'evoked'),
         'evoked-file': os.path.join('{evoked-dir}', '{subject}', '{experiment} '
@@ -1135,7 +1139,9 @@ class MneExperiment(FileTree):
         Each lower level subsumes the higher levels:
 
         ``1``
-            data files - these need to be cleared when anything about the
+            Delete all cached files.
+        ``2``
+            Epoched files - these need to be cleared when anything about the
             epoch definition changes (tmin, tmax, event inclusion, ...). Note
             that you might also have to manually update epoch rejection files
             with the :meth:`MneExperiment.make_rej` method.
@@ -1148,22 +1154,31 @@ class MneExperiment(FileTree):
         To delete only test files, after adding raw data for a new subject to
         the experiment::
 
-            >>> e.clear_cache(1)
+            >>> e.clear_cache(5)
 
-        To delete cached data files, after changing the selection criteria for
+        To delete cached data files after changing the selection criteria for
         a secondary epoch::
 
-            >>> e.clear_cache(5)
+            >>> e.clear_cache(2)
 
         If criteria on a primary epoch are changed, the trial rejection has to
         be re-done in addition to clearing the cache.
+
+        To delete all cached files and clear up hard drive space::
+
+            >>> e.clear_cache(1)
         """
         if level <= 1:
             self.rm('cache-dir', confirm=True)
-            print "Cached data cleared."
+            print "All cached data cleared."
         else:
-            self.rm('test-dir', confirm=True)
-            print "Cached tests cleared."
+            if level <= 2:
+                self.rm('evoked-dir', confirm=True)
+                self.rm('cov-dir', confirm=True)
+                print "Cached epoch data cleared"
+            if level <= 5:
+                self.rm('test-dir', confirm=True)
+                print "Cached tests cleared."
 
     def _fix_eeg_ndvar(self, ndvar, apply_standard_montag):
         # connectivity
