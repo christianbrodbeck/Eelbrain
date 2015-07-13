@@ -1505,13 +1505,12 @@ class MneExperiment(FileTree):
         elif ndvar and not isinstance(ndvar, basestring):
             raise TypeError("ndvar needs to be bool or str, got %s"
                             % repr(ndvar))
-        data_arg = self._data_arg_for_modality(modality, eog)
         subject, group = self._process_subject_arg(subject, kwargs)
 
         if group is not None:
             dss = []
             for _ in self.iter(group=group):
-                ds = self.load_epochs(None, baseline, False, add_bads, reject,
+                ds = self.load_epochs(None, baseline, ndvar, add_bads, reject,
                                       add_proj, cat, decim, pad)
                 dss.append(ds)
 
@@ -1573,10 +1572,11 @@ class MneExperiment(FileTree):
             if not keep_raw:
                 del ds.info['raw']
 
-        if ndvar:
-            ds[ndvar] = load.fiff.epochs_ndvar(ds.pop('epochs'), ndvar, data_arg)
-            if modality == 'eeg':
-                self._fix_eeg_ndvar(ds[ndvar], group)
+            if ndvar:
+                data_arg = self._data_arg_for_modality(modality, eog)
+                ds[ndvar] = load.fiff.epochs_ndvar(ds.pop('epochs'), ndvar, data_arg)
+                if modality == 'eeg':
+                    self._fix_eeg_ndvar(ds[ndvar], group)
 
         return ds
 
