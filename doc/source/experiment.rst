@@ -390,8 +390,8 @@ Which raw FIFF files to use.
     CALMed).
 '0-40' (default)
     Low-pass filtered under 40 Hz.
-'0.16-40'
-    Band-pass filtered between 0.16 and 40 Hz.
+'0.1-40'
+    Band-pass filtered between 0.1 and 40 Hz.
 '1-40'
     Band-pass filtered between 1 and 40 Hz.
 

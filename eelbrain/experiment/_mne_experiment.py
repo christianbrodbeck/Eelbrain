@@ -307,8 +307,8 @@ class MneExperiment(FileTree):
     # raw processing settings {name: (args, kwargs)}
     _raw = {'clm': None,
             '0-40': ((None, 40), {'method': 'iir'}),
-            '0.16-40': ((0.16, 40), {'l_trans_bandwidth': 0.08,
-                                     'filter_length': '60s'}),
+            '0.1-40': ((0.1, 40), {'l_trans_bandwidth': 0.08,
+                                   'filter_length': '60s'}),
             '1-40': ((1, 40), {'method': 'iir'})}
 
     # projection definition:
