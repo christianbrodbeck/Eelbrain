@@ -591,8 +591,13 @@ def combination_label(name, exp, labels):
         tags).
     labels : dict
         {name: label} dictionary.
+
+    Returns
+    -------
+    labels : list
+        List of labels, one or two depending on what hemispheres are included.
     """
-    m = re.match("(\w+)-([lr]h)", name)
+    m = re.match("([\w.]+)-([lr]h)", name)
     if m:
         name = m.group(1)
         hemis = (m.group(2),)
@@ -602,7 +607,7 @@ def combination_label(name, exp, labels):
     out = None
     operator = None
     i = 0
-    pattern = re.compile("\s*(\w+)\s*([+-]|$)")
+    pattern = re.compile("\s*([\w.]+)\s*([+-]|$)")
     while True:
         m = pattern.match(exp, i)
         if not m:
