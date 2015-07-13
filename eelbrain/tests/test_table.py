@@ -70,6 +70,10 @@ def test_repmeas():
     print table.repmeas('fltvar', 'A%B', 'rm', ds=ds)
     print table.repmeas('fltvar', 'A', 'B%rm', ds=ds)
 
+    # with int model
+    ds['Bv'] = ds['B'].as_var({'b1': 1, 'b2': 2})
+    print table.repmeas('fltvar', 'A', 'Bv%rm', ds=ds)
+
     # test naturalization of cellnames
     ds['ANum'] = Factor(ds['A'], labels={'a1': '1', 'a2': '2'})
     print table.repmeas('fltvar', 'ANum', 'rm', ds=ds)
