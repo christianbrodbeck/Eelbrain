@@ -5205,7 +5205,7 @@ class Interaction(_Effect):
         delim : str
             Delimiter with which to join the elements of cells.
         """
-        return map(delim.join, self)
+        return [delim.join(str(v) for v in case) for case in self]
 
     def compress(self, X):
         "Deprecated. Use .aggregate()."

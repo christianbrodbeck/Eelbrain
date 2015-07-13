@@ -16,7 +16,7 @@ New in 0.17
 * Parcellations based on combinations of existing labels, as well as
   parcellations based on regions around points specified in MNI coordinates can
   now be defined in :attr:`MneExperiment.parcs`.
-* Source space :class:`NDVars` can be index with lists of region names, e.g.,
+* Source space :class:`NDVar` can be indexed with lists of region names, e.g.,
   ``ndvar.sub(source=['cuneus-lh', 'lingual-lh'])``.
 * API: :func:`plot.brain.bin_table` function signature changed slightly (more
   parameters, new ``hemi`` parameter inserted to match other functions' argument

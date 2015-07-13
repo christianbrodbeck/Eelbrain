@@ -139,7 +139,7 @@ def test_epoch_trigger_shift():
                     rtol=1e-1, atol=1e-3)  # ms accuracy
 
 
-def test_label():
+def test_combination_label():
     "Test combination label creation"
     labels = {l.name: l for l in
               mne.read_labels_from_annot('fsaverage', subjects_dir=subjects_dir)}
@@ -159,6 +159,12 @@ def test_label():
     eq_(len(l), 1)
     eq_(l[0].name, 'temporal-rh')
     assert_array_equal(l[0].vertices, rh.vertices)
+
+    # names with .
+    labels = {l.name: l for l in
+              mne.read_labels_from_annot('fsaverage', 'PALS_B12_Brodmann', subjects_dir=subjects_dir)}
+    l = combination_label('Ba38-lh', "Brodmann.38", labels)[0]
+    assert_array_equal(l.vertices, labels['Brodmann.38-lh'].vertices)
 
 
 def test_morphing():
