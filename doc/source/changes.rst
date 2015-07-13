@@ -4,6 +4,12 @@ Changes
 .. currentmodule:: eelbrain
 
 
+New in 0.18
+-----------
+
+* API: The first argument for :meth:`MneExperiment.plot_annot` is now `parc`.
+
+
 New in 0.17
 -----------
 

@@ -2986,7 +2986,7 @@ class MneExperiment(FileTree):
         if not redo and os.path.exists(dst):
             return
 
-        brain = self.plot_annot(surf, w=1200)
+        brain = self.plot_annot(surf=surf, w=1200)
         brain.save_image(dst)
 
     def make_plot_label(self, label, surf='inflated', redo=False, **state):
@@ -3789,8 +3789,8 @@ class MneExperiment(FileTree):
             print("%s: %r -> %r" % (field, current, next_))
         self.set(**{field: next_})
 
-    def plot_annot(self, surf='inflated', views=['lat', 'med'], hemi=None,
-                   borders=False, alpha=0.7, w=600, parc=None,
+    def plot_annot(self, parc=None, surf='inflated', views=['lat', 'med'],
+                   hemi=None, borders=False, alpha=0.7, w=600,
                    foreground=None, background=None, show=True):
         """Plot the annot file on which the current parcellation is based
 
@@ -3798,6 +3798,9 @@ class MneExperiment(FileTree):
 
         Parameters
         ----------
+        parc : None | str
+            Parcellation to plot. If None (default), use parc from the current
+            state.
         surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
             Freesurfer surface to use as brain geometry.
         views : str | iterator of str
@@ -3811,8 +3814,6 @@ class MneExperiment(FileTree):
             Alpha of the annotation (1=opaque, 0=transparent, default 0.7).
         w : int
             Figure width per hemisphere.
-        parc : None | str
-            Parcellation to plot. If None, use parc from the current state.
         foreground : mayavi color
             Figure foreground color (i.e., the text color).
         background : mayavi color
