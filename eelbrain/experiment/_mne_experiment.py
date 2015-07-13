@@ -3971,22 +3971,21 @@ class MneExperiment(FileTree):
             default).
         """
         subject, group = self._process_subject_arg(subject, kwargs)
+        y = self._ndvar_name_for_modality(self.get('modality'))
         model = self.get('model') or None
         if subject:
             ds = self.load_evoked(baseline=baseline)
-            return plot.TopoButterfly('meg', model, ds=ds, title=subject,
-                                      run=run)
+            return plot.TopoButterfly(y, model, ds=ds, title=subject, run=run)
         elif separate:
             for subject in self.iter(group=group):
                 ds = self.load_evoked(baseline=baseline)
-                plot.TopoButterfly('meg', model, ds=ds, title=subject, run=False)
+                plot.TopoButterfly(y, model, ds=ds, title=subject, run=False)
 
             if run or plot._base.do_autorun():
                 gui.run()
         else:
             ds = self.load_evoked(group, baseline=baseline)
-            return plot.TopoButterfly('meg', model, ds=ds, title=subject,
-                                      run=run)
+            return plot.TopoButterfly(y, model, ds=ds, title=subject, run=run)
 
     def plot_label(self, label, surf='inflated', w=600, clear=False):
         """Plot a label"""
