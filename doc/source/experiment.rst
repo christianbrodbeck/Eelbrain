@@ -296,8 +296,19 @@ base : str
     The name of the parcellation that provides the input labels.
 labels : dict {str: str}
     New labels to create in ``{name: expression}`` format. All label names
-    should be composed of alphanumeric characters (plus underline) and should not
-    contain the -hemi tags.
+    should be composed of alphanumeric characters (plus underline) and should
+    not contain the -hemi tags. In order to create a given label only on one
+    hemisphere, add the -hemi tag in the name (not in the expression, e.g.,
+    ``{'occipitotemporal-lh': "occipital + temporal"}``).
+
+Examples (pre-defined parcellations)::
+
+    parcs = {'lobes-op': {'kind': 'combination',
+                          'base': 'lobes',
+                          'labels': {'occipitoparietal': "occipital + parietal"}},
+             'lobes-ot': {'kind': 'combination',
+                          'base': 'lobes',
+                          'labels': {'occipitotemporal': "occipital + temporal"}}}
 
 
 Labels can be constructed around known **MNI coordinates** using the foillowing
@@ -309,6 +320,11 @@ seeds : dict
     {name: seed(s)} dictionary, where names are strings, including -hemi tags
     (e.g., ``"mylabel-lh"``) and seed(s) are array-like, specifying one or more
     seed coordinate (shape ``(3,)`` or ``(n_seeds, 3)``).
+mask : str
+    Name of a parcellation to use as mask (i.e., anything that is "unknown" in
+    that parcellation is excluded from the new parcellation. Use
+    ``{'mask': 'lobes'}`` to exclude the subcortical areas around the
+    diencephalon.
 
 For each seed entry, the source space vertex closest to the given MNI coordinate
 will be used as actual seed, and a label will be created including all points
@@ -329,16 +345,10 @@ used to determine how they are handled:
     to every other subject's brain. These parcellations are automatically
     morphed to individual subjects' MRIs.
 
-Example::
+Examples (pre-defined parcellations)::
 
     parcs = {'aparc': 'subject_parc',
-             'PALS_B12_Brodmann': 'fsaverage_parc',
-             'lobes-op': {'kind': 'combination',
-                          'base': 'lobes',
-                          'labels': {'occipitoparietal': "occipital + parietal"}},
-             'lobes-ot': {'kind': 'combination',
-                          'base': 'lobes',
-                          'labels': {'occipitotemporal': "occipital + temporal"}}}
+             'PALS_B12_Brodmann': 'fsaverage_parc'}
 
 
 Visualization Defaults
