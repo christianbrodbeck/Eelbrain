@@ -371,6 +371,11 @@ def time_results(res, ds, colors, title='Results', caption="Timecourse",
     p.close()
     legend_p.close()
 
+    # add cluster table
+    if clusters.n_cases:
+        t = clusters.as_table(midrule=True, caption=c_caption)
+        section.append(t)
+
     # pairwise plots
     if pairwise_pmax is not None:
         plots = []
@@ -393,11 +398,6 @@ def time_results(res, ds, colors, title='Results', caption="Timecourse",
 
         section.add_image_figure(plots, "Value in the time-window of the clusters "
                                  "with uncorrected pairwise t-tests.")
-
-    # add cluster table
-    if clusters.n_cases:
-        t = clusters.as_table(midrule=True, caption=c_caption)
-        section.append(t)
 
     return section
 
