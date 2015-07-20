@@ -377,6 +377,8 @@ def time_results(res, ds, colors, title='Results', caption="Timecourse",
         section.append(t)
 
     # pairwise plots
+    model_ = model
+    colors_ = colors
     if pairwise_pmax is not None:
         plots = []
         clusters_ = clusters.sub("p <= %s" % pairwise_pmax)
@@ -388,11 +390,13 @@ def time_results(res, ds, colors, title='Results', caption="Timecourse",
             tw_str = "%s - %s ms" % (ms(c_tstart), ms(c_tstop))
             if 'effect' in cluster:
                 title = "%s %s%s: %s" % (cluster['effect'], cid, cluster['sig'], tw_str)
+                model_ = cluster['effect'].replace(' x ', '%')
+                colors_ = colors if model_ == model else None
             else:
                 title = "Cluster %s%s: %s" % (cid, cluster['sig'], tw_str)
             y_ = ds[res.Y].summary(time=(c_tstart, c_tstop))
-            p = plot.Barplot(y_, model, res.match, sub, ds=ds, corr=None,
-                             show=False, colors=colors, title=title)
+            p = plot.Barplot(y_, model_, res.match, sub, ds=ds, corr=None,
+                             show=False, colors=colors_, title=title)
             plots.append(p.image())
             p.close()
 
