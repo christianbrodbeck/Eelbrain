@@ -1742,7 +1742,7 @@ class MneExperiment(FileTree):
                 raise DimensionMismatchError(os.linesep.join(err))
 
         else:  # single subject
-            ds = self.make_evoked()
+            ds = self._make_evoked()
 
             if cat:
                 model = ds.eval(self.get('model'))
@@ -2586,7 +2586,7 @@ class MneExperiment(FileTree):
 
         cov.save(dest)
 
-    def make_evoked(self, redo=False, **kwargs):
+    def _make_evoked(self, redo=False, **kwargs):
         """
         Creates datasets with evoked sensor data.
 
