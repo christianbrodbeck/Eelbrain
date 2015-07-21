@@ -7,6 +7,7 @@ import socket
 import traceback
 
 from .basic import logger
+from .system import caffeine
 from . import ui
 
 
@@ -92,10 +93,12 @@ class Notifier(object):
 
     def __enter__(self):
         logger.info("Notification enabled...")
+        caffeine.__enter__()
         return self
 
     def __exit__(self, type_, value, traceback_):
         host = socket.gethostname()
+        caffeine.__exit__(type_, value, traceback_)
         if isinstance(value, Exception):
             error = type_.__name__
             temp = '{host} encountered {error}: {value} in {task}'

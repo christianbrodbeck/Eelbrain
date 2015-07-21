@@ -8,6 +8,8 @@ New in 0.18
 -----------
 
 * API: The first argument for :meth:`MneExperiment.plot_annot` is now `parc`.
+* Under OS X 10.8 and newer running code under a notifier statement now
+  automatically prevents the computer from going to sleep.
 
 
 New in 0.17
