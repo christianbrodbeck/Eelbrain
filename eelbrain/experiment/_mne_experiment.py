@@ -1490,7 +1490,7 @@ class MneExperiment(FileTree):
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
         decim : None | int
-            override the epoch decim factor.
+            Set to an int in order to override the epoch decim factor.
         pad : scalar
             Pad the epochs with this much time (in seconds; e.g. for spectral
             analysis).
@@ -1695,7 +1695,7 @@ class MneExperiment(FileTree):
         return ds
 
     def load_evoked(self, subject=None, baseline=None, ndvar=True, cat=None,
-                    **kwargs):
+                    decim=None, **kwargs):
         """
         Load a Dataset with the evoked responses for each subject.
 
@@ -1714,6 +1714,8 @@ class MneExperiment(FileTree):
             Dataset is 'meg' or 'eeg').
         cat : sequence of cell-names
             Only load data for these cells (cells of model).
+        decim : None | int
+            Set to an int in order to override the epoch decim factor.
         model : str (state)
             Model according to which epochs are grouped into evoked responses.
         *others* : str
@@ -1726,7 +1728,7 @@ class MneExperiment(FileTree):
         if group is not None:
             dss = []
             for _ in self.iter(group=group):
-                ds = self.load_evoked(baseline=baseline, ndvar=False, cat=cat)
+                ds = self.load_evoked(None, baseline, False, cat, decim)
                 dss.append(ds)
 
             ds = combine(dss)
@@ -1742,7 +1744,7 @@ class MneExperiment(FileTree):
                 raise DimensionMismatchError(os.linesep.join(err))
 
         else:  # single subject
-            ds = self._make_evoked()
+            ds = self._make_evoked(decim)
 
             if cat:
                 model = ds.eval(self.get('model'))
@@ -2586,24 +2588,24 @@ class MneExperiment(FileTree):
 
         cov.save(dest)
 
-    def _make_evoked(self, redo=False, **kwargs):
+    def _make_evoked(self, decim, **kwargs):
         """
         Creates datasets with evoked sensor data.
 
         Parameters
         ----------
-        epoch : str
-            Data epoch specification.
-        model : str
-            Model specifying cells for evoked.
+        decim : None | int
+            Set to an int in order to override the epoch decim factor.
         """
         dest = self.get('evoked-file', mkdir=True, **kwargs)
-        if not redo and os.path.exists(dest):
+        epoch = self._epochs[self.get('epoch')]
+        use_cache = not decim or decim == epoch['decim']
+        if use_cache and os.path.exists(dest):
             evoked_mtime = os.path.getmtime(dest)
             raw_mtime = os.path.getmtime(self._get_raw_path(make=True))
             bads_mtime = os.path.getmtime(self.get('bads-file'))
 
-            rej_file_epochs = self._epochs[self.get('epoch')].get('_rej_file_epochs', None)
+            rej_file_epochs = epoch.get('_rej_file_epochs', None)
             if rej_file_epochs is None:
                 sel_file = self.get('rej-file')
                 rej_mtime = os.path.getmtime(sel_file)
@@ -2619,11 +2621,11 @@ class MneExperiment(FileTree):
 
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
-        post_baseline_trigger_shift = self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None)
+        post_baseline_trigger_shift = epoch.get('post_baseline_trigger_shift', None)
         if post_baseline_trigger_shift:
-            ds = self.load_epochs(ndvar=False, baseline=True)
+            ds = self.load_epochs(ndvar=False, baseline=True, decim=decim)
         else:
-            ds = self.load_epochs(ndvar=False)
+            ds = self.load_epochs(ndvar=False, decim=decim)
 
         # aggregate
         equal_count = self.get('equalize_evoked_count') == 'eq'
@@ -2636,7 +2638,10 @@ class MneExperiment(FileTree):
         ds_agg.info['mne_version'] = mne.__version__
         if 'raw' in ds_agg.info:
             del ds_agg.info['raw']
-        save.pickle(ds_agg, dest)
+
+        if use_cache:
+            save.pickle(ds_agg, dest)
+
         return ds_agg
 
     def make_fwd(self, redo=False):
