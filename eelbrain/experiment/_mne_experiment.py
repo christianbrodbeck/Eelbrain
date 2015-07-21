@@ -2533,14 +2533,17 @@ class MneExperiment(FileTree):
             If the cov file already exists, overwrite it.
         """
         dest = self.get('cov-file')
+        rej = self.get('cov-rej')
         if (not redo) and os.path.exists(dest):
             cov_mtime = os.path.getmtime(dest)
             raw_mtime = os.path.getmtime(self._get_raw_path())
             bads_mtime = os.path.getmtime(self.get('bads-file'))
-            if cov_mtime > max(raw_mtime, bads_mtime):
+            with self._temporary_state:
+                rej_mtime = os.path.getmtime(self.get('rej-file', rej=rej))
+                
+            if cov_mtime > max(raw_mtime, bads_mtime, rej_mtime):
                 return
 
-        rej = self.get('cov-rej')
         params = self._covs[self.get('cov')]
         epoch = params.get('epoch', 'cov')
         method = params.get('method', 'empirical')
