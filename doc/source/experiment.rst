@@ -285,9 +285,14 @@ The parcellation determines how the brain surface is divided into regions.
 A number of standard parcellations are automatically defined (see
 :ref:`analysis-params-parc` below). Additional parcellations can be defined in
 the :attr:`MneExperiment.parcs` dictionary with ``{name: parc_definition}``
-entries.
+entries. There are a couple of different ways in which parcellations can be
+defined:
 
-**Recombinations** of existing parcellations can be defined as dictionaries
+
+Recombinations
+^^^^^^^^^^^^^^
+
+Recombinations of existing parcellations can be defined as dictionaries
 include the following entries:
 
 kind : 'combination'
@@ -301,7 +306,7 @@ labels : dict {str: str}
     hemisphere, add the -hemi tag in the name (not in the expression, e.g.,
     ``{'occipitotemporal-lh': "occipital + temporal"}``).
 
-Examples (pre-defined parcellations)::
+Examples (these are pre-defined parcellations)::
 
     parcs = {'lobes-op': {'kind': 'combination',
                           'base': 'lobes',
@@ -311,7 +316,10 @@ Examples (pre-defined parcellations)::
                           'labels': {'occipitotemporal': "occipital + temporal"}}}
 
 
-Labels can be constructed around known **MNI coordinates** using the foillowing
+MNI coordinates
+^^^^^^^^^^^^^^^
+
+Labels can be constructed around known MNI coordinates using the foillowing
 entries:
 
 kind : 'seeded'
@@ -331,6 +339,18 @@ will be used as actual seed, and a label will be created including all points
 with a surface distance smaller than a given extent from the seed
 vertex/vertices. The extent is determined when setting the parc as analysis
 parameter as in ``e.set(parc="myparc-25")``, which specifies a radius of 25 mm.
+
+Example::
+
+     parcs = {'stg': {'kind': 'seeded',
+                      'seeds': {'anteriorstg-lh': ((-54, 10, -8), (-47, 14, -28)),
+                                'middlestg-lh': (-66, -24, 8),
+                                'posteriorstg-lh': (-54, -57, 16)},
+                      'mask': 'lobes'}}
+
+
+Externally Created Parcellations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 For parcellations that are user-created, the following two definitions can be
 used to determine how they are handled:
