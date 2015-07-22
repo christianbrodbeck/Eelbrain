@@ -5,6 +5,7 @@ Plot topographic maps of sensor space data.
 from __future__ import division
 
 from itertools import izip
+from math import floor, sqrt
 
 import numpy as np
 from scipy import interpolate
@@ -429,7 +430,7 @@ class TopoButterfly(_EelFigure):
 class _plt_topomap(_utsnd._plt_im_array):
     def __init__(self, ax, ndvar, overlay, proj='default', res=100,
                  interpolation=None, im_frame=0.02, vlims={}, cmaps={},
-                 contours={}):
+                 contours={}, method='linear'):
         """
         Parameters
         ----------
@@ -437,6 +438,8 @@ class _plt_topomap(_utsnd._plt_im_array):
             Empty space beyond outmost sensors in the im plot.
         vmax : scalar
             Override the colorspace vmax.
+        method : 'nearest' | 'linear' | 'cubic' | 'spline'
+            Method for interpolating topo-map between sensors.
         """
         im_kwa = _base.find_im_args(ndvar, overlay, vlims, cmaps)
         self._contours = _base.find_ct_args(ndvar, overlay, contours)
@@ -454,7 +457,7 @@ class _plt_topomap(_utsnd._plt_im_array):
         self._proj = proj
         self._grid = np.linspace(emin, emax, res)
         self._mgrid = tuple(np.meshgrid(self._grid, self._grid))
-        self._interpolation = 'cubic'
+        self._method = method
 
         data = self._data_from_ndvar(ndvar)
         if im_kwa is not None:
@@ -464,7 +467,6 @@ class _plt_topomap(_utsnd._plt_im_array):
         else:
             self.im = None
 
-
         # draw flexible part
         self._data = data
         self._draw_contours()
@@ -472,22 +474,20 @@ class _plt_topomap(_utsnd._plt_im_array):
     def _data_from_ndvar(self, ndvar):
         v = ndvar.get_data(('sensor',))
         locs = ndvar.sensor.get_locs_2d(self._proj)
-        if self._interpolation == 'spline':
-            tck = interpolate.bisplrep(locs[:, 1], locs[:, 0], v, kx=5, ky=5)
+        if self._method == 'spline':
+            k = int(floor(sqrt(len(locs)))) - 1
+            tck = interpolate.bisplrep(locs[:, 1], locs[:, 0], v, kx=k, ky=k)
             return interpolate.bisplev(self._grid, self._grid, tck)
         else:
             isnan = np.isnan(v)
             if np.any(isnan):
-                nanmap = interpolate.griddata(locs, isnan, self._mgrid,
-                                              method=self._interpolation)
+                nanmap = interpolate.griddata(locs, isnan, self._mgrid, self._method)
                 mask = nanmap > 0.5
                 v = np.where(isnan, 0, v)
-                vmap = interpolate.griddata(locs, v, self._mgrid,
-                                            method=self._interpolation)
+                vmap = interpolate.griddata(locs, v, self._mgrid, self._method)
                 np.place(vmap, mask, np.NaN)
                 return vmap
-            return interpolate.griddata(locs, v, self._mgrid,
-                                        method=self._interpolation)
+            return interpolate.griddata(locs, v, self._mgrid, self._method)
 
 
 class _ax_topomap(_utsnd._ax_im_array):
