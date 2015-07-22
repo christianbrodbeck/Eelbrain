@@ -108,7 +108,8 @@ class Notifier(object):
 
             # traceback
             tb_items = traceback.format_tb(traceback_)
-            tb_items.append("%s: %s\n" % (error, value))
+            error_message = "%s: %s\n" % (error, value)
+            tb_items.append(error_message)
             tb_str = '\n'.join(tb_items)
             info.append(tb_str)
 
@@ -121,6 +122,7 @@ class Notifier(object):
             # drop into pdb
             if self.debug:
                 traceback.print_exc()
+                print error_message
                 pdb.post_mortem(traceback_)
         else:
             event = '{host} finished {task}'.format(host=host, task=self.name)
