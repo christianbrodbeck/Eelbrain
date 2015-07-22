@@ -4293,8 +4293,9 @@ class MneExperiment(FileTree):
             Field over which to alternate rows (default 'subject').
         count : bool
             Add a column with a number for each line (default True).
-        present : str
-            String to display when a given file is present (default 'X').
+        present : 'time' | 'date' | str
+            String to display when a given file is present. 'time' to use last
+            modification date and time (default); 'date' for date only.
         absent : str
             String to display when a given file is absent (default '-').
         others :
@@ -4302,21 +4303,21 @@ class MneExperiment(FileTree):
 
         Examples
         --------
-        >>> e.show_file_status('raw-file')
-            Subject   Raw-file
-        ----------------------
-        0   A0005     -
-        1   A0008     X
-        2   A0014     X
-        3   A0032     X
+        >>> e.show_file_status('rej-file')
+             Subject   Rej-file
+        --------------------------------
+         0   A0005     07/22/15 13:03:08
+         1   A0008     07/22/15 13:07:57
+         2   A0028     07/22/15 13:22:04
+         3   A0048     07/22/15 13:25:29
         >>> e.show_file_status('rej-file', 'raw')
-            Subject   Clm   0.16-40   0-40   1-40
-        -----------------------------------------
-        0   A0005     -     -         -      -
-        1   A0008     -     -         -      -
-        2   A0014     -     -         -      -
-        3   A0032     -     -         -      -
-        """
+             Subject   0-40   0.1-40              1-40   Clm
+        ----------------------------------------------------
+         0   A0005     -      07/22/15 13:03:08   -      -
+         1   A0008     -      07/22/15 13:07:57   -      -
+         2   A0028     -      07/22/15 13:22:04   -      -
+         3   A0048     -      07/22/15 13:25:29   -      -
+         """
         return FileTree.show_file_status(self, temp, row, col, *args, **kwargs)
 
     def show_reg_params(self, asds=False, **kwargs):

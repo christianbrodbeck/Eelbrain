@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+from time import localtime, strftime
 from warnings import warn
 
 import numpy as np
@@ -908,7 +909,7 @@ class FileTree(TreeModel):
         file_paths = glob(pattern)
         return file_paths
 
-    def show_file_status(self, temp, row, col=None, count=True, present='X',
+    def show_file_status(self, temp, row, col=None, count=True, present='time',
                          absent='-', **kwargs):
         """Compile a table about the existence of files
 
@@ -922,14 +923,16 @@ class FileTree(TreeModel):
             Field over which to alternate columns (default is a single column).
         count : bool
             Add a column with a number for each line (default True).
-        present : str
-            String to display when a given file is present (default 'X').
+        present : 'time' | 'date' | str
+            String to display when a given file is present. 'time' to use last
+            modification date and time (default); 'date' for date only.
         absent : str
             String to display when a given file is absent (default '-').
         others :
             ``self.iter()`` kwargs.
         """
         if col is None:
+            col_v = (None,)
             ncol = 1
         else:
             col_v = self.get_field_values(col)
@@ -952,20 +955,22 @@ class FileTree(TreeModel):
             if count:
                 table.cell(i)
             table.cell(row_v)
-            exist = []
-            if col is None:
-                path = self.get(temp)
-                exist.append(os.path.exists(path))
-            else:
-                for v in col_v:
-                    path = self.get(temp, **{col: v})
-                    exist.append(os.path.exists(path))
-
-            for exists in exist:
-                if exists:
-                    table.cell(present)
+            for v in col_v:
+                if v is None:
+                    path = self.get(temp)
                 else:
-                    table.cell(absent)
+                    path = self.get(temp, **{col: v})
+
+                if os.path.exists(path):
+                    if present == 'time':
+                        r = strftime('%x %X', localtime(os.path.getmtime(path)))
+                    elif present == 'date':
+                        r = strftime('%x', localtime(os.path.getmtime(path)))
+                    else:
+                        r = present
+                else:
+                    r = absent
+                table.cell(r)
 
         return table
 
