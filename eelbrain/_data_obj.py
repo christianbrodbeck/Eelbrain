@@ -4277,11 +4277,11 @@ class Dataset(OrderedDict):
         return unicode(self).encode('utf-8')
 
     def __unicode__(self):
-        if sum(map(isuv, self.values())) == 0:
+        if sum(isuv(i) or isdatalist(i) for i in self.values()) == 0:
             return self.__repr__()
 
         maxn = preferences['dataset_str_n_cases']
-        txt = unicode(self.as_table(cases=maxn, fmt='%.5g', midrule=True))
+        txt = unicode(self.as_table(maxn, '%.5g', midrule=True, lfmt=True))
         if self.n_cases > maxn:
             note = "... (use .as_table() method to see the whole Dataset)"
             txt = os.linesep.join((txt, note))
@@ -4348,7 +4348,7 @@ class Dataset(OrderedDict):
 
     def as_table(self, cases=0, fmt='%.6g', sfmt='%s', sort=False, header=True,
                  midrule=False, count=False, title=None, caption=None,
-                 ifmt='%s', bfmt='%s'):
+                 ifmt='%s', bfmt='%s', lfmt=False):
         r"""
         Create an fmtxt.Table containing all Vars and Factors in the Dataset.
         Can be used for exporting in different formats such as csv.
@@ -4378,6 +4378,8 @@ class Dataset(OrderedDict):
             Formatting for integers (default ``'%s'``).
         bfmt : str
             Formatting for booleans (default ``'%s'``).
+        lfmt : bool
+            Include Datalists.
         """
         if cases < 1:
             cases = self.n_cases + cases
@@ -4386,7 +4388,7 @@ class Dataset(OrderedDict):
         else:
             cases = min(cases, self.n_cases)
 
-        keys = [k for k, v in self.iteritems() if isuv(v)]
+        keys = [k for k, v in self.iteritems() if isuv(v) or (lfmt and isdatalist(v))]
         if sort:
             keys = sorted(keys)
 
@@ -4402,6 +4404,8 @@ class Dataset(OrderedDict):
                 fmts.append(ifmt)
             elif isboolvar(v):
                 fmts.append(bfmt)
+            elif isdatalist(v):
+                fmts.append('dl')
             else:
                 fmts.append(fmt)
 
@@ -4421,9 +4425,11 @@ class Dataset(OrderedDict):
             if count:
                 table.cell(i)
 
-            for v, fmt_ in zip(values, fmts):
+            for v, fmt_ in izip(values, fmts):
                 if fmt_ is None:
                     table.cell(v.x[i])
+                elif fmt_ == 'dl':
+                    table.cell(v._item_repr(v[i]))
                 elif fmt_.endswith(('r', 's')):
                     table.cell(fmt_ % v[i])
                 else:
