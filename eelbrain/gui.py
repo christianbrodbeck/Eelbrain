@@ -86,6 +86,8 @@ def select_epochs(*args, **kwargs):
         i:
             Schedule the channel nearest to the pointer on the vertical for
             interpolation.
+        Shift-i:
+            Open dialog to enter channels for interpolation.
         t:
             Topomap plot of the currently displayed time point.
         u:

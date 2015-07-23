@@ -511,6 +511,12 @@ class Model(object):
         action = ChangeAction(desc, i, old_accept, state, old_tag, tag)
         self.history.do(action)
 
+    def set_interpolation(self, case, ch_names):
+        action = ChangeAction("Epoch %s interpolate %r" % (case, ', '.join(ch_names)),
+                              case, old_interpolate=self.doc.interpolate[case],
+                              new_interpolate=ch_names)
+        self.history.do(action)
+
     def toggle_interpolation(self, case, ch_name):
         old_interpolate = self.doc.interpolate[case]
         new_interpolate = old_interpolate[:]
@@ -795,6 +801,8 @@ class Frame(EelbrainFrame):  # control
             return
         elif event.key == 'i':
             self.ToggleChannelInterpolation(ax, event)
+        elif event.key == 'I':
+            self.OnSetInterpolation(ax.epoch_idx)
 
     def OnClear(self, event):
         self.model.clear()
@@ -884,7 +892,9 @@ class Frame(EelbrainFrame):  # control
         x = ax.xaxis.get_major_formatter().format_data(event.xdata)
         y = ax.yaxis.get_major_formatter().format_data(event.ydata)
         if ax.ax_idx >= 0:  # single trial plot
-            self.SetStatusText('Epoch %i,   x = %s, y = %s' % (ax.epoch_idx, x, y))
+            self.SetStatusText('Epoch %i,   x = %s, y = %s,   interpolate %s'
+                               % (ax.epoch_idx, x, y,
+                                  ', '.join(self.doc.interpolate[ax.epoch_idx])))
         elif ax.ax_idx == -1:  # mean plot
             self.SetStatusText("Page average,   x = %s, y = %s" % (x, y))
         else:
@@ -948,6 +958,30 @@ class Frame(EelbrainFrame):  # control
         dlg.Destroy()
         bad_channels = self.doc.epochs.sensor.dimindex(names)
         self.model.set_bad_channels(bad_channels)
+
+    def OnSetInterpolation(self, epoch):
+        "Show Dialog for channel interpolation for this epoch (index)"
+        old = self.doc.interpolate[epoch]
+        dlg = wx.TextEntryDialog(self, "Please enter channel names separated by "
+                                 "comma (e.g., \"MEG 003, MEG 010\"):", "Set "
+                                 "Channels for Interpolation", ', '.join(old))
+        while True:
+            if dlg.ShowModal() == wx.ID_OK:
+                try:
+                    names = filter(None, (s.strip() for s in dlg.GetValue().split(',')))
+                    new = self.doc.epochs.sensor._normalize_sensor_names(names)
+                    break
+                except ValueError as exception:
+                    msg = wx.MessageDialog(self, str(exception), "Invalid Entry",
+                                           wx.OK | wx.ICON_ERROR)
+                    msg.ShowModal()
+                    msg.Destroy()
+            else:
+                dlg.Destroy()
+                return
+        dlg.Destroy()
+        if new != old:
+            self.model.set_interpolation(epoch, new)
 
     def OnSetLayout(self, event):
         caption = "Set Plot Layout"

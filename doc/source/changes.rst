@@ -8,6 +8,8 @@ New in 0.18
 -----------
 
 * API: The first argument for :meth:`MneExperiment.plot_annot` is now `parc`.
+* Rejection-GUI (:func:`gui.select_epochs`): Press Shift-i when hovering over
+  an epoch to enter channels for interpolation manually.
 * :meth:`MneExperiment.show_file_status` now shows the last modification date
   of each file.
 * Under OS X 10.8 and newer running code under a notifier statement now
