@@ -160,7 +160,8 @@ class Document(object):
                 raise ValueError("Dataset contains channel interpolation "
                                  "information but interpolation is turned off")
         else:
-            interpolate = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS)
+            interpolate = Datalist([[]] * ds.n_cases, INTERPOLATE_CHANNELS,
+                                   'strlist')
 
         if isinstance(blink, basestring):
             if ds is not None:
@@ -359,7 +360,8 @@ class Document(object):
                     raise RuntimeError("File with interpolation when "
                                        "Interpolation is disabled")
         else:
-            interpolate = Datalist([[]] * self.n_epochs, INTERPOLATE_CHANNELS)
+            interpolate = Datalist([[]] * self.n_epochs, INTERPOLATE_CHANNELS,
+                                   'strlist')
 
         if BAD_CHANNELS in ds.info:
             bad_channels = self.epochs.sensor.dimindex(ds.info[BAD_CHANNELS])

@@ -254,6 +254,13 @@ def test_datalist():
     assert_is_instance(x, Datalist)
     eq_(x, [2.0, 7.0])
 
+    # repr
+    dl = Datalist([['a', 'b'], [], ['a']])
+    eq_(str(dl), "[['a', 'b'], [], ['a']]")
+    dl = Datalist([['a', 'b'], [], ['a']], fmt='strlist')
+    eq_(str(dl), '[[a, b], [], [a]]')
+    eq_(str(dl[:2]), '[[a, b], []]')
+
 
 def test_dataset_combining():
     "Test Dataset combination methods"

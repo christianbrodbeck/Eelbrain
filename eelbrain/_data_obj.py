@@ -578,7 +578,7 @@ def _empty_like(obj, n=None, name=None):
         shape = (n,) + obj.shape[1:]
         return NDVar(np.empty(shape) * np.NaN, dims=obj.dims, name=name)
     elif isdatalist(obj):
-        return Datalist([None] * n, name=name)
+        return Datalist([None] * n, name, obj._fmt)
     else:
         err = "Type not supported: %s" % type(obj)
         raise TypeError(err)
@@ -1140,7 +1140,7 @@ def combine(items, name=None, check_dims=True, fill_in_missing=False):
         dims = ('case',) + dims
         return NDVar(x, dims, _merge_info(items), name)
     elif stype == 'list':
-        return Datalist(sum(items, []), name=name)
+        return Datalist(sum(items, []), name, items[0]._fmt)
     else:
         raise RuntimeError("combine with stype = %r" % stype)
 
@@ -3769,6 +3769,17 @@ def extrema(x, axis=0):
 class Datalist(list):
     """:py:class:`list` subclass for including lists in in a Dataset.
 
+    Parameters
+    ----------
+    items : sequence
+        Content for the Datalist.
+    name : str
+        Name of the Datalist.
+    fmt : 'repr' | 'str' | 'strlist'
+        How to format items when converting Datasets to tables (default 'repr'
+        uses the normal object representation).
+
+
     Notes
     -----
     Modifications:
@@ -3777,11 +3788,27 @@ class Datalist(list):
        and other data objects
      - blocks methods for in place modifications that would change the lists's
        length
+
+
+    Examples
+    --------
+    Concise string representation:
+
+    >>> l = [['a', 'b'], [], ['a']]
+    >>> print Datalist(l)
+    [['a', 'b'], [], ['a']]
+    >>> print Datalist(l, fmt='strlist')
+    [[a, b], [], [a]]
     """
     _stype = 'list'
+    _fmt = 'repr'  # for backwards compatibility with old pickles
 
-    def __init__(self, items=None, name=None):
+    def __init__(self, items=None, name=None, fmt='repr'):
+        if fmt not in ('repr', 'str', 'strlist'):
+            raise ValueError("fmt=%s" % repr(fmt))
+
         self.name = name
+        self._fmt = fmt
         if items:
             super(Datalist, self).__init__(items)
         else:
@@ -3791,32 +3818,46 @@ class Datalist(list):
         args = super(Datalist, self).__repr__()
         if self.name is not None:
             args += ', %s' % repr(self.name)
+        if self._fmt != 'repr':
+            args += ', fmt=%s' % repr(self._fmt)
         return "Datalist(%s)" % args
+
+    def __str__(self):
+        return "[%s]" % ', '.join(self._item_repr(i) for i in self)
+
+    def _item_repr(self, item):
+        if self._fmt == 'str':
+            return str(item)
+        elif self._fmt == 'repr':
+            return repr(item)
+        elif self._fmt == 'strlist':
+            return "[%s]" % ', '.join(item)
+        else:
+            raise RuntimeError("Datalist._fmt=%s" % repr(self._fmt))
 
     def __getitem__(self, index):
         if isinstance(index, int):
             return list.__getitem__(self, index)
         elif isinstance(index, slice):
-            return Datalist(list.__getitem__(self, index))
+            return Datalist(list.__getitem__(self, index), fmt=self._fmt)
 
         index = np.asarray(index)
         if index.dtype.kind == 'b':
             if len(index) != len(self):
                 raise ValueError("Boolean index needs to have same length as "
                                  "Datalist")
-            return Datalist(self[i] for i in np.flatnonzero(index))
+            return Datalist((self[i] for i in np.flatnonzero(index)), fmt=self._fmt)
         elif index.dtype.kind == 'i':
-            return Datalist(self[i] for i in index)
+            return Datalist((self[i] for i in index), fmt=self._fmt)
         else:
             err = ("Unsupported type of index for Datalist: %r" % index)
             raise TypeError(err)
 
     def __getslice__(self, i, j):
-        return Datalist(list.__getslice__(self, i, j))
+        return Datalist(list.__getslice__(self, i, j), fmt=self._fmt)
 
     def __add__(self, other):
-        lst = super(Datalist, self).__add__(other)
-        return Datalist(lst)
+        return Datalist(super(Datalist, self).__add__(other), fmt=self._fmt)
 
     def compress(self, X, merge='mean'):
         "Deprecated. Use .aggregate()."
@@ -3854,7 +3895,7 @@ class Datalist(list):
                     raise ValueError("Invalid value for merge: %r" % merge)
                 x.append(xc)
 
-        return Datalist(x)
+        return Datalist(x, fmt=self._fmt)
 
     def __iadd__(self, other):
         return self + other
