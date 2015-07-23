@@ -272,10 +272,11 @@ class _Result(object):
     def info_list(self, computation=True):
         "List with information about the test"
         out = fmtxt.List("Mass-univariate statistics:")
+        out.add_item(self._name())
         dimnames = [dim.name for dim in self._dims]
-        out.add_item("Over %s" % enumeration(dimnames))
+        dimlist = out.add_sublist("Over %s" % enumeration(dimnames))
         if 'time' in dimnames:
-            out.add_item("Time interval: %s." % format_timewindow(self))
+            dimlist.add_item("Time interval: %s." % format_timewindow(self))
 
         cdist = self._first_cdist
         if cdist is None:
