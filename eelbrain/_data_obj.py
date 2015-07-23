@@ -3767,11 +3767,16 @@ def extrema(x, axis=0):
 
 
 class Datalist(list):
-    """
-    :py:class:`list` subclass for including lists in in a Dataset.
+    """:py:class:`list` subclass for including lists in in a Dataset.
 
-    The subclass adds certain methods that makes indexing behavior more
-    similar to numpy and other data objects.
+    Notes
+    -----
+    Modifications:
+
+     - adds certain methods that makes indexing behavior more similar to numpy
+       and other data objects
+     - blocks methods for in place modifications that would change the lists's
+       length
     """
     _stype = 'list'
 
@@ -3850,6 +3855,24 @@ class Datalist(list):
                 x.append(xc)
 
         return x
+
+    def __iadd__(self, other):
+        return self + other
+
+    def append(self, p_object):
+        raise TypeError("Datalist has fixed length to conform to Dataset")
+
+    def extend(self, iterable):
+        raise TypeError("Datalist has fixed length to conform to Dataset")
+
+    def insert(self, index, p_object):
+        raise TypeError("Datalist has fixed length to conform to Dataset")
+
+    def pop(self, index=None):
+        raise TypeError("Datalist has fixed length to conform to Dataset")
+
+    def remove(self, value):
+        raise TypeError("Datalist has fixed length to conform to Dataset")
 
 
 legal_dataset_key_re = re.compile("[_A-Za-z][_a-zA-Z0-9]*$")
