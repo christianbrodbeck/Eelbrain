@@ -194,6 +194,9 @@ class Document(object):
         self.bad_channels = []
         self.good_channels = None
 
+        # cache
+        self._good_sensor_indices = {}
+
         # publisher
         self._bad_chs_change_subscriptions = []
         self._case_change_subscriptions = []
@@ -223,6 +226,20 @@ class Document(object):
         else:
             return self.epochs
 
+    def good_sensor_index(self, case):
+        "Index of non-interpolated sensor relative to good sensors"
+        if self.interpolate[case]:
+            key = frozenset(self.interpolate[case])
+            if key in self._good_sensor_indices:
+                return self._good_sensor_indices[key]
+            else:
+                out = np.ones(len(self.epochs.sensor), bool)
+                out[self.epochs.sensor.dimindex(self.interpolate[case])] = False
+                if self.good_channels is not None:
+                    out = out[self.good_channels]
+                self._good_sensor_indices[key] = out
+                return out
+
     def get_epoch(self, case, name):
         if self.bad_channels:
             return self.epochs.sub(case=case, sensor=self.good_channels, name=name)
@@ -251,6 +268,7 @@ class Document(object):
                                               indexes, True)
         else:
             self.good_channels = None
+        self._good_sensor_indices.clear()
         for callback in self._bad_chs_change_subscriptions:
             callback()
 
@@ -1434,18 +1452,22 @@ class Frame(EelbrainFrame):  # control
         if ax_index == -1:
             seg = self._mean_seg
             epoch_name = 'Page Average'
+            sensor_idx = None
         elif ax_index >= 0:
             epoch_idx = self._epoch_idxs[ax_index]
             epoch_name = 'Epoch %i' % epoch_idx
             seg = self._case_segs[ax_index]
+            sensor_idx = self.doc.good_sensor_index(epoch_idx)
         else:
             raise ValueError("ax_index needs to be >= -1, not %s" % ax_index)
 
         if time is not None:
             name = '%s, %.3f s' % (epoch_name, time)
-            seg = seg.sub(time=time, name=name)
-
-        return seg
+            return seg.sub(time=time, sensor=sensor_idx, name=name)
+        elif sensor_idx is None:
+            return seg
+        else:
+            return seg.sub(sensor=sensor_idx)
 
 
 class TerminalInterface(object):
