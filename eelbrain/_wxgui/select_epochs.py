@@ -1320,7 +1320,9 @@ class Frame(EelbrainFrame):  # control
             h = _ax_bfly_epoch(ax, case, mark, state, **self._bfly_kwargs)
             # mark interpolated channels
             if self.doc.interpolate[epoch_idx] and not self._bfly_kwargs['plot_range']:
-                chs = case.sensor.dimindex(self.doc.interpolate[epoch_idx])
+                chs = [case.sensor.channel_idx[ch]
+                       for ch in self.doc.interpolate[epoch_idx]
+                       if ch in case.sensor.channel_idx]
                 h.set_marked(INTERPOLATE_CHANNELS, chs)
             # mark eye tracker artifacts
             if self.doc.blink is not None:
