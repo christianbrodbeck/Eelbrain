@@ -3840,7 +3840,7 @@ class Datalist(list):
             err = "Length mismatch: %i (Var) != %i (X)" % (len(self), len(X))
             raise ValueError(err)
 
-        x = Datalist()
+        x = []
         for cell in X.cells:
             x_cell = self[X == cell]
             n = len(x_cell)
@@ -3854,7 +3854,7 @@ class Datalist(list):
                     raise ValueError("Invalid value for merge: %r" % merge)
                 x.append(xc)
 
-        return x
+        return Datalist(x)
 
     def __iadd__(self, other):
         return self + other
@@ -4305,10 +4305,9 @@ class Dataset(OrderedDict):
         self[name] = v
         return v
 
-    def as_table(self, cases=0, fmt='%.6g', sfmt='%s', match=None,
-                 sort=False, header=True, midrule=False, count=False,
-                 title=None, caption=None, ifmt='%s', bfmt='%s',
-                 f_fmt='deprecated'):
+    def as_table(self, cases=0, fmt='%.6g', sfmt='%s', sort=False, header=True,
+                 midrule=False, count=False, title=None, caption=None,
+                 ifmt='%s', bfmt='%s'):
         r"""
         Create an fmtxt.Table containing all Vars and Factors in the Dataset.
         Can be used for exporting in different formats such as csv.
@@ -4318,20 +4317,18 @@ class Dataset(OrderedDict):
         cases : int
             number of cases to include (0 includes all; negative number works
             like negative indexing).
-        count : bool
-            Add an initial column containing the case number.
         fmt : str
             Format string for float variables (default ``'%.6g'``).
         sfmt : str | None
             Formatting for strings (None -> code; default ``'%s'``).
-        match : None | Factor
-            Create repeated-measurement table.
+        sort : bool
+            Sort the columns alphabetically.
         header : bool
             Include the varibale names as a header row.
         midrule : bool
             print a midrule after table header.
-        sort : bool
-            Sort the columns alphabetically.
+        count : bool
+            Add an initial column containing the case number.
         title : None | str
             Title for the table.
         caption : None | str
@@ -4341,11 +4338,6 @@ class Dataset(OrderedDict):
         bfmt : str
             Formatting for booleans (default ``'%s'``).
         """
-        if f_fmt != 'deprecated':
-            msg = "The f_fmt parameter is deprecated. Use sfmt instead."
-            warn(msg, DeprecationWarning)
-            sfmt = f_fmt
-
         if cases < 1:
             cases = self.n_cases + cases
             if cases < 0:
