@@ -942,12 +942,12 @@ class FileTree(TreeModel):
         table = fmtxt.Table('r' * bool(count) + 'l' * (ncol + 1))
         if count:
             table.cell()
-        table.cell(row.capitalize())
+        table.cell(row)
         if col is None:
-            table.cell(temp.capitalize())
+            table.cell(temp)
         else:
             for name in col_v:
-                table.cell(name.capitalize())
+                table.cell(name)
         table.midrule()
 
         # body
