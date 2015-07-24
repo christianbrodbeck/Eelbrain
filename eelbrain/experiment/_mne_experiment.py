@@ -2119,7 +2119,7 @@ class MneExperiment(FileTree):
                            "events than the data. Something went wrong...")
                     raise RuntimeError(err)
 
-            if rej_params['interpolation'] and INTERPOLATE_CHANNELS in ds_sel:
+            if rej_params.get('interpolation', True) and INTERPOLATE_CHANNELS in ds_sel:
                 ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
                 ds.info[INTERPOLATE_CHANNELS] = True
             else:
