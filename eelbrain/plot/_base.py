@@ -1060,7 +1060,7 @@ class _EelFigure(object):
         return image
 
     def save(self, *args, **kwargs):
-        "Short-cut for Matplotlib's figure.savefig()"
+        "Short-cut for Matplotlib's :meth:`~matplotlib.figure.Figure.savefig()`"
         self.figure.savefig(*args, **kwargs)
 
     def set_xtick_rotation(self, rotation):
