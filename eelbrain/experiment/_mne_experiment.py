@@ -1708,7 +1708,7 @@ class MneExperiment(FileTree):
                 ds = self.load_evoked(baseline=baseline, ndvar=False, cat=cat)
                 dss.append(ds)
 
-            ds = combine(dss)
+            ds = combine(dss, fill_in_missing=True)
 
             # check consistency in MNE objects' number of time points
             lens = [len(e.times) for e in ds['evoked']]
