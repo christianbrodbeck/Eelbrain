@@ -197,17 +197,26 @@ def test_combine():
     "Test combine()"
     ds1 = datasets.get_uts()
     ds2 = datasets.get_uts()
+    n = ds1.n_cases
     ds = combine((ds1, ds2))
-    assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:])
+    assert_array_equal(ds2['Y'].x, ds['Y'].x[n:])
 
     # combine Datasets with unequal keys
     del ds1['Y']
+    # raise
     assert_raises(KeyError, combine, (ds1, ds2))
     assert_raises(KeyError, combine, (ds2, ds1))
+    # drop
     del ds2['YCat']
-    ds = combine((ds1, ds2), fill_in_missing=True)
-    assert_array_equal(ds2['Y'].x, ds['Y'].x[ds1.n_cases:])
-    ok_(np.all(ds1['YCat'] == ds['YCat'][:ds1.n_cases]))
+    ds = combine((ds1, ds2), incomplete='drop')
+    ok_('Y' not in ds)
+    ok_('YCat' not in ds)
+    # fill in
+    ds = combine((ds1, ds2), incomplete='fill in')
+    assert_array_equal(ds['Y'].x[n:], ds2['Y'].x)
+    assert_array_equal(np.isnan(ds['Y'].x[:n]), True)
+    assert_array_equal(ds['YCat'][:n], ds1['YCat'])
+    assert_array_equal(ds['YCat'][n:], '')
 
     # invalid input
     assert_raises(ValueError, combine, ())

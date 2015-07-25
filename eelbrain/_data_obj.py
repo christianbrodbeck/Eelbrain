@@ -1031,7 +1031,8 @@ class Celltable(object):
         return zip(self.cells, self.get_statistic(func=func, a=a, **kwargs))
 
 
-def combine(items, name=None, check_dims=True, fill_in_missing=False):
+def combine(items, name=None, check_dims=True, incomplete='raise',
+            fill_in_missing=None):
     """Combine a list of items of the same type into one item.
 
     Parameters
@@ -1046,17 +1047,31 @@ def combine(items, name=None, check_dims=True, fill_in_missing=False):
         For NDVars, check dimensions for consistency between items (e.g.,
         channel locations in a Sensor dimension). Default is ``True``. Set to
         ``False`` to ignore non-fatal mismatches.
-    fill_in_missing : bool
-        When combining Datasets, variables that are missing from some of the
-        input Datasets are retained and missing values are filled in with empty
-        values ('' for factors, NaN for variables). The default behavior is to
-        raise a KeyError.
+    incomplete : "raise" | "drop" | "fill in"
+        Only applies when combining Datasets: how to handle variables that are
+        missing from some of the input Datasets. With ``"raise"`` (default), a
+        KeyError to be raised. With ``"drop"``, partially missing variables are
+        dropped. With ``"fill in"``, they are retained and missing values are
+        filled in with empty values (``""`` for factors, ``NaN`` for variables).
 
     Notes
     -----
     The info dict inherits only entries that are equal (``x is y or
     np.array_equal(x, y)``) for all items.
     """
+    if fill_in_missing is not None:
+        warn("The fill_in_missing argument to combine() is deprecated and will "
+             "be removed after version 0.19. Use the new incomplete argument "
+             "instead.", DeprecationWarning)
+        incomplete = 'fill in' if fill_in_missing else 'raise'
+    elif not isinstance(incomplete, basestring):
+        warn("The fill_in_missing argument to combine() has ben renamed to "
+             "`incomplete` and should be a string (got %s). After version 0.19 "
+             "this will raise an error" % repr(incomplete), DeprecationWarning)
+        incomplete = 'fill in' if incomplete else 'raise'
+    elif incomplete not in ('raise', 'drop', 'fill in'):
+        raise ValueError("incomplete=%s" % repr(incomplete))
+
     # check input
     if len(items) == 0:
         raise ValueError("combine() called with empty sequence %s" % repr(items))
@@ -1080,7 +1095,7 @@ def combine(items, name=None, check_dims=True, fill_in_missing=False):
     if stype == 'dataset':
         out = Dataset(name=name, info=_merge_info(items))
         item0 = items[0]
-        if fill_in_missing:
+        if incomplete == 'fill in':
             # find all keys and data types
             keys = item0.keys()
             sample = dict(item0)
@@ -1096,10 +1111,16 @@ def combine(items, name=None, check_dims=True, fill_in_missing=False):
                 out[key] = combine(pieces, check_dims=check_dims)
         else:
             keys = set(item0)
-            if any(set(item) != keys for item in items[1:]):
-                raise KeyError("Datasets have unequal keys. Combine with "
-                               "fill_in_missing=True to combine anyways.")
-            for key in item0:
+            if incomplete == 'raise':
+                if any(set(item) != keys for item in items[1:]):
+                    raise KeyError("Datasets have unequal keys. Combine with "
+                                   "fill_in_missing=True to combine anyways.")
+                out_keys = item0
+            else:
+                keys.intersection_update(*items[1:])
+                out_keys = (k for k in item0 if k in keys)
+
+            for key in out_keys:
                 out[key] = combine([ds[key] for ds in items])
         return out
     elif stype == 'var':
