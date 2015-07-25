@@ -1726,12 +1726,9 @@ class MneExperiment(FileTree):
             baseline = self._epochs[self.get('epoch')]['baseline']
 
         if group is not None:
-            dss = []
-            for _ in self.iter(group=group):
-                ds = self.load_evoked(None, baseline, False, cat, decim)
-                dss.append(ds)
-
-            ds = combine(dss)
+            dss = [self.load_evoked(None, baseline, False, cat, decim)
+                   for _ in self.iter(group=group)]
+            ds = combine(dss, incomplete='drop')
 
             # check consistency in MNE objects' number of time points
             lens = [len(e.times) for e in ds['evoked']]
