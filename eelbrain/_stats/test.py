@@ -263,14 +263,19 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
         Dependent variable
     X : None | categorial
         Perform tests separately for all categories in X.
-    against : scalar | str
+    against : scalar | str | tuple
         Baseline against which to test (scalar or category in X).
+    match : None | Factor
+        Repeated measures factor.
     sub : index
         Only use part of the data.
     corr : None | 'hochberg' | 'bonferroni' | 'holm'
         Method for multiple comparison correction (default 'hochberg').
     title : str
         Title for the table.
+    ds : None | Dataset
+        If a Dataset is given, all data-objects can be specified as names of
+        Dataset variables
 
     Returns
     -------
@@ -281,31 +286,33 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
 
     par = True
     if par:
-        title_desc = "t-tests against %s" % against
+        title_desc = "t-tests against %s" % cellname(against)
         statistic_name = 't'
     else:
         raise NotImplementedError
 
-    names = []; ts = []; dfs = []; ps = []
+    names = []
+    ts = []
+    dfs = []
+    ps = []
 
-    if isinstance(against, str):
-        k = len(ct.indexes) - 1
-        assert against in ct.cells
-        for idx in ct.indexes:
-            label = ct.cells[idx]
-            if against == label:
-                baseline_id = idx
-                baseline = ct.data[idx]
+    if isinstance(against, (str, tuple)):
+        if against not in ct.cells:
+            x_repr = 'X' if ct.X.name is None else repr(ct.X.name)
+            raise ValueError("agains=%r: %r is not a cell in %s"
+                             % (against, against, x_repr))
+        k = len(ct.cells) - 1
+        baseline = ct.data[against]
 
-        for idx in ct.indexes:
-            if idx == baseline_id:
+        for cell in ct.cells:
+            if cell == against:
                 continue
-            names.append(ct.cells[idx])
-            if (ct.within is not False) and ct.within[idx, baseline_id]:
-                t, p = scipy.stats.ttest_rel(baseline, ct.data[idx])
+            names.append(cell)
+            if match is not None and ct.within[cell, against]:
+                t, p = scipy.stats.ttest_rel(baseline, ct.data[cell])
                 df = len(baseline) - 1
             else:
-                data = ct.data[idx]
+                data = ct.data[cell]
                 t, p = scipy.stats.ttest_ind(baseline, data)
                 df = len(baseline) + len(data) - 2
             ts.append(t)
@@ -383,8 +390,8 @@ def pairwise(Y, X, match=None, sub=None, ds=None,  # data in
     sub : None | index-array
         Perform tests with a subset of the data.
     ds : None | Dataset
-        If a Dataset is specified, all data-objects can be specified as
-        names of Dataset variables
+        If a Dataset is given, all data-objects can be specified as names of
+        Dataset variables
 
     Returns
     -------

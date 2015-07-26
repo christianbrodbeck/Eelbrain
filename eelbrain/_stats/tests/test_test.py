@@ -19,3 +19,5 @@ def test_ttest():
     print test.ttest('fltvar', 'A', ds=ds)
     print test.ttest('fltvar', 'A%B', ds=ds)
     print test.ttest('fltvar', 'A', match='rm', ds=ds)
+    print test.ttest('fltvar', 'A', 'a1', match='rm', ds=ds)
+    print test.ttest('fltvar', 'A%B', ('a1', 'b1'), match='rm', ds=ds)
