@@ -95,6 +95,7 @@ THRESHOLD = wx.NewId()
 UNDO = wx.NewId()
 
 WINDOW_MINIMIZE = wx.NewId()
+WINDOW_TILE = wx.NewId()
 WINDOW_ZOOM = wx.NewId()
 
 YIELD_TO_TERMINAL = wx.NewId()

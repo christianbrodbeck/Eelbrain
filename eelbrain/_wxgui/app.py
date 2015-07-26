@@ -64,6 +64,7 @@ class App(wx.App):
         m.Append(ID.WINDOW_MINIMIZE, '&Minimize \tCtrl+M')
         m.Append(ID.WINDOW_ZOOM, '&Zoom')
         m.AppendSeparator()
+        m.Append(ID.WINDOW_TILE, '&Tile')
         self.window_menu_window_items = []
 
         # Help Menu
@@ -104,6 +105,7 @@ class App(wx.App):
         self.Bind(wx.EVT_MENU, self.OnTogglePlotRange, id=ID.PLOT_RANGE)
         self.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
         self.Bind(wx.EVT_MENU, self.OnWindowMinimize, id=ID.WINDOW_MINIMIZE)
+        self.Bind(wx.EVT_MENU, self.OnWindowTile, id=ID.WINDOW_TILE)
         self.Bind(wx.EVT_MENU, self.OnWindowZoom, id=ID.WINDOW_ZOOM)
         self.Bind(wx.EVT_MENU, self.OnQuit, id=wx.ID_EXIT)
         self.Bind(wx.EVT_MENU, self.OnYieldToTerminal, id=ID.YIELD_TO_TERMINAL)
@@ -482,6 +484,23 @@ class App(wx.App):
         id_ = event.GetId()
         window = wx.FindWindowById(id_)
         window.Raise()
+
+    def OnWindowTile(self, event):
+        frames = sorted(wx.GetTopLevelWindows(), lambda x, y: x.Position[0] < y.Position[0])
+        dx, dy = wx.DisplaySize()
+        x = 0
+        y = 0
+        y_next = 0
+        for frame in frames:
+            sx, sy = frame.Size
+            if x and x + sx > dx:
+                if y_next > dy:
+                    return
+                x = 0
+                y = y_next
+            frame.Position = (x, y)
+            y_next = max(y_next, y + sy)
+            x += sx
 
     def OnWindowZoom(self, event):
         frame = self._get_active_frame()
