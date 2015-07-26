@@ -410,6 +410,11 @@ class TopoButterfly(_EelFigure):
             p.add_contour(meas, level, color)
         self.draw()
 
+    def get_vlim(self):
+        "Retrieve ``(vmax, vmin)`` tuple of the first plot"
+        p = self.bfly_plots[0]
+        return p.vmax, p.vmin
+
     def set_cmap(self, cmap):
         "Change the colormap"
         for p in self.topo_plots:
@@ -419,7 +424,7 @@ class TopoButterfly(_EelFigure):
     def set_vlim(self, vmax=None, vmin=None):
         """Change the range of values displayed in butterfly-plots.
         """
-        for topo, bfly in zip(self.topo_plots, self.bfly_plots):
+        for topo, bfly in izip(self.topo_plots, self.bfly_plots):
             topo.set_vlim(vmax, vmin=vmin)
             kwa = topo.layers[0].get_kwargs()
             bfly.set_vlim(kwa['vmax'], vmin=kwa['vmin'])

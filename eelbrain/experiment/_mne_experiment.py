@@ -3983,9 +3983,19 @@ class MneExperiment(FileTree):
             ds = self.load_evoked(baseline=baseline)
             return plot.TopoButterfly(y, model, ds=ds, title=subject, run=run)
         elif separate:
+            plots = []
+            vlim = []
             for subject in self.iter(group=group):
                 ds = self.load_evoked(baseline=baseline)
-                plot.TopoButterfly(y, model, ds=ds, title=subject, run=False)
+                p = plot.TopoButterfly(y, model, ds=ds, title=subject, run=False)
+                plots.append(p)
+                vlim.append(p.get_vlim())
+
+            # same vmax for all plots
+            vlim = np.array(vlim)
+            vmax = np.abs(vlim, out=vlim).max()
+            for p in plots:
+                p.set_vlim(vmax)
 
             if run or plot._base.do_autorun():
                 gui.run()
