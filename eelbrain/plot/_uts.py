@@ -239,6 +239,35 @@ class UTSStat(_EelFigure, LegendMixin):
             enable = not all(p.cluster_plt.clusters is None for p in self._plots)
             self._cluster_btn.Enable(enable)
 
+    def add_vspan(self, xmin, xmax, axes=None, *args, **kwargs):
+        """Draw a vertical bar on all axes
+
+        Parameters
+        ----------
+        xmin : scalar
+            Start value on the x-axis.
+        xmax : scalar
+            Last value on the x-axis.
+        axes : int | list of int
+            Which axes to mark (default is all axes).
+        ...
+
+
+        Notes
+        -----
+        See Matplotlib's :meth:`matplotlib.axes.Axes.axvspan` for more
+        arguments.
+        """
+        if axes is None:
+            axes = self._axes
+        elif isinstance(axes, int):
+            axes = (self._axes[axes],)
+        else:
+            axes = [self._axes[i] for i in axes]
+
+        for ax in axes:
+            ax.axvspan(xmin, xmax, *args, **kwargs)
+
     def set_clusters(self, clusters, pmax=0.05, ptrend=0.1, color='.7', ax=None):
         """Add clusters from a cluster test to the plot (as shaded area).
 
