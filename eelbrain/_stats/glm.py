@@ -782,8 +782,10 @@ class incremental_F_test:
         self.lm0 = lm0
         self.lm1 = lm1
         self.SS = SS_diff
-        self.df = df_diff
         self.MS = MS_diff
+        self.df = df_diff
+        self.MSe = MS_e
+        self.dfe = df_e
         self.F = F
         self.p = p
         self.name = name
@@ -880,14 +882,14 @@ class ANOVA(object):
 
         # decide which E(MS) model to use
         if x.df_error == 0:
-            rfx = 1
+            is_mixed = True
             fx_desc = 'Mixed'
         elif x.df_error > 0:
             if hasrandom(x):
                 err = ("Models containing random effects need to be fully "
                        "specified.")
                 raise NotImplementedError(err)
-            rfx = 0
+            is_mixed = False
             fx_desc = 'Fixed'
         else:
             raise ValueError("Model Overdetermined")
@@ -905,7 +907,7 @@ class ANOVA(object):
             self.names.append(x.name)
             self.residuals = lm1.SS_res, lm1.df_res, lm1.MS_res
         else:
-            if rfx:
+            if is_mixed:
                 pass  # <- Hopkins
             else:
                 full_lm = LM(y, x)
@@ -937,7 +939,7 @@ class ANOVA(object):
                 lm0 = lms[i0]
                 lm1 = lms[i1]
 
-                if rfx:
+                if is_mixed:
                     # find E(MS)
                     EMS_effects = _find_hopkins_ems(e_test, x)
 
@@ -962,8 +964,10 @@ class ANOVA(object):
                     res = incremental_F_test(lm1, lm0, MS_e=MS_e, df_e=df_e, name=name)
                     self.f_tests.append(res)
                     self.names.append(name)
-            if not rfx:
+            if not is_mixed:
                 self.residuals = SS_e, df_e, MS_e
+
+        self._is_mixed = is_mixed
 
     def __repr__(self):
         return "anova(%s, %s)" % (self.y.name, self.x.name)
@@ -984,14 +988,14 @@ class ANOVA(object):
             Anova table.
         """
         # table head
-        table = fmtxt.Table('l' + 'r' * 5)
+        table = fmtxt.Table('l' + 'r' * (5 + 2 * self._is_mixed))
         if self.title:
             table.title(self.title)
         table.cell()
-        headers = ["SS", "df", "MS"]
-        headers += ["F", "p"]
-        for hd in headers:
-            table.cell(hd, r"\textbf", just='c')
+        table.cells("SS", "df", "MS")
+        if self._is_mixed:
+            table.cells(fmtxt.symbol('MS', 'denom'), fmtxt.symbol('df', 'denom'))
+        table.cells("F", "p")
         table.midrule()
 
         # table body
@@ -1000,13 +1004,16 @@ class ANOVA(object):
             table.cell(fmtxt.stat(f_test.SS))
             table.cell(f_test.df)
             table.cell(fmtxt.stat(f_test.MS))
+            if self._is_mixed:
+                table.cell(fmtxt.stat(f_test.MSe))
+                table.cell(f_test.dfe)
+
             if f_test.F:
                 stars = test.star(f_test.p)
                 table.cell(fmtxt.stat(f_test.F, stars=stars))
                 table.cell(fmtxt.p(f_test.p))
             else:
-                table.cell()
-                table.cell()
+                table.endline()
 
         # residuals
         if self.x.df_error > 0:
