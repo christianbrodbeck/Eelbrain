@@ -612,7 +612,8 @@ def align(d1, d2, i1='index', i2=None, out='data'):
 
     Examples
     --------
-    see examples/datasets/align.py
+    See `examples/datasets/align.py <https://github.com/christianbrodbeck/
+    Eelbrain/blob/master/examples/datasets/align.py>`_.
     """
     if i2 is None and isinstance(i1, basestring):
         i2 = i1
@@ -5668,7 +5669,7 @@ class Model(object):
             Number of cases (lines) after which to truncate the table (default
             is all cases).
 
-        Retrurns
+        Returns
         --------
         table : FMText Table
             The full model as a table.

@@ -59,7 +59,9 @@ class UTSStat(_EelFigure, LegendMixin):
     ylabel : str | None
         Y-axis labels. By default the label is inferred from the data.
     invy : bool
-        invert the y axis
+        Invert the y axis (if ``bottom`` and/or ``top`` are specified explicitly
+        they take precedence; an inverted y-axis can also be produced by
+        specifying ``bottom > top``).
     bottom, top | None | scalar
         Set an absolute range for the plot's y axis.
     hline : None | scalar | (value, kwarg-dict) tuple

@@ -377,8 +377,8 @@ class ColorBar(_EelFigure):
     orientation : 'horizontal' | 'vertical'
         Orientation of the bar (default is horizontal).
     unit : str
-        Unit for the axis to determine tick labels (for example, u'µV' to label
-        0.000001 as '1').
+        Unit for the axis to determine tick labels (for example, ``u'µV'`` to
+        label 0.000001 as '1').
     """
     def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
