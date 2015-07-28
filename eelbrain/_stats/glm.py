@@ -831,8 +831,6 @@ class ANOVA(object):
         Only use part of the data.
     title : str
         Title for the results table (optional).
-    ems : bool | None
-        display source of E(MS) for F-Tests (True/False; None = use default)
     ds : Dataset
         Dataset to use data from.
 
@@ -841,18 +839,18 @@ class ANOVA(object):
     The objects' string representation is the
     anova table, so the model can be created and examined inone command::
 
-        >>> ds = datasets.get_loftus_masson_1994()
-        >>> print test.ANOVA('n_recalled', 'exposure.as_factor()*subject', ds=ds)
-                    SS       df   MS         F         p
-        ---------------------------------------------------
-        exposure     52.27    2   26.13   42.51***   < .001
-        ---------------------------------------------------
-        Total      1005.87   29
+    >>> ds = datasets.get_loftus_masson_1994()
+    >>> print test.ANOVA('n_recalled', 'exposure.as_factor()*subject', ds=ds)
+                SS       df   MS         F         p
+    ---------------------------------------------------
+    exposure     52.27    2   26.13   42.51***   < .001
+    ---------------------------------------------------
+    Total      1005.87   29
 
     For other uses, properties of the fit can be accessed with methods and
     attributes.
     """
-    def __init__(self, y, x, sub=None, title=None, ems=None, ds=None):
+    def __init__(self, y, x, sub=None, title=None, ds=None):
 #  TODO:
 #         - sort model
 #         - provide threshold for including interaction effects when testing lower
@@ -878,7 +876,6 @@ class ANOVA(object):
         self.y = y
         self.x = x
         self.title = title
-        self.show_ems = ems
         self._log = []
 
         # decide which E(MS) model to use
@@ -1030,7 +1027,7 @@ class ANOVA(object):
         return table
 
 
-def anova(y, x, sub=None, title=None, ems=None, ds=None):
+def anova(y, x, sub=None, title=None, ds=None):
     """Univariate ANOVA.
 
     Mixed effects models require balanced models and full model specification
@@ -1046,8 +1043,6 @@ def anova(y, x, sub=None, title=None, ems=None, ds=None):
         Only use part of the data.
     title : str
         Title for the results table (optional).
-    ems : bool | None
-        display source of E(MS) for F-Tests (True/False; None = use default)
     ds : Dataset
         Dataset to use data from.
 
@@ -1066,7 +1061,7 @@ def anova(y, x, sub=None, title=None, ems=None, ds=None):
     ---------------------------------------------------
     Total      1005.87   29
     """
-    anova_ = ANOVA(y, x, sub, title, ems, ds)
+    anova_ = ANOVA(y, x, sub, title, ds)
     return anova_.table()
 
 
