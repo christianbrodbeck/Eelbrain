@@ -23,8 +23,8 @@ Copyright (c) 2012. All rights reserved.
 """
 
 from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
-                        NDVar, combine, align, align1, cwt_morlet, resample,
-                        cellname, Celltable)
+                        NDVar, choose, combine, align, align1, cwt_morlet,
+                        resample, cellname, Celltable)
 from ._mne import labels_from_clusters, morph_source_space
 
 from ._utils import set_log_level

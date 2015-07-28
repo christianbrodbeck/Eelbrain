@@ -315,6 +315,23 @@ def as_case_identifier(x, sub=None, ds=None):
     return x
 
 
+def asarray(x, kind=None):
+    "Coerce input to array"
+    if isvar(x):
+        x = x.x
+    else:
+        x = np.asarray(x)
+
+    if kind is not None and x.dtype.kind not in kind:
+        # boolean->int conversion
+        if 'i' in kind and x.dtype.kind == 'b':
+            x = x.astype(int)
+        else:
+            raise TypeError("Expected array of kind %r, got %r (%s)"
+                            % (kind, x.dtype.kind, x.dtype))
+    return x
+
+
 def ascategorial(x, sub=None, ds=None, n=None):
     if isinstance(x, basestring):
         if ds is None:
@@ -691,6 +708,47 @@ def align1(d, idx, d_idx='index', out='data'):
         return align_idx
     else:
         ValueError("Invalid value for out parameter: %r" % out)
+
+
+def choose(choice, sources, name=None):
+    """Combine data-objects picking from a different object for each case
+
+    Parameters
+    ----------
+    choice : array of int
+        Array specifying for each case from which of the sources the data should
+        be taken.
+    sources : list of data-objects
+        Data that should be combined.
+    name : str
+        Name for the new data-object (optional).
+
+    Notes
+    -----
+    Analogous to :func:`numpy.choose`. Only implemented for NDVars at this time.
+    """
+    choice = asarray(choice, 'i')
+    if choice.min() < 0:
+        raise ValueError("Choice can not be < 0")
+    elif choice.max() > len(sources) - 1:
+        raise ValueError("choice contains values exceeding the number of sources")
+
+    s0 = sources[0]
+    s1 = sources[1:]
+    if isndvar(s0):
+        if not all(isndvar(s) for s in s1):
+            raise TypeError("Sources have different types")
+        elif any(s.dims != s0.dims for s in s1):
+            raise DimensionMismatchError("Sources have different dimensions")
+        x = np.empty_like(s0.x)
+        index_flat = np.empty(len(choice), bool)
+        index = index_flat.reshape(index_flat.shape + (1,) * (x.ndim - 1))
+        for i, s in enumerate(sources):
+            np.equal(choice, i, index_flat)
+            np.copyto(x, s.x, where=index)
+        return NDVar(x, s0.dims, {}, name)
+    else:
+        raise NotImplementedError
 
 
 class Celltable(object):

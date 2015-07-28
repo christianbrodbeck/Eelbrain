@@ -14,8 +14,9 @@ from numpy.testing import (assert_equal, assert_array_equal,
                            assert_array_almost_equal)
 
 from eelbrain import (datasets, load, Var, Factor, NDVar, Datalist, Dataset,
-                      Celltable, align, align1, combine)
-from eelbrain._data_obj import asvar, Categorial, SourceSpace, UTS
+                      Celltable, align, align1, choose, combine)
+from eelbrain._data_obj import (asvar, Categorial, SourceSpace, UTS,
+                                DimensionMismatchError)
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
                                      assert_source_space_equal)
@@ -191,6 +192,21 @@ def test_celltable():
     assert_array_equal(ct.match, Factor('abc', tile=2))
     assert_array_equal(ct.Y, np.tile(np.arange(3.), 2))
     assert_array_equal(ct.X, Factor('ab', repeat=3))
+
+
+def test_choose():
+    "Test choose()"
+    ds = datasets.get_uts(True)[::4]
+    utsnd = ds['utsnd']
+    utsnd2 = utsnd + 1.
+    idx = ds['B'] == 'b0'
+    idxi = np.invert(idx)
+
+    y = choose(idx, (utsnd, utsnd2))
+    assert_array_equal(y.x[idx], utsnd2.x[idx])
+    assert_array_equal(y.x[idxi], utsnd.x[idxi])
+
+    assert_raises(DimensionMismatchError, choose, idx, (utsnd, utsnd.sub(sensor='1')))
 
 
 def test_combine():

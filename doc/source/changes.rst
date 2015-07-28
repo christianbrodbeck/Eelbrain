@@ -10,6 +10,8 @@ New in 0.18
 * API: The first argument for :meth:`MneExperiment.plot_annot` is now `parc`.
 * API: the ``fill_in_missing`` parameter to :func:`combine` has been deprecated
   and replaced with a new parameter called ``incomplete``.
+* New function :func:`choose` to combine data in different :class:`NDVars`
+  on a case by case basis.
 * Rejection-GUI (:func:`gui.select_epochs`): Press Shift-i when hovering over
   an epoch to enter channels for interpolation manually.
 * :meth:`MneExperiment.show_file_status` now shows the last modification date
