@@ -152,8 +152,9 @@ def _mark_plot_1sample(ax, ct, par, y_min, y_unit, popmean=0, corr='Hochberg',
             ps.append(p)
     else:
         raise NotImplementedError("nonparametric 1-sample test")
-    stars = test.star(ps, int, levels, trend, corr)
-    stars_str = test.star(ps, levels=levels, trend=trend)
+    ps_adjusted = test.mcp_adjust(ps, corr)
+    stars = test.star(ps_adjusted, int, levels, trend)
+    stars_str = test.star(ps_adjusted, str, levels, trend)
     font_size = mpl.rcParams['font.size'] * 1.5
     if any(stars):
         y_stars = y_min + 1.75 * y_unit

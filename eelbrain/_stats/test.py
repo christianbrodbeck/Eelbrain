@@ -5,6 +5,7 @@ statistical tests for data objects
 from __future__ import division
 
 import itertools
+from itertools import izip
 
 import numpy as np
 import scipy.stats
@@ -123,6 +124,8 @@ def mcp_adjust(ps, method='Hochberg'):
         Adjusted p-values.
     """
     n = len(ps)
+    if n <= 1:
+        return ps
     method_ = method.lower()
     if method_ == 'bonferroni':
         ps_adjusted = [p * n for p in ps]
@@ -164,16 +167,11 @@ def _get_correction_caption(corr, n):
         return "(* Uncorrected)"
 
 
-
-def star(p_list, out=str, levels=True, trend=False, corr='Hochberg',
-         eq_strlen=False):
+def star(p_list, out=str, levels=True, trend=False, eq_strlen=False):
     """
 
     out=str: convert n stars into string containing '**'
        =int: leave n stars as integer
-
-    corr: "Bonferroni"
-          "Hochberg"
 
     levels: {p: string, ...} dictionary. Default (levels=True) creates the
             levels {.05 : '*',    . trend=True adds {.1: "'"}.
@@ -206,10 +204,7 @@ def star(p_list, out=str, levels=True, trend=False, corr='Hochberg',
         int_out = True
         p_list = [p_list]
 
-    N = len(p_list)
-    nstars = np.zeros(N, dtype=int)
-    if corr:
-        p_list = mcp_adjust(p_list, corr)
+    nstars = np.zeros(len(p_list), dtype=int)
     p_list = np.asarray(p_list)
     for a in a_levels:
         nstars += (p_list <= a)
@@ -335,8 +330,8 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     if corr:
         ps_adjusted = mcp_adjust(ps, corr)
     else:
-        ps_adjusted = np.zeros(len(ps))
-    stars = star(ps, out=str)  # , levels=levels, trend=trend, corr=corr
+        ps_adjusted = ps
+    stars = star(ps_adjusted, out=str)
     if len(set(dfs)) == 1:
         df_in_header = True
     else:
@@ -527,8 +522,12 @@ def _pairwise(data, within=True, parametric=True, corr='Hochberg',
             indexes[(x, y)] = indexes[(y, x)] = i
             i += 1
     # add stars
-    _NStars = star(_P, out=int, levels=levels, trend=trend, corr=corr)
-    _str_Stars = star(_P, out=str, levels=levels, trend=trend, corr=corr)
+    if corr:
+        p_adjusted = mcp_adjust(_P, corr)
+    else:
+        p_adjusted = _P
+    _NStars = star(p_adjusted, int, levels, trend)
+    _str_Stars = star(p_adjusted, str, levels, trend)
     caption = _get_correction_caption(corr, len(_P))
     # prepare output
     out = {'test': test_name,
@@ -772,13 +771,13 @@ class bootstrap_pairwise(object):
         table.midrule()
 
         p_corr = mcp_adjust(self._p_parametric)
-        stars_parametric = star(self._p_parametric)
-        stars_boot = star(self._p_boot, corr=None)
+        stars_parametric = star(p_corr)
+        stars_boot = star(self._p_boot)
 
-        for name, t, p1, pc, s1, p2, s2 in zip(self._comp_names, self.t,
-                                           self._p_parametric, p_corr,
-                                           stars_parametric,
-                                           self._p_boot, stars_boot):
+        for name, t, p1, pc, s1, p2, s2 in izip(self._comp_names, self.t,
+                                                self._p_parametric, p_corr,
+                                                stars_parametric,
+                                                self._p_boot, stars_boot):
             table.cell(name)
             table.cell(t, fmt='%.2f')
             table.cell(fmtxt.p(p1))
