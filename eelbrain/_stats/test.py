@@ -281,7 +281,11 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
 
     par = True
     if par:
-        title_desc = "t-tests against %s" % cellname(against)
+        infl = '' if X is None else 's'
+        if ct.Y.name is None:
+            title_desc = "T-test%s against %s" % (infl, cellname(against))
+        else:
+            title_desc = "T-test%s of %s against %s" % (infl, ct.Y.name, cellname(against))
         statistic_name = 't'
     else:
         raise NotImplementedError
@@ -326,6 +330,11 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
             ts.append(t)
             dfs.append(df)
             ps.append(p)
+    else:
+        raise TypeError("against=%s" % repr(against))
+
+    if k <= 1:
+        corr = None
 
     if corr:
         ps_adjusted = mcp_adjust(ps, corr)
@@ -355,7 +364,7 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     table.midrule()
 
     # body
-    for name, t, mark, df, p, p_adj in zip(names, ts, stars, dfs, ps, ps_adjusted):
+    for name, t, mark, df, p, p_adj in izip(names, ts, stars, dfs, ps, ps_adjusted):
         table.cell(name)
         table.cell(fmtxt.stat(t, stars=mark, of=3))
         if not df_in_header:
