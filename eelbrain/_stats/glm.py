@@ -1134,33 +1134,3 @@ def ancova(Y, factorial_model, covariate, interaction=None, sub=None, v=True,
         print comparelm(a1, a3)
         print '\n"%s"x"%s" Interaction > Main Effect:' % (covariate.name, interaction.name)
         print comparelm(a2, a3)
-
-
-def compare(Y, first_model, test_effect, sub=None):
-    """
-    OBSOLETE
-
-    Tests for a significant influence of test_effect by comparing whether
-    (first_model + test_effect) explains significantly more variance than
-    first_model alone.
-
-    """
-    a1 = LM(Y, first_model, sub=sub)
-    a2 = LM(Y, first_model + test_effect, sub=sub)
-    print
-    print a1.table(title='MODEL 1:')
-    print '\n'
-    print a2.table(title='MODEL 2:')
-    # compare
-    SS_diff = a1.SS_res - a2.SS_res
-    df_diff = test_effect.df
-    MS_diff = SS_diff / df_diff
-    # if not round(SS_diff, 6) == round(SS_cov_1 - SS_cov_2, 6):
-    #    txt = "\nWARNING: SS_diff: {0} a1.SS_res - a2.SS_res: {1}"
-    #    print txt.format(SS_diff, a1.SS_res - a2.SS_res)
-    F = MS_diff / a2.MS_res
-    p = 1 - scipy.stats.distributions.f.cdf(F, df_diff, a2.df_res)
-    stars = test.star(p).replace(' ', '')
-    difftxt = "Residual SS reduction: {SS}, df difference: {df}, " + \
-              "F = {F}{s}, p = {p}"
-    print '\n' + difftxt.format(SS=SS_diff, df=df_diff, F=F, s=stars, p=p)
