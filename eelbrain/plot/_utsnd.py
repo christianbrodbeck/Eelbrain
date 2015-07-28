@@ -182,7 +182,9 @@ class Array(_EelFigure):
     Xax : None | categorial
         Create a separate plot for each cell in this model.
     xlabel, ylabel : bool | str
-        I True, determine from the data.
+        Labels for x- and y-axis; the default is determined from the data.
+    xticklabels : bool
+        Add tick-labels to the x-axis (default True).
     ds : None | Dataset
         If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
         as strings.
@@ -198,8 +200,9 @@ class Array(_EelFigure):
     title : None | string
         Figure title.
     """
-    def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True, ds=None,
-                 x='time', vmax=None, vmin=None, *args, **kwargs):
+    def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
+                 xticklabels=True, ds=None, x='time', vmax=None, vmin=None,
+                 *args, **kwargs):
         epochs, (xdim, ydim) = _base.unpack_epochs_arg(epochs, (x, None), Xax, ds)
 
         nax = len(epochs)
@@ -211,7 +214,7 @@ class Array(_EelFigure):
             p = _ax_im_array(ax, layers, x, vlims=vlims)
             self.plots.append(p)
 
-        self._configure_xaxis_dim(xdim, xlabel)
+        self._configure_xaxis_dim(xdim, xlabel, xticklabels)
         self._configure_yaxis_dim(ydim, ylabel)
         self._show()
 
@@ -385,6 +388,8 @@ class Butterfly(_EelFigure):
         X-axis labels. By default the label is inferred from the data.
     ylabel : str | None
         Y-axis labels. By default the label is inferred from the data.
+    xticklabels : bool
+        Add tick-labels to the x-axis (default True).
     color : matplotlib color
         default (``None``): use segment color if available, otherwise
         black; ``True``: alternate colors (mpl default)
@@ -398,11 +403,12 @@ class Butterfly(_EelFigure):
         Figure title.
     """
     def __init__(self, epochs, Xax=None, sensors=None, axtitle='{name}',
-                 xlabel=True, ylabel=True, color=None, ds=None, *args, **kwargs):
+                 xlabel=True, ylabel=True, xticklabels=True, color=None,
+                 ds=None, *args, **kwargs):
         epochs, (xdim, _) = _base.unpack_epochs_arg(epochs, ('time', None), Xax, ds)
         _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, *args,
                             **kwargs)
-        self._configure_xaxis_dim(xdim, xlabel)
+        self._configure_xaxis_dim(xdim, xlabel, xticklabels)
         self._configure_yaxis(epochs[0][0], ylabel)
 
         self.plots = []

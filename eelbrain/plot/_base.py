@@ -988,13 +988,30 @@ class _EelFigure(object):
         "Close the figure."
         self._frame.Close()
 
-    def _configure_xaxis_dim(self, meas, label, axes=None):
-        "Configure the x-axis based on a dimension"
+    def _configure_xaxis_dim(self, meas, label, ticklabels, axes=None):
+        """Configure the x-axis based on a dimension
+
+        Parameters
+        ----------
+        meas : str
+            The measure assigned to this axis.
+        label : None | str
+            Axis label.
+        ticklabels : bool
+            Whether to print tick-labels.
+        axes : list of Axes
+            Axes which to format (default is EelFigure._axes)
+        """
         if axes is None:
             axes = self._axes
         formatter, label = find_axis_params_dim(meas, label)
-        for ax in axes:
-            ax.xaxis.set_major_formatter(formatter)
+
+        if ticklabels:
+            for ax in axes:
+                ax.xaxis.set_major_formatter(formatter)
+        else:
+            for ax in axes:
+                ax.xaxis.set_ticklabels(())
 
         if label:
             self.set_xlabel(label)

@@ -155,6 +155,8 @@ class TopoButterfly(_EelFigure):
         Create a separate plot for each cell in this model.
     xlabel, ylabel : bool | string
         Labels for x and y axes. If True, labels are automatically chosen.
+    xticklabels : bool
+        Add tick-labels to the x-axis (default True).
     proj : str
         The sensor projection to use for topomaps.
     res : int
@@ -197,6 +199,7 @@ class TopoButterfly(_EelFigure):
     _make_axes = False
 
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
+                 xticklabels=True,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, vmax=None,
                  vmin=None, *args, **kwargs):
@@ -286,7 +289,7 @@ class TopoButterfly(_EelFigure):
                          ha='center', va='center', rotation='vertical')
                 break
 
-        self._configure_xaxis_dim('time', xlabel, self.bfly_axes)
+        self._configure_xaxis_dim('time', xlabel, xticklabels, self.bfly_axes)
         self._configure_yaxis(epochs[0][0], ylabel, self.bfly_axes)
         for ax in self.bfly_axes[:-1]:
             ax.xaxis.set_ticklabels(())
@@ -642,6 +645,8 @@ class TopoArray(_EelFigure):
     vmax, vmin : None | scalar
         Override the default plot limits. If only vmax is specified, vmin
         is set to -vmax.
+    xticklabels : bool
+        Add tick-labels to the x-axis (default True).
 
     Notes
     -----
@@ -653,7 +658,7 @@ class TopoArray(_EelFigure):
     _make_axes = False
 
     def __init__(self, epochs, Xax=None, title=None, ntopo=3, t=[], ds=None,
-                 vmax=None, vmin=None, *args, **kwargs):
+                 vmax=None, vmin=None, xticklabels=True, *args, **kwargs):
         epochs, _ = _base.unpack_epochs_arg(epochs, ('time', 'sensor'), Xax, ds)
         n_epochs = len(epochs)
         n_topo_total = ntopo * n_epochs
@@ -730,7 +735,7 @@ class TopoArray(_EelFigure):
                 t = [t]
             self.set_topo_ts(*t)
 
-        self._configure_xaxis_dim('time', True, self._array_axes)
+        self._configure_xaxis_dim('time', True, xticklabels, self._array_axes)
         self._configure_yaxis_dim('sensor', True, self._array_axes)
 
         # setup callback

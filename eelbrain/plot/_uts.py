@@ -58,6 +58,8 @@ class UTSStat(_EelFigure, LegendMixin):
         X-axis labels. By default the label is inferred from the data.
     ylabel : str | None
         Y-axis labels. By default the label is inferred from the data.
+    xticklabels : bool
+        Add tick-labels to the x-axis (default True).
     invy : bool
         Invert the y axis (if ``bottom`` and/or ``top`` are specified explicitly
         they take precedence; an inverted y-axis can also be produced by
@@ -102,9 +104,9 @@ class UTSStat(_EelFigure, LegendMixin):
     """
     def __init__(self, Y='Y', X=None, Xax=None, match=None, sub=None, ds=None,
                  main=np.mean, error='sem', pool_error=None, legend='upper right',
-                 axtitle='{name}', xlabel=True, ylabel=True, invy=False,
-                 bottom=None, top=None, hline=None, xdim='time', xlim=None,
-                 color='b', colors=None, clusters=None, pmax=0.05,
+                 axtitle='{name}', xlabel=True, ylabel=True, xticklabels=True,
+                 invy=False, bottom=None, top=None, hline=None, xdim='time',
+                 xlim=None, color='b', colors=None, clusters=None, pmax=0.05,
                  ptrend=0.1, *args, **kwargs):
         if 'dev' in kwargs:
             error = kwargs.pop('dev')
@@ -189,7 +191,7 @@ class UTSStat(_EelFigure, LegendMixin):
                 legend_handles.update(p.legend_handles)
 
         self._configure_yaxis(ct.Y, ylabel)
-        self._configure_xaxis_dim(xdim, xlabel)
+        self._configure_xaxis_dim(xdim, xlabel, xticklabels)
         LegendMixin.__init__(self, legend, legend_handles)
         self._update_ui_cluster_button()
         self._show()
@@ -428,6 +430,8 @@ class UTSClusters(_EelFigure):
     overlay : bool
         Plot epochs (time course for different effects) on top of each
         other (as opposed to on separate axes).
+    xticklabels : bool
+        Add tick-labels to the x-axis (default True).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -435,7 +439,7 @@ class UTSClusters(_EelFigure):
         Figure title.
     """
     def __init__(self, res, pmax=0.05, ptrend=0.1, axtitle='{name}', cm='jet',
-                 overlay=False, *args, **kwargs):
+                 overlay=False, xticklabels=True, *args, **kwargs):
         clusters_ = res.clusters
 
         epochs, (xdim,) = _base.unpack_epochs_arg(res, 1)
@@ -470,7 +474,7 @@ class UTSClusters(_EelFigure):
             self._caxes.append(cax)
 
         self._configure_yaxis(epochs[0][0], True)
-        self._configure_xaxis_dim(xdim, True)
+        self._configure_xaxis_dim(xdim, True, xticklabels)
         self.clusters = clusters_
         self._show()
 
