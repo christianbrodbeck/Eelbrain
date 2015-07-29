@@ -353,7 +353,7 @@ class UTS(_EelFigure):
         self._show()
 
 
-class _ax_uts_stat:
+class _ax_uts_stat(object):
 
     def __init__(self, ax, ct, colors, main, error, dev_data, title, xdim, xlim,
                  invy, bottom, top, hline, clusters, pmax, ptrend):
@@ -402,8 +402,12 @@ class _ax_uts_stat:
 
         if invy:
             y0, y1 = ax.get_ylim()
-            bottom = bottom if (bottom is not None) else y1
-            top = top if (top is not None) else y0
+            if bottom is None:
+                bottom = y1
+
+            if top is None:
+                top = y0
+
         if (bottom is not None) or (top is not None):
             ax.set_ylim(bottom, top)
 
