@@ -76,3 +76,47 @@ The same method can be used with several confounds (all of type :class:`Var`)::
 
     >>> ds_subject['residuals'] = ds_subject.eval("data.residuals(confound_1 + confound_2)")
     >>> beta = ds_subject.eval("residuals.ols(predictor)")
+
+
+^^^^^^^^^^^^^^^^^^^^^
+Plots for Publication
+^^^^^^^^^^^^^^^^^^^^^
+
+In order to produce multiple plots it is useful to set some plotting parameters
+globally in order to ensure that they are consistent between plots, e.g.::
+
+    import matplotlib as mpl
+
+    mpl.rcParams['font.family'] = 'sans-serif'
+    mpl.rcParams['font.size'] = 8
+    for key in mpl.rcParams:
+        if 'width' in key:
+            mpl.rcParams[key] *= 0.5
+
+
+Matplotlib's :func:`~matplotlib.pyplot.tight_layout` functionality provides an
+easy way for plots to use the available space, and most Eelbrain plots use it
+by default. However, when trying to produce multiple plots with identical
+scaling it can lead to unwanted discrepancies. In this case, it is better to
+define layout parameters globally and plot with the ``tight=False`` argument::
+
+    mpl.rcParams['figure.subplot.left'] = 0.25
+    mpl.rcParams['figure.subplot.right'] = 0.95
+    mpl.rcParams['figure.subplot.bottom'] = 0.2
+    mpl.rcParams['figure.subplot.top'] = 0.95
+
+    plot.UTSStat('uts', 'A', ds=ds, w=5, tight=False)
+
+    # now we can produce a second plot without x-axis labels that has exactly
+    # the same scaling:
+    plot.UTSStat('uts', 'A % B', ds=ds, w=5, tight=False, xlabel=False, ticklabels=False)
+
+
+If a script produces several plots, the GUI should not interrupt the script.
+This can be achieved by setting the ``show=False`` argument. In addition, it
+is usually desirable to save the legend separately and combine it in a layout
+application::
+
+    p = plot.UTSStat('uts', 'A', ds=ds, w=5, tight=False, show=False, legend=False)
+    p.save('plot.svg', transparent=True)
+    p.save_legend('legend.svg', transparent=True)
