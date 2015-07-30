@@ -34,7 +34,7 @@ same Factor can be initialized with::
 There are other shortcuts to initialize factors  (see also 
 the :class:`Factor` class documentation)::
 
-    >>> A = Factor(['a', 'b', 'c'], rep=4, name='A')
+    >>> A = Factor(['a', 'b', 'c'], repeat=4, name='A')
     >>> A
     Factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b', 'c', 'c', 'c', 'c'], name='A')
 
@@ -49,7 +49,7 @@ All values present in a Factor are accessible in its
 :attr:`Factor.cells` attribute::
 
     >>> A.cells
-    ['a', 'b', 'c']
+    ('a', 'b', 'c')
 
 Based on the Factor's cell values, boolean indexes can be generated::
 
@@ -63,20 +63,19 @@ Based on the Factor's cell values, boolean indexes can be generated::
     array([False, False, False, False, False, False, False, False,  True,
             True,  True,  True], dtype=bool)
 
-Interaction effects can be constructed from multiple factors::
+Interaction effects can be constructed from multiple factors with the ``%``
+operator::
 
-    >>> B = Factor(['d', 'e'], rep=2, tile=3, name='B')
+    >>> B = Factor(['d', 'e'], repeat=2, tile=3, name='B')
     >>> B
     Factor(['d', 'd', 'e', 'e', 'd', 'd', 'e', 'e', 'd', 'd', 'e', 'e'], name='B')
     >>> i = A % B
-    >>> i
-    Interaction(A, B)
 
 Interaction effects are in many ways interchangeable with factors in places 
 where a categorial model is required::
  
     >>> i.cells
-    [('a', 'd'), ('a', 'e'), ('b', 'd'), ('b', 'e'), ('c', 'd'), ('c', 'e')]
+    (('a', 'd'), ('a', 'e'), ('b', 'd'), ('b', 'e'), ('c', 'd'), ('c', 'e'))
     >>> i == ('a', 'd')
     array([ True,  True, False, False, False, False, False, False, False,
            False, False, False], dtype=bool)
