@@ -76,8 +76,8 @@ class _ax_map2d:
 
 class _plt_map2d:
 
-    def __init__(self, ax, sensors, proj='default', extent=1, mark=None,
-                 labels=None, kwargs=None):
+    def __init__(self, ax, sensors, proj='default', extent=1, frame=0,
+                 mark=None, labels=None, kwargs=None):
         """
         Parameters
         ----------
@@ -92,7 +92,7 @@ class _plt_map2d:
         """
         self.ax = ax
         self.sensors = sensors
-        self.locs = sensors.get_locs_2d(proj=proj, extent=extent)
+        self.locs = sensors.get_locs_2d(proj, extent, frame)
         self._mark_handles = None
 
         if kwargs is None:

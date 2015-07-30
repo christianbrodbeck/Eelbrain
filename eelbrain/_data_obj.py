@@ -44,11 +44,12 @@ from numpy import dot
 import scipy.stats
 from scipy.linalg import inv
 from scipy.optimize import leastsq
+from scipy.spatial import ConvexHull
 from scipy.spatial.distance import cdist, pdist, squareform
 
 from . import fmtxt
 from . import _colorspaces as cs
-from ._utils import ui, LazyProperty, natsorted
+from ._utils import ui, LazyProperty, natsorted  #, logger
 from ._utils.numpy_utils import slice_to_arange, full_slice
 
 
@@ -6702,7 +6703,7 @@ class Sensor(Dimension):
         else:
             return proj
 
-    def get_locs_2d(self, proj='default', extent=1):
+    def get_locs_2d(self, proj='default', extent=1, frame=0):
         """
         returns a sensor X location array, the first column reflecting the x,
         and the second column containing the y coordinate of each sensor.
@@ -6715,10 +6716,12 @@ class Sensor(Dimension):
         extent : int
             coordinates will be scaled with minimum value 0 and maximum value
             defined by the value of ``extent``.
+        frame : scalar
+            Distance of the outermost points from 0 and ``extent`` (default 0).
         """
         proj = self._interpret_proj(proj)
 
-        index = (proj, extent)
+        index = (proj, extent, frame)
         if index in self._transformed:
             return self._transformed[index]
 
@@ -6787,10 +6790,75 @@ class Sensor(Dimension):
             locs2d -= np.min(locs2d, axis=0)  # move to bottom left
             locs2d /= (np.max(locs2d) / extent)  # scale to extent
             locs2d += (extent - np.max(locs2d, axis=0)) / 2  # center
+            if frame:
+                locs2d *= (1 - 2 * frame)
+                locs2d += frame
 
         # save for future access
         self._transformed[index] = locs2d
         return locs2d
+
+    def _outlines_arg(self, proj):
+        "outline argument for mne-python topomaps"
+        proj = self._interpret_proj(proj)
+
+        if proj in ('cone', 'lower cone', 'z root', 'z+'):
+            return 'head'
+        else:
+            return {'mask_pos': ([0, 1], [0, 1])}
+
+    def _visible_sensors(self, proj):
+        "Create an index for sensors that are visible under a given proj"
+        proj = self._interpret_proj(proj)
+        match = re.match('([xyz])([+-])', proj)
+        if match:
+            # logger.debug("Computing sensors visibility for %s" % proj)
+            ax, sign = match.groups()
+
+            # depth:  + = closer
+            depth = self.locs[:, 'xyz'.index(ax)]
+            if sign == '-':
+                depth = -depth
+
+            locs2d = self.get_locs_2d(proj)
+
+            n_vertices = len(locs2d)
+            all_vertices = np.arange(n_vertices)
+            out = np.ones(n_vertices, bool)
+
+            # find duplicate points
+            # TODO OPT:  use pairwise distance
+            x, y = np.where(cdist(locs2d, locs2d) == 0)
+            duplicate_vertices = ((v1, v2) for v1, v2 in izip(x, y) if v1 < v2)
+            for v1, v2 in duplicate_vertices:
+                if depth[v1] > depth[v2]:
+                    out[v2] = False
+                    # logger.debug("%s is hidden behind %s" % (self.names[v2], self.names[v1]))
+                else:
+                    out[v1] = False
+                    # logger.debug("%s is hidden behind %s" % (self.names[v1], self.names[v2]))
+            use_vertices = all_vertices[out]  # use for hull check
+
+            hull = ConvexHull(locs2d[use_vertices])
+            hull_vertices = use_vertices[hull.vertices]
+
+            # for each point:
+            # find the closest point on the hull
+            # determine whether it's in front or behind
+            non_hull_vertices = np.setdiff1d(use_vertices, hull_vertices, True)
+
+            hull_locs = locs2d[hull_vertices]
+            non_hull_locs = locs2d[non_hull_vertices]
+            dists = cdist(non_hull_locs, hull_locs)
+
+            closest = np.argmin(dists, 1)
+            hide_non_hull_vertices = depth[non_hull_vertices] < depth[hull_vertices][closest]
+            hide_vertices = non_hull_vertices[hide_non_hull_vertices]
+            # logger.debug("%s are hidden behind convex hull" % ' '.join(self.names[hide_vertices]))
+            out[hide_vertices] = False
+            return out
+        else:
+            return None
 
     def get_ROIs(self, base):
         """

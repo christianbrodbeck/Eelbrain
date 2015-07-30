@@ -4,18 +4,22 @@ Plot topographic maps of sensor space data.
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from __future__ import division
 
-from itertools import izip
+from itertools import izip, repeat
 from math import floor, sqrt
 
+from mne.viz import plot_topomap
 import numpy as np
 from scipy import interpolate
 
+from .._data_obj import SEQUENCE_TYPES
 from . import _base
 from ._base import _EelFigure
 from . import _utsnd as _utsnd
 from ._sensors import SensorMapMixin
 from ._sensors import _plt_map2d
 
+
+TOPOMAP_FRAME = 0.1
 
 
 class Topomap(SensorMapMixin, _EelFigure):
@@ -30,10 +34,14 @@ class Topomap(SensorMapMixin, _EelFigure):
     sensorlabels : None | 'index' | 'name' | 'fullname'
         Show sensor labels. For 'name', any prefix common to all names
         is removed; with 'fullname', the full name is shown.
-    proj : str
-        The sensor projection to use for topomaps.
+    proj : str | list of str
+        The sensor projection to use for topomaps (or one projection per plot).
+    method : 'mne' | 'nearest' | 'linear' | 'cubic' | 'spline'
+        Method for interpolating topo-map between sensors (default is mne).
     res : int
         Resolution of the topomaps (width = height = ``res``).
+    contours : int
+        Number of contours to draw (only for method='mne').
     interpolation : str
         Matplotlib imshow() parameter for topomaps.
     ds : None | Dataset
@@ -46,31 +54,55 @@ class Topomap(SensorMapMixin, _EelFigure):
         Axes title, default is each topography's name.
     xlabel : str
         Label below the topomaps (default is no label).
-    tight : bool
-        Use matplotlib's tight_layout to expand all axes to fill the figure
-        (default True)
     title : None | string
         Figure title.
     """
+    _make_axes = False
+
     def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
-                 res=200, interpolation='nearest', ds=None, vmax=None,
-                 vmin=None, axtitle=True, xlabel=None, *args, **kwargs):
+                 method='linear', res=64, contours=6,
+                 interpolation=None, ds=None, vmax=None, vmin=None,
+                 axtitle=True, xlabel=None, title=None, *args, **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         nax = len(epochs)
-
-        _EelFigure.__init__(self, "Topomap", nax, 7, 1, *args, **kwargs)
-
         vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
+        if isinstance(proj, basestring):
+            proj = repeat(proj, nax)
+        elif not isinstance(proj, SEQUENCE_TYPES):
+            raise TypeError("proj=%s" % repr(proj))
+        elif len(proj) != nax:
+            raise ValueError("need as many proj as axes (%s)" % nax)
+
+        if interpolation is None:
+            interpolation = 'bilinear' if method == 'mne' else 'nearest'
+
+        _EelFigure.__init__(self, "Topomap", nax, 5, 1, False, title, False,
+                            False, *args, **kwargs)
+
+        # make axes
+        frame = 0.05
+        xframe = frame / self._layout.ncol
+        yframe = frame / self._layout.nrow
+        axw = (1. / self._layout.ncol)
+        axh = (1. / self._layout.nrow)
+        x_extent = axw * (1. - 2 * frame)
+        y_extent = axh * (1. - 2 * frame)
+        for row in xrange(self._layout.nrow - 1, -1, -1):
+            y_ = row * axh + yframe
+            for col in xrange(self._layout.ncol):
+                x = col * axw + xframe
+                ax = self.figure.add_axes((x, y_, x_extent, y_extent))
+                self._axes.append(ax)
 
         self._plots = []
         sensor_plots = []
-        for i, ax, layers in izip(xrange(nax), self._axes, epochs):
-            ax.ID = i
-            h = _ax_topomap(ax, layers, axtitle, sensorlabels, res=res, proj=proj,
-                            interpolation=interpolation, xlabel=xlabel,
-                            vlims=vlims)
+        for ax, layers, proj_ in izip(self._axes, epochs, proj):
+            h = _ax_topomap(ax, layers, axtitle, sensorlabels, None, None,
+                            proj_, res, interpolation, xlabel, vlims,
+                            contours=contours, method=method)
             self._plots.append(h)
-            sensor_plots.append(h.sensors)
+            if method != 'mne':
+                sensor_plots.append(h.sensors)
 
         SensorMapMixin.__init__(self, sensor_plots, sensorlabels)
         self._show()
@@ -436,9 +468,10 @@ class TopoButterfly(_EelFigure):
 
 
 class _plt_topomap(_utsnd._plt_im_array):
+
     def __init__(self, ax, ndvar, overlay, proj='default', res=100,
-                 interpolation=None, im_frame=0.02, vlims={}, cmaps={},
-                 contours={}, method='linear'):
+                 interpolation=None, vlims={}, cmaps={}, contours={},
+                 method='linear'):
         """
         Parameters
         ----------
@@ -453,23 +486,19 @@ class _plt_topomap(_utsnd._plt_im_array):
         self._contours = _base.find_ct_args(ndvar, overlay, contours)
         self._meas = ndvar.info.get('meas', _base.default_meas)
 
-        emin = -im_frame
-        emax = 1 + im_frame
-        extent = (emin, emax, emin, emax)
-
         # store attributes
         self.ax = ax
         self.cont = None
         self._aspect = 'equal'
-        self._extent = extent
+        self._extent = (0, 1, 0, 1)
         self._proj = proj
-        self._grid = np.linspace(emin, emax, res)
+        self._grid = np.linspace(0, 1, res)
         self._mgrid = tuple(np.meshgrid(self._grid, self._grid))
         self._method = method
 
         data = self._data_from_ndvar(ndvar)
         if im_kwa is not None:
-            self.im = ax.imshow(data, extent=extent, origin='lower',
+            self.im = ax.imshow(data, extent=self._extent, origin='lower',
                                 interpolation=interpolation, **im_kwa)
             self._cmap = im_kwa['cmap']
         else:
@@ -481,7 +510,7 @@ class _plt_topomap(_utsnd._plt_im_array):
 
     def _data_from_ndvar(self, ndvar):
         v = ndvar.get_data(('sensor',))
-        locs = ndvar.sensor.get_locs_2d(self._proj)
+        locs = ndvar.sensor.get_locs_2d(self._proj, frame=TOPOMAP_FRAME)
         if self._method == 'spline':
             k = int(floor(sqrt(len(locs)))) - 1
             tck = interpolate.bisplrep(locs[:, 1], locs[:, 0], v, kx=k, ky=k)
@@ -498,11 +527,30 @@ class _plt_topomap(_utsnd._plt_im_array):
             return interpolate.griddata(locs, v, self._mgrid, self._method)
 
 
+class _plt_topomap_mne(object):
+
+    def __init__(self, ax, ndvar, proj, vlims, contours, res, interpolation):
+        locs = ndvar.sensor.get_locs_2d(proj, frame=TOPOMAP_FRAME)
+        data = ndvar.get_data(('sensor',))
+        outlines = ndvar.sensor._outlines_arg(proj)
+        index = ndvar.sensor._visible_sensors(proj)
+        if index is not None:
+            data = data[index]
+            locs = locs[index]
+        im_kwa = _base.find_im_args(ndvar, False, vlims)
+        im, ct = plot_topomap(data, locs, outlines=outlines, contours=contours,
+                              res=res, image_interp=interpolation, axis=ax,
+                              # head_pos={'center': (0, 0), 'scale': (1, 1)},
+                              show=False, **im_kwa)
+        self.im = im
+        self.contours = ct
+
+
 class _ax_topomap(_utsnd._ax_im_array):
 
     def __init__(self, ax, layers, title=True, sensorlabels=None, mark=None,
                  mcolor=None, proj='default', res=100, interpolation=None,
-                 xlabel=None, im_frame=0.02, vlims={}, cmaps={}, contours={}):
+                 xlabel=None, vlims={}, cmaps={}, contours={}, method='linear'):
         """
         Parameters
         ----------
@@ -517,35 +565,41 @@ class _ax_topomap(_utsnd._ax_im_array):
         self.data = layers
         self.layers = []
 
-        ax.set_axis_off()
-        overlay = False
-        for layer in layers:
-            h = _plt_topomap(ax, layer, overlay, proj, res, interpolation,
-                             im_frame, vlims, cmaps, contours)
+        if title is True:
+            title = layers[0].name
+
+        if xlabel is True:
+            xlabel = layers[0].name
+
+        if method == 'mne':
+            if len(layers) > 1:
+                raise NotImplementedError
+            h = _plt_topomap_mne(ax, layers[0], proj, vlims, contours, res,
+                                 interpolation)
             self.layers.append(h)
-            if title is True:
-                title = layer.name
+        else:
+            ax.set_axis_off()
+            overlay = False
+            for layer in layers:
+                h = _plt_topomap(ax, layer, overlay, proj, res, interpolation,
+                                 vlims, cmaps, {}, method)
+                self.layers.append(h)
+                overlay = True
 
-            if xlabel is True:
-                xlabel = layer.name
-
-            overlay = True
-
-        # plot sensors
-        sensor_dim = layers[0].sensor
-        self.sensors = _plt_map2d(ax, sensor_dim, proj, labels=sensorlabels)
-
-        if mark is not None:
+            # plot sensors
             sensor_dim = layers[0].sensor
-            kw = {'marker': '.', 'ms': 3, 'markeredgewidth': 1,'ls': ''}
-            if mcolor is not None:
-                kw['color'] = mcolor
+            self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, TOPOMAP_FRAME,
+                                      labels=sensorlabels)
+            if mark is not None:
+                sensor_dim = layers[0].sensor
+                kw = {'marker': '.', 'ms': 3, 'markeredgewidth': 1, 'ls': ''}
+                if mcolor is not None:
+                    kw['color'] = mcolor
 
-            _plt_map2d(ax, sensor_dim, proj, mark=mark, kwargs=kw)
+                _plt_map2d(ax, sensor_dim, proj, 1, TOPOMAP_FRAME, mark, kwargs=kw)
 
-
-        ax.set_xlim(-im_frame, 1 + im_frame)
-        ax.set_ylim(-im_frame, 1 + im_frame)
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)
 
         if isinstance(xlabel, basestring):
             x, y = ax.transData.inverted().transform(ax.transAxes.transform((0.5, 0)))
