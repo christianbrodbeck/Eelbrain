@@ -260,52 +260,10 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
 
 
 def activation(src, threshold=None, vmax=None, *args, **kwargs):
-    """
-    Plot activation in source space.
+    "This function is deprecated. Use plot.brain.dspm() instead."
+    warn("plot.brain.activation() is deprecated. Use plot.brain.dspm() "
+         "instead.", DeprecationWarning)
 
-    Parameters
-    ----------
-    src : NDVar, dims = ([case,] source, [time])
-        NDVar with SourceSpace dimension. If stc contains a case dimension,
-        the average across cases is taken.
-    threshold : scalar | None
-        the point at which alpha transparency is 50%. When None,
-        threshold = one standard deviation above and below the mean.
-    vmax : scalar | None
-        the upper range of activation values. values are clipped above this
-        range. When None, vmax = two standard deviations above and below the
-        mean.
-    surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
-        Freesurfer surface to use as brain geometry.
-    views : str | iterator of str
-        View or views to show in the figure.
-    hemi : 'lh' | 'rh' | 'both' | 'split'
-        Which hemispheres to plot (default based on data).
-    colorbar : bool
-        Whether to add a colorbar to the figure.
-    time_label : str
-        Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
-        milliseconds or in seconds, or supply a custom format string to format
-        time values (in seconds; default is ``'ms'``).
-    w, h, axw, axh : scalar
-        Layout parameters (figure width/height, subplot width/height).
-    foreground : mayavi color
-        Figure foreground color (i.e., the text color).
-    background : mayavi color
-        Figure background color.
-    parallel : bool
-        Set views to parallel projection (default ``True``).
-    smoothing_steps : None | int
-        Number of smoothing steps if data is spatially undersampled (pysurfer
-        ``Brain.add_data()`` argument).
-    subjects_dir : None | str
-        Override the subjects_dir associated with the source space dimension.
-
-    Returns
-    -------
-    brain : surfer.Brain
-        PySurfer Brain instance containing the plot.
-    """
     x = src.mean()
     std = src.std()
 
