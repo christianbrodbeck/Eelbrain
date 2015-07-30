@@ -88,7 +88,7 @@ def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
         else:
             raise ValueError("Neither hemisphere contains more than one label")
 
-    brain = _surfer_brain(subject, surf, hemi, views, w, h, axw, axh,
+    brain = _surfer_brain(None, subject, surf, hemi, views, w, h, axw, axh,
                           foreground, background, subjects_dir)
     brain.add_annotation(annot, borders, alpha)
 
@@ -337,7 +337,7 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     return _plot(cluster, lut, -vmax, vmax, *args, **kwargs)
 
 
-def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
+def _surfer_brain(unit, subject='fsaverage', surf='smoothwm', hemi='split',
                   views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
                   foreground=None, background=None, subjects_dir=None):
     """Create surfer.Brain instance
@@ -408,8 +408,9 @@ def _surfer_brain(subject='fsaverage', surf='smoothwm', hemi='split',
     else:
         config_opts['background'] = background
 
-    brain = Brain(subject, hemi, surf, True, title, config_opts=config_opts,
-                  views=views, subjects_dir=subjects_dir)
+    brain = Brain(unit, subject, hemi, surf, True, title,
+                  config_opts=config_opts, views=views,
+                  subjects_dir=subjects_dir)
 
     return brain
 
@@ -464,7 +465,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     brain : surfer.Brain
         PySurfer Brain instance containing the plot.
     """
-    src = asndvar(src)  # , sub=None, ds=ds)
+    src = asndvar(src)
+    unit = src.info.get('unit', None)
     if src.has_case:
         src = src.summary()
 
@@ -483,7 +485,7 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     if subjects_dir is None:
         subjects_dir = src.source.subjects_dir
 
-    brain = _surfer_brain(src.source.subject, surf, hemi, views, w, h, axw, axh,
+    brain = _surfer_brain(unit, src.source.subject, surf, hemi, views, w, h, axw, axh,
                           foreground, background, subjects_dir)
 
     # general PySurfer data args

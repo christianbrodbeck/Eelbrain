@@ -12,6 +12,9 @@ class BrainMixin(object):
     # Mixin that adds Eelbrain functionality to the pysurfer Brain class,
     # defined in a separate module so that documentation can be built without
     # importing Mayavi
+    def __init__(self, unit):
+        self.__unit = unit
+
     def image(self, name, format='png', alt=None):
         """Create an FMText Image from a screenshot
 
@@ -28,13 +31,14 @@ class BrainMixin(object):
         im = self.screenshot('rgba', True)
         return Image.from_array(im, name, format, alt)
 
-    def plot_colorbar(self, *args, **kwargs):
+    def plot_colorbar(self, label=True, label_position=None, clipmin=None,
+                      clipmax=None, orientation='horizontal', *args, **kwargs):
         """Plot a colorbar corresponding to the displayed data
 
         Parameters
         ----------
         label : None | str
-            Label for the x-axis (default is the name of the colormap).
+            Label for the x-axis (default is based on the data).
         label_position : 'left' | 'right' | 'top' | 'bottom'
             Position of the axis label. Valid values depend on orientation.
         clipmin : scalar
@@ -43,9 +47,6 @@ class BrainMixin(object):
             Clip the color-bar above this value.
         orientation : 'horizontal' | 'vertical'
             Orientation of the bar (default is horizontal).
-        unit : str
-            Unit for the axis to determine tick labels (for example, ``u'µV'`` to
-            label 0.000001 as '1').
 
         Returns
         -------
@@ -58,8 +59,10 @@ class BrainMixin(object):
             data = self.data_dict[self._hemi]
         else:
             raise RuntimeError("Brain._hemi=%s" % repr(self._hemi))
-        cmap = ListedColormap(data['orig_ctable'] / 255., "??")
-        return ColorBar(cmap, data['fmin'], data['fmax'], *args, **kwargs)
+        cmap = ListedColormap(data['orig_ctable'] / 255., "Brain Colormap")
+        return ColorBar(cmap, data['fmin'], data['fmax'], label, label_position,
+                        clipmin, clipmax, orientation, self.__unit, *args,
+                        **kwargs)
 
     def save_image(self, filename, transparent=True):
         """Save current image to disk
