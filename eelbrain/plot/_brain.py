@@ -51,7 +51,8 @@ def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,
         Which hemispheres to plot (default includes hemisphere with more than one
         label in the annot file).
     views : str | iterator of str
-        View or views to show in the figure.
+        View or views to show in the figure. Options are: 'rostral', 'parietal',
+        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
     w, h, axw, axh : scalar
         Layout parameters (figure width/height, subplot width/height).
     foreground : mayavi color
@@ -168,7 +169,8 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
-        View or views to show in the figure.
+        View or views to show in the figure. Options are: 'rostral', 'parietal',
+        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
@@ -227,7 +229,8 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
-        View or views to show in the figure.
+        View or views to show in the figure. Options are: 'rostral', 'parietal',
+        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
@@ -292,7 +295,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
-        View or views to show in the figure.
+        View or views to show in the figure. Options are: 'rostral', 'parietal',
+        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
@@ -429,7 +433,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : str | iterator of str
-        View or views to show in the figure.
+        View or views to show in the figure. Options are: 'rostral', 'parietal',
+        'frontal', 'ventral', 'lateral', 'caudal', 'medial', 'dorsal'.
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
@@ -758,7 +763,9 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
         Freesurfer surface to use as brain geometry.
     views : list of str
-        Views to display (for each hemisphere, lh first).
+        Views to display (for each hemisphere, lh first). Options are:
+        'rostral', 'parietal', 'frontal', 'ventral', 'lateral', 'caudal',
+        'medial', 'dorsal'.
     hemi : 'lh' | 'rh' | 'both'
         Which hemispheres to plot (default based on data).
     summary : callable
