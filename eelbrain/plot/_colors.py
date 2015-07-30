@@ -380,10 +380,12 @@ class ColorBar(_EelFigure):
     unit : str
         Unit for the axis to determine tick labels (for example, ``u'µV'`` to
         label 0.000001 as '1').
+    contours : iterator of scalar (optional)
+        Plot contour lines at these values.
     """
     def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
-                 unit=None, *args, **kwargs):
+                 unit=None, contours=(), *args, **kwargs):
         cm = mpl.cm.get_cmap(cmap)
         lut = cm(np.arange(cm.N))
         if orientation == 'horizontal':
@@ -411,6 +413,7 @@ class ColorBar(_EelFigure):
             ax.imshow(im, extent=(vmin, vmax, 0, 1), aspect='auto')
             ax.set_xlim(clipmin, clipmax)
             ax.yaxis.set_ticks(())
+            self._contours = [ax.axvline(c, c='k') for c in contours]
             if unit:
                 self._configure_xaxis(unit, label)
             elif label:
@@ -422,6 +425,7 @@ class ColorBar(_EelFigure):
             ax.imshow(im, extent=(0, 1, vmin, vmax), aspect='auto', origin='lower')
             ax.set_ylim(clipmin, clipmax)
             ax.xaxis.set_ticks(())
+            self._contours = [ax.axhline(c, c='k') for c in contours]
             if unit:
                 self._configure_yaxis(unit, label)
             elif label:

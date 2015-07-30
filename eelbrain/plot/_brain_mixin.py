@@ -61,7 +61,7 @@ class BrainMixin(object):
             raise RuntimeError("Brain._hemi=%s" % repr(self._hemi))
         cmap = ListedColormap(data['orig_ctable'] / 255., "Brain Colormap")
         return ColorBar(cmap, data['fmin'], data['fmax'], label, label_position,
-                        clipmin, clipmax, orientation, self.__unit, *args,
+                        clipmin, clipmax, orientation, self.__unit, (), *args,
                         **kwargs)
 
     def save_image(self, filename, transparent=True):
