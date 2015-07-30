@@ -370,6 +370,18 @@ returned by the plotting functions:
     plot.brain.bin_table
     plot.brain.copy
 
+Plotting functions return a subclass of
+`PySurfer <https://pysurfer.github.io/#>`_'s :class:`surfer.Brain` class. This
+subclass contains all PySurfer functionalities, and in addition has the
+following methods to better interact with Eelbrain:
+
+.. autosummary::
+   :toctree: generated
+
+    ~plot._brain_mixin.BrainMixin.image
+    ~plot._brain_mixin.BrainMixin.plot_colorbar
+    ~plot._brain_mixin.BrainMixin.save_image
+
 
 .. _ref-guis:
 
