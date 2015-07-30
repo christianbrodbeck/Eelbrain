@@ -367,7 +367,8 @@ class ColorBar(_EelFigure):
     vmax : scalar
         Upper end of the scale mapped onto cmap.
     label : None | str
-        Label for the x-axis (default is the name of the colormap).
+        Label for the x-axis (default is the unit, or if no unit is provided
+        the name of the colormap).
     label_position : 'left' | 'right' | 'top' | 'bottom'
         Position of the axis label. Valid values depend on orientation.
     clipmin : scalar
@@ -397,7 +398,10 @@ class ColorBar(_EelFigure):
             raise ValueError("orientation=%s" % repr(orientation))
 
         if label is True:
-            label = cm.name
+            if unit:
+                label = unit
+            else:
+                label = cm.name
 
         title = "ColorBar: %s" % cm.name
         _EelFigure.__init__(self, title, 1, h, ax_aspect, *args, **kwargs)
