@@ -6556,7 +6556,7 @@ class Sensor(Dimension):
         if index in self._transformed:
             return self._transformed[index]
 
-        if proj in ['cone', 'lower cone', 'z root']:
+        if proj in ('cone', 'lower cone', 'z root'):
 
             # fit the 3d sensor locations to a sphere with center (cx, cy, cz)
             # and radius r
@@ -6597,25 +6597,22 @@ class Sensor(Dimension):
                 idx = (r_xy != 0)  # avoid zero division
                 F = r[idx] / r_xy[idx]  # stretching Factor accounting for current r
                 locs2d[idx, :] *= F[:, None]
-
         else:
-            pattern = re.compile('([xyz])([+-])')
-            match = pattern.match(proj.lower())
+            match = re.match('([xyz])([+-])', proj)
             if match:
-                ax = match.group(1)
-                sign = match.group(2)
+                ax, sign = match.groups()
                 if ax == 'x':
                     locs2d = np.copy(self.locs[:, 1:])
                     if sign == '-':
-                        locs2d[:, 0] = -locs2d[:, 0]
+                        locs2d[:, 0] *= -1
                 elif ax == 'y':
                     locs2d = np.copy(self.locs[:, [0, 2]])
                     if sign == '+':
-                        locs2d[:, 0] = -locs2d[:, 0]
+                        locs2d[:, 0] *= -1
                 elif ax == 'z':
                     locs2d = np.copy(self.locs[:, :2])
                     if sign == '-':
-                        locs2d[:, 1] = -locs2d[:, 1]
+                        locs2d[:, 1] *= -1
             else:
                 raise ValueError("invalid proj kwarg: %r" % proj)
 
