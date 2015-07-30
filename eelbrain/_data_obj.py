@@ -6356,11 +6356,13 @@ class Sensor(Dimension):
     """
     name = 'sensor'
     adjacent = False
+    _proj_aliases = {'left': 'x-', 'right': 'x+', 'back': 'y-', 'front': 'y+',
+                     'top': 'z+', 'bottom': 'z-'}
 
     def __init__(self, locs, names=None, groups=None, sysname=None,
                  proj2d='z root', connectivity=None):
         self.sysname = sysname
-        self.default_proj2d = proj2d
+        self.default_proj2d = self._interpret_proj(proj2d)
         self._connectivity = connectivity
 
         # 'z root' transformation fails with 32-bit floats
@@ -6532,6 +6534,16 @@ class Sensor(Dimension):
                 names.append(name)
         return cls(locs, names, **kwargs)
 
+    def _interpret_proj(self, proj):
+        if proj == 'default':
+            return self.default_proj2d
+        elif proj in self._proj_aliases:
+            return self._proj_aliases[proj]
+        elif proj is None:
+            return 'z+'
+        else:
+            return proj
+
     def get_locs_2d(self, proj='default', extent=1):
         """
         returns a sensor X location array, the first column reflecting the x,
@@ -6546,11 +6558,7 @@ class Sensor(Dimension):
             coordinates will be scaled with minimum value 0 and maximum value
             defined by the value of ``extent``.
         """
-        if proj == 'default':
-            proj = self.default_proj2d
-
-        if proj is None:
-            proj = 'z+'
+        proj = self._interpret_proj(proj)
 
         index = (proj, extent)
         if index in self._transformed:
