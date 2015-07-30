@@ -135,6 +135,7 @@ unit_format = {u'ms': 1e3,
                u'µV': 1e6,
                u'pT': 1e12,
                u'fT': 1e15,
+               u'dSPM': 1,
                int: int}
 scale_formatters = {1: ScalarFormatter(),
                     1e3: FuncFormatter(lambda x, pos: '%g' % (1e3 * x)),
