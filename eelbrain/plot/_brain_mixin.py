@@ -31,8 +31,9 @@ class BrainMixin(object):
         im = self.screenshot('rgba', True)
         return Image.from_array(im, name, format, alt)
 
-    def plot_colorbar(self, label=True, label_position=None, clipmin=None,
-                      clipmax=None, orientation='horizontal', *args, **kwargs):
+    def plot_colorbar(self, label=True, label_position=None, label_rotation=None,
+                      clipmin=None, clipmax=None, orientation='horizontal',
+                      *args, **kwargs):
         """Plot a colorbar corresponding to the displayed data
 
         Parameters
@@ -41,6 +42,10 @@ class BrainMixin(object):
             Label for the x-axis (default is based on the data).
         label_position : 'left' | 'right' | 'top' | 'bottom'
             Position of the axis label. Valid values depend on orientation.
+        label_rotation : scalar
+            Angle of the label in degrees (For horizontal colorbars, the default is
+            0; for vertical colorbars, the default is 0 for labels of 3 characters
+            and shorter, and 90 for longer labels).
         clipmin : scalar
             Clip the color-bar below this value.
         clipmax : scalar
@@ -61,8 +66,8 @@ class BrainMixin(object):
             raise RuntimeError("Brain._hemi=%s" % repr(self._hemi))
         cmap = ListedColormap(data['orig_ctable'] / 255., "Brain Colormap")
         return ColorBar(cmap, data['fmin'], data['fmax'], label, label_position,
-                        clipmin, clipmax, orientation, self.__unit, (), *args,
-                        **kwargs)
+                        label_rotation, clipmin, clipmax, orientation,
+                        self.__unit, (), *args, **kwargs)
 
     def save_image(self, filename, transparent=True):
         """Save current image to disk

@@ -371,6 +371,10 @@ class ColorBar(_EelFigure):
         the name of the colormap).
     label_position : 'left' | 'right' | 'top' | 'bottom'
         Position of the axis label. Valid values depend on orientation.
+    label_rotation : scalar
+        Angle of the label in degrees (For horizontal colorbars, the default is
+        0; for vertical colorbars, the default is 0 for labels of 3 characters
+        and shorter, and 90 for longer labels).
     clipmin : scalar
         Clip the color-bar below this value.
     clipmax : scalar
@@ -384,6 +388,7 @@ class ColorBar(_EelFigure):
         Plot contour lines at these values.
     """
     def __init__(self, cmap, vmin, vmax, label=True, label_position=None,
+                 label_rotation=None,
                  clipmin=None, clipmax=None, orientation='horizontal',
                  unit=None, contours=(), *args, **kwargs):
         cm = mpl.cm.get_cmap(cmap)
@@ -421,6 +426,9 @@ class ColorBar(_EelFigure):
 
             if label_position is not None:
                 ax.xaxis.set_label_position(label_position)
+
+            if label_rotation is not None:
+                ax.xaxis.label.set_rotation(label_rotation)
         elif orientation == 'vertical':
             ax.imshow(im, extent=(0, 1, vmin, vmax), aspect='auto', origin='lower')
             ax.set_ylim(clipmin, clipmax)
@@ -433,6 +441,14 @@ class ColorBar(_EelFigure):
 
             if label_position is not None:
                 ax.yaxis.set_label_position(label_position)
+
+            if label_rotation is not None:
+                ax.yaxis.label.set_rotation(label_rotation)
+                if (label_rotation + 10) % 360 < 20:
+                    ax.yaxis.label.set_va('center')
+            elif label and len(label) <= 3:
+                ax.yaxis.label.set_rotation(0)
+                ax.yaxis.label.set_va('center')
         else:
             raise ValueError("orientation=%s" % repr(orientation))
 
