@@ -3574,15 +3574,20 @@ class NDVar(object):
             >>> meg_rms = meg.summary('sensor', func=rms)
 
         """
-        func = regions.pop('func', self.info.get('summary_func', np.mean))
+        if 'func' in regions:
+            func = regions.pop('func')
+        elif 'summary_func' in self.info:
+            func = self.info['summary_func']
+        else:
+            func = np.mean
         name = regions.pop('name', None)
         if len(dims) + len(regions) == 0:
             dims = ('case',)
 
         if regions:
             dims = list(dims)
-            dims.extend(dim for dim in regions if not np.isscalar(regions[dim]))
             data = self.sub(**regions)
+            dims.extend(dim for dim in regions if data.has_dim(dim))
             return data.summary(*dims, func=func, name=name)
         else:
             x = self.x
