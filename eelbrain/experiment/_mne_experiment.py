@@ -2542,6 +2542,9 @@ class MneExperiment(FileTree):
             with open(self.get('cov-info-file'), 'w') as fid:
                 fid.write('%s\n' % reg_vs[i])
 
+        dirname = os.path.dirname(dest)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
         cov.save(dest)
 
     def _make_evoked(self, decim, **kwargs):
