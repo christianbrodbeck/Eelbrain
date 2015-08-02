@@ -310,9 +310,9 @@ def cluster_timecourse(section, cluster, y, dim, model, ds, colors,
                            "cluster.", [image_tc, image_bar, image_box])
 
 
-def roi_timecourse(doc, ds, label, model, res, colors):
+def roi_timecourse(doc, ds, label, res, colors):
     "Plot ROI time course with cluster permutation test"
-    y = ds.info['label_ids'][label]
+    y = ds.info['label_keys'][label]
     label_name = label[:-3].capitalize()
     hemi = label[-2].capitalize()
     title = ' '.join((label_name, hemi))
