@@ -32,7 +32,7 @@ from .._mne import source_induced_power, dissolve_label, \
 from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg, _interpolate_bads_meg
 from .._data_obj import (align, UTS, DimensionMismatchError,
-                         assert_is_legal_dataset_key)
+                         as_legal_dataset_key, assert_is_legal_dataset_key)
 from ..fmtxt import List, Report
 from .._report import named_list
 from .._resources import predefined_connectivity
@@ -987,50 +987,6 @@ class MneExperiment(FileTree):
 
         if not keep_evoked:
             del ds['evoked']
-
-    @staticmethod
-    def _add_stc_label(ds, label, label_cache):
-        """
-        Extract the label time course from a list of SourceEstimates.
-
-        Returns nothing.
-
-        Parameters
-        ----------
-        ds : Dataset
-            Dataset containing a list of SourceEstimates and a subject
-            variabls.
-        label :
-            the label's name (e.g., 'fusiform_lh').
-        labels : CacheDict
-            Labels cache.
-
-        Returns
-        -------
-        key : str
-            The key under which the label was added to the Dataset.
-        """
-        label_id = 0
-        if 'label_ids' not in ds.info:
-            key = 'label_tc_0'
-            ds.info['label_ids'] = {}
-        elif label in ds.info['label_ids']:
-            raise RuntimeError("Label already added: %r" % label)
-        else:
-            while 'label_tc_%i' % label_id in ds.info['label_ids']:
-                label_id += 1
-            key = 'label_tc_%i' % label_id
-        ds.info['label_ids'][label] = key
-
-        x = []
-        for case in ds.itercases():
-            stc = case['stc']
-            label_data = stc.in_label(label_cache[case['subject']][label]).data
-            x.append(label_data.mean(0))
-
-        time = UTS(stc.tmin, stc.tstep, stc.shape[1])
-        ds[key] = NDVar(np.array(x), dims=('case', time))
-        return key
 
     def backup(self, dst_root):
         """Backup all essential files to ``dst_root``.
@@ -3397,8 +3353,29 @@ class MneExperiment(FileTree):
             return
 
         # load data
-        group = self.get('group')
-        ds = self.load_evoked_stc(group, sns_baseline, src_baseline, ind_stc=True)
+        label_names = None
+        dss = []
+        for _ in self:
+            ds = self.load_evoked_stc(None, sns_baseline, src_baseline, ind_ndvar=True)
+            src = ds.pop('src')
+            if label_names is None:
+                label_keys = {k: as_legal_dataset_key(k) for k in src.source.parc.cells}
+                label_names = {v: k for k, v in label_keys.iteritems()}
+                if len(label_names) != len(label_keys):
+                    raise RuntimeError("Label key conflict")
+            elif not all(k in label_keys for k in src.source.parc.cells):
+                raise RuntimeError("Not all subjects have the same labels")
+
+            for name, key in label_keys.iteritems():
+                ds[key] = src.summary(source=name)
+            del src
+            dss.append(ds)
+        ds = combine(dss, incomplete='drop')
+        # prune label_keys
+        for name, key in label_keys.iteritems():
+            if key not in ds:
+                del label_keys[name]
+        ds.info['label_keys'] = label_keys
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
@@ -3413,13 +3390,10 @@ class MneExperiment(FileTree):
         surfer_kwargs = self._surfer_plot_kwargs()
         self._report_parc_image(section, caption, surfer_kwargs)
 
-        # load labels
-        with self._temporary_state:
-            labels = self._load_labels(mrisubject=self.get('common_brain'),
-                                       match=False)
+        # sort labels
         labels_lh = []
         labels_rh = []
-        for label in labels:
+        for label in label_keys:
             if label.startswith('unknown'):
                 continue
             elif label.endswith('-lh'):
@@ -3434,15 +3408,12 @@ class MneExperiment(FileTree):
         # add content body
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
-        label_cache = CacheDict(self._load_labels, 'subject')
         for hemi, label_names in (('Left', labels_lh), ('Right', labels_rh)):
             section = report.add_section("%s Hemisphere" % hemi)
             for label in label_names:
-                key = self._add_stc_label(ds, label, label_cache)
-                y = ds[key]
-                res = self._make_test(y, ds, test, samples, pmin, tstart, tstop,
-                                      None, None)
-                _report.roi_timecourse(section, ds, label, model, res, colors)
+                res = self._make_test(ds[label_keys[label]], ds, test, samples,
+                                      pmin, tstart, tstop, None, None)
+                _report.roi_timecourse(section, ds, label, res, colors)
 
         # compose info
         self._report_test_info(info_section, ds, test, res, 'src')
