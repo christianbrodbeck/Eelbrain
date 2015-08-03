@@ -515,6 +515,13 @@ def test_interaction():
     for a, b in product(A.cells, B.cells):
         assert_array_equal(i == (a, b), np.logical_and(A == a, B == b))
 
+    # Interaction.as_factor()
+    a = Factor('aabb')
+    i = a % Factor('cdcd')
+    assert_dataobj_equal(i.as_factor(), Factor(['a c', 'a d', 'b c', 'b d']))
+    i = a % Factor(['c', '', 'c', ''])
+    assert_dataobj_equal(i.as_factor(), Factor(['a c', 'a', 'b c', 'b']))
+
 
 def test_isin():
     "Test .isin() methods"

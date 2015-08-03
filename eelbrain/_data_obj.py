@@ -429,7 +429,7 @@ def asfactor(x, sub=None, ds=None, n=None):
     if isfactor(x):
         pass
     elif hasattr(x, 'as_factor'):
-        x = x.as_factor()
+        x = x.as_factor(name=x.name)
     else:
         x = Factor(x)
 
@@ -5377,10 +5377,29 @@ class Interaction(_Effect):
             return np.any(x, 0)
         return np.ones(len(self), bool)
 
-    def as_factor(self):
-        name = self.name.replace(' ', '')
-        x = self.as_labels()
-        return Factor(x, name)
+    def as_factor(self, delim=' ', name=None):
+        """Convert the Interaction to a factor
+
+        Parameters
+        ----------
+        delim : str
+            Delimiter to join factor cell values (default ``" "``).
+        name : str
+            Name for the Factor (default is None).
+
+        Examples
+        --------
+        >>> print ds[::20, 'A']
+        Factor(['a1', 'a1', 'a2', 'a2'], name='A')
+        >>> print ds[::20, 'B']
+        Factor(['b1', 'b2', 'b1', 'b2'], name='B')
+        >>> i = ds.eval("A % B")
+        >>> print i.as_factor()[::20]
+        Factor(['a1 b1', 'a1 b2', 'a2 b1', 'a2 b2'], name='AxB')
+        >>> print i.as_factor("_")[::20]
+        Factor(['a1_b1', 'a1_b2', 'a2_b1', 'a2_b2'], name='AxB')
+        """
+        return Factor(self.as_labels(delim), name)
 
     def as_cells(self):
         """All values as a list of tuples."""
@@ -5403,7 +5422,7 @@ class Interaction(_Effect):
         delim : str
             Delimiter with which to join the elements of cells.
         """
-        return [delim.join(str(v) for v in case) for case in self]
+        return [delim.join(filter(None, map(str, case))) for case in self]
 
     def compress(self, X):
         "Deprecated. Use .aggregate()."
