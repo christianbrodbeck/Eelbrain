@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import traceback
 from warnings import warn
 
 import numpy as np
@@ -215,8 +216,15 @@ class TreeModel(object):
         self._set_handlers[key] = handler
 
     def _crash_report(self):
-        source = inspect.getsource(self.__class__)
-        tree = str(self.show_state())
+        try:
+            source = inspect.getsource(self.__class__)
+        except Exception as e:
+            source = "Failed to retrieve source:\n" + traceback.format_exc(e)
+
+        try:
+            tree = unicode(self.show_state())
+        except Exception as e:
+            tree = "Failed to retrieve state:\n" + traceback.format_exc(e)
 
         # package versions
         from .. import __version__
