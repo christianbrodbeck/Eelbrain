@@ -3370,7 +3370,7 @@ class MneExperiment(FileTree):
                 ds[key] = src.summary(source=name)
             del src
             dss.append(ds)
-        ds = combine(dss, incomplete='drop')
+        ds = combine(dss)
         # prune label_keys
         for name, key in label_keys.iteritems():
             if key not in ds:
