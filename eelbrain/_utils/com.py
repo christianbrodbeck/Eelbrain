@@ -122,7 +122,7 @@ class Notifier(object):
             # drop into pdb
             if self.debug:
                 traceback.print_exc()
-                print error_message
+                print ''
                 pdb.post_mortem(traceback_)
         else:
             event = '{host} finished {task}'.format(host=host, task=self.name)
