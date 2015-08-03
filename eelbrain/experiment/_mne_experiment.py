@@ -31,11 +31,12 @@ from .._mne import source_induced_power, dissolve_label, \
     morph_source_space, shift_mne_epoch_trigger
 from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg, _interpolate_bads_meg
-from .._data_obj import (align, DimensionMismatchError, as_legal_dataset_key,
-                         assert_is_legal_dataset_key)
+from .._data_obj import (asfactor, align, DimensionMismatchError,
+                         as_legal_dataset_key, assert_is_legal_dataset_key)
 from ..fmtxt import List, Report
 from .._report import named_list
 from .._resources import predefined_connectivity
+from .._stats import spm
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from ._experiment import FileTree
@@ -673,6 +674,18 @@ class MneExperiment(FileTree):
                 desc = link.join((params['c1'], params['c0']))
             elif kind == 't_contrast_rel':
                 desc = params['contrast']
+            elif kind == 'two-stage':
+                all_params = set(params)
+                missing = {'kind', 'stage 1'}.difference(all_params)
+                if missing:
+                    raise KeyError("Test definition %s is missing %s"
+                                   % (test, named_list(tuple(missing), 'entry')))
+                unknown = all_params.difference({'kind', 'stage 1', 'vars'})
+                if unknown:
+                    raise KeyError("Test definition %s has unknown %s"
+                                   % (test, named_list(tuple(missing), 'entry')))
+
+                desc = params['stage 1']
             elif kind == 'custom':
                 desc = 'Custom test'
             else:
@@ -2170,9 +2183,12 @@ class MneExperiment(FileTree):
             test = self.get('test', **kwargs)
         else:
             self.set(test=test, **kwargs)
+        test_params = self._tests[test]
 
-        if self._tests[test]['kind'] == 'custom':
+        if test_params['kind'] == 'custom':
             raise RuntimeError("Don't know how to perform 'custom' test")
+        elif test_params['kind'] == 'two-stage':
+            raise NotImplementedError("Loading two-stage test")
 
         # find data to use
         modality = self.get('modality')
@@ -2243,7 +2259,6 @@ class MneExperiment(FileTree):
         # load data
         if load_data:
             # determine categories to load
-            test_params = self._tests[test]
             if test_params['kind'] == 'ttest_rel':
                 cat = (test_params['c1'], test_params['c0'])
             else:
@@ -3250,98 +3265,96 @@ class MneExperiment(FileTree):
         if not redo and not redo_test and os.path.exists(dst):
             return
 
-        # load data
-        ds, res = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
-                                 'src', sns_baseline, src_baseline, True, True,
-                                 redo_test)
-        y = ds['srcm']
-
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
         report = Report(title)
 
-        # info
-        self._report_test_info(report.add_section("Test Info"), ds, test, res,
-                               'src', include)
-
-        model = self._tests[test]['model']
-        colors = plot.colors_for_categorial(ds.eval(model))
-        surfer_kwargs = self._surfer_plot_kwargs()
-        if parc is None and pmin in (None, 'tfce'):
-            section = report.add_section("P<=.05")
-            _report.source_bin_table(section, res, surfer_kwargs, 0.05)
-            clusters = res.find_clusters(0.05, maps=True)
-            clusters.sort('tstart')
-            title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
-            for cluster in clusters.itercases():
-                _report.source_time_cluster(section, cluster, y, model, ds,
-                                            title, colors)
-
-            # trend section
-            section = report.add_section("Trend: p<=.1")
-            _report.source_bin_table(section, res, surfer_kwargs, 0.1)
-
-            # not quite there section
-            section = report.add_section("Anything: P<=.2")
-            _report.source_bin_table(section, res, surfer_kwargs, 0.2)
-        elif parc and pmin in (None, 'tfce'):
-            # add picture of parc
-            section = report.add_section(parc)
-            caption = "Labels in the %s parcellation." % parc
-            self._report_parc_image(section, caption, surfer_kwargs)
-
-            # add subsections for individual labels
-            title = "{tstart}-{tstop} p={p}{mark} {effect}"
-            for label in y.source.parc.cells:
-                section = report.add_section(label.capitalize())
-
-                clusters_sig = res.find_clusters(0.05, True, source=label)
-                clusters_trend = res.find_clusters(0.1, True, source=label)
-                clusters_trend = clusters_trend.sub("p>0.05")
-                clusters_all = res.find_clusters(0.2, True, source=label)
-                clusters_all = clusters_all.sub("p>0.1")
-                clusters = combine((clusters_sig, clusters_trend, clusters_all))
-                clusters.sort('tstart')
-                src_ = y.sub(source=label)
-                _report.source_time_clusters(section, clusters, src_, ds, model,
-                                             include, title, colors)
-        elif parc is None:  # thresholded, whole brain
-            if mask:
-                title = "Whole Brain Masked by %s" % mask.capitalize()
-                section = report.add_section(title)
-                caption = "Mask: %s" % mask.capitalize()
-                self._report_parc_image(section, caption, surfer_kwargs)
-            else:
-                section = report.add_section("Whole Brain")
-
-            _report.source_bin_table(section, res, surfer_kwargs)
-
-            clusters = res.find_clusters(include, maps=True)
-            clusters.sort('tstart')
-            title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
-            _report.source_time_clusters(section, clusters, y, ds, model,
-                                         include, title, colors)
-        else:  # thresholded, parc
-            # add picture of parc
-            section = report.add_section(parc)
-            caption = "Labels in the %s parcellation." % parc
-            self._report_parc_image(section, caption, surfer_kwargs)
-            _report.source_bin_table(section, res, surfer_kwargs)
-
-            # add subsections for individual labels
-            title = "{tstart}-{tstop} p={p}{mark} {effect}"
-            for label in y.source.parc.cells:
-                section = report.add_section(label.capitalize())
-
-                clusters = res.find_clusters(None, True, source=label)
-                src_ = y.sub(source=label)
-                _report.source_time_clusters(section, clusters, src_, ds, model,
-                                             include, title, colors)
+        params = self._tests[test]
+        if params['kind'] == 'two-stage':
+            self._two_stage_report(report, test, sns_baseline, src_baseline,
+                                   pmin, samples, tstart, tstop, parc, mask,
+                                   include, redo_test)
+        else:
+            self._evoked_report(report, test, sns_baseline, src_baseline, pmin,
+                                samples, tstart, tstop, parc, mask, include,
+                                redo_test)
 
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
-
         report.save_html(dst)
+
+    def _evoked_report(self, report, test, sns_baseline, src_baseline, pmin,
+                       samples, tstart, tstop, parc, mask, include, redo_test):
+        # load data
+        ds, res = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
+                                 'src', sns_baseline, src_baseline, True, True,
+                                 redo_test)
+
+        # info
+        surfer_kwargs = self._surfer_plot_kwargs()
+        self._report_test_info(report.add_section("Test Info"), ds, test, res,
+                               'src', include)
+        if parc:
+            section = report.add_section(parc)
+            caption = "Labels in the %s parcellation." % parc
+            self._report_parc_image(section, caption, surfer_kwargs)
+        elif mask:
+            title = "Whole Brain Masked by %s" % mask
+            section = report.add_section(title)
+            caption = "Mask: %s" % mask.capitalize()
+            self._report_parc_image(section, caption, surfer_kwargs)
+
+        model = self._tests[test]['model']
+        colors = plot.colors_for_categorial(ds.eval(model))
+        report.append(_report.source_time_results(res, ds, colors, include, surfer_kwargs))
+
+    def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
+                          samples, tstart, tstop, parc, mask, include, redo_test):
+        # find params
+        test_params = self._tests[test]
+        model = test_params['stage 1']
+        parc_dim = 'source' if parc else None
+        logger.info("Starting two-stage report")
+        test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop,
+                                        ('time', 'source'), parc_dim)
+        apply_mask = bool(parc or mask)
+        if mask:
+            self.set(parc=mask)
+
+        # stage 1
+        lms = []
+        for subject in self:
+            logger.info("Stage 1 model for %s" % subject)
+            ds = self.load_epochs_stc(subject, sns_baseline, src_baseline,
+                                      morph=True, mask=apply_mask)
+            if 'vars' in test_params:
+                new_vars = [asfactor(source, ds=ds).as_var(codes, 0, name)
+                            for name, (source, codes) in test_params['vars'].iteritems()]
+                for v in new_vars:
+                    ds.add(v, True)
+            lms.append(spm.LM('srcm', model, ds, subject=subject))
+        rlm = spm.RandomLM(lms)
+
+        # start report
+        surfer_kwargs = self._surfer_plot_kwargs()
+        info_section = report.add_section("Test Info")
+        if parc:
+            section = report.add_section(parc)
+            caption = "Labels in the %s parcellation." % parc
+            self._report_parc_image(section, caption, surfer_kwargs)
+        elif mask:
+            title = "Whole Brain Masked by %s" % mask
+            section = report.add_section(title)
+            caption = "Mask: %s" % mask.capitalize()
+            self._report_parc_image(section, caption, surfer_kwargs)
+
+        # stage 2
+        for term in rlm.column_names:
+            logger.info("Stage 2 test for %s" % term)
+            res, ds = rlm.column_ttest(term, True, **test_kwargs)
+            report.append(_report.source_time_results(res, ds, None, include, surfer_kwargs, term))
+
+        self._report_test_info(info_section, ds, test, res, 'src')
 
     def make_report_rois(self, test, parc=None, pmin=None, tstart=0.15, tstop=None,
                          samples=10000, sns_baseline=True, src_baseline=None,
@@ -3595,7 +3608,10 @@ class MneExperiment(FileTree):
 
     def _report_subject_info(self, ds, model):
         # add subject information to experiment
-        s_ds = table.repmeas('n', model, 'subject', ds=ds)
+        if model:
+            s_ds = table.repmeas('n', model, 'subject', ds=ds)
+        else:
+            s_ds = ds
         s_ds2 = self.show_subjects(asds=True)
         s_ds.update(s_ds2[('subject', 'mri')])
         s_table = s_ds.as_table(midrule=True, count=True, caption="All "
@@ -3622,7 +3638,7 @@ class MneExperiment(FileTree):
         info = res.info_list(data is not None)
         section.append(info)
 
-        section.append(self._report_subject_info(ds, test_params['model']))
+        section.append(self._report_subject_info(ds, test_params.get('model', None)))
         section.append(self.show_state(hide=('hemi', 'subject', 'mrisubject')))
 
     def _report_parc_image(self, section, caption, surfer_kwargs):
@@ -4208,7 +4224,7 @@ class MneExperiment(FileTree):
             self.set(subject=subjects[0])
 
     def _post_set_test(self, _, test):
-        if test != '*':
+        if test != '*' and 'model' in self._tests[test]:
             self.set(model=self._tests[test]['model'])
 
     def _set_test_options(self, data, sns_baseline, src_baseline, pmin, tstart,

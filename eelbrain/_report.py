@@ -4,7 +4,7 @@ import numpy as np
 from . import fmtxt
 from . import plot
 from . import test
-from ._data_obj import cellname
+from ._data_obj import cellname, combine
 from .fmtxt import ms, Section
 
 
@@ -23,6 +23,8 @@ def named_list(items, name='item'):
     if len(items) == 1:
         return "%s (%r)" % (name, items[0])
     else:
+        if name.endswith('y'):
+            name = name[:-1] + 'ie'
         return "%ss (%s)" % (name, ', '.join(map(repr, items)))
 
 
@@ -168,6 +170,63 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, match='subject')
     cluster_timecourse(section, cluster, y, 'sensor', model, ds, colors, match)
 
 
+def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={}, title="Results"):
+    report = Section(title)
+    y = ds[res.Y]
+    parc = res._first_cdist.parc
+    model = res._plot_model()
+    if parc and res._kind == 'cluster':
+        source_bin_table(report, res, surfer_kwargs)
+
+        # add subsections for individual labels
+        title = "{tstart}-{tstop} p={p}{mark} {effect}"
+        for label in y.source.parc.cells:
+            section = report.add_section(label.capitalize())
+
+            clusters = res.find_clusters(None, True, source=label)
+            src_ = y.sub(source=label)
+            source_time_clusters(section, clusters, src_, ds, model, include, title, colors, res.match)
+    elif not parc and res._kind == 'cluster':
+        source_bin_table(report, res, surfer_kwargs)
+
+        clusters = res.find_clusters(include, maps=True)
+        clusters.sort('tstart')
+        title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
+        source_time_clusters(report, clusters, y, ds, model, include, title, colors, res.match)
+    elif not parc and res._kind in ('raw', 'tfce'):
+        section = report.add_section("P<=.05")
+        source_bin_table(section, res, surfer_kwargs, 0.05)
+        clusters = res.find_clusters(0.05, maps=True)
+        clusters.sort('tstart')
+        title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
+        for cluster in clusters.itercases():
+            source_time_cluster(section, cluster, y, model, ds, title, colors, res.match)
+
+        # trend section
+        section = report.add_section("Trend: p<=.1")
+        source_bin_table(section, res, surfer_kwargs, 0.1)
+
+        # not quite there section
+        section = report.add_section("Anything: P<=.2")
+        source_bin_table(section, res, surfer_kwargs, 0.2)
+    elif parc and res._kind in ('raw', 'tfce'):
+        title = "{tstart}-{tstop} p={p}{mark} {effect}"
+        for label in y.source.parc.cells:
+            section = report.add_section(label.capitalize())
+            clusters_sig = res.find_clusters(0.05, True, source=label)
+            clusters_trend = res.find_clusters(0.1, True, source=label)
+            clusters_trend = clusters_trend.sub("p>0.05")
+            clusters_all = res.find_clusters(0.2, True, source=label)
+            clusters_all = clusters_all.sub("p>0.1")
+            clusters = combine((clusters_sig, clusters_trend, clusters_all))
+            clusters.sort('tstart')
+            src_ = y.sub(source=label)
+            source_time_clusters(section, clusters, src_, ds, model, include, title, colors, res.match)
+    else:
+        raise RuntimeError
+    return report
+
+
 def source_bin_table(section, res, surfer_kwargs, pmin=None):
     caption = ("All clusters in time bins. Each plot shows all sources "
                "that are part of a cluster at any time during the "
@@ -191,7 +250,7 @@ def source_bin_table(section, res, surfer_kwargs, pmin=None):
         section.add_image_figure(im, caption_)
 
 
-def source_time_clusters(section, clusters, y, ds, model, include, title, colors):
+def source_time_clusters(section, clusters, y, ds, model, include, title, colors, match):
     """
     Parameters
     ----------
@@ -219,10 +278,10 @@ def source_time_clusters(section, clusters, y, ds, model, include, title, colors
     # plot individual clusters
     clusters = clusters.sub("p < %s" % include)
     for cluster in clusters.itercases():
-        source_time_cluster(section, cluster, y, model, ds, title, colors)
+        source_time_cluster(section, cluster, y, model, ds, title, colors, match)
 
 
-def source_time_cluster(section, cluster, y, model, ds, title, colors):
+def source_time_cluster(section, cluster, y, model, ds, title, colors, match):
     # cluster properties
     tstart_ms = ms(cluster['tstart'])
     tstop_ms = ms(cluster['tstop'])
@@ -254,11 +313,10 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors):
     caption_.append("%i - %i ms." % (tstart_ms, tstop_ms))
     caption = ' '.join(caption_)
     section.add_image_figure(brain.image('cluster_spatial'), caption)
-    cluster_timecourse(section, cluster, y, 'source', model, ds, colors)
+    cluster_timecourse(section, cluster, y, 'source', model, ds, colors, match)
 
 
-def cluster_timecourse(section, cluster, y, dim, model, ds, colors,
-                       match='subject'):
+def cluster_timecourse(section, cluster, y, dim, model, ds, colors, match):
     c_extent = cluster['cluster']
     cid = cluster['id']
 
@@ -427,6 +485,8 @@ def result_report(res, ds, title=None, colors=None):
         sec.append(sensor_results(res, ds, colors))
     elif dims == {'time', 'sensor'}:
         sec.append(sensor_time_results(res, ds, colors))
+    elif dims == {'time', 'source'}:
+        sec.append(source_time_results(res, ds, colors))
     else:
         raise NotImplementedError("dims=%r" % dims)
     return sec
