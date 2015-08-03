@@ -38,6 +38,7 @@ from warnings import warn
 
 import mne
 from mne import Evoked as _mne_Evoked
+from nibabel.freesurfer import read_annot
 import numpy as np
 from numpy import dot
 import scipy.stats
@@ -7382,12 +7383,19 @@ class SourceSpace(Dimension):
                 raise ValueError("Wrong length (%i)" % len(parc))
             parc_ = parc
         elif isinstance(parc, basestring):
-            labels = mne.read_labels_from_annot(self.subject, parc,
-                                                subjects_dir=self.subjects_dir)
-            parc_ = Factor(['unknown'], repeat=len(self), name=parc)
-            for label in labels:
-                index = self.dimindex(label)
-                parc_[index] = label.name
+            if self.kind == 'ico':
+                fname = os.path.join(self.subjects_dir, self.subject, 'label', '%%s.%s.annot' % parc)
+                vert_codes_lh, ctab_lh, names_lh = read_annot(fname % 'lh')
+                vert_codes_rh, ctab_rh, names_rh = read_annot(fname % 'rh')
+                x_lh = vert_codes_lh[self.lh_vertno]
+                x_rh = vert_codes_rh[self.rh_vertno]
+                x_rh += x_lh.max() + 1
+                names = chain(('%s-lh' % name for name in names_lh),
+                              ('%s-rh' % name for name in names_rh))
+                parc_ = Factor(np.hstack((x_lh, x_rh)), parc,
+                               labels={i: name for i, name in enumerate(names)})
+            else:
+                raise NotImplementedError
         else:
             raise ValueError("Parc needs to be string, got %s" % repr(parc))
 
