@@ -291,6 +291,7 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
         raise NotImplementedError
 
     names = []
+    diffs = []
     ts = []
     dfs = []
     ps = []
@@ -308,11 +309,13 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
                 continue
             names.append(cell)
             if match is not None and ct.within[cell, against]:
-                t, p = scipy.stats.ttest_rel(baseline, ct.data[cell])
+                diffs.append(ct.data[cell].mean() - baseline.mean())
+                t, p = scipy.stats.ttest_rel(ct.data[cell], baseline)
                 df = len(baseline) - 1
             else:
                 data = ct.data[cell]
-                t, p = scipy.stats.ttest_ind(baseline, data)
+                diffs.append(data.mean() - baseline.mean())
+                t, p = scipy.stats.ttest_ind(data, baseline)
                 df = len(baseline) + len(data) - 2
             ts.append(t)
             dfs.append(df)
@@ -327,6 +330,7 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
             t, p = scipy.stats.ttest_1samp(data, against)
             df = len(data) - 1
             names.append(label)
+            diffs.append(data.mean() - against)
             ts.append(t)
             dfs.append(df)
             ps.append(p)
@@ -346,13 +350,14 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     else:
         df_in_header = False
 
-    table = fmtxt.Table('l' + 'r' * (3 - df_in_header + bool(corr)))
+    table = fmtxt.Table('l' + 'r' * (4 - df_in_header + bool(corr)))
     table.title(title.format(desc=title_desc))
     if corr:
         table.caption(_get_correction_caption(corr, k))
 
     # header
     table.cell("Effect")
+    table.cell("Difference")
     if df_in_header:
         table.cell(fmtxt.symbol(statistic_name, dfs[0]))
     else:
@@ -364,8 +369,9 @@ def ttest(Y, X=None, against=0, match=None, sub=None, corr='Hochberg',
     table.midrule()
 
     # body
-    for name, t, mark, df, p, p_adj in izip(names, ts, stars, dfs, ps, ps_adjusted):
+    for name, diff, t, mark, df, p, p_adj in izip(names, diffs, ts, stars, dfs, ps, ps_adjusted):
         table.cell(name)
+        table.cell(diff)
         table.cell(fmtxt.stat(t, stars=mark, of=3))
         if not df_in_header:
             table.cell(df)
