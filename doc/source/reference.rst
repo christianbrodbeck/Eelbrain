@@ -423,9 +423,9 @@ information in open windows is saved.
     gui.run
 
 
-^^^^^^^^^^^^^^^^^^
-Experiment Classes
-^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
+MNE-Experiment
+^^^^^^^^^^^^^^
 
 The :class:`MneExperiment` class serves as a base class for analyzing MEG
 data (gradiometer only) with MNE:
