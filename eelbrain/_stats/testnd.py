@@ -688,7 +688,7 @@ class ttest_1samp(_Result):
         Map of the test statistic processed with the threshold-free cluster
         enhancement algorithm (or None if no TFCE was performed).
     """
-    _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'y', 'diff')
+    _state_specific = ('popmean', 'tail', 'n', 'df', 't', 'diff')
 
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
                  samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
@@ -754,7 +754,6 @@ class ttest_1samp(_Result):
         self.n = n
         self.df = df
 
-        self.y = y
         self.diff = diff
         self.t = t
 
