@@ -3363,7 +3363,7 @@ class MneExperiment(FileTree):
                 label_names = {v: k for k, v in label_keys.iteritems()}
                 if len(label_names) != len(label_keys):
                     raise RuntimeError("Label key conflict")
-            elif not all(k in label_keys for k in src.source.parc.cells):
+            elif set(label_keys) != set(src.source.parc.cells):
                 raise RuntimeError("Not all subjects have the same labels")
 
             for name, key in label_keys.iteritems():
