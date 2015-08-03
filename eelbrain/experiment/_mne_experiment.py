@@ -31,8 +31,8 @@ from .._mne import source_induced_power, dissolve_label, \
     morph_source_space, shift_mne_epoch_trigger
 from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg, _interpolate_bads_meg
-from .._data_obj import (align, UTS, DimensionMismatchError,
-                         as_legal_dataset_key, assert_is_legal_dataset_key)
+from .._data_obj import (align, DimensionMismatchError, as_legal_dataset_key,
+                         assert_is_legal_dataset_key)
 from ..fmtxt import List, Report
 from .._report import named_list
 from .._resources import predefined_connectivity
