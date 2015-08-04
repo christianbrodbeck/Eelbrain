@@ -839,7 +839,10 @@ class MneExperiment(FileTree):
                 src -= src.summary(time=baseline)
 
             if morph:
-                ds['srcm'] = morph_source_space(src, self.get('common_brain'))
+                common_brain = self.get('common_brain')
+                with self._temporary_state:
+                    self.make_annot(mrisubject=common_brain)
+                ds['srcm'] = morph_source_space(src, common_brain)
                 if mask:
                     _mask_ndvar(ds, 'srcm')
             else:
