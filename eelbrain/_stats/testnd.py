@@ -2269,6 +2269,8 @@ class _ClusterDist:
         dist = self.dist
 
         if sub:
+            if self._dist_dims is None:
+                raise TypeError("ClusterDist does not have parcellation")
             dist_ = NDVar(dist, self._dist_dims)
             dist_sub = dist_.sub(**sub)
             dist = dist_sub.x
