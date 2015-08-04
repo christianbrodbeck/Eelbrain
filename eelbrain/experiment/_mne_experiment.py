@@ -37,6 +37,7 @@ from ..fmtxt import List, Report
 from .._report import named_list
 from .._resources import predefined_connectivity
 from .._stats import spm
+from .._stats.stats import ttest_t
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from ._experiment import FileTree
@@ -2760,7 +2761,7 @@ class MneExperiment(FileTree):
         brain = plot.brain.dspm(y, fmin, fmin * 3, colorbar=False, **brain_kwargs)
         brain.save_movie(dst, time_dilation)
 
-    def make_mov_ttest(self, subject, model='', c1=None, c0=None, p0=0.05,
+    def make_mov_ttest(self, subject, model='', c1=None, c0=None, p=0.05,
                        sns_baseline=True, src_baseline=None,
                        surf=None, views=None, hemi=None, time_dilation=4.,
                        foreground=None,  background=None, smoothing_steps=None,
@@ -2781,8 +2782,8 @@ class MneExperiment(FileTree):
         c0 : str | scalar
             Control condition (cell on model) or scalar against which to
             compare c1.
-        p0 : 0.1 | 0.05 | 0.01 | .001
-            Minimum p value to draw.
+        p : 0.1 | 0.05 | 0.01 | .001
+            Maximum p value to draw.
         sns_baseline : None | True | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
@@ -2820,16 +2821,20 @@ class MneExperiment(FileTree):
         """
         plot._brain.assert_can_save_movies()
 
-        if p0 == 0.1:
-            p1 = 0.05
-        elif p0 == 0.05:
-            p1 = 0.01
-        elif p0 == 0.01:
-            p1 = 0.001
-        elif p0 == 0.001:
-            p1 = 0.0001
+        if p == 0.1:
+            pmid = 0.05
+            pmin = 0.01
+        elif p == 0.05:
+            pmid = 0.01
+            pmin = 0.001
+        elif p == 0.01:
+            pmid = 0.001
+            pmin = 0.001
+        elif p == 0.001:
+            pmid = 0.0001
+            pmin = 0.00001
         else:
-            raise ValueError("Unknown p0: %s" % p0)
+            raise ValueError("p=%s" % p)
 
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
                                                 smoothing_steps, hemi)
@@ -2861,7 +2866,7 @@ class MneExperiment(FileTree):
         kwargs.update(resname=resname, ext='mov', model=model)
         with self._temporary_state:
             subject, group = self._process_subject_arg(subject, kwargs)
-            self._set_analysis_options('src', sns_baseline, src_baseline, p0, None, None)
+            self._set_analysis_options('src', sns_baseline, src_baseline, p, None, None)
 
             if dst is None:
                 if group is None:
@@ -2870,7 +2875,6 @@ class MneExperiment(FileTree):
                     dst = self.get('res-g-file', mkdir=True)
             else:
                 dst = os.path.expanduser(dst)
-
 
             if not redo and os.path.exists(dst):
                 return
@@ -2890,7 +2894,8 @@ class MneExperiment(FileTree):
         else:
             res = testnd.ttest_1samp(y, ds=ds)
 
-        brain = plot.brain.p_map(res.p_uncorrected, res.t, p0=p0, p1=p1, surf=surf)
+        brain = plot.brain.dspm(res.t, ttest_t(p, res.df), ttest_t(pmin, res.df),
+                                ttest_t(pmid, res.df), surf=surf)
         brain.save_movie(dst, time_dilation)
 
     def make_mrat_evoked(self, **kwargs):
