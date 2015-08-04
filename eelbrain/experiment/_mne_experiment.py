@@ -2175,8 +2175,8 @@ class MneExperiment(FileTree):
         res : TestResult
             Test result for the specified test.
         """
-        self._set_test_options(data, sns_baseline, src_baseline, pmin, tstart,
-                               tstop)
+        self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
+                                   tstart, tstop)
 
         # figure out what test to do
         if test is None:
@@ -2760,7 +2760,8 @@ class MneExperiment(FileTree):
         brain = plot.brain.dspm(y, fmin, fmin * 3, colorbar=False, **brain_kwargs)
         brain.save_movie(dst, time_dilation)
 
-    def make_mov_ttest(self, subject, model=None, c1=None, c0=None, p0=0.05,
+    def make_mov_ttest(self, subject, model='', c1=None, c0=None, p0=0.05,
+                       sns_baseline=True, src_baseline=None,
                        surf=None, views=None, hemi=None, time_dilation=4.,
                        foreground=None,  background=None, smoothing_steps=None,
                        dst=None, redo=False, **kwargs):
@@ -2772,8 +2773,8 @@ class MneExperiment(FileTree):
             Group name for a between-subject t-test, or subject name for a
             within-subject t-test.
         model : None | str
-            Model on which the conditions c1 and c0 are defined. If ``None``,
-            use the grand average (default).
+            Model on which the conditions c1 and c0 are defined. The default
+            (``''``) is the grand average.
         c1 : None | str | tuple
             Test condition (cell in model). If None, the grand average is
             used and c0 has to be a scalar.
@@ -2782,6 +2783,13 @@ class MneExperiment(FileTree):
             compare c1.
         p0 : 0.1 | 0.05 | 0.01 | .001
             Minimum p value to draw.
+        sns_baseline : None | True | tuple
+            Apply baseline correction using this period in sensor space.
+            True to use the epoch's baseline specification (default).
+        src_baseline : None | True | tuple
+            Apply baseline correction using this period in source space.
+            True to use the epoch's baseline specification. The default is to
+            not apply baseline correction (None).
         surf : str
             Surface on which to plot data.
         views : str | tuple of str
@@ -2831,17 +2839,17 @@ class MneExperiment(FileTree):
                 raise ValueError("If x is specified, c1 needs to be specified; "
                                  "got c1=%s" % repr(c1))
             elif c0:
-                resname = "T-Test %s-%s %s %s" % (c1, c0, surf, p0)
+                resname = "{epoch} t-test %s-%s {test_options} %s" % (c1, c0, surf)
                 cat = (c1, c0)
             else:
-                resname = "T-Test %s-0 %s %s" % (c1, surf, p0)
+                resname = "{epoch} t-test %s {test_options} %s" % (c1, surf)
                 cat = (c1,)
         elif c1 or c0:
             raise ValueError("If x is not specified, c1 and c0 should not be "
                              "specified either; got c1=%s, c0=%s"
                              % (repr(c1), repr(c0)))
         else:
-            resname = "T-Test GA %s %s" % (surf, p0)
+            resname = "{epoch} t-test GA {test_options} %s" % surf
             cat = None
 
         # if minsource is True:
@@ -2850,9 +2858,10 @@ class MneExperiment(FileTree):
         # if mintime is True:
         #     mintime = self.cluster_criteria['mintime']
 
-        kwargs.update(analysis='{src-kind} {evoked-kind}', resname=resname, ext='mov', model=model)
+        kwargs.update(resname=resname, ext='mov', model=model)
         with self._temporary_state:
             subject, group = self._process_subject_arg(subject, kwargs)
+            self._set_analysis_options('src', sns_baseline, src_baseline, p0, None, None)
 
             if dst is None:
                 if group is None:
@@ -2867,10 +2876,10 @@ class MneExperiment(FileTree):
                 return
 
             if group is None:
-                ds = self.load_epochs_stc(subject, cat=cat)
+                ds = self.load_epochs_stc(subject, sns_baseline, src_baseline, cat=cat)
                 y = 'src'
             else:
-                ds = self.load_evoked_stc(group, morph_ndvar=True, cat=cat)
+                ds = self.load_evoked_stc(group, sns_baseline, src_baseline, morph_ndvar=True, cat=cat)
                 y = 'srcm'
 
         if c0:
@@ -2881,7 +2890,7 @@ class MneExperiment(FileTree):
         else:
             res = testnd.ttest_1samp(y, ds=ds)
 
-        brain = plot.brain.stat(res.p_uncorrected, res.t, p0=p0, p1=p1, surf=surf)
+        brain = plot.brain.p_map(res.p_uncorrected, res.t, p0=p0, p1=p1, surf=surf)
         brain.save_movie(dst, time_dilation)
 
     def make_mrat_evoked(self, **kwargs):
@@ -3257,8 +3266,8 @@ class MneExperiment(FileTree):
         else:
             state['parc'] = parc
             folder = "{parc}"
-        self._set_test_options('src', sns_baseline, src_baseline, pmin, tstart,
-                               tstop)
+        self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
+                                   tstart, tstop)
         dst = self.get('res-g-deep-file', mkdir=True, fmatch=False, folder=folder,
                        resname="{epoch} {test} {test_options}", ext='html',
                        test=test, **state)
@@ -3390,8 +3399,8 @@ class MneExperiment(FileTree):
         parc = self.get('parc', parc=parc)
         if not parc:
             raise ValueError("No parcellation specified")
-        self._set_test_options('src', sns_baseline, src_baseline, pmin, tstart,
-                               tstop)
+        self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
+                                   tstart, tstop)
         dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
                        folder="%s ROIs" % parc.capitalize(),
                        resname="{epoch} {test} {test_options}",
@@ -3499,7 +3508,7 @@ class MneExperiment(FileTree):
         redo_test : bool
             Redo the test even if a cached file exists.
         """
-        self._set_test_options('eeg', baseline, None, pmin, tstart, tstop)
+        self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop)
         dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
                        folder="EEG Spatio-Temporal",
                        resname="{epoch} {test} {test_options}",
@@ -3561,7 +3570,7 @@ class MneExperiment(FileTree):
             If the target file already exists, delete and recreate it. This
             only applies to the HTML result file, not to the test.
         """
-        self._set_test_options('eeg', baseline, None, pmin, tstart, tstop)
+        self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop)
         dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
                        folder="EEG Sensors",
                        resname="{epoch} {test} {test_options}",
@@ -4227,8 +4236,8 @@ class MneExperiment(FileTree):
         if test != '*' and 'model' in self._tests[test]:
             self.set(model=self._tests[test]['model'])
 
-    def _set_test_options(self, data, sns_baseline, src_baseline, pmin, tstart,
-                          tstop):
+    def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
+                              tstart, tstop):
         """Set templates for test paths with test parameters
 
         Can be set before or after the test template.
