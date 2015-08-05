@@ -4692,16 +4692,16 @@ class Dataset(OrderedDict):
              "(with identical functionality).", DeprecationWarning)
         return self.aggregate(X, drop_empty, name, count, drop_bad, drop)
 
-    def aggregate(self, X, drop_empty=True, name='{name}', count='n',
+    def aggregate(self, x=None, drop_empty=True, name='{name}', count='n',
                   drop_bad=False, drop=(), equal_count=False, never_drop=()):
         """
         Return a Dataset with one case for each cell in X.
 
         Parameters
         ----------
-        X : None | str | categorial
-            Model defining cells to which to reduce cases. For None, the
-            Dataset is reduced to a single case.
+        x : None | str | categorial
+            Model defining cells to which to reduce cases. By default (``None``)
+            the Dataset is reduced to a single case.
         drop_empty : bool
             Drops empty cells in X from the Dataset. This is currently the only
             option.
@@ -4733,31 +4733,31 @@ class Dataset(OrderedDict):
         if not drop_empty:
             raise NotImplementedError('drop_empty = False')
 
-        if X:
+        if x:
             if equal_count:
-                self = self.equalize_counts(X)
-            X = ascategorial(X, ds=self)
+                self = self.equalize_counts(x)
+            x = ascategorial(x, ds=self)
         else:
-            X = Factor('a' * self.n_cases)
+            x = Factor('a' * self.n_cases)
 
         ds = Dataset(name=name.format(name=self.name), info=self.info)
 
         if count:
-            x = filter(None, (np.sum(X == cell) for cell in X.cells))
-            ds[count] = Var(x)
+            n_cases = filter(None, (np.sum(x == cell) for cell in x.cells))
+            ds[count] = Var(n_cases)
 
         for k, v in self.iteritems():
             if k in drop:
                 continue
             try:
                 if hasattr(v, 'aggregate'):
-                    ds[k] = v.aggregate(X)
+                    ds[k] = v.aggregate(x)
                 else:
                     from mne import Epochs
                     if isinstance(v, Epochs):
                         evokeds = []
-                        for cell in X.cells:
-                            idx = (X == cell)
+                        for cell in x.cells:
+                            idx = (x == cell)
                             if idx.sum():
                                 evokeds.append(v[idx].average())
                         ds[k] = evokeds
