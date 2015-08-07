@@ -139,4 +139,9 @@ class Notifier(object):
             Email body; successive entries are joined with two line breaks.
         """
         body = '\n\n\n'.join(map(unicode, info))
-        send_email(self.to, subject, body, self._password)
+        try:
+            send_email(self.to, subject, body, self._password)
+        except Exception as error:
+            print ("Could not send email because an error occurred, skipping "
+                   "notification. Check your internet connection.\n%s"
+                   % str(error))
