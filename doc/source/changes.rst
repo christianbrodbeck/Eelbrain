@@ -4,6 +4,12 @@ Changes
 .. currentmodule:: eelbrain
 
 
+New in 0.19
+-----------
+
+* API: :class:`plot.ColorList` has a new argument called `labels`.
+
+
 New in 0.18
 -----------
 

@@ -314,18 +314,29 @@ class ColorList(_EelFigure):
         Colors for cells.
     cells : tuple
         Cells for which to plot colors (default is ``colors.keys()``).
+    labels : dict (optional)
+        Condition labels that are used instead of the keys in ``colors``. This
+        is useful if ``colors`` uses abbreviated labels, but the color legend
+        should contain more intelligible labels.
     h : 'auto' | scalar
         Height of the figure in inches. If 'auto' (default), the height is
         automatically increased to fit all labels.
     """
-    def __init__(self, colors, cells=None, h='auto', *args, **kwargs):
+    def __init__(self, colors, cells=None, labels=None, h='auto', *args,
+                 **kwargs):
         if h != 'auto':
             kwargs['h'] = h
-        _EelFigure.__init__(self, "Colors", None, 2, 1.5, False, None, *args,
-                            **kwargs)
 
         if cells is None:
             cells = colors.keys()
+
+        if labels is None:
+            labels = {cell: cellname(cell) for cell in cells}
+        elif not isinstance(labels, dict):
+            raise TypeError("labels=%s" % repr(labels))
+
+        _EelFigure.__init__(self, "Colors", None, 2, 1.5, False, None, *args,
+                            **kwargs)
 
         ax = self.figure.add_axes((0, 0, 1, 1), frameon=False)
         ax.set_axis_off()
@@ -338,7 +349,7 @@ class ColorList(_EelFigure):
             patch = mpl.patches.Rectangle((0, bottom), 1, 1, fc=colors[cell],
                                           ec='none', zorder=1)
             ax.add_patch(patch)
-            text_h.append(ax.text(1.1, y, cellname(cell), va='center', ha='left', zorder=2))
+            text_h.append(ax.text(1.1, y, labels[cell], va='center', ha='left', zorder=2))
 
         ax.set_ylim(0, n)
         ax.set_xlim(0, n * self._layout.w / self._layout.h)
