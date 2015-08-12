@@ -2491,7 +2491,7 @@ class MneExperiment(FileTree):
         redo : bool
             If the cov file already exists, overwrite it.
         """
-        dest = self.get('cov-file')
+        dest = self.get('cov-file', mkdir=True)
         rej = self.get('cov-rej')
         if (not redo) and os.path.exists(dest):
             cov_mtime = os.path.getmtime(dest)
@@ -2545,12 +2545,9 @@ class MneExperiment(FileTree):
             cov = covs[i]
 
             # save cov value
-            with open(self.get('cov-info-file'), 'w') as fid:
+            with open(self.get('cov-info-file', mkdir=True), 'w') as fid:
                 fid.write('%s\n' % reg_vs[i])
 
-        dirname = os.path.dirname(dest)
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
         cov.save(dest)
 
     def _make_evoked(self, decim, **kwargs):
