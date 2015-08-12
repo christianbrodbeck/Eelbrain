@@ -2587,7 +2587,11 @@ class _ClusterDist:
         if cluster_id not in self._cids:
             raise ValueError("No cluster with id " + repr(cluster_id))
 
-        return self.parameter_map * (self.cluster_map == cluster_id)
+        out = self.parameter_map * (self.cluster_map == cluster_id)
+        properties = self._cluster_properties(self.cluster_map, (cluster_id,))
+        for k in properties:
+            out.info[k] = properties[0, k]
+        return out
 
     def clusters(self, pmin=None, maps=True, **sub):
         """Find significant clusters
