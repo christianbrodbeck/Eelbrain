@@ -26,7 +26,7 @@ def _idx(i):
 
 def assert_can_save_movies():
     import surfer
-    if LooseVersion(surfer.__version__) <= LooseVersion('0.5'):
+    if LooseVersion(surfer.__version__) < LooseVersion('0.6'):
         raise ImportError("Saving movies requires PySurfer 0.6")
 
 
@@ -383,36 +383,29 @@ def _surfer_brain(unit, subject='fsaverage', surf='smoothwm', hemi='split',
         raise ValueError("Unknown value for hemi parameter: %s" % repr(hemi))
 
     title = None
-    config_opts = {}
     if w is not None:
-        config_opts['width'] = w
+        width = w
     elif axw is not None:
-        config_opts['width'] = axw * n_views_x
+        width = axw * n_views_x
     else:
-        config_opts['width'] = 500 * n_views_x
+        width = 500 * n_views_x
 
     if h is not None:
-        config_opts['height'] = h
+        height = h
     elif axh is not None:
-        config_opts['height'] = axh * len(views)
+        height = axh * len(views)
     else:
-        config_opts['height'] = 400 * len(views)
+        height = 400 * len(views)
 
     if foreground is None:
-        config_opts['foreground'] = FOREGROUND
-    else:
-        config_opts['foreground'] = foreground
+        foreground = FOREGROUND
 
     if background is None:
-        config_opts['background'] = BACKGROUND
-    else:
-        config_opts['background'] = background
+        background = BACKGROUND
 
-    brain = Brain(unit, subject, hemi, surf, True, title,
-                  config_opts=config_opts, views=views,
-                  subjects_dir=subjects_dir)
-
-    return brain
+    return Brain(unit, subject, hemi, surf, True, title, 'classic',
+                 (width, height), background, foreground, None,
+                 subjects_dir, views)
 
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',

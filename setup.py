@@ -56,9 +56,7 @@ kwargs = dict(name='eelbrain',
                                       'sphinx >= 1.1',
                                       'numpydoc >= 0.5'],
                               'plot.brain': ['mayavi >= 4.3.1',
-#                                              'pysurfer >= 0.5'
-# PySurfer breaks the setup because it raises an error when nibabel is not installed
-                                             ]},
+                                             'pysurfer >= 0.6']},
               include_dirs=[np.get_include()],
               packages=find_packages(),
               ext_modules=ext,

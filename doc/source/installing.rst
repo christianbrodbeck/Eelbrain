@@ -57,17 +57,14 @@ with ``conda``::
     $ conda install wxpython
     $ conda install mayavi
 
-Then install Eelbrain::
+Then install Eelbrain (if you are not planning to plot MNE source estimates
+you can leave out the ``[plot.brain]``)::
 
-    $ pip install eelbrain
+    $ pip install eelbrain[plot.brain]
 
-For plotting MNE source estimates, also install PySurfer::
+Later, update Eelbrain with (again, ``[plot.brain]`` is optional)::
 
-    $ pip install pysurfer
-
-Later, update Eelbrain with::
-
-    $ pip install -U eelbrain
+    $ pip install -U eelbrain[plot.brain]
 
 
 
@@ -89,18 +86,15 @@ update the Canopy distribution before installing or updating Eelbrain::
 
    $ enpkg --update-all
 
-Install Eelbrain::
+Then install Eelbrain (if you are not planning to plot MNE source estimates
+you can leave out the ``[plot.brain]``)::
 
-   $ easy_install eelbrain
-
-For plotting MNE source estimates, also install PySurfer::
-
-   $ pip install pysurfer
+    $ pip install eelbrain[plot.brain]
 
 Later, update Eelbrain with::
 
    $ pip uninstall eelbrain
-   $ easy_install -U eelbrain
+   $ easy_install eelbrain[plot.brain]
 
 
 Optional Dependencies
