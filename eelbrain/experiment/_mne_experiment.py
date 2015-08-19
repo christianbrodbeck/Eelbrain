@@ -762,6 +762,16 @@ class MneExperiment(FileTree):
                 return
         return mtime
 
+    def _rej_mtime(self, epoch):
+        "rej-file mtime for secondary epoch definition"
+        rej_file_epochs = epoch.get('_rej_file_epochs', None)
+        if rej_file_epochs is None:
+            return os.path.getmtime(self.get('rej-file'))
+        else:
+            with self._temporary_state:
+                paths = [self.get('rej-file', epoch=e) for e in rej_file_epochs]
+            return max(map(os.path.getmtime, paths))
+
     def _process_subject_arg(self, subject, kwargs):
         """Process subject arg for methods that work on groups and subjects
 
@@ -2492,19 +2502,19 @@ class MneExperiment(FileTree):
             If the cov file already exists, overwrite it.
         """
         dest = self.get('cov-file', mkdir=True)
+        params = self._covs[self.get('cov')]
+        epoch = params.get('epoch', 'cov')
         rej = self.get('cov-rej')
         if (not redo) and os.path.exists(dest):
             cov_mtime = os.path.getmtime(dest)
             raw_mtime = os.path.getmtime(self._get_raw_path())
             bads_mtime = os.path.getmtime(self.get('bads-file'))
             with self._temporary_state:
-                rej_mtime = os.path.getmtime(self.get('rej-file', rej=rej))
-                
+                self.set(rej=rej)
+                rej_mtime = self._rej_mtime(self._epochs[epoch])
             if cov_mtime > max(raw_mtime, bads_mtime, rej_mtime):
                 return
 
-        params = self._covs[self.get('cov')]
-        epoch = params.get('epoch', 'cov')
         method = params.get('method', 'empirical')
         keep_sample_mean = params.get('keep_sample_mean', True)
         reg = params.get('reg', None)
@@ -2566,15 +2576,7 @@ class MneExperiment(FileTree):
             evoked_mtime = os.path.getmtime(dest)
             raw_mtime = os.path.getmtime(self._get_raw_path(make=True))
             bads_mtime = os.path.getmtime(self.get('bads-file'))
-
-            rej_file_epochs = epoch.get('_rej_file_epochs', None)
-            if rej_file_epochs is None:
-                sel_file = self.get('rej-file')
-                rej_mtime = os.path.getmtime(sel_file)
-            else:
-                with self._temporary_state:
-                    paths = [self.get('rej-file', epoch=e) for e in rej_file_epochs]
-                rej_mtime = max(map(os.path.getmtime, paths))
+            rej_mtime = self._rej_mtime(epoch)
 
             if evoked_mtime > max(raw_mtime, bads_mtime, rej_mtime):
                 ds = load.unpickle(dest)
