@@ -189,7 +189,7 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={}, title="R
     elif not parc and res._kind == 'cluster':
         source_bin_table(report, res, surfer_kwargs)
 
-        clusters = res.find_clusters(include, maps=True)
+        clusters = res.find_clusters(None, True)
         clusters.sort('tstart')
         title = "{tstart}-{tstop} {location} p={p}{mark} {effect}"
         source_time_clusters(report, clusters, y, ds, model, include, title, colors, res.match)
@@ -267,12 +267,7 @@ def source_time_clusters(section, clusters, y, ds, model, include, title, colors
     if clusters.n_cases == 0:
         section.append("No clusters found.")
         return
-    clusters = clusters.sub("p < 1")
-    if clusters.n_cases == 0:
-        section.append("No clusters with p < 1 found.")
-        return
-    caption = "Clusters with p < 1"
-    table_ = clusters.as_table(midrule=True, count=True, caption=caption)
+    table_ = clusters.as_table(midrule=True, count=True, caption="All clusters.")
     section.append(table_)
 
     # plot individual clusters
