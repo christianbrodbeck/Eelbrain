@@ -3287,7 +3287,7 @@ class MneExperiment(FileTree):
         if params['kind'] == 'two-stage':
             self._two_stage_report(report, test, sns_baseline, src_baseline,
                                    pmin, samples, tstart, tstop, parc, mask,
-                                   include, redo_test)
+                                   include)
         else:
             self._evoked_report(report, test, sns_baseline, src_baseline, pmin,
                                 samples, tstart, tstop, parc, mask, include,
@@ -3323,7 +3323,7 @@ class MneExperiment(FileTree):
         report.append(_report.source_time_results(res, ds, colors, include, surfer_kwargs))
 
     def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
-                          samples, tstart, tstop, parc, mask, include, redo_test):
+                          samples, tstart, tstop, parc, mask, include):
         # find params
         test_params = self._tests[test]
         model = test_params['stage 1']
@@ -3349,7 +3349,12 @@ class MneExperiment(FileTree):
             lms.append(spm.LM('srcm', model, ds, subject=subject))
         rlm = spm.RandomLM(lms)
 
+        # stage 2
+        logger.info("Computing stage 2 tests")
+        results = rlm._column_ttests(True, **test_kwargs)
+
         # start report
+        logger.info("Compiling report")
         surfer_kwargs = self._surfer_plot_kwargs()
         info_section = report.add_section("Test Info")
         if parc:
@@ -3362,10 +3367,9 @@ class MneExperiment(FileTree):
             caption = "Mask: %s" % mask.capitalize()
             self._report_parc_image(section, caption, surfer_kwargs)
 
-        # stage 2
+        # add results to report
         for term in rlm.column_names:
-            logger.info("Stage 2 test for %s" % term)
-            res, ds = rlm.column_ttest(term, True, **test_kwargs)
+            res, ds = results[term]
             report.append(_report.source_time_results(res, ds, None, include, surfer_kwargs, term))
 
         self._report_test_info(info_section, ds, test, res, 'src')

@@ -98,7 +98,7 @@ class RandomLM(object):
         ----------
         term : str
             Name of the term to test.
-        return_data
+        return_data : bool
             Return the individual subjects' coefficients along with test
             results.
         popmean : scalar
@@ -143,11 +143,9 @@ class RandomLM(object):
         else:
             return res
 
-    def column_ttests(self, *args, **kwargs):
-        dss = {}
-        ress = {}
+    def _column_ttests(self, *args, **kwargs):
+        "precompute all tests"
+        out = {}
         for term in self.column_names:
-            res, ds = self.column_ttest(term, True, *args, **kwargs)
-            ress[term] = res
-            dss[term] = ds
-        return ress, dss
+            out[term] = self.column_ttest(term, *args, **kwargs)
+        return out
