@@ -2304,7 +2304,7 @@ class _ClusterDist:
         attrs = ('name', 'meas', '_version', '_host', '_init_time',
                  # settings ...
                  'kind', 'threshold', 'tail', 'criteria', 'samples', 'tstart',
-                 'tstop', 'dist_dim', 'dist_tstep',
+                 'tstop', 'dist_dim', 'dist_tstep', 'parc',
                  # data properties ...
                  'dims', 'shape', '_all_adjacent', '_nad_ax', '_connectivity',
                  '_criteria',
@@ -2327,6 +2327,12 @@ class _ClusterDist:
             state['_host'] = 'unknown'
         if '_init_time' not in state:
             state['_init_time'] = None
+        if 'parc' not in state:
+            if state['_dist_dims'] is None:
+                state['parc'] = ()
+            else:
+                state['parc'] = tuple(dim.name for dim in state['_dist_dims'] if
+                                      dim.name not in state['dist_dim'])
 
         for k, v in state.iteritems():
             setattr(self, k, v)
