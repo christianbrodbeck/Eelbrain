@@ -479,7 +479,6 @@ class TreeModel(object):
 
         # set constants
         self.set(**constants)
-        self.store_state()
 
         if isinstance(fields, basestring):
             fields = [fields]
@@ -515,24 +514,24 @@ class TreeModel(object):
                 progm = ui.progress_monitor(i_max, prog, "")
                 prog = True
 
-            for v_list in product(*v_lists):
-                if prog:
-                    progm.message(' | '.join(map(str, v_list)))
-                self.restore_state(discard_tip=False)
-                values = dict(zip(fields, v_list))
-                self.set(**values)
+            with self._temporary_state:
+                for v_list in product(*v_lists):
+                    if prog:
+                        progm.message(' | '.join(map(str, v_list)))
+                    self.restore_state(discard_tip=False)
+                    values = dict(zip(fields, v_list))
+                    self.set(**values)
 
-                if yield_str:
-                    yield v_list[0]
-                else:
-                    yield v_list
+                    if yield_str:
+                        yield v_list[0]
+                    else:
+                        yield v_list
 
-                if prog:
-                    progm.advance()
+                    if prog:
+                        progm.advance()
         else:
             yield ()
 
-        self.restore_state()
         if mail:
             send_email(mail, "Eelbrain Task Done", "I did as you desired, "
                        "my master.")
