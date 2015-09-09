@@ -3001,13 +3001,13 @@ class MneExperiment(FileTree):
 
     def make_plots_labels(self, surf='inflated', redo=False, **state):
         self.set(**state)
-        self.store_state()
-        if is_fake_mri(self.get('mri-dir')):
-            self.set(mrisubject=self.get('common_brain'), match=False)
+        with self._temporary_state:
+            if is_fake_mri(self.get('mri-dir')):
+                self.set(mrisubject=self.get('common_brain'), match=False)
 
-        labels = self._load_labels().values()
-        dsts = [self._make_plot_label_dst(surf, label.name)
-                for label in labels]
+            labels = self._load_labels().values()
+            dsts = [self._make_plot_label_dst(surf, label.name)
+                    for label in labels]
         if not redo and all(os.path.exists(dst) for dst in dsts):
             return
 
@@ -3016,7 +3016,6 @@ class MneExperiment(FileTree):
             brain.add_label(label)
             brain.save_image(dst)
             brain.remove_labels(hemi='lh')
-        self.restore_state()
 
     def _make_plot_label_dst(self, surf, label):
         analysis = 'Source Labels'
@@ -3661,13 +3660,13 @@ class MneExperiment(FileTree):
 
     def _report_parc_image(self, section, caption, surfer_kwargs):
         "Add picture of the current parcellation"
-        self.store_state()
-        self.set(mrisubject=self.get('common_brain'))
         if surfer_kwargs and 'smoothing_steps' in surfer_kwargs:
             surfer_kwargs = {k: v for k, v in surfer_kwargs.iteritems()
                              if k != 'smoothing_steps'}
-        brain, legend = self.plot_annot(w=1000, show=False, **surfer_kwargs)
-        self.restore_state()
+
+        with self._temporary_state:
+            self.set(mrisubject=self.get('common_brain'))
+            brain, legend = self.plot_annot(w=1000, show=False, **surfer_kwargs)
 
         content = [brain.image('parc'), legend.image('parc-legend')]
         section.add_image_figure(content, caption)
