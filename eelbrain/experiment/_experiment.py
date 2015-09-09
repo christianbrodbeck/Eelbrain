@@ -55,15 +55,7 @@ class LayeredDict(dict):
                "%r>" % (len(self._states), dict.__repr__(self)))
         return rep
 
-    def _get_state(self, index):
-        "Retrieve a state (raise an appropriate error if not present)."
-        if index >= len(self._states) or index < -len(self._states):
-            err = ("Dict has only %i stored states, requested "
-                   "%i" % (len(self._states), index))
-            raise IndexError(err)
-        return self._states[index]
-
-    def get_stored(self, key, level, *args):
+    def get_stored(self, key, level, default=None):
         """Retrieve a field value from any level
 
         Parameters
@@ -73,8 +65,7 @@ class LayeredDict(dict):
         level : int
             The level from which to retrieve the value. -1 = the current level.
         """
-        state = self._get_state(level)
-        return state.get(key, *args)
+        return self._states[level].get(key, default)
 
     def restore_state(self, index=-1, discard_tip=True):
         """Restore a previously stored state
@@ -93,7 +84,7 @@ class LayeredDict(dict):
         --------
         .get_stored(): Retrieve a stored value without losing stored states
         """
-        state = self._get_state(index)
+        state = self._states[index]
         if discard_tip:
             del self._states[index:]
         elif index != -1:
