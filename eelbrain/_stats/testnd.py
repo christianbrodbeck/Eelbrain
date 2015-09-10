@@ -2331,8 +2331,10 @@ class _ClusterDist:
             if state['_dist_dims'] is None:
                 state['parc'] = ()
             else:
-                state['parc'] = tuple(dim.name for dim in state['_dist_dims'] if
-                                      dim.name not in state['dist_dim'])
+                dim_names = (getattr(dim, 'name', 'case')
+                             for dim in state['_dist_dims'])
+                state['parc'] = tuple(dim for dim in dim_names
+                                      if dim not in state['dist_dim'])
 
         for k, v in state.iteritems():
             setattr(self, k, v)
