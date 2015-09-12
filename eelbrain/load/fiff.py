@@ -557,6 +557,9 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
     kwargs
         :class:`mne.Epochs` parameters.
     """
+    if baseline is False:
+        baseline = None
+
     if raw is None:
         raw = ds.info['raw']
 

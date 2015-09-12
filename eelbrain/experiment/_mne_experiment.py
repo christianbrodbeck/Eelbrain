@@ -814,8 +814,7 @@ class MneExperiment(FileTree):
 
         return subject_, group
 
-    def _add_epochs_stc(self, ds, ndvar=True, baseline=None, morph=False,
-                        mask=False):
+    def _add_epochs_stc(self, ds, ndvar, baseline, morph, mask):
         """
         Transform epochs contained in ds into source space (adds a list of mne
         SourceEstimates to ds)
@@ -860,7 +859,7 @@ class MneExperiment(FileTree):
                                       self._params['apply_inv_kw']['method'],
                                       self._params['make_inv_kw'].get('fixed', False),
                                       parc=parc)
-            if baseline is not None:
+            if baseline:
                 src -= src.summary(time=baseline)
 
             if morph:
@@ -875,7 +874,7 @@ class MneExperiment(FileTree):
                 if mask:
                     _mask_ndvar(ds, 'src')
         else:
-            if baseline is not None:
+            if baseline:
                 raise NotImplementedError("Baseline for SourceEstimate")
             if morph:
                 raise NotImplementedError("Morphing for SourceEstimate")
@@ -1443,7 +1442,7 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("modality=%r" % modality)
 
-    def load_epochs(self, subject=None, baseline=None, ndvar=True,
+    def load_epochs(self, subject=None, baseline=False, ndvar=True,
                     add_bads=True, reject=True, add_proj=True, cat=None,
                     decim=None, pad=0, keep_raw=False, eog=False, **kwargs):
         """
@@ -1455,10 +1454,10 @@ class MneExperiment(FileTree):
             Subject(s) for which to load epochs. Can be a single subject
             name or a group name such as 'all'. The default is the current
             subject in the experiment's state.
-        baseline : None | True | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
-            correction (None).
+            correction.
         ndvar : bool | str
             Convert epochs to an NDVar with the given name (default is 'meg'
             for MEG data and 'eeg' for EEG data).
@@ -1565,7 +1564,7 @@ class MneExperiment(FileTree):
         return ds
 
     def load_epochs_stc(self, subject=None, sns_baseline=True,
-                        src_baseline=None, ndvar=True, cat=None,
+                        src_baseline=False, ndvar=True, cat=None,
                         keep_epochs=False, morph=False, mask=False, **kwargs):
         """Load a Dataset with stcs for single epochs
 
@@ -1575,13 +1574,13 @@ class MneExperiment(FileTree):
             Subject(s) for which to load epochs. Can be a single subject
             name or a group name such as 'all'. The default is the current
             subject in the experiment's state.
-        sns_baseline : None | True | tuple
+        sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
-            True to use the epoch's baseline specification. The default is True.
-        src_baseline : None | True | tuple
+            True to use the epoch's baseline specification (default).
+        src_baseline : bool | tuple
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
-            not apply baseline correction (None).
+            not apply baseline correction.
         ndvar : bool
             Add the source estimates as NDVar named "src" instead of a list of
             SourceEstimate objects named "stc" (default True).
@@ -1597,7 +1596,9 @@ class MneExperiment(FileTree):
             applies to NDVars, default False).
         """
         if not sns_baseline and src_baseline and self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
-            raise NotImplementedError("post_baseline_trigger_shift is not implemented for baseline correction in source space")
+            raise NotImplementedError("post_baseline_trigger_shift is not "
+                                      "implemented for baseline correction in "
+                                      "source space")
         ds = self.load_epochs(subject, sns_baseline, False, cat=cat, **kwargs)
         self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
         if not keep_epochs:
@@ -1678,7 +1679,7 @@ class MneExperiment(FileTree):
             raise RuntimeError(msg)
         return ds
 
-    def load_evoked(self, subject=None, baseline=None, ndvar=True, cat=None,
+    def load_evoked(self, subject=None, baseline=False, ndvar=True, cat=None,
                     decim=None, **kwargs):
         """
         Load a Dataset with the evoked responses for each subject.
@@ -1689,10 +1690,10 @@ class MneExperiment(FileTree):
             Subject(s) for which to load evoked files. Can be a single subject
             name or a group name such as 'all'. The default is the current
             subject in the experiment's state.
-        baseline : None | True | tuple
+        baseline : bool | tuple
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
-            correction (None).
+            correction.
         ndvar : bool
             Convert the mne Evoked objects to an NDVar (the name in the
             Dataset is 'meg' or 'eeg').
@@ -1809,7 +1810,7 @@ class MneExperiment(FileTree):
         return ds
 
     def load_evoked_stc(self, subject=None, sns_baseline=True,
-                        src_baseline=None, sns_ndvar=False, ind_stc=False,
+                        src_baseline=False, sns_ndvar=False, ind_stc=False,
                         ind_ndvar=False, morph_stc=False, morph_ndvar=False,
                         cat=None, keep_evoked=False, mask=False, **kwargs):
         """Load evoked source estimates.
@@ -1820,13 +1821,13 @@ class MneExperiment(FileTree):
             Subject(s) for which to load evoked files. Can be a single subject
             name or a group name such as 'all'. The default is the current
             subject in the experiment's state.
-        sns_baseline : None | True | tuple
+        sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
-        src_baseline : None | True | tuple
+        src_baseline : bool | tuple
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
-            not apply baseline correction (None).
+            not apply baseline correction.
         ind_stc : bool
             Add source estimates on individual brains as list of
             :class:`mne.SourceEstimate`.
@@ -2152,13 +2153,13 @@ class MneExperiment(FileTree):
             p values (default 10'000).
         data : 'sns' | 'src'
             Whether the analysis is in sensor or source space.
-        sns_baseline : None | True | tuple
+        sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
-            True to use the epoch's baseline specification. The default is True.
-        src_baseline : None | True | tuple
+            True to use the epoch's baseline specification (default).
+        src_baseline : bool | tuple
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
-            not apply baseline correction (None).
+            not apply baseline correction.
         return_data : bool
             Return the data along with the test result (see below).
         make : bool
@@ -2769,7 +2770,7 @@ class MneExperiment(FileTree):
         brain.save_movie(dst, time_dilation)
 
     def make_mov_ttest(self, subject, model='', c1=None, c0=None, p=0.05,
-                       sns_baseline=True, src_baseline=None,
+                       sns_baseline=True, src_baseline=False,
                        surf=None, views=None, hemi=None, time_dilation=4.,
                        foreground=None,  background=None, smoothing_steps=None,
                        dst=None, redo=False, **kwargs):
@@ -2791,13 +2792,13 @@ class MneExperiment(FileTree):
             compare c1.
         p : 0.1 | 0.05 | 0.01 | .001
             Maximum p value to draw.
-        sns_baseline : None | True | tuple
+        sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
-        src_baseline : None | True | tuple
+        src_baseline : bool | tuple
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
-            not apply baseline correction (None).
+            not apply baseline correction.
         surf : str
             Surface on which to plot data.
         views : str | tuple of str
@@ -3239,13 +3240,13 @@ class MneExperiment(FileTree):
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
-        sns_baseline : None | True | tuple
+        sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
-            True to use the epoch's baseline specification. The default is True.
-        src_baseline : None | True | tuple
+            True to use the epoch's baseline specification (default).
+        src_baseline : bool | tuple
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
-            not apply baseline correction (None).
+            not apply baseline correction.
         include : 0 < scalar <= 1
             Create plots for all clusters with p-values smaller or equal this value.
         redo : bool
@@ -3381,7 +3382,7 @@ class MneExperiment(FileTree):
         self._report_test_info(info_section, ds, test, res, 'src')
 
     def make_report_rois(self, test, parc=None, pmin=None, tstart=0.15, tstop=None,
-                         samples=10000, sns_baseline=True, src_baseline=None,
+                         samples=10000, sns_baseline=True, src_baseline=False,
                          redo=False, **state):
         """Create an HTML report on ROI time courses
 
@@ -3401,13 +3402,13 @@ class MneExperiment(FileTree):
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
-        sns_baseline : None | True | tuple
+        sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
-            True to use the epoch's baseline specification. The default is True.
-        src_baseline : None | True | tuple
+            True to use the epoch's baseline specification (default).
+        src_baseline : bool | tuple
             Apply baseline correction using this period in source space.
             True to use the epoch's baseline specification. The default is to
-            not apply baseline correction (None).
+            not apply baseline correction.
         redo : bool
             If the target file already exists, delete and recreate it.
         """
@@ -3511,9 +3512,9 @@ class MneExperiment(FileTree):
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
-        baseline : None | True | tuple
-            Apply baseline correction using this period. True (default) to use
-            the epoch's baseline specification.
+        baseline : bool | tuple
+            Apply baseline correction using this period. True to use the epoch's
+            baseline specification (default).
         include : 0 < scalar <= 1
             Create plots for all clusters with p-values smaller or equal this
             value (the default is 1, i.e. to show all clusters).
@@ -3577,9 +3578,9 @@ class MneExperiment(FileTree):
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
             temporal clusters (default 1000).
-        baseline : None | True | tuple
-            Apply baseline correction using this period. True (default) to use
-            the epoch's baseline specification.
+        baseline : bool | tuple
+            Apply baseline correction using this period. True to use the epoch's
+            baseline specification (default).
         redo : bool
             If the target file already exists, delete and recreate it. This
             only applies to the HTML result file, not to the test.
@@ -3988,9 +3989,9 @@ class MneExperiment(FileTree):
         separate : bool
             When plotting a group, plot all subjects separately instead or the group
             average (default False).
-        baseline : None | True | tuple
-            Apply baseline correction using this period. True (default) to use
-            the epoch's baseline specification.
+        baseline : bool | tuple
+            Apply baseline correction using this period. True to use the epoch's
+            baseline specification (default).
         run : bool
             Run the GUI after plotting (default in accordance with plotting
             default).
@@ -4277,11 +4278,10 @@ class MneExperiment(FileTree):
         # test properties
         items = []
 
-        # baseline
-        # default is baseline correcting in sensor space
+        # baseline (default is baseline correcting in sensor space)
         epoch_baseline = self._epochs[self.get('epoch')]['baseline']
-        if src_baseline is None:
-            if sns_baseline is None:
+        if src_baseline is None or False:
+            if sns_baseline is None or False:
                 items.append('nobl')
             elif sns_baseline not in (True, epoch_baseline):
                 items.append('bl=%s' % _time_window_str(sns_baseline))
