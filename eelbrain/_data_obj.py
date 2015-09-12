@@ -7467,18 +7467,18 @@ class SourceSpace(Dimension):
             equal)
         """
         if self.subject != other.subject:
-            msg = ("Source spaces can not be compared because they are "
-                   "defined on different MRI subjects. Consider using "
-                   "eelbrain.morph_source_space().")
-            raise ValueError(msg)
+            raise ValueError("Source spaces can not be compared because they "
+                             "are defined on different MRI subjects (%s, %s). "
+                             "Consider using eelbrain.morph_source_space()."
+                             % (self.subject, other.subject))
         elif self.src != other.src:
-            msg = ("Source spaces can not be compared because they are "
-                   "defined with different spatial decimation parameters.")
-            raise ValueError(msg)
+            raise ValueError("Source spaces can not be compared because they "
+                             "are defined with different spatial decimation "
+                             "parameters (%s, %s)." % (self.src, other.src))
         elif self.subjects_dir != other.subjects_dir:
-            msg = ("Source spaces can not be compared because they have "
-                   "differing subjects_dir parameters.")
-            raise ValueError(msg)
+            raise ValueError("Source spaces can not be compared because they "
+                             "have differing subjects_dir parameters:\n%s\n%s"
+                             % (self.subjects_dir, other.subjects_dir))
 
         index = np.hstack(np.in1d(s, o) for s, o
                           in izip(self.vertno, other.vertno))
