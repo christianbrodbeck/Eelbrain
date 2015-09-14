@@ -8,6 +8,8 @@ New in 0.19
 -----------
 
 * API: :class:`plot.ColorList` has a new argument called `labels`.
+* API: :class:`testnd.anova` attribute :attr:`~testnd.anova.probability_maps`
+  renamed to :attr:`~testnd.anova.p` analogous to other :mod:`testnd` results.
 
 
 New in 0.18

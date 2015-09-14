@@ -1187,7 +1187,7 @@ class _MultiEffectResult(_Result):
             self._kind = None
         else:
             self.tfce_maps = [cdist.tfce_map for cdist in cdists]
-            self.probability_maps = [cdist.probability_map for cdist in cdists]
+            self.p = [cdist.probability_map for cdist in cdists]
             self._kind = cdists[0].kind
 
     def _iter_cdists(self):
