@@ -512,8 +512,18 @@ class corr(_Result):
 
     Attributes
     ----------
+    clusters : None | Dataset
+        When performing a cluster permutation test, a Dataset of all clusters.
+    p : NDVar | None
+        Map of p-values corrected for multiple comparison (or None if no
+        correction was performed).
+    p_uncorrected : NDVar
+        Map of p-values uncorrected for multiple comparison.
     r : NDVar
-        Correlation (with threshold contours).
+        Map of correlation values (with threshold contours).
+    tfce_map : NDVar | None
+        Map of the test statistic processed with the threshold-free cluster
+        enhancement algorithm (or None if no TFCE was performed).
     """
     _state_specific = ('X', 'norm', 'n', 'df', 'r')
 
@@ -671,10 +681,10 @@ class ttest_1samp(_Result):
 
     Attributes
     ----------
-    all : tuple
-        c1, c0, [c0 - c1, P]
+    clusters : None | Dataset
+        When performing a cluster permutation test, a Dataset of all clusters.
     diff : NDVar
-        The difference value entering the test (`` y`` if popmean is 0).
+        The difference value entering the test (``y`` if popmean is 0).
     n : int
         Number of cases.
     p : NDVar | None
@@ -833,10 +843,24 @@ class ttest_ind(_Result):
 
     Attributes
     ----------
-    all :
-        c1, c0, [c0 - c1, P]
-    p_val :
-        [c0 - c1, P]
+    c1_mean : NDVar
+        Mean in the c1 condition.
+    c0_mean : NDVar
+        Mean in the c0 condition.
+    clusters : None | Dataset
+        When performing a cluster permutation test, a Dataset of all clusters.
+    difference : NDVar
+        Difference between the mean in condition c1 and condition c0.
+    p : NDVar | None
+        Map of p-values corrected for multiple comparison (or None if no
+        correction was performed).
+    p_uncorrected : NDVar
+        Map of p-values uncorrected for multiple comparison.
+    t : NDVar
+        Map of t-values.
+    tfce_map : NDVar | None
+        Map of the test statistic processed with the threshold-free cluster
+        enhancement algorithm (or None if no TFCE was performed).
     """
     _state_specific = ('X', 'c1', 'c0', 'tail', 't', 'n1', 'n0', 'df', 'c1_mean',
                        'c0_mean')
@@ -1018,10 +1042,24 @@ class ttest_rel(_Result):
 
     Attributes
     ----------
-    all :
-        c1, c0, [c0 - c1, P]
-    p_val :
-        [c0 - c1, P]
+    c1_mean : NDVar
+        Mean in the c1 condition.
+    c0_mean : NDVar
+        Mean in the c0 condition.
+    clusters : None | Dataset
+        When performing a cluster permutation test, a Dataset of all clusters.
+    difference : NDVar
+        Difference between the mean in condition c1 and condition c0.
+    p : NDVar | None
+        Map of p-values corrected for multiple comparison (or None if no
+        correction was performed).
+    p_uncorrected : NDVar
+        Map of p-values uncorrected for multiple comparison.
+    t : NDVar
+        Map of t-values.
+    tfce_map : NDVar | None
+        Map of the test statistic processed with the threshold-free cluster
+        enhancement algorithm (or None if no TFCE was performed).
 
     Notes
     -----
@@ -1372,10 +1410,16 @@ class anova(_MultiEffectResult):
         Names of all the effects as they occur in the ``.clusters`` Dataset.
     clusters : None | Dataset
         When performing a cluster permutation test, a Dataset of all clusters.
-    f : list
-        Maps of f values with probability contours.
-    p : list
-        Maps of p values.
+    f : list of NDVar
+        Maps of F values.
+    p : list of NDVar | None
+        Maps of p-values corrected for multiple comparison (or None if no
+        correction was performed).
+    p_uncorrected : list of NDVar
+        Maps of p-values uncorrected for multiple comparison.
+    tfce_maps : list of NDVar | None
+        Maps of the test statistic processed with the threshold-free cluster
+        enhancement algorithm (or None if no TFCE was performed).
     """
     _state_specific = ('X', 'pmin', '_effects', '_dfs_denom', 'f')
 
