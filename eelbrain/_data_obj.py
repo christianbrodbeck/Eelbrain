@@ -7276,7 +7276,7 @@ class SourceSpace(Dimension):
             array of sorted [src, dst] pairs, with all src < dts.
         """
         if self._connectivity is None:
-            if any(x is None for x in (self.src, self.subject, self.subjects_dir)):
+            if self.src is None or self.subject is None or self.subjects_dir is None:
                 err = ("In order for a SourceSpace dimension to provide "
                        "connectivity information it needs to be initialized with "
                        "src, subject and subjects_dir parameters")
