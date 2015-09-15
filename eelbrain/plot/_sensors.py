@@ -569,11 +569,13 @@ class SensorMap(SensorMapMixin, _EelFigure):
         List of sensor indices to mark.
     frame : scalar
         Size of the empty space around sensors in axes.
+    connectivity : bool
+        Show sensor connectivity (default False).
     title : None | string
         Figure title.
     """
     def __init__(self, sensors, labels='name', proj='default', mark=None,
-                 frame=.05, *args, **kwargs):
+                 frame=.05, connectivity=False, *args, **kwargs):
         sensors = as_sensor(sensors)
 
         if sensors.sysname:
@@ -596,6 +598,9 @@ class SensorMap(SensorMapMixin, _EelFigure):
             self.set_label_text(labels)
         if mark is not None:
             self.mark_sensors(mark)
+
+        if connectivity:
+            self.show_connectivity()
 
         self._show()
 

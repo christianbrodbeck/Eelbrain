@@ -3506,8 +3506,7 @@ class MneExperiment(FileTree):
         self._report_test_info(info_section, ds, test, res, 'sns', include)
 
         # add connectivity image
-        p = plot.SensorMap(ds['eeg'], show=False)
-        p.show_connectivity()
+        p = plot.SensorMap(ds['eeg'], connectivity=True, show=False)
         image_conn = p.image("connectivity.png")
         info_section.add_figure("Sensor map with connectivity", image_conn)
         p.close()
