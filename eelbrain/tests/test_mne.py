@@ -160,7 +160,7 @@ def test_morphing():
     vertices_to = [sss[0]['vertno'], sss[1]['vertno']]
     ds = datasets.get_mne_sample(-0.1, 0.1, src='ico', sub='index==0', stc=True)
     stc = ds['stc', 0]
-    morph_mat = mne.compute_morph_matrix('sample', 'fsaverage', stc.vertno,
+    morph_mat = mne.compute_morph_matrix('sample', 'fsaverage', stc.vertices,
                                          vertices_to, None, subjects_dir)
     ndvar = ds['src']
 
