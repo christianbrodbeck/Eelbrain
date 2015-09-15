@@ -589,7 +589,7 @@ class SensorMap(SensorMapMixin, _EelFigure):
         self._marker_handles = []
         self._connectivity = None
 
-        self._markers = _ax_map2d(self.axes, sensors, proj=proj)
+        self._markers = _ax_map2d(self.axes, sensors, proj, frame=frame)
         SensorMapMixin.__init__(self, [self._markers.sensors])
 
         if labels:
