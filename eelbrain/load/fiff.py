@@ -100,7 +100,6 @@ from __future__ import division
 import fnmatch
 from itertools import izip_longest
 import os
-from warnings import warn
 
 import numpy as np
 
@@ -398,8 +397,7 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
 
 def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
                proj=False, data='mag', reject=None, exclude='bads', info=None,
-               name="meg", raw=None, sensors=None, i_start='i_start',
-               **kwargs):
+               name="meg", raw=None, sensors=None, i_start='i_start'):
     """
     Load epochs and add them to a dataset as :class:`NDVar`.
 
@@ -456,13 +454,6 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
         Dataset containing the epochs. If no events are rejected, ``ds`` is the
         same object as the input ``ds`` argument, otherwise a copy of it.
     """
-    if 'target' in kwargs:
-        warn("load.fiff.add_epochs(): target kwarg is deprecated; use name "
-             "instead.", DeprecationWarning)
-        name = kwargs.pop('target')
-    if kwargs:
-        raise RuntimeError("Unknown parameters: %s" % str(kwargs.keys()))
-
     if raw is None:
         raw = ds.info['raw']
 
@@ -591,25 +582,6 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
                              % (suffix, BAD_CHANNELS, ', '.join(invalid)))
 
     return epochs
-
-
-def mne_Epochs(*args, **kwargs):
-    warn("load.fiff.mne_Epochs() is deprecated; use load.fiff.mne_epochs "
-         "instead", DeprecationWarning)
-
-    if 'tstart' in kwargs:
-        warn("load.fiff.mne_epochs(): tstart argument is deprecated. Use tmin "
-             "instead", DeprecationWarning)
-        kwargs['tmin'] = kwargs.pop('tstart')
-    elif not 'tmin' in kwargs:
-        kwargs['tmin'] = -0.1
-    if 'tstop' in kwargs:
-        warn("load.fiff.mne_epochs(): tstop argument is deprecated. Use tmax "
-             "instead", DeprecationWarning)
-        kwargs['tmax'] = kwargs.pop('tstop')
-    elif not 'tmax' in kwargs:
-        kwargs['tmax'] = 0.5
-    return mne_epochs(*args, **kwargs)
 
 
 def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
