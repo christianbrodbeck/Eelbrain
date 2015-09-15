@@ -7027,6 +7027,14 @@ def _point_graph(coords, dist_threshold):
     return graph[dist < dist_threshold]
 
 
+def _matrix_graph(matrix):
+    "Create connectivity from matrix"
+    coo = matrix.tocoo()
+    assert np.all(coo.data)
+    edges = {(min(a, b), max(a, b)) for a, b in izip(coo.col, coo.row) if a != b}
+    return np.array(sorted(edges), np.uint32)
+
+
 def _tri_graph(tris):
     """Create connectivity graph from triangles
 
