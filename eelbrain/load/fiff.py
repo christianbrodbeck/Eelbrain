@@ -112,7 +112,8 @@ from mne.io import read_raw_kit as _mne_read_raw_kit
 from .. import _colorspaces as _cs
 from .._info import BAD_CHANNELS
 from .._utils import ui, logger
-from .._data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS
+from .._data_obj import Var, NDVar, Dataset, Sensor, SourceSpace, UTS, \
+    _matrix_graph
 
 
 def mne_raw(path=None, proj=False, **kwargs):
@@ -397,7 +398,8 @@ def epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1, proj=False,
 
 def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
                proj=False, data='mag', reject=None, exclude='bads', info=None,
-               name="meg", raw=None, sensors=None, i_start='i_start'):
+               name="meg", raw=None, sensors=None, i_start='i_start',
+               sysname=None):
     """
     Load epochs and add them to a dataset as :class:`NDVar`.
 
@@ -447,6 +449,8 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
         Sensor instance can be supplied through this kwarg.
     i_start : str
         name of the variable containing the index of the events.
+    sysname : str
+        Name of the sensor system (used to load sensor connectivity).
 
     Returns
     -------
@@ -464,7 +468,7 @@ def add_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, decim=1, mult=1,
                          picks=picks, reject=reject, proj=proj, preload=True)
     ds = _trim_ds(ds, epochs_)
     ds[name] = epochs_ndvar(epochs_, name, data, mult=mult, info=info,
-                            sensors=sensors)
+                            sensors=sensors, sysname=sysname)
     return ds
 
 
@@ -584,7 +588,7 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
     return epochs
 
 
-def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
+def sensor_dim(fiff, picks=None, sysname=None):
     """
     Create a Sensor dimension object based on the info in a fiff object.
 
@@ -596,7 +600,7 @@ def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
         Channel picks (as used in mne-python). If None (default) all channels
         are included.
     sysname : str
-        Name of the sensor system (stored as Sensor attribute).
+        Name of the sensor system (used to load sensor connectivity).
 
     Returns
     -------
@@ -616,11 +620,28 @@ def sensor_dim(fiff, picks=None, sysname='fiff-sensors'):
         ch_name = ch['ch_name']
         ch_locs.append((x, y, z))
         ch_names.append(ch_name)
-    return Sensor(ch_locs, ch_names, sysname=sysname)
+
+    if sysname:
+        c_matrix, names = mne.channels.read_ch_connectivity(sysname)
+
+        # fix channel names
+        if sysname.startswith('neuromag'):
+            names = [n[:3] + ' ' + n[3:] for n in names]
+
+        # fix channel order
+        if names != ch_names:
+            index = np.array([names.index(name) for name in ch_names])
+            c_matrix = c_matrix[index][:, index]
+
+        conn = _matrix_graph(c_matrix)
+    else:
+        conn = None
+
+    return Sensor(ch_locs, ch_names, sysname=sysname, connectivity=conn)
 
 
 def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
-                 info=None, sensors=None, vmax=None):
+                 info=None, sensors=None, vmax=None, sysname=None):
     """
     Convert an :class:`mne.Epochs` object to an :class:`NDVar`.
 
@@ -646,6 +667,8 @@ def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
         Sensor can be supplied through this kwarg.
     vmax : None | scalar
         Set a default range for plotting.
+    sysname : str
+        Name of the sensor system (used to load sensor connectivity).
     """
     if isinstance(epochs, basestring):
         epochs = mne.read_epochs(epochs)
@@ -680,12 +703,13 @@ def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
     if mult != 1:
         x *= mult
 
-    sensor = sensors or sensor_dim(epochs, picks=picks)
+    sensor = sensors or sensor_dim(epochs, picks, sysname)
     time = UTS(epochs.tmin, 1. / epochs.info['sfreq'], len(epochs.times))
     return NDVar(x, ('case', sensor, time), info=info_, name=name)
 
 
-def evoked_ndvar(evoked, name='meg', data=None, exclude='bads', vmax=None):
+def evoked_ndvar(evoked, name='meg', data=None, exclude='bads', vmax=None,
+                 sysname=None):
     """
     Convert one or more mne :class:`Evoked` objects to an :class:`NDVar`.
 
@@ -704,6 +728,8 @@ def evoked_ndvar(evoked, name='meg', data=None, exclude='bads', vmax=None):
         If empty do not exclude any.
     vmax : None | scalar
         Set a default range for plotting.
+    sysname : str
+        Name of the sensor system (used to load sensor connectivity).
 
     Notes
     -----
@@ -736,7 +762,7 @@ def evoked_ndvar(evoked, name='meg', data=None, exclude='bads', vmax=None):
         picks = _picks(evoked.info, data, exclude)
 
         x = evoked.data[picks]
-        sensor = sensor_dim(evoked, picks=picks)
+        sensor = sensor_dim(evoked, picks, sysname)
         time = UTS.from_int(evoked.first, evoked.last, evoked.info['sfreq'])
         dims = (sensor, time)
     else:
@@ -763,7 +789,7 @@ def evoked_ndvar(evoked, name='meg', data=None, exclude='bads', vmax=None):
             picks = _picks(e.info, data, exclude)
             x.append(e.data[picks])
             if sensor is None:
-                sensor = sensor_dim(e, picks=picks)
+                sensor = sensor_dim(e, picks, sysname)
 
         time = UTS.from_int(e0.first, e0.last, e0.info['sfreq'])
         dims = ('case', sensor, time)

@@ -120,7 +120,8 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
 
     load.fiff.add_mne_epochs(ds, tmin, tmax, baseline)
     if sns:
-        ds['sns'] = load.fiff.epochs_ndvar(ds['epochs'], data='mag')
+        ds['sns'] = load.fiff.epochs_ndvar(ds['epochs'], data='mag',
+                                           sysname='neuromag306mag')
 
     if not src:
         return ds

@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     ds = eel.load.fiff.add_epochs(ds, tmin=-0.1, tmax=0.3, baseline=(None, 0),
                                   proj=False, data='mag', reject=2e-12,
-                                  name='meg')
+                                  name='meg', sysname='neuromag306mag')
 
     p = plot.TopoButterfly('meg', 'side', ds=ds)
     p.set_vlim(1e-12)

@@ -9,32 +9,13 @@ from numpy.testing import assert_array_equal, assert_allclose
 import mne
 
 from eelbrain import datasets, load, testnd, morph_source_space, Factor
-from eelbrain._data_obj import asndvar, SourceSpace
+from eelbrain._data_obj import asndvar, SourceSpace, _matrix_graph
 from eelbrain._mne import shift_mne_epoch_trigger, combination_label
 from eelbrain.tests.test_data import assert_dataobj_equal
 
 # mne paths
 data_dir = mne.datasets.sample.data_path()
 subjects_dir = os.path.join(data_dir, 'subjects')
-
-
-def connectivity_from_coo(coo):
-    """Convert a coo matrix to Eelbrain internal connectivity
-
-    Returns
-    -------
-    connetivity : array of int, (n_pairs, 2)
-        array of sorted [src, dst] pairs, with all src < dts.
-    """
-    pairs = set()
-    for v0, v1, d in izip(coo.row, coo.col, coo.data):
-        if not d or v0 == v1:
-            continue
-        src = min(v0, v1)
-        dst = max(v0, v1)
-        pairs.add((src, dst))
-    connectivity = np.array(sorted(pairs), dtype=np.int32)
-    return connectivity
 
 
 def test_source_estimate():
@@ -110,6 +91,12 @@ def test_dataobjects():
     sds = ds.sub("side % C != ('L', 'b')")
     ads = sds.aggregate('side % C')
     eq_(ads.n_cases, 3)
+
+    # connectivity
+    sensor = ds['sns'].sensor
+    c = sensor.connectivity()
+    assert_array_equal(c[:, 0] < c[:, 1], True)
+    eq_(c.max(), len(sensor) - 1)
 
 
 def test_epoch_trigger_shift():
@@ -197,7 +184,7 @@ def test_source_space():
         # connectivity
         conn = ss.connectivity()
         mne_conn = mne.spatial_src_connectivity(mne_src)
-        assert_array_equal(conn, connectivity_from_coo(mne_conn))
+        assert_array_equal(conn, _matrix_graph(mne_conn))
 
         # sub-space connectivity
         sssub = ss[ss.dimindex('superiortemporal-rh')]
