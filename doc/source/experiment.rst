@@ -194,12 +194,8 @@ dictionary's ``"kind"`` entry defines the test (e.g., ANOVA, related samples
 T-test, ...). The other entries specify the details of the test and depend on
 the test kind (see subsections on specific tests below).
 
-kind : 'anova' | 'ttest_rel' | 't_contrast_rel'
+kind : 'anova' | 'ttest_rel' | 't_contrast_rel' | 'two stage'
     The test kind.
-model : str
-    The model which defines the cells that are used in the test. It is
-    specified in the ``"x % y"`` format (like interaction definitions) where
-    ``x`` and ``y`` are variables in the experiment's events.
 
 Example::
 
@@ -212,6 +208,10 @@ Example::
 anova
 ^^^^^
 
+model : str
+    The model which defines the cells that are used in the test. It is
+    specified in the ``"x % y"`` format (like interaction definitions) where
+    ``x`` and ``y`` are variables in the experiment's events.
 x : str
     ANOVA model (e.g., ``"x * y * subject"``). The ANOVA model has to be fully
     specified and include ``subject``.
@@ -225,6 +225,10 @@ Example::
 ttest_rel
 ^^^^^^^^^
 
+model : str
+    The model which defines the cells that are used in the test. It is
+    specified in the ``"x % y"`` format (like interaction definitions) where
+    ``x`` and ``y`` are variables in the experiment's events.
 c1 : str | tuple
     The experimental condition. If the ``model`` is a single factor the
     condition is a :class:`str` specifying a value on that factor. If
@@ -247,6 +251,10 @@ t_contrast_rel
 
 Contrasts involving different T-maps (see :class:`testnd.t_contrast_rel`)
 
+model : str
+    The model which defines the cells that are used in the test. It is
+    specified in the ``"x % y"`` format (like interaction definitions) where
+    ``x`` and ``y`` are variables in the experiment's events.
 contrast : str
     Contrast specification using cells form the specified model (see test
     documentation).
@@ -258,6 +266,43 @@ Example::
 
     tests = {'a_b_intersection': {'kind': 't_contrast_rel', 'model': 'abc',
                                   'contrast': 'min(a > c, b > c)', 'tail': 1}}
+
+
+two-stage
+^^^^^^^^^
+
+Two-stage test. Stage 1: fit a model to the single trial data for each subject.
+Stage 2: test coefficients from stage 1 against 0 across subjects.
+
+stage 1 : str
+    Stage 1 model specification. Coding for categorial predictors uses 0/1 dummy
+    coding.
+vars : dict (optional)
+    Optional method for specifying coding schemes for categorial variables.
+    Each entry specifies a variable with the following schema:
+    ``{var_name: (source_name, {value: code})}`` (see example below).
+    ``source_name`` can also be an interaction, in which case cells are joined
+    with spaces (``"f1_cell f2_cell"``).
+
+Example: The first example assumes 2 categorical variables present in events,
+'a' with values 'a1' and 'a2', and 'b' with values 'b1' and 'b2'. These are
+recoded into 0/1 codes. The second test definition (``'a_x_time' uses the
+"index" variable which is always present and specifies the chronological index
+of the event within subject as an integer count and can be used to test for
+change over time. Thanks to the numberic nature of these variables interactions
+can be computed by multiplication::
+
+    tests = {'a_x_b': {'kind': 'two stage',
+                       'vars': {'a_num': ('a', {'a1': 0, 'a2': 1}),
+                                'b_num': ('b', {'b1': 0, 'b2': 1})},
+                       'stage 1': "a_num + b_num + a_num * b_num + index + a_num * index"},
+             'a_x_time': {'kind': 'two stage',
+                          'vars': {'a_num': ('a', {'a1': 0, 'a2': 1})},
+                          'stage 1': "a_num + index + a_num * index"},
+             'ab_linear': {'kind': 'two stage',
+                           'vars': {'ab': ('a%b', {'a1b1': 0, 'a1b2': 1, 'a2b1': 1, 'a2b2': 2})},
+                           'stage 1': "ab"},
+            }
 
 
 Subject Groups
