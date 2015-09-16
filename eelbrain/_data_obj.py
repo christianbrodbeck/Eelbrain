@@ -1499,10 +1499,12 @@ class Var(object):
     def __mod__(self, other):
         if ismodel(other):
             return Model(self) % other
+        elif isvar(other):
+            x = self.x % other.x
         elif isdataobject(other):
             return Interaction((self, other))
-        elif isvar(other):
-            other = other.x
+        else:
+            x = self.x % other
 
         return Var(self.x % other, info=self.info.copy())
 
