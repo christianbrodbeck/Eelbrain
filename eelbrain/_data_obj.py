@@ -358,6 +358,8 @@ def ascategorial(x, sub=None, ds=None, n=None):
 
     if iscategorial(x):
         pass
+    elif isinteraction(x):
+        x = Interaction([e if isfactor(e) else e.as_factor() for e in x.base])
     else:
         x = asfactor(x)
 
