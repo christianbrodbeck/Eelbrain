@@ -1579,7 +1579,7 @@ class Var(object):
         return Var(x, info=info)
 
     def _effect_coefficient_names(self):
-        return self.name,
+        return longname(self),
 
     def abs(self, name=None):
         "Return a Var with the absolute value."
@@ -5998,19 +5998,20 @@ class EffectParametrization(object):
         for e in model.effects:
             j = i + e.df
             x[:, i:j] = e.as_effects
-            if e.name in terms:
-                raise KeyError("Duplicate term name: %s" % repr(e.name))
-            terms[e.name] = slice(i, j)
+            name = longname(e)
+            if name in terms:
+                raise KeyError("Duplicate term name: %s" % repr(name))
+            terms[name] = slice(i, j)
             col_names = e._effect_coefficient_names()
             column_names.extend(col_names)
-            for col, name in enumerate(col_names, i):
-                terms[name] = slice(col, col + 1)
+            for col, col_name in enumerate(col_names, i):
+                terms[col_name] = slice(col, col + 1)
             i = j
 
             # find comparison models
-            higher_level_effects[e.name] = [e_ for e_ in model.effects
-                                            if e_ is not e
-                                            and is_higher_order_effect(e_, e)]
+            higher_level_effects[name] = [e_ for e_ in model.effects
+                                          if e_ is not e
+                                          and is_higher_order_effect(e_, e)]
 
         # model basics
         self.model = model

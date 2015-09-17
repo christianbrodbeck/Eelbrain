@@ -569,7 +569,7 @@ def test_model():
     a = Factor('ab', repeat=3, name='a')
     b = Factor('ab', tile=3, name='b')
     v = Var([1., 2., 3., 4., 5., 6.], 'v')
-    v2 = Var([1., 0., 0., 1., 1., 0.], 'v2')
+    w = Var([1., 0., 0., 1., 1., 0.], 'w')
 
     # model repr
     m = a * b
@@ -588,7 +588,12 @@ def test_model():
     # different var/factor combinations
     eq_(a * b, a + b + a % b)
     eq_(a * v, a + v + a % v)
-    eq_(a * (v + v2), a + v + v2 + a % v + a % v2)
+    eq_(a * (v + w), a + v + w + a % v + a % w)
+
+    # parametrization
+    m = v + w + v * w
+    p = m._parametrize()
+    eq_(p.column_names, ['intercept', 'v', 'w', 'v * w'])
 
 
 def test_ndvar():
