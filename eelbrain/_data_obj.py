@@ -118,6 +118,16 @@ def cellname(cell, delim=' '):
         return unicode(cell)
 
 
+def longname(x):
+    if isnumeric(x) and 'longname' in x.info:
+        return x.info['longname']
+    elif getattr(x, 'name', None) is not None:
+        return x.name
+    elif np.isscalar(x):
+        return repr(x)
+    return '<unnamed>'
+
+
 def rank(x, tol=1e-8):
     """
     Rank of a matrix, from
@@ -1309,7 +1319,6 @@ class EffectList(list):
         return [UNNAMED if n is None else n for n in names]
 
 
-
 class Var(object):
     """Container for scalar data.
 
@@ -1448,7 +1457,9 @@ class Var(object):
     # numeric ---
     def __neg__(self):
         x = -self.x
-        return Var(x, info=self.info.copy())
+        info = self.info.copy()
+        info['longname'] = '-' + longname(self)
+        return Var(x, info=info)
 
     def __pos__(self):
         return self
@@ -1462,7 +1473,9 @@ class Var(object):
             return Model((self, other))
 
         x = self.x + other
-        return Var(x, info=self.info.copy())
+        info = self.info.copy()
+        info['longname'] = longname(self) + ' + ' + longname(other)
+        return Var(x, info=info)
 
     def __sub__(self, other):
         "subtract: values are assumed to be ordered. Otherwise use .sub method."
@@ -1475,7 +1488,9 @@ class Var(object):
         else:
             x = self.x - other.x
 
-        return Var(x, info=self.info.copy())
+        info = self.info.copy()
+        info['longname'] = longname(self) + ' - ' + longname(other)
+        return Var(x, info=info)
 
     def __mul__(self, other):
         if iscategorial(other):
@@ -1485,16 +1500,19 @@ class Var(object):
         else:
             x = self.x * other
 
-        return Var(x, info=self.info.copy())
+        info = self.info.copy()
+        info['longname'] = longname(self) + ' * ' + longname(other)
+        return Var(x, info=info)
 
     def __floordiv__(self, other):
         if isvar(other):
             x = self.x // other.x
-        elif np.isscalar(other):
-            x = self.x // other
         else:
             x = self.x // other
-        return Var(x, info=self.info.copy())
+
+        info = self.info.copy()
+        info['longname'] = longname(self) + ' // ' + longname(other)
+        return Var(x, info=info)
 
     def __mod__(self, other):
         if ismodel(other):
@@ -1506,7 +1524,9 @@ class Var(object):
         else:
             x = self.x % other
 
-        return Var(self.x % other, info=self.info.copy())
+        info = self.info.copy()
+        info['longname'] = longname(self) + ' % ' + longname(other)
+        return Var(x, info=info)
 
     def __lt__(self, y):
         return self.x < y
@@ -1539,32 +1559,33 @@ class Var(object):
             ANCOVA
 
         """
-        if np.isscalar(other):
-            return Var(self.x / other, info=self.info.copy())
-        elif isvar(other):
-            return Var(self.x / other.x, info=self.info.copy())
-        else:
-            categories = other
-            if not hasattr(categories, 'as_dummy_complete'):
-                raise NotImplementedError
-            dummy_factor = categories.as_dummy_complete
+        if isvar(other):
+            x = self.x / other.x
+        elif iscategorial(other):
+            dummy_factor = other.as_dummy_complete
             codes = dummy_factor * self.as_effects
             # center
             means = codes.sum(0) / dummy_factor.sum(0)
             codes -= dummy_factor * means
             # create effect
-            name = '%s per %s' % (self.name, categories.name)
-            labels = categories.dummy_complete_labels
-            out = NonbasicEffect(codes, [self, categories], name,
-                                  beta_labels=labels)
-            return out
+            name = '%s per %s' % (self.name, other.name)
+            return NonbasicEffect(codes, [self, other], name,
+                                  beta_labels=other.dummy_complete_labels)
+        else:
+            x = self.x / other
+
+        info = self.info.copy()
+        info['longname'] = longname(self) + ' / ' + longname(other)
+        return Var(x, info=info)
 
     def _effect_coefficient_names(self):
         return self.name,
 
     def abs(self, name=None):
         "Return a Var with the absolute value."
-        return Var(np.abs(self.x), name, info=self.info.copy())
+        info = self.info.copy()
+        info['longname'] = 'abs(' + longname(self) + ')'
+        return Var(np.abs(self.x), name, info=info)
 
     def argmax(self):
         """:func:`numpy.argmax`"""

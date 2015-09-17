@@ -990,20 +990,38 @@ def test_var():
 
     # basic operations
     info = {'a': 1}
-    v = Var(np.arange(4.), info=info)
+    v = Var([1., 2., 3., 4.], 'v', info=info)
     eq_(v.info, info)
     w = v - 1
-    eq_(w.info, info)
-    assert_array_equal(w.x, v.x - 1)
+    eq_(w.info, {'a': 1, 'longname': 'v - 1'})
+    assert_array_equal(w, v.x - 1)
     w = v + 1
-    eq_(w.info, info)
-    assert_array_equal(w.x, v.x + 1)
+    eq_(w.info, {'a': 1, 'longname': 'v + 1'})
+    assert_array_equal(w, v.x + 1)
     w = v * 2
-    eq_(w.info, info)
-    assert_array_equal(w.x, v.x * 2)
-    w = v  / 2
-    eq_(w.info, info)
-    assert_array_equal(w.x, v.x / 2)
+    eq_(w.info, {'a': 1, 'longname': 'v * 2'})
+    assert_array_equal(w, v.x * 2)
+    w = v / 2
+    eq_(w.info, {'a': 1, 'longname': 'v / 2'})
+    assert_array_equal(w, v.x / 2)
+
+    # basic op with Var
+    w = Var([2., 2., 3., 3.], 'w', info=info)
+    x = v - w
+    eq_(x.info, {'a': 1, 'longname': 'v - w'})
+    assert_array_equal(x, v.x - w.x)
+    x = v * w
+    eq_(x.info, {'a': 1, 'longname': 'v * w'})
+    assert_array_equal(x, v.x * w.x)
+    x = v / w
+    eq_(x.info, {'a': 1, 'longname': 'v / w'})
+    assert_array_equal(x, v.x / w.x)
+    x = v % w
+    eq_(x.info, {'a': 1, 'longname': 'v % w'})
+    assert_array_equal(x, v.x % w.x)
+    x = v // w
+    eq_(x.info, {'a': 1, 'longname': 'v // w'})
+    assert_array_equal(x, v.x // w.x)
 
     # assignment
     tgt1 = np.arange(10)
