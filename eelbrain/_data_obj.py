@@ -1579,7 +1579,7 @@ class Var(object):
         info['longname'] = longname(self) + ' / ' + longname(other)
         return Var(x, info=info)
 
-    def _effect_coefficient_names(self):
+    def _coefficient_names(self, method):
         return longname(self),
 
     def abs(self, name=None):
@@ -1611,6 +1611,11 @@ class Var(object):
             In other words, ``a[index_array]`` yields a sorted `a`.
         """
         return np.argsort(self.x, kind=kind)
+
+    @property
+    def as_dummy(self):
+        "for effect initialization"
+        return self.x[:, None]
 
     @property
     def as_effects(self):
@@ -2402,10 +2407,12 @@ class Factor(_Effect):
         codes -= contrast[:, None]
         return codes
 
-    def _effect_coefficient_names(self):
+    def _coefficient_names(self, method):
+        if method == 'dummy':
+            return ["%s:%s" % (self.name, cell) for cell in self.cells[:-1]]
         contrast_cell = self.cells[-1]
-        return ("%s:%s-%s" % (self.name, cell, contrast_cell)
-                for cell in self.cells[:-1])
+        return ["%s:%s-%s" % (self.name, cell, contrast_cell)
+                for cell in self.cells[:-1]]
 
     def as_labels(self):
         "Convert the Factor to a list of str"
@@ -5435,13 +5442,18 @@ class Interaction(_Effect):
         return [case for case in self]
 
     @LazyProperty
+    def as_dummy(self):
+        codelist = [f.as_dummy for f in self.base]
+        return reduce(_effect_interaction, codelist)
+
+    @LazyProperty
     def as_effects(self):
         "effect coding"
         codelist = [f.as_effects for f in self.base]
         return reduce(_effect_interaction, codelist)
 
-    def _effect_coefficient_names(self):
-        return ("%s_%i" % (self.name, i) for i in xrange(self.df))
+    def _coefficient_names(self, method):
+        return ["%s %i" % (self.name, i) for i in xrange(self.df)]
 
     def as_labels(self, delim=' '):
         """All values as a list of strings.
@@ -5614,8 +5626,8 @@ class NestedEffect(object):
 
         return codes
 
-    def _effect_coefficient_names(self):
-        return ("%s_%i" % (self.name, i) for i in xrange(self.df))
+    def _coefficient_names(self, method):
+        return ["%s %i" % (self.name, i) for i in xrange(self.df)]
 
 
 class NonbasicEffect(object):
@@ -5644,9 +5656,9 @@ class NonbasicEffect(object):
     def __len__(self):
         return self._n_cases
 
-    def _effect_coefficient_names(self):
+    def _coefficient_names(self, method):
         if self.beta_labels is None:
-            return ("%s_%i" % (self.name, i) for i in xrange(self.df))
+            return ["%s %i" % (self.name, i) for i in xrange(self.df)]
         else:
             return self.beta_labels
 
@@ -5956,10 +5968,7 @@ class Model(object):
 
     def _parametrize(self, method='effect'):
         "Create a design matrix"
-        if method == 'effect':
-            return EffectParametrization(self)
-        else:
-            raise ValueError("method=%s" % repr(method))
+        return Parametrization(self, method)
 
     def repeat(self, n):
         "Analogous to numpy repeat method"
@@ -5973,7 +5982,7 @@ class Model(object):
         return dot(inv(dot(x_t, x)), x_t)
 
 
-class EffectParametrization(object):
+class Parametrization(object):
     """Parametrization of a statistical model
 
     Parameters
@@ -5991,7 +6000,7 @@ class EffectParametrization(object):
     A :class:`Model` is a list of effects. A :class:`Parametrization` contains
     a realization of those effects in a model matrix with named columns.
     """
-    def __init__(self, model):
+    def __init__(self, model, method):
         model = asmodel(model)
         x = np.empty((model._n_cases, model.df))
         x[:, 0] = 1
@@ -6001,12 +6010,17 @@ class EffectParametrization(object):
         i = 1
         for e in model.effects:
             j = i + e.df
-            x[:, i:j] = e.as_effects
+            if method == 'effect':
+                x[:, i:j] = e.as_effects
+            elif method == 'dummy':
+                x[:, i:j] = e.as_dummy
+            else:
+                raise ValueError("method=%s" % repr(method))
             name = longname(e)
             if name in terms:
                 raise KeyError("Duplicate term name: %s" % repr(name))
             terms[name] = slice(i, j)
-            col_names = e._effect_coefficient_names()
+            col_names = e._coefficient_names(method)
             column_names.extend(col_names)
             for col, col_name in enumerate(col_names, i):
                 terms[col_name] = slice(col, col + 1)

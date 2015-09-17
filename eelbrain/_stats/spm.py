@@ -13,7 +13,7 @@ from .testnd import ttest_1samp
 
 class LM(object):
     """Fixed effects model for SPM"""
-    def __init__(self, y, model, ds=None, coding='effect', subject=None):
+    def __init__(self, y, model, ds=None, coding='dummy', subject=None):
         y = asndvar(y, ds=ds)
         n_cases = len(y)
         model = asmodel(model, None, ds, n_cases)

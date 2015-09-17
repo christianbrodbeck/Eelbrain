@@ -596,8 +596,12 @@ def test_model():
 
     # parametrization
     m = v + w + v * w
-    p = m._parametrize()
+    p = m._parametrize('dummy')
     eq_(p.column_names, ['intercept', 'v', 'w', 'v * w'])
+    assert_array_equal(p.x[:, p.terms['intercept']], 1)
+    assert_array_equal(p.x[:, p.terms['v']], v.x[:, None])
+    assert_array_equal(p.x[:, p.terms['w']], w.x[:, None])
+    assert_array_equal(p.x[:, p.terms['v * w']], (v * w).x[:, None])
 
 
 def test_ndvar():
