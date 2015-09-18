@@ -734,6 +734,7 @@ class MneExperiment(FileTree):
         self._bind_cache('cov-file', self.make_cov)
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
+        self._bind_make('bem-sol-file', self.make_bem_sol)
         self._bind_make('label-file', self.make_labels)
 
         # Check that the template model is complete
@@ -2429,6 +2430,12 @@ class MneExperiment(FileTree):
         with open(dst, 'w') as fid:
             fid.write(text)
 
+    def make_bem_sol(self):
+        logger.info(self.format("Creating bem-sol file for {mrisubject}"))
+        bin_path = subp.get_bin('mne', 'mne_prepare_bem_model')
+        bem_path = self.get('bem-file', fmatch=True)
+        mne.utils.run_subprocess([bin_path, '--bem', bem_path])
+
     def make_besa_evt(self, redo=False, **state):
         """Make the trigger and event files needed for besa
 
@@ -2614,7 +2621,7 @@ class MneExperiment(FileTree):
         raw = self._get_raw_path(make=True)
         trans = self.get('trans-file')
         src = self.get('src-file', make=True)
-        bem = self.get('bem-sol-file', fmatch=True)
+        bem = self.get('bem-sol-file', make=True, fmatch=True)
 
         if not redo and os.path.exists(dst):
             fwd_mtime = os.path.getmtime(dst)

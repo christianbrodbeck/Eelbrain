@@ -860,6 +860,10 @@ class FileTree(TreeModel):
         # assert the presence of the file
         if fmatch and ('*' in path):
             paths = glob(path)
+            if len(paths) == 0 and make and temp in self._make_handlers:
+                self._make_handlers[temp]()
+                paths = glob(path)
+
             if len(paths) == 1:
                 path = paths[0]
             elif len(paths) > 1:
