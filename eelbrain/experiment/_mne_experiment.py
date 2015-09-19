@@ -684,7 +684,7 @@ class MneExperiment(FileTree):
                 unknown = all_params.difference({'kind', 'stage 1', 'vars'})
                 if unknown:
                     raise KeyError("Test definition %s has unknown %s"
-                                   % (test, named_list(tuple(missing), 'entry')))
+                                   % (test, named_list(tuple(unknown), 'entry')))
 
                 desc = params['stage 1']
             elif kind == 'custom':
