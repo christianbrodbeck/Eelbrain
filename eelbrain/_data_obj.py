@@ -6703,7 +6703,7 @@ class Sensor(Dimension):
         else:
             return proj
 
-    def get_locs_2d(self, proj='default', extent=1, frame=0):
+    def get_locs_2d(self, proj='default', extent=1, frame=0, invisible=True):
         """
         returns a sensor X location array, the first column reflecting the x,
         and the second column containing the y coordinate of each sensor.
@@ -6718,13 +6718,26 @@ class Sensor(Dimension):
             defined by the value of ``extent``.
         frame : scalar
             Distance of the outermost points from 0 and ``extent`` (default 0).
+        invisible : bool
+            Return invisible sensors (sensors that would be hidden behind the
+            head; default True).
         """
         proj = self._interpret_proj(proj)
 
         index = (proj, extent, frame)
         if index in self._transformed:
-            return self._transformed[index]
+            locs2d = self._transformed[index]
+        else:
+            locs2d = self._make_locs_2d(proj, extent, frame)
+            self._transformed[index] = locs2d
 
+        if not invisible:
+            visible = self._visible_sensors(proj)
+            if visible is not None:
+                return locs2d[visible]
+        return locs2d
+
+    def _make_locs_2d(self, proj, extent, frame):
         if proj in ('cone', 'lower cone', 'z root'):
 
             # fit the 3d sensor locations to a sphere with center (cx, cy, cz)
@@ -6794,18 +6807,15 @@ class Sensor(Dimension):
                 locs2d *= (1 - 2 * frame)
                 locs2d += frame
 
-        # save for future access
-        self._transformed[index] = locs2d
         return locs2d
 
-    def _outlines_arg(self, proj):
+    def _topomap_outlines(self, proj):
         "outline argument for mne-python topomaps"
         proj = self._interpret_proj(proj)
-
         if proj in ('cone', 'lower cone', 'z root', 'z+'):
-            return 'head'
+            return 'top'
         else:
-            return {'mask_pos': ([0, 1], [0, 1])}
+            return None
 
     def _visible_sensors(self, proj):
         "Create an index for sensors that are visible under a given proj"

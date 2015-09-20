@@ -5,11 +5,11 @@ Plot topographic maps of sensor space data.
 from __future__ import division
 
 from itertools import izip, repeat
-from math import floor, sqrt
+from math import floor, sqrt, sin, cos, asin
 
-from mne.viz import plot_topomap
+import matplotlib as mpl
 import numpy as np
-from scipy import interpolate
+from scipy import interpolate, linalg
 
 from .._data_obj import SEQUENCE_TYPES
 from . import _base
@@ -66,6 +66,7 @@ class Topomap(SensorMapMixin, _EelFigure):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         nax = len(epochs)
         vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
+        cmaps = {}
         if isinstance(proj, basestring):
             proj = repeat(proj, nax)
         elif not isinstance(proj, SEQUENCE_TYPES):
@@ -94,15 +95,15 @@ class Topomap(SensorMapMixin, _EelFigure):
                 ax = self.figure.add_axes((x, y_, x_extent, y_extent))
                 self._axes.append(ax)
 
+        # plots
         self._plots = []
         sensor_plots = []
         for ax, layers, proj_ in izip(self._axes, epochs, proj):
             h = _ax_topomap(ax, layers, axtitle, sensorlabels, None, None,
-                            proj_, res, interpolation, xlabel, vlims,
-                            contours=contours, method=method)
+                            proj_, res, interpolation, xlabel, vlims, cmaps,
+                            contours, method)
             self._plots.append(h)
-            if method != 'mne':
-                sensor_plots.append(h.sensors)
+            sensor_plots.append(h.sensors)
 
         SensorMapMixin.__init__(self, sensor_plots, sensorlabels)
         self._show()
@@ -467,11 +468,37 @@ class TopoButterfly(_EelFigure):
         self.canvas.draw()
 
 
+def _mne_head_outlines(radius, center=0.5):
+    "Head outlines based on mne-python (mne.viz.topomap)"
+    # outlines for center 0, radius 1
+    nose_alpha = 0.2
+    l = np.linspace(0, 2 * np.pi, 101)
+    head_x = np.cos(l)
+    head_y = np.sin(l)
+    w = sin(nose_alpha)
+    nose_x = np.array((-w, -w * 0.5, -w * 0.2, 0, w * 0.2, w * 0.5, w))
+    ymin = cos(nose_alpha)
+    nose_y = np.array((ymin, 1.02, 1.09, 1.1, 1.09, 1.02, ymin))
+    ear_y = np.array((0.15, 0.145, 0.135, 0.125, 0.111, -0.011, -0.1864,
+                      -0.2626, -0.2768, -0.2398))
+    ear_x_right = np.array((cos(asin(ear_y[0])), 1., 1.02, 1.025, 1.03, 1.04,
+                            1.07, 1.06, 1.02, cos(asin(ear_y[-1]))))
+    ear_x_left = -ear_x_right
+
+    # apply radius and center
+    for item in (head_x, head_y, nose_x, nose_y, ear_x_right, ear_x_left, ear_y):
+        item *= radius
+        item += center
+
+    return ((head_x, head_y), (nose_x, nose_y), (ear_x_left, ear_y),
+            (ear_x_right, ear_y))
+
+
 class _plt_topomap(_utsnd._plt_im_array):
 
     def __init__(self, ax, ndvar, overlay, proj='default', res=100,
                  interpolation=None, vlims={}, cmaps={}, contours={},
-                 method='linear'):
+                 method='linear', head_radius=0.45):
         """
         Parameters
         ----------
@@ -492,6 +519,7 @@ class _plt_topomap(_utsnd._plt_im_array):
         self._aspect = 'equal'
         self._extent = (0, 1, 0, 1)
         self._proj = proj
+        self._visible_data = ndvar.sensor._visible_sensors(proj)
         self._grid = np.linspace(0, 1, res)
         self._mgrid = tuple(np.meshgrid(self._grid, self._grid))
         self._method = method
@@ -501,6 +529,10 @@ class _plt_topomap(_utsnd._plt_im_array):
             self.im = ax.imshow(data, extent=self._extent, origin='lower',
                                 interpolation=interpolation, **im_kwa)
             self._cmap = im_kwa['cmap']
+            if method == 'mne' and ndvar.sensor._topomap_outlines(proj) == 'top':
+                mask = mpl.patches.Circle((0.5, 0.5), head_radius,
+                                          transform=ax.transData)
+                self.im.set_clip_path(mask)
         else:
             self.im = None
 
@@ -511,6 +543,41 @@ class _plt_topomap(_utsnd._plt_im_array):
     def _data_from_ndvar(self, ndvar):
         v = ndvar.get_data(('sensor',))
         locs = ndvar.sensor.get_locs_2d(self._proj, frame=TOPOMAP_FRAME)
+        if self._visible_data is not None:
+            v = v[self._visible_data]
+            locs = locs[self._visible_data]
+
+        if self._method == 'mne':
+            # interpolate data
+            xi, yi = self._mgrid
+
+            # code adapted from mne-python topmap _griddata()
+            xy = locs[:, 0] + locs[:, 1] * -1j
+            d = np.abs(xy - xy[:, None])
+            diagonal_step = len(locs) + 1
+            d.flat[::diagonal_step] = 1.
+
+            g = (d * d) * (np.log(d) - 1.)
+            g.flat[::diagonal_step] = 0.
+            weights = linalg.solve(g, v.ravel())
+
+            m, n = xi.shape
+            out = np.empty_like(xi)
+
+            g = np.empty(xy.shape)
+            for i in range(m):
+                for j in range(n):
+                    d = np.abs(xi[i, j] + -1j * yi[i, j] - xy)
+                    mask = np.where(d == 0)[0]
+                    if len(mask):
+                        d[mask] = 1.
+                    np.log(d, out=g)
+                    g -= 1.
+                    g *= d * d
+                    if len(mask):
+                        g[mask] = 0.
+                    out[i, j] = g.dot(weights)
+            return out
         if self._method == 'spline':
             k = int(floor(sqrt(len(locs)))) - 1
             tck = interpolate.bisplrep(locs[:, 1], locs[:, 0], v, kx=k, ky=k)
@@ -527,30 +594,12 @@ class _plt_topomap(_utsnd._plt_im_array):
             return interpolate.griddata(locs, v, self._mgrid, self._method)
 
 
-class _plt_topomap_mne(object):
-
-    def __init__(self, ax, ndvar, proj, vlims, contours, res, interpolation):
-        locs = ndvar.sensor.get_locs_2d(proj, frame=TOPOMAP_FRAME)
-        data = ndvar.get_data(('sensor',))
-        outlines = ndvar.sensor._outlines_arg(proj)
-        index = ndvar.sensor._visible_sensors(proj)
-        if index is not None:
-            data = data[index]
-            locs = locs[index]
-        im_kwa = _base.find_im_args(ndvar, False, vlims)
-        im, ct = plot_topomap(data, locs, outlines=outlines, contours=contours,
-                              res=res, image_interp=interpolation, axis=ax,
-                              # head_pos={'center': (0, 0), 'scale': (1, 1)},
-                              show=False, **im_kwa)
-        self.im = im
-        self.contours = ct
-
-
 class _ax_topomap(_utsnd._ax_im_array):
 
     def __init__(self, ax, layers, title=True, sensorlabels=None, mark=None,
                  mcolor=None, proj='default', res=100, interpolation=None,
-                 xlabel=None, vlims={}, cmaps={}, contours={}, method='linear'):
+                 xlabel=None, vlims={}, cmaps={}, contours={}, method='linear',
+                 head_radius=None, head_linewidth=1):
         """
         Parameters
         ----------
@@ -571,35 +620,37 @@ class _ax_topomap(_utsnd._ax_im_array):
         if xlabel is True:
             xlabel = layers[0].name
 
-        if method == 'mne':
-            if len(layers) > 1:
-                raise NotImplementedError
-            h = _plt_topomap_mne(ax, layers[0], proj, vlims, contours, res,
-                                 interpolation)
+        if head_radius is None:
+            head_radius = 0.5 * (1 - (TOPOMAP_FRAME / 10 * 9))
+
+        ax.set_axis_off()
+        overlay = False
+        for layer in layers:
+            h = _plt_topomap(ax, layer, overlay, proj, res, interpolation,
+                             vlims, cmaps, {}, method, head_radius)
             self.layers.append(h)
-        else:
-            ax.set_axis_off()
-            overlay = False
-            for layer in layers:
-                h = _plt_topomap(ax, layer, overlay, proj, res, interpolation,
-                                 vlims, cmaps, {}, method)
-                self.layers.append(h)
-                overlay = True
+            overlay = True
 
-            # plot sensors
+        # head outline
+        if method == 'mne' and layer.sensor._topomap_outlines(proj) == 'top':
+            for x, y in _mne_head_outlines(head_radius):
+                ax.plot(x, y, color='k', linewidth=head_linewidth,
+                        clip_on=False)
+
+        # plot sensors
+        sensor_dim = layers[0].sensor
+        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, TOPOMAP_FRAME,
+                                  labels=sensorlabels)
+        if mark is not None:
             sensor_dim = layers[0].sensor
-            self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, TOPOMAP_FRAME,
-                                      labels=sensorlabels)
-            if mark is not None:
-                sensor_dim = layers[0].sensor
-                kw = {'marker': '.', 'ms': 3, 'markeredgewidth': 1, 'ls': ''}
-                if mcolor is not None:
-                    kw['color'] = mcolor
+            kw = {'marker': '.', 'ms': 3, 'markeredgewidth': 1, 'ls': ''}
+            if mcolor is not None:
+                kw['color'] = mcolor
 
-                _plt_map2d(ax, sensor_dim, proj, 1, TOPOMAP_FRAME, mark, kwargs=kw)
+            _plt_map2d(ax, sensor_dim, proj, 1, TOPOMAP_FRAME, mark, kwargs=kw)
 
-            ax.set_xlim(0, 1)
-            ax.set_ylim(0, 1)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
 
         if isinstance(xlabel, basestring):
             x, y = ax.transData.inverted().transform(ax.transAxes.transform((0.5, 0)))
