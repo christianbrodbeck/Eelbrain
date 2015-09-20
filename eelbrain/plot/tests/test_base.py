@@ -40,26 +40,26 @@ def test_layout():
 
 def test_vlims():
     "Test vlim determination"
+    meas = 'm'
+
     # symmetric
     sym_cmap = 'polar'
-    v1 = InfoObj(meas='m', cmap=sym_cmap, vmax=2)
-    key1 = ('m', sym_cmap)
+    v1 = InfoObj(meas=meas, cmap=sym_cmap, vmax=2)
 
     lims = _base.find_fig_vlims([[v1]])
-    eq_(lims[key1], (-2, 2))
-    lims = _base.find_fig_vlims([[v1]], False, 1)
-    eq_(lims[key1], (-1, 1))
-    lims = _base.find_fig_vlims([[v1]], False, 1, 0)
-    eq_(lims[key1], (-1, 1))
+    eq_(lims[meas], (-2, 2))
+    lims = _base.find_fig_vlims([[v1]], 1)
+    eq_(lims[meas], (-1, 1))
+    lims = _base.find_fig_vlims([[v1]], 1, 0)
+    eq_(lims[meas], (-1, 1))
 
     # zero-based
     zero_cmap = 'sig'
-    v2 = InfoObj(meas='m', cmap=zero_cmap, vmax=2)
-    key2 = ('m', zero_cmap)
+    v2 = InfoObj(meas=meas, cmap=zero_cmap, vmax=2)
 
     lims = _base.find_fig_vlims([[v2]])
-    eq_(lims[key2], (0, 2))
-    lims = _base.find_fig_vlims([[v2]], False, 1)
-    eq_(lims[key2], (0, 1))
-    lims = _base.find_fig_vlims([[v2]], False, 1, -1)
-    eq_(lims[key2], (0, 1))
+    eq_(lims[meas], (0, 2))
+    lims = _base.find_fig_vlims([[v2]], 1)
+    eq_(lims[meas], (0, 1))
+    lims = _base.find_fig_vlims([[v2]], 1, -1)
+    eq_(lims[meas], (0, 1))

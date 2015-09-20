@@ -65,7 +65,7 @@ class Topomap(SensorMapMixin, _EelFigure):
                  axtitle=True, xlabel=None, title=None, *args, **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         nax = len(epochs)
-        vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
         cmaps = {}
         if isinstance(proj, basestring):
             proj = repeat(proj, nax)
@@ -162,7 +162,7 @@ class TopomapBins(_EelFigure):
         _EelFigure.__init__(self, "TopomapBins Plot", n_bins * n_rows, 1.5, 1,
                             False, *args, nrow=n_rows, ncol=n_bins, **kwargs)
 
-        vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
 
         for row, layers in enumerate(epochs):
             for column, t in enumerate(time.x):
@@ -274,7 +274,7 @@ class TopoButterfly(_EelFigure):
                              'mcolor': mcolor,
                              'title': False}
 
-        vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
 
         self.bfly_axes = []
         self.topo_axes = []
@@ -791,7 +791,7 @@ class TopoArray(_EelFigure):
             fig.suptitle(title)
         self.title = title
 
-        vlims = _base.find_fig_vlims(epochs, True, vmax, vmin)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
 
         # save important properties
         self._epochs = epochs

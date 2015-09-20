@@ -209,7 +209,7 @@ class Array(_EelFigure):
         _EelFigure.__init__(self, "Array Plot", nax, 4, 2, *args, **kwargs)
 
         self.plots = []
-        vlims = _base.find_fig_vlims(epochs, False, vmax, vmin)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
             p = _ax_im_array(ax, layers, x, vlims=vlims)
             self.plots.append(p)
@@ -412,7 +412,7 @@ class Butterfly(_EelFigure):
         self._configure_yaxis(epochs[0][0], ylabel)
 
         self.plots = []
-        vlims = _base.find_fig_vlims(epochs, True)
+        vlims = _base.find_fig_vlims(epochs)
         for ax, layers in zip(self._axes, epochs):
             h = _ax_butterfly(ax, layers, sensors, False, axtitle, color, vlims)
             self.plots.append(h)

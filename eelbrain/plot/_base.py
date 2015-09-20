@@ -286,7 +286,7 @@ def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
     overlay : bool
         Whether the NDVar is plotted as a first layer or as an overlay.
     vlims : dict
-        {(meas, cmap): (vmax, vmin)} mapping to replace v-limits based on the
+        {meas: (vmax, vmin)} mapping to replace v-limits based on the
         ndvar.info dict.
     cmaps : dict
         {meas: cmap} mapping to replace the cmap in the ndvar.info dict.
@@ -321,9 +321,8 @@ def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
         else:
             cmap = default_cmap
 
-        key = (meas, cmap)
-        if key in vlims:
-            vmin, vmax = vlims[key]
+        if meas in vlims:
+            vmin, vmax = vlims[meas]
         else:
             vmin, vmax = find_vlim_args(ndvar)
             vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
@@ -428,10 +427,8 @@ def find_uts_ax_vlim(layers, vlims={}):
             continue
 
         meas = ndvar.info.get('meas', default_meas)
-        cmap = ndvar.info.get('cmap', default_cmap)
-        key = (meas, cmap)
-        if key in vlims:
-            bottom_, top_ = vlims[key]
+        if meas in vlims:
+            bottom_, top_ = vlims[meas]
             if bottom is None:
                 bottom = bottom_
             elif bottom_ != bottom:
@@ -444,16 +441,13 @@ def find_uts_ax_vlim(layers, vlims={}):
     return bottom, top
 
 
-def find_fig_vlims(plots, range_by_measure=False, vmax=None, vmin=None):
+def find_fig_vlims(plots, vmax=None, vmin=None):
     """Find vmin and vmax parameters for every (meas, cmap) combination
 
     Parameters
     ----------
     plots : nested list of NDVar
         Unpacked plot data.
-    range_by_measure : bool
-        Constrain the vmax - vmin range such that the range is constant within
-        measure (for uts plots).
     vmax : None | dict | scalar
         Dict: predetermined vlims (take precedence). Scalar: user-specified
         vmax parameter (used for for the first meas kind).
@@ -464,7 +458,7 @@ def find_fig_vlims(plots, range_by_measure=False, vmax=None, vmin=None):
     Returns
     -------
     vlims : dict
-        Dictionary of im limits: {(meas, cmap): (vmin, vmax)}.
+        Dictionary of im limits: {meas: (vmin, vmax)}.
     """
     if isinstance(vmax, dict):
         vlims = vmax
@@ -478,48 +472,28 @@ def find_fig_vlims(plots, range_by_measure=False, vmax=None, vmin=None):
         else:
             user_vlim = (vmax, vmin)
 
-    out = {}  # (meas, cmap): (vmin, vmax)
+    out = {}  # {meas: (vmin, vmax), ...}
     first_meas = None  # what to use user-specified vmax for
     for ndvar in chain(*plots):
-        meas = ndvar.info.get('meas', '?')
+        meas = ndvar.info.get('meas', default_meas)
         if user_vlim is not None and first_meas is None:
             first_meas = meas
             vmin, vmax = user_vlim
         else:
             vmin, vmax = find_vlim_args(ndvar)
         cmap = ndvar.info.get('cmap', None)
-        key = (meas, cmap)
-        if key in vlims:
+        if meas in vlims:
             continue
         elif user_vlim is not None and meas == first_meas:
             vmax, vmin = user_vlim
-        elif key in out:
-            vmin_, vmax_ = out[key]
+        elif meas in out:
+            vmin_, vmax_ = out[meas]
             vmin = min(vmin, vmin_)
             vmax = max(vmax, vmax_)
         vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
-        out[key] = (vmin, vmax)
+        out[meas] = (vmin, vmax)
 
     out.update(vlims)
-
-    if range_by_measure:
-        range_ = {}
-        for (meas, cmap), (vmin, vmax) in out.iteritems():
-            r = vmax - vmin
-            range_[meas] = max(range_.get(meas, 0), r)
-        for key in out.keys():
-            meas, cmap = key
-            vmin, vmax = out[key]
-            diff = range_[meas] - (vmax - vmin)
-            if diff:
-                if cmap in zerobased_cmaps:
-                    vmax += diff
-                else:
-                    diff /= 2
-                    vmax += diff
-                    vmin -= diff
-                out[key] = vmin, vmax
-
     return out
 
 
