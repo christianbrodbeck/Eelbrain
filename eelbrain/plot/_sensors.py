@@ -2,12 +2,10 @@
 Plot sensor maps.
 '''
 # author: Christian Brodbeck
-
-
+from itertools import izip
 import os
 
 import numpy as np
-import matplotlib as mpl
 from matplotlib.lines import Line2D
 
 from .._data_obj import Datalist, as_sensor
@@ -47,27 +45,23 @@ class _plt_connectivity:
 
 class _ax_map2d:
     def __init__(self, ax, sensors, proj='default', extent=1,
-                 frame=.02, kwargs=None):
+                 frame=.02, mark=None):
         self.ax = ax
-
-        if kwargs is None:
-            kwargs = {'marker': 'x',  # symbol
-                      'color': 'b',  # mpl plot kwargs ...
-                      'ms': 3,  # marker size
-                      'markeredgewidth': .5,
-                      'ls': ''}
 
         ax.set_aspect('equal')
         # ax.set_frame_on(False)
         ax.set_axis_off()
 
-        h = _plt_map2d(ax, sensors, proj, extent=extent, kwargs=kwargs)
-        self.sensors = h
+        self.sensors = _plt_map2d(ax, sensors, proj, extent, 0, 'x', 3, 'k',
+                                  mark)
 
         locs = sensors.get_locs_2d(proj=proj, extent=extent)
         self.connectivity = _plt_connectivity(ax, locs, None)
 
         ax.set_xlim(-frame, 1 + frame)
+
+    def mark_sensors(self, *args, **kwargs):
+        self.sensors.mark_sensors(*args, **kwargs)
 
     def remove(self):
         "remove from axes"
@@ -77,7 +71,8 @@ class _ax_map2d:
 class _plt_map2d:
 
     def __init__(self, ax, sensors, proj='default', extent=1, frame=0,
-                 mark=None, labels=None, kwargs=None):
+                 marker='.', size=1, color='k',
+                 mark=None, labels=None, invisible=True):
         """
         Parameters
         ----------
@@ -93,39 +88,20 @@ class _plt_map2d:
         self.ax = ax
         self.sensors = sensors
         self.locs = sensors.get_locs_2d(proj, extent, frame)
-        self._mark_handles = None
+        self._index = None if invisible else sensors._visible_sensors(proj)
 
-        if kwargs is None:
-            kwargs = {'marker': '.',  # symbol
-                      'color': 'k',  # mpl plot kwargs ...
-                      'ms': 1,  # marker size
-                      'markeredgewidth': .5,
-                      'ls': ''}
+        # sensors
+        index = slice(None) if self._index is None else self._index
+        self._sensor_h = ax.scatter(self.locs[index, 0], self.locs[index, 1],
+                                    size, color, marker)
 
-        if mark is not None:
-            mark_idx = sensors.dimindex(mark)
-            locs = self.locs[mark_idx]
-        else:
-            locs = self.locs
-            mark_idx = None
-
-        self.mark = mark
-        self._mark_idx = mark_idx
-        self.markers = []
-        self.labels = []
-        if labels is not None:
+        self._label_h = []
+        if labels:
             self.show_labels(labels)
 
-        if 'color' in kwargs:
-            h = ax.plot(locs[:, 0], locs[:, 1], **kwargs)
-            self.markers += h
-        else:
-            colors = mpl.rcParams['axes.color_cycle']
-            nc = len(colors)
-            for i in xrange(len(locs)):
-                kwargs['color'] = kwargs['mec'] = colors[i % nc]
-                h = ax.plot(locs[i, 0], locs[i, 1], **kwargs)
-                self.markers += h
+        self._mark_handles = []
+        if mark is not None:
+            self.mark_sensors(mark)
 
     def mark_sensors(self, sensors, *args, **kwargs):
         """Mark specific sensors
@@ -142,19 +118,17 @@ class _plt_map2d:
             while self._mark_handles:
                 self._mark_handles.pop().remove()
             return
-        elif not np.count_nonzero(sensors):
-            return
 
         idx = self.sensors.dimindex(sensors)
-        locs = self.locs[idx]
-        self._mark_handles = self.ax.scatter(locs[:, 0], locs[:, 1], *args, **kwargs)
+        h = self.ax.scatter(self.locs[idx, 0], self.locs[idx, 1], *args,
+                            **kwargs)
+        self._mark_handles.append(h)
 
     def remove(self):
         "remove from axes"
+        self._sensor_h.remove()
         while self._mark_handles:
             self._mark_handles.pop().remove()
-        while self.markers:
-            self.markers.pop().remove()
 
     def show_labels(self, text='name', xpos=0, ypos=.01, **text_kwargs):
         """Plot labels for the sensors
@@ -170,8 +144,8 @@ class _plt_map2d:
             Matplotlib text parameters.
         """
         # remove existing labels
-        while self.labels:
-            self.labels.pop().remove()
+        while self._label_h:
+            self._label_h.pop().remove()
 
         if not text:
             return
@@ -180,30 +154,28 @@ class _plt_map2d:
                       verticalalignment='bottom')
         kwargs.update(text_kwargs)
 
-        sensors = self.sensors
         if text == 'index':
-            labels = map(str, xrange(len(sensors)))
+            labels = map(str, xrange(len(self.sensors)))
         elif text == 'name':
-            labels = sensors.names
+            labels = self.sensors.names
             prefix = os.path.commonprefix(labels)
             pf_len = len(prefix)
             labels = [label[pf_len:] for label in labels]
         elif text == 'fullname':
-            labels = sensors.names
+            labels = self.sensors.names
         else:
             err = "text has to be 'index' or 'name', can't be %r" % text
             raise NotImplementedError(err)
 
         locs = self.locs
-        if self._mark_idx is not None:
-            labels = Datalist(labels)[self._mark_idx]
-            locs = locs[self._mark_idx]
+        if self._index is not None:
+            labels = Datalist(labels)[self._index]
+            locs = locs[self._index]
 
         locs = locs + [[xpos, ypos]]
-        for loc, txt in zip(locs, labels):
-            x , y = loc
+        for (x, y), txt in izip(locs, labels):
             h = self.ax.text(x, y, txt, **kwargs)
-            self.labels.append(h)
+            self._label_h.append(h)
 
     def set_label_color(self, color='k'):
         """Change the color of all sensor labels
@@ -213,7 +185,7 @@ class _plt_map2d:
         color : matplotlib color
             New color for the sensor labels.
         """
-        for h in self.labels:
+        for h in self._label_h:
             h.set_color(color)
 
 
@@ -591,42 +563,30 @@ class SensorMap(SensorMapMixin, _EelFigure):
         self._marker_handles = []
         self._connectivity = None
 
-        self._markers = _ax_map2d(self.axes, sensors, proj, frame=frame)
+        self._markers = _ax_map2d(self.axes, sensors, proj, 1, frame, mark)
         SensorMapMixin.__init__(self, [self._markers.sensors])
 
         if labels:
             self.set_label_text(labels)
-        if mark is not None:
-            self.mark_sensors(mark)
 
         if connectivity:
             self.show_connectivity()
 
         self._show()
 
-    def mark_sensors(self, mark, kwargs=dict(marker='o',  # symbol
-                                             color='r',  # mpl plot kwargs ...
-                                             ms=5,  # marker size
-                                             markeredgewidth=.9,
-                                             ls='',
-                                             )):
+    def mark_sensors(self, *args, **kwargs):
         """Mark specific sensors.
 
         Parameters
         ----------
-        mark : sequence of {str | int}
+        sensors : sequence of {str | int}
             List of sensor names or indices.
-        kwargs : dict
-            Dict with kwargs for customizing the sensor plot (matplotlib plot
-            kwargs).
 
         See Also
         --------
         .remove_markers() : Remove the markers
         """
-        h = _plt_map2d(self.axes, self._sensors, self._proj, mark=mark,
-                       kwargs=kwargs)
-        self._marker_handles.append(h)
+        self._markers.mark_sensors(*args, **kwargs)
         self.canvas.draw()
 
     def remove_markers(self):

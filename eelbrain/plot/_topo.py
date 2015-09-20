@@ -56,13 +56,16 @@ class Topomap(SensorMapMixin, _EelFigure):
         Label below the topomaps (default is no label).
     title : None | string
         Figure title.
+    mark : Sensor index
+        Sensors which to mark.
     """
     _make_axes = False
 
     def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
                  method='linear', res=64, contours=6,
                  interpolation=None, ds=None, vmax=None, vmin=None,
-                 axtitle=True, xlabel=None, title=None, *args, **kwargs):
+                 axtitle=True, xlabel=None, title=None, mark=None, *args,
+                 **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         nax = len(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin)
@@ -99,7 +102,7 @@ class Topomap(SensorMapMixin, _EelFigure):
         self._plots = []
         sensor_plots = []
         for ax, layers, proj_ in izip(self._axes, epochs, proj):
-            h = _ax_topomap(ax, layers, axtitle, sensorlabels, None, None,
+            h = _ax_topomap(ax, layers, axtitle, sensorlabels, mark, None,
                             proj_, res, interpolation, xlabel, vlims, cmaps,
                             contours, method)
             self._plots.append(h)
@@ -640,14 +643,8 @@ class _ax_topomap(_utsnd._ax_im_array):
         # plot sensors
         sensor_dim = layers[0].sensor
         self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, TOPOMAP_FRAME,
-                                  labels=sensorlabels)
-        if mark is not None:
-            sensor_dim = layers[0].sensor
-            kw = {'marker': '.', 'ms': 3, 'markeredgewidth': 1, 'ls': ''}
-            if mcolor is not None:
-                kw['color'] = mcolor
-
-            _plt_map2d(ax, sensor_dim, proj, 1, TOPOMAP_FRAME, mark, kwargs=kw)
+                                  mark=mark, labels=sensorlabels,
+                                  invisible=False)
 
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
