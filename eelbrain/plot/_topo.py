@@ -5,7 +5,7 @@ Plot topographic maps of sensor space data.
 from __future__ import division
 
 from itertools import izip, repeat
-from math import floor, sqrt, sin, cos, asin
+from math import floor, sqrt
 
 import matplotlib as mpl
 import numpy as np
@@ -474,39 +474,13 @@ class TopoButterfly(_EelFigure):
         self.canvas.draw()
 
 
-def _mne_head_outlines(radius, center=0.5):
-    "Head outlines based on mne-python (mne.viz.topomap)"
-    # outlines for center 0, radius 1
-    nose_alpha = 0.2
-    l = np.linspace(0, 2 * np.pi, 101)
-    head_x = np.cos(l)
-    head_y = np.sin(l)
-    w = sin(nose_alpha)
-    nose_x = np.array((-w, -w * 0.5, -w * 0.2, 0, w * 0.2, w * 0.5, w))
-    ymin = cos(nose_alpha)
-    nose_y = np.array((ymin, 1.02, 1.09, 1.1, 1.09, 1.02, ymin))
-    ear_y = np.array((0.15, 0.145, 0.135, 0.125, 0.111, -0.011, -0.1864,
-                      -0.2626, -0.2768, -0.2398))
-    ear_x_right = np.array((cos(asin(ear_y[0])), 1., 1.02, 1.025, 1.03, 1.04,
-                            1.07, 1.06, 1.02, cos(asin(ear_y[-1]))))
-    ear_x_left = -ear_x_right
-
-    # apply radius and center
-    for item in (head_x, head_y, nose_x, nose_y, ear_x_right, ear_x_left, ear_y):
-        item *= radius
-        item += center
-
-    return ((head_x, head_y), (nose_x, nose_y), (ear_x_left, ear_y),
-            (ear_x_right, ear_y))
-
-
 class _plt_topomap(_utsnd._plt_im):
 
     _aspect = 'equal'
 
     def __init__(self, ax, ndvar, overlay, proj='default', res=100,
                  interpolation=None, vlims={}, cmaps={}, contours={},
-                 method='linear', head_radius=0.45):
+                 method='linear', clip_radius=0.45):
         """
         Parameters
         ----------
@@ -525,7 +499,7 @@ class _plt_topomap(_utsnd._plt_im):
         self._method = method
 
         if method == 'mne' and ndvar.sensor._topomap_outlines(proj) == 'top':
-            mask = mpl.patches.Circle((0.5, 0.5), head_radius,
+            mask = mpl.patches.Circle((0.5, 0.5), clip_radius,
                                       transform=ax.transData)
         else:
             mask = None
@@ -613,28 +587,27 @@ class _ax_topomap(_utsnd._ax_im_array):
         if xlabel is True:
             xlabel = layers[0].name
 
-        if head_radius is None:
-            head_radius = 0.5 * (1 - (TOPOMAP_FRAME / 10 * 9))
+        clip_radius = 0.5 * (1 - (TOPOMAP_FRAME / 10 * 9))
 
         ax.set_axis_off()
         overlay = False
         for layer in layers:
             h = _plt_topomap(ax, layer, overlay, proj, res, interpolation,
-                             vlims, cmaps, contours, method, head_radius)
+                             vlims, cmaps, contours, method, clip_radius)
             self.layers.append(h)
             overlay = True
 
         # head outline
-        if method == 'mne' and layer.sensor._topomap_outlines(proj) == 'top':
-            for x, y in _mne_head_outlines(head_radius):
-                ax.plot(x, y, color='k', linewidth=head_linewidth,
-                        clip_on=False)
+        if head_radius is None and method == 'mne' and \
+                        layer.sensor._topomap_outlines(proj) == 'top':
+            head_radius = clip_radius
 
         # plot sensors
         sensor_dim = layers[0].sensor
         self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, TOPOMAP_FRAME,
                                   mark=mark, labels=sensorlabels,
-                                  invisible=False)
+                                  invisible=False, head_radius=head_radius,
+                                  head_linewidth=head_linewidth)
 
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)

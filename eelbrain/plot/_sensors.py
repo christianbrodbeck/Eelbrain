@@ -3,6 +3,7 @@ Plot sensor maps.
 '''
 # author: Christian Brodbeck
 from itertools import izip
+from math import sin, cos, asin
 import os
 
 import numpy as np
@@ -19,6 +20,31 @@ kwargs_mono = dict(mc='k',
                    hlmc='k',
                    hlms=7,
                    strlc='k')
+
+
+def _head_outlines(radius, center=0.5):
+    # generate outlines for center 0, radius 1
+    nose_alpha = 0.2
+    l = np.linspace(0, 2 * np.pi, 101)
+    head_x = np.cos(l)
+    head_y = np.sin(l)
+    w = sin(nose_alpha)
+    nose_x = np.array((-w, -w * 0.5, -w * 0.2, 0, w * 0.2, w * 0.5, w))
+    ymin = cos(nose_alpha)
+    nose_y = np.array((ymin, 1.02, 1.09, 1.1, 1.09, 1.02, ymin))
+    ear_y = np.array((0.15, 0.145, 0.135, 0.125, 0.111, -0.011, -0.1864,
+                      -0.2626, -0.2768, -0.2398))
+    ear_x_right = np.array((cos(asin(ear_y[0])), 1., 1.02, 1.025, 1.03, 1.04,
+                            1.07, 1.06, 1.02, cos(asin(ear_y[-1]))))
+    ear_x_left = -ear_x_right
+
+    # apply radius and center
+    for item in (head_x, head_y, nose_x, nose_y, ear_x_right, ear_x_left, ear_y):
+        item *= radius
+        item += center
+
+    return ((head_x, head_y), (nose_x, nose_y), (ear_x_left, ear_y),
+            (ear_x_right, ear_y))
 
 
 class _plt_connectivity:
@@ -72,7 +98,8 @@ class _plt_map2d:
 
     def __init__(self, ax, sensors, proj='default', extent=1, frame=0,
                  marker='.', size=1, color='k',
-                 mark=None, labels=None, invisible=True):
+                 mark=None, labels=None, invisible=True,
+                 head_radius=None, head_linewidth=1):
         """
         Parameters
         ----------
@@ -89,6 +116,12 @@ class _plt_map2d:
         self.sensors = sensors
         self.locs = sensors.get_locs_2d(proj, extent, frame)
         self._index = None if invisible else sensors._visible_sensors(proj)
+
+        # head outline
+        if head_radius:
+            for x, y in _head_outlines(head_radius):
+                ax.plot(x, y, color='k', linewidth=head_linewidth,
+                        clip_on=False)
 
         # sensors
         index = slice(None) if self._index is None else self._index
