@@ -229,53 +229,6 @@ def find_axis_params_dim(meas, label):
     return scale_formatters[scale], label
 
 
-def find_ct_args(ndvar, overlay, contours={}):
-    """Construct a dict with kwargs for a contour plot
-
-    Parameters
-    ----------
-    ndvar : NDVar
-        Data to be plotted.
-    overlay : bool
-        Whether the NDVar is plotted as a first layer or as an overlay.
-    contours : dict
-        Externally specified contours as {meas: {level: color}} mapping.
-
-    Returns
-    -------
-    ct_args : dict
-        {level: color} mapping for contour plots.
-
-    Notes
-    -----
-    The NDVar's info dict contains default arguments that determine how the
-    NDVar is plotted as base and as overlay. In case of insufficient
-    information, defaults apply. On the other hand, defaults can be overridden
-    by providing specific arguments to plotting functions.
-    """
-    if overlay:
-        kind = ndvar.info.get('overlay', ('contours',))
-    else:
-        kind = ndvar.info.get('base', ())
-
-    ct_args = {}
-    if 'contours' in kind:
-        info_ct = ndvar.info.get('contours', None)
-        if overlay:
-            info_ct = ndvar.info.get('overlay_contours', info_ct)
-        else:
-            info_ct = ndvar.info.get('base_contours', info_ct)
-
-        if info_ct:
-            ct_args.update(info_ct)
-
-    meas = ndvar.info.get('meas', default_meas)
-    if meas in contours:
-        ct_args.update(contours[meas])
-
-    return ct_args
-
-
 def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
     """Construct a dict with kwargs for an im plot
 
@@ -439,6 +392,81 @@ def find_uts_ax_vlim(layers, vlims={}):
                 raise RuntimeError("Double vlim specification")
 
     return bottom, top
+
+
+def find_fig_contours(epochs, vlims, contours_arg):
+    """Find contour arguments for every meas type
+
+    Parameters
+    ----------
+    epochs : list of list of NDVar
+        Data to be plotted.
+    vlims : dist
+        Vlims dict (used to interpret numerical arguments)
+    contours_arg : int | sequence | dict
+        User argument. Can be an int (number of contours), a sequence (values
+        at which to draw contours), a kwargs dict (must contain the "levels"
+        key), or a {meas: kwargs} dictionary.
+
+    Returns
+    -------
+    contours : dict
+        {meas: kwargs} mapping for contour plots.
+
+    Notes
+    -----
+    The NDVar's info dict contains default arguments that determine how the
+    NDVar is plotted as base and as overlay. In case of insufficient
+    information, defaults apply. On the other hand, defaults can be overridden
+    by providing specific arguments to plotting functions.
+    """
+    if isinstance(contours_arg, dict) and 'levels' not in contours_arg:
+        out = contours_arg.copy()
+        contours_arg = None
+    else:
+        out = {}
+
+    for ndvars in epochs:
+        for layer, ndvar in enumerate(ndvars):
+            meas = ndvar.info.get('meas', default_meas)
+            if meas in out:
+                continue
+
+            if contours_arg is not None:
+                param = contours_arg
+                contours_arg = None
+            else:
+                if layer:  # overlay
+                    kind = ndvar.info.get('overlay', ('contours',))
+                else:
+                    kind = ndvar.info.get('base', ())
+
+                if 'contours' in kind:
+                    param = ndvar.info.get('contours', None)
+                    if layer:
+                        param = ndvar.info.get('overlay_contours', param)
+                    else:
+                        param = ndvar.info.get('base_contours', param)
+
+                    if isinstance(param, dict) and 'levels' not in param:
+                        levels = sorted(param)
+                        colors = [param[v] for v in levels]
+                        param = {'levels': levels, 'colors': colors}
+                else:
+                    param = None
+
+            if param is None:
+                out[meas] = None
+            elif isinstance(param, dict):
+                out[meas] = param
+            elif isinstance(param, int):
+                vmin, vmax = vlims[meas]
+                out[meas] = {'levels': np.linspace(vmin, vmax, param),
+                             'colors': 'k'}
+            else:
+                out[meas] = {'levels': tuple(param), 'colors': 'k'}
+
+    return out
 
 
 def find_fig_vlims(plots, vmax=None, vmin=None):

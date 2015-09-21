@@ -14,7 +14,7 @@ from scipy import interpolate, linalg
 from .._data_obj import SEQUENCE_TYPES
 from . import _base
 from ._base import _EelFigure
-from . import _utsnd as _utsnd
+from . import _utsnd
 from ._sensors import SensorMapMixin
 from ._sensors import _plt_map2d
 
@@ -40,7 +40,7 @@ class Topomap(SensorMapMixin, _EelFigure):
         Method for interpolating topo-map between sensors (default is mne).
     res : int
         Resolution of the topomaps (width = height = ``res``).
-    contours : int
+    contours : sequence | dict
         Number of contours to draw (only for method='mne').
     interpolation : str
         Matplotlib imshow() parameter for topomaps.
@@ -62,13 +62,14 @@ class Topomap(SensorMapMixin, _EelFigure):
     _make_axes = False
 
     def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
-                 method='linear', res=64, contours=6,
+                 method='linear', res=64, contours=7,
                  interpolation=None, ds=None, vmax=None, vmin=None,
                  axtitle=True, xlabel=None, title=None, mark=None, *args,
                  **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         nax = len(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        contours = _base.find_fig_contours(epochs, vlims, contours)
         cmaps = {}
         if isinstance(proj, basestring):
             proj = repeat(proj, nax)
@@ -269,15 +270,17 @@ class TopoButterfly(_EelFigure):
         y_sep = (1 - y_bottomframe) / n_plots
         height = y_sep - yframe
 
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        contours = _base.find_fig_contours(epochs, vlims, None)
+
         self._topo_kwargs = {'proj': proj,
+                             'contours': contours,
                              'res': res,
                              'interpolation': interpolation,
                              'sensorlabels': sensorlabels,
                              'mark': mark,
                              'mcolor': mcolor,
                              'title': False}
-
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
 
         self.bfly_axes = []
         self.topo_axes = []
@@ -497,7 +500,9 @@ def _mne_head_outlines(radius, center=0.5):
             (ear_x_right, ear_y))
 
 
-class _plt_topomap(_utsnd._plt_im_array):
+class _plt_topomap(_utsnd._plt_im):
+
+    _aspect = 'equal'
 
     def __init__(self, ax, ndvar, overlay, proj='default', res=100,
                  interpolation=None, vlims={}, cmaps={}, contours={},
@@ -512,36 +517,21 @@ class _plt_topomap(_utsnd._plt_im_array):
         method : 'nearest' | 'linear' | 'cubic' | 'spline'
             Method for interpolating topo-map between sensors.
         """
-        im_kwa = _base.find_im_args(ndvar, overlay, vlims, cmaps)
-        self._contours = _base.find_ct_args(ndvar, overlay, contours)
-        self._meas = ndvar.info.get('meas', _base.default_meas)
-
         # store attributes
-        self.ax = ax
-        self.cont = None
-        self._aspect = 'equal'
-        self._extent = (0, 1, 0, 1)
         self._proj = proj
         self._visible_data = ndvar.sensor._visible_sensors(proj)
         self._grid = np.linspace(0, 1, res)
         self._mgrid = tuple(np.meshgrid(self._grid, self._grid))
         self._method = method
 
-        data = self._data_from_ndvar(ndvar)
-        if im_kwa is not None:
-            self.im = ax.imshow(data, extent=self._extent, origin='lower',
-                                interpolation=interpolation, **im_kwa)
-            self._cmap = im_kwa['cmap']
-            if method == 'mne' and ndvar.sensor._topomap_outlines(proj) == 'top':
-                mask = mpl.patches.Circle((0.5, 0.5), head_radius,
-                                          transform=ax.transData)
-                self.im.set_clip_path(mask)
+        if method == 'mne' and ndvar.sensor._topomap_outlines(proj) == 'top':
+            mask = mpl.patches.Circle((0.5, 0.5), head_radius,
+                                      transform=ax.transData)
         else:
-            self.im = None
+            mask = None
 
-        # draw flexible part
-        self._data = data
-        self._draw_contours()
+        _utsnd._plt_im.__init__(self, ax, ndvar, overlay, cmaps, vlims,
+                                contours, (0, 1, 0, 1), interpolation, mask)
 
     def _data_from_ndvar(self, ndvar):
         v = ndvar.get_data(('sensor',))
@@ -601,7 +591,7 @@ class _ax_topomap(_utsnd._ax_im_array):
 
     def __init__(self, ax, layers, title=True, sensorlabels=None, mark=None,
                  mcolor=None, proj='default', res=100, interpolation=None,
-                 xlabel=None, vlims={}, cmaps={}, contours={}, method='linear',
+                 xlabel=None, vlims={}, cmaps={}, contours=None, method='linear',
                  head_radius=None, head_linewidth=1):
         """
         Parameters
@@ -630,7 +620,7 @@ class _ax_topomap(_utsnd._ax_im_array):
         overlay = False
         for layer in layers:
             h = _plt_topomap(ax, layer, overlay, proj, res, interpolation,
-                             vlims, cmaps, {}, method, head_radius)
+                             vlims, cmaps, contours, method, head_radius)
             self.layers.append(h)
             overlay = True
 
@@ -789,13 +779,13 @@ class TopoArray(_EelFigure):
         self.title = title
 
         vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        contours = _base.find_fig_contours(epochs, vlims, None)
 
         # save important properties
         self._epochs = epochs
         self._ntopo = ntopo
         self._vlims = vlims  # keep track of these for replotting topomaps
         self._cmaps = {}
-        self._contours = {}
         self._default_xlabel_ax = -1 - ntopo
 
         # im_array plots
@@ -812,7 +802,7 @@ class TopoArray(_EelFigure):
                               picker=True)
             ax.ID = i
             ax.type = 'main'
-            im_plot = _utsnd._ax_im_array(ax, layers, vlims=vlims)
+            im_plot = _utsnd._ax_im_array(ax, layers, vlims=vlims, contours=contours)
             self._axes.append(ax)
             self._array_axes.append(ax)
             self._array_plots.append(im_plot)
@@ -827,7 +817,7 @@ class TopoArray(_EelFigure):
                 ax.ID = ID
                 ax.type = 'window'
                 win = _TopoWindow(ax, im_plot, vlims=self._vlims,
-                                  cmaps=self._cmaps, contours=self._contours)
+                                  cmaps=self._cmaps, contours=contours)
                 self._axes.append(ax)
                 self._topo_windows.append(win)
 
@@ -871,7 +861,6 @@ class TopoArray(_EelFigure):
         color : matplotlib color
             The color of the contour line.
         """
-        self._contours.setdefault(meas, {})[level] = color
         for p in self._iter_plots():
             p.add_contour(meas, level, color)
         self.draw()

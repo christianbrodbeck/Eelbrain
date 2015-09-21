@@ -5,7 +5,6 @@ Plot multidimensional uniform time series.
 from __future__ import division
 
 from itertools import izip
-import math
 
 import numpy as np
 
@@ -15,53 +14,50 @@ from . import _base
 from ._base import _EelFigure
 
 
-class _plt_im_array(object):
-    def __init__(self, ax, ndvar, overlay, dims=('time', 'sensor'),
-                 extent=None, interpolation=None, vlims={}, cmaps={},
-                 contours={}):
-        im_kwa = _base.find_im_args(ndvar, overlay, vlims, cmaps)
-        self._contours = _base.find_ct_args(ndvar, overlay, contours)
-        self._meas = ndvar.info.get('meas', _base.default_meas)
-        self._dims = dims
+class _plt_im(object):
 
-        data = self._data_from_ndvar(ndvar)
+    _aspect = 'auto'
+
+    def __init__(self, ax, ndvar, overlay, cmaps, vlims, contours, extent,
+                 interpolation, mask=None):
+        self.ax = ax
+        im_kwa = _base.find_im_args(ndvar, overlay, vlims, cmaps)
+        self._meas = meas = ndvar.info.get('meas', _base.default_meas)
+        self._contours = contours[meas]
+        self._data = data = self._data_from_ndvar(ndvar)
+        self._extent = extent
+        self._mask = mask
+
         if im_kwa is not None:
-            self.im = ax.imshow(data, origin='lower', aspect='auto',
+            self.im = ax.imshow(data, origin='lower', aspect=self._aspect,
                                 extent=extent, interpolation=interpolation,
                                 **im_kwa)
             self._cmap = im_kwa['cmap']
+            if mask is not None:
+                self.im.set_clip_path(mask)
         else:
             self.im = None
 
-        # store attributes
-        self.ax = ax
-        self.cont = None
-        self._data = data
-        self._aspect = 'auto'
-        self._extent = extent
-
-        # draw flexible part
+        # draw flexible parts
+        self._contour_h = None
         self._draw_contours()
 
     def _data_from_ndvar(self, ndvar):
-        data = ndvar.get_data(self._dims)
-        if data.ndim > 2:
-            assert data.shape[0] == 1
-            data = data[0]
-        return data
+        raise NotImplementedError
 
     def _draw_contours(self):
-        if self.cont:
-            for c in self.cont.collections:
+        if self._contour_h:
+            for c in self._contour_h.collections:
                 c.remove()
-            self.cont = None
+            self._contour_h = None
 
         if self._contours:
-            levels = sorted(self._contours)
-            colors = [self._contours[l] for l in levels]
-            self.cont = self.ax.contour(self._data, levels=levels,
-                                        colors=colors, aspect=self._aspect,
-                                        origin='lower', extent=self._extent)
+            h = self.ax.contour(self._data, aspect=self._aspect, origin='lower',
+                                extent=self._extent, **self._contours)
+            if self._mask is not None:
+                for c in h.collections:
+                    c.set_clip_path(self._mask)
+            self._contour_h = h
 
     def add_contour(self, meas, level, color):
         if self._meas == meas:
@@ -100,6 +96,23 @@ class _plt_im_array(object):
 
         vmin, vmax = _base.fix_vlim_for_cmap(vmin, vmax, self._cmap)
         self.im.set_clim(vmin, vmax)
+
+
+class _plt_im_array(_plt_im):
+
+    def __init__(self, ax, ndvar, overlay, dims=('time', 'sensor'),
+                 extent=None, interpolation=None, vlims={}, cmaps={},
+                 contours={}):
+        self._dims = dims
+        _plt_im.__init__(self, ax, ndvar, overlay, cmaps, vlims, contours,
+                         extent, interpolation)
+
+    def _data_from_ndvar(self, ndvar):
+        data = ndvar.get_data(self._dims)
+        if data.ndim > 2:
+            assert data.shape[0] == 1
+            data = data[0]
+        return data
 
 
 class _ax_im_array(object):
