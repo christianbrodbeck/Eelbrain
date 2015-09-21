@@ -414,6 +414,10 @@ def test_dim_uts():
     "Test UTS Dimension"
     uts = UTS(-0.1, 0.005, 301)
 
+    # basic indexing
+    assert_raises(ValueError, uts.dimindex, 1.5)
+    assert_raises(ValueError, uts.dimindex, -.15)
+
     # make sure indexing rounds correctly for floats
     for i, s in enumerate(np.arange(0, 1.4, 0.05)):
         idx = uts.dimindex((-0.1 + s, s))

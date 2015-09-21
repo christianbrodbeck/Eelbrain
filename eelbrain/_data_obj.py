@@ -7742,6 +7742,9 @@ class UTS(Dimension):
     def dimindex(self, arg):
         if np.isscalar(arg):
             i = int(round((arg - self.tmin) / self.tstep))
+            if i < 0 or i >= self.nsamples:
+                raise ValueError("Time index %s out of range (%s, %s)"
+                                 % (arg, self.tmin, self.tmax))
             return i
         elif isinstance(arg, UTS):
             if self.tmin == arg.tmin:
