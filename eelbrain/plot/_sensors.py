@@ -147,7 +147,7 @@ class _plt_map2d:
         while self._label_h:
             self._label_h.pop().remove()
 
-        if not text:
+        if not text or text == 'none':
             return
 
         kwargs = dict(color='k', fontsize=8, horizontalalignment='center',
@@ -192,7 +192,7 @@ class _plt_map2d:
 class SensorMapMixin:
     # expects self._sensor_plots to be list of _plt_map2d
     __label_options = ['None', 'Index', 'Name', 'Full Name']
-    __label_option_args = [None, 'index', 'name', 'fullname']
+    __label_option_args = ['none', 'index', 'name', 'fullname']
 
     def __init__(self, sensor_plots, label=None):
         """Call after EelFigure init (toolbar fill)
@@ -204,6 +204,8 @@ class SensorMapMixin:
         label : None | str
             Initial label argument (default None).
         """
+        if not label:
+            label = 'none'
         self.__label_color = 'k'
         self.__check_label_arg(label)
         self.__sensor_plots = sensor_plots
