@@ -103,7 +103,7 @@ class _plt_map2d:
         if mark is not None:
             self.mark_sensors(mark)
 
-    def mark_sensors(self, sensors, *args, **kwargs):
+    def mark_sensors(self, sensors, s=20, c='yellow', *args, **kwargs):
         """Mark specific sensors
 
         Parameters
@@ -120,7 +120,7 @@ class _plt_map2d:
             return
 
         idx = self.sensors.dimindex(sensors)
-        h = self.ax.scatter(self.locs[idx, 0], self.locs[idx, 1], *args,
+        h = self.ax.scatter(self.locs[idx, 0], self.locs[idx, 1], s, c, *args,
                             **kwargs)
         self._mark_handles.append(h)
 
