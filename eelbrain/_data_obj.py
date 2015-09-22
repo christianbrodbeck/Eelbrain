@@ -6737,24 +6737,35 @@ class Sensor(Dimension):
                 return locs2d[visible]
         return locs2d
 
+    @LazyProperty
+    def _sphere_fit(self):
+        """Fit the 3d sensor locations to a sphere
+
+        Returns
+        -------
+        params : tuple
+            Radius and center (r, cx, cy, cz).
+        """
+        locs = self.locs
+
+        # error function
+        def err(params):
+            # params: [r, cx, cy, cz]
+            out = np.sum((locs - params[1:]) ** 2, 1)
+            out -= params[0] ** 2
+            return out
+
+        # initial guess of sphere parameters (radius and center)
+        center_0 = np.mean(locs, 0)
+        r_0 = np.mean(np.sqrt(np.sum((locs - center_0) ** 2, axis=1)))
+        start_params = np.hstack((r_0, center_0))
+        # do fit
+        estimate, _ = leastsq(err, start_params)
+        return tuple(estimate)
+
     def _make_locs_2d(self, proj, extent, frame):
         if proj in ('cone', 'lower cone', 'z root'):
-
-            # fit the 3d sensor locations to a sphere with center (cx, cy, cz)
-            # and radius r
-
-            # error function
-            def err(params):
-                r, cx, cy, cz = params
-                return   (self.locs[:, 0] - cx) ** 2 \
-                       + (self.locs[:, 1] - cy) ** 2 \
-                       + (self.locs[:, 2] - cz) ** 2 \
-                       - r ** 2
-
-            # initial guess of sphere parameters (radius and center)
-            params = (1, 0, 0, 0)
-            # do fit
-            (r, cx, cy, cz), _ = leastsq(err, params)
+            r, cx, cy, cz = self._sphere_fit
 
             # center the sensor locations based on the sphere and scale to
             # radius 1
