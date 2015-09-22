@@ -13,6 +13,10 @@ from .._data_obj import Datalist, as_sensor
 from ._base import _EelFigure
 
 
+SENSOR_AXES_FRAME = 0.05
+SENSORMAP_FRAME = 0.1
+
+
 # some useful kwarg dictionaries for different plot layouts
 kwargs_mono = dict(mc='k',
                    lc='.5',
@@ -70,21 +74,21 @@ class _plt_connectivity:
 
 
 class _ax_map2d:
-    def __init__(self, ax, sensors, proj='default', extent=1,
-                 frame=.02, mark=None):
+
+    def __init__(self, ax, sensors, proj='default', extent=1, mark=None):
         self.ax = ax
 
-        ax.set_aspect('equal')
         # ax.set_frame_on(False)
         ax.set_axis_off()
 
-        self.sensors = _plt_map2d(ax, sensors, proj, extent, 0, 'x', 3, 'k',
-                                  mark)
+        self.sensors = _plt_map2d(ax, sensors, proj, extent, 'x', 3, 'k', mark)
 
-        locs = sensors.get_locs_2d(proj=proj, extent=extent)
+        locs = sensors.get_locs_2d(proj, extent)
         self.connectivity = _plt_connectivity(ax, locs, None)
 
-        ax.set_xlim(-frame, 1 + frame)
+        ax.set_aspect('equal')
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
 
     def mark_sensors(self, *args, **kwargs):
         self.sensors.mark_sensors(*args, **kwargs)
@@ -96,7 +100,7 @@ class _ax_map2d:
 
 class _plt_map2d:
 
-    def __init__(self, ax, sensors, proj='default', extent=1, frame=0,
+    def __init__(self, ax, sensors, proj='default', extent=1,
                  marker='.', size=1, color='k',
                  mark=None, labels=None, invisible=True,
                  head_radius=None, head_linewidth=1):
@@ -114,7 +118,7 @@ class _plt_map2d:
         """
         self.ax = ax
         self.sensors = sensors
-        self.locs = sensors.get_locs_2d(proj, extent, frame)
+        self.locs = sensors.get_locs_2d(proj, extent, SENSORMAP_FRAME)
         self._index = None if invisible else sensors._visible_sensors(proj)
 
         # head outline
@@ -407,19 +411,19 @@ class SensorMaps(_EelFigure):
         ax = self.ax0 = self.figure.add_subplot(2, 2, 1)
         ax.proj = 'y-'
         ax.extent = False
-        self._h0 = _ax_map2d(ax, sensors, proj=ax.proj, extent=ax.extent)
+        self._h0 = _ax_map2d(ax, sensors, ax.proj, ax.extent)
 
         # left
         ax = self.ax1 = self.figure.add_subplot(2, 2, 2, sharey=self.ax0)
         ax.proj = 'x-'
         ax.extent = False
-        self._h1 = _ax_map2d(ax, sensors, proj=ax.proj, extent=ax.extent)
+        self._h1 = _ax_map2d(ax, sensors, ax.proj, ax.extent)
 
         # top
         ax = self.ax2 = self.figure.add_subplot(2, 2, 3, sharex=self.ax0)
         ax.proj = 'z+'
         ax.extent = False
-        self._h2 = _ax_map2d(ax, sensors, proj=ax.proj, extent=ax.extent)
+        self._h2 = _ax_map2d(ax, sensors, ax.proj, ax.extent)
 
         self.ax0.set_xlim(*xlim)
         self.ax0.set_ylim(*zlim)
@@ -430,7 +434,7 @@ class SensorMaps(_EelFigure):
         ax = self.ax3 = self.figure.add_subplot(2, 2, 4)
         ax.proj = proj
         ax.extent = 1
-        self._h3 = _ax_map2d(ax, sensors, proj=ax.proj, extent=ax.extent)
+        self._h3 = _ax_map2d(ax, sensors, ax.proj, ax.extent)
         self.ax3.set_xlim(-frame, 1 + frame)
         self.ax3.set_ylim(-frame, 1 + frame)
 
@@ -501,7 +505,7 @@ class SensorMaps(_EelFigure):
         ymax = max(y)
 
         ax = self._drag_ax
-        locs = self._sensors.get_locs_2d(ax.proj, extent=ax.extent)
+        locs = self._sensors.get_locs_2d(ax.proj, ax.extent)
         x = locs[:, 0]
         y = locs[:, 1]
         sel = (x > xmin) & (x < xmax) & (y > ymin) & (y < ymax)
@@ -574,31 +578,35 @@ class SensorMap(SensorMapMixin, _EelFigure):
         locations in a plane
     mark : None | list of int
         List of sensor indices to mark.
-    frame : scalar
-        Size of the empty space around sensors in axes.
     connectivity : bool
         Show sensor connectivity (default False).
     title : None | string
         Figure title.
     """
+    _make_axes = False
+
     def __init__(self, sensors, labels='name', proj='default', mark=None,
-                 frame=.05, connectivity=False, *args, **kwargs):
+                 connectivity=False, *args, **kwargs):
         sensors = as_sensor(sensors)
 
         if sensors.sysname:
             ftitle = 'SensorMap: %s' % sensors.sysname
         else:
             ftitle = 'SensorMap'
-        _EelFigure.__init__(self, ftitle, 1, 7, 1, False, *args, **kwargs)
-        self.axes = self._axes[0]
+        _EelFigure.__init__(self, ftitle, 1, 5, 1, False, *args, **kwargs)
+
+        # axes with same scaling as plot.Topomap
+        w = 1. - 2 * SENSOR_AXES_FRAME
+        ax = self.figure.add_axes((SENSOR_AXES_FRAME, SENSOR_AXES_FRAME, w, w))
 
         # store args
+        self._axes.append(ax)
         self._sensors = sensors
         self._proj = proj
         self._marker_handles = []
         self._connectivity = None
 
-        self._markers = _ax_map2d(self.axes, sensors, proj, 1, frame, mark)
+        self._markers = _ax_map2d(ax, sensors, proj, 1, mark)
         SensorMapMixin.__init__(self, [self._markers.sensors])
 
         if labels:

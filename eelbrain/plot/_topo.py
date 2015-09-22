@@ -15,11 +15,8 @@ from .._data_obj import SEQUENCE_TYPES
 from . import _base
 from ._base import _EelFigure
 from . import _utsnd
-from ._sensors import SensorMapMixin
-from ._sensors import _plt_map2d
-
-
-TOPOMAP_FRAME = 0.1
+from ._sensors import SENSOR_AXES_FRAME, SENSORMAP_FRAME, SensorMapMixin, \
+    _plt_map2d
 
 
 class Topomap(SensorMapMixin, _EelFigure):
@@ -85,13 +82,12 @@ class Topomap(SensorMapMixin, _EelFigure):
                             False, *args, **kwargs)
 
         # make axes
-        frame = 0.05
-        xframe = frame / self._layout.ncol
-        yframe = frame / self._layout.nrow
+        xframe = SENSOR_AXES_FRAME / self._layout.ncol
+        yframe = SENSOR_AXES_FRAME / self._layout.nrow
         axw = (1. / self._layout.ncol)
         axh = (1. / self._layout.nrow)
-        x_extent = axw * (1. - 2 * frame)
-        y_extent = axh * (1. - 2 * frame)
+        x_extent = axw * (1. - 2 * SENSOR_AXES_FRAME)
+        y_extent = axh * (1. - 2 * SENSOR_AXES_FRAME)
         for row in xrange(self._layout.nrow - 1, -1, -1):
             y_ = row * axh + yframe
             for col in xrange(self._layout.ncol):
@@ -509,7 +505,7 @@ class _plt_topomap(_utsnd._plt_im):
 
     def _data_from_ndvar(self, ndvar):
         v = ndvar.get_data(('sensor',))
-        locs = ndvar.sensor.get_locs_2d(self._proj, frame=TOPOMAP_FRAME)
+        locs = ndvar.sensor.get_locs_2d(self._proj, frame=SENSORMAP_FRAME)
         if self._visible_data is not None:
             v = v[self._visible_data]
             locs = locs[self._visible_data]
@@ -587,7 +583,7 @@ class _ax_topomap(_utsnd._ax_im_array):
         if xlabel is True:
             xlabel = layers[0].name
 
-        clip_radius = 0.5 * (1 - (TOPOMAP_FRAME / 10 * 9))
+        clip_radius = 0.5 * (1 - (SENSORMAP_FRAME / 10 * 9))
 
         ax.set_axis_off()
         overlay = False
@@ -604,11 +600,12 @@ class _ax_topomap(_utsnd._ax_im_array):
 
         # plot sensors
         sensor_dim = layers[0].sensor
-        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, TOPOMAP_FRAME,
+        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1,
                                   mark=mark, labels=sensorlabels,
                                   invisible=False, head_radius=head_radius,
                                   head_linewidth=head_linewidth)
 
+        ax.set_aspect('equal')
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
 
