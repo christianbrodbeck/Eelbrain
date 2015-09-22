@@ -55,14 +55,23 @@ class Topomap(SensorMapMixin, _EelFigure):
         Figure title.
     mark : Sensor index
         Sensors which to mark.
+    head_radius : scalar | tuple
+        Radius of the head outline drawn over sensors (on sensor plots with
+        normalized positions, 0.45 is the outline of the topomap); 0 to plot no
+        outline; tuple for separate (right, anterior) radius.
+        The default is determined automatically.
+    head_pos : scalar
+        Head outline position along the anterior axis (0 is the center, 0.5 is
+        the top end of the plot).
     """
     _make_axes = False
 
     def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
                  method='linear', res=64, contours=7,
                  interpolation=None, ds=None, vmax=None, vmin=None,
-                 axtitle=True, xlabel=None, title=None, mark=None, *args,
-                 **kwargs):
+                 axtitle=True, xlabel=None, title=None, mark=None,
+                 head_radius=None, head_pos=0.,
+                 *args, **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         nax = len(epochs)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin)
@@ -101,7 +110,7 @@ class Topomap(SensorMapMixin, _EelFigure):
         for ax, layers, proj_ in izip(self._axes, epochs, proj):
             h = _ax_topomap(ax, layers, axtitle, sensorlabels, mark, None,
                             proj_, res, interpolation, xlabel, vlims, cmaps,
-                            contours, method)
+                            contours, method, head_radius, head_pos)
             self._plots.append(h)
             sensor_plots.append(h.sensors)
 
@@ -562,7 +571,7 @@ class _ax_topomap(_utsnd._ax_im_array):
     def __init__(self, ax, layers, title=True, sensorlabels=None, mark=None,
                  mcolor=None, proj='default', res=100, interpolation=None,
                  xlabel=None, vlims={}, cmaps={}, contours=None, method='linear',
-                 head_radius=None, head_linewidth=1):
+                 head_radius=None, head_pos=0., head_linewidth=None):
         """
         Parameters
         ----------
@@ -583,7 +592,7 @@ class _ax_topomap(_utsnd._ax_im_array):
         if xlabel is True:
             xlabel = layers[0].name
 
-        clip_radius = 0.5 * (1 - (SENSORMAP_FRAME / 10 * 9))
+        clip_radius = 0.5 * (1 - (SENSORMAP_FRAME * 0.9))
 
         ax.set_axis_off()
         overlay = False
@@ -600,10 +609,9 @@ class _ax_topomap(_utsnd._ax_im_array):
 
         # plot sensors
         sensor_dim = layers[0].sensor
-        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1,
-                                  mark=mark, labels=sensorlabels,
-                                  invisible=False, head_radius=head_radius,
-                                  head_linewidth=head_linewidth)
+        self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, '.', 1, 'k', mark,
+                                  sensorlabels, False, head_radius, head_pos,
+                                  head_linewidth)
 
         ax.set_aspect('equal')
         ax.set_xlim(0, 1)

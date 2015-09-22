@@ -7,9 +7,10 @@ from math import sin, cos, asin
 import os
 
 import numpy as np
+import matplotlib as mpl
 from matplotlib.lines import Line2D
 
-from .._data_obj import Datalist, as_sensor
+from .._data_obj import SEQUENCE_TYPES, Datalist, as_sensor
 from ._base import _EelFigure
 
 
@@ -26,7 +27,7 @@ kwargs_mono = dict(mc='k',
                    strlc='k')
 
 
-def _head_outlines(radius, center=0.5):
+def _head_outlines(radius, center=0):
     # generate outlines for center 0, radius 1
     nose_alpha = 0.2
     l = np.linspace(0, 2 * np.pi, 101)
@@ -43,9 +44,26 @@ def _head_outlines(radius, center=0.5):
     ear_x_left = -ear_x_right
 
     # apply radius and center
-    for item in (head_x, head_y, nose_x, nose_y, ear_x_right, ear_x_left, ear_y):
-        item *= radius
-        item += center
+    if isinstance(radius, SEQUENCE_TYPES):
+        rx, ry = radius
+    else:
+        rx = ry = radius
+
+    if isinstance(center, SEQUENCE_TYPES):
+        cx, cy = center
+        cx += 0.5
+        cy += 0.5
+    else:
+        cx = 0.5
+        cy = center + 0.5
+
+    for item in (head_x, nose_x, ear_x_right, ear_x_left):
+        item *= rx
+        item += cx
+
+    for item in (head_y, nose_y, ear_y):
+        item *= ry
+        item += cy
 
     return ((head_x, head_y), (nose_x, nose_y), (ear_x_left, ear_y),
             (ear_x_right, ear_y))
@@ -75,13 +93,16 @@ class _plt_connectivity:
 
 class _ax_map2d:
 
-    def __init__(self, ax, sensors, proj='default', extent=1, mark=None):
+    def __init__(self, ax, sensors, proj, extent, mark=None, head_radius=None,
+                 head_pos=0, head_linewidth=1):
         self.ax = ax
 
         # ax.set_frame_on(False)
         ax.set_axis_off()
 
-        self.sensors = _plt_map2d(ax, sensors, proj, extent, 'x', 3, 'k', mark)
+        self.sensors = _plt_map2d(ax, sensors, proj, extent, 'x', 3, 'k', mark,
+                                  None, True, head_radius, head_pos,
+                                  head_linewidth)
 
         locs = sensors.get_locs_2d(proj, extent)
         self.connectivity = _plt_connectivity(ax, locs, None)
@@ -100,10 +121,8 @@ class _ax_map2d:
 
 class _plt_map2d:
 
-    def __init__(self, ax, sensors, proj='default', extent=1,
-                 marker='.', size=1, color='k',
-                 mark=None, labels=None, invisible=True,
-                 head_radius=None, head_linewidth=1):
+    def __init__(self, ax, sensors, proj, extent, marker, size, color, mark,
+                 labels, invisible, head_radius, head_pos, head_linewidth):
         """
         Parameters
         ----------
@@ -123,9 +142,15 @@ class _plt_map2d:
 
         # head outline
         if head_radius:
-            for x, y in _head_outlines(head_radius):
+            if head_radius is True:
+                head_radius = 0.5 * (1 - (SENSORMAP_FRAME * 0.9))
+
+            if head_linewidth is None:
+                head_linewidth = mpl.rcParams['lines.linewidth']
+
+            for x, y in _head_outlines(head_radius, head_pos):
                 ax.plot(x, y, color='k', linewidth=head_linewidth,
-                        clip_on=False)
+                        solid_capstyle='butt', clip_on=False)
 
         # sensors
         index = slice(None) if self._index is None else self._index
@@ -578,6 +603,15 @@ class SensorMap(SensorMapMixin, _EelFigure):
         locations in a plane
     mark : None | list of int
         List of sensor indices to mark.
+    head_radius : scalar | tuple | True
+        Radius of the head outline drawn over sensors (on sensor plots with
+        normalized positions, 0.45 is the outline of the topomap); 0 to plot no
+        outline; tuple for separate (right, anterior) radius. True to be equal
+        to :class:`plot.Topomap` with ``method="mne"``.
+        The default is determined automatically.
+    head_pos : scalar
+        Head outline position along the anterior axis (0 is the center, 0.5 is
+        the top end of the plot).
     connectivity : bool
         Show sensor connectivity (default False).
     title : None | string
@@ -586,7 +620,8 @@ class SensorMap(SensorMapMixin, _EelFigure):
     _make_axes = False
 
     def __init__(self, sensors, labels='name', proj='default', mark=None,
-                 connectivity=False, *args, **kwargs):
+                 head_radius=None, head_pos=0., connectivity=False, *args,
+                 **kwargs):
         sensors = as_sensor(sensors)
 
         if sensors.sysname:
@@ -606,7 +641,8 @@ class SensorMap(SensorMapMixin, _EelFigure):
         self._marker_handles = []
         self._connectivity = None
 
-        self._markers = _ax_map2d(ax, sensors, proj, 1, mark)
+        self._markers = _ax_map2d(ax, sensors, proj, 1, mark, head_radius,
+                                  head_pos)
         SensorMapMixin.__init__(self, [self._markers.sensors])
 
         if labels:
