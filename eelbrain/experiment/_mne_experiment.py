@@ -1444,7 +1444,8 @@ class MneExperiment(FileTree):
 
     def load_epochs(self, subject=None, baseline=False, ndvar=True,
                     add_bads=True, reject=True, add_proj=True, cat=None,
-                    decim=None, pad=0, keep_raw=False, eog=False, **kwargs):
+                    decim=None, pad=0, keep_raw=False, eog=False,
+                    trigger_shift=True, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
 
@@ -1481,6 +1482,9 @@ class MneExperiment(FileTree):
             Keep the mne.io.Raw instance in ds.info['raw'] (default False).
         eog : bool
             When loading EEG data as NDVar, also add the EOG channels.
+        trigger_shift : bool
+            Apply post-baseline trigger-shift if it applies to the epoch
+            (default True).
         """
         modality = self.get('modality')
         if ndvar is True:
@@ -1539,9 +1543,9 @@ class MneExperiment(FileTree):
             ds = load.fiff.add_mne_epochs(ds, tmin, tmax, baseline, decim=decim)
 
             # post baseline-correction trigger shift
-            trigger_shift = epoch.get('post_baseline_trigger_shift', None)
-            if trigger_shift:
-                ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'], ds[trigger_shift],
+            if trigger_shift and 'post_baseline_trigger_shift' in epoch:
+                ds['epochs'] = shift_mne_epoch_trigger(ds['epochs'],
+                                                       ds[epoch['post_baseline_trigger_shift']],
                                                        epoch['post_baseline_trigger_shift_min'],
                                                        epoch['post_baseline_trigger_shift_max'])
 
@@ -3193,7 +3197,8 @@ class MneExperiment(FileTree):
 
         if modality == '':
             ds = self.load_epochs(reject=False, eog=True,
-                                  decim=rej_args.get('decim', None))
+                                  decim=rej_args.get('decim', None),
+                                  trigger_shift=False)
             subject = self.get('subject')
             subject_prefix = self._subject_re.match(subject).group(1)
             meg_system = self._meg_systems[subject_prefix]
@@ -3202,7 +3207,8 @@ class MneExperiment(FileTree):
             vlim = 2e-12
         elif modality == 'eeg':
             ds = self.load_epochs(reject=False, eog=True, baseline=True,
-                                  decim=rej_args.get('decim', None))
+                                  decim=rej_args.get('decim', None),
+                                  trigger_shift=False)
             eog_sns = self._eog_sns['KIT-BRAINVISION']
             data = 'eeg'
             vlim = 1.5e-4
