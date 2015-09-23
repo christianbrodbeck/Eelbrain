@@ -93,16 +93,16 @@ class _plt_connectivity:
 
 class _ax_map2d:
 
-    def __init__(self, ax, sensors, proj, extent, mark=None, head_radius=None,
-                 head_pos=0, head_linewidth=1):
+    def __init__(self, ax, sensors, proj, extent, size, color, marker,
+                 mark=None, head_radius=None, head_pos=0., head_linewidth=None):
         self.ax = ax
 
         # ax.set_frame_on(False)
         ax.set_axis_off()
 
-        self.sensors = _plt_map2d(ax, sensors, proj, extent, 'x', 3, 'k', mark,
-                                  None, True, head_radius, head_pos,
-                                  head_linewidth)
+        self.sensors = _plt_map2d(ax, sensors, proj, extent, marker, size,
+                                  color, mark, None, True, head_radius,
+                                  head_pos, head_linewidth)
 
         locs = sensors.get_locs_2d(proj, extent)
         self.connectivity = _plt_connectivity(ax, locs, None)
@@ -390,6 +390,12 @@ class SensorMaps(_EelFigure):
         Initial selection.
     proj : str
         Sensor projection for the fourth plot.
+    size : scalar
+        Size for the sensor markers.
+    color : matplotlib color
+        Color for the sensor markers.
+    marker : str
+        Marker for the sensor positions.
     frame : scalar
         Size of the empty space around sensors in axes.
     title : None | string
@@ -405,8 +411,8 @@ class SensorMaps(_EelFigure):
      - The 'Clear' button (or :meth:`clear`) clears the selection.
 
     """
-    def __init__(self, sensors, select=[], proj='default', frame=0.05,
-                 *args, **kwargs):
+    def __init__(self, sensors, select=[], proj='default', size=1,
+                 color='k', marker='.', frame=0.05, *args, **kwargs):
         sensors = as_sensor(sensors)
 
         # layout figure
@@ -436,19 +442,19 @@ class SensorMaps(_EelFigure):
         ax = self.ax0 = self.figure.add_subplot(2, 2, 1)
         ax.proj = 'y-'
         ax.extent = False
-        self._h0 = _ax_map2d(ax, sensors, ax.proj, ax.extent)
+        self._h0 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
 
         # left
         ax = self.ax1 = self.figure.add_subplot(2, 2, 2, sharey=self.ax0)
         ax.proj = 'x-'
         ax.extent = False
-        self._h1 = _ax_map2d(ax, sensors, ax.proj, ax.extent)
+        self._h1 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
 
         # top
         ax = self.ax2 = self.figure.add_subplot(2, 2, 3, sharex=self.ax0)
         ax.proj = 'z+'
         ax.extent = False
-        self._h2 = _ax_map2d(ax, sensors, ax.proj, ax.extent)
+        self._h2 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
 
         self.ax0.set_xlim(*xlim)
         self.ax0.set_ylim(*zlim)
@@ -459,7 +465,7 @@ class SensorMaps(_EelFigure):
         ax = self.ax3 = self.figure.add_subplot(2, 2, 4)
         ax.proj = proj
         ax.extent = 1
-        self._h3 = _ax_map2d(ax, sensors, ax.proj, ax.extent)
+        self._h3 = _ax_map2d(ax, sensors, ax.proj, ax.extent, size, color, marker)
         self.ax3.set_xlim(-frame, 1 + frame)
         self.ax3.set_ylim(-frame, 1 + frame)
 
@@ -601,6 +607,12 @@ class SensorMap(SensorMapMixin, _EelFigure):
     proj:
         Transform to apply to 3 dimensional sensor coordinates for plotting
         locations in a plane
+    size : scalar
+        Size for the sensor markers.
+    color : matplotlib color
+        Color for the sensor markers.
+    marker : str
+        Marker for the sensor positions.
     mark : None | list of int
         List of sensor indices to mark.
     head_radius : scalar | tuple | True
@@ -619,9 +631,9 @@ class SensorMap(SensorMapMixin, _EelFigure):
     """
     _make_axes = False
 
-    def __init__(self, sensors, labels='name', proj='default', mark=None,
-                 head_radius=None, head_pos=0., connectivity=False, *args,
-                 **kwargs):
+    def __init__(self, sensors, labels='name', proj='default', size=1,
+                 color='k', marker='.', mark=None, head_radius=None,
+                 head_pos=0., connectivity=False, *args, **kwargs):
         sensors = as_sensor(sensors)
 
         if sensors.sysname:
@@ -641,8 +653,8 @@ class SensorMap(SensorMapMixin, _EelFigure):
         self._marker_handles = []
         self._connectivity = None
 
-        self._markers = _ax_map2d(ax, sensors, proj, 1, mark, head_radius,
-                                  head_pos)
+        self._markers = _ax_map2d(ax, sensors, proj, 1, size, color, marker,
+                                  mark, head_radius, head_pos)
         SensorMapMixin.__init__(self, [self._markers.sensors])
 
         if labels:
