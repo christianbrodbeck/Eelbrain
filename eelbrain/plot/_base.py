@@ -394,6 +394,35 @@ def find_uts_ax_vlim(layers, vlims={}):
     return bottom, top
 
 
+def find_fig_cmaps(epochs, cmap):
+    """Find cmap for every meas
+
+    Returns
+    -------
+    cmaps : dict
+        {meas: cmap} dict for all meas.
+    """
+    out = {}
+    for ndvar in chain(*epochs):
+        meas = ndvar.info.get('meas', default_meas)
+
+        if meas in out and out[meas]:
+            pass
+        elif cmap is not None:
+            out[meas] = cmap
+            cmap = None
+        elif 'cmap' in ndvar.info:
+            out[meas] = ndvar.info['cmap']
+        else:
+            out[meas] = None
+
+    for k in out.keys():
+        if out[k] is None:
+            out[k] = default_cmap
+
+    return out
+
+
 def find_fig_contours(epochs, vlims, contours_arg):
     """Find contour arguments for every meas type
 
@@ -469,7 +498,7 @@ def find_fig_contours(epochs, vlims, contours_arg):
     return out
 
 
-def find_fig_vlims(plots, vmax=None, vmin=None):
+def find_fig_vlims(plots, vmax=None, vmin=None, cmaps=None):
     """Find vmin and vmax parameters for every (meas, cmap) combination
 
     Parameters
@@ -509,7 +538,7 @@ def find_fig_vlims(plots, vmax=None, vmin=None):
             vmin, vmax = user_vlim
         else:
             vmin, vmax = find_vlim_args(ndvar)
-        cmap = ndvar.info.get('cmap', None)
+
         if meas in vlims:
             continue
         elif user_vlim is not None and meas == first_meas:
@@ -518,6 +547,12 @@ def find_fig_vlims(plots, vmax=None, vmin=None):
             vmin_, vmax_ = out[meas]
             vmin = min(vmin, vmin_)
             vmax = max(vmax, vmax_)
+
+        if cmaps:
+            cmap = cmaps[meas]
+        else:
+            cmap = ndvar.info.get('cmap', None)
+
         vmin, vmax = fix_vlim_for_cmap(vmin, vmax, cmap)
         out[meas] = (vmin, vmax)
 

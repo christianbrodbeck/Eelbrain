@@ -39,6 +39,8 @@ class Topomap(SensorMapMixin, _EelFigure):
         Resolution of the topomaps (width = height = ``res``).
     contours : sequence | dict
         Number of contours to draw (only for method='mne').
+    cmap : str
+        Specify a custom color-map (default depends on the data).
     interpolation : str
         Matplotlib imshow() parameter for topomaps.
     ds : None | Dataset
@@ -67,16 +69,16 @@ class Topomap(SensorMapMixin, _EelFigure):
     _make_axes = False
 
     def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
-                 method='linear', res=64, contours=7,
+                 method='linear', res=64, contours=7, cmap=None,
                  interpolation=None, ds=None, vmax=None, vmin=None,
                  axtitle=True, xlabel=None, title=None, mark=None,
                  head_radius=None, head_pos=0.,
                  *args, **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         nax = len(epochs)
-        vlims = _base.find_fig_vlims(epochs, vmax, vmin)
+        cmaps = _base.find_fig_cmaps(epochs, cmap)
+        vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
         contours = _base.find_fig_contours(epochs, vlims, contours)
-        cmaps = {}
         if isinstance(proj, basestring):
             proj = repeat(proj, nax)
         elif not isinstance(proj, SEQUENCE_TYPES):
