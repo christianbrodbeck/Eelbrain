@@ -192,7 +192,8 @@ class _plt_map2d:
         while self._mark_handles:
             self._mark_handles.pop().remove()
 
-    def show_labels(self, text='name', xpos=0, ypos=.01, **text_kwargs):
+    def show_labels(self, text='name', xpos=0, ypos=0, ha='center', va='bottom',
+                    **text_kwargs):
         """Plot labels for the sensors
 
         Parameters
@@ -211,10 +212,6 @@ class _plt_map2d:
 
         if not text or text == 'none':
             return
-
-        kwargs = dict(color='k', fontsize=8, horizontalalignment='center',
-                      verticalalignment='bottom')
-        kwargs.update(text_kwargs)
 
         if text == 'index':
             labels = map(str, xrange(len(self.sensors)))
@@ -236,7 +233,7 @@ class _plt_map2d:
 
         locs = locs + [[xpos, ypos]]
         for (x, y), txt in izip(locs, labels):
-            h = self.ax.text(x, y, txt, **kwargs)
+            h = self.ax.text(x, y, txt, ha=ha, va=va, **text_kwargs)
             self._label_h.append(h)
 
     def set_label_color(self, color='k'):
