@@ -662,21 +662,6 @@ class SensorMap(SensorMapMixin, _EelFigure):
 
         self._show()
 
-    def mark_sensors(self, *args, **kwargs):
-        """Mark specific sensors.
-
-        Parameters
-        ----------
-        sensors : sequence of {str | int}
-            List of sensor names or indices.
-
-        See Also
-        --------
-        .remove_markers() : Remove the markers
-        """
-        self._markers.mark_sensors(*args, **kwargs)
-        self.canvas.draw()
-
     def remove_markers(self):
         "Remove all sensor markers."
         while len(self._marker_handles) > 0:
