@@ -139,6 +139,7 @@ class _plt_map2d:
         self.sensors = sensors
         self.locs = sensors.get_locs_2d(proj, extent, SENSORMAP_FRAME)
         self._index = None if invisible else sensors._visible_sensors(proj)
+        self._extent = extent
 
         # head outline
         if head_radius:
@@ -235,6 +236,44 @@ class _plt_map2d:
         for (x, y), txt in izip(locs, labels):
             h = self.ax.text(x, y, txt, ha=ha, va=va, **text_kwargs)
             self._label_h.append(h)
+
+    def separate_labels(self, pad):
+        # separate overlapping labels
+        locs = self.locs
+        data_to_screen = self.ax.transData.transform_point
+        screen_to_data = self.ax.transData.inverted().transform_point
+
+        if self._extent:
+            center = self._extent / 2.
+            label_order = np.argsort((locs[:, 0] - center) ** 2)
+        else:
+            center = 0
+            label_order = np.argsort(locs[:, 0] ** 2)
+
+        n_labels = len(label_order)
+        for i in xrange(1, n_labels):
+            i_i = label_order[i]
+            i_loc = locs[i_i, 0]
+            if i_loc == center:
+                continue
+            h = self._label_h[i_i]
+            i_bbox = h.get_window_extent()
+            padded_bbox = i_bbox.expanded(pad, 0)
+            side = -1 if i_loc < center else 1
+
+            dx = 0
+            for j in xrange(i):
+                j_i = label_order[j]
+                j_bbox = self._label_h[j_i].get_window_extent()
+                if padded_bbox.overlaps(j_bbox):
+                    if side == -1:
+                        dx = min(dx, j_bbox.xmin - i_bbox.xmax - pad)
+                    else:
+                        dx = max(dx, j_bbox.xmax - i_bbox.xmin + pad)
+
+            if dx:
+                x, y = data_to_screen(h.get_position())
+                h.set_position(screen_to_data((x + dx, y)))
 
     def set_label_color(self, color='k'):
         """Change the color of all sensor labels
@@ -341,6 +380,18 @@ class SensorMapMixin:
         """
         for p in self.__sensor_plots:
             p.mark_sensors(sensors, *args, **kwargs)
+        self.draw()
+
+    def separate_labels(self, pad=10):
+        """Move overlapping labels apart along the x axis
+
+        Parameters
+        ----------
+        pad : scalar
+            Minimum amount of padding between labels (in pixels; default 5).
+        """
+        for p in self.__sensor_plots:
+            p.separate_labels(pad)
         self.draw()
 
     def set_label_color(self, color='w'):
