@@ -286,8 +286,7 @@ class TopoButterfly(_EelFigure):
                              'interpolation': interpolation,
                              'sensorlabels': sensorlabels,
                              'mark': mark,
-                             'mcolor': mcolor,
-                             'title': False}
+                             'mcolor': mcolor}
 
         self.bfly_axes = []
         self.topo_axes = []
@@ -356,7 +355,7 @@ class TopoButterfly(_EelFigure):
 
         if not self.topo_plots:
             for ax, layers in zip(self.topo_axes, epochs):
-                p = _ax_topomap(ax, layers, vlims=self._vlims,
+                p = _ax_topomap(ax, layers, False, vlims=self._vlims,
                                 **self._topo_kwargs)
                 self.topo_plots.append(p)
 #             self._t_label = ax.text(.5, -0.1, t_str, ha='center', va='top')
@@ -570,7 +569,7 @@ class _plt_topomap(_utsnd._plt_im):
 
 class _ax_topomap(_utsnd._ax_im_array):
 
-    def __init__(self, ax, layers, title=True, sensorlabels=None, mark=None,
+    def __init__(self, ax, layers, title, sensorlabels=None, mark=None,
                  mcolor=None, proj='default', res=100, interpolation=None,
                  xlabel=None, vlims={}, cmaps={}, contours=None, method='linear',
                  head_radius=None, head_pos=0., head_linewidth=None):
@@ -679,7 +678,7 @@ class _TopoWindow:
 
             layers = [l.sub(time=t) for l in self.parent.data]
             if self.plot is None:
-                self.plot = _ax_topomap(self.ax, layers, title=False,
+                self.plot = _ax_topomap(self.ax, layers, False,
                                         **self.plot_args)
             else:
                 self.plot.set_data(layers)

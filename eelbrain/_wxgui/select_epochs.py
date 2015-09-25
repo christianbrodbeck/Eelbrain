@@ -687,7 +687,7 @@ class Frame(EelbrainFrame):  # control
         self._bfly_kwargs = {'color': color, 'lw': lw, 'mlw': mlw,
                              'antialiased': antialiased, 'vlims': self._vlims,
                              'plot_range': plot_range, 'mcolor': mcolor}
-        self._topo_kwargs = {'vlims': self._vlims, 'title': None}
+        self._topo_kwargs = {'vlims': self._vlims}
         self._SetLayout(nplots, topo, mean)
 
         # Bind Events ---
@@ -922,7 +922,7 @@ class Frame(EelbrainFrame):  # control
         if self._plot_topo and ax.ax_idx > -2:  # topomap ax_idx is -2
             t = event.xdata
             tseg = self._get_ax_data(ax.ax_idx, t)
-            _ax_topomap(self._topo_ax, [tseg], **self._topo_kwargs)
+            _ax_topomap(self._topo_ax, [tseg], False, **self._topo_kwargs)
             self.canvas.redraw(axes=[self._topo_ax])
 
     def OnRedo(self, event):
