@@ -208,10 +208,10 @@ temp = {# MEG
                                       '{resname}.{ext}'),
         'res-g-file': os.path.join('{res-dir}', '{analysis} {group}',
                                    '{resname}.{ext}'),
-        'res-g-deep-file': os.path.join('{res-dir}', '{analysis} {group}',
-                                        '{folder}', '{resname}.{ext}'),
+        'report-file': os.path.join('{res-dir}', '{analysis} {group}', '{folder}',
+                                    '{epoch} {test} {test_options}.html'),
         'res-s-file': os.path.join('{res-dir}', '{analysis} subjects',
-                                    '{resname}', '{subject}.{ext}'),
+                                   '{resname}', '{subject}.{ext}'),
 
         # besa
         'besa-root': os.path.join('{root}', 'besa'),
@@ -3433,8 +3433,7 @@ class MneExperiment(FileTree):
             folder = "{parc}"
         self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
                                    tstart, tstop)
-        dst = self.get('res-g-deep-file', mkdir=True, fmatch=False, folder=folder,
-                       resname="{epoch} {test} {test_options}", ext='html',
+        dst = self.get('report-file', mkdir=True, fmatch=False, folder=folder,
                        test=test, **state)
         if not redo and not redo_test and os.path.exists(dst):
             return
@@ -3554,10 +3553,8 @@ class MneExperiment(FileTree):
             raise ValueError("No parcellation specified")
         self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
                                    tstart, tstop)
-        dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
-                       folder="%s ROIs" % parc.capitalize(),
-                       resname="{epoch} {test} {test_options}",
-                       ext='html', test=test, **state)
+        dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
+                       folder="%s ROIs" % parc.capitalize(), **state)
         if not redo and os.path.exists(dst):
             return
 
@@ -3662,10 +3659,9 @@ class MneExperiment(FileTree):
             Redo the test even if a cached file exists.
         """
         self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop)
-        dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
-                       folder="EEG Spatio-Temporal",
-                       resname="{epoch} {test} {test_options}",
-                       ext='html', test=test, modality='eeg', **state)
+        dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
+                       folder="EEG Spatio-Temporal", modality='eeg',
+                       **state)
         if not redo and not redo_test and os.path.exists(dst):
             return
 
@@ -3723,10 +3719,8 @@ class MneExperiment(FileTree):
             only applies to the HTML result file, not to the test.
         """
         self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop)
-        dst = self.get('res-g-deep-file', mkdir=True, fmatch=False,
-                       folder="EEG Sensors",
-                       resname="{epoch} {test} {test_options}",
-                       ext='html', test=test, modality='eeg', **state)
+        dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
+                       folder="EEG Sensors", modality='eeg', **state)
         if not redo and os.path.exists(dst):
             return
 
