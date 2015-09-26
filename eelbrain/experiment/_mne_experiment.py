@@ -455,6 +455,35 @@ class MneExperiment(FileTree):
             subjects = ['']
 
         ########################################################################
+        # groups
+        groups = {'all': tuple(subjects)}
+        group_definitions = self.groups.copy()
+        while group_definitions:
+            n_def = len(group_definitions)
+            for name, group_def in group_definitions.items():
+                if isinstance(group_def, dict):
+                    base = (group_def.get('base', 'all'))
+                    if base not in groups:
+                        continue
+                    exclude = group_def['exclude']
+                    if isinstance(exclude, basestring):
+                        exclude = (exclude,)
+                    elif not isinstance(exclude, (tuple, list, set)):
+                        raise TypeError("Exclusion must be defined as str | "
+                                        "tuple | list | set; got "
+                                        "%s" % repr(exclude))
+                    group_members = (s for s in groups[base] if s not in exclude)
+                elif isinstance(group_def, (list, tuple)):
+                    group_members = (s for s in subjects if s in group_def)
+                else:
+                    raise TypeError("group %s=%r" % (name, group_def))
+                groups[name] = tuple(group_members)
+                group_definitions.pop(name)
+            if len(group_definitions) == n_def:
+                raise ValueError("Groups contain unresolvable definition")
+        self._groups = groups
+
+        ########################################################################
         # variables
         self.variables = self.variables.copy()
         for k, v in self.variables.iteritems():
@@ -743,13 +772,15 @@ class MneExperiment(FileTree):
         ########################################################################
         # Experiment class setup
         ########################
-        # register variables with complex behavior
+        self._register_field('mri', sorted(self._mri_subjects))
+        self._register_field('mrisubject')
+        self._register_field('subject', subjects)
+        self._register_field('group', self._groups.keys(), 'all',
+                             post_set_handler=self._post_set_group)
+
         self._register_field('raw', sorted(self._raw))
         self._register_field('rej', self._epoch_rejection.keys(), 'man',
                              post_set_handler=self._post_set_rej)
-        self._register_field('group', self.groups.keys() + ['all'], 'all',
-                             eval_handler=self._eval_group,
-                             post_set_handler=self._post_set_group)
         # epoch
         epoch_keys = sorted(self._epochs)
         for default_epoch in epoch_keys:
@@ -764,7 +795,6 @@ class MneExperiment(FileTree):
         else:
             default_cov = None
         self._register_field('cov', sorted(self._covs), default_cov)
-        self._register_field('mri', sorted(self._mri_subjects))
         self._register_field('inv', default='free-3-dSPM',
                              eval_handler=self._eval_inv,
                              post_set_handler=self._post_set_inv)
@@ -776,9 +806,6 @@ class MneExperiment(FileTree):
         self._register_field('proj', [''] + self.projs.keys())
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
-        self._register_field('mrisubject')
-        self._register_field('subject', subjects)
-        self._post_set_group(None, self.get('group'))
 
         # compounds
         self._register_compound('bads-compound', ('experiment', 'modality'))
@@ -1252,37 +1279,8 @@ class MneExperiment(FileTree):
             if common_brain and (not exclude or common_brain not in exclude):
                 mrisubjects.insert(0, common_brain)
             return mrisubjects
-        elif field == 'group':
-            values = ['all', 'all!']
-            values.extend(self.groups.keys())
-            if exclude:
-                values = [v for v in values if v not in exclude]
-            return values
         else:
             return FileTree.get_field_values(self, field, exclude)
-
-    def _get_group_members(self, group):
-        "For groups except all and all!"
-        if group == 'all':
-            return self.get_field_values('subject')
-        elif group == 'all!':
-            return self.get_field_values('subject', False)
-
-        group_def = self.groups[group]
-        if isinstance(group_def, dict):
-            base = self._get_group_members(group_def.get('base', 'all'))
-            exclude = group_def['exclude']
-            if isinstance(exclude, basestring):
-                exclude = (exclude,)
-            elif not isinstance(exclude, (tuple, list, set)):
-                msg = ("exclusion must be defined as str | tuple | list | set; got "
-                       "%s" % repr(exclude))
-                raise TypeError(msg)
-            return [s for s in base if s not in exclude]
-        elif isinstance(group_def, (list, tuple)):
-            return [s for s in self._get_group_members('all') if s in group_def]
-        else:
-            raise TypeError("group %s=%r" % (group, group_def))
 
     def _get_raw_path(self, make=False):
         if self.get('modality') == 'meeg':
@@ -1321,14 +1319,7 @@ class MneExperiment(FileTree):
             Fields with constant values throughout the iteration.
         """
         if group is not None:
-            self.set(group=group)
-
-        if 'subject' in fields and 'subject' not in values:
-            if group is None:
-                group = self.get('group')
-            values = values.copy()
-            values['subject'] = self._get_group_members(group)
-
+            kwargs['group'] = group
         return FileTree.iter(self, fields, exclude, values, *args, **kwargs)
 
     def iter_range(self, start=None, stop=None, field='subject'):
@@ -3930,13 +3921,7 @@ class MneExperiment(FileTree):
             Does not set change the experiment's group value.
         """
         current = self.get(field)
-        if field == 'subject':
-            if group is None:
-                values = self._get_group_members(self.get('group'))
-            else:
-                values = self._get_group_members(group)
-        else:
-            values = self.get_field_values(field)
+        values = self.get_field_values(field)
 
         # find the index of the next value
         if current in values:
@@ -4213,17 +4198,11 @@ class MneExperiment(FileTree):
 
         FileTree.set(self, **state)
 
-    def _eval_group(self, group):
-        if group not in self.get_field_values('group'):
-            if group not in self.get_field_values('subject'):
-                raise ValueError("No group or subject named %r" % group)
-        return group
-
     def _post_set_group(self, _, group):
-        if group != 'all' and self.get('root'):
-            group_members = self._get_group_members(group)
-            if self.get('subject') not in group_members:
-                self.set(group_members[0])
+        group_members = self._groups[group]
+        self._field_values['subject'] = group_members
+        if self.get('subject') not in group_members:
+            self.set(group_members[0])
 
     def set_inv(self, ori='free', snr=3, method='dSPM', depth=None,
                 pick_normal=False):
