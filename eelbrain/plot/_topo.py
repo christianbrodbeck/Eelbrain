@@ -49,8 +49,9 @@ class Topomap(SensorMapMixin, _EelFigure):
     vmax, vmin : None | scalar
         Override the default plot limits. If only vmax is specified, vmin
         is set to -vmax.
-    axtitle : str | None
-        Axes title, default is each topography's name.
+    axtitle : str | bool
+        Axes title, True to use is each topography's name. The default (None)
+        is True when more than one topography is plotted, False otherwise.
     xlabel : str
         Label below the topomaps (default is no label).
     title : None | string
@@ -71,10 +72,12 @@ class Topomap(SensorMapMixin, _EelFigure):
     def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
                  method='linear', res=64, contours=7, cmap=None,
                  interpolation=None, ds=None, vmax=None, vmin=None,
-                 axtitle=True, xlabel=None, title=None, mark=None,
+                 axtitle=None, xlabel=None, title=None, mark=None,
                  head_radius=None, head_pos=0.,
                  *args, **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
+        if axtitle is None:
+            axtitle = False if len(epochs) == 1 else True
         nax = len(epochs)
         cmaps = _base.find_fig_cmaps(epochs, cmap)
         vlims = _base.find_fig_vlims(epochs, vmax, vmin, cmaps)
