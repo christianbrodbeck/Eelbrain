@@ -430,6 +430,30 @@ class MneExperiment(FileTree):
             if hasattr(cls, '_values'):
                 self._templates.update(cls._values)
 
+        FileTree.__init__(self)
+
+        ########################################################################
+        # subjects
+        if root is None:
+            find_subjects = False
+        else:
+            self.set(root=root)
+
+        if find_subjects:
+            sub_dir = self.get(self._subject_loc)
+            if not os.path.exists(sub_dir):
+                raise IOError("Subjects directory not found: %s. Initialize "
+                              "with root=None or find_subjects=False" % sub_dir)
+            subjects = sorted(s for s in os.listdir(sub_dir) if
+                              self._subject_re.match(s) and
+                              os.path.isdir(os.path.join(sub_dir, s)))
+
+            if len(subjects) == 0:
+                print("%s: No subjects found in %r"
+                      % (self.__class__.__name__, sub_dir))
+        else:
+            subjects = ['']
+
         ########################################################################
         # variables
         self.variables = self.variables.copy()
@@ -718,8 +742,7 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # Experiment class setup
-        FileTree.__init__(self)
-
+        ########################
         # register variables with complex behavior
         self._register_field('raw', sorted(self._raw))
         self._register_field('rej', self._epoch_rejection.keys(), 'man',
@@ -754,7 +777,8 @@ class MneExperiment(FileTree):
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
         self._register_field('mrisubject')
-        self._register_field('subject')
+        self._register_field('subject', subjects)
+        self._post_set_group(None, self.get('group'))
 
         # compounds
         self._register_compound('bads-compound', ('experiment', 'modality'))
@@ -777,8 +801,6 @@ class MneExperiment(FileTree):
 
         # set initial values
         self.set(**state)
-        self.set_root(root, find_subjects)
-        self._post_set_group(None, self.get('group'))
         self.store_state()
         self.brain = None
 
@@ -1340,7 +1362,7 @@ class MneExperiment(FileTree):
                 self.set(**{field: value})
                 yield value
 
-    def label_events(self, ds, experiment=None, subject=None):
+    def label_events(self, ds):
         """
         Adds T (time) and SOA (stimulus onset asynchrony) to the Dataset.
 
@@ -4329,47 +4351,6 @@ class MneExperiment(FileTree):
             self._fields['cov-rej'] = '*'
         else:
             self._fields['cov-rej'] = self._epoch_rejection[rej].get('cov-rej', rej)
-
-    def set_root(self, root, find_subjects=False):
-        """Set the root of the file hierarchy
-
-        Parameters
-        ----------
-        root : str
-            Path of the new root.
-        find_subjects : bool
-            Update the list of available subjects based on the file hierarchy.
-        """
-        if root is None:
-            root = ''
-            find_subjects = False
-        self.set(root=root)
-        if find_subjects:
-            self._update_subject_values()
-
-    def _update_subject_values(self):
-        subjects = set()
-        sub_dir = self.get(self._subject_loc)
-        if os.path.exists(sub_dir):
-            for dirname in os.listdir(sub_dir):
-                isdir = os.path.isdir(os.path.join(sub_dir, dirname))
-                if isdir and self._subject_re.match(dirname):
-                    subjects.add(dirname)
-        else:
-            err = ("Subjects directory not found: %r. Initialize with "
-                   "root=None or find_subjects=False, or specifiy proper "
-                   "directory in experiment._subject_loc." % sub_dir)
-            raise IOError(err)
-
-        subjects = sorted(subjects)
-        self._field_values['subject'] = subjects
-
-        if len(subjects) == 0:
-            print("Warning: no subjects found in %r" % sub_dir)
-            return
-
-        if self.get('subject') not in subjects:
-            self.set(subject=subjects[0])
 
     def _post_set_test(self, _, test):
         if test != '*' and 'model' in self._tests[test]:
