@@ -273,7 +273,7 @@ class MneExperiment(FileTree):
         Guide on using :ref:`experiment-class-guide`.
     """
     path_version = None
-    auto_delete_cache = True
+    auto_delete_cache = True  # True | False | 'disable' | 'debug'
 
     # Experiment Constants
     # ====================
@@ -867,7 +867,7 @@ class MneExperiment(FileTree):
                              "cache management to work")
         elif not root:
             return
-        elif self.auto_delete_cache == -1:
+        elif self.auto_delete_cache == 'disable':
             return
 
         # collect events for current setup
@@ -1008,16 +1008,41 @@ class MneExperiment(FileTree):
 
                 if files:
                     # abort if deleting is not allowed
-                    if not self.auto_delete_cache:
-                        logger.debug(os.linesep.join(sorted(files)))
+                    msg.append("Files to be deleted:")
+                    msg.extend((sorted(files)))
+                    if self.auto_delete_cache is False:
                         msg.append("Automatic cache management disabled. Either "
                                    "revert changes, or set e.auto_delete_cache=True")
                         raise RuntimeError(os.linesep.join(msg))
+                    elif self.auto_delete_cache == 'debug':
+                        msg.append("delete:  delete invalid cache files")
+                        msg.append("abort:  raise an error")
+                        msg.append("ignore:  proceed without doing anything")
+                        msg.append("revalidate:  don't delete any cache files "
+                                   "but write a new cache-state file")
+                        print os.linesep.join(msg)
+                        command = None
+                        while command not in ('delete', 'abort', 'ignore', 'revalidate'):
+                            command = raw_input(" > ")
 
-                    msg.append("Deleting %s files..." % len(files))
-                    logger.info(os.linesep.join(msg))
+                        if command == 'delete':
+                            pass
+                        elif command == 'abort':
+                            raise RuntimeError("User aborted invalid cache deletion")
+                        elif command == 'ignore':
+                            return
+                        elif command == 'revalidate':
+                            files.clear()
+                        else:
+                            raise RuntimeError("command=%s" % repr(command))
+                    elif self.auto_delete_cache is True:
+                        logger.info(os.linesep.join(msg))
+                    else:
+                        raise ValueError("MneExperiment.auto_delete_cache=%s"
+                                         % repr(self.auto_delete_cache))
 
                     # delete invalid files
+                    logger.info("Deleting %s invalid cache files..." % len(files))
                     for path in files:
                         os.remove(path)
                 else:

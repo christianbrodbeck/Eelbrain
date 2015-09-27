@@ -130,7 +130,7 @@ class FileExperiment(MneExperiment):
 
     path_version = 1
 
-    auto_delete_cache = -1
+    auto_delete_cache = 'disable'
 
     groups = {'gsub': SUBJECTS[1:],
               'gexc': {'exclude': SUBJECTS[0]},
