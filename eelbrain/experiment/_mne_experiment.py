@@ -206,12 +206,12 @@ temp = {# MEG
         'res-file': os.path.join('{res-dir}', '{analysis}', '{resname}.{ext}'),
         'res-deep-file': os.path.join('{res-dir}', '{analysis}', '{folder}',
                                       '{resname}.{ext}'),
-        'res-g-file': os.path.join('{res-dir}', '{analysis} {group}',
-                                   '{resname}.{ext}'),
         'report-file': os.path.join('{res-dir}', '{analysis} {group}', '{folder}',
                                     '{epoch} {test} {test_options}.html'),
-        'res-s-file': os.path.join('{res-dir}', '{analysis} subjects',
-                                   '{resname}', '{subject}.{ext}'),
+        'group-mov-file': os.path.join('{res-dir}', '{analysis} {group}',
+                                       '{resname}.mov'),
+        'subject-mov-file': os.path.join('{res-dir}', '{analysis} subjects',
+                                         '{resname}', '{subject}.mov'),
 
         # besa
         'besa-root': os.path.join('{root}', 'besa'),
@@ -2896,14 +2896,13 @@ class MneExperiment(FileTree):
 
         self.set(equalize_evoked_count='',
                  analysis='{src-kind} {evoked-kind}',
-                 resname="GA dSPM %s %s" % (brain_kwargs['surf'], fmin),
-                 ext='mov')
+                 resname="GA dSPM %s %s" % (brain_kwargs['surf'], fmin))
 
         if dst is None:
             if group is None:
-                dst = self.get('res-s-file', mkdir=True)
+                dst = self.get('subject-mov-file', mkdir=True)
             else:
-                dst = self.get('res-g-file', mkdir=True)
+                dst = self.get('group-mov-file', mkdir=True)
         else:
             dst = os.path.expanduser(dst)
 
@@ -3022,16 +3021,16 @@ class MneExperiment(FileTree):
         # if mintime is True:
         #     mintime = self.cluster_criteria['mintime']
 
-        kwargs.update(resname=resname, ext='mov', model=model)
+        kwargs.update(resname=resname, model=model)
         with self._temporary_state:
             subject, group = self._process_subject_arg(subject, kwargs)
             self._set_analysis_options('src', sns_baseline, src_baseline, p, None, None)
 
             if dst is None:
                 if group is None:
-                    dst = self.get('res-s-file', mkdir=True)
+                    dst = self.get('subject-mov-file', mkdir=True)
                 else:
-                    dst = self.get('res-g-file', mkdir=True)
+                    dst = self.get('group-mov-file', mkdir=True)
             else:
                 dst = os.path.expanduser(dst)
 
