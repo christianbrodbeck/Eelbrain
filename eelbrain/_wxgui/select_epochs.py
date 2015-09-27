@@ -922,7 +922,11 @@ class Frame(EelbrainFrame):  # control
         if self._plot_topo and ax.ax_idx > -2:  # topomap ax_idx is -2
             t = event.xdata
             tseg = self._get_ax_data(ax.ax_idx, t)
-            _ax_topomap(self._topo_ax, [tseg], False, **self._topo_kwargs)
+            if self._topo_plot:
+                self._topo_plot.set_data([tseg])
+            else:
+                self._topo_plot = _ax_topomap(self._topo_ax, [tseg], False,
+                                              **self._topo_kwargs)
             self.canvas.redraw(axes=[self._topo_ax])
 
     def OnRedo(self, event):
@@ -1403,6 +1407,7 @@ class Frame(EelbrainFrame):  # control
             self._topo_ax = self.figure.add_subplot(nrow, ncol, plot_i)
             self._topo_ax.ax_idx = -2
             self._topo_ax.set_axis_off()
+            self._topo_plot = None
 
         self.canvas.draw()
         self.canvas.store_canvas()
