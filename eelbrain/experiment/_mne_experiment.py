@@ -135,13 +135,13 @@ temp = {# MEG
         # created input files
         'bads-file': os.path.join('{raw-dir}', '{subject}_{bads-compound}-bad_channels.txt'),
         'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
-        'rej-file': os.path.join('{rej-dir}', '{experiment}_{sns-kind}_{epoch}-{rej}.pickled'),
+        'rej-file': os.path.join('{rej-dir}', '{experiment}_{sns_kind}_{epoch}-{rej}.pickled'),
 
         # cache
         'cache-dir': os.path.join('{root}', 'eelbrain-cache'),
         # raw
         'raw-cache-dir': os.path.join('{cache-dir}', 'raw'),
-        'raw-cache-base': os.path.join('{raw-cache-dir}', '{subject}', '{experiment} {raw-kind}'),
+        'raw-cache-base': os.path.join('{raw-cache-dir}', '{subject}', '{experiment} {raw_kind}'),
         'cached-raw-file': '{raw-cache-base}-raw.fif',
         'event-file': '{raw-cache-base}-evts.pickled',
         # mne secondary/forward modeling
@@ -150,13 +150,13 @@ temp = {# MEG
         # sensor covariance
         'cov-dir': os.path.join('{cache-dir}', 'cov'),
         'cov-base': os.path.join('{cov-dir}', '{subject}', '{experiment} '
-                                 '{raw-kind} {cov}-{cov-rej}-{proj}'),
+                                 '{raw_kind} {cov}-{cov-rej}-{proj}'),
         'cov-file': '{cov-base}-cov.fif',
         'cov-info-file': '{cov-base}-info.txt',
         # evoked
         'evoked-dir': os.path.join('{cache-dir}', 'evoked'),
         'evoked-file': os.path.join('{evoked-dir}', '{subject}', '{experiment} '
-                                    '{sns-kind} {epoch} {model} {evoked-kind}.pickled'),
+                                    '{sns_kind} {epoch} {model} {evoked_kind}.pickled'),
         # test files
         'test-dir': os.path.join('{cache-dir}', 'test'),
         'data_parc': 'unmasked',
@@ -188,7 +188,7 @@ temp = {# MEG
         'plot-file': os.path.join('{plot-dir}', '{analysis}', '{name}.{ext}'),
 
         # general analysis parameters
-        'analysis': '',  # analysis parameters (sns-kind, src-kind, ...)
+        'analysis': '',  # analysis parameters (sns_kind, src_kind, ...)
         'test_options': '',
         'name': '',
 
@@ -224,10 +224,10 @@ temp = {# MEG
         # MRAT
         'mrat_condition': '',
         'mrat-root': os.path.join('{root}', 'mrat'),
-        'mrat-sns-root': os.path.join('{mrat-root}', '{sns-kind}',
-                                      '{epoch} {model} {evoked-kind}'),
-        'mrat-src-root': os.path.join('{mrat-root}', '{src-kind}',
-                                      '{epoch} {model} {evoked-kind}'),
+        'mrat-sns-root': os.path.join('{mrat-root}', '{sns_kind}',
+                                      '{epoch} {model} {evoked_kind}'),
+        'mrat-src-root': os.path.join('{mrat-root}', '{src_kind}',
+                                      '{epoch} {model} {evoked_kind}'),
         'mrat-sns-file': os.path.join('{mrat-sns-root}', '{mrat_condition}',
                                       '{mrat_condition}_{subject}-ave.fif'),
         'mrat_info-file': os.path.join('{mrat-root}', '{subject} info.txt'),
@@ -423,7 +423,7 @@ class MneExperiment(FileTree):
         if self.path_version is None or self.path_version == 0:
             self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
             self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
-                                              '{experiment}_{raw-kind}-raw.fif')
+                                              '{experiment}_{raw_kind}-raw.fif')
         elif self.path_version != 1:
             raise ValueError("path_version needs to be 0 or 1")
         # update templates with _values
@@ -810,11 +810,11 @@ class MneExperiment(FileTree):
 
         # compounds
         self._register_compound('bads-compound', ('experiment', 'modality'))
-        self._register_compound('raw-kind', ('modality', 'raw'))
-        self._register_compound('sns-kind', ('raw-kind', 'proj'))
-        self._register_compound('src-kind', ('sns-kind', 'cov', 'mri', 'inv'))
-        self._register_compound('evoked-kind', ('rej', 'equalize_evoked_count'))
-        self._register_compound('eeg-kind', ('sns-kind', 'reference'))
+        self._register_compound('raw_kind', ('modality', 'raw'))
+        self._register_compound('sns_kind', ('raw_kind', 'proj'))
+        self._register_compound('src_kind', ('sns_kind', 'cov', 'mri', 'inv'))
+        self._register_compound('evoked_kind', ('rej', 'equalize_evoked_count'))
+        self._register_compound('eeg_kind', ('sns_kind', 'reference'))
 
         # Define make handlers
         self._bind_cache('cached-raw-file', self.make_raw)
@@ -3258,7 +3258,7 @@ class MneExperiment(FileTree):
         p = plot.Topomap(projs_ndvars, title=proj_file, ncol=3, w=9)
         if save_plot:
             dest = self.get('plot-file', analysis='proj', ext='pdf',
-                            name='{subject}_{experiment}_{raw-kind}')
+                            name='{subject}_{experiment}_{raw_kind}')
             p.figure.savefig(dest)
         if save:
             rm = save
@@ -3788,7 +3788,7 @@ class MneExperiment(FileTree):
 
         # Analysis info
         info = List("Analysis:")
-        info.add_item(self.format('epoch = {epoch} {evoked-kind} ~ {model}'))
+        info.add_item(self.format('epoch = {epoch} {evoked_kind} ~ {model}'))
         if data == 'src':
             info.add_item(self.format("cov = {cov}"))
             info.add_item(self.format("inv = {inv}"))
@@ -4354,11 +4354,11 @@ class MneExperiment(FileTree):
         """
         # data kind (sensor or source space)
         if data == 'sns':
-            analysis = '{sns-kind} {evoked-kind}'
+            analysis = '{sns_kind} {evoked_kind}'
         elif data == 'src':
-            analysis = '{src-kind} {evoked-kind}'
+            analysis = '{src_kind} {evoked_kind}'
         elif data == 'eeg':
-            analysis = '{eeg-kind} {evoked-kind}'
+            analysis = '{eeg_kind} {evoked_kind}'
         else:
             raise ValueError("data=%r. Needs to be 'sns', 'src' or 'eeg'" % data)
 

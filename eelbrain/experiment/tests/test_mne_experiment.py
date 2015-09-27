@@ -69,13 +69,13 @@ def test_mne_experiment_templates():
     assert_raises(ValueError, e.set, model='log(a)')
 
     # compounds
-    eq_(e.get('src-kind'), '0-40 bestreg free-3-dSPM')
+    eq_(e.get('src_kind'), '0-40 bestreg free-3-dSPM')
     e.set_inv('fixed')
-    eq_(e.get('src-kind'), '0-40 bestreg fixed-3-dSPM')
+    eq_(e.get('src_kind'), '0-40 bestreg fixed-3-dSPM')
     e.set(cov='noreg')
-    eq_(e.get('src-kind'), '0-40 noreg fixed-3-dSPM')
+    eq_(e.get('src_kind'), '0-40 noreg fixed-3-dSPM')
     e.set(raw='1-40')
-    eq_(e.get('src-kind'), '1-40 noreg fixed-3-dSPM')
+    eq_(e.get('src_kind'), '1-40 noreg fixed-3-dSPM')
 
     # inv
     e.set_inv('free', 3, 'dSPM', .8, True)
