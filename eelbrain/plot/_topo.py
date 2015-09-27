@@ -574,7 +574,7 @@ class _ax_topomap(_utsnd._ax_im_array):
 
     def __init__(self, ax, layers, title, sensorlabels=None, mark=None,
                  mcolor=None, proj='default', res=100, interpolation=None,
-                 xlabel=None, vlims={}, cmaps={}, contours=None, method='linear',
+                 xlabel=None, vlims={}, cmaps={}, contours={}, method='linear',
                  head_radius=None, head_pos=0., head_linewidth=None):
         """
         Parameters
