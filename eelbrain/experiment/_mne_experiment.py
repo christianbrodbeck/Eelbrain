@@ -1668,20 +1668,10 @@ class MneExperiment(FileTree):
         ds.info['raw'] = raw
 
         # label events
-        a = inspect.getargspec(self.label_events)
-        if len(a.args) == 2:
-            ds = self.label_events(ds)
-        else:
-            if a.defaults != (None, None):
-                warn("MneExperiment subclasses should remove the subject and "
-                     "experiment arguments form the .label_events() method",
-                     DeprecationWarning)
-            ds = self.label_events(ds, self.get('experiment'), subject)
-
+        ds = self.label_events(ds)
         if ds is None:
-            msg = ("The MneExperiment.label_events() function must return the "
-                   "events-Dataset")
-            raise RuntimeError(msg)
+            raise RuntimeError("The MneExperiment.label_events() function must "
+                               "return the events-Dataset")
         return ds
 
     def load_evoked(self, subject=None, baseline=False, ndvar=True, cat=None,
