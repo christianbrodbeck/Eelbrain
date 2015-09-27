@@ -3139,16 +3139,13 @@ class MneExperiment(FileTree):
         redo : bool
             If the target file already exists, overwrite it.
         """
-        mrisubject = self.get('mrisubject', **state)
-        if is_fake_mri(self.get('mri-dir')):
+        if is_fake_mri(self.get('mri-dir', **state)):
             mrisubject = self.get('common_brain')
             self.set(mrisubject=mrisubject, match=False)
 
-        analysis = 'Source Annot'
-        resname = "{parc} {mrisubject} %s" % surf
-        ext = 'png'
-        dst = self.get('res-file', mkdir=True, analysis=analysis,
-                       resname=resname, ext=ext)
+        dst = self.get('res-file', mkdir=True, ext='png',
+                       analysis='Source Annot',
+                       resname="{parc} {mrisubject} %s" % surf)
         if not redo and os.path.exists(dst):
             return
 
@@ -3186,13 +3183,9 @@ class MneExperiment(FileTree):
             brain.remove_labels(hemi='lh')
 
     def _make_plot_label_dst(self, surf, label):
-        analysis = 'Source Labels'
-        folder = "{parc} {mrisubject} %s" % surf
-        resname = label
-        ext = 'png'
-        dst = self.get('res-deep-file', mkdir=True, analysis=analysis,
-                       folder=folder, resname=resname, ext=ext)
-        return dst
+        return self.get('res-deep-file', mkdir=True, analysis='Source Labels',
+                        folder="{parc} {mrisubject} %s" % surf, resname=label,
+                        ext='png')
 
     def make_proj(self, save=True, save_plot=True):
         """
