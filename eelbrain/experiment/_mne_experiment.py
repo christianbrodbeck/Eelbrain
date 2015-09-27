@@ -1332,6 +1332,7 @@ class MneExperiment(FileTree):
         Subclass this method to specify events.
         """
         subject = ds.info['subject']
+        sfreq = ds.info['raw'].info['sfreq']
         if self.trigger_shift:
             if isinstance(self.trigger_shift, dict):
                 trigger_shift = self.trigger_shift[subject]
@@ -1339,13 +1340,10 @@ class MneExperiment(FileTree):
                 trigger_shift = self.trigger_shift
 
             if trigger_shift:
-                ds['i_start'] += round(trigger_shift * ds.info['raw'].info['sfreq'])
+                ds['i_start'] += round(trigger_shift * sfreq)
 
-        if 'raw' in ds.info:
-            raw = ds.info['raw']
-            sfreq = raw.info['sfreq']
-            ds['T'] = ds['i_start'] / sfreq
-            ds['SOA'] = Var(np.ediff1d(ds['T'].x, 0))
+        ds['T'] = ds['i_start'] / sfreq
+        ds['SOA'] = Var(np.ediff1d(ds['T'].x, 0))
 
         for name, coding in self.variables.iteritems():
             ds[name] = ds['trigger'].as_factor(coding, name)
@@ -1610,7 +1608,7 @@ class MneExperiment(FileTree):
         return ds
 
     def load_events(self, subject=None, add_proj=True, add_bads=True,
-                    edf=True, **kwargs):
+                    keep_raw=True, edf=True, **kwargs):
         """
         Load events from a raw file.
 
@@ -1627,6 +1625,8 @@ class MneExperiment(FileTree):
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
             a list of bad channels can be sumbitted.
+        keep_raw : bool
+            Keep the mne.io.Raw instance in ds.info['raw'] (default True).
         edf : bool
             Load the EDF file (if available) and add it as ``ds.info['edf']``.
         others :
@@ -1663,8 +1663,9 @@ class MneExperiment(FileTree):
             if edf or not self.has_edf[subject]:
                 save.pickle(ds, evt_file)
 
-        ds.info['raw'] = raw
         ds.info['subject'] = subject
+        ds.info['experiment'] = self.get('experiment')
+        ds.info['raw'] = raw
 
         # label events
         a = inspect.getargspec(self.label_events)
