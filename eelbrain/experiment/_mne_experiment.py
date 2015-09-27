@@ -209,9 +209,10 @@ temp = {# MEG
         'report-file': os.path.join('{res-dir}', '{analysis} {group}', '{folder}',
                                     '{epoch} {test} {test_options}.html'),
         'group-mov-file': os.path.join('{res-dir}', '{analysis} {group}',
-                                       '{resname}.mov'),
+                                       '{epoch} {test_options} {resname}.mov'),
         'subject-mov-file': os.path.join('{res-dir}', '{analysis} subjects',
-                                         '{resname}', '{subject}.mov'),
+                                         '{epoch} {test_options} {resname}',
+                                         '{subject}.mov'),
 
         # besa
         'besa-root': os.path.join('{root}', 'besa'),
@@ -2847,16 +2848,23 @@ class MneExperiment(FileTree):
         src_path = self.get(temp, **{field: src})
         os.link(src_path, dst_path)
 
-    def make_mov_ga_dspm(self, subject=None, fmin=2, surf=None, views=None,
-                         hemi=None, time_dilation=4., foreground=None,
-                         background=None, smoothing_steps=None, dst=None,
-                         redo=False, **kwargs):
+    def make_mov_ga_dspm(self, subject=None, sns_baseline=True, src_baseline=False,
+                         fmin=2, surf=None, views=None, hemi=None, time_dilation=4.,
+                         foreground=None, background=None, smoothing_steps=None,
+                         dst=None, redo=False, **kwargs):
         """Make a grand average movie from dSPM values (requires PySurfer 0.6)
 
         Parameters
         ----------
         subject : None | str
             Subject or group.
+        sns_baseline : bool | tuple
+            Apply baseline correction using this period in sensor space.
+            True to use the epoch's baseline specification (default).
+        src_baseline : bool | tuple
+            Apply baseline correction using this period in source space.
+            True to use the epoch's baseline specification. The default is to
+            not apply baseline correction.
         fmin : scalar
             Minimum dSPM value to draw (default 2). fmax is 3 * fmin.
         surf : str
@@ -2893,9 +2901,9 @@ class MneExperiment(FileTree):
         subject, group = self._process_subject_arg(subject, kwargs)
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
                                                 smoothing_steps, hemi)
-
+        self._set_analysis_options('src', sns_baseline, src_baseline, None,
+                                   None, None)
         self.set(equalize_evoked_count='',
-                 analysis='{src-kind} {evoked-kind}',
                  resname="GA dSPM %s %s" % (brain_kwargs['surf'], fmin))
 
         if dst is None:
@@ -2910,10 +2918,12 @@ class MneExperiment(FileTree):
             return
 
         if group is None:
-            ds = self.load_evoked_stc(ind_ndvar=True)
+            ds = self.load_evoked_stc(subject, sns_baseline, src_baseline,
+                                      ind_ndvar=True)
             y = ds['src']
         else:
-            ds = self.load_evoked_stc(group, morph_ndvar=True)
+            ds = self.load_evoked_stc(group, sns_baseline, src_baseline,
+                                      morph_ndvar=True)
             y = ds['srcm']
 
         brain = plot.brain.dspm(y, fmin, fmin * 3, colorbar=False, **brain_kwargs)
@@ -3002,17 +3012,17 @@ class MneExperiment(FileTree):
                 raise ValueError("If x is specified, c1 needs to be specified; "
                                  "got c1=%s" % repr(c1))
             elif c0:
-                resname = "{epoch} t-test %s-%s {test_options} %s" % (c1, c0, surf)
+                resname = "t-test %s-%s {test_options} %s" % (c1, c0, surf)
                 cat = (c1, c0)
             else:
-                resname = "{epoch} t-test %s {test_options} %s" % (c1, surf)
+                resname = "t-test %s {test_options} %s" % (c1, surf)
                 cat = (c1,)
         elif c1 or c0:
             raise ValueError("If x is not specified, c1 and c0 should not be "
                              "specified either; got c1=%s, c0=%s"
                              % (repr(c1), repr(c0)))
         else:
-            resname = "{epoch} t-test GA {test_options} %s" % surf
+            resname = "t-test GA {test_options} %s" % surf
             cat = None
 
         # if minsource is True:
