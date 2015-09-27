@@ -139,6 +139,7 @@ temp = {# MEG
 
         # cache
         'cache-dir': os.path.join('{root}', 'eelbrain-cache'),
+        'cache-state-file': os.path.join('{cache-dir}', 'cache-state.pickle'),
         # raw
         'raw-cache-dir': os.path.join('{cache-dir}', 'raw'),
         'raw-cache-base': os.path.join('{raw-cache-dir}', '{subject}', '{experiment} {raw_kind}'),
@@ -255,6 +256,7 @@ class MneExperiment(FileTree):
         Guide on using :ref:`experiment-class-guide`.
     """
     path_version = None
+    auto_delete_cache = True
 
     # Experiment Constants
     # ====================
@@ -328,10 +330,10 @@ class MneExperiment(FileTree):
                     'A': 'KIT-AD', 'Y': 'KIT-AD', 'AD': 'KIT-AD', 'QP': 'KIT-AD'}
 
     # kwargs for regularization of the covariance matrix (see .make_cov())
-    _covs = {'auto': {'method': 'auto'},
-             'bestreg': {'reg': 'best'},
-             'reg': {'reg': True},
-             'noreg': {'reg': None}}
+    _covs = {'auto': {'epoch': 'cov', 'method': 'auto'},
+             'bestreg': {'epoch': 'cov', 'reg': 'best'},
+             'reg': {'epoch': 'cov', 'reg': True},
+             'noreg': {'epoch': 'cov', 'reg': None}}
 
     # MRI subject names: {subject: mrisubject} mappings
     # selected with e.set(mri=dict_name)
@@ -347,22 +349,22 @@ class MneExperiment(FileTree):
     _subject_loc = 'meg-sdir'
 
     # Parcellations
-    _parcs = {'aparc.a2005s': FS_PARC,
-              'aparc.a2009s': FS_PARC,
-              'aparc': FS_PARC,
-              'aparc.DKTatlas': FS_PARC,
-              'PALS_B12_Brodmann': FSA_PARC,
-              'PALS_B12_Lobes': FSA_PARC,
-              'PALS_B12_OrbitoFrontal': FSA_PARC,
-              'PALS_B12_Visuotopic': FSA_PARC,
-              'lobes': {'kind': EELBRAIN_PARC, 'make': True,
-                        'morph_from_fsaverage': True},
-              'lobes-op': {'kind': 'combination',
-                           'base': 'lobes',
-                           'labels': {'occipitoparietal': "occipital + parietal"}},
-              'lobes-ot': {'kind': 'combination',
-                           'base': 'lobes',
-                           'labels': {'occipitotemporal': "occipital + temporal"}}}
+    __parcs = {'aparc.a2005s': FS_PARC,
+               'aparc.a2009s': FS_PARC,
+               'aparc': FS_PARC,
+               'aparc.DKTatlas': FS_PARC,
+               'PALS_B12_Brodmann': FSA_PARC,
+               'PALS_B12_Lobes': FSA_PARC,
+               'PALS_B12_OrbitoFrontal': FSA_PARC,
+               'PALS_B12_Visuotopic': FSA_PARC,
+               'lobes': {'kind': EELBRAIN_PARC, 'make': True,
+                         'morph_from_fsaverage': True},
+               'lobes-op': {'kind': 'combination',
+                            'base': 'lobes',
+                            'labels': {'occipitoparietal': "occipital + parietal"}},
+               'lobes-ot': {'kind': 'combination',
+                            'base': 'lobes',
+                            'labels': {'occipitotemporal': "occipital + temporal"}}}
     parcs = {}
 
     # Frequencies
@@ -624,7 +626,7 @@ class MneExperiment(FileTree):
             raise TypeError("The MneExperiment.parcs attribute should be a "
                             "dict, got %s" % repr(self.parcs))
         parcs = {}
-        for name, p in chain(self._parcs.iteritems(), user_parcs.iteritems()):
+        for name, p in chain(self.__parcs.iteritems(), user_parcs.iteritems()):
             if name in parcs:
                 raise ValueError("Parcellation %s defined twice" % name)
             elif p == FS_PARC or p == FSA_PARC:
@@ -833,6 +835,141 @@ class MneExperiment(FileTree):
         self.set(**state)
         self.store_state()
         self.brain = None
+
+        ########################################################################
+        # Cache
+        #######
+        if self.exclude:
+            raise ValueError("MneExperiment.exclude must be unspecified for "
+                             "cache management to work")
+        # check the cache, delete invalid files
+        cache_state_path = self.get('cache-state-file', mkdir=True)
+        if os.path.exists(cache_state_path):
+            cache_state = load.unpickle(cache_state_path)
+            invalid_cache = {}
+
+            # groups
+            changed_groups = {}
+            for group, members in cache_state['groups'].iteritems():
+                if group in self._groups and members == self._groups[group]:
+                    continue
+                f = self.glob('test-file', group=group, analysis='*', epoch='*',
+                              test='*', test_options='*', data_parc='*')
+                f += self.glob('group-mov-file', group=group, analysis='*',
+                               epoch='*', test_options='*', resname='*')
+                f += self.glob('report-file', analysis='*', group=group,
+                               folder='*', epoch='*', test='*', test_options='*')
+                if f:
+                    changed_groups[group] = f
+            if changed_groups:
+                invalid_cache['groups'] = changed_groups
+
+            # epochs
+            changed_epochs = {}
+            for epoch, params in cache_state['epochs'].iteritems():
+                if epoch in self._epochs and params == self._epochs[epoch]:
+                    continue
+                f = self.glob('evoked-file', subject='*', experiment='*',
+                              sns_kind='*', epoch=epoch, model='*',
+                              evoked_kind='*')
+                for cov, cov_params in self._covs.iteritems():
+                    if cov_params['epoch'] != epoch:
+                        continue
+                    analysis = '* %s *' % cov
+                    f += self.glob('test-file', analysis=analysis, group='*',
+                                   epoch='*', test='*', test_options='*',
+                                   data_parc='*')
+                    f += self.glob('report-file', analysis=analysis, group='*',
+                                   folder='*', epoch='*', test='*',
+                                   test_options='*')
+                    f += self.glob('group-mov-file', analysis=analysis,
+                                   group='*', epoch='*', test_options='*',
+                                   resname='*')
+                    f += self.glob('subject-mov-file', analysis=analysis,
+                                   epoch=epoch, test_options='*', resname='*',
+                                   subject='*')
+                f += self.glob('test-file', analysis='*', group='*',
+                               epoch=epoch, test='*', test_options='*',
+                               data_parc='*')
+                f += self.glob('report-file', analysis='*', group='*',
+                               folder='*', epoch=epoch, test='*',
+                               test_options='*')
+                f += self.glob('group-mov-file', analysis='*', group='*',
+                               epoch=epoch, test_options='*', resname='*')
+                f += self.glob('subject-mov-file', analysis='*', epoch=epoch,
+                               test_options='*', resname='*', subject='*')
+                if f:
+                    changed_epochs[epoch] = f
+            if changed_epochs:
+                invalid_cache['epochs'] = changed_epochs
+
+            # parcs
+            changed_parcs = []
+            for parc, params in cache_state['parcs'].iteritems():
+                if parc in self._parcs and params == self._parcs[parc]:
+                    continue
+                elif parc in self.__parcs and self.__parcs[parc] in (FS_PARC,
+                                                                     FSA_PARC):
+                    raise ValueError("Redefinition of built-in parc %s is not "
+                                     "allowed" % parc)
+                f = self.glob('annot-file', mrisubject='*', hemi='*', parc=parc)
+                f += self.glob('test-file', analysis='*', group='*', epoch='*',
+                               test='*', test_options='*', data_parc=parc + '*')
+                f += self.glob('report-file', analysis='*', group='*',
+                               folder=parc + '*', epoch='*', test='*',
+                               test_options='*')
+                if f:
+                    changed_parcs[parc] = f
+            if changed_parcs:
+                invalid_cache['parcs'] = changed_parcs
+
+            # tests
+            changed_tests = {}
+            for test, params in cache_state['tests'].iteritems():
+                if test in self._tests and params == self._tests[test]:
+                    continue
+                f = self.glob('test-file', group='*', analysis='*', epoch='*',
+                              test=test, test_options='*', data_parc='*')
+                f += self.glob('report-file', analysis='*', group='*',
+                               folder='*', epoch='*', test=test,
+                               test_options='*')
+                if f:
+                    changed_tests[test] = f
+            if changed_tests:
+                invalid_cache['tests'] = changed_tests
+
+            #########################
+            # Deal with invalid cache
+            if invalid_cache:
+                # log
+                msg = ["Experiment definition changed:"]
+                for kind, values in invalid_cache.iteritems():
+                    msg.append("%s: %s" % (kind, ', '.join(values)))
+
+                # find files to delete
+                files = set()
+                for inv_dict in invalid_cache.values():
+                    for inv_files in inv_dict.values():
+                        files.update(inv_files)
+
+                # abort if deleting is not allowed
+                if not self.auto_delete_cache and invalid_cache:
+                    logger.debug(os.linesep.join(sorted(files)))
+                    msg.append("Automatic cache management disabled. Either "
+                               "revert changes, or set e.auto_delete_cache=True")
+                    raise RuntimeError(os.linesep.join(msg))
+                else:
+                    logger.info(os.linesep.join(msg))
+
+                # delete invalid files
+                for path in files:
+                    os.remove(path)
+
+        new_state = {'groups': self._groups,
+                     'epochs': self._epochs,
+                     'tests': self._tests,
+                     'parcs': self._parcs}
+        save.pickle(new_state, cache_state_path)
 
     def __iter__(self):
         "Iterate state through subjects and yield each subject name."
@@ -1255,7 +1392,7 @@ class MneExperiment(FileTree):
             else:
                 raise ValueError("Unknown reference: reference=%r" % reference)
 
-    def get_field_values(self, field, exclude=True):
+    def get_field_values(self, field, exclude=False):
         """Find values for a field taking into account exclusion
 
         Parameters
@@ -2679,7 +2816,7 @@ class MneExperiment(FileTree):
         """
         dest = self.get('cov-file', mkdir=True)
         params = self._covs[self.get('cov')]
-        epoch = params.get('epoch', 'cov')
+        epoch = params['epoch']
         rej = self.get('cov-rej')
         if (not redo) and os.path.exists(dest):
             cov_mtime = os.path.getmtime(dest)
