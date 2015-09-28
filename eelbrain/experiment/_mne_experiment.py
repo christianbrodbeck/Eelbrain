@@ -92,6 +92,22 @@ def _time_window_str(window, delim='-'):
     return delim.join(map(_time_str, window))
 
 
+class DictSet(object):
+    """Helper class for list of dicts without duplicates"""
+    def __init__(self):
+        self._list = []
+
+    def __repr__(self):
+        return "DictSet(%s)" % self._list
+
+    def __iter__(self):
+        return self._list.__iter__()
+
+    def add(self, item):
+        if item not in self._list:
+            self._list.append(item)
+
+
 class CacheDict(dict):
 
     def __init__(self, func, key_vars, *args):
@@ -842,133 +858,152 @@ class MneExperiment(FileTree):
         if self.exclude:
             raise ValueError("MneExperiment.exclude must be unspecified for "
                              "cache management to work")
+
+        # collect events for current setup
+        with self._temporary_state:
+            self.set(raw='clm')
+            events = {s: self.load_events(data_raw=False) for s in
+                      self.iter(group='all')}
+
         # check the cache, delete invalid files
         cache_state_path = self.get('cache-state-file', mkdir=True)
         if os.path.exists(cache_state_path):
             cache_state = load.unpickle(cache_state_path)
-            invalid_cache = {}
+            invalid_cache = defaultdict(set)
+
+            # check events
+            cache_events = cache_state['events']
+            overlapping_subjects = [s for s in events if s in cache_events]
+            for subject in overlapping_subjects:
+                new_events = events[subject]
+                cached_events = cache_state['events'][subject]
+                if new_events.n_cases != cached_events.n_cases:
+                    invalid_cache['events'].add(subject)
+                else:
+                    for var in cached_events:
+                        if var not in new_events or not np.all(cached_events[var] == new_events[var]):
+                            invalid_cache['variables'].add(var)
 
             # groups
-            changed_groups = {}
             for group, members in cache_state['groups'].iteritems():
-                if group in self._groups and members == self._groups[group]:
-                    continue
-                f = self.glob('test-file', group=group, analysis='*', epoch='*',
-                              test='*', test_options='*', data_parc='*')
-                f += self.glob('group-mov-file', group=group, analysis='*',
-                               epoch='*', test_options='*', resname='*')
-                f += self.glob('report-file', analysis='*', group=group,
-                               folder='*', epoch='*', test='*', test_options='*')
-                if f:
-                    changed_groups[group] = f
-            if changed_groups:
-                invalid_cache['groups'] = changed_groups
+                if group not in self._groups or members != self._groups[group]:
+                    invalid_cache['groups'].add(group)
 
             # epochs
-            changed_epochs = {}
             for epoch, params in cache_state['epochs'].iteritems():
-                if epoch in self._epochs and params == self._epochs[epoch]:
-                    continue
-                f = self.glob('evoked-file', subject='*', experiment='*',
-                              sns_kind='*', epoch=epoch, model='*',
-                              evoked_kind='*')
-                for cov, cov_params in self._covs.iteritems():
-                    if cov_params['epoch'] != epoch:
-                        continue
-                    analysis = '* %s *' % cov
-                    f += self.glob('test-file', analysis=analysis, group='*',
-                                   epoch='*', test='*', test_options='*',
-                                   data_parc='*')
-                    f += self.glob('report-file', analysis=analysis, group='*',
-                                   folder='*', epoch='*', test='*',
-                                   test_options='*')
-                    f += self.glob('group-mov-file', analysis=analysis,
-                                   group='*', epoch='*', test_options='*',
-                                   resname='*')
-                    f += self.glob('subject-mov-file', analysis=analysis,
-                                   epoch=epoch, test_options='*', resname='*',
-                                   subject='*')
-                f += self.glob('test-file', analysis='*', group='*',
-                               epoch=epoch, test='*', test_options='*',
-                               data_parc='*')
-                f += self.glob('report-file', analysis='*', group='*',
-                               folder='*', epoch=epoch, test='*',
-                               test_options='*')
-                f += self.glob('group-mov-file', analysis='*', group='*',
-                               epoch=epoch, test_options='*', resname='*')
-                f += self.glob('subject-mov-file', analysis='*', epoch=epoch,
-                               test_options='*', resname='*', subject='*')
-                if f:
-                    changed_epochs[epoch] = f
-            if changed_epochs:
-                invalid_cache['epochs'] = changed_epochs
+                if epoch not in self._epochs or params != self._epochs[epoch]:
+                    invalid_cache['epochs'].add(epoch)
 
             # parcs
-            changed_parcs = []
             for parc, params in cache_state['parcs'].iteritems():
-                if parc in self._parcs and params == self._parcs[parc]:
-                    continue
-                elif parc in self.__parcs and self.__parcs[parc] in (FS_PARC,
-                                                                     FSA_PARC):
-                    raise ValueError("Redefinition of built-in parc %s is not "
-                                     "allowed" % parc)
-                f = self.glob('annot-file', mrisubject='*', hemi='*', parc=parc)
-                f += self.glob('test-file', analysis='*', group='*', epoch='*',
-                               test='*', test_options='*', data_parc=parc + '*')
-                f += self.glob('report-file', analysis='*', group='*',
-                               folder=parc + '*', epoch='*', test='*',
-                               test_options='*')
-                if f:
-                    changed_parcs[parc] = f
-            if changed_parcs:
-                invalid_cache['parcs'] = changed_parcs
+                if parc not in self._parcs or params != self._parcs[parc]:
+                    invalid_cache['parcs'].add(parc)
 
             # tests
-            changed_tests = {}
             for test, params in cache_state['tests'].iteritems():
-                if test in self._tests and params == self._tests[test]:
-                    continue
-                f = self.glob('test-file', group='*', analysis='*', epoch='*',
-                              test=test, test_options='*', data_parc='*')
-                f += self.glob('report-file', analysis='*', group='*',
-                               folder='*', epoch='*', test=test,
-                               test_options='*')
-                if f:
-                    changed_tests[test] = f
-            if changed_tests:
-                invalid_cache['tests'] = changed_tests
+                if test not in self._tests or params != self._tests[test]:
+                    invalid_cache['tests'].add(test)
 
-            #########################
-            # Deal with invalid cache
+            # create message here, before secondary invalidations are added
             if invalid_cache:
-                # log
                 msg = ["Experiment definition changed:"]
                 for kind, values in invalid_cache.iteritems():
                     msg.append("%s: %s" % (kind, ', '.join(values)))
 
-                # find files to delete
-                files = set()
-                for inv_dict in invalid_cache.values():
-                    for inv_files in inv_dict.values():
-                        files.update(inv_files)
+                # collect file patterns to delete
+                rm = defaultdict(DictSet)
 
-                # abort if deleting is not allowed
-                if not self.auto_delete_cache and invalid_cache:
-                    logger.debug(os.linesep.join(sorted(files)))
-                    msg.append("Automatic cache management disabled. Either "
-                               "revert changes, or set e.auto_delete_cache=True")
-                    raise RuntimeError(os.linesep.join(msg))
-                else:
+                # evoked files are based on old events
+                for subject in invalid_cache['events']:
+                    rm['evoked-file'].add({'subject': subject})
+                # any group involving those subjects is also bad
+                for group, members in cache_state['groups'].iteritems():
+                    if invalid_cache['events'].intersection(members):
+                        invalid_cache['groups'].add(group)
+
+                # variables
+                if 'variables' in invalid_cache:
+                    # find variable use in tests
+                    test_vars = {}
+                    for test, params in cache_state['tests'].iteritems():
+                        if test in invalid_cache['tests']:
+                            continue
+                        elif params['kind'] == 'two-stage':
+                            test_vars[test] = re.findall('[\w_]+', params['stage 1']) \
+                                              + [v[0] for v in params['vars'].items()]
+                        else:
+                            test_vars[test] = re.findall('[\w_]+', params['model'])
+                    # find bad tests
+                    for var in invalid_cache['variables']:
+                        rm['evoked-file'].add({'model': '*%s*' % var})
+                        for test, vars_ in test_vars.iteritems():
+                            if var in vars_:
+                                invalid_cache['tests'].add(test)
+
+                # groups
+                for group in invalid_cache['groups']:
+                    rm['test-file'].add({'group': group})
+                    rm['group-mov-file'].add({'group': group})
+                    rm['report-file'].add({'group': group})
+
+                # epochs
+                for epoch in invalid_cache['epochs']:
+                    rm['evoked-file'].add({'epoch': epoch})
+                    for cov, cov_params in self._covs.iteritems():
+                        if cov_params['epoch'] != epoch:
+                            continue
+                        analysis = '* %s *' % cov
+                        rm['test-file'].add({'analysis': analysis})
+                        rm['report-file'].add({'analysis': analysis})
+                        rm['group-mov-file'].add({'analysis': analysis})
+                        rm['subject-mov-file'].add({'analysis': analysis})
+                    rm['test-file'].add({'epoch': epoch})
+                    rm['report-file'].add({'epoch': epoch})
+                    rm['group-mov-file'].add({'epoch': epoch})
+                    rm['subject-mov-file'].add({'epoch': epoch})
+
+                # parcs
+                for parc in invalid_cache['parcs']:
+                    rm['annot-file'].add({'parc': parc})
+                    rm['test-file'].add({'data_parc': parc + '*'})
+                    rm['report-file'].add({'folder': parc + '*'})
+
+                # tests
+                for test in invalid_cache['tests']:
+                    rm['test-file'].add({'test': test})
+                    rm['report-file'].add({'test': test})
+
+                # find actual files to delete
+                files = set()
+                for temp, arg_dicts in rm.iteritems():
+                    keys = self.find_keys(temp, False)
+                    for args in arg_dicts:
+                        kwargs = {k: args.get(k, '*') for k in keys}
+                        files.update(self.glob(temp, **kwargs))
+
+                if files:
+                    # abort if deleting is not allowed
+                    if not self.auto_delete_cache:
+                        logger.debug(os.linesep.join(sorted(files)))
+                        msg.append("Automatic cache management disabled. Either "
+                                   "revert changes, or set e.auto_delete_cache=True")
+                        raise RuntimeError(os.linesep.join(msg))
+
+                    msg.append("Deleting %s files..." % len(files))
                     logger.info(os.linesep.join(msg))
 
-                # delete invalid files
-                for path in files:
-                    os.remove(path)
+                    # delete invalid files
+                    for path in files:
+                        os.remove(path)
+                else:
+                    msg.append("No cache files affected.")
+                    logger.debug(os.linesep.join(msg))
 
         new_state = {'groups': self._groups,
                      'epochs': self._epochs,
                      'tests': self._tests,
-                     'parcs': self._parcs}
+                     'parcs': self._parcs,
+                     'events': events}
         save.pickle(new_state, cache_state_path)
 
     def __iter__(self):

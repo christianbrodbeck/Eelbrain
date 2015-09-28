@@ -359,7 +359,7 @@ class TreeModel(object):
 
         return temp
 
-    def find_keys(self, temp):
+    def find_keys(self, temp, root=True):
         """
         Find all terminal keys that are relevant for a template.
 
@@ -367,14 +367,18 @@ class TreeModel(object):
         -------
         keys : set
             All terminal keys that are relevant for foormatting temp.
+        root : bool
+            Include "root" if present (default True).
         """
         keys = set()
         temp = self._fields.get(temp, temp)
 
         for key in self._fmt_pattern.findall(temp):
+            if key == "root" and not root:
+                continue
             value = self._fields[key]
             if self._fmt_pattern.findall(value):
-                keys = keys.union(self.find_keys(value))
+                keys = keys.union(self.find_keys(value, root))
             else:
                 keys.add(key)
 
