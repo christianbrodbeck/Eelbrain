@@ -1242,7 +1242,9 @@ class MneExperiment(FileTree):
             raise TypeError("group %s=%r" % (group, group_def))
 
     def _get_raw_path(self, make=False):
-        if self._raw[self.get('raw')] is None:
+        if self.get('modality') == 'meeg':
+            raise RuntimeError("No raw files for combined MEG & EEG")
+        elif self._raw[self.get('raw')] is None:
             return self.get('raw-file')
         else:
             return self.get('cached-raw-file', make=make)
@@ -1332,7 +1334,7 @@ class MneExperiment(FileTree):
         Subclass this method to specify events.
         """
         subject = ds.info['subject']
-        sfreq = ds.info['raw'].info['sfreq']
+        sfreq = ds.info['sfreq']
         if self.trigger_shift:
             if isinstance(self.trigger_shift, dict):
                 trigger_shift = self.trigger_shift[subject]
@@ -1625,25 +1627,27 @@ class MneExperiment(FileTree):
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
             a list of bad channels can be sumbitted.
-        keep_raw : bool
+        keep_raw : bool | str
             Keep the mne.io.Raw instance in ds.info['raw'] (default True).
         edf : bool
             Load the EDF file (if available) and add it as ``ds.info['edf']``.
         others :
             Update state.
         """
-        raw = self.load_raw(add_proj=add_proj, add_bads=add_bads,
-                            subject=subject, **kwargs)
-
-        evt_file = self.get('event-file', mkdir=True)
+        evt_file = self.get('event-file', mkdir=True, subject=subject,
+                            **kwargs)
+        raw_file = self._get_raw_path(True)
 
         # search for and check cached version
         ds = None
         if os.path.exists(evt_file):
             event_mtime = os.path.getmtime(evt_file)
-            raw_mtime = os.path.getmtime(raw.info['filename'])
+            raw_mtime = os.path.getmtime(raw_file)
             if event_mtime > raw_mtime:
                 ds = load.unpickle(evt_file)
+                #  <0.19 cache
+                if 'sfreq' not in ds.info:
+                    ds = None
 
         # refresh cache
         subject = self.get('subject')
@@ -1652,8 +1656,11 @@ class MneExperiment(FileTree):
                 merge = -1
             else:
                 merge = 0
+            raw = self.load_raw(add_proj=add_proj, add_bads=add_bads,
+                                subject=subject)
             ds = load.fiff.events(raw, merge)
             del ds.info['raw']
+            ds.info['sfreq'] = raw.info['sfreq']
 
             if edf and self.has_edf[subject]:  # add edf
                 edf = self.load_edf()
@@ -1662,10 +1669,14 @@ class MneExperiment(FileTree):
 
             if edf or not self.has_edf[subject]:
                 save.pickle(ds, evt_file)
+        elif keep_raw:
+            raw = self.load_raw(add_proj=add_proj, add_bads=add_bads,
+                                subject=subject)
 
         ds.info['subject'] = subject
         ds.info['experiment'] = self.get('experiment')
-        ds.info['raw'] = raw
+        if keep_raw:
+            ds.info['raw'] = raw
 
         # label events
         ds = self.label_events(ds)
@@ -1947,8 +1958,8 @@ class MneExperiment(FileTree):
         preload : bool
             Mne Raw parameter.
         """
-        if self.get('modality', **kwargs) == 'meeg':
-            raise RuntimeError("No raw files for combined MEG & EEG")
+        if kwargs:
+            self.set(**kwargs)
 
         if add_proj:
             proj = self.get('proj')
