@@ -1444,7 +1444,7 @@ class MneExperiment(FileTree):
 
     def load_epochs(self, subject=None, baseline=False, ndvar=True,
                     add_bads=True, reject=True, add_proj=True, cat=None,
-                    decim=None, pad=0, keep_raw=False, eog=False,
+                    decim=None, pad=0, data_raw=False, eog=False,
                     trigger_shift=True, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
@@ -1478,8 +1478,11 @@ class MneExperiment(FileTree):
         pad : scalar
             Pad the epochs with this much time (in seconds; e.g. for spectral
             analysis).
-        keep_raw : bool
+        data_raw : bool | str
             Keep the mne.io.Raw instance in ds.info['raw'] (default False).
+            Can be specified as raw name (str) to include a different raw object
+            than the one from which events are loaded (used for frequency
+            analysis).
         eog : bool
             When loading EEG data as NDVar, also add the EOG channels.
         trigger_shift : bool
@@ -1498,7 +1501,7 @@ class MneExperiment(FileTree):
             dss = []
             for _ in self.iter(group=group):
                 ds = self.load_epochs(None, baseline, ndvar, add_bads, reject,
-                                      add_proj, cat, decim, pad)
+                                      add_proj, cat, decim, pad, data_raw)
                 dss.append(ds)
 
             ds = combine(dss)
@@ -1506,10 +1509,10 @@ class MneExperiment(FileTree):
             with self._temporary_state:
                 ds_meg = self.load_epochs(subject, baseline, ndvar, add_bads,
                                           reject, add_proj, cat, decim, pad,
-                                          False, modality='')
+                                          data_raw, False, modality='')
                 ds_eeg = self.load_epochs(subject, baseline, ndvar, add_bads,
                                           reject, add_proj, cat, decim, pad,
-                                          False, modality='eeg')
+                                          data_raw, False, modality='eeg')
             ds, eeg_epochs = align(ds_meg, ds_eeg['epochs'], 'index',
                                    ds_eeg['index'])
             ds['epochs'] = mne.epochs.add_channels_epochs((ds['epochs'], eeg_epochs))
@@ -1519,7 +1522,8 @@ class MneExperiment(FileTree):
                 baseline = epoch['baseline']
 
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
-                                           add_proj=add_proj)
+                                           add_proj=add_proj,
+                                           data_raw=data_raw or True)
             if ds.n_cases == 0:
                 raise RuntimeError("No events left for epoch=%s, subject=%s"
                                    % (repr(self.get('epoch')), repr(subject)))
@@ -1556,7 +1560,7 @@ class MneExperiment(FileTree):
                 else:
                     _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
 
-            if not keep_raw:
+            if not data_raw:
                 del ds.info['raw']
 
             if ndvar:
@@ -1569,7 +1573,8 @@ class MneExperiment(FileTree):
 
     def load_epochs_stc(self, subject=None, sns_baseline=True,
                         src_baseline=False, ndvar=True, cat=None,
-                        keep_epochs=False, morph=False, mask=False, **kwargs):
+                        keep_epochs=False, morph=False, mask=False,
+                        data_raw=False, **kwargs):
         """Load a Dataset with stcs for single epochs
 
         Parameters
@@ -1598,19 +1603,26 @@ class MneExperiment(FileTree):
         mask : bool
             Discard data that is labelled 'unknown' by the parcellation (only
             applies to NDVars, default False).
+        data_raw : bool | str
+            Keep the mne.io.Raw instance in ds.info['raw'] (default False).
+            Can be specified as raw name (str) to include a different raw object
+            than the one from which events are loaded (used for frequency
+            analysis).
         """
-        if not sns_baseline and src_baseline and self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
+        if not sns_baseline and src_baseline and \
+                self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
             raise NotImplementedError("post_baseline_trigger_shift is not "
                                       "implemented for baseline correction in "
                                       "source space")
-        ds = self.load_epochs(subject, sns_baseline, False, cat=cat, **kwargs)
+        ds = self.load_epochs(subject, sns_baseline, False, cat=cat,
+                              data_raw=data_raw, **kwargs)
         self._add_epochs_stc(ds, ndvar, src_baseline, morph, mask)
         if not keep_epochs:
             del ds['epochs']
         return ds
 
     def load_events(self, subject=None, add_proj=True, add_bads=True,
-                    keep_raw=True, edf=True, **kwargs):
+                    data_raw=True, edf=True, **kwargs):
         """
         Load events from a raw file.
 
@@ -1627,8 +1639,11 @@ class MneExperiment(FileTree):
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
             a list of bad channels can be sumbitted.
-        keep_raw : bool | str
+        data_raw : bool | str
             Keep the mne.io.Raw instance in ds.info['raw'] (default True).
+            Can be specified as raw name (str) to include a different raw object
+            than the one from which events are loaded (used for frequency
+            analysis).
         edf : bool
             Load the EDF file (if available) and add it as ``ds.info['edf']``.
         others :
@@ -1656,8 +1671,7 @@ class MneExperiment(FileTree):
                 merge = -1
             else:
                 merge = 0
-            raw = self.load_raw(add_proj=add_proj, add_bads=add_bads,
-                                subject=subject)
+            raw = self.load_raw(add_proj, add_bads, subject=subject)
             ds = load.fiff.events(raw, merge)
             del ds.info['raw']
             ds.info['sfreq'] = raw.info['sfreq']
@@ -1669,13 +1683,21 @@ class MneExperiment(FileTree):
 
             if edf or not self.has_edf[subject]:
                 save.pickle(ds, evt_file)
-        elif keep_raw:
-            raw = self.load_raw(add_proj=add_proj, add_bads=add_bads,
-                                subject=subject)
+        elif data_raw is True:
+            raw = self.load_raw(add_proj, add_bads, subject=subject)
+
+        # if data should come from different raw settings than events
+        if isinstance(data_raw, str):
+            with self._temporary_state:
+                raw = self.load_raw(add_proj, add_bads, subject=subject,
+                                    raw=data_raw)
+        elif not isinstance(data_raw, bool):
+            raise TypeError("data_raw=%s; needs to be str or bool"
+                            % repr(data_raw))
 
         ds.info['subject'] = subject
         ds.info['experiment'] = self.get('experiment')
-        if keep_raw:
+        if data_raw:
             ds.info['raw'] = raw
 
         # label events
@@ -1686,7 +1708,7 @@ class MneExperiment(FileTree):
         return ds
 
     def load_evoked(self, subject=None, baseline=False, ndvar=True, cat=None,
-                    decim=None, **kwargs):
+                    decim=None, data_raw=False, **kwargs):
         """
         Load a Dataset with the evoked responses for each subject.
 
@@ -1707,6 +1729,11 @@ class MneExperiment(FileTree):
             Only load data for these cells (cells of model).
         decim : None | int
             Set to an int in order to override the epoch decim factor.
+        data_raw : bool | str
+            Keep the mne.io.Raw instance in ds.info['raw'] (default False).
+            Can be specified as raw name (str) to include a different raw object
+            than the one from which events are loaded (used for frequency
+            analysis).
         model : str (state)
             Model according to which epochs are grouped into evoked responses.
         *others* : str
@@ -1717,7 +1744,7 @@ class MneExperiment(FileTree):
             baseline = self._epochs[self.get('epoch')]['baseline']
 
         if group is not None:
-            dss = [self.load_evoked(None, baseline, False, cat, decim)
+            dss = [self.load_evoked(None, baseline, False, cat, decim, data_raw)
                    for _ in self.iter(group=group)]
             ds = combine(dss, incomplete='drop')
 
@@ -1732,7 +1759,7 @@ class MneExperiment(FileTree):
                 raise DimensionMismatchError(os.linesep.join(err))
 
         else:  # single subject
-            ds = self._make_evoked(decim)
+            ds = self._make_evoked(decim, data_raw)
 
             if cat:
                 model = ds.eval(self.get('model'))
@@ -1745,7 +1772,8 @@ class MneExperiment(FileTree):
             # baseline correction
             if isinstance(baseline, str):
                 raise NotImplementedError
-            elif baseline and not self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
+            elif baseline and not self._epochs[self.get('epoch')]\
+                    .get('post_baseline_trigger_shift', None):
                 for e in ds['evoked']:
                     rescale(e.data, e.times, baseline, 'mean', copy=False)
 
@@ -1818,7 +1846,8 @@ class MneExperiment(FileTree):
     def load_evoked_stc(self, subject=None, sns_baseline=True,
                         src_baseline=False, sns_ndvar=False, ind_stc=False,
                         ind_ndvar=False, morph_stc=False, morph_ndvar=False,
-                        cat=None, keep_evoked=False, mask=False, **kwargs):
+                        cat=None, keep_evoked=False, mask=False, data_raw=False,
+                        **kwargs):
         """Load evoked source estimates.
 
         Parameters
@@ -1852,6 +1881,11 @@ class MneExperiment(FileTree):
         mask : bool
             Discard data that is labelled 'unknown' by the parcellation (only
             applies to NDVars, default False).
+        data_raw : bool | str
+            Keep the mne.io.Raw instance in ds.info['raw'] (default False).
+            Can be specified as raw name (str) to include a different raw object
+            than the one from which events are loaded (used for frequency
+            analysis).
         *others* : str
             State parameters.
         """
@@ -1859,12 +1893,16 @@ class MneExperiment(FileTree):
             err = ("Nothing to load, set at least one of (ind_stc, ind_ndvar, "
                    "morph_stc, morph_ndvar) to True")
             raise ValueError(err)
-        elif not sns_baseline and src_baseline and self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
-            raise NotImplementedError("post_baseline_trigger_shift is not implemented for baseline correction in source space")
+        elif not sns_baseline and src_baseline and \
+                self._epochs[self.get('epoch')].get('post_baseline_trigger_shift', None):
+            raise NotImplementedError("post_baseline_trigger_shift is not "
+                                      "implemented for baseline correction in "
+                                      "source space")
 
-        ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, **kwargs)
+        ds = self.load_evoked(subject, sns_baseline, sns_ndvar, cat, None,
+                              data_raw, **kwargs)
         self._add_evoked_stc(ds, ind_stc, ind_ndvar, morph_stc, morph_ndvar,
-                            src_baseline, keep_evoked, mask)
+                             src_baseline, keep_evoked, mask)
 
         return ds
 
@@ -1982,7 +2020,8 @@ class MneExperiment(FileTree):
         return raw
 
     def load_selected_events(self, subject=None, reject=True, add_proj=True,
-                             add_bads=True, index=True, **kwargs):
+                             add_bads=True, index=True, data_raw=False,
+                             **kwargs):
         """
         Load events and return a subset based on epoch and rejection
 
@@ -2004,6 +2043,11 @@ class MneExperiment(FileTree):
             a list of bad channels can be sumbitted.
         index : bool | str
             Index the Dataset before rejection (provide index name as str).
+        data_raw : bool | str
+            Keep the mne.io.Raw instance in ds.info['raw'] (default False).
+            Can be specified as raw name (str) to include a different raw object
+            than the one from which events are loaded (used for frequency
+            analysis).
         others :
             Update the experiment state.
 
@@ -2024,6 +2068,9 @@ class MneExperiment(FileTree):
         # case of loading events for a group
         subject, group = self._process_subject_arg(subject, kwargs)
         if group is not None:
+            if data_raw:
+                raise ValueError("data_var=%s: can't load data raw when "
+                                 "combining different subjects" % repr(data_raw))
             dss = [self.load_selected_events(reject=reject, add_proj=add_proj,
                                              add_bads=add_bads, index=index)
                    for _ in self.iter(group=group)]
@@ -2040,7 +2087,8 @@ class MneExperiment(FileTree):
         if sub_epochs is not None:
             with self._temporary_state:
                 dss = [self.load_selected_events(subject, reject, add_proj,
-                                                 add_bads, index, epoch=sub_epoch)
+                                                 add_bads, index, data_raw,
+                                                 epoch=sub_epoch)
                        for sub_epoch in sub_epochs]
 
                 # combine bad channels
@@ -2058,7 +2106,7 @@ class MneExperiment(FileTree):
         elif sel_epoch is not None:
             with self._temporary_state:
                 ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
-                                               index, epoch=sel_epoch)
+                                               index, data_raw, epoch=sel_epoch)
 
             if sel is not None:
                 ds = ds.sub(sel)
@@ -2071,7 +2119,8 @@ class MneExperiment(FileTree):
             return ds
 
         # load events
-        ds = self.load_events(add_proj=add_proj, add_bads=add_bads)
+        ds = self.load_events(add_proj=add_proj, add_bads=add_bads,
+                              data_raw=data_raw)
         if sel is not None:
             ds = ds.sub(sel)
         if index:
@@ -2590,7 +2639,7 @@ class MneExperiment(FileTree):
 
         cov.save(dest)
 
-    def _make_evoked(self, decim, **kwargs):
+    def _make_evoked(self, decim, data_raw, **kwargs):
         """
         Creates datasets with evoked sensor data.
 
@@ -2601,7 +2650,8 @@ class MneExperiment(FileTree):
         """
         dest = self.get('evoked-file', mkdir=True, **kwargs)
         epoch = self._epochs[self.get('epoch')]
-        use_cache = not decim or decim == epoch['decim']
+        use_cache = ((not decim or decim == epoch['decim']) and
+                     (isinstance(data_raw, bool) or data_raw == self.get('raw')))
         if use_cache and os.path.exists(dest):
             evoked_mtime = os.path.getmtime(dest)
             raw_mtime = os.path.getmtime(self._get_raw_path(make=True))
@@ -2617,9 +2667,10 @@ class MneExperiment(FileTree):
         # baseline corrected evoked
         post_baseline_trigger_shift = epoch.get('post_baseline_trigger_shift', None)
         if post_baseline_trigger_shift:
-            ds = self.load_epochs(ndvar=False, baseline=True, decim=decim)
+            ds = self.load_epochs(ndvar=False, baseline=True, decim=decim,
+                                  data_raw=data_raw)
         else:
-            ds = self.load_epochs(ndvar=False, decim=decim)
+            ds = self.load_epochs(ndvar=False, decim=decim, data_raw=data_raw)
 
         # aggregate
         equal_count = self.get('equalize_evoked_count') == 'eq'
