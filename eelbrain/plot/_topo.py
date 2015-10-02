@@ -614,8 +614,8 @@ class _ax_topomap(_utsnd._ax_im_array):
         # plot sensors
         sensor_dim = layers[0].sensor
         self.sensors = _plt_map2d(ax, sensor_dim, proj, 1, '.', 1, 'k', mark,
-                                  sensorlabels, False, head_radius, head_pos,
-                                  head_linewidth)
+                                  mcolor, sensorlabels, False, head_radius,
+                                  head_pos, head_linewidth)
 
         ax.set_aspect('equal')
         ax.set_xlim(0, 1)
