@@ -860,6 +860,8 @@ class MneExperiment(FileTree):
                              "cache management to work")
         elif not root:
             return
+        elif self.auto_delete_cache == -1:
+            return
 
         # collect events for current setup
         with self._temporary_state:

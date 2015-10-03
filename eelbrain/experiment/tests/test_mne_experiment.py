@@ -130,6 +130,8 @@ class FileExperiment(MneExperiment):
 
     path_version = 1
 
+    auto_delete_cache = -1
+
     groups = {'gsub': SUBJECTS[1:],
               'gexc': {'exclude': SUBJECTS[0]},
               'gexc2': {'base': 'gexc', 'exclude': SUBJECTS[-1]}}
@@ -147,13 +149,19 @@ def test_file_handling():
     "Test MneExperiment with actual files"
     tempdir = TempDir()
     for subject in SUBJECTS:
-        os.makedirs(os.path.join(tempdir, 'meg', subject))
+        sdir = os.path.join(tempdir, 'meg', subject)
+        os.makedirs(sdir)
 
     e = FileExperiment(tempdir)
-    eq_(e._get_group_members('all'), SUBJECTS)
-    eq_(e._get_group_members('gsub'), SUBJECTS[1:])
-    eq_(e._get_group_members('gexc'), SUBJECTS[1:])
-    eq_(e._get_group_members('gexc2'), SUBJECTS[1:-1])
+
+    eq_(e.get('subject'), SUBJECTS[0])
+    eq_([s for s in e.iter(group='all')], SUBJECTS)
+    eq_([s for s in e.iter(group='gsub')], SUBJECTS[1:])
+    eq_([s for s in e.iter(group='gexc')], SUBJECTS[1:])
+    eq_([s for s in e.iter(group='gexc2')], SUBJECTS[1:-1])
+    eq_(e.get('subject'), SUBJECTS[1])
+    eq_(e.get('subject', group='all'), SUBJECTS[1])
+    e.set(SUBJECTS[0])
     eq_(e.get('subject'), SUBJECTS[0])
     eq_(e.get('subject', group='gsub'), SUBJECTS[1])
 
