@@ -641,6 +641,12 @@ class MneExperiment(FileTree):
         else:
             raise TypeError("The MneExperiment.parcs attribute should be a "
                             "dict, got %s" % repr(self.parcs))
+
+        illegal = set(user_parcs).intersection(self.__parcs)
+        if illegal:
+            raise KeyError("The following parc names are already used by "
+                           "builtin parcellations: %s" % ', '.join(illegal))
+
         parcs = {}
         for name, p in chain(self.__parcs.iteritems(), user_parcs.iteritems()):
             if name in parcs:
@@ -901,7 +907,13 @@ class MneExperiment(FileTree):
             # parcs
             for parc, params in cache_state['parcs'].iteritems():
                 if parc not in self._parcs or params != self._parcs[parc]:
-                    invalid_cache['parcs'].add(parc)
+                    # FS_PARC:  Parcellations that are provided by the user
+                    # should not be automatically removed.
+                    # FSA_PARC:  for other mrisubjects, the parcellation
+                    # should automatically update if the user changes the
+                    # fsaverage file.
+                    if self._parcs[parc]['kind'] not in (FS_PARC, FSA_PARC):
+                        invalid_cache['parcs'].add(parc)
 
             # tests
             for test, params in cache_state['tests'].iteritems():
