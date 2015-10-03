@@ -1463,7 +1463,12 @@ class MneExperiment(FileTree):
         if self.get('modality') == 'meeg':
             raise RuntimeError("No raw files for combined MEG & EEG")
         elif self._raw[self.get('raw')] is None:
-            return self.get('raw-file')
+            path = self.get('raw-file')
+            if os.path.isfile(path):
+                return path
+            else:
+                raise IOError("Raw file for %s is missing at %s"
+                              % (self.get('subject'), path))
         else:
             return self.get('cached-raw-file', make=make)
 
