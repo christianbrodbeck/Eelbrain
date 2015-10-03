@@ -49,7 +49,7 @@ class EventExperimentTriggerShiftDict(EventExperiment):
 
 def gen_triggers():
     raw = Var([], info={'sfreq': SAMPLINGRATE})
-    ds = Dataset(info={'subject': SUBJECT, 'raw': raw})
+    ds = Dataset(info={'subject': SUBJECT, 'raw': raw, 'sfreq': SAMPLINGRATE})
     ds['trigger'] = Var(TRIGGERS)
     ds['i_start'] = Var(I_START)
     return ds
