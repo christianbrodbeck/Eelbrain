@@ -8,6 +8,10 @@ New in 0.19
 -----------
 
 * Two-stage tests (see :attr:`MneExperiment.tests`).
+* API: Improvements in :class:`plot.Topomap` with concomitant changes in the
+  constructor signature. For examples see the `meg/topographic plotting
+  <https://github.com/christianbrodbeck/Eelbrain/blob/r/0.19/examples/meg/topographic%20plotting.py>`_
+  example.
 * API: :class:`plot.ColorList` has a new argument called `labels`.
 * API: :class:`testnd.anova` attribute :attr:`~testnd.anova.probability_maps`
   renamed to :attr:`~testnd.anova.p` analogous to other :mod:`testnd` results.

@@ -10,6 +10,7 @@ from math import floor, sqrt
 import matplotlib as mpl
 import numpy as np
 from scipy import interpolate, linalg
+from scipy.spatial import ConvexHull
 
 from .._data_obj import SEQUENCE_TYPES
 from . import _base
@@ -28,36 +29,20 @@ class Topomap(SensorMapMixin, _EelFigure):
         Data to plot.
     Xax : None | categorial
         Create a separate plot for each cell in this model.
-    sensorlabels : None | 'index' | 'name' | 'fullname'
-        Show sensor labels. For 'name', any prefix common to all names
-        is removed; with 'fullname', the full name is shown.
     proj : str | list of str
         The sensor projection to use for topomaps (or one projection per plot).
-    method : 'mne' | 'nearest' | 'linear' | 'cubic' | 'spline'
-        Method for interpolating topo-map between sensors (default is mne).
-    res : int
-        Resolution of the topomaps (width = height = ``res``).
-    contours : sequence | dict
-        Number of contours to draw (only for method='mne').
     cmap : str
         Specify a custom color-map (default depends on the data).
-    interpolation : str
-        Matplotlib imshow() parameter for topomaps.
-    ds : None | Dataset
-        If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
-        as strings.
     vmax, vmin : None | scalar
         Override the default plot limits. If only vmax is specified, vmin
         is set to -vmax.
-    axtitle : str | bool
-        Axes title, True to use is each topography's name. The default (None)
-        is True when more than one topography is plotted, False otherwise.
-    xlabel : str
-        Label below the topomaps (default is no label).
-    title : None | string
-        Figure title.
-    mark : Sensor index
-        Sensors which to mark.
+    contours : sequence | dict
+        Number of contours to draw (only for method='mne').
+    clip : bool | 'even' | 'circular'
+        Outline for clipping topomaps: 'even' to clip at a constant distance
+        (default), 'circular' to clip using a circle.
+    clip_distance : scalar
+        How far from sensor locations to clip (1 is the axes height/width).
     head_radius : scalar | tuple
         Radius of the head outline drawn over sensors (on sensor plots with
         normalized positions, 0.45 is the outline of the topomap); 0 to plot no
@@ -66,15 +51,35 @@ class Topomap(SensorMapMixin, _EelFigure):
     head_pos : scalar
         Head outline position along the anterior axis (0 is the center, 0.5 is
         the top end of the plot).
+    mark : Sensor index
+        Sensors which to mark.
+    sensorlabels : None | 'index' | 'name' | 'fullname'
+        Show sensor labels. For 'name', any prefix common to all names
+        is removed; with 'fullname', the full name is shown.
+    ds : None | Dataset
+        If a Dataset is provided, ``epochs`` and ``Xax`` can be specified
+        as strings.
+    res : int
+        Resolution of the topomaps (width = height = ``res``).
+    interpolation : str
+        Matplotlib imshow() parameter for topomaps.
+    axtitle : str | bool
+        Axes title, True to use is each topography's name. The default (None)
+        is True when more than one topography is plotted, False otherwise.
+    xlabel : str
+        Label below the topomaps (default is no label).
+    title : None | string
+        Figure title.
+    method : 'mne' | 'nearest' | 'linear' | 'cubic' | 'spline'
+        Method for interpolating topo-map between sensors (default is mne).
     """
     _make_axes = False
 
-    def __init__(self, epochs, Xax=None, sensorlabels='name', proj='default',
-                 method='linear', res=64, contours=7, cmap=None,
-                 interpolation=None, ds=None, vmax=None, vmin=None,
-                 axtitle=None, xlabel=None, title=None, mark=None,
-                 head_radius=None, head_pos=0.,
-                 *args, **kwargs):
+    def __init__(self, epochs, Xax=None, proj='default', cmap=None, vmax=None,
+                 vmin=None, contours=7, clip='even', clip_distance=0.05,
+                 head_radius=None, head_pos=0., mark=None, sensorlabels='none',
+                 ds=None, res=64, interpolation=None, axtitle=None, xlabel=None,
+                 title=None, method='mne', *args, **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         if axtitle is None:
             axtitle = False if len(epochs) == 1 else True
@@ -113,7 +118,7 @@ class Topomap(SensorMapMixin, _EelFigure):
         self._plots = []
         sensor_plots = []
         for ax, layers, proj_ in izip(self._axes, epochs, proj):
-            h = _ax_topomap(ax, layers, axtitle, sensorlabels, mark, None,
+            h = _ax_topomap(ax, layers, axtitle, clip, clip_distance, sensorlabels, mark, None,
                             proj_, res, interpolation, xlabel, vlims, cmaps,
                             contours, method, head_radius, head_pos)
             self._plots.append(h)
@@ -487,9 +492,8 @@ class _plt_topomap(_utsnd._plt_im):
 
     _aspect = 'equal'
 
-    def __init__(self, ax, ndvar, overlay, proj='default', res=100,
-                 interpolation=None, vlims={}, cmaps={}, contours={},
-                 method='linear', clip_radius=0.45):
+    def __init__(self, ax, ndvar, overlay, proj, res, interpolation, vlims,
+                 cmaps, contours, method, clip, clip_distance):
         """
         Parameters
         ----------
@@ -507,12 +511,31 @@ class _plt_topomap(_utsnd._plt_im):
         self._mgrid = tuple(np.meshgrid(self._grid, self._grid))
         self._method = method
 
-        if method == 'mne' and ndvar.sensor._topomap_outlines(proj) == 'top':
-            mask = mpl.patches.Circle((0.5, 0.5), clip_radius,
-                                      transform=ax.transData)
+        # clip mask
+        if method == 'mne' and clip:
+            locs = ndvar.sensor.get_locs_2d(self._proj, frame=SENSORMAP_FRAME)
+            hull = ConvexHull(locs)
+            points = locs[hull.vertices]
+            default_head_radius = sqrt(np.min(np.sum((points - [0.5, 0.5]) ** 2, 1)))
+            if clip == 'even':
+                # find offset due to clip_distance
+                tangents = points[range(1, len(points)) + [0]] \
+                           - points[range(-1, len(points) - 1)]
+                verticals = np.dot(tangents, [[0, -1], [1, 0]])
+                verticals /= np.sqrt(np.sum(verticals ** 2, 1)[:, None])
+                verticals *= clip_distance
+                # apply offset
+                points += verticals
+                mask = mpl.patches.Polygon(points, transform=ax.transData)
+            else:
+                clip_radius = sqrt(np.max(np.sum((locs - [0.5, 0.5]) ** 2, 1)))
+                mask = mpl.patches.Circle((0.5, 0.5), clip_radius,
+                                          transform=ax.transData)
         else:
             mask = None
+            default_head_radius = None
 
+        self._default_head_radius = default_head_radius
         _utsnd._plt_im.__init__(self, ax, ndvar, overlay, cmaps, vlims,
                                 contours, (0, 1, 0, 1), interpolation, mask)
 
@@ -572,10 +595,11 @@ class _plt_topomap(_utsnd._plt_im):
 
 class _ax_topomap(_utsnd._ax_im_array):
 
-    def __init__(self, ax, layers, title, sensorlabels=None, mark=None,
-                 mcolor=None, proj='default', res=100, interpolation=None,
-                 xlabel=None, vlims={}, cmaps={}, contours={}, method='linear',
-                 head_radius=None, head_pos=0., head_linewidth=None):
+    def __init__(self, ax, layers, title, clip=False, clip_distance=0.05,
+                 sensorlabels=None, mark=None, mcolor=None, proj='default',
+                 res=100, interpolation=None, xlabel=None, vlims={}, cmaps={},
+                 contours={}, method='linear', head_radius=None, head_pos=0.,
+                 head_linewidth=None):
         """
         Parameters
         ----------
@@ -596,20 +620,18 @@ class _ax_topomap(_utsnd._ax_im_array):
         if xlabel is True:
             xlabel = layers[0].name
 
-        clip_radius = 0.5 * (1 - (SENSORMAP_FRAME * 0.9))
-
         ax.set_axis_off()
         overlay = False
         for layer in layers:
             h = _plt_topomap(ax, layer, overlay, proj, res, interpolation,
-                             vlims, cmaps, contours, method, clip_radius)
+                             vlims, cmaps, contours, method, clip, clip_distance)
             self.layers.append(h)
             overlay = True
 
         # head outline
         if head_radius is None and method == 'mne' and \
                         layer.sensor._topomap_outlines(proj) == 'top':
-            head_radius = clip_radius
+            head_radius = self.layers[0]._default_head_radius
 
         # plot sensors
         sensor_dim = layers[0].sensor
