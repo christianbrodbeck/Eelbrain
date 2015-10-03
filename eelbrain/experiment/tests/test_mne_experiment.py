@@ -95,7 +95,7 @@ def test_mne_experiment_templates():
 
 def test_test_experiment():
     "Test event labeling with the EventExperiment subclass of MneExperiment"
-    e = EventExperiment('', False)
+    e = EventExperiment()
 
     # test defaults
     eq_(e.get('experiment'), 'cheese')

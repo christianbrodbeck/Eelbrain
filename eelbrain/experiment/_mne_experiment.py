@@ -471,7 +471,7 @@ class MneExperiment(FileTree):
                 print("%s: No subjects found in %r"
                       % (self.__class__.__name__, sub_dir))
         else:
-            subjects = ['']
+            subjects = ()
 
         ########################################################################
         # groups
@@ -795,7 +795,7 @@ class MneExperiment(FileTree):
         ########################
         self._register_field('mri', sorted(self._mri_subjects))
         self._register_field('mrisubject')
-        self._register_field('subject', subjects)
+        self._register_field('subject', subjects or None)
         self._register_field('group', self._groups.keys(), 'all',
                              post_set_handler=self._post_set_group)
 
@@ -858,6 +858,8 @@ class MneExperiment(FileTree):
         if self.exclude:
             raise ValueError("MneExperiment.exclude must be unspecified for "
                              "cache management to work")
+        elif not root:
+            return
 
         # collect events for current setup
         with self._temporary_state:
@@ -4373,7 +4375,7 @@ class MneExperiment(FileTree):
             return
         group_members = self._groups[group]
         self._field_values['subject'] = group_members
-        if self.get('subject') not in group_members:
+        if self.get('subject') not in group_members and group_members:
             self.set(group_members[0])
 
     def set_inv(self, ori='free', snr=3, method='dSPM', depth=None,
