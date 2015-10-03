@@ -37,7 +37,7 @@ class Topomap(SensorMapMixin, _EelFigure):
         Override the default plot limits. If only vmax is specified, vmin
         is set to -vmax.
     contours : sequence | dict
-        Number of contours to draw (only for method='mne').
+        Number of contours to draw.
     clip : bool | 'even' | 'circular'
         Outline for clipping topomaps: 'even' to clip at a constant distance
         (default), 'circular' to clip using a circle.
@@ -70,8 +70,9 @@ class Topomap(SensorMapMixin, _EelFigure):
         Label below the topomaps (default is no label).
     title : None | string
         Figure title.
-    method : 'mne' | 'nearest' | 'linear' | 'cubic' | 'spline'
-        Method for interpolating topo-map between sensors (default is mne).
+    method : 'nearest' | 'linear' | 'cubic' | 'spline'
+        Alternative method for interpolating topo-map between sensors (default
+        is based on mne-python).
     """
     _make_axes = False
 
@@ -79,7 +80,7 @@ class Topomap(SensorMapMixin, _EelFigure):
                  vmin=None, contours=7, clip='even', clip_distance=0.05,
                  head_radius=None, head_pos=0., mark=None, sensorlabels='none',
                  ds=None, res=64, interpolation=None, axtitle=None, xlabel=None,
-                 title=None, method='mne', *args, **kwargs):
+                 title=None, method=None, *args, **kwargs):
         epochs, _ = self._epochs = _base.unpack_epochs_arg(epochs, ('sensor',), Xax, ds)
         if axtitle is None:
             axtitle = False if len(epochs) == 1 else True
@@ -95,7 +96,7 @@ class Topomap(SensorMapMixin, _EelFigure):
             raise ValueError("need as many proj as axes (%s)" % nax)
 
         if interpolation is None:
-            interpolation = 'bilinear' if method == 'mne' else 'nearest'
+            interpolation = 'nearest' if method else 'bilinear'
 
         _EelFigure.__init__(self, "Topomap", nax, 5, 1, False, title, False,
                             False, *args, **kwargs)
@@ -512,7 +513,7 @@ class _plt_topomap(_utsnd._plt_im):
         self._method = method
 
         # clip mask
-        if method == 'mne' and clip:
+        if method is None and clip:
             locs = ndvar.sensor.get_locs_2d(self._proj, frame=SENSORMAP_FRAME)
             hull = ConvexHull(locs)
             points = locs[hull.vertices]
@@ -546,7 +547,7 @@ class _plt_topomap(_utsnd._plt_im):
             v = v[self._visible_data]
             locs = locs[self._visible_data]
 
-        if self._method == 'mne':
+        if self._method is None:
             # interpolate data
             xi, yi = self._mgrid
 
@@ -577,7 +578,7 @@ class _plt_topomap(_utsnd._plt_im):
                         g[mask] = 0.
                     out[i, j] = g.dot(weights)
             return out
-        if self._method == 'spline':
+        elif self._method == 'spline':
             k = int(floor(sqrt(len(locs)))) - 1
             tck = interpolate.bisplrep(locs[:, 1], locs[:, 0], v, kx=k, ky=k)
             return interpolate.bisplev(self._grid, self._grid, tck)
@@ -629,7 +630,7 @@ class _ax_topomap(_utsnd._ax_im_array):
             overlay = True
 
         # head outline
-        if head_radius is None and method == 'mne' and \
+        if head_radius is None and method is None and \
                         layer.sensor._topomap_outlines(proj) == 'top':
             head_radius = self.layers[0]._default_head_radius
 

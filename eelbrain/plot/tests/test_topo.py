@@ -21,9 +21,8 @@ def test_plot_topomap():
     p.close()
 
     # MNE data
-    ds = datasets.get_mne_sample(sub=[0,1], sns=True)
-    p = plot.Topomap(ds['sns'].summary(time=(.1, .12)), proj='left',
-                     method='mne', show=False)
+    ds = datasets.get_mne_sample(sub=[0, 1], sns=True)
+    p = plot.Topomap(ds['sns'].summary(time=(.1, .12)), proj='left', show=False)
     p.close()
 
 
@@ -31,6 +30,7 @@ def test_plot_butterfly():
     "Test plot.TopoButterfly"
     ds = datasets.get_uts(utsnd=True)
     p = plot.TopoButterfly('utsnd', ds=ds, show=False)
+    p.set_topo_t(0.2)
     p.close()
     p = plot.TopoButterfly('utsnd', ds=ds, vmax=0.2, w=2, show=False)
     p.close()
@@ -46,6 +46,7 @@ def test_plot_array():
     "Test plot.TopoArray"
     ds = datasets.get_uts(utsnd=True)
     p = plot.TopoArray('utsnd', ds=ds, show=False)
+    p.set_topo_t(0, 0.2)
     p.close()
     p = plot.TopoArray('utsnd', ds=ds, vmax=0.2, w=2, show=False)
     p.close()
