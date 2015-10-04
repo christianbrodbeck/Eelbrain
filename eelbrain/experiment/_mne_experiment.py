@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import shutil
+import time
 from warnings import warn
 
 import numpy as np
@@ -878,6 +879,14 @@ class MneExperiment(FileTree):
         # check the cache, delete invalid files
         cache_state_path = self.get('cache-state-file', mkdir=True)
         if os.path.exists(cache_state_path):
+            # check time stamp
+            if os.path.getmtime(cache_state_path) > time.time():
+                tc = time.ctime(os.path.getmtime(cache_state_path))
+                tsys = time.asctime()
+                raise RuntimeError("The cache's time stamp is in the future "
+                                   "(%s). If the system time (%s) is wrong, "
+                                   "adjust the system clock; if not, delete "
+                                   "the eelbrain-cache folder." % (tc, tsys))
             cache_state = load.unpickle(cache_state_path)
             invalid_cache = defaultdict(set)
 
