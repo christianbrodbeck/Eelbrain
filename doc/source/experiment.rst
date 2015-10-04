@@ -13,33 +13,143 @@ experiment with MNE. Currently only gradiometer-only data is supported.
     :class:`MneExperiment` class reference for details on all available methods
 
 
-Summary of steps:
-
- * Write an experiment definition file
- * Add input files (raw fiff, MRIs)
- * Do epoch rejection for each (base) epoch and desired raw kind (see
-   :ref:`MneExperiment-raw-parameter`)
- * Do analysis with desired settings
-
-   * Reports
-   * Load and inspect data manually
-
-
-Defining an Experiment
-======================
+Getting Started
+===============
 
 .. contents:: Contents
    :local:
 
 
-Complete Example
-----------------
+Setting up the file structure
+-----------------------------
+
+The first step is to define an :class:`MneExperiment` subclass with the name
+of the experiment::
+
+    from eelbrain import *
+
+    class WordExperiment(MneExperiment):
+
+        path_version = 1
+
+        defaults = {'experiment': 'words'}
+
+
+Once this basic experiment class is defined, it can be initialized without root
+(i.e., without data files). This is useful to see the required file structure::
+
+    >>> e = WordExperiment()
+    >>> e.show_input_tree()
+    root
+    mri-sdir                                /mri
+    mri-dir                                    /{mrisubject}
+    meg-sdir                                /meg
+    meg-dir                                    /{subject}
+    raw-dir
+    trans-file                                       /{mrisubject}-trans.fif
+    raw-file                                         /{subject}_{experiment}-raw.fif
+
+
+This output shows a template for the path structure according to which the input
+files have to be organized. Assuming that ``root="/files"``, for a subject
+called "R0001" this includes:
+
+- MRI-directory at ``/files/mri/R0001``
+- the raw data file at ``/files/meg/R0001/R0001_words-raw.fif`` (the
+  experiment is called "words" which is specified in
+  ``WordExperiment.defaults``)
+- the trans-file from the coregistration at ``/files/meg/R0001/R0001-trans.fif``
+
+Once the required files are placed in this structure, the experiment class can
+be initialized with the proper root parameter, pointing to where the files are
+located::
+
+    >>> e = WordExperiment("/files")
+
+
+The setup can be tested using :meth:`MneExperiment.show_subjects`, which shows
+a list of the subjects that were discovered and the MRIs used::
+
+    >>> e.show_subjects()
+    #    subject   mri
+    -----------------------------------------
+    0    R0026     R0026
+    1    R0040     fsaverage * 0.92
+    2    R0176     fsaverage * 0.954746600461
+    ...
+
+
+Labeling events
+---------------
+
+Initially, events are only labeled with the trigger ID. Use the
+:attr:`MneExperiment.variables` settings to add labels.
+For more complex designs and variables, you can override
+:meth:`MneExperiment.label_events`. Check events using::
+
+    >>> e = WordExperiment()
+    >>> ds = e.load_events()
+    >>> ds.head()
+
+and other functions to examine :class:`Dataset` s.
+
+
+Pre-processing
+--------------
+
+Once events are properly labeled, define :attr:`MneExperiment.epochs`. Then
+do epoch rejection (for the desired :ref:`MneExperiment-raw-parameter`
+setting) using :meth:`MneExperiment.make_rej`. A simple way to cycle through
+subjects for doing rejection is :meth:`MneExperiment.next`, like::
+
+    >>> e.make_rej()
+    >>> e.next()
+    >>> e.make_rej()
+    >>> e.next()
+    >>> # ...
+
+
+.. _MneExperiment-intro-analysis:
+
+Analysis
+--------
+
+Finally, define :attr:`MneExperiment.tests` and create a ``make-reports.py``
+script so that all reports can be updated by running a single script
+(see :ref:`MneExperiment-example`).
+
+.. Warning::
+    If source files are changed (raw files, epoch rejection or bad channel
+    files, ...) reports are not updated unless the corresponding
+    :meth:`MneExperiment.make_report` function is called again. For this reason
+    it is useful to have a script that calls :meth:`MneExperiment.make_report`
+    for all desired reports. Running the script ensures that all reports are
+    up-to-date, and will only take seconds if nothing has to be recomputed.
+
+
+.. _MneExperiment-example:
+
+Example
+=======
 
 The following is a complete example for an experiment class definition file
 (the source file can be found in the Eelbrain examples folder at
 ``examples/meg/mne_experiment.py``):
 
-.. literalinclude:: ../../examples/meg/mne_experiment.py
+.. literalinclude:: ../../examples/experiment/word_experiment.py
+
+
+Given the ``WordExperiment`` class definition above, the following is a
+script that would compute/update analysis reports:
+
+.. literalinclude:: ../../examples/experiment/make_reports.py
+
+
+Experiment Definition
+=====================
+
+.. contents:: Contents
+   :local:
 
 
 Basic Setup
@@ -194,7 +304,7 @@ dictionary's ``"kind"`` entry defines the test (e.g., ANOVA, related samples
 T-test, ...). The other entries specify the details of the test and depend on
 the test kind (see subsections on specific tests below).
 
-kind : 'anova' | 'ttest_rel' | 't_contrast_rel' | 'two stage'
+kind : 'anova' | 'ttest_rel' | 't_contrast_rel' | 'two-stage'
     The test kind.
 
 Example::
@@ -286,20 +396,20 @@ vars : dict (optional)
 
 Example: The first example assumes 2 categorical variables present in events,
 'a' with values 'a1' and 'a2', and 'b' with values 'b1' and 'b2'. These are
-recoded into 0/1 codes. The second test definition (``'a_x_time' uses the
+recoded into 0/1 codes. The second test definition (``'a_x_time'`` uses the
 "index" variable which is always present and specifies the chronological index
 of the event within subject as an integer count and can be used to test for
 change over time. Thanks to the numberic nature of these variables interactions
 can be computed by multiplication::
 
-    tests = {'a_x_b': {'kind': 'two stage',
+    tests = {'a_x_b': {'kind': 'two-stage',
                        'vars': {'a_num': ('a', {'a1': 0, 'a2': 1}),
                                 'b_num': ('b', {'b1': 0, 'b2': 1})},
                        'stage 1': "a_num + b_num + a_num * b_num + index + a_num * index"},
-             'a_x_time': {'kind': 'two stage',
+             'a_x_time': {'kind': 'two-stage',
                           'vars': {'a_num': ('a', {'a1': 0, 'a2': 1})},
                           'stage 1': "a_num + index + a_num * index"},
-             'ab_linear': {'kind': 'two stage',
+             'ab_linear': {'kind': 'two-stage',
                            'vars': {'ab': ('a%b', {'a1b1': 0, 'a1b2': 1, 'a2b1': 1, 'a2b2': 2})},
                            'stage 1': "ab"},
             }

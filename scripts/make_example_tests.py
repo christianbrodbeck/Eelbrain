@@ -4,6 +4,10 @@ Generate test scipt for example scripts
 '''
 import os
 
+
+# exclude files with those names:
+EXCLUDE = ('make_report.py',)
+
 curdir = os.path.dirname(__file__)
 test_dir = os.path.abspath(os.path.join(curdir, '..', 'eelbrain', 'tests'))
 dst = os.path.join(test_dir, 'test_examples.py')
@@ -60,7 +64,7 @@ i = 0
 for dirpath, _, filenames in os.walk(example_dir):
     relpath = os.path.relpath(dirpath, example_dir)
     for filename in filenames:
-        if filename.endswith('.py'):
+        if filename.endswith('.py') and filename not in EXCLUDE:
             example_name = os.path.join(relpath, filename)
             text = temp.format(i=i, example_name=example_name, relpath=relpath,
                                filename=filename)

@@ -3,6 +3,8 @@ from eelbrain import *
 
 class WordExperiment(MneExperiment):
 
+    owner = "me@nyu.edu"
+
     path_version = 1  # path scheme for starting a new experiment
 
     defaults = {'experiment': 'words'}
@@ -12,6 +14,8 @@ class WordExperiment(MneExperiment):
                  'frequency': {(1, 3): 'low', (2, 4): 'high', 10: 'none'}}
 
     epochs = {'target': {'sel': "stimulus == 'word'"},
+              'high_frequency': {'base': 'target',
+                                 'sel': "frequency == 'high'"},
               'cov': {'base': 'target', 'tmax': 0}}
 
     tests = {'noun>verb': {'kind': 'ttest_rel', 'model': 'word_type',

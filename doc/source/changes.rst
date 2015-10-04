@@ -8,6 +8,7 @@ New in 0.19
 -----------
 
 * Two-stage tests (see :attr:`MneExperiment.tests`).
+* Safer cache-handling. See note at :ref:`MneExperiment-intro-analysis`.
 * :meth:`Dataset.head` and :meth:`Dataset.tail` methods for more efficiently
   inspecting partial Datasets.
 * The default format for plots in reports is now SVG since they are displayed
