@@ -1047,6 +1047,31 @@ class MneExperiment(FileTree):
                 return
         return mtime
 
+    def _evoked_mtime(self):
+        "Return mtime if the evoked file is up-to-date, None otherwise"
+        path = self.get('evoked-file')
+        if not os.path.exists(path):
+            return
+        evoked_mtime = os.path.getmtime(path)
+        raw_mtime = os.path.getmtime(self._get_raw_path(make=True))
+        bads_mtime = os.path.getmtime(self.get('bads-file'))
+        epoch = self._epochs[self.get('epoch')]
+        rej_mtime = self._rej_mtime(epoch)
+        if evoked_mtime > max(raw_mtime, bads_mtime, rej_mtime):
+            return evoked_mtime
+
+    def _evoked_stc_mtime(self):
+        "mtime if up-to-date, else None; does not check annot"
+        mtime = self._evoked_mtime()
+        if not mtime:
+            return
+        return max(mtime, self._inv_mtime())
+
+    def _inv_mtime(self):
+        return max(os.path.getmtime(self._get_raw_path(make=True)),
+                   os.path.getmtime(self.get('fwd-file', make=True)),
+                   os.path.getmtime(self.get('cov-file', make=True)))
+
     def _rej_mtime(self, epoch):
         "rej-file mtime for secondary epoch definition"
         rej_file_epochs = epoch.get('_rej_file_epochs', None)
@@ -2592,26 +2617,30 @@ class MneExperiment(FileTree):
             return spm.RandomLM(lms)
 
         # try to load cached test
+        res = None
+        load_data = True
         if not redo and os.path.exists(dst):
-            res = load.unpickle(dst)
-            if res.samples >= samples or res.samples == -1:
-                load_data = return_data
-            elif make:
-                res = None
-                load_data = True
-            else:
-                msg = ("The cached test was performed with fewer samples than "
-                       "requested (%i vs %i). Set a lower number of samples, "
-                       "or set make=True to perform the test with the higher "
-                       "number of samples." % (res.samples, samples))
-                raise IOError(msg)
-        elif redo or make:
-            res = None
-            load_data = True
-        else:
-            msg = ("The requested test is not cached. Set make=True to "
-                   "perform the test.")
-            raise IOError(msg)
+            dst_mtime = os.path.getmtime(dst)
+            with self._temporary_state:
+                self.make_annot(mrisubject=self.get('common_brain'))
+                base_mtime = self._annot_mtime()
+            if base_mtime < dst_mtime:
+                for _ in self:
+                    mtime = self._evoked_stc_mtime()
+                    if mtime is None or mtime > dst_mtime:
+                        break
+                else:
+                    res = load.unpickle(dst)
+                    if res.samples >= samples or res.samples == -1:
+                        logger.info("Load cached test %s for %s"
+                                    % (test, self.get('group')))
+                        load_data = return_data
+                    else:
+                        res = None
+
+        if res is None and not (redo or make):
+            raise IOError("The requested test is not cached. Set make=True to "
+                          "perform the test.")
 
         # load data
         if load_data:
@@ -2630,6 +2659,7 @@ class MneExperiment(FileTree):
 
         # perform the test if it was not cached
         if res is None:
+            logger.info("Make test %s for %s" % (test, self.get('group')))
             test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, dims,
                                             parc_dim)
             res = self._make_test(ds[y_name], ds, test, test_kwargs)
@@ -2951,16 +2981,10 @@ class MneExperiment(FileTree):
         epoch = self._epochs[self.get('epoch')]
         use_cache = ((not decim or decim == epoch['decim']) and
                      (isinstance(data_raw, bool) or data_raw == self.get('raw')))
-        if use_cache and os.path.exists(dest):
-            evoked_mtime = os.path.getmtime(dest)
-            raw_mtime = os.path.getmtime(self._get_raw_path(make=True))
-            bads_mtime = os.path.getmtime(self.get('bads-file'))
-            rej_mtime = self._rej_mtime(epoch)
-
-            if evoked_mtime > max(raw_mtime, bads_mtime, rej_mtime):
-                ds = load.unpickle(dest)
-                if ds.info.get('mne_version', None) == mne.__version__:
-                    return ds
+        if use_cache and self._evoked_mtime():
+            ds = load.unpickle(dest)
+            if ds.info.get('mne_version', None) == mne.__version__:
+                return ds
 
         # load the epochs (post baseline-correction trigger shift requires
         # baseline corrected evoked
