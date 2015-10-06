@@ -835,7 +835,7 @@ class List(FMTextElement):
             items = []
         self.items = items
 
-    def __repr_items__(self):
+    def _repr_items(self):
         if self.ordered:
             return [repr(self.head), repr(self.items), repr(self.ordered)]
         elif self.items:
@@ -927,8 +927,8 @@ class Cell(FMText):
         else:
             self.just = just
 
-    def __repr_items__(self):
-        items = FMText.__repr_items__(self)
+    def _repr_items(self):
+        items = FMText._repr_items(self)
         if self.width != 1:
             i = min(2, len(items))
             items.insert(i, 'width=%s' % self.width)
@@ -1454,7 +1454,7 @@ class Image(FMTextElement, StringIO):
 
         return cls(name, ext[1:], alt, buf)
 
-    def __repr_items__(self):
+    def _repr_items(self):
         out = [repr(self._filename)]
         if self._alt != self._filename:
             out.append(repr(self._alt))

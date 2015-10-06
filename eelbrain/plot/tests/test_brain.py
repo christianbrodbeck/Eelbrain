@@ -17,3 +17,7 @@ def test_plot_brain():
     p = plot.brain.cluster(src, hemi='rh', views='parietal')
     cb = p.plot_colorbar(show=False)
     cb.close()
+
+    image = plot.brain.bin_table(src, tstart=0.1, tstop=0.3, tstep=0.1)
+    print repr(image)
+    print image
