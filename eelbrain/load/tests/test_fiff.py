@@ -35,7 +35,6 @@ def test_load_fiff_from_raw():
     meg = ds_ndvar['meg']
     eq_(meg.ndim, 3)
     data = meg.get_data(('case', 'sensor', 'time'))
-    eq_(data.shape, (14, 102, 6))
 
     # compare with mne epochs
     ds_mne = load.fiff.add_mne_epochs(ds, -0.1, 0.3, decim=10, proj=False,
@@ -45,6 +44,7 @@ def test_load_fiff_from_raw():
     mne_data = epochs.get_data()[:, picks]
     eq_(meg.sensor.names, [epochs.info['ch_names'][i] for i in picks])
     assert_array_equal(data, mne_data)
+    assert_array_almost_equal(meg.time.x, epochs.times)
 
     # with proj
     meg = load.fiff.epochs(ds, -0.1, 0.3, decim=10, data='mag', proj=True,

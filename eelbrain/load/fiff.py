@@ -704,7 +704,7 @@ def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
         x *= mult
 
     sensor = sensors or sensor_dim(epochs, picks, sysname)
-    time = UTS(epochs.tmin, 1. / epochs.info['sfreq'], len(epochs.times))
+    time = UTS(epochs.times[0], 1. / epochs.info['sfreq'], len(epochs.times))
     return NDVar(x, ('case', sensor, time), info=info_, name=name)
 
 
