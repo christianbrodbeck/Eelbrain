@@ -462,7 +462,9 @@ class MneExperiment(FileTree):
         while group_definitions:
             n_def = len(group_definitions)
             for name, group_def in group_definitions.items():
-                if isinstance(group_def, dict):
+                if name == '*':
+                    raise ValueError("'*' is not a valid group name")
+                elif isinstance(group_def, dict):
                     base = (group_def.get('base', 'all'))
                     if base not in groups:
                         continue
@@ -4195,6 +4197,8 @@ class MneExperiment(FileTree):
         FileTree.set(self, **state)
 
     def _post_set_group(self, _, group):
+        if group == '*':
+            return
         group_members = self._groups[group]
         self._field_values['subject'] = group_members
         if self.get('subject') not in group_members:
