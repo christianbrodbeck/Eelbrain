@@ -24,7 +24,8 @@ from .. import load, save, plot
 from .._data_obj import Dataset, Factor, Var, Datalist, corr, asndvar, combine
 from .._names import INTERPOLATE_CHANNELS
 from .._info import BAD_CHANNELS
-from ..plot._base import find_fig_vlims
+from ..plot._base import find_axis_params_data, find_axis_params_dim, \
+    find_fig_vlims
 from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
@@ -711,6 +712,8 @@ class Frame(EelbrainFrame):  # control
         self._case_segs = None
         self._axes_by_idx = None
         self._topo_ax = None
+        self._topo_plot_info_str = None
+        self._topo_plot = None
 
         # Finalize
         self.ShowPage(0)
@@ -905,29 +908,31 @@ class Frame(EelbrainFrame):  # control
         if not ax:
             self.SetStatusText("")
             return
+        elif ax.ax_idx == -2:  # topomap
+            self.SetStatusText(self._topo_plot_info_str)
+            return
 
         # compose status text
         x = ax.xaxis.get_major_formatter().format_data(event.xdata)
         y = ax.yaxis.get_major_formatter().format_data(event.ydata)
+        desc = "Page average" if ax.ax_idx == -1 else "Epoch %i" % ax.epoch_idx
+        status = "%s,  x = %s ms,  y = %s" % (desc, x, y)
         if ax.ax_idx >= 0:  # single trial plot
-            self.SetStatusText('Epoch %i,   x = %s, y = %s,   interpolate %s'
-                               % (ax.epoch_idx, x, y,
-                                  ', '.join(self.doc.interpolate[ax.epoch_idx])))
-        elif ax.ax_idx == -1:  # mean plot
-            self.SetStatusText("Page average,   x = %s, y = %s" % (x, y))
-        else:
-            self.SetStatusText('x = %s, y = %s' % (x, y))
+            interp = self.doc.interpolate[ax.epoch_idx]
+            if interp:
+                status += ",  interpolate %s" % ', '.join(interp)
+        self.SetStatusText(status)
 
         # update topomap
-        if self._plot_topo and ax.ax_idx > -2:  # topomap ax_idx is -2
-            t = event.xdata
-            tseg = self._get_ax_data(ax.ax_idx, t)
+        if self._plot_topo:
+            tseg = self._get_ax_data(ax.ax_idx, event.xdata)
             if self._topo_plot:
                 self._topo_plot.set_data([tseg])
             else:
                 self._topo_plot = _ax_topomap(self._topo_ax, [tseg], False,
                                               **self._topo_kwargs)
             self.canvas.redraw(axes=[self._topo_ax])
+            self._topo_plot_info_str = "Topomap: %s, t = %s ms" % (desc, x)
 
     def OnRedo(self, event):
         self.history.redo()
@@ -1196,7 +1201,7 @@ class Frame(EelbrainFrame):  # control
 
     def PlotTopomap(self, ax_index, time):
         tseg = self._get_ax_data(ax_index, time)
-        plot.Topomap(tseg, vmax=self._vlims)
+        p = plot.Topomap(tseg, vmax=self._vlims, sensorlabels='name', w=8)
 
     def SetLayout(self, nplots=(6, 6), topo=True, mean=True):
         """Determine the layout of the Epochs canvas
@@ -1359,6 +1364,10 @@ class Frame(EelbrainFrame):  # control
         self.figure.clf()
         nrow, ncol = self._nplots
 
+        # formatters
+        t_formatter, t_label = find_axis_params_dim('time', True)
+        y_formatter, y_label = find_axis_params_data(self.doc.epochs, True)
+
         # segment plots
         self._epoch_idxs = self._segs_by_page[page]
         self._case_plots = []
@@ -1384,7 +1393,11 @@ class Frame(EelbrainFrame):  # control
             if self.doc.blink is not None:
                 _plt_bin_nuts(ax, self.doc.blink[epoch_idx],
                               color=(0.99, 0.76, 0.21))
+            # formatters
+            ax.xaxis.set_major_formatter(t_formatter)
+            ax.yaxis.set_major_formatter(y_formatter)
 
+            # store objects
             ax.ax_idx = i
             ax.epoch_idx = epoch_idx
             self._case_plots.append(h)
@@ -1395,11 +1408,15 @@ class Frame(EelbrainFrame):  # control
         # mean plot
         if self._plot_mean:
             plot_i = nrow * ncol
-            self._mean_ax = self.figure.add_subplot(nrow, ncol, plot_i)
-            self._mean_ax.ax_idx = -1
+            self._mean_ax = ax = self.figure.add_subplot(nrow, ncol, plot_i)
+            ax.ax_idx = -1
             self._mean_seg = self._get_page_mean_seg()
-            self._mean_plot = _ax_bfly_epoch(self._mean_ax, self._mean_seg,
-                                             mark, **self._bfly_kwargs)
+            self._mean_plot = _ax_bfly_epoch(ax, self._mean_seg, mark,
+                                             **self._bfly_kwargs)
+
+            # formatters
+            ax.xaxis.set_major_formatter(t_formatter)
+            ax.yaxis.set_major_formatter(y_formatter)
 
         # topomap
         if self._plot_topo:
@@ -1408,6 +1425,7 @@ class Frame(EelbrainFrame):  # control
             self._topo_ax.ax_idx = -2
             self._topo_ax.set_axis_off()
             self._topo_plot = None
+            self._topo_plot_info_str = ""
 
         self.canvas.draw()
         self.canvas.store_canvas()
