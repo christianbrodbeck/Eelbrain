@@ -790,6 +790,33 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
     images : Image
         FMTXT Image object that can be saved as SVG or integrated into an
         FMTXT document.
+
+
+    Notes
+    -----
+    Plotting is based on :func:`plot.brain.cluster`, so this function is
+    currently most appropriate for plotting SPMs over time (see Examples).
+
+
+    Examples
+    --------
+    The plotting requires a thresholded statistical map, for example from a
+    t-test::
+
+    >>> res = testnd.ttest_rel('y', 'x', match='subject', samples=0, pmin=0.05)
+    >>> spm = res.masked_parameter_map(None)
+
+    This map can be plotted into an image object. Since we're interested in the
+    largest statistic value of each time window, the appropriate summary
+    function is :func:`numpy.max`::
+
+    >>> image = plot.brain.bin_table(spm, 0.1, 0.4, tstep=0.05, summary=np.max)
+
+    The resulting image can be saved with either of the following (currently
+    the only supported formats)::
+
+    >>> image.save_html("name.html")
+    >>> image.save_image("name.svg")
     """
     data = ndvar.bin(tstep, tstart, tstop, summary)
     ims = []
