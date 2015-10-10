@@ -77,3 +77,7 @@ def test_repmeas():
     # test naturalization of cellnames
     ds['ANum'] = Factor(ds['A'], labels={'a1': '1', 'a2': '2'})
     print table.repmeas('fltvar', 'ANum', 'rm', ds=ds)
+
+    # with empty cell name
+    ds['A'].update_labels({'a1': ''})
+    print table.repmeas('fltvar', 'A', 'rm', ds=ds)
