@@ -4026,7 +4026,10 @@ def as_legal_dataset_key(key):
         for c in string.punctuation:
             if c in key:
                 key = key.replace(c, '_')
-        if key[0].isdigit():
+
+        if key == '':
+            key = '_'
+        elif key[0].isdigit():
             key = "_%s" % key
 
         if legal_dataset_key_re.match(key):
