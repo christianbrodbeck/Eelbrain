@@ -3714,7 +3714,7 @@ class MneExperiment(FileTree):
             End of the time window for finding clusters.
         samples : int > 0
             Number of samples used to determine cluster p values for spatio-
-            temporal clusters (default 1000).
+            temporal clusters (default 10,000).
         sns_baseline : bool | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification (default).
@@ -4261,8 +4261,6 @@ class MneExperiment(FileTree):
                    hemi=None, borders=False, alpha=0.7, w=600,
                    foreground=None, background=None, show=True):
         """Plot the annot file on which the current parcellation is based
-
-        kwargs are for self.plot_brain().
 
         Parameters
         ----------

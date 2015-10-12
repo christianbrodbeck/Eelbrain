@@ -8056,6 +8056,16 @@ def corr(x, dim='sensor', obs='time', name=None):
         The data.
     dim : str
         Dimension over which to correlate neighbors.
+    obs : str
+        Dimension which provides observations over which to compute the
+        correlation.
+    name : str
+        Name for the new NDVar.
+
+    Returns
+    -------
+    correlation : NDVar
+        NDVar with correlation coefficients.
     """
     dim_obj = x.get_dim(dim)
 
