@@ -17,7 +17,6 @@ Created on Mar 4, 2012
 @author: christian
 '''
 
-import cPickle as pickle
 import fnmatch
 import logging
 import os
@@ -32,75 +31,45 @@ from mne.utils import get_subjects_dir, run_subprocess
 from . import ui
 
 
-# handling binaries ---
+_env_vars = {'mne': 'MNE_ROOT',
+             'freesurfer': 'FREESURFER_HOME',
+             'edfapi': 'EYELINK_HOME'}
 
-def _set_bin_dirs(mne=None, freesurfer=None, edfapi=None):
-    "Setup for binary packages"
-    if mne:
-        mne_bin = mne
-        mne_root, _ = os.path.split(mne)
-        os.environ['MNE_ROOT'] = mne_root
-        os.environ['DYLD_LIBRARY_PATH'] = os.path.join(mne_root, 'lib')
+_bin_dirs = {'mne': 'bin',
+             'freesurfer': 'bin',
+             'edfapi': None}
 
-        if 'PATH' in os.environ:
-            os.environ['PATH'] += ':%s' % mne_bin
-        else:
-            os.environ['PATH'] = mne_bin
+_test_bins = {'mne': ('mne_add_patch_info', 'mne_analyze'),
+              'freesurfer': ('mri_annotation2label',),
+              'edfapi': ('edf2asc',)}
 
-    if freesurfer:
-        fs_home, _ = os.path.split(freesurfer)
-        os.environ['FREESURFER_HOME'] = fs_home
-        if ('freesurfer' in freesurfer) and ('freesurfer' not in os.environ['PATH']):
-            os.environ['PATH'] += ':%s' % freesurfer
-
-
-
-# keep track of whether the mne dir has been successfully set
-_cfg_path = os.path.join(os.path.dirname(__file__), 'bin_cfg.pickled')
-_bin_dirs = {'mne': 'None',
-             'freesurfer': 'None',
-             'edfapi': 'None'}
-
-# try:
-#     with open(_cfg_path, 'rb') as fid:
-#         _saved_dirs = pickle.load(fid)
-#     _bin_dirs.update(_saved_dirs)
-#     _set_bin_dirs(**_bin_dirs)
-# except:
-#     logging.info("subp: loading paths failed at %r" % _cfg_path)
 
 def get_bin(package, name):
-    if package not in _bin_dirs:
+    "Get path for a binary"
+    if package not in _env_vars:
         raise KeyError("Unknown binary package: %r" % package)
+    root = mne.get_config(_env_vars[package])
+    if not root:
+        root = _ask_user_for_bin_dir(package)
+    relpath = _bin_dirs[package]
 
-    bin_path = os.path.join(_bin_dirs[package], name)
-    if not os.path.exists(bin_path):
-        set_bin_dir(package)
-        bin_path = os.path.join(_bin_dirs[package], name)
-
-    return bin_path
-
-
-def _is_bin_path(package, path):
-    if package == 'mne':
-        test = ['mne_add_patch_info', 'mne_analyze']
-    elif package == 'freesurfer':
-        test = ['mri_annotation2label']
-    elif package == 'edfapi':
-        test = ['edf2asc']
-    else:
-        raise KeyError("Unknown package: %r" % package)
-
-    test_paths = [os.path.join(path, testname) for testname in test]
-    if all(map(os.path.exists, test_paths)):
-        return True
-    else:
-        msg = ("You need to select a directory containing the following "
-               "executables: %r" % test)
-        ui.message("Invalid Binary Directory", msg, 'error')
+    while True:
+        if relpath:
+            bin_dir = os.path.join(root, relpath)
+        else:
+            bin_dir = root
+        bin_path = os.path.join(bin_dir, name)
+        if os.path.exists(bin_path):
+            return bin_path
+        else:
+            root = _ask_user_for_bin_dir(package)
 
 
-def set_bin_dir(package):
+def _test_bin_path(package, path):
+    return all(os.path.exists(os.path.join(path, f)) for f in _test_bins[package])
+
+
+def _ask_user_for_bin_dir(package):
     """
     Change the location from which binaries are used.
 
@@ -110,21 +79,18 @@ def set_bin_dir(package):
         Binary package for which to set the directory. One from:
         ``['mne', 'freesurfer', 'edfapi']``
     """
-    have_valid_path = False
-    while not have_valid_path:
-        title = "Select %r bin Directory" % package
-        message = ("Please select the directory containing the binaries for "
-                   "the %r package." % package)
+    title = "Select %s Directory" % package
+    message = "Please select the directory of the %s package." % package
+    while True:
         answer = ui.ask_dir(title, message, must_exist=True)
         if answer:
-            if _is_bin_path(package, answer):
-                _bin_dirs[package] = answer
-                with open(_cfg_path, 'wb') as fid:
-                    pickle.dump(_bin_dirs, fid)
-                _set_bin_dirs(**{package: answer})
-                have_valid_path = True
+            if _test_bin_path(package, answer):
+                mne.set_config(_env_vars[package], answer)
+                return answer
+            else:
+                ui.message("Wrong Directory", "This is not the right directory.")
         else:
-            raise IOError("%r bin directory not set" % package)
+            raise IOError("%s directory not set" % package)
 
 
 _verbose = 1
