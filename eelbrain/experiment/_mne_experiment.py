@@ -1416,7 +1416,7 @@ class MneExperiment(FileTree):
         if not keep_evoked:
             del ds['evoked']
 
-    def backup(self, dst_root):
+    def _backup(self, dst_root):
         """Backup all essential files to ``dst_root``.
 
         Parameters
@@ -1442,6 +1442,7 @@ class MneExperiment(FileTree):
 
         MRIs are currently not backed up.
         """
+        logger.debug("Initiating backup to %s" % dst_root)
         root = self.get('root')
         root_len = len(root) + 1
 
