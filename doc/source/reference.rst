@@ -37,7 +37,7 @@ File I/O
 Load
 ====
 
-.. py:module:: eelbrain.load
+.. py:module:: load
 .. py:currentmodule:: eelbrain
 
 Eelbrain has its own function for unpickling. In contrast to `normal unpickling
@@ -63,7 +63,7 @@ Modules:
 Save
 ====
 
-.. py:module:: eelbrain.save
+.. py:module:: save
 .. py:currentmodule:: eelbrain
 
 * `Pickling <http://docs.python.org/library/pickle.html>`_: All data-objects
@@ -108,7 +108,7 @@ NDVar Transformations
 Tables
 ^^^^^^
 
-.. py:module:: eelbrain.table
+.. py:module:: table
 .. py:currentmodule:: eelbrain
 
 Manipulate data tables and compile information about data objects such as cell
@@ -129,7 +129,7 @@ frequencies:
 Statistics
 ^^^^^^^^^^
 
-.. py:module:: eelbrain.test
+.. py:module:: test
 .. py:currentmodule:: eelbrain
 
 Univariate statistical tests:
@@ -148,7 +148,7 @@ Univariate statistical tests:
 Mass-Univariate Statistics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. py:module:: eelbrain.testnd
+.. py:module:: testnd
 .. py:currentmodule:: eelbrain
 
 .. autosummary::
@@ -206,7 +206,7 @@ To get information about the progress of permutation tests use
 Plotting
 ^^^^^^^^
 
-.. py:module:: eelbrain.plot
+.. py:module:: plot
 .. py:currentmodule:: eelbrain
 
 
@@ -338,7 +338,7 @@ The behavior can also be changed globally using :func:`plot.configure`:
 Plotting Brains
 ^^^^^^^^^^^^^^^
 
-.. py:module:: eelbrain.plot.brain
+.. py:module:: plot.brain
 .. py:currentmodule:: eelbrain
 
 :mod:`plot.brain` contains specialized functions to plot :class:`NDVar` objects
@@ -389,7 +389,7 @@ following methods to better interact with Eelbrain:
 GUIs
 ^^^^
 
-.. py:module:: eelbrain.gui
+.. py:module:: gui
 .. py:currentmodule:: eelbrain
 
 Tools with a graphical user interface (GUI):
@@ -444,7 +444,7 @@ data (gradiometer only) with MNE:
 Datasets
 ^^^^^^^^
 
-.. py:module:: eelbrain.datasets
+.. py:module:: datasets
 .. py:currentmodule:: eelbrain
 
 Datasets for experimenting and testing:
