@@ -14,7 +14,7 @@ from .._data_obj import SEQUENCE_TYPES, Datalist, as_sensor
 from ._base import _EelFigure
 
 
-SENSOR_AXES_FRAME = 0.05
+SENSOR_AXES_FRAME = 0.0
 SENSORMAP_FRAME = 0.1
 
 
