@@ -553,9 +553,8 @@ class Model(object):
 class Frame(EelbrainFrame):  # control
     "View object of the epoch selection GUI"
 
-    def __init__(self, parent, model, nplots, topo, mean, vlim,
-                 plot_range, color, lw, mark, mcolor, mlw, antialiased, pos,
-                 size, allow_interpolation):
+    def __init__(self, parent, model, nplots, topo, mean, vlim, color, lw, mark,
+                 mcolor, mlw, antialiased, pos, size, allow_interpolation):
         """View object of the epoch selection GUI
 
         Parameters
@@ -682,12 +681,10 @@ class Frame(EelbrainFrame):  # control
         if vlim is not None:
             for k in self._vlims:
                 self._vlims[k] = (-vlim, vlim)
-        if plot_range is None:
-            plot_range = config.ReadBool('plot_range', True)
         self._mark = mark
         self._bfly_kwargs = {'color': color, 'lw': lw, 'mlw': mlw,
                              'antialiased': antialiased, 'vlims': self._vlims,
-                             'plot_range': plot_range, 'mcolor': mcolor}
+                             'mcolor': mcolor}
         self._topo_kwargs = {'vlims': self._vlims}
         self._SetLayout(nplots, topo, mean)
 
@@ -854,7 +851,6 @@ class Frame(EelbrainFrame):  # control
         self.config.WriteInt("pos_vertical", pos_v)
         self.config.WriteInt("size_width", w)
         self.config.WriteInt("size_height", h)
-        self.config.WriteBool("plot_range", self._bfly_kwargs['plot_range'])
         self.config.Flush()
 
         event.Skip()
@@ -1140,10 +1136,6 @@ class Frame(EelbrainFrame):  # control
 
         dlg.Destroy()
 
-    def OnTogglePlotRange(self, event):
-        plot_range = event.IsChecked()
-        self.SetPlotStyle(plot_range=plot_range)
-
     def OnUndo(self, event):
         self.history.undo()
 
@@ -1155,10 +1147,6 @@ class Frame(EelbrainFrame):  # control
 
     def OnUpdateUIOpen(self, event):
         event.Enable(True)
-
-    def OnUpdateUIPlotRange(self, event):
-        event.Enable(True)
-        event.Check(self._bfly_kwargs['plot_range'])
 
     def OnUpdateUIRedo(self, event):
         event.Enable(self.CanRedo())
@@ -1296,10 +1284,6 @@ class Frame(EelbrainFrame):  # control
 
         Parameters
         ----------
-        plot_range : bool
-            In the epoch plots, plot the range of the data (instead of plotting
-            all sensor traces). This makes drawing of pages quicker, especially
-            for data with many sensors (default ``True``).
         color : None | matplotlib color
             Color for primary data (default is black).
         lw : scalar
@@ -1326,8 +1310,6 @@ class Frame(EelbrainFrame):  # control
                 raise TypeError(err)
             elif key == 'mark':
                 self._mark = value
-            elif key == 'plot_range':
-                self._bfly_kwargs[key] = value
             elif key in self._bf_kwargs:
                 self._bfly_kwargs[key] = value
             else:
@@ -1384,7 +1366,7 @@ class Frame(EelbrainFrame):  # control
             ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0], yticks=[])
             h = _ax_bfly_epoch(ax, case, mark, state, **self._bfly_kwargs)
             # mark interpolated channels
-            if self.doc.interpolate[epoch_idx] and not self._bfly_kwargs['plot_range']:
+            if self.doc.interpolate[epoch_idx]:
                 chs = [case.sensor.channel_idx[ch]
                        for ch in self.doc.interpolate[epoch_idx]
                        if ch in case.sensor.channel_idx]
@@ -1435,12 +1417,7 @@ class Frame(EelbrainFrame):  # control
         wx.EndBusyCursor()
 
     def ToggleChannelInterpolation(self, ax, event):
-        if self._bfly_kwargs['plot_range']:
-            wx.MessageBox("To assign channels for interpolation turn off "
-                          "plotting as range (in the View menu)",
-                          "Turn off Range Plotting", wx.OK)
-            return
-        elif not self.allow_interpolation:
+        if not self.allow_interpolation:
             wx.MessageBox("Interpolation is disabled for this session",
                           "Interpolation disabled", wx.OK)
             return
@@ -1515,8 +1492,8 @@ class TerminalInterface(object):
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger',
                  path=None, nplots=None, topo=None, mean=None,
-                 vlim=None, plot_range=None, color='k', lw=0.5, mark=[],
-                 mcolor='r', mlw=0.8, antialiased=True, pos=None, size=None,
+                 vlim=None, color='k', lw=0.5, mark=[], mcolor='r', mlw=0.8,
+                 antialiased=True, pos=None, size=None,
                  allow_interpolation=True):
         # Documented in eelbrain.gui
         bad_chs = None
@@ -1527,9 +1504,9 @@ class TerminalInterface(object):
 
         app = get_app()
 
-        self.frame = Frame(None, self.model, nplots, topo, mean, vlim,
-                           plot_range, color, lw, mark, mcolor, mlw,
-                           antialiased, pos, size, allow_interpolation)
+        self.frame = Frame(None, self.model, nplots, topo, mean, vlim, color,
+                           lw, mark, mcolor, mlw, antialiased, pos, size,
+                           allow_interpolation)
         self.frame.Show()
         app.SetTopWindow(self.frame)
         if not app.IsMainLoopRunning():

@@ -440,8 +440,7 @@ class Butterfly(_EelFigure):
 
 class _ax_bfly_epoch:
     def __init__(self, ax, epoch, mark=None, state=True, color='k', lw=0.2,
-                 mcolor='r', mlw=0.8, antialiased=True, vlims={},
-                 plot_range=False):
+                 mcolor='r', mlw=0.8, antialiased=True, vlims={}):
         """Specific plot for showing a single sensor by time epoch
 
         Parameters
@@ -459,25 +458,14 @@ class _ax_bfly_epoch:
         mlw : scalar
             Marked sensor plot line width (default 1).
         """
-        if plot_range:
-            self.extrema = _plt_extrema(ax, epoch, color=color,
-                                        antialiased=antialiased)
-            if mark:
-                self.lines = _plt_utsnd(ax, epoch, sorted(mark), color='r',
-                                        lw=mlw, antialiased=antialiased)
-                mark = None
-            else:
-                self.lines = None
-        else:
-            self.extrema = None
-            self.lines = _plt_utsnd(ax, epoch, color=color, lw=lw,
-                                    antialiased=antialiased)
+        self.lines = _plt_utsnd(ax, epoch, color=color, lw=lw,
+                                antialiased=antialiased)
 
         self.ax = ax
         self.epoch = epoch
         self._state_h = []
         self._ylim = _base.find_uts_ax_vlim([epoch], vlims)
-        self._set_ax_lim()
+        self._update_ax_lim()
         self._styles = {None: {'color': color, 'lw': lw, 'ls': '-',
                                'zorder': 2},
                         'mark': {'color': mcolor, 'lw': mlw, 'ls': '-',
@@ -492,12 +480,9 @@ class _ax_bfly_epoch:
         self.set_state(state)
 
     def set_data(self, epoch):
-        if self.extrema is not None:
-            self.extrema.set_ydata(epoch)
-        if self.lines is not None:
-            self.lines.set_ydata(epoch)
+        self.lines.set_ydata(epoch)
 
-    def _set_ax_lim(self):
+    def _update_ax_lim(self):
         self.ax.set_xlim(self.epoch.time[0], self.epoch.time[-1])
         ylim = self._ylim
         if ylim:
@@ -521,8 +506,6 @@ class _ax_bfly_epoch:
         new = self._marked[kind] = set(sensors)
         if not old and not new:
             return
-        elif self.extrema is not None:
-            raise NotImplementedError("Set styles with extrema plot")
         # mark new channels
         for i in new.difference(old):
             self.lines.lines[i].update(self._styles[kind])
@@ -542,7 +525,6 @@ class _ax_bfly_epoch:
             else:
                 self.lines.lines[i].update(self._styles[None])
 
-
     def set_state(self, state):
         "Set the state (True=accept / False=reject)"
         if state:
@@ -559,4 +541,4 @@ class _ax_bfly_epoch:
 
     def set_ylim(self, ylim):
         self._ylim = ylim
-        self._set_ax_lim()
+        self._update_ax_lim()

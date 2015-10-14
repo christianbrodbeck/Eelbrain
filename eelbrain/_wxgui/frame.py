@@ -19,10 +19,6 @@ class EelbrainWindow(object):
     def OnUpdateUIOpen(self, event):
         event.Enable(False)
 
-    def OnUpdateUIPlotRange(self, event):
-        event.Enable(False)
-        event.Check(False)
-
     def OnUpdateUIRedo(self, event):
         event.Enable(False)
 

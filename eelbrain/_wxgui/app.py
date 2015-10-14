@@ -49,8 +49,6 @@ class App(wx.App):
         m.AppendSeparator()
         m.Append(ID.SET_LAYOUT, "&Set Layout... \tCtrl+Shift+l", "Change the "
                  "page layout")
-        m.AppendCheckItem(ID.PLOT_RANGE, "&Plot Data Range \tCtrl+r", "Plot "
-                          "data range instead of individual sensor traces")
 
         # Go Menu
         m = go_menu = wx.Menu()
@@ -102,7 +100,6 @@ class App(wx.App):
         self.Bind(wx.EVT_MENU, self.OnSetLayout, id=ID.SET_LAYOUT)
         self.Bind(wx.EVT_MENU, self.OnSetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
         self.Bind(wx.EVT_MENU, self.OnSetVLim, id=ID.SET_VLIM)
-        self.Bind(wx.EVT_MENU, self.OnTogglePlotRange, id=ID.PLOT_RANGE)
         self.Bind(wx.EVT_MENU, self.OnUndo, id=ID.UNDO)
         self.Bind(wx.EVT_MENU, self.OnWindowMinimize, id=ID.WINDOW_MINIMIZE)
         self.Bind(wx.EVT_MENU, self.OnWindowTile, id=ID.WINDOW_TILE)
@@ -119,7 +116,6 @@ class App(wx.App):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIForward, id=wx.ID_FORWARD)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIOpen, id=wx.ID_OPEN)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIPaste, id=wx.ID_PASTE)
-        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIPlotRange, id=ID.PLOT_RANGE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIRedo, id=ID.REDO)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISaveAs, id=wx.ID_SAVEAS)
@@ -363,10 +359,6 @@ class App(wx.App):
         frame = self._get_active_frame()
         frame.OnSetMarkedChannels(event)
 
-    def OnTogglePlotRange(self, event):
-        frame = self._get_active_frame()
-        frame.OnTogglePlotRange(event)
-
     def OnUndo(self, event):
         frame = self._get_active_frame()
         frame.OnUndo(event)
@@ -417,14 +409,6 @@ class App(wx.App):
     def OnUpdateUIPaste(self, event):
         win = wx.Window.FindFocus()
         event.Enable(win and hasattr(win, 'CanPaste') and win.CanPaste())
-
-    def OnUpdateUIPlotRange(self, event):
-        frame = self._get_active_frame()
-        if frame and hasattr(frame, 'OnUpdateUIPlotRange'):
-            frame.OnUpdateUIPlotRange(event)
-        else:
-            event.Check(False)
-            event.Enable(False)
 
     def OnUpdateUIRedo(self, event):
         frame = self._get_active_frame()

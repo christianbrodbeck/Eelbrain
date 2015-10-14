@@ -43,11 +43,6 @@ def select_epochs(*args, **kwargs):
     vlim : None | scalar
         Limit of the epoch plots on the y-axis. If None, a value is
         determined automatically to show all data.
-    plot_range : bool
-        In the epoch plots, plot the range of the data (instead of plotting
-        all sensor traces). This makes drawing of pages quicker, especially
-        for data with many sensors (the default is to use the last setting
-        used).
     color : None | matplotlib color
         Color for primary data (default is black).
     lw : scalar
