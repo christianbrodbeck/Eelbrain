@@ -662,10 +662,6 @@ class Frame(EelbrainFrame):  # control
 #         tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
 #         self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
 
-#         tb.AddLabelTool(ID.FULLSCREEN, "Fullscreen",
-#                         Icon("tango/actions/view-fullscreen"))
-#         self.Bind(wx.EVT_TOOL, self.OnShowFullScreen, id=ID.FULLSCREEN)
-
         # Grand-average plot
         button = wx.Button(tb, ID.GRAND_AVERAGE, "GA")
         button.SetHelpText("Plot the grand average of all accepted epochs")

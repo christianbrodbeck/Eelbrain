@@ -2,7 +2,7 @@
 import os
 from wx.tools.img2py import img2py
 
-python_file = "../eelbrain/wxutils/icons.py"
+python_file = "../eelbrain/_wxutils/icons.py"
 
 # individual files
 files = {}  # name: file
@@ -27,7 +27,6 @@ tango = {'actions': ['document-open',
                      'media-seek-forward',
                      'media-seek-backward',
                      'system-log-out',
-                     'view-fullscreen',
                      'view-refresh',
                      ],
          'apps': ['help-browser',

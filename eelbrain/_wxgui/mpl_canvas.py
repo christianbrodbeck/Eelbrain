@@ -176,10 +176,6 @@ class CanvasFrame(EelbrainFrame):
 #         tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
 #         self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
 
-        tb.AddLabelTool(ID.FULLSCREEN, "Fullscreen", Icon("tango/actions/view-fullscreen"))
-        logging.debug('filltb')
-        self.Bind(wx.EVT_TOOL, self.OnShowFullScreen, id=ID.FULLSCREEN)
-
     def add_mpl_toolbar(self):
         self.toolbar = backend_wx.NavigationToolbar2Wx(self.canvas)
         self.toolbar.Realize()
@@ -234,9 +230,6 @@ class CanvasFrame(EelbrainFrame):
         if dlg.ShowModal() == wx.ID_OK:
             self.figure.savefig(dlg.GetPath())
         dlg.Destroy()
-
-    def OnShowFullScreen(self, event):
-        self.ShowFullScreen(not self.IsFullScreen())
 
     def OnUpdateUISave(self, event):
         event.Enable(True)

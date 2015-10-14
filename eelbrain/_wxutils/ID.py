@@ -32,7 +32,6 @@ EXEC_SELECTION = wx.NewId()
 
 FIG_TITLE = wx.NewId()
 FOCUS_SHELL = wx.NewId()
-FULLSCREEN = wx.NewId()
 
 GRAND_AVERAGE = wx.NewId()
 

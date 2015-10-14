@@ -1436,35 +1436,6 @@ index.append('tango/actions/media-seek-backward')
 catalog['tango/actions/media-seek-backward'] = tango_actions_media_seek_backward
 
 #----------------------------------------------------------------------
-tango_actions_view_fullscreen = PyEmbeddedImage(
-    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAABl0"
-    "RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAR6SURBVFiFxZdbiFR1HMc//3PO"
-    "3M+cVWdnZ5w1ofISuiqiS09GkWQiaT0E9lAPrRChmbSUmAVbIHgpSli0oB4i6qHLGrpQBBKU"
-    "PSrmsrvmlluwl7kY7dxvZ+bfgzvr7MyZcSS3vvBjhvn/znw/5/v/n/85R0gp+T+lVb68+/7x"
-    "Z5Gi3zSLxoKbarYEQu7rPfDap3MASNHfs+cFw+NyL7Q/6WzG+PijD/uBWwCmWTQ8bg8bd59s"
-    "eKDLrnGsdztdKwINe0Z+i3Dg2CCZXLFhz/BAL5WklTq6TMGySmaZvr1bm5oDrFkR4J1Xd6Bq"
-    "KkWzbFnVqgNopCMvP0Z317KWetevCnL8wLaWelsG+PbCNQoFEwG3rULB5Lufr+Fy2v49gAAC"
-    "Pp3YXyk+G7yMWRNhrUyzzMD5YRLpPJ0dBh63vXUAUTsoIOj3EmzXCbZ7SeWKXLj8J2UJQoi6"
-    "ksCVsTDlkiTkNwj5vXT6DbweR91JWQJU5LRrnOjdzkOb7iWwRGdpu5egTyfk01GEYDI8A7I+"
-    "+mymgNtpozNg0NlhEOq4CfFw932cOrzTckq02h+cdo33Du6ge+0yHlx3D5+cvUTJLOH3eQn4"
-    "PAR8OobuRNTGBegeB51+A2U2EUUIlnUYPPnoWpx2jdOHd/LikbPNAU4eeoLNazoB8Ljs9Dy1"
-    "mZ8ujmO3aQTadQI+nUVel1VwACwyXCiKQFEEi71OulYGsWkqAOtWLeX0G7uaA3TPmlcn8kj3"
-    "/UxG4yzyumjzOhuaV9SmO7GpCg6HDVWZH9X6lcHmAFbSNIXlSxdbxt5Iblfz1d8QQDRwuRPz"
-    "O9E8gMpqXmhVe9Qn8B8AVGs+gBALl3Wtz6zqNiKrvV1KSS5fbOk+MLcpZQuUy9JyrFp1AKPX"
-    "I/OaS2aZK9fCTEzPkErnWzJPpnNMROL88usUplmaNzY0Fm4O0PPWGUbGoyAEBbPMV+eHGfk9"
-    "wkQsyWQsQTydvzVVFjWTyjMZTTIRTTB6PcYX3w+RK5ZACK6Mhdnz9pl5fnWLMJUp0NM3wKlD"
-    "uzj34yh/J3KE/F6kBKQECaoQdTcYgGQ6z1Q0zlQswfSNJNOxFFOxBFf/uMGOLavZf3yQbM2T"
-    "Ut1lWIF47s0vadMdhPwGZSkpS4mUEq/Hgcdlt7xadLedbK7IVCw5WwmmZz+/+WGkzscygWrF"
-    "U3mkTNw8cSkJ+nQ2rg7Vba8VKUKwcXWI0fEoE9H4nHkqU2jocdsHkkQ6z0Q0jttp45nHN+Cw"
-    "a5bPApWy2VR2b9tAm+5kMtrcvCUAuDklT2/twu2wtXQVOO0aO7c8QDrb3LxlAIB9x84xfD3S"
-    "Uu+lq1O8dGKwpd6WAVKZAs/3DTA6Hm3aNzQWZu/Rs5hmCZumWFa15hahqmqJbDZrjHz9SlMD"
-    "VVHQtMbcm9Yu5+Ln+5v+RzabRVW15ByAEEI5dPjg66c+6D9aLpf0pkffBSmKkg6Hw31CCLeo"
-    "vB0LIXyAD1gCeIH4XfZVgcVABpgBIkBEVL+eCyFUwAE4gexdBtAAG5AD8lLKEsA/MrexdRcV"
-    "2gIAAAAASUVORK5CYII=")
-index.append('tango/actions/view-fullscreen')
-catalog['tango/actions/view-fullscreen'] = tango_actions_view_fullscreen
-
-#----------------------------------------------------------------------
 documents_pydoc = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlw"
     "SFlzAAAJOgAACToB8GSSSgAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoA"
