@@ -1,5 +1,3 @@
-import os
-import re
 import webbrowser
 
 import wx

@@ -648,11 +648,6 @@ class Frame(EelbrainFrame):  # control
         button.Bind(wx.EVT_BUTTON, self.OnThreshold)
         tb.AddControl(button)
 
-        # exclude channels
-#         btn = wx.Button(tb, ID.EXCLUDE_CHANNELS, "Exclude Channel")
-#         tb.AddControl(btn)
-#         btn.Bind(wx.EVT_BUTTON, self.OnExcludeChannel)
-
         # right-most part
         if wx.__version__ >= '2.9':
             tb.AddStretchableSpace()
