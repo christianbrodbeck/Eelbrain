@@ -25,6 +25,41 @@ def get_loftus_masson_1994():
     return ds
 
 
+def get_mne_evoked(ndvar=False):
+    """MNE-Python Evoked
+
+    Parameters
+    ----------
+    ndvar : bool
+        Convert to NDVar (default False).
+    """
+    data_path = mne.datasets.sample.data_path()
+    evoked_path = os.path.join(data_path, 'MEG', 'sample',
+                               'sample_audvis-ave.fif')
+    evoked = mne.Evoked(evoked_path, "Left Auditory")
+    if ndvar:
+        return load.fiff.evoked_ndvar(evoked)
+    else:
+        return evoked
+
+
+def get_mne_stc(ndvar=False):
+    """MNE-Python SourceEstimate
+
+    Parameters
+    ----------
+    ndvar : bool
+        Convert to NDVar (default False; src="ico-4" is false, but it works as
+        long as the source space is not accessed).
+    """
+    data_path = mne.datasets.testing.data_path()
+    stc_path = os.path.join(data_path, 'MEG', 'sample', 'fsaverage_audvis_trunc-meg')
+    if not ndvar:
+        return mne.read_source_estimate(stc_path, 'sample')
+    subjects_dir = os.path.join(data_path, 'subjects')
+    return load.fiff.stc_ndvar(stc_path, 'sample', 'ico-4', subjects_dir)
+
+
 def _mne_source_space(subject, src_tag, subjects_dir):
     """Load mne source space"""
     src_file = os.path.join(subjects_dir, subject, 'bem',

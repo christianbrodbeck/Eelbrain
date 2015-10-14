@@ -7,7 +7,6 @@ import os
 
 import mne
 import numpy as np
-from mne import Evoked
 from mne.io import Raw
 
 from eelbrain import datasets, plot, testnd
@@ -21,6 +20,12 @@ def test_plot_butterfly():
     p = plot.Butterfly('utsnd', 'A%B', ds=ds, show=False)
     p.close()
 
+    # other y-dim
+    stc = datasets.get_mne_stc(True)
+    p = plot.Butterfly(stc)
+    p.close()
+
+
 def test_plot_array():
     "Test plot.Array"
     ds = datasets.get_uts(utsnd=True)
@@ -29,14 +34,13 @@ def test_plot_array():
     p = plot.Array('utsnd', ds=ds, show=False)
     p.close()
 
+
 def test_plot_mne_evoked():
     "Test plotting evoked from the mne sample dataset"
-    data_path = mne.datasets.sample.data_path()
-    evoked_path = os.path.join(data_path, 'MEG', 'sample',
-                               'sample_audvis-ave.fif')
-    evoked = Evoked(evoked_path, "Left Auditory")
+    evoked = datasets.get_mne_evoked()
     p = plot.Array(evoked, show=False)
     p.close()
+
 
 def test_plot_mne_epochs():
     "Test plotting epochs from the mne sample dataset"

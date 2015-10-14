@@ -270,7 +270,7 @@ class Array(_EelFigure):
 
 class _plt_utsnd:
 
-    def __init__(self, ax, epoch, sensors=None, *args, **kwargs):
+    def __init__(self, ax, epoch, linedim, sensors=None, *args, **kwargs):
         """
         uts plot for a single epoch
 
@@ -288,8 +288,9 @@ class _plt_utsnd:
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
+        self._dims = dims = ('time', linedim)
         kwargs['label'] = epoch.name
-        self.lines = ax.plot(epoch.time.x, epoch.get_data(('time', 'sensor')),
+        self.lines = ax.plot(epoch.time.x, epoch.get_data(dims),
                              *args, **kwargs)
 
         for y, kwa in _base.find_uts_hlines(epoch):
@@ -305,7 +306,7 @@ class _plt_utsnd:
     def set_ydata(self, epoch):
         if self._sensors:
             epoch = epoch.sub(sensor=self._sensors)
-        for line, y in izip(self.lines, epoch.get_data(('sensor', 'time'))):
+        for line, y in izip(self.lines, epoch.get_data(self._dims)):
             line.set_ydata(y)
 
 
@@ -327,8 +328,8 @@ class _plt_extrema:
 
 class _ax_butterfly(object):
 
-    def __init__(self, ax, layers, sensors=None, extrema=False, title='{name}',
-                 color=None, vlims={}):
+    def __init__(self, ax, layers, linedim, sensors=None, extrema=False,
+                 title='{name}', color=None, vlims={}):
         """
         Parameters
         ----------
@@ -355,7 +356,7 @@ class _ax_butterfly(object):
             if extrema:
                 h = _plt_extrema(ax, l, **uts_args)
             else:
-                h = _plt_utsnd(ax, l, sensors, **uts_args)
+                h = _plt_utsnd(ax, l, linedim, sensors, **uts_args)
 
             self.layers.append(h)
             if not name:
@@ -418,7 +419,8 @@ class Butterfly(_EelFigure):
     def __init__(self, epochs, Xax=None, sensors=None, axtitle='{name}',
                  xlabel=True, ylabel=True, xticklabels=True, color=None,
                  ds=None, *args, **kwargs):
-        epochs, (xdim, _) = _base.unpack_epochs_arg(epochs, ('time', None), Xax, ds)
+        epochs, (xdim, linedim) = _base.unpack_epochs_arg(epochs, ('time', None),
+                                                          Xax, ds)
         _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, *args,
                             **kwargs)
         self._configure_xaxis_dim(xdim, xlabel, xticklabels)
@@ -427,7 +429,8 @@ class Butterfly(_EelFigure):
         self.plots = []
         vlims = _base.find_fig_vlims(epochs)
         for ax, layers in zip(self._axes, epochs):
-            h = _ax_butterfly(ax, layers, sensors, False, axtitle, color, vlims)
+            h = _ax_butterfly(ax, layers, linedim, sensors, False, axtitle,
+                              color, vlims)
             self.plots.append(h)
 
         self._show()
@@ -458,7 +461,7 @@ class _ax_bfly_epoch:
         mlw : scalar
             Marked sensor plot line width (default 1).
         """
-        self.lines = _plt_utsnd(ax, epoch, color=color, lw=lw,
+        self.lines = _plt_utsnd(ax, epoch, 'sensor', color=color, lw=lw,
                                 antialiased=antialiased)
 
         self.ax = ax
