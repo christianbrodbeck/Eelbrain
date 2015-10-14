@@ -9809,6 +9809,23 @@ class UTS(Dimension):
 
         return slice(start_, stop_, step_)
 
+    def _array_index_to(self, other):
+        "Int index to access data from self in an order consistent with other"
+        if not isinstance(other, UTS):
+            raise IndexError(f"{other}: not a valid index for UTS dimension")
+        start = (other.tmin - self.tmin) / self.tstep
+        if start % 1 or start < 0:
+            raise IndexError(f"{other}: incompatible time axis")
+        start = int(round(start))
+        step = other.tstep / self.tstep
+        if step % 1:
+            raise IndexError(f"{other}: incompatible time axis")
+        step = int(round(step))
+        if other.tstop > self.tstop:
+            raise IndexError(f"{other}: incompatible time axis")
+        stop = start + other.nsamples
+        return np.arange(start, stop, step)
+
     def _dim_index(self, arg):
         if isinstance(arg, slice):
             return slice(None if arg.start is None else self._dim_index(arg.start),

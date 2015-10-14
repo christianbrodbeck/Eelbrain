@@ -946,23 +946,6 @@ def test_ndvar():
     bl = x_bl.summary('case', 'sensor', time=(None, 0))
     assert abs(bl) < 1e-10
 
-    # NDVar as index
-    sens_mean = x.mean(('case', 'time'))
-    idx = sens_mean > 0
-    pos = sens_mean[idx]
-    assert_array_equal(pos.x > 0, True)
-
-    # NDVar as index along one dimension
-    x_tc = x.sub(sensor='1')
-    x_time = NDVar(x_tc.time.times >= 0.3, dims=(x_tc.time,))
-    assert_dataobj_equal(x_tc[x_time], x_tc.sub(time=(0.3, None)))
-
-    # out of range index
-    with pytest.raises(ValueError):
-        x.sub(time=(0.1, 0.81))
-    with pytest.raises(IndexError):
-        x.sub(time=(-0.25, 0.1))
-
     # iteration
     for i, xi in enumerate(x):
         assert_dataobj_equal(xi, x[i])
@@ -1096,6 +1079,26 @@ def test_ndvar_indexing():
     test_ndvar_index(x, 'time', slice(0.102, 0.2), slice(31, 40), False)
     test_ndvar_index(x, 'time', slice(0.1, None, 0.1), slice(30, None, 10))
     test_ndvar_index(x, 'time', slice(0.1, None, 1), slice(30, None, 100))
+
+    # NDVar as index
+    sens_mean = x.mean(('case', 'time'))
+    idx = sens_mean > 0
+    pos = sens_mean[idx]
+    assert_array_equal(pos.x > 0, True)
+
+    # NDVar as index along one dimension
+    x_tc = x.sub(sensor='1')
+    x_time = NDVar(x_tc.time.times >= 0.3, dims=(x_tc.time,))
+    assert_dataobj_equal(x_tc[x_time], x_tc.sub(time=(0.3, None)))
+    # NDVar whose dimension is smaller
+    x_time_sub = x_time.sub(time=(0.2, None))
+    assert_dataobj_equal(x_tc[x_time_sub], x_tc.sub(time=(0.3, None)))
+
+    # out of range index
+    with pytest.raises(ValueError):
+        x.sub(time=(0.1, 0.81))
+    with pytest.raises(IndexError):
+        x.sub(time=(-0.25, 0.1))
 
     # newaxis
     with pytest.raises(IndexError):
