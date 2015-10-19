@@ -30,6 +30,7 @@ from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
 from .._utils.numpy_utils import full_slice
+from .._wxgui.help import show_help_txt
 from .._wxutils import Icon, ID, logger, REValidator
 from .app import get_app
 from .frame import EelbrainFrame, EelbrainDialog
@@ -551,7 +552,38 @@ class Model(object):
 
 
 class Frame(EelbrainFrame):  # control
-    "View object of the epoch selection GUI"
+    """
+    Epoch Rejection
+    ===============
+
+    Exclude bad epochs and interpolate or remove bad channels.
+
+    * Use the `Bad Channels` button in the toolbar to exclude channels from
+      analysis (use the `GA` button to plot the grand average and look for
+      channels that are consistently bad).
+    * Click the `Threshold` button to automatically reject epochs in which the
+      signal exceeds a certain threshold.
+    * Click on an epoch plot to toggle rejection of that epoch.
+    * Press ``i`` on the keyboard to toggle channel interpolation for the
+      channel that is closest to the cursor along the y-axis.
+    * Press ``shift-i`` on the keyboard to edit a list of interpolated channels
+      for the epoch under the cursor.
+
+
+    *Keyboard shortcuts* in addition to the ones in the menu:
+
+    =========== ============================================================
+    Key         Effect
+    =========== ============================================================
+    right-arrow go to the next page
+    left-arrow  go to the previous page
+    b           butterfly plot of the epoch under the pointer
+    c           pairwise sensor correlation plot or the current epoch
+    t           topomap plot of the epoch/time point under the pointer
+    i           interpolate the channel nearest to the pointer on the y-axis
+    shift-i     open dialog to enter channels for interpolation
+    =========== ============================================================
+    """
 
     def __init__(self, parent, model, nplots, topo, mean, vlim, color, lw, mark,
                  mcolor, mlw, antialiased, pos, size, allow_interpolation):
@@ -654,14 +686,15 @@ class Frame(EelbrainFrame):  # control
         else:
             tb.AddSeparator()
 
-#         tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
-#         self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
-
         # Grand-average plot
         button = wx.Button(tb, ID.GRAND_AVERAGE, "GA")
         button.SetHelpText("Plot the grand average of all accepted epochs")
         button.Bind(wx.EVT_BUTTON, self.OnPlotGrandAverage)
         tb.AddControl(button)
+
+        # --> Help
+        tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
+        self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
 
         tb.Realize()
 
@@ -849,6 +882,9 @@ class Frame(EelbrainFrame):  # control
     def OnForward(self, event):
         "turns the page forward"
         self.ShowPage(self._current_page_i + 1)
+
+    def OnHelp(self, event):
+        show_help_txt(self.__doc__, self, "Epoch-selection")
 
     def OnOpen(self, event):
         msg = ("Load the epoch selection from a file.")
