@@ -1,6 +1,14 @@
 '''Eelbrain GUIs'''
 
 
+def help(obj):
+    "Open a window displaying help for a Python object"
+    from ._wxgui import get_app, show_help_obj, run
+    get_app()
+    show_help_obj(obj)
+    run()
+
+
 def run():
     "Hand over command to the GUI (quit the GUI to return to the terminal)"
     from . import _wxgui
