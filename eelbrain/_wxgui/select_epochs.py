@@ -1462,24 +1462,6 @@ class Frame(EelbrainFrame):  # control
 
 
 class TerminalInterface(object):
-    """
-    Keyboard
-    --------
-    right-arrow:
-        Go to next page.
-    left-arrow:
-        Go to previous page.
-    b:
-        Butterfly plot of the currently displayed epoch.
-    c:
-        Pairwise sensor correlation plot or the current epoch.
-    t:
-        Topomap plot of the currently displayed time point.
-    u:
-        Undo.
-    shift-u:
-        Redo.
-    """
     def __init__(self, ds, data='meg', accept='accept', blink='blink',
                  tag='rej_tag', trigger='trigger',
                  path=None, nplots=None, topo=None, mean=None,

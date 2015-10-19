@@ -70,27 +70,33 @@ def select_epochs(*args, **kwargs):
 
     Notes
     -----
-    In addition to the menus, the following keyboard shortcuts are available:
+    Exclude bad epochs and interpolate or remove bad channels.
 
-        right-arrow:
-            Go to next page.
-        left-arrow:
-            Go to previous page.
-        b:
-            Butterfly plot of the currently displayed epoch.
-        c:
-            Pairwise sensor correlation plot or the current epoch.
-        i:
-            Schedule the channel nearest to the pointer on the vertical for
-            interpolation.
-        Shift-i:
-            Open dialog to enter channels for interpolation.
-        t:
-            Topomap plot of the currently displayed time point.
-        u:
-            Undo.
-        shift-u:
-            Redo.
+    * Use the `Bad Channels` button in the toolbar to exclude channels from
+      analysis (use the `GA` button to plot the grand average and look for
+      channels that are consistently bad).
+    * Click the `Threshold` button to automatically reject epochs in which the
+      signal exceeds a certain threshold.
+    * Click on an epoch plot to toggle rejection of that epoch.
+    * Press ``i`` on the keyboard to toggle channel interpolation for the
+      channel that is closest to the cursor along the y-axis.
+    * Press ``shift-i`` on the keyboard to edit a list of interpolated channels
+      for the epoch under the cursor.
+
+
+    *Keyboard shortcuts* in addition to the ones in the menu:
+
+    =========== ============================================================
+    Key         Effect
+    =========== ============================================================
+    right-arrow go to the next page
+    left-arrow  go to the previous page
+    b           butterfly plot of the epoch under the pointer
+    c           pairwise sensor correlation plot or the current epoch
+    t           topomap plot of the epoch/time point under the pointer
+    i           interpolate the channel nearest to the pointer on the y-axis
+    shift-i     open dialog to enter channels for interpolation
+    =========== ============================================================
     """
     from . import _wxgui
     _wxgui.select_epochs.TerminalInterface(*args, **kwargs)
