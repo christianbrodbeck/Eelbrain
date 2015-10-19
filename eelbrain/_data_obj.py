@@ -167,10 +167,12 @@ def isbalanced(x):
 
 def iscategorial(x):
     "factors as well as interactions are categorial"
-    if isfactor(x):
+    if isfactor(x) or isnested(x):
         return True
     elif isinteraction(x):
         return x.is_categorial
+    elif ismodel(x):
+        return all(iscategorial(e) for e in x.effects)
     else:
         return False
 
@@ -302,14 +304,14 @@ def hasemptycells(x):
 
 def hasrandom(x):
     """True if x is or contains a random effect, False otherwise"""
-    if isfactor(x):
+    if isfactor(x) or isnested(x):
         return x.random
     elif isinteraction(x):
         for e in x.base:
             if isfactor(e) and e.random:
                 return True
     elif ismodel(x):
-        return any(map(hasrandom, x.effects))
+        return any(hasrandom(e) for e in x.effects)
     return False
 
 

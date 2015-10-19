@@ -4,7 +4,9 @@ from itertools import izip
 import numpy as np
 from numpy import newaxis
 
-from nose.tools import assert_equal, assert_almost_equal, assert_raises, nottest
+from nose.tools import assert_equal, assert_almost_equal, assert_is_instance, \
+    assert_raises, nottest
+
 from numpy.testing import assert_allclose
 
 from eelbrain import datasets, test, testnd, Dataset
@@ -246,6 +248,7 @@ def test_lmfitter():
 
     x_full = ds.eval("A * B + ind(A%B)")
     lm_full = glm._nd_anova(x_full)
+    assert_is_instance(lm_full, glm._FullNDANOVA)
     f_maps_full = lm_full.map(y)
     p_maps_full = lm_full.p_maps(f_maps)
 
