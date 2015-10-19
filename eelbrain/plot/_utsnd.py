@@ -310,26 +310,10 @@ class _plt_utsnd:
             line.set_ydata(y)
 
 
-class _plt_extrema:
-
-    def __init__(self, ax, epoch, **plot_kwargs):
-        self.upper = ax.plot(epoch.time.x, epoch.max('sensor').x, **plot_kwargs)[0]
-        self.lower = ax.plot(epoch.time.x, epoch.min('sensor').x, **plot_kwargs)[0]
-        self.epoch = epoch
-
-    def remove(self):
-        self.upper.remove()
-        self.lower.remove()
-
-    def set_ydata(self, epoch):
-        self.upper.set_ydata(epoch.max('sensor').x)
-        self.lower.set_ydata(epoch.min('sensor').x)
-
-
 class _ax_butterfly(object):
 
-    def __init__(self, ax, layers, linedim, sensors=None, extrema=False,
-                 title='{name}', color=None, vlims={}):
+    def __init__(self, ax, layers, linedim, sensors=None, title='{name}',
+                 color=None, vlims={}):
         """
         Parameters
         ----------
@@ -353,11 +337,7 @@ class _ax_butterfly(object):
             overlay = True
 
             # plot
-            if extrema:
-                h = _plt_extrema(ax, l, **uts_args)
-            else:
-                h = _plt_utsnd(ax, l, linedim, sensors, **uts_args)
-
+            h = _plt_utsnd(ax, l, linedim, sensors, **uts_args)
             self.layers.append(h)
             if not name:
                 name = getattr(l, 'name', '')
@@ -429,8 +409,8 @@ class Butterfly(_EelFigure):
         self.plots = []
         vlims = _base.find_fig_vlims(epochs)
         for ax, layers in zip(self._axes, epochs):
-            h = _ax_butterfly(ax, layers, linedim, sensors, False, axtitle,
-                              color, vlims)
+            h = _ax_butterfly(ax, layers, linedim, sensors, axtitle, color,
+                              vlims)
             self.plots.append(h)
 
         self._show()

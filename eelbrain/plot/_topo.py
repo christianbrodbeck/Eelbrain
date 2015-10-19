@@ -327,7 +327,7 @@ class TopoButterfly(_EelFigure):
             self._topoax_data.append((ax2, layers))
 
             # plot data
-            p = _utsnd._ax_butterfly(ax1, layers, 'sensor', mark, False, False, color,
+            p = _utsnd._ax_butterfly(ax1, layers, 'sensor', mark, False, color,
                                      vlims)
             self.bfly_plots.append(p)
 
