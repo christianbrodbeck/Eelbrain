@@ -10,6 +10,8 @@ import numpy as np
 from mne.io import Raw
 
 from eelbrain import datasets, plot, testnd
+from eelbrain.plot._base import Figure
+from eelbrain.plot._utsnd import _ax_bfly_epoch
 
 
 def test_plot_butterfly():
@@ -24,6 +26,13 @@ def test_plot_butterfly():
     stc = datasets.get_mne_stc(True)
     p = plot.Butterfly(stc)
     p.close()
+
+    # _ax_bfly_epoch
+    fig = Figure(1, show=False)
+    ax = _ax_bfly_epoch(fig._axes[0], ds[0, 'utsnd'])
+    fig.show()
+    ax.set_data(ds[1, 'utsnd'])
+    fig.draw()
 
 
 def test_plot_array():

@@ -288,9 +288,9 @@ class _plt_utsnd:
         if sensors is not None and sensors is not True:
             epoch = epoch.sub(sensor=sensors)
 
-        self._dims = dims = ('time', linedim)
+        self._dims = (linedim, 'time')
         kwargs['label'] = epoch.name
-        self.lines = ax.plot(epoch.time.x, epoch.get_data(dims),
+        self.lines = ax.plot(epoch.time.x, epoch.get_data(('time', linedim)),
                              *args, **kwargs)
 
         for y, kwa in _base.find_uts_hlines(epoch):
