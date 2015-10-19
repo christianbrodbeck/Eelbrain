@@ -7,7 +7,7 @@ from numpy import newaxis
 from nose.tools import assert_equal, assert_almost_equal, assert_raises, nottest
 from numpy.testing import assert_allclose
 
-from eelbrain import datasets, test, Dataset
+from eelbrain import datasets, test, testnd, Dataset
 from eelbrain._stats import glm
 from eelbrain._stats.permutation import permute_order
 
@@ -22,6 +22,7 @@ def r_require(package):
         success = r('require(%s)' % package)[0]
         if not success:
             raise RuntimeError("Could not install R package %r" % package)
+
 
 @nottest
 def assert_f_test_equal(f_test, r_res, r_row, f=None, r_kind='aov'):
@@ -48,6 +49,7 @@ def assert_f_test_equal(f_test, r_res, r_row, f=None, r_kind='aov'):
     assert_almost_equal(f_test.p, r_res[r_p][r_row])
     if f is not None:
         assert_almost_equal(f, r_res[r_F][r_row])  # nd-anova comparison"
+
 
 @nottest
 def assert_f_tests_equal(f_tests, r_res, fs, r_kind='aov'):
@@ -109,6 +111,13 @@ def test_anova():
     dss = ds.sub("A%B != ('a1', 'b1')")
     assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*B', ds=dss)
     assert_raises(NotImplementedError, run_on_lm_fitter, 'fltvar', 'A*B', ds=dss)
+
+
+def test_ndanova():
+    ds = datasets.get_uts()
+    ds['An'] = ds['A'].as_var({'a0': 0, 'a1': 1})
+
+    assert_raises(NotImplementedError, testnd.anova, 'uts', 'An*B*rm', ds=ds)
 
 
 def test_anova_perm():

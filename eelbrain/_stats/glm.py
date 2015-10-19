@@ -29,9 +29,9 @@ import scipy.stats
 from .. import fmtxt
 from .._utils import LazyProperty
 from .._utils.print_funcs import strdict
-from .._data_obj import (isvar, asvar, assub, isbalanced, hasemptycells,
-                         is_higher_order_effect, isnestedin, hasrandom,
-                         find_factors, Model, asmodel)
+from .._data_obj import isvar, asvar, assub, isbalanced, iscategorial, \
+    hasemptycells, is_higher_order_effect, isnestedin, hasrandom, find_factors, \
+    Model, asmodel
 from .opt import anova_fmaps, anova_full_fmaps, lm_res_ss, ss
 from .stats import ftest_p
 from . import test
@@ -354,12 +354,14 @@ def _nd_anova(x):
     x = asmodel(x)
     if hasemptycells(x):
         raise NotImplementedError("Model has empty cells")
-    elif x.df_error == 0:
-        return _FullNDANOVA(x)
     elif hasrandom(x):
-        err = ("Models containing random effects need to be fully "
-               "specified.")
-        raise NotImplementedError(err)
+        if not iscategorial(x):
+            raise NotImplementedError("Random effects ANOVA with continuous "
+                                      "predictors")
+        elif x.df_error != 0:
+            raise NotImplementedError("Random effects ANOVA need to be fully "
+                                      "specified")
+        return _FullNDANOVA(x)
     elif isbalanced(x):
         return _BalancedFixedNDANOVA(x)
     else:
