@@ -22,22 +22,6 @@ from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
                                      assert_source_space_equal)
 
 
-def test_print():
-    "Run the string representation methods"
-    ds = datasets.get_uts()
-    print ds
-    print repr(ds)
-    A = ds['A']
-    print A
-    print repr(A)
-    Y = ds['Y']
-    print Y
-    print repr(Y)
-    Ynd = ds['uts']
-    print Ynd
-    print repr(Ynd)
-
-
 def test_aggregate():
     "Test aggregation methods"
     ds = datasets.get_uts()
@@ -351,6 +335,26 @@ def test_dataset_indexing():
     assert_raises(ValueError, ds.__setitem__, (slice(None), '%dsa'), 'value')
     assert_raises(ValueError, ds.__setitem__, ('432', slice(None)), 4.)
     assert_raises(ValueError, ds.__setitem__, (slice(None), '432'), 4.)
+
+
+def test_dataset_repr():
+    "Test Dataset string representation methods"
+    ds = datasets.get_uts()
+
+    print ds
+    print repr(ds)
+
+    eq_(str(ds.head()), str(ds[:10]))
+    eq_(str(ds.tail()), str(ds[-10:]))
+
+    print ds['A']
+    print repr(ds['A'])
+
+    print ds['Y']
+    print repr(ds['Y'])
+
+    print ds['uts']
+    print repr(ds['uts'])
 
 
 def test_dataset_sorting():

@@ -4502,9 +4502,9 @@ class Dataset(OrderedDict):
 
         Parameters
         ----------
-        cases : int
-            number of cases to include (0 includes all; negative number works
-            like negative indexing).
+        cases : int | iterator of int
+            Cases to include (int includes that many cases from the beginning,
+            0 includes all; negative number works like negative indexing).
         fmt : str
             Format string for float variables (default ``'%.6g'``).
         sfmt : str | None
@@ -4528,12 +4528,14 @@ class Dataset(OrderedDict):
         lfmt : bool
             Include Datalists.
         """
-        if cases < 1:
-            cases = self.n_cases + cases
-            if cases < 0:
-                raise ValueError("Can't get table for fewer than 0 cases")
-        else:
-            cases = min(cases, self.n_cases)
+        if isinstance(cases, int):
+            if cases < 1:
+                cases = self.n_cases + cases
+                if cases < 0:
+                    raise ValueError("Can't get table for fewer than 0 cases")
+            else:
+                cases = min(cases, self.n_cases)
+            cases = xrange(cases)
 
         keys = [k for k, v in self.iteritems() if isuv(v) or (lfmt and isdatalist(v))]
         if sort:
@@ -4568,7 +4570,7 @@ class Dataset(OrderedDict):
             if midrule:
                 table.midrule()
 
-        for i in xrange(cases):
+        for i in cases:
             if count:
                 table.cell(i)
 
@@ -4868,6 +4870,10 @@ class Dataset(OrderedDict):
             np.logical_and(index, index.cumsum() <= n, index)
         index = indexes.any(0)
         return self[index]
+
+    def head(self, n=10):
+        "Table with the first n cases in the Dataset"
+        return self.as_table(n, '%.5g', midrule=True, lfmt=True)
 
     def index(self, name='index', start=0):
         """
@@ -5196,6 +5202,10 @@ class Dataset(OrderedDict):
         warn("Dataset.subset is deprecated; use Dataset.sub instead"
              "(with identical functionality).", DeprecationWarning)
         return self.sub(index, name)
+
+    def tail(self, n=10):
+        "Table with the last n cases in the Dataset"
+        return self.as_table(xrange(-n, 0), '%.5g', midrule=True, lfmt=True)
 
     def to_r(self, name=None):
         """Place the Dataset into R as dataframe using rpy2

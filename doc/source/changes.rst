@@ -8,6 +8,8 @@ New in 0.19
 -----------
 
 * Two-stage tests (see :attr:`MneExperiment.tests`).
+* :meth:`Dataset.head` and :meth:`Dataset.tail` methods for more efficiently
+  inspecting partial Datasets.
 * API: Improvements in :class:`plot.Topomap` with concomitant changes in the
   constructor signature. For examples see the `meg/topographic plotting
   <https://github.com/christianbrodbeck/Eelbrain/blob/r/0.19/examples/meg/topographic%20plotting.py>`_
