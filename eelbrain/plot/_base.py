@@ -81,7 +81,7 @@ from .._data_obj import ascategorial, asndvar, isnumeric, cellname, \
 
 # defaults
 defaults = {'maxw': 16, 'maxh': 10}
-backend = {'eelbrain': True, 'autorun': None, 'show': True}
+backend = {'eelbrain': True, 'autorun': None, 'show': True, 'format': 'svg'}
 
 # store figures (they need to be preserved)
 figures = []
@@ -101,7 +101,7 @@ def do_autorun(run=None):
         return backend['autorun']
 
 
-def configure(frame=True, autorun=None, show=True):
+def configure(frame=None, autorun=None, show=None, format=None):
     """Set basic configuration parameters for the current session
 
     Parameters
@@ -118,12 +118,17 @@ def configure(frame=True, autorun=None, show=True):
     show : bool
         Show plots on the screen when they're created (disable this to create
         plots and save them without showing them on the screen).
+    format : str
+        Default format for plots (for example "png", "svg", ...).
     """
+    if frame is not None:
+        backend['eelbrain'] = bool(frame)
     if autorun is not None:
-        autorun = bool(autorun)
-    backend['eelbrain'] = bool(frame)
-    backend['autorun'] = autorun
-    backend['show'] = bool(show)
+        backend['autorun'] = bool(autorun)
+    if show is not None:
+        backend['show'] = bool(show)
+    if format is not None:
+        backend['format'] = format.lower()
 
 
 meas_display_unit = {'time': u'ms',
@@ -867,7 +872,6 @@ class _EelFigure(object):
      - end the initialization by calling `_EelFigure._show()`
      - add the :py:meth:`_fill_toolbar` method
     """
-    _default_format = 'svg'  # default format when saving for fmtext
     _default_xlabel_ax = -1
     _default_ylabel_ax = 0
     _make_axes = True
@@ -1108,7 +1112,7 @@ class _EelFigure(object):
             Image FMTXT object.
         """
         if format is None:
-            format = self._default_format
+            format = backend['format']
 
         image = Image(name, format)
         self.figure.savefig(image, format=format)

@@ -11,7 +11,8 @@ New in 0.19
 * :meth:`Dataset.head` and :meth:`Dataset.tail` methods for more efficiently
   inspecting partial Datasets.
 * The default format for plots in reports is now SVG since they are displayed
-  correctly in Safari 9.0.
+  correctly in Safari 9.0. Use :func:`plot.configure` to change the default
+  format.
 * API: Improvements in :class:`plot.Topomap` with concomitant changes in the
   constructor signature. For examples see the `meg/topographic plotting
   <https://github.com/christianbrodbeck/Eelbrain/blob/r/0.19/examples/meg/topographic%20plotting.py>`_
