@@ -98,7 +98,7 @@ def do_autorun(run=None):
     elif backend['autorun'] is None:
         return not hasattr(__main__, '__file__')
     else:
-        backend['autorun']
+        return backend['autorun']
 
 
 def configure(frame=True, autorun=None, show=True):
