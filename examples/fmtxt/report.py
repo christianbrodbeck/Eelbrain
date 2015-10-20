@@ -22,16 +22,20 @@ ds_ = ds.aggregate("A%B", drop=['rm'])
 t = ds_.as_table(cases=0, midrule=True, caption="Averages of the data.")
 s11.append(t)
 
-# add a second subsection
+# add a second subsection with a figure
 s12 = s1.add_section("Figure")
 s12.append("And now finally we will show a figure")
-print s12
-
-# add a figure
-image = report.add_image_figure("boxplot.svg", "Boxplot of all the data")
 p = plot.Boxplot('fltvar', 'A%B', 'rm', ds=ds)
-p.figure.savefig(image, format='svg')
+image = report.add_image_figure(p, "Boxplot of all the data")
 p.close()
+
+# add a more complex figure with legend
+ds = datasets.get_uts()
+p = plot.UTSStat('uts', 'A%B', match='rm', ds=ds, legend=False)
+p_legend = p.plot_legend()
+report.add_figure("Two plots in one figure", [p, p_legend])
+p.close()
+p_legend.close()
 
 # print string representation and save
 print report.get_str()

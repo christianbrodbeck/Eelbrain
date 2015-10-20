@@ -867,7 +867,7 @@ class _EelFigure(object):
      - end the initialization by calling `_EelFigure._show()`
      - add the :py:meth:`_fill_toolbar` method
     """
-    _default_format = 'png'  # default format when saving for fmtext
+    _default_format = 'svg'  # default format when saving for fmtext
     _default_xlabel_ax = -1
     _default_ylabel_ax = 0
     _make_axes = True
