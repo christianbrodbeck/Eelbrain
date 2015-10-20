@@ -2245,8 +2245,6 @@ class MneExperiment(FileTree):
 
         if test_params['kind'] == 'custom':
             raise RuntimeError("Don't know how to perform 'custom' test")
-        elif test_params['kind'] == 'two-stage':
-            raise NotImplementedError("Loading two-stage test")
 
         # find data to use
         modality = self.get('modality')
@@ -2291,6 +2289,33 @@ class MneExperiment(FileTree):
 
         dst = self.get('test-file', mkdir=True, data_parc=data_parc,
                        parc=parc_)
+
+        # two-stage tests (not cached)
+        if test_params['kind'] == 'two-stage':
+            if data != 'src':
+                raise NotImplementedError("Two-stage test with data != 'src'")
+            elif return_data:
+                raise ValueError("return_data argument is invalid for two-"
+                                 "stage tests")
+
+            # find params
+            model = test_params['stage 1']
+            apply_mask = bool(parc or mask)
+            vars_ = test_params['vars'] if 'vars' in test_params else None
+
+            # stage 1
+            lms = []
+            for subject in self:
+                logger.info("Stage 1 model for %s" % subject)
+                ds = self.load_epochs_stc(subject, sns_baseline, src_baseline,
+                                          morph=True, mask=apply_mask)
+                if vars_:
+                    new_vars = [asfactor(source, ds=ds).as_var(codes, 0, name)
+                                for name, (source, codes) in vars_.iteritems()]
+                    for v in new_vars:
+                        ds.add(v, True)
+                lms.append(spm.LM(y_name, model, ds, subject=subject))
+            return spm.RandomLM(lms)
 
         # try to load cached test
         if not redo and os.path.exists(dst):
@@ -3390,33 +3415,16 @@ class MneExperiment(FileTree):
 
     def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):
-        # find params
-        test_params = self._tests[test]
-        model = test_params['stage 1']
-        parc_dim = 'source' if parc else None
         logger.info("Starting two-stage report")
-        test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop,
-                                        ('time', 'source'), parc_dim)
-        apply_mask = bool(parc or mask)
-        if mask:
-            self.set(parc=mask)
 
-        # stage 1
-        lms = []
-        for subject in self:
-            logger.info("Stage 1 model for %s" % subject)
-            ds = self.load_epochs_stc(subject, sns_baseline, src_baseline,
-                                      morph=True, mask=apply_mask)
-            if 'vars' in test_params:
-                new_vars = [asfactor(source, ds=ds).as_var(codes, 0, name)
-                            for name, (source, codes) in test_params['vars'].iteritems()]
-                for v in new_vars:
-                    ds.add(v, True)
-            lms.append(spm.LM('srcm', model, ds, subject=subject))
-        rlm = spm.RandomLM(lms)
+        rlm = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
+                             'src', sns_baseline, src_baseline)
 
         # stage 2
         logger.info("Computing stage 2 tests")
+        parc_dim = 'source' if parc else None
+        test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop,
+                                        ('time', 'source'), parc_dim)
         results = rlm._column_ttests(True, **test_kwargs)
 
         # start report
@@ -3436,7 +3444,8 @@ class MneExperiment(FileTree):
         # add results to report
         for term in rlm.column_names:
             res, ds = results[term]
-            report.append(_report.source_time_results(res, ds, None, include, surfer_kwargs, term))
+            report.append(_report.source_time_results(res, ds, None, include,
+                                                      surfer_kwargs, term))
 
         self._report_test_info(info_section, ds, test, res, 'src')
 
