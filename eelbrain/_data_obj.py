@@ -1274,7 +1274,10 @@ def _is_equal(a, b):
     elif isinstance(a, SEQUENCE_TYPES):
         return all(_is_equal(a_, b_) for a_, b_ in izip(a, b))
     elif isinstance(a, dict):
-        return all(_is_equal(a[k], b[k]) for k in a)
+        if a.viewkeys() == b.viewkeys():
+            return all(_is_equal(a[k], b[k]) for k in a)
+        else:
+            return False
     else:
         return a == b
 
