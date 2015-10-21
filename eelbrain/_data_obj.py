@@ -1256,6 +1256,29 @@ def combine(items, name=None, check_dims=True, incomplete='raise',
         raise RuntimeError("combine with stype = %r" % stype)
 
 
+def _is_equal(a, b):
+    "Test equality, taking into account array values"
+    if a is b:
+        return True
+    elif type(a) is not type(b):
+        return False
+    elif np.isscalar(a):
+        return a == b
+    elif len(a) != len(b):
+        return False
+    elif isinstance(a, np.ndarray):
+        if a.shape == b.shape:
+            return (a == b).all()
+        else:
+            return False
+    elif isinstance(a, SEQUENCE_TYPES):
+        return all(_is_equal(a_, b_) for a_, b_ in izip(a, b))
+    elif isinstance(a, dict):
+        return all(_is_equal(a[k], b[k]) for k in a)
+    else:
+        return a == b
+
+
 def _merge_info(items):
     "Merge info dicts from several objects"
     info0 = items[0].info
@@ -1268,9 +1291,7 @@ def _merge_info(items):
     out = {}
     for key in info_keys:
         v0 = info0[key]
-        other_values = [info[key] for info in other_infos]
-        if all(v is v0 for v in other_values) or all(np.all(v == v0)
-                                                     for v in other_values):
+        if all(_is_equal(info[key], v0) for info in other_infos):
             out[key] = v0
     return out
 

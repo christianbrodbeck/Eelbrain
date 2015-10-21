@@ -227,8 +227,8 @@ def test_combine():
     y = ds['utsnd']
     y1 = y.sub(sensor=['0', '1', '2', '3'])
     y2 = y.sub(sensor=['1', '2', '3', '4'])
-    ds1 = Dataset((y1,))
-    ds2 = Dataset((y2,))
+    ds1 = Dataset((y1,), info={'a': np.arange(2), 'b': [np.arange(2)]})
+    ds2 = Dataset((y2,), info={'a': np.arange(2), 'b': [np.arange(2)]})
     dsc = combine((ds1, ds2))
     y = dsc['utsnd']
     eq_(y.sensor.names, ['1', '2', '3'], "Sensor dimension "
@@ -236,6 +236,10 @@ def test_combine():
     dims = ('case', 'sensor', 'time')
     ref = np.concatenate((y1.get_data(dims)[:, 1:], y2.get_data(dims)[:, :3]))
     assert_array_equal(y.get_data(dims), ref, "combine utsnd")
+    # info
+    assert_array_equal(dsc.info['a'], np.arange(2))
+    eq_(len(dsc.info['b']), 1)
+    assert_array_equal(dsc.info['b'][0], np.arange(2))
 
 
 def test_datalist():
