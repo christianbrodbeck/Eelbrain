@@ -439,6 +439,12 @@ class MneExperiment(FileTree):
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
         # templates version
+        if self.path_version is None:
+            warn("In version 0.20 the default for MneExperiment.path_version "
+                 "will change to 1. To keep using the old scheme, please "
+                 "specify MneExperiment.path_version = 0 explicitly.",
+                 DeprecationWarning)
+
         if self.path_version is None or self.path_version == 0:
             self._templates['raw-dir'] = os.path.join('{meg-dir}', 'raw')
             self._templates['raw-file'] = os.path.join('{raw-dir}', '{subject}_'
