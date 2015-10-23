@@ -1048,6 +1048,24 @@ class MneExperiment(FileTree):
                 else:
                     msg.append("No cache files affected.")
                     logger.debug(os.linesep.join(msg))
+        elif os.path.exists(self.get('cache-dir')):
+            if self.auto_delete_cache is True:
+                shutil.rmtree(self.get('cache-dir'))
+            elif self.auto_delete_cache == 'disable':
+                pass
+            elif self.auto_delete_cache == 'debug':
+                print("Cache directory without history (validate|abort).")
+                while True:
+                    command = raw_input(" > ")
+                    if command == 'abort':
+                        raise RuntimeError("User aborted")
+                    elif command == 'validate':
+                        break
+                    else:
+                        print("invalid entry")
+            else:
+                raise IOError("Cache directory without history, but "
+                              "auto_delete_cache is not True")
 
         new_state = {'groups': self._groups,
                      'epochs': self._epochs,
