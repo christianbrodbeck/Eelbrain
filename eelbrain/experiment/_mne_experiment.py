@@ -1141,11 +1141,12 @@ class MneExperiment(FileTree):
                     return
             return dst_mtime
 
-    def _report_mtime(self, dst, data):
+    def _report_mtime(self, dst, data, cached):
         if os.path.exists(dst):
             dst_mtime = os.path.getmtime(dst)
-            params = self._tests[self.get('test')]
-            if params['kind'] =='two-stage':
+            if cached:
+                return self._test_mtime(data)
+            else:
                 if data == 'src':
                     if self._annot_mtime(self.get('common_brain')) > dst_mtime:
                         return
@@ -1158,8 +1159,6 @@ class MneExperiment(FileTree):
                     if mtime is None or mtime > dst_mtime:
                         return
                 return dst_mtime
-            else:
-                return self._test_mtime(data)
 
     def _process_subject_arg(self, subject, kwargs):
         """Process subject arg for methods that work on groups and subjects
@@ -3731,15 +3730,15 @@ class MneExperiment(FileTree):
                                    tstart, tstop)
         dst = self.get('report-file', mkdir=True, fmatch=False, folder=folder,
                        test=test, **state)
-        if not redo and self._report_mtime(dst, 'src'):
+        is_twostage = self._tests[test]['kind'] == 'two-stage'
+        if not redo and self._report_mtime(dst, 'src', not is_twostage):
             return
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
         report = Report(title)
 
-        params = self._tests[test]
-        if params['kind'] == 'two-stage':
+        if is_twostage:
             self._two_stage_report(report, test, sns_baseline, src_baseline,
                                    pmin, samples, tstart, tstop, parc, mask,
                                    include)
@@ -3849,7 +3848,7 @@ class MneExperiment(FileTree):
                                    tstart, tstop)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="%s ROIs" % parc.capitalize(), **state)
-        if not redo and os.path.exists(dst):
+        if not redo and self._report_mtime(dst, 'src', False):
             return
 
         # load data
