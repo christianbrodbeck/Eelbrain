@@ -26,13 +26,14 @@ from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
-from .._mne import source_induced_power, dissolve_label, \
+from .._mne import dissolve_label, \
     labels_from_mni_coords, rename_label, combination_label, \
     morph_source_space, shift_mne_epoch_trigger
 from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg, _interpolate_bads_meg
 from .._data_obj import (asfactor, align, DimensionMismatchError,
-                         as_legal_dataset_key, assert_is_legal_dataset_key)
+                         as_legal_dataset_key, assert_is_legal_dataset_key,
+                         cwt_morlet)
 from ..fmtxt import List, Report
 from .._report import named_list
 from .._resources import predefined_connectivity
@@ -363,6 +364,12 @@ class MneExperiment(FileTree):
                            'labels': {'occipitotemporal': "occipital + temporal"}}}
     parcs = {}
 
+    # Frequencies
+    _freqs = {'gamma': {'frequencies': np.arange(25, 50, 2), # lowbound, highbound, step
+                        'n_cycles': 5}}
+
+    freqs = {}
+
     # basic templates to use. Can be a string referring to a templates
     # dictionary in the module level _temp dictionary, or a templates
     # dictionary
@@ -617,6 +624,25 @@ class MneExperiment(FileTree):
         parc_values += ['']
 
         ########################################################################
+        # frequency
+        user_freqs = self.freqs
+
+        freqs = {}
+        for name, f in chain(self._freqs.iteritems(), user_freqs.iteritems()):
+            if name in freqs:
+                raise ValueError("Frequency %s defined twice" % name)
+
+        for freq_name in user_freqs.iteritems():
+            if 'frequencies' not in user_freqs[freq_name[0]]:
+                raise ValueError("Frequency values missing for %s" % freq_name[0])
+            if 'n_cycles' not in user_freqs[freq_name[0]]:
+                raise ValueError("Number of cycles not defined for %s" % freq_name[0])
+
+            freqs[name] = f
+
+        self._freqs = freqs
+
+        ########################################################################
         # tests
         tests = {}
         for test, params in self.tests.iteritems():
@@ -731,6 +757,7 @@ class MneExperiment(FileTree):
         self._register_field('parc', parc_values, 'aparc',
                              eval_handler=self._eval_parc)
         self._register_field('proj', [''] + self.projs.keys())
+        self._register_field('freq', self.freqs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
         self._register_field('mrisubject')
         self._register_field('subject')
@@ -1800,8 +1827,47 @@ class MneExperiment(FileTree):
 
         return ds
 
-    def load_evoked_freq(self, subject=None, sns_baseline=True,
-                         label=None, frequencies='4:40', **kwargs):
+    def load_epochs_stf(self, subject=None, sns_baseline=True, mask=True,
+                        morph=False, keep_stc=False, **kwargs):
+        """Load frequency space single trial data
+
+        Parameters
+        ----------
+        subject : str
+            Subject(s) for which to load evoked files. Can be a single subject
+            name or a group name such as 'all'. The default is the current
+            subject in the experiment's state.
+        sns_baseline : None | True | tuple
+            Apply baseline correction using this period in sensor space.
+            True to use the epoch's baseline specification. The default is True.
+        mask : bool
+            Discard data that is labelled 'unknown' by the parcellation (only
+            applies to NDVars, default True).
+        morph : bool
+            Morph the source estimates to the common_brain (default False).
+        keep_stc : bool
+            Keep the source timecourse data in the Dataset that is returned
+            (default False).
+        """
+        ds = self.load_epochs_stc(subject, sns_baseline, ndvar=True,
+                                  morph=morph, mask=mask, data_raw='clm',
+                                  **kwargs)
+        name = 'srcm' if morph else 'src'
+
+        # apply morlet transformation
+        freq_params = self.freqs[self.get('freq')]
+        freq_range = freq_params['frequencies']
+        ds['stf'] = cwt_morlet(ds[name], freq_range, use_fft=True,
+                               n_cycles=freq_params['n_cycles'],
+                               zero_mean=False, out='magnitude')
+
+        if not keep_stc:
+            del ds[name]
+
+        return ds
+
+    def load_evoked_stf(self, subject=None, sns_baseline=True, mask=True,
+                        morph=False, keep_stc=False, **kwargs):
         """Load frequency space evoked data
 
         Parameters
@@ -1813,34 +1879,30 @@ class MneExperiment(FileTree):
         sns_baseline : None | True | tuple
             Apply baseline correction using this period in sensor space.
             True to use the epoch's baseline specification. The default is True.
-        label : None | str | mne.Label
-            Label in which to compute the induce power (average in label).
+        mask : bool
+            Whether to just load the sources from the parcellation that are not
+            defined as "unknown". Default is True.
+        morph : bool
+            Morph the source estimates to the common_brain (default False).
+        keep_stc : bool
+            Keep the source timecourse data in the Dataset that is returned
+            (default False).
         """
-        subject, group = self._process_subject_arg(subject, kwargs)
-        model = self.get('model') or None
-        if group is not None:
-            dss = []
-            for _ in self.iter(group=group):
-                ds = self.load_evoked_freq(None, sns_baseline, label,
-                                           frequencies)
-                dss.append(ds)
+        ds = self.load_evoked_stc(subject, sns_baseline, morph_ndvar=morph,
+                                  ind_ndvar=not morph, mask=mask,
+                                  data_raw='clm', **kwargs)
+        name = 'srcm' if morph else 'src'
 
-            ds = combine(dss)
-        else:
-            if label is None:
-                src = self.get('src')
-            else:
-                src = 'mean'
-                if isinstance(label, basestring):
-                    label = self.load_label(label)
-            ds_epochs = self.load_epochs(None, sns_baseline, False, decim=10, pad=0.2)
-            inv = self.load_inv(ds_epochs['epochs'])
-            subjects_dir = self.get('mri-sdir')
-            ds = source_induced_power('epochs', model, ds_epochs, src, label,
-                                      None, inv, subjects_dir, frequencies,
-                                      n_cycles=3,
-                                      **self._params['apply_inv_kw'])
-            ds['subject'] = Factor([subject], repeat=ds.n_cases, random=True)
+        # apply morlet transformation
+        freq_params = self.freqs[self.get('freq')]
+        freq_range = freq_params['frequencies']
+        ds['stf'] = cwt_morlet(ds[name], freq_range, use_fft=True,
+                               n_cycles=freq_params['n_cycles'],
+                               zero_mean=False, out='magnitude')
+
+        if not keep_stc:
+            del ds[name]
+
         return ds
 
     def load_evoked_stc(self, subject=None, sns_baseline=True,
