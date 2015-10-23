@@ -26,7 +26,7 @@ from .. import testnd
 from .. import Dataset, Factor, Var, NDVar, combine
 from .._info import BAD_CHANNELS
 from .._names import INTERPOLATE_CHANNELS
-from .._mne import source_induced_power, dissolve_label, \
+from .._mne import dissolve_label, \
     labels_from_mni_coords, rename_label, combination_label, \
     morph_source_space, shift_mne_epoch_trigger
 from ..mne_fixes import write_labels_to_annot
@@ -1831,9 +1831,8 @@ class MneExperiment(FileTree):
                         morph=False, keep_stc=False, **kwargs):
         """Load frequency space single trial data
 
-        Paramters
-        ---------
-
+        Parameters
+        ----------
         subject : str
             Subject(s) for which to load evoked files. Can be a single subject
             name or a group name such as 'all'. The default is the current
