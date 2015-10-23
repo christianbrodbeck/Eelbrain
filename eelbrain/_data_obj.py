@@ -1262,7 +1262,11 @@ def _is_equal(a, b):
         return True
     elif type(a) is not type(b):
         return False
-    elif np.isscalar(a):
+    a_iterable = np.iterable(a)
+    b_iterable = np.iterable(b)
+    if a_iterable != b_iterable:
+        return False
+    elif not a_iterable:
         return a == b
     elif len(a) != len(b):
         return False
