@@ -1061,8 +1061,13 @@ class MneExperiment(FileTree):
         for subject in self.iter():
             yield subject
 
-    def _annot_mtime(self):
+    def _annot_mtime(self, make_for=None):
         "Return max mtime of annot files or None if they do not exist."
+        if make_for:
+            with self._temporary_state:
+                self.make_annot(mrisubject=make_for)
+                return self._annot_mtime()
+
         mtime = 0
         for _ in self.iter('hemi'):
             fpath = self.get('annot-file')
@@ -1072,25 +1077,35 @@ class MneExperiment(FileTree):
                 return
         return mtime
 
+    def _epochs_mtime(self):
+        bads_path = self.get('bads-file')
+        if os.path.exists(bads_path):
+            raw_mtime = os.path.getmtime(self._get_raw_path(make=True))
+            bads_mtime = os.path.getmtime(bads_path)
+            epoch = self._epochs[self.get('epoch')]
+            rej_mtime = self._rej_mtime(epoch)
+            if rej_mtime:
+                return max(raw_mtime, bads_mtime, rej_mtime)
+
+    def _epochs_stc_mtime(self):
+        "mtime if up-to-date, else None; does not check annot"
+        mtime = self._epochs_mtime()
+        if mtime:
+            return max(mtime, self._inv_mtime())
+
     def _evoked_mtime(self):
         "Return mtime if the evoked file is up-to-date, None otherwise"
         path = self.get('evoked-file')
-        if not os.path.exists(path):
-            return
-        evoked_mtime = os.path.getmtime(path)
-        raw_mtime = os.path.getmtime(self._get_raw_path(make=True))
-        bads_mtime = os.path.getmtime(self.get('bads-file'))
-        epoch = self._epochs[self.get('epoch')]
-        rej_mtime = self._rej_mtime(epoch)
-        if evoked_mtime > max(raw_mtime, bads_mtime, rej_mtime):
-            return evoked_mtime
+        if os.path.exists(path):
+            evoked_mtime = os.path.getmtime(path)
+            if evoked_mtime > self._epochs_mtime():
+                return evoked_mtime
 
     def _evoked_stc_mtime(self):
         "mtime if up-to-date, else None; does not check annot"
         mtime = self._evoked_mtime()
-        if not mtime:
-            return
-        return max(mtime, self._inv_mtime())
+        if mtime:
+            return max(mtime, self._inv_mtime())
 
     def _inv_mtime(self):
         return max(os.path.getmtime(self._get_raw_path(make=True)),
@@ -1099,13 +1114,52 @@ class MneExperiment(FileTree):
 
     def _rej_mtime(self, epoch):
         "rej-file mtime for secondary epoch definition"
-        rej_file_epochs = epoch.get('_rej_file_epochs', None)
-        if rej_file_epochs is None:
-            return os.path.getmtime(self.get('rej-file'))
-        else:
-            with self._temporary_state:
-                paths = [self.get('rej-file', epoch=e) for e in rej_file_epochs]
-            return max(map(os.path.getmtime, paths))
+        epochs = epoch.get('_rej_file_epochs', None) or (epoch['name'],)
+        with self._temporary_state:
+            paths = [self.get('rej-file', epoch=e) for e in epochs]
+        if all(os.path.exists(path) for path in paths):
+           return max(os.path.getmtime(path) for path in paths)
+
+    def _test_mtime(self, data):
+        "cached test mtime if test is cached, None otherwise"
+        params = self._tests[self.get('test')]
+        if params['kind'] =='two-stage':
+            return
+        dst = self.get('test-file')
+        if os.path.exists(dst):
+            dst_mtime = os.path.getmtime(dst)
+            if data == 'src':
+                if self._annot_mtime(self.get('common_brain')) > dst_mtime:
+                    return
+                mtime_func = self._evoked_stc_mtime
+            else:
+                mtime_func = self._evoked_mtime
+
+            for _ in self:
+                mtime = mtime_func()
+                if mtime is None or mtime > dst_mtime:
+                    return
+            return dst_mtime
+
+    def _report_mtime(self, dst, data):
+        if os.path.exists(dst):
+            dst_mtime = os.path.getmtime(dst)
+            params = self._tests[self.get('test')]
+            if params['kind'] =='two-stage':
+                if data == 'src':
+                    if self._annot_mtime(self.get('common_brain')) > dst_mtime:
+                        return
+                    mtime_func = self._epochs_stc_mtime
+                else:
+                    mtime_func = self._epochs_mtime
+
+                for _ in self:
+                    mtime = mtime_func()
+                    if mtime is None or mtime > dst_mtime:
+                        return
+                return dst_mtime
+            else:
+                return self._test_mtime(data)
 
     def _process_subject_arg(self, subject, kwargs):
         """Process subject arg for methods that work on groups and subjects
@@ -2644,24 +2698,14 @@ class MneExperiment(FileTree):
         # try to load cached test
         res = None
         load_data = True
-        if not redo and os.path.exists(dst):
-            dst_mtime = os.path.getmtime(dst)
-            with self._temporary_state:
-                self.make_annot(mrisubject=self.get('common_brain'))
-                base_mtime = self._annot_mtime()
-            if base_mtime < dst_mtime:
-                for _ in self:
-                    mtime = self._evoked_stc_mtime()
-                    if mtime is None or mtime > dst_mtime:
-                        break
-                else:
-                    res = load.unpickle(dst)
-                    if res.samples >= samples or res.samples == -1:
-                        logger.info("Load cached test %s for %s"
-                                    % (test, self.get('group')))
-                        load_data = return_data
-                    else:
-                        res = None
+        if not redo and self._test_mtime(data):
+            res = load.unpickle(dst)
+            if res.samples >= samples or res.samples == -1:
+                logger.info("Load cached test %s for %s"
+                            % (test, self.get('group')))
+                load_data = return_data
+            else:
+                res = None
 
         if res is None and not (redo or make):
             raise IOError("The requested test is not cached. Set make=True to "
@@ -3625,8 +3669,7 @@ class MneExperiment(FileTree):
 
     def make_report(self, test, parc=None, mask=None, pmin=None, tstart=0.15,
                     tstop=None, samples=10000, sns_baseline=True,
-                    src_baseline=None, include=0.2, redo=False,
-                    redo_test=False, **state):
+                    src_baseline=None, include=0.2, redo=False, **state):
         """Create an HTML report on spatio-temporal clusters
 
         Parameters
@@ -3660,8 +3703,6 @@ class MneExperiment(FileTree):
         redo : bool
             If the target file already exists, delete and recreate it. This
             only applies to the HTML result file, not to the test.
-        redo_test : bool
-            Redo the test even if a cached file exists.
         """
         if samples < 1:
             raise ValueError("samples needs to be > 0")
@@ -3690,7 +3731,7 @@ class MneExperiment(FileTree):
                                    tstart, tstop)
         dst = self.get('report-file', mkdir=True, fmatch=False, folder=folder,
                        test=test, **state)
-        if not redo and not redo_test and os.path.exists(dst):
+        if not redo and self._report_mtime(dst, 'src'):
             return
 
         # start report
@@ -3704,19 +3745,17 @@ class MneExperiment(FileTree):
                                    include)
         else:
             self._evoked_report(report, test, sns_baseline, src_baseline, pmin,
-                                samples, tstart, tstop, parc, mask, include,
-                                redo_test)
+                                samples, tstart, tstop, parc, mask, include)
 
         # report signature
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst)
 
     def _evoked_report(self, report, test, sns_baseline, src_baseline, pmin,
-                       samples, tstart, tstop, parc, mask, include, redo_test):
+                       samples, tstart, tstop, parc, mask, include):
         # load data
         ds, res = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
-                                 'src', sns_baseline, src_baseline, True, True,
-                                 redo_test)
+                                 'src', sns_baseline, src_baseline, True, True)
 
         # info
         surfer_kwargs = self._surfer_plot_kwargs()
