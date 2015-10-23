@@ -4404,21 +4404,23 @@ class MneExperiment(FileTree):
 
         # baseline (default is baseline correcting in sensor space)
         epoch_baseline = self._epochs[self.get('epoch')]['baseline']
-        if src_baseline is None or False:
-            if sns_baseline is None or False:
-                items.append('nobl')
-            elif sns_baseline not in (True, epoch_baseline):
-                items.append('bl=%s' % _time_window_str(sns_baseline))
-        else:
-            if sns_baseline in (True, epoch_baseline):
+        if src_baseline:
+            if sns_baseline is True or sns_baseline == epoch_baseline:
                 items.append('snsbl')
             elif sns_baseline:
                 items.append('snsbl=%s' % _time_window_str(sns_baseline))
 
-            if src_baseline in (True, epoch_baseline):
+            if src_baseline is True or src_baseline == epoch_baseline:
                 items.append('srcbl')
             else:
                 items.append('srcbl=%s' % _time_window_str(src_baseline))
+        else:
+            if not sns_baseline:
+                items.append('nobl')
+            elif sns_baseline is True or sns_baseline == epoch_baseline:
+                pass
+            else:
+                items.append('bl=%s' % _time_window_str(sns_baseline))
 
         # pmin
         if pmin is not None:
