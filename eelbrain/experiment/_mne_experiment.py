@@ -367,7 +367,6 @@ class MneExperiment(FileTree):
     # Frequencies
     _freqs = {'gamma': {'frequencies': np.arange(25, 50, 2), # lowbound, highbound, step
                         'n_cycles': 5}}
-
     freqs = {}
 
     # basic templates to use. Can be a string referring to a templates
@@ -625,19 +624,14 @@ class MneExperiment(FileTree):
 
         ########################################################################
         # frequency
-        user_freqs = self.freqs
-
         freqs = {}
-        for name, f in chain(self._freqs.iteritems(), user_freqs.iteritems()):
+        for name, f in chain(self._freqs.iteritems(), self.freqs.iteritems()):
             if name in freqs:
                 raise ValueError("Frequency %s defined twice" % name)
-
-        for freq_name in user_freqs.iteritems():
-            if 'frequencies' not in user_freqs[freq_name[0]]:
-                raise ValueError("Frequency values missing for %s" % freq_name[0])
-            if 'n_cycles' not in user_freqs[freq_name[0]]:
-                raise ValueError("Number of cycles not defined for %s" % freq_name[0])
-
+            elif 'frequencies' not in f:
+                raise KeyError("Frequency values missing for %s" % name)
+            elif 'n_cycles' not in f:
+                raise KeyError("Number of cycles not defined for %s" % name)
             freqs[name] = f
 
         self._freqs = freqs
@@ -757,7 +751,7 @@ class MneExperiment(FileTree):
         self._register_field('parc', parc_values, 'aparc',
                              eval_handler=self._eval_parc)
         self._register_field('proj', [''] + self.projs.keys())
-        self._register_field('freq', self.freqs.keys())
+        self._register_field('freq', self._freqs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
         self._register_field('mrisubject')
         self._register_field('subject')
