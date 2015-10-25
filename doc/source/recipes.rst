@@ -57,25 +57,7 @@ Now you can perform a one-sample t-test::
 
     >>> res = testnd.ttest_1samp('beta', ...)
 
-And analyze the results as for other nd-tests.
-
-
-Regression on Residuals
------------------------
-
-In order to account for the influence of a confound variable ``confound`` on 
-``data``, the regression of ``data`` on ``predictor`` can be performed on the 
-residuals of the regression of ``data`` on ``confound``. For this purpose the
-:class:`NDVar` has an :meth:`NDVar.residuals` method::
-
-    >>> ds_subject['residuals'] = ds_subject.eval("data.residuals(confound)")
-    >>> beta = ds_subject.eval("residuals.ols(predictor)")
-
-The same method can be used with several confounds (all of type :class:`Var`)::
-
-
-    >>> ds_subject['residuals'] = ds_subject.eval("data.residuals(confound_1 + confound_2)")
-    >>> beta = ds_subject.eval("residuals.ols(predictor)")
+And analyze the results as for other :mod:`testnd` tests.
 
 
 ^^^^^^^^^^^^^^^^^^^^^
