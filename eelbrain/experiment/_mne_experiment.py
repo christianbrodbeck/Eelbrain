@@ -1004,7 +1004,7 @@ class MneExperiment(FileTree):
                     keys = self.find_keys(temp, False)
                     for args in arg_dicts:
                         kwargs = {k: args.get(k, '*') for k in keys}
-                        files.update(self.glob(temp, **kwargs))
+                        files.update(self.glob(temp, vmatch=False, **kwargs))
 
                 if files:
                     # abort if deleting is not allowed
@@ -1021,9 +1021,12 @@ class MneExperiment(FileTree):
                         msg.append("revalidate:  don't delete any cache files "
                                    "but write a new cache-state file")
                         print os.linesep.join(msg)
-                        command = None
-                        while command not in ('delete', 'abort', 'ignore', 'revalidate'):
+                        while True:
                             command = raw_input(" > ")
+                            if command in ('delete', 'abort', 'ignore', 'revalidate'):
+                                break
+                            else:
+                                print "invalid entry"
 
                         if command == 'delete':
                             pass
@@ -4507,7 +4510,7 @@ class MneExperiment(FileTree):
         FileTree.set(self, **state)
 
     def _post_set_group(self, _, group):
-        if group == '*':
+        if group == '*' or group not in self._groups:
             return
         group_members = self._groups[group]
         self._field_values['subject'] = group_members
@@ -4638,11 +4641,13 @@ class MneExperiment(FileTree):
     def _post_set_rej(self, _, rej):
         if rej == '*':
             self._fields['cov-rej'] = '*'
-        else:
+        elif rej in self._epoch_rejection:
             self._fields['cov-rej'] = self._epoch_rejection[rej].get('cov-rej', rej)
+        else:
+            self._fields['cov-rej'] = '<invalid rej>'
 
     def _post_set_test(self, _, test):
-        if test != '*' and 'model' in self._tests[test]:
+        if test != '*' and test in self._tests and 'model' in self._tests[test]:
             self.set(model=self._tests[test]['model'])
 
     def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,

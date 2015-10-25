@@ -293,7 +293,8 @@ class TreeModel(object):
             called without actually setting the value; any parameter changes
             need to be evaluated in post_set_handlers.
         post_set_handler : None | callable
-            Function to call after the value is changed.
+            Function to call after the value is changed. Needs to be able to
+            handle non-existing values for ``e.set(..., vmatch=False)`` calls.
         """
         if key in self._fields:
             raise KeyError("Field already exists: %r" % key)
