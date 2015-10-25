@@ -1138,42 +1138,45 @@ class MneExperiment(FileTree):
         if all(os.path.exists(path) for path in paths):
            return max(os.path.getmtime(path) for path in paths)
 
-    def _test_mtime(self, data):
-        "cached test mtime if test is cached, None otherwise"
-        params = self._tests[self.get('test')]
-        if params['kind'] =='two-stage':
-            return
-        dst = self.get('test-file')
+    def _result_mtime(self, dst, data, cached_test=False, single_subject=False):
+        """For several results (reports and movies)
+
+        Parameters
+        ----------
+        dst : str
+            Filename.
+        data : 'src' | 'sns'
+            Data type.
+        cached_test : bool
+            Whether a corresponding test is being cached and needs to be
+            checked (e.g. for reports that are based on a cached test).
+        single_subject : bool
+            Whether the corresponding test is performed for a single subject
+            (as opposed to the current group).
+        """
         if os.path.exists(dst):
             dst_mtime = os.path.getmtime(dst)
-            if data == 'src':
-                if self._annot_mtime(self.get('common_brain')) > dst_mtime:
-                    return
-                mtime_func = self._evoked_stc_mtime
-            else:
-                mtime_func = self._evoked_mtime
-
-            for _ in self:
-                mtime = mtime_func()
-                if mtime is None or mtime > dst_mtime:
-                    return
-            return dst_mtime
-
-    def _report_mtime(self, dst, data, cached):
-        if os.path.exists(dst):
-            dst_mtime = os.path.getmtime(dst)
-            if cached:
-                return self._test_mtime(data)
+            if cached_test:
+                return self._result_mtime(self.get('test-file'), data)
             else:
                 if data == 'src':
-                    if self._annot_mtime(self.get('common_brain')) > dst_mtime:
+                    if single_subject:
+                        mrisubject = 'mrisubject'
+                    else:
+                        mrisubject = 'common_brain'
+
+                    if self._annot_mtime(self.get(mrisubject)) > dst_mtime:
                         return
                     mtime_func = self._epochs_stc_mtime
                 else:
                     mtime_func = self._epochs_mtime
 
-                for _ in self:
-                    mtime = mtime_func()
+                if single_subject:
+                    mtime_iterator = (mtime_func(),)
+                else:
+                    mtime_iterator = (mtime_func() for _ in self)
+
+                for mtime in mtime_iterator:
                     if mtime is None or mtime > dst_mtime:
                         return
                 return dst_mtime
@@ -2715,7 +2718,7 @@ class MneExperiment(FileTree):
         # try to load cached test
         res = None
         load_data = True
-        if not redo and self._test_mtime(data):
+        if not redo and self._result_mtime(dst, data):
             res = load.unpickle(dst)
             if res.samples >= samples or res.samples == -1:
                 logger.info("Load cached test %s for %s"
@@ -3228,7 +3231,7 @@ class MneExperiment(FileTree):
         else:
             dst = os.path.expanduser(dst)
 
-        if not redo and os.path.exists(dst):
+        if not redo and self._result_mtime(dst, 'src', False, group is None):
             return
 
         if group is None:
@@ -3358,7 +3361,7 @@ class MneExperiment(FileTree):
             else:
                 dst = os.path.expanduser(dst)
 
-            if not redo and os.path.exists(dst):
+            if not redo and self._result_mtime(dst, 'src', False, group is None):
                 return
 
             if group is None:
@@ -3749,7 +3752,7 @@ class MneExperiment(FileTree):
         dst = self.get('report-file', mkdir=True, fmatch=False, folder=folder,
                        test=test, **state)
         is_twostage = self._tests[test]['kind'] == 'two-stage'
-        if not redo and self._report_mtime(dst, 'src', not is_twostage):
+        if not redo and self._result_mtime(dst, 'src', not is_twostage):
             return
 
         # start report
@@ -3866,7 +3869,7 @@ class MneExperiment(FileTree):
                                    tstart, tstop)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="%s ROIs" % parc.capitalize(), **state)
-        if not redo and self._report_mtime(dst, 'src', False):
+        if not redo and self._result_mtime(dst, 'src'):
             return
 
         # load data
