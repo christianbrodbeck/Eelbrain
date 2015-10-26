@@ -1008,6 +1008,7 @@ def test_var():
     assert_array_equal(y, x.repeat(x))
     y = Var.from_dict(base, {'a': 5, 'e': 8}, default=0)
     assert_array_equal(y.x, [5, 5, 0, 0, 0, 0, 8])
+    assert_raises(TypeError, Var, x, info=1)
 
     # basic operations
     info = {'a': 1}

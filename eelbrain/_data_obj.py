@@ -1365,6 +1365,8 @@ class Var(object):
         for each element.
     tile : int
         Repeat ``x`` as a whole ``tile`` many times.
+    info : dict
+        Info dictionary. The "longname" entry is used for display purposes.
 
     Attributes
     ----------
@@ -1405,6 +1407,8 @@ class Var(object):
 
         if info is None:
             info = {}
+        elif not isinstance(info, dict):
+            raise TypeError("type(info)=%s; need dict" % type(info))
 
         self.__setstate__((x, name, info))
 
