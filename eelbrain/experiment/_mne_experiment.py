@@ -197,9 +197,6 @@ temp = {# MEG
         'hemi': ('lh', 'rh'),
         'label-dir': os.path.join('{mri-dir}', 'label'),
         'annot-file': os.path.join('{label-dir}', '{hemi}.{parc}.annot'),
-        # pickled list of labels
-        'mri-cache-dir': os.path.join('{cache-dir}', 'mri', '{mrisubject}'),
-        'label-file': os.path.join('{mri-cache-dir}', '{parc}.pickled'),
 
         # (method) plots
         'plot-dir': os.path.join('{root}', 'plots'),
@@ -855,7 +852,6 @@ class MneExperiment(FileTree):
         self._bind_cache('src-file', self.make_src)
         self._bind_cache('fwd-file', self.make_fwd)
         self._bind_make('bem-sol-file', self.make_bem_sol)
-        self._bind_make('label-file', self.make_labels)
 
         # Check that the template model is complete
         self._find_missing_fields()
@@ -2348,21 +2344,23 @@ class MneExperiment(FileTree):
             the combination of the labels ``label + '-lh'`` and
             ``label + '-rh'`` is returned.
         """
-        labels = self._load_labels(**kwargs)
+        labels = self._load_labels(label, **kwargs)
         if label in labels:
             return labels[label]
         elif not label.endswith(('-lh', '-rh')):
-            return labels[label + '-lh'] + labels['-rh']
+            return labels[label + '-lh'] + labels[label + '-rh']
         else:
-            parc = self.get('parc')
-            msg = ("Label %r could not be found in parc %r." % (label, parc))
-            raise ValueError(msg)
+            raise ValueError("Label %r could not be found in parc %r."
+                             % (label, self.get('parc')))
 
-    def _load_labels(self, **kwargs):
+    def _load_labels(self, regexp=None, **kwargs):
         """Load labels from an annotation file."""
-        path = self.get('label-file', make=True, **kwargs)
-        labels = load.unpickle(path)
-        return labels
+        self.make_annot(**kwargs)
+        mri_sdir = self.get('mri-sdir')
+        labels = mne.read_labels_from_annot(self.get('mrisubject'),
+                                            self.get('parc'), regexp=regexp,
+                                            subjects_dir=mri_sdir)
+        return {l.name: l for l in labels}
 
     def load_morph_matrix(self, **state):
         """Load the morph matrix from mrisubject to common_brain
@@ -3139,17 +3137,6 @@ class MneExperiment(FileTree):
                        "file with source outside the inner skull surface.")
                 raise RuntimeError(msg)
         mne.write_forward_solution(dst, fwd, True)
-
-    def make_labels(self, redo=False):
-        dst = self.get('label-file', mkdir=True)
-        if not redo and os.path.exists(dst):
-            return
-        elif redo:
-            self.make_annot(redo)
-
-        labels = self.load_annot()
-        label_dict = {label.name: label for label in labels}
-        save.pickle(label_dict, dst)
 
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link at the file with the dst value on field, linking to
