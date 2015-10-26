@@ -889,6 +889,7 @@ class MneExperiment(FileTree):
                                    "(%s). If the system time (%s) is wrong, "
                                    "adjust the system clock; if not, delete "
                                    "the eelbrain-cache folder." % (tc, tsys))
+            logger.debug("Checking cache...")
             cache_state = load.unpickle(cache_state_path)
             invalid_cache = defaultdict(set)
 
@@ -900,15 +901,22 @@ class MneExperiment(FileTree):
                 cached_events = cache_state['events'][subject]
                 if new_events.n_cases != cached_events.n_cases:
                     invalid_cache['events'].add(subject)
+                    logger.debug("  event length: %s %i->%i", subject,
+                                 cached_events.n_cases, new_events.n_cases)
                 else:
                     for var in cached_events:
-                        if var not in new_events or not np.all(cached_events[var] == new_events[var]):
+                        if var not in new_events:
                             invalid_cache['variables'].add(var)
+                            logger.debug("  var removed: %s", var)
+                        elif not np.all(cached_events[var] == new_events[var]):
+                            invalid_cache['variables'].add(var)
+                            logger.debug("  var changed: %s", var)
 
             # groups
             for group, members in cache_state['groups'].iteritems():
                 if group not in self._groups or members != self._groups[group]:
                     invalid_cache['groups'].add(group)
+                    logger.debug("  group: %s" % group)
 
             # epochs
             for epoch, params in cache_state['epochs'].iteritems():
@@ -930,12 +938,17 @@ class MneExperiment(FileTree):
             for test, params in cache_state['tests'].iteritems():
                 if test not in self._tests or params != self._tests[test]:
                     invalid_cache['tests'].add(test)
+                    if test in self._tests:
+                        logger.debug("  test %s: \n   %s\n ->%s", test,
+                                     params, self._tests[test])
+                    else:
+                        logger.debug("  test %s removed". test)
 
             # create message here, before secondary invalidations are added
             if invalid_cache:
                 msg = ["Experiment definition changed:"]
                 for kind, values in invalid_cache.iteritems():
-                    msg.append("%s: %s" % (kind, ', '.join(values)))
+                    msg.append("  %s: %s" % (kind, ', '.join(values)))
 
                 # collect file patterns to delete
                 rm = defaultdict(DictSet)
@@ -968,6 +981,8 @@ class MneExperiment(FileTree):
                         for test, vars_ in test_vars.iteritems():
                             if var in vars_:
                                 invalid_cache['tests'].add(test)
+                                logger.debug("  test %s depends on changed "
+                                             "variable %s", test, var)
 
                 # groups
                 for group in invalid_cache['groups']:
