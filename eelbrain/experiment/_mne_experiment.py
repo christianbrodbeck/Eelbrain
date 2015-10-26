@@ -956,8 +956,10 @@ class MneExperiment(FileTree):
                         if test in invalid_cache['tests']:
                             continue
                         elif params['kind'] == 'two-stage':
-                            test_vars[test] = re.findall('[\w_]+', params['stage 1']) \
-                                              + [v[0] for v in params['vars'].items()]
+                            v = re.findall('[\w_]+', params['stage 1'])
+                            if 'vars' in params:
+                                v.extend(v[0] for v in params['vars'].items())
+                            test_vars[test] = v
                         else:
                             test_vars[test] = re.findall('[\w_]+', params['model'])
                     # find bad tests
