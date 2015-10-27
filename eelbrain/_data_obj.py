@@ -2683,7 +2683,15 @@ class Factor(_Effect):
         x = np.empty(len(self), np.uint16)
         for i, code in enumerate(self.x):
             x[i] = label_lengths[code]
-        return Var(x, name)
+
+        if name:
+            longname = name
+        elif self.name:
+            longname = self.name + '.label_length()'
+        else:
+            longname = 'label_length'
+
+        return Var(x, name, info={"longname": longname})
 
     @property
     def n_cells(self):
