@@ -87,7 +87,7 @@ Initially, events are only labeled with the trigger ID. Use the
 For more complex designs and variables, you can override
 :meth:`MneExperiment.label_events`. Check events using::
 
-    >>> e = WordExperiment()
+    >>> e = WordExperiment("/files")
     >>> ds = e.load_events()
     >>> ds.head()
 
