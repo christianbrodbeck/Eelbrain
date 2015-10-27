@@ -881,7 +881,8 @@ class MneExperiment(FileTree):
                       self.iter(group='all')}
 
         # check the cache, delete invalid files
-        cache_state_path = self.get('cache-state-file', mkdir=True)
+        cache_dir = self.get('cache-dir')
+        cache_state_path = self.get('cache-state-file')
         if os.path.exists(cache_state_path):
             # check time stamp
             if os.path.getmtime(cache_state_path) > time.time():
@@ -1077,9 +1078,10 @@ class MneExperiment(FileTree):
                 else:
                     msg.append("No cache files affected.")
                     logger.debug(os.linesep.join(msg))
-        elif os.path.exists(self.get('cache-dir')):
+        elif os.path.exists(cache_dir):
             if self.auto_delete_cache is True:
-                shutil.rmtree(self.get('cache-dir'))
+                shutil.rmtree(cache_dir)
+                os.mkdir(cache_dir)
             elif self.auto_delete_cache == 'disable':
                 pass
             elif self.auto_delete_cache == 'debug':
@@ -1095,6 +1097,8 @@ class MneExperiment(FileTree):
             else:
                 raise IOError("Cache directory without history, but "
                               "auto_delete_cache is not True")
+        else:
+            os.mkdir(cache_dir)
 
         new_state = {'groups': self._groups,
                      'epochs': self._epochs,
