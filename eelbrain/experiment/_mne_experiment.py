@@ -173,8 +173,10 @@ temp = {# MEG
         'cov-info-file': '{cov-base}-info.txt',
         # evoked
         'evoked-dir': os.path.join('{cache-dir}', 'evoked'),
-        'evoked-file': os.path.join('{evoked-dir}', '{subject}', '{experiment} '
-                                    '{sns_kind} {epoch} {model} {evoked_kind}.pickled'),
+        'evoked-base': os.path.join('{evoked-dir}', '{subject}', '{experiment} '
+                                    '{sns_kind} {epoch} {model} {evoked_kind}'),
+        'evoked-file': os.path.join('{evoked-base}.pickled'),
+        'evoked-fiff-file': os.path.join('{evoked-base}-ave.fif'),
         # test files
         'test-dir': os.path.join('{cache-dir}', 'test'),
         'data_parc': 'unmasked',
@@ -1016,6 +1018,11 @@ class MneExperiment(FileTree):
                 for test in invalid_cache['tests']:
                     rm['test-file'].add({'test': test})
                     rm['report-file'].add({'test': test})
+
+                # update for "companion" files
+                if 'evoked-file' in rm:
+                    for arg_dict in rm['evoked-file']:
+                        rm['evoked-fiff-file'].add(arg_dict)
 
                 # find actual files to delete
                 files = set()
@@ -3091,13 +3098,18 @@ class MneExperiment(FileTree):
         decim : None | int
             Set to an int in order to override the epoch decim factor.
         """
-        dest = self.get('evoked-file', mkdir=True, **kwargs)
+        dst = self.get('evoked-file', mkdir=True, **kwargs)
+        fiff_dst = self.get('evoked-fiff-file')
         epoch = self._epochs[self.get('epoch')]
         use_cache = ((not decim or decim == epoch['decim']) and
                      (isinstance(data_raw, bool) or data_raw == self.get('raw')))
         if use_cache and self._evoked_mtime():
-            ds = load.unpickle(dest)
-            if ds.info.get('mne_version', None) == mne.__version__:
+            ds = load.unpickle(dst)
+            if 'evoked' in ds:
+                if ds.info.get('mne_version', None) == mne.__version__:
+                    return ds
+            else:
+                ds['evoked'] = mne.read_evokeds(fiff_dst, proj=False)
                 return ds
 
         # load the epochs (post baseline-correction trigger shift requires
@@ -3117,12 +3129,14 @@ class MneExperiment(FileTree):
 
         # save
         ds_agg.rename('epochs', 'evoked')
-        ds_agg.info['mne_version'] = mne.__version__
         if 'raw' in ds_agg.info:
             del ds_agg.info['raw']
 
         if use_cache:
-            save.pickle(ds_agg, dest)
+            evoked = ds_agg.pop('evoked')
+            save.pickle(ds_agg, dst)
+            mne.write_evokeds(fiff_dst, evoked)
+            ds_agg['evoked'] = evoked
 
         return ds_agg
 
