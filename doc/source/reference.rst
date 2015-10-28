@@ -185,11 +185,6 @@ parameters, different methods for multiple comparison correction can be applied
     cluster-enhancement algorithm (see [2]_). This is the most computationally
     intensive option.
 
-To get information about the progress of permutation tests use
-:func:`set_log_level` to change the logging level to 'info'::
-
-    >>> set_log_level('info')
-
 
 .. [1] Maris, E., & Oostenveld, R. (2007). Nonparametric
     statistical testing of EEG- and MEG-data. Journal of Neuroscience Methods,

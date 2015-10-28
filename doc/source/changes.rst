@@ -160,9 +160,6 @@ New in 0.12
     the epoch definition (e.g., ``'baseline': (-0.2, -0.1)``). When loading
     data, specifying ``baseline=True`` uses the epoch's custom baseline.
 
-* Use ``eelbrain.set_log_level('info')`` to get information about the progress
-  of permutation tests.
-
 
 New in 0.11
 -----------
