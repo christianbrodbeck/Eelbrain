@@ -6,7 +6,7 @@ import os
 
 
 # exclude files with those names:
-EXCLUDE = ('make_report.py',)
+EXCLUDE = ('make_reports.py',)
 
 curdir = os.path.dirname(__file__)
 test_dir = os.path.abspath(os.path.join(curdir, '..', 'eelbrain', 'tests'))
@@ -15,7 +15,7 @@ example_dir = os.path.abspath(os.path.join('..', 'examples'))
 
 temp = """
 def test_{i}():
-    "Test {example_name}"
+    "Test examples/{example_name}"
     exa_dir = os.path.join(examples_dir, {relpath!r})
     exa_file = os.path.join(exa_dir, {filename!r})
 
