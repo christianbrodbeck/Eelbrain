@@ -46,7 +46,6 @@ from ._experiment import FileTree
 
 
 __all__ = ['MneExperiment']
-logger = logging.getLogger('eelbrain.experiment')
 
 
 # Allowable epoch parameters
@@ -129,7 +128,9 @@ class CacheDict(dict):
         return out
 
 
-temp = {# MEG
+temp = {'eelbrain-log-file': os.path.join('{root}', '.eelbrain.log'),
+
+        # MEG
         'experiment': None,
         'modality': ('', 'eeg', 'meeg'),
         'reference': ('', 'mastoids'),  # EEG reference
@@ -871,7 +872,25 @@ class MneExperiment(FileTree):
                              "cache management to work")
         elif not root:
             return
-        elif self.auto_delete_cache == 'disable':
+
+        # logger
+        self._log = logging.Logger(self.__class__.__name__, logging.DEBUG)
+        handler = logging.FileHandler(self.get('eelbrain-log-file'))
+        formatter = logging.Formatter("%(levelname)-8s %(asctime)s %(message)s",
+                                      "%m-%d %H:%M")  # %(name)-12s
+        handler.setFormatter(formatter)
+        self._log.addHandler(handler)
+        handler.setLevel(logging.DEBUG)
+        from .. import __version__
+        msg = ("%s initialized with root=%r, eelbrain %s, mne %s"
+               % (self.__class__.__name__, root, __version__, mne.__version__))
+        if any('dev' in v for v in (__version__, mne.__version__)):
+            self._log.warn(msg)
+        else:
+            self._log.info(msg)
+
+        if self.auto_delete_cache == 'disable':
+            self._log.warn("Cache-management disabled")
             return
 
         # collect events for current setup
@@ -892,7 +911,7 @@ class MneExperiment(FileTree):
                                    "(%s). If the system time (%s) is wrong, "
                                    "adjust the system clock; if not, delete "
                                    "the eelbrain-cache folder." % (tc, tsys))
-            logger.debug("Checking cache...")
+            self._log.debug("Checking cache...")
             cache_state = load.unpickle(cache_state_path)
             invalid_cache = defaultdict(set)
 
@@ -904,22 +923,22 @@ class MneExperiment(FileTree):
                 cached_events = cache_state['events'][subject]
                 if new_events.n_cases != cached_events.n_cases:
                     invalid_cache['events'].add(subject)
-                    logger.debug("  event length: %s %i->%i", subject,
-                                 cached_events.n_cases, new_events.n_cases)
+                    self._log.debug("  event length: %s %i->%i", subject,
+                                    cached_events.n_cases, new_events.n_cases)
                 else:
                     for var in cached_events:
                         if var not in new_events:
                             invalid_cache['variables'].add(var)
-                            logger.debug("  var removed: %s", var)
+                            self._log.debug("  var removed: %s", var)
                         elif not np.all(cached_events[var] == new_events[var]):
                             invalid_cache['variables'].add(var)
-                            logger.debug("  var changed: %s", var)
+                            self._log.debug("  var changed: %s", var)
 
             # groups
             for group, members in cache_state['groups'].iteritems():
                 if group not in self._groups or members != self._groups[group]:
                     invalid_cache['groups'].add(group)
-                    logger.debug("  group: %s" % group)
+                    self._log.debug("  group: %s" % group)
 
             # epochs
             for epoch, params in cache_state['epochs'].iteritems():
@@ -942,10 +961,10 @@ class MneExperiment(FileTree):
                 if test not in self._tests or params != self._tests[test]:
                     invalid_cache['tests'].add(test)
                     if test in self._tests:
-                        logger.debug("  test %s: \n   %s\n ->%s", test,
-                                     params, self._tests[test])
+                        self._log.debug("  test %s: \n   %s\n ->%s", test,
+                                        params, self._tests[test])
                     else:
-                        logger.debug("  test %s removed". test)
+                        self._log.debug("  test %s removed", test)
 
             # create message here, before secondary invalidations are added
             if invalid_cache:
@@ -984,8 +1003,8 @@ class MneExperiment(FileTree):
                         for test, vars_ in test_vars.iteritems():
                             if var in vars_:
                                 invalid_cache['tests'].add(test)
-                                logger.debug("  test %s depends on changed "
-                                             "variable %s", test, var)
+                                self._log.debug("  test %s depends on changed "
+                                                "variable %s", test, var)
 
                 # groups
                 for group in invalid_cache['groups']:
@@ -1033,21 +1052,27 @@ class MneExperiment(FileTree):
                         kwargs = {k: args.get(k, '*') for k in keys}
                         files.update(self.glob(temp, vmatch=False, **kwargs))
 
+                # log
                 if files:
-                    # abort if deleting is not allowed
                     msg.append("Files to be deleted:")
-                    msg.extend((sorted(files)))
+                    msg.extend(('  ' + f for f in sorted(files)))
+                else:
+                    msg.append("No cache files affected.")
+                self._log.debug(os.linesep.join(msg))
+
+                # handle invalid files
+                if files:
                     if self.auto_delete_cache is False:
                         msg.append("Automatic cache management disabled. Either "
                                    "revert changes, or set e.auto_delete_cache=True")
                         raise RuntimeError(os.linesep.join(msg))
                     elif self.auto_delete_cache == 'debug':
-                        msg.append("delete:  delete invalid cache files")
-                        msg.append("abort:  raise an error")
-                        msg.append("ignore:  proceed without doing anything")
-                        msg.append("revalidate:  don't delete any cache files "
-                                   "but write a new cache-state file")
-                        print os.linesep.join(msg)
+                        print(os.linesep.join(msg))
+                        print("delete:  delete invalid cache files\n"
+                              "abort:  raise an error\n"
+                              "ignore:  proceed without doing anything\n"
+                              "revalidate:  don't delete any cache files but "
+                              "write a new cache-state file")
                         while True:
                             command = raw_input(" > ")
                             if command in ('delete', 'abort', 'ignore', 'revalidate'):
@@ -1060,29 +1085,28 @@ class MneExperiment(FileTree):
                         elif command == 'abort':
                             raise RuntimeError("User aborted invalid cache deletion")
                         elif command == 'ignore':
+                            self._log.warn("Ignoring invalid cache")
                             return
                         elif command == 'revalidate':
+                            self._log.warn("Revalidating invalid cache")
                             files.clear()
                         else:
                             raise RuntimeError("command=%s" % repr(command))
-                    elif self.auto_delete_cache is True:
-                        logger.info(os.linesep.join(msg))
-                    else:
+                    elif self.auto_delete_cache is not True:
                         raise ValueError("MneExperiment.auto_delete_cache=%s"
                                          % repr(self.auto_delete_cache))
 
                     # delete invalid files
-                    logger.info("Deleting %s invalid cache files..." % len(files))
+                    self._log.info("Deleting %i invalid cache files", len(files))
                     for path in files:
                         os.remove(path)
-                else:
-                    msg.append("No cache files affected.")
-                    logger.debug(os.linesep.join(msg))
         elif os.path.exists(cache_dir):
             if self.auto_delete_cache is True:
+                self._log.info("Deleting cache without history")
                 shutil.rmtree(cache_dir)
                 os.mkdir(cache_dir)
             elif self.auto_delete_cache == 'disable':
+                self._log.warn("Ignoring cache without history")
                 pass
             elif self.auto_delete_cache == 'debug':
                 print("Cache directory without history (validate|abort).")
@@ -1091,6 +1115,7 @@ class MneExperiment(FileTree):
                     if command == 'abort':
                         raise RuntimeError("User aborted")
                     elif command == 'validate':
+                        self._log.warn("Validating cache without history")
                         break
                     else:
                         print("invalid entry")
@@ -1472,7 +1497,7 @@ class MneExperiment(FileTree):
 
         MRIs are currently not backed up.
         """
-        logger.debug("Initiating backup to %s" % dst_root)
+        self._log.debug("Initiating backup to %s" % dst_root)
         root = self.get('root')
         root_len = len(root) + 1
 
@@ -1507,8 +1532,8 @@ class MneExperiment(FileTree):
                     if dst_m == src_m:
                         continue
                     elif dst_m > src_m:
-                        msg = "Backup more recent than original: %s" % tail
-                        logger.warn(msg)
+                        self._log.warn("Backup more recent than original: %s",
+                                       tail)
                         continue
                 else:
                     i = 0
@@ -1523,10 +1548,10 @@ class MneExperiment(FileTree):
                 pairs.append((src, dst))
 
         if len(pairs) == 0:
-            logger.info("All files backed up.")
+            self._log.info("All files backed up.")
             return
 
-        logger.info("Backing up %i files ..." % len(pairs))
+        self._log.info("Backing up %i files ..." % len(pairs))
         # create directories
         for dirname in dirs:
             dirpath = os.path.join(dst_root, dirname)
@@ -2584,7 +2609,7 @@ class MneExperiment(FileTree):
                 if np.all(ds[:-1, 'trigger'] == ds_sel['trigger']):
                     ds = ds[:-1]
                     msg = self.format("Last epoch for {subject} is missing")
-                    logger.warn(msg)
+                    self._log.warn(msg)
                 else:
                     err = ("The epoch selection file contains different "
                            "events than the data. Something went wrong...")
@@ -2740,7 +2765,7 @@ class MneExperiment(FileTree):
             # stage 1
             lms = []
             for subject in self:
-                logger.info("Stage 1 model for %s" % subject)
+                self._log.info("Stage 1 model for %s" % subject)
                 ds = self.load_epochs_stc(subject, sns_baseline, src_baseline,
                                           morph=True, mask=apply_mask)
                 if vars_:
@@ -2757,8 +2782,8 @@ class MneExperiment(FileTree):
         if not redo and self._result_mtime(dst, data):
             res = load.unpickle(dst)
             if res.samples >= samples or res.samples == -1:
-                logger.info("Load cached test %s for %s"
-                            % (test, self.get('group')))
+                self._log.info("Load cached test %s for %s"
+                               % (test, self.get('group')))
                 load_data = return_data
             else:
                 res = None
@@ -2784,7 +2809,7 @@ class MneExperiment(FileTree):
 
         # perform the test if it was not cached
         if res is None:
-            logger.info("Make test %s for %s" % (test, self.get('group')))
+            self._log.info("Make test %s for %s" % (test, self.get('group')))
             test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, dims,
                                             parc_dim)
             res = self._make_test(ds[y_name], ds, test, test_kwargs)
@@ -2957,7 +2982,7 @@ class MneExperiment(FileTree):
             fid.write(text)
 
     def make_bem_sol(self):
-        logger.info(self.format("Creating bem-sol file for {mrisubject}"))
+        self._log.info(self.format("Creating bem-sol file for {mrisubject}"))
         bin_path = subp.get_bin('mne', 'mne_prepare_bem_model')
         bem_path = self.get('bem-file', fmatch=True)
         mne.utils.run_subprocess([bin_path, '--bem', bem_path])
@@ -3829,20 +3854,20 @@ class MneExperiment(FileTree):
 
     def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):
-        logger.info("Starting two-stage report")
+        self._log.info("Starting two-stage report")
 
         rlm = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
                              'src', sns_baseline, src_baseline)
 
         # stage 2
-        logger.info("Computing stage 2 tests")
+        self._log.info("Computing stage 2 tests")
         parc_dim = 'source' if parc else None
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop,
                                         ('time', 'source'), parc_dim)
         results = rlm._column_ttests(True, **test_kwargs)
 
         # start report
-        logger.info("Compiling report")
+        self._log.info("Compiling report")
         surfer_kwargs = self._surfer_plot_kwargs()
         info_section = report.add_section("Test Info")
         if parc:
