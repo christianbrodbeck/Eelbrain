@@ -43,6 +43,7 @@ from .._stats.stats import ttest_t
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from ._experiment import FileTree
+from .definitions import find_test_vars
 
 
 __all__ = ['MneExperiment']
@@ -988,15 +989,8 @@ class MneExperiment(FileTree):
                     # find variable use in tests
                     test_vars = {}
                     for test, params in cache_state['tests'].iteritems():
-                        if test in invalid_cache['tests']:
-                            continue
-                        elif params['kind'] == 'two-stage':
-                            v = re.findall('[\w_]+', params['stage 1'])
-                            if 'vars' in params:
-                                v.extend(v[0] for v in params['vars'].items())
-                            test_vars[test] = v
-                        else:
-                            test_vars[test] = re.findall('[\w_]+', params['model'])
+                        if test not in invalid_cache['tests']:
+                            test_vars[test] = find_test_vars(params)
                     # find bad tests
                     for var in invalid_cache['variables']:
                         rm['evoked-file'].add({'model': '*%s*' % var})
@@ -2769,10 +2763,15 @@ class MneExperiment(FileTree):
                 ds = self.load_epochs_stc(subject, sns_baseline, src_baseline,
                                           morph=True, mask=apply_mask)
                 if vars_:
-                    new_vars = [asfactor(source, ds=ds).as_var(codes, 0, name)
-                                for name, (source, codes) in vars_.iteritems()]
-                    for v in new_vars:
-                        ds.add(v, True)
+                    # compute new variables
+                    new = {}
+                    for name, definition in vars_.iteritems():
+                        if isinstance(definition, str):
+                            new[name] = ds.eval(definition)
+                        else:
+                            source, codes = definition
+                            new[name] = asfactor(source, ds=ds).as_var(codes, 0, name)
+                    ds.update(new, True)
                 lms.append(spm.LM(y_name, model, ds, subject=subject))
             return spm.RandomLM(lms)
 
