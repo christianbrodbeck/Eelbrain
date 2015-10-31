@@ -1996,7 +1996,7 @@ class _Effect(object):
 
         Returns
         -------
-        count : array of int,  len = len(self)
+        count : Var of int,  len = len(self)
             Cumulative count of value in self.
 
         Examples
@@ -2007,8 +2007,7 @@ class _Effect(object):
         >>> a.count('a')
         array([0, 0, 0, 1, 1, 1, 2, 2, 2])
         """
-        count = np.cumsum(self == value) + start
-        return count
+        return Var(np.cumsum(self == value) + start)
 
     def enumerate_cells(self, name=None):
         """Enumerate the occurrence of each cell value throughout the data
