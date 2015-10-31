@@ -4504,6 +4504,9 @@ class Dataset(OrderedDict):
         """
         if not isdataobject(item):
             raise ValueError("Not a valid data-object: %r" % item)
+        elif item.name is None:
+            raise ValueError("Dataset.add(obj) can only take named objects "
+                             "(obj.name can not be None)")
         elif (item.name in self) and not replace:
             raise KeyError("Dataset already contains variable named %r" % item.name)
         else:

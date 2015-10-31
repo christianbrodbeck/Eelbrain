@@ -275,6 +275,18 @@ def test_datalist():
     eq_(str(dl[:2]), '[[a, b], []]')
 
 
+def test_dataset():
+    "Basic dataset operations"
+    ds = Dataset()
+    # naming
+    ds['f'] = Factor('abab')
+    eq_(ds['f'].name, 'f')
+    # ds.add()
+    assert_raises(ValueError, ds.add, Factor('aabb'))
+    ds.add(Factor('aabb', name='g'))
+    eq_(ds['g'].name, 'g')
+
+
 def test_dataset_combining():
     "Test Dataset combination methods"
     ds = datasets.get_uv()
