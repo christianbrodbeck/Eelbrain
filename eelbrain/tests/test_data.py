@@ -15,7 +15,7 @@ from numpy.testing import (assert_equal, assert_array_equal,
 
 from eelbrain import (datasets, load, Var, Factor, NDVar, Datalist, Dataset,
                       Celltable, align, align1, choose, combine)
-from eelbrain._data_obj import (asvar, Categorial, SourceSpace, UTS,
+from eelbrain._data_obj import (asvar, longname, Categorial, SourceSpace, UTS,
                                 DimensionMismatchError)
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
@@ -594,6 +594,22 @@ def test_isin():
     assert_array_equal(f0.isany(*v2l), empty)
     assert_array_equal(f0.isnot(*v2l), empty)
     assert_array_equal(f0.isnotin(v2l), empty)
+
+
+def test_longname():
+    "Test info['longname'] entry"
+    ds = Dataset()
+    u = Var([2], 'u')
+    v = Var([1], 'v')
+
+    # simple operations, also tested in test_var()
+    eq_(longname(v.abs()), 'abs(v)')
+    eq_(longname(u * v), "u * v")
+    eq_(longname(u * v.abs()), "u * abs(v)")
+
+    # Dataset assigning
+    ds['abs_v'] = v.abs()
+    eq_(longname(ds['abs_v']), 'abs_v')
 
 
 def test_model():

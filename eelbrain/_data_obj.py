@@ -120,10 +120,10 @@ def cellname(cell, delim=' '):
 
 
 def longname(x):
-    if isnumeric(x) and 'longname' in x.info:
-        return x.info['longname']
-    elif getattr(x, 'name', None) is not None:
+    if getattr(x, 'name', None) is not None:
         return x.name
+    elif isnumeric(x) and 'longname' in x.info:
+        return x.info['longname']
     elif np.isscalar(x):
         return repr(x)
     return '<unnamed>'
