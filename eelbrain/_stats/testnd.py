@@ -28,6 +28,7 @@ from math import ceil
 from multiprocessing import Process, cpu_count
 from multiprocessing.queues import SimpleQueue
 from multiprocessing.sharedctypes import RawArray
+import logging
 import operator
 import re
 import socket
@@ -44,7 +45,7 @@ from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                          NDVar, Var, Celltable, cellname, combine, Categorial,
                          UTS)
 from .._report import enumeration, format_timewindow, ms
-from .._utils import logger, LazyProperty
+from .._utils import LazyProperty
 from .._utils.numpy_utils import full_slice
 from . import opt, stats
 from .glm import _nd_anova
@@ -2244,6 +2245,7 @@ class _ClusterDist:
         """
         if self.has_original:
             raise RuntimeError("Original pmap already added")
+        logger = logging.getLogger(__name__)
         logger.debug("Adding original parameter map...")
 
         # crop/reshape stat_map
@@ -2949,6 +2951,7 @@ def distribution_worker(dist_array, dist_shape, in_queue):
     # logger
     t0 = tn = current_time()
     dt_update = 0.2
+    logger = logging.getLogger(__name__)
     logger.info('starting permutation')
     for i in xrange(samples):
         dist[i] = in_queue.get()
@@ -3002,6 +3005,7 @@ def run_permutation(test_func, dist, iterator):
         for _ in xrange(len(workers) - 1):
             out_queue.put(None)
 
+        logger = logging.getLogger(__name__)
         for w in workers:
             w.join()
             logger.debug("worker joined")
@@ -3025,6 +3029,7 @@ def setup_workers(test_func, dist, n_workers=None):
     elif not isinstance(n_workers, int):
         raise TypeError("n_workers must be int, got %s" % repr(n_workers))
 
+    logger = logging.getLogger(__name__)
     logger.debug("Setting up %i worker processes..." % n_workers)
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
@@ -3063,6 +3068,7 @@ def run_permutation_me(test, dists, iterator):
         for _ in xrange(len(workers) - 1):
             out_queue.put(None)
 
+        logger = logging.getLogger(__name__)
         for w in workers:
             w.join()
             logger.debug("worker joined")
@@ -3102,6 +3108,7 @@ def setup_workers_me(test_func, dists, thresholds, n_workers=None):
     elif not isinstance(n_workers, int):
         raise TypeError("n_workers must be int, got %s" % repr(n_workers))
 
+    logger = logging.getLogger(__name__)
     logger.debug("Setting up %i worker processes..." % n_workers)
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
@@ -3157,6 +3164,7 @@ def distribution_worker_me(dist_arrays, dist_shape, in_queue):
     # logger
     t0 = tn = current_time()
     dt_update = 0.2
+    logger = logging.getLogger(__name__)
     logger.info('starting permutation')
     for i in xrange(samples):
         for dist, v in izip(dists, in_queue.get()):

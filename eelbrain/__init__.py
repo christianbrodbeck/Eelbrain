@@ -21,6 +21,8 @@ Created by Christian Brodbeck on 2/20/2012.
 Copyright (c) 2012. All rights reserved.
 
 """
+# import this first for a chance to reverse mne's non-standard logging practice
+from . import mne_fixes
 
 from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
                         NDVar, choose, combine, align, align1, cwt_morlet,
@@ -33,7 +35,6 @@ from .experiment import MneExperiment
 from . import datasets
 from . import gui
 from . import load
-from . import mne_fixes
 from . import plot
 from . import save
 from . import table

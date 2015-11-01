@@ -2,7 +2,7 @@ import webbrowser
 
 import wx
 
-from .._wxutils import ID, logger
+from .._wxutils import ID
 from .about import AboutFrame
 
 
@@ -137,7 +137,6 @@ class App(wx.App):
     def _bash_ui(self, func, *args):
         "Launch a modal dialog based on terminal input"
         if self.IsMainLoopRunning():
-            logger.debug("MainLoop running")
             return func(False, *args)
         else:
             if not self.GetTopWindow():
@@ -277,18 +276,15 @@ class App(wx.App):
 
     def OnCloseWindow(self, event):
         frame = self._get_active_frame()
-        logger.debug("Close %r" % frame)
         if frame is not None:
             frame.Close()
 
     def OnCopy(self, event):
         win = wx.Window.FindFocus()
-        logger.debug("Copy %r" % win)
         win.Copy()
 #
     def OnCut(self, event):
         win = wx.Window.FindFocus()
-        logger.debug("Cut %r" % win)
         win.Cut()
 
     def OnMenuOpened(self, event):
@@ -325,11 +321,9 @@ class App(wx.App):
 
     def OnPaste(self, event):
         win = wx.Window.FindFocus()
-        logger.debug("Paste %r" % win)
         win.Paste()
 
     def OnQuit(self, event):
-        logger.debug("OnQuit %s", event)
         for win in wx.GetTopLevelWindows():
             if not win.Close():
                 return
@@ -498,7 +492,6 @@ class App(wx.App):
 def get_app():
     app = wx.GetApp()
     if app is None or not isinstance(app, App):
-        logger.debug("Initializing Eelbrain App")
         app = App()
     return app
 

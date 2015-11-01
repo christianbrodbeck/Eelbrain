@@ -6,7 +6,6 @@ import smtplib
 import socket
 import traceback
 
-from .basic import logger
 from .system import caffeine
 from . import ui
 
@@ -92,7 +91,7 @@ class Notifier(object):
         self._password = password
 
     def __enter__(self):
-        logger.info("Notification enabled...")
+        print("Notification enabled for %s..." % self.name)
         caffeine.__enter__()
         return self
 

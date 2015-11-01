@@ -15,7 +15,6 @@ from eelbrain import datasets, testnd, NDVar
 from eelbrain._data_obj import UTS, Ordered, Sensor, cwt_morlet
 from eelbrain._stats import testnd as _testnd
 from eelbrain._stats.testnd import _ClusterDist, label_clusters
-from eelbrain._utils import logger
 from eelbrain.tests.test_data import assert_dataobj_equal, assert_dataset_equal
 
 
@@ -25,7 +24,7 @@ def test_anova():
 
     testnd.anova('utsnd', 'A*B', ds=ds)
     for samples in (0, 2):
-        logger.info("TEST:  samples=%r" % samples)
+        logging.info("TEST:  samples=%r" % samples)
         testnd.anova('utsnd', 'A*B', ds=ds, samples=samples)
         testnd.anova('utsnd', 'A*B', ds=ds, samples=samples, pmin=0.05)
         testnd.anova('utsnd', 'A*B', ds=ds, samples=samples, tfce=True)
@@ -135,7 +134,7 @@ def test_clusterdist():
     y = NDVar(x, dims)
 
     # test connecting sensors
-    logger.info("TEST:  connecting sensors")
+    logging.info("TEST:  connecting sensors")
     bin_map = np.zeros(shape[1:], dtype=np.bool8)
     bin_map[:3, :3, :2] = True
     pmap = np.random.normal(0, 1, shape[1:])
@@ -151,7 +150,7 @@ def test_clusterdist():
     assert_equal(cdist.parameter_map.dims, y.dims[1:])
 
     # test connecting many sensors
-    logger.info("TEST:  connecting sensors")
+    logging.info("TEST:  connecting sensors")
     bin_map = np.zeros(shape[1:], dtype=np.bool8)
     bin_map[:3, :3] = True
     pmap = np.random.normal(0, 1, shape[1:])
@@ -164,7 +163,7 @@ def test_clusterdist():
                        cdist._crop(bin_map).swapaxes(0, cdist._nad_ax))
 
     # test keeping sensors separate
-    logger.info("TEST:  keeping sensors separate")
+    logging.info("TEST:  keeping sensors separate")
     bin_map = np.zeros(shape[1:], dtype=np.bool8)
     bin_map[:3, :3, 0] = True
     bin_map[:3, :3, 2] = True
@@ -191,7 +190,7 @@ def test_clusterdist():
     assert_dataobj_equal(res1d.p_uncorrected, res.p_uncorrected.sub(time=0.1))
 
     # TFCE
-    logger.info("TEST:  TFCE")
+    logging.info("TEST:  TFCE")
     sensor = Sensor(locs, ['0', '1', '2', '3'])
     sensor.set_connectivity(connect_dist=1.1)
     dims = ('case', UTS(-0.1, 0.1, 4), sensor,
@@ -234,7 +233,7 @@ def test_clusterdist():
     mps = False, True
     thresholds = (None, 'tfce')
     for mp, threshold in product(mps, thresholds):
-        logger.info("TEST:  multiprocessing=%r, threshold=%r" % (mp, threshold))
+        logging.info("TEST:  multiprocessing=%r, threshold=%r" % (mp, threshold))
         _testnd.multiprocessing = mp
 
         # test keeping dimension

@@ -3268,8 +3268,6 @@ class MneExperiment(FileTree):
         *others* :
             Experiment state parameters.
         """
-        plot._brain.assert_can_save_movies()
-
         kwargs['model'] = ''
         subject, group = self._process_subject_arg(subject, kwargs)
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
@@ -3290,6 +3288,7 @@ class MneExperiment(FileTree):
         if not redo and self._result_mtime(dst, 'src', False, group is None):
             return
 
+        plot._brain.assert_can_save_movies()
         if group is None:
             ds = self.load_evoked_stc(subject, sns_baseline, src_baseline,
                                       ind_ndvar=True)
@@ -3360,8 +3359,6 @@ class MneExperiment(FileTree):
         *others* :
             Experiment state parameters.
         """
-        plot._brain.assert_can_save_movies()
-
         if p == 0.1:
             pmid = 0.05
             pmin = 0.01
@@ -3420,6 +3417,7 @@ class MneExperiment(FileTree):
             if not redo and self._result_mtime(dst, 'src', False, group is None):
                 return
 
+            plot._brain.assert_can_save_movies()
             if group is None:
                 ds = self.load_epochs_stc(subject, sns_baseline, src_baseline, cat=cat)
                 y = 'src'

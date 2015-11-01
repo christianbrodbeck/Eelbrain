@@ -1,7 +1,6 @@
 '''History for wx GUIs'''
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-
-from .._wxutils import logger
+from logging import getLogger
 
 
 class Action(object):
@@ -47,6 +46,7 @@ class History():
         return len(self._history) + self._last_action_idx >= 0
 
     def do(self, action):
+        logger = getLogger(__name__)
         logger.debug("Do action: %s", action.desc)
         was_saved = self.is_saved()
         action.do(self.doc)
@@ -91,6 +91,7 @@ class History():
         if self._last_action_idx == -1:
             raise RuntimeError("We are at the tip of the history")
         action = self._history[self._last_action_idx + 1]
+        logger = getLogger(__name__)
         logger.debug("Redo action: %s", action.desc)
         action.do(self.doc)
         self._last_action_idx += 1
@@ -111,6 +112,7 @@ class History():
         if -self._last_action_idx > len(self._history):
             raise RuntimeError("We are at the beginning of the history")
         action = self._history[self._last_action_idx]
+        logger = getLogger(__name__)
         logger.debug("Undo action: %s", action.desc)
         action.undo(self.doc)
         self._last_action_idx -= 1
