@@ -281,10 +281,16 @@ def test_dataset():
     # naming
     ds['f'] = Factor('abab')
     eq_(ds['f'].name, 'f')
+
     # ds.add()
     assert_raises(ValueError, ds.add, Factor('aabb'))
     ds.add(Factor('aabb', name='g'))
     eq_(ds['g'].name, 'g')
+
+    # ds.update()
+    ds = Dataset()
+    ds.update({'f': Factor('abab')})
+    eq_(ds['f'].name, 'f')
 
 
 def test_dataset_combining():

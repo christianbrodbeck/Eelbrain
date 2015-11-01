@@ -5343,7 +5343,7 @@ class Dataset(OrderedDict):
 
         super(Dataset, self).update(ds)
 
-        if info:
+        if info and isdataset(ds):
             self.info.update(ds.info)
 
 
