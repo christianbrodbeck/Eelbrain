@@ -425,18 +425,27 @@ class MneExperiment(FileTree):
     # Make sure dictionary keys (test names) are appropriate for filenames.
     # tests imply a model which is set automatically
     tests = {}
-    cluster_criteria = {'mintime': 0.025, 'minsensor': 4, 'minsource': 10}
+    _cluster_criteria = {'': {'time': 0.025, 'sensor': 4, 'source': 10},
+                         'all': {},
+                         'large': {'time': 0.025, 'sensor': 8, 'source': 20}}
 
     # plotting
     # --------
     brain_plot_defaults = {}
 
     def __init__(self, root=None, find_subjects=True, **state):
+        # checks
+        if hasattr(self, 'cluster_criteria'):
+            raise AttributeError("MneExperiment subclasses can not have a "
+                                 ".cluster_criteria attribute. Please remove "
+                                 "the attribute, delete the eelbrain-cache "
+                                 "folder and use the select_clusters analysis "
+                                 "parameter.")
+
         # create attributes (overwrite class attributes)
         self._subject_re = re.compile(self._subject_re)
         self.groups = self.groups.copy()
         self.projs = self.projs.copy()
-        self.cluster_criteria = self.cluster_criteria.copy()
         self._mri_subjects = self._mri_subjects.copy()
         self._templates = self._templates.copy()
         # templates version
@@ -841,6 +850,7 @@ class MneExperiment(FileTree):
         self._register_field('proj', [''] + self.projs.keys())
         self._register_field('freq', self._freqs.keys())
         self._register_field('src', ('ico-4', 'vol-10', 'vol-7', 'vol-5'))
+        self._register_field('select_clusters', self._cluster_criteria.keys())
 
         # compounds
         self._register_compound('bads-compound', ('experiment', 'modality'))
@@ -1283,6 +1293,10 @@ class MneExperiment(FileTree):
             self.set(subject=subject, **kwargs)
 
         return subject_, group
+
+    def _cluster_criteria_kwargs(self, dims):
+        criteria = self._cluster_criteria[self.get('select_clusters')]
+        return {'min' + dim: criteria[dim] for dim in dims if dim in criteria}
 
     def _add_epochs_stc(self, ds, ndvar, baseline, morph, mask):
         """
@@ -3406,12 +3420,6 @@ class MneExperiment(FileTree):
             resname = "t-test GA {test_options} %s" % surf
             cat = None
 
-        # if minsource is True:
-        #     minsource = self.cluster_criteria['minsource']
-        #
-        # if mintime is True:
-        #     mintime = self.cluster_criteria['mintime']
-
         kwargs.update(resname=resname, model=model)
         with self._temporary_state:
             subject, group = self._process_subject_arg(subject, kwargs)
@@ -3437,15 +3445,28 @@ class MneExperiment(FileTree):
                 ds = self.load_evoked_stc(group, sns_baseline, src_baseline, morph_ndvar=True, cat=cat)
                 y = 'srcm'
 
+            # find/apply cluster criteria
+            kwargs = self._cluster_criteria_kwargs(('source', 'time'))
+            if kwargs:
+                kwargs.update(samples=0, pmin=p)
+
+        # compute t-maps
         if c0:
             if group:
-                res = testnd.ttest_rel(y, model, c1, c0, match='subject', ds=ds)
+                res = testnd.ttest_rel(y, model, c1, c0, match='subject', ds=ds, **kwargs)
             else:
-                res = testnd.ttest_ind(y, model, c1, c0, ds=ds)
+                res = testnd.ttest_ind(y, model, c1, c0, ds=ds, **kwargs)
         else:
-            res = testnd.ttest_1samp(y, ds=ds)
+            res = testnd.ttest_1samp(y, ds=ds, **kwargs)
 
-        brain = plot.brain.dspm(res.t, ttest_t(p, res.df), ttest_t(pmin, res.df),
+        # select cluster-corrected t-map
+        if kwargs:
+            tmap = res.masked_parameter_map(None)
+        else:
+            tmap = res.t
+
+        # make movie
+        brain = plot.brain.dspm(tmap, ttest_t(p, res.df), ttest_t(pmin, res.df),
                                 ttest_t(pmid, res.df), surf=surf)
         brain.save_movie(dst, time_dilation)
 
@@ -4253,13 +4274,7 @@ class MneExperiment(FileTree):
             kwargs['tfce'] = True
         elif pmin is not None:
             kwargs['pmin'] = pmin
-            if 'time' in dims and 'mintime' in self.cluster_criteria:
-                kwargs['mintime'] = self.cluster_criteria['mintime']
-
-            if 'source' in dims and 'minsource' in self.cluster_criteria:
-                kwargs['minsource'] = self.cluster_criteria['minsource']
-            elif 'sensor' in dims and 'minsensor' in self.cluster_criteria:
-                kwargs['minsensor'] = self.cluster_criteria['minsensor']
+            kwargs.update(self._cluster_criteria_kwargs(dims))
         return kwargs
 
     def _make_test(self, y, ds, test, kwargs):
@@ -4769,6 +4784,11 @@ class MneExperiment(FileTree):
         # pmin
         if pmin is not None:
             items.append(str(pmin))
+            # cluster criteria
+            if pmin != 'tfce':
+                select_clusters = self.get('select_clusters')
+                if select_clusters:
+                    items.append(select_clusters)
 
         # time window
         if tstart is not None or tstop is not None:

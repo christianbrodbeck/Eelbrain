@@ -665,3 +665,25 @@ Freesurfer Parcellations
 ``lobes-ot``
     One large region encompassing occipital and temporal lobe in each
     hemisphere.
+
+
+.. _analysis-params-select_clusters:
+
+Cluster selection criteria
+--------------------------
+
+In thresholded cluster test, clusters are initially filtered with a minimum
+size criterion. This can be changed with the ``select_clusters`` analysis
+parameter with the following options:
+
+================ ======== =========== ===========
+name             min time min sources min sensors
+================ ======== =========== ===========
+``"all"``
+``""`` (default) 25 ms    10          4
+``"large"``      25 ms    20          8
+================ ======== =========== ===========
+
+To change the cluster selection criterion use for example::
+
+    >>> e.set(select_clusters='all')

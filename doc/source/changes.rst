@@ -4,6 +4,13 @@ Changes
 .. currentmodule:: eelbrain
 
 
+New in 0.20
+-----------
+
+* :class:`MneExperiment`: new analysis parameter ``select_clusters='all'`` to
+  keep all clusters in cluster tests (see
+  :ref:`analysis-params-select_clusters`).
+
 New in 0.19
 -----------
 
