@@ -25,9 +25,8 @@ def _idx(i):
 
 
 def assert_can_save_movies():
-    import surfer
-    if LooseVersion(surfer.__version__) < LooseVersion('0.6'):
-        raise ImportError("Saving movies requires PySurfer 0.6")
+    from ._brain_fix import assert_can_save_movies
+    assert_can_save_movies()
 
 
 def annot(annot, subject='fsaverage', surf='smoothwm', borders=False, alpha=0.7,

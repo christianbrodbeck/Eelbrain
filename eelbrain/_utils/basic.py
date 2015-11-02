@@ -14,11 +14,6 @@ import numpy as np
 
 from . import ui
 
-logger = logging.getLogger('eelbrain')
-logger.propagate = False
-_hdlr = logging.StreamHandler()
-logger.addHandler(_hdlr)
-
 
 def set_log_level(level, logger_name='eelbrain'):
     """Set the minimum level of messages to be logged
@@ -32,7 +27,7 @@ def set_log_level(level, logger_name='eelbrain'):
         Name of the logger for which to set the logging level. The default is
         the Eelbrain logger.
     """
-    logger_ = logging.getLogger(logger_name)
+    logger = logging.getLogger(logger_name)
     if isinstance(level, basestring):
         level = level.upper()
         levels = {'DEBUG': logging.DEBUG, 'INFO': logging.INFO,
@@ -41,7 +36,7 @@ def set_log_level(level, logger_name='eelbrain'):
         if level not in levels:
             raise ValueError('level must be one of %s' % str(levels.keys()))
         level = levels[level]
-    logger_.setLevel(level)
+    logger.setLevel(level)
 
 
 class intervals:

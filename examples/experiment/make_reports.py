@@ -1,9 +1,5 @@
-from eelbrain import *
 from word_experiment import WordExperiment
 
-
-# set the log level to receive information about test progress
-set_log_level('info')
 
 # create the experiment class instance
 e = WordExperiment("/files")

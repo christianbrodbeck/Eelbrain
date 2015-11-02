@@ -20,7 +20,7 @@ n_samples : None | int
     or permutations is performed, then ``n_samples`` indicates the actual
     number of permutations that constitute the complete set.
 '''
-from __future__ import division
+from __future__ import division, print_function
 
 from datetime import datetime, timedelta
 from itertools import chain, izip
@@ -28,9 +28,11 @@ from math import ceil
 from multiprocessing import Process, cpu_count
 from multiprocessing.queues import SimpleQueue
 from multiprocessing.sharedctypes import RawArray
+import logging
 import operator
 import re
 import socket
+from sys import stdout
 from time import time as current_time
 
 import numpy as np
@@ -43,7 +45,7 @@ from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                          NDVar, Var, Celltable, cellname, combine, Categorial,
                          UTS)
 from .._report import enumeration, format_timewindow, ms
-from .._utils import logger, LazyProperty
+from .._utils import LazyProperty
 from .._utils.numpy_utils import full_slice
 from . import opt, stats
 from .glm import _nd_anova
@@ -2243,6 +2245,7 @@ class _ClusterDist:
         """
         if self.has_original:
             raise RuntimeError("Original pmap already added")
+        logger = logging.getLogger(__name__)
         logger.debug("Adding original parameter map...")
 
         # crop/reshape stat_map
@@ -2947,20 +2950,33 @@ def distribution_worker(dist_array, dist_shape, in_queue):
     samples = dist_shape[0]
     # logger
     t0 = tn = current_time()
+    dt_update = 0.2
+    logger = logging.getLogger(__name__)
     logger.info('starting permutation')
     for i in xrange(samples):
         dist[i] = in_queue.get()
         # logger
         t = current_time()
         dt = t - tn
-        if i and dt > 10:
-            time_left = (samples - i) * (t - t0) / i
+        if i and dt > dt_update:
+            time_elapsed = t - t0
+            time_left = (samples - i) * time_elapsed / i
             td = timedelta(seconds=round(time_left))
-            logger.info("max stat %i received, estimated time left: %s" % (i, td))
+            n_progress = int(20. * i / samples)
+            print("\x1b[2K%i permutations [%-20s]  %s left"
+                  % (samples, '#' * n_progress, td), end='\r')
+            stdout.flush()
             tn = t
+            if dt_update < 10 and n_progress:
+                dt_update = time_elapsed / n_progress
+                if dt_update < 0.2:
+                    dt_update = 0.2
+                elif dt_update > 10:
+                    dt_update = 10
     time_taken = t - t0
     td = timedelta(seconds=round(time_taken))
-    logger.info("%i permutations done in %s" % (samples, td))
+    print("\x1b[2K%i permutations done in %s" % (samples, td))
+    logger.info("%i permutations done in %s", samples, td)
 
 
 def permutation_worker(in_queue, out_queue, y, shape, test_func, map_args):
@@ -2989,6 +3005,7 @@ def run_permutation(test_func, dist, iterator):
         for _ in xrange(len(workers) - 1):
             out_queue.put(None)
 
+        logger = logging.getLogger(__name__)
         for w in workers:
             w.join()
             logger.debug("worker joined")
@@ -3012,6 +3029,7 @@ def setup_workers(test_func, dist, n_workers=None):
     elif not isinstance(n_workers, int):
         raise TypeError("n_workers must be int, got %s" % repr(n_workers))
 
+    logger = logging.getLogger(__name__)
     logger.debug("Setting up %i worker processes..." % n_workers)
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
@@ -3050,6 +3068,7 @@ def run_permutation_me(test, dists, iterator):
         for _ in xrange(len(workers) - 1):
             out_queue.put(None)
 
+        logger = logging.getLogger(__name__)
         for w in workers:
             w.join()
             logger.debug("worker joined")
@@ -3089,6 +3108,7 @@ def setup_workers_me(test_func, dists, thresholds, n_workers=None):
     elif not isinstance(n_workers, int):
         raise TypeError("n_workers must be int, got %s" % repr(n_workers))
 
+    logger = logging.getLogger(__name__)
     logger.debug("Setting up %i worker processes..." % n_workers)
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
@@ -3143,6 +3163,8 @@ def distribution_worker_me(dist_arrays, dist_shape, in_queue):
     samples = dist_shape[0]
     # logger
     t0 = tn = current_time()
+    dt_update = 0.2
+    logger = logging.getLogger(__name__)
     logger.info('starting permutation')
     for i in xrange(samples):
         for dist, v in izip(dists, in_queue.get()):
@@ -3151,11 +3173,22 @@ def distribution_worker_me(dist_arrays, dist_shape, in_queue):
         # logger
         t = current_time()
         dt = t - tn
-        if i and dt > 10:
-            time_left = (samples - i) * (t - t0) / i
+        if i and dt > dt_update:
+            time_elapsed = t - t0
+            time_left = (samples - i) * time_elapsed / i
             td = timedelta(seconds=round(time_left))
-            logger.info("max stat %i received, estimated time left: %s" % (i, td))
+            n_progress = int(20. * i / samples)
+            print("\x1b[2K%i permutations [%-20s]  %s left"
+                  % (samples, '#' * n_progress, td), end='\r')
+            stdout.flush()
             tn = t
+            if dt_update < 10 and n_progress:
+                dt_update = time_elapsed / n_progress
+                if dt_update < 0.2:
+                    dt_update = 0.2
+                elif dt_update > 10:
+                    dt_update = 10
     time_taken = t - t0
     td = timedelta(seconds=round(time_taken))
-    logger.info("%i permutations done in %s" % (samples, td))
+    print("\x1b[2K%i permutations done in %s" % (samples, td))
+    logger.info("%i permutations done in %s", samples, td)

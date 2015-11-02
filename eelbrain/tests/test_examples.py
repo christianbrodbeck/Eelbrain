@@ -13,7 +13,7 @@ examples_dir = os.path.abspath(examples_dir)
 
 
 def test_0():
-    "Test datasets/align.py"
+    "Test examples/datasets/align.py"
     exa_dir = os.path.join(examples_dir, 'datasets')
     exa_file = os.path.join(exa_dir, 'align.py')
 
@@ -42,7 +42,7 @@ def test_0():
     shutil.rmtree(tempdir)
 
 def test_1():
-    "Test experiment/word_experiment.py"
+    "Test examples/experiment/word_experiment.py"
     exa_dir = os.path.join(examples_dir, 'experiment')
     exa_file = os.path.join(exa_dir, 'word_experiment.py')
 
@@ -71,7 +71,7 @@ def test_1():
     shutil.rmtree(tempdir)
 
 def test_2():
-    "Test fmtxt/report.py"
+    "Test examples/fmtxt/report.py"
     exa_dir = os.path.join(examples_dir, 'fmtxt')
     exa_file = os.path.join(exa_dir, 'report.py')
 
@@ -100,7 +100,7 @@ def test_2():
     shutil.rmtree(tempdir)
 
 def test_3():
-    "Test fmtxt/table.py"
+    "Test examples/fmtxt/table.py"
     exa_dir = os.path.join(examples_dir, 'fmtxt')
     exa_file = os.path.join(exa_dir, 'table.py')
 
@@ -129,7 +129,7 @@ def test_3():
     shutil.rmtree(tempdir)
 
 def test_4():
-    "Test meg/mne_sample_loader.py"
+    "Test examples/meg/mne_sample_loader.py"
     exa_dir = os.path.join(examples_dir, 'meg')
     exa_file = os.path.join(exa_dir, 'mne_sample_loader.py')
 
@@ -158,7 +158,7 @@ def test_4():
     shutil.rmtree(tempdir)
 
 def test_5():
-    "Test meg/simple meg.py"
+    "Test examples/meg/simple meg.py"
     exa_dir = os.path.join(examples_dir, 'meg')
     exa_file = os.path.join(exa_dir, 'simple meg.py')
 
@@ -187,7 +187,7 @@ def test_5():
     shutil.rmtree(tempdir)
 
 def test_6():
-    "Test meg/source estimates.py"
+    "Test examples/meg/source estimates.py"
     exa_dir = os.path.join(examples_dir, 'meg')
     exa_file = os.path.join(exa_dir, 'source estimates.py')
 
@@ -216,7 +216,7 @@ def test_6():
     shutil.rmtree(tempdir)
 
 def test_7():
-    "Test meg/source permutation cluster.py"
+    "Test examples/meg/source permutation cluster.py"
     exa_dir = os.path.join(examples_dir, 'meg')
     exa_file = os.path.join(exa_dir, 'source permutation cluster.py')
 
@@ -245,7 +245,7 @@ def test_7():
     shutil.rmtree(tempdir)
 
 def test_8():
-    "Test meg/source permutation.py"
+    "Test examples/meg/source permutation.py"
     exa_dir = os.path.join(examples_dir, 'meg')
     exa_file = os.path.join(exa_dir, 'source permutation.py')
 
@@ -274,7 +274,7 @@ def test_8():
     shutil.rmtree(tempdir)
 
 def test_9():
-    "Test meg/topographic plotting.py"
+    "Test examples/meg/topographic plotting.py"
     exa_dir = os.path.join(examples_dir, 'meg')
     exa_file = os.path.join(exa_dir, 'topographic plotting.py')
 
@@ -303,94 +303,7 @@ def test_9():
     shutil.rmtree(tempdir)
 
 def test_10():
-    "Test ndvar/topo.py"
-    exa_dir = os.path.join(examples_dir, 'ndvar')
-    exa_file = os.path.join(exa_dir, 'topo.py')
-
-    # find required files
-    with open(exa_file) as fid:
-        text = fid.read()
-    filenames = re.findall("# requires: (\w+.\w+)", text)
-    text = text.replace("n_samples = 1000", "n_samples = 2")
-
-    # copy all files to temporary dir
-    tempdir = mkdtemp()
-    dst = os.path.join(tempdir, 'topo.py')
-    with open(dst, 'w') as fid:
-        fid.write(text)
-    for filename in filenames:
-        src = os.path.join(exa_dir, filename)
-        shutil.copy(src, tempdir)
-
-    # execute example
-    logging.info("executing from %s" % tempdir)
-    plot.configure(show=False)
-    os.chdir(tempdir)
-    execfile('topo.py', {})
-
-    # delete temporary files
-    shutil.rmtree(tempdir)
-
-def test_11():
-    "Test ndvar/uts cluster permutation test.py"
-    exa_dir = os.path.join(examples_dir, 'ndvar')
-    exa_file = os.path.join(exa_dir, 'uts cluster permutation test.py')
-
-    # find required files
-    with open(exa_file) as fid:
-        text = fid.read()
-    filenames = re.findall("# requires: (\w+.\w+)", text)
-    text = text.replace("n_samples = 1000", "n_samples = 2")
-
-    # copy all files to temporary dir
-    tempdir = mkdtemp()
-    dst = os.path.join(tempdir, 'uts cluster permutation test.py')
-    with open(dst, 'w') as fid:
-        fid.write(text)
-    for filename in filenames:
-        src = os.path.join(exa_dir, filename)
-        shutil.copy(src, tempdir)
-
-    # execute example
-    logging.info("executing from %s" % tempdir)
-    plot.configure(show=False)
-    os.chdir(tempdir)
-    execfile('uts cluster permutation test.py', {})
-
-    # delete temporary files
-    shutil.rmtree(tempdir)
-
-def test_12():
-    "Test ndvar/uts.py"
-    exa_dir = os.path.join(examples_dir, 'ndvar')
-    exa_file = os.path.join(exa_dir, 'uts.py')
-
-    # find required files
-    with open(exa_file) as fid:
-        text = fid.read()
-    filenames = re.findall("# requires: (\w+.\w+)", text)
-    text = text.replace("n_samples = 1000", "n_samples = 2")
-
-    # copy all files to temporary dir
-    tempdir = mkdtemp()
-    dst = os.path.join(tempdir, 'uts.py')
-    with open(dst, 'w') as fid:
-        fid.write(text)
-    for filename in filenames:
-        src = os.path.join(exa_dir, filename)
-        shutil.copy(src, tempdir)
-
-    # execute example
-    logging.info("executing from %s" % tempdir)
-    plot.configure(show=False)
-    os.chdir(tempdir)
-    execfile('uts.py', {})
-
-    # delete temporary files
-    shutil.rmtree(tempdir)
-
-def test_13():
-    "Test statistics/ANCOVA_Crawley.py"
+    "Test examples/statistics/ANCOVA_Crawley.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
     exa_file = os.path.join(exa_dir, 'ANCOVA_Crawley.py')
 
@@ -418,8 +331,8 @@ def test_13():
     # delete temporary files
     shutil.rmtree(tempdir)
 
-def test_14():
-    "Test statistics/ANCOVA_rutherford.py"
+def test_11():
+    "Test examples/statistics/ANCOVA_rutherford.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
     exa_file = os.path.join(exa_dir, 'ANCOVA_rutherford.py')
 
@@ -447,8 +360,8 @@ def test_14():
     # delete temporary files
     shutil.rmtree(tempdir)
 
-def test_15():
-    "Test statistics/ANOVA.py"
+def test_12():
+    "Test examples/statistics/ANOVA.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
     exa_file = os.path.join(exa_dir, 'ANOVA.py')
 
@@ -476,8 +389,8 @@ def test_15():
     # delete temporary files
     shutil.rmtree(tempdir)
 
-def test_16():
-    "Test statistics/ANOVA_rutherford_1.py"
+def test_13():
+    "Test examples/statistics/ANOVA_rutherford_1.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
     exa_file = os.path.join(exa_dir, 'ANOVA_rutherford_1.py')
 
@@ -505,8 +418,8 @@ def test_16():
     # delete temporary files
     shutil.rmtree(tempdir)
 
-def test_17():
-    "Test statistics/ANOVA_rutherford_2.py"
+def test_14():
+    "Test examples/statistics/ANOVA_rutherford_2.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
     exa_file = os.path.join(exa_dir, 'ANOVA_rutherford_2.py')
 
@@ -534,8 +447,8 @@ def test_17():
     # delete temporary files
     shutil.rmtree(tempdir)
 
-def test_18():
-    "Test statistics/Fox_Prestige.py"
+def test_15():
+    "Test examples/statistics/Fox_Prestige.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
     exa_file = os.path.join(exa_dir, 'Fox_Prestige.py')
 
@@ -563,8 +476,8 @@ def test_18():
     # delete temporary files
     shutil.rmtree(tempdir)
 
-def test_19():
-    "Test statistics/pdf.py"
+def test_16():
+    "Test examples/statistics/pdf.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
     exa_file = os.path.join(exa_dir, 'pdf.py')
 
@@ -592,8 +505,8 @@ def test_19():
     # delete temporary files
     shutil.rmtree(tempdir)
 
-def test_20():
-    "Test statistics/simple.py"
+def test_17():
+    "Test examples/statistics/simple.py"
     exa_dir = os.path.join(examples_dir, 'statistics')
     exa_file = os.path.join(exa_dir, 'simple.py')
 

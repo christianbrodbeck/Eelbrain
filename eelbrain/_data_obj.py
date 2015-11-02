@@ -120,10 +120,10 @@ def cellname(cell, delim=' '):
 
 
 def longname(x):
-    if isnumeric(x) and 'longname' in x.info:
-        return x.info['longname']
-    elif getattr(x, 'name', None) is not None:
+    if getattr(x, 'name', None) is not None:
         return x.name
+    elif isnumeric(x) and 'longname' in x.info:
+        return x.info['longname']
     elif np.isscalar(x):
         return repr(x)
     return '<unnamed>'
@@ -1996,7 +1996,7 @@ class _Effect(object):
 
         Returns
         -------
-        count : array of int,  len = len(self)
+        count : Var of int,  len = len(self)
             Cumulative count of value in self.
 
         Examples
@@ -2007,8 +2007,7 @@ class _Effect(object):
         >>> a.count('a')
         array([0, 0, 0, 1, 1, 1, 2, 2, 2])
         """
-        count = np.cumsum(self == value) + start
-        return count
+        return Var(np.cumsum(self == value) + start)
 
     def enumerate_cells(self, name=None):
         """Enumerate the occurrence of each cell value throughout the data
@@ -4505,6 +4504,9 @@ class Dataset(OrderedDict):
         """
         if not isdataobject(item):
             raise ValueError("Not a valid data-object: %r" % item)
+        elif item.name is None:
+            raise ValueError("Dataset.add(obj) can only take named objects "
+                             "(obj.name can not be None)")
         elif (item.name in self) and not replace:
             raise KeyError("Dataset already contains variable named %r" % item.name)
         else:
@@ -5341,7 +5343,7 @@ class Dataset(OrderedDict):
 
         super(Dataset, self).update(ds)
 
-        if info:
+        if info and isdataset(ds):
             self.info.update(ds.info)
 
 

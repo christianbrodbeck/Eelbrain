@@ -12,6 +12,7 @@
 
 from __future__ import division
 
+from logging import getLogger
 import math
 import os
 import time
@@ -31,7 +32,7 @@ from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
 from .._utils.numpy_utils import full_slice
 from .._wxgui.help import show_help_txt
-from .._wxutils import Icon, ID, logger, REValidator
+from .._wxutils import Icon, ID, REValidator
 from .app import get_app
 from .frame import EelbrainFrame, EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
@@ -446,6 +447,7 @@ class Model(object):
             threshold: True->good; False->bad; None->don't change
         """
         args = ', '.join(map(str, (threshold, method, above, below)))
+        logger = getLogger(__name__)
         logger.info("Auto-reject trials: %s" % args)
 
         x = self.doc.good_data()
@@ -494,6 +496,7 @@ class Model(object):
         index = np.logical_not(self.doc.accept.x)
         old_tag = self.doc.tag[index]
         action = ChangeAction(desc, index, False, True, old_tag, 'clear')
+        logger = getLogger(__name__)
         logger.info("Clearing %i rejections" % index.sum())
         self.history.do(action)
 
@@ -797,6 +800,7 @@ class Frame(EelbrainFrame):  # control
     def OnCanvasClick(self, event):
         "called by mouse clicks"
         ax = event.inaxes
+        logger = getLogger(__name__)
         if ax:
             logger.debug("Canvas click at ax.ax_idx=%i", ax.ax_idx)
             if ax.ax_idx >= 0:
@@ -867,6 +871,7 @@ class Frame(EelbrainFrame):  # control
             elif cmd != wx.NO:
                 raise RuntimeError("Unknown answer: %r" % cmd)
 
+        logger = getLogger(__name__)
         logger.debug("SelectEpochsFrame.OnClose(), saving window properties...")
         pos_h, pos_v = self.GetPosition()
         w, h = self.GetSize()
@@ -1363,6 +1368,7 @@ class Frame(EelbrainFrame):  # control
     def ShowPage(self, page=None):
         "Dislay a specific page (start counting with 0)"
         wx.BeginBusyCursor()
+        logger = getLogger(__name__)
         t0 = time.time()
         if page is None:
             page = self._current_page_i
@@ -1519,7 +1525,6 @@ class TerminalInterface(object):
         self.frame.Show()
         app.SetTopWindow(self.frame)
         if not app.IsMainLoopRunning():
-            logger.info("Entering MainLoop for Epoch Selection GUI")
             app.MainLoop()
 
 

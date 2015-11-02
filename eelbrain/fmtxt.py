@@ -50,7 +50,6 @@ The module also provides functions that work with fmtxt objects:
 import datetime
 from importlib import import_module
 from itertools import izip
-import logging
 import os
 import cPickle as pickle
 import shutil
@@ -58,12 +57,6 @@ import socket
 from StringIO import StringIO
 import tempfile
 import time
-
-try:
-    import tex as _tex
-except:
-    logging.warning("module tex not found; pdf export not available")
-    _tex = None
 
 import numpy as np
 from matplotlib.image import imsave
@@ -139,6 +132,12 @@ def isstr(obj):
 
 def get_pdf(tex_obj):
     "creates a pdf from an fmtxt object (using tex)"
+    try:
+        import tex as _tex
+    except ImportError:
+        raise ImportError("Module tex not found, LaTeX to PDF conversion not "
+                          "available")
+
     txt = tex(tex_obj)
     document = u"""
 \\documentclass{article}
@@ -265,7 +264,6 @@ def copy_pdf(tex_obj=-1):
     fd, path = tempfile.mkstemp('.pdf', text=True)
     os.write(fd, pdf)
     os.close(fd)
-    logging.debug("Temporary file created at: %s" % path)
 
     # copy to clip-board
     ui.copy_file(path)

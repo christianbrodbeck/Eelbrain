@@ -388,9 +388,12 @@ stage 1 : str
     Stage 1 model specification. Coding for categorial predictors uses 0/1 dummy
     coding.
 vars : dict (optional)
-    Optional method for specifying coding schemes for categorial variables.
-    Each entry specifies a variable with the following schema:
-    ``{var_name: (source_name, {value: code})}`` (see example below).
+    Optional method for adding new variables for the stage 1 model.
+    This is useful for specifying coding schemes based on categorial
+    variables. Each entry specifies a variable with the following schema:
+    ``{name: definition}``. ``definition`` can be either a string that is
+    evaluated in the events-:class:`Dataset`, or a
+    ``(source_name, {value: code})``-tuple (see example below).
     ``source_name`` can also be an interaction, in which case cells are joined
     with spaces (``"f1_cell f2_cell"``).
 
@@ -402,7 +405,10 @@ of the event within subject as an integer count and can be used to test for
 change over time. Thanks to the numberic nature of these variables interactions
 can be computed by multiplication::
 
-    tests = {'a_x_b': {'kind': 'two-stage',
+    tests = {'word_basic': {'kind': 'two-stage',
+                            'vars': {'wordlength': 'word.label_length()'},
+                            'stage 1': 'wordlength'},
+             'a_x_b': {'kind': 'two-stage',
                        'vars': {'a_num': ('a', {'a1': 0, 'a2': 1}),
                                 'b_num': ('b', {'b1': 0, 'b2': 1})},
                        'stage 1': "a_num + b_num + a_num * b_num + index + a_num * index"},
@@ -410,7 +416,7 @@ can be computed by multiplication::
                           'vars': {'a_num': ('a', {'a1': 0, 'a2': 1})},
                           'stage 1': "a_num + index + a_num * index"},
              'ab_linear': {'kind': 'two-stage',
-                           'vars': {'ab': ('a%b', {'a1b1': 0, 'a1b2': 1, 'a2b1': 1, 'a2b2': 2})},
+                           'vars': {'ab': ('a%b', {'a1 b1': 0, 'a1 b2': 1, 'a2 b1': 1, 'a2 b2': 2})},
                            'stage 1': "ab"},
             }
 
