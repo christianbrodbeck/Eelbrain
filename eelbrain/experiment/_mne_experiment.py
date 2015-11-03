@@ -921,9 +921,18 @@ class MneExperiment(FileTree):
                                    "the eelbrain-cache folder." % (tc, tsys))
             self._log.debug("Checking cache...")
             cache_state = load.unpickle(cache_state_path)
-            invalid_cache = defaultdict(set)
 
-            # check events
+            # Find modified definitions
+            # =========================
+            invalid_cache = defaultdict(set)
+            # events (subject):  overall change in events
+            # variables:  event change restricted to certain variables
+            # groups:  change in group members
+            # epochs:  change in epoch parameters
+            # parcs: parc def change
+            # tests: test def change
+
+            # check events (includes trigger_shift)
             cache_events = cache_state['events']
             overlapping_subjects = [s for s in events if s in cache_events]
             for subject in overlapping_subjects:
@@ -933,9 +942,14 @@ class MneExperiment(FileTree):
                     invalid_cache['events'].add(subject)
                     self._log.debug("  event length: %s %i->%i", subject,
                                     cached_events.n_cases, new_events.n_cases)
+                elif not np.all(new_events['i_start'] == cached_events['i_start']):
+                    invalid_cache['events'].add(subject)
+                    self._log.debug("  trigger timing changed: %s", subject)
                 else:
                     for var in cached_events:
-                        if var not in new_events:
+                        if var == 'i_start':
+                            continue
+                        elif var not in new_events:
                             invalid_cache['variables'].add(var)
                             self._log.debug("  var removed: %s", var)
                         elif not np.all(cached_events[var] == new_events[var]):
@@ -974,6 +988,8 @@ class MneExperiment(FileTree):
                     else:
                         self._log.debug("  test %s removed", test)
 
+            # Collect invalid files
+            # =====================
             # create message here, before secondary invalidations are added
             if invalid_cache:
                 msg = ["Experiment definition changed:"]
