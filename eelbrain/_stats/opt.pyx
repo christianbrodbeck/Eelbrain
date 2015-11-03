@@ -5,9 +5,9 @@ cimport cython
 from cython.view cimport array as cvarray
 from libc.stdlib cimport malloc, free
 import numpy as np
-cimport numpy as np
+cimport numpy as cnp
 
-ctypedef np.uint32_t NP_UINT32
+ctypedef cnp.uint32_t NP_UINT32
 ctypedef fused scalar:
     cython.int
     cython.long
@@ -104,8 +104,8 @@ def merge_labels(unsigned int [:,:] cmap, int n_labels_in,
 
 
 def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
-                     double[:, :] f_map, np.int16_t[:, :] effects, 
-                     np.int8_t[:, :] e_ms):
+                     double[:, :] f_map, cnp.int16_t[:, :] effects,
+                     cnp.int8_t[:, :] e_ms):
     """Compute f-maps for a balanced, fully specified ANOVA model
     
     Parameters
@@ -167,7 +167,7 @@ def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
 
 
 def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,
-                double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+                double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
     """Compute f-maps for a balanced ANOVA model with residuals
 
     Parameters
@@ -510,7 +510,7 @@ def t_1samp(scalar[:,:] y, double[:] out):
         out[i] = mean / denom
 
 
-def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):
+def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):
     """T-values for 1-sample t-test
 
     Parameters

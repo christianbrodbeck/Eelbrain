@@ -760,9 +760,9 @@ typedef npy_double __pyx_t_5numpy_double_t;
 typedef npy_longdouble __pyx_t_5numpy_longdouble_t;
 
 /* "eelbrain/_stats/opt.pyx":10
- * cimport numpy as np
+ * cimport numpy as cnp
  * 
- * ctypedef np.uint32_t NP_UINT32             # <<<<<<<<<<<<<<
+ * ctypedef cnp.uint32_t NP_UINT32             # <<<<<<<<<<<<<<
  * ctypedef fused scalar:
  *     cython.int
  */
@@ -3034,8 +3034,8 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_merge_labels(CYTHON_UNUSED PyOb
  * 
  * 
  * def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                      double[:, :] f_map, np.int16_t[:, :] effects,
- *                      np.int8_t[:, :] e_ms):
+ *                      double[:, :] f_map, cnp.int16_t[:, :] effects,
+ *                      cnp.int8_t[:, :] e_ms):
  */
 
 /* Python wrapper */
@@ -3127,9 +3127,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_2anova_full_fmaps(CYTHON_UNUSED
   Py_ssize_t __pyx_v_itemsize;
   int __pyx_v_dtype_signed;
   char __pyx_v_kind;
-  int __pyx_v_int_is_signed;
-  int __pyx_v_long_is_signed;
   int __pyx_v_long_long_is_signed;
+  int __pyx_v_long_is_signed;
+  int __pyx_v_int_is_signed;
   PyObject *__pyx_v_arg = NULL;
   PyObject *__pyx_v_dtype = NULL;
   PyObject *__pyx_v_arg_base = NULL;
@@ -3231,9 +3231,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_2anova_full_fmaps(CYTHON_UNUSED
     __pyx_L11_try_end:;
   }
   __pyx_v_itemsize = -1L;
-  __pyx_v_int_is_signed = (((int)-1L) < 0);
-  __pyx_v_long_is_signed = (((long)-1L) < 0);
   __pyx_v_long_long_is_signed = (((PY_LONG_LONG)-1L) < 0);
+  __pyx_v_long_is_signed = (((long)-1L) < 0);
+  __pyx_v_int_is_signed = (((int)-1L) < 0);
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 106; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -4267,8 +4267,8 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_22anova_full_fmaps(CYTHON_UNUSE
  * 
  * 
  * def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                      double[:, :] f_map, np.int16_t[:, :] effects,
- *                      np.int8_t[:, :] e_ms):
+ *                      double[:, :] f_map, cnp.int16_t[:, :] effects,
+ *                      cnp.int8_t[:, :] e_ms):
  */
 
   /* function exit code */
@@ -4762,8 +4762,8 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_24anova_full_fmaps(CYTHON_UNUSE
  * 
  * 
  * def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                      double[:, :] f_map, np.int16_t[:, :] effects,
- *                      np.int8_t[:, :] e_ms):
+ *                      double[:, :] f_map, cnp.int16_t[:, :] effects,
+ *                      cnp.int8_t[:, :] e_ms):
  */
 
   /* function exit code */
@@ -5257,8 +5257,8 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_26anova_full_fmaps(CYTHON_UNUSE
  * 
  * 
  * def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                      double[:, :] f_map, np.int16_t[:, :] effects,
- *                      np.int8_t[:, :] e_ms):
+ *                      double[:, :] f_map, cnp.int16_t[:, :] effects,
+ *                      cnp.int8_t[:, :] e_ms):
  */
 
   /* function exit code */
@@ -5752,8 +5752,8 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_28anova_full_fmaps(CYTHON_UNUSE
  * 
  * 
  * def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                      double[:, :] f_map, np.int16_t[:, :] effects,
- *                      np.int8_t[:, :] e_ms):
+ *                      double[:, :] f_map, cnp.int16_t[:, :] effects,
+ *                      cnp.int8_t[:, :] e_ms):
  */
 
   /* function exit code */
@@ -6247,8 +6247,8 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_30anova_full_fmaps(CYTHON_UNUSE
  * 
  * 
  * def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                      double[:, :] f_map, np.int16_t[:, :] effects,
- *                      np.int8_t[:, :] e_ms):
+ *                      double[:, :] f_map, cnp.int16_t[:, :] effects,
+ *                      cnp.int8_t[:, :] e_ms):
  */
 
   /* function exit code */
@@ -6273,7 +6273,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_30anova_full_fmaps(CYTHON_UNUSE
  * 
  * 
  * def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+ *                 double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
  *     """Compute f-maps for a balanced ANOVA model with residuals
  */
 
@@ -6366,9 +6366,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_4anova_fmaps(CYTHON_UNUSED PyOb
   Py_ssize_t __pyx_v_itemsize;
   int __pyx_v_dtype_signed;
   char __pyx_v_kind;
-  int __pyx_v_int_is_signed;
-  int __pyx_v_long_is_signed;
   int __pyx_v_long_long_is_signed;
+  int __pyx_v_long_is_signed;
+  int __pyx_v_int_is_signed;
   PyObject *__pyx_v_arg = NULL;
   PyObject *__pyx_v_dtype = NULL;
   PyObject *__pyx_v_arg_base = NULL;
@@ -6470,9 +6470,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_4anova_fmaps(CYTHON_UNUSED PyOb
     __pyx_L11_try_end:;
   }
   __pyx_v_itemsize = -1L;
-  __pyx_v_int_is_signed = (((int)-1L) < 0);
-  __pyx_v_long_is_signed = (((long)-1L) < 0);
   __pyx_v_long_long_is_signed = (((PY_LONG_LONG)-1L) < 0);
+  __pyx_v_long_is_signed = (((long)-1L) < 0);
+  __pyx_v_int_is_signed = (((int)-1L) < 0);
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 169; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -7546,7 +7546,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_34anova_fmaps(CYTHON_UNUSED PyO
  * 
  * 
  * def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+ *                 double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
  *     """Compute f-maps for a balanced ANOVA model with residuals
  */
 
@@ -8085,7 +8085,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_36anova_fmaps(CYTHON_UNUSED PyO
  * 
  * 
  * def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+ *                 double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
  *     """Compute f-maps for a balanced ANOVA model with residuals
  */
 
@@ -8624,7 +8624,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_38anova_fmaps(CYTHON_UNUSED PyO
  * 
  * 
  * def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+ *                 double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
  *     """Compute f-maps for a balanced ANOVA model with residuals
  */
 
@@ -9163,7 +9163,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_40anova_fmaps(CYTHON_UNUSED PyO
  * 
  * 
  * def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+ *                 double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
  *     """Compute f-maps for a balanced ANOVA model with residuals
  */
 
@@ -9702,7 +9702,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_42anova_fmaps(CYTHON_UNUSED PyO
  * 
  * 
  * def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+ *                 double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
  *     """Compute f-maps for a balanced ANOVA model with residuals
  */
 
@@ -9825,9 +9825,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_6sum_square(CYTHON_UNUSED PyObj
   Py_ssize_t __pyx_v_itemsize;
   int __pyx_v_dtype_signed;
   char __pyx_v_kind;
-  int __pyx_v_int_is_signed;
-  int __pyx_v_long_is_signed;
   int __pyx_v_long_long_is_signed;
+  int __pyx_v_long_is_signed;
+  int __pyx_v_int_is_signed;
   PyObject *__pyx_v_arg = NULL;
   PyObject *__pyx_v_dtype = NULL;
   PyObject *__pyx_v_arg_base = NULL;
@@ -9929,9 +9929,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_6sum_square(CYTHON_UNUSED PyObj
     __pyx_L11_try_end:;
   }
   __pyx_v_itemsize = -1L;
-  __pyx_v_int_is_signed = (((int)-1L) < 0);
-  __pyx_v_long_is_signed = (((long)-1L) < 0);
   __pyx_v_long_long_is_signed = (((PY_LONG_LONG)-1L) < 0);
+  __pyx_v_long_is_signed = (((long)-1L) < 0);
+  __pyx_v_int_is_signed = (((int)-1L) < 0);
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 233; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -11429,9 +11429,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_8ss(CYTHON_UNUSED PyObject *__p
   Py_ssize_t __pyx_v_itemsize;
   int __pyx_v_dtype_signed;
   char __pyx_v_kind;
-  int __pyx_v_int_is_signed;
-  int __pyx_v_long_is_signed;
   int __pyx_v_long_long_is_signed;
+  int __pyx_v_long_is_signed;
+  int __pyx_v_int_is_signed;
   PyObject *__pyx_v_arg = NULL;
   PyObject *__pyx_v_dtype = NULL;
   PyObject *__pyx_v_arg_base = NULL;
@@ -11533,9 +11533,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_8ss(CYTHON_UNUSED PyObject *__p
     __pyx_L11_try_end:;
   }
   __pyx_v_itemsize = -1L;
-  __pyx_v_int_is_signed = (((int)-1L) < 0);
-  __pyx_v_long_is_signed = (((long)-1L) < 0);
   __pyx_v_long_long_is_signed = (((PY_LONG_LONG)-1L) < 0);
+  __pyx_v_long_is_signed = (((long)-1L) < 0);
+  __pyx_v_int_is_signed = (((int)-1L) < 0);
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 258; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -14384,9 +14384,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_10lm_betas(CYTHON_UNUSED PyObje
   Py_ssize_t __pyx_v_itemsize;
   int __pyx_v_dtype_signed;
   char __pyx_v_kind;
-  int __pyx_v_int_is_signed;
-  int __pyx_v_long_is_signed;
   int __pyx_v_long_long_is_signed;
+  int __pyx_v_long_is_signed;
+  int __pyx_v_int_is_signed;
   PyObject *__pyx_v_arg = NULL;
   PyObject *__pyx_v_dtype = NULL;
   PyObject *__pyx_v_arg_base = NULL;
@@ -14488,9 +14488,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_10lm_betas(CYTHON_UNUSED PyObje
     __pyx_L11_try_end:;
   }
   __pyx_v_itemsize = -1L;
-  __pyx_v_int_is_signed = (((int)-1L) < 0);
-  __pyx_v_long_is_signed = (((long)-1L) < 0);
   __pyx_v_long_long_is_signed = (((PY_LONG_LONG)-1L) < 0);
+  __pyx_v_long_is_signed = (((long)-1L) < 0);
+  __pyx_v_int_is_signed = (((int)-1L) < 0);
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 353; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -16123,9 +16123,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_12lm_res(CYTHON_UNUSED PyObject
   Py_ssize_t __pyx_v_itemsize;
   int __pyx_v_dtype_signed;
   char __pyx_v_kind;
-  int __pyx_v_int_is_signed;
-  int __pyx_v_long_is_signed;
   int __pyx_v_long_long_is_signed;
+  int __pyx_v_long_is_signed;
+  int __pyx_v_int_is_signed;
   PyObject *__pyx_v_arg = NULL;
   PyObject *__pyx_v_dtype = NULL;
   PyObject *__pyx_v_arg_base = NULL;
@@ -16227,9 +16227,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_12lm_res(CYTHON_UNUSED PyObject
     __pyx_L11_try_end:;
   }
   __pyx_v_itemsize = -1L;
-  __pyx_v_int_is_signed = (((int)-1L) < 0);
-  __pyx_v_long_is_signed = (((long)-1L) < 0);
   __pyx_v_long_long_is_signed = (((PY_LONG_LONG)-1L) < 0);
+  __pyx_v_long_is_signed = (((long)-1L) < 0);
+  __pyx_v_int_is_signed = (((int)-1L) < 0);
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 382; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -18122,9 +18122,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_14lm_res_ss(CYTHON_UNUSED PyObj
   Py_ssize_t __pyx_v_itemsize;
   int __pyx_v_dtype_signed;
   char __pyx_v_kind;
-  int __pyx_v_int_is_signed;
-  int __pyx_v_long_is_signed;
   int __pyx_v_long_long_is_signed;
+  int __pyx_v_long_is_signed;
+  int __pyx_v_int_is_signed;
   PyObject *__pyx_v_arg = NULL;
   PyObject *__pyx_v_dtype = NULL;
   PyObject *__pyx_v_arg_base = NULL;
@@ -18226,9 +18226,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_14lm_res_ss(CYTHON_UNUSED PyObj
     __pyx_L11_try_end:;
   }
   __pyx_v_itemsize = -1L;
-  __pyx_v_int_is_signed = (((int)-1L) < 0);
-  __pyx_v_long_is_signed = (((long)-1L) < 0);
   __pyx_v_long_long_is_signed = (((PY_LONG_LONG)-1L) < 0);
+  __pyx_v_long_is_signed = (((long)-1L) < 0);
+  __pyx_v_int_is_signed = (((int)-1L) < 0);
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 418; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -19826,9 +19826,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_16lm_t(CYTHON_UNUSED PyObject *
   Py_ssize_t __pyx_v_itemsize;
   int __pyx_v_dtype_signed;
   char __pyx_v_kind;
-  int __pyx_v_int_is_signed;
-  int __pyx_v_long_is_signed;
   int __pyx_v_long_long_is_signed;
+  int __pyx_v_long_is_signed;
+  int __pyx_v_int_is_signed;
   PyObject *__pyx_v_arg = NULL;
   PyObject *__pyx_v_dtype = NULL;
   PyObject *__pyx_v_arg_base = NULL;
@@ -19930,9 +19930,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_16lm_t(CYTHON_UNUSED PyObject *
     __pyx_L11_try_end:;
   }
   __pyx_v_itemsize = -1L;
-  __pyx_v_int_is_signed = (((int)-1L) < 0);
-  __pyx_v_long_is_signed = (((long)-1L) < 0);
   __pyx_v_long_long_is_signed = (((PY_LONG_LONG)-1L) < 0);
+  __pyx_v_long_is_signed = (((long)-1L) < 0);
+  __pyx_v_int_is_signed = (((int)-1L) < 0);
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 446; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -21965,9 +21965,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_18t_1samp(CYTHON_UNUSED PyObjec
   Py_ssize_t __pyx_v_itemsize;
   int __pyx_v_dtype_signed;
   char __pyx_v_kind;
-  int __pyx_v_int_is_signed;
-  int __pyx_v_long_is_signed;
   int __pyx_v_long_long_is_signed;
+  int __pyx_v_long_is_signed;
+  int __pyx_v_int_is_signed;
   PyObject *__pyx_v_arg = NULL;
   PyObject *__pyx_v_dtype = NULL;
   PyObject *__pyx_v_arg_base = NULL;
@@ -22069,9 +22069,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_18t_1samp(CYTHON_UNUSED PyObjec
     __pyx_L11_try_end:;
   }
   __pyx_v_itemsize = -1L;
-  __pyx_v_int_is_signed = (((int)-1L) < 0);
-  __pyx_v_long_is_signed = (((long)-1L) < 0);
   __pyx_v_long_long_is_signed = (((PY_LONG_LONG)-1L) < 0);
+  __pyx_v_long_is_signed = (((long)-1L) < 0);
+  __pyx_v_int_is_signed = (((int)-1L) < 0);
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 480; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -23935,7 +23935,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_126t_1samp(CYTHON_UNUSED PyObje
 /* "eelbrain/_stats/opt.pyx":513
  * 
  * 
- * def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):             # <<<<<<<<<<<<<<
+ * def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):             # <<<<<<<<<<<<<<
  *     """T-values for 1-sample t-test
  * 
  */
@@ -24029,9 +24029,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_20t_1samp_perm(CYTHON_UNUSED Py
   Py_ssize_t __pyx_v_itemsize;
   int __pyx_v_dtype_signed;
   char __pyx_v_kind;
-  int __pyx_v_int_is_signed;
-  int __pyx_v_long_is_signed;
   int __pyx_v_long_long_is_signed;
+  int __pyx_v_long_is_signed;
+  int __pyx_v_int_is_signed;
   PyObject *__pyx_v_arg = NULL;
   PyObject *__pyx_v_dtype = NULL;
   PyObject *__pyx_v_arg_base = NULL;
@@ -24133,9 +24133,9 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_20t_1samp_perm(CYTHON_UNUSED Py
     __pyx_L11_try_end:;
   }
   __pyx_v_itemsize = -1L;
-  __pyx_v_int_is_signed = (((int)-1L) < 0);
-  __pyx_v_long_is_signed = (((long)-1L) < 0);
   __pyx_v_long_long_is_signed = (((PY_LONG_LONG)-1L) < 0);
+  __pyx_v_long_is_signed = (((long)-1L) < 0);
+  __pyx_v_int_is_signed = (((int)-1L) < 0);
   if (unlikely(__pyx_v_args == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
     {__pyx_filename = __pyx_f[0]; __pyx_lineno = 513; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -24972,7 +24972,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_130t_1samp_perm(CYTHON_UNUSED P
   /* "eelbrain/_stats/opt.pyx":513
  * 
  * 
- * def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):             # <<<<<<<<<<<<<<
+ * def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):             # <<<<<<<<<<<<<<
  *     """T-values for 1-sample t-test
  * 
  */
@@ -25268,7 +25268,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_132t_1samp_perm(CYTHON_UNUSED P
   /* "eelbrain/_stats/opt.pyx":513
  * 
  * 
- * def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):             # <<<<<<<<<<<<<<
+ * def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):             # <<<<<<<<<<<<<<
  *     """T-values for 1-sample t-test
  * 
  */
@@ -25564,7 +25564,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_134t_1samp_perm(CYTHON_UNUSED P
   /* "eelbrain/_stats/opt.pyx":513
  * 
  * 
- * def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):             # <<<<<<<<<<<<<<
+ * def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):             # <<<<<<<<<<<<<<
  *     """T-values for 1-sample t-test
  * 
  */
@@ -25860,7 +25860,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_136t_1samp_perm(CYTHON_UNUSED P
   /* "eelbrain/_stats/opt.pyx":513
  * 
  * 
- * def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):             # <<<<<<<<<<<<<<
+ * def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):             # <<<<<<<<<<<<<<
  *     """T-values for 1-sample t-test
  * 
  */
@@ -26156,7 +26156,7 @@ static PyObject *__pyx_pf_8eelbrain_6_stats_3opt_138t_1samp_perm(CYTHON_UNUSED P
   /* "eelbrain/_stats/opt.pyx":513
  * 
  * 
- * def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):             # <<<<<<<<<<<<<<
+ * def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):             # <<<<<<<<<<<<<<
  *     """T-values for 1-sample t-test
  * 
  */
@@ -40721,8 +40721,8 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  * 
  * def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                      double[:, :] f_map, np.int16_t[:, :] effects,
- *                      np.int8_t[:, :] e_ms):
+ *                      double[:, :] f_map, cnp.int16_t[:, :] effects,
+ *                      cnp.int8_t[:, :] e_ms):
  */
   __pyx_tuple__2 = PyTuple_Pack(1, __pyx_kp_s_); if (unlikely(!__pyx_tuple__2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 106; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__2);
@@ -40741,7 +40741,7 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  * 
  * def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+ *                 double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
  *     """Compute f-maps for a balanced ANOVA model with residuals
  */
   __pyx_tuple__7 = PyTuple_Pack(1, __pyx_kp_s_); if (unlikely(!__pyx_tuple__7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 169; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -40900,7 +40900,7 @@ static int __Pyx_InitCachedConstants(void) {
   /* "eelbrain/_stats/opt.pyx":513
  * 
  * 
- * def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):             # <<<<<<<<<<<<<<
+ * def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):             # <<<<<<<<<<<<<<
  *     """T-values for 1-sample t-test
  * 
  */
@@ -41145,8 +41145,8 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  * 
  * def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                      double[:, :] f_map, np.int16_t[:, :] effects,
- *                      np.int8_t[:, :] e_ms):
+ *                      double[:, :] f_map, cnp.int16_t[:, :] effects,
+ *                      cnp.int8_t[:, :] e_ms):
  */
   __pyx_tuple__64 = PyTuple_Pack(24, __pyx_n_s_y, __pyx_n_s_x, __pyx_n_s_xsinv, __pyx_n_s_f_map, __pyx_n_s_effects, __pyx_n_s_e_ms, __pyx_n_s_i, __pyx_n_s_df, __pyx_n_s_i_beta, __pyx_n_s_i_effect, __pyx_n_s_i_effect_ms, __pyx_n_s_i_start, __pyx_n_s_i_stop, __pyx_n_s_i_fmap, __pyx_n_s_case, __pyx_n_s_v, __pyx_n_s_ss, __pyx_n_s_ms_denom, __pyx_n_s_n_tests, __pyx_n_s_n_cases, __pyx_n_s_n_betas, __pyx_n_s_n_effects, __pyx_n_s_betas, __pyx_n_s_mss); if (unlikely(!__pyx_tuple__64)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 106; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__64);
@@ -41157,7 +41157,7 @@ static int __Pyx_InitCachedConstants(void) {
  * 
  * 
  * def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+ *                 double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
  *     """Compute f-maps for a balanced ANOVA model with residuals
  */
   __pyx_tuple__66 = PyTuple_Pack(26, __pyx_n_s_y, __pyx_n_s_x, __pyx_n_s_xsinv, __pyx_n_s_f_map, __pyx_n_s_effects, __pyx_n_s_df_res, __pyx_n_s_i, __pyx_n_s_df, __pyx_n_s_i_beta, __pyx_n_s_i_effect, __pyx_n_s_i_effect_ms, __pyx_n_s_i_effect_beta, __pyx_n_s_i_fmap, __pyx_n_s_case, __pyx_n_s_v, __pyx_n_s_SS, __pyx_n_s_MS, __pyx_n_s_MS_res, __pyx_n_s_MS_den, __pyx_n_s_n_tests, __pyx_n_s_n_cases, __pyx_n_s_n_betas, __pyx_n_s_n_effects, __pyx_n_s_betas, __pyx_n_s_values, __pyx_n_s_predicted_y); if (unlikely(!__pyx_tuple__66)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 169; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -41252,7 +41252,7 @@ static int __Pyx_InitCachedConstants(void) {
   /* "eelbrain/_stats/opt.pyx":513
  * 
  * 
- * def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):             # <<<<<<<<<<<<<<
+ * def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):             # <<<<<<<<<<<<<<
  *     """T-values for 1-sample t-test
  * 
  */
@@ -41494,7 +41494,7 @@ PyMODINIT_FUNC PyInit_opt(void)
  * from cython.view cimport array as cvarray
  * from libc.stdlib cimport malloc, free
  * import numpy as np             # <<<<<<<<<<<<<<
- * cimport numpy as np
+ * cimport numpy as cnp
  * 
  */
   __pyx_t_1 = __Pyx_Import(__pyx_n_s_numpy, 0, -1); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 7; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -41518,8 +41518,8 @@ PyMODINIT_FUNC PyInit_opt(void)
  * 
  * 
  * def anova_full_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                      double[:, :] f_map, np.int16_t[:, :] effects,
- *                      np.int8_t[:, :] e_ms):
+ *                      double[:, :] f_map, cnp.int16_t[:, :] effects,
+ *                      cnp.int8_t[:, :] e_ms):
  */
   __pyx_t_1 = PyDict_New(); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 106; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
@@ -41560,7 +41560,7 @@ PyMODINIT_FUNC PyInit_opt(void)
  * 
  * 
  * def anova_fmaps(scalar[:, :] y, double[:, :] x, double[:, :] xsinv,             # <<<<<<<<<<<<<<
- *                 double[:, :] f_map, np.int16_t[:, :] effects, int df_res):
+ *                 double[:, :] f_map, cnp.int16_t[:, :] effects, int df_res):
  *     """Compute f-maps for a balanced ANOVA model with residuals
  */
   __pyx_t_3 = PyDict_New(); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 169; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -41895,7 +41895,7 @@ PyMODINIT_FUNC PyInit_opt(void)
   /* "eelbrain/_stats/opt.pyx":513
  * 
  * 
- * def t_1samp_perm(scalar[:,:] y, double[:] out, np.int8_t[:] sign):             # <<<<<<<<<<<<<<
+ * def t_1samp_perm(scalar[:,:] y, double[:] out, cnp.int8_t[:] sign):             # <<<<<<<<<<<<<<
  *     """T-values for 1-sample t-test
  * 
  */
