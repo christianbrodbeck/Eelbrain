@@ -882,11 +882,18 @@ class MneExperiment(FileTree):
         handler.setFormatter(formatter)
         self._log.addHandler(handler)
         handler.setLevel(logging.DEBUG)
+
+        # log package versions
         from .. import __version__
         msg = ("%s initialized with root=%r, eelbrain %s, mne %s"
                % (self.__class__.__name__, root, __version__, mne.__version__))
         if any('dev' in v for v in (__version__, mne.__version__)):
             self._log.warn(msg)
+            for package, version in (('eelbrain', __version__),
+                                     ('mne', mne.__version__)):
+                if 'dev' in version:
+                    warn("Using %s %s: Using development versions can have "
+                         "unanticipated consequences" % (package, version))
         else:
             self._log.info(msg)
 
