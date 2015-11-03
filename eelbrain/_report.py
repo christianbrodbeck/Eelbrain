@@ -308,6 +308,7 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors, match):
     caption_.append("%i - %i ms." % (tstart_ms, tstop_ms))
     caption = ' '.join(caption_)
     section.add_image_figure(brain.image('cluster_spatial'), caption)
+    brain.close()
     cluster_timecourse(section, cluster, y, 'source', model, ds, colors, match)
 
 

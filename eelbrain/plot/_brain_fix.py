@@ -1,7 +1,12 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 """Fix up surfer.Brain"""
 from distutils.version import LooseVersion
+import os
 import sys
+
+# pyface imports: set GUI backend (ETS don't support wxPython 3.0)
+if 'ETS_TOOLKIT' not in os.environ:
+    os.environ['ETS_TOOLKIT'] = "qt4"
 
 # surfer imports, revert to standard logging
 first_import = 'surfer' not in sys.modules

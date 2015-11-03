@@ -853,7 +853,7 @@ def bin_table(ndvar, tstart=None, tstop=None, tstep=0.1, surf='smoothwm',
                 im = brain.screenshot_single('rgba', True)
                 line.append(im)
         ims += hemi_lines
-#         brain.close() # causes segfault in wx
+        brain.close()  # causes segfault in wx
 
     header = ['%i - %i ms' % (ms(t0), ms(t1)) for t0, t1 in data.info['bins']]
     return im_table(ims, header)
