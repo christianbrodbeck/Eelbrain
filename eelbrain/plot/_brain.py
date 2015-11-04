@@ -203,12 +203,6 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     return _plot(src, lut, -fmax, fmax, *args, **kwargs)
 
 
-def stat(*args, **kwargs):
-    warn("plot.brain.stat() has been deprecated, use plot.brain.p_map() "
-         "instead", DeprecationWarning)
-    return p_map(*args, **kwargs)
-
-
 def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
           **kwargs):
     """Plot a map of p-values in source space.
@@ -259,23 +253,6 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
     """
     pmap, lut, vmax = _p_lut(p_map, param_map, p0=p0, p1=p1, solid=solid)
     return _plot(pmap, lut, -vmax, vmax, *args, **kwargs)
-
-
-def activation(src, threshold=None, vmax=None, *args, **kwargs):
-    "This function is deprecated. Use plot.brain.dspm() instead."
-    warn("plot.brain.activation() is deprecated. Use plot.brain.dspm() "
-         "instead.", DeprecationWarning)
-
-    x = src.mean()
-    std = src.std()
-
-    if threshold is None:
-        threshold = x + std
-    if vmax is None:
-        vmax = x + 2 * std
-    lut = _activation_lut(threshold, vmax)
-
-    return _plot(src, lut, -vmax, vmax, *args, **kwargs)
 
 
 def cluster(cluster, vmax=None, *args, **kwargs):
@@ -888,23 +865,6 @@ def connectivity(source):
     mlab.pipeline.surface(lines, colormap='Accent', line_width=1, opacity=1.,
                           figure=figure)
     return figure
-
-
-def image(brain, filename, alt=None, close=False):
-    """Deprecated, use Brain.image()"""
-    warn("plot.brain.image() has been deprecated, Brain.image() instead",
-         DeprecationWarning)
-
-    name, ext = os.path.splitext(filename)
-    if ext:
-        format = ext[1:]
-    else:
-        format = 'png'
-
-    im = brain.screenshot('rgba', True)
-    if close:
-        brain.close()
-    return Image.from_array(im, name, format, alt)
 
 
 def copy(brain):

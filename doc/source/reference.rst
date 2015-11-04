@@ -342,7 +342,6 @@ containing source space data with mayavi/pysurfer:
 .. autosummary::
    :toctree: generated
 
-    plot.brain.activation
     plot.brain.cluster
     plot.brain.dspm
     plot.brain.p_map
