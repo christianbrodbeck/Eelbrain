@@ -919,7 +919,6 @@ class MneExperiment(FileTree):
                                    "(%s). If the system time (%s) is wrong, "
                                    "adjust the system clock; if not, delete "
                                    "the eelbrain-cache folder." % (tc, tsys))
-            self._log.debug("Checking cache...")
             cache_state = load.unpickle(cache_state_path)
 
             # Find modified definitions
@@ -1117,13 +1116,15 @@ class MneExperiment(FileTree):
                     self._log.info("Deleting %i invalid cache files", len(files))
                     for path in files:
                         os.remove(path)
+            else:
+                self._log.info("Cache up to date.")
         elif os.path.exists(cache_dir):
             if self.auto_delete_cache is True:
-                self._log.info("Deleting cache without history")
+                self._log.info("Deleting cache-dir without history")
                 shutil.rmtree(cache_dir)
                 os.mkdir(cache_dir)
             elif self.auto_delete_cache == 'disable':
-                self._log.warn("Ignoring cache without history")
+                self._log.warn("Ignoring cache-dir without history")
                 pass
             elif self.auto_delete_cache == 'debug':
                 print("Cache directory without history (validate|abort).")
@@ -1132,7 +1133,7 @@ class MneExperiment(FileTree):
                     if command == 'abort':
                         raise RuntimeError("User aborted")
                     elif command == 'validate':
-                        self._log.warn("Validating cache without history")
+                        self._log.warn("Validating cache-dir without history")
                         break
                     else:
                         print("invalid entry")
@@ -2801,11 +2802,11 @@ class MneExperiment(FileTree):
         # try to load cached test
         res = None
         load_data = True
+        desc = self._get_rel('test-file', 'test-dir')
         if not redo and self._result_mtime(dst, data):
             res = load.unpickle(dst)
             if res.samples >= samples or res.samples == -1:
-                self._log.info("Load cached test %s for %s"
-                               % (test, self.get('group')))
+                self._log.info("Load cached test: %s", desc)
                 load_data = return_data
             else:
                 res = None
@@ -2831,7 +2832,7 @@ class MneExperiment(FileTree):
 
         # perform the test if it was not cached
         if res is None:
-            self._log.info("Make test %s for %s" % (test, self.get('group')))
+            self._log.info("Make test: %s", desc)
             test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, dims,
                                             parc_dim)
             res = self._make_test(ds[y_name], ds, test, test_kwargs)
@@ -3829,8 +3830,16 @@ class MneExperiment(FileTree):
         dst = self.get('report-file', mkdir=True, fmatch=False, folder=folder,
                        test=test, **state)
         is_twostage = self._tests[test]['kind'] == 'two-stage'
-        if not redo and self._result_mtime(dst, 'src', not is_twostage):
+        desc = self._get_rel('report-file', 'res-dir')
+        if redo:
+            self._log.debug("Redoing report: %s", desc)
+        elif self._result_mtime(dst, 'src', not is_twostage):
+            self._log.debug("Report up to date: %s", desc)
             return
+        elif os.path.exists(dst):
+            self._log.debug("Report outdated: %s", desc)
+        else:
+            self._log.debug("New report: %s", desc)
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
@@ -3874,20 +3883,16 @@ class MneExperiment(FileTree):
 
     def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):
-        self._log.info("Starting two-stage report")
-
         rlm = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
                              'src', sns_baseline, src_baseline)
 
         # stage 2
-        self._log.info("Computing stage 2 tests")
         parc_dim = 'source' if parc else None
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop,
                                         ('time', 'source'), parc_dim)
         results = rlm._column_ttests(True, **test_kwargs)
 
         # start report
-        self._log.info("Compiling report")
         surfer_kwargs = self._surfer_plot_kwargs()
         info_section = report.add_section("Test Info")
         if parc:

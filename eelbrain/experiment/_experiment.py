@@ -412,6 +412,12 @@ class TreeModel(object):
     def get(self, temp, **state):
         return self.format('{%s}' % temp, **state)
 
+    def _get_rel(self, temp, start):
+        "Get the path of ``temp`` relative to ``start`` (both field names)"
+        abs_ = self.get(temp)
+        start_ = self.get(start)
+        return os.path.relpath(abs_, start_)
+
     def get_field_values(self, field, exclude=True):
         """Find values for a field taking into account exclusion
 
