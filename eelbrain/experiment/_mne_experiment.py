@@ -4010,9 +4010,10 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst)
 
-    def make_report_eeg(self, test, pmin=None, tstart=0.15, tstop=None,
-                        samples=10000, baseline=True, include=1,
-                        redo=False, redo_test=False, **state):
+    def _make_report_eeg(self, test, pmin=None, tstart=0.15, tstop=None,
+                         samples=10000, baseline=True, include=1,
+                         redo=False, redo_test=False, **state):
+        # outdated (cache, load_test())
         """Create an HTML report on EEG sensor space spatio-temporal clusters
 
         Parameters
@@ -4073,10 +4074,11 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
 
-    def make_report_eeg_sensors(self, test, sensors=('FZ', 'CZ', 'PZ', 'O1', 'O2'),
+    def _make_report_eeg_sensors(self, test, sensors=('FZ', 'CZ', 'PZ', 'O1', 'O2'),
                                 pmin=None, tstart=0.15, tstop=None,
                                 samples=10000, baseline=True, redo=False,
                                 **state):
+        # outdated (cache)
         """Create an HTML report on individual EEG sensors
 
         Parameters
