@@ -59,6 +59,7 @@ __test__ = False
 
 # toggle multiprocessing for _ClusterDist
 MULTIPROCESSING = 1
+N_WORKERS = cpu_count()
 
 
 class _Result(object):
@@ -1969,10 +1970,6 @@ class _ClusterDist:
             collect the maximum in several time bins. The value of tstep has to
             divide the time between tstart and tstop in even sections. TFCE
             only.
-        n_workers : int
-            Number of clustering workers (for threshold based clusters and
-            TFCE). Negative numbers are added to the cpu-count, 0 to disable
-            multiprocessing.
         """
         assert y.has_case
         if threshold is None:
@@ -3020,17 +3017,10 @@ def run_permutation(test_func, dist, iterator):
     dist.finalize()
 
 
-def setup_workers(test_func, dist, n_workers=None):
+def setup_workers(test_func, dist):
     "Initialize workers for permutation tests"
-    if n_workers is None:
-        n_workers = cpu_count()
-    elif n_workers < 0:
-        n_workers = max(1, cpu_count() + n_workers)
-    elif not isinstance(n_workers, int):
-        raise TypeError("n_workers must be int, got %s" % repr(n_workers))
-
     logger = logging.getLogger(__name__)
-    logger.debug("Setting up %i worker processes..." % n_workers)
+    logger.debug("Setting up %i worker processes..." % N_WORKERS)
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
 
@@ -3038,7 +3028,7 @@ def setup_workers(test_func, dist, n_workers=None):
     y, shape = dist.data_for_permutation()
     args = (permutation_queue, dist_queue, y, shape, test_func, dist.map_args)
     workers = []
-    for _ in xrange(n_workers):
+    for _ in xrange(N_WORKERS):
         w = Process(target=permutation_worker, args=args)
         w.start()
         workers.append(w)
@@ -3099,17 +3089,10 @@ def run_permutation_me(test, dists, iterator):
             d.finalize()
 
 
-def setup_workers_me(test_func, dists, thresholds, n_workers=None):
+def setup_workers_me(test_func, dists, thresholds):
     "Initialize workers for permutation tests"
-    if n_workers is None:
-        n_workers = cpu_count()
-    elif n_workers < 0:
-        n_workers = max(1, cpu_count() + n_workers)
-    elif not isinstance(n_workers, int):
-        raise TypeError("n_workers must be int, got %s" % repr(n_workers))
-
     logger = logging.getLogger(__name__)
-    logger.debug("Setting up %i worker processes..." % n_workers)
+    logger.debug("Setting up %i worker processes..." % N_WORKERS)
     permutation_queue = SimpleQueue()
     dist_queue = SimpleQueue()
 
@@ -3119,7 +3102,7 @@ def setup_workers_me(test_func, dists, thresholds, n_workers=None):
     args = (permutation_queue, dist_queue, y, shape, test_func, dist.map_args,
             thresholds)
     workers = []
-    for _ in xrange(n_workers):
+    for _ in xrange(N_WORKERS):
         w = Process(target=permutation_worker_me, args=args)
         w.start()
         workers.append(w)
