@@ -882,11 +882,18 @@ class MneExperiment(FileTree):
         handler.setFormatter(formatter)
         self._log.addHandler(handler)
         handler.setLevel(logging.DEBUG)
+
+        # log package versions
         from .. import __version__
         msg = ("%s initialized with root=%r, eelbrain %s, mne %s"
                % (self.__class__.__name__, root, __version__, mne.__version__))
         if any('dev' in v for v in (__version__, mne.__version__)):
             self._log.warn(msg)
+            for package, version in (('eelbrain', __version__),
+                                     ('mne', mne.__version__)):
+                if 'dev' in version:
+                    warn("Using %s %s: Using development versions can have "
+                         "unanticipated consequences" % (package, version))
         else:
             self._log.info(msg)
 
@@ -912,11 +919,19 @@ class MneExperiment(FileTree):
                                    "(%s). If the system time (%s) is wrong, "
                                    "adjust the system clock; if not, delete "
                                    "the eelbrain-cache folder." % (tc, tsys))
-            self._log.debug("Checking cache...")
             cache_state = load.unpickle(cache_state_path)
-            invalid_cache = defaultdict(set)
 
-            # check events
+            # Find modified definitions
+            # =========================
+            invalid_cache = defaultdict(set)
+            # events (subject):  overall change in events
+            # variables:  event change restricted to certain variables
+            # groups:  change in group members
+            # epochs:  change in epoch parameters
+            # parcs: parc def change
+            # tests: test def change
+
+            # check events (includes trigger_shift)
             cache_events = cache_state['events']
             overlapping_subjects = [s for s in events if s in cache_events]
             for subject in overlapping_subjects:
@@ -926,9 +941,14 @@ class MneExperiment(FileTree):
                     invalid_cache['events'].add(subject)
                     self._log.debug("  event length: %s %i->%i", subject,
                                     cached_events.n_cases, new_events.n_cases)
+                elif not np.all(new_events['i_start'] == cached_events['i_start']):
+                    invalid_cache['events'].add(subject)
+                    self._log.debug("  trigger timing changed: %s", subject)
                 else:
                     for var in cached_events:
-                        if var not in new_events:
+                        if var == 'i_start':
+                            continue
+                        elif var not in new_events:
                             invalid_cache['variables'].add(var)
                             self._log.debug("  var removed: %s", var)
                         elif not np.all(cached_events[var] == new_events[var]):
@@ -967,6 +987,8 @@ class MneExperiment(FileTree):
                     else:
                         self._log.debug("  test %s removed", test)
 
+            # Collect invalid files
+            # =====================
             # create message here, before secondary invalidations are added
             if invalid_cache:
                 msg = ["Experiment definition changed:"]
@@ -1094,13 +1116,15 @@ class MneExperiment(FileTree):
                     self._log.info("Deleting %i invalid cache files", len(files))
                     for path in files:
                         os.remove(path)
+            else:
+                self._log.info("Cache up to date.")
         elif os.path.exists(cache_dir):
             if self.auto_delete_cache is True:
-                self._log.info("Deleting cache without history")
+                self._log.info("Deleting cache-dir without history")
                 shutil.rmtree(cache_dir)
                 os.mkdir(cache_dir)
             elif self.auto_delete_cache == 'disable':
-                self._log.warn("Ignoring cache without history")
+                self._log.warn("Ignoring cache-dir without history")
                 pass
             elif self.auto_delete_cache == 'debug':
                 print("Cache directory without history (validate|abort).")
@@ -1109,7 +1133,7 @@ class MneExperiment(FileTree):
                     if command == 'abort':
                         raise RuntimeError("User aborted")
                     elif command == 'validate':
-                        self._log.warn("Validating cache without history")
+                        self._log.warn("Validating cache-dir without history")
                         break
                     else:
                         print("invalid entry")
@@ -2686,14 +2710,16 @@ class MneExperiment(FileTree):
         res : TestResult
             Test result for the specified test.
         """
+        self.set(test=test, **kwargs)
         self._set_analysis_options(data, sns_baseline, src_baseline, pmin,
-                                   tstart, tstop)
+                                   tstart, tstop, parc, mask)
+        return self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
+                               data, sns_baseline, src_baseline, return_data,
+                               make, redo)
 
-        # figure out what test to do
-        if test is None:
-            test = self.get('test', **kwargs)
-        else:
-            self.set(test=test, **kwargs)
+    def _load_test(self, test, tstart, tstop, pmin, parc, mask, samples, data,
+                   sns_baseline, src_baseline, return_data, make, redo=False):
+        "Requires that _set_analysis_options() has been called"
         test_params = self._tests[test]
 
         if test_params['kind'] == 'custom':
@@ -2715,33 +2741,19 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("data=%s" % repr(data))
 
-        # find cached file path
+        #  parc/mask
         if parc:
-            if pmin == 'tfce':
-                raise NotImplementedError("tfce analysis can't have parc")
-            elif data == 'sns':
-                raise NotImplementedError("sns analysis can't have parc")
             mask = True
-            parc_ = parc
             parc_dim = 'source'
-            data_parc = parc
         elif mask:
-            if data == 'sns':
-                raise NotImplementedError("sns analysis can't have mask")
-            parc_ = mask
-            if pmin is None:  # can as well collect dist for on parc
+            if pmin is None:  # can as well collect dist for parc
                 parc_dim = 'source'
-                data_parc = mask
             else:  # parc means disconnecting
                 parc_dim = None
-                data_parc = '%s-mask' % mask
         else:
-            parc_ = 'aparc'
             parc_dim = None
-            data_parc = 'unmasked'
 
-        dst = self.get('test-file', mkdir=True, data_parc=data_parc,
-                       parc=parc_)
+        dst = self.get('test-file', mkdir=True)
 
         # two-stage tests (not cached)
         if test_params['kind'] == 'two-stage':
@@ -2753,7 +2765,6 @@ class MneExperiment(FileTree):
 
             # find params
             model = test_params['stage 1']
-            apply_mask = bool(parc or mask)
             vars_ = test_params['vars'] if 'vars' in test_params else None
 
             # stage 1
@@ -2761,7 +2772,7 @@ class MneExperiment(FileTree):
             for subject in self:
                 self._log.info("Stage 1 model for %s" % subject)
                 ds = self.load_epochs_stc(subject, sns_baseline, src_baseline,
-                                          morph=True, mask=apply_mask)
+                                          morph=True, mask=mask)
                 if vars_:
                     # compute new variables
                     new = {}
@@ -2778,11 +2789,11 @@ class MneExperiment(FileTree):
         # try to load cached test
         res = None
         load_data = True
+        desc = self._get_rel('test-file', 'test-dir')
         if not redo and self._result_mtime(dst, data):
             res = load.unpickle(dst)
             if res.samples >= samples or res.samples == -1:
-                self._log.info("Load cached test %s for %s"
-                               % (test, self.get('group')))
+                self._log.info("Load cached test: %s", desc)
                 load_data = return_data
             else:
                 res = None
@@ -2808,7 +2819,7 @@ class MneExperiment(FileTree):
 
         # perform the test if it was not cached
         if res is None:
-            self._log.info("Make test %s for %s" % (test, self.get('group')))
+            self._log.info("Make test: %s", desc)
             test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop, dims,
                                             parc_dim)
             res = self._make_test(ds[y_name], ds, test, test_kwargs)
@@ -3273,7 +3284,7 @@ class MneExperiment(FileTree):
         brain_kwargs = self._surfer_plot_kwargs(surf, views, foreground, background,
                                                 smoothing_steps, hemi)
         self._set_analysis_options('src', sns_baseline, src_baseline, None,
-                                   None, None)
+                                   None, None, None, None)
         self.set(equalize_evoked_count='',
                  resname="GA dSPM %s %s" % (brain_kwargs['surf'], fmin))
 
@@ -3404,7 +3415,8 @@ class MneExperiment(FileTree):
         kwargs.update(resname=resname, model=model)
         with self._temporary_state:
             subject, group = self._process_subject_arg(subject, kwargs)
-            self._set_analysis_options('src', sns_baseline, src_baseline, p, None, None)
+            self._set_analysis_options('src', sns_baseline, src_baseline, p,
+                                       None, None, None, None)
 
             if dst is None:
                 if group is None:
@@ -3799,15 +3811,22 @@ class MneExperiment(FileTree):
                                       "parameter). Use a mask instead, or do a "
                                       "cluster-based test." % (pmin,))
         else:
-            state['parc'] = parc
             folder = "{parc}"
         self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
-                                   tstart, tstop)
+                                   tstart, tstop, parc, mask)
         dst = self.get('report-file', mkdir=True, fmatch=False, folder=folder,
                        test=test, **state)
         is_twostage = self._tests[test]['kind'] == 'two-stage'
-        if not redo and self._result_mtime(dst, 'src', not is_twostage):
+        desc = self._get_rel('report-file', 'res-dir')
+        if redo:
+            self._log.debug("Redoing report: %s", desc)
+        elif self._result_mtime(dst, 'src', not is_twostage):
+            self._log.debug("Report up to date: %s", desc)
             return
+        elif os.path.exists(dst):
+            self._log.debug("Report outdated: %s", desc)
+        else:
+            self._log.debug("New report: %s", desc)
 
         # start report
         title = self.format('{experiment} {epoch} {test} {test_options}')
@@ -3828,8 +3847,8 @@ class MneExperiment(FileTree):
     def _evoked_report(self, report, test, sns_baseline, src_baseline, pmin,
                        samples, tstart, tstop, parc, mask, include):
         # load data
-        ds, res = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
-                                 'src', sns_baseline, src_baseline, True, True)
+        ds, res = self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
+                                  'src', sns_baseline, src_baseline, True, True)
 
         # info
         surfer_kwargs = self._surfer_plot_kwargs()
@@ -3851,20 +3870,16 @@ class MneExperiment(FileTree):
 
     def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):
-        self._log.info("Starting two-stage report")
-
-        rlm = self.load_test(None, tstart, tstop, pmin, parc, mask, samples,
-                             'src', sns_baseline, src_baseline)
+        rlm = self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
+                              'src', sns_baseline, src_baseline, False, True)
 
         # stage 2
-        self._log.info("Computing stage 2 tests")
         parc_dim = 'source' if parc else None
         test_kwargs = self._test_kwargs(samples, pmin, tstart, tstop,
                                         ('time', 'source'), parc_dim)
         results = rlm._column_ttests(True, **test_kwargs)
 
         # start report
-        self._log.info("Compiling report")
         surfer_kwargs = self._surfer_plot_kwargs()
         info_section = report.add_section("Test Info")
         if parc:
@@ -3920,7 +3935,7 @@ class MneExperiment(FileTree):
         if not parc:
             raise ValueError("No parcellation specified")
         self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
-                                   tstart, tstop)
+                                   tstart, tstop, parc, None)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="%s ROIs" % parc.capitalize(), **state)
         if not redo and self._result_mtime(dst, 'src'):
@@ -3995,9 +4010,10 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne', 'surfer', 'scipy', 'numpy'))
         report.save_html(dst)
 
-    def make_report_eeg(self, test, pmin=None, tstart=0.15, tstop=None,
-                        samples=10000, baseline=True, include=1,
-                        redo=False, redo_test=False, **state):
+    def _make_report_eeg(self, test, pmin=None, tstart=0.15, tstop=None,
+                         samples=10000, baseline=True, include=1,
+                         redo=False, redo_test=False, **state):
+        # outdated (cache, load_test())
         """Create an HTML report on EEG sensor space spatio-temporal clusters
 
         Parameters
@@ -4026,7 +4042,8 @@ class MneExperiment(FileTree):
         redo_test : bool
             Redo the test even if a cached file exists.
         """
-        self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop)
+        self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop,
+                                   None, None)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Spatio-Temporal", modality='eeg',
                        **state)
@@ -4057,10 +4074,11 @@ class MneExperiment(FileTree):
         report.sign(('eelbrain', 'mne', 'scipy', 'numpy'))
         report.save_html(dst)
 
-    def make_report_eeg_sensors(self, test, sensors=('FZ', 'CZ', 'PZ', 'O1', 'O2'),
+    def _make_report_eeg_sensors(self, test, sensors=('FZ', 'CZ', 'PZ', 'O1', 'O2'),
                                 pmin=None, tstart=0.15, tstop=None,
                                 samples=10000, baseline=True, redo=False,
                                 **state):
+        # outdated (cache)
         """Create an HTML report on individual EEG sensors
 
         Parameters
@@ -4086,7 +4104,8 @@ class MneExperiment(FileTree):
             If the target file already exists, delete and recreate it. This
             only applies to the HTML result file, not to the test.
         """
-        self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop)
+        self._set_analysis_options('eeg', baseline, None, pmin, tstart, tstop,
+                                   None, None)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
                        folder="EEG Sensors", modality='eeg', **state)
         if not redo and os.path.exists(dst):
@@ -4700,7 +4719,7 @@ class MneExperiment(FileTree):
             self.set(model=self._tests[test]['model'])
 
     def _set_analysis_options(self, data, sns_baseline, src_baseline, pmin,
-                              tstart, tstop):
+                              tstart, tstop, parc, mask):
         """Set templates for test paths with test parameters
 
         Can be set before or after the test template.
@@ -4754,7 +4773,28 @@ class MneExperiment(FileTree):
         if tstart is not None or tstop is not None:
             items.append(_time_window_str((tstart, tstop)))
 
-        self.set(test_options=' '.join(items), analysis=analysis)
+        # parc/mask
+        if parc:
+            if pmin == 'tfce':
+                raise NotImplementedError("tfce analysis can't have parc")
+            elif data == 'sns':
+                raise NotImplementedError("sns analysis can't have parc")
+            parc_ = parc
+            data_parc = parc
+        elif mask:
+            if data == 'sns':
+                raise NotImplementedError("sns analysis can't have mask")
+            parc_ = mask
+            if pmin is None:  # can as well collect dist for parc
+                data_parc = mask
+            else:  # parc means disconnecting
+                data_parc = '%s-mask' % mask
+        else:
+            parc_ = 'aparc'
+            data_parc = 'unmasked'
+
+        self.set(test_options=' '.join(items), analysis=analysis, parc=parc_,
+                 data_parc=data_parc)
 
     def show_file_status(self, temp, col=None, row='subject', *args, **kwargs):
         """Compile a table about the existence of files

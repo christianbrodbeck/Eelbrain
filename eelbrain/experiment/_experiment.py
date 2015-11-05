@@ -404,18 +404,19 @@ class TreeModel(object):
         """
         self.set(match=vmatch, **kwargs)
 
-        while True:
-            variables = self._fmt_pattern.findall(string)
-            if variables:
-                string = string.format(**self._fields)
-            else:
-                break
+        while self._fmt_pattern.search(string):
+            string = string.format(**self._fields)
 
         return string
 
     def get(self, temp, **state):
-        path = self.format('{%s}' % temp, **state)
-        return path
+        return self.format('{%s}' % temp, **state)
+
+    def _get_rel(self, temp, start):
+        "Get the path of ``temp`` relative to ``start`` (both field names)"
+        abs_ = self.get(temp)
+        start_ = self.get(start)
+        return os.path.relpath(abs_, start_)
 
     def get_field_values(self, field, exclude=True):
         """Find values for a field taking into account exclusion
