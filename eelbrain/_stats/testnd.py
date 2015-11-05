@@ -62,6 +62,34 @@ MULTIPROCESSING = 1
 N_WORKERS = cpu_count()
 
 
+def configure(ncpus=None):
+    """Configure the number of CPUs used in permutation tests
+
+    Parameters
+    ----------
+    ncpus : int
+        Maximum number of CPUs to use. 0 to turn off multiprocessing. -1 to use
+        all available CPUs.
+
+    Notes
+    -----
+    For tests on large NDVars on systems with many CPUs it can be beneficial
+    to limit the number of CPUs to conserve RAM.
+    """
+    if ncpus is not None:
+        global MULTIPROCESSING, N_WORKERS
+        if not isinstance(ncpus, int):
+            raise TypeError("ncpus=%s, int required" % repr(ncpus))
+        elif ncpus == 0:
+            MULTIPROCESSING = 0
+        elif ncpus < 0:
+            MULTIPROCESSING = 1
+            N_WORKERS = cpu_count()
+        else:
+            MULTIPROCESSING = 1
+            N_WORKERS = min(ncpus, cpu_count())
+
+
 class _Result(object):
     """Baseclass for testnd test results
 

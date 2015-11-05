@@ -2,5 +2,5 @@
 
 __test__ = False
 
-from ._stats.testnd import (t_contrast_rel, corr, ttest_1samp, ttest_ind,
-                            ttest_rel, anova)
+from ._stats.testnd import (configure, t_contrast_rel, corr, ttest_1samp,
+    ttest_ind, ttest_rel, anova)

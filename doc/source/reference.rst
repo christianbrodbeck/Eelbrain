@@ -154,6 +154,7 @@ Mass-Univariate Statistics
 .. autosummary::
    :toctree: generated
 
+   testnd.configure
    testnd.ttest_1samp
    testnd.ttest_rel
    testnd.ttest_ind
