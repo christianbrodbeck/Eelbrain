@@ -3812,10 +3812,11 @@ class MneExperiment(FileTree):
                                       "cluster-based test." % (pmin,))
         else:
             folder = "{parc}"
+        self.set(**state)
         self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc, mask)
         dst = self.get('report-file', mkdir=True, fmatch=False, folder=folder,
-                       test=test, **state)
+                       test=test)
         is_twostage = self._tests[test]['kind'] == 'two-stage'
         desc = self._get_rel('report-file', 'res-dir')
         if redo:
@@ -3931,13 +3932,13 @@ class MneExperiment(FileTree):
         redo : bool
             If the target file already exists, delete and recreate it.
         """
-        parc = self.get('parc', parc=parc)
+        parc = self.get('parc', parc=parc, **state)
         if not parc:
             raise ValueError("No parcellation specified")
         self._set_analysis_options('src', sns_baseline, src_baseline, pmin,
                                    tstart, tstop, parc, None)
         dst = self.get('report-file', mkdir=True, fmatch=False, test=test,
-                       folder="%s ROIs" % parc.capitalize(), **state)
+                       folder="%s ROIs" % parc.capitalize())
         if not redo and self._result_mtime(dst, 'src'):
             return
 
