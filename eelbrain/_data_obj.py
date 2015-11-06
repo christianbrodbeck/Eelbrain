@@ -3976,7 +3976,11 @@ class Datalist(list):
         if self._fmt == 'str':
             return str(item)
         elif self._fmt == 'repr':
-            return repr(item)
+            out = repr(item)
+            if len(out) > 15:
+                return out[:12] + '...'
+            else:
+                return out
         elif self._fmt == 'strlist':
             return "[%s]" % ', '.join(item)
         else:
