@@ -776,6 +776,8 @@ class MneExperiment(FileTree):
             elif not isinstance(params, dict):
                 raise TypeError("Tests need to be specified as dictionary, "
                                 "got %s" % repr(params))
+            else:
+                params = params.copy()
 
             # test descriptions
             kind = params['kind']
