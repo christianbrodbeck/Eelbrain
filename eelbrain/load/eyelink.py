@@ -424,13 +424,6 @@ def events(path, samples=False, ds=None, trigger='trigger', t_edf='t_edf'):
     return ds
 
 
-def add_edf(ds, path, trigger='trigger', t_edf='t_edf'):
-    "Deprecated. Use load.eyelink.events() with ds parameter."
-    warn("load.eyelink.add_edf() is deprecated. use load.eyelink.events() "
-         "with ds parameter instead.", DeprecationWarning)
-    return events(path, False, ds, trigger, t_edf)
-
-
 def artifact_epochs(ds, tmin=-0.2, tmax=0.6, crop=True, esacc='sacc',
                     eblink='blink', t_edf='t_edf'):
     """find blink and saccade artifact information by event

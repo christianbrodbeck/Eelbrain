@@ -1151,12 +1151,12 @@ def combine(items, name=None, check_dims=True, incomplete='raise',
     """
     if fill_in_missing is not None:
         warn("The fill_in_missing argument to combine() is deprecated and will "
-             "be removed after version 0.19. Use the new incomplete argument "
+             "be removed after version 0.20. Use the new incomplete argument "
              "instead.", DeprecationWarning)
         incomplete = 'fill in' if fill_in_missing else 'raise'
     elif not isinstance(incomplete, basestring):
         warn("The fill_in_missing argument to combine() has ben renamed to "
-             "`incomplete` and should be a string (got %s). After version 0.19 "
+             "`incomplete` and should be a string (got %s). After version 0.20 "
              "this will raise an error" % repr(incomplete), DeprecationWarning)
         incomplete = 'fill in' if incomplete else 'raise'
     elif incomplete not in ('raise', 'drop', 'fill in'):
@@ -1719,12 +1719,6 @@ class Var(object):
         if name is True:
             name = self.name
         return Var(x, name, info=deepcopy(self.info))
-
-    def compress(self, X, func=np.mean, name=True):
-        "Deprecated. Use .aggregate()."
-        warn("Var.compress s deprecated; use Var.aggregate instead"
-             "(with identical functionality).", DeprecationWarning)
-        self.aggregate(X, func, name)
 
     def count(self):
         """Count the number of occurrence of each value
@@ -2497,12 +2491,6 @@ class Factor(_Effect):
                 return -1
         return n
 
-    def compress(self, X, name=None):
-        "Deprecated. Use .aggregate()."
-        warn("Factor.compress s deprecated; use Factor.aggregate instead"
-             "(with identical functionality).", DeprecationWarning)
-        self.aggregate(X, name)
-
     def aggregate(self, X, name=True):
         """
         Summarize the Factor by collapsing within cells in `X`.
@@ -2548,14 +2536,8 @@ class Factor(_Effect):
         out = Factor(x, name, self.random, labels=self._labels)
         return out
 
-    def copy(self, name=True, repeat=1, tile=1, rep=None):
+    def copy(self, name=True, repeat=1, tile=1):
         "returns a deep copy of itself"
-        if rep is not None:
-            if repeat != 1:
-                raise TypeError("Specified rep and repeat")
-            repeat = rep
-            warn("The rep argument has been renamed to repeat", DeprecationWarning)
-
         if name is True:
             name = self.name
         return Factor(self.x.copy(), name, self.random, repeat, tile, self._labels)
@@ -2695,12 +2677,6 @@ class Factor(_Effect):
     @property
     def n_cells(self):
         return len(self._labels)
-
-    def relabel(self, labels):
-        """Deprecated, use Factor.update_labels"""
-        warn("Factor.relabel() is deprecated, use Factor.update_labels()",
-             DeprecationWarning)
-        self.update_labels(labels)
 
     def update_labels(self, labels):
         """Change one or more labels in place
@@ -3170,12 +3146,6 @@ class NDVar(object):
         if self.dimnames != dims:
             err = "Dimensions of %r do not match %r" % (self, dims)
             raise DimensionMismatchError(err)
-
-    def compress(self, X, func=np.mean, name=None):
-        "Deprecated. Use .aggregate()."
-        warn("NDVar.compress s deprecated; use NDVar.aggregate instead"
-             "(with identical functionality).", DeprecationWarning)
-        self.aggregate(X, func, name)
 
     def aggregate(self, X, func=np.mean, name=True):
         """
@@ -3913,12 +3883,6 @@ class NDVar(object):
         else:
             return self.x[tuple(index)]
 
-    def subdata(self, **kwargs):
-        "Deprecated. Use .sub() method (with identical functionality)."
-        warn("NDVar.subdata is deprecated; use NDVar.sub instead "
-             "(with identical functionality).", DeprecationWarning)
-        return self.sub(**kwargs)
-
     def sum(self, dims=None):
         """Compute the sum over given dimensions
 
@@ -4041,12 +4005,6 @@ class Datalist(list):
 
     def __add__(self, other):
         return Datalist(super(Datalist, self).__add__(other), fmt=self._fmt)
-
-    def compress(self, X, merge='mean'):
-        "Deprecated. Use .aggregate()."
-        warn("Var.compress s deprecated; use Var.aggregate instead"
-             "(with identical functionality).", DeprecationWarning)
-        self.aggregate(X, merge)
 
     def aggregate(self, X, merge='mean'):
         """
@@ -4265,7 +4223,8 @@ class Dataset(OrderedDict):
             fmt_2 = isinstance(args[0], tuple) and isinstance(args[0][0], str)
             if fmt_1:
                 warn("Initializing Datasets with multiple data-objects is "
-                     "deprecated. Provide a list of data-objects instead.",
+                     "deprecated and will not be possible after version 0.20. "
+                     "Provide a list of data-objects instead.",
                      DeprecationWarning)
             if fmt_1 or fmt_2:
                 items, name, caption, info, n_cases = self._args(args, **kwargs)
@@ -4631,36 +4590,6 @@ class Dataset(OrderedDict):
     def _asfmtext(self):
         return self.as_table()
 
-    def export(self, fn=None, fmt='%.10g', header=True, sort=False):
-        """This method is deprecated. Use .save(), .save_pickled(),
-        .save_txt() or .save_tex() instead.
-        """
-        msg = ("The Dataset.export() method is deprecated. Use .save(), "
-               ".save_pickled(), .save_txt() or .save_tex() instead.")
-        warn(msg, DeprecationWarning)
-
-        if not isinstance(fn, basestring):
-            fn = ui.ask_saveas(filetypes=[("Tab-separated values", '*.txt'),
-                                          ("Tex table", '*.tex'),
-                                          ("Pickle", '*.pickled')])
-            if fn:
-                print 'saving %r' % fn
-            else:
-                return
-
-        ext = os.path.splitext(fn)[1][1:]
-        if ext == 'pickled':
-            with open(fn, 'wb') as fid:
-                pickle.dump(self, fid)
-        else:
-            table = self.as_table(fmt=fmt, header=header, sort=sort)
-            if ext in ['txt', 'tsv']:
-                table.save_tsv(fn, fmt=fmt)
-            elif ext == 'tex':
-                table.save_tex(fn)
-            else:
-                table.save_tsv(fn, fmt=fmt)
-
     def eval(self, expression):
         """
         Evaluate an expression involving items stored in the Dataset.
@@ -4789,13 +4718,6 @@ class Dataset(OrderedDict):
                 index = (X == cell)
                 out[cell] = self.sub(index, setname)
         return out
-
-    def compress(self, X, drop_empty=True, name='{name}', count='n',
-                 drop_bad=False, drop=()):
-        "Deprecated. Use .aggregate()."
-        warn("Dataset.compress s deprecated; use Dataset.aggregate instead"
-             "(with identical functionality).", DeprecationWarning)
-        return self.aggregate(X, drop_empty, name, count, drop_bad, drop)
 
     def aggregate(self, x=None, drop_empty=True, name='{name}', count='n',
                   drop_bad=False, drop=(), equal_count=False, never_drop=()):
@@ -5239,12 +5161,6 @@ class Dataset(OrderedDict):
         return Dataset(((k, v[index]) for k, v in self.iteritems()),
                        name.format(name=self.name), self._caption, self.info)
 
-    def subset(self, index, name='{name}'):
-        "Deprecated: use .sub() method with identical functionality."
-        warn("Dataset.subset is deprecated; use Dataset.sub instead"
-             "(with identical functionality).", DeprecationWarning)
-        return self.sub(index, name)
-
     def tail(self, n=10):
         "Table with the last n cases in the Dataset"
         return self.as_table(xrange(-n, 0), '%.5g', midrule=True, lfmt=True)
@@ -5518,12 +5434,6 @@ class Interaction(_Effect):
             Delimiter with which to join the elements of cells.
         """
         return [delim.join(filter(None, map(str, case))) for case in self]
-
-    def compress(self, X):
-        "Deprecated. Use .aggregate()."
-        warn("Interaction.compress s deprecated; use Interaction.aggregate "
-             "instead (with identical functionality).", DeprecationWarning)
-        self.aggregate(X)
 
     def aggregate(self, X):
         return Interaction(f.aggregate(X) for f in self.base)

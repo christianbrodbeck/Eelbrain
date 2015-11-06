@@ -450,8 +450,8 @@ class MneExperiment(FileTree):
         self._templates = self._templates.copy()
         # templates version
         if self.path_version is None:
-            warn("In version 0.20 the default for MneExperiment.path_version "
-                 "will change to 1. To keep using the old scheme, please "
+            warn("The default for MneExperiment.path_version will change to 1"
+                 "after version 0.20. To keep using the old scheme, please "
                  "specify MneExperiment.path_version = 0 explicitly.",
                  DeprecationWarning)
 
@@ -740,9 +740,9 @@ class MneExperiment(FileTree):
             # backwards compatibility for old test specification
             if isinstance(params, (tuple, list)):
                 warn("MneExperiment.tests should be defined as dictionaries, "
-                     "test definitions with tuples/lists is deprecated. Please "
-                     "change your MneExperiment subclass definition.",
-                     DeprecationWarning)
+                     "test definitions with tuples/lists will not work after "
+                     "version 0.20. Please change your MneExperiment subclass "
+                     "definition.", DeprecationWarning)
                 kind, model, test_parameter = params
                 if kind == 'anova':
                     params = {'kind': kind, 'model': model, 'x': test_parameter}

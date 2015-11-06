@@ -108,11 +108,6 @@ class UTSStat(_EelFigure, LegendMixin):
                  invy=False, bottom=None, top=None, hline=None, xdim='time',
                  xlim=None, color='b', colors=None, clusters=None, pmax=0.05,
                  ptrend=0.1, *args, **kwargs):
-        if 'dev' in kwargs:
-            error = kwargs.pop('dev')
-            warn("The 'dev' keyword is deprecated, use 'error'",
-                 DeprecationWarning)
-
         # coerce input variables
         sub = assub(sub, ds)
         Y = asndvar(Y, sub, ds)

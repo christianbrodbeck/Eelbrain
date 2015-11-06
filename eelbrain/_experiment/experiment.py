@@ -153,8 +153,9 @@ class TreeModel(object):
         # many values as we can
         defaults = dict(self._defaults)
         if defaults:
-            warn("The MneExperiment._defaults attributed is deprecated. Use "
-                 "MneExperiment.defaults instead.", DeprecationWarning)
+            warn("The MneExperiment._defaults attributed will not be used after "
+                 "version 0.20. Use MneExperiment.defaults "
+                 "instead.", DeprecationWarning)
         defaults.update(self.defaults)
         defaults.update(state)
         self.defaults = defaults
