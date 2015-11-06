@@ -2,7 +2,7 @@
 from nose.tools import eq_
 
 from eelbrain._experiment.definitions import (find_epoch_vars, find_epochs_vars,
-    find_test_vars)
+    find_dependent_epochs, find_test_vars)
 
 
 def test_find_epoch_vars():
@@ -17,6 +17,11 @@ def test_find_epoch_vars():
                                    'b': ('logical_and', 'varb', 'varc'),
                                    'sec': ('vara', 'svar'),
                                    'super': ('vara', 'logical_and', 'varb', 'varc')})
+    eq_(set(find_dependent_epochs('a', epochs)), {'sec', 'super'})
+    eq_(find_dependent_epochs('b', epochs), ['super'])
+    eq_(find_dependent_epochs('sec', epochs), [])
+    eq_(find_dependent_epochs('super', epochs), [])
+
 
 def test_find_test_vars():
     eq_(find_test_vars({'kind': 'anova', 'model': "a % b % c"}),

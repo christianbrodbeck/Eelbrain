@@ -43,7 +43,7 @@ from .._stats.stats import ttest_t
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .experiment import FileTree
-from .definitions import find_epochs_vars, find_test_vars
+from .definitions import find_dependent_epochs, find_epochs_vars, find_test_vars
 
 
 __all__ = ['MneExperiment']
@@ -999,6 +999,19 @@ class MneExperiment(FileTree):
                     else:
                         self._log.debug("  test %s removed", test)
 
+            # create message here, before secondary invalidations are added
+            if invalid_cache:
+                msg = ["Experiment definition changed:"]
+                for kind, values in invalid_cache.iteritems():
+                    msg.append("  %s: %s" % (kind, ', '.join(values)))
+
+            # Secondary  invalidations
+            # ========================
+            # dependent epochs
+            if 'epochs' in invalid_cache:
+                for e in tuple(invalid_cache['epochs']):
+                    invalid_cache['epochs'].update(find_dependent_epochs(e, cache_state['epochs']))
+
             # tests/epochs based on variables
             if 'variables' in invalid_cache:
                 bad_vars = invalid_cache['variables']
@@ -1021,13 +1034,7 @@ class MneExperiment(FileTree):
 
             # Collect invalid files
             # =====================
-            # create message here, before secondary invalidations are added
             if invalid_cache:
-                msg = ["Experiment definition changed:"]
-                for kind, values in invalid_cache.iteritems():
-                    msg.append("  %s: %s" % (kind, ', '.join(values)))
-
-                # collect file patterns to delete
                 rm = defaultdict(DictSet)
 
                 # evoked files are based on old events

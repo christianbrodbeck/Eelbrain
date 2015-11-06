@@ -34,6 +34,29 @@ def find_epochs_vars(epochs):
     return out
 
 
+def find_dependent_epochs(epoch, epochs):
+    "Find all epochs whise definition depends on epoch"
+    todo = set(epochs).difference(epoch)
+    out = [epoch]
+    while todo:
+        last_len = len(todo)
+        for e in tuple(todo):
+            p = epochs[e]
+            if 'sel_epoch' in p:
+                if p['sel_epoch'] in out:
+                    out.append(e)
+                    todo.remove(e)
+            elif 'sub_epochs' in p:
+                if any(se in out for se in p['sub_epochs']):
+                    out.append(e)
+                    todo.remove(e)
+            else:
+                todo.remove(e)
+        if len(todo) == last_len:
+            break
+    return out[1:]
+
+
 def find_test_vars(params):
     "Find variables used in a test definition"
     if params['kind'] == 'two-stage':
