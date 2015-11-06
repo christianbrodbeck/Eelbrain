@@ -1098,7 +1098,7 @@ class MneExperiment(FileTree):
                 # log
                 if files:
                     msg.append("Files to be deleted:")
-                    msg.extend(('  ' + f for f in sorted(files)))
+                    msg.extend(sorted('  ' + os.path.relpath(f, root) for f in files))
                 else:
                     msg.append("No cache files affected.")
                 self._log.debug(os.linesep.join(msg))
