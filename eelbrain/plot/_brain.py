@@ -173,7 +173,8 @@ def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
-        Whether to add a colorbar to the figure.
+        Add a colorbar to the figure (use ``.plot_colorbar()`` to plot a
+        colorbar separately).
     time_label : str
         Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
         milliseconds or in seconds, or supply a custom format string to format
@@ -227,7 +228,8 @@ def p_map(p_map, param_map=None, p0=0.05, p1=0.01, solid=False, *args,
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
-        Whether to add a colorbar to the figure.
+        Add a colorbar to the figure (use ``.plot_colorbar()`` to plot a
+        colorbar separately).
     time_label : str
         Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
         milliseconds or in seconds, or supply a custom format string to format
@@ -276,7 +278,8 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
-        Whether to add a colorbar to the figure.
+        Add a colorbar to the figure (use ``.plot_colorbar()`` to plot a
+        colorbar separately).
     time_label : str
         Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
         milliseconds or in seconds, or supply a custom format string to format
@@ -385,7 +388,7 @@ def _surfer_brain(unit, subject='fsaverage', surf='smoothwm', hemi='split',
 
 
 def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
-                 views=('lat', 'med'), hemi=None, colorbar=True,
+                 views=('lat', 'med'), hemi=None, colorbar=False,
                  time_label='ms', w=None, h=None, axw=None, axh=None,
                  foreground=None, background=None, parallel=True,
                  smoothing_steps=None, mask=True, subjects_dir=None):
@@ -408,7 +411,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     hemi : 'lh' | 'rh' | 'both' | 'split'
         Which hemispheres to plot (default based on data).
     colorbar : bool
-        Whether to add a colorbar to the figure.
+        Add a colorbar to the figure (use ``.plot_colorbar()`` to plot a
+        colorbar separately).
     time_label : str
         Label to show time point. Use ``'ms'`` or ``'s'`` to display time in
         milliseconds or in seconds, or supply a custom format string to format
