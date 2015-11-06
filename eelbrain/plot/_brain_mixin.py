@@ -4,6 +4,7 @@ from matplotlib.image import imsave
 from matplotlib.colors import ListedColormap
 
 from ..fmtxt import Image
+from ._base import find_axis_params_data
 from ._colors import ColorBar
 
 
@@ -12,8 +13,8 @@ class BrainMixin(object):
     # Mixin that adds Eelbrain functionality to the pysurfer Brain class,
     # defined in a separate module so that documentation can be built without
     # importing Mayavi
-    def __init__(self, unit):
-        self.__unit = unit
+    def __init__(self, data):
+        self.__data = data
 
     def image(self, name, format='png', alt=None):
         """Create an FMText Image from a screenshot
@@ -64,10 +65,12 @@ class BrainMixin(object):
             data = self.data_dict[self._hemi]
         else:
             raise RuntimeError("Brain._hemi=%s" % repr(self._hemi))
-        cmap = ListedColormap(data['orig_ctable'] / 255., "Brain Colormap")
+        _, label = find_axis_params_data(self.__data, label)
+        unit = self.__data.info.get('unit', None)
+        cmap = ListedColormap(data['orig_ctable'] / 255., label)
         return ColorBar(cmap, data['fmin'], data['fmax'], label, label_position,
-                        label_rotation, clipmin, clipmax, orientation,
-                        self.__unit, (), *args, **kwargs)
+                        label_rotation, clipmin, clipmax, orientation, unit,
+                        (), *args, **kwargs)
 
     def save_image(self, filename, transparent=True):
         """Save current image to disk

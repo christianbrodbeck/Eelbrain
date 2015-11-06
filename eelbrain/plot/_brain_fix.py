@@ -25,6 +25,6 @@ def assert_can_save_movies():
 
 class Brain(BrainMixin, SurferBrain):
 
-    def __init__(self, unit, *args, **kwargs):
-        BrainMixin.__init__(self, unit)
+    def __init__(self, data, *args, **kwargs):
+        BrainMixin.__init__(self, data)
         SurferBrain.__init__(self, *args, **kwargs)

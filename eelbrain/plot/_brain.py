@@ -316,13 +316,15 @@ def cluster(cluster, vmax=None, *args, **kwargs):
     return _plot(cluster, lut, -vmax, vmax, *args, **kwargs)
 
 
-def _surfer_brain(unit, subject='fsaverage', surf='smoothwm', hemi='split',
+def _surfer_brain(data, subject='fsaverage', surf='smoothwm', hemi='split',
                   views=('lat', 'med'), w=None, h=None, axw=None, axh=None,
                   foreground=None, background=None, subjects_dir=None):
     """Create surfer.Brain instance
 
     Parameters
     ----------
+    data : NDVar
+        Data that is plotted.
     subject : str
         Name of the subject (default 'fsaverage').
     surf : 'inflated' | 'pial' | 'smoothwm' | 'sphere' | 'white'
@@ -382,7 +384,7 @@ def _surfer_brain(unit, subject='fsaverage', surf='smoothwm', hemi='split',
     if background is None:
         background = BACKGROUND
 
-    return Brain(unit, subject, hemi, surf, True, title, 'classic',
+    return Brain(data, subject, hemi, surf, True, title, 'classic',
                  (width, height), background, foreground, None,
                  subjects_dir, views)
 
@@ -439,7 +441,6 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
         PySurfer Brain instance containing the plot.
     """
     src = asndvar(src)
-    unit = src.info.get('unit', None)
     if src.has_case:
         src = src.summary()
 
@@ -458,8 +459,8 @@ def surfer_brain(src, colormap='hot', vmin=0, vmax=9, surf='smoothwm',
     if subjects_dir is None:
         subjects_dir = src.source.subjects_dir
 
-    brain = _surfer_brain(unit, src.source.subject, surf, hemi, views, w, h, axw, axh,
-                          foreground, background, subjects_dir)
+    brain = _surfer_brain(src, src.source.subject, surf, hemi, views, w, h,
+                          axw, axh, foreground, background, subjects_dir)
 
     # general PySurfer data args
     alpha = 1

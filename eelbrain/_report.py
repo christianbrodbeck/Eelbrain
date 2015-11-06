@@ -307,8 +307,10 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors, match):
         caption_.extend(('effect of', cluster['effect']))
     caption_.append("%i - %i ms." % (tstart_ms, tstop_ms))
     caption = ' '.join(caption_)
-    section.add_image_figure(brain.image('cluster_spatial'), caption)
+    cbar = brain.plot_colorbar(orientation='vertical', show=False)
+    section.add_figure(caption, (brain.image('cluster_spatial'), cbar))
     brain.close()
+    cbar.close()
     cluster_timecourse(section, cluster, y, 'source', model, ds, colors, match)
 
 
