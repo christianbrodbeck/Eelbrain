@@ -141,12 +141,12 @@ def annot_legend(lh, rh, *args, **kwargs):
     return ColorList(colors, seq + seq_lh + seq_rh, *args, **kwargs)
 
 
-def _plot(data, lut, vmin, vmax, *args, **kwargs):
+def _plot(data, *args, **kwargs):
     "Plot depending on source space kind"
     if data.source.kind == 'vol':
-        return _voxel_brain(data, lut, vmin, vmax, *args, **kwargs)
+        return _voxel_brain(data, *args, **kwargs)
     else:
-        return surfer_brain(data, lut, vmin, vmax, *args, **kwargs)
+        return surfer_brain(data, *args, **kwargs)
 
 
 def dspm(src, fmin=13, fmax=22, fmid=None, *args, **kwargs):
