@@ -522,7 +522,6 @@ class SensorMaps(_EelFigure):
         self.ax3.set_ylim(-frame, 1 + frame)
 
         self._sensor_maps = (self._h0, self._h1, self._h2, self._h3)
-        self._show()
 
         # selection
         self.sel_kwargs = dict(marker='o', s=5, c='r', linewidths=.9)
@@ -530,11 +529,13 @@ class SensorMaps(_EelFigure):
         if select is not None:
             self.set_selection(select)
         else:
-            self.select = None
+            self._selection = None
 
         # setup mpl event handling
         self.canvas.mpl_connect("button_press_event", self._on_button_press)
         self.canvas.mpl_connect("button_release_event", self._on_button_release)
+
+        self._show()
 
     def _fill_toolbar(self, tb):
         import wx
@@ -548,8 +549,8 @@ class SensorMaps(_EelFigure):
 
     def clear(self):
         "Clear the current sensor selection."
-        self.select = None
-        self.update_mark_plot()
+        self._selection = None
+        self._update_mark_plot()
 
     def get_selection(self):
         """
@@ -558,10 +559,10 @@ class SensorMaps(_EelFigure):
         selection : list
             Returns the current selection as a list of indices.
         """
-        if self.select is None:
+        if self._selection is None:
             return []
         else:
-            return np.where(self.select)[0]
+            return np.where(self._selection)[0]
 
     def _on_button_press(self, event):
         ax = event.inaxes
@@ -593,12 +594,12 @@ class SensorMaps(_EelFigure):
         y = locs[:, 1]
         sel = (x > xmin) & (x < xmax) & (y > ymin) & (y < ymax)
 
-        if self.select is None:
-            self.select = sel
+        if self._selection is None:
+            self._selection = sel
         elif event.button == 1:
-            self.select[sel] = True
+            self._selection[sel] = True
         else:
-            self.select[sel] = False
+            self._selection[sel] = False
 
         # clear dragging-related attributes
         self._drag_rect.remove()
@@ -607,7 +608,7 @@ class SensorMaps(_EelFigure):
         self._drag_x = None
         self._drag_y = None
 
-        self.update_mark_plot()
+        self._update_mark_plot()
 
     def _on_motion(self, event):
         super(self.__class__, self)._on_motion(event)
@@ -636,13 +637,14 @@ class SensorMaps(_EelFigure):
             of sensor names.
         """
         idx = self._sensors.dimindex(select)
-        self.select = np.zeros(len(self._sensors), dtype=bool)
-        self.select[idx] = True
-        self.update_mark_plot()
+        self._selection = np.zeros(len(self._sensors), dtype=bool)
+        self._selection[idx] = True
+        self._update_mark_plot()
 
-    def update_mark_plot(self):
+    def _update_mark_plot(self):
         for h in self._sensor_maps:
-            h.sensors.mark_sensors(self.select, **self.sel_kwargs)
+            h.sensors.mark_sensors(None)  # clear old selection
+            h.sensors.mark_sensors(self._selection, **self.sel_kwargs)
         self.canvas.draw()
 
 
