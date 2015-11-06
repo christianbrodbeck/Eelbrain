@@ -1,5 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from eelbrain import datasets
 from eelbrain.mne_fixes import _interpolate_bads_meg
@@ -20,7 +20,7 @@ def test_interpolation():
     assert_array_equal(test_epochs._data[2], epochs1._data[2])
     epochs1.info['bads'] = bads1
     epochs1.interpolate_bads(mode='fast')
-    assert_array_equal(test_epochs._data[1], epochs1._data[1])
+    assert_array_almost_equal(test_epochs._data[1], epochs1._data[1], 25)
     epochs3.info['bads'] = bads3
     epochs3.interpolate_bads(mode='fast')
-    assert_array_equal(test_epochs._data[3], epochs3._data[3])
+    assert_array_almost_equal(test_epochs._data[3], epochs3._data[3], 25)
