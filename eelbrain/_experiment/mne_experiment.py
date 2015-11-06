@@ -1,4 +1,5 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
+from __future__ import print_function
 
 from collections import defaultdict
 import inspect
@@ -1121,7 +1122,7 @@ class MneExperiment(FileTree):
                             if command in ('delete', 'abort', 'ignore', 'revalidate'):
                                 break
                             else:
-                                print "invalid entry"
+                                print("invalid entry")
 
                         if command == 'delete':
                             pass
@@ -1655,15 +1656,15 @@ class MneExperiment(FileTree):
         """
         if level <= 1:
             self.rm('cache-dir', confirm=True)
-            print "All cached data cleared."
+            print("All cached data cleared.")
         else:
             if level <= 2:
                 self.rm('evoked-dir', confirm=True)
                 self.rm('cov-dir', confirm=True)
-                print "Cached epoch data cleared"
+                print("Cached epoch data cleared")
             if level <= 5:
                 self.rm('test-dir', confirm=True)
-                print "Cached tests cleared."
+                print("Cached tests cleared.")
 
     def _fix_eeg_ndvar(self, ndvar, apply_standard_montag):
         # connectivity
@@ -2799,9 +2800,11 @@ class MneExperiment(FileTree):
             vars_ = test_params['vars'] if 'vars' in test_params else None
 
             # stage 1
+            n = len(self.get_field_values('subject'))
+            prog_str = "\x1b[2KLoading 2-stage model [%%-%ss] %%s" % n
             lms = []
-            for subject in self:
-                self._log.info("Stage 1 model for %s" % subject)
+            for i, subject in enumerate(self):
+                print(prog_str % ('#' * i, subject), end='\r')
                 ds = self.load_epochs_stc(subject, sns_baseline, src_baseline,
                                           morph=True, mask=mask)
                 if vars_:
@@ -2815,6 +2818,7 @@ class MneExperiment(FileTree):
                             new[name] = asfactor(source, ds=ds).as_var(codes, 0, name)
                     ds.update(new, True)
                 lms.append(spm.LM(y_name, model, ds, subject=subject))
+            print(prog_str % ('#' * n, 'done'))
             return spm.RandomLM(lms)
 
         # try to load cached test
@@ -3015,9 +3019,9 @@ class MneExperiment(FileTree):
         sensor = load.fiff.sensor_dim(raw)
         chs = sensor._normalize_sensor_names(bad_chs)
         if old_bads is None:
-            print "-> %s" % chs
+            print("-> %s" % chs)
         else:
-            print "%s -> %s" % (old_bads, chs)
+            print("%s -> %s" % (old_bads, chs))
         text = os.linesep.join(chs)
         with open(dst, 'w') as fid:
             fid.write(text)
@@ -4901,7 +4905,7 @@ class MneExperiment(FileTree):
         if asds:
             return ds
         else:
-            print ds
+            print(ds)
 
     def show_subjects(self, mri=True, mrisubject=False, caption=True,
                       asds=False):
