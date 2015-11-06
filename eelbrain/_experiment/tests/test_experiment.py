@@ -3,7 +3,7 @@ import os
 from nose.tools import eq_, ok_, assert_false
 
 from ..._utils.testing import TempDir
-from eelbrain.experiment import TreeModel, FileTree
+from eelbrain._experiment import TreeModel, FileTree
 
 
 def test_tree():

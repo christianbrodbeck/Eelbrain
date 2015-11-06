@@ -30,7 +30,7 @@ from ._data_obj import (Datalist, Dataset, Var, Factor, Interaction, Model,
 from ._mne import labels_from_clusters, morph_source_space
 
 from ._utils import set_log_level
-from .experiment import MneExperiment
+from ._experiment import MneExperiment
 
 from . import datasets
 from . import gui

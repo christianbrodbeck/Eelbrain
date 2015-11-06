@@ -42,7 +42,7 @@ from .._stats import spm
 from .._stats.stats import ttest_t
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
-from ._experiment import FileTree
+from .experiment import FileTree
 from .definitions import find_test_vars
 
 
