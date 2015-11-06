@@ -2,6 +2,38 @@
 from .._utils.parse import find_variables
 
 
+def find_epoch_vars(params):
+    "Find variables used in a primary epoch definition"
+    out = ()
+    if 'sel' in params:
+        out += find_variables(params['sel'])
+    if 'post_baseline_trigger_shift' in params:
+        out += (params['post_baseline_trigger_shift'],)
+    return out
+
+
+def find_epochs_vars(epochs):
+    "Find variables used in all epochs"
+    todo = list(epochs)
+    out = {}
+    while todo:
+        for e in tuple(todo):
+            p = epochs[e]
+            if 'sel_epoch' in p:
+                if p['sel_epoch'] in out:
+                    out[e] = out[p['sel_epoch']] + find_epoch_vars(p)
+                    todo.remove(e)
+            elif 'sub_epochs' in p:
+                if all(se in out for se in p['sub_epochs']):
+                    out[e] = sum((out[se] for se in p['sub_epochs']),
+                                 find_epoch_vars(p))
+                    todo.remove(e)
+            else:
+                out[e] = find_epoch_vars(p)
+                todo.remove(e)
+    return out
+
+
 def find_test_vars(params):
     "Find variables used in a test definition"
     if params['kind'] == 'two-stage':
@@ -15,3 +47,5 @@ def find_test_vars(params):
     else:
         vs = find_variables(params['model'])
     return vs
+
+find_test_vars.__test__ = False

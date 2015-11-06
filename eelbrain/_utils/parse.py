@@ -3,7 +3,13 @@ import parser
 
 
 def find_variables(expr):
-    "Find the variables participating in an expressions"
+    """Find the variables participating in an expressions
+
+    Returns
+    -------
+    variables : tuple of str
+        Variables occurring in expr.
+    """
     return _find_vars(parser.expr(expr).totuple())
 
 

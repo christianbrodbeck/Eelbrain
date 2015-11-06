@@ -43,7 +43,7 @@ from .._stats.stats import ttest_t
 from .._utils import subp, ui, keydefaultdict
 from .._utils.mne_utils import fix_annot_names, is_fake_mri
 from .experiment import FileTree
-from .definitions import find_test_vars
+from .definitions import find_epochs_vars, find_test_vars
 
 
 __all__ = ['MneExperiment']
@@ -999,6 +999,26 @@ class MneExperiment(FileTree):
                     else:
                         self._log.debug("  test %s removed", test)
 
+            # tests/epochs based on variables
+            if 'variables' in invalid_cache:
+                bad_vars = invalid_cache['variables']
+                # tests using bad variable
+                for test, params in cache_state['tests'].iteritems():
+                    if test not in invalid_cache['tests']:
+                        bad = bad_vars.intersection(find_test_vars(params))
+                        if bad:
+                            invalid_cache['tests'].add(test)
+                            self._log.debug("  test %s depends on changed "
+                                            "variables %s", test, bad)
+                # epochs using bad variable
+                epochs_vars = find_epochs_vars(cache_state['epochs'])
+                for epoch, evars in epochs_vars.iteritems():
+                    bad = bad_vars.intersection(evars)
+                    if bad:
+                        invalid_cache['epochs'].add(epoch)
+                        self._log.debug("  epoch %s depends on changed "
+                                        "variables %s", epochs, bad)
+
             # Collect invalid files
             # =====================
             # create message here, before secondary invalidations are added
@@ -1019,20 +1039,8 @@ class MneExperiment(FileTree):
                         invalid_cache['groups'].add(group)
 
                 # variables
-                if 'variables' in invalid_cache:
-                    # find variable use in tests
-                    test_vars = {}
-                    for test, params in cache_state['tests'].iteritems():
-                        if test not in invalid_cache['tests']:
-                            test_vars[test] = find_test_vars(params)
-                    # find bad tests
-                    for var in invalid_cache['variables']:
-                        rm['evoked-file'].add({'model': '*%s*' % var})
-                        for test, vars_ in test_vars.iteritems():
-                            if var in vars_:
-                                invalid_cache['tests'].add(test)
-                                self._log.debug("  test %s depends on changed "
-                                                "variable %s", test, var)
+                for var in invalid_cache['variables']:
+                    rm['evoked-file'].add({'model': '*%s*' % var})
 
                 # groups
                 for group in invalid_cache['groups']:
