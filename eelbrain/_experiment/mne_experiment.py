@@ -1565,6 +1565,17 @@ class MneExperiment(FileTree):
         if not keep_evoked:
             del ds['evoked']
 
+    @staticmethod
+    def _add_vars(ds, vardef):
+        new = {}
+        for name, definition in vardef.iteritems():
+            if isinstance(definition, str):
+                new[name] = ds.eval(definition)
+            else:
+                source, codes = definition
+                new[name] = asfactor(source, ds=ds).as_var(codes, 0, name)
+        ds.update(new, True)
+
     def _backup(self, dst_root):
         """Backup all essential files to ``dst_root``.
 
@@ -1960,8 +1971,8 @@ class MneExperiment(FileTree):
 
     def load_epochs(self, subject=None, baseline=False, ndvar=True,
                     add_bads=True, reject=True, add_proj=True, cat=None,
-                    decim=None, pad=0, data_raw=False, eog=False,
-                    trigger_shift=True, **kwargs):
+                    decim=None, pad=0, data_raw=False, vardef=None,
+                    eog=False, trigger_shift=True, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
 
@@ -1999,6 +2010,8 @@ class MneExperiment(FileTree):
             Can be specified as raw name (str) to include a different raw object
             than the one from which events are loaded (used for frequency
             analysis).
+        vardef : str
+            Name of a 2-stage test defining additional variables.
         eog : bool
             When loading EEG data as NDVar, also add the EOG channels.
         trigger_shift : bool
@@ -2017,7 +2030,8 @@ class MneExperiment(FileTree):
             dss = []
             for _ in self.iter(group=group):
                 ds = self.load_epochs(None, baseline, ndvar, add_bads, reject,
-                                      add_proj, cat, decim, pad, data_raw)
+                                      add_proj, cat, decim, pad, data_raw,
+                                      vardef)
                 dss.append(ds)
 
             ds = combine(dss)
@@ -2025,10 +2039,10 @@ class MneExperiment(FileTree):
             with self._temporary_state:
                 ds_meg = self.load_epochs(subject, baseline, ndvar, add_bads,
                                           reject, add_proj, cat, decim, pad,
-                                          data_raw, False, modality='')
+                                          data_raw, vardef, modality='')
                 ds_eeg = self.load_epochs(subject, baseline, ndvar, add_bads,
                                           reject, add_proj, cat, decim, pad,
-                                          data_raw, False, modality='eeg')
+                                          data_raw, vardef, modality='eeg')
             ds, eeg_epochs = align(ds_meg, ds_eeg['epochs'], 'index',
                                    ds_eeg['index'])
             ds['epochs'] = mne.epochs.add_channels_epochs((ds['epochs'], eeg_epochs))
@@ -2039,7 +2053,8 @@ class MneExperiment(FileTree):
 
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            add_proj=add_proj,
-                                           data_raw=data_raw or True)
+                                           data_raw=data_raw or True,
+                                           vardef=vardef)
             if ds.n_cases == 0:
                 raise RuntimeError("No events left for epoch=%s, subject=%s"
                                    % (repr(self.get('epoch')), repr(subject)))
@@ -2574,7 +2589,7 @@ class MneExperiment(FileTree):
 
     def load_selected_events(self, subject=None, reject=True, add_proj=True,
                              add_bads=True, index=True, data_raw=False,
-                             **kwargs):
+                             vardef=None, **kwargs):
         """
         Load events and return a subset based on epoch and rejection
 
@@ -2601,6 +2616,8 @@ class MneExperiment(FileTree):
             Can be specified as raw name (str) to include a different raw object
             than the one from which events are loaded (used for frequency
             analysis).
+        vardef : str
+            Name of a 2-stage test defining additional variables.
         others :
             Update the experiment state.
 
@@ -2625,7 +2642,8 @@ class MneExperiment(FileTree):
                 raise ValueError("data_var=%s: can't load data raw when "
                                  "combining different subjects" % repr(data_raw))
             dss = [self.load_selected_events(reject=reject, add_proj=add_proj,
-                                             add_bads=add_bads, index=index)
+                                             add_bads=add_bads, index=index,
+                                             vardef=vardef)
                    for _ in self.iter(group=group)]
             ds = combine(dss)
             return ds
@@ -2641,7 +2659,7 @@ class MneExperiment(FileTree):
             with self._temporary_state:
                 dss = [self.load_selected_events(subject, reject, add_proj,
                                                  add_bads, index, data_raw,
-                                                 epoch=sub_epoch)
+                                                 vardef, epoch=sub_epoch)
                        for sub_epoch in sub_epochs]
 
                 # combine bad channels
@@ -2659,7 +2677,8 @@ class MneExperiment(FileTree):
         elif sel_epoch is not None:
             with self._temporary_state:
                 ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
-                                               index, data_raw, epoch=sel_epoch)
+                                               index, data_raw, vardef,
+                                               epoch=sel_epoch)
 
             if sel is not None:
                 ds = ds.sub(sel)
@@ -2729,6 +2748,11 @@ class MneExperiment(FileTree):
             if add_bads and BAD_CHANNELS in ds_sel.info:
                 ds.info[BAD_CHANNELS] = ds_sel.info[BAD_CHANNELS]
 
+        # Additional variables
+        if isinstance(vardef, str):
+            vardef = self._tests[vardef].get('vars', None)
+        if vardef:
+            self._add_vars(ds, vardef)
         return ds
 
     def load_src(self, add_geom=False, **state):
@@ -2841,7 +2865,7 @@ class MneExperiment(FileTree):
 
             # find params
             model = test_params['stage 1']
-            vars_ = test_params['vars'] if 'vars' in test_params else None
+            vardef = test_params['vars'] if 'vars' in test_params else None
 
             # stage 1
             n = len(self.get_field_values('subject'))
@@ -2850,17 +2874,7 @@ class MneExperiment(FileTree):
             for i, subject in enumerate(self):
                 print(prog_str % ('#' * i, subject), end='\r')
                 ds = self.load_epochs_stc(subject, sns_baseline, src_baseline,
-                                          morph=True, mask=mask)
-                if vars_:
-                    # compute new variables
-                    new = {}
-                    for name, definition in vars_.iteritems():
-                        if isinstance(definition, str):
-                            new[name] = ds.eval(definition)
-                        else:
-                            source, codes = definition
-                            new[name] = asfactor(source, ds=ds).as_var(codes, 0, name)
-                    ds.update(new, True)
+                                          morph=True, mask=mask, vardef=vardef)
                 lms.append(spm.LM(y_name, model, ds, subject=subject))
             print(prog_str % ('#' * n, 'done'))
             return spm.RandomLM(lms)
