@@ -2661,7 +2661,7 @@ class Factor(_Effect):
         Var([1, 2, 10])
         """
         label_lengths = {code: len(label) for code, label in self._labels.iteritems()}
-        x = np.empty(len(self), np.uint16)
+        x = np.empty(len(self))
         for i, code in enumerate(self.x):
             x[i] = label_lengths[code]
 

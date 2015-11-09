@@ -70,8 +70,9 @@ SEEDED_PARC_RE = re.compile('(\w+)-(\d+)$')
 inv_re = re.compile("(free|fixed|loose\.\d+)-"  # orientation constraint
                     "(\d*\.?\d+)-"  # SNR
                     "(MNE|dSPM|sLORETA)"  # method
-                    "(?:(\.\d+)-)?"  # depth weighting
-                    "(?:-(pick_normal))?")  # pick normal
+                    "(?:-(0?\.\d+))?"  # depth weighting
+                    "(?:-(pick_normal))?"
+                    "$")  # pick normal
 
 
 def _mask_ndvar(ds, name):

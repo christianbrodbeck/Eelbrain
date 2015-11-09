@@ -505,6 +505,9 @@ def test_factor():
     fl = f.label_length()
     assert_array_equal(fl, lens)
     eq_(fl.info['longname'], 'f.label_length()')
+    lens2 = [3, 5, 32, 2, 32, 523]
+    f2 = Factor(['b' * l for l in lens2], 'f2')
+    assert_array_equal(fl - f2.label_length(), [a - b for a, b in zip(lens, lens2)])
 
     # equality
     f = Factor('aabbcc')
