@@ -184,9 +184,13 @@ class ColorGrid(_EelFigure):
     row_first : bool
         Whether the row cell precedes the column cell in color keys. By
         default this is inferred from the existing keys.
+    labels : dict (optional)
+        Condition labels that are used instead of the keys in ``row_cells`` and
+        ``column_cells``.
     """
     def __init__(self, row_cells, column_cells, colors, size=None,
-                 column_label_position='top', row_first=None, *args, **kwargs):
+                 column_label_position='top', row_first=None, labels=None,
+                 *args, **kwargs):
         if row_first is None:
             row_cell_0 = row_cells[0]
             col_cell_0 = column_cells[0]
@@ -224,6 +228,14 @@ class ColorGrid(_EelFigure):
                                               ec='none')
                 ax.add_patch(patch)
 
+        # prepare labels
+        if labels:
+            column_labels = [labels.get(c, c) for c in column_cells]
+            row_labels = [labels.get(c, c) for c in row_cells]
+        else:
+            column_labels = column_cells
+            row_labels = row_cells
+
         # column labels
         self._labels = []
         if column_label_position == 'top':
@@ -242,15 +254,13 @@ class ColorGrid(_EelFigure):
             msg = "column_label_position=%s" % repr(column_label_position)
             raise ValueError(msg)
 
-        for col in xrange(n_cols):
-            label = column_cells[col]
+        for col, label in enumerate(column_labels):
             h = ax.text(col + 0.5, y, label, va=va, ha='left', rotation=rotation)
             self._labels.append(h)
 
         # row labels
         x = n_cols + 0.1
-        for row in xrange(n_rows):
-            label = row_cells[row]
+        for row, label in enumerate(row_labels):
             h = ax.text(x, row + 0.5, label, va='center', ha='left')
             self._labels.append(h)
 
