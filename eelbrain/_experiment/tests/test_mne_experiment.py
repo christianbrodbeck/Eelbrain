@@ -78,19 +78,27 @@ def test_mne_experiment_templates():
     eq_(e.get('src_kind'), '1-40 noreg fixed-3-dSPM')
 
     # inv
+    SNR2 = 1. / 2**2
+    SNR3 = 1. / 3**2
     e.set_inv('free', 3, 'dSPM', .8, True)
     eq_(e.get('inv'), 'free-3-dSPM-0.8-pick_normal')
-    eq_(e._params['make_inv_kw'], {'loose': 1})
-    eq_(e._params['apply_inv_kw'], {'method': 'dSPM', 'lambda2': 1. / 3**2})
+    eq_(e._params['make_inv_kw'], {'loose': 1, 'depth': 0.8})
+    eq_(e._params['apply_inv_kw'], {'method': 'dSPM', 'lambda2': SNR3,
+                                    'pick_normal': True})
+    e.set_inv('fixed', 2, 'MNE', .8)
+    eq_(e.get('inv'), 'fixed-2-MNE-0.8')
+    eq_(e._params['make_inv_kw'], {'fixed': True, 'loose': None, 'depth': 0.8})
+    eq_(e._params['apply_inv_kw'], {'method': 'MNE', 'lambda2': SNR2})
+
     e.set_inv('fixed', 2, 'MNE', pick_normal=True)
     eq_(e.get('inv'), 'fixed-2-MNE-pick_normal')
     eq_(e._params['make_inv_kw'], {'fixed': True, 'loose': None})
-    eq_(e._params['apply_inv_kw'], {'method': 'MNE', 'lambda2': 1. / 2**2,
+    eq_(e._params['apply_inv_kw'], {'method': 'MNE', 'lambda2': SNR2,
                                     'pick_normal': True})
     e.set_inv(0.5, 3, 'sLORETA')
     eq_(e.get('inv'), 'loose.5-3-sLORETA')
     eq_(e._params['make_inv_kw'], {'loose': 0.5})
-    eq_(e._params['apply_inv_kw'], {'method': 'sLORETA', 'lambda2': 1. / 3**2})
+    eq_(e._params['apply_inv_kw'], {'method': 'sLORETA', 'lambda2': SNR3})
 
 
 def test_test_experiment():
