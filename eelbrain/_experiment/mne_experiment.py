@@ -1003,12 +1003,14 @@ class MneExperiment(FileTree):
                         self._log.debug("  test %s removed", test)
 
             # create message here, before secondary invalidations are added
-            if invalid_cache or cache_state_v == 0:
-                msg = ["Experiment definition changed:"]
+            msg = []
+            if cache_state_v < 2:
+                msg.append("Check for invalid ANOVA tests (cache version %i)." %
+                           cache_state_v)
+            if invalid_cache:
+                msg.append("Experiment definition changed:")
                 for kind, values in invalid_cache.iteritems():
                     msg.append("  %s: %s" % (kind, ', '.join(values)))
-            else:
-                msg = None
 
             # Secondary  invalidations
             # ========================
@@ -1039,24 +1041,17 @@ class MneExperiment(FileTree):
 
             # Collect invalid files
             # =====================
-            if invalid_cache or cache_state_v == 0:
+            if invalid_cache or cache_state_v < 2:
                 rm = defaultdict(DictSet)
 
                 # version
-                if cache_state_v == 0:
+                if cache_state_v < 2:
                     bad_parcs = []
                     for parc, params in self._parcs.iteritems():
                         if params['kind'] == 'seeded':
-                            if len(params['seeds']) == 1:
-                                continue
-                            else:
-                                bad_parcs.append(parc + '-?')
-                                bad_parcs.append(parc + '-??')
-                                bad_parcs.append(parc + '-???')
-                        elif (params['kind'] == 'combination' and
-                                len(params['labels']) == 1 and
-                                params['labels'].keys()[0].endswith(('-lh', '-rh'))):
-                            continue
+                            bad_parcs.append(parc + '-?')
+                            bad_parcs.append(parc + '-??')
+                            bad_parcs.append(parc + '-???')
                         else:
                             bad_parcs.append(parc)
                     bad_tests = []
@@ -1203,7 +1198,7 @@ class MneExperiment(FileTree):
         else:
             os.mkdir(cache_dir)
 
-        new_state = {'version': 1,
+        new_state = {'version': 2,
                      'groups': self._groups,
                      'epochs': self._epochs,
                      'tests': self._tests,
