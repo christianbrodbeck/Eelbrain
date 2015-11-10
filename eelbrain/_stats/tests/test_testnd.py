@@ -156,6 +156,14 @@ def test_anova_parc():
     assert_dataset_equal(c2s, c2)
     testnd.configure(-1)
 
+    # parc but single label
+    resp2 = testnd.anova(y.sub(source='cuneus-lh'), "side*modality", ds=ds,
+                         tstart=0.2, tstop=0.3, pmin=0.05, samples=100,
+                         parc='source')
+    c2sp = resp2.find_clusters(source='cuneus-lh')
+    del c2sp['p_parc', 'id']
+    assert_dataset_equal(c2sp, c2)
+
 
 def test_clusterdist():
     "Test _ClusterDist class"
