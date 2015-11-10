@@ -3379,6 +3379,7 @@ class MneExperiment(FileTree):
 
         brain = plot.brain.dspm(y, fmin, fmin * 3, colorbar=False, **brain_kwargs)
         brain.save_movie(dst, time_dilation)
+        brain.close()
 
     def make_mov_ttest(self, subject, model='', c1=None, c0=None, p=0.05,
                        sns_baseline=True, src_baseline=False,
@@ -3523,6 +3524,7 @@ class MneExperiment(FileTree):
         brain = plot.brain.dspm(tmap, ttest_t(p, res.df), ttest_t(pmin, res.df),
                                 ttest_t(pmid, res.df), surf=surf)
         brain.save_movie(dst, time_dilation)
+        brain.close()
 
     def make_mrat_evoked(self, **kwargs):
         """Produce the sensor data fiff files needed for MRAT sensor analysis
