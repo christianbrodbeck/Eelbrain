@@ -1881,8 +1881,6 @@ class ClusterProcessor(StatMapProcessor):
 
         # Pre-allocate memory buffers used for cluster processing
         self._bin_buff = np.empty(shape, np.bool8)
-        if parc is not None:
-            self.out = np.empty(len(parc))
 
         self._cmap = np.empty(shape, np.uint32)
         self._cmap_flat = flatten(self._cmap, all_adjacent)
@@ -1903,14 +1901,14 @@ class ClusterProcessor(StatMapProcessor):
                                self._bin_buff, self._int_buff,
                                self._int_buff_flat)
         if self.parc is not None:
-            v = self.out
-            for i, idx in enumerate(self.parc):
+            v = []
+            for idx in self.parc:
                 clusters_v = ndimage.sum(stat_map[idx], cmap[idx], cids)
                 if len(clusters_v):
                     np.abs(clusters_v, clusters_v)
-                    v[i] = clusters_v.max()
+                    v.append(clusters_v.max())
                 else:
-                    v[i] = 0
+                    v.append(0)
         elif len(cids):
             clusters_v = ndimage.sum(stat_map, cmap, cids)
             np.abs(clusters_v, clusters_v)
@@ -3148,8 +3146,7 @@ def permutation_worker_me(in_queue, out_queue, y, shape, test, map_args,
                           thresholds):
     n = reduce(operator.mul, shape)
     y = np.frombuffer(y, np.float64, n).reshape((shape[0], -1))
-    stat_maps = test.preallocate(shape)
-    iterator = [stat_maps[i] for i in xrange(len(stat_maps))]
+    iterator = list(test.preallocate(shape))
     if thresholds:
         iterator = zip(iterator, thresholds)
     map_processor = get_map_processor(*map_args)
