@@ -4275,6 +4275,16 @@ class Dataset(OrderedDict):
         return self.__class__, (self.items(), self.name, self._caption,
                                 self.info, self.n_cases)
 
+    def __delitem__(self, key):
+        if isinstance(key, basestring):
+            super(Dataset, self).__delitem__(key)
+        elif isinstance(key, tuple):
+            m = super(Dataset, self).__delitem__
+            for k in key:
+                m(k)
+        else:
+            raise KeyError("Invalid Dataset key: %s" % repr(key))
+
     def __getitem__(self, index):
         """
         possible::

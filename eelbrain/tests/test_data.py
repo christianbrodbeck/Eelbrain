@@ -358,6 +358,13 @@ def test_dataset_indexing():
     assert_raises(ValueError, ds.__setitem__, ('432', slice(None)), 4.)
     assert_raises(ValueError, ds.__setitem__, (slice(None), '432'), 4.)
 
+    # deleting items
+    del ds['A']
+    ok_('A' not in ds)
+    assert_raises(KeyError, ds.__getitem__, 'A')
+    del ds['B', 'rm']
+    ok_('B' not in ds and 'rm' not in ds)
+
 
 def test_dataset_repr():
     "Test Dataset string representation methods"

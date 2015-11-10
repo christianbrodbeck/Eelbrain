@@ -3,7 +3,7 @@ from __future__ import print_function
 
 from collections import defaultdict
 import inspect
-from itertools import chain, izip
+from itertools import chain, izip, product
 import logging
 import os
 import re
@@ -934,6 +934,7 @@ class MneExperiment(FileTree):
                                    "adjust the system clock; if not, delete "
                                    "the eelbrain-cache folder." % (tc, tsys))
             cache_state = load.unpickle(cache_state_path)
+            cache_state_v = cache_state.get('version', 0)
 
             # Find modified definitions
             # =========================
@@ -1002,10 +1003,12 @@ class MneExperiment(FileTree):
                         self._log.debug("  test %s removed", test)
 
             # create message here, before secondary invalidations are added
-            if invalid_cache:
+            if invalid_cache or cache_state_v == 0:
                 msg = ["Experiment definition changed:"]
                 for kind, values in invalid_cache.iteritems():
                     msg.append("  %s: %s" % (kind, ', '.join(values)))
+            else:
+                msg = None
 
             # Secondary  invalidations
             # ========================
@@ -1036,8 +1039,36 @@ class MneExperiment(FileTree):
 
             # Collect invalid files
             # =====================
-            if invalid_cache:
+            if invalid_cache or cache_state_v == 0:
                 rm = defaultdict(DictSet)
+
+                # version
+                if cache_state_v == 0:
+                    bad_parcs = []
+                    for parc, params in self._parcs.iteritems():
+                        if params['kind'] == 'seeded':
+                            if len(params['seeds']) == 1:
+                                continue
+                            else:
+                                bad_parcs.append(parc + '-?')
+                                bad_parcs.append(parc + '-??')
+                                bad_parcs.append(parc + '-???')
+                        elif (params['kind'] == 'combination' and
+                                len(params['labels']) == 1 and
+                                params['labels'].keys()[0].endswith(('-lh', '-rh'))):
+                            continue
+                        else:
+                            bad_parcs.append(parc)
+                    bad_tests = []
+                    for test, params in self._tests.iteritems():
+                        if params['kind'] == 'anova' and params['x'].count('*') > 1:
+                            bad_tests.append(test)
+                    if bad_tests and bad_parcs:
+                        self._log.warning("  Invalid ANOVA tests: %s for %s",
+                                          bad_tests, bad_parcs)
+                    for test, parc in product(bad_tests, bad_parcs):
+                        rm['test-file'].add({'test': test, 'data_parc': parc})
+                        rm['report-file'].add({'test': test, 'folder': parc})
 
                 # evoked files are based on old events
                 for subject in invalid_cache['events']:
@@ -1172,7 +1203,8 @@ class MneExperiment(FileTree):
         else:
             os.mkdir(cache_dir)
 
-        new_state = {'groups': self._groups,
+        new_state = {'version': 1,
+                     'groups': self._groups,
                      'epochs': self._epochs,
                      'tests': self._tests,
                      'parcs': self._parcs,
@@ -3347,6 +3379,7 @@ class MneExperiment(FileTree):
 
         brain = plot.brain.dspm(y, fmin, fmin * 3, colorbar=False, **brain_kwargs)
         brain.save_movie(dst, time_dilation)
+        brain.close()
 
     def make_mov_ttest(self, subject, model='', c1=None, c0=None, p=0.05,
                        sns_baseline=True, src_baseline=False,
@@ -3491,6 +3524,7 @@ class MneExperiment(FileTree):
         brain = plot.brain.dspm(tmap, ttest_t(p, res.df), ttest_t(pmin, res.df),
                                 ttest_t(pmid, res.df), surf=surf)
         brain.save_movie(dst, time_dilation)
+        brain.close()
 
     def make_mrat_evoked(self, **kwargs):
         """Produce the sensor data fiff files needed for MRAT sensor analysis
