@@ -11,11 +11,11 @@ from numpy.testing import assert_array_equal
 from scipy import ndimage
 
 import eelbrain
-from eelbrain import datasets, testnd, NDVar
+from eelbrain import datasets, testnd, NDVar, set_log_level
 from eelbrain._data_obj import UTS, Ordered, Sensor, cwt_morlet
 from eelbrain._stats import testnd as _testnd
 from eelbrain._stats.testnd import _ClusterDist, label_clusters
-from eelbrain.tests.test_data import assert_dataobj_equal, assert_dataset_equal
+from eelbrain._utils.testing import assert_dataobj_equal, assert_dataset_equal
 
 
 def test_anova():
@@ -117,6 +117,44 @@ def test_anova_incremental():
     "Test testnd.anova() with incremental f-tests"
     ds = datasets.get_uts()
     testnd.anova('uts', 'A*B', ds=ds[3:], pmin=0.05, samples=10)
+
+
+def test_anova_parc():
+    "Test ANOVA with parc argument and source space data"
+    set_log_level('warning', 'mne')
+    ds = datasets.get_mne_sample(src='ico', sub="side.isin(('L', 'R'))")
+    y = ds['src'].sub(source=('lateraloccipital-lh', 'cuneus-lh'))
+    resp = testnd.anova(y, "side*modality", ds=ds, tstart=0.2, tstop=0.3,
+                        pmin=0.05, samples=100, parc='source')
+    c1p = resp.find_clusters(source='lateraloccipital-lh')
+    c2p = resp.find_clusters(source='cuneus-lh')
+    del c1p['p_parc', 'id']
+    del c2p['p_parc', 'id']
+    res1 = testnd.anova(y.sub(source='lateraloccipital-lh'), "side*modality",
+                        ds=ds, tstart=0.2, tstop=0.3, pmin=0.05, samples=100)
+    c1 = res1.find_clusters()
+    del c1['id']
+    res2 = testnd.anova(y.sub(source='cuneus-lh'), "side*modality",
+                        ds=ds, tstart=0.2, tstop=0.3, pmin=0.05, samples=100)
+    c2 = res2.find_clusters()
+    del c2['id']
+    assert_dataset_equal(c1p, c1)
+    assert_dataset_equal(c2p, c2)
+
+    assert_array_equal(c2['p'], [0.85, 0.88, 0.97, 0.75, 0.99, 0.99, 0.98, 0.0,
+                                 0.12, 0.88, 0.25, 0.97, 0.34, 0.96])
+
+    # without multiprocessing
+    testnd.configure(0)
+    ress = testnd.anova(y, "side*modality", ds=ds, tstart=0.2, tstop=0.3,
+                        pmin=0.05, samples=100, parc='source')
+    c1s = ress.find_clusters(source='lateraloccipital-lh')
+    c2s = ress.find_clusters(source='cuneus-lh')
+    del c1s['p_parc', 'id']
+    del c2s['p_parc', 'id']
+    assert_dataset_equal(c1s, c1)
+    assert_dataset_equal(c2s, c2)
+    testnd.configure(-1)
 
 
 def test_clusterdist():
