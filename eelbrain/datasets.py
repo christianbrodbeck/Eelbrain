@@ -25,6 +25,19 @@ def get_loftus_masson_1994():
     return ds
 
 
+def get_mne_epochs():
+    """MNE-Python Epochs"""
+    data_path = mne.datasets.sample.data_path()
+    raw_path = os.path.join(data_path, 'MEG', 'sample',
+                            'sample_audvis_raw.fif')
+    events_path = os.path.join(data_path, 'MEG', 'sample',
+                               'sample_audvis_raw-eve.fif')
+    raw = mne.io.Raw(raw_path)
+    events = mne.read_events(events_path)
+    epochs = mne.Epochs(raw, events, 32, -0.1, 0.4, preload=True)
+    return epochs
+
+
 def get_mne_evoked(ndvar=False):
     """MNE-Python Evoked
 

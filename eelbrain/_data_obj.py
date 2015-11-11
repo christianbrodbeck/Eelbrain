@@ -488,7 +488,7 @@ def asndvar(x, sub=None, ds=None, n=None):
         x = ds.eval(x)
 
     # convert MNE objects
-    if isinstance(x, mne.Epochs):
+    if isinstance(x, (mne.Epochs, mne.EpochsArray)):
         from .load.fiff import epochs_ndvar
         x = epochs_ndvar(x)
     elif isinstance(x, _mne_Evoked):
@@ -4793,18 +4793,16 @@ class Dataset(OrderedDict):
             try:
                 if hasattr(v, 'aggregate'):
                     ds[k] = v.aggregate(x)
+                elif isinstance(v, (mne.Epochs, mne.EpochsArray)):
+                    evokeds = []
+                    for cell in x.cells:
+                        idx = (x == cell)
+                        if idx.sum():
+                            evokeds.append(v[idx].average())
+                    ds[k] = evokeds
                 else:
-                    from mne import Epochs
-                    if isinstance(v, Epochs):
-                        evokeds = []
-                        for cell in x.cells:
-                            idx = (x == cell)
-                            if idx.sum():
-                                evokeds.append(v[idx].average())
-                        ds[k] = evokeds
-                    else:
-                        err = ("Unsupported value type: %s" % type(v))
-                        raise TypeError(err)
+                    err = ("Unsupported value type: %s" % type(v))
+                    raise TypeError(err)
             except:
                 if drop_bad and k not in never_drop:
                     pass

@@ -9,7 +9,7 @@ from numpy.testing import assert_array_equal, assert_allclose
 import mne
 
 from eelbrain import datasets, load, testnd, morph_source_space, Factor
-from eelbrain._data_obj import asndvar, SourceSpace, _matrix_graph
+from eelbrain._data_obj import Dataset, asndvar, SourceSpace, _matrix_graph
 from eelbrain._mne import shift_mne_epoch_trigger, combination_label
 from eelbrain.tests.test_data import assert_dataobj_equal
 
@@ -86,13 +86,23 @@ def test_source_estimate():
 
 def test_dataobjects():
     "Test handing MNE-objects as data-objects"
-    ds = datasets.get_mne_sample(sns=True)
-    ds['C'] = Factor(ds['index'] > 155, labels={False: 'a', True: 'b'})
-    sds = ds.sub("side % C != ('L', 'b')")
-    ads = sds.aggregate('side % C')
-    eq_(ads.n_cases, 3)
+    shift = np.array([0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                      0.0, 0.0, 0.0, 0.1, -0.1])
+    epochs = datasets.get_mne_epochs()
+    ds = Dataset(('a', Factor('ab', repeat=8)),
+                 ('epochs', epochs))
+    ds['ets'] = shift_mne_epoch_trigger(epochs, shift, min(shift), max(shift))
+
+    # ds operations
+    sds = ds.sub("a == 'a'")
+    ads = ds.aggregate('a')
+
+    # asndvar
+    ndvar = asndvar(ds['epochs'])
+    ndvar = asndvar(ds['ets'])
 
     # connectivity
+    ds = datasets.get_mne_sample(sub=[0], sns=True)
     sensor = ds['sns'].sensor
     c = sensor.connectivity()
     assert_array_equal(c[:, 0] < c[:, 1], True)
