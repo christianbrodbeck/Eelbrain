@@ -99,6 +99,7 @@ from __future__ import division
 
 import fnmatch
 from itertools import izip_longest
+from logging import getLogger
 import os
 
 import numpy as np
@@ -572,9 +573,9 @@ def mne_epochs(ds, tmin=-0.1, tmax=0.6, baseline=None, i_start='i_start',
     epochs = mne.Epochs(raw, events, None, tmin, tmax, baseline, **kwargs)
     if kwargs.get('reject', None) is None and len(epochs) != len(events):
         logger = getLogger(__name__)
-        logger.warn("%s: MNE generated fewer Epochs than there are events. "
-                    "The raw file might end before the end of the last epoch."
-                    % raw.info['filename'])
+        logger.warn("%s: MNE generated only %i Epochs for %i events. The raw "
+                    "file might end before the end of the last epoch."
+                    % (raw.info['filename'], len(epochs), len(events)))
 
     #  add bad channels from ds
     if BAD_CHANNELS in ds.info:
