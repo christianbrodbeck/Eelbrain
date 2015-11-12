@@ -125,7 +125,6 @@ class TreeModel(object):
 
     # a dictionary of static templates (i.e., templates that do not have any hooks)
     _templates = {}
-    _defaults = {}
     defaults = {}
 
     exclude = {}  # field_values to exclude (e.g. subjects)
@@ -151,14 +150,8 @@ class TreeModel(object):
 
         # construct initial state: make all defaults available, then set as
         # many values as we can
-        defaults = dict(self._defaults)
-        if defaults:
-            warn("The MneExperiment._defaults attributed will not be used after "
-                 "version 0.20. Use MneExperiment.defaults "
-                 "instead.", DeprecationWarning)
-        defaults.update(self.defaults)
-        defaults.update(state)
-        self.defaults = defaults
+        self._defaults = dict(self.defaults)
+        self._defaults.update(state)
         for k, v in self._templates.iteritems():
             if v is None or isinstance(v, basestring):
                 self._register_constant(k, v)
@@ -269,7 +262,7 @@ class TreeModel(object):
         self._update_compound(key)
 
     def _register_constant(self, key, value):
-        value = self.defaults.get(key, value)
+        value = self._defaults.get(key, value)
         if value is None:
             raise ValueError("The %r field needs to be set as default" % key)
         self._fields[key] = value
@@ -307,7 +300,7 @@ class TreeModel(object):
         if post_set_handler is not None:
             self._bind_post_set(key, post_set_handler)
 
-        default = self.defaults.get(key, default)
+        default = self._defaults.get(key, default)
 
         if values is not None:
             if default is None:
