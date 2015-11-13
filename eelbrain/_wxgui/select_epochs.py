@@ -1187,7 +1187,7 @@ class Frame(EelbrainFrame):  # control
         event.Enable(self.CanSave())
 
     def OnUpdateUISaveAs(self, event):
-        event.Enable(self.CanSave())
+        event.Enable(True)
 
     def OnUpdateUISetLayout(self, event):
         event.Enable(True)
