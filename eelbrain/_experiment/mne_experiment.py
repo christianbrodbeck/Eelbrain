@@ -131,7 +131,8 @@ class CacheDict(dict):
         return out
 
 
-temp = {'eelbrain-log-file': os.path.join('{root}', '.eelbrain.log'),
+temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log'),
+        'old-eelbrain-log-file': os.path.join('{root}', '.eelbrain.log'),
 
         # MEG
         'experiment': None,
@@ -889,6 +890,9 @@ class MneExperiment(FileTree):
             return
 
         # logger
+        if os.path.exists(self.get('old-eelbrain-log-file')):
+            os.rename(self.get('old-eelbrain-log-file'),
+                      self.get('eelbrain-log-file'))
         self._log = logging.Logger(self.__class__.__name__, logging.DEBUG)
         handler = logging.FileHandler(self.get('eelbrain-log-file'))
         formatter = logging.Formatter("%(levelname)-8s %(asctime)s %(message)s",
