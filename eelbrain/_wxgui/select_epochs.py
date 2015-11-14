@@ -738,6 +738,7 @@ class Frame(EelbrainFrame):  # control
         self._topo_ax = None
         self._topo_plot_info_str = None
         self._topo_plot = None
+        self._mean_plot = None
 
         # Finalize
         self.ShowPage(0)
@@ -1358,7 +1359,11 @@ class Frame(EelbrainFrame):  # control
         """
         for p in self._case_plots:
             p.set_ylim(vlim)
-        self._mean_plot.set_ylim(vlim)
+        if self._mean_plot:
+            self._mean_plot.set_ylim(vlim)
+        if self._topo_plot:
+            self._topo_plot.set_vlim(vlim)
+
         if np.isscalar(vlim):
             vlim = (-vlim, vlim)
         for key in self._vlims:
