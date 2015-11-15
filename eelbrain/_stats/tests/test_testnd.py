@@ -124,30 +124,29 @@ def test_anova_parc():
     set_log_level('warning', 'mne')
     ds = datasets.get_mne_sample(src='ico', sub="side.isin(('L', 'R'))")
     y = ds['src'].sub(source=('lateraloccipital-lh', 'cuneus-lh'))
-    resp = testnd.anova(y, "side*modality", ds=ds, tstart=0.2, tstop=0.3,
-                        pmin=0.05, samples=100, parc='source')
+    y1 = y.sub(source='lateraloccipital-lh')
+    y2 = y.sub(source='cuneus-lh')
+    kwa = dict(ds=ds, tstart=0.2, tstop=0.3, samples=100)
+
+    resp = testnd.anova(y, "side*modality", pmin=0.05, parc='source', **kwa)
     c1p = resp.find_clusters(source='lateraloccipital-lh')
     c2p = resp.find_clusters(source='cuneus-lh')
     del c1p['p_parc', 'id']
     del c2p['p_parc', 'id']
-    res1 = testnd.anova(y.sub(source='lateraloccipital-lh'), "side*modality",
-                        ds=ds, tstart=0.2, tstop=0.3, pmin=0.05, samples=100)
+    res1 = testnd.anova(y1, "side*modality", pmin=0.05, **kwa)
     c1 = res1.find_clusters()
     del c1['id']
-    res2 = testnd.anova(y.sub(source='cuneus-lh'), "side*modality",
-                        ds=ds, tstart=0.2, tstop=0.3, pmin=0.05, samples=100)
+    res2 = testnd.anova(y2, "side*modality", pmin=0.05, **kwa)
     c2 = res2.find_clusters()
     del c2['id']
     assert_dataset_equal(c1p, c1)
     assert_dataset_equal(c2p, c2)
-
     assert_array_equal(c2['p'], [0.85, 0.88, 0.97, 0.75, 0.99, 0.99, 0.98, 0.0,
                                  0.12, 0.88, 0.25, 0.97, 0.34, 0.96])
 
     # without multiprocessing
     testnd.configure(0)
-    ress = testnd.anova(y, "side*modality", ds=ds, tstart=0.2, tstop=0.3,
-                        pmin=0.05, samples=100, parc='source')
+    ress = testnd.anova(y, "side*modality", pmin=0.05, parc='source', **kwa)
     c1s = ress.find_clusters(source='lateraloccipital-lh')
     c2s = ress.find_clusters(source='cuneus-lh')
     del c1s['p_parc', 'id']
@@ -157,12 +156,14 @@ def test_anova_parc():
     testnd.configure(-1)
 
     # parc but single label
-    resp2 = testnd.anova(y.sub(source='cuneus-lh'), "side*modality", ds=ds,
-                         tstart=0.2, tstop=0.3, pmin=0.05, samples=100,
-                         parc='source')
+    resp2 = testnd.anova(y2, "side*modality", pmin=0.05, parc='source', **kwa)
     c2sp = resp2.find_clusters(source='cuneus-lh')
     del c2sp['p_parc', 'id']
     assert_dataset_equal(c2sp, c2)
+
+    # not defined
+    assert_raises(NotImplementedError, testnd.anova, y, "side*modality",
+                  tfce=True, parc='source', **kwa)
 
 
 def test_clusterdist():
