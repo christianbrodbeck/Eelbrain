@@ -276,36 +276,6 @@ def test_clusterdist():
     logging.debug(' target: \n%s' % (tgt.astype(int)))
     assert_array_equal(peaks, tgt)
 
-    mps = False, True
-    thresholds = (None, 'tfce')
-    for mp, threshold in product(mps, thresholds):
-        logging.info("TEST:  multiprocessing=%r, threshold=%r" % (mp, threshold))
-        _testnd.multiprocessing = mp
-
-        # test keeping dimension
-        cdist = _ClusterDist(y, 5, threshold, dist_dim='sensor')
-        print repr(cdist)
-        cdist.add_original(y.x[0])
-        print repr(cdist)
-        assert_equal(cdist.dist.shape, (5, 4))
-
-        # test keeping time bins
-        cdist = _ClusterDist(y, 5, threshold, dist_tstep=0.2)
-        cdist.add_original(y.x[0])
-        assert_equal(cdist.dist.shape, (5, 2))
-        assert_raises(ValueError, _ClusterDist, y, 5, threshold, dist_tstep=0.3)
-
-        # test keeping dimension and time bins
-        cdist = _ClusterDist(y, 5, threshold, dist_dim='sensor', dist_tstep=0.2)
-        cdist.add_original(y.x[0])
-        assert_equal(cdist.dist.shape, (5, 4, 2))
-
-        # test keeping 2 dimensions and time bins
-        cdist = _ClusterDist(y, 5, threshold, dist_dim=('sensor', 'dim2'),
-                             dist_tstep=0.2)
-        cdist.add_original(y.x[0])
-        assert_equal(cdist.dist.shape, (5, 4, 2, 10))
-
 
 def test_corr():
     "Test testnd.corr()"

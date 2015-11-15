@@ -437,8 +437,7 @@ class t_contrast_rel(_Result):
 
     def __init__(self, Y, X, contrast, match=None, sub=None, ds=None, tail=0,
                  samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
-                 tstop=None, dist_dim=(), parc=(), dist_tstep=None,
-                 **criteria):
+                 tstop=None, parc=None, **criteria):
         ct = Celltable(Y, X, match, sub, ds=ds, coercion=asndvar)
 
         # setup contrast
@@ -466,8 +465,7 @@ class t_contrast_rel(_Result):
                 threshold = None
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
-                                 "t-contrast", tstart, tstop, criteria,
-                                 dist_dim, parc, dist_tstep)
+                                 "t-contrast", tstart, tstop, criteria, parc)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_order(len(ct.Y), samples, unit=ct.match)
@@ -559,8 +557,7 @@ class corr(_Result):
 
     def __init__(self, Y, X, norm=None, sub=None, ds=None, samples=None,
                  pmin=None, rmin=None, tfce=False, tstart=None, tstop=None,
-                 match=None, dist_dim=(), parc=(), dist_tstep=None,
-                 **criteria):
+                 match=None, parc=None, **criteria):
         sub = assub(sub, ds)
         Y = asndvar(Y, sub=sub, ds=ds)
         if not Y.has_case:
@@ -615,7 +612,7 @@ class corr(_Result):
             info = _cs.stat_info('r', threshold)
 
             cdist = _ClusterDist(Y, samples, threshold, 0, 'r', name, tstart,
-                                 tstop, criteria, dist_dim, parc, dist_tstep)
+                                 tstop, criteria, parc)
             cdist.add_original(rmap)
             if cdist.do_permutation:
                 def test_func(y, out, perm):
@@ -732,8 +729,7 @@ class ttest_1samp(_Result):
 
     def __init__(self, Y, popmean=0, match=None, sub=None, ds=None, tail=0,
                  samples=None, pmin=None, tmin=None, tfce=False, tstart=None,
-                 tstop=None, dist_dim=(), parc=(), dist_tstep=None,
-                 **criteria):
+                 tstop=None, parc=None, **criteria):
         ct = Celltable(Y, match=match, sub=sub, ds=ds, coercion=asndvar)
 
         n = len(ct.Y)
@@ -771,7 +767,7 @@ class ttest_1samp(_Result):
             n_samples, samples = _resample_params(len(y_perm), samples)
             cdist = _ClusterDist(y_perm, n_samples, threshold, tail, 't',
                                  '1-Sample t-Test', tstart, tstop, criteria,
-                                 dist_dim, parc, dist_tstep)
+                                 parc)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_sign_flip(n, samples)
@@ -897,8 +893,7 @@ class ttest_ind(_Result):
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tmin=None, tfce=False,
-                 tstart=None, tstop=None, dist_dim=(), parc=(),
-                 dist_tstep=None, **criteria):
+                 tstart=None, tstop=None, parc=None, **criteria):
         ct = Celltable(Y, X, match, sub, cat=(c1, c0), ds=ds, coercion=asndvar)
         c1, c0 = ct.cat
 
@@ -926,7 +921,7 @@ class ttest_ind(_Result):
 
             cdist = _ClusterDist(ct.Y, samples, threshold, tail, 't',
                                  'Independent Samples t-Test', tstart, tstop,
-                                 criteria, dist_dim, parc, dist_tstep)
+                                 criteria, parc)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 def test_func(y, out, perm):
@@ -1101,8 +1096,7 @@ class ttest_rel(_Result):
 
     def __init__(self, Y, X, c1=None, c0=None, match=None, sub=None, ds=None,
                  tail=0, samples=None, pmin=None, tmin=None, tfce=False,
-                 tstart=None, tstop=None, dist_dim=(), parc=(),
-                 dist_tstep=None, **criteria):
+                 tstart=None, tstop=None, parc=None, **criteria):
         if match is None:
             msg = ("The `match` argument needs to be specified for a related "
                    "samples t-test.")
@@ -1140,7 +1134,7 @@ class ttest_rel(_Result):
             n_samples, samples = _resample_params(len(diff), samples)
             cdist = _ClusterDist(diff, n_samples, threshold, tail, 't',
                                  'Related Samples t-Test', tstart, tstop,
-                                 criteria, dist_dim, parc, dist_tstep)
+                                 criteria, parc)
             cdist.add_original(tmap)
             if cdist.do_permutation:
                 iterator = permute_sign_flip(n, samples)
@@ -1454,7 +1448,7 @@ class anova(_MultiEffectResult):
 
     def __init__(self, Y, X, sub=None, ds=None, samples=None, pmin=None,
                  fmin=None, tfce=False, tstart=None, tstop=None, match=None,
-                 dist_dim=(), parc=(), dist_tstep=None, **criteria):
+                 parc=None, **criteria):
         sub = assub(sub, ds)
         Y = asndvar(Y, sub, ds)
         x_ = asmodel(X, sub, ds)
@@ -1484,8 +1478,7 @@ class anova(_MultiEffectResult):
                 thresholds = (None for _ in xrange(len(effects)))
 
             cdists = [_ClusterDist(Y, samples, thresh, 1, 'F', e.name, tstart,
-                                   tstop, criteria, dist_dim, parc,
-                                   dist_tstep)
+                                   tstop, criteria, parc)
                       for e, thresh in izip(effects, thresholds)]
 
             # Find clusters in the actual data
@@ -1805,7 +1798,7 @@ def _tfce(stat_map, tail, struct, all_adjacent, conn, out, bin_buff, int_buff,
 
 class StatMapProcessor(object):
 
-    def __init__(self, tail, max_axes, parc, tstep_reshape):
+    def __init__(self, tail, max_axes, parc):
         """Reduce a statistical map to the relevant maximum statistic
 
         Parameters
@@ -1818,10 +1811,8 @@ class StatMapProcessor(object):
         self.tail = tail
         self.max_axes = max_axes
         self.parc = parc
-        self.tstep_reshape = tstep_reshape
 
     def max_stat(self, stat_map):
-        stat_map = stat_map.reshape(self.tstep_reshape)
         if self.tail == 0:
             v = np.abs(stat_map, stat_map).max(self.max_axes)
         elif self.tail > 0:
@@ -1837,9 +1828,9 @@ class StatMapProcessor(object):
 
 class TFCEProcessor(StatMapProcessor):
 
-    def __init__(self, tail, max_axes, parc, tstep_reshape, shape, all_adjacent,
+    def __init__(self, tail, max_axes, parc, shape, all_adjacent,
                  connectivity):
-        StatMapProcessor.__init__(self, tail, max_axes, parc, tstep_reshape)
+        StatMapProcessor.__init__(self, tail, max_axes, parc)
         self.shape = shape
         self.all_adjacent = all_adjacent
         self.connectivity = connectivity
@@ -1855,23 +1846,18 @@ class TFCEProcessor(StatMapProcessor):
         else:
             self._int_buff_flat = self._int_buff.reshape((shape[0], -1))
 
-        if tstep_reshape is None:
-            self._tfce_map_stacked = self._tfce_map
-        else:
-            self._tfce_map_stacked = self._tfce_map.reshape(tstep_reshape)
-
     def max_stat(self, stat_map):
         _tfce(stat_map, self.tail, self.struct, self.all_adjacent,
               self.connectivity, self._tfce_map, self._bin_buff, self._int_buff,
               self._int_buff_flat)
-        return self._tfce_map_stacked.max(self.max_axes)
+        return self._tfce_map.max(self.max_axes)
 
 
 class ClusterProcessor(StatMapProcessor):
 
-    def __init__(self, tail, max_axes, parc, tstep_reshape, shape, all_adjacent,
+    def __init__(self, tail, max_axes, parc, shape, all_adjacent,
                  connectivity, threshold, criteria):
-        StatMapProcessor.__init__(self, tail, max_axes, parc, tstep_reshape)
+        StatMapProcessor.__init__(self, tail, max_axes, parc)
         self.shape = shape
         self.all_adjacent = all_adjacent
         self.connectivity = connectivity
@@ -1954,8 +1940,7 @@ class _ClusterDist:
         ``cdist.add_perm(pmap)``.
     """
     def __init__(self, y, samples, threshold, tail=0, meas='?', name=None,
-                 tstart=None, tstop=None, criteria={}, dist_dim=(), parc=(),
-                 dist_tstep=None):
+                 tstart=None, tstop=None, criteria={}, parc=None):
         """Accumulate information on a cluster statistic.
 
         Parameters
@@ -1982,22 +1967,13 @@ class _ClusterDist:
         criteria : dict
             Dictionary with threshold criteria for cluster size: 'mintime'
             (seconds) and 'minsource' (n_sources).
-        dist_dim : str | sequence of str
-            Collect permutation extrema for all points in this dimension(s)
-            instead of only collecting the overall maximum. This allows
-            deriving p-values for regions of interest from the same set of
-            permutations. Threshold-free distributions only.
-        parc : str | sequence of str
+        parc : str
             Collect permutation extrema for all regions of the parcellation of
-            this dimension(s). For threshold-based test, the regions are
+            this dimension. For threshold-based test, the regions are
             disconnected.
-        dist_tstep : None | scalar [seconds]
-            Instead of collecting the distribution for the maximum across time,
-            collect the maximum in several time bins. The value of tstep has to
-            divide the time between tstart and tstop in even sections. TFCE
-            only.
         """
         assert y.has_case
+        assert parc is None or isinstance(parc, basestring)
         if threshold is None:
             kind = 'raw'
         elif isinstance(threshold, str):
@@ -2016,17 +1992,6 @@ class _ClusterDist:
                 kind = 'cluster'
             else:
                 raise ValueError("Invalid value for pmin: %s" % repr(threshold))
-
-        # adapt arguments
-        if isinstance(dist_dim, basestring):
-            dist_dim = (dist_dim,)
-        elif dist_dim is None:
-            dist_dim = ()
-
-        if isinstance(parc, basestring):
-            parc = (parc,)
-        elif parc is None:
-            parc = ()
 
         # prepare temporal cropping
         if (tstart is None) and (tstop is None):
@@ -2050,11 +2015,11 @@ class _ClusterDist:
         all_adjacent = all(adjacent)
         if all_adjacent:
             nad_ax = 0
+            nad_dim = None
             connectivity = None
         else:
             if sum(adjacent) < len(adjacent) - 1:
-                err = "more than one non-adjacent dimension"
-                raise NotImplementedError(err)
+                raise NotImplementedError("More than one non-adjacent dimension")
             nad_ax = adjacent.index(False)
             # prepare flattening (cropped) maps with swapped axes
             if nad_ax:
@@ -2067,9 +2032,8 @@ class _ClusterDist:
 
             # prepare connectivity
             nad_dim = stat_map_dims[0]
-            disconnect_parc = (nad_dim.name in parc)
-            if disconnect_parc:
-                connectivity = nad_dim.connectivity(disconnect_parc=disconnect_parc)
+            if nad_dim.name == parc:
+                connectivity = nad_dim.connectivity(disconnect_parc=True)
             else:
                 connectivity = nad_dim.connectivity()
 
@@ -2106,105 +2070,39 @@ class _ClusterDist:
 
         # prepare distribution
         samples = int(samples)
-        if dist_dim or parc or dist_tstep:
-            # raise for incompatible cases
-            if (dist_dim or dist_tstep) and kind == 'cluster':
-                err = ("The dist_dim and dist_tstep parameters only apply to "
-                       "threshold-free cluster distributions.")
-                raise ValueError(err)
-            if parc and kind == 'tfce':
-                msg = "parc does not apply to TFCE"
-                raise NotImplementedError(msg)
-
-            # check all dims are in order
-            if dist_tstep and not y.has_dim('time'):
-                msg = "dist_tstep specified but data has no time dimension"
-                raise ValueError(msg)
-            dim_names = tuple(dim.name for dim in y_perm.dims[1:])
-            err = tuple(name for name in chain(dist_dim, parc) if name not in
-                        dim_names)
-            if err:
-                if len(err) == 1:
-                    msg = ("%r is contained in dist_dim or parc but is not a "
-                           "valid dimension in the input ndvar" % err)
-                else:
-                    msg = ("%r are contained in dist_dim or parc but are not "
-                           "valid dimensions in the input ndvar" % str(err))
-                raise ValueError(msg)
-            duplicates = set(dist_dim)
-            duplicates.intersection_update(parc)
-            if duplicates:
-                msg = ("%s were specified as dist_dim as well as parc. Each "
-                       "dimension can only be either dist_dim or parc.")
-                raise ValueError(msg)
+        if parc:
+            if kind == 'tfce':
+                raise NotImplementedError("parc for TFCE")
+            elif nad_dim is None or parc != nad_dim.name:
+                raise NotImplementedError("parc=%s is not non-adjacent axis"
+                                          % repr(parc))
+            elif not hasattr(nad_dim, 'parc'):
+                raise NotImplementedError("parc dimension %r has no parcellation"
+                                          % nad_dim.name)
 
             # find parameters for aggregating dist
-            dist_shape = [samples]
-            dist_dims = ['case']
-            tstep_reshape = []  # reshape value map for dist_tstep before .max()
-            max_axes = []  # v_map.max(max_axes)
-            reshaped_ax_shift = 0  # number of inserted axes after reshaping cmap
-            parc_indexes = None  # (ax, parc-Factor) tuples
-            for i, dim in enumerate(stat_map_dims):
-                if dim.name in dist_dim:  # keep the dimension
-                    length = len(dim)
-                    dist_shape.append(length)
-                    dist_dims.append(dim)
-                    tstep_reshape.append(length)
-                elif dim.name in parc:
-                    if not hasattr(dim, 'parc'):
-                        msg = "%r dimension has no parcellation" % dim.name
-                        raise NotImplementedError(msg)
-                    elif i != 0:
-                        msg = "parc that is not non-adjacent axis"
-                        raise NotImplementedError(msg)
-                    parc_ = dim.parc
-                    parc_dim = Categorial(dim.name, parc_.cells)
-                    length = len(parc_dim)
-                    dist_shape.append(length)
-                    dist_dims.append(parc_dim)
-                    tstep_reshape.append(len(dim))
-                    indexes = [parc_ == cell for cell in parc_.cells]
-                    parc_indexes = np.array(indexes)
-                elif dim.name == 'time' and dist_tstep:
-                    step = int(round(dist_tstep / dim.tstep))
-                    if dim.nsamples % step != 0:
-                        err = ("dist_tstep={} does not divide time into even "
-                               "parts ({} samples / {}).")
-                        err = err.format(dist_tstep, dim.nsamples, step)
-                        raise ValueError(err)
-                    n_times = int(dim.nsamples / step)
-
-                    dist_shape.append(n_times)
-                    dist_dims.append(UTS(dim.tmin, dist_tstep, n_times))
-                    tstep_reshape.append(step)
-                    tstep_reshape.append(n_times)
-                    max_axes.append(i + reshaped_ax_shift)
-                    reshaped_ax_shift += 1
-                else:
-                    tstep_reshape.append(len(dim))
-                    max_axes.append(i + reshaped_ax_shift)
-
-            dist_shape = tuple(dist_shape)
-            dist_dims = tuple(dist_dims)
-            tstep_reshape = tuple(tstep_reshape)
-            max_axes = tuple(max_axes)
+            parc_ = nad_dim.parc
+            parc_dim = Categorial(nad_dim.name, parc_.cells)
+            dist_shape = (samples, len(parc_dim))
+            dist_dims = ('case', parc_dim)
+            indexes = [parc_ == cell for cell in parc_.cells]
+            parc_indexes = np.array(indexes)
+            max_axes = tuple(xrange(1, ndim))
         else:
             dist_shape = (samples,)
             dist_dims = None
-            tstep_reshape = None
             max_axes = None
             parc_indexes = None
 
         # arguments for the map processor
         if kind == 'raw':
-            map_args = (kind, tail, max_axes, parc_indexes, tstep_reshape)
+            map_args = (kind, tail, max_axes, parc_indexes)
         elif kind == 'tfce':
-            map_args = (kind, tail, max_axes, parc_indexes, tstep_reshape,
-                        shape, all_adjacent, connectivity)
+            map_args = (kind, tail, max_axes, parc_indexes, shape,
+                        all_adjacent, connectivity)
         else:
-            map_args = (kind, tail, max_axes, parc_indexes, tstep_reshape,
-                        shape, all_adjacent, connectivity, threshold, criteria_)
+            map_args = (kind, tail, max_axes, parc_indexes, shape,
+                        all_adjacent, connectivity, threshold, criteria_)
 
         self.kind = kind
         self.y_perm = y_perm
@@ -2214,7 +2112,6 @@ class _ClusterDist:
         self.samples = samples
         self.dist_shape = dist_shape
         self._dist_dims = dist_dims
-        self._tstep_reshape = tstep_reshape
         self._max_axes = max_axes
         self.dist = None
         self.threshold = threshold
@@ -2223,9 +2120,7 @@ class _ClusterDist:
         self._nad_ax = nad_ax
         self.tstart = tstart
         self.tstop = tstop
-        self.dist_dim = dist_dim
         self.parc = parc
-        self.dist_tstep = dist_tstep
         self.meas = meas
         self.name = name
         self._criteria = criteria_
@@ -2372,7 +2267,7 @@ class _ClusterDist:
         attrs = ('name', 'meas', '_version', '_host', '_init_time',
                  # settings ...
                  'kind', 'threshold', 'tail', 'criteria', 'samples', 'tstart',
-                 'tstop', 'dist_dim', 'dist_tstep', 'parc',
+                 'tstop', 'parc',
                  # data properties ...
                  'dims', 'shape', '_all_adjacent', '_nad_ax', '_connectivity',
                  '_criteria',
@@ -2397,12 +2292,20 @@ class _ClusterDist:
             state['_init_time'] = None
         if 'parc' not in state:
             if state['_dist_dims'] is None:
-                state['parc'] = ()
+                state['parc'] = None
             else:
-                dim_names = (getattr(dim, 'name', 'case')
-                             for dim in state['_dist_dims'])
-                state['parc'] = tuple(dim for dim in dim_names
-                                      if dim not in state['dist_dim'])
+                raise RuntimeError("This pickled file is from a previous "
+                                   "version of Eelbrain and is not compatible "
+                                   "anymore. Please recompute this test.")
+        elif isinstance(state['parc'], tuple):
+            if len(state['parc']) == 0:
+                state['parc'] = None
+            elif len(state['parc']) == 1:
+                state['parc'] = state['parc'][0]
+            else:
+                raise RuntimeError("This pickled file is from a previous "
+                                   "version of Eelbrain and is not compatible "
+                                   "anymore. Please recompute this test.")
 
         for k, v in state.iteritems():
             setattr(self, k, v)
@@ -2418,10 +2321,6 @@ class _ClusterDist:
             args.append("tstart=%r" % self.tstart)
         if self.tstop:
             args.append("tstop=%r" % self.tstop)
-        if self.dist_dim:
-            args.append("dist_dim=%r" % self.dist_dim)
-        if self.dist_tstep:
-            args.append("dist_tstep=%r" % self.dist_tstep)
         for item in self.criteria.iteritems():
             args.append("%s=%r" % item)
         return args
