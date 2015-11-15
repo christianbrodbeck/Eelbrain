@@ -1058,7 +1058,7 @@ def test_var():
 
     # basic operations
     info = {'a': 1}
-    v = Var([1., 2., 3., 4.], 'v', info=info)
+    v = Var([1., 2., 3., -4.], 'v', info=info)
     eq_(v.info, info)
     w = v - 1
     eq_(w.info, {'a': 1, 'longname': 'v - 1'})
@@ -1072,6 +1072,14 @@ def test_var():
     w = v / 2
     eq_(w.info, {'a': 1, 'longname': 'v / 2'})
     assert_array_equal(w, v.x / 2)
+
+    # methods
+    w = v.abs()
+    eq_(w.info, {'a': 1, 'longname': 'abs(v)'})
+    assert_array_equal(w, np.abs(v.x))
+    w = v.log()
+    eq_(w.info, {'a': 1, 'longname': 'log(v)'})
+    assert_array_equal(w, np.log(v.x))
 
     # basic op with Var
     w = Var([2., 2., 3., 3.], 'w', info=info)

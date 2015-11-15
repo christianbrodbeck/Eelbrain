@@ -1877,6 +1877,12 @@ class Var(object):
         "Boolean index, True where the Var value is not in values"
         return np.in1d(self.x, values, invert=True)
 
+    def log(self, name=None):
+        "Natural logarithm"
+        info = self.info.copy()
+        info['longname'] = 'log(' + longname(self) + ')'
+        return Var(np.log(self.x), name, info=info)
+
     def max(self):
         "Returns the highest value"
         return self.x.max()
