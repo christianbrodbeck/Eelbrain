@@ -2763,8 +2763,7 @@ class MneExperiment(FileTree):
 
     def load_test(self, test, tstart, tstop, pmin, parc=None, mask=None,
                   samples=10000, data='src', sns_baseline=True,
-                  src_baseline=None, return_data=False, make=False, redo=False,
-                  **kwargs):
+                  src_baseline=None, return_data=False, make=False, **kwargs):
         """Create and load spatio-temporal cluster test results
 
         Parameters
@@ -2797,9 +2796,6 @@ class MneExperiment(FileTree):
         make : bool
             If the target file does not exist, create it (could take a long
             time depending on the test; if False, raise an IOError).
-        redo : bool
-            If the target file already exists, delete and recreate it (only
-            applies for tests that are cached).
         group : str
             Group for which to perform the test.
 
@@ -2815,10 +2811,10 @@ class MneExperiment(FileTree):
                                    tstart, tstop, parc, mask)
         return self._load_test(test, tstart, tstop, pmin, parc, mask, samples,
                                data, sns_baseline, src_baseline, return_data,
-                               make, redo)
+                               make)
 
     def _load_test(self, test, tstart, tstop, pmin, parc, mask, samples, data,
-                   sns_baseline, src_baseline, return_data, make, redo=False):
+                   sns_baseline, src_baseline, return_data, make):
         "Requires that _set_analysis_options() has been called"
         test_params = self._tests[test]
 
@@ -2883,7 +2879,7 @@ class MneExperiment(FileTree):
         res = None
         load_data = True
         desc = self._get_rel('test-file', 'test-dir')
-        if not redo and self._result_mtime(dst, data):
+        if self._result_mtime(dst, data):
             res = load.unpickle(dst)
             if res.samples >= samples or res.samples == -1:
                 self._log.info("Load cached test: %s", desc)
@@ -2891,7 +2887,7 @@ class MneExperiment(FileTree):
             else:
                 res = None
 
-        if res is None and not (redo or make):
+        if res is None and not make:
             raise IOError("The requested test is not cached. Set make=True to "
                           "perform the test.")
 
