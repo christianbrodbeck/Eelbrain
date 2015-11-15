@@ -4394,7 +4394,7 @@ class MneExperiment(FileTree):
         self.set(**{field: next_})
 
     def plot_annot(self, parc=None, surf='inflated', views=['lat', 'med'],
-                   hemi=None, borders=False, alpha=0.7, w=600,
+                   hemi=None, borders=False, alpha=0.7, axw=None,
                    foreground=None, background=None, show=True):
         """Plot the annot file on which the current parcellation is based
 
@@ -4414,7 +4414,7 @@ class MneExperiment(FileTree):
             Show only label borders (PySurfer Brain.add_annotation() argument).
         alpha : scalar
             Alpha of the annotation (1=opaque, 0=transparent, default 0.7).
-        w : int
+        axw : int
             Figure width per hemisphere.
         foreground : mayavi color
             Figure foreground color (i.e., the text color).
@@ -4443,9 +4443,9 @@ class MneExperiment(FileTree):
         else:
             subject = self.get('mrisubject')
 
-        brain = plot.brain.annot(parc, subject, surf, borders, alpha, hemi, views,
-                                 w, foreground=foreground, background=background,
-                                 subjects_dir=mri_sdir)
+        brain = plot.brain.annot(parc, subject, surf, borders, alpha, hemi,
+                                 views, axw=axw, foreground=foreground,
+                                 background=background, subjects_dir=mri_sdir)
 
         legend = plot.brain.annot_legend(self.get('annot-file', hemi='lh'),
                                          self.get('annot-file', hemi='rh'),
