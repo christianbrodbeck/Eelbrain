@@ -969,10 +969,10 @@ class MneExperiment(FileTree):
                             continue
                         elif var not in new_events:
                             invalid_cache['variables'].add(var)
-                            self._log.debug("  var removed: %s", var)
+                            self._log.debug("  var removed: %s (%s)", var, subject)
                         elif not np.all(cached_events[var] == new_events[var]):
                             invalid_cache['variables'].add(var)
-                            self._log.debug("  var changed: %s", var)
+                            self._log.debug("  var changed: %s (%s)", var, subject)
 
             # groups
             for group, members in cache_state['groups'].iteritems():
