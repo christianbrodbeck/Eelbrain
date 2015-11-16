@@ -2575,6 +2575,57 @@ class Factor(_Effect):
         values = [v for v in self.cells if v.endswith(substr)]
         return self.isin(values)
 
+    def floodfill(self, regions, empty=''):
+        """Fill in empty regions in a Factor from the nearest non-empty value
+
+        Parameters
+        ----------
+        regions : array_like
+            Object with same length as factor that indicates regions to fill.
+        empty : str
+            Value that is to be treated as empty (default is '').
+
+        Examples
+        --------
+        >>> f = Factor(['', '', 'a', '', '', '', 'b', ''])
+        >>> f.floodfill([1, 1, 1, 1, 2, 2, 2, 2])
+        Factor(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b'])
+        >>> f.floodfill([1, 1, 1, 2, 2, 2, 2, 2])
+        Factor(['a', 'a', 'a', 'b', 'b', 'b', 'b', 'b'])
+        >>> f.floodfill([1, 1, 1, 1, 1, 1, 1, 1])
+        Factor(['a', 'a', 'a', 'a', 'a', 'a', 'b', 'b'])
+        """
+        assert(len(regions) == self._n_cases)
+        out = self.copy(None)
+        if empty not in self._codes:
+            return out
+        x = out.x
+
+        empty = out._codes[empty]
+        i_region_start = 0
+        region_v = -1 if regions[0] is None else None
+        fill_with = empty
+        for i in xrange(self._n_cases):
+            if regions[i] == region_v:
+                if x[i] == empty:
+                    if fill_with != empty:
+                        x[i] = fill_with
+                else:
+                    if fill_with == empty:
+                        x[i_region_start:i] = x[i]
+                    fill_with = x[i]
+            else:  # region change
+                region_v = regions[i]
+                fill_with = x[i]
+                if fill_with == empty:
+                    i_region_start = i
+
+        # remove redundant label
+        if empty not in x:
+            del out._codes[out._labels.pop(empty)]
+
+        return out
+
     def get_index_to_match(self, other):
         """
         Assuming that ``other`` is a shuffled version of self, this method

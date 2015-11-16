@@ -528,6 +528,18 @@ def test_factor():
     assert_array_equal(f.as_var({'a': 1}, 2), [1, 1, 2, 2, 2, 2])
     assert_raises(KeyError, f.as_var, {'a': 1})
 
+    # Factor.floodfill()
+    f = Factor([' ', ' ', '1', '2', ' ', ' ', '3', ' ', ' ', '2', ' ', ' ', '1'])
+    regions =  [ 1,   1,   1,   2,   2,   2,   3,   3,   3,   2,   2,   1,   1]
+    regions2 = [ 1,   1,   1,   2,   2,   3,   3,   2,   2,   2,   2,   1,   1]
+    regions3 = [ 1,   1,   1,   1,   1,   1,   1,   1,   2,   2,   2,   2,   2]
+    target3 =  ['1', '1', '1', '2', '2', '2', '3', '3', '2', '2', '2', '2', '1']
+    assert_array_equal(f.floodfill(regions, ' '), Var(regions).as_factor())
+    assert_array_equal(f.floodfill(regions2, ' '), Var(regions2).as_factor())
+    assert_array_equal(f.floodfill(regions3, ' '), target3)
+    f = Factor(['', '', 'a', '', 'e', 'r', ''])
+    assert_array_equal(f.floodfill([1, 1, 1, 11, 11, 11, 11]), Factor('aaaeerr'))
+
 
 def test_factor_relabel():
     "Test Factor.relabel() method"

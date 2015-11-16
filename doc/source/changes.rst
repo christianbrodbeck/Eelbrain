@@ -4,6 +4,12 @@ Changes
 .. currentmodule:: eelbrain
 
 
+New in 0.21
+-----------
+
+* New :class:`Factor` method:  :meth:`Factor.floodfill`.
+
+
 New in 0.20
 -----------
 
