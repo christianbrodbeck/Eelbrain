@@ -7,6 +7,8 @@ def find_epoch_vars(params):
     out = ()
     if 'sel' in params:
         out += find_variables(params['sel'])
+    if 'trigger_shift' in params and isinstance(params['trigger_shift'], basestring):
+        out += (params['trigger_shift'],)
     if 'post_baseline_trigger_shift' in params:
         out += (params['post_baseline_trigger_shift'],)
     return out

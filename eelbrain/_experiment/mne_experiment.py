@@ -33,7 +33,7 @@ from .._mne import dissolve_label, \
     morph_source_space, shift_mne_epoch_trigger
 from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg, _interpolate_bads_meg
-from .._data_obj import (asfactor, align, DimensionMismatchError,
+from .._data_obj import (isvar, asfactor, align, DimensionMismatchError,
                          as_legal_dataset_key, assert_is_legal_dataset_key,
                          cwt_morlet)
 from ..fmtxt import List, Report
@@ -52,11 +52,11 @@ __all__ = ['MneExperiment']
 
 # Allowable epoch parameters
 EPOCH_PARAMS = {'sel_epoch', 'sel', 'tmin', 'tmax', 'decim', 'baseline', 'n_cases',
-                'post_baseline_trigger_shift',
+                'trigger_shift', 'post_baseline_trigger_shift',
                 'post_baseline_trigger_shift_max',
                 'post_baseline_trigger_shift_min'}
 SECONDARY_EPOCH_PARAMS = {'base', 'sel', 'tmin', 'tmax', 'decim', 'baseline',
-                          'post_baseline_trigger_shift',
+                          'trigger_shift', 'post_baseline_trigger_shift',
                           'post_baseline_trigger_shift_max',
                           'post_baseline_trigger_shift_min'}
 SUPER_EPOCH_PARAMS = {'sub_epochs'}
@@ -584,6 +584,8 @@ class MneExperiment(FileTree):
                     epoch['sel_epoch'] = parameters['base']
                     if 'sel' in epoch:
                         del epoch['sel']
+                    if 'trigger_shift' in epoch:
+                        del epoch['trigger_shift']
                     epoch.update(parameters)
                     epochs[name] = epoch
                     del secondary_epochs[i]
@@ -2659,7 +2661,7 @@ class MneExperiment(FileTree):
             with self._temporary_state:
                 dss = [self.load_selected_events(subject, reject, add_proj,
                                                  add_bads, index, data_raw,
-                                                 vardef, epoch=sub_epoch)
+                                                 epoch=sub_epoch)
                        for sub_epoch in sub_epochs]
 
                 # combine bad channels
@@ -2672,13 +2674,10 @@ class MneExperiment(FileTree):
                 ds.info['raw'] = dss[0].info['raw']
                 if bad_channels:
                     ds.info[BAD_CHANNELS] = sorted(bad_channels)
-
-            return ds
         elif sel_epoch is not None:
             with self._temporary_state:
                 ds = self.load_selected_events(None, 'keep', add_proj, add_bads,
-                                               index, data_raw, vardef,
-                                               epoch=sel_epoch)
+                                               index, data_raw, epoch=sel_epoch)
 
             if sel is not None:
                 ds = ds.sub(sel)
@@ -2687,66 +2686,75 @@ class MneExperiment(FileTree):
 
             if reject is True:
                 ds = ds.sub('accept')
+        else:
+            ds = self.load_events(add_proj=add_proj, add_bads=add_bads,
+                                  data_raw=data_raw)
+            if sel is not None:
+                ds = ds.sub(sel)
+            if index:
+                ds.index(index)
 
-            return ds
+            n_cases = epoch.get('n_cases', None)
+            if n_cases is not None and ds.n_cases != n_cases:
+                err = "Number of epochs %i, expected %i" % (ds.n_cases, n_cases)
+                raise RuntimeError(err)
 
-        # load events
-        ds = self.load_events(add_proj=add_proj, add_bads=add_bads,
-                              data_raw=data_raw)
-        if sel is not None:
-            ds = ds.sub(sel)
-        if index:
-            ds.index(index)
+            # rejection
+            rej_params = self._epoch_rejection[self.get('rej')]
+            if reject and rej_params['kind']:
+                path = self.get('rej-file')
+                if not os.path.exists(path):
+                    if rej_params['kind'] == 'manual':
+                        raise RuntimeError("The rejection file at %r does not "
+                                           "exist. Run .make_rej() first." % path)
+                    else:
+                        raise RuntimeError("The rejection file at %r does not "
+                                           "exist and has to be user-generated."
+                                           % path)
 
-        n_cases = epoch.get('n_cases', None)
-        if n_cases is not None and ds.n_cases != n_cases:
-            err = "Number of epochs %i, expected %i" % (ds.n_cases, n_cases)
-            raise RuntimeError(err)
-
-        # rejection
-        rej_params = self._epoch_rejection[self.get('rej')]
-        if reject and rej_params['kind']:
-            path = self.get('rej-file')
-            if not os.path.exists(path):
-                if rej_params['kind'] == 'manual':
-                    raise RuntimeError("The rejection file at %r does not "
-                                       "exist. Run .make_rej() first." % path)
+                # load and check file
+                ds_sel = load.unpickle(path)
+                if not np.all(ds['trigger'] == ds_sel['trigger']):
+                    if np.all(ds[:-1, 'trigger'] == ds_sel['trigger']):
+                        ds = ds[:-1]
+                        msg = self.format("Last epoch for {subject} is missing")
+                        self._log.warn(msg)
+                    else:
+                        raise RuntimeError("The epoch selection file contains different "
+                                           "events than the data. Something went wrong...")
+    
+                if rej_params.get('interpolation', True) and INTERPOLATE_CHANNELS in ds_sel:
+                    ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
+                    ds.info[INTERPOLATE_CHANNELS] = True
                 else:
-                    raise RuntimeError("The rejection file at %r does not "
-                                       "exist and has to be user-generated."
-                                       % path)
+                    ds.info[INTERPOLATE_CHANNELS] = False
 
-            # load and check file
-            ds_sel = load.unpickle(path)
-            if not np.all(ds['trigger'] == ds_sel['trigger']):
-                if np.all(ds[:-1, 'trigger'] == ds_sel['trigger']):
-                    ds = ds[:-1]
-                    msg = self.format("Last epoch for {subject} is missing")
-                    self._log.warn(msg)
+                # subset events
+                if reject == 'keep':
+                    ds['accept'] = ds_sel['accept']
+                elif reject is True:
+                    ds = ds.sub(ds_sel['accept'])
                 else:
-                    err = ("The epoch selection file contains different "
-                           "events than the data. Something went wrong...")
-                    raise RuntimeError(err)
+                    err = ("reject parameter must be bool or 'keep', not "
+                           "%r" % reject)
+                    raise ValueError(err)
 
-            if rej_params.get('interpolation', True) and INTERPOLATE_CHANNELS in ds_sel:
-                ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
-                ds.info[INTERPOLATE_CHANNELS] = True
+                # bad channels
+                if add_bads and BAD_CHANNELS in ds_sel.info:
+                    ds.info[BAD_CHANNELS] = ds_sel.info[BAD_CHANNELS]
+
+        # apply trigger-shift
+        if 'trigger_shift' in epoch:
+            shift = epoch['trigger_shift']
+            if isinstance(shift, basestring):
+                shift = ds.eval(shift)
+            if isvar(shift):
+                shift = shift.x
+
+            if np.isscalar(shift):
+                ds['i_start'] += int(round(shift * ds.info['sfreq']))
             else:
-                ds.info[INTERPOLATE_CHANNELS] = False
-
-            # subset events
-            if reject == 'keep':
-                ds['accept'] = ds_sel['accept']
-            elif reject is True:
-                ds = ds.sub(ds_sel['accept'])
-            else:
-                err = ("reject parameter must be bool or 'keep', not "
-                       "%r" % reject)
-                raise ValueError(err)
-
-            # bad channels
-            if add_bads and BAD_CHANNELS in ds_sel.info:
-                ds.info[BAD_CHANNELS] = ds_sel.info[BAD_CHANNELS]
+                ds['i_start'] += np.round(shift * ds.info['sfreq']).astype(int)
 
         # Additional variables
         if isinstance(vardef, str):

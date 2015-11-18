@@ -7,6 +7,10 @@ Changes
 New in 0.21
 -----------
 
+* :class:`MneExperiment`:
+
+  - New epoch parameter: ``trigger_shift`` (see :attr:`MneExperiment.epochs`).
+
 * New :class:`Factor` method:  :meth:`Factor.floodfill`.
 
 

@@ -252,6 +252,10 @@ baseline : tuple
 n_cases :
     Expected number of epochs. If n_cases is defined, a RuntimeError error
     will be raised whenever the actual number of matching events is different.
+trigger_shift : float | str
+    Shift event triggers before extracting the data [in seconds]. Can be a
+    float to shift all triggers by the same value, or a str indicating an event
+    variable that specifies the trigger shift for each trigger separately.
 post_baseline_trigger_shift : str
     Shift the trigger (i.e., where epoch time = 0) after baseline correction.
     The value of this entry has to be the name of an event variable providing
