@@ -3604,8 +3604,11 @@ class MneExperiment(FileTree):
         if not redo and os.path.exists(dst):
             return
 
-        brain = self.plot_annot(surf=surf, w=1200)
+        brain, legend = self.plot_annot(surf=surf, axw=600, show=False)
         brain.save_image(dst)
+        legend.save(dst[:-3] + 'pdf', transparent=True)
+        brain.close()
+        legend.close()
 
     def make_plot_label(self, label, surf='inflated', redo=False, **state):
         if is_fake_mri(self.get('mri-dir', **state)):
@@ -3930,12 +3933,12 @@ class MneExperiment(FileTree):
         if parc:
             section = report.add_section(parc)
             caption = "Labels in the %s parcellation." % parc
-            self._report_parc_image(section, caption, surfer_kwargs)
+            self._report_parc_image(section, caption)
         elif mask:
             title = "Whole Brain Masked by %s" % mask
             section = report.add_section(title)
             caption = "Mask: %s" % mask.capitalize()
-            self._report_parc_image(section, caption, surfer_kwargs)
+            self._report_parc_image(section, caption)
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
@@ -3958,12 +3961,12 @@ class MneExperiment(FileTree):
         if parc:
             section = report.add_section(parc)
             caption = "Labels in the %s parcellation." % parc
-            self._report_parc_image(section, caption, surfer_kwargs)
+            self._report_parc_image(section, caption)
         elif mask:
             title = "Whole Brain Masked by %s" % mask
             section = report.add_section(title)
             caption = "Mask: %s" % mask.capitalize()
-            self._report_parc_image(section, caption, surfer_kwargs)
+            self._report_parc_image(section, caption)
 
         # add results to report
         for term in rlm.column_names:
@@ -4049,8 +4052,7 @@ class MneExperiment(FileTree):
         # add parc image
         section = report.add_section(parc)
         caption = "ROIs in the %s parcellation." % parc
-        surfer_kwargs = self._surfer_plot_kwargs()
-        self._report_parc_image(section, caption, surfer_kwargs)
+        self._report_parc_image(section, caption)
 
         # sort labels
         labels_lh = []
@@ -4256,15 +4258,11 @@ class MneExperiment(FileTree):
         section.append(self._report_subject_info(ds, test_params.get('model', None)))
         section.append(self.show_state(hide=('hemi', 'subject', 'mrisubject')))
 
-    def _report_parc_image(self, section, caption, surfer_kwargs):
+    def _report_parc_image(self, section, caption):
         "Add picture of the current parcellation"
-        if surfer_kwargs and 'smoothing_steps' in surfer_kwargs:
-            surfer_kwargs = {k: v for k, v in surfer_kwargs.iteritems()
-                             if k != 'smoothing_steps'}
-
         with self._temporary_state:
             self.set(mrisubject=self.get('common_brain'))
-            brain, legend = self.plot_annot(w=1000, show=False, **surfer_kwargs)
+            brain, legend = self.plot_annot(axw=500, show=False)
 
         content = [brain.image('parc'), legend.image('parc-legend')]
         section.add_image_figure(content, caption)
@@ -4393,8 +4391,8 @@ class MneExperiment(FileTree):
             print("%s: %r -> %r" % (field, current, next_))
         self.set(**{field: next_})
 
-    def plot_annot(self, parc=None, surf='inflated', views=['lat', 'med'],
-                   hemi=None, borders=False, alpha=0.7, axw=None,
+    def plot_annot(self, parc=None, surf=None, views=None, hemi=None,
+                   borders=False, alpha=0.7, w=None, h=None, axw=None, axh=None,
                    foreground=None, background=None, show=True):
         """Plot the annot file on which the current parcellation is based
 
@@ -4443,9 +4441,12 @@ class MneExperiment(FileTree):
         else:
             subject = self.get('mrisubject')
 
-        brain = plot.brain.annot(parc, subject, surf, borders, alpha, hemi,
-                                 views, axw=axw, foreground=foreground,
-                                 background=background, subjects_dir=mri_sdir)
+        kwa = self._surfer_plot_kwargs(surf, views, foreground, background,
+                                       None, hemi)
+        brain = plot.brain.annot(parc, subject, kwa['surf'], borders, alpha,
+                                 kwa['hemi'], kwa['views'], w, h, axw, axh,
+                                 kwa['foreground'], kwa['background'],
+                                 subjects_dir=mri_sdir)
 
         legend = plot.brain.annot_legend(self.get('annot-file', hemi='lh'),
                                          self.get('annot-file', hemi='rh'),
