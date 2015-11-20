@@ -4,12 +4,13 @@ from itertools import izip
 import numpy as np
 from numpy import newaxis
 
-from nose.tools import assert_equal, assert_almost_equal, assert_is_instance, \
-    assert_raises, nottest
+from nose.tools import (eq_, assert_almost_equal, assert_is_instance,
+    assert_raises, nottest)
 
 from numpy.testing import assert_allclose
 
-from eelbrain import datasets, test, testnd, Dataset
+from eelbrain import datasets, test, testnd, Dataset, NDVar
+from eelbrain._data_obj import UTS
 from eelbrain._stats import glm
 from eelbrain._stats.permutation import permute_order
 
@@ -27,7 +28,7 @@ def r_require(package):
 
 
 @nottest
-def assert_f_test_equal(f_test, r_res, r_row, f=None, r_kind='aov'):
+def assert_f_test_equal(f_test, r_res, r_row, f_lmf, f_nd, r_kind='aov'):
     if r_kind in ('aov', 'rmaov'):
         r_df = 0
         r_SS = 1
@@ -43,18 +44,18 @@ def assert_f_test_equal(f_test, r_res, r_row, f=None, r_kind='aov'):
     else:
         raise ValueError("invalid r_kind=%r" % r_kind)
 
-    assert_equal(f_test.df, r_res[r_df][r_row])
+    eq_(f_test.df, r_res[r_df][r_row])
     assert_almost_equal(f_test.SS, r_res[r_SS][r_row])
     if r_MS is not None:
         assert_almost_equal(f_test.MS, r_res[r_MS][r_row])
     assert_almost_equal(f_test.F, r_res[r_F][r_row])
     assert_almost_equal(f_test.p, r_res[r_p][r_row])
-    if f is not None:
-        assert_almost_equal(f, r_res[r_F][r_row])  # nd-anova comparison"
+    assert_almost_equal(f_lmf, r_res[r_F][r_row])  # lm-fitter comparison"
+    assert_almost_equal(f_nd, r_res[r_F][r_row])  # nd-anova comparison"
 
 
 @nottest
-def assert_f_tests_equal(f_tests, r_res, fs, r_kind='aov'):
+def assert_f_tests_equal(f_tests, r_res, fs, fnds, r_kind='aov'):
     if r_kind == 'rmaov':
         r_row = 0
     else:
@@ -65,7 +66,7 @@ def assert_f_tests_equal(f_tests, r_res, fs, r_kind='aov'):
             r_res_ = r_res[i][0]
         else:
             r_row = i
-        assert_f_test_equal(f_tests[i], r_res_, r_row, fs[i], r_kind)
+        assert_f_test_equal(f_tests[i], r_res_, r_row, fs[i], fnds[i], r_kind)
 
 
 def run_on_lm_fitter(y, x, ds):
@@ -77,6 +78,18 @@ def run_on_lm_fitter(y, x, ds):
     fmaps = fitter.map(y)
     fs = fmaps[:, 0]
     return fs
+
+
+def run_as_ndanova(y, x, ds):
+    yt = ds.eval(y).x[:, None]
+    y2 = np.concatenate((yt, yt * 2), 1)
+    ndvar = NDVar(y2, ('case', UTS(0, 0.1, 2)))
+    res = testnd.anova(ndvar, x, ds=ds)
+    f1 = [fmap.x[0] for fmap in res.f]
+    f2 = [fmap.x[1] for fmap in res.f]
+    for f1_, f2_ in izip(f1, f2):
+        eq_(f1_, f2_)
+    return f1
 
 
 def test_anova():
@@ -91,17 +104,19 @@ def test_anova():
     aov = test.ANOVA('fltvar', 'A*B', ds=ds)
     print aov
     fs = run_on_lm_fitter('fltvar', 'A*B', ds)
+    fnds = run_as_ndanova('fltvar', 'A*B', ds)
     r_res = r("Anova(lm(fltvar ~ A * B, ds, type=2))")
-    assert_f_tests_equal(aov.f_tests, r_res, fs, 'Anova')
+    assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'Anova')
 
     # random effects
     aov = test.ANOVA('fltvar', 'A*B*rm', ds=ds)
     print aov
     fs = run_on_lm_fitter('fltvar', 'A*B*rm', ds)
+    fnds = run_as_ndanova('fltvar', 'A*B*rm', ds)
     r('test.aov <- aov(fltvar ~ A * B + Error(rm / (A * B)), ds)')
     print r('test.summary <- summary(test.aov)')
     r_res = r['test.summary'][1:]
-    assert_f_tests_equal(aov.f_tests, r_res, fs, 'rmaov')
+    assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'rmaov')
 
     # not fully specified model with random effects
     assert_raises(NotImplementedError, test.anova, 'fltvar', 'A*rm', ds=ds)
@@ -180,22 +195,25 @@ def test_anova_r_adler():
     dsb.to_r('AdlerB')
     aov = test.ANOVA('rating', 'instruction * expectation', ds=dsb)
     fs = run_on_lm_fitter('rating', 'instruction * expectation', dsb)
+    fnds = run_as_ndanova('rating', 'instruction * expectation', dsb)
     print r('a.aov <- aov(rating ~ instruction * expectation, AdlerB)')
     print r('a.summary <- summary(a.aov)')
     r_res = r['a.summary'][0]
-    assert_f_tests_equal(aov.f_tests, r_res, fs)
+    assert_f_tests_equal(aov.f_tests, r_res, fs, fnds)
 
     # with unbalanced data; for Type II SS use car package
     aov = test.ANOVA('rating', 'instruction * expectation', ds=ds)
     fs = run_on_lm_fitter('rating', 'instruction * expectation', ds)
+    fnds = run_as_ndanova('rating', 'instruction * expectation', ds)
     r_res = r("Anova(lm(rating ~ instruction * expectation, Adler, type=2))")
-    assert_f_tests_equal(aov.f_tests, r_res, fs, 'Anova')
+    assert_f_tests_equal(aov.f_tests, r_res, fs, fnds, 'Anova')
 
     # single predictor
     aov = test.ANOVA('rating', 'instruction', ds=ds)
     fs = run_on_lm_fitter('rating', 'instruction', ds)
+    fnds = run_as_ndanova('rating', 'instruction', ds)
     r_res = r("Anova(lm(rating ~ instruction, Adler, type=2))")
-    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], 'Anova')
+    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], fnds[0], 'Anova')
 
 
 def test_anova_r_sleep():
@@ -210,28 +228,31 @@ def test_anova_r_sleep():
     # independent measures
     aov = test.ANOVA('extra', 'group', ds=ds)
     fs = run_on_lm_fitter('extra', 'group', ds)
+    fnds = run_as_ndanova('extra', 'group', ds)
     print r('sleep.aov <- aov(extra ~ group, sleep)')
     print r('sleep.summary <- summary(sleep.aov)')
     r_res = r['sleep.summary'][0]
-    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0])
+    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], fnds[0])
 
     # repeated measures
     aov = test.ANOVA('extra', 'group * ID', ds=ds)
     fs = run_on_lm_fitter('extra', 'group * ID', ds)
+    fnds = run_as_ndanova('extra', 'group * ID', ds)
     print r('sleep.aov <- aov(extra ~ group + Error(ID / group), sleep)')
     print r('sleep.summary <- summary(sleep.aov)')
     r_res = r['sleep.summary'][1][0]
-    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0])
+    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], fnds[0])
 
     # unbalanced (independent measures)
     ds2 = ds[1:]
     print r('sleep2 <- subset(sleep, (group == 2) | (ID != 1))')
     aov = test.ANOVA('extra', 'group', ds=ds2)
     fs = run_on_lm_fitter('extra', 'group', ds2)
+    fnds = run_as_ndanova('extra', 'group', ds2)
     print r('sleep2.aov <- aov(extra ~ group, sleep2)')
     print r('sleep2.summary <- summary(sleep2.aov)')
     r_res = r['sleep2.summary'][0]
-    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0])
+    assert_f_test_equal(aov.f_tests[0], r_res, 0, fs[0], fnds[0])
 
 
 def test_lmfitter():
