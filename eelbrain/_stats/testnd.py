@@ -1891,13 +1891,15 @@ class ClusterProcessor(StatMapProcessor):
             for idx in self.parc:
                 clusters_v = ndimage.sum(stat_map[idx], cmap[idx], cids)
                 if len(clusters_v):
-                    np.abs(clusters_v, clusters_v)
+                    if self.tail <= 0:
+                        np.abs(clusters_v, clusters_v)
                     v.append(clusters_v.max())
                 else:
                     v.append(0)
         elif len(cids):
             clusters_v = ndimage.sum(stat_map, cmap, cids)
-            np.abs(clusters_v, clusters_v)
+            if self.tail <= 0:
+                np.abs(clusters_v, clusters_v)
             v = clusters_v.max()
         else:
             v = 0
