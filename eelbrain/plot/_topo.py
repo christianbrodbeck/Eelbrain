@@ -354,7 +354,7 @@ class TopoButterfly(_EelFigure):
         self._realtime_topo = True
         self._t_label = None
         self._frame.store_canvas()
-        self._draw_topo(0, draw=False)
+        self._draw_topo(l.time.x[0], draw=False)
         self._show()
 
     def _draw_topo(self, t, draw=True):

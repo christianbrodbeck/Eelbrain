@@ -4373,6 +4373,11 @@ class Dataset(OrderedDict):
         fmt['items'] = ', '.join(items)
         return rep_tmp % fmt
 
+    def _repr_pretty_(self, p, cycle):
+        if cycle:
+            raise NotImplementedError
+        p.text(self.__repr__())
+
     def __setitem__(self, index, item, overwrite=True):
         if isinstance(index, basestring):
             # test if name already exists

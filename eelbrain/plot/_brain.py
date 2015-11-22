@@ -4,7 +4,6 @@ from distutils.version import LooseVersion
 from itertools import izip
 import os
 from tempfile import mkdtemp
-from warnings import warn
 
 from nibabel.freesurfer import read_annot
 import numpy as np
@@ -529,7 +528,7 @@ def _set_parallel(brain, surf):
     if surf == 'inflated':
         camera_scale = 95
     else:
-        camera_scale = 65
+        camera_scale = 75  # was 65 for WX backend
 
     for figs in brain._figures:
         for fig in figs:

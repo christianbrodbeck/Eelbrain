@@ -413,7 +413,8 @@ def repmeas(y, x, match, sub=None, ds=None):
         out[ct.match.name] = x_
 
     for cell in ct.X.cells:
-        key = as_legal_dataset_key(cellname(cell, '_'))
-        out[key] = ct.data[cell]
+        if len(ct.data[cell]):  # for models with empty cells
+            key = as_legal_dataset_key(cellname(cell, '_'))
+            out[key] = ct.data[cell]
 
     return out
