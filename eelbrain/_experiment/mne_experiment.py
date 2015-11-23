@@ -983,7 +983,9 @@ class MneExperiment(FileTree):
 
             # parcs
             for parc, params in cache_state['parcs'].iteritems():
-                if parc not in self._parcs or params != self._parcs[parc]:
+                if parc not in self._parcs:
+                    invalid_cache['parcs'].add(parc)
+                elif params != self._parcs[parc]:
                     # FS_PARC:  Parcellations that are provided by the user
                     # should not be automatically removed.
                     # FSA_PARC:  for other mrisubjects, the parcellation
