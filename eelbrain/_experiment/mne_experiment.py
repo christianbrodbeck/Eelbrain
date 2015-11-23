@@ -1102,10 +1102,20 @@ class MneExperiment(FileTree):
                     rm['subject-mov-file'].add({'epoch': epoch})
 
                 # parcs
+                bad_parcs = []
                 for parc in invalid_cache['parcs']:
+                    if cache_state['parcs'][parc]['kind'] == 'seeded':
+                        bad_parcs.append(parc + '-?')
+                        bad_parcs.append(parc + '-??')
+                        bad_parcs.append(parc + '-???')
+                    else:
+                        bad_parcs.append(parc)
+                for parc in bad_parcs:
                     rm['annot-file'].add({'parc': parc})
-                    rm['test-file'].add({'data_parc': parc + '*'})
-                    rm['report-file'].add({'folder': parc + '*'})
+                    rm['test-file'].add({'data_parc': parc})
+                    rm['report-file'].add({'folder': parc})
+                    rm['res-file'].add({'analysis': 'Source Annot',
+                                        'resname': parc + ' * *', 'ext': 'p*'})
 
                 # tests
                 for test in invalid_cache['tests']:
