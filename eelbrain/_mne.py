@@ -416,8 +416,8 @@ def rename_label(labels, old, new):
                 label.name = new_
 
 
-def combination_label(name, exp, labels):
-    """Create labels based on combination of existing labels
+def combination_label(name, exp, labels, subjects_dir):
+    """Create a label based on combination of existing labels
 
     Parameters
     ----------
@@ -429,6 +429,8 @@ def combination_label(name, exp, labels):
         tags).
     labels : dict
         {name: label} dictionary.
+    subjects_dir : str
+        Freesurfer SUBJECTS_DIR (used for splitting labels).
 
     Returns
     -------
@@ -442,30 +444,21 @@ def combination_label(name, exp, labels):
     else:
         hemis = ('lh', 'rh')
 
-    out = None
-    operator = None
-    i = 0
-    pattern = re.compile("\s*([\w.]+)\s*([+-]|$)")
-    while True:
-        m = pattern.match(exp, i)
-        if not m:
-            raise ValueError("Error parsing label expression:\n%s\n%s"
-                             % (exp, ' ' * i + '^'))
-        name_, next_op = m.groups()
-        if out:
-            for i, hemi in enumerate(hemis):
-                out[i] = operator(out[i], labels['%s-%s' % (name_, hemi)])
-        else:
-            out = [labels['%s-%s' % (name_, hemi)] for hemi in hemis]
+    # splitting labels function
+    def split(label, parts=2):
+        return mne.split_label(label, parts, subjects_dir=subjects_dir)
 
-        if next_op == '+':
-            operator = add
-        elif next_op == '-':
-            operator = sub
-        elif next_op == '':
-            break
-        i = m.end()
+    # execute recombination
+    out = []
+    env = {'split': split}
+    for hemi in hemis:
+        local_env = {k[:-3].replace('.', '_'): v for k, v in labels.iteritems()
+                     if k.endswith(hemi)}
+        try:
+            label = eval(exp.replace('.', '_'), env, local_env)
+        except Exception as exc:
+            raise ValueError("Invalid label expression: %r\n%s" % (exp, exc))
+        label.name = '%s-%s' % (name, hemi)
+        out.append(label)
 
-    for i, hemi in enumerate(hemis):
-        out[i].name = '%s-%s' % (name, hemi)
     return out

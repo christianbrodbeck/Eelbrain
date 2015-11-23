@@ -7,6 +7,7 @@ import numpy as np
 from numpy.testing import assert_array_equal, assert_allclose
 
 import mne
+from mne.tests.test_label import assert_labels_equal
 
 from eelbrain import datasets, load, testnd, morph_source_space, Factor
 from eelbrain._data_obj import Dataset, asndvar, SourceSpace, _matrix_graph
@@ -142,25 +143,34 @@ def test_combination_label():
               mne.read_labels_from_annot('fsaverage', subjects_dir=subjects_dir)}
 
     # standard
-    l = combination_label('temporal', "superiortemporal + middletemporal + inferiortemporal", labels)
+    l = combination_label('temporal', "superiortemporal + middletemporal + inferiortemporal",
+                          labels, subjects_dir)
     lh = labels['superiortemporal-lh'] + labels['middletemporal-lh'] + labels['inferiortemporal-lh']
+    lh.name = 'temporal-lh'
     rh = labels['superiortemporal-rh'] + labels['middletemporal-rh'] + labels['inferiortemporal-rh']
+    rh.name = 'temporal-rh'
     eq_(len(l), 2)
-    eq_(l[0].name, 'temporal-lh')
-    eq_(l[1].name, 'temporal-rh')
-    assert_array_equal(l[0].vertices, lh.vertices)
-    assert_array_equal(l[1].vertices, rh.vertices)
+    assert_labels_equal(l[0], lh)
+    assert_labels_equal(l[1], rh)
 
     # only rh
-    l = combination_label('temporal-rh', "superiortemporal + middletemporal + inferiortemporal", labels)
+    l = combination_label('temporal-rh', "superiortemporal + middletemporal + inferiortemporal",
+                          labels, subjects_dir)
     eq_(len(l), 1)
     eq_(l[0].name, 'temporal-rh')
     assert_array_equal(l[0].vertices, rh.vertices)
 
+    # with split_label
+    l2 = combination_label('temporal-rh', "superiortemporal + middletemporal +"
+                                          "split(inferiortemporal, 2)[0] +"
+                                          "split(inferiortemporal, 2)[1]",
+                           labels, subjects_dir)
+    assert_labels_equal(l2[0], l[0], comment=False, color=False)
+
     # names with .
     labels = {l.name: l for l in
               mne.read_labels_from_annot('fsaverage', 'PALS_B12_Brodmann', subjects_dir=subjects_dir)}
-    l = combination_label('Ba38-lh', "Brodmann.38", labels)[0]
+    l = combination_label('Ba38-lh', "Brodmann.38", labels, subjects_dir)[0]
     assert_array_equal(l.vertices, labels['Brodmann.38-lh'].vertices)
 
 

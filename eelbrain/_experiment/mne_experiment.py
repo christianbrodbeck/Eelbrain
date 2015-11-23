@@ -3004,11 +3004,13 @@ class MneExperiment(FileTree):
         -----
         Only called to make custom annotation files for the common_brain
         """
+        subjects_dir = self.get('mri-sdir')
         if p['kind'] == 'combination':
             with self._temporary_state:
                 base = {l.name: l for l in self.load_annot(parc=p['base'])}
-            labels = sum((combination_label(name, exp, base) for name, exp in
-                          p['labels'].iteritems()), [])
+            labels = []
+            for name, exp in p['labels'].iteritems():
+                labels += combination_label(name, exp, base, subjects_dir)
         elif p['kind'] == 'seeded':
             mask = p.get('mask', None)
             if mask:
@@ -3017,12 +3019,11 @@ class MneExperiment(FileTree):
             name, extent = SEEDED_PARC_RE.match(parc).groups()
             labels = labels_from_mni_coords(p['seeds'], float(extent), subject,
                                             p.get('surface', 'white'), mask,
-                                            self.get('mri-sdir'), parc)
+                                            subjects_dir, parc)
         elif parc == 'lobes':
             if subject != 'fsaverage':
                 raise RuntimeError("lobes parcellation can only be created for "
                                    "fsaverage, not for %s" % subject)
-            sdir = self.get('mri-sdir')
 
             # load source annot
             with self._temporary_state:
@@ -3039,11 +3040,11 @@ class MneExperiment(FileTree):
 
             # reassign unwanted labels
             targets = ('frontal', 'occipital', 'parietal', 'temporal')
-            dissolve_label(labels, 'LOBE.LIMBIC', targets, sdir)
-            dissolve_label(labels, 'GYRUS', targets, sdir, 'rh')
-            dissolve_label(labels, '???', targets, sdir)
-            dissolve_label(labels, '????', targets, sdir, 'rh')
-            dissolve_label(labels, '???????', targets, sdir, 'rh')
+            dissolve_label(labels, 'LOBE.LIMBIC', targets, subjects_dir)
+            dissolve_label(labels, 'GYRUS', targets, subjects_dir, 'rh')
+            dissolve_label(labels, '???', targets, subjects_dir)
+            dissolve_label(labels, '????', targets, subjects_dir, 'rh')
+            dissolve_label(labels, '???????', targets, subjects_dir, 'rh')
         else:
             msg = ("At least one of the annot files for the custom parcellation "
                    "%r is missing for %r, and a make function is not "
