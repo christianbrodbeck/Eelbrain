@@ -1517,6 +1517,10 @@ class Var(object):
         info['longname'] = longname(self) + ' + ' + longname(other)
         return Var(x, info=info)
 
+    def __iadd__(self, other):
+        self.x += other
+        return self
+
     def __sub__(self, other):
         "subtract: values are assumed to be ordered. Otherwise use .sub method."
         if np.isscalar(other):
@@ -1532,6 +1536,10 @@ class Var(object):
         info['longname'] = longname(self) + ' - ' + longname(other)
         return Var(x, info=info)
 
+    def __isub__(self, other):
+        self.x -= other
+        return self
+
     def __mul__(self, other):
         if iscategorial(other):
             return Model((self, other, self % other))
@@ -1544,6 +1552,10 @@ class Var(object):
         info['longname'] = longname(self) + ' * ' + longname(other)
         return Var(x, info=info)
 
+    def __imul__(self, other):
+        self.x *= other
+        return self
+
     def __floordiv__(self, other):
         if isvar(other):
             x = self.x // other.x
@@ -1553,6 +1565,10 @@ class Var(object):
         info = self.info.copy()
         info['longname'] = longname(self) + ' // ' + longname(other)
         return Var(x, info=info)
+
+    def __ifloordiv__(self, other):
+        self.x //= other
+        return self
 
     def __mod__(self, other):
         if ismodel(other):
@@ -1567,6 +1583,10 @@ class Var(object):
         info = self.info.copy()
         info['longname'] = longname(self) + ' % ' + longname(other)
         return Var(x, info=info)
+
+    def __imod__(self, other):
+        self.x %= other
+        return self
 
     def __lt__(self, y):
         return self.x < y
@@ -1588,6 +1608,9 @@ class Var(object):
 
     def __truediv__(self, other):
         return self.__div__(other)
+
+    def __itruediv__(self, other):
+        return self.__idiv__(other)
 
     def __div__(self, other):
         """
@@ -1617,6 +1640,10 @@ class Var(object):
         info = self.info.copy()
         info['longname'] = longname(self) + ' / ' + longname(other)
         return Var(x, info=info)
+
+    def __idiv__(self, other):
+        self.x /= other
+        return self
 
     def _coefficient_names(self, method):
         return longname(self),

@@ -1,5 +1,7 @@
 # Author: Christian Brodbeck <christianbrodbeck@nyu.edu>
 from itertools import izip, product
+from operator import (add, iadd, sub, isub, mul, imul, div, idiv, floordiv,
+                      ifloordiv, mod, imod)
 import os
 import cPickle as pickle
 import shutil
@@ -20,6 +22,14 @@ from eelbrain._data_obj import (asvar, longname, Categorial, SourceSpace, UTS,
 from eelbrain._stats.stats import rms
 from eelbrain._utils.testing import (assert_dataobj_equal, assert_dataset_equal,
                                      assert_source_space_equal)
+
+
+OPERATORS = ((add, iadd, '+'),
+             (sub, isub, '-'),
+             (mul, imul, '*'),
+             (div, idiv, '/'),
+             (floordiv, ifloordiv, '//'),
+             (mod, imod, '%'))
 
 
 def test_aggregate():
@@ -1071,19 +1081,32 @@ def test_var():
     # basic operations
     info = {'a': 1}
     v = Var([1., 2., 3., -4.], 'v', info=info)
+    c = 2
+    v2 = Var([2., 2., 3., 3.], 'w', info=info)
     eq_(v.info, info)
-    w = v - 1
-    eq_(w.info, {'a': 1, 'longname': 'v - 1'})
-    assert_array_equal(w, v.x - 1)
-    w = v + 1
-    eq_(w.info, {'a': 1, 'longname': 'v + 1'})
-    assert_array_equal(w, v.x + 1)
-    w = v * 2
-    eq_(w.info, {'a': 1, 'longname': 'v * 2'})
-    assert_array_equal(w, v.x * 2)
-    w = v / 2
-    eq_(w.info, {'a': 1, 'longname': 'v / 2'})
-    assert_array_equal(w, v.x / 2)
+    for op, iop, desc in OPERATORS:
+        target = op(v.x, c)
+        vtarget = op(v.x, v2.x)
+        # op
+        if desc == '+':
+            w = v.copy()
+            w.x = iop(w.x, c)
+        else:
+            w = op(v, c)
+            eq_(w.info, {'a': 1, 'longname': 'v %s %s' % (desc, c)})
+            assert_array_equal(w, target)
+            # with Var
+            w = op(v, v2)
+            eq_(w.info, {'a': 1, 'longname': 'v %s w' % desc})
+            assert_array_equal(w, vtarget)
+        # i-op
+        w = v.copy()
+        w = iop(w, c)
+        assert_array_equal(w, target)
+        # i-op with Var
+        w = v.copy()
+        w = iop(w, v2)
+        assert_array_equal(w, vtarget)
 
     # methods
     w = v.abs()
@@ -1092,24 +1115,6 @@ def test_var():
     w = v.log()
     eq_(w.info, {'a': 1, 'longname': 'log(v)'})
     assert_array_equal(w, np.log(v.x))
-
-    # basic op with Var
-    w = Var([2., 2., 3., 3.], 'w', info=info)
-    x = v - w
-    eq_(x.info, {'a': 1, 'longname': 'v - w'})
-    assert_array_equal(x, v.x - w.x)
-    x = v * w
-    eq_(x.info, {'a': 1, 'longname': 'v * w'})
-    assert_array_equal(x, v.x * w.x)
-    x = v / w
-    eq_(x.info, {'a': 1, 'longname': 'v / w'})
-    assert_array_equal(x, v.x / w.x)
-    x = v % w
-    eq_(x.info, {'a': 1, 'longname': 'v % w'})
-    assert_array_equal(x, v.x % w.x)
-    x = v // w
-    eq_(x.info, {'a': 1, 'longname': 'v // w'})
-    assert_array_equal(x, v.x // w.x)
 
     # assignment
     tgt1 = np.arange(10)
