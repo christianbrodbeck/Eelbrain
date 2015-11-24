@@ -2229,7 +2229,7 @@ class MneExperiment(FileTree):
                 trigger_shift = self.trigger_shift
 
             if trigger_shift:
-                ds['i_start'] += round(trigger_shift * ds.info['sfreq'])
+                ds['i_start'] += int(round(trigger_shift * ds.info['sfreq']))
 
         # label events
         ds = self.label_events(ds)
