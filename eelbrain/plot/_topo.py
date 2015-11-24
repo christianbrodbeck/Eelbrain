@@ -359,7 +359,7 @@ class TopoButterfly(_EelFigure):
 
     def _draw_topo(self, t, draw=True):
         self._current_t = t
-        epochs = [[l.sub(time=t) for l in layers]
+        epochs = [[l.sub(time=t) for l in layers if t in l.time]
                   for layers in self._epochs]
 
         if not self.topo_plots:

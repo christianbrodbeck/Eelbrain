@@ -7864,6 +7864,9 @@ class UTS(Dimension):
                     and self.nsamples == other.nsamples)
         return is_equal
 
+    def __contains__(self, index):
+        return self.tmin - self.tstep < index < self.tstop
+
     def __getitem__(self, index):
         if isinstance(index, int):
             return self.times[index]
