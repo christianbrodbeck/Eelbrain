@@ -3,7 +3,7 @@ import os
 
 from nose.tools import eq_, assert_raises
 import numpy as np
-from numpy.testing import assert_equal
+from numpy.testing import assert_array_equal
 
 from eelbrain import Dataset, Factor, Var, MneExperiment
 from ..._utils.testing import assert_dataobj_equal, TempDir
@@ -117,16 +117,20 @@ def test_test_experiment():
     assert_dataobj_equal(ds['backorder'], tgt)
     tgt = ds['trigger'].as_factor(e.variables['taste'],'taste')
     assert_dataobj_equal(ds['taste'], tgt)
-    assert_equal(ds['i_start'], I_START + round(0.03 * SAMPLINGRATE))
-    assert_equal(ds['subject'] == SUBJECT, True)
-    # test without trigger shift
-    e.trigger_shift = 0
-    ds = e.label_events(gen_triggers())
-    assert_equal(ds['i_start'], I_START)
-    # trigger shift dict
-    e2 = EventExperimentTriggerShiftDict('', False)
-    ds = e2.label_events(gen_triggers())
-    assert_equal(ds['i_start'], I_START + round(0.04 * SAMPLINGRATE))
+    assert_array_equal(ds['i_start'], I_START)
+    assert_array_equal(ds['subject'] == SUBJECT, True)
+
+    # tests disabled (trigger-shift applied in load_events):
+    # ---
+    #  assert_equal(ds['i_start'], I_START + round(0.03 * SAMPLINGRATE))
+    # # test without trigger shift
+    # e.trigger_shift = 0
+    # ds = e.label_events(gen_triggers())
+    # assert_equal(ds['i_start'], I_START)
+    # # trigger shift dict
+    # e2 = EventExperimentTriggerShiftDict('', False)
+    # ds = e2.label_events(gen_triggers())
+    # assert_equal(ds['i_start'], I_START + round(0.04 * SAMPLINGRATE))
 
     # epochs
     eq_(e._epochs['cheese']['tmin'], -0.2)
