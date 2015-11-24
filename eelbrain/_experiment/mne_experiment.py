@@ -35,7 +35,7 @@ from ..mne_fixes import write_labels_to_annot
 from ..mne_fixes import _interpolate_bads_eeg, _interpolate_bads_meg
 from .._data_obj import (isvar, asfactor, align, DimensionMismatchError,
                          as_legal_dataset_key, assert_is_legal_dataset_key,
-                         cwt_morlet)
+                         cwt_morlet, OldVersionError)
 from ..fmtxt import List, Report
 from .._report import named_list
 from .._resources import predefined_connectivity
@@ -2888,12 +2888,16 @@ class MneExperiment(FileTree):
         load_data = True
         desc = self._get_rel('test-file', 'test-dir')
         if self._result_mtime(dst, data):
-            res = load.unpickle(dst)
-            if res.samples >= samples or res.samples == -1:
-                self._log.info("Load cached test: %s", desc)
-                load_data = return_data
-            else:
+            try:
+                res = load.unpickle(dst)
+            except OldVersionError:
                 res = None
+            else:
+                if res.samples >= samples or res.samples == -1:
+                    self._log.info("Load cached test: %s", desc)
+                    load_data = return_data
+                else:
+                    res = None
 
         if res is None and not make:
             raise IOError("The requested test is not cached. Set make=True to "

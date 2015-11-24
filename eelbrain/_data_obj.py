@@ -78,6 +78,11 @@ class DimensionMismatchError(Exception):
     pass
 
 
+class OldVersionError(Exception):
+    "Trying to load a file from a version that is no longer supported"
+    pass
+
+
 def _effect_eye(n):
     """Effect coding for n categories. E.g.::
 

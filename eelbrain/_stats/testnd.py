@@ -43,7 +43,7 @@ from .. import fmtxt
 from .. import _colorspaces as _cs
 from .._data_obj import (ascategorial, asmodel, asndvar, asvar, assub, Dataset,
                          NDVar, Var, Celltable, cellname, combine, Categorial,
-                         UTS)
+                         UTS, OldVersionError)
 from .._report import enumeration, format_timewindow, ms
 from .._utils import LazyProperty
 from .._utils.numpy_utils import full_slice
@@ -2288,9 +2288,9 @@ class _ClusterDist:
             if state['_dist_dims'] is None:
                 state['parc'] = None
             else:
-                raise RuntimeError("This pickled file is from a previous "
-                                   "version of Eelbrain and is not compatible "
-                                   "anymore. Please recompute this test.")
+                raise OldVersionError("This pickled file is from a previous "
+                                      "version of Eelbrain and is not compatible "
+                                      "anymore. Please recompute this test.")
         elif isinstance(state['parc'], tuple):
             if len(state['parc']) == 0:
                 state['parc'] = None
