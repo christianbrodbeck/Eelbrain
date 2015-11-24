@@ -2668,7 +2668,8 @@ class MneExperiment(FileTree):
                         bad_channels.update(ds.info[BAD_CHANNELS])
 
                 ds = combine(dss)
-                ds.info['raw'] = dss[0].info['raw']
+                if data_raw:
+                    ds.info['raw'] = dss[0].info['raw']
                 if bad_channels:
                     ds.info[BAD_CHANNELS] = sorted(bad_channels)
         elif sel_epoch is not None:
