@@ -983,7 +983,9 @@ class MneExperiment(FileTree):
 
             # parcs
             for parc, params in cache_state['parcs'].iteritems():
-                if parc not in self._parcs or params != self._parcs[parc]:
+                if parc not in self._parcs:
+                    invalid_cache['parcs'].add(parc)
+                elif params != self._parcs[parc]:
                     # FS_PARC:  Parcellations that are provided by the user
                     # should not be automatically removed.
                     # FSA_PARC:  for other mrisubjects, the parcellation
@@ -1100,10 +1102,20 @@ class MneExperiment(FileTree):
                     rm['subject-mov-file'].add({'epoch': epoch})
 
                 # parcs
+                bad_parcs = []
                 for parc in invalid_cache['parcs']:
+                    if cache_state['parcs'][parc]['kind'] == 'seeded':
+                        bad_parcs.append(parc + '-?')
+                        bad_parcs.append(parc + '-??')
+                        bad_parcs.append(parc + '-???')
+                    else:
+                        bad_parcs.append(parc)
+                for parc in bad_parcs:
                     rm['annot-file'].add({'parc': parc})
-                    rm['test-file'].add({'data_parc': parc + '*'})
-                    rm['report-file'].add({'folder': parc + '*'})
+                    rm['test-file'].add({'data_parc': parc})
+                    rm['report-file'].add({'folder': parc})
+                    rm['res-file'].add({'analysis': 'Source Annot',
+                                        'resname': parc + ' * *', 'ext': 'p*'})
 
                 # tests
                 for test in invalid_cache['tests']:
@@ -3942,7 +3954,8 @@ class MneExperiment(FileTree):
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
-        report.append(_report.source_time_results(res, ds, colors, include, surfer_kwargs))
+        report.append(_report.source_time_results(res, ds, colors, include,
+                                                  surfer_kwargs, parc=parc))
 
     def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):

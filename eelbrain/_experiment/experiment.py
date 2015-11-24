@@ -613,7 +613,12 @@ class TreeModel(object):
                 pass
             elif eval_handlers:
                 for handler in eval_handlers:
-                    v = handler(v)
+                    try:
+                        v = handler(v)
+                    except ValueError as exception:
+                        if match:
+                            raise exception
+
                     if not isinstance(v, basestring):
                         err = "Invalid conversion: %s=%r" % (k, v)
                         raise RuntimeError(err)
