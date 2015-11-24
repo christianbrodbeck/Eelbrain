@@ -1521,6 +1521,19 @@ class Var(object):
         self.x += other
         return self
 
+    def __radd__(self, other):
+        if np.isscalar(other):
+            x = other + self.x
+        elif len(other) != len(self):
+            raise ValueError("Objects have different length (%i vs "
+                             "%i)" % (len(other), len(self)))
+        else:
+            x = other + self.x
+
+        info = self.info.copy()
+        info['longname'] = longname(other) + ' + ' + longname(self)
+        return Var(x, info=info)
+
     def __sub__(self, other):
         "subtract: values are assumed to be ordered. Otherwise use .sub method."
         if np.isscalar(other):
@@ -1540,6 +1553,19 @@ class Var(object):
         self.x -= other
         return self
 
+    def __rsub__(self, other):
+        if np.isscalar(other):
+            x = other - self.x
+        elif len(other) != len(self):
+            raise ValueError("Objects have different length (%i vs "
+                             "%i)" % (len(other), len(self)))
+        else:
+            x = other - self.x
+
+        info = self.info.copy()
+        info['longname'] = longname(other) + ' - ' + longname(self)
+        return Var(x, info=info)
+
     def __mul__(self, other):
         if iscategorial(other):
             return Model((self, other, self % other))
@@ -1555,6 +1581,19 @@ class Var(object):
     def __imul__(self, other):
         self.x *= other
         return self
+
+    def __rmul__(self, other):
+        if np.isscalar(other):
+            x = other * self.x
+        elif len(other) != len(self):
+            raise ValueError("Objects have different length (%i vs "
+                             "%i)" % (len(other), len(self)))
+        else:
+            x = other * self.x
+
+        info = self.info.copy()
+        info['longname'] = longname(other) + ' * ' + longname(self)
+        return Var(x, info=info)
 
     def __floordiv__(self, other):
         if isvar(other):
