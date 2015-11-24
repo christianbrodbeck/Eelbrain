@@ -3954,7 +3954,8 @@ class MneExperiment(FileTree):
 
         model = self._tests[test]['model']
         colors = plot.colors_for_categorial(ds.eval(model))
-        report.append(_report.source_time_results(res, ds, colors, include, surfer_kwargs))
+        report.append(_report.source_time_results(res, ds, colors, include,
+                                                  surfer_kwargs, parc=parc))
 
     def _two_stage_report(self, report, test, sns_baseline, src_baseline, pmin,
                           samples, tstart, tstop, parc, mask, include):

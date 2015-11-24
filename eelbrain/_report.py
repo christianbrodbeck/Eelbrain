@@ -170,10 +170,11 @@ def sensor_time_cluster(section, cluster, y, model, ds, colors, match='subject')
     cluster_timecourse(section, cluster, y, 'sensor', model, ds, colors, match)
 
 
-def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={}, title="Results"):
+def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={}, title="Results", parc=True):
     report = Section(title)
     y = ds[res.Y]
-    parc = res._first_cdist.parc
+    if parc is True:
+        parc = res._first_cdist.parc
     model = res._plot_model()
     if parc and res._kind == 'cluster':
         source_bin_table(report, res, surfer_kwargs)
@@ -213,6 +214,7 @@ def source_time_results(res, ds, colors, include=0.1, surfer_kwargs={}, title="R
         title = "{tstart}-{tstop} p={p}{mark} {effect}"
         for label in y.source.parc.cells:
             section = report.add_section(label.capitalize())
+            # TODO:  **sub is not implemented in find_clusters()
             clusters_sig = res.find_clusters(0.05, True, source=label)
             clusters_trend = res.find_clusters(0.1, True, source=label)
             clusters_trend = clusters_trend.sub("p>0.05")
@@ -293,11 +295,13 @@ def source_time_cluster(section, cluster, y, model, ds, title, colors, match):
         section = section.add_section(title_)
 
     # description
-    txt = section.add_paragraph("Id %i, v=%s." % (cluster['id'], cluster['v']))
+    txt = section.add_paragraph("Id %i" % cluster['id'])
+    if 'v' in cluster:
+        txt.append(", v=%s" % cluster['v'])
     if 'p_parc' in cluster:
-        txt.append("Corrected across all ROIs: ")
+        txt.append(", corrected across all ROIs: ")
         txt.append(fmtxt.eq('p', cluster['p_parc'], 'mcc', '%s', drop0=True))
-        txt.append('.')
+    txt.append('.')
 
     # add cluster image to report
     brain = plot.brain.cluster(cluster['cluster'].sum('time'),
