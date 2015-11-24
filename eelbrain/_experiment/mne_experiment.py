@@ -1943,19 +1943,21 @@ class MneExperiment(FileTree):
         else:
             raise ValueError("modality=%r" % modality)
 
-    @staticmethod
-    def _data_arg_for_modality(modality, eog=False):
+    def _data_arg_for_modality(self, subject, modality, eog=False):
         "data argument for FIFF-to-NDVar conversion"
         if modality == 'meeg':
             raise NotImplementedError("NDVar for sensor space data combining "
                                       "EEG and MEG data")
         elif modality == '':
-            return 'mag'
+            subject_prefix = self._subject_re.match(subject).group(1)
+            meg_system = self._meg_systems[subject_prefix]
+            sysname = 'KIT-157' if meg_system == 'KIT-NY' else 'KIT-208'
+            return 'mag', sysname
         elif modality == 'eeg':
             if eog:
-                return 'eeg&eog'
+                return 'eeg&eog', None
             else:
-                return 'eeg'
+                return 'eeg', None
         else:
             raise ValueError("modality=%r" % modality)
 
@@ -2085,8 +2087,9 @@ class MneExperiment(FileTree):
                 del ds.info['raw']
 
             if ndvar:
-                data_arg = self._data_arg_for_modality(modality, eog)
-                ds[ndvar] = load.fiff.epochs_ndvar(ds.pop('epochs'), ndvar, data_arg)
+                data, sysname = self._data_arg_for_modality(subject, modality, eog)
+                ds[ndvar] = load.fiff.epochs_ndvar(ds.pop('epochs'), ndvar,
+                                                   data, sysname=sysname)
                 if modality == 'eeg':
                     self._fix_eeg_ndvar(ds[ndvar], group)
 
@@ -2310,23 +2313,12 @@ class MneExperiment(FileTree):
         # convert to NDVar
         if ndvar:
             modality = self.get('modality')
-            if modality == 'meeg':
-                modalities = ('meg', 'eeg')
-            elif modality == '':
-                modalities = ('meg',)
-            elif modality == 'eeg':
-                modalities = ('eeg',)
-            else:
-                raise NotImplementedError("modality=%r" % modality)
-
-            for modality in modalities:
-                if modality == 'meg':
-                    data_arg = 'mag'
-                else:
-                    data_arg = modality
-                ds[modality] = load.fiff.evoked_ndvar(ds['evoked'], None, data_arg)
-                if modality == 'eeg':
-                    self._fix_eeg_ndvar(ds['eeg'], group)
+            name = self._ndvar_name_for_modality(modality)
+            data, sysname = self._data_arg_for_modality(subject, modality)
+            ds[name] = load.fiff.evoked_ndvar(ds['evoked'], data=data,
+                                                  sysname=sysname)
+            if modality == 'eeg':
+                self._fix_eeg_ndvar(ds[name], group)
 
         return ds
 
