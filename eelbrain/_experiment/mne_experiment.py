@@ -52,11 +52,11 @@ __all__ = ['MneExperiment']
 
 # Allowable epoch parameters
 EPOCH_PARAMS = {'sel_epoch', 'sel', 'tmin', 'tmax', 'decim', 'baseline', 'n_cases',
-                'trigger_shift', 'post_baseline_trigger_shift',
+                'vars', 'trigger_shift', 'post_baseline_trigger_shift',
                 'post_baseline_trigger_shift_max',
                 'post_baseline_trigger_shift_min'}
 SECONDARY_EPOCH_PARAMS = {'base', 'sel', 'tmin', 'tmax', 'decim', 'baseline',
-                          'trigger_shift', 'post_baseline_trigger_shift',
+                          'vars', 'trigger_shift', 'post_baseline_trigger_shift',
                           'post_baseline_trigger_shift_max',
                           'post_baseline_trigger_shift_min'}
 SUPER_EPOCH_PARAMS = {'sub_epochs'}
@@ -582,10 +582,9 @@ class MneExperiment(FileTree):
                 if parameters['base'] in epochs:
                     epoch = epochs[parameters['base']].copy()
                     epoch['sel_epoch'] = parameters['base']
-                    if 'sel' in epoch:
-                        del epoch['sel']
-                    if 'trigger_shift' in epoch:
-                        del epoch['trigger_shift']
+                    for name_ in ('sel', 'vars', 'trigger_shift'):
+                        if name_ in epoch:
+                            del epoch[name_]
                     epoch.update(parameters)
                     epochs[name] = epoch
                     del secondary_epochs[i]
@@ -2720,7 +2719,7 @@ class MneExperiment(FileTree):
                     else:
                         raise RuntimeError("The epoch selection file contains different "
                                            "events than the data. Something went wrong...")
-    
+
                 if rej_params.get('interpolation', True) and INTERPOLATE_CHANNELS in ds_sel:
                     ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
                     ds.info[INTERPOLATE_CHANNELS] = True
@@ -2755,6 +2754,8 @@ class MneExperiment(FileTree):
                 ds['i_start'] += np.round(shift * ds.info['sfreq']).astype(int)
 
         # Additional variables
+        if 'vars' in epoch:
+            self._add_vars(ds, epoch['vars'])
         if isinstance(vardef, str):
             vardef = self._tests[vardef].get('vars', None)
         if vardef:
