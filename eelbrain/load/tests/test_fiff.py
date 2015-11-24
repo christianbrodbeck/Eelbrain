@@ -22,6 +22,7 @@ evt_path = os.path.join(meg_path, 'sample_audvis_filt-0-40_raw-eve.fif')
 def test_load_fiff_from_raw():
     "Test loading data from a fiff raw file"
     ds = load.fiff.events(raw_path)
+    eq_(ds['i_start'].x.dtype.kind, 'i')
 
     # test separate events
     ds_evt = load.fiff.events(events=evt_path)
