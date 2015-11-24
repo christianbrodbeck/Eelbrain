@@ -253,8 +253,7 @@ def events(raw=None, merge=-1, proj=False, name=None, bads=None,
 
     if events is None:
         evts = mne.find_stim_steps(raw, merge=merge, stim_channel=stim_channel)
-        idx = np.nonzero(evts[:, 2])
-        evts = evts[idx]
+        evts = evts[np.flatnonzero(evts[:, 2])]
     else:
         evts = mne.read_events(events)
 

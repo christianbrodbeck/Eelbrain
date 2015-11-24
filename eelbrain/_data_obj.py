@@ -4690,9 +4690,8 @@ class Dataset(OrderedDict):
 
         """
         if not isinstance(expression, basestring):
-            err = ("Eval needs expression of type unicode or str. Got "
-                   "%s" % type(expression))
-            raise TypeError(err)
+            raise TypeError("Eval needs expression of type unicode or str. Got "
+                            "%s" % repr(expression))
         return eval(expression, vars(scipy), self)
 
     @classmethod

@@ -1799,15 +1799,7 @@ def _tfce(stat_map, tail, struct, all_adjacent, conn, out, bin_buff, int_buff,
 class StatMapProcessor(object):
 
     def __init__(self, tail, max_axes, parc):
-        """Reduce a statistical map to the relevant maximum statistic
-
-        Parameters
-        ----------
-        dims : tuple
-            Dimensions of the map (without case).
-        dims : tuple
-            Dimensions of the map (without case).
-        """
+        """Reduce a statistical map to the relevant maximum statistic"""
         self.tail = tail
         self.max_axes = max_axes
         self.parc = parc
