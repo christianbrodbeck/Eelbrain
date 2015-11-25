@@ -7495,7 +7495,7 @@ class SourceSpace(Dimension):
         # hemi
         hemis = []
         for x_ in x:
-            where = np.nonzero(x_)[0]
+            where = np.flatnonzero(x_)
             src_in_lh = (where < self.lh_n)
             if np.all(src_in_lh):
                 hemis.append('lh')
