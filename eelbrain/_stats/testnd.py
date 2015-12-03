@@ -2079,8 +2079,7 @@ class _ClusterDist:
             parc_dim = Categorial(nad_dim.name, parc_.cells)
             dist_shape = (samples, len(parc_dim))
             dist_dims = ('case', parc_dim)
-            indexes = [parc_ == cell for cell in parc_.cells]
-            parc_indexes = np.array(indexes)
+            parc_indexes = tuple(np.flatnonzero(parc_ == cell) for cell in parc_.cells)
             max_axes = tuple(xrange(1, ndim))
         else:
             dist_shape = (samples,)
