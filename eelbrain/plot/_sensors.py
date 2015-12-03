@@ -104,7 +104,7 @@ class _ax_map2d:
                                   color, mark, None, None, True, head_radius,
                                   head_pos, head_linewidth)
 
-        locs = sensors.get_locs_2d(proj, extent)
+        locs = sensors.get_locs_2d(proj, extent, SENSORMAP_FRAME)
         self.connectivity = _plt_connectivity(ax, locs, None)
 
         ax.set_aspect('equal')
@@ -589,7 +589,7 @@ class SensorMaps(_EelFigure):
         ymax = max(y)
 
         ax = self._drag_ax
-        locs = self._sensors.get_locs_2d(ax.proj, ax.extent)
+        locs = self._sensors.get_locs_2d(ax.proj, ax.extent, SENSORMAP_FRAME)
         x = locs[:, 0]
         y = locs[:, 1]
         sel = (x > xmin) & (x < xmax) & (y > ymin) & (y < ymax)
@@ -731,20 +731,14 @@ class SensorMap(SensorMapMixin, _EelFigure):
 
         Parameters
         ----------
-        show : None | True | scalar
-            True to show the default connectivity.
-            None to remove the connectivity lines.
-            Scalar to plot connectivity for a different connect_dist parameter
-            (see Sensor.connectivity()).
+        show : bool
+            Show or hide the sensor connectivity.
         """
-        if not show:
-            self._markers.connectivity.show(None)
-        else:
-            if show is True:
-                conn = self._sensors.connectivity()
-            else:
-                conn = self._sensors.connectivity(show)
+        if show:
+            conn = self._sensors.connectivity()
             self._markers.connectivity.show(conn)
+        else:
+            self._markers.connectivity.show(None)
         self.draw()
 
 
