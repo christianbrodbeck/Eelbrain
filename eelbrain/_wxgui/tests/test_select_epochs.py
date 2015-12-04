@@ -17,7 +17,7 @@ def test_select_epochs():
     path = os.path.join(tempdir, 'rej.pickled')
 
     # create a file
-    doc = Document(ds, 'sns')
+    doc = Document(ds, 'meg')
     doc.set_path(path)
     doc.set_case(1, False, 'tag', None)
     doc.set_case(2, None, None, ['2'])
@@ -38,7 +38,7 @@ def test_select_epochs():
 
     # load the file
     ds = datasets.get_mne_sample(sns=True)
-    doc = Document(ds, 'sns', path=path)
+    doc = Document(ds, 'meg', path=path)
     # modification checks
     eq_(doc.accept[1], False)
     eq_(doc.tag[1], 'tag')
@@ -50,7 +50,7 @@ def test_select_epochs():
     # Test model
     # ==========
     ds = datasets.get_mne_sample(sns=True)
-    doc = Document(ds, 'sns')
+    doc = Document(ds, 'meg')
     model = Model(doc)
 
     # accept

@@ -22,7 +22,7 @@ def test_plot_topomap():
 
     # MNE data
     ds = datasets.get_mne_sample(sub=[0, 1], sns=True)
-    p = plot.Topomap(ds['sns'].summary(time=(.1, .12)), proj='left', show=False)
+    p = plot.Topomap(ds['meg'].summary(time=(.1, .12)), proj='left', show=False)
     p.close()
 
 

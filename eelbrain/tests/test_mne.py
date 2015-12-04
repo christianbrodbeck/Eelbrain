@@ -104,7 +104,7 @@ def test_dataobjects():
 
     # connectivity
     ds = datasets.get_mne_sample(sub=[0], sns=True)
-    sensor = ds['sns'].sensor
+    sensor = ds['meg'].sensor
     c = sensor.connectivity()
     assert_array_equal(c[:, 0] < c[:, 1], True)
     eq_(c.max(), len(sensor) - 1)

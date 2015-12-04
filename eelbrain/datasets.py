@@ -105,7 +105,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
     tmin, tmax baseline :
         Epoch parameters.
     sns : bool
-        Add sensor space data as NDVar as ``ds['sns']`` (default ``False``).
+        Add sensor space data as NDVar as ``ds['meg']`` (default ``False``).
     src : False | 'ico' | 'vol'
         Add source space data as NDVar as ``ds['src']`` (default ``False``).
     sub : str | list | None
@@ -168,7 +168,7 @@ def get_mne_sample(tmin=-0.1, tmax=0.4, baseline=(None, 0), sns=False,
 
     load.fiff.add_mne_epochs(ds, tmin, tmax, baseline)
     if sns:
-        ds['sns'] = load.fiff.epochs_ndvar(ds['epochs'], data='mag',
+        ds['meg'] = load.fiff.epochs_ndvar(ds['epochs'], data='mag',
                                            sysname='neuromag306mag')
 
     if not src:

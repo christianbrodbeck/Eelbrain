@@ -11,29 +11,29 @@ ds = datasets.get_mne_sample(sub="modality=='A'", sns=True)
 
 
 # interactive plot
-plot.TopoButterfly('sns', ds=ds)
+plot.TopoButterfly('meg', ds=ds)
 
 
 # plot topography at a specific time point
-plot.Topomap("sns.sub(time=.07)", ds=ds)
+plot.Topomap("meg.sub(time=.07)", ds=ds)
 
 # plot topography at a specific time point by condition
-plot.Topomap("sns.sub(time=.07)", 'side', ds=ds)
+plot.Topomap("meg.sub(time=.07)", 'side', ds=ds)
 
 # plot topography at a specific time point for one condition;
 # clip with a circular outline
-plot.Topomap("sns.sub(side=='L', time=.07)", ds=ds, clip='circular')
+plot.Topomap("meg.sub(side=='L', time=.07)", ds=ds, clip='circular')
 
 # plot topography with a specific projection
-plot.Topomap("sns.sub(time=.07)", proj='back', ds=ds)
+plot.Topomap("meg.sub(time=.07)", proj='back', ds=ds)
 
 # same but without clipping the map
-plot.Topomap("sns.sub(time=.07)", proj='back', clip=False, ds=ds)
+plot.Topomap("meg.sub(time=.07)", proj='back', clip=False, ds=ds)
 
 
 # mark sensors (all sensors with z coordinate < 0
-y = ds["sns"].sub(time=.07).mean('case')
-mark = ds['sns'].sensor.z < 0
+y = ds['meg'].sub(time=.07).mean('case')
+mark = ds['meg'].sensor.z < 0
 plot.Topomap(y, mark=mark)
 
 # different cmap, and manually adjusted head outline
