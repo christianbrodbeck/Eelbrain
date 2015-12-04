@@ -8121,15 +8121,15 @@ def intersect_dims(dims1, dims2, check_dims=True):
 def corr(x, dim='sensor', obs='time', name=None):
     """Calculate Neighbor correlation
 
-    Parameter
-    ---------
+    Parameters
+    ----------
     x : NDVar
         The data.
     dim : str
-        Dimension over which to correlate neighbors.
+        Dimension over which to correlate neighbors (default 'sensor').
     obs : str
         Dimension which provides observations over which to compute the
-        correlation.
+        correlation (default 'time').
     name : str
         Name for the new NDVar.
 
