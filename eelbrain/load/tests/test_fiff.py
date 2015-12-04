@@ -43,7 +43,7 @@ def test_load_fiff_from_raw():
     epochs = ds_mne['epochs']
     picks = pick_types(epochs.info, meg='mag')
     mne_data = epochs.get_data()[:, picks]
-    eq_(meg.sensor.names, [epochs.info['ch_names'][i] for i in picks])
+    assert_array_equal(meg.sensor.names, [epochs.info['ch_names'][i] for i in picks])
     assert_array_equal(data, mne_data)
     assert_array_almost_equal(meg.time.x, epochs.times)
 

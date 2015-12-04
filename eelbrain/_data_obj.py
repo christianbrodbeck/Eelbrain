@@ -4114,6 +4114,16 @@ class Datalist(list):
         else:
             raise RuntimeError("Datalist._fmt=%s" % repr(self._fmt))
 
+    def __eq__(self, other):
+        if len(self) != len(other):
+            raise ValueError("Unequal length")
+        return np.array([s == o for s, o in izip(self, other)])
+
+    def __ne__(self, other):
+        if len(self) != len(other):
+            raise ValueError("Unequal length")
+        return np.array([s != o for s, o in izip(self, other)])
+
     def __getitem__(self, index):
         if isinstance(index, int):
             return list.__getitem__(self, index)

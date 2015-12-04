@@ -241,8 +241,7 @@ def test_combine():
     ds2 = Dataset((y2,), info={'a': np.arange(2), 'b': [np.arange(2)]})
     dsc = combine((ds1, ds2))
     y = dsc['utsnd']
-    eq_(y.sensor.names, ['1', '2', '3'], "Sensor dimension "
-                 "intersection failed.")
+    eq_(list(y.sensor.names), ['1', '2', '3'], "Sensor dimension intersection")
     dims = ('case', 'sensor', 'time')
     ref = np.concatenate((y1.get_data(dims)[:, 1:], y2.get_data(dims)[:, :3]))
     assert_array_equal(y.get_data(dims), ref, "combine utsnd")
@@ -260,22 +259,22 @@ def test_datalist():
     eq_(dl[3], 3)
     x = dl[:3]
     assert_is_instance(x, Datalist)
-    eq_(x, range(3))
-    eq_(dl[8:], range(8, 10))
+    assert_array_equal(x, range(3))
+    assert_array_equal(dl[8:], range(8, 10))
     x = dl[np.arange(10) < 3]
     assert_is_instance(x, Datalist)
-    eq_(x, range(3))
-    eq_(dl[np.arange(3)], range(3))
+    assert_array_equal(x, range(3))
+    assert_array_equal(dl[np.arange(3)], range(3))
 
     # __add__
     x = dl + range(10, 12)
     assert_is_instance(x, Datalist)
-    eq_(x, range(12))
+    assert_array_equal(x, range(12))
 
     # aggregate
     x = dl.aggregate(Factor('ab', repeat=5))
     assert_is_instance(x, Datalist)
-    eq_(x, [2.0, 7.0])
+    assert_array_equal(x, [2.0, 7.0])
 
     # repr
     dl = Datalist([['a', 'b'], [], ['a']])
@@ -283,6 +282,12 @@ def test_datalist():
     dl = Datalist([['a', 'b'], [], ['a']], fmt='strlist')
     eq_(str(dl), '[[a, b], [], [a]]')
     eq_(str(dl[:2]), '[[a, b], []]')
+
+    # eq
+    a = Datalist([[], [1], [], [1]])
+    b = Datalist([[], [], [2], [1]])
+    assert_array_equal(a == b, [True, False, False, True])
+    assert_array_equal(a != b, [False, True, True, False])
 
 
 def test_dataset():
