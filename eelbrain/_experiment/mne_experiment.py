@@ -1978,9 +1978,9 @@ class MneExperiment(FileTree):
             Apply baseline correction using this period. True to use the
             epoch's baseline specification. The default is to not apply baseline
             correction.
-        ndvar : bool | str
-            Convert epochs to an NDVar with the given name (default is 'meg'
-            for MEG data and 'eeg' for EEG data).
+        ndvar : bool | 'both'
+            Convert epochs to an NDVar (named 'meg' for MEG data and 'eeg' for
+            EEG data). Use 'both' to include NDVar and MNE Epochs.
         add_bads : False | True | list
             Add bad channel information to the Raw. If True, bad channel
             information is retrieved from the 'bads-file'. Alternatively,
@@ -2011,11 +2011,10 @@ class MneExperiment(FileTree):
             (default True).
         """
         modality = self.get('modality')
-        if ndvar is True:
-            ndvar = self._ndvar_name_for_modality(modality)
-        elif ndvar and not isinstance(ndvar, basestring):
-            raise TypeError("ndvar needs to be bool or str, got %s"
-                            % repr(ndvar))
+        if ndvar:
+            if isinstance(ndvar, basestring):
+                if ndvar != 'both':
+                    raise ValueError("ndvar=%s" % repr(ndvar))
         subject, group = self._process_subject_arg(subject, kwargs)
 
         if group is not None:
@@ -2087,9 +2086,11 @@ class MneExperiment(FileTree):
                 del ds.info['raw']
 
             if ndvar:
+                name = self._ndvar_name_for_modality(modality)
                 data, sysname = self._data_arg_for_modality(subject, modality, eog)
-                ds[ndvar] = load.fiff.epochs_ndvar(ds.pop('epochs'), ndvar,
-                                                   data, sysname=sysname)
+                ds[name] = load.fiff.epochs_ndvar(ds['epochs'], data=data, sysname=sysname)
+                if ndvar != 'both':
+                    del ds['epochs']
                 if modality == 'eeg':
                     self._fix_eeg_ndvar(ds[ndvar], group)
 
