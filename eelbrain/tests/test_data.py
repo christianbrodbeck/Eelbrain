@@ -289,6 +289,10 @@ def test_datalist():
     assert_array_equal(a == b, [True, False, False, True])
     assert_array_equal(a != b, [False, True, True, False])
 
+    # update
+    a._update_listlist(b)
+    assert_array_equal(a, [[], [1], [2], [1]])
+
 
 def test_dataset():
     "Basic dataset operations"

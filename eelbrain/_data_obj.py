@@ -4198,6 +4198,15 @@ class Datalist(list):
     def remove(self, value):
         raise TypeError("Datalist has fixed length to conform to Dataset")
 
+    def _update_listlist(self, other):
+        "update list elements from another list of lists"
+        if len(self) != len(other):
+            raise ValueError("Unequal length")
+        for e1, e2 in izip(self, other):
+            for item in e2:
+                if item not in e1:
+                    e1.append(item)
+
 
 legal_dataset_key_re = re.compile("[_A-Za-z][_a-zA-Z0-9]*$")
 def assert_is_legal_dataset_key(key):
