@@ -7,6 +7,23 @@ def run():
     _wxgui.run()
 
 
+def select_components(path, epochs, sysname=None):
+    from _wxgui import get_app
+    from ._wxgui.select_components import Document, Model, Frame
+
+    app = get_app()
+    doc = Document(path, epochs, sysname)
+    model = Model(doc)
+    frame = Frame(None, None, None, model)
+
+    app.SetTopWindow(frame)
+    frame.Show()
+    if not app.IsMainLoopRunning():
+        app.MainLoop()
+
+    return frame
+
+
 def select_epochs(*args, **kwargs):
     """GUI for rejecting trials
 
