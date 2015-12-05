@@ -22,6 +22,7 @@ from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot
 from .._data_obj import NDVar, Ordered
+from ..plot._base import _EelFigure
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID
 from .mpl_canvas import FigureCanvasPanel
@@ -29,6 +30,7 @@ from .history import Action, FileDocument, FileModel, FileFrame
 
 
 COLOR = {True: (.5, 1, .5), False: (1, .3, .3)}
+LINE_COLOR = {True: 'k', False: (1, 0, 0)}
 
 
 class ChangeAction(Action):
@@ -139,6 +141,7 @@ class Frame(FileFrame):
     =========== ============================================================
     t           topomap plot of the Component under the pointer
     a           array-plot of the source time course
+    s           plot sources, starting with the component under the cursor
     =========== ============================================================
     """
     _doc_name = 'component selection'
@@ -230,7 +233,7 @@ class Frame(FileFrame):
             ax.text(0.5, 1, "# %i" % i, ha='center', va='top')
             p = Rectangle((0, 0), 1, 1, color=COLOR[accept], zorder=-1)
             ax.add_patch(p)
-            ax.id = i
+            ax.i = i
             ax.background = p
 
         self.axes = axes
@@ -261,18 +264,17 @@ class Frame(FileFrame):
     def OnCanvasClick(self, event):
         "called by mouse clicks"
         if event.inaxes:
-            self.model.toggle(event.inaxes.id)
+            self.model.toggle(event.inaxes.i)
 
     def OnCanvasKey(self, event):
         if not event.inaxes:
             return
-        i = event.inaxes.id
         if event.key == 't':
-            plot.Topomap(self.doc.components[i], w=10, sensorlabels='name',
-                         title='# %i' % i)
+            self.PlotCompTopomap(event.inaxes.i)
         elif event.key == 'a':
-            plot.Array(self.doc.sources[i], w=10, h=10, title='# %i' % i,
-                       axtitle=False, interpolation='none')
+            self.PlotCompSourceArray(event.inaxes.i)
+        elif event.key == 's':
+            SourceFrame(self, event.inaxes.i)
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
@@ -284,9 +286,133 @@ class Frame(FileFrame):
         sb = self.GetStatusBar()
         if event.inaxes:
             sb.SetStatusText("#%i of %i ICA Components" %
-                             (event.inaxes.id, len(self.doc.components)))
+                             (event.inaxes.i, len(self.doc.components)))
         else:
             sb.SetStatusText("%i ICA Components" % len(self.doc.components))
 
     def OnUpdateUIOpen(self, event):
         event.Enable(False)
+
+    def PlotCompSourceArray(self, i_comp):
+        plot.Array(self.doc.sources[i_comp], w=10, h=10, title='# %i' % i_comp,
+                   axtitle=False, interpolation='none')
+
+    def PlotCompTopomap(self, i_comp):
+        plot.Topomap(self.doc.components[i_comp], w=10, sensorlabels='name',
+                     title='# %i' % i_comp)
+
+
+class SourceFrame(_EelFigure):
+    _make_axes = False
+
+    def __init__(self, parent, i_first, *args, **kwargs):
+        super(SourceFrame, self).__init__("ICA Source Time Course", None, 10,
+                                          16 / 9, False, *args, **kwargs)
+        self.figure.subplots_adjust(0, 0, 1, 1, 0, 0)
+        self.figure.set_facecolor('white')
+
+        # left, top, width, height = wx.GetClientDisplayRect()
+        # self._frame.SetPosition((left, top))
+        # self._frame.SetSize((width, height))
+        self._frame.SetRect(wx.GetClientDisplayRect())
+
+        self.parent = parent
+        self.model = parent.model
+        self.doc = parent.model.doc
+        self.size = 1
+        self.i_first = i_first
+        self.n_epochs = 20
+        self.i_first_epoch = 0
+        self.y_scale = 5  # scale factor for y axis
+        self._plot()
+        self._show()
+
+        # event bindings
+        self.doc.subscribe_to_case_change(self.CaseChanged)
+        self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
+        self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
+
+    def _plot(self):
+        self.figure.clf()
+        figheight = self.figure.get_figheight()
+        n_comp = int(self.figure.get_figheight() // self.size)
+        n_comp_actual = min(len(self.doc.components) - self.i_first, n_comp)
+
+        # topomaps
+        axheight = self.size / figheight
+        axwidth = self.size / self.figure.get_figwidth()
+        left = axwidth / 2
+        for i in xrange(n_comp_actual):
+            i_comp = self.i_first + i
+            ax = self.figure.add_axes((left, 1 - (i + 1) * axheight, axwidth, axheight))
+            _ax_topomap(ax, [self.doc.components[i_comp]], None)
+            ax.text(0, 0.5, "# %i" % i_comp, va='center', ha='right', color='k')
+            ax.i = i
+            ax.i_comp = i_comp
+
+        # source time course
+        left = 1.5 * axwidth
+        bottom = 1 - n_comp * axheight
+        ax = self.figure.add_axes((left, bottom, 1 - left, 1 - bottom),
+                                  frameon=False, yticks=(), xticks=())
+        ax.i = -1
+        ax.i_comp = None
+
+        # plot epochs
+        data = self.doc.sources.sub(case=slice(self.i_first, self.i_first + n_comp),
+                                    epoch=(self.i_first_epoch, self.i_first_epoch + self.n_epochs))
+        y = data.get_data(('case', 'epoch', 'time')).reshape((n_comp_actual, -1))
+        if y.base is not None and data.x.base is not None:
+            y = y.copy()
+        start = n_comp - 1
+        stop = -1 + (n_comp - n_comp_actual)
+        y += np.arange(start * self.y_scale, stop * self.y_scale, -self.y_scale)[:, None]
+        self.lines = ax.plot(y.T, color=LINE_COLOR[True])
+        ax.set_ylim((-0.5 * self.y_scale, (n_comp - 0.5) * self.y_scale))
+        ax.set_xlim((0, y.shape[1]))
+        # line color
+        reject_color = LINE_COLOR[False]
+        for i in xrange(n_comp_actual):
+            if not self.doc.accept[i + self.i_first]:
+                self.lines[i].set_color(reject_color)
+        # epoch markers
+        elen = len(data.time)
+        for x in xrange(elen, elen * self.n_epochs, elen):
+            ax.axvline(x, ls='--', c='k')
+
+        self.n_comp_actual = n_comp_actual
+        self.ax_tc = ax
+        self.canvas.store_canvas()
+
+    def CaseChanged(self, index):
+        "updates the states of the segments on the current page"
+        if isinstance(index, int):
+            index = [index]
+        elif isinstance(index, slice):
+            start = index.start or 0
+            stop = index.stop or self.doc.n_epochs
+            index = xrange(start, stop)
+        elif index.dtype.kind == 'b':
+            index = np.nonzero(index)[0]
+
+        # filter to visible epochs
+        i_last = self.i_first + self.n_comp_actual
+        index = [i_comp for i_comp in index if self.i_first <= i_comp <= i_last]
+        # update epoch plots
+        if index:
+            for i_comp in index:
+                self.lines[i_comp - self.i_first].set_color(LINE_COLOR[self.doc.accept[i_comp]])
+            self.canvas.redraw(axes=(self.ax_tc,))
+
+    def OnCanvasClick(self, event):
+        "called by mouse clicks"
+        if event.inaxes and event.inaxes.i_comp is not None:
+            self.model.toggle(event.inaxes.i_comp)
+
+    def OnCanvasKey(self, event):
+        if not event.inaxes or event.inaxes.i_comp is None:
+            return
+        elif event.key == 't':
+            self.parent.PlotCompTopomap(event.inaxes.i_comp)
+        elif event.key == 'a':
+            self.parent.PlotCompSourceArray(event.inaxes.i_comp)
