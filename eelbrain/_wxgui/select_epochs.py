@@ -31,12 +31,11 @@ from ..plot._nuts import _plt_bin_nuts
 from ..plot._topo import _ax_topomap
 from ..plot._utsnd import _ax_bfly_epoch
 from .._utils.numpy_utils import full_slice
-from .._wxgui.help import show_help_txt
 from .._wxutils import Icon, ID, REValidator
 from .app import get_app
-from .frame import EelbrainFrame, EelbrainDialog
+from .frame import EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
-from .history import History, Action
+from .history import Action, FileDocument, FileModel, FileFrame
 
 
 class ChangeAction(Action):
@@ -85,7 +84,7 @@ class ChangeAction(Action):
             doc.set_bad_channels(self.old_bad_chs)
 
 
-class Document(object):
+class Document(FileDocument):
     """Represents data for the current state of the Document
 
     Data can be accesses through attributes, but should only be changed through
@@ -203,14 +202,12 @@ class Document(object):
         # publisher
         self._bad_chs_change_subscriptions = []
         self._case_change_subscriptions = []
-        self._path_change_subscriptions = []
 
         # finalize
         if bad_chs is not None:
             self.set_bad_channels_by_name(bad_chs)
+        FileDocument.__init__(self, path)
 
-        self.saved = True  # managed by the history
-        self.path = path
         if path and os.path.exists(path):
             accept, tag, interpolate, bad_chs = self.read_rej_file(path)
             self.accept[:] = accept
@@ -301,10 +298,7 @@ class Document(object):
         root, ext = os.path.splitext(path)
         if ext == '':
             path = root + '.txt'
-
-        self.path = path
-        for func in self._path_change_subscriptions:
-            func()
+        FileDocument.set_path(self, path)
 
     def read_rej_file(self, path):
         "Read a file making sure it is compatible"
@@ -415,18 +409,9 @@ class Document(object):
         "callback(index)"
         self._case_change_subscriptions.append(callback)
 
-    def subscribe_to_path_change(self, callback):
-        "callback(path)"
-        self._path_change_subscriptions.append(callback)
 
-
-
-class Model(object):
+class Model(FileModel):
     """Manages a document as well as its history"""
-
-    def __init__(self, doc):
-        self.doc = doc
-        self.history = History(doc)
 
     def auto_reject(self, threshold=2e-12, method='abs', above=False,
                     below=True):
@@ -511,14 +496,6 @@ class Model(object):
         self.history.do(action)
         self.history.register_save()
 
-    def save(self):
-        self.doc.save()
-        self.history.register_save()
-
-    def save_as(self, path):
-        self.doc.set_path(path)
-        self.save()
-
     def set_bad_channels(self, bad_channels, desc="Set bad channels"):
         "Set bad channels with a list of int"
         action = ChangeAction(desc, old_bad_chs=self.doc.bad_channels,
@@ -554,7 +531,7 @@ class Model(object):
         self.history.do(action)
 
 
-class Frame(EelbrainFrame):  # control
+class Frame(FileFrame):
     """
     Epoch Rejection
     ===============
@@ -587,6 +564,9 @@ class Frame(EelbrainFrame):  # control
     shift-i     open dialog to enter channels for interpolation
     =========== ============================================================
     """
+    _doc_name = 'epoch selection'
+    _name = "SelectEpochs"
+    _title = "Select Epochs"
 
     def __init__(self, parent, model, nplots, topo, mean, vlim, color, lw, mark,
                  mcolor, mlw, antialiased, pos, size, allow_interpolation):
@@ -599,42 +579,12 @@ class Frame(EelbrainFrame):  # control
         others :
             See TerminalInterface constructor.
         """
-        config = wx.Config("Eelbrain")
-        config.SetPath("SelectEpochs")
-
-        if pos is None:
-            pos = (config.ReadInt("pos_horizontal", -1),
-                   config.ReadInt("pos_vertical", -1))
-        else:
-            pos_h, pos_v = pos
-            config.WriteInt("pos_horizontal", pos_h)
-            config.WriteInt("pos_vertical", pos_v)
-            config.Flush()
-
-        if size is None:
-            size = (config.ReadInt("size_width", 800),
-                    config.ReadInt("size_height", 600))
-        else:
-            w, h = pos
-            config.WriteInt("size_width", w)
-            config.WriteInt("size_height", h)
-            config.Flush()
-
-        super(Frame, self).__init__(parent, -1, "Select Epochs", pos, size)
-        doc = model.doc
-        history = model.history
+        super(Frame, self).__init__(parent, pos, size, model)
+        self.allow_interpolation = allow_interpolation
 
         # bind events
-        doc.subscribe_to_case_change(self.CaseChanged)
-        doc.subscribe_to_path_change(self.UpdateTitle)
-        doc.subscribe_to_bad_channels_change(self.ShowPage)
-        history.subscribe_to_saved_change(self.UpdateTitle)
-
-        self.config = config
-        self.model = model
-        self.doc = doc
-        self.history = history
-        self.allow_interpolation = allow_interpolation
+        self.doc.subscribe_to_case_change(self.CaseChanged)
+        self.doc.subscribe_to_bad_channels_change(self.ShowPage)
 
         # setup figure canvas
         self.canvas = FigureCanvasPanel(self)
@@ -716,12 +666,8 @@ class Frame(EelbrainFrame):  # control
         self._SetLayout(nplots, topo, mean)
 
         # Bind Events ---
-        self.Bind(wx.EVT_CLOSE, self.OnClose)
         self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
         self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
-        self.Bind(wx.EVT_TOOL, self.OnOpen, id=ID.OPEN)
-        self.Bind(wx.EVT_TOOL, self.OnSave, id=wx.ID_SAVE)
-        self.Bind(wx.EVT_TOOL, self.OnSaveAs, id=wx.ID_SAVEAS)
         self.Bind(wx.EVT_TOOL, self.OnSetLayout, id=ID.SET_LAYOUT)
         self.canvas.mpl_connect('axes_leave_event', self.OnPointerLeaveAxes)
         self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
@@ -749,15 +695,6 @@ class Frame(EelbrainFrame):  # control
 
     def CanForward(self):
         return self._current_page_i < self._n_pages - 1
-
-    def CanRedo(self):
-        return self.history.can_redo()
-
-    def CanSave(self):
-        return bool(self.doc.path)
-
-    def CanUndo(self):
-        return self.history.can_undo()
 
     def CaseChanged(self, index):
         "updates the states of the segments on the current page"
@@ -851,73 +788,9 @@ class Frame(EelbrainFrame):  # control
         elif event.key == 'I':
             self.OnSetInterpolation(ax.epoch_idx)
 
-    def OnClear(self, event):
-        self.model.clear()
-
-    def OnClose(self, event):
-        "Ask to save unsaved changes"
-        if event.CanVeto() and not self.history.is_saved():
-            msg = ("The current document has unsaved changes. Would you like "
-                   "to save them?")
-            cap = ("Saved Unsaved Changes?")
-            style = wx.YES | wx.NO | wx.CANCEL | wx.YES_DEFAULT
-            cmd = wx.MessageBox(msg, cap, style)
-            if cmd == wx.YES:
-                if self.OnSave(event) != wx.ID_OK:
-                    event.Veto()
-                    return
-            elif cmd == wx.CANCEL:
-                event.Veto()
-                return
-            elif cmd != wx.NO:
-                raise RuntimeError("Unknown answer: %r" % cmd)
-
-        logger = getLogger(__name__)
-        logger.debug("SelectEpochsFrame.OnClose(), saving window properties...")
-        pos_h, pos_v = self.GetPosition()
-        w, h = self.GetSize()
-
-        self.config.WriteInt("pos_horizontal", pos_h)
-        self.config.WriteInt("pos_vertical", pos_v)
-        self.config.WriteInt("size_width", w)
-        self.config.WriteInt("size_height", h)
-        self.config.Flush()
-
-        event.Skip()
-
     def OnForward(self, event):
         "turns the page forward"
         self.ShowPage(self._current_page_i + 1)
-
-    def OnHelp(self, event):
-        show_help_txt(self.__doc__, self, "Epoch-selection")
-
-    def OnOpen(self, event):
-        msg = ("Load the epoch selection from a file.")
-        if self.doc.path:
-            default_dir, default_name = os.path.split(self.doc.path)
-        else:
-            default_dir = ''
-            default_name = ''
-        wildcard = ("Tab Separated Text (*.txt)|*.txt|"
-                    "Pickle (*.pickled)|*.pickled")
-        dlg = wx.FileDialog(self, msg, default_dir, default_name,
-                            wildcard, wx.FD_OPEN)
-        rcode = dlg.ShowModal()
-        dlg.Destroy()
-
-        if rcode != wx.ID_OK:
-            return rcode
-
-        path = dlg.GetPath()
-        try:
-            self.model.load(path)
-        except Exception as ex:
-            msg = str(ex)
-            title = "Error Loading Rejections"
-            wx.MessageBox(msg, title, wx.ICON_ERROR)
-            raise
-
 
     def OnPageChoice(self, event):
         "called by the page Choice control"
@@ -962,35 +835,6 @@ class Frame(EelbrainFrame):  # control
                                               **self._topo_kwargs)
             self.canvas.redraw(axes=[self._topo_ax])
             self._topo_plot_info_str = "Topomap: %s, t = %s ms" % (desc, x)
-
-    def OnRedo(self, event):
-        self.history.redo()
-
-    def OnSave(self, event):
-        if self.doc.path:
-            self.model.save()
-            return wx.ID_OK
-        else:
-            return self.OnSaveAs(event)
-
-    def OnSaveAs(self, event):
-        msg = ("Save the epoch selection to a file.")
-        if self.doc.path:
-            default_dir, default_name = os.path.split(self.doc.path)
-        else:
-            default_dir = ''
-            default_name = ''
-        wildcard = ("Tab Separated Text (*.txt)|*.txt|"
-                    "Pickle (*.pickled)|*.pickled")
-        dlg = wx.FileDialog(self, msg, default_dir, default_name, wildcard,
-                            wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
-        rcode = dlg.ShowModal()
-        if rcode == wx.ID_OK:
-            path = dlg.GetPath()
-            self.model.save_as(path)
-
-        dlg.Destroy()
-        return rcode
 
     def OnSetBadChannels(self, event):
         dlg = wx.TextEntryDialog(self, "Please enter bad channel names separated by "
@@ -1169,26 +1013,11 @@ class Frame(EelbrainFrame):  # control
 
         dlg.Destroy()
 
-    def OnUndo(self, event):
-        self.history.undo()
-
     def OnUpdateUIBackward(self, event):
         event.Enable(self.CanBackward())
 
     def OnUpdateUIForward(self, event):
         event.Enable(self.CanForward())
-
-    def OnUpdateUIOpen(self, event):
-        event.Enable(True)
-
-    def OnUpdateUIRedo(self, event):
-        event.Enable(self.CanRedo())
-
-    def OnUpdateUISave(self, event):
-        event.Enable(self.CanSave())
-
-    def OnUpdateUISaveAs(self, event):
-        event.Enable(True)
 
     def OnUpdateUISetLayout(self, event):
         event.Enable(True)
@@ -1198,9 +1027,6 @@ class Frame(EelbrainFrame):  # control
 
     def OnUpdateUISetVLim(self, event):
         event.Enable(True)
-
-    def OnUpdateUIUndo(self, event):
-        event.Enable(self.CanUndo())
 
     def PlotCorrelation(self, ax_index):
         if ax_index == -1:
@@ -1464,19 +1290,6 @@ class Frame(EelbrainFrame):  # control
         sensor = np.argmin(np.abs(locs - event.ydata))
         sensor_name = plt.epoch.sensor.names[sensor]
         self.model.toggle_interpolation(ax.epoch_idx, sensor_name)
-
-    def UpdateTitle(self):
-        is_modified = not self.doc.saved
-
-        self.OSXSetModified(is_modified)
-
-        if self.doc.path:
-            title = os.path.basename(self.doc.path)
-            if is_modified:
-                title = '* ' + title
-        else:
-            title = 'Unsaved'
-        self.SetTitle(title)
 
     def _get_page_mean_seg(self):
         page_segments = self._segs_by_page[self._current_page_i]
