@@ -210,6 +210,9 @@ class Array(_EelFigure):
         Lower limit for the colormap.
     axtitle : bool | str
         Axes title.
+    interpolation : str
+        Array image interpolation (see Matplotlib's
+        :meth:`~matplotlib.axes.Axes.imshow`).
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -218,7 +221,7 @@ class Array(_EelFigure):
     """
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=True, ds=None, x='time', vmax=None, vmin=None,
-                 axtitle=True, *args, **kwargs):
+                 axtitle=True, interpolation=None, *args, **kwargs):
         epochs, (xdim, ydim) = _base.unpack_epochs_arg(epochs, (x, None), Xax, ds)
 
         nax = len(epochs)
@@ -227,7 +230,7 @@ class Array(_EelFigure):
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, vmax, vmin)
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
-            p = _ax_im_array(ax, layers, x, axtitle, vlims=vlims)
+            p = _ax_im_array(ax, layers, x, axtitle, interpolation, vlims=vlims)
             self.plots.append(p)
 
         self._configure_xaxis_dim(xdim, xlabel, xticklabels)
