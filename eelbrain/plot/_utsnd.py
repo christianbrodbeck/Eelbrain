@@ -153,9 +153,10 @@ class _ax_im_array(object):
             overlay = True
 
         # title
-        if title is None:
+        if title is True:
             title = _base.str2tex(epoch.name)
-        ax.set_title(title)
+        if title:
+            ax.set_title(title)
 
     def add_contour(self, meas, level, color):
         for l in self.layers:
@@ -207,6 +208,8 @@ class Array(_EelFigure):
         Upper limits for the colormap.
     vmin : scalar
         Lower limit for the colormap.
+    axtitle : bool | str
+        Axes title.
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -215,7 +218,7 @@ class Array(_EelFigure):
     """
     def __init__(self, epochs, Xax=None, xlabel=True, ylabel=True,
                  xticklabels=True, ds=None, x='time', vmax=None, vmin=None,
-                 *args, **kwargs):
+                 axtitle=True, *args, **kwargs):
         epochs, (xdim, ydim) = _base.unpack_epochs_arg(epochs, (x, None), Xax, ds)
 
         nax = len(epochs)
@@ -224,7 +227,7 @@ class Array(_EelFigure):
         self.plots = []
         vlims = _base.find_fig_vlims(epochs, vmax, vmin)
         for i, ax, layers in zip(xrange(nax), self._axes, epochs):
-            p = _ax_im_array(ax, layers, x, vlims=vlims)
+            p = _ax_im_array(ax, layers, x, axtitle, vlims=vlims)
             self.plots.append(p)
 
         self._configure_xaxis_dim(xdim, xlabel, xticklabels)
