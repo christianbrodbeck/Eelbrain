@@ -69,7 +69,7 @@ class Document(FileDocument):
 
     (Data can be accessed, but should only be modified through the Model)
     """
-    def __init__(self, path, epochs, sysname=None):
+    def __init__(self, path, epochs, epoch_index=None, sysname=None):
         FileDocument.__init__(self, path)
 
         self.ica = ica = mne.preprocessing.read_ica(path)
@@ -84,7 +84,9 @@ class Document(FileDocument):
 
         # sources
         data = ica.get_sources(epochs).get_data().swapaxes(0, 1)
-        epoch_dim = Ordered('epoch', np.arange(len(epochs)))
+        if epoch_index is None:
+            epoch_index = np.arange(len(epochs))
+        epoch_dim = Ordered('epoch', epoch_index)
         self.sources = NDVar(data, ('case', epoch_dim, self.epochs_ndvar.time),
                              info={'meas': 'component', 'cmap': 'xpolar'})
 
@@ -340,21 +342,24 @@ class SourceFrame(CanvasFrame):
         "component by time"
         n_comp = self.n_comp
         n_comp_actual = self.n_comp_actual
+        e_start = self.doc.sources.epoch[self.i_first_epoch]
+        e_stop = self.doc.sources.epoch[self.i_first_epoch + self.n_epochs]
         data = self.doc.sources.sub(case=slice(self.i_first, self.i_first + n_comp),
-                                    epoch=(self.i_first_epoch, self.i_first_epoch + self.n_epochs))
+                                    epoch=(e_start, e_stop))
         y = data.get_data(('case', 'epoch', 'time')).reshape((n_comp_actual, -1))
         if y.base is not None and data.x.base is not None:
             y = y.copy()
         start = n_comp - 1
         stop = -1 + (n_comp - n_comp_actual)
         y += np.arange(start * self.y_scale, stop * self.y_scale, -self.y_scale)[:, None]
-        return y
+        return y, data.epoch.x
 
     def _plot(self):
         self.figure.clf()
         figheight = self.figure.get_figheight()
         n_comp = int(self.figure.get_figheight() // self.size)
         n_comp_actual = min(len(self.doc.components) - self.i_first, n_comp)
+        elen = len(self.doc.sources.time)
         self.n_comp = n_comp
         self.n_comp_actual = n_comp_actual
 
@@ -370,11 +375,17 @@ class SourceFrame(CanvasFrame):
             ax.i = i
             ax.i_comp = i_comp
 
-        # source time course
+        # source time course data
+        y, tick_labels = self._get_source_data()
+
+        # axes
         left = 1.5 * axwidth
         bottom = 1 - n_comp * axheight
         ax = self.figure.add_axes((left, bottom, 1 - left, 1 - bottom),
-                                  frameon=False, yticks=(), xticks=())
+                                  frameon=False, yticks=(),
+                                  xticks=np.arange(elen / 2, elen * self.n_epochs, elen),
+                                  xticklabels=tick_labels)
+        ax.tick_params(bottom=False)
         ax.i = -1
         ax.i_comp = None
 
@@ -383,7 +394,6 @@ class SourceFrame(CanvasFrame):
         self.canvas.store_canvas()
 
         # plot epochs
-        y = self._get_source_data()
         self.lines = ax.plot(y.T, color=LINE_COLOR[True], clip_on=False)
         ax.set_ylim((-0.5 * self.y_scale, (n_comp - 0.5) * self.y_scale))
         ax.set_xlim((0, y.shape[1]))
@@ -392,10 +402,11 @@ class SourceFrame(CanvasFrame):
         for i in xrange(n_comp_actual):
             if not self.doc.accept[i + self.i_first]:
                 self.lines[i].set_color(reject_color)
-        # epoch markers
-        elen = len(self.doc.sources.time)
+        # epoch demarcation
         for x in xrange(elen, elen * self.n_epochs, elen):
             ax.axvline(x, ls='--', c='k')
+        # epoch labels
+
 
         self.ax_tc = ax
         self.canvas.draw()
@@ -461,7 +472,7 @@ class SourceFrame(CanvasFrame):
 
     def SetFirstEpoch(self, i_first_epoch):
         self.i_first_epoch = i_first_epoch
-        y = self._get_source_data()
+        y, tick_labels = self._get_source_data()
         if i_first_epoch + self.n_epochs > self.n_epochs_in_data:
             elen = len(self.doc.sources.time)
             n_missing = self.i_first_epoch + self.n_epochs - self.n_epochs_in_data
@@ -469,4 +480,5 @@ class SourceFrame(CanvasFrame):
 
         for line, data in izip(self.lines, y):
             line.set_ydata(data)
+        self.ax_tc.set_xticklabels(tick_labels)
         self.canvas.draw()

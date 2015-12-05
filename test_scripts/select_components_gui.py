@@ -15,4 +15,4 @@ else:
     ica = mne.preprocessing.ICA(0.95)
     ica.fit(epochs)
     ica.save(PATH)
-g = gui.select_components(PATH, epochs)
+g = gui.select_components(PATH, epochs, ds['index'])
