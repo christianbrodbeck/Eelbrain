@@ -22,10 +22,9 @@ from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot
 from .._data_obj import NDVar, Ordered
-from ..plot._base import _EelFigure
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID
-from .mpl_canvas import FigureCanvasPanel
+from .mpl_canvas import FigureCanvasPanel, CanvasFrame
 from .history import Action, FileDocument, FileModel, FileFrame
 
 
@@ -302,19 +301,15 @@ class Frame(FileFrame):
                      title='# %i' % i_comp)
 
 
-class SourceFrame(_EelFigure):
+class SourceFrame(CanvasFrame):
     _make_axes = False
 
     def __init__(self, parent, i_first, *args, **kwargs):
-        super(SourceFrame, self).__init__("ICA Source Time Course", None, 10,
-                                          16 / 9, False, *args, **kwargs)
+        super(SourceFrame, self).__init__(parent, "ICA Source Time Course", None, *args, **kwargs)
         self.figure.subplots_adjust(0, 0, 1, 1, 0, 0)
         self.figure.set_facecolor('white')
 
-        # left, top, width, height = wx.GetClientDisplayRect()
-        # self._frame.SetPosition((left, top))
-        # self._frame.SetSize((width, height))
-        self._frame.SetRect(wx.GetClientDisplayRect())
+        self.SetRect(wx.GetClientDisplayRect())
 
         self.parent = parent
         self.model = parent.model
@@ -323,20 +318,45 @@ class SourceFrame(_EelFigure):
         self.i_first = i_first
         self.n_epochs = 20
         self.i_first_epoch = 0
+        self.n_epochs_in_data = len(self.doc.sources.epoch)
         self.y_scale = 5  # scale factor for y axis
         self._plot()
-        self._show()
 
         # event bindings
         self.doc.subscribe_to_case_change(self.CaseChanged)
+        self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
+        self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
         self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
+        self.Show()
+
+    def _fill_toolbar(self, tb):
+        self.back_button = tb.AddLabelTool(wx.ID_BACKWARD, "Back",
+                                           Icon("tango/actions/go-previous"))
+        self.next_button = tb.AddLabelTool(wx.ID_FORWARD, "Next",
+                                           Icon("tango/actions/go-next"))
+
+    def _get_source_data(self):
+        "component by time"
+        n_comp = self.n_comp
+        n_comp_actual = self.n_comp_actual
+        data = self.doc.sources.sub(case=slice(self.i_first, self.i_first + n_comp),
+                                    epoch=(self.i_first_epoch, self.i_first_epoch + self.n_epochs))
+        y = data.get_data(('case', 'epoch', 'time')).reshape((n_comp_actual, -1))
+        if y.base is not None and data.x.base is not None:
+            y = y.copy()
+        start = n_comp - 1
+        stop = -1 + (n_comp - n_comp_actual)
+        y += np.arange(start * self.y_scale, stop * self.y_scale, -self.y_scale)[:, None]
+        return y
 
     def _plot(self):
         self.figure.clf()
         figheight = self.figure.get_figheight()
         n_comp = int(self.figure.get_figheight() // self.size)
         n_comp_actual = min(len(self.doc.components) - self.i_first, n_comp)
+        self.n_comp = n_comp
+        self.n_comp_actual = n_comp_actual
 
         # topomaps
         axheight = self.size / figheight
@@ -358,15 +378,12 @@ class SourceFrame(_EelFigure):
         ax.i = -1
         ax.i_comp = None
 
+        # store canvas before plotting lines
+        self.canvas.draw()
+        self.canvas.store_canvas()
+
         # plot epochs
-        data = self.doc.sources.sub(case=slice(self.i_first, self.i_first + n_comp),
-                                    epoch=(self.i_first_epoch, self.i_first_epoch + self.n_epochs))
-        y = data.get_data(('case', 'epoch', 'time')).reshape((n_comp_actual, -1))
-        if y.base is not None and data.x.base is not None:
-            y = y.copy()
-        start = n_comp - 1
-        stop = -1 + (n_comp - n_comp_actual)
-        y += np.arange(start * self.y_scale, stop * self.y_scale, -self.y_scale)[:, None]
+        y = self._get_source_data()
         self.lines = ax.plot(y.T, color=LINE_COLOR[True])
         ax.set_ylim((-0.5 * self.y_scale, (n_comp - 0.5) * self.y_scale))
         ax.set_xlim((0, y.shape[1]))
@@ -376,13 +393,18 @@ class SourceFrame(_EelFigure):
             if not self.doc.accept[i + self.i_first]:
                 self.lines[i].set_color(reject_color)
         # epoch markers
-        elen = len(data.time)
+        elen = len(self.doc.sources.time)
         for x in xrange(elen, elen * self.n_epochs, elen):
             ax.axvline(x, ls='--', c='k')
 
-        self.n_comp_actual = n_comp_actual
         self.ax_tc = ax
-        self.canvas.store_canvas()
+        self.canvas.draw()
+
+    def CanBackward(self):
+        return self.i_first_epoch > 0
+
+    def CanForward(self):
+        return self.i_first_epoch + self.n_epochs < self.n_epochs_in_data
 
     def CaseChanged(self, index):
         "updates the states of the segments on the current page"
@@ -404,15 +426,47 @@ class SourceFrame(_EelFigure):
                 self.lines[i_comp - self.i_first].set_color(LINE_COLOR[self.doc.accept[i_comp]])
             self.canvas.redraw(axes=(self.ax_tc,))
 
+    def OnBackward(self, event):
+        "turns the page backward"
+        self.SetFirstEpoch(self.i_first_epoch - self.n_epochs)
+
     def OnCanvasClick(self, event):
         "called by mouse clicks"
         if event.inaxes and event.inaxes.i_comp is not None:
             self.model.toggle(event.inaxes.i_comp)
 
     def OnCanvasKey(self, event):
-        if not event.inaxes or event.inaxes.i_comp is None:
+        if event.key == 'right':
+            if self.CanForward():
+                self.OnForward(None)
+        elif event.key == 'left':
+            if self.CanBackward():
+                self.OnBackward(None)
+        elif not event.inaxes or event.inaxes.i_comp is None:
             return
         elif event.key == 't':
             self.parent.PlotCompTopomap(event.inaxes.i_comp)
         elif event.key == 'a':
             self.parent.PlotCompSourceArray(event.inaxes.i_comp)
+
+    def OnForward(self, event):
+        "turns the page forward"
+        self.SetFirstEpoch(self.i_first_epoch + self.n_epochs)
+
+    def OnUpdateUIBackward(self, event):
+        event.Enable(self.CanBackward())
+
+    def OnUpdateUIForward(self, event):
+        event.Enable(self.CanForward())
+
+    def SetFirstEpoch(self, i_first_epoch):
+        self.i_first_epoch = i_first_epoch
+        y = self._get_source_data()
+        if i_first_epoch + self.n_epochs > self.n_epochs_in_data:
+            elen = len(self.doc.sources.time)
+            n_missing = self.i_first_epoch + self.n_epochs - self.n_epochs_in_data
+            y = np.pad(y, ((0, 0), (0, elen * n_missing)), 'constant')
+
+        for line, data in izip(self.lines, y):
+            line.set_ydata(data)
+        self.canvas.redraw(axes=(self.ax_tc,))

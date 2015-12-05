@@ -164,17 +164,18 @@ class CanvasFrame(EelbrainFrame):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISave, id=wx.ID_SAVE)
 
         # intermediate, custom part
-        if eelfigure is not None:
+        if eelfigure is None:
+            self._fill_toolbar(tb)
+        else:
             eelfigure._fill_toolbar(tb)
 
         # right-most part
-        if wx.__version__ >= '2.9':
-            tb.AddStretchableSpace()
-        else:
-            tb.AddSeparator()
+        # tb.AddStretchableSpace()
+        # tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
+        # self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
 
-#         tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
-#         self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
+    def _fill_toolbar(self, tb):
+        pass
 
     def add_mpl_toolbar(self):
         self.toolbar = backend_wx.NavigationToolbar2Wx(self.canvas)
