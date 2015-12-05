@@ -779,6 +779,12 @@ def test_ndvar():
     assert_raises(ValueError, x.sub, time=(0.1, 0.81))
     assert_raises(ValueError, x.sub, time=(-0.25, 0.1))
 
+    # iteration
+    for i, xi in enumerate(x):
+        assert_dataobj_equal(xi, x[i])
+        if i > 4:
+            break
+
 
 def test_ndvar_binning():
     "Test NDVar.bin()"
