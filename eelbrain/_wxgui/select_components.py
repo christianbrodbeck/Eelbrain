@@ -21,7 +21,7 @@ import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot
-from .._data_obj import NDVar
+from .._data_obj import NDVar, Ordered
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID
 from .mpl_canvas import FigureCanvasPanel
@@ -81,6 +81,12 @@ class Document(FileDocument):
         self.components = NDVar(data, ('case', self.epochs_ndvar.sensor),
                                 info={'meas': 'component', 'cmap': 'xpolar'})
 
+        # sources
+        data = ica.get_sources(epochs).get_data().swapaxes(0, 1)
+        epoch_dim = Ordered('epoch', np.arange(len(epochs)))
+        self.sources = NDVar(data, ('case', epoch_dim, self.epochs_ndvar.time),
+                             info={'meas': 'component', 'cmap': 'xpolar'})
+
         # publisher
         self._case_change_subscriptions = []
 
@@ -132,6 +138,7 @@ class Frame(FileFrame):
     Key         Effect
     =========== ============================================================
     t           topomap plot of the Component under the pointer
+    a           array-plot of the source time course
     =========== ============================================================
     """
     _doc_name = 'component selection'
@@ -263,6 +270,9 @@ class Frame(FileFrame):
         if event.key == 't':
             plot.Topomap(self.doc.components[i], w=10, sensorlabels='name',
                          title='# %i' % i)
+        elif event.key == 'a':
+            plot.Array(self.doc.sources[i], w=10, h=10, title='# %i' % i,
+                       axtitle=False, interpolation='none')
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
