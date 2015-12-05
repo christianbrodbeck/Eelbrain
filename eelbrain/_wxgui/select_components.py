@@ -384,7 +384,7 @@ class SourceFrame(CanvasFrame):
 
         # plot epochs
         y = self._get_source_data()
-        self.lines = ax.plot(y.T, color=LINE_COLOR[True])
+        self.lines = ax.plot(y.T, color=LINE_COLOR[True], clip_on=False)
         ax.set_ylim((-0.5 * self.y_scale, (n_comp - 0.5) * self.y_scale))
         ax.set_xlim((0, y.shape[1]))
         # line color
@@ -469,4 +469,4 @@ class SourceFrame(CanvasFrame):
 
         for line, data in izip(self.lines, y):
             line.set_ydata(data)
-        self.canvas.redraw(axes=(self.ax_tc,))
+        self.canvas.draw()
