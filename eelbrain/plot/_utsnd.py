@@ -345,8 +345,8 @@ class _ax_butterfly(object):
             # plot
             h = _plt_utsnd(ax, l, linedim, sensors, **uts_args)
             self.layers.append(h)
-            if not name:
-                name = getattr(l, 'name', '')
+            if not name and l.name:
+                name = l.name
 
             self._xvalues = np.union1d(self._xvalues, l.time.x)
 
@@ -357,7 +357,7 @@ class _ax_butterfly(object):
     #    ax.yaxis.set_offset_position('right')
         ax.yaxis.offsetText.set_va('top')
 
-        if isinstance(title, str):
+        if isinstance(title, basestring):
             ax.set_title(title.format(name=name))
 
         self.set_vlim(vmax, vmin)
