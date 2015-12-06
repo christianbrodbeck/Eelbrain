@@ -109,6 +109,11 @@ class Document(FileDocument):
         "callback(index)"
         self._case_change_subscriptions.append(callback)
 
+    def unsubscribe_to_case_change(self, callback):
+        "callback(index)"
+        if callback in self._case_change_subscriptions:
+            self._case_change_subscriptions.remove(callback)
+
 
 class Model(FileModel):
     """Manages a document with its history"""
@@ -496,6 +501,10 @@ class SourceFrame(CanvasFrame):
             self.parent.PlotCompTopomap(event.inaxes.i_comp)
         elif event.key == 'a':
             self.parent.PlotCompSourceArray(event.inaxes.i_comp)
+
+    def OnClose(self, event):
+        self.doc.unsubscribe_to_case_change(self.CaseChanged)
+        super(SourceFrame, self).OnClose(event)
 
     def OnForward(self, event):
         "turns the page forward"
