@@ -644,7 +644,7 @@ def sensor_dim(fiff, picks=None, sysname=None):
     return Sensor(ch_locs, ch_names, sysname=sysname, connectivity=conn)
 
 
-def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
+def epochs_ndvar(epochs, name=None, data=None, exclude='bads', mult=1,
                  info=None, sensors=None, vmax=None, sysname=None):
     """
     Convert an :class:`mne.Epochs` object to an :class:`NDVar`.
@@ -712,7 +712,7 @@ def epochs_ndvar(epochs, name='meg', data=None, exclude='bads', mult=1,
     return NDVar(x, ('case', sensor, time), info=info_, name=name)
 
 
-def evoked_ndvar(evoked, name='meg', data=None, exclude='bads', vmax=None,
+def evoked_ndvar(evoked, name=None, data=None, exclude='bads', vmax=None,
                  sysname=None):
     """
     Convert one or more mne :class:`Evoked` objects to an :class:`NDVar`.
