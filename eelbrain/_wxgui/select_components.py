@@ -75,7 +75,7 @@ class Document(FileDocument):
         self.ica = ica = mne.preprocessing.read_ica(path)
         self.accept = np.ones(self.ica.n_components_, bool)
         self.accept[ica.exclude] = False
-        self.epoch = epochs
+        self.epochs = epochs
         self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname)
 
         data = np.dot(ica.mixing_matrix_.T, ica.pca_components_[:ica.n_components_])
@@ -93,13 +93,16 @@ class Document(FileDocument):
         # publisher
         self._case_change_subscriptions = []
 
+    def apply(self, inst, copy=True):
+        return self.ica.apply(inst, copy=copy)
+
     def set_case(self, index, state):
         self.accept[index] = state
+        self.ica.exclude = list(np.flatnonzero(np.invert(self.accept)))
         for func in self._case_change_subscriptions:
             func(index)
 
     def save(self):
-        self.ica.exclude = list(np.flatnonzero(np.invert(self.accept)))
         self.ica.save(self.path)
 
     def subscribe_to_case_change(self, callback):
@@ -304,6 +307,25 @@ class Frame(FileFrame):
 
 
 class SourceFrame(CanvasFrame):
+    """
+    Component Source Time Course
+    ============================
+
+    Select components from ICA.
+
+    * Click on components topographies to select/deselect them.
+
+
+    *Keyboard shortcuts* in addition to the ones in the menu:
+
+    =========== ============================================================
+    Key         Effect
+    =========== ============================================================
+    t           topomap plot of the Component under the pointer
+    a           array-plot of the source time course
+    b           butterfly plot of the epoch (original and cleaned)
+    =========== ============================================================
+    """
     _make_axes = False
 
     def __init__(self, parent, i_first, *args, **kwargs):
@@ -343,7 +365,11 @@ class SourceFrame(CanvasFrame):
         n_comp = self.n_comp
         n_comp_actual = self.n_comp_actual
         e_start = self.doc.sources.epoch[self.i_first_epoch]
-        e_stop = self.doc.sources.epoch[self.i_first_epoch + self.n_epochs]
+        i_stop = self.i_first_epoch + self.n_epochs
+        if i_stop >= len(self.doc.sources.epoch):
+            e_stop = None
+        else:
+            e_stop = self.doc.sources.epoch[i_stop]
         data = self.doc.sources.sub(case=slice(self.i_first, self.i_first + n_comp),
                                     epoch=(e_start, e_stop))
         y = data.get_data(('case', 'epoch', 'time')).reshape((n_comp_actual, -1))
@@ -453,7 +479,18 @@ class SourceFrame(CanvasFrame):
         elif event.key == 'left':
             if self.CanBackward():
                 self.OnBackward(None)
-        elif not event.inaxes or event.inaxes.i_comp is None:
+        elif not event.inaxes:
+            return
+        elif event.inaxes.i_comp is None:
+            if event.key == 'b':
+                i_epoch = self.i_first_epoch + int(event.xdata // len(self.doc.sources.time))
+                if i_epoch >= len(self.doc.epochs):
+                    return
+                original_epoch = self.doc.epochs[i_epoch]
+                clean_epoch = self.doc.apply(original_epoch)
+                plot.TopoButterfly([original_epoch, clean_epoch], vmax=2e-12,
+                                   title="Epoch %i" % self.doc.sources.epoch[i_epoch],
+                                   axlabel=("Original", "Cleaned"))
             return
         elif event.key == 't':
             self.parent.PlotCompTopomap(event.inaxes.i_comp)

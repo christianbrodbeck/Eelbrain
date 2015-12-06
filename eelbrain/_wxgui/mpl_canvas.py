@@ -18,6 +18,7 @@ import wx
 
 from .._wxutils import ID, Icon
 from .frame import EelbrainFrame
+from .help import show_help_txt
 
 
 class FigureCanvasPanel(FigureCanvasWxAgg):
@@ -115,12 +116,8 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
 
 
 class CanvasFrame(EelbrainFrame):
-    """
-
-    after:
-    http://matplotlib.sourceforge.net/examples/user_interfaces/embedding_in_wx2.html
-
-    """
+    # after:
+    # http://matplotlib.sourceforge.net/examples/user_interfaces/embedding_in_wx2.html
     def __init__(self, parent=None, title="Matplotlib Frame",
                  eelfigure=None,
                  statusbar=True, toolbar=True, mpl_toolbar=False,
@@ -170,9 +167,10 @@ class CanvasFrame(EelbrainFrame):
             eelfigure._fill_toolbar(tb)
 
         # right-most part
-        # tb.AddStretchableSpace()
-        # tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
-        # self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
+        if self.__doc__:
+            tb.AddStretchableSpace()
+            tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
+            self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
 
     def _fill_toolbar(self, tb):
         pass
@@ -210,13 +208,8 @@ class CanvasFrame(EelbrainFrame):
             del self._eelfigure
         event.Skip()
 
-#     def OnHelp(self, event):
-#         app = wx.GetApp()
-#         shell = getattr(app, 'shell', None)
-#         if hasattr(shell, 'help_lookup'):
-#             shell.help_lookup(self._eelfigure)
-#         else:
-#             print self.__doc__
+    def OnHelp(self, event):
+        show_help_txt(self.__doc__, self, "Epoch-selection")
 
     def OnSave(self, event):
         self.OnSaveAs(event)
