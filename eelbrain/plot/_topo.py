@@ -236,6 +236,8 @@ class TopoButterfly(_EelFigure):
     vmax, vmin : None | scalar
         Override the default plot limits. If only vmax is specified, vmin
         is set to -vmax.
+    axlabel : bool | str | list of str
+        Label for the axes.
     title : None | string
         Figure title.
 
@@ -255,7 +257,7 @@ class TopoButterfly(_EelFigure):
                  xticklabels=True,
                  proj='default', res=100, interpolation='nearest', color=None,
                  sensorlabels=None, mark=None, mcolor=None, ds=None, vmax=None,
-                 vmin=None, *args, **kwargs):
+                 vmin=None, axlabel=True, *args, **kwargs):
         epochs, _ = _base.unpack_epochs_arg(epochs, ('sensor', 'time'), Xax, ds)
         n_plots = len(epochs)
         self._epochs = epochs
@@ -306,6 +308,22 @@ class TopoButterfly(_EelFigure):
         self._vlims = vlims
         self._xvalues = []
 
+        # find ax-labels
+        if axlabel is True:
+            axlabel = []
+            for layers in epochs:
+                for l in layers:
+                    if l.name:
+                        axlabel.append(l.name)
+                        break
+                else:
+                    axlabel.append(None)
+        elif not axlabel or isinstance(axlabel, basestring):
+            axlabel = tuple(repeat(axlabel, n_plots))
+        elif len(axlabel) != n_plots:
+            raise ValueError("not the same number of axlabels as epochs "
+                             "(axlabel=%r, n_epochs=%s)" % (axlabel, n_plots))
+
         # plot epochs (x/y are in figure coordinates)
         for i, layers in enumerate(epochs):
             # position axes
@@ -334,14 +352,12 @@ class TopoButterfly(_EelFigure):
             self._xvalues = np.union1d(self._xvalues, p._xvalues)
 
             # find and print epoch title
-            for l in layers:
-                if l.name is None:
-                    continue
-                y_text = bottom + y_sep / 2
-                ax1.text(x_text, y_text, l.name,
-                         transform=self.figure.transFigure,
-                         ha='center', va='center', rotation='vertical')
-                break
+            if not axlabel[i]:
+                continue
+            y_text = bottom + y_sep / 2
+            ax1.text(x_text, y_text, axlabel[i],
+                     transform=self.figure.transFigure,
+                     ha='center', va='center', rotation='vertical')
 
         self._configure_xaxis_dim('time', xlabel, xticklabels, self.bfly_axes)
         self._configure_yaxis(epochs[0][0], ylabel, self.bfly_axes)
@@ -354,7 +370,7 @@ class TopoButterfly(_EelFigure):
         self._realtime_topo = True
         self._t_label = None
         self._frame.store_canvas()
-        self._draw_topo(l.time.x[0], draw=False)
+        self._draw_topo(epochs[0][0].time[0], draw=False)
         self._show()
 
     def _draw_topo(self, t, draw=True):
