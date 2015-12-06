@@ -329,6 +329,8 @@ class UTS(_EelFigure):
     xlabel, ylabel : str | None
         X- and y axis labels. By default the labels will be inferred from
         the data.
+    bottom, top : scalar
+        Y-axis limits.
     tight : bool
         Use matplotlib's tight_layout to expand all axes to fill the figure
         (default True)
@@ -336,13 +338,14 @@ class UTS(_EelFigure):
         Figure title.
     """
     def __init__(self, epochs, Xax=None, axtitle='{name}', ds=None,
-                 xlabel=True, ylabel=True, *args, **kwargs):
-        epochs, _ = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
+                 xlabel=True, ylabel=True, bottom=None, top=None, *args,
+                 **kwargs):
+        epochs, (xdim,) = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, *args, **kwargs)
         self._configure_yaxis(epochs[0][0], ylabel)
 
         for ax, epoch in izip(self._axes, epochs):
-            _ax_uts(ax, epoch, axtitle, xlabel)
+            _ax_uts(ax, epoch, xdim, axtitle, xlabel, bottom, top)
 
         self.epochs = epochs
         self._show()
@@ -496,8 +499,9 @@ class UTSClusters(_EelFigure):
         self.draw()
 
 
-def _ax_uts(ax, layers, title, bottom=None, top=None, invy=False, color=None,
-            xdim='time'):
+def _ax_uts(ax, layers, xdim, title, xlabel, bottom, top, invy=False, color=None):
+    l0 = layers[0]
+    xdim = l0.dimnames[0]
     overlay = False
     for l in layers:
         args = _base.find_uts_args(l, overlay, color)
@@ -505,7 +509,7 @@ def _ax_uts(ax, layers, title, bottom=None, top=None, invy=False, color=None,
         if args is None:
             continue
 
-        _plt_uts(ax, l, xdim=xdim, **args)
+        _plt_uts(ax, l, xdim, **args)
         contours = l.info.get('contours', None)
         if contours:
             for v, color in contours.iteritems():
@@ -513,24 +517,27 @@ def _ax_uts(ax, layers, title, bottom=None, top=None, invy=False, color=None,
                     continue
                 contours[v] = ax.axhline(v, color=color)
 
-    l0 = layers[0]
     x = l0.get_dim(xdim)
     ax.set_xlim(x[0], x[-1])
 
     if title:
-        if 'name' in title:
-            title = title.format(name=l0.name)
+        if '{name}' in title:
+            title = title.format(name=l0.name or '')
+    if title:
         ax.set_title(title)
 
     if invy:
         y0, y1 = ax.get_ylim()
-        bottom = bottom if (bottom is not None) else y1
-        top = top if (top is not None) else y0
+        if bottom is None:
+            bottom = y1
+        if top is None:
+            top = y0
+
     if (bottom is not None) or (top is not None):
         ax.set_ylim(bottom, top)
 
 
-def _plt_uts(ax, ndvar, color=None, xdim='time', kwargs={}):
+def _plt_uts(ax, ndvar, xdim, color=None, kwargs={}):
     y = ndvar.get_data((xdim,))
     x = ndvar.get_dim(xdim).x
     if color is not None:

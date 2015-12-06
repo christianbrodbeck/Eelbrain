@@ -8206,6 +8206,16 @@ def corr(x, dim='sensor', obs='time', name=None):
     return NDVar(y, (dim_obj,), info, name)
 
 
+def fft(ndvar, name=None):
+    axis = ndvar.get_axis('time')
+    uts = ndvar.get_dim('time')
+    x = np.abs(np.fft.rfft(ndvar.x, axis=axis))
+    freq = Ordered('frequency', np.fft.rfftfreq(len(uts), uts.tstep), 'Hz')
+    dims = ndvar.dims[:axis] + (freq,) + ndvar.dims[axis + 1:]
+    info = cs.set_info_cs(ndvar.info, cs.default_info('Amplitude'))
+    return NDVar(x, dims, info, name)
+
+
 def cwt_morlet(Y, freqs, use_fft=True, n_cycles=3.0, zero_mean=False,
                out='magnitude'):
     """Time frequency decomposition with Morlet wavelets (mne-python)

@@ -21,7 +21,7 @@ import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot
-from .._data_obj import NDVar, Ordered
+from .._data_obj import NDVar, Ordered, fft
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID
 from .mpl_canvas import FigureCanvasPanel, CanvasFrame
@@ -151,6 +151,7 @@ class Frame(FileFrame):
     t           topomap plot of the Component under the pointer
     a           array-plot of the source time course
     s           plot sources, starting with the component under the cursor
+    f           plot the frequency spectrum for the selected component
     =========== ============================================================
     """
     _doc_name = 'component selection'
@@ -284,6 +285,8 @@ class Frame(FileFrame):
             self.PlotCompSourceArray(event.inaxes.i)
         elif event.key == 's':
             SourceFrame(self, event.inaxes.i)
+        elif event.key == 'f':
+            self.PlotCompFFT(event.inaxes.i)
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
@@ -301,6 +304,10 @@ class Frame(FileFrame):
 
     def OnUpdateUIOpen(self, event):
         event.Enable(False)
+
+    def PlotCompFFT(self, i_comp):
+        plot.UTS(fft(self.doc.sources[i_comp]).mean('epoch'), w=8,
+                 title="# %i Frequency Spectrum" % i_comp)
 
     def PlotCompSourceArray(self, i_comp):
         plot.Array(self.doc.sources[i_comp], w=10, h=10, title='# %i' % i_comp,
@@ -328,6 +335,7 @@ class SourceFrame(CanvasFrame):
     =========== ============================================================
     t           topomap plot of the Component under the pointer
     a           array-plot of the source time course
+    f           plot the frequency spectrum for the selected component
     b           butterfly plot of the epoch (original and cleaned)
     =========== ============================================================
     """
@@ -501,6 +509,8 @@ class SourceFrame(CanvasFrame):
             self.parent.PlotCompTopomap(event.inaxes.i_comp)
         elif event.key == 'a':
             self.parent.PlotCompSourceArray(event.inaxes.i_comp)
+        elif event.key == 'f':
+            self.parent.PlotCompFFT(event.inaxes.i_comp)
 
     def OnClose(self, event):
         self.doc.unsubscribe_to_case_change(self.CaseChanged)
