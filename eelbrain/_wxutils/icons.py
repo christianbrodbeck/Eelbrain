@@ -1004,6 +1004,33 @@ index.append('actions/attach')
 catalog['actions/attach'] = actions_attach
 
 #----------------------------------------------------------------------
+tango_actions_go_down = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAABFpJ"
+    "REFUWIXtl0tsVFUYx3/n3HunLYhQwDRqpKZKhSYIMSAGI+ICI02UBejGBBMUURdu0Lgl7gg0"
+    "QWNiYtDEBBcErZhACOKjPNqC8jBCqTwDobS0Bfqgnce955zPxcy00zItFyNhw5f8c2fmnDn/"
+    "3/edx70X7sc9DhWn06J1vvheAICIYJ257X8Sk0xZw3rSt+vnxwEA+HTN1zhnsWKwzmDF4JzB"
+    "Oosr+C2yId/U14X9KVMC/yMAwIEL24lMmshliGyGyKaJbIbQpolsSMYkWTb7XQQk7pg6bkeV"
+    "my2lbp21fBsS2/fOAeKEw909AMlVVYpkmW+Lszj/M0DOHUEQGal8m7ubACKCE5fLNi+GgCKX"
+    "GarEXQHIWjlEHK5AkAVLR4N3bA5FtuGidX42DUUKQAkJIZ9pFkAQUILSgohhMLqOKIsa3gwl"
+    "JdbvXvQRJsdeBtBUZ27ZQreeA6I+WFiz9PPli1eVgUPIZioiWLGgHQqHVkJoB+gNuxDP4nsa"
+    "EUgkSljz+jrEESAEIsIPv3wbXuvt+KRYBYoexc9/7H25cvH7q5+orE6c6GjA2AgjIY4IKyEp"
+    "28+NdBsZmxxxLogI4kCcoAh4qWoVx0/+mW49f6z+4Eb7ZjGvomsg3Wc/3NG45URPb4+tnDoH"
+    "hwFtQVt6wja6UucwKoUfaPxA4ScUXqCGvnuB5tnKWq52d7hT549f9Cfat4v5jAlw9CuiyKRr"
+    "t/78Wd8EPUUqJlci2nI9c5l+04kOwAt01jihc581Xs68umIBZbqchkO7B8SZV8a7KY25C5o2"
+    "0TUweHPZd3u+yMyYPIeEX0JfeBXP13j+cKZ+IluBbCU0Dz34GDPLF7Jrb30qMuaNpjoujeUB"
+    "4I3X2HbIXZk6b6Cz9+b1pXOrnws6kq04HWUz9TWen71qT6E8RWkwkYUPr2RPw85kZ0/7pqaN"
+    "Zst4498WAOBysztWWtP+pFg165nqF/z2ZCvak2HzQON5Ck9rFlSsoKWlJTpx+q/Gxg1mzHkv"
+    "jFgHUe9Eu/ZYa+M/Xe037LyKl9GeQnv5hafwEoqa6Uu42ZOUxiP7ulNEK4h5S44F0LKeUIWm"
+    "dm/jzt5EOJWqyfNRGpRWaF/x6KTZlKsqftxVn4qsXnZ0A31xxo0NAHBgMx2ZTPjajt3bUzPK"
+    "5jO99HEAHvCmMXPCEr7/aVvSZFJrD28K/447JsRYAzlIHwjaml3XtKej3qvdbS8umbc86Akv"
+    "M7f8VX7d91v6wsUz2xrr7GYgyEkXJDjmdIwFkDctyak0ryt/uFOTavqfMsZULZ61wm89c9I0"
+    "Hz5w7uhW854ZxAcSBRB+zsNj+NQdAVMMYCjjUUrkVNJ1VvarRzprk8nklKYjB5Nn94Rv9V0g"
+    "VWCWz16NEjDysWm8CozW0CA2hRjjfk9P6Fh97Yx959J+OZ0b2AF21LVQZjTAeO8FOgdYWMbC"
+    "7PJQ+ZBRZjZnmJejyFqI9WJS0LeYCgEKdedPqPfjXsS/6zUvFnaUbdsAAAAASUVORK5CYII=")
+index.append('tango/actions/go-down')
+catalog['tango/actions/go-down'] = tango_actions_go_down
+
+#----------------------------------------------------------------------
 actions_zoom_in = PyEmbeddedImage(
     "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAAAAlw"
     "SFlzAAAJOgAACToB8GSSSgAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoA"
@@ -1051,6 +1078,34 @@ actions_zoom_in = PyEmbeddedImage(
     "GQgASp8TNuPnwDTc88KRDpjVd/1PgC+6/g219gj+XLtPWQAAAABJRU5ErkJggg==")
 index.append('actions/zoom-in')
 catalog['actions/zoom-in'] = actions_zoom_in
+
+#----------------------------------------------------------------------
+tango_actions_go_up = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAABGBJ"
+    "REFUWIXtlltsFVUUhr81e09Pe2pD0VjlFhBEqSRKWk2hpQQxVOIlpURMRNFEojHBS5ACTxIM"
+    "xhgTjCTGB8ITweCDUQzhARMMUdLqg8QLaRQRpLS0tgV6oe3pOTN7+TDnlHJ6BzU+sJKVPZc9"
+    "6//W2mvPDNy067SFO8gp32KrbjSOd70PFvaZPb7kHCmv9V//zwEqNvuvzLx9/tpXn36bW/IK"
+    "3i2vtSv+M4CKLbZySsGtu6qXPRvvDS6y+uHn8q31P1+yKXb3vw6w7E1m+Sbn0FOPbIhfuHKK"
+    "42c+IzAJqpasLvBs8FXpNqZMFsBMdGLpDuImtHVrlr84LRa30tDyLU5DWrv/YMH0h8SaWH5b"
+    "e1P54uluf0MDOtG4E62A5PbaA8sXPTFn1p1zvIbW44AgIjgN+f7cIRYtWJxz17T5Zc1z7K6J"
+    "isMEK1BRa98qnl3ywsqyNbknmo4wkOrDaZj2gGTQT0dvI0vve9I/23Tq/jtKEk2N9frTPwJQ"
+    "XmseL5o6Y/czVRvjv7bV051oHxQPNRg87h3opD/VQ9mClf5v505WzVzM0cY61zxe/DGXoGJr"
+    "7N5YLP7p+lWb4i09p+ns/2vMYH9e+oXW3tM8urQmXz0Ol21l5nUDlG5jirrg6POr3sgPpI8L"
+    "Xb9fc18H++xqv6k6fm7+GpsLlSUrC321R0p3EJ80wNq1mJizX1ZXri8qmjpdTrefQFUjUVHE"
+    "A2MEz4JnBTFKQAKVEEWpP3uQ2TPmmuK5D8zL7bUHABkNYMQeKHzMfvhg8bLqFSU1sZOt35AM"
+    "o+BOApAQNSHOc6ikSLhuEmEPeA7PE8QDpwEtXWepXFhtW9ubZ9226IrfWOeOjaQ1jGxprVk3"
+    "o2je3o01O/MQIRX24wgxnuHYmX0EDBC4JD2pDroTbTgNUUAdqCo1xdtQjY7VgQuV/Yc/7u8Z"
+    "6FxX/354MFvPZl9wKp+0dJxn+94NEaHgVPG2v/QRYhRB6UpeoDe4jPhg8GBQUPCMsHvfO4iS"
+    "wiMkgssT5IuREh4GULcrEAgGz0tfxo8V2CSegnFc7D9HQjuxOQKSjpcWd04RA6KEYWjvsX6i"
+    "C0AMhAMkRlqCYQDZ9sMeUuWbAZRLA+dJaBfGFyS93lGGgjpFnOB5Ah5hyiYuf/ceXePFHxcg"
+    "YylN0BO2YWxUZs+ApCugqrhQkFARb9SGvzGAvqATz4BnJIKwgpeugHOCSPQ+kMnpTxwg6frw"
+    "bQy81FUIE6lJqFEjOh1jx98ggKIIggqRiDAI4DLCMmn9CQHYNEF6f0eZaiiEuOhWmL6mV1/M"
+    "HT8SBwaItlQwUuCxAAzgD3Gs5FA1+zU8j2gHyLVNmAFzDlDkSjOFgANSWR6OB2CAnCzng707"
+    "Ry3RCOYn2rFAXlrDEH13hKgqLjNxpCUTIJbOPAPgDxkzPjSwS2cWZGWbHDIm0+LJbLHRzMuC"
+    "sENEM8JDv6ZuCMhQmIxoAMP/FSfTtJkSZo+kA2c8A5I5v2n/b/sb+uLjgZR8ftUAAAAASUVO"
+    "RK5CYII=")
+index.append('tango/actions/go-up')
+catalog['tango/actions/go-up'] = tango_actions_go_up
 
 #----------------------------------------------------------------------
 documents_pydoc_open = PyEmbeddedImage(

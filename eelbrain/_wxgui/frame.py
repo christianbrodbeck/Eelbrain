@@ -13,6 +13,9 @@ class EelbrainWindow(object):
     def OnUpdateUIClose(self, event):
         event.Enable(True)
 
+    def OnUpdateUIDown(self, event):
+        event.Enable(True)
+
     def OnUpdateUIForward(self, event):
         event.Enable(False)
 
@@ -35,6 +38,9 @@ class EelbrainWindow(object):
         event.Enable(False)
 
     def OnUpdateUIUndo(self, event):
+        event.Enable(False)
+
+    def OnUpdateUIUp(self, event):
         event.Enable(False)
 
 

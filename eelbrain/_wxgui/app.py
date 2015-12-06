@@ -112,6 +112,7 @@ class App(wx.App):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIClose, id=wx.ID_CLOSE)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICopy, id=wx.ID_COPY)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUICut, id=wx.ID_CUT)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIDown, id=wx.ID_DOWN)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIForward, id=wx.ID_FORWARD)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIOpen, id=wx.ID_OPEN)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIPaste, id=wx.ID_PASTE)
@@ -122,6 +123,7 @@ class App(wx.App):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetVLim, id=ID.SET_VLIM)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUndo, id=ID.UNDO)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUp, id=wx.ID_UP)
 
         return True
 
@@ -387,6 +389,13 @@ class App(wx.App):
         win = wx.Window.FindFocus()
         event.Enable(win and hasattr(win, 'CanCut') and win.CanCut())
 
+    def OnUpdateUIDown(self, event):
+        frame = self._get_active_frame()
+        if frame and hasattr(frame, 'OnUpdateUIDown'):
+            frame.OnUpdateUIDown(event)
+        else:
+            event.Enable(False)
+
     def OnUpdateUIForward(self, event):
         frame = self._get_active_frame()
         if frame and hasattr(frame, 'OnUpdateUIForward'):
@@ -451,6 +460,13 @@ class App(wx.App):
         frame = self._get_active_frame()
         if frame and hasattr(frame, 'OnUpdateUIUndo'):
             frame.OnUpdateUIUndo(event)
+        else:
+            event.Enable(False)
+
+    def OnUpdateUIUp(self, event):
+        frame = self._get_active_frame()
+        if frame and hasattr(frame, 'OnUpdateUIUp'):
+            frame.OnUpdateUIUp(event)
         else:
             event.Enable(False)
 

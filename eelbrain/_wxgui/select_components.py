@@ -352,6 +352,8 @@ class SourceFrame(CanvasFrame):
         self.model = parent.model
         self.doc = parent.model.doc
         self.size = 1
+        self.n_comp = 0  # updated by plot
+        self.n_comp_in_ica = len(self.doc.components)
         self.i_first = i_first
         self.n_epochs = 20
         self.i_first_epoch = 0
@@ -361,6 +363,8 @@ class SourceFrame(CanvasFrame):
 
         # event bindings
         self.doc.subscribe_to_case_change(self.CaseChanged)
+        self.Bind(wx.EVT_TOOL, self.OnUp, id=wx.ID_UP)
+        self.Bind(wx.EVT_TOOL, self.OnDown, id=wx.ID_DOWN)
         self.Bind(wx.EVT_TOOL, self.OnBackward, id=wx.ID_BACKWARD)
         self.Bind(wx.EVT_TOOL, self.OnForward, id=wx.ID_FORWARD)
         self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
@@ -368,6 +372,10 @@ class SourceFrame(CanvasFrame):
         self.Show()
 
     def _fill_toolbar(self, tb):
+        self.up_button = tb.AddLabelTool(wx.ID_UP, "Up",
+                                         Icon("tango/actions/go-up"))
+        self.down_button = tb.AddLabelTool(wx.ID_DOWN, "Down",
+                                           Icon("tango/actions/go-down"))
         self.back_button = tb.AddLabelTool(wx.ID_BACKWARD, "Back",
                                            Icon("tango/actions/go-previous"))
         self.next_button = tb.AddLabelTool(wx.ID_FORWARD, "Next",
@@ -394,25 +402,34 @@ class SourceFrame(CanvasFrame):
         return y, data.epoch.x
 
     def _plot(self):
+        # partition figure
         self.figure.clf()
         figheight = self.figure.get_figheight()
         n_comp = int(self.figure.get_figheight() // self.size)
-        n_comp_actual = min(len(self.doc.components) - self.i_first, n_comp)
-        elen = len(self.doc.sources.time)
         self.n_comp = n_comp
+        # make sure no empty lines
+        if self.i_first and self.n_comp_in_ica - self.i_first < n_comp:
+            self.i_first = max(0, self.n_comp_in_ica - n_comp)
+        # further layout-relevant properties
+        n_comp_actual = min(self.n_comp_in_ica - self.i_first, n_comp)
         self.n_comp_actual = n_comp_actual
+        elen = len(self.doc.sources.time)
 
         # topomaps
         axheight = self.size / figheight
         axwidth = self.size / self.figure.get_figwidth()
         left = axwidth / 2
+        self.topo_plots = []
+        self.topo_labels = []
         for i in xrange(n_comp_actual):
             i_comp = self.i_first + i
             ax = self.figure.add_axes((left, 1 - (i + 1) * axheight, axwidth, axheight))
-            _ax_topomap(ax, [self.doc.components[i_comp]], None)
-            ax.text(0, 0.5, "# %i" % i_comp, va='center', ha='right', color='k')
+            p = _ax_topomap(ax, [self.doc.components[i_comp]], None)
+            text = ax.text(0, 0.5, "# %i" % i_comp, va='center', ha='right', color='k')
             ax.i = i
             ax.i_comp = i_comp
+            self.topo_plots.append(p)
+            self.topo_labels.append(text)
 
         # source time course data
         y, tick_labels = self._get_source_data()
@@ -453,8 +470,14 @@ class SourceFrame(CanvasFrame):
     def CanBackward(self):
         return self.i_first_epoch > 0
 
+    def CanDown(self):
+        return self.i_first + self.n_comp < self.n_comp_in_ica
+
     def CanForward(self):
         return self.i_first_epoch + self.n_epochs < self.n_epochs_in_data
+
+    def CanUp(self):
+        return self.i_first > 0
 
     def CaseChanged(self, index):
         "updates the states of the segments on the current page"
@@ -486,6 +509,12 @@ class SourceFrame(CanvasFrame):
             self.model.toggle(event.inaxes.i_comp)
 
     def OnCanvasKey(self, event):
+        if event.key == 'down':
+            if self.CanDown():
+                self.OnDown(None)
+        if event.key == 'up':
+            if self.CanUp():
+                self.OnUp(None)
         if event.key == 'right':
             if self.CanForward():
                 self.OnForward(None)
@@ -516,15 +545,59 @@ class SourceFrame(CanvasFrame):
         self.doc.unsubscribe_to_case_change(self.CaseChanged)
         super(SourceFrame, self).OnClose(event)
 
+    def OnDown(self, event):
+        "turns the page backward"
+        self.SetFirstComponent(self.i_first + self.n_comp)
+
     def OnForward(self, event):
         "turns the page forward"
         self.SetFirstEpoch(self.i_first_epoch + self.n_epochs)
 
+    def OnUp(self, event):
+        "turns the page backward"
+        self.SetFirstComponent(self.i_first - self.n_comp)
+
     def OnUpdateUIBackward(self, event):
         event.Enable(self.CanBackward())
 
+    def OnUpdateUIDown(self, event):
+        event.Enable(self.CanDown())
+
     def OnUpdateUIForward(self, event):
         event.Enable(self.CanForward())
+
+    def OnUpdateUIUp(self, event):
+        event.Enable(self.CanUp())
+
+    def SetFirstComponent(self, i_first):
+        if i_first < 0:
+            i_first = 0
+        elif i_first >= self.n_comp_in_ica:
+            i_first = self.n_comp_in_ica - 1
+
+        n_comp_actual = min(self.n_comp_in_ica - i_first, self.n_comp)
+        for i in xrange(n_comp_actual):
+            p = self.topo_plots[i]
+            i_comp = i_first + i
+            p.set_data([self.doc.components[i_comp]])
+            p.ax.i_comp = i_comp
+            self.topo_labels[i].set_text("# %i" % i_comp)
+            self.lines[i].set_color(LINE_COLOR[self.doc.accept[i_comp]])
+
+        if n_comp_actual < self.n_comp:
+            empty_data = self.doc.components[0].copy()
+            empty_data.x.fill(0)
+            for i in xrange(n_comp_actual, self.n_comp):
+                p = self.topo_plots[i]
+                p.set_data([empty_data])
+                p.ax.i_comp = -1
+                self.topo_labels[i].set_text("")
+                self.lines[i].set_color('white')
+
+
+        self.i_first = i_first
+        self.n_comp_actual = n_comp_actual
+        self.SetFirstEpoch(self.i_first_epoch)
 
     def SetFirstEpoch(self, i_first_epoch):
         self.i_first_epoch = i_first_epoch
@@ -532,7 +605,17 @@ class SourceFrame(CanvasFrame):
         if i_first_epoch + self.n_epochs > self.n_epochs_in_data:
             elen = len(self.doc.sources.time)
             n_missing = self.i_first_epoch + self.n_epochs - self.n_epochs_in_data
-            y = np.pad(y, ((0, 0), (0, elen * n_missing)), 'constant')
+            pad_time = elen * n_missing
+        else:
+            pad_time = 0
+
+        if self.n_comp_actual < self.n_comp:
+            pad_comp = self.n_comp - self.n_comp_actual
+        else:
+            pad_comp = 0
+
+        if pad_time or pad_comp:
+            y = np.pad(y, ((0, pad_comp), (0, pad_time)), 'constant')
 
         for line, data in izip(self.lines, y):
             line.set_ydata(data)
