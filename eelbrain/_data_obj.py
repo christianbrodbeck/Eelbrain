@@ -6574,7 +6574,11 @@ class Ordered(Scalar):
                                  "intervals and need to be exactly of length "
                                  "2 (got %s)" % (self.name, repr(arg)))
             start, stop = arg
-            return np.logical_and(self.values >= start, self.values < stop)
+            if start is not None:
+                start = super(Ordered, self).dimindex(start)
+            if stop is not None:
+                stop = super(Ordered, self).dimindex(stop)
+            return slice(start, stop)
         else:
             return super(Ordered, self).dimindex(arg)
 
