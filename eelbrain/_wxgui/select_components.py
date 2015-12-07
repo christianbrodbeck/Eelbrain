@@ -287,6 +287,8 @@ class Frame(FileFrame):
             SourceFrame(self, event.inaxes.i)
         elif event.key == 'f':
             self.PlotCompFFT(event.inaxes.i)
+        elif event.key == 'b':
+            self.PlotEpochButterfly(-1)
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
@@ -316,6 +318,19 @@ class Frame(FileFrame):
     def PlotCompTopomap(self, i_comp):
         plot.Topomap(self.doc.components[i_comp], w=10, sensorlabels='name',
                      title='# %i' % i_comp)
+
+    def PlotEpochButterfly(self, i_epoch):
+        if i_epoch == -1:
+            original_epoch = self.doc.epochs.average()
+            name = "Epochs Average"
+            vmax = None
+        else:
+            original_epoch = self.doc.epochs[i_epoch]
+            name = "Epoch %i" % self.doc.sources.epoch[i_epoch]
+            vmax = 2e-12
+        clean_epoch = self.doc.apply(original_epoch)
+        plot.TopoButterfly([original_epoch, clean_epoch], vmax=vmax,
+                           title=name, axlabel=("Original", "Cleaned"))
 
 
 class SourceFrame(CanvasFrame):
@@ -526,13 +541,8 @@ class SourceFrame(CanvasFrame):
         elif event.inaxes.i_comp is None:
             if event.key == 'b':
                 i_epoch = self.i_first_epoch + int(event.xdata // len(self.doc.sources.time))
-                if i_epoch >= len(self.doc.epochs):
-                    return
-                original_epoch = self.doc.epochs[i_epoch]
-                clean_epoch = self.doc.apply(original_epoch)
-                plot.TopoButterfly([original_epoch, clean_epoch], vmax=2e-12,
-                                   title="Epoch %i" % self.doc.sources.epoch[i_epoch],
-                                   axlabel=("Original", "Cleaned"))
+                if i_epoch < len(self.doc.epochs):
+                    self.parent.PlotEpochButterfly(i_epoch)
             return
         elif event.key == 't':
             self.parent.PlotCompTopomap(event.inaxes.i_comp)
@@ -540,6 +550,8 @@ class SourceFrame(CanvasFrame):
             self.parent.PlotCompSourceArray(event.inaxes.i_comp)
         elif event.key == 'f':
             self.parent.PlotCompFFT(event.inaxes.i_comp)
+        elif event.key == 'b':
+            self.parent.PlotEpochButterfly(-1)
 
     def OnClose(self, event):
         self.doc.unsubscribe_to_case_change(self.CaseChanged)
