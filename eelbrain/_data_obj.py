@@ -1685,6 +1685,15 @@ class Var(object):
         self.x /= other
         return self
 
+    def __pow__(self, other):
+        if isvar(other):
+            x = self.x / other.x
+        else:
+            x = self.x / other
+        info = self.info.copy()
+        info['longname'] = longname(self) + ' ** ' + longname(other)
+        return Var(x, info=info)
+
     def _coefficient_names(self, method):
         return longname(self),
 
@@ -3193,6 +3202,22 @@ class NDVar(object):
             raise ValueError("can't subtract %r" % other)
         info = self.info.copy()
         return NDVar(x, dims, info)
+
+    def __pow__(self, other):
+        if isnumeric(other):
+            dims, x_self, x_other = self._align(other)
+            x = np.power(x_self, x_other)
+        elif np.isscalar(other):
+            x = self.x ** other
+            dims = self.dims
+        else:
+            raise ValueError("can't raise to %r" % other)
+        info = self.info.copy()
+        return NDVar(x, dims, info)
+
+    def __ipow__(self, other):
+        self.x **= self._ialign(other)
+        return self
 
     def __sub__(self, other):
         if isnumeric(other):
