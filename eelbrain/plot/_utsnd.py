@@ -233,8 +233,9 @@ class Array(_EelFigure):
             p = _ax_im_array(ax, layers, x, axtitle, interpolation, vlims=vlims)
             self.plots.append(p)
 
-        self._configure_xaxis_dim(xdim, xlabel, xticklabels)
-        self._configure_yaxis_dim(ydim, ylabel)
+        e0 = epochs[0][0]
+        self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
+        self._configure_yaxis_dim(e0.get_dim(ydim), ylabel)
         self._show()
 
     def add_contour(self, meas, level, color='k'):
@@ -409,8 +410,9 @@ class Butterfly(_EelFigure):
                                                           Xax, ds)
         _EelFigure.__init__(self, 'Butterfly Plot', len(epochs), 4, 2, *args,
                             **kwargs)
-        self._configure_xaxis_dim(xdim, xlabel, xticklabels)
-        self._configure_yaxis(epochs[0][0], ylabel)
+        e0 = epochs[0][0]
+        self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
+        self._configure_yaxis(e0, ylabel)
 
         self.plots = []
         vlims = _base.find_fig_vlims(epochs)

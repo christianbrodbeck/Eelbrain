@@ -1211,7 +1211,7 @@ class Frame(FileFrame):
         nrow, ncol = self._nplots
 
         # formatters
-        t_formatter, t_label = find_axis_params_dim('time', True)
+        t_formatter, t_label = find_axis_params_dim(self.doc.epochs.time, True)
         y_formatter, y_label = find_axis_params_data(self.doc.epochs, True)
 
         # segment plots

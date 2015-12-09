@@ -36,6 +36,7 @@ import re
 import string
 from warnings import warn
 
+from matplotlib.ticker import FormatStrFormatter, FuncFormatter, IndexFormatter
 import mne
 from mne import Evoked as _mne_Evoked
 from nibabel.freesurfer import read_annot
@@ -6311,6 +6312,7 @@ class Dimension(object):
     """
     name = 'Dimension'
     adjacent = True
+    _axis_unit = None
 
     def __getstate__(self):
         raise NotImplementedError
@@ -6340,6 +6342,10 @@ class Dimension(object):
     def _diminfo(self):
         "Return a str describing the dimension in on line (79 chars)"
         return str(self.name)
+
+    def _axis_formatter(self):
+        "Return a matplotlib axis formatter"
+        raise NotImplementedError
 
     def dimindex(self, arg):
         """Process index parameter
@@ -6461,6 +6467,9 @@ class Categorial(Dimension):
         values = self.values[index]
         return Categorial(self.name, values)
 
+    def _axis_formatter(self):
+        return IndexFormatter(self.values)
+
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
             s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
@@ -6545,6 +6554,9 @@ class Scalar(Dimension):
         values = self.values[index]
         return Scalar(self.name, values, self.unit)
 
+    def _axis_formatter(self):
+        return IndexFormatter(self.values)
+
     def dimindex(self, arg):
         if isinstance(arg, self.__class__):
             s_idx, a_idx = np.nonzero(self.values[:, None] == arg.values)
@@ -6592,6 +6604,9 @@ class Ordered(Scalar):
     def __init__(self, name, values, unit=None):
         values = np.sort(values)
         Scalar.__init__(self, name, values, unit=unit)
+
+    def _axis_formatter(self):
+        return IndexFormatter(self.values)
 
     def dimindex(self, arg):
         if isinstance(arg, tuple):
@@ -6767,6 +6782,9 @@ class Sensor(Dimension):
             # TODO: groups
             return Sensor(locs, names, None, self.sysname, self.default_proj2d,
                           _subgraph_edges(self._connectivity, int_index))
+
+    def _axis_formatter(self):
+        return IndexFormatter(self.names)
 
     def _cluster_properties(self, x):
         """Find cluster properties for this dimension
@@ -7507,6 +7525,9 @@ class SourceSpace(Dimension):
                           parc, _subgraph_edges(self._connectivity, int_index))
         return dim
 
+    def _axis_formatter(self):
+        return FormatStrFormatter('%i')
+
     def _cluster_properties(self, x):
         """Find cluster properties for this dimension
 
@@ -7854,6 +7875,7 @@ class UTS(Dimension):
     """
     name = 'time'
     unit = 's'
+    _axis_unit = 'ms'
 
     def __init__(self, tmin, tstep, nsamples):
         self.tmin = tmin
@@ -7895,6 +7917,9 @@ class UTS(Dimension):
 
     def __repr__(self):
         return "UTS(%s, %s, %s)" % (self.tmin, self.tstep, self.nsamples)
+
+    def _axis_formatter(self):
+        return FuncFormatter(lambda x, pos: '%i' % round(1e3 * x))
 
     def _diminfo(self):
         name = self.name.capitalize()

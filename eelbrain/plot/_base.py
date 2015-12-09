@@ -202,13 +202,13 @@ def find_axis_params_data(v, label):
     return scale_formatters[scale], label
 
 
-def find_axis_params_dim(meas, label):
+def find_axis_params_dim(dim, label):
     """Find an axis label
 
     Parameters
     ----------
-    dimname : str
-        Name of the dimension.
+    dim : Dimension
+        The dimension.
     label : None | True | str
         Label argument.
 
@@ -218,20 +218,13 @@ def find_axis_params_dim(meas, label):
         Returns the default axis label if label==True, otherwise the label
         argument.
     """
-    if meas in meas_display_unit:
-        unit = meas_display_unit[meas]
-        scale = unit_format[unit]
-        if label is True:
-            if isinstance(unit, basestring):
-                label = "%s [%s]" % (meas.capitalize(), unit)
-            else:
-                label = meas.capitalize()
-    else:
-        scale = 1
-        if label is True:
-            label = meas.capitalize()
+    if label is True:
+        if dim._axis_unit:
+            label = "%s [%s]" % (dim.name.capitalize(), dim._axis_unit)
+        else:
+            label = dim.name.capitalize()
 
-    return scale_formatters[scale], label
+    return dim._axis_formatter(), label
 
 
 def find_im_args(ndvar, overlay, vlims={}, cmaps={}):
@@ -1030,13 +1023,13 @@ class _EelFigure(object):
         "Close the figure."
         self._frame.Close()
 
-    def _configure_xaxis_dim(self, meas, label, ticklabels, axes=None):
+    def _configure_xaxis_dim(self, dim, label, ticklabels, axes=None):
         """Configure the x-axis based on a dimension
 
         Parameters
         ----------
-        meas : str
-            The measure assigned to this axis.
+        dim : Dimension
+            The dimension assigned to the axis.
         label : None | str
             Axis label.
         ticklabels : bool
@@ -1046,7 +1039,7 @@ class _EelFigure(object):
         """
         if axes is None:
             axes = self._axes
-        formatter, label = find_axis_params_dim(meas, label)
+        formatter, label = find_axis_params_dim(dim, label)
 
         if ticklabels:
             for ax in axes:
@@ -1068,11 +1061,11 @@ class _EelFigure(object):
         if label:
             self.set_xlabel(label)
 
-    def _configure_yaxis_dim(self, meas, label, axes=None):
+    def _configure_yaxis_dim(self, dim, label, axes=None):
         "Configure the y-axis based on a dimension"
         if axes is None:
             axes = self._axes
-        formatter, label = find_axis_params_dim(meas, label)
+        formatter, label = find_axis_params_dim(dim, label)
         for ax in axes:
             ax.yaxis.set_major_formatter(formatter)
 

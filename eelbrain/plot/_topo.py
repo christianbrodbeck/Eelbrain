@@ -359,8 +359,9 @@ class TopoButterfly(_EelFigure):
                      transform=self.figure.transFigure,
                      ha='center', va='center', rotation='vertical')
 
-        self._configure_xaxis_dim('time', xlabel, xticklabels, self.bfly_axes)
-        self._configure_yaxis(epochs[0][0], ylabel, self.bfly_axes)
+        e0 = epochs[0][0]
+        self._configure_xaxis_dim(e0.time, xlabel, xticklabels, self.bfly_axes)
+        self._configure_yaxis(e0, ylabel, self.bfly_axes)
         for ax in self.bfly_axes[:-1]:
             ax.xaxis.set_ticklabels(())
 
@@ -370,7 +371,7 @@ class TopoButterfly(_EelFigure):
         self._realtime_topo = True
         self._t_label = None
         self._frame.store_canvas()
-        self._draw_topo(epochs[0][0].time[0], draw=False)
+        self._draw_topo(e0.time[0], draw=False)
         self._show()
 
     def _draw_topo(self, t, draw=True):
@@ -848,8 +849,9 @@ class TopoArray(_EelFigure):
                 t = [t]
             self.set_topo_ts(*t)
 
-        self._configure_xaxis_dim('time', True, xticklabels, self._array_axes)
-        self._configure_yaxis_dim('sensor', True, self._array_axes)
+        e0 = epochs[0][0]
+        self._configure_xaxis_dim(e0.time, True, xticklabels, self._array_axes)
+        self._configure_yaxis_dim(e0.sensor, True, self._array_axes)
 
         # setup callback
         self._selected_window = None

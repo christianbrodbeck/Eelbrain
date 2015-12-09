@@ -186,7 +186,7 @@ class UTSStat(_EelFigure, LegendMixin):
                 legend_handles.update(p.legend_handles)
 
         self._configure_yaxis(ct.Y, ylabel)
-        self._configure_xaxis_dim(xdim, xlabel, xticklabels)
+        self._configure_xaxis_dim(ct.Y.get_dim(xdim), xlabel, xticklabels)
         LegendMixin.__init__(self, legend, legend_handles)
         self._update_ui_cluster_button()
         self._show()
@@ -475,8 +475,9 @@ class UTSClusters(_EelFigure):
                                    axtitle)
             self._caxes.append(cax)
 
-        self._configure_yaxis(epochs[0][0], True)
-        self._configure_xaxis_dim(xdim, True, xticklabels)
+        e0 = epochs[0][0]
+        self._configure_yaxis(e0, True)
+        self._configure_xaxis_dim(e0.get_dim(xdim), True, xticklabels)
         self.clusters = clusters_
         self._show()
 
