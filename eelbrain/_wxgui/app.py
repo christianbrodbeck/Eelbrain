@@ -61,6 +61,7 @@ class App(wx.App):
         m.Append(ID.WINDOW_ZOOM, '&Zoom')
         m.AppendSeparator()
         m.Append(ID.WINDOW_TILE, '&Tile')
+        m.AppendSeparator()
         self.window_menu_window_items = []
 
         # Help Menu
@@ -299,7 +300,7 @@ class App(wx.App):
             # add new entries
             for window in wx.GetTopLevelWindows():
                 id_ = window.GetId()
-                if id_ < 0:
+                if id_ == wx.ID_ANY:
                     continue
                 item = menu.Append(id_, window.GetTitle())
                 self.Bind(wx.EVT_MENU, self.OnWindowRaise, id=id_)
