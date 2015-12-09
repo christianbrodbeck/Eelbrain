@@ -21,7 +21,7 @@ import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
 from .. import load, plot
-from .._data_obj import NDVar, Ordered, fft
+from .._data_obj import NDVar, Ordered, fft, isfactor
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID
 from .mpl_canvas import FigureCanvasPanel, CanvasFrame
@@ -68,8 +68,20 @@ class Document(FileDocument):
     """Represents data for the current state of the Document
 
     (Data can be accessed, but should only be modified through the Model)
+
+    Parameters
+    ----------
+    path : str
+        Path to the ICA file.
+    epochs : Epochs
+        Epochs that are used for time course display.
+    epochs_index : array_like of int
+        Assigning each epoch an index for display purposes.
+    ds : Dataset
+        Dataset containing variables describing cases in epochs, used to plot
+        condition averages.
     """
-    def __init__(self, path, epochs, epoch_index=None, sysname=None):
+    def __init__(self, path, epochs, epoch_index, ds, sysname):
         FileDocument.__init__(self, path)
 
         self.ica = ica = mne.preprocessing.read_ica(path)
@@ -77,6 +89,7 @@ class Document(FileDocument):
         self.accept[ica.exclude] = False
         self.epochs = epochs
         self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname)
+        self.ds = ds
 
         data = np.dot(ica.mixing_matrix_.T, ica.pca_components_[:ica.n_components_])
         self.components = NDVar(data, ('case', self.epochs_ndvar.sensor),
@@ -152,6 +165,8 @@ class Frame(FileFrame):
     a           array-plot of the source time course
     s           plot sources, starting with the component under the cursor
     f           plot the frequency spectrum for the selected component
+    b           Butterfly plot of grand average (original and cleaned)
+    B           Butterfly plot of condition averages
     =========== ============================================================
     """
     _doc_name = 'component selection'
@@ -217,6 +232,9 @@ class Frame(FileFrame):
         self.canvas.mpl_connect('axes_leave_event', self.OnPointerEntersAxes)
         self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
+
+        # attributes
+        self.last_model = ""
 
         # Finalize
         self.plot()
@@ -289,6 +307,8 @@ class Frame(FileFrame):
             self.PlotCompFFT(event.inaxes.i)
         elif event.key == 'b':
             self.PlotEpochButterfly(-1)
+        elif event.key == 'B':
+            self.PlotConditionAverages(self)
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
@@ -318,6 +338,49 @@ class Frame(FileFrame):
     def PlotCompTopomap(self, i_comp):
         plot.Topomap(self.doc.components[i_comp], w=10, sensorlabels='name',
                      title='# %i' % i_comp)
+
+    def PlotConditionAverages(self, parent):
+        "Prompt for model and plot condition averages"
+        factors = [n for n, v in self.doc.ds.iteritems() if isfactor(v)]
+        if len(factors) == 0:
+            wx.MessageBox("The dataset that describes the epochs does not "
+                          "contain any Factors that could be used to plot the "
+                          "data by condition.", "No Factors in Dataset",
+                          style=wx.ICON_ERROR)
+            return
+        elif len(factors) == 1:
+            default = factors[0]
+        else:
+            default = self.last_model or factors[0]
+        msg = "Specify the model (available factors: %s)" % ', '.join(factors)
+
+        plot_model = None
+        dlg = wx.TextEntryDialog(parent, msg, "Plot by Condition", default)
+        while plot_model is None:
+            if dlg.ShowModal() == wx.ID_OK:
+                value = dlg.GetValue()
+                use = [s.strip() for s in value.replace(':', '%').split('%')]
+                invalid = [f for f in use if f not in factors]
+                if invalid:
+                    wx.MessageBox("The following are not valid factor names: %s"
+                                  % (', '.join(invalid)), "Invalid Entry",
+                                  wx.ICON_ERROR)
+                else:
+                    plot_model = '%'.join(use)
+            else:
+                dlg.Destroy()
+                return
+        dlg.Destroy()
+        self.last_model = value
+
+        ds = self.doc.ds.aggregate(plot_model, drop_bad=True)
+        original = ds['epochs']
+        cleaned = load.fiff.evoked_ndvar(map(self.doc.apply, original))
+        vmax = 1.1 * max(abs(cleaned.min()), cleaned.max())
+        for i in xrange(len(original)):
+            name = ' '.join(ds[i, f] for f in use) + ' (n=%i)' % ds[i, 'n']
+            plot.TopoButterfly([original[i], cleaned[i]], vmax=vmax,
+                               title=name, axlabel=("Original", "Cleaned"))
 
     def PlotEpochButterfly(self, i_epoch):
         if i_epoch == -1:
@@ -352,6 +415,7 @@ class SourceFrame(CanvasFrame):
     a           array-plot of the source time course
     f           plot the frequency spectrum for the selected component
     b           butterfly plot of the epoch (original and cleaned)
+    B           Butterfly plot of condition averages
     =========== ============================================================
     """
     _make_axes = False
@@ -536,6 +600,8 @@ class SourceFrame(CanvasFrame):
         elif event.key == 'left':
             if self.CanBackward():
                 self.OnBackward(None)
+        elif event.key == 'B':
+            self.parent.PlotConditionAverages(self)
         elif not event.inaxes:
             return
         elif event.inaxes.i_comp is None:
