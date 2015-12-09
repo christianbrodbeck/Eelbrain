@@ -464,7 +464,7 @@ class Model(FileModel):
             err = "above needs to be True, False or None, got %s" % repr(above)
             raise TypeError(err)
 
-        index = np.where(self.doc.accept.x != accept)[0]
+        index = np.flatnonzero(self.doc.accept.x != accept)
         old_accept = self.doc.accept[index]
         new_accept = accept[index]
         old_tag = self.doc.tag[index]

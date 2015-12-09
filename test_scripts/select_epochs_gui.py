@@ -1,8 +1,5 @@
 from eelbrain import *
 
-set_log_level('debug')
-set_log_level('warning', 'mne')
-
 mark = []
 mark = ['MEG 2313']
 
