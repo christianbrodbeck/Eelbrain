@@ -1048,7 +1048,8 @@ class Frame(FileFrame):
 
     def PlotTopomap(self, ax_index, time):
         tseg = self._get_ax_data(ax_index, time)
-        p = plot.Topomap(tseg, vmax=self._vlims, sensorlabels='name', w=8)
+        plot.Topomap(tseg, vmax=self._vlims, sensorlabels='name', w=8,
+                     title=tseg.name)
 
     def SetLayout(self, nplots=(6, 6), topo=True, mean=True):
         """Determine the layout of the Epochs canvas
@@ -1313,7 +1314,7 @@ class Frame(FileFrame):
             raise ValueError("ax_index needs to be >= -1, not %s" % ax_index)
 
         if time is not None:
-            name = '%s, %.3f s' % (epoch_name, time)
+            name = '%s, %i ms' % (epoch_name, 1e3 * time)
             return seg.sub(time=time, sensor=sensor_idx, name=name)
         elif sensor_idx is None:
             return seg
