@@ -329,6 +329,8 @@ class UTS(_EelFigure):
     xlabel, ylabel : str | None
         X- and y axis labels. By default the labels will be inferred from
         the data.
+    xticklabels : bool
+        Add tick-labels to the x-axis (default True).
     bottom, top : scalar
         Y-axis limits.
     tight : bool
@@ -338,14 +340,16 @@ class UTS(_EelFigure):
         Figure title.
     """
     def __init__(self, epochs, Xax=None, axtitle='{name}', ds=None,
-                 xlabel=True, ylabel=True, bottom=None, top=None, *args,
-                 **kwargs):
+                 xlabel=True, ylabel=True, xticklabels=True, bottom=None,
+                 top=None, *args, **kwargs):
         epochs, (xdim,) = _base.unpack_epochs_arg(epochs, 1, Xax, ds)
         _EelFigure.__init__(self, "UTS", len(epochs), 2, 1.5, *args, **kwargs)
-        self._configure_yaxis(epochs[0][0], ylabel)
+        e0 = epochs[0][0]
+        self._configure_yaxis(e0, ylabel)
+        self._configure_xaxis_dim(e0.get_dim(xdim), xlabel, xticklabels)
 
         for ax, epoch in izip(self._axes, epochs):
-            _ax_uts(ax, epoch, xdim, axtitle, xlabel, bottom, top)
+            _ax_uts(ax, epoch, xdim, axtitle, bottom, top)
 
         self.epochs = epochs
         self._show()
@@ -500,7 +504,7 @@ class UTSClusters(_EelFigure):
         self.draw()
 
 
-def _ax_uts(ax, layers, xdim, title, xlabel, bottom, top, invy=False, color=None):
+def _ax_uts(ax, layers, xdim, title, bottom, top, invy=False, color=None):
     l0 = layers[0]
     xdim = l0.dimnames[0]
     overlay = False
