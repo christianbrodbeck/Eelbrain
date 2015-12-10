@@ -277,7 +277,12 @@ class MneExperiment(FileTree):
         Guide on using :ref:`experiment-class-guide`.
     """
     path_version = None
-    auto_delete_cache = True  # True | False | 'disable' | 'debug'
+    auto_delete_cache = True
+    # what to do when the experiment class definition changed:
+    #   True: delete outdated files
+    #   False: raise an error
+    #   'disable': ignore it
+    #   'debug': prompt for what to do in the terminal
 
     # Experiment Constants
     # ====================
@@ -1285,7 +1290,7 @@ class MneExperiment(FileTree):
         with self._temporary_state:
             paths = [self.get('rej-file', epoch=e) for e in epochs]
         if all(os.path.exists(path) for path in paths):
-           return max(os.path.getmtime(path) for path in paths)
+            return max(os.path.getmtime(path) for path in paths)
 
     def _result_mtime(self, dst, data, cached_test=False, single_subject=False):
         """For several results (reports and movies)
