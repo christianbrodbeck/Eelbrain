@@ -584,8 +584,12 @@ class SourceFrame(CanvasFrame):
 
     def OnCanvasClick(self, event):
         "called by mouse clicks"
-        if event.inaxes and event.inaxes.i_comp is not None:
-            self.model.toggle(event.inaxes.i_comp)
+        if event.inaxes:
+            if event.inaxes.i_comp is None:
+                i_comp = int(self.i_first + self.n_comp - ceil(event.ydata / self.y_scale + 0.5))
+            else:
+                i_comp = event.inaxes.i_comp
+            self.model.toggle(i_comp)
 
     def OnCanvasKey(self, event):
         if event.key == 'down':
