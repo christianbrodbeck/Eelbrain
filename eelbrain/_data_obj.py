@@ -3139,6 +3139,8 @@ class NDVar(object):
                 x_self = x_self[tuple(crop_self)]
                 x_other = x_other[tuple(crop_other)]
             return dims, x_self, x_other
+        elif np.isscalar(other):
+            return self.dims, self.x, other
         else:
             raise TypeError("Need Var or NDVar")
 
@@ -3164,14 +3166,8 @@ class NDVar(object):
             raise TypeError
 
     def __add__(self, other):
-        if isnumeric(other):
-            dims, x_self, x_other = self._align(other)
-            x = x_self + x_other
-        elif np.isscalar(other):
-            x = self.x + other
-            dims = self.dims
-        else:
-            raise ValueError("can't add %r" % other)
+        dims, x_self, x_other = self._align(other)
+        x = x_self + x_other
         info = self.info.copy()
         return NDVar(x, dims, info)
 
@@ -3180,38 +3176,20 @@ class NDVar(object):
         return self
 
     def __div__(self, other):
-        if isnumeric(other):
-            dims, x_self, x_other = self._align(other)
-            x = x_self / x_other
-        elif np.isscalar(other):
-            x = self.x / other
-            dims = self.dims
-        else:
-            raise ValueError("can't subtract %r" % other)
+        dims, x_self, x_other = self._align(other)
+        x = x_self / x_other
         info = self.info.copy()
         return NDVar(x, dims, info)
 
     def __mul__(self, other):
-        if isnumeric(other):
-            dims, x_self, x_other = self._align(other)
-            x = x_self * x_other
-        elif np.isscalar(other):
-            x = self.x * other
-            dims = self.dims
-        else:
-            raise ValueError("can't subtract %r" % other)
+        dims, x_self, x_other = self._align(other)
+        x = x_self * x_other
         info = self.info.copy()
         return NDVar(x, dims, info)
 
     def __pow__(self, other):
-        if isnumeric(other):
-            dims, x_self, x_other = self._align(other)
-            x = np.power(x_self, x_other)
-        elif np.isscalar(other):
-            x = self.x ** other
-            dims = self.dims
-        else:
-            raise ValueError("can't raise to %r" % other)
+        dims, x_self, x_other = self._align(other)
+        x = np.power(x_self, x_other)
         info = self.info.copy()
         return NDVar(x, dims, info)
 
@@ -3220,14 +3198,8 @@ class NDVar(object):
         return self
 
     def __sub__(self, other):
-        if isnumeric(other):
-            dims, x_self, x_other = self._align(other)
-            x = x_self - x_other
-        elif np.isscalar(other):
-            x = self.x - other
-            dims = self.dims
-        else:
-            raise ValueError("can't subtract %r" % other)
+        dims, x_self, x_other = self._align(other)
+        x = x_self - x_other
         info = self.info.copy()
         return NDVar(x, dims, info)
 
