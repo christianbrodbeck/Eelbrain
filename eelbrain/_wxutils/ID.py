@@ -30,6 +30,7 @@ EXEC_FILE = wx.NewId()
 EXEC_SELECTION = wx.NewId()
 
 FIG_TITLE = wx.NewId()
+FIND_RARE_EVENTS = wx.NewId()
 FOCUS_SHELL = wx.NewId()
 
 GRAND_AVERAGE = wx.NewId()

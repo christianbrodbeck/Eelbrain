@@ -25,6 +25,7 @@ from .._data_obj import NDVar, Ordered, fft, isfactor
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID
 from .mpl_canvas import FigureCanvasPanel, CanvasFrame
+from .text import TextFrame
 from .history import Action, FileDocument, FileModel, FileFrame
 
 
@@ -214,6 +215,11 @@ class Frame(FileFrame):
                         shortHelp="Redo")
         tb.AddSeparator()
 
+        # Buttons
+        button = wx.Button(tb, ID.FIND_RARE_EVENTS, "Rare Events")
+        button.Bind(wx.EVT_BUTTON, self.OnFindRareEvents)
+        tb.AddControl(button)
+
         # right-most part
         tb.AddStretchableSpace()
 
@@ -309,6 +315,40 @@ class Frame(FileFrame):
             self.PlotEpochButterfly(-1)
         elif event.key == 'B':
             self.PlotConditionAverages(self)
+
+    def OnFindRareEvents(self, event):
+        n_events = 5
+
+        def outliers(source, threshold=2.):
+            y = source - source.mean()
+            # print y
+            # print y.std()
+            # print y / y.std()
+            y /= y.std()
+            # print y
+            y **= 2
+            # print y
+            ss = y.sum('time')
+            idx = np.flatnonzero(ss.x > threshold * ss.std())
+            return source.epoch.values[idx]
+
+        res = []
+        for i in xrange(len(self.doc.sources)):
+            outl = outliers(self.doc.sources[i])
+            if len(outl) <= n_events:
+                res.append((i, outl))
+
+        if len(res) == 0:
+            wx.MessageBox("No rare events were found.", "No Rare Events Found",
+                          style=wx.ICON_INFORMATION)
+            return
+
+        items = ["Components that have strong relative loading on %i or fewer "
+                 "epochs:" % n_events, '']
+        for i, epochs in res:
+            items.append("# %i:  %s" % (i, ', '.join(map(str, epochs))))
+
+        TextFrame(self, "Rare Events", '\n'.join(items))
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
