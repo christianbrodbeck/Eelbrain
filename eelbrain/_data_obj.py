@@ -3181,11 +3181,25 @@ class NDVar(object):
         info = self.info.copy()
         return NDVar(x, dims, info)
 
+    def __idiv__(self, other):
+        self.x /= self._ialign(other)
+        return self
+
+    def __truediv__(self, other):
+        return self.__div__(other)
+
+    def __itruediv__(self, other):
+        return self.__idiv__(other)
+
     def __mul__(self, other):
         dims, x_self, x_other = self._align(other)
         x = x_self * x_other
         info = self.info.copy()
         return NDVar(x, dims, info)
+
+    def __imul__(self, other):
+        self.x *= self._ialign(other)
+        return self
 
     def __pow__(self, other):
         dims, x_self, x_other = self._align(other)
