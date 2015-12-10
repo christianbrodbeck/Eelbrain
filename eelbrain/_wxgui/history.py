@@ -316,6 +316,9 @@ class FileFrame(EelbrainFrame):
     def OnUndo(self, event):
         self.history.undo()
 
+    def OnUpdateUIClear(self, event):
+        event.Enable(True)
+
     def OnUpdateUIOpen(self, event):
         event.Enable(True)
 
