@@ -216,6 +216,9 @@ class Frame(FileFrame):
         tb.AddSeparator()
 
         # Buttons
+        button = wx.Button(tb, ID.SHOW_SOURCES, "Sources")
+        button.Bind(wx.EVT_BUTTON, self.OnShowSources)
+        tb.AddControl(button)
         button = wx.Button(tb, ID.FIND_RARE_EVENTS, "Rare Events")
         button.Bind(wx.EVT_BUTTON, self.OnFindRareEvents)
         tb.AddControl(button)
@@ -308,7 +311,7 @@ class Frame(FileFrame):
         elif event.key == 'a':
             self.PlotCompSourceArray(event.inaxes.i)
         elif event.key == 's':
-            SourceFrame(self, event.inaxes.i)
+            self.ShowSources(event.inaxes.i)
         elif event.key == 'f':
             self.PlotCompFFT(event.inaxes.i)
         elif event.key == 'b':
@@ -363,6 +366,9 @@ class Frame(FileFrame):
                              (event.inaxes.i, len(self.doc.components)))
         else:
             sb.SetStatusText("%i ICA Components" % len(self.doc.components))
+
+    def OnShowSources(self, event):
+        self.ShowSources(0)
 
     def OnUpdateUIOpen(self, event):
         event.Enable(False)
@@ -434,6 +440,9 @@ class Frame(FileFrame):
         clean_epoch = self.doc.apply(original_epoch)
         plot.TopoButterfly([original_epoch, clean_epoch], vmax=vmax,
                            title=name, axlabel=("Original", "Cleaned"))
+
+    def ShowSources(self, i_first):
+        SourceFrame(self, i_first)
 
 
 class SourceFrame(CanvasFrame):
