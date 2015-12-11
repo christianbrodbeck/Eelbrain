@@ -23,10 +23,11 @@ from wx.lib.scrolledpanel import ScrolledPanel
 from .. import load, plot
 from .._data_obj import NDVar, Ordered, fft, isfactor
 from ..plot._topo import _ax_topomap
-from .._wxutils import Icon, ID
+from .._wxutils import Icon, ID, REValidator
 from .mpl_canvas import FigureCanvasPanel, CanvasFrame
 from .text import TextFrame
 from .history import Action, FileDocument, FileModel, FileFrame
+from .frame import EelbrainDialog
 
 
 COLOR = {True: (.5, 1, .5), False: (1, .3, .3)}
@@ -320,7 +321,14 @@ class Frame(FileFrame):
             self.PlotConditionAverages(self)
 
     def OnFindRareEvents(self, event):
-        n_events = 5
+        n_events = self.config.ReadInt("FindRareEvents/n_events", 5)
+        dlg = FindRareEventsDialog(self, n_events)
+        rcode = dlg.ShowModal()
+        dlg.Destroy()
+        if rcode != wx.ID_OK:
+            return
+        n_events = dlg.GetValues()
+        self.config.WriteInt("FindRareEvents/n_events", n_events)
 
         def outliers(source, threshold=2.):
             y = source - source.mean()
@@ -752,3 +760,40 @@ class SourceFrame(CanvasFrame):
             line.set_ydata(data)
         self.ax_tc.set_xticklabels(tick_labels)
         self.canvas.draw()
+
+
+class FindRareEventsDialog(EelbrainDialog):
+    def __init__(self, parent, n_events, *args, **kwargs):
+        super(FindRareEventsDialog, self).__init__(parent, wx.ID_ANY,
+                                                   "Find Rare Events", *args,
+                                                   **kwargs)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        # number of events
+        sizer.Add(wx.StaticText(self, label="Max number of events:"))
+        validator = REValidator("[1-9]\d*", "Invalid entry: {value}. Please "
+                                "specify a number > 0.", False)
+        ctrl = wx.TextCtrl(self, value=str(n_events), validator=validator)
+        ctrl.SetHelpText("Max number of events to qualify as rare (positive integer)")
+        ctrl.SelectAll()
+        sizer.Add(ctrl)
+        self.n_events_ctrl = ctrl
+
+        # buttons
+        button_sizer = wx.StdDialogButtonSizer()
+        # ok
+        btn = wx.Button(self, wx.ID_OK)
+        btn.SetDefault()
+        button_sizer.AddButton(btn)
+        # cancel
+        btn = wx.Button(self, wx.ID_CANCEL)
+        button_sizer.AddButton(btn)
+        # finalize
+        button_sizer.Realize()
+        sizer.Add(button_sizer)
+
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+
+    def GetValues(self):
+        return int(self.n_events_ctrl.GetValue())
