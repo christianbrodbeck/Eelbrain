@@ -25,6 +25,7 @@ from .. import load, save, plot
 from .._data_obj import Dataset, Factor, Var, Datalist, corr, asndvar, combine
 from .._names import INTERPOLATE_CHANNELS
 from .._info import BAD_CHANNELS
+from .._utils.parse import FLOAT_PATTERN
 from ..plot._base import find_axis_params_data, find_axis_params_dim, \
     find_fig_vlims
 from ..plot._nuts import _plt_bin_nuts
@@ -1380,10 +1381,9 @@ class ThresholdDialog(EelbrainDialog):
         sizer.Add(ctrl)
         self.mark_below_ctrl = ctrl
 
-        float_pattern = "^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$"
         msg = ("Invalid entry for threshold: {value}. Need a floating\n"
                "point number.")
-        validator = REValidator(float_pattern, msg, False)
+        validator = REValidator(FLOAT_PATTERN, msg, False)
         ctrl = wx.TextCtrl(self, wx.ID_ANY, str(threshold),
                            validator=validator)
         ctrl.SetHelpText("Threshold value (positive scalar)")

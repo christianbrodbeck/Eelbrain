@@ -13,20 +13,10 @@ import re
 import numpy as np
 
 from .._utils import ui
+from .._utils.parse import FLOAT_NAN_PATTERN
 from .. import _data_obj as _data
 
-
 __all__ = ['tsv', 'var']
-
-float_pattern = re.compile("^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$")
-
-def _str_is_float(x):
-    if float_pattern.match(x):
-        return True
-    elif x.lower() == 'nan':
-        return True
-    else:
-        return False
 
 
 # could use csv module (http://docs.python.org/2/library/csv.html) but it
@@ -138,6 +128,7 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
             data[r, c] = v
 
     # convert values to data-objects
+    float_pattern = re.compile(FLOAT_NAN_PATTERN)
     ds = _data.Dataset(name=os.path.basename(path))
     np_vars = vars(np)
     bool_dict = {'True': True, 'False': False, None: False}
@@ -148,11 +139,11 @@ def tsv(path=None, names=True, types='auto', delimiter='\t', skiprows=0,
         elif all(v in bool_dict for v in values):
             type_ = 3
         elif empty is not None:
-            if all(v in (None, '') or _str_is_float(v) for v in values):
+            if all(v in (None, '') or float_pattern.match(v) for v in values):
                 type_ = 2
             else:
                 type_ = 1
-        elif all(v is None or _str_is_float(v) for v in values):
+        elif all(v is None or float_pattern.match(v) for v in values):
             type_ = 2
         else:
             type_ = 1

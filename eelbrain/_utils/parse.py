@@ -2,6 +2,11 @@
 import parser
 
 
+FLOAT_PATTERN = "^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$"
+# matches float as well as NaN:
+FLOAT_NAN_PATTERN = "^([Nn][Aa][Nn]$)|([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)$"
+
+
 def find_variables(expr):
     """Find the variables participating in an expressions
 
