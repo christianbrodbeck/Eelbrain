@@ -3260,18 +3260,22 @@ class NDVar(object):
         info = self.info.copy()
         return NDVar(x, dims, info, name)
 
-    def any(self, dims=None):
+    def any(self, dims=(), **regions):
         """Compute presence of any value other than zero over given dimensions
 
         Parameters
         ----------
-        dims : None | str | tuple of str | boolean NDVar
+        dims : str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute whether there are any nonzero values at all.
             An boolean NDVar with the same dimensions as the data can be used
             to find nonzero values in specific elements (if the NDVar has cases
             on a per case basis).
+        *regions*
+            Regions over which to aggregate. For example, to check for nonzero
+            values between time=0.1 and time=0.2, use
+            ``ndvar.any(time=(0.1, 0.2))``.
 
         Returns
         -------
@@ -3280,7 +3284,7 @@ class NDVar(object):
             dimensions. Returns a Var if only the case dimension remains, and a
             float if the function collapses over all data.
         """
-        return self._aggregate_over_dims(dims, np.any)
+        return self._aggregate_over_dims(dims, regions, np.any)
 
     def assert_dims(self, dims):
         if self.dimnames != dims:
@@ -3334,8 +3338,22 @@ class NDVar(object):
         out = NDVar(x, self.dims, info, name)
         return out
 
-    def _aggregate_over_dims(self, axis, func):
-        if axis is None:
+    def _aggregate_over_dims(self, axis, regions, func):
+        if regions:
+            data = self.sub(**regions)
+            additional_axis = [dim for dim in regions if data.has_dim(dim)]
+            if additional_axis:
+                if isndvar(axis):
+                    data = data.sub(axis)
+                    axis = additional_axis
+                elif not axis:
+                    axis = additional_axis
+                elif isinstance(axis, basestring):
+                    axis = [axis] + additional_axis
+                else:
+                    axis = list(axis) + additional_axis
+            return data._aggregate_over_dims(axis, None, func)
+        elif not axis:
             return func(self.x)
         elif isndvar(axis):
             if axis.ndim == 1:
@@ -3573,18 +3591,21 @@ class NDVar(object):
     def has_dim(self, name):
         return name in self._dim_2_ax
 
-    def max(self, dims=None):
+    def max(self, dims=(), **regions):
         """Compute the maximum over given dimensions
 
         Parameters
         ----------
-        dims : None | str | tuple of str | boolean NDVar
+        dims : str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the maximum over all dimensions.
             An boolean NDVar with the same dimensions as the data can be used
             to compute the maximum in specific elements (if the data has a case
             dimension, the maximum is computed for each case).
+        *regions*
+            Regions over which to aggregate. For example, to get the maximum
+            between time=0.1 and time=0.2, use ``ndvar.max(time=(0.1, 0.2))``.
 
         Returns
         -------
@@ -3593,20 +3614,23 @@ class NDVar(object):
             case dimension remains, and a float if the function collapses over
             all data.
         """
-        return self._aggregate_over_dims(dims, np.max)
+        return self._aggregate_over_dims(dims, regions, np.max)
 
-    def mean(self, dims=None):
+    def mean(self, dims=(), **regions):
         """Compute the mean over given dimensions
 
         Parameters
         ----------
-        dims : None | str | tuple of str | boolean NDVar
+        dims : str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the mean over all dimensions.
             A boolean NDVar with the same dimensions as the data can be used
             to compute the mean in specific elements (if the data has a case
             dimension, the mean is computed for each case).
+        *regions*
+            Regions over which to aggregate. For example, to get the mean
+            between time=0.1 and time=0.2, use ``ndvar.mean(time=(0.1, 0.2))``.
 
         Returns
         -------
@@ -3615,20 +3639,23 @@ class NDVar(object):
             dimension remains, and a float if the function collapses over all
             data.
         """
-        return self._aggregate_over_dims(dims, np.mean)
+        return self._aggregate_over_dims(dims, regions, np.mean)
 
-    def min(self, dims=None):
+    def min(self, dims=(), **regions):
         """Compute the minimum over given dimensions
 
         Parameters
         ----------
-        dims : None | str | tuple of str | boolean NDVar
+        dims : str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the minimum over all dimensions.
             An boolean NDVar with the same dimensions as the data can be used
             to compute the minimum in specific elements (if the data has a case
             dimension, the minimum is computed for each case).
+        *regions*
+            Regions over which to aggregate. For example, to get the minimum
+            between time=0.1 and time=0.2, use ``ndvar.min(time=(0.1, 0.2))``.
 
         Returns
         -------
@@ -3637,7 +3664,7 @@ class NDVar(object):
             case dimension remains, and a float if the function collapses over
             all data.
         """
-        return self._aggregate_over_dims(dims, np.min)
+        return self._aggregate_over_dims(dims, regions, np.min)
 
     def ols(self, x, name=None):
         """Sample-wise ordinary least squares regressions
@@ -3785,18 +3812,21 @@ class NDVar(object):
         info = self.info.copy()
         return NDVar(res, self.dims, info, name)
 
-    def rms(self, axis=None):
+    def rms(self, axis=(), **regions):
         """Compute the root mean square over given dimensions
 
         Parameters
         ----------
-        axis : None | str | tuple of str | boolean NDVar
+        axis : str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the standard deviation over all values.
             An boolean NDVar with the same dimensions as the data can be used
             to compute the RMS in specific elements (if the data has a case
             dimension, the RMS is computed for each case).
+        *regions*
+            Regions over which to aggregate. For example, to get the RMS
+            between time=0.1 and time=0.2, use ``ndvar.rms(time=(0.1, 0.2))``.
 
         Returns
         -------
@@ -3806,14 +3836,14 @@ class NDVar(object):
             collapses over all data.
         """
         from ._stats.stats import rms
-        return self._aggregate_over_dims(axis, rms)
+        return self._aggregate_over_dims(axis, regions, rms)
 
-    def std(self, dims=None):
+    def std(self, dims=(), **regions):
         """Compute the standard deviation over given dimensions
 
         Parameters
         ----------
-        dims : None | str | tuple of str | boolean NDVar
+        dims : str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the standard deviation over all values.
@@ -3821,6 +3851,9 @@ class NDVar(object):
             to compute the standard deviation in specific elements (if the data
             has a case dimension, the standard deviation is computed for each
             case).
+        *regions*
+            Regions over which to aggregate. For example, to get the STD
+            between time=0.1 and time=0.2, use ``ndvar.std(time=(0.1, 0.2))``.
 
         Returns
         -------
@@ -3829,7 +3862,7 @@ class NDVar(object):
             only the case dimension remains, and a float if the function
             collapses over all data.
         """
-        return self._aggregate_over_dims(dims, np.std)
+        return self._aggregate_over_dims(dims, regions, np.std)
 
     def summary(self, *dims, **regions):
         r"""
@@ -4023,18 +4056,21 @@ class NDVar(object):
         else:
             return self.x[tuple(index)]
 
-    def sum(self, dims=None):
+    def sum(self, dims=(), **regions):
         """Compute the sum over given dimensions
 
         Parameters
         ----------
-        dims : None | str | tuple of str | boolean NDVar
+        dims : str | tuple of str | boolean NDVar
             Dimensions over which to operate. A str is used to specify a single
             dimension, a tuple of str to specify several dimensions, None to
             compute the sum over all dimensions.
             An boolean NDVar with the same dimensions as the data can be used
             to compute the sum in specific elements (if the data has a case
             dimension, the sum is computed for each case).
+        *regions*
+            Regions over which to aggregate. For example, to get the sum
+            between time=0.1 and time=0.2, use ``ndvar.sum(time=(0.1, 0.2))``.
 
         Returns
         -------
@@ -4043,7 +4079,7 @@ class NDVar(object):
             case dimension remains, and a float if the function collapses over
             all data.
         """
-        return self._aggregate_over_dims(dims, np.sum)
+        return self._aggregate_over_dims(dims, regions, np.sum)
 
 
 def extrema(x, axis=0):
