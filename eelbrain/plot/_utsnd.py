@@ -78,10 +78,14 @@ class _plt_im(object):
             self.im.set_cmap(cmap)
             self._cmap = cmap
 
-    def set_data(self, ndvar):
+    def set_data(self, ndvar, vlim=False):
         data = self._data_from_ndvar(ndvar)
         if self.im is not None:
             self.im.set_data(data)
+            if vlim:
+                vmin, vmax = _base.find_vlim_args(ndvar)
+                self.set_vlim(vmax, None, vmin)
+
         self._data = data
         self._draw_contours()
 
@@ -176,10 +180,19 @@ class _ax_im_array(object):
         for l in self.layers:
             l.set_cmap(cmap, meas)
 
-    def set_data(self, layers):
+    def set_data(self, layers, vlim=False):
+        """Update the plotted data
+
+        Parameters
+        ----------
+        layers : list of NDVar
+            Data to plot
+        vlim : bool
+            Update vlims for the new data.
+        """
         self.data = layers
         for l, p in zip(layers, self.layers):
-            p.set_data(l)
+            p.set_data(l, vlim)
 
     def set_vlim(self, vmax=None, meas=None, vmin=None):
         for l in self.layers:

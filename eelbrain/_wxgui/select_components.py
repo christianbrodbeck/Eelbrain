@@ -718,7 +718,7 @@ class SourceFrame(CanvasFrame):
         for i in xrange(n_comp_actual):
             p = self.topo_plots[i]
             i_comp = i_first + i
-            p.set_data([self.doc.components[i_comp]])
+            p.set_data([self.doc.components[i_comp]], True)
             p.ax.i_comp = i_comp
             self.topo_labels[i].set_text("# %i" % i_comp)
             self.lines[i].set_color(LINE_COLOR[self.doc.accept[i_comp]])
