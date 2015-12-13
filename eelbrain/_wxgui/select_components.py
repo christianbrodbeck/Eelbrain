@@ -75,21 +75,18 @@ class Document(FileDocument):
     ----------
     path : str
         Path to the ICA file.
-    epochs : Epochs
-        Epochs that are used for time course display.
-    epochs_index : array_like of int
-        Assigning each epoch an index for display purposes.
     ds : Dataset
-        Dataset containing variables describing cases in epochs, used to plot
+        Dataset containing 'epochs' (mne Epochs), 'index' (Var describing
+        epochs) and variables describing cases in epochs, used to plot
         condition averages.
     """
-    def __init__(self, path, epochs, epoch_index, ds, sysname):
+    def __init__(self, path, ds, sysname):
         FileDocument.__init__(self, path)
 
         self.ica = ica = mne.preprocessing.read_ica(path)
         self.accept = np.ones(self.ica.n_components_, bool)
         self.accept[ica.exclude] = False
-        self.epochs = epochs
+        self.epochs = epochs = ds['epochs']
         self.epochs_ndvar = load.fiff.epochs_ndvar(epochs, sysname=sysname)
         self.ds = ds
 
@@ -99,7 +96,9 @@ class Document(FileDocument):
 
         # sources
         data = ica.get_sources(epochs).get_data().swapaxes(0, 1)
-        if epoch_index is None:
+        if 'index' in ds:
+            epoch_index = ds['index']
+        else:
             epoch_index = np.arange(len(epochs))
         epoch_dim = Ordered('epoch', epoch_index)
         self.sources = NDVar(data, ('case', epoch_dim, self.epochs_ndvar.time),

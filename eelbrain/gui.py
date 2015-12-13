@@ -7,12 +7,12 @@ def run():
     _wxgui.run()
 
 
-def select_components(path, epochs, epoch_index=None, ds=None, sysname=None):
+def select_components(path, ds, sysname=None):
     from _wxgui import get_app
     from ._wxgui.select_components import Document, Model, Frame
 
     app = get_app()
-    doc = Document(path, epochs, epoch_index, ds, sysname)
+    doc = Document(path, ds, sysname)
     model = Model(doc)
     frame = Frame(None, None, None, model)
 
