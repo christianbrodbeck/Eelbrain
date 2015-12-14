@@ -164,8 +164,8 @@ class FileModel(object):
 
 class FileFrame(EelbrainFrame):
     _doc_name = 'document'
-    _name = 'Default'
-    _title = 'Title'
+    _name = 'Default'  # internal, for config
+    _title = 'Title'  # external, for frame title
     _wildcard = ("Tab Separated Text (*.txt)|*.txt|"
                  "Pickle (*.pickled)|*.pickled")
 
@@ -229,9 +229,10 @@ class FileFrame(EelbrainFrame):
     def OnClose(self, event):
         "Ask to save unsaved changes"
         if event.CanVeto() and not self.history.is_saved():
+            self.Raise()
             msg = ("The current document has unsaved changes. Would you like "
                    "to save them?")
-            cap = "Saved Unsaved Changes?"
+            cap = "%s: Save Unsaved Changes?" % self._title
             style = wx.YES | wx.NO | wx.CANCEL | wx.YES_DEFAULT
             cmd = wx.MessageBox(msg, cap, style)
             if cmd == wx.YES:
@@ -339,10 +340,9 @@ class FileFrame(EelbrainFrame):
 
         self.OSXSetModified(is_modified)
 
+        title = self._title
         if self.doc.path:
-            title = os.path.basename(self.doc.path)
-            if is_modified:
-                title = '* ' + title
-        else:
-            title = 'Unsaved'
+            title += ': ' + os.path.basename(self.doc.path)
+        if is_modified:
+            title = '* ' + title
         self.SetTitle(title)
