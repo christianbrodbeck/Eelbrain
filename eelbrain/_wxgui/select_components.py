@@ -147,6 +147,13 @@ class Model(FileModel):
         self.history.do(action)
 
 
+class ContextMenu(wx.Menu):
+    "Helper class for Menu to store component ID"
+    def __init__(self, i):
+        wx.Menu.__init__(self)
+        self.i = i
+
+
 class Frame(FileFrame):
     """
     Component Selection
@@ -155,6 +162,7 @@ class Frame(FileFrame):
     Select components from ICA.
 
     * Click on components topographies to select/deselect them.
+    * Use the context-menu (right click) for additional commands.
 
 
     *Keyboard shortcuts* in addition to the ones in the menu:
@@ -241,6 +249,9 @@ class Frame(FileFrame):
         self.canvas.mpl_connect('axes_leave_event', self.OnPointerEntersAxes)
         self.canvas.mpl_connect('button_press_event', self.OnCanvasClick)
         self.canvas.mpl_connect('key_release_event', self.OnCanvasKey)
+        # re-Bind right click
+        self.canvas.Unbind(wx.EVT_RIGHT_DOWN)
+        self.canvas.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
 
         # attributes
         self.last_model = ""
@@ -300,8 +311,9 @@ class Frame(FileFrame):
 
     def OnCanvasClick(self, event):
         "called by mouse clicks"
-        if event.inaxes:
-            self.model.toggle(event.inaxes.i)
+        if event.button == 1:
+            if event.inaxes:
+                self.model.toggle(event.inaxes.i)
 
     def OnCanvasKey(self, event):
         if not event.inaxes:
@@ -373,6 +385,41 @@ class Frame(FileFrame):
                              (event.inaxes.i, len(self.doc.components)))
         else:
             sb.SetStatusText("%i ICA Components" % len(self.doc.components))
+
+    def OnRankEpochs(self, event):
+        i_comp = event.EventObject.i
+        source = self.doc.sources[i_comp]
+        y = source - source.mean()
+        y /= y.std()
+        y **= 2
+        ss = y.sum('time').x  # ndvar has epoch as index
+
+        # sort
+        sort = np.argsort(ss)[::-1]
+        ss = ss[sort]
+        epoch_idx = source.epoch.values[sort]
+
+        # text
+        text = ["Component # %i, epochs SS in descending order:" % i_comp, ""]
+        for pair in izip(epoch_idx, ss):
+            text.append("% 4i: %.1f" % pair)
+
+        TextFrame(self, "Component %i Epoch SS" % i_comp, '\n'.join(text))
+
+    def OnRightDown(self, event):
+        ax = self.canvas.MatplotlibEventAxes(event)
+        if not ax:
+            return
+
+        # costruct menu
+        menu = ContextMenu(ax.i)
+        item = menu.Append(wx.ID_ANY, "Rank Epochs")
+        self.Bind(wx.EVT_MENU, self.OnRankEpochs, item)
+
+        # show menu
+        pos = self.panel.CalcScrolledPosition(event.Position)
+        self.PopupMenu(menu, pos)
+        menu.Destroy()
 
     def OnShowSources(self, event):
         self.ShowSources(0)

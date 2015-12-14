@@ -21,6 +21,13 @@ from .frame import EelbrainFrame
 from .help import show_help_txt
 
 
+class DummyMouseEvent(object):
+    "Emulate Matplotlib MouseEvent"
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+
 class FigureCanvasPanel(FigureCanvasWxAgg):
     """wx.Panel with a matplotlib figure
 
@@ -93,6 +100,17 @@ class FigureCanvasPanel(FigureCanvasWxAgg):
             self.figure.set_facecolor((1, 1, 1))
             self.draw()
             self.Copy_to_Clipboard()
+
+    def MatplotlibEvent(self, event):
+        "Create dummy event to check in_axes"
+        return DummyMouseEvent(event.GetX(), self.figure.bbox.height - event.GetY())
+
+    def MatplotlibEventAxes(self, event):
+        "Find axes under a wxPython mouse event"
+        mpl_event = self.MatplotlibEvent(event)
+        for ax in self.figure.axes:
+            if ax.in_axes(mpl_event):
+                return ax
 
     def redraw(self, axes=[], artists=[]):
         self.restore_region(self._background)
