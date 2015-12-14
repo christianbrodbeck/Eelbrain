@@ -8015,14 +8015,15 @@ class UTS(Dimension):
 
             tmin = self.times[start]
             nsamples = stop - start
+            if nsamples < 0:
+                raise IndexError("Time index out of range: %s." % repr(index))
 
             if index.step is None:
                 tstep = self.tstep
             else:
                 tstep = self.tstep * index.step
         else:
-            err = ("Unupported index: %r" % index)
-            raise TypeError(err)
+            raise TypeError("Unsupported index: %r" % index)
 
         return UTS(tmin, tstep, nsamples)
 
