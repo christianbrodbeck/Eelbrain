@@ -6390,6 +6390,10 @@ class Dimension(object):
         "Return a str describing the dimension in on line (79 chars)"
         return str(self.name)
 
+    def _axis_im_extent(self):
+        "extent for im plots"
+        return -0.5, len(self) - 0.5
+
     def _axis_formatter(self):
         "Return a matplotlib axis formatter"
         raise NotImplementedError
@@ -7964,6 +7968,9 @@ class UTS(Dimension):
 
     def __repr__(self):
         return "UTS(%s, %s, %s)" % (self.tmin, self.tstep, self.nsamples)
+
+    def _axis_im_extent(self):
+        return self.tmin - 0.5 * self.tstep, self.tmax + 0.5 * self.tstep
 
     def _axis_formatter(self):
         return FuncFormatter(lambda x, pos: '%i' % round(1e3 * x))

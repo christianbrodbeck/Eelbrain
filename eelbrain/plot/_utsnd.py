@@ -137,19 +137,15 @@ class _ax_im_array(object):
         xdim = epoch.get_dim(x)
         if epoch.ndim == 2:
             xdim_i = epoch.dimnames.index(x)
-            ydim_i = {1:0, 0:1}[xdim_i]
+            ydim_i = abs(xdim_i - 1)
             y = epoch.dimnames[ydim_i]
         else:
-            err = ("Need 2 dimensions, got %i" % epoch.ndim)
-            raise ValueError(err)
-
+            raise ValueError("Need 2 dimensions, got %i" % epoch.ndim)
         ydim = epoch.get_dim(y)
-        if not ydim.adjacent:
-            ydim = _dta.Var(np.arange(len(ydim)), y)
 
         # plot
         overlay = False
-        extent = (xdim[0], xdim[-1], ydim[0], ydim[-1])
+        extent = xdim._axis_im_extent() + ydim._axis_im_extent()
         for l in layers:
             p = _plt_im_array(ax, l, overlay, (y, x), extent, interpolation,
                               vlims, cmaps, contours)
