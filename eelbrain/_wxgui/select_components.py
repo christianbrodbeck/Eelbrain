@@ -378,6 +378,9 @@ class Frame(FileFrame):
         if n_h >= 2 and n_h != self.n_h:
             self.plot()
 
+    def OnPlotCompTopomap(self, event):
+        self.PlotCompTopomap(event.EventObject.i)
+
     def OnPointerEntersAxes(self, event):
         sb = self.GetStatusBar()
         if event.inaxes:
@@ -415,6 +418,9 @@ class Frame(FileFrame):
         menu = ContextMenu(ax.i)
         item = menu.Append(wx.ID_ANY, "Rank Epochs")
         self.Bind(wx.EVT_MENU, self.OnRankEpochs, item)
+        menu.AppendSeparator()
+        item = menu.Append(wx.ID_ANY, "Plot Topomap")
+        self.Bind(wx.EVT_MENU, self.OnPlotCompTopomap, item)
 
         # show menu
         pos = self.panel.CalcScrolledPosition(event.Position)
