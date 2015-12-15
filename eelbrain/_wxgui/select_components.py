@@ -24,6 +24,7 @@ from .. import load, plot
 from .._data_obj import NDVar, Ordered, fft, isfactor
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID, REValidator
+from .._utils.parse import POS_FLOAT_PATTERN
 from .mpl_canvas import FigureCanvasPanel, CanvasFrame
 from .text import TextFrame
 from .history import Action, FileDocument, FileModel, FileFrame
@@ -333,23 +334,20 @@ class Frame(FileFrame):
 
     def OnFindRareEvents(self, event):
         n_events = self.config.ReadInt("FindRareEvents/n_events", 5)
-        dlg = FindRareEventsDialog(self, n_events)
+        threshold = self.config.ReadFloat("FindRareEvents/threshold", 2.)
+        dlg = FindRareEventsDialog(self, threshold, n_events)
         rcode = dlg.ShowModal()
         dlg.Destroy()
         if rcode != wx.ID_OK:
             return
-        n_events = dlg.GetValues()
+        threshold, n_events = dlg.GetValues()
         self.config.WriteInt("FindRareEvents/n_events", n_events)
+        self.config.WriteFloat("FindRareEvents/threshold", threshold)
 
-        def outliers(source, threshold=2.):
+        def outliers(source):
             y = source - source.mean()
-            # print y
-            # print y.std()
-            # print y / y.std()
             y /= y.std()
-            # print y
             y **= 2
-            # print y
             ss = y.sum('time')
             idx = np.flatnonzero(ss.x > threshold * ss.std())
             return source.epoch.values[idx]
@@ -365,8 +363,8 @@ class Frame(FileFrame):
                           style=wx.ICON_INFORMATION)
             return
 
-        items = ["Components that have strong relative loading on %i or fewer "
-                 "epochs:" % n_events, '']
+        items = ["Components that have strong relative loading (SS > %g STD) "
+                 "on %i or fewer epochs:" % (threshold, n_events), '']
         for i, epochs in res:
             items.append("# %i:  %s" % (i, ', '.join(map(str, epochs))))
 
@@ -815,7 +813,7 @@ class SourceFrame(CanvasFrame):
 
 
 class FindRareEventsDialog(EelbrainDialog):
-    def __init__(self, parent, n_events, *args, **kwargs):
+    def __init__(self, parent, threshold, n_events, *args, **kwargs):
         super(FindRareEventsDialog, self).__init__(parent, wx.ID_ANY,
                                                    "Find Rare Events", *args,
                                                    **kwargs)
@@ -830,6 +828,21 @@ class FindRareEventsDialog(EelbrainDialog):
         ctrl.SelectAll()
         sizer.Add(ctrl)
         self.n_events_ctrl = ctrl
+
+        # Threshold
+        sizer.Add(wx.StaticText(self, label="Threshold for rare epoch SS (in STD):"))
+        validator = REValidator(POS_FLOAT_PATTERN, "Invalid entry: {value}. Please "
+                                "specify a number > 0.", False)
+        ctrl = wx.TextCtrl(self, value=str(threshold), validator=validator)
+        ctrl.SetHelpText("Epochs whose SS exceeds this value (in STD) are considered rare")
+        ctrl.SelectAll()
+        sizer.Add(ctrl)
+        self.threshold_ctrl = ctrl
+
+        # default button
+        btn = wx.Button(self, wx.ID_DEFAULT, "Default Settings")
+        sizer.Add(btn, border=2)
+        btn.Bind(wx.EVT_BUTTON, self.OnSetDefault)
 
         # buttons
         button_sizer = wx.StdDialogButtonSizer()
@@ -848,4 +861,9 @@ class FindRareEventsDialog(EelbrainDialog):
         sizer.Fit(self)
 
     def GetValues(self):
-        return int(self.n_events_ctrl.GetValue())
+        return (float(self.threshold_ctrl.GetValue()),
+                int(self.n_events_ctrl.GetValue()))
+
+    def OnSetDefault(self, event):
+        self.threshold_ctrl.SetValue('2')
+        self.n_events_ctrl.SetValue('5')
