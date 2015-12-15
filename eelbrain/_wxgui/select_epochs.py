@@ -1230,6 +1230,7 @@ class Frame(FileFrame):
                         if ch in case.sensor.channel_idx]
             state = self.doc.accept[epoch_idx]
             ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0], yticks=[])
+            ax.text(0, 1.01, epoch_idx, va='bottom', ha='left', transform=ax.transAxes)
             h = _ax_bfly_epoch(ax, case, mark, state, **self._bfly_kwargs)
             # mark interpolated channels
             if self.doc.interpolate[epoch_idx]:
