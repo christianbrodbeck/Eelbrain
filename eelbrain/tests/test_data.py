@@ -661,8 +661,19 @@ def test_model():
     w = Var([1., 0., 0., 1., 1., 0.], 'w')
 
     # model repr
-    m = a * b
-    eq_(repr(m), "a + b + a % b")
+    m = a * b + v
+    eq_(repr(m), "a + b + a % b + v")
+    lines = ("intercept   a   b   a x b   v",
+             "-----------------------------",
+             "1           1   1   1       1",
+             "1           1   0   0       2",
+             "1           1   1   1       3",
+             "1           0   0   0       4",
+             "1           0   1   0       5",
+             "1           0   0   0       6")
+    eq_(str(m), '\n'.join(lines))
+    eq_(str(m.head(2)), '\n'.join(lines[:4]))
+    eq_(str(m.tail(2)), '\n'.join(lines[:2] + lines[-2:]))
 
     # model without explicit names
     x1 = Factor('ab', repeat=2)

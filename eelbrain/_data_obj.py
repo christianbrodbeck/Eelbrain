@@ -4244,6 +4244,20 @@ def as_legal_dataset_key(key):
             raise RuntimeError("Could not convert %r to legal dataset key")
 
 
+def cases_arg(cases, n_cases):
+    "coerce cases argument to iterator"
+    if isinstance(cases, int):
+        if cases < 1:
+            cases = n_cases + cases
+            if cases < 0:
+                raise ValueError("Can't get table for fewer than 0 cases")
+        else:
+            cases = min(cases, n_cases)
+        return xrange(cases)
+    else:
+        return cases
+
+
 class Dataset(OrderedDict):
     """
     Stores multiple variables pertaining to a common set of measurement cases
@@ -4695,15 +4709,7 @@ class Dataset(OrderedDict):
         lfmt : bool
             Include Datalists.
         """
-        if isinstance(cases, int):
-            if cases < 1:
-                cases = self.n_cases + cases
-                if cases < 0:
-                    raise ValueError("Can't get table for fewer than 0 cases")
-            else:
-                cases = min(cases, self.n_cases)
-            cases = xrange(cases)
-
+        cases = cases_arg(cases, self.n_cases)
         keys = [k for k, v in self.iteritems() if isuv(v) or (lfmt and isdatalist(v))]
         if sort:
             keys = sorted(keys)
@@ -5881,7 +5887,7 @@ class Model(object):
             return "Model((%s))" % x
 
     def __str__(self):
-        return str(self.get_table(cases=50))
+        return str(self.as_table())
 
     # container ---
     def __len__(self):
@@ -5948,48 +5954,6 @@ class Model(object):
     def model_eq(self):
         return self.name
 
-    def get_table(self, cases=None):
-        """Return a table with the model codes
-
-        Parameters
-        ----------
-        cases : int
-            Number of cases (lines) after which to truncate the table (default
-            is all cases).
-
-        Returns
-        --------
-        table : FMText Table
-            The full model as a table.
-        """
-        full_model = self.full
-        if cases is None:
-            cases = len(full_model)
-        else:
-            cases = min(cases, len(full_model))
-        n_cols = full_model.shape[1]
-        table = fmtxt.Table('l' * n_cols)
-        table.cell("Intercept")
-        for e in self.effects:
-            table.cell(e.name, width=e.df)
-
-        # rules
-        i = 2
-        for e in self.effects:
-            j = i + e.df - 1
-            if e.df > 1:
-                table.midrule((i, j))
-            i = j + 1
-
-        # data
-        for line in full_model[:cases]:
-            for i in line:
-                table.cell(i)
-
-        if cases < len(full_model):
-            table.cell('...')
-        return table
-
     # coding ---
     @LazyProperty
     def _effect_to_beta(self):
@@ -6011,6 +5975,47 @@ class Model(object):
     @LazyProperty
     def as_effects(self):
         return np.hstack((e.as_effects for e in self.effects))
+
+    def as_table(self, method='dummy', cases=0, group_terms=True):
+        """Return a table with the model codes
+
+        Parameters
+        ----------
+        method : 'effect' | 'dummy'
+            Coding scheme: effect coding or dummy coding.
+        cases : int | iterator of int
+            Cases to include (int includes that many cases from the beginning,
+            0 includes all; negative number works like negative indexing).
+        group_terms : bool
+            Group model columns that represent the same effect under one
+            heading.
+
+        Returns
+        --------
+        table : FMText Table
+            The full model as a table.
+        """
+        cases = cases_arg(cases, self._n_cases)
+        p = self._parametrize(method)
+        table = fmtxt.Table('l' * len(p.column_names))
+
+        # Header
+        if group_terms:
+            for term in p.effect_names:
+                index = p.terms[term]
+                ncolumns = index.stop - index.start
+                table.cell(term, width=ncolumns)
+        else:
+            for term in p.column_names:
+                table.cell(term)
+        table.midrule()
+
+        # data
+        for case in cases:
+            for i in p.x[case]:
+                table.cell('%g' % i)
+
+        return table
 
     def fit(self, Y):
         """
@@ -6047,6 +6052,10 @@ class Model(object):
             self.full_index[e] = slice(i, j)
             i = j
         return out
+
+    def head(self, n=10):
+        "Table with the first n cases in the Model"
+        return self.as_table(cases=n)
 
     # checking model properties
     def check(self, v=True):
@@ -6102,6 +6111,10 @@ class Model(object):
         effects = [e.repeat(n) for e in self.effects]
         return Model(effects)
 
+    def tail(self, n=10):
+        "Table with the last n cases in the Model"
+        return self.as_table(cases=xrange(-n, 0))
+
     @LazyProperty
     def xsinv(self):
         x = self.full
@@ -6116,11 +6129,19 @@ class Parametrization(object):
     ----------
     model : Model
         Model to be parametrized.
+    method : 'effect' | 'dummy'
+        Coding scheme: effect coding or dummy coding.
 
     Attributes
     ----------
+    model : Model
+        The model that is parametrized.
     x : array (n_cases, n_coeffs)
         Design matrix.
+    terms : {str: slice}
+        Location of each term in x.
+    column_names : list of str
+        Name of each column.
 
     Notes
     -----
@@ -6132,6 +6153,7 @@ class Parametrization(object):
         x = np.empty((model._n_cases, model.df))
         x[:, 0] = 1
         column_names = ['intercept']
+        effect_names = ['intercept']
         higher_level_effects = {}
         terms = {'intercept': slice(0, 1)}
         i = 1
@@ -6147,6 +6169,7 @@ class Parametrization(object):
             if name in terms:
                 raise KeyError("Duplicate term name: %s" % repr(name))
             terms[name] = slice(i, j)
+            effect_names.append(name)
             col_names = e._coefficient_names(method)
             column_names.extend(col_names)
             for col, col_name in enumerate(col_names, i):
@@ -6163,6 +6186,7 @@ class Parametrization(object):
         self.x = x
         self.terms = terms
         self.column_names = column_names
+        self.effect_names = effect_names
         self._higher_level_effects = higher_level_effects
 
         # projector

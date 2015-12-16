@@ -13,6 +13,8 @@ New in 0.21
     :attr:`MneExperiment.epochs`).
 
 * New :class:`Factor` method:  :meth:`Factor.floodfill`.
+* :class:`Model` methods: :meth:`~Model.get_table` replaced with
+  :meth:`~Model.as_table`, new :meth:`~Model.head` and :meth:`~Model.tail`.
 
 
 New in 0.20
