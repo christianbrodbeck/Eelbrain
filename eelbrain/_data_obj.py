@@ -5592,6 +5592,8 @@ class Interaction(_Effect):
         return reduce(_effect_interaction, codelist)
 
     def _coefficient_names(self, method):
+        if self.df == 1:
+            return [self.name]
         return ["%s %i" % (self.name, i) for i in xrange(self.df)]
 
     def as_labels(self, delim=' '):
