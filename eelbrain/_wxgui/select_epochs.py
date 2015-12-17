@@ -12,6 +12,7 @@
 
 from __future__ import division
 
+from copy import deepcopy
 from logging import getLogger
 import math
 import os
@@ -23,9 +24,10 @@ import wx
 
 from .. import load, save, plot
 from .._data_obj import Dataset, Factor, Var, Datalist, corr, asndvar, combine
+from .. import _meeg as meeg
 from .._names import INTERPOLATE_CHANNELS
 from .._info import BAD_CHANNELS
-from .._utils.parse import FLOAT_PATTERN
+from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN
 from ..plot._base import find_axis_params_data, find_axis_params_dim, \
     find_fig_vlims
 from ..plot._nuts import _plt_bin_nuts
@@ -37,12 +39,22 @@ from .app import get_app
 from .frame import EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
 from .history import Action, FileDocument, FileModel, FileFrame
+from .text import TextFrame
 
 
 # IDs
 MEAN_PLOT = -1
 TOPO_PLOT = -2
 OUT_OF_RANGE = -3
+
+
+def format_epoch_list(l):
+    d = meeg.channel_listlist_to_dict(l)
+    if not d:
+        return ["None."]
+    chs = sorted(d, key=lambda x: -len(d[x]))
+    return ["%s (%i): %s" % (ch, len(d[ch]), ', '.join(map(str, d[ch]))) for
+            ch in chs]
 
 
 class ChangeAction(Action):
@@ -496,6 +508,27 @@ class Model(FileModel):
         logger.info("Clearing %i rejections" % index.sum())
         self.history.do(action)
 
+    def find_noisy_channels(self, flat, flat_average, mincorr):
+        bads, interp = meeg.find_bad_channels(self.doc.epochs, flat, flat_average, mincorr)
+        new_interp = deepcopy(self.doc.interpolate)
+        new_interp._update_listlist(interp)
+
+        # find changed bad channels
+        old_bad_chs = self.doc.bad_channel_names
+        if any(b not in old_bad_chs for b in bads):
+            new_bad_chs = sorted(set(old_bad_chs).union(bads))
+        else:
+            new_bad_chs = old_bad_chs = None
+
+        # find interpolation changes
+        index = np.flatnonzero(new_interp != self.doc.interpolate)
+        old = deepcopy(self.doc.interpolate[index])
+        new = new_interp[index]
+        action = ChangeAction("Auto-interpolate", index,
+                              old_bad_chs=old_bad_chs, new_bad_chs=new_bad_chs,
+                              old_interpolate=old, new_interpolate=new)
+        self.history.do(action)
+
     def load(self, path):
         new_accept, new_tag, new_interpolate, new_bad_chs = self.doc.read_rej_file(path)
 
@@ -749,6 +782,9 @@ class Frame(FileFrame):
         item = menu.Append(wx.ID_ANY, "Auto-Reject by Threshold",
                            "Reject epochs based in a specific threshold")
         app.Bind(wx.EVT_MENU, self.OnThreshold, item)
+        item = menu.Append(wx.ID_ANY, "Find Bad Channels",
+                           "Find bad channels using different criteria")
+        app.Bind(wx.EVT_MENU, self.OnFindNoisyChannels, item)
         menu.AppendSeparator()
         item = menu.Append(wx.ID_ANY, "Plot Grand Average",
                            "Plot the grand average of all accepted epochs "
@@ -814,6 +850,33 @@ class Frame(FileFrame):
             self.ToggleChannelInterpolation(ax, event)
         elif event.key == 'I':
             self.OnSetInterpolation(ax.epoch_idx)
+
+    def OnFindNoisyChannels(self, event):
+        dlg = FindNoisyChannelsDialog(self)
+        if dlg.ShowModal() == wx.ID_OK:
+            flat, flat_average, mincorr = dlg.GetValues()
+            if dlg.do_report.GetValue():
+                msg = ["Noisy Channel Detection (%i Epochs)" % len(self.doc.epochs)]
+                if flat_average:
+                    msg.append("\nFlat in the average (<%s):" % flat_average)
+                    bads = meeg.find_flat_evoked(self.doc.epochs, flat_average)
+                    if bads:
+                        msg.append(', '.join(bads))
+                    else:
+                        msg.append("None.")
+                if flat:
+                    bads = meeg.find_flat_epochs(self.doc.epochs, flat)
+                    msg.append("\nFlat Channels (<%s):" % flat)
+                    msg += format_epoch_list(bads)
+                if mincorr:
+                    bads = meeg.find_noisy_channels(self.doc.epochs, mincorr)
+                    msg.append("\nNeighbor correlation < %s:" % mincorr)
+                    msg += format_epoch_list(bads)
+                TextFrame(self, "Noisy Channels", os.linesep.join(msg))
+            else:
+                self.model.find_noisy_channels(flat, flat_average, mincorr)
+            dlg.StoreConfig()
+        dlg.Destroy()
 
     def OnForward(self, event):
         "turns the page forward"
@@ -1413,6 +1476,108 @@ class TerminalInterface(object):
         app.SetTopWindow(self.frame)
         if not app.IsMainLoopRunning():
             app.MainLoop()
+
+
+class FindNoisyChannelsDialog(EelbrainDialog):
+    def __init__(self, parent, *args, **kwargs):
+        EelbrainDialog.__init__(self, parent, wx.ID_ANY, "Find Noisy Channels",
+                                *args, **kwargs)
+        # load config
+        config = parent.config
+        flat = config.ReadFloat("FindNoisyChannels/flat", 1e-13)
+        flat_average = config.ReadFloat("FindNoisyChannels/flat_average", 1e-14)
+        corr = config.ReadFloat("FindNoisyChannels/mincorr", 0.35)
+        do_report = config.ReadBool("FindNoisyChannels/do_report", False)
+
+        # construct layout
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        # flat channels
+        sizer.Add(wx.StaticText(self, label="Threshold for flat channels:"))
+        msg = ("Invalid entry for flat channel threshold: {value}. Please "
+               "specify a number > 0.")
+        validator = REValidator(POS_FLOAT_PATTERN, msg, False)
+        ctrl = wx.TextCtrl(self, value=str(flat), validator=validator)
+        ctrl.SetHelpText("A channel that does not deviate from 0 by more than "
+                         "this value is considered flat.")
+        ctrl.SelectAll()
+        sizer.Add(ctrl)
+        self.flat_ctrl = ctrl
+
+        # flat channels in average
+        sizer.Add(wx.StaticText(self, label="Threshold for flat channels in average:"))
+        msg = ("Invalid entry for average flat channel threshold: {value}. Please "
+               "specify a number > 0.")
+        validator = REValidator(POS_FLOAT_PATTERN, msg, False)
+        ctrl = wx.TextCtrl(self, value=str(flat_average), validator=validator)
+        ctrl.SetHelpText("A channel that does not deviate from 0 by more than "
+                         "this value in the average of all epochs is "
+                         "considered flat.")
+        sizer.Add(ctrl)
+        self.flat_average_ctrl = ctrl
+
+        # Correlation
+        sizer.Add(wx.StaticText(self, label="Threshold for channel to neighbor correlation:"))
+        msg = ("Invalid entry for channel neighbor correlation: {value}. Please "
+               "specify a number > 0.")
+        validator = REValidator(POS_FLOAT_PATTERN, msg, False)
+        ctrl = wx.TextCtrl(self, value=str(corr), validator=validator)
+        ctrl.SetHelpText("A channel is considered noisy if the average of the "
+                         "correlation with its neighbors is smaller than this "
+                         "value.")
+        sizer.Add(ctrl)
+        self.mincorr_ctrl = ctrl
+
+        # output
+        sizer.AddSpacer(4)
+        sizer.Add(wx.StaticText(self, label="Create report (instead of marking channels)"))
+        self.do_report = wx.CheckBox(self, wx.ID_ANY, "Report")
+        self.do_report.SetValue(do_report)
+        sizer.Add(self.do_report)
+
+        # default button
+        sizer.AddSpacer(4)
+        btn = wx.Button(self, wx.ID_DEFAULT, "Default Settings")
+        sizer.Add(btn, border=2)
+        btn.Bind(wx.EVT_BUTTON, self.OnSetDefault)
+
+        # buttons
+        button_sizer = wx.StdDialogButtonSizer()
+        # ok
+        btn = wx.Button(self, wx.ID_OK)
+        btn.SetDefault()
+        button_sizer.AddButton(btn)
+        # cancel
+        btn = wx.Button(self, wx.ID_CANCEL)
+        button_sizer.AddButton(btn)
+        # finalize
+        button_sizer.Realize()
+        sizer.Add(button_sizer)
+
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+
+    def GetValues(self):
+        return (float(self.flat_ctrl.GetValue()),
+                float(self.flat_average_ctrl.GetValue()),
+                float(self.mincorr_ctrl.GetValue()))
+
+    def OnSetDefault(self, event):
+        self.flat_ctrl.SetValue('1e-13')
+        self.flat_average_ctrl.SetValue('1e-14')
+        self.mincorr_ctrl.SetValue('0.35')
+
+    def StoreConfig(self):
+        config = self.Parent.config
+        config.WriteFloat("FindNoisyChannels/flat",
+                          float(self.flat_ctrl.GetValue()))
+        config.WriteFloat("FindNoisyChannels/flat_average",
+                          float(self.flat_average_ctrl.GetValue()))
+        config.WriteFloat("FindNoisyChannels/mincorr",
+                          float(self.mincorr_ctrl.GetValue()))
+        config.WriteBool("FindNoisyChannels/do_report",
+                         self.do_report.GetValue())
+        config.Flush()
 
 
 class ThresholdDialog(EelbrainDialog):
