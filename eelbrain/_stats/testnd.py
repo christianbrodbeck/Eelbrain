@@ -23,7 +23,7 @@ n_samples : None | int
 from __future__ import division, print_function
 
 from datetime import datetime, timedelta
-from itertools import chain, izip
+from itertools import izip
 from math import ceil
 from multiprocessing import Process, cpu_count
 from multiprocessing.queues import SimpleQueue
