@@ -11,6 +11,11 @@ New in 0.21
 
   - New epoch parameters: ``trigger_shift`` and ``vars`` (see
     :attr:`MneExperiment.epochs`).
+  - :meth:`~MneExperiment.load_selected_events`: new ``vardef`` parameter to
+    load variables from a test definition.
+  - Log files stored in the root directory.
+  - Parcellations (:attr:`MneExperiment.parcs`) based on combinations can also
+    include split commands.
 
 * New :class:`Factor` method:  :meth:`Factor.floodfill`.
 * :class:`Model` methods: :meth:`~Model.get_table` replaced with

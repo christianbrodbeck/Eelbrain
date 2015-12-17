@@ -1568,6 +1568,15 @@ class MneExperiment(FileTree):
 
     @staticmethod
     def _add_vars(ds, vardef):
+        """Add vars to the dataset
+
+        Parameters
+        ----------
+        ds : Dataset
+            Event dataset.
+        vardef : dict
+            Variable definition.
+        """
         new = {}
         for name, definition in vardef.iteritems():
             if isinstance(definition, str):

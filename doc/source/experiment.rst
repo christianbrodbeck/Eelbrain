@@ -266,6 +266,14 @@ post_baseline_trigger_shift : str
     are used to crop the resulting epochs appropriately, to the region from
     ``new_tmin = epoch['tmin'] - post_baseline_trigger_shift_min`` to
     ``new_tmax = epoch['tmax'] - post_baseline_trigger_shift_max``.
+vars : dict
+    Add new variables only for this epoch.
+    Each entry specifies a variable with the following schema:
+    ``{name: definition}``. ``definition`` can be either a string that is
+    evaluated in the events-:class:`Dataset`, or a
+    ``(source_name, {value: code})``-tuple.
+    ``source_name`` can also be an interaction, in which case cells are joined
+    with spaces (``"f1_cell f2_cell"``).
 
 A secondary epoch can be defined using a ``sel_epoch`` or ``base`` entry.
 Secondary epochs inherit trial rejection from a primary epoch.
@@ -392,9 +400,9 @@ stage 1 : str
     Stage 1 model specification. Coding for categorial predictors uses 0/1 dummy
     coding.
 vars : dict (optional)
-    Optional method for adding new variables for the stage 1 model.
-    This is useful for specifying coding schemes based on categorial
-    variables. Each entry specifies a variable with the following schema:
+    Add new variables for the stage 1 model. This is useful for specifying
+    coding schemes based on categorial variables.
+    Each entry specifies a variable with the following schema:
     ``{name: definition}``. ``definition`` can be either a string that is
     evaluated in the events-:class:`Dataset`, or a
     ``(source_name, {value: code})``-tuple (see example below).
@@ -479,6 +487,16 @@ Examples (these are pre-defined parcellations)::
              'lobes-ot': {'kind': 'combination',
                           'base': 'lobes',
                           'labels': {'occipitotemporal': "occipital + temporal"}}}
+
+
+An example using a split label::
+
+    parcs = {'medial': {'kind': 'combination', 'base': 'aparc',
+                        'labels': {'medialparietal': 'precuneus +'
+                                                     'posteriorcingulate',
+                                   'medialfrontal': 'medialorbitofrontal +'
+                                                    'rostralanteriorcingulate +'
+                                                    'split(superiorfrontal, 3)[2]'}}}
 
 
 MNI coordinates
