@@ -167,6 +167,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         'raw-cache-base': os.path.join('{raw-cache-dir}', '{subject}', '{experiment} {raw_kind}'),
         'cached-raw-file': '{raw-cache-base}-raw.fif',
         'event-file': '{raw-cache-base}-evts.pickled',
+        'interp-file': '{raw-cache-base}-interp.pickled',
         # mne secondary/forward modeling
         'proj-file': '{raw-cache-base}_{proj}-proj.fif',
         'fwd-file': '{raw-cache-base}_{mrisubject}-{src}-fwd.fif',
@@ -2104,7 +2105,16 @@ class MneExperiment(FileTree):
             # interpolate channels
             if reject and ds.info[INTERPOLATE_CHANNELS]:
                 if modality == '':
-                    _interpolate_bads_meg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
+                    interp_path = self.get('interp-file')
+                    if os.path.exists(interp_path):
+                        interp_cache = load.unpickle(interp_path)
+                    else:
+                        interp_cache = {}
+                    n_in_cache = len(interp_cache)
+                    _interpolate_bads_meg(ds['epochs'], ds[INTERPOLATE_CHANNELS],
+                                          interp_cache)
+                    if len(interp_cache) > n_in_cache:
+                        save.pickle(interp_cache, interp_path)
                 else:
                     _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
 

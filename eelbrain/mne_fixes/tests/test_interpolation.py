@@ -15,12 +15,12 @@ def test_interpolation():
     epochs1 = test_epochs.copy()
     epochs3 = test_epochs.copy()
 
-    _interpolate_bads_meg(test_epochs, bads_list)
+    _interpolate_bads_meg(test_epochs, bads_list, {})
     assert_array_equal(test_epochs._data[0], epochs1._data[0])
     assert_array_equal(test_epochs._data[2], epochs1._data[2])
     epochs1.info['bads'] = bads1
-    epochs1.interpolate_bads(mode='fast')
+    epochs1.interpolate_bads(mode='accurate')
     assert_array_almost_equal(test_epochs._data[1], epochs1._data[1], 25)
     epochs3.info['bads'] = bads3
-    epochs3.interpolate_bads(mode='fast')
+    epochs3.interpolate_bads(mode='accurate')
     assert_array_almost_equal(test_epochs._data[3], epochs3._data[3], 25)
