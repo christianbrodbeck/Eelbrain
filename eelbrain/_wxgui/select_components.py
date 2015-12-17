@@ -376,6 +376,9 @@ class Frame(FileFrame):
         if n_h >= 2 and n_h != self.n_h:
             self.plot()
 
+    def OnPlotCompSourceArray(self, event):
+        self.PlotCompSourceArray(event.EventObject.i)
+
     def OnPlotCompTopomap(self, event):
         self.PlotCompTopomap(event.EventObject.i)
 
@@ -419,6 +422,8 @@ class Frame(FileFrame):
         menu.AppendSeparator()
         item = menu.Append(wx.ID_ANY, "Plot Topomap")
         self.Bind(wx.EVT_MENU, self.OnPlotCompTopomap, item)
+        item = menu.Append(wx.ID_ANY, "Plot Source Array")
+        self.Bind(wx.EVT_MENU, self.OnPlotCompSourceArray, item)
 
         # show menu
         pos = self.panel.CalcScrolledPosition(event.Position)
