@@ -95,6 +95,24 @@ def _time_window_str(window, delim='-'):
     return delim.join(map(_time_str, window))
 
 
+def assert_is_primary_epoch(epoch, caller):
+    "epoch params/str"
+    if 'sel_epoch' in epoch:
+        msg = ("The current epoch {cur!r} inherits rejections from "
+               "{sel!r}. To access a rejection file for this epoch, call "
+               "`e.set(epoch={sel!r})` and then `e.{caller}()` "
+               "again.".format(cur=epoch['name'], sel=epoch['sel_epoch'],
+                               caller=caller))
+        raise ValueError(msg)
+    elif 'sub_epochs' in epoch:
+        msg = ("The current epoch {cur!r} inherits rejections from these "
+               "other epochs: {sel!r}. To access trial rejection for these "
+               "epochs, call `e.set(epoch=epoch)` and then `e.{caller}()` "
+               "again.".format(cur=epoch['name'], sel=epoch['sub_epochs'],
+                               caller=caller))
+        raise ValueError(msg)
+
+
 class DictSet(object):
     """Helper class for list of dicts without duplicates"""
     def __init__(self):
@@ -158,6 +176,7 @@ temp = {'eelbrain-log-file': os.path.join('{root}', 'eelbrain {experiment}.log')
         'bads-file': os.path.join('{raw-dir}', '{subject}_{bads-compound}-bad_channels.txt'),
         'rej-dir': os.path.join('{meg-dir}', 'epoch selection'),
         'rej-file': os.path.join('{rej-dir}', '{experiment}_{sns_kind}_{epoch}-{rej}.pickled'),
+        'ica-file': os.path.join('{rej-dir}', '{experiment} {sns_kind} {rej}-ica.fif'),
 
         # cache
         'cache-dir': os.path.join('{root}', 'eelbrain-cache'),
@@ -325,7 +344,9 @@ class MneExperiment(FileTree):
     # decim : int
     #     Decim factor for the rejection GUI (default is to use epoch setting).
     _epoch_rejection = {'': {'kind': None},
-                        'man': {'kind': 'manual', 'interpolation': True}}
+                        'man': {'kind': 'manual',
+                                'interpolation': True,  # enable by-epoch channel interpolation
+                                }}
     epoch_rejection = {}
 
     exclude = {}  # field_values to exclude (e.g. subjects)
@@ -649,7 +670,7 @@ class MneExperiment(FileTree):
         # store epoch rejection settings
         epoch_rejection = self._epoch_rejection.copy()
         for name, params in self.epoch_rejection.iteritems():
-            if params['kind'] not in ('manual', 'make'):
+            if params['kind'] not in ('manual', 'make', 'ica'):
                 raise ValueError("Invalid value in %r rejection setting: "
                                  "kind=%r" % (name, params['kind']))
             epoch_rejection[name] = params.copy()
@@ -1282,18 +1303,43 @@ class MneExperiment(FileTree):
         if mtime:
             return max(mtime, self._inv_mtime())
 
+    def _ica_mtime(self, rej):
+        ica_epoch = self._epochs[rej['epoch']]
+        mtime = self._rej_mtime(ica_epoch, pre_ica=True)
+        if mtime:
+            ica_path = self.get('ica-file')
+            if os.path.exists(ica_path):
+                ica_mtime = os.path.getmtime(ica_path)
+                if ica_mtime > mtime:
+                    return ica_mtime
+
     def _inv_mtime(self):
         return max(os.path.getmtime(self._get_raw_path(make=True)),
                    os.path.getmtime(self.get('fwd-file', make=True)),
                    os.path.getmtime(self.get('cov-file', make=True)))
 
-    def _rej_mtime(self, epoch):
-        "rej-file mtime for secondary epoch definition"
+    def _rej_mtime(self, epoch, pre_ica=False):
+        """rej-file mtime for secondary epoch definition
+
+        Parameters
+        ----------
+        epoch : dict
+            Epoch definition.
+        pre_ica : bool
+            Only analyze mtime before ICA file estimation.
+        """
         epochs = epoch.get('_rej_file_epochs', None) or (epoch['name'],)
         with self._temporary_state:
             paths = [self.get('rej-file', epoch=e) for e in epochs]
         if all(os.path.exists(path) for path in paths):
-            return max(os.path.getmtime(path) for path in paths)
+            mtime = max(os.path.getmtime(path) for path in paths)
+            rej = self._epoch_rejection[self.get('rej')]
+            if pre_ica or rej['kind'] != 'ica':
+                return mtime
+            # incorporate ICA-file
+            ica_mtime = self._ica_mtime(rej)
+            if ica_mtime > mtime:
+                return ica_mtime
 
     def _result_mtime(self, dst, data, cached_test=False, single_subject=False):
         """For several results (reports and movies)
@@ -1996,7 +2042,7 @@ class MneExperiment(FileTree):
     def load_epochs(self, subject=None, baseline=False, ndvar=True,
                     add_bads=True, reject=True, add_proj=True, cat=None,
                     decim=None, pad=0, data_raw=False, vardef=None,
-                    eog=False, trigger_shift=True, **kwargs):
+                    eog=False, trigger_shift=True, apply_ica=True, **kwargs):
         """
         Load a Dataset with epochs for a given epoch definition
 
@@ -2041,6 +2087,9 @@ class MneExperiment(FileTree):
         trigger_shift : bool
             Apply post-baseline trigger-shift if it applies to the epoch
             (default True).
+        apply_ica : bool
+            If the current rej setting uses ICA, remove the excluded ICA
+            components from the Epochs.
         """
         modality = self.get('modality')
         if ndvar:
@@ -2071,8 +2120,15 @@ class MneExperiment(FileTree):
             ds['epochs'] = mne.epochs.add_channels_epochs((ds['epochs'], eeg_epochs))
         else:  # single subject, single modality
             epoch = self._epochs[self.get('epoch')]
+
+            # determine baseline
+            apply_ica = (reject and apply_ica and
+                         self._epoch_rejection[self.get('rej')]['kind'] == 'ica')
             if baseline is True:
                 baseline = epoch['baseline']
+            if apply_ica:
+                post_ica_baseline = baseline
+                baseline = None
 
             ds = self.load_selected_events(add_bads=add_bads, reject=reject,
                                            add_proj=add_proj,
@@ -2122,6 +2178,18 @@ class MneExperiment(FileTree):
                         save.pickle(interp_cache, interp_path)
                 else:
                     _interpolate_bads_eeg(ds['epochs'], ds[INTERPOLATE_CHANNELS])
+
+            # ICA
+            if apply_ica:
+                path = self.get('ica-file')
+                if not os.path.exists(path):
+                    raise RuntimeError("ICA file does not exist at %s. Run "
+                                       "e.make_ica_selection() to create it." %
+                                       os.path.relpath(path, self.get('root')))
+                ica = mne.preprocessing.read_ica(path)
+                ica.apply(ds['epochs'])
+                if post_ica_baseline:
+                    ds['epochs'].apply_baseline(post_ica_baseline)
 
             if not data_raw:
                 del ds.info['raw']
@@ -2743,20 +2811,17 @@ class MneExperiment(FileTree):
                 raise RuntimeError(err)
 
             # rejection
-            rej_params = self._epoch_rejection[self.get('rej')]
-            if reject and rej_params['kind']:
+            if reject:
+                rej_params = self._epoch_rejection[self.get('rej')]
                 path = self.get('rej-file')
-                if not os.path.exists(path):
-                    if rej_params['kind'] == 'manual':
-                        raise RuntimeError("The rejection file at %r does not "
-                                           "exist. Run .make_rej() first." % path)
-                    else:
-                        raise RuntimeError("The rejection file at %r does not "
-                                           "exist and has to be user-generated."
-                                           % path)
+                if os.path.exists(path):
+                    ds_sel = load.unpickle(path)
+                else:
+                    rpath = self._get_rel('rej-file', 'root')
+                    raise RuntimeError("The rejection file at %s does not "
+                                       "exist. Run .make_rej() first." % rpath)
 
-                # load and check file
-                ds_sel = load.unpickle(path)
+                # check file
                 if not np.all(ds['trigger'] == ds_sel['trigger']):
                     if np.all(ds[:-1, 'trigger'] == ds_sel['trigger']):
                         ds = ds[:-1]
@@ -2766,7 +2831,7 @@ class MneExperiment(FileTree):
                         raise RuntimeError("The epoch selection file contains different "
                                            "events than the data. Something went wrong...")
 
-                if rej_params.get('interpolation', True) and INTERPOLATE_CHANNELS in ds_sel:
+                if rej_params['interpolation'] and INTERPOLATE_CHANNELS in ds_sel:
                     ds[INTERPOLATE_CHANNELS] = ds_sel[INTERPOLATE_CHANNELS]
                     ds.info[INTERPOLATE_CHANNELS] = True
                 else:
@@ -3355,6 +3420,71 @@ class MneExperiment(FileTree):
                 raise RuntimeError(msg)
         mne.write_forward_solution(dst, fwd, True)
 
+    def make_ica_selection(self):
+        path, ds = self.make_ica(True)
+        self._g = gui.select_components(path, ds)
+
+    def make_ica(self, return_data=False):
+        """Compute the ICA decomposition is it does not exist
+
+        Parameters
+        ----------
+        return_data : bool
+            Return the data the ICA was computed from. If False (default), the
+            data is only loaded if the ICA decomposition does not already exist,
+            leading to faster execution time.
+
+
+        Returns
+        -------
+        path : str
+            Path to the ICA file.
+        [ds : Dataset]
+            Dataset with the epoch data the ICA is based on (only if
+            ``return_data`` is ``True``)
+
+
+        Notes
+        -----
+        ICA decomposition can take some time. This function can be used to
+        precompute ICA decompositions for all subjects after trial pre-rejection
+        has been completed::
+
+            >>> for s in e:
+            ...     e.make_ica()
+
+        """
+        params = self._epoch_rejection[self.get('rej')]
+        if params['kind'] != 'ica':
+            raise RuntimeError("Current rej (%s) does not involve ICA" %
+                               self.get('rej'))
+
+        epoch = params['epoch']
+
+        rej_mtime = self._rej_mtime(self._epochs[epoch])
+        path = self.get('ica-file', mkdir=True)
+        if rej_mtime:
+            make = False
+            load_data = return_data
+        else:
+            make = load_data = True
+
+        if load_data:
+            with self._temporary_state:
+                ds = self.load_epochs(ndvar=False, apply_ica=False, epoch=epoch)
+
+        if make:
+            ica = mne.preprocessing.ICA(params['n_components'],
+                                        random_state=params['random_state'],
+                                        method=params['method'])
+            ica.fit(ds['epochs'])
+            ica.save(path)
+
+        if return_data:
+            return path, ds
+        else:
+            return path
+
     def make_link(self, temp, field, src, dst, redo=False):
         """Make a hard link at the file with the dst value on field, linking to
         the file with the src value of field
@@ -3864,25 +3994,13 @@ class MneExperiment(FileTree):
             Kwargs for SelectEpochs
         """
         rej_args = self._epoch_rejection[self.get('rej')]
-        if not rej_args['kind'] == 'manual':
+        if rej_args['kind'] not in ('manual', 'ica'):
             err = ("Epoch rejection kind for rej=%r is not manual."
                    % self.get('rej'))
             raise RuntimeError(err)
 
         epoch = self._epochs[self.get('epoch')]
-        if 'sel_epoch' in epoch:
-            msg = ("The current epoch {cur!r} inherits rejections from "
-                   "{sel!r}. To access a rejection file for this epoch, call "
-                   "`e.set(epoch={sel!r})` and then `e.make_rej()` "
-                   "again.".format(cur=epoch['name'], sel=epoch['sel_epoch']))
-            raise ValueError(msg)
-        elif 'sub_epochs' in epoch:
-            msg = ("The current epoch {cur!r} inherits rejections from these "
-                   "other epochs: {sel!r}. To access trial rejection for these "
-                   "epochs, call `e.set(epoch=epoch)` and then `e.make_rej()` "
-                   "again.".format(cur=epoch['name'], sel=epoch['sub_epochs']))
-            raise ValueError(msg)
-
+        assert_is_primary_epoch(epoch, 'make_rej')
         path = self.get('rej-file', mkdir=True)
         modality = self.get('modality')
 
@@ -5049,8 +5167,20 @@ class MneExperiment(FileTree):
         epoch_name = self.get('epoch')
         rej_name = self.get('rej')
         rej = self._epoch_rejection[rej_name]
+        has_ica = rej['kind'] == 'ica'
 
-        dss = [self.load_selected_events(reject='keep') for _ in self]
+        dss = []
+        if has_ica:
+            n_icas = []
+        for _ in self:
+            dss.append(self.load_selected_events(reject='keep'))
+            if has_ica:
+                ica_path = self.get('ica-file')
+                if os.path.exists(ica_path):
+                    ica = mne.preprocessing.read_ica(ica_path)
+                    n_icas.append(len(ica.exclude))
+                else:
+                    n_icas.append(np.nan)
 
         caption = ("Rejection info for epoch=%s, rej=%s. Percent is rounded to "
                    "one decimal." % (epoch_name, rej_name))
@@ -5070,6 +5200,8 @@ class MneExperiment(FileTree):
         if rej['interpolation']:
             av_n_ch = [np.mean([len(chi) for chi in ds[INTERPOLATE_CHANNELS]]) for ds in dss]
             out['ch_interp'] = Var(np.round(av_n_ch, 1))
+        if has_ica:
+            out['ics_rejected'] = Var(n_icas)
 
         if asds:
             return out
