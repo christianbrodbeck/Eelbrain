@@ -17,6 +17,7 @@ from math import ceil
 import mne
 from matplotlib.patches import Rectangle
 import numpy as np
+from scipy import linalg
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
@@ -104,6 +105,13 @@ class Document(FileDocument):
         epoch_dim = Ordered('epoch', epoch_index)
         self.sources = NDVar(data, ('case', epoch_dim, self.epochs_ndvar.time),
                              info={'meas': 'component', 'cmap': 'xpolar'})
+
+        # global mean (which is not modified by ICA)
+        if ica.noise_cov is None:  # revert standardization
+            global_mean = ica.pca_mean_ * ica._pre_whitener[:, 0]
+        else:
+            global_mean = np.dot(linalg.pinv(ica._pre_whitener), ica.pca_mean_)
+        self.global_mean = NDVar(global_mean, (self.epochs_ndvar.sensor,))
 
         # publisher
         self._case_change_subscriptions = []
@@ -513,13 +521,17 @@ class Frame(FileFrame):
             original_epoch = self.doc.epochs.average()
             name = "Epochs Average"
             vmax = None
+            ndvar = load.fiff.evoked_ndvar
         else:
             original_epoch = self.doc.epochs[i_epoch]
             name = "Epoch %i" % self.doc.sources.epoch[i_epoch]
             vmax = 2e-12
-        clean_epoch = self.doc.apply(original_epoch)
-        plot.TopoButterfly([original_epoch, clean_epoch], vmax=vmax,
-                           title=name, axlabel=("Original", "Cleaned"))
+            ndvar = load.fiff.epochs_ndvar
+        clean_epoch = self.doc.apply(original_epoch, copy=True)
+        original_ndvar = ndvar(original_epoch) - self.doc.global_mean
+        clean_ndvar = ndvar(clean_epoch) - self.doc.global_mean
+        plot.TopoButterfly([original_ndvar, clean_ndvar], vmax=vmax,
+                           title=name, axlabel=("Original", "Cleaned"))#, "Baselined Cleaned"))
 
     def ShowSources(self, i_first):
         SourceFrame(self, i_first)
