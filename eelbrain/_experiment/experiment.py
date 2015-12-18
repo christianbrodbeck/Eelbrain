@@ -1119,8 +1119,7 @@ class FileTree(TreeModel):
                 shutil.copy(src, dst)
 
     def rename(self, old, new, exclude=False):
-        """
-        Rename files corresponding to a pattern (or template)
+        """Rename all files corresponding to a pattern (or template)
 
         Parameters
         ----------
@@ -1135,8 +1134,7 @@ class FileTree(TreeModel):
         The following command will collect a specific file for each subject and
         place it in a common folder:
 
-        >>> e.rename('{root}/{subject}/info.txt',
-                     '/some_other_place/{subject}s_info.txt'
+        >>> e.rename('info-file', '/some_other_place/{subject}_info.txt')
         """
         new = self.expand_template(new)
         files = []
