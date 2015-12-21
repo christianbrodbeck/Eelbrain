@@ -310,6 +310,20 @@ class Frame(FileFrame):
 
         self.canvas.redraw(axes=axes)
 
+    def MakeToolsMenu(self, menu):
+        app = wx.GetApp()
+        item = menu.Append(wx.ID_ANY, "Source Viewer",
+                           "Open a source time course viewer window")
+        app.Bind(wx.EVT_MENU, self.OnShowSources, item)
+        item = menu.Append(wx.ID_ANY, "Find Rare Events",
+                           "Find components with major loading on a small "
+                           "number of epochs")
+        app.Bind(wx.EVT_MENU, self.OnFindRareEvents, item)
+        menu.AppendSeparator()
+        item = menu.Append(wx.ID_ANY, "Plot Grand Average",
+                           "Plot the grand average of all epochs")
+        app.Bind(wx.EVT_MENU, self.OnPlotGrandAverage, item)
+
     def OnCanvasClick(self, event):
         "called by mouse clicks"
         if event.button == 1:
@@ -381,6 +395,9 @@ class Frame(FileFrame):
 
     def OnPlotCompTopomap(self, event):
         self.PlotCompTopomap(event.EventObject.i)
+
+    def OnPlotGrandAverage(self, event):
+        self.PlotEpochButterfly(-1)
 
     def OnPointerEntersAxes(self, event):
         sb = self.GetStatusBar()

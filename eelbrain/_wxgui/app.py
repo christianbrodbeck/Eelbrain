@@ -38,6 +38,10 @@ class App(wx.App):
         m.AppendSeparator()
         m.Append(wx.ID_CLEAR, 'Cle&ar')
 
+        # Tools Menu
+        # updated by the active GUI
+        tools_menu = wx.Menu()
+
         # View Menu
         m = view_menu = wx.Menu()
         m.Append(ID.SET_VLIM, "Set Y-Axis Limit... \tCtrl+l", "Change the Y-"
@@ -75,6 +79,7 @@ class App(wx.App):
         menu_bar = wx.MenuBar()
         menu_bar.Append(file_menu, "File")
         menu_bar.Append(edit_menu, "Edit")
+        menu_bar.Append(tools_menu, "Tools")
         menu_bar.Append(view_menu, "View")
         menu_bar.Append(go_menu, "Go")
         menu_bar.Append(window_menu, "Window")
@@ -122,6 +127,7 @@ class App(wx.App):
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetLayout, id=ID.SET_LAYOUT)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetMarkedChannels, id=ID.SET_MARKED_CHANNELS)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUISetVLim, id=ID.SET_VLIM)
+        self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUITools, id=ID.TOOLS)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUndo, id=ID.UNDO)
         self.Bind(wx.EVT_UPDATE_UI, self.OnUpdateUIUp, id=wx.ID_UP)
 
@@ -136,6 +142,18 @@ class App(wx.App):
             if hasattr(w, 'IsActive') and w.IsActive():
                 return w
         return wx.GetActiveWindow()
+
+    def _get_parent_gui(self):
+        frame = self._get_active_frame()
+        if frame is None:
+            return
+        while True:
+            if hasattr(frame, 'MakeToolsMenu'):
+                return frame
+            elif frame.Parent is not None:
+                frame = frame.Parent
+            else:
+                return
 
     def _bash_ui(self, func, *args):
         "Launch a modal dialog based on terminal input"
@@ -307,6 +325,12 @@ class App(wx.App):
                 item = menu.Append(id_, window.GetTitle())
                 self.Bind(wx.EVT_MENU, self.OnWindowRaise, id=id_)
                 self.window_menu_window_items.append(item)
+        elif menu.GetTitle() == 'Tools':
+            for item in menu.GetMenuItems():
+                menu.RemoveItem(item)
+            frame = self._get_parent_gui()
+            if frame:
+                frame.MakeToolsMenu(menu)
 
     def OnOnlineHelp(self, event):
         "Called from the Help menu to open external resources"
@@ -455,6 +479,9 @@ class App(wx.App):
             frame.OnUpdateUISetVLim(event)
         else:
             event.Enable(False)
+
+    def OnUpdateUITools(self, event):
+        event.Enable(bool(self._get_parent_gui))
 
     def OnUpdateUIUndo(self, event):
         frame = self._get_active_frame()

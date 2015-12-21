@@ -732,6 +732,21 @@ class Frame(FileFrame):
 
         self.canvas.redraw(axes=axes)
 
+    def MakeToolsMenu(self, menu):
+        app = wx.GetApp()
+        item = menu.Append(wx.ID_ANY, "Set Bad Channels",
+                           "Specify bad channels for the whole file")
+        app.Bind(wx.EVT_MENU, self.OnSetBadChannels, item)
+        item = menu.Append(wx.ID_ANY, "Auto-Reject by Threshold",
+                           "Reject epochs based in a specific threshold")
+        app.Bind(wx.EVT_MENU, self.OnThreshold, item)
+        menu.AppendSeparator()
+        item = menu.Append(wx.ID_ANY, "Plot Grand Average",
+                           "Plot the grand average of all accepted epochs "
+                           "(does not perform single-epoch channel "
+                           "interpolation)")
+        app.Bind(wx.EVT_MENU, self.OnPlotGrandAverage, item)
+
     def OnBackward(self, event):
         "turns the page backward"
         self.ShowPage(self._current_page_i - 1)
