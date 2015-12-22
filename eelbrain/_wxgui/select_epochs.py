@@ -39,6 +39,12 @@ from .mpl_canvas import FigureCanvasPanel
 from .history import Action, FileDocument, FileModel, FileFrame
 
 
+# IDs
+MEAN_PLOT = -1
+TOPO_PLOT = -2
+OUT_OF_RANGE = -3
+
+
 class ChangeAction(Action):
     """Action objects are kept in the history and can do and undo themselves"""
 
@@ -183,6 +189,10 @@ class Document(FileDocument):
                 blink = None
         elif blink is not None:
             raise TypeError("blink needs to be a string or None")
+
+        if blink is not None:
+            raise NotImplementedError("Frame.SetPage() needs to be updated to "
+                                      "use blink information")
 
         # options
         self.allow_interpolation = allow_interpolation
@@ -726,8 +736,7 @@ class Frame(FileFrame):
 
         # update mean plot
         if self._plot_mean:
-            mseg = self._get_page_mean_seg()
-            self._mean_plot.set_data(mseg)
+            self._mean_plot.set_data(self._get_page_mean_seg())
             axes.append(self._mean_ax)
 
         self.canvas.redraw(axes=axes)
@@ -749,7 +758,7 @@ class Frame(FileFrame):
 
     def OnBackward(self, event):
         "turns the page backward"
-        self.ShowPage(self._current_page_i - 1)
+        self.SetPage(self._current_page_i - 1)
 
     def OnCanvasClick(self, event):
         "called by mouse clicks"
@@ -763,7 +772,7 @@ class Frame(FileFrame):
                 tag = "manual"
                 desc = "Epoch %i %s" % (idx, state)
                 self.model.set_case(idx, state, tag, desc)
-            elif ax.ax_idx == -2:
+            elif ax.ax_idx == TOPO_PLOT:
                 self.open_topomap()
         else:
             logger.debug("Canvas click outside axes")
@@ -789,7 +798,9 @@ class Frame(FileFrame):
 
         # plotting
         ax = event.inaxes
-        if ax is None or ax.ax_idx == -2:
+        if ax is None or ax.ax_idx == TOPO_PLOT:
+            return
+        elif ax.ax_idx > 0 and ax.epoch_idx == OUT_OF_RANGE:
             return
         elif event.key == 't':
             self.PlotTopomap(ax.ax_idx, event.xdata)
@@ -797,7 +808,7 @@ class Frame(FileFrame):
             self.PlotButterfly(ax.ax_idx)
         elif event.key == 'c':
             self.PlotCorrelation(ax.ax_idx)
-        elif ax.ax_idx == -1:
+        elif ax.ax_idx == MEAN_PLOT:
             return
         elif event.key == 'i':
             self.ToggleChannelInterpolation(ax, event)
@@ -806,12 +817,12 @@ class Frame(FileFrame):
 
     def OnForward(self, event):
         "turns the page forward"
-        self.ShowPage(self._current_page_i + 1)
+        self.SetPage(self._current_page_i + 1)
 
     def OnPageChoice(self, event):
         "called by the page Choice control"
         page = event.GetSelection()
-        self.ShowPage(page)
+        self.SetPage(page)
 
     def OnPlotGrandAverage(self, event):
         self.PlotGrandAverage()
@@ -823,17 +834,17 @@ class Frame(FileFrame):
     def OnPointerMotion(self, event):
         "update view on mouse pointer movement"
         ax = event.inaxes
-        if not ax:
+        if not ax or ax.epoch_idx == OUT_OF_RANGE:
             self.SetStatusText("")
             return
-        elif ax.ax_idx == -2:  # topomap
+        elif ax.ax_idx == TOPO_PLOT:  # topomap
             self.SetStatusText(self._topo_plot_info_str)
             return
 
         # compose status text
         x = ax.xaxis.get_major_formatter().format_data(event.xdata)
         y = ax.yaxis.get_major_formatter().format_data(event.ydata)
-        desc = "Page average" if ax.ax_idx == -1 else "Epoch %i" % ax.epoch_idx
+        desc = "Page average" if ax.ax_idx == MEAN_PLOT else "Epoch %i" % ax.epoch_idx
         status = "%s,  x = %s ms,  y = %s" % (desc, x, y)
         if ax.ax_idx >= 0:  # single trial plot
             interp = self.doc.interpolate[ax.epoch_idx]
@@ -1045,7 +1056,7 @@ class Frame(FileFrame):
         event.Enable(True)
 
     def PlotCorrelation(self, ax_index):
-        if ax_index == -1:
+        if ax_index == MEAN_PLOT:
             seg = self._mean_seg
             name = 'Page Mean Neighbor Correlation'
         else:
@@ -1213,6 +1224,49 @@ class Frame(FileFrame):
             self._vlims[key] = vlim
         self.canvas.draw()
 
+    def _page_change(self, page):
+        "Operations common to page change"
+        self._current_page_i = page
+        self.page_choice.Select(page)
+        self._epoch_idxs = self._segs_by_page[page]
+
+    def SetPage(self, page):
+        "Change the page that is displayed without redrawing"
+        self._page_change(page)
+
+        self._case_segs = []
+        self._axes_by_idx = {}
+
+        for i, epoch_idx in enumerate(self._epoch_idxs):
+            ax = self._case_axes[i]
+            h = self._case_plots[i]
+            case = self.doc.get_epoch(epoch_idx, 'Epoch %i' % epoch_idx)
+            h.set_data(case, epoch_idx)
+            h.set_state(self.doc.accept[epoch_idx])
+            chs = [case.sensor.channel_idx[ch]
+                   for ch in self.doc.interpolate[epoch_idx]
+                   if ch in case.sensor.channel_idx]
+            h.set_marked(INTERPOLATE_CHANNELS, chs)
+            h.set_visible()
+            ax.epoch_idx = epoch_idx
+
+            # store objects
+            ax.epoch_idx = epoch_idx
+            self._case_segs.append(case)
+            self._axes_by_idx[epoch_idx] = ax
+
+        # hide lines axes without data
+        if len(self._epoch_idxs) < len(self._case_axes):
+            for i in xrange(len(self._epoch_idxs), len(self._case_plots)):
+                self._case_plots[i].set_visible(False)
+                self._case_axes[i].epoch_idx = OUT_OF_RANGE
+
+        # update mean plot
+        if self._plot_mean:
+            self._mean_plot.set_data(self._get_page_mean_seg())
+
+        self.canvas.draw()
+
     def ShowPage(self, page=None):
         "Dislay a specific page (start counting with 0)"
         wx.BeginBusyCursor()
@@ -1221,8 +1275,7 @@ class Frame(FileFrame):
         if page is None:
             page = self._current_page_i
         else:
-            self._current_page_i = page
-            self.page_choice.Select(page)
+            self._page_change(page)
 
         self.figure.clf()
         nrow, ncol = self._nplots
@@ -1232,7 +1285,6 @@ class Frame(FileFrame):
         y_formatter, y_label = find_axis_params_data(self.doc.epochs, True)
 
         # segment plots
-        self._epoch_idxs = self._segs_by_page[page]
         self._case_plots = []
         self._case_axes = []
         self._case_segs = []
@@ -1245,8 +1297,7 @@ class Frame(FileFrame):
                         if ch in case.sensor.channel_idx]
             state = self.doc.accept[epoch_idx]
             ax = self.figure.add_subplot(nrow, ncol, i + 1, xticks=[0], yticks=[])
-            ax.text(0, 1.01, epoch_idx, va='bottom', ha='left', transform=ax.transAxes)
-            h = _ax_bfly_epoch(ax, case, mark, state, **self._bfly_kwargs)
+            h = _ax_bfly_epoch(ax, case, mark, state, epoch_idx, **self._bfly_kwargs)
             # mark interpolated channels
             if self.doc.interpolate[epoch_idx]:
                 chs = [case.sensor.channel_idx[ch]
@@ -1273,9 +1324,9 @@ class Frame(FileFrame):
         if self._plot_mean:
             plot_i = nrow * ncol
             self._mean_ax = ax = self.figure.add_subplot(nrow, ncol, plot_i)
-            ax.ax_idx = -1
+            ax.ax_idx = MEAN_PLOT
             self._mean_seg = self._get_page_mean_seg()
-            self._mean_plot = _ax_bfly_epoch(ax, self._mean_seg, mark,
+            self._mean_plot = _ax_bfly_epoch(ax, self._mean_seg, mark, 'Page Mean',
                                              **self._bfly_kwargs)
 
             # formatters
@@ -1286,7 +1337,7 @@ class Frame(FileFrame):
         if self._plot_topo:
             plot_i = nrow * ncol - self._plot_mean
             self._topo_ax = self.figure.add_subplot(nrow, ncol, plot_i)
-            self._topo_ax.ax_idx = -2
+            self._topo_ax.ax_idx = TOPO_PLOT
             self._topo_ax.set_axis_off()
             self._topo_plot = None
             self._topo_plot_info_str = ""
@@ -1318,7 +1369,7 @@ class Frame(FileFrame):
         return mseg
 
     def _get_ax_data(self, ax_index, time=None):
-        if ax_index == -1:
+        if ax_index == MEAN_PLOT:
             seg = self._mean_seg
             epoch_name = 'Page Average'
             sensor_idx = None
@@ -1328,7 +1379,7 @@ class Frame(FileFrame):
             seg = self._case_segs[ax_index]
             sensor_idx = self.doc.good_sensor_index(epoch_idx)
         else:
-            raise ValueError("ax_index needs to be >= -1, not %s" % ax_index)
+            raise ValueError("Invalid ax_index: %s" % ax_index)
 
         if time is not None:
             name = '%s, %i ms' % (epoch_name, 1e3 * time)

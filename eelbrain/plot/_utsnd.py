@@ -284,7 +284,7 @@ class Array(_EelFigure):
         self.draw()
 
 
-class _plt_utsnd:
+class _plt_utsnd(object):
 
     def __init__(self, ax, epoch, linedim, sensors=None, *args, **kwargs):
         """
@@ -318,6 +318,10 @@ class _plt_utsnd:
     def remove(self):
         while self.lines:
             self.lines.pop().remove()
+
+    def set_visible(self, visible=True):
+        for line in self.lines:
+            line.set_visible(visible)
 
     def set_ydata(self, epoch):
         if self._sensors:
@@ -439,8 +443,8 @@ class Butterfly(_EelFigure):
 
 
 class _ax_bfly_epoch:
-    def __init__(self, ax, epoch, mark=None, state=True, color='k', lw=0.2,
-                 mcolor='r', mlw=0.8, antialiased=True, vlims={}):
+    def __init__(self, ax, epoch, mark=None, state=True, label=None, color='k',
+                 lw=0.2, mcolor='r', mlw=0.8, antialiased=True, vlims={}):
         """Specific plot for showing a single sensor by time epoch
 
         Parameters
@@ -464,6 +468,7 @@ class _ax_bfly_epoch:
         self.ax = ax
         self.epoch = epoch
         self._state_h = []
+        self._visible = True
         self._ylim = _base.find_uts_ax_vlim([epoch], vlims)
         self._update_ax_lim()
         self._styles = {None: {'color': color, 'lw': lw, 'ls': '-',
@@ -476,11 +481,18 @@ class _ax_bfly_epoch:
         if mark:
             self.set_marked('mark', mark)
 
+        if label is None:
+            label = ''
+        self._label = ax.text(0, 1.01, label, va='bottom', ha='left', transform=ax.transAxes)
+
         # create initial plots
         self.set_state(state)
 
-    def set_data(self, epoch):
+    def set_data(self, epoch, label=None):
+        self.epoch = epoch
         self.lines.set_ydata(epoch)
+        if label is not None:
+            self._label.set_text(label)
 
     def _update_ax_lim(self):
         self.ax.set_xlim(self.epoch.time[0], self.epoch.time[-1])
@@ -538,6 +550,14 @@ class _ax_bfly_epoch:
                 h2 = self.ax.plot([0, 1], [1, 0], color='r', linewidth=1,
                                   transform=self.ax.transAxes)
                 self._state_h.extend(h1 + h2)
+
+    def set_visible(self, visible=True):
+        if self._visible != visible:
+            self.lines.set_visible(visible)
+            self._label.set_visible(visible)
+            for line in self._state_h:
+                line.set_visible(visible)
+            self._visible = visible
 
     def set_ylim(self, ylim):
         self._ylim = ylim
