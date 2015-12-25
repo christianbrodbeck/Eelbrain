@@ -945,12 +945,12 @@ class Frame(FileFrame):
     def OnPointerMotion(self, event):
         "update view on mouse pointer movement"
         ax = event.inaxes
-        if not ax or ax.epoch_idx == OUT_OF_RANGE:
-            self.SetStatusText("")
-            return
-        elif ax.ax_idx == TOPO_PLOT:  # topomap
-            self.SetStatusText(self._topo_plot_info_str)
-            return
+        if not ax:
+            return self.SetStatusText("")
+        elif ax.ax_idx == TOPO_PLOT:
+            return self.SetStatusText(self._topo_plot_info_str)
+        elif ax.epoch_idx == OUT_OF_RANGE:
+            return self.SetStatusText("")
 
         # compose status text
         x = ax.xaxis.get_major_formatter().format_data(event.xdata)
