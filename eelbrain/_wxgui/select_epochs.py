@@ -25,6 +25,7 @@ import wx
 from .. import load, save, plot
 from .._data_obj import Dataset, Factor, Var, Datalist, corr, asndvar, combine
 from .. import _meeg as meeg
+from .. import _report
 from .._names import INTERPOLATE_CHANNELS
 from .._info import BAD_CHANNELS
 from .._utils.parse import FLOAT_PATTERN, POS_FLOAT_PATTERN
@@ -689,6 +690,10 @@ class Frame(FileFrame):
         button.Bind(wx.EVT_BUTTON, self.OnPlotGrandAverage)
         tb.AddControl(button)
 
+        # Info
+        tb.AddLabelTool(wx.ID_INFO, 'Info', Icon("actions/info"))
+        self.Bind(wx.EVT_TOOL, self.OnInfo, id=wx.ID_INFO)
+
         # --> Help
         tb.AddLabelTool(wx.ID_HELP, 'Help', Icon("tango/apps/help-browser"))
         self.Bind(wx.EVT_TOOL, self.OnHelp, id=wx.ID_HELP)
@@ -791,6 +796,8 @@ class Frame(FileFrame):
                            "(does not perform single-epoch channel "
                            "interpolation)")
         app.Bind(wx.EVT_MENU, self.OnPlotGrandAverage, item)
+        item = menu.Append(wx.ID_ANY, "Info")
+        app.Bind(wx.EVT_MENU, self.OnInfo, item)
 
     def OnBackward(self, event):
         "turns the page backward"
@@ -881,6 +888,37 @@ class Frame(FileFrame):
     def OnForward(self, event):
         "turns the page forward"
         self.SetPage(self._current_page_i + 1)
+
+    def OnInfo(self, event):
+        msg = ["%i Epochs" % len(self.doc.epochs), ""]
+
+        # n rejected
+        rejected = np.invert(self.doc.accept.x)
+        heading = _report.n_of(rejected.sum(), 'epoch') + ' rejected'
+        if np.any(rejected):
+            msg.append(heading + ':')
+            msg.append(', '.join(map(str, np.flatnonzero(rejected))))
+        else:
+            msg.append(heading + '.')
+        msg.append("")
+
+        # bad channels
+        heading = _report.n_of(len(self.doc.bad_channels), "bad channel")
+        if self.doc.bad_channels:
+            msg.append(heading + ':')
+            msg.append(', '.join(self.doc.bad_channel_names))
+        else:
+            msg.append(heading + 's.')
+        msg.append("")
+
+        # interpolation by epochs
+        if any(self.doc.interpolate):
+            msg.append("Interpolate channels on individual epochs:")
+            msg += format_epoch_list(self.doc.interpolate)
+        else:
+            msg.append("No channels interpolated in individual epochs.")
+
+        TextFrame(self, "Rejection Info", os.linesep.join(msg))
 
     def OnPageChoice(self, event):
         "called by the page Choice control"

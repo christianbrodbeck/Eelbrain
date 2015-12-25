@@ -8,6 +8,16 @@ from ._data_obj import cellname, combine
 from .fmtxt import ms, Section
 
 
+def n_of(n, of):
+    "n_of(3, 'epoch') -> '3 epochs'"
+    if n == 0:
+        return "No " + of
+    elif n == 1:
+        return "1 " + of
+    else:
+        return str(n) + ' ' + of + 's'
+
+
 def enumeration(items, link='and'):
     "['a', 'b', 'c'] -> 'a, b and c'"
     if len(items) >= 2:
