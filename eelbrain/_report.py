@@ -8,10 +8,13 @@ from ._data_obj import cellname, combine
 from .fmtxt import ms, Section
 
 
-def n_of(n, of):
+def n_of(n, of, plural_for_0=False):
     "n_of(3, 'epoch') -> '3 epochs'"
     if n == 0:
-        return "No " + of
+        if plural_for_0:
+            return "no " + of + 's'
+        else:
+            return "no " + of
     elif n == 1:
         return "1 " + of
     else:

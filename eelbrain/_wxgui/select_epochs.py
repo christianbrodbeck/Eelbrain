@@ -16,13 +16,14 @@ from copy import deepcopy
 from logging import getLogger
 import math
 import os
+import re
 import time
 
 import mne
 import numpy as np
 import wx
 
-from .. import load, save, plot
+from .. import load, save, plot, fmtxt
 from .._data_obj import Dataset, Factor, Var, Datalist, corr, asndvar, combine
 from .. import _meeg as meeg
 from .. import _report
@@ -40,7 +41,7 @@ from .app import get_app
 from .frame import EelbrainDialog
 from .mpl_canvas import FigureCanvasPanel
 from .history import Action, FileDocument, FileModel, FileFrame
-from .text import TextFrame
+from .text import TextFrame, HTMLFrame
 
 
 # IDs
@@ -49,13 +50,17 @@ TOPO_PLOT = -2
 OUT_OF_RANGE = -3
 
 
-def format_epoch_list(l):
+def format_epoch_list(l, head="Epochs by channel:"):
     d = meeg.channel_listlist_to_dict(l)
     if not d:
-        return ["None."]
-    chs = sorted(d, key=lambda x: -len(d[x]))
-    return ["%s (%i): %s" % (ch, len(d[ch]), ', '.join(map(str, d[ch]))) for
-            ch in chs]
+        return "None."
+    out = fmtxt.List(head)
+    for ch in sorted(d, key=lambda x: -len(d[x])):
+        item = fmtxt.FMText("%s (%i): " % (ch, len(d[ch])))
+        item += fmtxt.delim_list((fmtxt.Link(epoch, 'epoch:%i' % epoch) for
+                                  epoch in d[ch]))
+        out.add_item(item)
+    return out
 
 
 class ChangeAction(Action):
@@ -779,6 +784,15 @@ class Frame(FileFrame):
 
         self.canvas.redraw(axes=axes)
 
+    def GoToEpoch(self, i):
+        for page, epochs in enumerate(self._segs_by_page):
+            if i in epochs:
+                break
+        else:
+            raise ValueError("Epoch not found: %r" % i)
+        if page != self._current_page_i:
+            self.SetPage(page)
+
     def MakeToolsMenu(self, menu):
         app = wx.GetApp()
         item = menu.Append(wx.ID_ANY, "Set Bad Channels",
@@ -863,23 +877,24 @@ class Frame(FileFrame):
         if dlg.ShowModal() == wx.ID_OK:
             flat, flat_average, mincorr = dlg.GetValues()
             if dlg.do_report.GetValue():
-                msg = ["Noisy Channel Detection (%i Epochs)" % len(self.doc.epochs)]
+                doc = fmtxt.Section("Noisy Channels")
+                doc.append("Total of %i epochs." % len(self.doc.epochs))
                 if flat_average:
-                    msg.append("\nFlat in the average (<%s):" % flat_average)
+                    sec = doc.add_section("Flat in the average (<%s)" % flat_average)
                     bads = meeg.find_flat_evoked(self.doc.epochs, flat_average)
                     if bads:
-                        msg.append(', '.join(bads))
+                        sec.add_paragraph(', '.join(bads))
                     else:
-                        msg.append("None.")
+                        sec.add_paragraph("None.")
                 if flat:
                     bads = meeg.find_flat_epochs(self.doc.epochs, flat)
-                    msg.append("\nFlat Channels (<%s):" % flat)
-                    msg += format_epoch_list(bads)
+                    sec = doc.add_section("Flat Channels (<%s)" % flat)
+                    sec.add_paragraph(format_epoch_list(bads))
                 if mincorr:
                     bads = meeg.find_noisy_channels(self.doc.epochs, mincorr)
-                    msg.append("\nNeighbor correlation < %s:" % mincorr)
-                    msg += format_epoch_list(bads)
-                TextFrame(self, "Noisy Channels", os.linesep.join(msg))
+                    sec = doc.add_section("Neighbor correlation < %s" % mincorr)
+                    sec.add_paragraph(format_epoch_list(bads))
+                InfoFrame(self, "Noisy Channels", doc.get_html())
             else:
                 self.model.find_noisy_channels(flat, flat_average, mincorr)
             dlg.StoreConfig()
@@ -890,35 +905,30 @@ class Frame(FileFrame):
         self.SetPage(self._current_page_i + 1)
 
     def OnInfo(self, event):
-        msg = ["%i Epochs" % len(self.doc.epochs), ""]
+        doc = fmtxt.Section("%i Epochs" % len(self.doc.epochs))
 
-        # n rejected
+        # rejected epochs
         rejected = np.invert(self.doc.accept.x)
-        heading = _report.n_of(rejected.sum(), 'epoch') + ' rejected'
+        sec = doc.add_section(_report.n_of(rejected.sum(), 'epoch') + ' rejected')
         if np.any(rejected):
-            msg.append(heading + ':')
-            msg.append(', '.join(map(str, np.flatnonzero(rejected))))
-        else:
-            msg.append(heading + '.')
-        msg.append("")
+            para = fmtxt.delim_list((fmtxt.Link(epoch, "epoch:%i" % epoch) for
+                                     epoch in np.flatnonzero(rejected)))
+            sec.add_paragraph(para)
 
         # bad channels
-        heading = _report.n_of(len(self.doc.bad_channels), "bad channel")
+        heading = _report.n_of(len(self.doc.bad_channels), "bad channel", True)
+        sec = doc.add_section(heading.capitalize())
         if self.doc.bad_channels:
-            msg.append(heading + ':')
-            msg.append(', '.join(self.doc.bad_channel_names))
-        else:
-            msg.append(heading + 's.')
-        msg.append("")
+            sec.add_paragraph(', '.join(self.doc.bad_channel_names))
 
         # interpolation by epochs
         if any(self.doc.interpolate):
-            msg.append("Interpolate channels on individual epochs:")
-            msg += format_epoch_list(self.doc.interpolate)
+            sec = doc.add_section("Interpolate channels")
+            sec.add_paragraph(format_epoch_list(self.doc.interpolate, "Interpolation by epoch:"))
         else:
-            msg.append("No channels interpolated in individual epochs.")
+            doc.add_section("No channels interpolated in individual epochs")
 
-        TextFrame(self, "Rejection Info", os.linesep.join(msg))
+        InfoFrame(self, "Rejection Info", doc.get_html())
 
     def OnPageChoice(self, event):
         "called by the page Choice control"
@@ -1692,3 +1702,17 @@ class ThresholdDialog(EelbrainDialog):
         text = self.threshold_ctrl.GetValue()
         value = float(text)
         return value
+
+
+class InfoFrame(HTMLFrame):
+
+    def OpenURL(self, url):
+        m = re.match('^(\w+):(\w+)$', url)
+        if m:
+            kind, address = m.groups()
+            if kind == 'epoch':
+                self.Parent.GoToEpoch(int(address))
+            else:
+                raise NotImplementedError("%s URL" % kind)
+        else:
+            raise ValueError("Invalid link URL: %r" % url)

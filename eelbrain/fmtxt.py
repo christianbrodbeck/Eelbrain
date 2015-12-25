@@ -677,6 +677,16 @@ class Text(FMTextElement):
         FMTextElement.__init__(self, content, tag)
 
 
+class Link(FMTextElement):
+
+    def __init__(self, content, url):
+        FMTextElement.__init__(self, content)
+        self.url = unicode(url)
+
+    def get_html(self, env):
+        return '<a href="%s">%s</a>' % (self.url, FMTextElement.get_html(self, env))
+
+
 class Number(FMTextElement):
 
     def __init__(self, content, tag=None, fmt='%s', drop0=False):
@@ -1937,6 +1947,14 @@ def peq(content, subscript=None, stars=None, of=3):
         return FMText([symbol_, eq_, P(content)], 'math')
     else:
         return FMText([symbol_, eq_, P(content), Stars(stars, of)], 'math')
+
+
+def delim_list(items, delimiter=', '):
+    delim = asfmtext(delimiter)
+    out = list(items)
+    for i in xrange(len(out) - 1, 0, -1):
+        out.insert(i, delim)
+    return out
 
 
 def ms(t_s):
