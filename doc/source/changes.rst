@@ -4,6 +4,18 @@ Changes
 .. currentmodule:: eelbrain
 
 
+New in 0.22
+-----------
+
+* Epoch Rejection GUI:
+
+  - New "Tools" menu.
+  - New "Info" tool to show summary info on the rejection.
+  - New "Find Bad Channels" tool to automatically find bad channels.
+  - Set marked channels by clicking on topo-map.
+  - Faster page redraw.
+
+
 New in 0.21
 -----------
 
