@@ -77,12 +77,14 @@ preferences = dict(
 #     ``sub % content`` if the tag is in _str_substitutes, otherwise it is
 #     ignored
 # TeX:
-#     ``sub % content`` if the tag is in _tex_substitutes, otherwise
-#     ``"%s{%s}" % (tag, content)
+#     Ignor a tag if it is in _tex_ignore;
+#     ``sub % content`` if the tag is in _tex_substitutes,
+#     otherwise ``"%s{%s}" % (tag, content)``
 # HTML:
 #     Formatted HTML if the tag is in _html_tags, otherwise it is ignored
 #
 
+_tex_ignore = ('font',)
 _tex_substitutes = {'paragraph': "\n\n%s\n\n",
                     'math': "$%s$"}  # LaTeX math but normal HTML
 
@@ -93,7 +95,8 @@ _html_tags = {r'_': 'sub',
               r'\textbf': 'b',
               r'\textit': 'i',
               'paragraph': 'p',
-              'code': 'code'}
+              'code': 'code',
+              'font': 'font'}
 
 _RTF_TAGS = {r'\emph': "\i %s\i0"}
 
@@ -456,7 +459,7 @@ class FMTextElement(object):
      - str(FMText) -> str
 
     """
-    def __init__(self, content, tag=None):
+    def __init__(self, content, tag=None, options=None):
         """Represent a value along with formatting properties.
 
         Parameters
@@ -466,9 +469,14 @@ class FMTextElement(object):
         tag : str
             TeX property that is followed by ``{}`` (e.g.,
             ``property=r'\textbf'`` for bold)
+        options : dict
+            Options for HTML tags.
         """
+        if options and not tag:
+            raise ValueError("Can not specify options without tag")
         self.content = content
         self.tag = tag
+        self.options = options
 
     def __repr__(self):
         name = self.__class__.__name__
@@ -479,6 +487,8 @@ class FMTextElement(object):
         items = [repr(self.content)]
         if self.tag:
             items.append(repr(self.tag))
+            if self.options:
+                items.append(repr(self.options))
         return items
 
     def __str__(self):
@@ -513,7 +523,7 @@ class FMTextElement(object):
         if self.tag:
             if self.tag in _html_tags:
                 tag = _html_tags[self.tag]
-                txt = _html_temp.format(tag=tag, body=txt)
+                return _html_element(tag, txt, env, self.options)
 
         return txt
 
@@ -543,7 +553,7 @@ class FMTextElement(object):
     def get_tex(self, env):
         txt = self._get_tex_core(env)
 
-        if self.tag:
+        if self.tag and self.tag not in _tex_ignore:
             if self.tag in _tex_substitutes:
                 txt = _tex_substitutes[self.tag] % txt
             else:
@@ -615,7 +625,7 @@ class FMTextElement(object):
 
 class FMText(FMTextElement):
     "List of FMTextElements"
-    def __init__(self, content, tag=None):
+    def __init__(self, content, tag=None, options=None):
         """Represent a value along with formatting properties.
 
         Parameters
@@ -640,7 +650,7 @@ class FMText(FMTextElement):
             content = [asfmtext(item) for item in content]
         else:
             content = [asfmtext(content)]
-        FMTextElement.__init__(self, content, tag)
+        FMTextElement.__init__(self, content, tag, options)
 
     def append(self, content):
         """Append content to the FMText item
