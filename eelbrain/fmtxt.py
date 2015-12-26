@@ -52,6 +52,7 @@ from importlib import import_module
 from itertools import izip
 import os
 import cPickle as pickle
+import re
 import shutil
 import socket
 from StringIO import StringIO
@@ -101,6 +102,18 @@ _str_substitutes = {r'_': u'(%s)'}
 _html_alignments = {'l': 'left',
                     'r': 'right',
                     'c': 'center'}
+
+_html_reserved_chars = {'<': '&lt;', '>': '&gt;', '&': '&amp;'}
+_html_escape_pattern = re.compile('|'.join(_html_reserved_chars))
+
+
+def _html_repl(m):
+    return _html_reserved_chars[m.group(0)]
+
+
+def escape_html(text):
+    return _html_escape_pattern.sub(_html_repl, text)
+
 
 _html_doc_template = u"""<!DOCTYPE html>
 <html>
@@ -491,7 +504,7 @@ class FMTextElement(object):
 
     def _get_core(self, env):
         "return unicode core"
-        return self.content
+        return unicode(self.content)
 
     def get_html(self, env):
         "return complete html representation"
@@ -506,7 +519,7 @@ class FMTextElement(object):
 
     def _get_html_core(self, env):
         "return html representation of everything inside the tag"
-        return self._get_core(env)
+        return escape_html(self._get_core(env))
 
     def get_rtf(self, env={}):
         if self.tag in _RTF_TAGS:
@@ -1554,7 +1567,7 @@ class Section(FMText):
             Section content. Can also be constructed dynamically through the
             different .add_... methods.
         """
-        self._heading = heading
+        self._heading = asfmtext(heading)
         FMText.__init__(self, content)
 
     def add_figure(self, caption, content=None):
@@ -1667,19 +1680,15 @@ class Section(FMText):
 
     def get_html(self, env={}):
         env = env.copy()
-        env['level'] = env.get('level', 1)
+
         heading = self._get_html_section_heading(env)
-
-        env['level'] += 1
         body = FMText.get_html(self, env)
-
-        txt = '\n\n'.join(('', heading, body))
-        return txt
+        return '\n\n'.join(('', heading, body))
 
     def _get_html_section_heading(self, env):
-        heading = html(self._heading)
+        heading = self._heading.get_html(env)
 
-        level = env['level']
+        level = env.get('level', 1)
         tag = 'h%i' % level
         txt = _html_element(tag, heading, env)
         if 'toc' in env:
@@ -1689,6 +1698,7 @@ class Section(FMText):
 
             toc_txt = _html_element('a', heading, env, {'href': '#%i' % toc_id})
             env['toc'].append((level, toc_txt))
+        env['level'] = level + 1
         return txt
 
     def get_str(self, env={}):
@@ -1774,9 +1784,8 @@ class Report(Section):
 
         # compile document content
         content = []
-        if self._heading is not None:
-            title = _html_element('h1', self._heading, env)
-            content.append(title)
+        title = _html_element('h1', self._heading, env)
+        content.append(title)
         if self._author is not None:
             author = html(self._author, env)
             content.append(author)
@@ -1790,10 +1799,9 @@ class Report(Section):
 
     def get_str(self, env={}):
         content = []
-        if self._heading is not None:
-            title = str(self._heading)
-            underline = '^' * len(title)
-            content += [title, underline, '']
+        title = str(self._heading)
+        underline = '^' * len(title)
+        content += [title, underline, '']
         if self._author is not None:
             author = self._author.get_str(env)
             content += [author, '']

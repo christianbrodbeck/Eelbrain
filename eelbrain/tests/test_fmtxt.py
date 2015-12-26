@@ -66,7 +66,7 @@ def test_eq():
 
     s = fmtxt.peq(0.0009)
     eq_(str(s), "p < .001")
-    eq_(html(s), "p < .001")
+    eq_(html(s), "p &lt; .001")
     eq_(tex(s), "$p < .001$")
 
 
