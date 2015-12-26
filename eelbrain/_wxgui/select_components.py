@@ -13,6 +13,7 @@ from __future__ import division
 
 from itertools import izip
 from math import ceil
+import re
 
 import mne
 from matplotlib.patches import Rectangle
@@ -21,13 +22,13 @@ from scipy import linalg
 import wx
 from wx.lib.scrolledpanel import ScrolledPanel
 
-from .. import load, plot
+from .. import load, plot, fmtxt
 from .._data_obj import NDVar, Ordered, fft, isfactor
 from ..plot._topo import _ax_topomap
 from .._wxutils import Icon, ID, REValidator
 from .._utils.parse import POS_FLOAT_PATTERN
 from .mpl_canvas import FigureCanvasPanel, CanvasFrame
-from .text import TextFrame
+from .text import TextFrame, HTMLFrame
 from .history import Action, FileDocument, FileModel, FileFrame
 from .frame import EelbrainDialog
 
@@ -264,6 +265,7 @@ class Frame(FileFrame):
 
         # attributes
         self.last_model = ""
+        self.source_frame = None
 
         # Finalize
         self.plot()
@@ -318,6 +320,11 @@ class Frame(FileFrame):
 
         self.canvas.redraw(axes=axes)
 
+    def GoToComponentEpoch(self, component, epoch):
+        if not self.source_frame:
+            self.ShowSources(0)
+        self.source_frame.GoToComponentEpoch(component, epoch)
+
     def MakeToolsMenu(self, menu):
         app = wx.GetApp()
         item = menu.Append(wx.ID_ANY, "Source Viewer",
@@ -355,16 +362,13 @@ class Frame(FileFrame):
             self.PlotConditionAverages(self)
 
     def OnFindRareEvents(self, event):
-        n_events = self.config.ReadInt("FindRareEvents/n_events", 5)
-        threshold = self.config.ReadFloat("FindRareEvents/threshold", 2.)
-        dlg = FindRareEventsDialog(self, threshold, n_events)
+        dlg = FindRareEventsDialog(self)
         rcode = dlg.ShowModal()
         dlg.Destroy()
         if rcode != wx.ID_OK:
             return
         threshold, n_events = dlg.GetValues()
-        self.config.WriteInt("FindRareEvents/n_events", n_events)
-        self.config.WriteFloat("FindRareEvents/threshold", threshold)
+        dlg.StoreConfig()
 
         def outliers(source):
             y = source - source.mean()
@@ -385,12 +389,20 @@ class Frame(FileFrame):
                           style=wx.ICON_INFORMATION)
             return
 
-        items = ["Components that have strong relative loading (SS > %g STD) "
-                 "on %i or fewer epochs:" % (threshold, n_events), '']
+        doc = fmtxt.Section("Rare Events")
+        doc.add_paragraph("Components that have strong relative loading (SS > "
+                          "%g STD) on %i or fewer epochs:"
+                          % (threshold, n_events))
+        doc.append(fmtxt.linebreak)
+        hash_char = {True: fmtxt.FMTextElement('# ', 'font', {'color': 'green'}),
+                     False: fmtxt.FMTextElement('# ', 'font', {'color': 'red'})}
         for i, epochs in res:
-            items.append("# %i:  %s" % (i, ', '.join(map(str, epochs))))
+            doc.append(hash_char[self.doc.accept[i]])
+            doc.append("%i:  " % i)
+            doc.append(fmtxt.delim_list((fmtxt.Link(e, 'component:%i epoch:%i' % (i, e)) for e in epochs)))
+            doc.append(fmtxt.linebreak)
 
-        TextFrame(self, "Rare Events", '\n'.join(items))
+        InfoFrame(self, "Rare Events", doc.get_html())
 
     def OnPanelResize(self, event):
         w, h = event.GetSize()
@@ -534,7 +546,10 @@ class Frame(FileFrame):
                            title=name, axlabel=("Original", "Cleaned"))#, "Baselined Cleaned"))
 
     def ShowSources(self, i_first):
-        SourceFrame(self, i_first)
+        if self.source_frame:
+            self.source_frame.Raise()
+        else:
+            self.source_frame = SourceFrame(self, i_first)
 
 
 class SourceFrame(CanvasFrame):
@@ -719,6 +734,11 @@ class SourceFrame(CanvasFrame):
                 self.lines[i_comp - self.i_first].set_color(LINE_COLOR[self.doc.accept[i_comp]])
             self.canvas.redraw(axes=(self.ax_tc,))
 
+    def GoToComponentEpoch(self, component, epoch):
+        self.SetFirstComponent(component // self.n_comp * self.n_comp)
+        epoch_i = self.doc.sources.epoch.dimindex(epoch)
+        self.SetFirstEpoch(epoch_i // self.n_epochs * self.n_epochs)
+
     def OnBackward(self, event):
         "turns the page backward"
         self.SetFirstEpoch(self.i_first_epoch - self.n_epochs)
@@ -847,10 +867,14 @@ class SourceFrame(CanvasFrame):
 
 
 class FindRareEventsDialog(EelbrainDialog):
-    def __init__(self, parent, threshold, n_events, *args, **kwargs):
+    def __init__(self, parent, *args, **kwargs):
         super(FindRareEventsDialog, self).__init__(parent, wx.ID_ANY,
                                                    "Find Rare Events", *args,
                                                    **kwargs)
+        config = parent.config
+        n_events = config.ReadInt("FindRareEvents/n_events", 5)
+        threshold = config.ReadFloat("FindRareEvents/threshold", 2.)
+
         sizer = wx.BoxSizer(wx.VERTICAL)
 
         # number of events
@@ -901,3 +925,22 @@ class FindRareEventsDialog(EelbrainDialog):
     def OnSetDefault(self, event):
         self.threshold_ctrl.SetValue('2')
         self.n_events_ctrl.SetValue('5')
+
+    def StoreConfig(self):
+        config = self.Parent.config
+        config.WriteInt("FindRareEvents/n_events",
+                        int(self.n_events_ctrl.GetValue()))
+        config.WriteFloat("FindRareEvents/threshold",
+                          float(self.threshold_ctrl.GetValue()))
+        config.Flush()
+
+
+class InfoFrame(HTMLFrame):
+
+    def OpenURL(self, url):
+        m = re.match('^component:(\d+) epoch:(\d+)$', url)
+        if m:
+            comp, epoch = m.groups()
+            self.Parent.GoToComponentEpoch(int(comp), int(epoch))
+        else:
+            raise ValueError("Invalid link URL: %r" % url)
