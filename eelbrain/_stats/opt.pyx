@@ -443,40 +443,6 @@ def lm_res_ss(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] ss):
     free(betas)
 
 
-def lm_t(scalar[:,:] y, double[:,:] x, double[:,:] xsinv, double[:] a, double[:,:] out):
-    """T-values for linear multiple regression
-
-    Parameters
-    ----------
-    y : array (n_cases, n_tests)
-        Dependent Measurement.
-    x : array (n_cases, df_model)
-        Model matrix.
-    xsinv : array (df_model, n_cases)
-        xsinv for x.
-    out : array (df_model, n_tests)
-        Container for output.
-    """
-    cdef unsigned long i, i_beta
-    cdef double ss_res, ms_res, se_res
-
-    cdef unsigned long n_tests = y.shape[1]
-    cdef unsigned int n_cases = y.shape[0]
-    cdef unsigned int df_x = xsinv.shape[0]
-    cdef double df_res = n_cases - df_x
-    cdef double *betas = <double *>malloc(sizeof(double) * df_x)
-
-    for i in range(n_tests):
-        _lm_betas(y, i, xsinv, betas)
-        ss_res = _lm_res_ss(y, i, x, df_x, betas)
-        ms_res = ss_res / df_res
-        se_res = ms_res ** 0.5
-        for i_beta in range(df_x):
-            out[i_beta, i] = betas[i_beta] * a[i_beta] / se_res
-
-    free(betas)
-
-
 def t_1samp(scalar[:,:] y, double[:] out):
     """T-values for 1-sample t-test
 

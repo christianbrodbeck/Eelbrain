@@ -140,36 +140,20 @@ def lm_betas_se_1d(y, b, p):
     return np.sqrt(var_b, var_b)
 
 
-def lm_t(y, x):
+def lm_t(y, p):
     """Calculate t-values for regression coefficients
 
     Parameters
     ----------
     y : array  [n_cases, ...]
         Dependent measure.
-    x : Model
-        Predictors
+    p : Parametrization
+        Parametrized model.
     """
-    # t = beta / se(beta)
-    # se(beta) = sqrt(ms_e / a)
-    # t = sqrt(a) * (beta / sqrt(ms_e))
-    x = asmodel(x)
-
-    # calculate a
-    a = np.empty(x.df)
-    x_ = np.empty((len(x), x.df - 1))
-    for i in xrange(x.df):
-        y_ = x.full[:, i:i+1]
-        x_[:, :i] = x.full[:, :i]
-        x_[:, i:] = x.full[:, i + 1:]
-        opt.lm_res_ss(y_, x_, xsinv(x_), a[i:i+1])
-    np.sqrt(a, a)
-
     y_ = y.reshape((len(y), -1))
-    out = np.empty((x.df,) + y.shape[1:])
-    out_ = out.reshape((x.df, -1))
-    opt.lm_t(y_, x.full, x.xsinv, a, out_)
-    return out
+    b = p.projector.dot(y_)
+    b /= lm_betas_se_1d(y_, b, p)
+    return b.reshape((len(b), ) + y.shape[1:])
 
 
 def residual_mean_square(y, x=None):

@@ -3739,7 +3739,7 @@ class NDVar(object):
         from ._stats import stats
 
         if not self.has_case:
-            msg = ("Can only apply regression to NDVar with case dimension")
+            msg = "Can only apply regression to NDVar with case dimension"
             raise DimensionMismatchError(msg)
 
         x = asmodel(x)
@@ -3748,7 +3748,7 @@ class NDVar(object):
                    "dependent variable (%i)" % (len(x), len(self)))
             raise DimensionMismatchError(msg)
 
-        t = stats.lm_t(self.x, x)[1:]  # drop intercept
+        t = stats.lm_t(self.x, x._parametrize())[1:]  # drop intercept
         info = self.info.copy()
         return NDVar(t, self.dims, info, name)
 
